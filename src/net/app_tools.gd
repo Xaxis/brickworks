@@ -29,6 +29,9 @@ extends RefCounted
 ## main.gd.
 var app: Node
 var assistant: Assistant
+## Whether a link to this computer may be fetched (_fetch): a probe serves
+## its own files from here.
+var fetch_near: bool = false
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -52,13 +55,15 @@ const COMMANDS: Dictionary = {
 	"collection_build": "parts_list",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
 	"stability": "review_model", "ask_claude": "selection",
+	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
+	"sticker": "print_part",
+	"make_unique": "make_unique",
 }
 
 ## The window's commands no tool does, each with why. A command that is
 ## in neither this nor COMMANDS fails the sync probe.
 const WINDOW_ONLY: Dictionary = {
 	"import_*": "reads a file from the person's disk, picked in a dialog; open_model opens the app's own models",
-	"brickify": "reads a 3D file from the person's disk, picked in a dialog",
 	"share": "publishes the model on the web as the person, for anyone with the link: theirs to decide",
 	"account": "signing in is the person's",
 	"quit": "closes the app the session is driving",
@@ -74,7 +79,6 @@ const WINDOW_ONLY: Dictionary = {
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"rename_assembly": "a session names an assembly when it makes one (edit_model's assemblies)",
-	"make_unique": "not yet a tool: a session's edit_model changes the parts it names, and other copies of a sub-assembly follow an edit_selection",
 	"view_*": "the person's camera; view_model from= looks from any side",
 	"mode_*": "what the person's mouse does; a session's changes are edit_model's",
 	"fit": "the person's camera; view_model frames what it looks at",
@@ -134,8 +138,17 @@ Best, up to 4K, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a picture, \
 a BrickLink wanted list, a Rebrickable parts list, or the building \
 instructions as a booklet, written where Export writes.
+ - brickify: a 3D model (OBJ, STL, glTF) laid in LEGO® bricks at the size asked, \
+as one sub-assembly: url= a link the app fetches, or pick=true opens the \
+window's file dialog for the person, after which brickify with neither \
+lays what they chose.
+ - print_part: a picture (svg= you draw, or picture_url=) printed on a \
+part where it stands, or with sticker=true stuck on one of its faces.
+ - make_unique: one copy of a sub-assembly cut loose from the others, so \
+changing it changes no other.
  - job: what takes long on a big model (render_model, animate_model's \
-rendering, export_model's studio, picture and instructions, make_art) \
+rendering, export_model's studio, picture and instructions, make_art, \
+brickify) \
 answers at once with a job number while it works in the app. job {"id": N} \
 waits up to 10 s for it to end, then says how far it has got, or gives its \
 answer once done; call it about every 10 s until then. cancel=true stops \
@@ -307,6 +320,69 @@ func definitions() -> Array:
 					"rebrickable", "instructions"]},
 			}},
 		},
+		{
+			"name": "brickify",
+			"description": ("Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an "
+				+ "OBJ, STL or glTF/GLB laid at the size asked (studs along its longest side) "
+				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
+				+ "sub-assembly named after the file, beside what is built. url= an http(s) "
+				+ "link to the file, fetched by the app (96 MB at most; an OBJ's .mtl and a "
+				+ ".gltf's .bin come from beside it). pick=true opens the window's file "
+				+ "dialog for the person to choose one on their computer, and says so; once "
+				+ "they have, brickify with neither lays what the panel shows. Laying is a "
+				+ "job: the answer is a job number, and job gives the result."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf or .glb"},
+				"pick": {"type": "boolean", "description": "open the file dialog for the person"},
+				"studs": {"type": "integer", "description": "studs along its longest side, %d to %d; 24 when omitted"
+					% [Brickify.LEAST_STUDS, Brickify.MOST_STUDS]},
+				"up": {"type": "string", "enum": Array(Brickify.UPS),
+					"description": "which of the file's axes is up; a printer's STL is +Z"},
+				"hollow": {"type": "boolean"},
+				"smooth": {"type": "boolean", "description": "slopes, curves, tiles and studs sideways; true when omitted"},
+				"colours": {"type": "string", "enum": ["model", "one", "limit"],
+					"description": "its own, all colour=, or its own cut to the limit= it uses most"},
+				"colour": {"type": "integer", "description": "LDraw colour, for colours one"},
+				"limit": {"type": "integer", "description": "how many colours, for colours limit"},
+			}},
+		},
+		{
+			"name": "print_part",
+			"description": ("Print a picture on a part of the model, or stick it on as a "
+				+ "sticker, as Build, Print on a part… and Put a sticker on… do. brick= the "
+				+ "part's number in look_at_model. A print goes on one of the part's "
+				+ "printable areas (area=, the first when omitted; a wrong one is answered "
+				+ "with its areas), and the printed part takes the part's place in its "
+				+ "colour, a part of its own from then on. sticker=true makes a sticker the "
+				+ "size of the part's side= face (up, down, +x, -x, +z, -z), running over the "
+				+ "faces in the same plane beside it unless span=false, and sticks it on. "
+				+ "The picture: svg= drawn by you (a whole <svg> with a viewBox in the face's "
+				+ "proportions; flat colours print best), or picture_url= an http(s) link to "
+				+ "a PNG, JPEG, WebP or SVG."),
+			"input_schema": {"type": "object", "additionalProperties": false,
+				"required": ["brick"], "properties": {
+				"brick": {"type": "integer", "description": "the part's number in look_at_model"},
+				"sticker": {"type": "boolean"},
+				"area": {"type": "string", "description": "a print's area, by name"},
+				"side": {"type": "string", "enum": BrickLattice.FACE_AXIS.keys(),
+					"description": "a sticker's face; +z when omitted"},
+				"span": {"type": "boolean"},
+				"svg": {"type": "string"},
+				"picture_url": {"type": "string"},
+				"name": {"type": "string", "description": "what the print or sticker is called"},
+			}},
+		},
+		{
+			"name": "make_unique",
+			"description": ("Cut one copy of a sub-assembly loose from the others, as Edit, "
+				+ "Make this copy unique does: it becomes a sub-assembly of its own, so "
+				+ "changing it changes no other copy. assembly= its path or name "
+				+ "(\"Wheel#2\" or \"Wheel (copy 2)\"), or brick= a part in it."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"assembly": {"type": "string"},
+				"brick": {"type": "integer", "description": "a part in the copy, by its number"},
+			}},
+		},
 	]
 
 
@@ -345,6 +421,12 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _render(input, work)
 		"export_model":
 			return await _export(input, work)
+		"brickify":
+			return await _brickify(input, work)
+		"print_part":
+			return await _print_part(input)
+		"make_unique":
+			return _make_unique(input)
 	return "No tool called %s." % tool
 
 
@@ -368,7 +450,7 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 ## The tools that change the model.
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "undo",
-	"open_model"]
+	"open_model", "brickify", "print_part", "make_unique"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -935,3 +1017,209 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 		_:
 			return "format is ldraw, studio, picture, bricklink, rebrickable or instructions."
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- brickify -----------------------------------------------------------------------
+
+
+func _brickify(input: Dictionary, work: Working.Job = null) -> String:
+	var dialog: BrickifyDialog = app.get("_brickify")
+	if dialog == null:
+		return "This app has no Brickify."
+	if dialog.is_busy():
+		return "A model is being brickified already; job says when it is done."
+	var url: String = str(input.get("url", "")).strip_edges()
+	if bool(input.get("pick", false)):
+		if OS.has_feature("web"):
+			return ("In a browser the file chooser opens only from the person's own click: ask "
+				+ "them to choose Build, Brickify a 3D model…, then call brickify with neither "
+				+ "url nor pick to lay what they chose.")
+		if DisplayServer.get_name() == "headless":
+			return "This app is running without a window, so there is no file dialog to open."
+		dialog.ask()
+		return ("Opened the window's file dialog for the person to choose an OBJ, STL or glTF "
+			+ "on their computer. Once they have, the Brickify panel shows it, and they press "
+			+ "Brickify — or call brickify again with neither url nor pick (and studs= for the "
+			+ "size) to lay it.")
+	if not url.is_empty():
+		if not url.to_lower().begins_with("https://") and not url.to_lower().begins_with("http://"):
+			return "Only an http or https link can be fetched, and %s is not one." % url.left(100)
+		var name: String = url.get_slice("?", 0).get_slice("#", 0).get_file().uri_decode()
+		if not name.get_extension().to_lower() in MeshFile.KINDS:
+			return ("%s does not name an OBJ, STL, glTF or GLB file; give a link that ends in "
+				% url.left(100) + ".obj, .stl, .gltf or .glb.")
+		var fetched: Dictionary = await _fetch(url, MeshFile.MAX_BYTES)
+		if fetched.has("error"):
+			return str(fetched["error"])
+		var bytes: PackedByteArray = fetched["bytes"]
+		# An OBJ's .mtl and its pictures, a .gltf's .bin: beside it, as the
+		# desktop's picker reads them (MeshFilePicker.open_path).
+		var extras: Dictionary = {}
+		var folder: String = url.get_slice("?", 0).get_slice("#", 0).get_base_dir()
+		for _round: int in 2:
+			for wanted: String in MeshFile.companions(bytes, name, extras):
+				if extras.has(wanted) or wanted.contains("..") or wanted.contains("://") \
+						or wanted.begins_with("/"):
+					continue
+				var beside: Dictionary = await _fetch(folder + "/" + wanted.uri_encode()
+					.replace("%2F", "/"), MeshFile.MAX_BYTES)
+				if beside.has("bytes"):
+					extras[wanted] = beside["bytes"]
+		var why: String = await dialog.take(bytes, name, extras)
+		if not why.is_empty():
+			return why.left(1).to_upper() + why.substr(1) + "."
+	elif dialog.model() == null or not dialog.visible:
+		return ("Give url= an http(s) link to an OBJ, STL or glTF, or pick=true for the person "
+			+ "to choose one on their computer.")
+	var refused: String = dialog.choose(input)
+	if not refused.is_empty():
+		return refused.left(1).to_upper() + refused.substr(1) + "."
+	await dialog.brickify(work)
+	var said: String = dialog.outcome()
+	return said.left(1).to_upper() + said.substr(1) + "."
+
+
+## The bytes at [param url], fetched as the app fetches pictures of a
+## subject (ReferenceFinder), no more than [param most] of them: {"bytes"},
+## or {"error"} saying why not. Only http and https, and not this computer
+## or the network it is on: a session drives the app, not the person's
+## other machines.
+func _fetch(url: String, most: int) -> Dictionary:
+	var lower: String = url.to_lower()
+	if not (lower.begins_with("https://") or lower.begins_with("http://")):
+		return {"error": "Only an http or https link can be fetched, and %s is not one."
+			% url.left(100)}
+	# The host, past any user@ and before any :port.
+	var host: String = lower.get_slice("://", 1).get_slice("/", 0).get_slice("?", 0)
+	host = host.get_slice("@", host.get_slice_count("@") - 1)
+	host = host.get_slice("]", 0).trim_prefix("[") if host.begins_with("[") \
+		else host.get_slice(":", 0)
+	if _near(host) and not fetch_near:
+		return {"error": "%s is this computer or its network, which a session may not fetch from."
+			% host}
+	var request := HTTPRequest.new()
+	request.body_size_limit = most
+	request.timeout = 90.0
+	app.add_child(request)
+	if request.request(url, ["User-Agent: " + ReferenceFinder.AGENT]) != OK:
+		request.queue_free()
+		return {"error": "Could not ask %s for it." % host}
+	var got: Array = await request.request_completed
+	request.queue_free()
+	var result: int = int(got[0])
+	var code: int = int(got[1])
+	if result == HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
+		return {"error": "%s is larger than %s, more than can be brought in."
+			% [url.get_file().left(80), String.humanize_size(most)]}
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return {"error": "Could not fetch %s (%s)." % [url.left(100), {
+			HTTPRequest.RESULT_CANT_RESOLVE: "no such host",
+			HTTPRequest.RESULT_CANT_CONNECT: "it would not connect",
+			HTTPRequest.RESULT_TLS_HANDSHAKE_ERROR: "its certificate was refused",
+			HTTPRequest.RESULT_TIMEOUT: "it took too long",
+			HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED: "it redirected too many times",
+		}.get(result, "error %d" % result)]}
+	if code != 200:
+		return {"error": "%s answered %d, not the file." % [host, code]}
+	return {"bytes": got[3] as PackedByteArray}
+
+
+## Whether [param host] names this computer or a private network.
+static func _near(host: String) -> bool:
+	if host in ["localhost", "0.0.0.0", "::1", "::"] or host.ends_with(".local") \
+			or host.ends_with(".localhost"):
+		return true
+	var parts: PackedStringArray = host.split(".")
+	if parts.size() != 4 or not Array(parts).all(func(p: String) -> bool: return p.is_valid_int()):
+		return host.contains(":") and (host.begins_with("fc") or host.begins_with("fd")
+			or host.begins_with("fe80"))
+	var a: int = parts[0].to_int()
+	var b: int = parts[1].to_int()
+	return a == 127 or a == 10 or a == 0 or (a == 192 and b == 168) or (a == 169 and b == 254) \
+		or (a == 172 and b >= 16 and b <= 31) or (a == 100 and b >= 64 and b <= 127)
+
+
+# -- prints and stickers --------------------------------------------------------------
+
+
+func _print_part(input: Dictionary) -> String:
+	var studio: PrintStudio = app.get("_studio")
+	if studio == null:
+		return "This app has no print designer."
+	if not input.has("brick"):
+		return "Give brick= the part's number (look_at_model numbers them)."
+	var brick: BrickWorld.Brick = _brick(int(input["brick"]))
+	if brick == null:
+		return "No part numbered %d (look_at_model numbers them)." % int(input["brick"])
+	var picture: Image = null
+	if input.has("svg"):
+		picture = PictureFile.decode(str(input["svg"]).to_utf8_buffer(), "svg")
+		if picture == null:
+			return "That svg could not be drawn: give a whole <svg> with a viewBox."
+	elif input.has("picture_url"):
+		var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
+			PictureFile.MOST_BYTES)
+		if fetched.has("error"):
+			return str(fetched["error"])
+		picture = PictureFile.decode(fetched["bytes"])
+		if picture == null:
+			return "That link is not to a picture this can read: a PNG, JPEG, WebP, BMP or SVG."
+	else:
+		return "Give the picture: svg= drawn by you, or picture_url= an http(s) link to one."
+	var sticker: bool = bool(input.get("sticker", false))
+	var title: String = str(input.get("name", "My Sticker" if sticker else "My Print")) \
+		.strip_edges().left(60)
+	var builder: Builder = app.get("_builder")
+	var depth: int = builder.history_depth()
+	studio.last_placed = 0
+	var said: String
+	if sticker:
+		said = await studio.sticker_on(brick.id, str(input.get("side", "+z")),
+			bool(input.get("span", true)), picture, title)
+	else:
+		said = await studio.print_on(brick.id, picture, str(input.get("area", "")), title)
+	_one_undo_since(depth)
+	var placed: BrickWorld.Brick = (app.get("_world") as BrickWorld).get_brick(studio.last_placed)
+	if placed == null:
+		return said
+	return "%s It is #%d, %s." % [said, placed.id, placed.part_id]
+
+
+# -- making a copy unique ---------------------------------------------------------------
+
+
+func _make_unique(input: Dictionary) -> String:
+	var assemblies: Assemblies = (app.get("_shell") as Shell).assemblies
+	var verbs: EditVerbs = app.get("_verbs")
+	var path: String = ""
+	var asked: String = str(input.get("assembly", "")).strip_edges()
+	if not asked.is_empty():
+		for one: String in assemblies.paths():
+			if one == asked or Assemblies.label(one).to_lower() == asked.to_lower():
+				path = one
+		if path.is_empty():
+			return "No sub-assembly %s. There is: %s." % [asked,
+				", ".join(assemblies.paths())]
+	elif input.has("brick"):
+		var brick: BrickWorld.Brick = _brick(int(input["brick"]))
+		if brick == null:
+			return "No part numbered %d." % int(input["brick"])
+		# The innermost assembly round it that has other copies.
+		var under: String = Assemblies.path_of(brick)
+		while not under.is_empty() and assemblies.copies_of(under).is_empty():
+			under = Assemblies.parent_of(under)
+		if under.is_empty():
+			return "#%d is in no sub-assembly with other copies." % brick.id
+		path = under
+	else:
+		return "Give assembly= a sub-assembly's path or name, or brick= a part in it."
+	var copies: PackedStringArray = assemblies.copies_of(path)
+	if copies.is_empty():
+		return "%s has no other copies: it is a sub-assembly of its own already." \
+			% Assemblies.label(path)
+	var fresh: String = verbs.make_unique(path)
+	return ("%s is a sub-assembly of its own now, %s: changing it changes no other. The %d "
+		% [Assemblies.label(path), fresh, copies.size()]
+		+ "other cop%s of %s stay as %s." % ["y" if copies.size() == 1 else "ies",
+			Assemblies.definition(Assemblies.leaf(path)), "it was" if copies.size() == 1
+				else "they were"])

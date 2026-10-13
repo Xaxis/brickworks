@@ -66,11 +66,12 @@ static func definition() -> Dictionary:
 	return {
 		"name": TOOL,
 		"description": ("How a long piece of work is going: a call that answered with a "
-			+ "job number (a render, a turntable, a booklet, a Studio file, a LEGO Art "
-			+ "picture, or any call still going after 20 s). It waits up to 10 s for the "
-			+ "work to end, then says how far it has got; once done it gives the work's "
-			+ "answer, picture and all, or why it stopped. cancel=true stops it, as Cancel "
-			+ "in the window does. id= the job's number; the latest when omitted."),
+			+ "job number (a render, a turntable, a booklet, a Studio file, a LEGO® Art "
+			+ "picture, a brickify, or any call still going after 20 s). It waits up to "
+			+ "10 s for the work to end, then says how far it has got; once done it gives "
+			+ "the work's answer, picture and all, or why it stopped. cancel=true stops "
+			+ "it, as Cancel in the window does. id= the job's number; the latest when "
+			+ "omitted."),
 		"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 			"id": {"type": "integer", "description": "the number the call answered with"},
 			"cancel": {"type": "boolean", "description": "stop it, where it can be stopped"},
@@ -127,6 +128,21 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 					if DisplayServer.get_name() == "headless":
 						return {}
 					return {"words": "Taking a picture of %s…" % model, "cancel": false}
+		"brickify":
+			# A link fetched and laid, or the model the panel shows laid; not
+			# the file dialog opened for the person, which is at once.
+			var dialog: BrickifyDialog = app.get("_brickify")
+			if dialog == null or dialog.is_busy() or bool(input.get("pick", false)):
+				return {}
+			var url: String = str(input.get("url", "")).strip_edges()
+			var file: String = url.get_slice("?", 0).get_slice("#", 0).get_file().uri_decode()
+			if url.is_empty() and (dialog.model() == null or not dialog.visible):
+				return {}
+			if not url.is_empty() and (not url.to_lower().begins_with("http")
+					or not file.get_extension().to_lower() in MeshFile.KINDS):
+				return {}
+			return {"words": "Brickifying %s…" % (file if not url.is_empty()
+				else dialog.model().name), "cancel": true}
 		"make_art":
 			# A plan that will be refused, or no picture to lay, is answered
 			# at once, every fault named.
@@ -134,7 +150,7 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if assistant == null or not ArtPlan.parse(input, app.get("_library")).ok() \
 					or (not input.has("svg") and assistant.art_picture() == null):
 				return {}
-			return {"words": "Laying out a LEGO Art picture…", "cancel": false}
+			return {"words": "Laying out a LEGO® Art picture…", "cancel": false}
 	return {}
 
 

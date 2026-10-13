@@ -47,12 +47,17 @@ asking for an API key.
   `animate_model` (Pose and animate's keys and Render), `undo` (Edit,
   Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
   list; My collection, What do I need, What can I build), `render_model`
-  (File, Render) and `export_model` (File, Export, and Instructions). Each
+  (File, Render), `export_model` (File, Export, and Instructions),
+  `brickify` (Build, Brickify a 3D model…; File, Import, 3D model),
+  `print_part` (Build, Print on a part… and Put a sticker on…) and
+  `make_unique` (Edit, Make this copy unique). Each
   is a thin wrapper over the code the command runs — `Shell.change_steps`,
   `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
   `RenderDialog.render_for`,
   `ModelBar.export_now`, `Exports`, main's `choose_floor` and
-  `_export_booklet` — one undo step where it changes the model
+  `_export_booklet`, `BrickifyDialog.take`/`choose`/`brickify`,
+  `PrintStudio.print_on`/`sticker_on` (the print designer's own
+  `draw_and_save`), `EditVerbs.make_unique` — one undo step where it changes the model
   (`Builder.fold_since` folds a call that took two of the window's steps),
   and a refusal that says what to fix. They take their turn in the queue as
   the assistant's tools do. Guidance: `AppTools.GUIDE`, the "THE REST OF THE
@@ -111,7 +116,7 @@ with which a session is told what the person has selected in the window,
 where it can take a part, and changes that alone, as **Ask Claude about
 this…** does — see assistant.md, "ask claude about the selection"; and
 the window's commands, ten more — see "the window's commands over mcp"
-above. 37 in all on 2026-10-13; `mcp_sync_probe` keeps the count honest.)
+above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_unique`; `mcp_sync_probe` keeps the count honest.)
 
 ## How to reach it
 
@@ -174,7 +179,7 @@ is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
 
 And `mcp_probe` ends on "a session outside the app can use the app's own
-tools" — a client connects over real TCP, gets every tool (37 on 2026-10-13) carrying a schema,
+tools" — a client connects over real TCP, gets every tool (41 on 2026-10-13) carrying a schema,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
 has a floating brick refused, and three clients asking at once each get their
 own answer while the app does them one at a time. Over HTTP, a body with an
@@ -196,6 +201,14 @@ its picture and is written where Render writes, the crane's animation is
 written as a WebP, and the picture and the
 booklet are written where Export writes. The probe points `Exports.folder`
 and `RenderDialog.folder` and `PosePanel.folder` at its own folder, so nothing lands in Downloads.
+Its brickify part serves `tests/fixtures/brickify/bunny.obj` from a web
+server of its own on 127.0.0.1 (`AppTools.fetch_near`, which only a probe
+sets) and reads the bunny back off the model as one sub-assembly, one undo
+step; `file://`, this computer, a link naming no 3D model and a file over the
+cap are each refused. Its prints part prints an svg on a 2 x 2 tile and reads
+the printed part back where the tile stood, in its colour, one undo step, and
+sticks a sticker on a brick's -z face facing -z. Its make_unique part cuts
+Wheel (copy 2) loose, by name and by a part in it, and reads the paths back.
 Its "long work, as jobs" part: a Studio file answers at once with a job that
 is the window's bar, a call meanwhile is told the app is busy, `job` gives the
 .io once done and refuses a number that is not one, and `open_model` with

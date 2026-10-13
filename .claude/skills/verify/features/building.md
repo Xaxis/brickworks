@@ -327,7 +327,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   another copy of the same definition (`Wing#2`), and after any edit the other
   copies are built again from the edited one, mirrored where they were
   mirrored, in the same undo step (`Assemblies.after_edit`, matched by
-  `best_match`). Make unique cuts a copy loose; `F2` renames a definition in
+  `best_match`). Make unique cuts a copy loose (a session's `make_unique`,
+by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
   so undo, save and the timeline carry it. Saved, it is a nested `.mpd`: each

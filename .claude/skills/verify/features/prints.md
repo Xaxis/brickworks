@@ -131,6 +131,18 @@ printed at true size.
   asked for by a pane laid over the view (`ask_for_face`), so the click goes to
   nothing else; Escape or the right button says no.
 
+In the menus too (2026-10-13): Build, Print on a part… (`print_part`) and
+Put a sticker on… (`sticker`), the bin's Print… and the sheet's Draw a
+sticker. A session does both with the `print_part` tool
+(`src/net/app_tools.gd`): `brick=` a part, the picture as `svg=` or
+`picture_url=` (decoded by `PictureFile.decode`), and either `area=` for a
+print (`PrintStudio.print_on`: the designer opened on that part, the picture
+put on as a picture from a file is, `PrintEditor.draw_and_save`, and the
+printed part put where the part stood) or `sticker=true` with `side=` (up,
+down, ±x, ±z; `PrintStudio.sticker_on` aims at that face from just outside
+it, as a click does, `span` as Shift does not). One undo step; the answer
+names the new part's number. `app_tools_probe` covers it.
+
 ## How to reach it
 
 ```sh

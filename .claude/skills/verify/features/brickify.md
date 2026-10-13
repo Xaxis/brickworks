@@ -53,6 +53,16 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   baseplate; it kept the car's name. `example_name_probe` (headless) brickifies
   the bunny over the car and reads the name.
 
+A session does it with the `brickify` tool (`src/net/app_tools.gd`): `url=`
+an http(s) link the app fetches (HTTPRequest, capped at `MeshFile.MAX_BYTES`;
+an OBJ's .mtl and a .gltf's .bin from beside it; never `file://`, this
+computer or its network), read by `BrickifyDialog.take` as a picked file is,
+so the panel opens on it; `pick=true` opens the window's file dialog for the
+person and says so (refused in a browser, which opens its chooser only from a
+click); neither lays what the panel shows. The choices go through
+`BrickifyDialog.choose`, so the panel shows what is laid, and laying is a job
+(see mcp.md) on the panel's own Working bar. `app_tools_probe` covers it.
+
 ## How to reach it
 
 ```sh

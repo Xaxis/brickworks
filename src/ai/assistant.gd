@@ -13636,7 +13636,8 @@ kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (what else the person can \
 do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
-animate_model, undo, open_model, parts_list, render_model, export_model, job).
+animate_model, undo, open_model, parts_list, render_model, export_model, \
+brickify, print_part, make_unique, job).
 
 A call answered with a job number is still working in the app: call job \
 about every 10 s until it gives the answer."""

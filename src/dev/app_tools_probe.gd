@@ -72,6 +72,9 @@ func _run() -> void:
 	await _exports(out)
 	await _open()
 	await _jobs(out)
+	await _brickify()
+	await _prints()
+	await _unique()
 	_done()
 
 
@@ -383,6 +386,170 @@ func _jobs(out: String) -> void:
 		not FileAccess.file_exists(out.path_join(RenderOutput.file_name(name, "_turntable", "webp"))))
 	_check("...and the app is free again: %s" % (await _say("parts_list", {})).get_slice("\n", 0),
 		(await _say("parts_list", {})).contains(" pieces in "))
+
+
+## A 3D model laid in LEGO® bricks from a link the app fetches: here the probe's own
+## tiny web server, which only a probe may fetch from (AppTools.fetch_near).
+func _brickify() -> void:
+	print("── brickify ──")
+	_main.call("clear_model")
+	var tools: AppTools = _socket._the_app_tools()
+	var server := _Files.new()
+	server.files = {"/bunny.obj": FileAccess.get_file_as_bytes("res://tests/fixtures/brickify/bunny.obj"),
+		"/notes.txt": "not a model".to_utf8_buffer()}
+	root.add_child(server)
+	var at: String = "http://127.0.0.1:%d" % server.port
+	var said: String = await _say("brickify", {"url": "file:///etc/passwd"})
+	_check("a link that is not http or https is refused: %s" % said.left(60),
+		said.begins_with("Only an http or https link"))
+	said = await _say("brickify", {"url": at + "/bunny.obj"})
+	_check("...and one to this computer: %s" % said.left(70), said.contains("this computer"))
+	tools.fetch_near = true
+	said = await _say("brickify", {"url": at + "/notes.txt"})
+	_check("...and one that names no 3D model: %s" % said.left(60), said.contains("does not name"))
+	var capped: Dictionary = await tools._fetch(at + "/bunny.obj", 1000)
+	_check("the size is capped: %s" % str(capped.get("error", "")).left(60),
+		str(capped.get("error", "")).contains("larger than"))
+	said = await _say("brickify", {})
+	_check("with nothing to lay it says what to give: %s" % said.left(50), said.begins_with("Give url="))
+	var before: int = _model_ids().size()
+	var depth: int = _builder.history_depth()
+	var first: Dictionary = await _rpc("tools/call", {"name": "brickify",
+		"arguments": {"url": at + "/bunny.obj", "studs": 12}})
+	_check("a link to a model is a job: %s" % _text(first).left(60), _job_of(first) > 0)
+	said = _text(await _finished(first))
+	var added: Array[int] = _model_ids()
+	var path: String = Assemblies.path_of(_world.get_brick(added[-1])) if added.size() > before else ""
+	_check("the bunny is fetched and laid, as one sub-assembly: %s" % said.left(90),
+		said.begins_with("Brickified bunny") and added.size() > before + 20 and path.begins_with("bunny"))
+	_check("...one undo step", _builder.history_depth() == depth + 1)
+	await _say("undo", {})
+	_check("...and undone, it is gone", _model_ids().size() == before)
+	said = await _say("brickify", {"pick": true})
+	if DisplayServer.get_name() == "headless":
+		_check("headless, there is no file dialog to open: %s" % said.left(60),
+			said.contains("without a window"))
+	else:
+		_check("pick opens the window's file dialog, and says so: %s" % said.left(60),
+			said.begins_with("Opened the window's file dialog"))
+		var picker: MeshFilePicker = (_main.get("_brickify") as BrickifyDialog)._picker
+		_check("...which is open", picker._dialog != null and picker._dialog.visible)
+		if picker._dialog != null:
+			picker._dialog.hide()
+	tools.fetch_near = false
+	server.queue_free()
+
+
+## A print on a part where it stands, and a sticker on a face, each read back
+## off the model.
+func _prints() -> void:
+	print("── prints and stickers ──")
+	_main.call("clear_model")
+	var tile: int = _put("3068b", Vector3(10, 8, 10))
+	var brick: int = _put("3004", Vector3(80, 24, 10))
+	var was: Transform3D = _world.get_brick(tile).transform
+	var svg: String = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+		+ "<rect width='64' height='64' fill='#ffffff'/><circle cx='32' cy='32' r='22' "
+		+ "fill='#c91a09'/></svg>")
+	var said: String = await _say("print_part", {"brick": tile})
+	_check("no picture is refused, saying how to give one: %s" % said.left(50),
+		said.begins_with("Give the picture"))
+	said = await _say("print_part", {"brick": tile, "svg": "<svg"})
+	_check("an svg that cannot be drawn is refused: %s" % said.left(50), said.contains("could not be drawn"))
+	said = await _say("print_part", {"brick": tile, "svg": svg, "area": "nowhere"})
+	_check("an area the part has not is refused, with its areas: %s" % said.left(80),
+		said.contains("no area called nowhere"))
+	var depth: int = _builder.history_depth()
+	said = await _say("print_part", {"brick": tile, "svg": svg, "name": "Probe dot"})
+	var printed: BrickWorld.Brick = null
+	for one: BrickWorld.Brick in _world.bricks():
+		if one.transform.is_equal_approx(was) and not _store.scenery.has(one.id):
+			printed = one
+	_check("a print on the tile, where it stands: %s" % said.left(100),
+		printed != null and printed.id != tile and printed.part_id.begins_with("bw-")
+			and PartPrints.mould_of(_library, printed.part_id) == PartPrints.mould_of(_library, "3068b")
+			and printed.color_code == 7)
+	_check("...one undo step", _builder.history_depth() == depth + 1)
+	await _say("undo", {})
+	var back: Array = _world.bricks().filter(func(one: BrickWorld.Brick) -> bool:
+		return one.transform.is_equal_approx(was))
+	_check("...and undone, the plain tile is back where it stood",
+		back.size() == 1 and (back[0] as BrickWorld.Brick).part_id == "3068b")
+	said = await _say("print_part", {"brick": brick, "sticker": true, "side": "-z", "svg": svg,
+		"name": "Probe sticker"})
+	var stuck: Dictionary = Stickers.in_model(_world, _library)
+	var film: BrickWorld.Brick = null
+	for ids: Variant in stuck.values():
+		film = _world.get_brick((ids as PackedInt64Array)[0])
+	_check("a sticker on the brick's -z face, facing -z: %s" % said.left(90),
+		said.begins_with("Stuck") and stuck.size() == 1 and film != null
+			and film.transform.basis.y.normalized().is_equal_approx(Vector3.FORWARD))
+	said = await _say("print_part", {"brick": brick, "sticker": true, "side": "sideways", "svg": svg})
+	_check("a side there is not is refused: %s" % said.left(60), said.begins_with("side is one of"))
+
+
+## One copy of a sub-assembly cut loose from the others.
+func _unique() -> void:
+	print("── a copy made unique ──")
+	_main.call("clear_model")
+	var one: int = _put("3001", Vector3(0, 24, 0), Basis.IDENTITY, "Wheel#1")
+	var two: int = _put("3001", Vector3(80, 24, 0), Basis.IDENTITY, "Wheel#2")
+	var said: String = await _say("make_unique", {"assembly": "Axle"})
+	_check("an assembly there is not is refused, with those there are: %s" % said.left(60),
+		said.begins_with("No sub-assembly Axle") and said.contains("Wheel#2"))
+	var depth: int = _builder.history_depth()
+	said = await _say("make_unique", {"assembly": "Wheel (copy 2)"})
+	var fresh: String = Assemblies.path_of(_world.get_brick(two))
+	var assemblies: Assemblies = (_main.get("_shell") as Shell).assemblies
+	_check("copy 2 of the wheel is a sub-assembly of its own: %s" % said.left(90),
+		said.contains("of its own now") and Assemblies.definition(Assemblies.leaf(fresh)) != "Wheel"
+			and assemblies.copies_of(fresh).is_empty())
+	_check("...the other copy as it was, and one undo step",
+		Assemblies.path_of(_world.get_brick(one)) == "Wheel#1" and _builder.history_depth() == depth + 1)
+	said = await _say("make_unique", {"brick": one})
+	_check("a part in a copy with no others is refused: %s" % said.left(60),
+		said.contains("no sub-assembly with other copies"))
+	await _say("undo", {})
+	_check("undone, they are copies again", Assemblies.path_of(_world.get_brick(two)) == "Wheel#2")
+	said = await _say("make_unique", {"brick": two})
+	_check("...and a copy named by a part in it: %s" % said.left(60), said.contains("of its own now"))
+
+
+## A web server for one probe: GET a path in [member files], answered whole.
+class _Files extends Node:
+	var files: Dictionary = {}
+	var port: int = 0
+	var _server := TCPServer.new()
+	var _peers: Array = []
+
+	func _init() -> void:
+		for wanted: int in range(8931, 8999):
+			if _server.listen(wanted, "127.0.0.1") == OK:
+				port = wanted
+				return
+
+	func _process(_delta: float) -> void:
+		while _server.is_connection_available():
+			_peers.append([_server.take_connection(), PackedByteArray()])
+		for held: Array in _peers.duplicate():
+			var peer: StreamPeerTCP = held[0]
+			peer.poll()
+			if peer.get_available_bytes() > 0:
+				held[1] = (held[1] as PackedByteArray) + (peer.get_data(peer.get_available_bytes())[1] as PackedByteArray)
+			var said: String = (held[1] as PackedByteArray).get_string_from_utf8()
+			if not said.contains("\r\n\r\n"):
+				continue
+			var path: String = said.get_slice(" ", 1)
+			var body: PackedByteArray = files.get(path, PackedByteArray())
+			var head: String = "HTTP/1.1 %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % [
+				"200 OK" if files.has(path) else "404 Not Found", body.size()]
+			peer.put_data(head.to_utf8_buffer())
+			peer.put_data(body)
+			peer.disconnect_from_host()
+			_peers.erase(held)
+
+	func _exit_tree() -> void:
+		_server.stop()
 
 
 # -- helpers ------------------------------------------------------------------------
