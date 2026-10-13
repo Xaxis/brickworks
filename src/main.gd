@@ -3639,12 +3639,16 @@ func _weigh() -> void:
 		_stability_text = ""
 		return
 	var report: Stability.Report
+	# The baseplate is the floor, not the model: whether it tips is asked
+	# of what stands on it.
+	_stability.floor_ids = scenery
 	if _world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
 		report = _stability.check(_world)
 	else:
 		_weighing = true
 		var judge := Stability.new()
 		judge.library = _library
+		judge.floor_ids = scenery.duplicate()
 		judge.lattice = _builder.lattice.copy_for_reading()
 		var still: BrickWorld = _world.copy_for_reading()
 		var weighed: Array = [null]

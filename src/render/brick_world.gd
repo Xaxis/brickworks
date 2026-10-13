@@ -414,6 +414,7 @@ func clear() -> void:
 	# Numbers start again, so x-ray's would name the next model's bricks.
 	_xray.clear()
 	_faded.clear()
+	_tinted.clear()
 	_spans.clear()
 	_next_id = 1
 	unit_steps.clear()
@@ -766,7 +767,10 @@ func _write_instance(batch: Batch, slot: int, brick: Brick,
 	# that is what keeps a printed face black on a yellow head.
 	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 	var color: PartLibrary.BrickColor = library.color(code)
-	multimesh.set_instance_color(slot, faded(color.shown) if _faded.has(brick.id) else color.shown)
+	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
+	if _tinted.has(brick.id):
+		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
+	multimesh.set_instance_color(slot, shown)
 	multimesh.set_instance_custom_data(slot, color.instance_custom)
 
 
@@ -1339,6 +1343,37 @@ func set_faded(ids: Dictionary) -> void:
 
 func faded_ids() -> Dictionary:
 	return _faded
+
+
+## Bricks drawn tinted towards a colour: id -> Color. Tools, Check stability
+## tints the stud joints carrying most against what their studs hold
+## (Balance). An empty set is none.
+var _tinted: Dictionary = {}
+const TINTING := 0.7
+
+
+func set_tinted(ids: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _tinted:
+		if not ids.has(brick_id) or ids[brick_id] != _tinted[brick_id]:
+			changed[brick_id] = true
+	for brick_id: int in ids:
+		if not _tinted.has(brick_id):
+			changed[brick_id] = true
+	_tinted = ids.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func tinted_ids() -> Dictionary:
+	return _tinted
 
 
 ## A colour as a faded brick is drawn in. Its alpha is kept: faded

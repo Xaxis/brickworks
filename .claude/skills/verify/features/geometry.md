@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints, lib:flexible parts along a path -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path -->
 
 ## Sub-features
 
@@ -41,7 +41,43 @@ can occupy the same millimetre.
   the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
-  cantilever.
+  cantilever. It also says when the whole model tips over on what it stands
+  on ("tips", from Balance's support polygon), which its levels never could on
+  a baseplate: the plate is under every cut, as wide as the ground. Masses
+  count the tubes under a part; every one of seven bricks is within 6% of
+  BrickLink's weight (a 2x4 2.46 g against 2.32).
+- `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
+  whether the model stands on what it stands on, by how much, and which stud
+  joint gives first. The support polygon is the hull of every box within half
+  a plate of the lowest cell (the baseplate, `floor_ids`, left out); the
+  tipping margin is the centre of mass's distance to its nearest edge in
+  studs, the force angle the tilt that carries it over (atan(margin/height),
+  Papadopoulos and Rey). Stud joints that are bridges in the graph of what
+  holds what (studs from `Stability.contacts`, pins, clips, hinges and
+  turntables from `Joints`) carry everything beyond them: the moment about
+  the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
+  3 N (lets go), and the pull on a part hung under another. Joints in bonded
+  walls share load statics cannot split and are left to Stability's levels.
+  Counterweight advice is the least w at the best place (within 4 studs of
+  the far edge, or the middle of the base when poses tip more than one way)
+  that brings every pose half a stud inside, found by bisection, or the
+  studs the base would have to widen. Poses come as `{label, transforms}`:
+  `Poser.sweep` gives the Pose panel's animation frames, or every joint
+  swung through its reach a 15° step at a time (room checked as the slider
+  does); a mechanism's cycle will hand its frames over the same way. A pose
+  that puts a part through the floor is left out. check_design weighs the
+  design on the lattice it was checked on (`Assistant._weighed`, worker-safe)
+  and, once it stands in the world with joints to turn, over the sweep
+  (`_balance_said`), and puts the numbers and what to do in its result.
+- `balance readout`: Tools, Check stability (`Shell._check_stability`). The
+  margin in plain words on the status bar's line, kept there while the marks
+  are up (`Shell.balance_line`); the support polygon and the centre of mass
+  dropped onto it drawn on the floor over the model (`BalanceMark`, green,
+  amber within half a stud, red past the edge, a second ring for the worst
+  pose and a line for the margin); the part past each stud joint at half its
+  working load or more tinted amber to red (`BrickWorld.set_tinted`). Working
+  shows while it weighs, on a worker from 600 parts. A change to the model
+  takes the marks and the tint away.
 - `clutch`: whether two parts that touch could really hold each other. The
   lattice is 2 LDU and the connection system is 20, so a position can be legal
   on the grid and impossible in plastic — a brick three tenths of a stud across
@@ -162,7 +198,9 @@ can occupy the same millimetre.
 ## How to reach it
 
 GDScript: `src/assembly/lattice.gd` (cells, `cells_for_turned`, `is_square_to_grid`),
-`src/assembly/stability.gd`, and `Section` in `src/ai/assistant.gd`.
+`src/assembly/stability.gd`, `src/assembly/balance.gd` (with `Poser.sweep` in
+`src/assembly/pose.gd`), `src/render/balance_mark.gd`, and `Section` in
+`src/ai/assistant.gd`. In the app: Tools, Check stability.
 Python: `tools/ldraw/occupancy.py` (the same lattice, used by the mesh build).
 
 ## How to check it
@@ -187,6 +225,9 @@ godot --headless --path . --script src/dev/angled_probe.gd       # not square to
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
 godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
+godot --headless --path . --script src/dev/balance_probe.gd      # margins, joints, counterweight, poses by hand
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
+  --script src/dev/balance_view_probe.gd                         # the readout and the floor marks, in shots/balance/
 godot --headless --path . --script src/dev/holds_probe.gd        # and whether the assistant is told
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
 python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if installed
@@ -243,6 +284,41 @@ cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
 orrery (Mars's year 1.96 Earth years against 1.8808). With a display, every
 frame is read back off the renderer's copy, and each output must turn its
 ratio times the driver's step to 0.01°.
+
+Balance: `balance_probe` ends on "balance: the margins, the joints and the
+counterweight come out as worked by hand, the shipped models stand, and the
+worst pose is found". Its cases and their answers by hand: a 1x8 plate on one
+stud of a 1x1 (the plate's weight on a 3 stud lever against 0.4 N·cm, and the
+whole 2.13 studs past the 1x1); a staircase of 2x4 plates a stud further out
+each (0.5 studs inside at 4, on the edge at 5, 0.5 past at 6; the root of 6
+carries five plates on 1 stud against 7.2 N·cm); a tower of 2x2s on a 1x1
+(half a stud, force angle atan(10/93.4) = 6.11°, no moment at its foot); a
+1x1 hung under a plate (pulled by its weight); a 2x2 held only by a link
+(adrift without it, carried by the foot with it); a 6x6 base with an arm 18
+studs out (tips 2.8 past; the advice, w·L = m·d with half a stud to spare,
+followed with 2x4 bricks, stands 0.6 inside, and Stability's own verdict says
+"tips" before and not after); house, car, lighthouse, castle and kart
+standing; a turntable arm over a 2x8 base, standing as built and 1.1 studs
+past the front edge at 90° of the 24-pose sweep, its middle-of-the-base
+counterweight m(1 + 2d) by hand, and the same pose found from a keyed
+animation; and check_design's words. On 2026-10-13 every check was made to
+fail once by breaking the code it guards (moment about the edge, the tubes,
+Stability's tipping, the sweep's two ways, the floor, the ground edges, the
+links, the hull's sign, the worst-pose pick, the advice's spare, the widen,
+the animation frames, a sweep that moved the model, check_design's weigh
+flag), each a one-line change, and passed again once put back.
+
+`balance_view_probe` ends on "balance view: the readout, the polygon and the
+centre of mass on the floor, the overloaded joint in red, the counterweight it
+asked for holds it up, and the worst pose of a sweep is found". Look at
+`shots/balance/1_tips.png` (red polygon under the 6x6 base, the white drop
+line and ring 4 studs right of it, the posts and the first arm plate tinted,
+the status line "Tips over, 4.1 studs past the right edge. Add 22 g …"),
+`2_stands.png` (green, the ring just inside the right edge beside the stack
+of 2x4s) and `3_swept.png` (a second, red ring past the front edge for "Arm
+at 90°"). Broken on purpose, it fails on: no Working line, no tint, the
+words gone with the message after 4 s, marks left after a change, no
+counterweight in the words, the marks never shown, and no poses swept.
 
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at

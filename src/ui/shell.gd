@@ -864,20 +864,120 @@ func _instructions() -> void:
 		app.call("_toggle_steps")
 
 
+## Tools, Check stability: the joints that would give way, selected, and
+## then the balance (Balance) — the margin said here in the status bar, the
+## support polygon and the centre of mass drawn on the floor (BalanceMark),
+## and the stud joints carrying most against their studs tinted — over every
+## pose the Pose panel's animation or its sliders reach.
 func _check_stability() -> void:
 	var stability: Stability = app.get("_stability")
+	stability.floor_ids = store.scenery
 	var report: Stability.Report = stability.check(world)
-	if report.risks.is_empty():
-		bar.say("it stands up — no joint is carrying more than it can hold")
-		return
-	builder.selection.clear()
-	for risk: Stability.Risk in report.risks:
-		if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
-			builder.selection[risk.brick_id] = true
-	builder.selection_changed.emit(builder.selection.size())
-	bar.say("%d weak joint%s, selected: %s" % [report.risks.size(),
-		"" if report.risks.size() == 1 else "s",
-		report.weakest.message if report.weakest != null else ""])
+	var said: String = "it stands up — no joint is carrying more than it can hold"
+	# The joints Stability finds weak, apart from tipping, which the
+	# balance says better.
+	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind != "tips")
+	if not weak.is_empty():
+		builder.selection.clear()
+		for risk: Stability.Risk in weak:
+			if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
+				builder.selection[risk.brick_id] = true
+		builder.selection_changed.emit(builder.selection.size())
+		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
+			(weak[0] as Stability.Risk).message]
+	bar.say(said)
+	var balance: Balance.Report = await weigh_balance()
+	if balance != null and not balance.empty:
+		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
+
+
+var _balance_mark: BalanceMark = null
+## The last balance weighed, for a probe.
+var balance_shown: Balance.Report = null
+
+
+## The balance readout while its marks are on the floor: what the status
+## bar's line says once the message has gone (StatusBar), so the words stay
+## as long as the picture of them does.
+func balance_line() -> String:
+	if _balance_mark == null or _balance_mark.report == null:
+		return ""
+	return _balance_mark.report.words()
+
+
+## Whether the model stands on what it stands on (Balance), over the poses
+## [method _poses_to_weigh] gives, and shown: on the floor, and as tints. On
+## a worker for a big model, and Working shown either way, since the sweep
+## alone can take more than a frame.
+func weigh_balance() -> Balance.Report:
+	var job: Working.Job = Working.begin("Weighing the model…")
+	await job.shown()
+	var poses: Array = _poses_to_weigh()
+	var judge := Balance.new()
+	judge.library = library
+	judge.floor_ids = store.scenery
+	var weighed: Array = [null]
+	if world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+		judge.lattice = builder.lattice
+		weighed[0] = judge.measure(world.bricks(), poses)
+	else:
+		judge.lattice = builder.lattice.copy_for_reading()
+		var still: BrickWorld = world.copy_for_reading()
+		library.begin_reading()
+		var task: int = WorkerThreadPool.add_task(func() -> void:
+			weighed[0] = judge.measure(still.bricks(), poses), false, "weigh the balance")
+		library.reading_in(task)
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		library.end_reading(task)
+		still.free()
+	job.end()
+	var report: Balance.Report = weighed[0]
+	if report == null:
+		return null
+	if _balance_mark == null:
+		_balance_mark = BalanceMark.new()
+		_balance_mark.world = world
+		app.add_child(_balance_mark)
+	_balance_mark.show_report(report, _tints(report))
+	balance_shown = report
+	return report
+
+
+## From this many parts the weighing goes to a worker, as the status bar's
+## does (Main.WEIGH_OFF_THREAD_FROM).
+const WEIGH_OFF_THREAD_FROM := 600
+
+
+## The poses to weigh: the Pose panel's, while its joints still stand as it
+## set them — its animation's frames when it has keys, otherwise every joint
+## swung through its reach (Poser.sweep) — or the joints found afresh.
+func _poses_to_weigh() -> Array:
+	var panel: PosePanel = app.get("_pose")
+	var poser: Poser = panel.poser if panel != null else null
+	if poser != null and poser.world != null and not poser.joints.is_empty() and poser.holds():
+		return poser.sweep(panel.animation)
+	poser = Poser.new()
+	poser.world = world
+	poser.builder = builder
+	poser.library = library
+	poser.assemblies = assemblies
+	poser.find()
+	return poser.sweep()
+
+
+## The part past each stud joint carrying half its working load or more —
+## the one that would come off — amber at half and red at all of it.
+func _tints(report: Balance.Report) -> Dictionary:
+	var tints: Dictionary = {}
+	for one: Balance.JointLoad in report.joints:
+		if one.ratio < 0.5 or store.scenery.has(one.beyond):
+			continue
+		tints[one.beyond] = BalanceMark.CLOSE.lerp(BalanceMark.TIPS,
+			clampf((one.ratio - 0.5) * 2.0, 0.0, 1.0))
+	return tints
 
 
 func _reseat() -> void:
