@@ -201,3 +201,46 @@ creativity is the one this round can claim. An intermediate run on 29592be
 as the baseline did. The Porsche's lower likeness, surface and build are its
 hand-built chassis and body (build: axle 3707 carries 119 g on one stud); the
 pass added only the driver, named apart. One run a subject is one sample.
+
+## 2026-10-12-d5: commit 29592be, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 4.0 | 3.0 | 4.0 | 4.0 | 5.0 | 8.0 | **4.7** | 620 | 1 |
+| speed_champions | 1 | 3.0 | 4.0 | 3.0 | 3.0 | 3.0 | 6.0 | **3.7** | 175 | 2 |
+| **suite mean** | 2 | **3.5** | **3.5** | **3.5** | **3.5** | **4.0** | **7.0** | **4.2** |  |  |
+
+Weakest across the suite: **likeness** (3.5), **surface** (3.5), **colour** (3.5).
+
+## 2026-10-12-d5b: commit 6440b60, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 4.0 | 4.0 | 4.0 | 4.0 | 4.0 | 8.0 | **4.7** | 1,132 | 1 |
+| corner_shop | 1 | 5.0 | 4.0 | 5.0 | 4.0 | 5.0 | 8.0 | **5.2** | 973 | 1 |
+| speed_champions | 1 | 3.0 | 3.0 | 3.0 | 2.0 | 3.0 | 10.0 | **4.0** | 153 | 2 |
+| **suite mean** | 3 | **4.0** | **3.7** | **4.0** | **3.3** | **4.0** | **8.7** | **4.6** |  |  |
+
+Weakest across the suite: **technique** (3.3), **surface** (3.7), **likeness** (4.0).
+
+**What the design5 batches say.** `2026-10-12-d5` is the feature process and
+faces on shells (29592be); `2026-10-12-d5b` adds the guidance head a Claude
+Code session can actually read, the feature chain and tiled face discs
+(6440b60). Both ran on the build check before 26ddb89, so their build
+column is not comparable with the re-scored baseline (build 10 everywhere)
+and is left out here. Against that re-scored baseline, the five visual
+dimensions (likeness / surface / colour / technique / creative):
+
+| subject | baseline, 2 runs | d5 | d5b |
+|---|---|---|---|
+| barn_owl | 4.0 / 3.5 / 4.0 / 4.0 / 4.0 | 4 / 3 / 4 / 4 / 5 | 4 / 4 / 4 / 4 / 4 |
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3.0 | 3 / 4 / 3 / 3 / 3 | 3 / 3 / 3 / 2 / 3 |
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3.0 | — | 5 / 4 / 5 / 4 / 5 |
+
+One run each, so no single cell is a result (the baseline's run-to-run
+spread is 0.28 of a subject's mean, a whole point on creativity). Read
+together: the owl did not move, the shop rose half a point on four
+dimensions and two on creativity, and the car fell — its two runs hand-built
+studs-up again, technique 2 in the second. Not progress on the bench yet; what
+moved is that sessions now follow the process (they read the guide, review,
+and work features), where before none worked a single feature.
