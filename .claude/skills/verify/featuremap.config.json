@@ -1405,6 +1405,20 @@
       "entry": "src/ui/simulate_panel.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/simulate_probe.gd   (by hand: Tools, Simulate mechanism…, click an axle or a crank; over MCP: simulate_mechanism)",
       "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "FAQ page",
+      "entry": "web/faq.html",
+      "reach": "https://brickworks.diy/faq   (the two ways to bring Claude, and the questions)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "privacy page",
+      "entry": "web/privacy.html",
+      "reach": "https://brickworks.diy/privacy",
+      "area": "web"
     }
   ]
 }

@@ -997,6 +997,14 @@
       "tests": []
     },
     {
+      "id": "ui:FAQ page",
+      "kind": "ui",
+      "entry": "web/faq.html",
+      "reach": "https://brickworks.diy/faq   (the two ways to bring Claude, and the questions)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:LEGO Art designed by Claude",
       "kind": "ui",
       "entry": "src/ai/assistant.gd",
@@ -1406,6 +1414,14 @@
       "entry": "src/prints/print_studio.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print\u2026 / Stickers\u2026)",
       "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:privacy page",
+      "kind": "ui",
+      "entry": "web/privacy.html",
+      "reach": "https://brickworks.diy/privacy",
+      "area": "web",
       "tests": []
     },
     {

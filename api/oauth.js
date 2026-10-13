@@ -88,7 +88,7 @@ function serverMetadata(origin) {
     revocation_endpoint_auth_methods_supported: METHODS,
     client_id_metadata_document_supported: true,
     authorization_response_iss_parameter_supported: true,
-    service_documentation: `${origin}/#how`,
+    service_documentation: `${origin}/faq#claude`,
   };
 }
 
@@ -99,7 +99,7 @@ function resourceMetadata(origin) {
     scopes_supported: [SCOPE],
     bearer_methods_supported: ["header"],
     resource_name: "Brickworks",
-    resource_documentation: `${origin}/#how`,
+    resource_documentation: `${origin}/faq#claude`,
   };
 }
 

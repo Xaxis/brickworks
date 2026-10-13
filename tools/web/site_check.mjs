@@ -7,7 +7,7 @@
 // What it asks of a deployment, every answer read off the wire:
 //
 //   the pages answer 200 at their bare names (/, /gallery, /download, /changelog,
-//     /admin), each with its own title, description and canonical link and
+//     /faq, /privacy, /admin), each with its own title, description and canonical link and
 //     an Open Graph card whose picture is really there;
 //   each old .html address answers 308 to its bare one, query and all, and
 //     /authorize.html to /oauth/authorize; /download/ and /app/ lose the slash;
@@ -76,6 +76,8 @@ const PAGES = [
   { path: "/download", canonical: `${SITE}/download` },
   { path: "/gallery", canonical: `${SITE}/gallery` },
   { path: "/changelog", canonical: `${SITE}/changelog` },
+  { path: "/faq", canonical: `${SITE}/faq` },
+  { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/admin", private: true },
 ];
 const pageHtml = {};
@@ -138,6 +140,7 @@ for (const [from, to] of [
   ["/download.html", "/download"],
   ["/gallery.html", "/gallery"],
   ["/changelog.html", "/changelog"],
+  ["/faq.html", "/faq"],
   ["/admin.html", "/admin"],
   ["/download.html?os=macos", "/download?os=macos"],
   ["/authorize.html", "/oauth/authorize"],
@@ -288,7 +291,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/admin", "admin"], ["/no-such-page", "404"]];
+  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/no-such-page", "404"]];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });

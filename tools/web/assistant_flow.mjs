@@ -129,7 +129,7 @@ const first = process.env.BW_BYPASS
   : url;
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForTimeout(Number(args.load || 90000));
-await page.screenshot({ path: `${out}/1_first_screen.png` });
+await page.screenshot({ timeout: 180000, path: `${out}/1_first_screen.png` });
 
 // Where a control is, as the app tells the page (main._tell_page). Clicking
 // at fixed positions broke the first time a paragraph above the key field
@@ -146,7 +146,7 @@ async function click(name) {
     await page.waitForTimeout(500);
   }
   // What the page was showing instead, for whoever reads the failure.
-  await page.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
+  await page.screenshot({ timeout: 180000, path: `${out}/never_showed_${name}.png` }).catch(() => {});
   throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
 }
 
@@ -163,7 +163,7 @@ for (let tries = 0; tries < 90 && !taken; tries++) {
   await page.waitForTimeout(500);
   taken = await showing("brief");
 }
-await page.screenshot({ path: `${out}/2_key_taken.png` });
+await page.screenshot({ timeout: 180000, path: `${out}/2_key_taken.png` });
 if (!taken) {
   await browser.close();
   console.log(seen.join("\n"));
@@ -189,7 +189,7 @@ async function sketched() {
     cards = await page.evaluate(() => ["sketch_1", "sketch_2", "sketch_3"]
       .filter((n) => (window.brickworksControls || {})[n]).length);
   }
-  await page.screenshot({ path: `${out}/3_sketches.png` });
+  await page.screenshot({ timeout: 180000, path: `${out}/3_sketches.png` });
   const sketches = asked[0] || {};
   const cheap = sketches.model === "claude-sonnet-5-5" && sketches.effort === "medium"
     && /call submit_design three times/.test(sketches.opening);
@@ -202,7 +202,7 @@ async function sketched() {
     chosen = next.model === "claude-opus-5-5" && next.messages === 1
       && /the person chose sketch 2/.test(next.opening);
     await page.waitForTimeout(20000);
-    await page.screenshot({ path: `${out}/4_designing_from_sketch_2.png` });
+    await page.screenshot({ timeout: 180000, path: `${out}/4_designing_from_sketch_2.png` });
   }
   await browser.close();
   console.log(seen.join("\n"));
@@ -224,10 +224,10 @@ while (every > 0 && waited + every < seconds) {
   await page.waitForTimeout(every * 1000);
   waited += every;
   shot += 1;
-  await page.screenshot({ path: `${out}/3_${String(shot).padStart(2, "0")}_at_${waited}s.png` });
+  await page.screenshot({ timeout: 180000, path: `${out}/3_${String(shot).padStart(2, "0")}_at_${waited}s.png` });
 }
 await page.waitForTimeout((seconds - waited) * 1000);
-await page.screenshot({ path: `${out}/3_after_build.png` });
+await page.screenshot({ timeout: 180000, path: `${out}/3_after_build.png` });
 await browser.close();
 
 const answers = seen.filter((line) => / anthropic \d+/.test(line));
