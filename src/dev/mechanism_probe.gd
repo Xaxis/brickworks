@@ -333,7 +333,7 @@ func _ring() -> void:
 		# central axle, which turns in the frame.
 		var along_x := Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0))
 		var arm: int = kit.add("40490", Transform3D(along_x, Vector3(80, 30, 0)), 4)
-		kit.add("3706", Transform3D(_turn_x_to(Y), Vector3(0, 0, 0)))
+		var centre: int = kit.add("3706", Transform3D(_turn_x_to(Y), Vector3(0, 0, 0)))
 		# The 12 at 175 - 15 = 160 out, on an axle through the arm's end.
 		kit.add("3705", Transform3D(_turn_x_to(Y), Vector3(160, 10, 0)))
 		var pinion: int = kit.add("32270", Transform3D(_turn_z_to(Y), Vector3(160, 0, 0)), 72)
@@ -352,6 +352,11 @@ func _ring() -> void:
 				% relative, absf(relative + 140.0 / 12.0) < 1e-5)
 			_check("in all it turns (140 - 12)/12 = 10.6667 times the arm, the other way (%.6f)"
 				% whole_rate, absf(whole_rate + 128.0 / 12.0) < 1e-5)
+			# Nothing decides whether the arm turns on its axle or the axle with
+			# the arm; the one nearer the ground is the one left still.
+			var axle: int = model.body_of(centre)
+			_check("the central axle, which nothing turns, stays still under its arm (%.6f)"
+				% model.spin(axle, Y), absf(model.spin(axle, Y)) < 1e-9)
 		else:
 			_check("one quarter on the far side: no mesh (%s), and the 12 is left free (%s)"
 				% [model.couplings_said(), result["said"]], model.couplings.is_empty()

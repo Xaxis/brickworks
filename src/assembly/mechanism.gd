@@ -1224,9 +1224,15 @@ func solve(drivers: Dictionary) -> Dictionary:
 	out["ok"] = true
 	out["free"] = free
 	out["freedoms"] = freedoms
-	out["said"] = "%d of %d joints turn; %d freedoms left, %d bodies undecided, following what " \
-		% [moving, tree.size(), freedoms, free.size()] + "carries them"
+	out["said"] = "%d of %d joints turn; %s left, %s undecided, following what carries them" \
+		% [moving, tree.size(), _counted(freedoms, "freedom"), _counted(free.size(), "body")]
 	return out
+
+
+static func _counted(n: int, what: String) -> String:
+	if n == 1:
+		return "1 " + what
+	return "%d %s" % [n, "bodies" if what == "body" else what + "s"]
 
 
 ## Back-substitution through [param pivots]: each pivot's column from its

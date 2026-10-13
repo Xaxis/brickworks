@@ -10,10 +10,10 @@
 ##   - a near miss: the file stands the gear a little off its axle (more
 ##     than the reading's 1.5 LDU, less than 4), which the reading reports
 ##     rather than mends;
-##   - apart: in a group of parts that touches no connector of the rest of
-##     the model (a second model in the file, or a wheel carried round its
-##     rim by rollers). The group is read again on its own, its largest
-##     body its ground, and nothing with a gear in it may float there.
+##   - apart: in a group of at least 20 parts that touches no connector of
+##     the rest of the model (a second model in the file). The group is read
+##     again on its own, its largest body its ground, and nothing with a
+##     gear in it may float there.
 ## Anything else is a failure, said with what stands on its axis and the
 ## holes its axles nearly turn in, so the reason can be read off.
 ##
@@ -26,6 +26,9 @@ const DEFAULT := ["res://vendor/omr/files/42055-1.mpd", "res://vendor/omr/files/
 ## A file's gear stands off its axle by more than the reading allows and
 ## less than this: a near miss, LDU.
 const NEAR := 4.0
+## A group must be this many parts to stand apart: a second model, or a
+## wheel with its buckets. A lone gear touching nothing is a misread.
+const APART := 20
 
 var _library: PartLibrary
 var _failures: int = 0
@@ -96,7 +99,10 @@ func _read(path: String) -> void:
 			continue
 		var cluster: Array = _cluster(model, body)
 		var touch: Dictionary = _touching(model, cluster)
-		if not touch["ground"]:
+		var size: int = 0
+		for one: int in cluster:
+			size += (model.bodies.get(one, []) as Array).size()
+		if not touch["ground"] and size >= APART:
 			apart += 1
 			var root: int = cluster.min()
 			if not groups_read.has(root):
