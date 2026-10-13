@@ -823,7 +823,7 @@ func _fill_recent(menu: PopupMenu) -> void:
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	if id < 0 or id >= _recent.size():
 		return
-	bar.opened.emit(store.open(_recent[id].path))
+	bar.opened.emit(await bar.open_with_progress(_recent[id].path))
 
 
 func _fill_history(menu: PopupMenu) -> void:

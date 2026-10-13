@@ -201,17 +201,37 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   meanwhile does), Instructions (`BookletMaker.job`: planning, the parts, the
   views, the steps, counted, with Cancel, and the line also in the tab the
   booklet goes to on the web), LEGO Art's Build (`MosaicArt.put_down_paced`),
-  Brickify (beside its panel's own line), opening a file, and a delete, undo,
-  redo, New or Clear of 300 parts or more (`EditVerbs.BIG_CHANGE`), which are
-  one long frame each but now say so before it. In the shared model's viewer
+  Brickify (beside its panel's own line; its spinning preview stands still
+  while it works and on the web turns only once the card has drawn the last
+  turn, so it queues no frames ahead of the bar — though the bar still waits
+  for whatever else the card has in hand, a picture being read among it:
+  125 ms and 4.9 s in two runs, 4.3 s before, 2026-10-13), opening a model (from a file,
+  Open's list or Recent: `ModelStore.open_text_paced`, `LdrModel.parse_paced`,
+  the lines read and then the parts put down counted, the drawing held till
+  the end; a second open meanwhile is refused. In a browser drawing in
+  software Orthanc's open held the page 1.7 s at most instead of 5.3, and
+  took 16 s instead of 5.4, most likely the page's state for the checks
+  (`Main._tell_page`, the tree and the joints of every part, twice a second)
+  told between the slices as the model grows), and a delete, undo, redo,
+  New or Clear of 300 parts or more (`EditVerbs.BIG_CHANGE`), one long frame
+  each, said first. Made a slice at a time, a delete of all of Orthanc in a
+  browser drawing in software took 231 s instead of 1.2 and its undo 19 s
+  instead of 2.3, with an 8 s frame after the delete not yet explained;
+  each slice changed what is on screen, the selection's outline among it,
+  which is the likeliest cost (2026-10-12), so they are one frame again. Not the parts bin's pictures: their tiles say they are
+  coming, and a line as well came and went with every scroll and drew the
+  window again each time; each is read back after the card's fence instead
+  (`PartThumbnails._render`), which took the bin's first open from eight
+  seconds of the page held to half a second. In the shared model's viewer
   the status bar is hidden except while there is work (`StatusBar.only_the_work`).
   The page reads it as `brickworksState.working` and `window.brickworksWork`
   (when each job was first drawn and when it ended, in the page's clock), and
   Cancel as `brickworksControls.work_cancel`. Proves it: `progress_probe`
   (windowed, Orthanc and the car: the bar up in the frame pressed, before the
   work; the timeline's longest frame against 200 ms; the same steps as
-  `Instructions.plan`; Cancel and a second press stop it; delete all and undo
-  say so first; the car's booklet counted and stoppable) and
+  `Instructions.plan`; Cancel and a second press stop it; Orthanc opened
+  from Open's list counted as its parts go down; delete all and undo say so
+  first; the car's booklet counted and stoppable) and
   `tools/web/progress_check.mjs` ([web](web.md)).
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground

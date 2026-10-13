@@ -140,7 +140,11 @@ plan with Claude as the client.
   That last is why the bar is not redrawn until the card has drawn its last
   change (`GpuFence`): every 250 ms regardless, as first written, Orthanc's
   timeline took 77 s instead of 8, software drawings of the whole tower
-  queued up behind each other. A first visit's car: the parts bin's first open,
+  queued up behind each other. The parts bin is timed until the page has gone
+  quiet after it, since it opens at once and then draws its pictures (the
+  quiet is the engine's frames, not the pictures: with them read back after
+  the card's fence the next press can come while the bin is still drawing,
+  and its bar then waits for the card too). A first visit's car: the parts bin's first open,
   Instructions, Render, LEGO Art's Build of art_flow's galaxy at 48 across,
   Brickify of the bunny; then Orthanc opened from a file: Timeline, Delete
   of all of it, Undo, New. Fails when one that should show the bar does not
