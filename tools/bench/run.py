@@ -59,7 +59,11 @@ HERE = Path(__file__).resolve().parent
 RESULTS = ROOT / "bench" / "results"
 CORE = Path.home() / ".claude" / "claude-core" / "bin"
 HEAVY, GPU = str(CORE / "heavy"), str(CORE / "gpu")
-USER_DIR = Path.home() / ".local" / "share" / "godot" / "app_userdata" / "Brickworks"
+# Where Godot keeps the app's user folder: under XDG_DATA_HOME when it is set,
+# as every agent's run sets it, so a batch's saves never land beside the
+# owner's models and the tidy never reads theirs.
+USER_DIR = (Path(os.environ["XDG_DATA_HOME"]) if os.environ.get("XDG_DATA_HOME")
+            else Path.home() / ".local" / "share") / "godot" / "app_userdata" / "Brickworks"
 OMR_FILES = ROOT / "vendor" / "omr" / "files"
 OMR_INDEX = ROOT / "vendor" / "omr" / "index.json"
 OMR_SITE = "https://library.ldraw.org"

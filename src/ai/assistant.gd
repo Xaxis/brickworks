@@ -42,6 +42,10 @@ const MAX_REPAIRS := 3
 ## one to spare; the turns are what an edit, a look and a search cost.
 const TURNS_PER_ASSEMBLY := 8
 const MOST_ASSEMBLIES := 12
+## Turns one feature gets (see [method _feature_brief]): a look, a placing
+## and a fix, and the answer saying which it used.
+const TURNS_PER_FEATURE := 4
+const MOST_FEATURES := 8
 ## How many times to ask again when a turn ends having built nothing.
 const MAX_NUDGES := 2
 ## Beyond this a list of studs is not an answer, it is a wall of text.
@@ -279,6 +283,10 @@ var _to_detail: Array[Dictionary] = []
 var _declared: Array[Dictionary] = []
 var _detailing: Dictionary = {}
 var _detail_turns: int = 0
+## The features the design listed, worked before the assemblies, and
+## whether what each came to has been said.
+var _features: Array[String] = []
+var _features_told: bool = false
 var _detail_count: int = 0
 ## What each pass brought to the model that it did not have before, as
 ## [name, part ids], and the part ids the model had when the current one
@@ -594,6 +602,10 @@ class Model extends RefCounted:
 	## each {name, where}, where being a box in studs and plates as
 	## look_at_model takes one. Detailed one at a time once it holds.
 	var assemblies: Array[Dictionary] = []
+	## What the subject is known by — eyes, a beak, wheel arches, a grille —
+	## each worked once the shape stands: looked up in real sets, laid as
+	## one of theirs, or built from a worked technique.
+	var features: Array[String] = []
 
 	func section_for(placement: Placement) -> Section:
 		return sections.get(placement.section)
@@ -682,6 +694,10 @@ func _start(text: String) -> void:
 	_left_out = ""
 	_detailing = {}
 	_detail_turns = 0
+	_features = []
+	_features_told = false
+	_feature_used = {}
+	_feature_now = ""
 	_detail_count = 0
 	_detail_added = []
 	_parts_before_pass = {}
@@ -1164,11 +1180,13 @@ func _on_response(result: Array) -> void:
 	# to this one's tools, so nothing it asked goes unanswered.
 	if _pending == null and not _detailing.is_empty():
 		_detail_turns += 1
-		if _detail_turns >= TURNS_PER_ASSEMBLY:
+		var feature: bool = bool(_detailing.get("feature", false))
+		if _detail_turns >= (TURNS_PER_FEATURE if feature else TURNS_PER_ASSEMBLY):
 			progress.emit("out of turns for the %s" % _detailing["name"])
 			var moved_on: Array = tool_results.duplicate()
 			moved_on.append({"type": "text", "text": "That is as many "
-				+ "turns as one assembly gets, so on to the next."})
+				+ "turns as one %s gets, so on to the next." % (
+					"feature" if feature else "assembly")})
 			if await _detail_next(moved_on):
 				return
 			_stop(true, "%d bricks" % world.brick_count())
@@ -1209,7 +1227,9 @@ func _on_response(result: Array) -> void:
 		# turn is cheap against a model nobody would want.
 		if not _looked_back:
 			_looked_back = true
-			_to_detail = _queue_assemblies(_pending.assemblies)
+			_to_detail = _queue_features(_pending.features)
+			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
+			_features = _pending.features
 			_declared = _pending.assemblies
 			_pending = null
 			progress.emit("looking at the finished model: %s"
@@ -1236,10 +1256,22 @@ func _on_response(result: Array) -> void:
 				noticed += "\n\nAnd what the check measured about it:\n" \
 					+ "\n".join(PackedStringArray(measured))
 			var ask: String = CRITIQUE
-			if not _to_detail.is_empty():
-				var names := PackedStringArray()
-				for one: Dictionary in _to_detail:
+			if not _features.is_empty():
+				ask += ("\n\nThis look is for the silhouette and the proportions: "
+					+ "the masses, their sizes against the reference, the outline. "
+					+ "After it, each feature you listed — %s — comes back to you "
+					% ", ".join(_features) + "on its own, with how real sets built "
+					+ "it, to lay, adapt or build one at a time.")
+			else:
+				ask += ("\n\nYou listed no features. Name what the subject is "
+					+ "known by — its eyes, beak, ears, wheel arches, grille, "
+					+ "windows, roof — with submit_design's features, or work "
+					+ "each now with find_techniques before detailing.")
+			var names := PackedStringArray()
+			for one: Dictionary in _to_detail:
+				if not bool(one.get("feature", false)):
 					names.append(str(one["name"]))
+			if not names.is_empty():
 				ask += ("\n\nAfter this, each of the %d assemblies you "
 					% names.size() + "named — %s — comes to you on its "
 					% ", ".join(names) + "own, close up, with what it is "
@@ -1258,8 +1290,12 @@ func _on_response(result: Array) -> void:
 		# Submitted again during the whole look, so the assemblies it
 		# names now are the ones to detail.
 		if _detailing.is_empty() and _detail_count == 0 \
-				and not _pending.assemblies.is_empty():
-			_to_detail = _queue_assemblies(_pending.assemblies)
+				and (not _pending.assemblies.is_empty() or not _pending.features.is_empty()):
+			_to_detail = _queue_features(_pending.features if not _pending.features.is_empty()
+				else _features)
+			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
+			if not _pending.features.is_empty():
+				_features = _pending.features
 			_declared = _pending.assemblies
 		_pending = null
 		if await _detail_next():
@@ -1567,7 +1603,8 @@ func _detail_next(also: Array = []) -> bool:
 	# deciding it has finished, and only on the tail, like all the
 	# advice here: an assembly within the range of real sets is left
 	# alone, and under 60 parts there is no range to be outside.
-	if not _detailing.is_empty() and not _sent_back and also.is_empty():
+	if not _detailing.is_empty() and not _sent_back and also.is_empty() \
+			and not bool(_detailing.get("feature", false)):
 		var here: Array[BrickWorld.Brick] = _bricks_inside(
 			_detailing["where"])
 		var normal: Dictionary = library.normal_for(here.size())
@@ -1651,7 +1688,16 @@ func _detail_next(also: Array = []) -> bool:
 			_messages.append({"role": "user", "content": " ".join(said)})
 			_send()
 			return true
-	if not _detailing.is_empty():
+	if not _detailing.is_empty() and bool(_detailing.get("feature", false)):
+		progress.emit("the %s: %s" % [_detailing["name"], _feature_said(_detailing["name"])])
+		var brought := PackedStringArray()
+		for part_id: String in _parts_in(_bricks_inside({})):
+			if not _parts_before_pass.has(part_id):
+				brought.append(part_id)
+		_detail_added.append([_detailing["name"], brought])
+		_feature_now = ""
+		_detailing = {}
+	elif not _detailing.is_empty():
 		progress.emit("the %s, detailed: %s" % [_detailing["name"],
 			_texture(_bricks_inside(_detailing["where"]))])
 		var added := PackedStringArray()
@@ -1676,6 +1722,24 @@ func _detail_next(also: Array = []) -> bool:
 		_sent_back = false
 		_repairs = 0
 		_parts_before_pass = _parts_in(_bricks_inside({}))
+		if bool(one.get("feature", false)):
+			var of: int = _features.find(str(one["name"])) + 1
+			progress.emit("working the %s (feature %d of %d)" % [one["name"], of,
+				_features.size()])
+			_feature_now = str(one["name"])
+			var brief: Variant = await _feature_brief(_feature_now, of, _features.size(), true)
+			if not _busy:
+				return true
+			_note_feature("looked up %s" % _feature_now)
+			_forget_old_pictures()
+			var content: Array = also.duplicate()
+			if brief is Array:
+				content.append_array(brief)
+			else:
+				content.append({"type": "text", "text": str(brief)})
+			_messages.append({"role": "user", "content": content})
+			_send()
+			return true
 		progress.emit("detailing the %s (%d of %d): %s" % [one["name"],
 			_detail_count + 1, _detail_count + 1 + _to_detail.size(),
 			_texture(inside)])
@@ -1690,6 +1754,9 @@ func _detail_next(also: Array = []) -> bool:
 		progress.emit("detailed %d assemblies: from %s to %s" % [
 			_detail_count, _before_detail, _texture(_bricks_inside({}))])
 		_before_detail = ""
+	if not _features.is_empty() and not _features_told:
+		_features_told = true
+		progress.emit("features:\n%s" % _features_record(_features))
 	return false
 
 
@@ -2125,12 +2192,48 @@ func _stop(ok: bool, summary: String) -> void:
 # -- tools ---------------------------------------------------------------
 
 
+## What a tool hands back, and what it did for the feature being worked, if
+## one is (see [method _feature_brief]).
+func _run_tool(block: Dictionary) -> Variant:
+	var before: int = world.brick_count() if world != null else 0
+	var answer: Variant = await _tool_answer(block)
+	if str(block.get("name", "")) == "find_techniques":
+		var named: String = _feature_named(str((block.get("input", {}) as Dictionary).get(
+			"query", "")))
+		if not named.is_empty():
+			_feature_now = named
+	if _feature_now.is_empty():
+		return answer
+	var name: String = str(block.get("name", ""))
+	var args: Dictionary = block.get("input", {}) as Dictionary
+	var grew: bool = world != null and world.brick_count() != before
+	var head: String = str(answer if answer is String else (
+		(answer as Array)[0].get("text", "") if answer is Array and not (answer as Array).is_empty()
+			and (answer as Array)[0] is Dictionary else ""))
+	var refused: bool = head.begins_with("Not applied") or head.begins_with("Nothing in that") \
+		or head.begins_with("No brick") or head.begins_with("That would")
+	match name:
+		"find_techniques":
+			_note_feature("looked up " + str(args.get("query", "")))
+		"show_technique":
+			var worked: Dictionary = Techniques.named(str(args.get("name", "")))
+			if not worked.is_empty():
+				_note_feature("technique " + str(worked["name"]))
+		"place_technique":
+			if grew:
+				_note_feature("placed " + str(args.get("id", "")))
+		"edit_model", "edit_selection":
+			if not _laying_whole and (grew or not refused):
+				_note_feature("edited")
+	return answer
+
+
 ## What a tool hands back.
 ##
 ## A String for most of them. An Array of content blocks when the answer
 ## includes a picture, which Anthropic accepts in a tool result exactly
 ## as it does in a message.
-func _run_tool(block: Dictionary) -> Variant:
+func _tool_answer(block: Dictionary) -> Variant:
 	# Awaited by the caller, because checking a design may first have to
 	# fetch the geometry for parts this build has not loaded.
 	var name: String = block.get("name", "")
@@ -4603,6 +4706,7 @@ func _read_model(args: Dictionary) -> Model:
 	_repeat_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
 	model.assemblies = _read_assemblies(args)
+	model.features = _read_features(args)
 	return model
 
 
@@ -8022,6 +8126,184 @@ static func _read_assemblies(args: Dictionary) -> Array[Dictionary]:
 				where[side] = float(given[side])
 		out.append({"name": name, "where": where})
 	return out
+
+
+## The features a design listed, each a few words: "eyes", "ear tufts",
+## "wheel arches". Duplicates and blanks dropped, at most MOST_FEATURES.
+static func _read_features(args: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var seen: Dictionary = {}
+	var given: Variant = args.get("features", [])
+	if not given is Array:
+		return out
+	for raw: Variant in given:
+		var name: String = str((raw as Dictionary).get("name", "")) if raw is Dictionary \
+			else str(raw)
+		name = name.strip_edges()
+		if name.is_empty() or seen.has(name.to_lower()):
+			continue
+		seen[name.to_lower()] = true
+		out.append(name)
+		if out.size() >= MOST_FEATURES:
+			break
+	return out
+
+
+## The features as the detail passes take them, before the assemblies: each
+## {name, where, feature}, where the whole model.
+static func _queue_features(named: Array[String]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for name: String in named:
+		out.append({"name": name, "where": {}, "feature": true})
+	return out
+
+
+## What was used for each feature, by its name in lower case: the pieces
+## laid, the techniques looked at, the edits. Said as the run ends and in a
+## session's reviews, so "which did it use" is a record and not a guess.
+var _feature_used: Dictionary = {}
+## The feature being worked now, in the loop or by a session from outside
+## (the last review_model feature=), or "".
+var _feature_now: String = ""
+## The features a session from outside listed when it submitted.
+var _outside_features: Array[String] = []
+
+
+## The listed feature the words of [param query] name, or "": "owl eye"
+## is the eyes, "car nose" none of eyes and beak.
+func _feature_named(query: String) -> String:
+	var asked: PackedStringArray = RealSnippets.words(query)
+	for name: String in (_features if not _features.is_empty() else _outside_features):
+		for word: String in RealSnippets.words(name):
+			if asked.has(word):
+				return name
+	return ""
+
+
+## Note what a tool did for the feature being worked on.
+func _note_feature(what: String) -> void:
+	if _feature_now.is_empty():
+		return
+	var key: String = _feature_now.to_lower()
+	var used: Array = _feature_used.get(key, [])
+	if not used.has(what):
+		used.append(what)
+	_feature_used[key] = used
+
+
+## A feature's record in a line: "real piece 4349-3 laid", "built by hand
+## after show_technique eye with a highlight", or "not worked yet".
+func _feature_said(name: String) -> String:
+	var used: Array = _feature_used.get(name.to_lower(), [])
+	if used.is_empty():
+		return "not worked yet"
+	var placed := PackedStringArray()
+	var looked := PackedStringArray()
+	var built: bool = false
+	for raw: Variant in used:
+		var one: String = str(raw)
+		if one.begins_with("placed "):
+			placed.append(one.trim_prefix("placed "))
+		elif one.begins_with("technique "):
+			looked.append(one.trim_prefix("technique "))
+		elif one == "edited":
+			built = true
+	if not placed.is_empty():
+		return "real piece %s laid%s" % [", ".join(placed), ", then adapted" if built else ""]
+	if built and not looked.is_empty():
+		return "built from the worked technique %s" % ", ".join(looked)
+	if built:
+		return "built by hand"
+	return "looked up, nothing laid yet"
+
+
+## The features listed and what each came to, in a line each.
+func _features_record(names: Array[String]) -> String:
+	var said := PackedStringArray()
+	for name: String in names:
+		said.append("  %s: %s" % [name, _feature_said(name)])
+	return "\n".join(said)
+
+
+## The subject's own words in [param text] that the real-set index knows
+## as subjects (owl, car, castle), so a feature is looked up among sets
+## about it first. "A barn owl as a detailed LEGO display model" is "owl".
+static func _subject_words(text: String) -> String:
+	var kept := PackedStringArray()
+	for word: String in RealSnippets.words(text):
+		if RealSnippets.is_subject(word) and not kept.has(word):
+			kept.append(word)
+	return " ".join(kept)
+
+
+## One feature, handed to the design to work: the best three real pieces
+## for it, shortly — id, size, whether it lays, what it is, its parts —
+## the worked technique that builds one, and what to do. Text, kept short
+## so working every feature is cheap; [param picture] adds the pieces side
+## by side in one small picture, for the loop's own pass.
+func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant:
+	var subject: String = ""
+	var have: bool = await RealSnippets.ensure(self)
+	if have:
+		subject = _subject_words(_brief)
+	var query: String = ("%s %s" % [subject, name]).strip_edges()
+	var said := PackedStringArray()
+	said.append("The %s — feature %d of %d." % [name, of, count])
+	var shown: Array = []
+	if have:
+		var found: Array = RealSnippets.search(query, 0.0, [], 3)
+		if found.is_empty():
+			said.append("No real set has a piece called anything like \"%s\"." % query)
+		else:
+			said.append("How real sets built it (find_techniques \"%s\"):" % query)
+			for n: int in found.size():
+				var entry: Dictionary = found[n][1]
+				shown.append(entry)
+				said.append(_piece_line(n + 1, entry))
+	var worked: Dictionary = Techniques.for_feature(name)
+	if not worked.is_empty():
+		said.append("The worked technique for it: show_technique(\"%s\") — %s."
+			% [worked["name"], worked["when"]])
+	said.append("Do one, and say in a line which: lay a real piece with "
+		+ "place_technique where one fits (turn and recolor it to your model); "
+		+ "adapt one — the same idea at your size, in your parts; or build it "
+		+ "from the worked technique. A feature is parts with depth — a round "
+		+ "plate, a slope, a printed tile, studs out — never a tile painted on "
+		+ "a flat panel. A face on a shaped head is the shape's \"face\", said "
+		+ "with the shape: it lays the disc, 2 x 2 eyes and a beak on side studs, "
+		+ "flush with the curve; a head already standing without one takes the "
+		+ "eyes on brackets as the round face technique shows.")
+	var text: String = "\n".join(said)
+	if not picture or shown.is_empty():
+		return text
+	var sheet: Image = await _snippet_picture(shown)
+	if sheet == null:
+		return text
+	return [{"type": "text", "text": text + "\n\nThe pieces, in that order:"},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(sheet.save_png_to_buffer())}}]
+
+
+## One real piece in a line or two: its id, name and where it is from, its
+## size and whether it lays as it stands, what it is, and its first parts.
+func _piece_line(n: int, entry: Dictionary) -> String:
+	var size: Array = entry["size"]
+	var lays: String = "lays as it stands" if bool(entry.get("lays", false)) \
+		else ("built at an angle, copy it" if not bool(entry.get("square", true))
+			else "held from outside it, so hold it in your model or copy it")
+	var text: String = str(entry.get("text", ""))
+	if text.length() > 110:
+		text = text.substr(0, text.rfind(" ", 110)) + "…"
+	var made_of := PackedStringArray()
+	for raw: Variant in (entry["bom"] as Array).slice(0, 4):
+		var line: Array = raw
+		made_of.append("%dx %s (%d)" % [int(line[2]), str(line[0]), int(line[1])])
+	var more: int = (entry["bom"] as Array).size() - 4
+	return ("%d. %s \"%s\", %s: %s x %s studs, %s plates, %d parts; %s.%s\n   %s%s"
+		% [n, entry["id"], entry["name"], RealSnippets.credit(entry),
+			_studs(float(size[0])), _studs(float(size[2])), _studs(float(size[1])),
+			int(entry["parts"]), lays, "" if text.is_empty() else " " + text,
+			", ".join(made_of), " and %d more" % more if more > 0 else ""])
 
 
 ## What a run will detail, one assembly at a time. Nothing for a model
@@ -12238,7 +12520,8 @@ alternate courses so each part bridges the seam below it, exactly as you \
 would with real bricks.
 
 HOW TO WORK
-Five things before the first brick, in this order:
+The way a set is designed: the silhouette and its proportions first, then \
+each feature the subject is known by, then the detail. In this order:
 
   1. plan_scale with how long the real thing is. Everything after it \
      depends on the proportions, and changing the scale later means \
@@ -12246,26 +12529,40 @@ Five things before the first brick, in this order:
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
      and no lighthouse. A picture gives you this one.
-  3. Decide the main masses and their sizes in studs, off that picture, \
-     and what each is: round in section, tapered, at a slant, smooth, \
-     moving, mechanical, organic. WHAT THE SUBJECT NEEDS, below, says \
-     which call builds each; how_real_sets_build_this, asked with the \
-     plainest word for the kind (a rocket: space; a locomotive: train; \
-     a galleon: pirate; an owl: animal), says what real sets of it are \
-     made of and in. The picture's colours come with it as numbers.
-  4. show_technique for any construction you have not built before. \
+  3. The silhouette. Decide the main masses and their sizes in studs, \
+     off that picture, and what each is: round in section, tapered, at \
+     a slant, smooth, moving, mechanical, organic. Say each as a shape \
+     (a body, a head, a hull, a cabin) and submit that first: its \
+     proportions are judged before anything is put on it. A head that \
+     looks at you is said with its "face" on its shape here, so the \
+     disc and the eyes are part of the silhouette. WHAT THE \
+     SUBJECT NEEDS, below, says which call builds each; \
+     how_real_sets_build_this, asked with the plainest word for the \
+     kind (a rocket: space; a locomotive: train; a galleon: pirate; an \
+     owl: animal), says what real sets of it are made of and in. The \
+     picture's colours come with it as numbers.
+  4. The feature list: what the subject is known by, given to \
+     submit_design as features — an owl's facial disc, eyes, beak, ear \
+     tufts, wings, talons; a car's wheel arches, headlamps, grille, \
+     windscreen, spoiler; a castle's gate, arrow slits, crenellations, \
+     turret roofs.
+  5. Each feature, one at a time, once the shape stands: how real sets \
+     built it (find_techniques "owl eye", "car nose"; the app hands each \
+     listed feature back with three real pieces), then lay one with \
+     place_technique where it fits — turned, moved, in your colours — \
+     adapt one, or build it from the worked technique (show_technique; \
+     faces and features has the eye, the round face, the beak, ears, \
+     talons, headlamps and grille), and say in a line which you used. \
+     A feature is parts with depth, never a tile painted on a panel. A \
+     face on a shaped head is the shape's "face", said when the shape is \
+     submitted: it lays the disc, 2 x 2 eyes and a beak on side studs, \
+     flush with the curve. \
+     find_parts_like finds a part by what it should read as — a \
+     feather, a claw, an eyelid, an exhaust.
+  6. show_technique for any construction you have not built before. \
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
      part that goes wrong.
-  5. find_techniques before inventing any feature — a face, an eye, a \
-     beak, a nose, a wing, a tail, a grille, a wheel arch, a turret \
-     roof. It shows how real sets built that feature, with a picture \
-     of each, from sets about your subject first ("owl eye", "car \
-     nose"). place_technique lays one as built, turned and moved, in \
-     your colours; or build your own the way the picture shows. A \
-     feature a real designer solved is better than a first guess. \
-     find_parts_like finds a part by what it should read as — a \
-     feather, a claw, an eyelid, an exhaust.
 
 Then lay it out layer by layer from the ground up.
 
@@ -12421,7 +12718,16 @@ alongside the bricks you write by hand:
            loft for its tail; "bands" colour it by height (a waterline, a \
            belly), and a solid's own "color" a part of it (a canopy). The \
            car that was told every check to use wedge plates and curved \
-           slopes and used none of them would have had both from this.
+           slopes and used none of them would have had both from this. \
+           A head's face is said on it: "face": {"facing": "+z", "x": 10, \
+           "y": 53, "z": 11, "across": 6, "color": 15, "rim": 84, "eyes": \
+           0, "beak": 19} leaves a square of 6 out of the curved side \
+           there, on the side-stud bricks behind it lays a plate to bring \
+           it out to the curve and a 6 x 6 round plate as the disc, and on \
+           the disc two 2 x 2 round eyes with printed eye tiles and a beak \
+           on a jumper — the face a set builds onto a head, which a panel \
+           of tiles on a shell cannot take (across 4, 6 or 8; x, y, z its \
+           middle, on the side that curves out; "beak": -1 for none).
 
            Anything round in section is one object too, upright or \
            lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
@@ -12901,6 +13207,12 @@ func _show_technique(wanted: String) -> String:
 ## hand. A designer asked for an owl's eye needs the eye a set built, not
 ## the nearest of seventy, and the repository has thousands of named
 ## sub-assemblies. Words find them; the picture says whether one is it.
+## How many real pieces find_techniques answers with: three, each in two
+## lines, and a picture of them 200 pixels a piece. Five with their whole
+## parts lists and a picture 1,600 wide was a long read a run made once.
+const FOUND := 3
+
+
 func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 	# Fetched on the web the first time, from beside the build.
 	if not await RealSnippets.ensure(self):
@@ -12909,7 +13221,7 @@ func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 			+ "examples.")
 	if query.strip_edges().is_empty():
 		return "Say what you are building: \"owl eye\", \"car nose\", \"dragon wing\"."
-	var found: Array = RealSnippets.search(query, max_studs, kinds, 5)
+	var found: Array = RealSnippets.search(query, max_studs, kinds, FOUND)
 	if found.is_empty():
 		return ("No real set has a piece called anything like \"%s\"%s. Try the "
 			% [query, " that small" if max_studs > 0.0 else ""]
@@ -12920,31 +13232,7 @@ func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 	for n: int in found.size():
 		var entry: Dictionary = found[n][1]
 		shown.append(entry)
-		var size: Array = entry["size"]
-		var inside: Array = entry.get("in", [])
-		rows.append("%d. id %s — \"%s\"%s, %s" % [n + 1, entry["id"], entry["name"],
-			"" if inside.is_empty() else " in " + " > ".join(inside),
-			RealSnippets.credit(entry)])
-		rows.append("   %d parts, %s x %s studs, %s plates tall%s%s" % [
-			int(entry["parts"]), _studs(float(size[0])), _studs(float(size[2])),
-			_studs(float(size[1])),
-			"" if (entry["kinds"] as Array).is_empty()
-				else "; " + ", ".join(entry["kinds"]),
-			"; lays as it stands" if bool(entry.get("lays", false))
-				else ("; built at an angle, to copy by hand"
-					if not bool(entry.get("square", true))
-					else "; does not stand alone (%s): hold it in your model, or copy it"
-						% str(entry.get("why", "held from outside it")))])
-		if not str(entry.get("text", "")).is_empty():
-			rows.append("   " + str(entry["text"]))
-		var made_of := PackedStringArray()
-		for raw: Variant in (entry["bom"] as Array).slice(0, 8):
-			var line: Array = raw
-			made_of.append("%dx %s %s (%s %d)" % [int(line[2]), str(line[0]),
-				_part_called(str(line[0])), _colour_name(int(line[1])), int(line[1])])
-		if (entry["bom"] as Array).size() > 8:
-			made_of.append("and %d more" % ((entry["bom"] as Array).size() - 8))
-		rows.append("   " + "; ".join(made_of))
+		rows.append(_piece_line(n + 1, entry))
 	var said: String = ("How real sets built %s, best first:\n\n%s\n\n"
 		% [query, "\n".join(rows)]
 		+ "place_technique with an id lays one as built — turned, moved, and in "
@@ -12988,7 +13276,7 @@ func _find_parts_like(query: String) -> String:
 func _snippet_picture(entries: Array) -> Image:
 	if not ModelShot.possible() or entries.is_empty() or library == null:
 		return null
-	const TILE := 320
+	const TILE := 200
 	var stage := BrickWorld.new()
 	stage.library = library
 	stage.visible = false
@@ -13395,6 +13683,11 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_reviewing = {}
 		_detail_added = []
 		_brief = "%s. %s" % [design.name, design.description]
+		# Submitted again with the same features keeps what was done for them.
+		if design.features != _outside_features:
+			_feature_used = {}
+		_outside_features = design.features.duplicate()
+		_feature_now = ""
 	return _built_from_outside(design, report)
 
 
@@ -13418,15 +13711,21 @@ var _outside_reviewed: Dictionary = {}
 
 const FROM_OUTSIDE_NEXT := """A first design is never as detailed as a \
 set; this app's own designer always goes on from here, and so should you:
-  1. review_model with no assembly: the whole model measured against real \
-sets of its size and kind, with what to look for. view_model from two \
-corners to see it.
-  2. Then review_model for each assembly in turn{names}: close up, \
+  1. review_model with no assembly: the silhouette and proportions first — \
+the whole model measured against real sets of its size and kind, with what \
+to look for. view_model from two corners to see it. Fix the masses before \
+any detail.
+  2. Then each feature, one at a time{features}: review_model \
+{"feature": "<its name>"} says how real sets built it — three real pieces, \
+with ids — and the worked technique that builds one. Lay a real piece with \
+place_technique, adapt one, or build it from the technique, and say in a \
+line which you used, before the next feature.
+  3. Then review_model for each assembly in turn{names}: close up, \
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
 replaces the whole model.
-  3. The touches nobody asks for and every expert adds, with edit_model \
+  4. The touches nobody asks for and every expert adds, with edit_model \
 and add_minifig: a figure or a small scene, a printed tile, a nod to the \
 subject's story, something that opens or turns, and for a display model \
 a stand with a nameplate."""
@@ -13444,17 +13743,22 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	for one: Dictionary in design.assemblies:
 		names.append(str(one.get("name", "")))
 	said.append(FROM_OUTSIDE_NEXT.replace("{names}",
-		" (%s)" % ", ".join(names) if not names.is_empty() else ""))
+		" (%s)" % ", ".join(names) if not names.is_empty() else "").replace("{features}",
+		" (%s)" % ", ".join(design.features) if not design.features.is_empty()
+			else " (you listed none: name what the subject is known by — eyes, beak, ears, "
+				+ "wheel arches, grille, windows, roof — and give each its turn)"))
 	return "\n\n".join(said)
 
 
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String) -> String:
+func review(assembly: String, feature: String = "") -> String:
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
 		return "The baseplate is bare: there is nothing to review."
+	if not feature.strip_edges().is_empty():
+		return await _review_feature(feature.strip_edges())
 	# What the last assembly reviewed brought, for the next one to know.
 	if not _outside_reviewing.is_empty():
 		var before: Dictionary = _outside_reviewing["parts"]
@@ -13474,6 +13778,7 @@ func review(assembly: String) -> String:
 			said.append("Measured against real sets:\n"
 				+ "\n".join(PackedStringArray(measured)))
 		said.append(CRITIQUE)
+		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
 		return "\n\n".join(said)
 	var one: Dictionary = {}
@@ -13512,6 +13817,12 @@ func review(assembly: String) -> String:
 ## assembly back in turn.
 func next_review() -> String:
 	# A coroutine because review is: callers await it.
+	var undone: Array[String] = _features_left()
+	if not undone.is_empty():
+		return ("Before it is finished: %d of its %d features %s not had its turn "
+			% [undone.size(), _outside_features.size(), "has" if undone.size() == 1 else "have"]
+			+ "yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
+				await _review_feature(undone[0])])
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		return ""
@@ -13531,6 +13842,45 @@ func _not_yet_reviewed() -> Array[String]:
 		if not _outside_reviewed.has(name.to_lower()):
 			left.append(name)
 	return left
+
+
+## A feature for a session from outside: how real sets built it and the
+## worked technique, and from now until the next review what it uses is
+## put down to this feature.
+func _review_feature(name: String) -> String:
+	var known: String = name
+	for listed: String in _outside_features:
+		if listed.to_lower() == name.to_lower():
+			known = listed
+	if not _outside_features.has(known):
+		_outside_features.append(known)
+	_feature_now = known
+	_note_feature("looked up %s" % known)
+	var of: int = _outside_features.find(known) + 1
+	var brief: String = str(await _feature_brief(known, of, _outside_features.size(), false))
+	var left: Array[String] = _features_left()
+	left.erase(known)
+	return brief + ("\n\nThen review_model {\"feature\": \"%s\"}." % left[0] if not left.is_empty()
+		else "\n\nIt is the last of the features; then the assemblies.")
+
+
+## The features listed that have not had their turn: never looked up.
+func _features_left() -> Array[String]:
+	var left: Array[String] = []
+	for name: String in _outside_features:
+		var said: String = _feature_said(name)
+		if said == "not worked yet":
+			left.append(name)
+	return left
+
+
+func _features_to_review() -> String:
+	if _outside_features.is_empty():
+		return ("No features were listed. Name what the subject is known by in "
+			+ "submit_design's features, or review_model {\"feature\": \"eyes\"} "
+			+ "for each: a feature a real set solved is better than a first guess.")
+	return ("Its features, each to work in turn with review_model {\"feature\": ...}:\n%s"
+		% _features_record(_outside_features))
 
 
 func _assemblies_to_review() -> String:
@@ -14235,6 +14585,12 @@ func _tools() -> Array:
 				+ "a stripe, a belly, by height."},
 			"top_color": {"type": "integer", "description":
 				"shape: the colour of its top tiles and slopes, if not its own."},
+			"face": {"type": "object", "description":
+				"shape: a face laid on a curved side, studs out — {\"facing\": "
+				+ "\"+z\", \"x\", \"y\", \"z\": its middle, \"across\": 4, 6 or 8, "
+				+ "\"color\": the disc, \"rim\": the plate behind it, \"eyes\": the "
+				+ "iris, \"beak\": its colour or -1}: a round plate disc on side "
+				+ "studs, two 2 x 2 round eyes with printed eye tiles, a beak."},
 			"panels": {"type": "boolean", "description":
 				"shape: its straight sides as tiles on bricks with side studs every "
 				+ "other course (true, the default), or plain bricks (false)."},
@@ -15050,8 +15406,18 @@ func _tools() -> Array:
 							+ "sides another, the roof one and the sign "
 							+ "on it another. A model that is one thing "
 							+ "is one assembly."},
+					"features": {"type": "array", "items": {"type": "string"},
+						"description":
+							"what the subject is known by, a few words "
+							+ "each: an owl's facial disc, eyes, beak, ear "
+							+ "tufts, wings, talons; a car's wheel arches, "
+							+ "headlamps, grille, windscreen, spoiler. Once "
+							+ "the shape stands and you have looked at it "
+							+ "whole, each comes back to you on its own with "
+							+ "how real sets built it, to lay, adapt or build "
+							+ "before the assemblies are detailed."},
 				},
-				"required": ["name", "description", "bricks", "assemblies"],
+				"required": ["name", "description", "bricks", "assemblies", "features"],
 				"additionalProperties": false,
 			},
 		},

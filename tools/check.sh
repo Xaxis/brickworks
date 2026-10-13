@@ -138,7 +138,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project example_name minifig print sticker mould brickify; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features rooms style turned detail chat project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 

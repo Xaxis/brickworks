@@ -262,6 +262,12 @@ static func search(query: String, max_studs: float = 0.0, kinds: Array = [],
 	return out
 
 
+## Whether the index knows [param word] (stemmed) as a subject: owl, car.
+static func is_subject(word: String) -> bool:
+	document()
+	return _subject_of.has(word)
+
+
 static func entry(id: String) -> Dictionary:
 	document()
 	return _by_id.get(id.strip_edges(), {})
