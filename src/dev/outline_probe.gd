@@ -323,7 +323,10 @@ func _judge(name: String, ids: Array, other: int, whole: bool) -> void:
 				stray += 1
 		if drawn[n] == 1 and _on_edge(drawn, w, h, n):
 			edge_n += 1
-			if to_outline[n] <= 2.5:
+			# The baseplate's studs hide the foot of a brick standing on it
+			# from the eye, and not from the mask: a strip a few pixels high,
+			# twice as many at 2x, between the brick seen and its line.
+			if to_outline[n] <= 2.5 * maxf(_scale, 1.0):
 				edge_met += 1
 	print("    %s: drawn %d px, %d inside; outline %d px, %d over the parts, %d away from them; "
 		% [name, drawn_n, inner_n, outline_n, over, stray]

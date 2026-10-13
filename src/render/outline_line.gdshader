@@ -1,10 +1,11 @@
-// SelectionOutline's second pass, drawn over the view: down its column, the
-// nearest of the rows' distances, so the true distance to the mask; and the
-// line where that is under its width, outside the mask, its outer edge
-// smoothed over a pixel.
+// SelectionOutline's second pass: down its column, the nearest of the rows'
+// distances, so the true distance to the mask; and the line where that is
+// under its width, outside the mask, its outer edge smoothed over a pixel.
+// Written as it is, colour and cover, into a viewport of its own that the
+// overlay lays over the view (blending it there, once).
 
 shader_type canvas_item;
-render_mode unshaded;
+render_mode unshaded, blend_disabled;
 
 uniform vec4 colour : source_color = vec4(1.0, 0.86, 0.2, 1.0);
 // In the window's pixels.
