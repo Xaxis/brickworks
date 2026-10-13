@@ -47,16 +47,43 @@ asking for an API key.
   `animate_model` (Pose and animate's keys and Render), `undo` (Edit,
   Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
   list; My collection, What do I need, What can I build), `render_model`
-  (File, Render) and `export_model` (File, Export, and Instructions). Each
+  (File, Render), `export_model` (File, Export, and Instructions),
+  `brickify` (Build, Brickify a 3D model…; File, Import, 3D model),
+  `print_part` (Build, Print on a part… and Put a sticker on…) and
+  `make_unique` (Edit, Make this copy unique). Each
   is a thin wrapper over the code the command runs — `Shell.change_steps`,
   `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
   `RenderDialog.render_for`,
   `ModelBar.export_now`, `Exports`, main's `choose_floor` and
-  `_export_booklet` — one undo step where it changes the model
+  `_export_booklet`, `BrickifyDialog.take`/`choose`/`brickify`,
+  `PrintStudio.print_on`/`sticker_on` (the print designer's own
+  `draw_and_save`), `EditVerbs.make_unique` — one undo step where it changes the model
   (`Builder.fold_since` folds a call that took two of the window's steps),
   and a refusal that says what to fix. They take their turn in the queue as
   the assistant's tools do. Guidance: `AppTools.GUIDE`, the "THE REST OF THE
   APP" section, which `read_guide("app")` serves and `guidance()` ends with.
+  **Long work is a job** (`src/net/tool_jobs.gd`, `ToolJobs`, 2026-10-13). A
+  session waits about three minutes for an answer (the connector's relay four),
+  and a turntable or a booklet of Orthanc takes longer, so the session was told
+  it timed out while the app was still drawing. A call known to be long
+  (`ToolJobs.long_call`: `render_model`, `animate_model`'s rendering,
+  `export_model`'s studio, picture and instructions, `make_art`) answers at
+  once with "Started job N: …" and the work starts on the next frame; any
+  other call still going after `after_s` (20 s) becomes a job where it stands
+  (timed on Orthanc in software: the first `view_model` over 75 s,
+  `check_design` of the Falcon over it 43 s). The `job` tool waits up to
+  `wait_s` (10 s) for it to end, then says how far it has got ("12 of 36"),
+  gives the answer (picture and all) once done, or that it was cancelled or
+  failed; `cancel=true` stops it where it can be stopped. The job **is** the
+  `Working` job the person sees along the foot of the window — its words, its
+  count, its Cancel — handed down as `work` to `RenderDialog.render_for`,
+  `PosePanel.render_animation` and main's `_export_booklet`, so the window's
+  Cancel stops the session's render and the session's cancel takes the bar
+  away. A job keeps the app's turn until it ends; every other call meanwhile is
+  answered at once with "The app is busy with job N". A call that would be
+  refused at once (nothing built, nothing to draw with, a plan that will not
+  parse) is not a job, so its refusal is the answer. The guidance is in the
+  answers themselves and one line of `GUIDE_HEAD`.
 - `keep the mcp in step`: `src/dev/mcp_sync_probe.gd`. Fails when
   `tools/mcp_tools.json` is not what the app serves (`-- --write` writes it
   again from the app; it was four tools behind when this was written), when
@@ -95,6 +122,7 @@ Sketch first — see assistant.md, "sketch first". 38 in all on 2026-10-13;
 `settle_feature`, with which a session accepts, adjusts or rejects the real
 piece the app laid for each feature, and without which `save_model` refuses
 — see assistant.md, the design loop's features.)
+above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_unique`; `mcp_sync_probe` keeps the count honest.)
 
 ## How to reach it
 
@@ -134,6 +162,7 @@ godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, t
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
+tools/mcp_check.py --port=8846 --jobs                     # ...in a window: Orthanc's turntable as a job
 ```
 
 For the subscription path:
@@ -156,7 +185,7 @@ is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
 
 And `mcp_probe` ends on "a session outside the app can use the app's own
-tools" — a client connects over real TCP, gets every tool (37 on 2026-10-13) carrying a schema,
+tools" — a client connects over real TCP, gets every tool (41 on 2026-10-13) carrying a schema,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
 has a floating brick refused, and three clients asking at once each get their
 own answer while the app does them one at a time. Over HTTP, a body with an
@@ -178,6 +207,26 @@ its picture and is written where Render writes, the crane's animation is
 written as a WebP, and the picture and the
 booklet are written where Export writes. The probe points `Exports.folder`
 and `RenderDialog.folder` and `PosePanel.folder` at its own folder, so nothing lands in Downloads.
+Its brickify part serves `tests/fixtures/brickify/bunny.obj` from a web
+server of its own on 127.0.0.1 (`AppTools.fetch_near`, which only a probe
+sets) and reads the bunny back off the model as one sub-assembly, one undo
+step; `file://`, this computer, a link naming no 3D model and a file over the
+cap are each refused. Its prints part prints an svg on a 2 x 2 tile and reads
+the printed part back where the tile stood, in its colour, one undo step, and
+sticks a sticker on a brick's -z face facing -z. Its make_unique part cuts
+Wheel (copy 2) loose, by name and by a part in it, and reads the paths back.
+Its "long work, as jobs" part: a Studio file answers at once with a job that
+is the window's bar, a call meanwhile is told the app is busy, `job` gives the
+.io once done and refuses a number that is not one, and `open_model` with
+`after_s` at 0 becomes a job part way; in a window, a turntable is counted in
+frames by `job` and stopped by its cancel with no WebP written.
+
+The turntable of Orthanc over the real relay needs an app in a window with its
+port open, its own data folder and its own Downloads (an `XDG_CONFIG_HOME`
+whose `user-dirs.dirs` points `XDG_DOWNLOAD_DIR` at a scratch folder), then
+`tools/mcp_check.py --port=PORT --jobs`: the first answer in under 2 s, the
+frames counting up as it is polled, the WebP read off disk with its 36 frames,
+and a second turntable cancelled part way with no WebP written.
 `mcp_check.py` also sets a floor, undoes it, lists the steps and the parts
 over the real relay, and checks `tools/mcp_tools.json` names every tool.
 

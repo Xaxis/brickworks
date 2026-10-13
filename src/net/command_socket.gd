@@ -339,18 +339,11 @@ func answer_rpc(request: Dictionary) -> Variant:
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": "no tool named"}]})
 		asked.emit(name)
-		var answer: Variant
-		if _own_tools_have(name):
-			answer = await _run_own(name, input)
-		else:
-			if not await _take_a_turn():
-				return _result(sent_id, {"isError": true, "content": [
-					{"type": "text", "text": "Another call is still "
-						+ "running — the app does one at a time. Send "
-						+ "them one after another."}]})
-			answer = await assistant.use_tool(name, input)
-			_hand_back()
-		return _result(sent_id, {"content": _as_content(answer),
+		var called: Array = await _call(name, input)
+		if not bool(called[1]):
+			return _result(sent_id, {"isError": true, "content": [
+				{"type": "text", "text": QUEUED_OUT}]})
+		return _result(sent_id, {"content": _as_content(called[0]),
 			"isError": false})
 	if method in ["resources/list", "prompts/list"]:
 		return _result(sent_id, {"resources": [], "prompts": []})
@@ -420,20 +413,79 @@ func _answer(client: Client, line: String) -> void:
 		return
 
 	asked.emit(tool)
-	if _own_tools_have(tool):
-		_send(client, {"id": id, "ok": true,
-			"content": _as_content(await _run_own(tool, input))})
+	var called: Array = await _call(tool, input)
+	if not bool(called[1]):
+		_reply(client, id, false, QUEUED_OUT)
 		return
-	if not await _take_a_turn():
-		_reply(client, id, false, "another call is still running — the "
-			+ "app does one at a time. Send them one after another.")
-		return
-	var answer: Variant = await assistant.use_tool(tool, input)
-	_hand_back()
 	# The client may have gone while a tool was drawing a picture.
 	if client.gone:
 		return
-	_send(client, {"id": id, "ok": true, "content": _as_content(answer)})
+	_send(client, {"id": id, "ok": true, "content": _as_content(called[0])})
+
+
+const QUEUED_OUT := ("Another call is still running — the app does one at a time. "
+	+ "Send them one after another.")
+
+## The long calls a session made: see src/net/tool_jobs.gd.
+var jobs := ToolJobs.new()
+
+
+## One tool call, from either protocol: [its answer, whether it ran]. It
+## did not run only when another call held the app for longer than
+## [member queued_for].
+##
+## A call that can outlast the session's wait is a job (ToolJobs): one
+## known to be long at once, any other once it has run for 20 s. It keeps
+## the app until the work ends. While a job holds the app every other call
+## is told so at once, and [code]job[/code] says how it is going.
+func _call(name: String, input: Dictionary) -> Array:
+	if name == ToolJobs.TOOL:
+		return [await jobs.answer(input), true]
+	var holding: ToolJobs.Entry = jobs.running()
+	if holding != null:
+		return [jobs.busy(holding), true]
+	_doing = ""
+	if assistant != null and not assistant.progress.is_connected(_heard):
+		assistant.progress.connect(_heard)
+	var doing: Callable = func() -> String:
+		return (_doing.left(1).to_upper() + _doing.substr(1) + "…") if not _doing.is_empty() \
+			else "Working on Claude's %s…" % name
+	if name in ["clear_model", "save_model", "review_model"]:
+		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
+			return await _run_own(name, input), doing), true]
+	if not await _take_a_turn():
+		holding = jobs.running()
+		return [jobs.busy(holding), true] if holding != null else [null, false]
+	var long: Dictionary = ToolJobs.long_call(name, input, app)
+	# Refused before it began (a model shared to look at, the designer busy):
+	# the refusal is the answer.
+	if _the_app_tools().has(name) and not _the_app_tools().refusal(name, input).is_empty():
+		long = {}
+	return [await jobs.call_tool(name, long, func(work: Working.Job) -> Variant:
+		# Cancelled in the moment before it began: a renderer told to stop
+		# before it starts forgets it was told.
+		var answer: Variant = "Cancelled before it began: nothing was done."
+		if work == null or not work.cancelled:
+			answer = await _run(name, input, work)
+		_hand_back()
+		return answer, doing), true]
+
+
+## What the assistant last said it was doing, for the words of a call that
+## becomes a job part way.
+var _doing: String = ""
+
+
+func _heard(note: String) -> void:
+	_doing = note
+
+
+## A tool that takes the app's turn: the window's commands (AppTools), told
+## the Working job it reports to when it is a job, or the assistant's.
+func _run(name: String, input: Dictionary, work: Working.Job) -> Variant:
+	if _the_app_tools().has(name):
+		return await _the_app_tools().run(name, input, work)
+	return await assistant.use_tool(name, input)
 
 
 ## Wait until no other tool is running, then take the app.
@@ -456,7 +508,8 @@ func _take_a_turn() -> bool:
 	# this was written to stop, moved one layer down. A frame always
 	# comes.
 	while _in_hand > 0:
-		if Time.get_unix_time_from_system() > until:
+		# A job holds the app for minutes: said at once, not waited out.
+		if Time.get_unix_time_from_system() > until or jobs.running() != null:
 			return false
 		await get_tree().process_frame
 	_in_hand += 1
@@ -488,7 +541,7 @@ func _the_app_tools() -> AppTools:
 ## of what the window does (AppTools): the floor, the build steps, hoses,
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
-	return _socket_tools() + _the_app_tools().definitions()
+	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition()]
 
 
 func _socket_tools() -> Array:
@@ -590,23 +643,13 @@ static func _model_file(asked: String) -> String:
 	return kept + ".ldr"
 
 
-func _own_tools_have(tool: String) -> bool:
-	return tool in ["clear_model", "save_model", "review_model"] or _the_app_tools().has(tool)
-
-
 ## A coroutine: reviewing the whole model checks it, which a big model does
 ## on a worker thread (Assistant._checked) while the app goes on drawing.
-## The window's other commands wait their turn as the assistant's tools do:
-## a render, a hose and a pose all draw or change the one model. A String,
-## or the blocks of an answer with a picture in it.
+## The window's other commands (AppTools) are not these: they wait their
+## turn as the assistant's tools do (_call), since a render, a hose and a
+## pose all draw or change the one model. A String, or the blocks of an
+## answer with a picture in it.
 func _run_own(tool: String, input: Dictionary) -> Variant:
-	if _the_app_tools().has(tool):
-		if not await _take_a_turn():
-			return ("Another call is still running — the app does one at a time. "
-				+ "Send them one after another.")
-		var answer: Variant = await _the_app_tools().run(tool, input)
-		_hand_back()
-		return answer
 	if tool == "review_model" and assistant != null:
 		return await assistant.review(str(input.get("assembly", "")),
 			str(input.get("feature", "")), bool(input.get("creative", false)))

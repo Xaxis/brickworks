@@ -60,7 +60,7 @@ func _run() -> void:
 	var names: Array = (listed.get("tools", []) as Array).map(
 		func(tool: Dictionary) -> String: return str(tool["name"]))
 	var wanted: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "animate_model", "undo",
-		"open_model", "parts_list", "render_model", "export_model"]
+		"open_model", "parts_list", "render_model", "export_model", "job"]
 	_check("tools/list offers the window's commands too: %s" % ", ".join(wanted),
 		wanted.all(func(name: String) -> bool: return names.has(name)))
 
@@ -71,6 +71,10 @@ func _run() -> void:
 	await _parts()
 	await _exports(out)
 	await _open()
+	await _jobs(out)
+	await _brickify()
+	await _prints()
+	await _unique()
 	_done()
 
 
@@ -276,8 +280,8 @@ func _exports(out: String) -> void:
 		said = await _say("export_model", {"format": "picture"})
 		_check("a picture of the model: %s" % said, said.contains(out) and said.contains(".png")
 			and FileAccess.file_exists(said.trim_prefix("Wrote ").get_slice(" ", 0).trim_suffix(".")))
-		var result: Dictionary = await _rpc("tools/call", {"name": "render_model",
-			"arguments": {"kind": "picture", "quality": "quick", "size": "720p"}})
+		var result: Dictionary = await _finished(await _rpc("tools/call", {"name": "render_model",
+			"arguments": {"kind": "picture", "quality": "quick", "size": "720p"}}))
 		var kinds: Array = (result.get("content", []) as Array).map(
 			func(block: Dictionary) -> String: return str(block.get("type", "")))
 		var text: String = str(((result.get("content", []) as Array)[0] as Dictionary).get("text", ""))
@@ -316,6 +320,238 @@ func _open() -> void:
 	shell.read_only = false
 
 
+## Long work answers at once with a job, the one the window's bar shows, and
+## job says how it goes, gives the answer and stops it (src/net/tool_jobs.gd).
+func _jobs(out: String) -> void:
+	print("── long work, as jobs ──")
+	var asked_at: int = Time.get_ticks_msec()
+	var first: Dictionary = await _rpc("tools/call", {"name": "export_model",
+		"arguments": {"format": "studio"}})
+	var waited: int = Time.get_ticks_msec() - asked_at
+	var id: int = _job_of(first)
+	_check("a Studio file is a job, answered at once (%d ms): %s" % [waited, _text(first).left(80)],
+		id > 0 and waited < 2000 and _text(first).contains("job {\"id\": %d}" % id))
+	var shown: Working.Job = Working.current()
+	_check("...and the window's bar is that job: %s" % (shown.line() if shown != null else "none"),
+		shown != null and shown.words.begins_with("Writing") and not shown.can_cancel)
+	var meanwhile: String = await _say("parts_list", {})
+	_check("a call meanwhile is told at once that the app is busy with it: %s" % meanwhile.left(60),
+		meanwhile.begins_with("The app is busy with job %d" % id))
+	var stop: String = await _say("job", {"id": id, "cancel": true})
+	_check("...which cannot be stopped part way, and says so: %s" % stop.left(60),
+		stop.contains("cannot be stopped part way"))
+	var finished: Dictionary = await _finished(first)
+	var said: String = _text(finished)
+	var io: String = said.trim_prefix("Wrote ").trim_suffix(".")
+	_check("job gives the answer once it is done: %s" % str(finished.get("job", "")).get_slice("\n", 0),
+		str(finished.get("job", "")).contains("is done") and said.ends_with(".io.")
+			and FileAccess.get_file_as_bytes(io).size() > 100)
+	_check("...and the bar went with it", not Working.is_busy())
+	said = await _say("job", {"id": id})
+	_check("...and can be asked for again", said.contains("is done") and said.contains(".io"))
+	said = await _say("job", {"id": 999})
+	_check("a job that is not there is refused, naming those that are: %s" % said,
+		said.begins_with("No job 999") and said.contains("%d (export_model, done)" % id))
+	# Any other call still going after its time becomes a job where it stands.
+	_socket.jobs.after_s = 0.0
+	var examples: Array[ModelStore.Entry] = _store.list_examples()
+	var opening: Dictionary = await _rpc("tools/call", {"name": "open_model",
+		"arguments": {"name": examples[0].name, "discard_changes": true}})
+	_socket.jobs.after_s = 20.0
+	var opened: String = _text(await _finished(opening))
+	_check("a call past its time becomes a job: %s" % _text(opening).left(60),
+		_job_of(opening) > id and opened.begins_with("Opened"))
+	if DisplayServer.get_name() == "headless":
+		return
+	# A turntable, stopped part way: by the job tool, as by the bar's Cancel.
+	var turning: Dictionary = await _rpc("tools/call", {"name": "render_model",
+		"arguments": {"kind": "turntable"}})
+	var spin: int = _job_of(turning)
+	_check("a turntable is a job that can be stopped: %s" % _text(turning).left(70),
+		spin > 0 and _text(turning).contains("\"cancel\": true"))
+	var bar: Working.Job = Working.current()
+	while bar != null and not bar.ended and bar.done < 2:
+		await process_frame
+	_socket.jobs.wait_s = 0.0
+	said = await _say("job", {"id": spin})
+	_socket.jobs.wait_s = 10.0
+	_check("job says how far it has got: %s" % said.left(110),
+		said.contains("is still going") and said.contains(" of 36"))
+	said = await _say("job", {"id": spin, "cancel": true})
+	var renderer: StudioRender = (_main.get("_render") as RenderDialog).renderer
+	_check("cancelled, it stops: %s" % said.left(80), said.contains("was cancelled")
+		and not renderer.is_busy() and not Working.is_busy())
+	var name: String = (_main.get("_bar") as ModelBar).model_name()
+	_check("...and no turntable was written",
+		not FileAccess.file_exists(out.path_join(RenderOutput.file_name(name, "_turntable", "webp"))))
+	_check("...and the app is free again: %s" % (await _say("parts_list", {})).get_slice("\n", 0),
+		(await _say("parts_list", {})).contains(" pieces in "))
+
+
+## A 3D model laid in LEGO® bricks from a link the app fetches: here the probe's own
+## tiny web server, which only a probe may fetch from (AppTools.fetch_near).
+func _brickify() -> void:
+	print("── brickify ──")
+	_main.call("clear_model")
+	var tools: AppTools = _socket._the_app_tools()
+	var server := _Files.new()
+	server.files = {"/bunny.obj": FileAccess.get_file_as_bytes("res://tests/fixtures/brickify/bunny.obj"),
+		"/notes.txt": "not a model".to_utf8_buffer()}
+	root.add_child(server)
+	var at: String = "http://127.0.0.1:%d" % server.port
+	var said: String = await _say("brickify", {"url": "file:///etc/passwd"})
+	_check("a link that is not http or https is refused: %s" % said.left(60),
+		said.begins_with("Only an http or https link"))
+	said = await _say("brickify", {"url": at + "/bunny.obj"})
+	_check("...and one to this computer: %s" % said.left(70), said.contains("this computer"))
+	tools.fetch_near = true
+	said = await _say("brickify", {"url": at + "/notes.txt"})
+	_check("...and one that names no 3D model: %s" % said.left(60), said.contains("does not name"))
+	var capped: Dictionary = await tools._fetch(at + "/bunny.obj", 1000)
+	_check("the size is capped: %s" % str(capped.get("error", "")).left(60),
+		str(capped.get("error", "")).contains("larger than"))
+	said = await _say("brickify", {})
+	_check("with nothing to lay it says what to give: %s" % said.left(50), said.begins_with("Give url="))
+	var before: int = _model_ids().size()
+	var depth: int = _builder.history_depth()
+	var first: Dictionary = await _rpc("tools/call", {"name": "brickify",
+		"arguments": {"url": at + "/bunny.obj", "studs": 12}})
+	_check("a link to a model is a job: %s" % _text(first).left(60), _job_of(first) > 0)
+	said = _text(await _finished(first))
+	var added: Array[int] = _model_ids()
+	var path: String = Assemblies.path_of(_world.get_brick(added[-1])) if added.size() > before else ""
+	_check("the bunny is fetched and laid, as one sub-assembly: %s" % said.left(90),
+		said.begins_with("Brickified bunny") and added.size() > before + 20 and path.begins_with("bunny"))
+	_check("...one undo step", _builder.history_depth() == depth + 1)
+	await _say("undo", {})
+	_check("...and undone, it is gone", _model_ids().size() == before)
+	said = await _say("brickify", {"pick": true})
+	if DisplayServer.get_name() == "headless":
+		_check("headless, there is no file dialog to open: %s" % said.left(60),
+			said.contains("without a window"))
+	else:
+		_check("pick opens the window's file dialog, and says so: %s" % said.left(60),
+			said.begins_with("Opened the window's file dialog"))
+		var picker: MeshFilePicker = (_main.get("_brickify") as BrickifyDialog)._picker
+		_check("...which is open", picker._dialog != null and picker._dialog.visible)
+		if picker._dialog != null:
+			picker._dialog.hide()
+	tools.fetch_near = false
+	server.queue_free()
+
+
+## A print on a part where it stands, and a sticker on a face, each read back
+## off the model.
+func _prints() -> void:
+	print("── prints and stickers ──")
+	_main.call("clear_model")
+	var tile: int = _put("3068b", Vector3(10, 8, 10))
+	var brick: int = _put("3004", Vector3(80, 24, 10))
+	var was: Transform3D = _world.get_brick(tile).transform
+	var svg: String = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+		+ "<rect width='64' height='64' fill='#ffffff'/><circle cx='32' cy='32' r='22' "
+		+ "fill='#c91a09'/></svg>")
+	var said: String = await _say("print_part", {"brick": tile})
+	_check("no picture is refused, saying how to give one: %s" % said.left(50),
+		said.begins_with("Give the picture"))
+	said = await _say("print_part", {"brick": tile, "svg": "<svg"})
+	_check("an svg that cannot be drawn is refused: %s" % said.left(50), said.contains("could not be drawn"))
+	said = await _say("print_part", {"brick": tile, "svg": svg, "area": "nowhere"})
+	_check("an area the part has not is refused, with its areas: %s" % said.left(80),
+		said.contains("no area called nowhere"))
+	var depth: int = _builder.history_depth()
+	said = await _say("print_part", {"brick": tile, "svg": svg, "name": "Probe dot"})
+	var printed: BrickWorld.Brick = null
+	for one: BrickWorld.Brick in _world.bricks():
+		if one.transform.is_equal_approx(was) and not _store.scenery.has(one.id):
+			printed = one
+	_check("a print on the tile, where it stands: %s" % said.left(100),
+		printed != null and printed.id != tile and printed.part_id.begins_with("bw-")
+			and PartPrints.mould_of(_library, printed.part_id) == PartPrints.mould_of(_library, "3068b")
+			and printed.color_code == 7)
+	_check("...one undo step", _builder.history_depth() == depth + 1)
+	await _say("undo", {})
+	var back: Array = _world.bricks().filter(func(one: BrickWorld.Brick) -> bool:
+		return one.transform.is_equal_approx(was))
+	_check("...and undone, the plain tile is back where it stood",
+		back.size() == 1 and (back[0] as BrickWorld.Brick).part_id == "3068b")
+	said = await _say("print_part", {"brick": brick, "sticker": true, "side": "-z", "svg": svg,
+		"name": "Probe sticker"})
+	var stuck: Dictionary = Stickers.in_model(_world, _library)
+	var film: BrickWorld.Brick = null
+	for ids: Variant in stuck.values():
+		film = _world.get_brick((ids as PackedInt64Array)[0])
+	_check("a sticker on the brick's -z face, facing -z: %s" % said.left(90),
+		said.begins_with("Stuck") and stuck.size() == 1 and film != null
+			and film.transform.basis.y.normalized().is_equal_approx(Vector3.FORWARD))
+	said = await _say("print_part", {"brick": brick, "sticker": true, "side": "sideways", "svg": svg})
+	_check("a side there is not is refused: %s" % said.left(60), said.begins_with("side is one of"))
+
+
+## One copy of a sub-assembly cut loose from the others.
+func _unique() -> void:
+	print("── a copy made unique ──")
+	_main.call("clear_model")
+	var one: int = _put("3001", Vector3(0, 24, 0), Basis.IDENTITY, "Wheel#1")
+	var two: int = _put("3001", Vector3(80, 24, 0), Basis.IDENTITY, "Wheel#2")
+	var said: String = await _say("make_unique", {"assembly": "Axle"})
+	_check("an assembly there is not is refused, with those there are: %s" % said.left(60),
+		said.begins_with("No sub-assembly Axle") and said.contains("Wheel#2"))
+	var depth: int = _builder.history_depth()
+	said = await _say("make_unique", {"assembly": "Wheel (copy 2)"})
+	var fresh: String = Assemblies.path_of(_world.get_brick(two))
+	var assemblies: Assemblies = (_main.get("_shell") as Shell).assemblies
+	_check("copy 2 of the wheel is a sub-assembly of its own: %s" % said.left(90),
+		said.contains("of its own now") and Assemblies.definition(Assemblies.leaf(fresh)) != "Wheel"
+			and assemblies.copies_of(fresh).is_empty())
+	_check("...the other copy as it was, and one undo step",
+		Assemblies.path_of(_world.get_brick(one)) == "Wheel#1" and _builder.history_depth() == depth + 1)
+	said = await _say("make_unique", {"brick": one})
+	_check("a part in a copy with no others is refused: %s" % said.left(60),
+		said.contains("no sub-assembly with other copies"))
+	await _say("undo", {})
+	_check("undone, they are copies again", Assemblies.path_of(_world.get_brick(two)) == "Wheel#2")
+	said = await _say("make_unique", {"brick": two})
+	_check("...and a copy named by a part in it: %s" % said.left(60), said.contains("of its own now"))
+
+
+## A web server for one probe: GET a path in [member files], answered whole.
+class _Files extends Node:
+	var files: Dictionary = {}
+	var port: int = 0
+	var _server := TCPServer.new()
+	var _peers: Array = []
+
+	func _init() -> void:
+		for wanted: int in range(8931, 8999):
+			if _server.listen(wanted, "127.0.0.1") == OK:
+				port = wanted
+				return
+
+	func _process(_delta: float) -> void:
+		while _server.is_connection_available():
+			_peers.append([_server.take_connection(), PackedByteArray()])
+		for held: Array in _peers.duplicate():
+			var peer: StreamPeerTCP = held[0]
+			peer.poll()
+			if peer.get_available_bytes() > 0:
+				held[1] = (held[1] as PackedByteArray) + (peer.get_data(peer.get_available_bytes())[1] as PackedByteArray)
+			var said: String = (held[1] as PackedByteArray).get_string_from_utf8()
+			if not said.contains("\r\n\r\n"):
+				continue
+			var path: String = said.get_slice(" ", 1)
+			var body: PackedByteArray = files.get(path, PackedByteArray())
+			var head: String = "HTTP/1.1 %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % [
+				"200 OK" if files.has(path) else "404 Not Found", body.size()]
+			peer.put_data(head.to_utf8_buffer())
+			peer.put_data(body)
+			peer.disconnect_from_host()
+			_peers.erase(held)
+
+	func _exit_tree() -> void:
+		_server.stop()
+
+
 # -- helpers ------------------------------------------------------------------------
 
 
@@ -345,13 +581,47 @@ func _rpc(method: String, params: Dictionary) -> Dictionary:
 	return (answer as Dictionary).get("result", {}) as Dictionary
 
 
-## A tool's answer as text, called as the connector calls it.
+## A tool's answer as text, called as the connector calls it: a job's
+## answer once it is done, when the call answered with a job.
 func _say(tool: String, arguments: Dictionary) -> String:
-	var result: Dictionary = await _rpc("tools/call", {"name": tool, "arguments": arguments})
+	return _text(await _finished(await _rpc("tools/call", {"name": tool, "arguments": arguments})))
+
+
+static func _text(result: Dictionary) -> String:
 	var text: String = ""
 	for block: Dictionary in result.get("content", []):
 		text += str(block.get("text", ""))
 	return text
+
+
+## The job number a call answered with, or 0 when it answered outright.
+static func _job_of(result: Dictionary) -> int:
+	var found: RegExMatch = RegEx.create_from_string("^Started job (\\d+)").search(_text(result))
+	return int(found.get_string(1)) if found != null else 0
+
+
+## [param result], or when it is a job, the job's answer once it ends, polled
+## as a session polls it, without the job's own first line. "job" holds
+## what job last said.
+func _finished(result: Dictionary) -> Dictionary:
+	var id: int = _job_of(result)
+	if id == 0:
+		return result
+	for _n: int in 90:
+		var polled: Dictionary = await _rpc("tools/call", {"name": "job", "arguments": {"id": id}})
+		var said: String = _text(polled)
+		if said.contains(" is still going"):
+			continue
+		var blocks: Array = (polled.get("content", []) as Array).duplicate()
+		# The job's own line, then the work's answer: in the same text, or
+		# the blocks after it when the answer has a picture.
+		var first: String = str((blocks[0] as Dictionary).get("text", ""))
+		if blocks.size() > 1:
+			blocks.pop_front()
+		elif first.contains("\n"):
+			blocks[0] = {"type": "text", "text": first.substr(first.find("\n") + 1)}
+		return {"content": blocks, "job": said}
+	return {"content": [{"type": "text", "text": "job %d never ended" % id}]}
 
 
 func _check(what: String, ok: bool) -> void:

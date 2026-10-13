@@ -14410,7 +14410,11 @@ kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (what else the person can \
 do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
-animate_model, undo, open_model, parts_list, render_model, export_model)."""
+animate_model, undo, open_model, parts_list, render_model, export_model, \
+brickify, print_part, make_unique, job).
+
+A call answered with a job number is still working in the app: call job \
+about every 10 s until it gives the answer."""
 
 
 ## Names a session may ask read_guide for, beside the headings' own words.
@@ -14427,7 +14431,8 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"art": "BRICK ART", "mosaic": "BRICK ART",
 	"app": "THE REST OF THE APP", "menus": "THE REST OF THE APP", "floor": "THE REST OF THE APP",
 	"steps": "THE REST OF THE APP", "hose": "THE REST OF THE APP", "pose": "THE REST OF THE APP",
-	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP"}
+	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP",
+	"job": "THE REST OF THE APP", "jobs": "THE REST OF THE APP"}
 
 
 ## One section of the guidance by its name or a word of its heading: the

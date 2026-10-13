@@ -95,6 +95,74 @@ func is_busy() -> bool:
 	return _busy
 
 
+## A model a session fetched (AppTools' brickify), read as one the person
+## picked: the panel opens on it. Why it could not be read, or "".
+func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) -> String:
+	if _busy:
+		return "a model is being brickified already"
+	_mesh = null
+	var why: Array = [""]
+	var heard := func(text: String) -> void: why[0] = text
+	said.connect(heard)
+	await _on_picked(bytes, file_name, extras)
+	said.disconnect(heard)
+	if _mesh == null:
+		return str(why[0]) if not str(why[0]).is_empty() else "could not read %s" % file_name
+	return ""
+
+
+## The model the panel holds, or null.
+func model() -> MeshFile:
+	return _mesh
+
+
+## What the last Brickify came to, or why it did not go.
+func outcome() -> String:
+	if not last_summary.is_empty():
+		return last_summary
+	return "stopped: nothing was laid" if _stopped else _status.text
+
+
+## Set the panel's choices from a session's (AppTools' brickify), as the
+## person would set them, so the panel shows what is laid. Why one of
+## them cannot be, or "".
+func choose(asked: Dictionary) -> String:
+	if asked.has("up"):
+		var up: int = Brickify.UPS.find(str(asked["up"]).to_upper())
+		if up < 0:
+			return "up is one of %s" % ", ".join(Brickify.UPS)
+		_up.select(up)
+		_on_up_changed()
+	if asked.has("studs"):
+		var studs: int = int(asked["studs"])
+		if studs < Brickify.LEAST_STUDS or studs > Brickify.MOST_STUDS:
+			return "studs is %d to %d along its longest side" % [Brickify.LEAST_STUDS,
+				Brickify.MOST_STUDS]
+		set_studs(studs)
+	if asked.has("hollow"):
+		_hollow.button_pressed = bool(asked["hollow"])
+	if asked.has("smooth"):
+		_surface.select(0 if bool(asked["smooth"]) else 1)
+	if asked.has("colour"):
+		var at: int = _one.get_item_index(int(asked["colour"]))
+		if at < 0:
+			return "a one-colour model is laid in one of %s" % ", ".join(
+				PackedStringArray(Brickify.PALETTE.map(func(code: int) -> String: return str(code))))
+		_one.select(at)
+		_colours.select(1)
+	if asked.has("colours"):
+		var kinds: Array = ["model", "one", "limit"]
+		if not str(asked["colours"]) in kinds:
+			return "colours is model (its own), one (all colour=) or limit (its own, at most limit=)"
+		_colours.select(kinds.find(str(asked["colours"])))
+	if asked.has("limit"):
+		_limit.value = clampi(int(asked["limit"]), int(_limit.min_value), int(_limit.max_value))
+		if not asked.has("colours"):
+			_colours.select(2)
+	_on_colours_changed()
+	return ""
+
+
 func _on_picked(bytes: PackedByteArray, file_name: String, extras: Dictionary) -> void:
 	said.emit("reading %s…" % file_name.get_file())
 	var mesh: MeshFile = null
@@ -479,17 +547,23 @@ func _place_model(turn: Basis, box: AABB) -> void:
 
 
 ## Work it out and put it down. Returns when it is down, or did not go.
-func brickify() -> void:
+## [param job] is a session's (ToolJobs): the same bar, handed in.
+func brickify(job: Working.Job = null) -> void:
 	if _busy or _mesh == null or library == null:
 		return
 	_busy = true
 	_stopped = false
+	last_summary = ""
 	_set_enabled(false)
 	var choice: Brickify.Options = options()
 	var began: int = Time.get_ticks_msec()
 	# Said in the status bar too, as every slow thing is (Working), with its
 	# Cancel the same as the panel's.
-	var job: Working.Job = Working.begin("Brickifying %s…" % _mesh.name, 0, true)
+	if job == null:
+		job = Working.begin("Brickifying %s…" % _mesh.name, 0, true)
+	else:
+		job.say("Brickifying %s…" % _mesh.name)
+		job.can_cancel = true
 	job.cancel_wanted.connect(func() -> void: _stopped = true)
 	_status.text = "getting the parts ready…"
 	await job.shown()

@@ -83,7 +83,7 @@ const MENUS: Array = [
 	["Build", ["timeline", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "flex", "minifig", "mosaic",
-		"brickify", "part_maker",
+		"brickify", "part_maker", "print_part", "sticker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
@@ -772,6 +772,14 @@ func _define() -> void:
 	_add("part_maker", "Part maker…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
+	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
+	# menus too: every command a session can match is one the menus have.
+	_add("print_part", "Print on a part…", 0, func() -> void:
+		(app.get("_studio") as PrintStudio).print_part(builder.held_part), Callable(),
+		"Draw a print on the part selected, printed where it stands, or on the part in hand")
+	_add("sticker", "Put a sticker on…", 0, func() -> void:
+		(app.get("_studio") as PrintStudio).sticker(), Callable(),
+		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
 		app.call("_refresh_preview"))

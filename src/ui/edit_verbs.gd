@@ -444,15 +444,18 @@ func leave_assembly() -> void:
 	say.call("done editing %s" % Assemblies.label(was))
 
 
-## Cut the selected copy loose from the others.
-func make_unique() -> void:
-	var path: String = assemblies.selected_assembly() if assemblies != null else ""
+## Cut the selected copy loose from the others — or the copy at
+## [param path], for a session (AppTools' make_unique). Its new path, or "".
+func make_unique(path: String = "") -> String:
 	if path.is_empty():
-		return
+		path = assemblies.selected_assembly() if assemblies != null else ""
+	if path.is_empty():
+		return ""
 	var fresh: String = assemblies.make_unique(path)
 	edited.call()
 	say.call("%s is a sub-assembly of its own now: editing it changes no other"
 		% Assemblies.label(fresh))
+	return fresh
 
 
 ## Back through the history to before the step ``count`` steps ago.
