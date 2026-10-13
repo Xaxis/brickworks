@@ -1682,6 +1682,147 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "eye with a highlight",
+			"group": "faces and features",
+			"when": "an eye that looks back at you — an owl's, a cat's, a "
+				+ "dragon's, a figure's, a robot's lens; two of them make a face",
+			"why": "A 2 x 2 round plate with one centre stud (18674) in the "
+				+ "iris's colour, on a bracket so it faces out, and on that stud "
+				+ "a 1 x 1 round tile printed with a black eye and its white "
+				+ "highlight (98138p07, the tile white). The glint is what makes "
+				+ "it look alive: a plain black dot reads as a hole, and a square "
+				+ "1 x 1 tile as a pixel. Two a stud apart, a plate proud of the "
+				+ "face, are what a set's animal is known by. Smaller, the printed "
+				+ "tile alone in a headlight brick's recess (4070, as \"porthole "
+				+ "or lamp\"); a 2 x 2 round tile printed with an eye (14769px3) "
+				+ "is the same in one part.",
+			"bricks": [
+				{"part": "3004", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "99207", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "18674", "color": 14, "x": 0, "y": 3, "z": 1.2, "rot": 0,
+					"face": "+z"},
+				{"part": "98138p07", "color": 15, "x": 0.5, "y": 4.25, "z": 1.6,
+					"rot": 0, "face": "+z"},
+			],
+		},
+		{
+			"name": "round face",
+			"group": "faces and features",
+			"when": "the face of anything that looks at you — an owl's facial "
+				+ "disc, a cat's or a bear's face, a robot's head, a clock — on a "
+				+ "head built round",
+			"why": "A face is features on a round, not a panel of square tiles: "
+				+ "a 4 x 4 round plate (60474) on a bracket as the disc, an eye "
+				+ "with its highlight on each side of its upper studs, and a beak "
+				+ "on a jumper between them and under. Each feature is a part, so "
+				+ "the face reads from across a room, and the disc's edge is what "
+				+ "makes the head read round. A 6 x 6 round plate (11213) takes "
+				+ "the eyes a stud further apart; a darker rim round the disc, as "
+				+ "a barn owl's is, is quarter round tiles (25269) or curved "
+				+ "slopes laid round it.",
+			"bricks": [
+				{"part": "3004", "color": 19, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "99207", "color": 19, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "60474", "color": 15, "x": -1, "y": 0.5, "z": 1.2, "rot": 0,
+					"face": "+z"},
+				{"part": "18674", "color": 25, "x": -1, "y": 5.5, "z": 1.6, "rot": 0,
+					"face": "+z"},
+				{"part": "18674", "color": 25, "x": 1, "y": 5.5, "z": 1.6, "rot": 0,
+					"face": "+z"},
+				{"part": "98138p07", "color": 15, "x": -0.5, "y": 6.75, "z": 2, "rot": 0,
+					"face": "+z"},
+				{"part": "98138p07", "color": 15, "x": 1.5, "y": 6.75, "z": 2, "rot": 0,
+					"face": "+z"},
+				{"part": "3794b", "color": 15, "x": 0, "y": 3, "z": 1.6, "rot": 0,
+					"face": "+z"},
+				{"part": "54200", "color": 19, "x": 0.5, "y": 3, "z": 2, "rot": 0,
+					"face": "+z"},
+			],
+		},
+		{
+			"name": "beak or snout",
+			"group": "faces and features",
+			"when": "a bird's beak, a dog's or a bear's nose, a dragon's snout, "
+				+ "anything pointed out of the middle of a face",
+			"why": "A cheese slope (54200) on a jumper plate (3794b), so it sits "
+				+ "on the face's middle, half a stud over: its thick end under the "
+				+ "eyes and its slope falling away down the face, the shape of a "
+				+ "beak seen from the side. Two side by side are a wider bill; a "
+				+ "tooth plate (49668) under it hooks it, as a raptor's is; for a "
+				+ "muzzle, a 2 x 2 curved slope (15068) on the bracket instead.",
+			"bricks": [
+				{"part": "3004", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "99207", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3794b", "color": 15, "x": 0, "y": 3, "z": 1.2, "rot": 0,
+					"face": "+z"},
+				{"part": "54200", "color": 14, "x": 0.5, "y": 3, "z": 1.6, "rot": 0,
+					"face": "+z"},
+			],
+		},
+		{
+			"name": "ears or tufts",
+			"group": "faces and features",
+			"when": "an owl's ear tufts, a cat's, a fox's or a bear's ears, a "
+				+ "dragon's horns — the two points on a head that make its outline",
+			"why": "A slope at each top corner of the head, falling outward, the "
+				+ "middle of the head left between them: 45 degree slopes (3040b) "
+				+ "stand as pointed ears, 1 x 1 cheese slopes as small tufts, "
+				+ "curved slopes (11477) as rounded ones. A mirrored pair turned to "
+				+ "fall away from each other; without them a head is a box from "
+				+ "the front.",
+			"bricks": [
+				{"part": "3795", "color": 19, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3040b", "color": 19, "x": 0, "y": 1, "z": 0, "rot": 3},
+				{"part": "3040b", "color": 19, "x": 4, "y": 1, "z": 0, "rot": 1},
+			],
+		},
+		{
+			"name": "talons",
+			"group": "faces and features",
+			"when": "a bird's feet, a dragon's or a beast's claws, a raptor's grip "
+				+ "on a branch or a post",
+			"why": "Three tooth plates side by side (49668, the tooth in line), "
+				+ "their teeth pointing forward off a 1 x 3 plate: three toes, each "
+				+ "ending in a claw, with a 1 x 1 round brick (3062b) standing on "
+				+ "the middle one as the leg. Black claws on a yellow foot for an "
+				+ "eagle; for an owl, dark grey, the leg a round brick in its "
+				+ "breast's colour. A bare white cylinder on a plate reads as a "
+				+ "peg, not a leg.",
+			"bricks": [
+				{"part": "3623", "color": 14, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "49668", "color": 0, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "49668", "color": 0, "x": 1, "y": 1, "z": 0, "rot": 0},
+				{"part": "49668", "color": 0, "x": 2, "y": 1, "z": 0, "rot": 0},
+				{"part": "3062b", "color": 15, "x": 1, "y": 2, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "headlamps and grille",
+			"group": "faces and features",
+			"when": "a vehicle's face — a car's, a truck's, a train's or a "
+				+ "robot's front: the two lights and the grille it is known by",
+			"why": "Headlight bricks (4070) at the two ends with a trans-clear "
+				+ "round plate (6141) in each recess, so the lamp sits into the "
+				+ "face, and between them a brick with studs on its side (11211) "
+				+ "carrying a grille tile (2412b) flush with them; a plate over the "
+				+ "top ties them. A car's front as Speed Champions builds one: "
+				+ "lamps, a grille and the body's colour round them, never a flat "
+				+ "face of plain bricks.",
+			"bricks": [
+				{"part": "3710", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "4070", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "4070", "color": 4, "x": 3, "y": 1, "z": 0, "rot": 0},
+				{"part": "11211", "color": 4, "x": 1, "y": 1, "z": 0, "rot": 0},
+				{"part": "6141", "color": 47, "x": 0, "y": 1.5, "z": 0.8, "rot": 0,
+					"face": "+z"},
+				{"part": "6141", "color": 47, "x": 3, "y": 1.5, "z": 0.8, "rot": 0,
+					"face": "+z"},
+				{"part": "2412b", "color": 0, "x": 1, "y": 1.5, "z": 1, "rot": 0,
+					"face": "+z"},
+				{"part": "3710", "color": 4, "x": 0, "y": 4, "z": 0, "rot": 0},
+			],
+		},
+		{
 			"name": "display stand with a nameplate",
 			"group": "display and touches",
 			"when": "any display model — a rocket, a ship, a vehicle, a "
@@ -1763,7 +1904,8 @@ static func names() -> PackedStringArray:
 ## pipeline recorded shafts and bores (Joints.rounds). A worked example
 ## that only passed by being built wrong would have taught it wrong.
 const GROUPS: Array[String] = ["basics", "walls and stone",
-	"towers and columns", "round bodies", "machines and joints", "angles",
+	"towers and columns", "round bodies", "faces and features",
+	"machines and joints", "angles",
 	"roofs and spires", "windows and doors", "rock and ground", "plants",
 	"furniture and interiors", "lights", "display and touches"]
 

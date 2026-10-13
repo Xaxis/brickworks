@@ -778,10 +778,29 @@ static func part(library: PartLibrary, id: String, inverted: bool = false) -> Di
 		var high_low: bool = on_x.x > on_x.y if not inverted else on_x.x < on_x.y
 		native = 1 if high_low else 3
 	var along_z: bool = native % 2 == 0
-	var found := {"id": id, "w": foot.x if along_z else foot.y,
-		"d": foot.y if along_z else foot.x,
+	var d: int = foot.y if along_z else foot.x
+	# The rows along its fall, from the high end, that a stud from below
+	# reaches into, read as the check reads it: a little past the stud's tip.
+	# A curved slope is hollow under its high end, so only its low rows grip;
+	# upright it rests on its plates whatever they hold, but on its side it is
+	# held by those rows or by nothing, and the owl's flanks were refused four
+	# times for 11477s whose side stud stood under the hollow end.
+	var grips: Array[int] = []
+	for row: int in d:
+		var n: int = row if native in [0, 1] else d - 1 - row
+		var across: float = (b.position.z if along_z else b.position.x) + 10.0 + 20.0 * n
+		var stud: float = (b.position.x if along_z else b.position.z) + 10.0
+		var probe := Vector3(stud, b.position.y + 5.0, across) if along_z \
+			else Vector3(across, b.position.y + 5.0, stud)
+		# The cover is in the lattice's cells, the bounds in LDU.
+		probe /= BrickLattice.CELL
+		for box: AABB in mesh.boxes:
+			if box.grow(0.01).has_point(probe):
+				grips.append(row)
+				break
+	var found := {"id": id, "w": foot.x if along_z else foot.y, "d": d,
 		"h": int(round((b.size.y - (4.0 if studded else 0.0)) / 8.0)),
-		"turn": posmod(-native, 4)}
+		"turn": posmod(-native, 4), "grips": grips}
 	_parts[key] = found
 	return found
 
@@ -2201,6 +2220,14 @@ class Plan extends RefCounted:
 								error += absf(float(here - base) - float(profile[n]))
 						if not fits:
 							continue
+						# On its side a slope is held only by a stud reaching into
+						# a row it grips by: against the core, a side stud there.
+						if flank and not under:
+							var gripped: bool = false
+							for row: Variant in Shapes.part(library, str(entry[3])).get("grips", []):
+								gripped = gripped or base > 0 or held.has(cell + out * int(row))
+							if not gripped:
+								continue
 						error /= length
 						# The longest slope whose fall is within a plate of the
 						# shape's.
@@ -2378,11 +2405,26 @@ class Plan extends RefCounted:
 				studs = high_row
 			# Held where it is thick: a stud under the thin end of a slope
 			# reaches into nothing, and the check called the plates under one
-			# floating.
+			# floating. On its side, held only where a stud reaches in at all:
+			# a curved slope's high end is hollow (Shapes.part's "grips").
+			var base: Array[Vector2i] = high_row
+			if flank:
+				base = _gripped(pick, shape)
 			made.append({"part": id, "color": pick["colour"], "x": low.x, "y": from,
 				"z": low.y, "rot": rot, "_top": true, "_cells": cells, "_h": tall_,
-				"_studs": studs, "_base": high_row, "_slope": true})
+				"_studs": studs, "_base": base, "_slope": true})
 		_take(cells, from, tall_)
+
+	## The cells of a pick a stud from under it reaches into: its rows the
+	## part grips by, every stud across.
+	func _gripped(pick: Dictionary, shape: Dictionary) -> Array[Vector2i]:
+		var facing: Vector2i = pick["facing"]
+		var perp := Vector2i(absi(facing.y), absi(facing.x))
+		var out: Array[Vector2i] = []
+		for a: int in int(pick.get("wide", 1)):
+			for row: Variant in shape.get("grips", []):
+				out.append((pick["cell"] as Vector2i) + perp * a + facing * int(row))
+		return out
 
 	## Mark the plates a surface part stands in, so nothing else is laid there
 	## and no wedge's cut side reaches into it.
@@ -2628,6 +2670,12 @@ class Plan extends RefCounted:
 					if _unedge(piece, main):
 						joined_one = true
 						break
+			# A sculpt's grid keeps its bricks, as it does over a bridge.
+			if not joined_one and bridges:
+				for piece: Array in found.slice(1):
+					if _unbrick(piece, main):
+						joined_one = true
+						break
 			if not joined_one:
 				break
 
@@ -2697,6 +2745,69 @@ class Plan extends RefCounted:
 			for m: int in made.size():
 				if not gone.has(m):
 					kept.append(made[m])
+			made = kept + added
+			return true
+		return false
+
+	## A brick of the rest beside a plate of [param piece] within its course,
+	## laid again as three plates, and its mirror with it, so the two can be
+	## stitched by a plate reaching across. Whether one was. The held-out car's
+	## nose, past its front arch, was plates beside the body's middle brick
+	## course with tiles over it: 14 parts held by nothing, and the run threw
+	## the shaped body away.
+	func _unbrick(piece: Array, main: Dictionary) -> bool:
+		var plates: Dictionary = {}    ## Vector3i(x, y, z) -> a plate of the piece there
+		for n: int in piece:
+			var one: Dictionary = made[n]
+			if not _plain(one) or int(one["_h"]) != 1:
+				continue
+			for cell: Vector2i in one["_cells"]:
+				plates[Vector3i(cell.x, int(round(float(one["y"]))), cell.y)] = n
+		for m: Variant in main:
+			var two: Dictionary = made[m]
+			# Not a side-stud brick: what it holds is laid already.
+			if not _plain(two) or int(two["_h"]) != 3 or two.has("_holds"):
+				continue
+			var y: int = int(round(float(two["y"])))
+			var beside: bool = false
+			for cell: Vector2i in two["_cells"]:
+				for step: Vector2i in Shapes.OUT:
+					for h: int in 3:
+						var n: int = int(plates.get(Vector3i(cell.x + step.x, y + h, cell.y + step.y), -1))
+						beside = beside or n >= 0 and int((made[n] as Dictionary)["color"]) == int(two["color"])
+			if not beside:
+				continue
+			var gone: Dictionary = {int(m): true}
+			if not axis.is_empty():
+				var want: Dictionary = {}
+				for cell: Vector2i in two["_cells"]:
+					want[reflect(cell)] = true
+				for k: int in made.size():
+					var other: Dictionary = made[k]
+					if k == int(m) or other.get("part") != two.get("part") \
+							or int(round(float(other["y"]))) != y \
+							or (other["_cells"] as Array).size() != want.size():
+						continue
+					var same: bool = true
+					for cell: Vector2i in other["_cells"]:
+						same = same and want.has(cell)
+					if same:
+						gone[k] = true
+						break
+			var added: Array = []
+			for k: Variant in gone:
+				var brick: Dictionary = made[k]
+				var cells: Dictionary = {}
+				for cell: Vector2i in brick["_cells"]:
+					cells[cell] = true
+				for h: int in 3:
+					for part: Dictionary in _tile(cells.duplicate(), y + h, int(brick["color"]),
+							Shapes.CORE_PLATES, {}, -1):
+						added.append(_annotated(part, Shapes.CORE_PLATES, 1, true))
+			var kept: Array = []
+			for k: int in made.size():
+				if not gone.has(k):
+					kept.append(made[k])
 			made = kept + added
 			return true
 		return false

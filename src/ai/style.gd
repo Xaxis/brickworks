@@ -383,16 +383,19 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 			+ "slopes, wedge plates and tiles for you")
 		calls.append("for a vehicle: wedge plates where an edge runs at a slant "
 			+ "(show_technique \"smooth diagonal\"), curved slopes over a bonnet, a "
-			+ "hull or a cab roof, studs_out for a smooth side panel, and a section "
+			+ "hull or a cab roof, studs_out for a smooth side panel, a section "
 			+ "on a hinge (hinge: true) for a windscreen, a ramp or a hatch that "
-			+ "opens")
+			+ "opens, and its face as lamps and a grille (show_technique "
+			+ "\"headlamps and grille\")")
 	if traits.has("living"):
 		calls.append("the shape pattern, for a creature's body and head — "
 			+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
 			+ "and wedges fitted to its surface")
 		calls.append("for a living thing: curved slopes and wedges for a body, "
 			+ "sections on hinges for wings, ears and limbs, the rock pattern for "
-			+ "anything rough, and nothing square that is not")
+			+ "anything rough, and nothing square that is not; its face in "
+			+ "features, each a part — show_technique \"round face\", \"eye with a "
+			+ "highlight\", \"beak or snout\", \"ears or tufts\", \"talons\"")
 	if traits.has("machine"):
 		calls.append("for a machine: Technic beams pinned to Technic bricks for "
 			+ "arms and frames, a section on a hinge for a joint, grille tiles, "
