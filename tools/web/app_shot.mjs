@@ -1,6 +1,6 @@
 // The landing page's picture of the app, taken from a real deployment.
 //
-//   node tools/web/app_shot.mjs --url=https://brickworks.diy/app --out=web/shot-app.png
+//   node tools/web/app_shot.mjs --url=https://brickworks.diy/app --out=web/_shot-app.png
 //   BW_BYPASS=… node tools/web/app_shot.mjs --url=<a preview>/app --out=…
 //
 // Opens the castle the landing page shows, on a clean browser, so the panel

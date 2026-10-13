@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:landing page, ui:changelog page, ui:404 page, cli:put the website together, cli:site check -->
 
 ## Sub-features
 
@@ -23,8 +23,8 @@ plan with Claude as the client.
   are in [account](account.md). **The person's own key never reaches the
   server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
-  under `/b/<sha>/`, points `/` at it and then proves it in a browser. With
-  `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
+  under `/b/<sha>/`, serves its page at `/app` and then proves it in a browser. With
+  `--prod` it ends only once brickworks.diy/app names the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
   measured the previous build. It first runs `tools/storage_parts.py`, which
   uploads any part mesh the catalogue names that object storage lacks, and
@@ -195,9 +195,9 @@ plan with Claude as the client.
   nothing; one that never was, 404. The card is a picture and a View in 3D that
   opens the link in a tab.
 - `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
-  `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>`, which
-  `deploy.sh` 308s to `/b/<sha>/?view=<id>` (Vercel keeps a query across that
-  redirect by itself; `?copy=` likewise), and which the shell hands the app as `--view=<id>`
+  `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>` — the app's page
+  itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
+  likewise) — which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
   read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
   to three times, when nothing at all comes back: on a preview a viewer said
@@ -246,7 +246,9 @@ plan with Claude as the client.
   the sign-in screen. `deploy.sh` sources `.env`, so its checks are signed in.
   Pages of the site that are not the app launch with `{ signedOut: true }`.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
-  beside the build and the Help panel shows "This build: <commit>, updated
+  beside the build, and the Help panel finds it beside the engine
+  (`GODOT_CONFIG.executable`), not beside the page — at `/app` the page is not
+  in the build's directory — and shows "This build: <commit>, updated
   <local time>". The owner, looking at the live site, could not tell when it had
   last been deployed. Desktop builds say "Development build".
 - `fits the page at every density`: the layout stretches to the canvas
@@ -421,7 +423,49 @@ plan with Claude as the client.
   does and how it is checked is in [release](release.md). The landing page
   links to it from the nav and the footer. The deploy does not check it yet:
   after a release, run `node tools/web/download_check.mjs
-  --url=https://brickworks.diy/download.html`.
+  --url=https://brickworks.diy/download`.
+- `put the website together` (`tools/site.py OUT`): every file in `web/` (and
+  `web/img/`) but working ones named `_…` and `img/manifest.json`, with
+  `changelog.html` filled from `CHANGELOG.md` and `releases.json`. The deploy runs
+  it into `.vercel/output/static`; run it into a scratch directory to look at the
+  changelog. **Clean addresses** (2026-10-12, the owner: "pages at brickworks.diy
+  shouldn't end in .html"): every top-level page but `index`, `404` and
+  `authorize` is served at its bare name by a Build Output `overrides` entry
+  (`/download`, `/changelog`, `/admin`), and `/<name>.html` answers 308 to it,
+  query and all (`/index.html` to `/`, `/authorize.html` to `/oauth/authorize`);
+  `/download/` and `/app/` lose the slash. **`/app` is a rewrite**, not a redirect:
+  the page under `/b/<sha>/` is served at `/app`, `no-cache`, with every file it
+  names made absolute by the deploy (`src="/b/<sha>/index.js"`,
+  `GODOT_CONFIG.executable` and `fileSizes`), because the CSP's `base-uri 'none'`
+  rules out a `<base>`. The CSP's script hash is of that served copy. **An unknown
+  address answers 404 with `web/404.html`**, at any depth and inside `/b/<sha>/`;
+  it used to 308 to `/`. `/parts/` and `/sets/` keep their plain-text 404s.
+- `landing page` (`web/index.html`, `web/site.css`, the pictures in `web/img/`):
+  the hero (the builder with Orthanc, `img/hero-*.webp`), a gallery of real
+  models, a row per feature (the designer, LEGO Art, hoses and posing, Studio and
+  files, instructions, renders, share links, collection), the rest of the
+  toolbox, how it works with the two ways to bring Claude, privacy, the
+  dimensions, an FAQ (also as FAQPage JSON-LD beside the SoftwareApplication) and a
+  last call to open the app. Every page shares `/site.css` (every text colour 4.5:1
+  or better on its background in both schemes), a skip link, a sticky bar with a
+  `<details>` menu under 860 px (no script: the CSP runs none inline), and one
+  footer. Pictures are WebP at two widths with `srcset`, `width` and `height`;
+  all but the hero load lazily. `img/manifest.json` says where each came from
+  (`shots/` of the run that made it) and holds its alt text. `changelog page`
+  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
+  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  names `sitemap.xml`, which lists `/`, `/download` and `/changelog`.
+- `site check` (`tools/web/site_check.mjs --url=<deployment>`): every page 200 at
+  its bare name with its title, description, canonical link and an Open Graph
+  card whose picture answers; every old `.html` 308 to its bare name; `/app` 200
+  with its build's engine named under `/b/<sha>/`, COOP/COEP and the app's CSP, not
+  cached, and the build's files immutable; unknown addresses the 404 page with a
+  404; the sitemap's pages 200 and robots keeping `/admin` out; every link,
+  picture and `#fragment` on every page resolving (external links fail only when
+  gone, 404 or 410); and in a browser, no page logging an error or scrolling
+  sideways at 390 px, with a full-page shot of each at 390 and 1280 px in `--out`,
+  and `/app` booting with the address bar still `/app` and its `version.json`
+  found. About four minutes on SwiftShader.
 - `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a
   key, asks for a small house and records every answer from Anthropic, with a
   screenshot at each step. With its default fake key it is free and proves the
@@ -447,6 +491,8 @@ tools/deploy.sh                 # a preview URL
 tools/deploy.sh --prod          # the one brickworks.diy points at
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
+VERCEL_BYPASS=… node tools/web/site_check.mjs --url=<deployment> --out=shots/site
+python3 tools/site.py /tmp/site && (cd /tmp/site && python3 -m http.server 8098)   # the pages, as files
 python3 tools/web/serve.py build/web 8099    # locally, with the isolation headers
 # ...and standing in for the deployment on a slow network: /api/account names
 # its own /parts/, served from the directory after a delay (see parts.md previews)
@@ -602,8 +648,8 @@ the build animation weighed the model once a step.
   anything.** What *is* greppable is packed data: `assets/generated/catalogue.json`
   goes in as JSON, so
   `curl --compressed <build>/index.pck | grep -a '"castle":{"sets"'` really does
-  prove the catalogue that shipped. For code, the honest proof is the stamp — `/`
-  308s to `/b/<sha>/`, and that sha names the tree.
+  prove the catalogue that shipped. For code, the honest proof is the stamp —
+  `/app` names `/b/<sha>/index.js`, and that sha names the tree.
 - **A 200 from the landing page says nothing about how it renders.** That was
   the whole of the deploy's landing check, and what it missed for as long as the
   page has existed: five header links are 405px wide in a 358px bar, the nav does
@@ -611,7 +657,10 @@ the build animation weighed the model once a step.
   scrolled sideways**. `tools/web/landing_check.mjs` loads it in a browser at
   phone and laptop width and fails the deploy on a sideways scroll, on nothing
   visible linking to `/app`, or on a missing heading. Run it on a file while
-  editing: `node tools/web/landing_check.mjs --file=web/index.html`.
+  editing: `node tools/web/landing_check.mjs --file=web/index.html`. A file is
+  served from its directory over http (`static_server.mjs`), not opened as
+  `file://`: the pages name `/site.css` and `/img/…` from the root (the 404 page
+  is served at any depth), and as files they load unstyled.
 
   What the page says, in order: the two ways to design with Claude (`#how`:
   the plan through Connect Claude, or an API key, each as numbered steps with
@@ -620,8 +669,9 @@ the build animation weighed the model once a step.
   account holds, key, login, the relay, models — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `own_key.gd` and the
   CSP in `deploy.sh`; change one, change the page), and the dimensions. The picture at the top is retaken from a deployment with
-  `tools/web/app_shot.mjs --url=<build>/app --out=web/shot-app.png` (the castle,
-  a clean browser, 1600x900), not by hand.
+  `tools/web/app_shot.mjs --url=<build>/app --out=web/_shot-app.png` (a clean
+  browser, 1600x900), not by hand, then made `img/hero-1600.webp` and
+  `img/hero-960.webp`.
 
   Measure a page where its assets resolve. Comparing the edited page against a
   copy kept in the scratchpad "proved" the overflow was mine — the copy had no
@@ -629,7 +679,7 @@ the build animation weighed the model once a step.
   Three single-change bisects all showing the same 566px is what exposed the
   baseline rather than the change.
 
-- **A wrong path under `/b/<sha>/` answers with a 308 to `/`,** not a 404, so a
-  typo in a filename reads as "the file is missing" when it is the URL that is
-  wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
+- **A wrong path under `/b/<sha>/` answers 404 with the site's 404 page** (it
+  was a 308 to `/` until 2026-10-12), so a typo in a filename reads as "the file
+  is missing" when it is the URL that is wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
   `index.wasm`.

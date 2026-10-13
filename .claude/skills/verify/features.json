@@ -366,6 +366,14 @@
       "tests": []
     },
     {
+      "id": "cli:put the website together",
+      "kind": "cli",
+      "entry": "tools/site.py",
+      "reach": "python3 tools/site.py /tmp/site",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:redraw check",
       "kind": "cli",
       "entry": "tools/web/redraw_check.mjs",
@@ -462,6 +470,14 @@
       "entry": "src/dev/sign_in.gd",
       "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:site check",
+      "kind": "cli",
+      "entry": "tools/web/site_check.mjs",
+      "reach": "VERCEL_BYPASS=\u2026 node tools/web/site_check.mjs --url=<deployment> --out=shots/site",
+      "area": "web",
       "tests": []
     },
     {
@@ -867,6 +883,14 @@
       "tests": []
     },
     {
+      "id": "ui:404 page",
+      "kind": "ui",
+      "entry": "web/404.html",
+      "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:LEGO Art designed by Claude",
       "kind": "ui",
       "entry": "src/ai/assistant.gd",
@@ -886,7 +910,7 @@
       "id": "ui:admin page",
       "kind": "ui",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin.html   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
       "area": "account",
       "tests": []
     },
@@ -936,6 +960,14 @@
       "entry": "src/camera/cad_camera.gd",
       "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:changelog page",
+      "kind": "ui",
+      "entry": "web/changelog.html",
+      "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web",
       "tests": []
     },
     {
@@ -990,7 +1022,7 @@
       "id": "ui:download page",
       "kind": "ui",
       "entry": "web/download.html",
-      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release",
       "tests": []
     },
@@ -1024,6 +1056,14 @@
       "entry": "src/ui/flex_tool.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:landing page",
+      "kind": "ui",
+      "entry": "web/index.html",
+      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "area": "web",
       "tests": []
     },
     {

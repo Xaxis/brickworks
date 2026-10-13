@@ -66,7 +66,7 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
 tools/deploy.sh --prod
 
 # 7. Check it live.
-node tools/web/download_check.mjs --url=https://brickworks.diy/download.html
+node tools/web/download_check.mjs --url=https://brickworks.diy/download
 ```
 
 `gh` here means `env -u GITHUB_TOKEN gh`: this machine's `GITHUB_TOKEN` is

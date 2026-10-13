@@ -409,7 +409,7 @@
       "kind": "ui",
       "label": "download page",
       "entry": "web/download.html",
-      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release"
     },
     {
@@ -528,7 +528,7 @@
       "kind": "ui",
       "label": "admin page",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin.html   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
       "area": "account"
     },
     {
@@ -1244,6 +1244,41 @@
       "entry": "tools/web/floor_flow.mjs",
       "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "landing page",
+      "entry": "web/index.html",
+      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "changelog page",
+      "entry": "web/changelog.html",
+      "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "404 page",
+      "entry": "web/404.html",
+      "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "put the website together",
+      "entry": "tools/site.py",
+      "reach": "python3 tools/site.py /tmp/site",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "site check",
+      "entry": "tools/web/site_check.mjs",
+      "reach": "VERCEL_BYPASS=… node tools/web/site_check.mjs --url=<deployment> --out=shots/site",
+      "area": "web"
     }
   ]
 }

@@ -52,6 +52,32 @@ whole cycle.
 - File, Export, BrickLink Studio model (.io): the model, its build order
   and a picture of it, in the zip Studio opens its own files from. Not
   yet seen opening in Studio itself; what is inside is plain LDraw.
+- LEGO Art: Mosaic lays a picture as a modern LEGO Art set builds one —
+  2 × 4 tiles in courses, round and quarter-round accents, raised up to
+  six plates deep, a panel at a time — or as classic 1 × 1 plates. Claude
+  can plan one too, look at it, and revise it.
+- Hoses, tubes, strings and chains (Build, Hose, tube or chain…): laid
+  along a path between the connectors you click, and reshaped later. A
+  laid hose is counted as the one hose a shop sells.
+- Pose and animate: a slider for every hinge, turntable and joint a
+  sub-assembly turns on, and keyframes played as an animation.
+- File, Render…: a picture or a turntable worth keeping, Quick, Good or
+  Best, up to 4K, on a studio sweep with soft shadows.
+- Share by link (File, Share…): a brickworks.diy/m/ link with a picture
+  and a card wherever it is pasted, and a 3D viewer with the steps, the
+  booklet and the parts list. Open in Brickworks copies it into your own
+  models.
+- My collection: the sets and parts you own — by set number, a Rebrickable
+  or BrickLink file, or your Rebrickable account — kept with your account;
+  what a model still needs, what could stand in, and which models you
+  could build.
+- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO at the size you
+  pick.
+- Prints and stickers: draw a print or bring in a picture for any face of
+  a part, or a sticker for a model, saved as real LDraw parts, and a
+  model's sticker sheet printed at true size.
+- File, Export: a BrickLink wanted list and a Rebrickable parts list. File,
+  Import: LEGO Digital Designer's .lxf.
 
 ### Changed
 

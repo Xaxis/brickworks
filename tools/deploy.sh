@@ -9,7 +9,7 @@
 #
 # Needs VERCEL_TOKEN, from .env here or from the environment (CI). Never commit it.
 #
-# The build goes under /b/<sha>/ and / redirects to it, so every file can be
+# The build goes under /b/<sha>/ and /app serves its page, so every file can be
 # cached forever and a player who comes back after a deploy can never end up
 # running a new pack against an old engine. The threaded build needs the page to
 # be cross-origin isolated, so the headers below are not optional: without them
@@ -82,6 +82,45 @@ cp "$dir"/knowledge/* ".vercel/output/static/b/$sha/knowledge/"
 printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   > ".vercel/output/static/b/$sha/version.json"
 
+# The app is served at /app itself, not redirected to /b/<sha>/, so the
+# address bar says brickworks.diy/app rather than a build hash. The page
+# Godot exports names its files relative to itself (index.js, and an
+# executable "index" the engine adds .wasm, .pck and .js to), which from
+# /app would mean /index.js. A <base> would fix that in one line, but the
+# security policy below says base-uri 'none' and stays that strict, so the
+# names are made absolute here instead: the same file then works at /app
+# and at /b/<sha>/, and every file it loads is still under /b/<sha>/ and
+# cached forever. Fails rather than ship a page that would load nothing.
+if ! python3 - ".vercel/output/static/b/$sha/index.html" "/b/$sha/" <<'PY'
+import json, os, re, sys
+path, base = sys.argv[1], sys.argv[2]
+here = os.path.dirname(path)
+page = open(path, encoding="utf-8").read()
+
+def absolute(m):
+    name = m.group(2)
+    if "/" in name or ":" in name or not os.path.isfile(os.path.join(here, name)):
+        return m.group(0)
+    return f'{m.group(1)}="{base}{name}"'
+page = re.sub(r'\b(src|href)="([^"]*)"', absolute, page)
+
+found = re.search(r"const GODOT_CONFIG = ", page)
+if not found:
+    sys.exit("no GODOT_CONFIG in the exported page")
+config, end = json.JSONDecoder().raw_decode(page, found.end())
+exe = config["executable"]
+config["executable"] = base + exe
+# The engine looks sizes up by the very path it fetches, so the keys move too.
+config["fileSizes"] = {base + k: v for k, v in config.get("fileSizes", {}).items()}
+page = page[:found.end()] + json.dumps(config, separators=(",", ":")) + page[end:]
+if f'src="{base}{exe}.js"' not in page:
+    sys.exit(f"the engine's script ({exe}.js) is not named from {base}")
+open(path, "w", encoding="utf-8").write(page)
+PY
+then
+  echo "deploy FAILED: could not point the app's page at /b/$sha/"; exit 1
+fi
+
 # The serverless endpoints, packaged the way the Build Output API wants
 # them. A prebuilt deploy has no build step to discover api/, so each is
 # assembled here: a directory per route, the handler inside it, and a
@@ -107,9 +146,8 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # the index tools/collection_data.py writes, put beside it here.
 # /api/share is a model shared by link (the same keys, and the publishable
 # one for a visitor's read): /m/<id>, its picture and its card are mapped
-# onto it. The viewer is /app?view=<id>: Vercel carries a query across the
-# /app 308 by itself (measured 2026-10-12, /app?foo=x to /b/<sha>/?foo=x),
-# so it needs no route of its own. Vercel's cron calls /api/share/sweep at
+# onto it. The viewer is /app?view=<id>: /app is the app's page itself,
+# query and all, so it needs no route of its own. Vercel's cron calls /api/share/sweep at
 # 04:17 UTC every day, with CRON_SECRET (set on the project, and in .env
 # for share_probe): it takes away the files of models whose row went with
 # a deleted account. Its pages send their own security policy; the app's below
@@ -176,24 +214,35 @@ fi
 # The landing page sits at the root and the application at /app. Before
 # this, / redirected straight into the build, so there was nowhere to
 # say what the thing is.
-if [ -f web/index.html ]; then
-  # Everything in web/, not just the page. It copied index.html alone,
-  # which meant the favicon, the manifest and the Open Graph image —
-  # every file the page references by an absolute path — were simply
-  # absent from the deployment, and a shared link showed no picture.
-  #
-  # Files starting with an underscore are working parts of the build
-  # (the render the share image is composed from) and are not served.
-  count=0
-  for asset in web/*; do
-    name=$(basename "$asset")
-    case "$name" in _*) continue ;; esac
-    [ -f "$asset" ] || continue
-    cp "$asset" ".vercel/output/static/$name"
-    count=$((count + 1))
-  done
-  echo "deploy: landing page and $count file(s) at /"
-fi
+#
+# Everything in web/, not just the page. It copied index.html alone,
+# which meant the favicon, the manifest and the Open Graph image —
+# every file the page references by an absolute path — were simply
+# absent from the deployment, and a shared link showed no picture.
+# tools/site.py does the copying (leaving out working files whose names
+# start with an underscore) and writes the changelog page from
+# CHANGELOG.md, so it cannot say anything the release notes do not.
+python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
+  echo "deploy FAILED: could not put the website together (tools/site.py)"; exit 1; }
+[ -f .vercel/output/static/index.html ] && [ -f .vercel/output/static/404.html ] || {
+  echo "deploy FAILED: the website has no index.html or 404.html"; exit 1; }
+
+# The site's pages at addresses without .html: /download, not
+# /download.html. The owner, 2026-10-12: "do you realize how oldschool
+# that is?" Every page but three is served at its bare name (the
+# override), and its old .html address answers with a permanent redirect
+# to it, so a link anyone kept still lands. The three: index.html is /,
+# 404.html is what any unknown address gets, with a 404, and
+# authorize.html is only ever /oauth/authorize, where Claude sends people.
+pages=""
+overrides=""
+for page in .vercel/output/static/*.html; do
+  name=$(basename "$page" .html)
+  case "$name" in index|404|authorize) continue ;; esac
+  pages="$pages${pages:+|}$name"
+  overrides="$overrides${overrides:+,}\"$name.html\": { \"path\": \"$name\", \"contentType\": \"text/html; charset=utf-8\" }"
+done
+echo "deploy: pages at /${pages//|/, /}"
 
 # What the pages may load and, above all, where they may send anything.
 #
@@ -211,7 +260,10 @@ fi
 # redeemed and a session renewed. Named on its own: it was reachable only
 # because the parts store happens to be in the same project, and moving
 # the parts would have broken every sign-in without a word.
-inline_hashes="$(python3 - "$dir/index.html" <<'PY'
+#
+# The hash is of the page as served, after its file names were made
+# absolute above, not of the page the export wrote.
+inline_hashes="$(python3 - ".vercel/output/static/b/$sha/index.html" <<'PY'
 import base64, hashlib, re, sys
 page = open(sys.argv[1], encoding="utf-8").read()
 for body in re.findall(r"<script>(.*?)</script>", page, re.S):
@@ -235,11 +287,22 @@ csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${in
 # window that opened it, which Cross-Origin-Opener-Policy would.
 authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signin_origin}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
+# Addresses that are not pages, said once each. An unknown one used to be
+# redirected to the landing page, which told a mistyped link nothing and
+# told a search engine every typo was the home page. It gets the 404 page,
+# with a 404, now. The app is /app itself (a rewrite, so the address bar
+# keeps it, ?view= and ?model= and all), never cached, since it is what
+# names the build; the build it names under /b/<sha>/ is cached forever.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" } ],
+  "overrides": { $overrides },
   "routes": [
+    { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
+    { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
+    { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
+    { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
@@ -260,7 +323,6 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
-    { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {
         "Cross-Origin-Opener-Policy": "same-origin",
@@ -272,15 +334,21 @@ cat > .vercel/output/config.json <<EOF
       },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
-      "headers": { "Cache-Control": "public, max-age=31536000, immutable" },
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Robots-Tag": "noindex" },
       "continue": true },
+    { "src": "/img/(.*)",
+      "headers": { "Cache-Control": "public, max-age=86400, stale-while-revalidate=2592000" },
+      "continue": true },
+    { "src": "/app", "dest": "/b/$sha/index.html",
+      "headers": { "Cache-Control": "no-cache" } },
     { "src": "/b/([^/]+)/?$", "dest": "/b/\$1/index.html" },
     { "handle": "filesystem" },
     { "src": "/parts/(.*)", "status": 404,
       "headers": { "Content-Type": "text/plain" } },
     { "src": "/sets/(.*)", "status": 404,
       "headers": { "Content-Type": "text/plain" } },
-    { "src": "/(.*)", "status": 308, "headers": { "Location": "/" } }
+    { "src": "/(.*)", "status": 404, "dest": "/404.html" }
   ]
 }
 EOF
@@ -385,7 +453,10 @@ if [ "$prod" = 1 ]; then
   # and nearly reported it as the new one. Done means the domain says so.
   live=""
   for _ in $(seq 1 60); do
-    live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
+    # /app is the page itself now, which names its build's files; a
+    # deployment from before that redirected to /b/<sha>/ instead.
+    live="$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1 || true)"
+    [ -z "$live" ] && live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
     case "$live" in */b/"$sha"/*) break ;; esac
     sleep 3
   done

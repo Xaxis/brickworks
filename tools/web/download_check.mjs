@@ -3,7 +3,8 @@
 //   node tools/web/download_check.mjs                     web/ with its own releases.json
 //   node tools/web/download_check.mjs --manifest=FILE     ...serving FILE as releases.json
 //                                                         (tools/release.py manifest --local --out=FILE)
-//   node tools/web/download_check.mjs --url=https://brickworks.diy/download.html
+//   node tools/web/download_check.mjs --url=https://brickworks.diy/download
+//   VERCEL_BYPASS=… node tools/web/download_check.mjs --url=<a preview>/download
 //   --shots=DIR                                           a screenshot per system
 //
 // Locally the page is served with a content security policy at least as
@@ -31,7 +32,8 @@ const CSP = "default-src 'self'; script-src 'self'; connect-src 'self'; "
   + "style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml" };
+  ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml",
+  ".css": "text/css", ".webp": "image/webp" };
 
 const CHROME = "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0";
 const brands = [{ brand: "Chromium", version: "130" }, { brand: "Not?A_Brand", version: "99" }];
@@ -51,6 +53,13 @@ const ENDS = { linux: "-linux-x86_64.AppImage", macos: "-macos-universal.zip",
 
 let server = null;
 let target = args.url;
+// A protected preview lets this check in with the bypass; production ignores
+// it. And without Vercel's preview toolbar, whose script the site's security
+// policy rightly refuses: it is injected for a browser that does not say it is
+// headless, as this one says it is Chrome on each system, and is never on the
+// real site.
+const bypass = process.env.VERCEL_BYPASS
+  ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS, "x-vercel-skip-toolbar": "1" } : {};
 let manifest = null;
 if (!target) {
   const root = resolve("web");
@@ -78,7 +87,8 @@ if (!target) {
   // asked past the CDN's cache. Read seconds after a release's deploy, the
   // cache still handed this check 0.1.0 while the page had 0.2.0, and every
   // offer failed for being right.
-  const response = await fetch(new URL(`releases.json?fresh=${Date.now()}`, target), { cache: "no-store" });
+  const response = await fetch(new URL(`releases.json?fresh=${Date.now()}`, target),
+    { cache: "no-store", headers: bypass });
   if (!response.ok) {
     console.log(`  FAIL  releases.json beside the page answered ${response.status}`);
     process.exit(1);
@@ -91,7 +101,8 @@ const problems = [];
 if (args.shots) await mkdir(args.shots, { recursive: true });
 
 for (const system of SYSTEMS) {
-  const context = await browser.newContext({ viewport: { width: system.width, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: system.width, height: 900 },
+    extraHTTPHeaders: args.url ? bypass : {} });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send("Emulation.setUserAgentOverride", {

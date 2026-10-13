@@ -155,7 +155,7 @@ try {
   console.log("the admin page");
   const admin = await context.newPage();
   watch(admin);
-  await admin.goto(`${origin}/admin.html`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await admin.goto(`${origin}/admin`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await admin.waitForFunction(() => !/Checking/.test(document.getElementById("gate-note").textContent),
     undefined, { timeout: 30000 }).catch(() => {});
   const refused = await admin.evaluate(() => document.getElementById("gate-note").textContent);
@@ -182,7 +182,7 @@ try {
     const { kept: owner } = await mintSession(process.env.MASTER_EMAIL);
     const theirs = await context.newPage();
     await theirs.addInitScript(([k, v]) => localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(owner)]);
-    await theirs.goto(`${origin}/admin.html`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await theirs.goto(`${origin}/admin`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await theirs.waitForSelector("#view:not(.hide)", { timeout: 30000 }).catch(() => {});
     const listed = await theirs.evaluate(() => ({
       shown: !document.getElementById("view").classList.contains("hide"),
