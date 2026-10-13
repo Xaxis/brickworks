@@ -1181,6 +1181,13 @@
       "entry": "src/ui/exports.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "score designs on the bench",
+      "entry": "tools/bench/run.py",
+      "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
+      "area": "assistant"
     }
   ]
 }
