@@ -166,18 +166,20 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     ldr = run_dir / "design.ldr"
     if canned is not None:
         shutil.copy(canned, ldr)
-        result = {"status": 0, "canned": str(canned), "seconds": 0.0, "timed_out": False,
-                  "model": True}
+        result = {"status": 0, "commit": commit(), "canned": str(canned), "seconds": 0.0,
+                  "timed_out": False, "model": True}
         _write_json(done, result)
         return result
     port = _free_port()
+    sha = commit()      # the code the design runs on, not the code that judges it
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
     # The timeout is inside the slot: a queue for `heavy` on a busy
     # machine is not the design's time.
     command = [HEAVY, "xvfb-run", "-a", f"--server-args={SCREEN}",
-               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(ROOT), "--log-file", str(run_dir / "godot_design.log"),
+               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(ROOT),
+               "--log-file", str(run_dir / "godot_design.log"),
                "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}"]
     started = time.time()
     with log.open("w") as out:
@@ -191,7 +193,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         "status": status, "seconds": round(seconds, 1), "timed_out": status in (124, 137),
         # The session's own clock, without the wait for a slot.
         "design_seconds": int(took.group(1)) if took else None,
-        "port": port, "model": ldr.exists() and ldr.stat().st_size > 0,
+        "commit": sha, "port": port, "model": ldr.exists() and ldr.stat().st_size > 0,
         "finished": finished[-1][:300] if finished else "",
         "moved": _tidy_user_dir(since, text, port, run_dir / "saves"),
         "stopped": _stop_leftovers(port),
@@ -402,7 +404,6 @@ def run_one(subject: suite.Subject, batch: Path, run: int, args: argparse.Namesp
         return json.loads(record_path.read_text())
     canned_design = CANNED / "design.ldr" if args.dry_run else None
     canned_judge = CANNED / "judge_reply.json" if args.dry_run else None
-    sha = commit()
     made = design(subject, run_dir, args.timeout, canned_design)
     found_probe: dict = {}
     measured: dict = {}
@@ -423,7 +424,8 @@ def run_one(subject: suite.Subject, batch: Path, run: int, args: argparse.Namesp
     verdict = judged(subject, run_dir, made, refs, marks, parts, canned_judge, args.judge_model)
     record = {
         "subject": subject.id, "title": subject.title, "brief": subject.brief,
-        "run": run, "batch": batch.name, "commit": sha, "rubric": judge.RUBRIC_VERSION,
+        "run": run, "batch": batch.name, "commit": made.get("commit") or commit(),
+        "rubric": judge.RUBRIC_VERSION,
         "dry_run": bool(args.dry_run), "design": made, "probe": found_probe,
         "style": measured, "judge": verdict,
         "references": [str(p.path.relative_to(subject_dir)) for p in refs],
