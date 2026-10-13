@@ -1862,7 +1862,7 @@ static func all() -> Array:
 			"when": "a story in one part — a mouse at an owl's feet, a cat on a "
 				+ "sill, a frog by the water, a bird on a branch, a rat in a "
 				+ "cellar, a spider in a ruin",
-			"why": "LEGO's creatures are single parts that stand on a stud: "
+			"why": "LEGO® creatures are single parts that stand on a stud: "
 				+ "search_parts \"animal\" for the one the story needs (33320 "
 				+ "frog, 35757 mouse, 41835 songbird, 13786 cat, 40234 rat, "
 				+ "30238 spider). Set it where the eye finds it a moment after "

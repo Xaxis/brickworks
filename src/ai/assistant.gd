@@ -8456,7 +8456,7 @@ func _piece_line(n: int, entry: Dictionary) -> String:
 ## the design's.
 const TURNS_FOR_TOUCHES := 6
 
-const CREATIVE_PASS := """The creative pass: the last a LEGO designer \
+const CREATIVE_PASS := """The creative pass: the last a LEGO® designer \
 makes, and the one people remember. The model holds together and reads as \
 its subject — {subject}. Now give it what a competent model lacks and a \
 real set has: something a person finds and smiles at.
@@ -8475,7 +8475,7 @@ printed. A plain slope where a nameplate goes reads as blank: print it or \
 leave it out.
   A nod: what only someone who knows the subject would catch — its maker, \
 its number or its year on a printed part, the detail it is famous for, \
-what LEGO's own set of it is loved for — or a part used for what it looks \
+what the LEGO® set of it is loved for — or a part used for what it looks \
 like rather than what it is: a claw for a thorn, a flower stem for an \
 aerial, a pearl-gold ring for a crest. A lamp post, a chimney and a flag \
 are what every model has; they are not this.
@@ -13556,7 +13556,7 @@ own: a piece apart that nothing names is a part that has come off, and \
 fails.
   A nod to the subject's story: a detail only someone who knows it \
 would catch — a mission patch, a launch date, a famous passenger, the \
-ship's cat, what LEGO's own set of it is loved for — on a printed part \
+ship's cat, what the LEGO® set of it is loved for — on a printed part \
 (search_parts with "print" and the subject's own word: there are \
 printed parts for a great many real things), or a part used for what it \
 looks like.
