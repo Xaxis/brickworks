@@ -117,7 +117,7 @@ else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
     tests/test_release.py tests/test_minifig.py tests/test_elements.py \
     tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py \
-    tests/test_snippets.py tests/test_trademarks.py)
+    tests/test_snippets.py tests/test_trademarks.py tests/test_gears.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -142,7 +142,7 @@ echo "── godot probes ──"
 # with nothing failing — a tool list four tools stale, a menu command no
 # session can reach (mcp_sync); and the window's commands as tools, each
 # read back off the model (app_tools).
-for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features creative rooms style turned detail chat project example_name minifig print sticker mould brickify; do
+for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch mechanism axle variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features creative rooms style turned detail chat sketch project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -328,6 +328,11 @@ run "cursors" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
 # bin clipped away was off the window, and at 1280 x 860 it drew every frame.
 run "draws only what changed" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
   --script src/dev/idle_probe.gd
+# ...and on a big model, where work a few frames long that redraws the
+# window for nothing is seconds of drawing in software: the first part in
+# hand drew the castle for 23 s with the pointer still.
+run "draws only what changed, big" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
+  --script src/dev/idle_probe.gd -- --model=res://models/castle.ldr
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be

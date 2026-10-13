@@ -32,6 +32,10 @@ var model_name: String = ""
 var author: String = ""
 var parts: int = 0
 var link: String = ""
+## What the model was remixed from, while that is still shared: {id,
+## name, url} (api/share.js), or empty. Said on the about line, which
+## then opens that model's link.
+var remixed_from: Dictionary = {}
 
 var _bar: PanelContainer
 var _name: Label
@@ -122,6 +126,15 @@ func _build_bar() -> void:
 	_about.add_theme_font_size_override("font_size", 12)
 	_about.modulate = Color(1, 1, 1, 0.7)
 	_about.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A link only when it says what the model was remixed from: a line
+	# that trims to fit, where a link button of its own would push the
+	# bar's buttons off a phone.
+	_about.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_about.gui_input.connect(func(event: InputEvent) -> void:
+		var click: InputEventMouseButton = event as InputEventMouseButton
+		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
+				and not str(remixed_from.get("url", "")).is_empty():
+			OS.shell_open(str(remixed_from["url"])))
 	words.add_child(_about)
 
 	# First, and bright: on a phone beside a pile of bricks it is what the
@@ -262,15 +275,24 @@ func arriving(left: int) -> void:
 	_say("Fetching its parts…", "%d still on their way." % left)
 
 
-## The model is open: its name and the rest along the top.
-func show_model(shown_name: String, shown_author: String, part_count: int, at: String) -> void:
+## The model is open: its name and the rest along the top, and what it
+## was remixed from if it was ([param from]: {id, name, url}).
+func show_model(shown_name: String, shown_author: String, part_count: int, at: String,
+		from: Dictionary = {}) -> void:
 	model_name = shown_name
 	author = shown_author
 	parts = part_count
 	link = at
+	remixed_from = from if not str(from.get("url", "")).is_empty() else {}
 	_name.text = shown_name
-	_about.text = "%s part%s%s" % [_count(part_count), "" if part_count == 1 else "s",
-		(" · by " + shown_author) if not shown_author.is_empty() else ""]
+	_about.text = "%s part%s%s%s" % [_count(part_count), "" if part_count == 1 else "s",
+		(" · by " + shown_author) if not shown_author.is_empty() else "",
+		(" · remixed from " + str(remixed_from.get("name", ""))) if not remixed_from.is_empty() else ""]
+	var linked: bool = not remixed_from.is_empty()
+	_about.mouse_filter = Control.MOUSE_FILTER_STOP if linked else Control.MOUSE_FILTER_IGNORE
+	_about.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if linked else Control.CURSOR_ARROW
+	_about.tooltip_text = ("Open “%s”, the model this one was remixed from" % remixed_from.get("name", "")
+		if linked else "")
 
 
 func ready_to_look() -> void:
@@ -391,10 +413,13 @@ func controls_by_name() -> Dictionary:
 		"view_parts": _parts, "view_copy": _copy}
 	if _card.visible and _card_button.visible:
 		named["view_card_button"] = _card_button
+	if not remixed_from.is_empty() and _about.is_visible_in_tree():
+		named["view_remixed_from"] = _about
 	return named
 
 
 func page_state() -> Dictionary:
 	return {"state": state, "name": model_name, "author": author, "parts": parts,
-		"link": link, "title": _card_title.text if _card.visible else "",
+		"link": link, "about": _about.text, "remixed_from": str(remixed_from.get("name", "")),
+		"title": _card_title.text if _card.visible else "",
 		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else ""}

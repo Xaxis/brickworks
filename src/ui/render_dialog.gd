@@ -157,12 +157,25 @@ func _make_renderer() -> void:
 ## Render as Picture or Turntable would, with [param chosen] and without
 ## the panel: what a session over MCP asks for (AppTools). What was
 ## written, or why nothing was; [method last_picture] is a picture's image.
-func render_for(kind: String, chosen: RenderSettings) -> String:
+## [param job] is the bar along the foot of the window (Working) that says
+## how far it has got, in place of the panel's, and whose Cancel stops it:
+## the session's job (ToolJobs) reads the same one.
+func render_for(kind: String, chosen: RenderSettings, job: Working.Job = null) -> String:
 	if is_rendering():
 		return "a render is already being drawn"
 	_make_renderer()
+	_job = job
+	if job != null:
+		job.cancel_wanted.connect(_cancel)
 	var lines: PackedStringArray = await _start(kind, chosen)
+	if job != null:
+		job.cancel_wanted.disconnect(_cancel)
+	_job = null
 	return "; ".join(lines) if not lines.is_empty() else _status.text
+
+
+## The Working job a render from outside reports to, while it lasts.
+var _job: Working.Job = null
 
 
 func last_picture() -> Image:
@@ -686,6 +699,10 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 		renderer.cancel()
 		while renderer.is_busy():
 			await get_tree().process_frame
+	# Cancelled from outside while the draft stopped: the renderer, not yet
+	# busy with this, would not have heard it.
+	if _job != null and _job.cancelled:
+		return PackedStringArray()
 	_working = kind
 	_preview_due = -1
 	_loop.clear()
@@ -710,14 +727,21 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	else:
 		output.begin_turntable(model, chosen)
 		var looped: Array[ImageTexture] = []
+		if _job != null:
+			_job.count(0, chosen.frames)
 		var done: int = await renderer.turntable(world, chosen,
 			func(n: int, image: Image) -> void:
 				_show_scaled(image)
 				looped.append(_preview.texture as ImageTexture)
+				if _job != null:
+					_job.count(n + 1)
 				await output.add_frame(n, image))
 		await output.settle()
 		if done == chosen.frames:
 			_status.text = "Putting the frames together…"
+			if _job != null:
+				_job.say(_status.text)
+				_job.count(0, 0)
 			lines.append_array(await output.finish_turntable())
 			_loop = looped
 			_loop_at = 0.0
@@ -787,6 +811,11 @@ func _on_progress(fraction: float, words: String) -> void:
 	_fraction = fraction
 	_words = words
 	_progress.value = fraction
+	# A picture from outside is counted on the bar in per cent; a turntable
+	# in frames, as each is kept (_start).
+	if _job != null and _working == "picture":
+		_job.percent = true
+		_job.count(roundi(fraction * 100.0), 100)
 	var said: String = words.substr(0, 1).to_upper() + words.substr(1)
 	_status.text = "%s… %d%%" % [said, roundi(fraction * 100.0)]
 

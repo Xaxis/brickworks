@@ -3,6 +3,10 @@
 
     tools/mcp_check.py              start an app, drive it, stop it
     tools/mcp_check.py --port=8787  use an app that is already running
+    tools/mcp_check.py --port=8787 --jobs
+                                    ...in a window, and also render a
+                                    turntable of Orthanc as a job and
+                                    cancel a second one (drive_jobs)
 
 src/dev/mcp_probe.gd covers the app's half: the socket, the tools, a
 design landing on the baseplate. This covers the half that probe cannot
@@ -17,6 +21,7 @@ server with no tools and no error to explain it.
 from __future__ import annotations
 
 import json
+import shutil
 import re
 import os
 import signal
@@ -25,6 +30,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 ROOT = Path(__file__).resolve().parent.parent
 RELAY = ROOT / "tools" / "brickworks_mcp.py"
@@ -248,6 +254,8 @@ def drive(relay: Relay) -> None:
     said = say("lay_flex", {"kind": "rope"})
     check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
 
+    simulate(relay, say, kept.parent)
+
     cached = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
     check("tools/mcp_tools.json names every tool the app serves, %d" % len(cached),
           {tool["name"] for tool in cached} == named)
@@ -259,6 +267,168 @@ def drive(relay: Relay) -> None:
     broken = relay.call("tools/call", {"arguments": {}})
     check("a call with no name is a JSON-RPC error",
           broken.get("error", {}).get("code") == -32602)
+
+
+def drive_jobs(relay: Relay) -> None:
+    """Long work as a job, on Orthanc: a turntable, then one cancelled.
+
+    A Claude session waits about three minutes for an answer, and a
+    turntable of Orthanc's 9,429 parts takes longer than that, so it is a
+    job (src/net/tool_jobs.gd): answered at once, polled with job, and
+    stopped by it. Needs an app in a window, which renders; started with
+    --mcp=PORT and driven with --port=PORT --jobs.
+    """
+    def call(name: str, arguments: dict) -> tuple[str, float]:
+        began = time.time()
+        result = relay.call("tools/call", {"name": name, "arguments": arguments})
+        return text_of(result.get("result", {})), time.time() - began
+
+    said, _ = call("open_model", {"name": "Orthanc", "discard_changes": True})
+    check("Orthanc is open: %s" % said[:50], said.startswith("Opened Orthanc"))
+
+    said, took = call("render_model", {"kind": "turntable"})
+    started = re.match(r"Started job (\d+)", said)
+    job = int(started.group(1)) if started else 0
+    check("a turntable of Orthanc answers at once, in %.2f s: %s" % (took, said[:60]),
+          bool(started) and took < 2.0)
+    check("...saying how to follow it",
+          ('job {"id": %d}' % job) in said and '"cancel": true' in said)
+    busy, took = call("look_at_model", {})
+    check("a call meanwhile is told what the app is busy with, in %.2f s: %s"
+          % (took, busy[:60]), busy.startswith("The app is busy with job %d" % job))
+
+    frames: list[int] = []
+    final = ""
+    began = time.time()
+    while time.time() - began < 3600:
+        said, _ = call("job", {"id": job})
+        if " is still going" not in said:
+            final = said
+            break
+        counted = re.search(r"(\d+) of 36", said)
+        if counted:
+            frames.append(int(counted.group(1)))
+    print("        frames seen while polling: %s" % frames)
+    check("polling shows the frames going by, %d polls over %.0f s"
+          % (len(frames), time.time() - began),
+          len(set(frames)) >= 3 and frames == sorted(frames))
+    check("...and the job ends done: %s" % final.splitlines()[0] if final else "never",
+          " is done, after " in final)
+    wrote = re.search(r"wrote (\S+\.webp)", final)
+    webp = Path(wrote.group(1)) if wrote else ROOT / "nowhere.webp"
+    data = webp.read_bytes() if webp.exists() else b""
+    check("the WebP arrives: %s, %d bytes, %d frames"
+          % (webp.name, len(data), data.count(b"ANMF")),
+          data[:4] == b"RIFF" and data[8:12] == b"WEBP" and data.count(b"ANMF") == 36)
+    webp.unlink(missing_ok=True)
+
+    said, took = call("render_model", {"kind": "turntable"})
+    started = re.match(r"Started job (\d+)", said)
+    job = int(started.group(1)) if started else 0
+    check("a second one is a job too, in %.2f s" % took, job > 0 and took < 2.0)
+    counted = None
+    while job and counted is None:
+        said, _ = call("job", {"id": job})
+        counted = re.search(r"([1-9]\d*) of 36", said)
+        if " is still going" not in said:
+            break
+    said, took = call("job", {"id": job, "cancel": True})
+    # A frame of Orthanc being drawn in software is finished first.
+    while " is still going" in said:
+        said, more = call("job", {"id": job})
+        took += more
+    check("cancelled at frame %s of 36, stopped %.1f s later: %s"
+          % (counted.group(1) if counted else "?", took, said[:70]),
+          " was cancelled after " in said)
+    after, _ = call("parts_list", {})
+    check("...the app is free again: %s" % after.splitlines()[0][:50] if after else "",
+          " pieces in " in after)
+    time.sleep(10)
+    check("...and nothing more was drawn: no WebP was written", not webp.exists())
+    said, _ = call("job", {})
+    check("...and job still says so: %s" % said[:60], " was cancelled after " in said)
+FIXTURES = ROOT / "src" / "dev" / "fixtures"
+
+
+def simulate(relay: Relay, say: Callable[[str, dict], str], models: Path) -> None:
+    """simulate_mechanism, as a session asks it of a model it has open.
+
+    The models are src/dev/simulate_probe.gd's, written there with --write:
+    a session cannot yet seat an axle in a hole over MCP, so they are put in
+    the app's models and opened with open_model, which a session can do.
+    """
+    opened: list[Path] = []
+    try:
+        for fixture, name in (("orrery_two_planets.ldr", "orrery"),
+                              ("gears_locked.ldr", "gears")):
+            target = models / ("mcp-check-%s-%d.ldr" % (name, os.getpid()))
+            target.write_text((FIXTURES / fixture).read_text())
+            opened.append(target)
+        said = say("open_model", {"name": opened[0].stem, "discard_changes": True})
+        check("the two-planet orrery opens: %s" % said[:50], said.startswith("Opened"))
+        answer = relay.call("tools/call", {"name": "simulate_mechanism",
+                                           "arguments": {}}).get("result", {})
+        said = text_of(answer)
+        print("    %s" % said.replace("\n", " | ")[:900])
+        check("simulate_mechanism turns it from the crank its name marks",
+              said.startswith("Driven by Crank"))
+        check("...with Mars's year in Earth years against NASA's",
+              "Mars arm: 1.96 Earth years; real 1.8808, +4.2%" in said)
+        check("...and the balance over the whole cycle, the arm furthest out named",
+              "Balance over 72 frames of the cycle" in said and "Furthest out: Mars arm" in said)
+        blocks = answer.get("content", [])
+        drawn = any(block.get("type") == "image" for block in blocks)
+        if drawn:
+            check("...and a picture of it at its worst",
+                  all(block.get("data") and block.get("mimeType") == "image/png"
+                      for block in blocks if block.get("type") == "image"))
+        else:
+            check("...and, headless, says why there is no picture", "No picture" in said)
+        said = say("simulate_mechanism", {"reference": "Mars arm",
+                                          "targets": {"Earth": 0.5}})
+        check("reference= and targets= count Earth in Mars years against the one asked for",
+              "Earth: 0.5102 Mars years; asked for 0.5, +2.0%" in said)
+        said = say("simulate_mechanism", {"driver": "no such part"})
+        check("a driver that is not there is a refusal that says what to give: %s" % said[:40],
+              said.startswith("No part or sub-assembly"))
+        if drawn:
+            said = say("simulate_mechanism", {"record": True, "frames": 8})
+            going = re.search(r"written to (\S+\.webp)", said)
+            if going:
+                # Past 20 s it goes on in the app, and the answer says where it
+                # will be: waited for as a session would, then asked again.
+                print("    %s" % said.splitlines()[-1][:300])
+                last = Path(going.group(1))
+                if shutil.which("ffmpeg"):
+                    last = last.with_suffix(".mp4")
+                waited = time.time()
+                while time.time() - waited < 900 and not last.exists():
+                    time.sleep(5)
+                time.sleep(5)
+                said = say("simulate_mechanism", {})
+                check("...and the next call says the recording is done",
+                      "The recording asked for earlier is done" in said)
+            written = re.findall(r"wrote (\S+\.(?:webp|mp4))", said)
+            check("record=true keeps it: %s" % (", ".join(written) or said[-120:]),
+                  "Recorded 8 frames" in said and bool(written)
+                  and all(Path(path).exists() for path in written))
+            # Written where Render saves, the person's Downloads: taken away.
+            for path in written:
+                Path(path).unlink(missing_ok=True)
+            for folder in re.findall(r"frames in (\S+?)[;.]?(?:\s|$)", said):
+                if Path(folder).is_dir() and Path(folder).name.endswith("_mechanism"):
+                    shutil.rmtree(folder)
+        said = say("open_model", {"name": opened[1].stem, "discard_changes": True})
+        said = say("simulate_mechanism", {})
+        print("    %s" % said.replace("\n", " | ")[:600])
+        check("a locked train is said to be locked, its meshes by number",
+              "LOCKED" in said and "The ones that fight: #" in said)
+        check("...and a gear on no axle floating, by number",
+              "Floating (on no axle" in said)
+        said = say("clear_model", {})
+    finally:
+        for target in opened:
+            target.unlink(missing_ok=True)
 
 
 def drive_without_an_app() -> None:
@@ -293,10 +463,13 @@ def drive_without_an_app() -> None:
 def main(argv: list[str]) -> int:
     port = PORT
     mine = True
+    jobs = False
     for argument in argv[1:]:
         if argument.startswith("--port="):
             port = int(argument.split("=", 1)[1])
             mine = False
+        elif argument == "--jobs":
+            jobs = True
         else:
             print("mcp_check: unknown option %s" % argument, file=sys.stderr)
             return 2
@@ -313,6 +486,9 @@ def main(argv: list[str]) -> int:
         print("── the relay ──")
         relay = Relay(port)
         drive(relay)
+        if jobs:
+            print("── long work as jobs, on Orthanc ──")
+            drive_jobs(relay)
         print("── and with no app at all ──")
         drive_without_an_app()
     finally:

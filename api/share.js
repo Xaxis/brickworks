@@ -15,9 +15,15 @@
 //                            when it published
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
+//   GET  ?op=list&page=N     /gallery's models: the listed ones, newest
+//                            first, a page at a time, each with the
+//                            picture it was published with
 //   POST                     publish, with the session: {name, author?,
-//                            model, image?, id?}. With an id, the owner's
-//                            own link is updated in place.
+//                            model, image?, id?, listed?, remixed_from?}.
+//                            With an id, the owner's own link is updated
+//                            in place. listed puts it in the gallery;
+//                            remixed_from is the link it was copied from
+//                            (Open in Brickworks), which its page names.
 //   POST ?op=unpublish&id=X  the owner takes it down
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
@@ -33,6 +39,12 @@
 // text only (every line one of LDraw's six kinds, well formed, at least
 // one part), at most 2 MB, a PNG picture of at most 600 KB, and a name.
 // The part count is the server's own, counted here, not the client's.
+//
+// The gallery (2026-10-13, supabase/gallery.sql) shows what a person
+// chose to list, and so names and pictures strangers chose: a name is one
+// printable line of at most 80 characters, escaped wherever a page shows
+// it; listing is counted (may_list) on top of publishing; and the site's
+// owner can take any model out of it for good (api/admin.js).
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
@@ -47,8 +59,13 @@ const BUCKET = "shared-models";
 const ID = /^[A-Za-z0-9]{10}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 // What a visitor's key may read: the columns supabase/shared_models.sql
-// grants, which are all of them but the owner.
-const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at";
+// and supabase/gallery.sql grant, which are all of them but the owner and
+// barred.
+const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at,listed,remixed_from";
+// A card in the gallery.
+const CARD = "id,name,author,parts,has_image,listed_at";
+export const PER_PAGE = 24;
+const MOST_PAGES = 400;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function project() {
@@ -257,8 +274,19 @@ async function wasShared(id) {
 
 async function ownRow(id) {
   if (!ID.test(id || "")) return null;
-  const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published`);
+  const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from`);
   return rows[0] || null;
+}
+
+/// The link a model says it was copied from: null for none, or for one
+/// that is not there any more (it went with its account). An id that is
+/// not one is refused, like anything else malformed at this edge.
+async function remixOf(given, self) {
+  if (given === undefined || given === null || given === "") return null;
+  if (typeof given !== "string" || !ID.test(given)) throw new Refusal("remixed_from is not a link");
+  if (given === self) return null;
+  const rows = await db(`shared_models?id=eq.${given}&select=id`);
+  return rows.length > 0 ? given : null;
 }
 
 function storageHeaders(extra = {}) {
@@ -318,6 +346,11 @@ async function mayPublish(owner) {
   return allowed === true;
 }
 
+async function mayList(owner) {
+  const allowed = await db("rpc/may_list", { method: "POST", body: { account: owner } });
+  return allowed === true;
+}
+
 // ---------------------------------------------------------------------------
 // What a link answers.
 
@@ -355,6 +388,8 @@ const PAGE_STYLE = `
   .body { padding: 16px 20px 20px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; overflow-wrap: anywhere; }
   p { margin: 0 0 14px; color: var(--soft); }
+  p.from { margin-top: -8px; overflow-wrap: anywhere; }
+  p.from a { color: var(--ink); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   a.button { display: inline-block; padding: 10px 16px; border-radius: 9px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
   a.button.quiet { background: transparent; color: var(--ink); border: 1px solid currentColor; }
@@ -391,7 +426,7 @@ function pageHead(origin, row, id, title) {
 /// /m/X: what a link preview reads, and for a person, the viewer. The
 /// script (web/share-page.js) goes straight on to the viewer; without
 /// scripts the page itself has the picture and the way in.
-function sharePage(origin, id, row) {
+function sharePage(origin, id, row, from) {
   const link = links(origin, id);
   const title = `${row.name} — a Brickworks model`;
   return `<!doctype html>
@@ -407,6 +442,7 @@ ${pageHead(origin, row, id, title)}
     <div class="body">
       <h1>${escapeHtml(row.name)}</h1>
       <p>${escapeHtml(describe(row))}</p>
+      ${from ? `<p class="from">Remixed from <a href="/m/${from.id}">${escapeHtml(from.name)}</a></p>` : ""}
       <div class="actions">
         <a class="button" href="/app?view=${id}">Open the 3D viewer</a>
         <a class="button quiet" href="/app?copy=${id}">Open in Brickworks</a>
@@ -507,15 +543,20 @@ async function read(request, response) {
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "sweep") return sweep(request, response);
+  if (op === "list") return gallery(request, response, origin);
 
   const row = await publishedRow(id);
+  // What it was remixed from, while that is still published: read as a
+  // visitor reads it, so a link taken down is not named.
+  const from = row && row.remixed_from && (op === "page" || op === "")
+    ? await publishedRow(row.remixed_from) : null;
 
   if (op === "page" || op === "embed") {
     if (!row) {
       const gone = await missing(id);
       return html(response, gone.status, gonePage(origin, id, gone.unpublished), { embed: op === "embed" });
     }
-    return html(response, 200, op === "page" ? sharePage(origin, id, row) : embedCard(origin, id, row),
+    return html(response, 200, op === "page" ? sharePage(origin, id, row, from) : embedCard(origin, id, row),
       { embed: op === "embed" });
   }
 
@@ -549,8 +590,41 @@ async function read(request, response) {
     author: row.author,
     parts: row.parts,
     updated_at: row.updated_at,
+    listed: row.listed === true,
+    remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}` } : null,
     ...links(origin, id),
     model: model.toString("utf8"),
+  });
+}
+
+/// /gallery's models, a page at a time, newest listed first. Read through
+/// the publishable key, so row security is what says each is published.
+async function gallery(request, response, origin) {
+  const page = Number(request.query?.page ?? 1);
+  if (!Number.isInteger(page) || page < 1 || page > MOST_PAGES) {
+    return response.status(400).json({ error: `page is a whole number from 1 to ${MOST_PAGES}` });
+  }
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  // One more than a page, to know whether there is another.
+  const answer = await fetch(`${project()}/rest/v1/shared_models?listed=is.true&published=is.true`
+    + `&select=${CARD}&order=listed_at.desc,id.desc&limit=${PER_PAGE + 1}&offset=${(page - 1) * PER_PAGE}`, {
+    headers: { apikey: key },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!answer.ok) throw new Error(`database GET gallery: ${answer.status}`);
+  const rows = await answer.json();
+  // Asked again each time, like the pages: a model unlisted or taken down
+  // leaves the gallery at once.
+  response.setHeader("Cache-Control", "no-cache");
+  return response.status(200).json({
+    page,
+    per_page: PER_PAGE,
+    more: rows.length > PER_PAGE,
+    models: rows.slice(0, PER_PAGE).map((row) => {
+      const link = links(origin, row.id);
+      return { id: row.id, name: row.name, author: row.author, parts: row.parts,
+        listed_at: row.listed_at, url: link.url, image: row.has_image ? link.image : null };
+    }),
   });
 }
 
@@ -562,7 +636,7 @@ async function signedIn(request) {
 async function mine(request, response, origin) {
   response.setHeader("Cache-Control", "private, no-store");
   const owner = await signedIn(request);
-  const rows = await db(`shared_models?owner=eq.${owner}&select=${PUBLIC}&order=updated_at.desc`);
+  const rows = await db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred&order=updated_at.desc`);
   return response.status(200).json({
     shared: rows.map((row) => ({ ...row, ...links(origin, row.id) })),
   });
@@ -579,6 +653,10 @@ async function publish(request, response) {
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   const author = cleanText(body.author, MAX_AUTHOR) || null;
+  if (body.listed !== undefined && typeof body.listed !== "boolean") {
+    throw new Refusal("listed is true or false");
+  }
+  const listed = body.listed === true;
 
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   let existing = null;
@@ -587,7 +665,22 @@ async function publish(request, response) {
     if (!existing) throw new Refusal("there is no shared model at that link to update", 404);
     if (existing.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
   }
+  // 409, not 403: the app answers a 403 (somebody else's link) by
+  // publishing at a new link, which here would list it again.
+  if (listed && existing && existing.barred) {
+    throw new Refusal("Brickworks took this model out of the gallery. It is still shared at its link: "
+      + "publish it without listing it.", 409);
+  }
+  // Said once and kept: a republish from a copy that no longer carries it
+  // does not forget where the model came from.
+  const remixedFrom = (await remixOf(body.remixed_from, id)) ?? existing?.remixed_from ?? null;
+  // Into the gallery, as against staying in it: only that is counted.
+  const newlyListed = listed && !(existing && existing.published && existing.listed);
 
+  if (newlyListed && !(await mayList(owner))) {
+    throw new Refusal("you have listed a lot in the gallery in a short time: try again in an hour, "
+      + "or publish it without listing it", 429);
+  }
   if (!(await mayPublish(owner))) {
     throw new Refusal("you have published a lot in a short time: try again in an hour", 429);
   }
@@ -597,8 +690,10 @@ async function publish(request, response) {
   if (picture) await putFile(`${id}.png`, picture, "image/png");
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
 
+  const now = new Date().toISOString();
   const row = { name, author, parts, bytes, has_image: Boolean(picture), published: true,
-    updated_at: new Date().toISOString() };
+    updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
+    remixed_from: remixedFrom };
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {
@@ -607,7 +702,8 @@ async function publish(request, response) {
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
-    id, name, author, parts, bytes, published: true, updated: Boolean(existing), ...links(origin, id),
+    id, name, author, parts, bytes, published: true, updated: Boolean(existing),
+    listed, remixed_from: remixedFrom, gallery: `${origin}/gallery`, ...links(origin, id),
   });
 }
 
@@ -617,8 +713,11 @@ async function unpublish(request, response) {
   const row = await ownRow(id);
   if (!row) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  // Out of the gallery with it: published again, it is listed again only
+  // if the box is ticked again.
   await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, {
-    method: "PATCH", body: { published: false, updated_at: new Date().toISOString() } });
+    method: "PATCH", body: { published: false, listed: false, listed_at: null,
+      updated_at: new Date().toISOString() } });
   // The row stays, so the link can say it was taken down, and a
   // republish from the same model keeps the same link. The files go.
   await deleteFiles([`${id}.mpd`, `${id}.png`]);

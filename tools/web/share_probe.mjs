@@ -18,6 +18,14 @@
 // and is deleted with its model still up, as the dashboard deletes one,
 // and the sweep takes its files away and leaves a published model's.
 //
+// And the gallery (supabase/gallery.sql): listed, a model is in
+// ?op=list, newest first, with its picture; unticked, unpublished or taken
+// out by the site's owner it is not; a name that is markup is shown as
+// text; a copy shared again says what it was remixed from; listing is
+// limited like publishing. With --master the owner's account (MASTER_EMAIL,
+// a session minted as for any test) takes one out (api/admin.js), which
+// nobody else can, and its owner cannot list it again.
+//
 // Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
@@ -109,6 +117,10 @@ const rand = randomBytes(4).toString("hex");
 const emailA = `delivered+bw-share-a-${rand}@resend.dev`;
 const emailB = `delivered+bw-share-b-${rand}@resend.dev`;
 const emailC = `delivered+bw-share-c-${rand}@resend.dev`;
+// The gallery's: one who remixes, one who lists too much.
+const emailD = `delivered+bw-share-d-${rand}@resend.dev`;
+const emailE = `delivered+bw-share-e-${rand}@resend.dev`;
+const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 const ID = /^[A-Za-z0-9]{10}$/;
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const CRON = process.env.CRON_SECRET || "";
@@ -244,6 +256,8 @@ async function main() {
   r = await call("/api/share?op=mine");
   check(r.status === 401, `the list signed out: 401 (${r.status})`);
 
+  await theGallery(tokenA, tokenB, id);
+
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
   let d = await anonRest(`shared_models?id=eq.${id}&select=id,name,parts`);
@@ -256,6 +270,14 @@ async function main() {
   check(d.status === 401 || d.status === 403, `a row cannot be changed (${d.status})`);
   d = await anonRest("share_publishes?select=id");
   check(d.status === 401 || d.status === 403, `the publish log is closed (${d.status})`);
+  d = await anonRest("share_listings?select=id");
+  check(d.status === 401 || d.status === 403, `so is the listing log (${d.status})`);
+  d = await anonRest(`shared_models?id=eq.${id}&select=listed,listed_at,remixed_from`);
+  check(d.status === 200 && d.json?.length === 1, `whether it is listed, and what it was remixed from, are readable (${d.status})`);
+  d = await anonRest(`shared_models?id=eq.${id}&select=barred`);
+  check(d.status === 401 || d.status === 403, `whether the site's owner barred it is not (${d.status})`);
+  d = await anonRest("rpc/may_list", { method: "POST", body: { account: a.kept.user_id } });
+  check(d.status >= 400, `the listing limit cannot be called with it (${d.status})`);
   const file = await fetch(`${SUPABASE}/storage/v1/object/shared-models/${id}.mpd`, { headers: { apikey: PUBLISHABLE } });
   check(file.status >= 400, `the file is not in a public bucket (${file.status})`);
   const filePublic = await fetch(`${SUPABASE}/storage/v1/object/public/shared-models/${id}.mpd`);
@@ -343,20 +365,164 @@ async function main() {
   check(r.status === 200, "taken down");
 }
 
+/// The gallery: listing and the list, a name that is markup, a remix, the
+/// site's owner taking one out, and the limit on listing.
+async function theGallery(tokenA, tokenB, unlistedId) {
+  console.log("the gallery");
+  const list = () => call("/api/share?op=list&page=1");
+  const inList = (l, id) => (l.json?.models || []).some((m) => m.id === id);
+  const d = await mintSession(emailD);
+  const tokenD = d.access_token;
+
+  let r = await call("/api/share", { method: "POST", token: tokenA,
+    body: { name: "Probe Gallery", author: "Probe Builder", model: MODEL, image: PICTURE, listed: true } });
+  const listedId = r.json?.id || "";
+  if (listedId) published.add(listedId);
+  check(r.status === 201 && r.json?.listed === true && r.json?.gallery === `${base}/gallery`,
+    `published with listed: true (${r.status}, listed ${r.json?.listed}, ${r.json?.gallery})`);
+  let l = await list();
+  const card = l.json?.models?.[0] || {};
+  check(l.status === 200 && card.id === listedId && card.name === "Probe Gallery" && card.author === "Probe Builder"
+    && card.parts === 9 && card.url === `${base}/m/${listedId}` && card.image === `${base}/m/${listedId}.png`,
+    `?op=list has it first, with its name, author, part count, link and picture (${l.status}, ${card.id})`);
+  check(!("owner" in card) && l.json?.per_page === 24 && typeof l.json?.more === "boolean",
+    "...no owner, and a page of 24 that says whether there is another");
+  check(!inList(l, unlistedId), "a model shared without the box ticked is not in it");
+  check(/no-cache|no-store/.test(l.headers.get("cache-control") || ""),
+    `the list is asked again each time (${l.headers.get("cache-control")})`);
+  const pages = [];
+  for (const bad of ["0", "-1", "x", "1.5", "401"]) pages.push((await call(`/api/share?op=list&page=${bad}`)).status);
+  check(pages.every((s) => s === 400), `a page that is not 1 to 400: 400 (${pages.join(", ")})`);
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Listed?", model: MODEL, listed: "yes" } });
+  check(r.status === 400, `listed that is not true or false: 400 (${r.status}) "${r.json?.error}"`);
+
+  // A name that is markup, listed by somebody else, later: first now.
+  const MARKUP = `<img src=x onerror="alert(1)">Probe & "Co"`;
+  r = await call("/api/share", { method: "POST", token: tokenD, body: { name: MARKUP, model: SMALL, listed: true } });
+  const markupId = r.json?.id || "";
+  if (markupId) published.add(markupId);
+  l = await list();
+  check(l.json?.models?.[0]?.id === markupId && l.json?.models?.[1]?.id === listedId,
+    "newest first: one listed later is ahead of it");
+  check(l.json?.models?.[0]?.name === MARKUP, "the list gives a name as the text it is, for the page to show as text");
+  r = await call(`/m/${markupId}`);
+  check(r.status === 200 && !r.text.includes("<img src=x")
+    && r.text.includes("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;Probe &amp; &quot;Co&quot;"),
+    `and its page escapes it (${r.status})`);
+
+  // A copy of the listed one, shared by the one who copied it.
+  r = await call("/api/share", { method: "POST", token: tokenD,
+    body: { name: "Probe Remix", model: MODEL, remixed_from: listedId } });
+  const remixId = r.json?.id || "";
+  if (remixId) published.add(remixId);
+  check(r.status === 201 && r.json?.remixed_from === listedId && r.json?.listed === false,
+    `a copy shared again records what it was remixed from, unlisted (${r.status}, ${r.json?.remixed_from})`);
+  r = await call(`/m/${remixId}`);
+  check(r.text.includes(`Remixed from <a href="/m/${listedId}">Probe Gallery</a>`), "its page says remixed from, with a link");
+  r = await call(`/api/share?id=${remixId}`);
+  check(r.json?.remixed_from?.id === listedId && r.json.remixed_from.name === "Probe Gallery"
+    && r.json.remixed_from.url === `${base}/m/${listedId}`, "and so does what the viewer reads");
+  r = await call("/api/share", { method: "POST", token: tokenD, body: { id: remixId, name: "Probe Remix", model: MODEL } });
+  check(r.status === 200 && r.json?.remixed_from === listedId, "republished without saying so, it still knows");
+  r = await call("/api/share", { method: "POST", token: tokenD, body: { name: "Bad remix", model: SMALL, remixed_from: "../../x" } });
+  check(r.status === 400, `remixed_from that is not a link: 400 (${r.status}) "${r.json?.error}"`);
+  r = await call("/api/share", { method: "POST", token: tokenD, body: { name: "Lost remix", model: SMALL, remixed_from: "QQQQQQQQQQ" } });
+  if (r.json?.id) published.add(r.json.id);
+  check(r.status === 201 && r.json?.remixed_from === null, `one from a link that never was: shared, remixed from nothing (${r.status})`);
+
+  // Unticked, and published again: out of the gallery, still at its link.
+  r = await call("/api/share", { method: "POST", token: tokenA,
+    body: { id: listedId, name: "Probe Gallery", model: MODEL, image: PICTURE, listed: false } });
+  l = await list();
+  check(r.status === 200 && r.json?.listed === false && !inList(l, listedId), "unticked and published again: out of the gallery");
+  check((await call(`/m/${listedId}`)).status === 200, "...and still shared at its link");
+  r = await call("/api/share", { method: "POST", token: tokenA,
+    body: { id: listedId, name: "Probe Gallery", model: MODEL, image: PICTURE, listed: true } });
+  check(r.status === 200 && inList(await list(), listedId), "ticked again: back in");
+
+  // Taken down: out of the gallery, and a remix of it no longer names it.
+  r = await call(`/api/share?op=unpublish&id=${listedId}`, { method: "POST", token: tokenA });
+  l = await list();
+  check(r.status === 200 && !inList(l, listedId), "unpublished: out of the gallery");
+  r = await call(`/m/${remixId}`);
+  check(r.status === 200 && !r.text.includes("Remixed from"), "and the remix's page no longer names a model taken down");
+  r = await call("/api/share", { method: "POST", token: tokenA,
+    body: { id: listedId, name: "Probe Gallery", model: MODEL, image: PICTURE } });
+  check(r.status === 200 && r.json?.listed === false && !inList(await list(), listedId),
+    "published again without the box: shared, not listed");
+  r = await call("/api/share", { method: "POST", token: tokenA,
+    body: { id: listedId, name: "Probe Gallery", model: MODEL, image: PICTURE, listed: true } });
+  check(inList(await list(), listedId), "listed again");
+
+  // The site's owner takes it out.
+  r = await call(`/api/admin?op=unlist&id=${listedId}`, { method: "POST", token: tokenD });
+  check(r.status === 404, `anybody else asking to take it out: 404, as for a page that is not there (${r.status})`);
+  r = await call(`/api/admin?op=unlist&id=${listedId}`, { method: "POST" });
+  check(r.status === 401, `signed out: 401 (${r.status})`);
+  check(inList(await list(), listedId), "...and it is still in the gallery");
+  if (args.master) {
+    const m = await mintSession(process.env.MASTER_EMAIL);
+    r = await call("/api/admin", { token: m.access_token });
+    const row = (r.json?.gallery || []).find((g) => g.id === listedId);
+    check(r.status === 200 && row?.name === "Probe Gallery" && row?.email === emailA,
+      `the owner's page lists what is in the gallery, and whose (${r.status}, ${row?.email})`);
+    r = await call(`/api/admin?op=unlist&id=${listedId}`, { method: "POST", token: m.access_token });
+    check(r.status === 200 && r.json?.barred === true, `the site's owner takes it out: 200 (${r.status})`);
+    check(!inList(await list(), listedId), "out of the gallery");
+    check((await call(`/m/${listedId}`)).status === 200, "its link still works");
+    r = await call("/api/share", { method: "POST", token: tokenA,
+      body: { id: listedId, name: "Probe Gallery", model: MODEL, listed: true } });
+    check(r.status === 409 && !inList(await list(), listedId),
+      `its owner cannot list it again: 409 (${r.status}) "${r.json?.error}"`);
+    r = await call("/api/share", { method: "POST", token: tokenA, body: { id: listedId, name: "Probe Gallery", model: MODEL } });
+    check(r.status === 200, `but can still publish it unlisted (${r.status})`);
+    r = await call("/api/admin?op=unlist&id=QQQQQQQQQQ", { method: "POST", token: m.access_token });
+    check(r.status === 404, `a link that never was: 404 (${r.status})`);
+    r = await call("/api/admin?op=unlist&id=../x", { method: "POST", token: m.access_token });
+    check(r.status === 400, `an id that is not one: 400 (${r.status})`);
+  } else {
+    console.log("  --    the site's owner taking a model out: with --master");
+  }
+
+  // Listing, counted.
+  const e = await mintSession(emailE);
+  let allowed = 0;
+  let refused = null;
+  let firstOfE = "";
+  for (let n = 0; n < 9 && !refused; n += 1) {
+    r = await call("/api/share", { method: "POST", token: e.access_token, body: { name: `Listed ${n}`, model: SMALL, listed: true } });
+    if (r.status === 201) {
+      allowed += 1;
+      published.add(r.json.id);
+      firstOfE = firstOfE || r.json.id;
+    } else refused = r;
+  }
+  check(allowed === 6 && refused?.status === 429, `six listings an hour, then 429 (${allowed} allowed, then ${refused?.status}) "${refused?.json?.error}"`);
+  r = await call("/api/share", { method: "POST", token: e.access_token, body: { id: firstOfE, name: "Listed 0", model: SMALL, listed: true } });
+  check(r.status === 200 && r.json?.listed === true, `staying listed is not a listing: republished, still in (${r.status})`);
+  r = await call("/api/share", { method: "POST", token: e.access_token, body: { name: "Unlisted", model: SMALL } });
+  if (r.json?.id) published.add(r.json.id);
+  check(r.status === 201, `and publishing unlisted is not held up by it (${r.status})`);
+}
+
 async function cleanUp() {
   // Every model published here is taken down (the files go with that),
-  // then both accounts, which takes their rows with them.
-  const sessionA = await mintSession(emailA).catch(() => null);
-  const sessionB = await mintSession(emailB).catch(() => null);
+  // then every account, which takes their rows with them.
+  const sessions = [];
+  for (const email of [emailA, emailB, emailD, emailE]) {
+    sessions.push(await mintSession(email).catch(() => null));
+  }
   for (const id of published) {
-    for (const s of [sessionA, sessionB]) {
+    for (const s of sessions) {
       if (s) await call(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: s.access_token }).catch(() => {});
     }
   }
   await deleteAccount(emailC).catch(() => false);
   const goneA = await deleteAccount(emailA);
   const goneB = await deleteAccount(emailB);
-  check(goneA && goneB, "both throwaway accounts deleted, and their rows with them");
+  const goneD = await deleteAccount(emailD);
+  const goneE = await deleteAccount(emailE);
+  check(goneA && goneB && goneD && goneE, "every throwaway account deleted, and their rows with them");
   const left = await call(`/api/share?id=${[...published][0] || "QQQQQQQQQQ"}`);
   check(left.status === 404, `nothing left behind: the link is gone with the account (${left.status})`);
 }

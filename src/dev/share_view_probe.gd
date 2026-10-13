@@ -67,7 +67,7 @@ class FakeShared extends SharedModels:
 		var given: String = str(body.get("id", "NewL1nk%03d" % published.size()))
 		return {"code": 200 if body.has("id") else 201, "body": {"id": given,
 			"url": "https://brickworks.diy/m/" + given, "embed": SharedModels.embed_for(given),
-			"parts": 7, "updated": body.has("id")}}
+			"parts": 7, "updated": body.has("id"), "listed": body.get("listed", false) == true}}
 
 	func unpublish(_token: String, id: String) -> Dictionary:
 		unpublished.append(id)
@@ -104,6 +104,8 @@ func _run() -> void:
 	var fake := FakeShared.new()
 	fake.answer = {"code": 200, "body": {"id": ID, "name": "Probe House",
 		"author": "Probe Builder", "parts": count, "url": "https://brickworks.diy/m/" + ID,
+		"remixed_from": {"id": "0r1g1nM0de", "name": "Probe Original",
+			"url": "https://brickworks.diy/m/0r1g1nM0de"},
 		"model": text}}
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("_viewing", ID)
@@ -147,6 +149,10 @@ func _run() -> void:
 	_ok(view.model_name == "Probe House" and view.author == "Probe Builder" and view.parts == count,
 		"the bar names it, who made it and its part count (%s, %s, %d)" % [
 			view.model_name, view.author, view.parts])
+	var bar_said: Dictionary = view.page_state()
+	_ok(str(bar_said["about"]).ends_with("· remixed from Probe Original")
+		and view.controls_by_name().has("view_remixed_from"),
+		"...and what it was remixed from, a line that opens that link (%s)" % bar_said["about"])
 	var bar: ModelBar = _main.get("_bar")
 	_ok(not bar.visible and not shell.toolbar.visible
 		and not (_main.get("_bin_dock") as Control).visible
@@ -592,6 +598,8 @@ func _the_panel(text: String) -> void:
 		"published, and the link is kept with the model (%s, %s)" % [panel.state, store.share_id])
 	_ok(str(sent.get("name", "")) == "Probe House" and str(sent.get("author", "")) == "Probe Builder"
 		and not sent.has("id"), "it sent the name and the author, and no link the first time")
+	_ok(sent.get("listed") == false and not panel._list.button_pressed and not sent.has("remixed_from"),
+		"not listed in the gallery unless ticked, and remixed from nothing")
 	var model: String = str(sent.get("model", ""))
 	_ok(model.contains(".dat") and model.contains("0 !DATA") and not model.contains("!BRICKWORKS SHARE"),
 		"the model went as LDraw with its made part and print inside, and no link line")
@@ -617,6 +625,35 @@ func _the_panel(text: String) -> void:
 	var again: Dictionary = fake.published[-1]
 	_ok(str(again.get("id", "")) == "NewL1nk001" and not again.has("author"),
 		"publishing again sends the same link, and no author once unticked")
+
+	print("\nthe gallery, and a remix")
+	_ok(panel.controls_by_name().has("share_list") and panel._list.text == "List it in the gallery",
+		"the panel has List it in the gallery")
+	panel._list.button_pressed = true
+	await _settle()
+	_save("8b_list_ticked.png")
+	await panel.publish()
+	var listing: Dictionary = fake.published[-1]
+	_ok(listing.get("listed") == true and panel.page_state()["listed"] == true
+		and str(panel._status.text).contains("listed in the gallery"),
+		"ticked, it is published as listed, and the panel says so (%s)" % panel._status.text)
+	panel._list.button_pressed = false
+	await panel.publish()
+	_ok(fake.published[-1].get("listed") == false and not str(panel._status.text).contains("gallery"),
+		"unticked and published again: not listed (%s)" % panel._status.text)
+	store.remixed_from = "0r1g1nM0de"
+	await panel.publish()
+	_ok(str(fake.published[-1].get("remixed_from", "")) == "0r1g1nM0de",
+		"a copy of somebody's link says which one when it is published")
+	var with_both: String = ModelStore.with_share(store.to_text("Probe House"), store.share_id, store.remixed_from)
+	_ok(ModelStore.share_in(with_both) == "NewL1nk001" and ModelStore.remix_in(with_both) == "0r1g1nM0de"
+		and LdrModel.parse(with_both, "x").main.title == "Probe House",
+		"its saves carry both links on lines LDraw ignores, and keep the title")
+	var copy: Dictionary = store.open_text(ModelStore.with_share(store.to_text("Probe House"), "",
+		"0r1g1nM0de"), "probe")
+	_ok(int(copy["placed"]) > 0 and store.remixed_from == "0r1g1nM0de" and store.share_id.is_empty(),
+		"opened again, it still knows where it came from (%s)" % store.remixed_from)
+	store.share_id = "NewL1nk001"
 	await panel.unpublish()
 	_ok(fake.unpublished == ["NewL1nk001"] and panel.state == "unpublished"
 		and panel._publish.text == "Publish again", "Unpublish takes it down (%s)" % panel._publish.text)
@@ -627,11 +664,15 @@ func _the_panel(text: String) -> void:
 	_ok(store.share_id != "Someb0dyEl" and not fake.published[-1].has("id"),
 		"a link of another account's is replaced by one of its own (%s)" % store.share_id)
 	panel.visible = false
+	store.remixed_from = "0r1g1nM0de"
 	bar._on_clear()
-	_ok(store.share_id.is_empty(), "Clear forgets the link")
+	_ok(store.share_id.is_empty() and store.remixed_from.is_empty(),
+		"Clear forgets the link, and where it came from")
 	store.share_id = "NewL1nk001"
+	store.remixed_from = "0r1g1nM0de"
 	store.begin("Probe Tower")
-	_ok(store.share_id.is_empty(), "and so does new work (ModelStore.begin)")
+	_ok(store.share_id.is_empty() and store.remixed_from.is_empty(),
+		"and so does new work (ModelStore.begin)")
 	_main.queue_free()
 	for _n: int in 10:
 		await process_frame

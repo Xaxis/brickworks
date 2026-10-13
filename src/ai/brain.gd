@@ -252,6 +252,35 @@ static func set_effort(level: String) -> void:
 	_keep(file)
 
 
+# -- sketch first ---------------------------------------------------------
+
+
+## What the three sketches before a full design are made on (Sketch first,
+## Assistant.sketch): Sonnet at medium, or what is chosen when that is
+## cheaper still. A sketch is a massing under 150 parts said in one turn,
+## which is the "simple thing" medium is for; the full design that follows
+## goes back to the person's own choice.
+const SKETCH_MODEL := "claude-sonnet-5-5"
+const SKETCH_EFFORT := "medium"
+
+
+static func sketch_model() -> String:
+	var mine: Choice = find(chosen())
+	var cheap: Choice = find(SKETCH_MODEL)
+	return mine.id if mine.per_out <= cheap.per_out else cheap.id
+
+
+## Never more than the person asked for: somebody designing at low effort
+## sketches at low too. Empty for a model that takes no effort.
+static func sketch_effort() -> String:
+	if not find(sketch_model()).effort:
+		return ""
+	var mine: String = effort()
+	if mine.is_empty():
+		return SKETCH_EFFORT
+	return EFFORTS[mini(EFFORTS.find(SKETCH_EFFORT), EFFORTS.find(mine))]
+
+
 # -- what it cost --------------------------------------------------------
 
 

@@ -125,6 +125,9 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		trouble.append("a shape wants a solid: \"loft\", \"extrude\", \"revolve\", "
 			+ "\"box\", \"ellipsoid\" or \"dome\", or several in \"solids\"")
 		return []
+	var wheels: Array = _wheels(pattern, solids, cuts, trouble)
+	if not trouble.is_empty():
+		return []
 	var bands: Array = []
 	for raw: Variant in pattern.get("bands", []):
 		if raw is Dictionary:
@@ -215,19 +218,23 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				var cell := Vector2i(int(raw[0]), int(raw[1]))
 				if columns.has(cell):
 					plan.studded[cell] = true
-		# And where another shape of the same design stands on this one's
-		# top: a car's cabin said as a shape on its body stood on the body's
-		# tiles, gripping nothing, and the run threw the body away.
+		# And where anything else of the same design stands on this one's
+		# top (Patterns.expand): a car's cabin said as a shape on its body
+		# stood on the body's tiles, gripping nothing, and the run threw the
+		# body away. Stud -> the heights of the feet there, in plates.
 		var carried: Dictionary = pattern.get("_carried", {})
 		for key: Variant in columns:
 			var cell: Vector2i = key
 			var world := Vector2i(cell.x + roundi(origin.x), cell.y + roundi(origin.z))
 			if not carried.has(world):
 				continue
+			var heights: Variant = carried[world]
 			var column: PackedInt32Array = columns[cell]
 			for j: int in range(tall - 1, -1, -1):
 				if column[j] >= 0:
-					if roundi(origin.y) + y0 + j + 1 == int(carried[world]):
+					var foot: int = roundi(origin.y) + y0 + j + 1
+					if (heights is Array and (heights as Array).has(foot)) \
+							or (not heights is Array and foot == int(heights)):
 						plan.studded[cell] = true
 					break
 		# A cut marked "keep" is kept clear of everything: a wedge's cut side, a
@@ -351,7 +358,76 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		if one.has("face"):
 			out["face"] = one["face"]
 		placed.append(out)
+	for one: Dictionary in wheels:
+		var out: Dictionary = one.duplicate()
+		out["x"] = float(one["x"]) + origin.x
+		out["y"] = float(one["y"]) + origin.y
+		out["z"] = float(one["z"]) + origin.z
+		placed.append(out)
 	return placed
+
+
+## The axles a Speed Champions car stands on, from a shape's "wheels": the
+## positions along x of each axle's middle. Each is a wheel and tyre at both
+## sides (18976c01), a row of Technic bricks with axle holes between them on
+## an axle through both wheels, the body over it standing on those bricks'
+## studs, and the body kept clear of each wheel's whole box and of the
+## bricks: the cuts are added here, marked keep.
+##
+## Why the shape says them. Every bench car that tried a shaped body gave it
+## up: raised over nothing it floated (126 to 183 parts), with wheels added
+## its slopes ran into the tyres' boxes (a round arch cut leaves the box's
+## corners), and the session built the car by hand, studs up and boxy. The
+## wheel unit is the one the d5b car proved holds; across, the body must be
+## 6, 8, 10 or 12 studs, an axle of that width less two.
+const WHEEL := "18976c01"
+const AXLES: Dictionary = {6: "3705", 8: "3706", 10: "3707", 12: "3737"}
+
+
+static func _wheels(pattern: Dictionary, solids: Array, cuts: Array, trouble: Array) -> Array:
+	var asked: Variant = pattern.get("wheels", [])
+	if not asked is Array or (asked as Array).is_empty():
+		return []
+	var box: AABB = solids[0]["box"]
+	for solid: Dictionary in solids:
+		box = box.merge(solid["box"])
+	var z0: int = floori(box.position.z + 0.01)
+	var wide: int = ceili(box.end.z - 0.01) - z0
+	if not AXLES.has(wide):
+		trouble.append("wheels go under a body laid along x that is 6, 8, 10 or 12 studs "
+			+ "across (z); this one is %d. Say the body that wide, or build the wheels " % wide
+			+ "as bricks")
+		return []
+	var rim: int = int(pattern.get("wheel_color", pattern.get("wheel_colour", 71)))
+	var out: Array = []
+	for raw: Variant in asked:
+		var c: float = snappedf(float(raw), 0.5)
+		if c - 2.0 < box.position.x - 0.01 or c + 2.0 > box.end.x + 0.01:
+			trouble.append("a wheel at x=%s is not under the body (x %s to %s)" % [c,
+				box.position.x, box.end.x])
+			return []
+		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0, "z": z0, "rot": 0})
+		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0,
+			"z": z0 + wide - 1.5, "rot": 2})
+		for k: int in range(z0 + 2, z0 + wide - 2):
+			out.append({"part": "32064a", "color": 0, "x": c - 1.0, "y": 2, "z": k, "rot": 0})
+		out.append({"part": AXLES[wide], "color": 0, "x": c - 0.3, "y": 3, "z": z0 + 1,
+			"rot": 1})
+		# Clear of each wheel's box and of the bricks, the body over them
+		# from five plates up standing on the bricks' studs.
+		for from: Vector3 in [Vector3(c - 2.0, -1.0, z0 - 1.0),
+				Vector3(c - 2.0, -1.0, z0 + wide - 2.0)]:
+			cuts.append(_solid("box", {"from": [from.x, from.y, from.z], "size": [4.0, 9.5, 3.0],
+				"keep": true}, trouble))
+		cuts.append(_solid("box", {"from": [c - 1.0, -1.0, z0 + 1.5], "size": [2.0, 6.0,
+			wide - 3.0], "keep": true}, trouble))
+		# The body has to come down to the bricks to stand on them.
+		if _colour_at(solids, [], Vector3(c, 5.5, z0 + wide / 2.0), 0, []) < 0:
+			trouble.append(("the body does not come down to the wheels' Technic bricks at "
+				+ "x=%s: its underside there must be 5 plates up or lower (under), so it " % c)
+				+ "stands on them")
+			return []
+	return out
 
 
 ## Where a shape's foot is, stud by stud: world (x, z) -> the plate its

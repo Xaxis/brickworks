@@ -128,15 +128,66 @@ const MOST := 4000
 ## works on what is already there.
 static func expand(raw_patterns: Array, already: Array,
 		trouble: Array, library: PartLibrary = null) -> Array:
-	var made: Array = []
 	# Where each shape stands, so a shape under another keeps its studs
 	# there rather than tiling them: a cabin on a body, a head on a neck.
 	var footings: Array = []
+	var shaped: bool = false
 	for raw: Variant in raw_patterns:
 		var standing: Dictionary = {}
 		if raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape":
 			standing = Shapes.feet(raw)
+			shaped = true
 		footings.append(standing)
+	var others: Array = []
+	var made: Array = _expanded(raw_patterns, already, trouble, library, footings, {}, others)
+	if not shaped or library == null or not trouble.is_empty():
+		return made
+	# And where anything else stands on a shape: the design's own bricks, a
+	# round, a fill. Only shapes knew of each other, so a collar laid as a
+	# round on a shape's top stood on its tiles, gripping nothing, and the
+	# orrery's ring came off it whole. Laid again, keeping studs there.
+	var feet: Dictionary = feet_of(already + others, library)
+	for cell: Variant in feet:
+		for standing: Dictionary in footings:
+			if standing.has(cell):
+				return _expanded(raw_patterns, already, trouble, library, footings, feet, [])
+	return made
+
+
+## Where bricks stand: stud [x, z] -> the heights, in plates, of the feet
+## of the parts that take studs there, studs up on the grid. A part's whole
+## footprint, which under a round brick is a stud or two more than its foot.
+static func feet_of(bricks: Array, library: PartLibrary) -> Dictionary:
+	var out: Dictionary = {}
+	for raw: Variant in bricks:
+		if not raw is Dictionary:
+			continue
+		var brick: Dictionary = raw
+		var at := Vector3(float(brick.get("x", 0.0)), float(brick.get("y", 0.0)),
+			float(brick.get("z", 0.0)))
+		if str(brick.get("face", "up")).to_lower() != "up" \
+				or not str(brick.get("section", "")).is_empty() or at != at.round():
+			continue
+		var part: String = str(brick.get("part", ""))
+		var info: PartLibrary.PartInfo = library.parts.get(part)
+		if info == null or info.socket_count == 0:
+			continue
+		var rot: int = posmod(int(brick.get("rot", 0)), 4)
+		for i: int in roundi(_spans(library, part, rot, "x")):
+			for k: int in roundi(_spans(library, part, rot, "z")):
+				var cell := Vector2i(roundi(at.x) + i, roundi(at.z) + k)
+				if not out.has(cell):
+					out[cell] = []
+				(out[cell] as Array).append(roundi(at.y))
+	return out
+
+
+## The patterns' bricks, each shape told where the other shapes stand on it
+## and where [param feet] do; what the patterns other than shapes made is
+## added to [param others].
+static func _expanded(raw_patterns: Array, already: Array, trouble: Array,
+		library: PartLibrary, footings: Array, feet: Dictionary, others: Array) -> Array:
+	var made: Array = []
 	var n: int = -1
 	for raw: Variant in raw_patterns:
 		n += 1
@@ -145,15 +196,24 @@ static func expand(raw_patterns: Array, already: Array,
 			continue
 		var pattern: Dictionary = raw
 		var kind: String = str(pattern.get("pattern", "")).to_lower()
-		if kind == "shape" and footings.size() > 1:
+		if kind == "shape":
 			var carried: Dictionary = {}
 			for m: int in footings.size():
-				if m != n:
-					carried.merge(footings[m])
+				if m == n:
+					continue
+				for cell: Variant in footings[m]:
+					if not carried.has(cell):
+						carried[cell] = []
+					(carried[cell] as Array).append(int(footings[m][cell]))
+			for cell: Variant in feet:
+				if not carried.has(cell):
+					carried[cell] = []
+				(carried[cell] as Array).append_array(feet[cell])
 			if not carried.is_empty():
 				pattern = pattern.duplicate()
 				pattern["_carried"] = carried
 		var from: Array = already + made
+		var before: int = made.size()
 		match kind:
 			"repeat":
 				made.append_array(_repeat(pattern, trouble))
@@ -170,6 +230,8 @@ static func expand(raw_patterns: Array, already: Array,
 			_:
 				trouble.append("no pattern called \"%s\" — there is "
 					% kind + "repeat, mirror, fill, rock, round and shape")
+		if kind != "shape":
+			others.append_array(made.slice(before))
 		if made.size() > MOST:
 			trouble.append("that would be %d bricks or more, which is a "
 				% made.size() + "mistake in the numbers rather than a model")

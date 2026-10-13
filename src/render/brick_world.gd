@@ -333,6 +333,7 @@ func _unplace(brick_id: int) -> void:
 	_brick_batches.erase(brick_id)
 	_bricks.erase(brick_id)
 	_spans.erase(brick_id)
+	_drawn.erase(brick_id)
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
@@ -414,7 +415,9 @@ func clear() -> void:
 	# Numbers start again, so x-ray's would name the next model's bricks.
 	_xray.clear()
 	_faded.clear()
+	_tinted.clear()
 	_spans.clear()
+	_drawn.clear()
 	_next_id = 1
 	unit_steps.clear()
 	_note({"op": "clear"})
@@ -511,6 +514,19 @@ func copy_for_reading() -> BrickWorld:
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
 	return copy
+
+
+## A brick written into a world of that kind, which draws nothing and keeps
+## no history: a model that is not on the baseplate, to be measured and
+## photographed (ModelShot reads a world's bricks and nothing else). A
+## sketch is one (Assistant._hold_sketch). Its id, or 0 with no such part.
+func add_unseen(part_id: String, color_code: int, at: Transform3D) -> int:
+	if library == null or not library.parts.has(part_id):
+		return 0
+	var brick := Brick.new(_next_id, library.resolve(part_id), color_code, at)
+	_bricks[brick.id] = brick
+	_next_id += 1
+	return brick.id
 
 
 ## The bounding box of everything placed, in LDU.
@@ -734,7 +750,7 @@ func _rebuild(batch: Batch, key: String) -> void:
 		var brick: Brick = _bricks[brick_id]
 		if brick.hidden:
 			continue
-		var box: AABB = brick.transform * batch.multimesh.mesh.get_aabb()
+		var box: AABB = drawn_at(brick) * batch.multimesh.mesh.get_aabb()
 		if first:
 			bounds = box
 			first = false
@@ -761,12 +777,15 @@ func _fresh_slots(batch: Batch, count: int) -> void:
 func _write_instance(batch: Batch, slot: int, brick: Brick,
 		surface_color: int, into: MultiMesh = null) -> void:
 	var multimesh: MultiMesh = into if into != null else batch.multimesh
-	multimesh.set_instance_transform(slot, brick.transform)
+	multimesh.set_instance_transform(slot, drawn_at(brick))
 	# A surface moulded in a fixed colour ignores the brick's colour;
 	# that is what keeps a printed face black on a yellow head.
 	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 	var color: PartLibrary.BrickColor = library.color(code)
-	multimesh.set_instance_color(slot, faded(color.shown) if _faded.has(brick.id) else color.shown)
+	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
+	if _tinted.has(brick.id):
+		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
+	multimesh.set_instance_color(slot, shown)
 	multimesh.set_instance_custom_data(slot, color.instance_custom)
 
 
@@ -942,7 +961,7 @@ func _write_in_order(batch: Batch, key: String) -> void:
 	for slot: int in count:
 		var brick: Brick = _bricks[batch.brick_ids[slot]]
 		_write_instance(batch, slot, brick, surface_color)
-		var box: AABB = brick.transform * batch.multimesh.mesh.get_aabb()
+		var box: AABB = drawn_at(brick) * batch.multimesh.mesh.get_aabb()
 		bounds = box if slot == 0 else bounds.merge(box)
 	batch.multimesh.visible_instance_count = batch.shown
 	# Bounds for all of them, shown or to come, so the batch is not culled
@@ -1258,7 +1277,7 @@ func _write_through(batch: Batch, bricks: Array, surface_color: int) -> void:
 	for slot: int in bricks.size():
 		var brick: Brick = bricks[slot]
 		_write_instance(batch, slot, brick, surface_color, multimesh)
-		var box: AABB = brick.transform * multimesh.mesh.get_aabb()
+		var box: AABB = drawn_at(brick) * multimesh.mesh.get_aabb()
 		bounds = box if slot == 0 else bounds.merge(box)
 	batch.through.custom_aabb = bounds
 	if batch.beyond != null:
@@ -1341,6 +1360,73 @@ func faded_ids() -> Dictionary:
 	return _faded
 
 
+## Bricks drawn tinted towards a colour: id -> Color. Tools, Check stability
+## tints the stud joints carrying most against what their studs hold
+## (Balance). An empty set is none.
+var _tinted: Dictionary = {}
+const TINTING := 0.7
+
+
+func set_tinted(ids: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _tinted:
+		if not ids.has(brick_id) or ids[brick_id] != _tinted[brick_id]:
+			changed[brick_id] = true
+	for brick_id: int in ids:
+		if not _tinted.has(brick_id):
+			changed[brick_id] = true
+	_tinted = ids.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func tinted_ids() -> Dictionary:
+	return _tinted
+
+
+## Bricks drawn somewhere other than where they stand: id -> Transform3D.
+## Tools, Simulate mechanism turns a gear train with these (SimulatePanel):
+## what is drawn moves and the model does not. A brick keeps its transform,
+## the lattice its cells, the history no step and [member revision] its
+## count, so nothing that reads the model — a save, the autosave, undo, the
+## assistant — sees the turn. An empty set draws every brick where it stands.
+var _drawn: Dictionary = {}
+
+
+func set_drawn(placed: Dictionary) -> void:
+	var keys: Dictionary = {}
+	for brick_id: int in _drawn:
+		if not placed.has(brick_id):
+			for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+				keys[key] = true
+	for brick_id: int in placed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	_drawn = placed.duplicate()
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func drawn_ids() -> Dictionary:
+	return _drawn
+
+
+## Where a brick is drawn: where it stands, unless [method set_drawn] moved
+## its picture.
+func drawn_at(brick: Brick) -> Transform3D:
+	return _drawn.get(brick.id, brick.transform)
+
+
 ## A colour as a faded brick is drawn in. Its alpha is kept: faded
 ## transparent plastic is still see-through.
 static func faded(colour: Color) -> Color:
@@ -1374,11 +1460,11 @@ func _write_xray(batch: Batch, ghosts: Array, surface_color: int) -> void:
 	var bounds := AABB()
 	for slot: int in ghosts.size():
 		var brick: Brick = ghosts[slot]
-		multimesh.set_instance_transform(slot, brick.transform)
+		multimesh.set_instance_transform(slot, drawn_at(brick))
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT \
 			else surface_color
 		multimesh.set_instance_color(slot, library.color(code).shown)
-		var box: AABB = brick.transform * multimesh.mesh.get_aabb()
+		var box: AABB = drawn_at(brick) * multimesh.mesh.get_aabb()
 		bounds = box if slot == 0 else bounds.merge(box)
 	batch.xray.custom_aabb = bounds
 

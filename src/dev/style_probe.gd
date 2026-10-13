@@ -114,6 +114,11 @@ func _run() -> void:
 		"a steam locomotive is a vehicle and round (its boiler): %s" % str(traits.keys()))
 	_check(not Style.traits_of("a carriage in scarlet").has("vehicle"),
 		"...and a word inside a word is not one: no car in a scarlet carriage")
+	var porsche: Dictionary = Style.traits_of(
+		"A 1975 Porsche 911 Turbo coupe, rear-engine, with its whale-tail spoiler")
+	_check(porsche.keys() == ["vehicle"],
+		"a Porsche with a whale-tail and a rear engine is a vehicle, not a creature or a "
+			+ "machine: %s" % str(porsche.keys()))
 	# A body of round bricks is shaped by its curves; a rocket of them was
 	# told it was a pile of bricks for having nothing on its side.
 	var round: String = Style.advice({"parts": 400, "snot": 0.02, "angled": 0.0,

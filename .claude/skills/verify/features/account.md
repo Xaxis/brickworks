@@ -59,13 +59,20 @@ they have. A Claude connector belongs to the account that switched it on.
 - `GET /api/account` with `Authorization: Bearer`: also `signed_in`, `email`,
   `master` (cache `private, no-store`). Without: the public answer
   (`enabled`, `url`, `key`, `parts_url`, `assistant`), cacheable.
-- `GET /api/admin` (`api/admin.js`): read-only, MASTER_EMAIL only (404 for
-  everyone else signed in, 401 signed out): accounts from Supabase's admin API
-  with joined and last sign-in, connectors per owner from `relay_tabs`, and
-  whether codes are going out under the borrowed sender.
+- `GET /api/admin` (`api/admin.js`): MASTER_EMAIL only (404 for everyone
+  else signed in, 401 signed out): accounts from Supabase's admin API with
+  joined and last sign-in, connectors per owner from `relay_tabs`, whether
+  codes are going out under the borrowed sender, and `gallery`: every listed,
+  published model (id, name, credit, parts, when listed, its account's
+  address). Its one write (2026-10-13): `POST ?op=unlist&id=` takes a model
+  out of the gallery and bars it (`listed` off, `barred` on; 404 for no such
+  link, 400 for no id) — its link goes on working, and its owner cannot list
+  it again ([web](web.md)).
 - `admin page` (`web/admin.html`, `web/admin.js`): uses the app's session in
   that browser (renews it and puts the renewed one back), so there is one
-  sign-in, in the app. Text only, never markup, for addresses people typed.
+  sign-in, in the app. Text only, never markup, for addresses people typed and
+  names they chose. In the gallery: the listed models, each a link to its page,
+  with Take out (asks first, then `?op=unlist` and the page again).
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.
@@ -123,7 +130,12 @@ they have. A Claude connector belongs to the account that switched it on.
   the same link, and "Publish again" after Unpublish brings it back there. A
   link that is another account's (403) or gone (404) is replaced by a new one;
   New and Clear forget it. Opening the panel asks `?op=mine` whether its link
-  is up or taken down. Signed out, it says to sign in.
+  is up or taken down. Signed out, it says to sign in. **List it in the
+  gallery** (`share_list`, 2026-10-13): off for a model with no link, set from
+  `?op=mine` for one with (so updating a listed link does not unlist it), and
+  disabled with a word when Brickworks took the model out; sent as `listed`
+  on every publish, and the status says when it is listed. A model copied with
+  Open in Brickworks sends `remixed_from`.
 - `Open in Brickworks` (`main._maybe_copy`, `/app?copy=<id>`): the viewer's
   button. The app as everyone gets it, sign-in screen and all; once somebody
   is signed in and what was on the baseplate is back, the shared model is
@@ -131,6 +143,9 @@ they have. A Claude connector belongs to the account that switched it on.
   (not the untouched example), the copy waits for its parts and is saved under
   its own name — "Name (copy)" if one of theirs has it — with no link of its
   own, and the address loses its `?copy=` so a reload makes no second copy.
+  It knows the link it came from (`ModelStore.remixed_from`, kept in its
+  saves as `0 !BRICKWORKS REMIX <id>`), so shared, its page says what it was
+  remixed from.
 - `sign a machine in` (`src/dev/sign_in.gd`): for a windowed app driven from a
   checkout (`--mcp` and `tools/brick.py`, a look by hand), which opens on the
   sign-in screen like anyone's. Mints the code with the admin API (needs

@@ -1,6 +1,6 @@
 [
   {
-    "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number.",
+    "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number. Printed parts are found by what is on them with the word print: \"porsche print\", \"control panel print\", \"3623 print\" (3623's prints); a part with a sticker on, with sticker.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -19,7 +19,7 @@
     "name": "search_parts"
   },
   {
-    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model. Safe to call on a partial design while you work.",
+    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model, and weigh it: whether it stands (its centre of mass against the edge of what it stands on, in every pose its hinges and turntables reach), the counterweight that would hold it, and its most loaded stud joints. Safe to call on a partial design while you work.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -27,6 +27,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -43,12 +55,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -132,6 +148,18 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "axis": {
+                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "enum": [
+                        "x",
+                        "-x",
+                        "y",
+                        "-y",
+                        "z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
                     "color": {
                       "description": "LDraw colour code",
                       "type": "integer"
@@ -148,12 +176,16 @@
                       ],
                       "type": "string"
                     },
+                    "joint": {
+                      "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                      "type": "integer"
+                    },
                     "part": {
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
                     "rot": {
-                      "description": "quarter turns about the face direction, 0-3",
+                      "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
                     },
                     "section": {
@@ -194,7 +226,7 @@
                 "type": "number"
               },
               "cuts": {
-                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "description": "shape: solids taken away, said the same way: a cockpit, a doorway; \"keep\": true keeps the cut clear of every part.",
                 "items": {
                   "type": "object"
                 },
@@ -487,6 +519,17 @@
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
               },
+              "wheel_color": {
+                "description": "shape: the rims' colour",
+                "type": "integer"
+              },
+              "wheels": {
+                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "window_color": {
                 "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",
                 "type": "integer"
@@ -699,6 +742,65 @@
     "name": "place_technique"
   },
   {
+    "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, or say you built it yourself. Saving waits until every feature listed in submit_design is settled.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "description": "the feature, as listed in submit_design's features",
+          "type": "string"
+        },
+        "move": {
+          "additionalProperties": false,
+          "description": "accept, moved first: studs across and deep, plates up. The other of a pair moves the mirror way.",
+          "properties": {
+            "dx": {
+              "type": "number"
+            },
+            "dy": {
+              "type": "number"
+            },
+            "dz": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "reason": {
+          "description": "a sentence: what is wrong with the piece here (to reject), or how you built it (built)",
+          "type": "string"
+        },
+        "recolor": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "accept, recoloured first: its colours to yours by LDraw code, {\"15\": 1} makes its white blue",
+          "type": "object"
+        },
+        "turn": {
+          "description": "accept, turned first: quarter turns on the spot",
+          "type": "integer"
+        },
+        "verdict": {
+          "description": "accept: keep the app's piece (adjusted by move, turn or recolor first, if given); next: take it off and lay the next-best piece; reject: take it off, with a reason, and build it your own way or leave it out; built: you built it yourself, and the app's piece comes off (accept keeps it)",
+          "enum": [
+            "accept",
+            "next",
+            "reject",
+            "built"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature",
+        "verdict"
+      ],
+      "type": "object"
+    },
+    "name": "settle_feature"
+  },
+  {
     "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
     "input_schema": {
       "additionalProperties": false,
@@ -757,6 +859,18 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "axis": {
+          "description": "as a brick's: x, y, z are then where its joint's middle goes",
+          "enum": [
+            "x",
+            "-x",
+            "y",
+            "-y",
+            "z",
+            "-z"
+          ],
+          "type": "string"
+        },
         "brick": {
           "description": "the number look_at_model printed",
           "type": "integer"
@@ -771,6 +885,9 @@
             "-z"
           ],
           "type": "string"
+        },
+        "joint": {
+          "type": "integer"
         },
         "part": {
           "type": "string"
@@ -972,6 +1089,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -988,12 +1117,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -1423,6 +1556,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -1439,12 +1584,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -1480,9 +1629,41 @@
           "type": "string"
         },
         "features": {
-          "description": "what the subject is known by, a few words each: an owl's facial disc, eyes, beak, ear tufts, wings, talons; a car's wheel arches, headlamps, grille, windscreen, spoiler. Once the shape stands and you have looked at it whole, each comes back to you on its own with how real sets built it, to lay, adapt or build before the assemblies are detailed.",
+          "description": "what the subject is known by, a few words each: an owl's facial disc, eyes, beak, ear tufts, wings, talons; a car's wheel arches, headlamps, grille, windscreen, spoiler — and where each goes: x, y, z on the model's surface and the way it faces out (one of a pair; the other is mirrored). Once the shape stands and you have looked at it whole, each comes back to you in turn with the best real set's piece for it laid there by the app, to accept, adjust or reject with settle_feature.",
           "items": {
-            "type": "string"
+            "additionalProperties": false,
+            "properties": {
+              "facing": {
+                "description": "the way it faces out; the front is +z",
+                "enum": [
+                  "+z",
+                  "-z",
+                  "+x",
+                  "-x",
+                  "up"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
           },
           "type": "array"
         },
@@ -1554,6 +1735,18 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "axis": {
+                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "enum": [
+                        "x",
+                        "-x",
+                        "y",
+                        "-y",
+                        "z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
                     "color": {
                       "description": "LDraw colour code",
                       "type": "integer"
@@ -1570,12 +1763,16 @@
                       ],
                       "type": "string"
                     },
+                    "joint": {
+                      "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                      "type": "integer"
+                    },
                     "part": {
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
                     "rot": {
-                      "description": "quarter turns about the face direction, 0-3",
+                      "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
                     },
                     "section": {
@@ -1616,7 +1813,7 @@
                 "type": "number"
               },
               "cuts": {
-                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "description": "shape: solids taken away, said the same way: a cockpit, a doorway; \"keep\": true keeps the cut clear of every part.",
                 "items": {
                   "type": "object"
                 },
@@ -1909,6 +2106,17 @@
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
               },
+              "wheel_color": {
+                "description": "shape: the rims' colour",
+                "type": "integer"
+              },
+              "wheels": {
+                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "window_color": {
                 "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",
                 "type": "integer"
@@ -2028,6 +2236,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "sketch": {
+          "description": "true for a sketch: massing only, under 150 parts, checked and pictured but not built. Three are made to choose between before the full design, each a different idea: in silhouette, proportion or approach.",
+          "type": "boolean"
         }
       },
       "required": [
@@ -2506,6 +2718,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -2522,12 +2746,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -2876,7 +3104,24 @@
     "name": "where_to_attach"
   },
   {
-    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one; with surface, the surface pass — the app tiles the open stud fields, slopes the stud staircases and textures the plain walls on the model, to settle each with settle_surface; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then surface, then creative last.",
+    "description": "Choose one of the three sketches made with submit_design \"sketch\": true. It goes on the baseplate as the massing the full design is built from, and the other two are dropped. Then design the whole model from it, and submit_design that without sketch.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "sketch": {
+          "description": "its number, 1 to 3",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sketch"
+      ],
+      "type": "object"
+    },
+    "name": "choose_sketch"
+  },
+  {
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), the best real set's piece for it laid by the app where it goes, with a picture, to settle with settle_feature; with surface, the surface pass — the app tiles the open stud fields, slopes the stud staircases and textures the plain walls on the model, to settle each with settle_surface; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then surface, then creative last.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3106,7 +3351,7 @@
     "name": "pose_model"
   },
   {
-    "description": "Animate the model as Build, Pose's keys do: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list. Rendering needs the app in a window; render=false only sets the keys, for the person to play.",
+    "description": "Animate the model as Build, Pose's keys do: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list. Rendering needs the app in a window and is a job (job gives the result); render=false only sets the keys, for the person to play.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3146,6 +3391,42 @@
       "type": "object"
     },
     "name": "animate_model"
+  },
+  {
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves; past 20 s it goes on in the app.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "description": "a part's number from look_at_model, or a sub-assembly's name",
+          "type": "string"
+        },
+        "frames": {
+          "description": "frames in a recording, 2 to 240; 24 when omitted",
+          "type": "integer"
+        },
+        "record": {
+          "type": "boolean"
+        },
+        "reference": {
+          "description": "the turning part periods are counted in: a number or a name",
+          "type": "string"
+        },
+        "targets": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "name -> the period wanted, in the reference's turns",
+          "type": "object"
+        },
+        "turns": {
+          "description": "turns of the reference (or the driver) a recording covers; 1 when omitted",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "simulate_mechanism"
   },
   {
     "description": "Take back the last change to the model, as Edit, Undo does — yours or the person's — or steps= of them. redo=true puts back what was undone. The answer names what was undone and what is next.",
@@ -3204,7 +3485,7 @@
     "name": "parts_list"
   },
   {
-    "description": "Render the model as File, Render does: a picture, or a turntable (a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable when omitted); size 720p, 1080p, 4k or square; view hero, front, side, back, low or top. Saved where Render saves, and a picture comes back with the answer. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, or a turntable (a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable when omitted); size 720p, 1080p, 4k or square; view hero, front, side, back, low or top. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result, a picture with it. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3249,7 +3530,7 @@
     "name": "render_model"
   },
   {
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print, which takes a while on a big model).",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3257,6 +3538,10 @@
           "enum": [
             "ldraw",
             "studio",
+            "glb",
+            "gltf",
+            "obj",
+            "stl",
             "picture",
             "bricklink",
             "rebrickable",
@@ -3271,5 +3556,147 @@
       "type": "object"
     },
     "name": "export_model"
+  },
+  {
+    "description": "Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an OBJ, STL or glTF/GLB laid at the size asked (studs along its longest side) in slopes, curves and tiles, or plain bricks and plates, as one sub-assembly named after the file, beside what is built. url= an http(s) link to the file, fetched by the app (96 MB at most; an OBJ's .mtl and a .gltf's .bin come from beside it). pick=true opens the window's file dialog for the person to choose one on their computer, and says so; once they have, brickify with neither lays what the panel shows. Laying is a job: the answer is a job number, and job gives the result.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "colour": {
+          "description": "LDraw colour, for colours one",
+          "type": "integer"
+        },
+        "colours": {
+          "description": "its own, all colour=, or its own cut to the limit= it uses most",
+          "enum": [
+            "model",
+            "one",
+            "limit"
+          ],
+          "type": "string"
+        },
+        "hollow": {
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "how many colours, for colours limit",
+          "type": "integer"
+        },
+        "pick": {
+          "description": "open the file dialog for the person",
+          "type": "boolean"
+        },
+        "smooth": {
+          "description": "slopes, curves, tiles and studs sideways; true when omitted",
+          "type": "boolean"
+        },
+        "studs": {
+          "description": "studs along its longest side, 6 to 64; 24 when omitted",
+          "type": "integer"
+        },
+        "up": {
+          "description": "which of the file's axes is up; a printer's STL is +Z",
+          "enum": [
+            "+Y",
+            "+Z",
+            "-Z",
+            "+X",
+            "-X",
+            "-Y"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "description": "http(s) link to an .obj, .stl, .gltf or .glb",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "brickify"
+  },
+  {
+    "description": "Print a picture on a part of the model, or stick it on as a sticker, as Build, Print on a part… and Put a sticker on… do. brick= the part's number in look_at_model. A print goes on one of the part's printable areas (area=, the first when omitted; a wrong one is answered with its areas), and the printed part takes the part's place in its colour, a part of its own from then on. sticker=true makes a sticker the size of the part's side= face (up, down, +x, -x, +z, -z), running over the faces in the same plane beside it unless span=false, and sticks it on. The picture: svg= drawn by you (a whole <svg> with a viewBox in the face's proportions; flat colours print best), or picture_url= an http(s) link to a PNG, JPEG, WebP or SVG.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "area": {
+          "description": "a print's area, by name",
+          "type": "string"
+        },
+        "brick": {
+          "description": "the part's number in look_at_model",
+          "type": "integer"
+        },
+        "name": {
+          "description": "what the print or sticker is called",
+          "type": "string"
+        },
+        "picture_url": {
+          "type": "string"
+        },
+        "side": {
+          "description": "a sticker's face; +z when omitted",
+          "enum": [
+            "up",
+            "down",
+            "+x",
+            "-x",
+            "+z",
+            "-z"
+          ],
+          "type": "string"
+        },
+        "span": {
+          "type": "boolean"
+        },
+        "sticker": {
+          "type": "boolean"
+        },
+        "svg": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "brick"
+      ],
+      "type": "object"
+    },
+    "name": "print_part"
+  },
+  {
+    "description": "Cut one copy of a sub-assembly loose from the others, as Edit, Make this copy unique does: it becomes a sub-assembly of its own, so changing it changes no other copy. assembly= its path or name (\"Wheel#2\" or \"Wheel (copy 2)\"), or brick= a part in it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "assembly": {
+          "type": "string"
+        },
+        "brick": {
+          "description": "a part in the copy, by its number",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "make_unique"
+  },
+  {
+    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "cancel": {
+          "description": "stop it, where it can be stopped",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "the number the call answered with",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "job"
   }
 ]

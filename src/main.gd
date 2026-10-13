@@ -126,6 +126,8 @@ var _figures: MinifigDialog
 var _render: RenderDialog
 ## Build, Pose and animate… (src/ui/pose_panel.gd).
 var _pose: PosePanel
+## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
+var _simulate: SimulatePanel
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -308,6 +310,8 @@ func _tell_page() -> void:
 		named.merge(_render.controls_by_name())
 	if _pose != null:
 		named.merge(_pose.controls_by_name())
+	if _simulate != null:
+		named.merge(_simulate.controls_by_name())
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
@@ -1033,6 +1037,9 @@ func _ask_claude_code(brief: String) -> void:
 		print("asking about %d parts inside %s, room %s" % [picked, about,
 			Assistant._box_words(_assistant.focus.region)])
 		brief = Assistant.selection_brief(brief, picked)
+	# Three massings first, the session choosing among them (Sketch first).
+	if about.is_empty() and _has_argument("--sketch-first"):
+		brief = Assistant.sketch_brief(brief)
 	if not design_with_claude_code(brief):
 		print("claude code: could not start")
 		_ask_went_well = false
@@ -1050,6 +1057,7 @@ func _ask_claude_code(brief: String) -> void:
 	_assistant.progress.connect(func(note: String) -> void:
 		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
 			note.replace("\n", "\n             ")]))
+	_watch_sketches(session, started)
 	if not about.is_empty():
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
@@ -1060,8 +1068,39 @@ func _ask_claude_code(brief: String) -> void:
 		outcome[0], _world.brick_count() - _store.scenery.size(),
 		(Time.get_ticks_msec() - started) / 1000.0,
 		str(outcome[1]).substr(0, 600)])
+	print("  the session spent %s over %d replies" % [_tokens_said(session.spent()),
+		session.replies()])
 	_camera.frame(_built_bounds())
 	await get_tree().process_frame
+
+
+## Sketch first, from the command line: each sketch said, its picture kept
+## beside --out as NAME_sketchN.png, and when one is chosen how long the
+## sketches took and what they spent, against the design after them.
+func _watch_sketches(session: ClaudeCode, started: int) -> void:
+	var out: String = _argument("--out")
+	_assistant.sketches_ready.connect(func(sketches: Array, _model: String,
+			_tokens: Brain.Spend, _ours: bool) -> void:
+		for one: Sketches.Sketch in sketches:
+			var kept: String = ""
+			if one.picture != null and not out.is_empty():
+				var path: String = "%s_sketch%d.png" % [out.get_basename(), one.number]
+				if one.picture.save_png(path) == OK:
+					kept = ", pictured at " + path
+			print("  [%5.1fs]   sketch %d, \"%s\": %d parts, %s, %s%s" % [
+				(Time.get_ticks_msec() - started) / 1000.0, one.number, one.name, one.parts,
+				one.measures(), "holds" if one.holds() else "does not hold", kept]))
+	_assistant.sketch_chosen.connect(func(number: int) -> void:
+		var so_far: Brain.Spend = session.spent()
+		print("  [%5.1fs]   chose sketch %d; the sketches took %.0fs, %d replies, %s in (%s of it cached)" % [
+			(Time.get_ticks_msec() - started) / 1000.0, number,
+			(Time.get_ticks_msec() - started) / 1000.0, session.replies(),
+			Brain.in_tokens(so_far.total_in()), Brain.in_tokens(so_far.cached)]))
+
+
+static func _tokens_said(tokens: Brain.Spend) -> String:
+	return "%s in (%s of it cached), %s out" % [Brain.in_tokens(tokens.total_in()),
+		Brain.in_tokens(tokens.cached), Brain.in_tokens(tokens.made)]
 
 
 ## Run at full speed when the window is a formality.
@@ -1451,7 +1490,8 @@ func _view_shared() -> void:
 		return
 	_store.title = name
 	_store.share_id = ""
-	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")))
+	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")),
+		shared["remixed_from"] if shared.get("remixed_from") is Dictionary else {})
 	_show_name(name)
 	_set_address("/m/" + _viewing)
 	_lay_baseplate()
@@ -1641,7 +1681,9 @@ func _set_address(path: String) -> void:
 ## they are signed in and whatever was on the baseplate is back. That is
 ## kept first if it was not saved, so following a link never loses work.
 ## The copy is saved under its own name, never over one of theirs, and has
-## no link: it is theirs to change and to share as their own.
+## no link: it is theirs to change and to share as their own. It does know
+## which link it came from (ModelStore.remixed_from), so when they share
+## it, its page says what it was remixed from.
 func _maybe_copy() -> void:
 	if _copying.is_empty() or _copy_started or not _first_open_done \
 			or _account == null or not _account.lets_in():
@@ -1663,6 +1705,7 @@ func _maybe_copy() -> void:
 		_bar.say("could not open that model: %s" % result["error"])
 		return
 	_store.share_id = ""
+	_store.remixed_from = _copying
 	_bar.opened.emit(int(result["placed"]))
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
@@ -2570,6 +2613,23 @@ func _build_ui() -> void:
 	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_pose.position = Vector2(12, 48)
 	_pose.changed.connect(_on_model_edited)
+	# Tools, Simulate mechanism…: a gear train turned from its driver, in the
+	# same place over the model's left edge (src/ui/simulate_panel.gd). It
+	# changes nothing, so it has no changed signal: what turns is drawn.
+	_simulate = SimulatePanel.new()
+	_simulate.world = _world
+	_simulate.builder = _builder
+	_simulate.library = _library
+	_simulate.shell = _shell
+	_simulate.scenery = _store.scenery
+	_simulate.eye = _camera
+	_simulate.look = _render.look
+	_simulate.rig_lights = _render.rig_lights
+	_simulate.named = _bar.model_name
+	_over_model.add_child(_simulate)
+	_simulate.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_simulate.position = Vector2(12, 48)
+	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
@@ -2739,10 +2799,15 @@ func _turn_model(quarter_turns: int) -> void:
 ## pressed (a browser only lets a page open a tab in answer to a click,
 ## and the pictures take longer than that), and on the desktop into the
 ## Downloads folder and open in the browser, ready to print.
-func _export_booklet(to: String = "") -> String:
+func _export_booklet(to: String = "", job: Working.Job = null) -> String:
 	# Said in the status bar while it works (Working), and in the tab it is
-	# going to on the web, which is the one in front while it draws.
-	var job: Working.Job = Working.begin("Planning the booklet…", 0, true)
+	# going to on the web, which is the one in front while it draws. A
+	# session's job (ToolJobs) is the same bar, handed in.
+	if job == null:
+		job = Working.begin("Planning the booklet…", 0, true)
+	else:
+		job.say("Planning the booklet…")
+		job.can_cancel = true
 	await job.shown()
 	var maker := BookletMaker.new()
 	maker.library = _library
@@ -3212,7 +3277,19 @@ func can_reshape_flex() -> bool:
 ## Build, Pose and animate….
 func open_pose() -> void:
 	_builder.hide_preview()
+	if _simulate.visible:
+		_simulate.close()
 	_pose.open()
+
+
+## Tools, Simulate mechanism…: the Select tool in hand, so a click on an
+## axle or a crank drives it rather than putting a part down.
+func open_simulate() -> void:
+	_builder.hide_preview()
+	if _pose.visible:
+		_pose.close()
+	_verbs.set_mode("select")
+	await _simulate.open()
 
 
 func _open_figures() -> void:
@@ -3665,12 +3742,16 @@ func _weigh() -> void:
 		_stability_text = ""
 		return
 	var report: Stability.Report
+	# The baseplate is the floor, not the model: whether it tips is asked
+	# of what stands on it.
+	_stability.floor_ids = scenery
 	if _world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
 		report = _stability.check(_world)
 	else:
 		_weighing = true
 		var judge := Stability.new()
 		judge.library = _library
+		judge.floor_ids = scenery.duplicate()
 		judge.lattice = _builder.lattice.copy_for_reading()
 		var still: BrickWorld = _world.copy_for_reading()
 		var weighed: Array = [null]

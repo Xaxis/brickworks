@@ -118,7 +118,8 @@ built in other worktrees and are not on `next3`.
    - Studio writes `.dae` and POV-Ray [st-export]. Mecabricks writes OBJ,
      DAE and STL [mb-farm]. LeoCAD writes OBJ, 3DS and COLLADA [lc-history],
      and LDCad writes glTF2 [ld-17b1].
-   - Brickworks writes no mesh at all.
+   - Brickworks writes GLB, glTF, OBJ with its MTL, and STL at real size,
+     every part a node in its sub-model ([model-io]).
 8. **Flexible parts, at the top end.** LDCad's path and spring system shapes
    rubber bands round circles and builds shock absorbers. It maps a path's
    length to a real part number [ld-meta]. Brickworks lays seven kinds
@@ -522,6 +523,20 @@ Brickworks reads meshes in for brickify (`src/parts/mesh_file.gd` uses
 `GLTFDocument`) but writes none out. For Cycles-quality pictures, a 3D
 printer or AR, the answer is a file.
 
+**Done, 2026-10-13** (`src/parts/mesh_export.gd`; the recipe is "3d model
+export" in `.claude/skills/verify/features/model-io.md`). As specified,
+with what building it showed: glTF is written by hand, not by
+`GLTFDocument.append_from_scene`, which on 4.7.2 writes a mesh for every
+`MeshInstance3D`, drops a `MultiMesh`'s colours and runs in one call. Each
+shape is written once and every part is a node pointing at it, which is
+glTF's own instancing, so Orthanc writes whole: 4.7 MB in 0.4 s, no frame
+held past 63 ms. OBJ and STL cannot share a shape, so they are capped, OBJ
+at 1,000,000 triangles and STL at 3,000,000 (Orthanc's 2,575,061 fit; its
+STL is 123 MB in 2.5 s). STL is binary, not text: a fifth of the size. It
+is one closed volume per part wherever the part's own LDraw shape is
+closed; 7 of the car's 61 parts have gaps in LDraw's geometry (4600 is open
+underneath by 0.8 mm), written as LDraw draws them, for a slicer to mend.
+
 **Spec.**
 - *File → Export → 3D model…* builds an export-only scene from the world:
   one `MeshInstance3D` per brick, under a node per sub-model.
@@ -556,6 +571,17 @@ Shared links exist: `api/share.js`, `/m/<id>`, an embed card, and *Open in
 Brickworks*. But every link is unlisted. Nobody can find a model they were
 not sent, so a newcomer never sees what people build here.
 
+**Done, 2026-10-13** (`web/gallery.html`, `supabase/gallery.sql`; the
+recipes are "gallery page" and "seed the gallery" in
+`.claude/skills/verify/features/web.md`). As specified, with what building it
+showed: the columns went in a file of their own, applied to the live project
+as additions only; going into the gallery is counted on top of publishing
+(`may_list`, 6 an hour); the owner's unlist also bars the model, so its owner
+cannot list it again, and that refusal is a 409, since the panel answers a 403
+by publishing at a new link; the viewer's bar says "remixed from" too, since a
+person never sees the share page; and six of the project's own models were
+listed from a project account so it is not empty.
+
 **Spec.**
 - `supabase/shared_models.sql` gets `listed boolean default false`, granted
   to the visitor's key.
@@ -587,6 +613,18 @@ A small house costs 11 minutes and $2.40 at high effort, or 4 minutes and
 $0.72 at medium (`HANDOFF.md`), and a person learns whether the brief was
 understood only after paying. BrickBench's three best agents cost $0.92
 to $5.90 a build [bb-paper].
+
+**Done, 2026-10-13** (`Assistant.sketch`, `src/ai/sketches.gd`; the recipe
+is "sketch first" in `.claude/skills/verify/features/assistant.md`). As
+specified, with what building it showed: the three are checked for being
+three ideas — two within 15% on every size whose outlines from the front,
+the side and above overlap 70% are one, and the later is sent back once;
+150 parts counts a pattern as the parts it lays; the design from the
+chosen sketch is a fresh conversation, opening on its picture and its
+parts, so the full model is not paid to read the sketches' turn; and
+over MCP `choose_sketch` picks. On the subscription, a held-out lighthouse
+sketched in 132 s and 12.4k tokens out against 490 s and 39.4k for the
+design after it.
 
 **Spec.**
 - *Sketch first* is a toggle beside Build it, on by default for a first

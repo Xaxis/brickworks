@@ -33,6 +33,9 @@ var _span: bool = true
 var _face: Stickers.Face
 ## The brick a print is being drawn for, to put the print in its place.
 var _replacing: int = 0
+## The printed part or the sticker last put in the model, for a session to
+## be told its number.
+var last_placed: int = 0
 
 
 func setup(on: Node) -> void:
@@ -146,6 +149,7 @@ func _on_made(ids: Array, slot: String) -> void:
 	var id: String = str(ids[0])
 	if slot == "sticker" and _face != null:
 		var brick: int = Stickers.stick(builder, id, _face)
+		last_placed = brick
 		said.emit("Stuck %s on %d part%s" % [id, _face.bricks.size(),
 			"" if _face.bricks.size() == 1 else "s"] if brick != 0 else "Could not stick %s on" % id)
 		_face = null
@@ -169,7 +173,8 @@ func _in_place(print_id: String) -> bool:
 	var at: Transform3D = brick.transform
 	var colour: int = brick.color_code
 	builder.take_off(brick.id)
-	return builder.put_part(print_id, colour, at) != 0
+	last_placed = builder.put_part(print_id, colour, at)
+	return last_placed != 0
 
 
 ## Stick a sticker that is made already on a face the next click names.
@@ -199,6 +204,72 @@ func move(sticker_id: String) -> void:
 
 func open_sheet() -> void:
 	sheet.open()
+
+
+# -- for a session (AppTools' print_part) -----------------------------------------
+
+
+## [param picture] printed on [param area] of the part numbered
+## [param brick_id], where it stands, as Print… on that one part and Save
+## print do. What came of it.
+func print_on(brick_id: int, picture: Image, area: String, title: String) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return "There is no part numbered %d." % brick_id
+	if Stickers.is_sticker(library, brick.part_id):
+		return "#%d is a sticker: a sticker is drawn again, not printed on." % brick_id
+	_replacing = brick.id
+	editor.open(brick.part_id, "", brick.color_code)
+	return await _draw(picture, area, title)
+
+
+## [param picture] as a sticker on the [param side] ("up", "+x", …) of the
+## part numbered [param brick_id] — and with [param span] the faces in the
+## same plane beside it — as Sticker… and a click on that face do.
+func sticker_on(brick_id: int, side: String, span: bool, picture: Image,
+		title: String) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return "There is no part numbered %d." % brick_id
+	if not BrickLattice.FACE_AXIS.has(side):
+		return "side is one of %s." % ", ".join(PackedStringArray(BrickLattice.FACE_AXIS.keys()))
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	if mesh == null:
+		return "#%d's shape is not here yet; ask again in a moment." % brick_id
+	# Aimed at that side from just outside it, as a click on it is.
+	var normal: Vector3 = (BrickLattice.FACE_AXIS[side] as Vector3).normalized()
+	var box: AABB = brick.transform * mesh.bounds
+	var reach: float = absf(normal.dot(box.size)) * 0.5 + 0.5
+	var face: Stickers.Face = Stickers.face_at(world, library, box.get_center() + normal * reach,
+		-normal, span, Vector3.FORWARD)
+	if face == null or not face.bricks.has(brick.id):
+		return "The %s side of #%d has no flat face open for a sticker%s." % [side, brick_id,
+			" (#%d is in the way)" % face.bricks[0] if face != null else ""]
+	_face = face
+	editor.open_sticker(face, title)
+	return await _draw(picture, "sticker", title)
+
+
+func _draw(picture: Image, area: String, title: String) -> String:
+	# On the web the part's shape may be fetched first.
+	var until: int = Time.get_ticks_msec() + 30000
+	while editor.fetching() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	if editor.area_keys().is_empty():
+		editor.close()
+		_replacing = 0
+		_face = null
+		return "Nothing can be printed there: it has no face a print can go on."
+	var heard: Array = [""]
+	var listen := func(words: String) -> void: heard[0] = words
+	said.connect(listen)
+	var why: String = editor.draw_and_save(picture, area, title)
+	said.disconnect(listen)
+	if not why.is_empty():
+		_replacing = 0
+		_face = null
+		return "Not done: %s." % why
+	return str(heard[0]) + "."
 
 
 func controls_by_name() -> Dictionary:

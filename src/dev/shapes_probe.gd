@@ -105,6 +105,43 @@ func _run() -> void:
 	_check("a 45 degree slope needs no turn to fall towards +z",
 		int(Shapes.part(_library, "3040b").get("turn", -1)) == 0)
 
+	print("")
+	print("  a car on the shape's own wheels")
+	# Every bench car that tried a shaped body gave it up: raised over nothing
+	# it floated, and with wheels added its slopes ran into the tyres' boxes.
+	var on_wheels: Dictionary = (BODIES["car"] as Dictionary).duplicate(true)
+	on_wheels["solids"] = [
+		{"extrude": {"along": "x", "from": 0, "width": 8, "round": 1.5,
+			"profile": [[0, 7], [3, 9], [8, 10], [20, 10], [21, 9]], "under": [[0, 2], [21, 2]]}},
+		{"loft": {"along": "x", "centre": 4, "color": 40, "sections": [
+			{"at": 7, "width": 7, "height": 1, "bottom": 9.5, "round": 0.3},
+			{"at": 10, "width": 6, "height": 6, "bottom": 9.5, "round": 0.4},
+			{"at": 15, "width": 6, "height": 6, "bottom": 9.5, "round": 0.4},
+			{"at": 19, "width": 7, "height": 1, "bottom": 9.5, "round": 0.3}]}}]
+	on_wheels.erase("cuts")
+	on_wheels["wheels"] = [4, 16]
+	var car: Assistant.Model = assistant._read_model({"name": "car", "patterns": [on_wheels]})
+	await assistant._ensure_parts(car)
+	var rolling: Dictionary = assistant._check(car, true)
+	var rims: int = 0
+	for placement: Assistant.Placement in car.placements:
+		rims += 1 if placement.part == Shapes.WHEEL else 0
+	_check("laid with its wheels: %s, %d wheels" % [str(assistant._pattern_trouble), rims],
+		assistant._pattern_trouble.is_empty() and rims == 4)
+	_check("one piece on its wheels, nothing floating or overlapping: %s" % rolling["summary"],
+		bool(rolling["ok"]) and int(rolling.get("pieces", 0)) == 1)
+	var narrow: Dictionary = on_wheels.duplicate(true)
+	(((narrow["solids"] as Array)[0] as Dictionary)["extrude"] as Dictionary)["width"] = 11
+	assistant._read_model({"name": "car", "patterns": [narrow]})
+	_check("a body 11 studs across is told wheels want 6, 8, 10 or 12",
+		str(assistant._pattern_trouble).contains("6, 8, 10 or 12"))
+	var high: Dictionary = on_wheels.duplicate(true)
+	(((high["solids"] as Array)[0] as Dictionary)["extrude"] as Dictionary)["under"] = [[0, 7],
+		[21, 7]]
+	assistant._read_model({"name": "car", "patterns": [high]})
+	_check("a body raised off its wheels' bricks is told to come down to them",
+		str(assistant._pattern_trouble).contains("does not come down"))
+
 	for name: String in BODIES:
 		print("")
 		print("  a %s, said as one shape" % name)

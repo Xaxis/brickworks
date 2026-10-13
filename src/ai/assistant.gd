@@ -60,6 +60,9 @@ const PLATE := 8.0
 ## that a part laid on its side by hand and one laid on its side by the
 ## assistant are laid the same way.
 const FACES: Dictionary = BrickLattice.FACE_AXIS
+## The ways a part's joint can be said to run, for a placement's axis.
+const AXES: Dictionary = {"x": Vector3.RIGHT, "-x": Vector3.LEFT, "y": Vector3.UP,
+	"-y": Vector3.DOWN, "z": Vector3.BACK, "-z": Vector3.FORWARD}
 
 ## The colour of a brick that names none: Light Bluish Grey, the grey
 ## modern sets are built in, and what a fill already defaults to. It was
@@ -400,6 +403,24 @@ class Placement extends RefCounted:
 	## A face that was asked for and is not one of the six. Kept so the
 	## check can say so rather than silently standing the part up.
 	var odd_face: String = ""
+	## For a part that joins by a line (a pin, an axle, a gear, a bush, a
+	## beam's hole): the way that line runs, one of [constant AXES]. Then
+	## x, y and z are where the line's middle goes, which is the point
+	## attachment_points gives for a hole, and not the part's low corner;
+	## rot turns it about the line. Read into the low corner before
+	## anything else sees it (Assistant._onto_lines). Empty for the corner.
+	##
+	## A hole is said by where it is, and a placement was only ever said by
+	## its corner. A session told "a pin goes in at the position given" put
+	## the pin's corner there, half a pin off the hole, and every pin and
+	## axle it tried was refused as an overlap with the brick it was meant
+	## to be in.
+	var axis: String = ""
+	## Which of its joints goes there, as attachment_points numbers them; -1
+	## for the one nearest its middle.
+	var joint: int = -1
+	## Why an axis could not be read, for the check to say.
+	var odd_axis: String = ""
 	## The section this brick belongs to, or empty for the main body.
 	## Its coordinates are then that section's own, not the world's.
 	var section: String = ""
@@ -430,6 +451,12 @@ class Placement extends RefCounted:
 			p.odd_face = p.face
 			p.face = "up"
 		p.rot = posmod(int(raw.get("rot", 0)), 4)
+		var line: String = str(raw.get("axis", "")).strip_edges().to_lower().trim_prefix("+")
+		if AXES.has(line):
+			p.axis = line
+		elif not line.is_empty():
+			p.odd_axis = "asks for axis '%s'; the six are x, -x, y, -y, z and -z" % line
+		p.joint = int(raw.get("joint", -1))
 		p.section = str(raw.get("section", "")).strip_edges()
 		p.dressing = bool(raw.get("dressing", false))
 		return p
@@ -447,6 +474,9 @@ class Placement extends RefCounted:
 		p.face = face
 		p.rot = rot
 		p.odd_face = odd_face
+		p.axis = axis
+		p.joint = joint
+		p.odd_axis = odd_axis
 		p.section = into
 		p.dressing = dressing
 		return p
@@ -613,6 +643,9 @@ class Model extends RefCounted:
 	## each worked once the shape stands: looked up in real sets, laid as
 	## one of theirs, or built from a worked technique.
 	var features: Array[String] = []
+	## Where each feature goes, where the design said: name in lower case ->
+	## {x, y, z, facing} (FeaturePass.read_spots).
+	var feature_spots: Dictionary = {}
 	## What it stands on, as floor_chosen says it; empty when not said.
 	var stands_on: Dictionary = {}
 
@@ -647,8 +680,367 @@ func design(brief: String) -> bool:
 	if _busy:
 		return false
 	_messages.clear()
+	_drop_sketches()
 	_start(brief)
 	return true
+
+
+# -- sketch first ----------------------------------------------------------
+
+
+## Three massings to choose between, in one turn on the cheaper model
+## (Brain.sketch_model), before anything is paid for in full. Each is
+## checked and pictured off the baseplate, and [signal sketches_ready]
+## hands them to whoever shows them; [method choose_sketch] puts the chosen
+## one down and designs the whole model from it at the person's own model
+## and effort. Refused while a design runs, as [method design] is.
+func sketch(brief: String) -> bool:
+	if _busy:
+		return false
+	_messages.clear()
+	_drop_sketches()
+	_sketch_brief = brief
+	_sketch_round = true
+	_start(brief)
+	return true
+
+
+## The sketches are in: who shows them, what they are, and what making them
+## cost. [param ours] is false for a session's from outside, which chooses
+## for itself with choose_sketch.
+signal sketches_ready(sketches: Array, model_id: String, tokens: Brain.Spend, ours: bool)
+## One was chosen, by its number; the others are gone.
+signal sketch_chosen(number: int)
+
+## Turns the sketches may take: a look-up or two, then the three. Past it,
+## whatever was sketched is shown.
+const SKETCH_TURNS := 4
+## Times three that are one idea are sent back for another.
+const SKETCH_REDOS := 1
+
+const SKETCH_ASK := """Sketch first. Before the full design, the person \
+wants three quick sketches to choose between, so call submit_design three \
+times in this one reply, each with "sketch": true. A sketch is massing only: \
+the main masses at their sizes and in their colours, under 150 parts once \
+any patterns are laid, each mass in the biggest pieces that fit it — no \
+detail, no rooms, no features worked; assemblies and features may be empty. Make \
+them three ideas a person can choose between: a different silhouette, \
+different proportions, or a different approach to the subject — not one \
+model three times at slightly different sizes. Name each for its idea and \
+say in its description what makes it different. Each is checked and \
+pictured, not built; the person chooses one, and the full design is built \
+from it."""
+
+## The same, said to a session outside the app with its brief.
+const SKETCH_FIRST := """Sketch first: before the full design, make three \
+quick sketches to choose between — submit_design with "sketch": true, three \
+times, each massing only, under 150 parts once its patterns are laid (each \
+mass in the biggest pieces that fit it), and different from the others in \
+silhouette, proportion or approach. Then choose_sketch the one that best \
+answers this brief, and design the whole model from it."""
+
+const FROM_SKETCH := """Design the whole model from it now. Keep what the \
+person chose — its silhouette, its proportions and its approach — and build \
+it as a set is built: the right parts, real detail, the assemblies a person \
+would name and the features the subject is known by. submit_design the \
+whole model, without sketch: it replaces the sketch."""
+
+var _sketch_round: bool = false
+var _sketch_brief: String = ""
+var _held_sketches: Array = []
+## Whether the held ones came from a session outside the app.
+var _sketches_outside: bool = false
+## The number the next sketch replaces, when two were one idea; 0 for none.
+var _sketch_redo: int = 0
+var _sketch_redos: int = 0
+## Sketches held during the reply being answered.
+var _sketch_arrivals: int = 0
+## The one chosen, while the full design's opening is made from it.
+var _chosen_sketch: Sketches.Sketch = null
+
+
+## A brief with the sketch-first ask on it, for a session outside the app
+## (My Claude with Sketch first ticked, --ask-claude-code --sketch-first).
+static func sketch_brief(text: String) -> String:
+	return "%s\n\n%s" % [text, SKETCH_FIRST]
+
+
+## The sketches held, for a probe or a panel.
+func held_sketches() -> Array:
+	return _held_sketches.duplicate()
+
+
+func _drop_sketches() -> void:
+	_held_sketches = []
+	_sketch_round = false
+	_sketch_redo = 0
+	_sketch_redos = 0
+	_sketch_arrivals = 0
+	_chosen_sketch = null
+
+
+## What the first message of a run carries besides the brief: the ask for
+## sketches, or the chosen one to design from.
+func _sketch_opening() -> Array:
+	if _sketch_round:
+		return [{"type": "text", "text": SKETCH_ASK}]
+	if _chosen_sketch == null:
+		return []
+	var one: Sketches.Sketch = _chosen_sketch
+	var said: Array = [{"type": "text", "text": ("You sketched three massings for "
+		+ "this, and the person chose sketch %d, \"%s\"" % [one.number, one.name]
+		+ (": %s" % one.description if not one.description.is_empty() else "")
+		+ ". It stands on the baseplate now: %d parts, %s." % [one.parts, one.measures()])}]
+	if not one.block.is_empty():
+		said.append(one.block)
+	var written: Dictionary = one.args.duplicate()
+	written.erase("sketch")
+	said.append({"type": "text", "text": "Its parts, as you submitted them:\n"
+		+ JSON.stringify(written)})
+	said.append({"type": "text", "text": FROM_SKETCH})
+	return said
+
+
+## A sketch, from submit_design with sketch: true (or any submission while
+## the app's own loop is sketching): read, checked, measured and pictured on
+## a world of its own, and held. Nothing is put on the baseplate.
+func _hold_sketch(args: Dictionary) -> Variant:
+	var model: Model = _read_model(args)
+	_say_shorthand_trouble()
+	var parts: int = model.placements.size()
+	if parts == 0:
+		return "Not held — that sketch has no parts in it."
+	if parts > Sketches.MOST_PARTS:
+		progress.emit("a sketch of %d parts, over the %d a sketch may have"
+			% [parts, Sketches.MOST_PARTS])
+		return ("Not held — a sketch is massing only, under %d parts, and this is %d "
+			% [Sketches.MOST_PARTS, parts] + "once its patterns are laid. Say each mass "
+			+ "in the biggest pieces that fit it — 2 x 4 bricks, 6 x 6 and larger "
+			+ "plates — or fewer masses, and leave the detail for the full design.")
+	# A fourth in the same reply is not the first of a new three.
+	if _sketch_round and _sketch_redo == 0 and _held_sketches.size() >= Sketches.COUNT:
+		return "Not held — three sketches are in already, and the person chooses among them."
+	var running: bool = _busy
+	if not _sketch_round:
+		# From outside: a set begun by the app's own loop is not this one's.
+		if not _sketches_outside:
+			_held_sketches = []
+		_sketches_outside = true
+	else:
+		_sketches_outside = false
+	await _ensure_parts(model)
+	progress.emit("checking a sketch of %d parts" % parts)
+	var report: Dictionary = await _checked(model)
+	if running and not _busy:
+		return ""
+	var one := Sketches.Sketch.new()
+	one.name = model.name if model.name != "Model" else "Sketch"
+	one.description = model.description
+	one.model = model
+	one.args = args
+	one.report = report
+	one.parts = parts
+	var stage: BrickWorld = _stage_of(model)
+	var measured: Dictionary = Sketches.measure(stage)
+	one.size = measured["size"]
+	one.outline = measured["outline"]
+	if ModelShot.possible():
+		one.picture = await _sketch_picture(stage)
+		if running and not _busy:
+			stage.free()
+			return ""
+		if one.picture != null:
+			one.block = await _shot.encode(one.picture)
+	if one.block.is_empty():
+		one.letters = "%s\n%s" % [ModelView.draw(stage, library, "top"),
+			ModelView.draw(stage, library, "front")]
+	stage.free()
+
+	# Where it goes: in place of one that was the same idea as another, or
+	# after the last, or as the first of a new three.
+	if _sketch_redo > 0 and _sketch_redo <= _held_sketches.size():
+		one.number = _sketch_redo
+		_held_sketches[_sketch_redo - 1] = one
+		_sketch_redo = 0
+	else:
+		if _held_sketches.size() >= Sketches.COUNT:
+			_held_sketches = []
+			_sketch_redos = 0
+		_held_sketches.append(one)
+		one.number = _held_sketches.size()
+	_sketch_arrivals += 1
+	progress.emit("sketch %d of %d: %s, %s" % [one.number, Sketches.COUNT, one.name,
+		one.measures()])
+	return _sketch_answer(one)
+
+
+## A world holding only [param model], in no tree and drawing nothing, to be
+## measured and photographed. The caller frees it.
+func _stage_of(model: Model) -> BrickWorld:
+	var stage := BrickWorld.new()
+	stage.library = library
+	stage.keeps_history = false
+	for placement: Placement in model.placements:
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		stage.add_unseen(placement.part, placement.color,
+			_transform(placement, part, model.section_for(placement)))
+	return stage
+
+
+## A sketch from a corner, as a person sees it: its own colours, no studs
+## written on, nothing picked out.
+func _sketch_picture(stage: BrickWorld) -> Image:
+	var shot: ModelShot = _ensure_shot()
+	var was: Array = [shot.highlight, shot.marks, shot.rulers]
+	shot.highlight = {}
+	shot.marks = []
+	shot.rulers = false
+	var image: Image = await shot.take(stage, "corner")
+	shot.highlight = was[0]
+	shot.marks = was[1]
+	shot.rulers = was[2]
+	return image
+
+
+## What a sketch's submit_design answers: what it is and its picture; and,
+## once there are three, whether they are three ideas, and then all three
+## pictures and how to choose (from outside) — or that the person chooses.
+func _sketch_answer(one: Sketches.Sketch) -> Variant:
+	var verdict: String = ("it holds together" if one.holds()
+		else "the check says %s" % str(one.report.get("summary", "")))
+	var blocks: Array = [{"type": "text", "text": "Sketch %d of %d held, not built: "
+		% [one.number, Sketches.COUNT] + "%d parts, %s; %s." % [one.parts,
+			one.measures(), verdict]}]
+	blocks.append_array(_sketch_shown(one))
+	if _held_sketches.size() < Sketches.COUNT:
+		var others := PackedStringArray()
+		for held: Sketches.Sketch in _held_sketches:
+			others.append("%d" % held.number)
+		blocks.append({"type": "text", "text": ("Now sketch %d: another idea, "
+			% (_held_sketches.size() + 1)) + "different from sketch %s in silhouette, "
+			% " and ".join(others) + "proportion or approach."})
+		return blocks
+	var pairs: Array = Sketches.alike_pairs(_held_sketches)
+	if not pairs.is_empty() and _sketch_redos < SKETCH_REDOS:
+		_sketch_redos += 1
+		var pair: Array = pairs[0]
+		var first: Sketches.Sketch = _held_sketches[int(pair[0]) - 1]
+		_sketch_redo = int(pair[1])
+		progress.emit("sketches %d and %d are one idea; asking for another" % pair)
+		blocks.append({"type": "text", "text": ("Sketches %d and %d are nearly the "
+			% pair) + "same idea: both about %s, with outlines that overlap %d%%. " % [
+				first.measures(), roundi(Sketches.overlap(first,
+					_held_sketches[int(pair[1]) - 1]) * 100.0)]
+			+ "A person cannot choose between those. Submit submit_design with "
+			+ "\"sketch\": true once more: it replaces sketch %d, and should differ " % pair[1]
+			+ "from the other two in silhouette, proportion or approach."})
+		return blocks
+	if not _sketches_outside:
+		blocks.append({"type": "text", "text":
+			"That is three. The person chooses one, and the full design is built from it."})
+		return blocks
+	# From outside: all three, and how to choose.
+	sketches_ready.emit(_held_sketches.duplicate(), "", Brain.Spend.new(), false)
+	blocks.append({"type": "text", "text": "The three sketches, side by side:"})
+	for held: Sketches.Sketch in _held_sketches:
+		blocks.append({"type": "text", "text": "Sketch %d, \"%s\": %d parts, %s%s." % [
+			held.number, held.name, held.parts, held.measures(),
+			"" if held.holds() else ", and it does not hold together yet"]})
+		blocks.append_array(_sketch_shown(held))
+	blocks.append({"type": "text", "text": ("Choose the one that best answers the "
+		+ "brief — its silhouette, its proportions, its approach — with choose_sketch "
+		+ "{\"sketch\": N}. It goes on the baseplate and the other two are dropped; "
+		+ "then design the whole model from it and submit_design it without sketch. "
+		+ "Or submit_design with \"sketch\": true again for a new three.")})
+	return blocks
+
+
+## A sketch as Claude is shown it: its picture, or the letters without one.
+static func _sketch_shown(one: Sketches.Sketch) -> Array:
+	if not one.block.is_empty():
+		return [one.block]
+	return [{"type": "text", "text": one.letters}]
+
+
+## After a reply in the app's own sketch round: true when it has been dealt
+## with here — the sketches shown, sent back for the rest, or the round
+## given up — and false when the reply was only look-ups, to be answered as
+## any turn is.
+func _sketch_turn_over(tool_results: Array) -> bool:
+	var arrived: int = _sketch_arrivals
+	_sketch_arrivals = 0
+	var full: bool = _held_sketches.size() >= Sketches.COUNT
+	if full and _sketch_redo == 0:
+		_sketches_shown()
+		return true
+	var out_of_turns: bool = _turns >= SKETCH_TURNS
+	if out_of_turns:
+		if _held_sketches.is_empty():
+			_stop(false, "it made no sketches")
+		else:
+			_sketches_shown()
+		return true
+	if arrived == 0 and not tool_results.is_empty():
+		return false
+	if not full:
+		var ask: String = ("%d of the three sketches so far. " % _held_sketches.size()
+			+ "Submit the other %d now, each submit_design with \"sketch\": true, "
+			% (Sketches.COUNT - _held_sketches.size())
+			+ "each a different idea from the ones before.")
+		if tool_results.is_empty():
+			ask = ("No sketches yet. Call submit_design three times now, each with "
+				+ "\"sketch\": true: three massings under 150 parts, three different ideas.")
+		tool_results.append({"type": "text", "text": ask})
+	_messages.append({"role": "user", "content": tool_results})
+	_send()
+	return true
+
+
+## The round is over: the sketches go to the panel, with what they cost, and
+## the conversation that made them is done with. Choosing begins the design.
+func _sketches_shown() -> void:
+	_sketch_round = false
+	_busy = false
+	_messages.clear()
+	var spend: Brain.Spend = _spend
+	_spend = Brain.Spend.new()
+	progress.emit("%d sketches to choose from" % _held_sketches.size())
+	sketches_ready.emit(_held_sketches.duplicate(), _spent_on, spend, true)
+
+
+## Put sketch [param number] down and go on from it; the others are dropped.
+## The app's own: the whole model designed from it, a fresh conversation at
+## the person's model and effort ("" when that has begun). From outside:
+## what to do next, said to the session.
+func choose_sketch(number: int) -> String:
+	if _busy:
+		return "Not now — a design is running. Choose when it has finished."
+	if _held_sketches.is_empty():
+		return ("There are no sketches to choose from. submit_design with \"sketch\": "
+			+ "true, three times, makes them.")
+	if number < 1 or number > _held_sketches.size():
+		return "There is no sketch %d; choose 1 to %d." % [number, _held_sketches.size()]
+	var one: Sketches.Sketch = _held_sketches[number - 1]
+	var outside: bool = _sketches_outside
+	_held_sketches = []
+	_sketch_redo = 0
+	sketch_chosen.emit(number)
+	progress.emit("putting down sketch %d, %s" % [number, one.name])
+	var model: Model = one.model
+	await _ensure_parts(model)
+	await _apply(model, true, true)
+	if outside:
+		# Standing, so a check is a check and not a replacement for it.
+		_outside_standing = true
+		return ("Sketch %d, \"%s\", stands on the baseplate: %d parts, %s. " % [number,
+			one.name, one.parts, one.measures()] + "It is the massing the design is built "
+			+ "from.\n\n" + FROM_SKETCH + " Then review_model, as its answer says.")
+	_chosen_sketch = one
+	_start(_sketch_brief)
+	_chosen_sketch = null
+	return ""
 
 
 ## Whether there is a conversation to carry on, as against a fresh
@@ -671,6 +1063,7 @@ func cancel() -> void:
 	if not _busy:
 		return
 	_busy = false
+	_drop_sketches()
 	_http.cancel_request()
 	if _streaming != null:
 		_streaming.stop()
@@ -707,6 +1100,8 @@ func _start(text: String) -> void:
 	_features_told = false
 	_feature_used = {}
 	_feature_now = ""
+	_feature_closed = false
+	feature_pass().reset({})
 	# A fresh design gets the creative pass; a revision carries on the
 	# conversation, and a selection is the person's model.
 	_creative_wanted = not _scoped and _messages.is_empty()
@@ -725,7 +1120,7 @@ func _start(text: String) -> void:
 	_art_name = ""
 	_brief = text
 	_spend = Brain.Spend.new()
-	_spent_on = Brain.chosen()
+	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
 	# References first, in the same message as the brief.
@@ -746,7 +1141,7 @@ func _start(text: String) -> void:
 		await DesignMemory.ensure(self)
 		if not _busy:
 			return
-		_messages.append({"role": "user", "content": opening_for(text)})
+		_messages.append({"role": "user", "content": opening_for(text) + _sketch_opening()})
 	progress.emit("thinking")
 	_send()
 
@@ -918,7 +1313,8 @@ func _send() -> void:
 		# never happened.
 		_sketching = false
 		reader.fragment.connect(func(tool: String, piece: String) -> void:
-			if tool != "submit_design" and tool != "check_design":
+			# Sketches are held off the baseplate, not drawn on it.
+			if _sketch_round or (tool != "submit_design" and tool != "check_design"):
 				return
 			for raw: Dictionary in scanner.feed(piece):
 				if not raw.has("part") or _edited:
@@ -1025,7 +1421,10 @@ func _sketch_one(placement: Placement,
 ## Separated from _send so a probe can inspect it without a network
 ## call, which is the only way this stays fixed.
 func request_body() -> Dictionary:
-	var choice: Brain.Choice = Brain.find(Brain.chosen())
+	# Sketches on the cheaper model and effort; everything else on the chosen.
+	var choice: Brain.Choice = Brain.find(Brain.sketch_model() if _sketch_round
+		else Brain.chosen())
+	var effort: String = Brain.sketch_effort() if _sketch_round else Brain.effort()
 	# As much as the chosen model will write, when the reply is
 	# streamed.
 	#
@@ -1078,8 +1477,8 @@ func request_body() -> Dictionary:
 	# refuses the effort parameter, each with a 400 — so sending either
 	# unconditionally turns choosing the quick model into choosing a
 	# broken assistant.
-	if choice.effort and not Brain.effort().is_empty():
-		body["output_config"] = {"effort": Brain.effort()}
+	if choice.effort and not effort.is_empty():
+		body["output_config"] = {"effort": effort}
 	if choice.adaptive:
 		body["thinking"] = {"type": "adaptive"}
 	return body
@@ -1156,6 +1555,10 @@ func _on_response(result: Array) -> void:
 				"content": await _run_tool(block),
 			})
 
+	# Sketching first: shown once there are three, asked for the rest until.
+	if _sketch_round and _busy and _sketch_turn_over(tool_results):
+		return
+
 	if tool_results.is_empty():
 		# About a selection, a reply with nothing to call is the answer:
 		# what it changed, or what it said about the parts.
@@ -1208,6 +1611,15 @@ func _on_response(result: Array) -> void:
 		var feature: bool = bool(_detailing.get("feature", false))
 		var creative: bool = bool(_detailing.get("creative", false))
 		var surface: bool = bool(_detailing.get("surface", false))
+		# Settled with settle_feature: that is the feature's answer, so on
+		# to the next with the answers to this turn's tools.
+		if feature and _feature_closed:
+			_feature_closed = false
+			var settled: Array = tool_results.duplicate()
+			if await _detail_next(settled):
+				return
+			_stop(true, "%d bricks" % world.brick_count())
+			return
 		# Every finding of the surface pass settled: that is its answer.
 		if surface and surface_pass().open().is_empty():
 			if await _detail_next(tool_results.duplicate()):
@@ -1234,6 +1646,7 @@ func _on_response(result: Array) -> void:
 
 	# A design arrived. Check it against the real lattice.
 	progress.emit("checking %d bricks" % _pending.placements.size())
+	await _ready_to_check(_pending)
 	var report: Dictionary = await _checked(_pending)
 	# Stopped while it was being checked: nothing more to do with it.
 	if not _busy:
@@ -1265,6 +1678,7 @@ func _on_response(result: Array) -> void:
 			_to_detail = _queue_features(_pending.features)
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			_features = _pending.features
+			feature_pass().reset(_pending.feature_spots)
 			_declared = _pending.assemblies
 			_pending = null
 			progress.emit("looking at the finished model: %s"
@@ -1295,8 +1709,9 @@ func _on_response(result: Array) -> void:
 				ask += ("\n\nThis look is for the silhouette and the proportions: "
 					+ "the masses, their sizes against the reference, the outline. "
 					+ "After it, each feature you listed — %s — comes back to you "
-					% ", ".join(_features) + "on its own, with how real sets built "
-					+ "it, to lay, adapt or build one at a time.")
+					% ", ".join(_features) + "on its own: the app lays the best real "
+					+ "set's piece for it where it goes, and you accept it, adjust "
+					+ "it, or reject it with a reason, one at a time.")
 			else:
 				ask += ("\n\nYou listed no features. Name what the subject is "
 					+ "known by — its eyes, beak, ears, wheel arches, grille, "
@@ -1331,6 +1746,7 @@ func _on_response(result: Array) -> void:
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			if not _pending.features.is_empty():
 				_features = _pending.features
+				feature_pass().reset(_pending.feature_spots)
 			_declared = _pending.assemblies
 		_pending = null
 		if await _detail_next():
@@ -1377,6 +1793,7 @@ func _will_it_hold() -> String:
 	# rests on what is recorded. Without it every brick reads as
 	# carrying nothing.
 	judge.lattice = builder.lattice
+	judge.floor_ids = scenery
 	var report: Stability.Report = judge.check(world)
 	if report.is_stable():
 		return "It holds together: %s." % report.summary()
@@ -1734,6 +2151,12 @@ func _detail_next(also: Array = []) -> bool:
 		progress.emit("the creative pass: %s" % _creative_record)
 		_detailing = {}
 	elif not _detailing.is_empty() and bool(_detailing.get("feature", false)):
+		# Its turns over with the app's piece standing and nothing said of
+		# it: the piece stays, as a piece in the model does.
+		var left: FeaturePass.Proposal = feature_pass().proposal(_detailing["name"])
+		if left != null and not left.settled() and not left.ids.is_empty() \
+				and feature_pass()._standing(left.ids):
+			left.verdict = "kept"
 		progress.emit("the %s: %s" % [_detailing["name"], _feature_said(_detailing["name"])])
 		var brought := PackedStringArray()
 		for part_id: String in _parts_in(_bricks_inside({})):
@@ -1764,6 +2187,8 @@ func _detail_next(also: Array = []) -> bool:
 				+ TURNS_PER_ASSEMBLY * (_to_detail.size() + 1))
 		_detailing = one
 		_detail_turns = 0
+		# A settle said during an assembly's turn is not this feature's.
+		_feature_closed = false
 		_sent_back = false
 		_repairs = 0
 		_parts_before_pass = _parts_in(_bricks_inside({}))
@@ -2301,13 +2726,15 @@ func _run_tool(block: Dictionary) -> Variant:
 ## build's answer, the held-out owl worked none of them, looked at the whole
 ## once and saved.
 func _with_features_left(name: String, answer: Variant) -> Variant:
-	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"]:
+	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"] \
+			or _laying_whole:
 		return answer
 	var left: Array[String] = _features_left()
 	if left.is_empty():
 		return answer
-	var line: String = ("Features not worked yet: %s — review_model {\"feature\": \"%s\"} "
-		% [", ".join(left), left[0]] + "next: how real sets built it, to lay or build.")
+	var line: String = ("Features not settled yet: %s — review_model {\"feature\": \"%s\"} "
+		% [", ".join(left), left[0]] + "lays the app's piece for it, to settle with "
+		+ "settle_feature. Saving waits until each is settled.")
 	if answer is String:
 		return "%s\n\n%s" % [answer, line]
 	if answer is Array:
@@ -2337,9 +2764,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# build tells the model that real catalogue parts do not
 			# exist — they are simply not loaded yet — and it goes off
 			# and picks something else.
-			await _ensure_parts(trial)
+			await _ready_to_check(trial)
 			var running: bool = _busy
-			var report: Dictionary = await _checked(trial)
+			var report: Dictionary = await _checked(trial, false, true)
 			# This app's own run, stopped while it was checked.
 			if running and not _busy:
 				return ""
@@ -2357,8 +2784,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var standing: bool = _outside_standing and not _busy \
 				and world != null and world.brick_count() > scenery.size()
 			# Nor about a selection: the model round it is the person's.
-			if not trial.placements.is_empty() and not _edited and not standing \
-					and not _keeps_to_focus():
+			var applied: bool = not trial.placements.is_empty() and not _edited \
+				and not standing and not _keeps_to_focus()
+			if applied:
 				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
@@ -2376,7 +2804,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# thought to ask for it.
 			if trial.placements.is_empty():
 				return report["feedback"]
-			return await _with_a_look(str(report["feedback"]),
+			var weighed: String = _balance_said(report, trial, applied)
+			return await _with_a_look(str(report["feedback"])
+				+ ("" if weighed.is_empty() else "\n\n" + weighed),
 				"Look at it. Does it read as the thing it is meant to "
 				+ "be? If not, that is worth more than another brick. "
 				+ "view_model gives any other side.")
@@ -2517,7 +2947,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not sprinkled.is_empty():
 				progress.emit("tried to sprinkle dressing over a dark wall")
 				return "Not applied — " + sprinkled
-			await _ensure_parts(edited)
+			await _ready_to_check(edited)
 			# About a selection: only inside its room, said before anything
 			# is checked, because nothing outside it is this request's.
 			var scoped: bool = _keeps_to_focus()
@@ -2605,6 +3035,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("trying a change to the selection" if bool(args.get("check_only", false))
 				else "changing the selection")
 			return await _edit_selection(args)
+		"settle_feature":
+			return await _settle_feature(args)
 		"where_to_attach":
 			progress.emit("finding where parts fit on the selection")
 			return await _where_to_attach(args)
@@ -2618,12 +3050,20 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ("Not applied — the person asked about the parts they "
 					+ "selected, and submit_design would replace the model. Change "
 					+ "them with edit_selection.")
+			if bool(args.get("sketch", false)) or _sketch_round:
+				return await _hold_sketch(args)
+			# A whole design instead of choosing: the sketches are done with.
+			if not _held_sketches.is_empty():
+				_held_sketches = []
+				sketch_chosen.emit(0)
 			_last_submitted = args
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
 			return "Received. Checking it now."
+		"choose_sketch":
+			return await choose_sketch(int(args.get("sketch", 0)))
 	return "No tool called %s." % name
 
 
@@ -2976,6 +3416,7 @@ func _edit(args: Dictionary) -> Model:
 	_pattern_trouble = []
 	_pattern_advice = []
 	_expand_repeats(model, args, _repeat_trouble)
+	_onto_lines(model)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
 	return model
@@ -3464,6 +3905,9 @@ func _attachment_points(args: Dictionary) -> String:
 		var mesh: Lbm.PartMesh = library.mesh_for(part_id)
 		if mesh == null:
 			return "The geometry for %s has not arrived yet." % part_id
+		_on_its_line(hypothetical)
+		if not hypothetical.odd_axis.is_empty():
+			return "%s %s." % [part_id, hypothetical.odd_axis]
 		at = _transform(hypothetical, mesh)
 		label = "%s at %s facing %s" % [
 			part_id, hypothetical.where(), hypothetical.face]
@@ -3503,7 +3947,7 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _holes_in(part, at)
+	var holes: String = _holes_in(part, at, part_id)
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -3513,7 +3957,7 @@ func _attachment_points(args: Dictionary) -> String:
 	if found == 0:
 		if not holes.is_empty():
 			return ("%s has no studs. It joins to things through its "
-				% label + "holes instead." + shape + holes)
+				% label + "joints instead." + shape + holes)
 		return ("%s has no studs — nothing clutches to it. " % label
 			+ "Tiles and most sloped surfaces are like this." + shape)
 	return ("%s has %d stud%s.%s%s\n" % [label, found,
@@ -3528,8 +3972,9 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "three plates, so three plates or one and a half studs.")
 
 
-## Where a part's holes are, in the coordinates a pin would be written
-## in, and which way each one runs.
+## Where a part's holes, pins and axles are, numbered, and which way each
+## runs: the point a pin, an axle or a gear goes at, said as a placement
+## takes it.
 ##
 ## A hole's position is the one coordinate nobody gets right by
 ## reasoning: it sits at the middle of the part's thickness, so on a
@@ -3537,29 +3982,50 @@ func _attachment_points(args: Dictionary) -> String:
 ## it is one and a half plates up. The whole point of this tool is not
 ## having to work that out, and until now it only did it for studs.
 ##
-## Said as a position rather than as a placement for a particular pin,
-## because which pin goes in is the caller's choice and each has its own
-## length: 2780 and 3673 reach through two beams, 4274 through one.
-func _holes_in(part: Lbm.PartMesh, at: Transform3D) -> String:
+## And it said "a pin goes in at the position given", which was not so: a
+## placement's x, y and z were its low corner, so a pin put there stood half
+## a pin off the hole and was refused as an overlap with the brick it was
+## meant to be in. The owner's session did exactly that with a pin, an axle
+## and an axle through a 40 tooth gear. The point is now said the way a
+## placement takes a middle (axis), and each hole says whether it grips an
+## axle or lets it turn, which is the whole difference between a gear that
+## drives and one that spins on its axle.
+func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> String:
 	var lines: PackedStringArray = PackedStringArray()
-	for connector: Lbm.Connector in part.connectors:
-		if connector.kind != "pin_hole" and connector.kind != "axle_hole":
-			continue
+	var joints: Array = _joint_lines(part, part_id)
+	for n: int in joints.size():
 		if lines.size() >= MOST_HOLES:
-			lines.append("  ...and more, a hole every stud along it.")
+			lines.append("  ...and more, one every stud along it.")
 			break
-		var point: Vector3 = at * connector.position
-		var axis: Vector3 = (at.basis * connector.axis).normalized()
-		lines.append("  %s at x=%s y=%s z=%s, running %s" % [
-			"pin hole" if connector.kind == "pin_hole" else "axle hole",
-			Placement._num(point.x / STUD),
-			Placement._num(point.y / PLATE),
-			Placement._num(point.z / STUD),
-			_which_axis(axis)])
+		var joint: Array = joints[n]
+		var point: Vector3 = at * (joint[1] as Vector3)
+		var way: Vector3 = (at.basis * (joint[2] as Vector3)).normalized()
+		var where: String = "x=%s y=%s z=%s" % [Placement._num(point.x / STUD),
+			Placement._num(point.y / PLATE), Placement._num(point.z / STUD)]
+		var said: String = AXLE_WORDS.get(joint[0], "")
+		if joint[0] == "axle" or joint[0] == "pin":
+			# Its length, so a gear can be put anywhere along it.
+			said = said % _studs(float(joint[3]) * 2.0 / STUD)
+		lines.append("  joint %d: %s at %s, running %s — %s" % [n, joint[0], where,
+			_which_axis(way), said])
 	if lines.is_empty():
 		return ""
-	return ("\n\nHoles — a pin goes in at the position given, turned to "
-		+ "run the same way:\n" + "\n".join(lines))
+	return ("\n\nIts joints, each at its middle:\n" + "\n".join(lines)
+		+ "\nTo put a pin, an axle, a gear or a bush on one, give it axis: the way the "
+		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
+		+ "where its own middle goes, not its low corner. Slide it along by changing "
+		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
+
+
+## What each kind of joint does with an axle, as a session needs to hear it.
+const AXLE_WORDS: Dictionary = {
+	"pin hole": "round: an axle or a pin turns in it",
+	"axle hole": "grips an axle: this part turns with it",
+	"axle": "an axle %s studs long: an axle hole on it turns with it, a round hole turns on it",
+	"pin": "a pin %s studs long, for round holes",
+	"turntable": ("where it turns: its top and its base both go here, each by axis "
+		+ "\"y\" and this point"),
+}
 
 
 ## How many holes are worth listing before it is a wall of text. A
@@ -3721,6 +4187,281 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 		point.z - (back if absf(axis.z) > 0.5 else half))
 
 
+# -- joints on a line: pins, axles, gears, bushes, beams' holes ---------------
+
+
+## The lines a part joins by, in its own frame, in the order attachment_points
+## numbers them: [kind, middle, way, half its length along the line]. kind is
+## "axle", "pin", "axle hole" or "pin hole". An axle's or a pin's middle is
+## halfway along it (Mechanism reads the same lines, Joints.through matches
+## them); a hole's is halfway through the part (JointSnap.ends_of).
+##
+## And a turntable's turning point, given its part: where its top and its
+## base share an origin and an axis (Mechanism's table, as real sets stand
+## them in all 71 the OMR has), so the two are put together by one point.
+static func _joint_lines(part: Lbm.PartMesh, part_id: String = "") -> Array:
+	if part == null:
+		return []
+	var turntables: Dictionary = Mechanism.table().get("turntables", {})
+	if not part_id.is_empty() and (turntables.has(part_id)
+			or turntables.values().has(part_id)):
+		var with: Array = _joint_lines(part).duplicate()
+		var spec: Dictionary = Mechanism.spec_of(part_id)
+		with.append(["turntable", Vector3.ZERO, Mechanism._axis_of(spec.get("axis", "y")),
+			0.0])
+		return with
+	var key: int = part.get_instance_id()
+	if _joints_of.has(key):
+		return _joints_of[key]
+	var out: Array = []
+	_joints_of[key] = out
+	for line: Array in Joints._lines_of(part)[0]:
+		var from: float = line[3]
+		var to: float = line[4]
+		out.append([line[0], (line[1] as Vector3) + (line[2] as Vector3) * ((from + to) * 0.5),
+			line[2], (to - from) * 0.5])
+	for end: JointSnap.End in JointSnap.ends_of(part):
+		if not end.is_hole():
+			continue
+		var kind: String = "axle hole" if end.kind == "axle_hole" else "pin hole"
+		var again: bool = false
+		for one: Array in out:
+			if one[0] == kind and (one[1] as Vector3).distance_to(end.at) < 1.0:
+				again = true
+		if not again:
+			out.append([kind, end.at, end.axis, end.reach])
+	return out
+
+
+## [method _joint_lines] by part, worked out once each.
+static var _joints_of: Dictionary = {}
+
+
+## Which of a part's joints is nearest its middle: the one a placement on a
+## line takes when it names none.
+static func _middle_joint(part: Lbm.PartMesh, lines: Array) -> int:
+	var centre: Vector3 = part.bounds.get_center()
+	var best: int = 0
+	for n: int in lines.size():
+		if (lines[n][1] as Vector3).distance_to(centre) \
+				< (lines[best][1] as Vector3).distance_to(centre) - 0.5:
+			best = n
+	return best
+
+
+## The four square turns that carry [param local] onto [param want], a
+## quarter apart about it: the first the nearest to the part's own way up,
+## the rest that one turned on about the line.
+static func _bases_onto(local: Vector3, want: Vector3) -> Array[Basis]:
+	var first := Basis()
+	var best: float = -INF
+	for face: String in BrickLattice.FACES:
+		for rot: int in 4:
+			var basis: Basis = BrickLattice.basis_for(face, rot)
+			if (basis * local).dot(want) < 0.99:
+				continue
+			var trace: float = basis.x.x + basis.y.y + basis.z.z
+			if trace > best + 0.001:
+				best = trace
+				first = basis
+	var out: Array[Basis] = []
+	if best == -INF:
+		return out
+	for k: int in 4:
+		out.append(BrickLattice.snap_basis(Basis(want, k * PI * 0.5) * first))
+	return out
+
+
+## Write a placement as the low corner, face and turn that put its joint
+## [param line] (from [method _joint_lines]) through [param point] (LDU, in
+## its own frame), running along [param basis].
+func _put_on_line(placement: Placement, part: Lbm.PartMesh, line: Array,
+		point: Vector3, basis: Basis) -> void:
+	var origin: Vector3 = point - basis * (line[1] as Vector3)
+	var cell := Vector3i(roundi(origin.x / BrickLattice.CELL),
+		roundi(origin.y / BrickLattice.CELL), roundi(origin.z / BrickLattice.CELL))
+	var corner: Vector3 = BrickLattice.to_ldu(cell + _corner_cell(part, placement.part, basis))
+	placement.x = snappedf(corner.x / STUD, 0.01)
+	placement.y = snappedf(corner.y / PLATE, 0.01)
+	placement.z = snappedf(corner.z / STUD, 0.01)
+	placement.face = BrickLattice.face_of(basis)
+	placement.rot = BrickLattice.turns_about(basis, placement.face)
+
+
+## Every placement said by its line, written as its corner, and every one
+## whose corner was written at a hole put in the hole: see [method _seat].
+## Run on what a design or an edit says, before anything reads where its
+## parts are.
+func _onto_lines(model: Model) -> void:
+	for placement: Placement in model.placements:
+		_on_its_line(placement)
+	_seat(model)
+
+
+## One placement said by its line, written as its corner; why not, in its
+## odd_axis.
+func _on_its_line(placement: Placement) -> void:
+	if placement.axis.is_empty():
+		return
+	var line_way: String = placement.axis
+	placement.axis = ""
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	if part == null:
+		return
+	var lines: Array = _joint_lines(part, placement.part)
+	if lines.is_empty():
+		placement.odd_axis = ("is said by its axis, but has no pin, axle or hole "
+			+ "to put on a line; give its low corner instead")
+		return
+	var n: int = placement.joint if placement.joint >= 0 else _middle_joint(part, lines)
+	if n >= lines.size():
+		placement.odd_axis = "asks for joint %d and has %d (0 to %d)" % [n,
+			lines.size(), lines.size() - 1]
+		return
+	var turns: Array[Basis] = _bases_onto(lines[n][2], AXES[line_way])
+	if turns.is_empty():
+		placement.odd_axis = ("asks for joint %d, which runs at an angle and cannot "
+			+ "be put on a square line; use a section") % n
+		return
+	_put_on_line(placement, part, lines[n], Vector3(placement.x * STUD,
+		placement.y * PLATE, placement.z * STUD), turns[placement.rot % 4])
+
+
+## A pin, an axle, a gear or a bush whose low corner was written at a hole,
+## or a gear's or a bush's at a point on an axle, put in it: its x, y and z
+## taken for its middle, as though axis had been given.
+##
+## The owner's own session, building an orrery: attachment_points said 3700
+## at 80, 0, 80 has a pin hole at 81, 1.75, 80.5 running along z, and "a pin
+## goes in at the position given". It put 2780 there, then axle 3706, then
+## an axle through a 40 tooth gear's hole, by a quarter turn and by face
+## +z, and every one was refused as an overlap with the part it was meant
+## to be in, because x, y and z are a part's low corner. There is no other
+## reading of a joint's part whose corner is on another part's joint line:
+## its own line is then off that one by its whole radius, in the other
+## part's plastic. Only when the corner reading overlaps the part the hole
+## is in, and only a part with no studs, so a brick is never moved.
+func _seat(model: Model) -> void:
+	var wanted: Array[int] = []
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		if placement.id != 0 or not placement.section.is_empty() \
+				or not placement.odd_axis.is_empty() or _has_studs(placement.part):
+			continue
+		if _joint_lines(library.mesh_for(placement.part)).is_empty():
+			continue
+		wanted.append(index)
+	if wanted.is_empty():
+		return
+	# Where they were written, and room round that for anything whose hole or
+	# axle could be there: a long axle's middle is far from its ends.
+	var region := AABB()
+	for n: int in wanted.size():
+		var one: Placement = model.placements[wanted[n]]
+		var point := Vector3(one.x * STUD, one.y * PLATE, one.z * STUD)
+		region = AABB(point, Vector3.ZERO) if n == 0 else region.expand(point)
+	region = region.grow(STUD)
+	# The holes and the axles and pins of every part that reaches there.
+	var holes: Array = []    ## [index, kind, middle, way, half depth]
+	var shafts: Array = []   ## [index, kind, middle, way, half length]
+	var placed: Dictionary = {}
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _joined_at(placement, part, model)
+		placed[index] = at
+		if not (at * part.bounds).abs().intersects(region):
+			continue
+		for line: Array in _joint_lines(part):
+			var row: Array = [index, line[0], at * (line[1] as Vector3),
+				(at.basis * (line[2] as Vector3)).normalized(), line[3]]
+			if str(line[0]).ends_with("hole"):
+				holes.append(row)
+			else:
+				shafts.append(row)
+	for index: int in wanted:
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		var point := Vector3(placement.x * STUD, placement.y * PLATE, placement.z * STUD)
+		var lines: Array = _joint_lines(part)
+		var found: Array = _hole_at(point, lines, holes, shafts, index)
+		if found.is_empty():
+			continue
+		var line: Array = lines[found[0]]
+		var target: Array = found[1]
+		var way: Vector3 = target[3]
+		# Only where the corner reading runs into the part it was meant to
+		# be in: that is the mistake, and nothing else is moved.
+		var other: Placement = model.placements[target[0]]
+		var theirs: Lbm.PartMesh = library.mesh_for(other.part)
+		if BrickLattice.shared_cells(builder.boxes_for(part, placed[index]),
+				builder.boxes_for(theirs, placed[target[0]])) == 0:
+			continue
+		# Its own turn if that already runs along the line, else the first
+		# square one that does.
+		var basis: Basis = (placed[index] as Transform3D).basis
+		if absf((basis * (line[2] as Vector3)).normalized().dot(way)) < 0.99:
+			basis = _bases_onto(line[2], way)[0]
+		var was: String = placement.where()
+		_put_on_line(placement, part, line, point, basis)
+		_pattern_advice.append(("brick %d (%s): put %s brick %d's %s. Its x, y, z (%s) "
+			% [index, placement.part, "in" if str(target[1]).ends_with("hole") else "on",
+				target[0], target[1], was]
+			+ "were a point on that %s, so they were read as where its middle goes; " % (
+				"hole" if str(target[1]).ends_with("hole") else str(target[1]))
+			+ "it stands at %s face %s rot %d. Say a part by its middle with axis: \"%s\" "
+				% [placement.where(), placement.face, placement.rot, _axis_name(way)]
+			+ "and those x, y, z; without axis, x, y, z are its low corner."))
+
+
+## The joint of a part and the hole or the axle of another that [param
+## point] is on: [joint number, the other's row], or [] for none. A pin or
+## an axle goes into a hole (a pin not into an axle hole); a hole goes onto
+## an axle or a pin.
+func _hole_at(point: Vector3, lines: Array, holes: Array, shafts: Array,
+		own: int) -> Array:
+	for n: int in lines.size():
+		var kind: String = lines[n][0]
+		var male: bool = not kind.ends_with("hole")
+		for row: Array in (holes if male else shafts):
+			if row[0] == own:
+				continue
+			if male and kind == "pin" and row[1] == "axle hole":
+				continue
+			if not male and kind == "axle hole" and row[1] == "pin":
+				continue
+			var gap: Vector3 = point - (row[2] as Vector3)
+			var along: float = gap.dot(row[3])
+			if absf(along) > float(row[4]) + Mechanism.REACH_SLACK:
+				continue
+			if (gap - (row[3] as Vector3) * along).length() > Mechanism.LINE_SLACK:
+				continue
+			return [n, row]
+	return []
+
+
+## Whether a part has studs of its own (a brick, a plate), which a joint's
+## part does not.
+func _has_studs(part_id: String) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return true
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind == "stud" and connector.gender == "male":
+			return true
+	return false
+
+
+## The name a placement's axis has for a way: "z", "-x".
+static func _axis_name(way: Vector3) -> String:
+	for name: String in AXES:
+		if (AXES[name] as Vector3).dot(way) > 0.99:
+			return name
+	return "z"
+
+
 ## What is on the baseplate, in the coordinates the model speaks.
 ##
 ## Without this the assistant is blind to everything it did not place
@@ -3855,11 +4596,12 @@ func _describe_world(args: Dictionary = {}) -> String:
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
 			var face: String = BrickLattice.face_of(brick.transform.basis)
-			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
+			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s%s" % [
 				brick.id, brick.part_id, brick.color_code,
 				Placement._num(at.x), Placement._num(at.y),
 				Placement._num(at.z), face,
 				BrickLattice.turns_about(brick.transform.basis, face),
+				_on_line_said(brick),
 				"" if mine.has(brick.id) else "   (placed by hand)"])
 
 	var lines := PackedStringArray()
@@ -3899,6 +4641,26 @@ func _describe_world(args: Dictionary = {}) -> String:
 			+ "z_from,z_to,y_from,y_to} in studs and plates to work on "
 			+ "one section at a time.")
 	return "\n".join(lines)
+
+
+## For a pin, an axle, a gear or a bush, where its line runs, said as a
+## placement on a line takes it: "  axis z at 3, 5.75, 2.5". A gear to go on
+## an axle listed here goes at that x and y, and any z along it. Empty for
+## anything with studs, or no joint.
+func _on_line_said(brick: BrickWorld.Brick) -> String:
+	if _has_studs(brick.part_id):
+		return ""
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var lines: Array = _joint_lines(part)
+	if lines.is_empty():
+		return ""
+	var line: Array = lines[_middle_joint(part, lines)]
+	var point: Vector3 = brick.transform * (line[1] as Vector3)
+	var way: Vector3 = (brick.transform.basis * (line[2] as Vector3)).normalized()
+	if absf(way.x) < 0.99 and absf(way.y) < 0.99 and absf(way.z) < 0.99:
+		return ""
+	return "  axis %s at %s, %s, %s" % [_axis_name(way), Placement._num(point.x / STUD),
+		Placement._num(point.y / PLATE), Placement._num(point.z / STUD)]
 
 
 ## As many rows as are worth spending. Enough to reason about a typical
@@ -4001,10 +4763,66 @@ func _search(query: String, limit: int) -> String:
 				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
+	var told: String = ""
 	for info: PartLibrary.PartInfo in usable:
-		lines.append(_describe(info)
+		lines.append(_describe(info) + _prints_note(info)
 			+ (Collection.owned_note(info.id, owned, library) if from_collection else ""))
+		if told.is_empty() and not library.prints_of(info.id).is_empty():
+			told = _prints_named(info)
+	if not told.is_empty():
+		lines.append(told)
 	return "\n".join(lines)
+
+
+## What a part in a search's answer has printed on it, or what prints of
+## it there are, at the end of its line.
+##
+## A design that cannot see the prints does not know they exist: it
+## builds a badge out of plates, or does without. 3623 has eleven, and
+## "porsche print" did not find the one a Porsche wants (2026-10-13).
+func _prints_note(info: PartLibrary.PartInfo) -> String:
+	if not info.print_of.is_empty():
+		return (", a print of %s" if info.decor() & PartLibrary.PartInfo.PRINTED
+			else ", %s with a sticker on") % info.print_of
+	var how_many: String = _prints_counted(info)
+	return "" if how_many.is_empty() else ", " + how_many
+
+
+## "11 prints", "25 prints and 17 stickered", or "" for a part with none.
+func _prints_counted(info: PartLibrary.PartInfo) -> String:
+	var printed: int = 0
+	var stuck: int = 0
+	for each: PartLibrary.PartInfo in library.prints_of(info.id):
+		if each.decor() & PartLibrary.PartInfo.PRINTED:
+			printed += 1
+		else:
+			stuck += 1
+	var said := PackedStringArray()
+	if printed > 0:
+		said.append("%d print%s" % [printed, "" if printed == 1 else "s"])
+	if stuck > 0:
+		said.append("%d stickered" % stuck)
+	return " and ".join(said)
+
+
+## The first part in an answer that has prints, a few of them by what is
+## on them, and how to ask for the rest.
+func _prints_named(info: PartLibrary.PartInfo) -> String:
+	var prints: Array[PartLibrary.PartInfo] = library.prints_of(info.id)
+	var some := PackedStringArray()
+	for each: PartLibrary.PartInfo in prints.slice(0, 3):
+		var on_it: String = each.printed()
+		if on_it.length() > 40:
+			var cut: int = on_it.rfind(" ", 40)
+			on_it = on_it.left(cut if cut > 0 else 40) + "…"
+		some.append("%s %s" % [each.id, on_it])
+	var asks: String = "\"%s print\"" % info.id
+	if _prints_counted(info).contains("stickered"):
+		asks += " or \"%s sticker\"" % info.id
+	return ("%s has %s: %s%s. search_parts %s lists them; \"porsche print\" "
+		% [info.id, _prints_counted(info), "; ".join(some),
+			"; and %d more" % (prints.size() - 3) if prints.size() > 3 else "", asks]
+		+ "finds any print by what is on it.")
 
 
 func _describe(info: PartLibrary.PartInfo) -> String:
@@ -4863,8 +5681,10 @@ func _read_model(args: Dictionary) -> Model:
 
 	_repeat_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
+	_onto_lines(model)
 	model.assemblies = _read_assemblies(args)
 	model.features = _read_features(args)
+	model.feature_spots = FeaturePass.read_spots(args)
 	return model
 
 
@@ -8325,6 +9145,34 @@ var _feature_used: Dictionary = {}
 var _feature_now: String = ""
 ## The features a session from outside listed when it submitted.
 var _outside_features: Array[String] = []
+## The app's own feature pass: a real piece laid per feature, settled by
+## the design (FeaturePass). Set when settle_feature ends a feature's turn
+## in the loop.
+var _feature_pass: FeaturePass = null
+var _feature_closed: bool = false
+
+
+func feature_pass() -> FeaturePass:
+	if _feature_pass == null:
+		_feature_pass = FeaturePass.new(self)
+	return _feature_pass
+
+
+## [param text] ahead of [param more], a String or the blocks of an answer
+## with a picture: blocks when there is a picture to keep.
+static func _joined(text: String, more: Variant) -> Variant:
+	if text.is_empty():
+		return more
+	if more is Array:
+		var out: Array = (more as Array).duplicate()
+		if not out.is_empty() and out[0] is Dictionary \
+				and str((out[0] as Dictionary).get("type", "")) == "text":
+			out[0] = {"type": "text", "text": "%s\n\n%s" % [text, (out[0] as Dictionary)["text"]]}
+		else:
+			out.push_front({"type": "text", "text": text})
+		return out
+	var after: String = str(more)
+	return text if after.is_empty() else "%s\n\n%s" % [text, after]
 
 
 ## The listed feature the words of [param query] name, or "": "owl eye"
@@ -8354,6 +9202,12 @@ func _note_feature(what: String) -> void:
 ## A feature's record in a line: "real piece 4349-3 laid", "built by hand
 ## after show_technique eye with a highlight", or "not worked yet".
 func _feature_said(name: String) -> String:
+	var settled: String = feature_pass().said(name)
+	if not settled.is_empty():
+		return settled
+	var proposed: FeaturePass.Proposal = feature_pass().proposal(name)
+	if proposed != null and not proposed.piece.is_empty():
+		return "real piece %s laid by the app, not settled yet" % proposed.piece["id"]
 	var used: Array = _feature_used.get(name.to_lower(), [])
 	if used.is_empty():
 		return "not worked yet"
@@ -8396,52 +9250,224 @@ static func _subject_words(text: String) -> String:
 	return " ".join(kept)
 
 
-## One feature, handed to the design to work: the best three real pieces
-## for it, shortly — id, size, whether it lays, what it is, its parts —
-## the worked technique that builds one, and what to do. Text, kept short
-## so working every feature is cheap; [param picture] adds the pieces side
-## by side in one small picture, for the loop's own pass.
+## One feature, handed to the design to work: the app looks up how real
+## sets built it, lays the best piece that lays whole and fits where the
+## feature goes (FeaturePass), and hands it over with a picture of it
+## standing there, to accept, adjust or reject with settle_feature. When
+## nothing fits, the pieces it tried and the worked technique, to build it.
+## [param picture] adds the picture where one can be taken.
 func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant:
-	var subject: String = ""
-	var have: bool = await RealSnippets.ensure(self)
-	if have:
-		subject = _subject_words(_brief)
-	var query: String = ("%s %s" % [subject, name]).strip_edges()
 	var said := PackedStringArray()
 	said.append("The %s — feature %d of %d." % [name, of, count])
-	var shown: Array = []
-	if have:
-		var found: Array = RealSnippets.search(query, 0.0, [], 3)
-		if found.is_empty():
-			said.append("No real set has a piece called anything like \"%s\"." % query)
-		else:
-			said.append("How real sets built it (find_techniques \"%s\"):" % query)
-			for n: int in found.size():
-				var entry: Dictionary = found[n][1]
-				shown.append(entry)
-				said.append(_piece_line(n + 1, entry))
+	var one: FeaturePass.Proposal = null
+	if await RealSnippets.ensure(self):
+		one = await feature_pass().propose(name)
 	var worked: Dictionary = Techniques.for_feature(name)
-	if not worked.is_empty():
-		said.append("The worked technique for it: show_technique(\"%s\") — %s."
-			% [worked["name"], worked["when"]])
-	said.append("Do one, and say in a line which: lay a real piece with "
-		+ "place_technique where one fits (turn and recolor it to your model); "
-		+ "adapt one — the same idea at your size, in your parts; or build it "
-		+ "from the worked technique. A feature is parts with depth — a round "
-		+ "plate, a slope, a printed tile, studs out — never a tile painted on "
-		+ "a flat panel. A face on a shaped head is the shape's \"face\", said "
-		+ "with the shape: it lays the disc, 2 x 2 eyes and a beak on side studs, "
-		+ "flush with the curve; a head already standing without one takes the "
-		+ "eyes on brackets as the round face technique shows.")
+	var technique: String = ("show_technique(\"%s\") — %s" % [worked["name"], worked["when"]]) \
+		if not worked.is_empty() else ""
+	if one != null and not one.piece.is_empty():
+		said.append(_proposal_said(one))
+	else:
+		var tried: String = ""
+		if one != null and not one.candidates.is_empty():
+			var ids := PackedStringArray()
+			for entry: Variant in one.candidates:
+				ids.append(str((entry as Dictionary)["id"]))
+			tried = " (tried %s)" % ", ".join(ids)
+		said.append(("No real set's piece that lays whole fits where it goes%s, so build it "
+			% tried) + ("from the worked technique, %s" % technique if not technique.is_empty()
+				else "your own way") + ", then settle_feature \"built\" with how; or "
+			+ "\"reject\" with a reason if the model has it already.")
+		return "\n".join(said)
+	if not technique.is_empty():
+		said.append("To build it your own way instead: %s." % technique)
+	said.append(SETTLE_HOW.replace("{name}", name))
 	var text: String = "\n".join(said)
-	if not picture or shown.is_empty():
+	if not picture:
 		return text
-	var sheet: Image = await _snippet_picture(shown)
-	if sheet == null:
+	var shown: Dictionary = await _proposal_picture(one)
+	if shown.is_empty():
 		return text
-	return [{"type": "text", "text": text + "\n\nThe pieces, in that order:"},
-		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
-			"data": Marshalls.raw_to_base64(sheet.save_png_to_buffer())}}]
+	return [{"type": "text", "text": text}, shown]
+
+
+const SETTLE_HOW := """Settle it with settle_feature {"feature": "{name}", \
+"verdict": ...}: "accept" keeps it (with move {dx, dy, dz} in studs and \
+plates, turn or recolor {"15": 1} to adjust it first); "next" takes it off \
+and lays the next-best piece; "reject" with a reason takes it off, to build \
+it your own way or leave it out; "built" if you built it yourself (the \
+app's piece comes off). A \
+feature is parts with depth, never a tile painted on a panel. Saving waits \
+until every feature is settled."""
+
+
+## The piece the app laid for a feature, in a few lines: what it is and
+## whose, where it went and how, the bricks it is, and the next-best.
+func _proposal_said(one: FeaturePass.Proposal) -> String:
+	var entry: Dictionary = one.piece
+	var copy: Dictionary = one.copies[0]
+	var at: Vector3 = copy.get("at", Vector3.ZERO)
+	var how: String = "as built, its front to %s" % one.spot["facing"] \
+		if str(copy["up"]) == "up" else "tipped whole, studs out to %s" % copy["up"]
+	var text: String = str(entry.get("text", ""))
+	if text.length() > 140:
+		text = text.substr(0, text.rfind(" ", 140)) + "…"
+	var bricks := PackedStringArray()
+	for id: int in one.ids:
+		bricks.append("#%d" % id)
+	var lines := PackedStringArray()
+	lines.append(("The app looked up how real sets built it and laid the best piece "
+		+ "that lays whole and fits where it goes, as a proposal:\n  %s \"%s\", %s, "
+		% [entry["id"], entry["name"], RealSnippets.credit(entry)])
+		+ "%d parts. %s\n  Seated on the stud at x=%s y=%s z=%s, %s%s; bricks %s."
+		% [int(entry["parts"]), text, _studs(at.x), _studs(at.y), _studs(at.z), how,
+			", and its pair across the model" if one.copies.size() > 1 else "",
+			", ".join(bricks.slice(0, 24))])
+	if one.guessed:
+		lines.append(("Where it goes was read off its name (facing %s, x=%s y=%s z=%s): "
+			% [one.spot["facing"], _studs(float(one.spot["x"])), _studs(float(one.spot["y"])),
+				_studs(float(one.spot["z"]))]) + "if that is not where it belongs, accept it "
+			+ "with move, or give each feature x, y, z and facing in submit_design.")
+	var rest := PackedStringArray()
+	for n: int in range(one.next, one.candidates.size()):
+		var other: Dictionary = one.candidates[n]
+		rest.append("%s \"%s\" (%d parts)" % [other["id"], other["name"], int(other["parts"])])
+	if not rest.is_empty():
+		lines.append("Next-best, for \"next\": %s." % "; ".join(rest.slice(0, 3)))
+	return "\n".join(lines)
+
+
+## The proposal standing in the model, framed on it from the way it faces.
+## {} where no picture can be taken.
+func _proposal_picture(one: FeaturePass.Proposal) -> Dictionary:
+	if not ModelShot.possible() or one == null or one.ids.is_empty():
+		return {}
+	var bricks: Array[BrickWorld.Brick] = []
+	for id: int in one.ids:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		if brick != null:
+			bricks.append(brick)
+	if bricks.is_empty():
+		return {}
+	var box: AABB = _bounds_of(bricks).grow(4.0 * STUD)
+	var from: String = str({"+z": "front", "-z": "back", "+x": "right", "-x": "left"}.get(
+		str(one.spot.get("facing", "")), "corner"))
+	var image: Image = await _ensure_shot().take(world, from, scenery, box)
+	if image == null:
+		return {}
+	return await _shot.encode(image)
+
+
+## settle_feature: what the design says of the app's piece for a feature.
+## In the loop the loop then hands the next feature; from outside this
+## answer does, with its piece laid, and after the last says what is next.
+func _settle_feature(args: Dictionary) -> Variant:
+	var asked: String = str(args.get("feature", "")).strip_edges()
+	var names: Array[String] = _features if _busy else _outside_features
+	var name: String = ""
+	for listed: String in names:
+		if listed.to_lower() == asked.to_lower():
+			name = listed
+	if name.is_empty():
+		name = _feature_named(asked)
+	if name.is_empty():
+		return ("No feature called \"%s\". The features listed: %s." % [asked,
+			", ".join(names) if not names.is_empty() else "none (submit_design's features)"])
+	var features: FeaturePass = feature_pass()
+	var one: FeaturePass.Proposal = features.proposal(name)
+	var verdict: String = str(args.get("verdict", "")).strip_edges().to_lower()
+	var reason: String = str(args.get("reason", "")).strip_edges()
+	_feature_now = name
+	match verdict:
+		"accept":
+			if one == null or one.piece.is_empty() or not features._standing(one.ids):
+				return ("Nothing of the app's stands for the %s to accept. \"next\" lays " % name
+					+ "a real piece for it, \"built\" says you built it, \"reject\" with a "
+					+ "reason leaves it out.")
+			var move: Dictionary = args.get("move", {}) if args.get("move") is Dictionary else {}
+			var turns: int = int(args.get("turn", 0))
+			var recolor: Dictionary = {}
+			if args.get("recolor") is Dictionary:
+				for key: Variant in args["recolor"]:
+					recolor[int(str(key))] = int((args["recolor"] as Dictionary)[key])
+			var moving: bool = not move.is_empty() and (absf(float(move.get("dx", 0.0)))
+				+ absf(float(move.get("dy", 0.0))) + absf(float(move.get("dz", 0.0)))) > 0.0
+			if moving or turns % 4 != 0 or not recolor.is_empty():
+				var why: String = await features.adjust(one, move if moving else {}, turns % 4, recolor)
+				if not why.is_empty():
+					return why
+				one.verdict = "adjusted"
+			else:
+				one.verdict = "accepted"
+		"next":
+			if one == null:
+				one = await features.propose(name)
+			else:
+				if not await features.take_off(one):
+					return "Could not take the %s's piece off; settle it another way." % name
+				if one.candidates.is_empty():
+					one.candidates = features.candidates_for(name)
+				if one.spot.is_empty():
+					one.spot = features.spot_for(name)
+				await features._lay_next(one)
+			var of: int = names.find(name) + 1
+			return await _feature_brief(name, of, names.size(), true) if not one.piece.is_empty() \
+				else ("No other real piece fits where the %s goes. Build it your own way and " % name
+					+ "settle_feature \"built\" with how, or \"reject\" with a reason.")
+		"reject":
+			if reason.split(" ", false).size() < 3:
+				return ("Say why in a sentence (reason): what is wrong with the piece here — "
+					+ "its size, its shape, its colours, or that the model has it already.")
+			if one == null:
+				one = FeaturePass.Proposal.new()
+				one.feature = name
+				features.proposals[name.to_lower()] = one
+			elif not await features.take_off(one):
+				return "Could not take the %s's piece off; settle it another way." % name
+			one.verdict = "rejected"
+			one.reason = reason
+		"built":
+			var used: Array = _feature_used.get(name.to_lower(), [])
+			if reason.is_empty() and not used.has("edited"):
+				return ("Nothing has been built for the %s since it was handed: build it " % name
+					+ "with edit_model, or say how you built it (reason).")
+			if one == null:
+				one = FeaturePass.Proposal.new()
+				one.feature = name
+				features.proposals[name.to_lower()] = one
+			# Built its own way: the app's piece is not it. A session that said
+			# the proposed piece "sat at the neck" and settled built left it there.
+			elif not await features.take_off(one):
+				return "Could not take the %s's piece off; settle it another way." % name
+			one.verdict = "built"
+			one.reason = reason
+		_:
+			return "verdict is one of \"accept\", \"next\", \"reject\" or \"built\"."
+	progress.emit("the %s: %s" % [name, _feature_said(name)])
+	var head: String = "The %s: %s." % [name, _feature_said(name)]
+	if _busy:
+		_feature_closed = true
+		return head
+	var left: Array[String] = features.open(_outside_features)
+	if not left.is_empty():
+		var brief: Variant = await _review_feature(left[0])
+		return _joined(head + " Next, the %s:" % left[0], brief)
+	_feature_now = ""
+	return "%s\n\nEvery feature is settled:\n%s\n\n%s" % [head,
+		_features_record(_outside_features), _after_features()]
+
+
+## What comes after the features, for a session from outside: the first
+## assembly not yet looked at closely, or the creative features.
+func _after_features() -> String:
+	var left: Array[String] = _not_yet_reviewed()
+	if not left.is_empty():
+		return ("Next, each assembly close up: review_model {\"assembly\": \"%s\"}%s."
+			% [left[0], " — %d more after it" % (left.size() - 1) if left.size() > 1 else ""])
+	if not surface_pass().ran:
+		return ("Next, the surface pass: review_model {\"surface\": true}; then the creative "
+			+ "pass, review_model {\"creative\": true}.")
+	return "Next, the creative features: review_model {\"creative\": true}."
 
 
 ## One real piece in a line or two: its id, name and where it is from, its
@@ -8934,12 +9960,12 @@ func _rehinge(model: Model, section: Section, was: Section) -> void:
 ## be adding to; and the tables filled on first use — the style norms, the
 ## minifigure name patterns — are filled here. The probes call [method
 ## _check] itself, on their own thread, as before.
-func _checked(model: Model, alone: bool = false) -> Dictionary:
+func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
 	# One worker at a time: a second check while one is out (the design
 	# loop and a connector both checking) is done here, as before.
 	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
 			or OS.has_feature("nothreads") or library == null:
-		return _check(model, alone)
+		return _check(model, alone, weigh)
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
@@ -8952,7 +9978,7 @@ func _checked(model: Model, alone: bool = false) -> Dictionary:
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerThreadPool.add_task(func() -> void:
-		report.merge(_check(model, alone)), false, "check a design")
+		report.merge(_check(model, alone, weigh)), false, "check a design")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await Engine.get_main_loop().process_frame
@@ -8963,7 +9989,7 @@ func _checked(model: Model, alone: bool = false) -> Dictionary:
 	if report.is_empty():
 		# A worker that failed leaves nothing. Checked here instead: slow,
 		# but an answer.
-		return _check(model, alone)
+		return _check(model, alone, weigh)
 	return report
 
 
@@ -9010,7 +10036,10 @@ func _others_standing(alone: bool) -> Array:
 ## assistant's work and leaves what the person placed by hand standing,
 ## so those bricks have to be in the lattice or a design can be declared
 ## buildable while sitting inside one of them.
-func _check(model: Model, alone: bool = false) -> Dictionary:
+##
+## ``weigh`` asks as well whether it would stand, and puts the answer in
+## "balance" (Balance.Report): check_design's, which a session reads.
+func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
 	# Nothing here asks where a brick would come to rest, which is the
 	# only thing the column index is for, and keeping it is a third of
@@ -9087,6 +10116,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## on a bar, a bar in a hollow stud, a hinge, a turntable. See
 	## [method Joints.rounds].
 	var rounds: Dictionary = Joints.rounds(entries)
+	## And which gears are in mesh, whose discs share the ring their teeth
+	## turn in. Forgiven, and holding nothing: a gear is held by its axle.
+	var meshing: Dictionary = Joints.meshing(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
 
@@ -9149,6 +10181,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 					+ "not one of the sections given. Declare it in "
 					+ "sections, or leave the field out and give the "
 					+ "brick the model's own coordinates.")
+			continue
+		if not placement.odd_axis.is_empty():
+			_note(issues, "no such joint", "brick %d (%s) %s." % [index,
+				placement.part, placement.odd_axis])
 			continue
 		if not placement.odd_face.is_empty():
 			_note(issues, "no such face",
@@ -9233,7 +10269,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# parts did square.
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
-				model.section_for(placement).placed(), true)
+				model.section_for(placement).placed(), true, meshing)
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -9294,7 +10330,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# overlap lies inside the bore, so the same two parts meeting
 		# anywhere else still collide. See [method Joints.rounds].
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
-			rounds, packed, lattice, Transform3D.IDENTITY, false)
+			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
 
 		blockers = _between_standing(blockers, placement, model)
 
@@ -9346,9 +10382,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 						+ "not need rebuilding.")
 				continue
 			_note(issues, "overlap",
-				"brick %d (%s at %s) overlaps %s%s" % [
+				"brick %d (%s at %s) overlaps %s%s%s" % [
 					index, placement.part, placement.where(), who,
-					_ends_at(cells_of.get(blocker - 1))])
+					_ends_at(cells_of.get(blocker - 1)),
+					_gears_apart(model, placed_at, index, blocker - 1)])
 			continue
 
 		lattice.occupy_boxes(index + 1, packed)
@@ -9363,7 +10400,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
 	if not gave_way.is_empty():
-		return _without_dressing(model, gave_way, alone)
+		return _without_dressing(model, gave_way, alone, weigh)
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -9402,6 +10439,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		if said.size() > WORTH_SAYING:
 			advice[advice.size() - 1] += \
 				"\n  ...and %d more like that." % (said.size() - WORTH_SAYING)
+
+	# What turns with what: which gears mesh, which nearly do, and what each
+	# axle grips and turns in.
+	var turning: String = _drive_said(model, entries, meshing, placed_at)
+	if not turning.is_empty():
+		advice.append(turning)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
@@ -9583,7 +10626,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			+ "joints below, is what makes the whole thing one "
 			+ "piece.")
 
-	return {
+	var checked: Dictionary = {
 		"ok": ok,
 		"summary": summary,
 		"feedback": feedback,
@@ -9604,6 +10647,70 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		## where each one is.
 		"each_piece": each_piece,
 	}
+	if weigh:
+		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, joined, rounds, alone)
+	return checked
+
+
+## Whether a design checked by check_design would stand, for the session:
+## Balance over it as checked, or, once it stands in the world with parts
+## that turn on a hinge or a turntable, over every pose they reach
+## (Poser.sweep), as Tools, Check stability weighs it. Its bricks are
+## named as the design numbers them, with where they are.
+func _balance_said(report: Dictionary, trial: Model, applied: bool) -> String:
+	var balance: Balance.Report = report.get("balance")
+	var namer: Callable = func(id: int) -> String:
+		if id <= 0 or id > trial.placements.size():
+			return "a part already standing"
+		var placement: Placement = trial.placements[id - 1]
+		return "brick %d (%s at %s)" % [id - 1, placement.part, placement.where()]
+	if applied and assemblies != null and builder != null and world != null:
+		var poser := Poser.new()
+		poser.world = world
+		poser.builder = builder
+		poser.library = library
+		poser.assemblies = assemblies
+		if poser.find() > 0:
+			var judge := Balance.new()
+			judge.library = library
+			judge.lattice = builder.lattice
+			judge.floor_ids = scenery
+			balance = judge.measure(world.bricks(), poser.sweep())
+			namer = func(id: int) -> String:
+				var brick: BrickWorld.Brick = world.get_brick(id)
+				return "#%d (%s)" % [id, brick.part_id] if brick != null else "#%d" % id
+	return balance.said(namer) if balance != null else ""
+
+
+## Whether a checked design would stand (Balance), on the lattice it was
+## checked on: each placement that went in by its key there (its index and
+## one), with whatever was standing already (the negative keys), and the
+## pins, axles, clips and hinges the check already found joining them.
+func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
+		boxes_of: Dictionary, joined: Dictionary, rounds: Dictionary,
+		alone: bool) -> Balance.Report:
+	var bricks: Array = []
+	for index: int in boxes_of:
+		var placement: Placement = model.placements[index]
+		bricks.append(BrickWorld.Brick.new(index + 1, placement.part, placement.color,
+			placed_at[index]))
+	if not alone and world != null:
+		var key: int = -1
+		for brick: BrickWorld.Brick in _others_standing(alone):
+			if library.mesh_for(brick.part_id) == null:
+				continue
+			bricks.append(BrickWorld.Brick.new(key, brick.part_id, brick.color_code,
+				brick.transform))
+			key -= 1
+	var links: Array = []
+	for held: Dictionary in [joined, rounds]:
+		for one: Variant in held:
+			for other: Variant in held[one]:
+				links.append([int(one) + 1, int(other) + 1])
+	var judge := Balance.new()
+	judge.library = library
+	judge.lattice = lattice
+	return judge.measure(bricks, [], links)
 
 
 ## What is left of [param blockers] for [param placement]: nothing, when it and
@@ -9658,13 +10765,13 @@ static func _give_way(blockers: PackedInt64Array, placement: Placement,
 ## The design without the dressing that gave way, checked again, and
 ## saying how much was left out.
 func _without_dressing(model: Model, gave_way: Dictionary,
-		alone: bool) -> Dictionary:
+		alone: bool, weigh: bool = false) -> Dictionary:
 	var kept: Array[Placement] = []
 	for index: int in model.placements.size():
 		if not gave_way.has(index):
 			kept.append(model.placements[index])
 	model.placements = kept
-	var report: Dictionary = _check(model, alone)
+	var report: Dictionary = _check(model, alone, weigh)
 	var left: int = gave_way.size()
 	var said: String = ("%d dressing tile%s on side studs would have "
 		% [left, "" if left == 1 else "s"]
@@ -11284,7 +12391,10 @@ func _mating_entries(model: Model) -> Array:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		entries.append([index, _joined_at(placement, part, model), part, placement.part])
+		# By the number it moved to, if it moved: the gear table knows 3648b
+		# and not 3648, which a session may well write.
+		entries.append([index, _joined_at(placement, part, model), part,
+			library.resolve(placement.part)])
 	return entries
 
 
@@ -11963,17 +13073,18 @@ const NESTS: Dictionary = {
 func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 		placed_at: Dictionary, joined: Dictionary, rounds: Dictionary,
 		mine: PackedInt32Array, against: BrickLattice, to_world: Transform3D,
-		square: bool) -> PackedInt64Array:
+		square: bool, meshing: Dictionary = {}) -> PackedInt64Array:
 	if blockers.is_empty():
 		return blockers
 	var pinned: Dictionary = joined.get(index, {})
+	var in_mesh: Dictionary = meshing.get(index, {})
 	var turning: Dictionary = rounds.get(index, {})
 	var at: Transform3D = placed_at[index]
 	var kept := PackedInt64Array()
 	for key: int in blockers:
 		var other: int = key - 1
 		if key > 0 and other < model.placements.size():
-			if pinned.has(other):
+			if pinned.has(other) or in_mesh.has(other):
 				continue
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
@@ -12002,6 +13113,123 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 				continue
 		kept.append(key)
 	return kept
+
+
+## Two gears that overlap, said by how far apart they are and how far apart
+## they mesh: " — an 8 and a 24 mesh with their centres 40 LDU (2 studs)
+## apart; these are 36". Empty unless both are gears turning in one plane.
+##
+## A session told only "brick 14 (3648b) overlaps brick 13" turned the 8
+## half a tooth, then gave up and ran a chain between the two gears, saying
+## the check treats a gear as a solid disc. The number it needed was the
+## spacing.
+func _gears_apart(model: Model, placed_at: Dictionary, one: int, other: int) -> String:
+	if other < 0 or other >= model.placements.size() or not placed_at.has(one) \
+			or not placed_at.has(other):
+		return ""
+	var ids: Array = [library.resolve(model.placements[one].part),
+		library.resolve(model.placements[other].part)]
+	if Mechanism.spec_of(ids[0]).is_empty() or Mechanism.spec_of(ids[1]).is_empty():
+		return ""
+	var pair: Mechanism = Mechanism.build([
+		{"key": 1, "part": ids[0], "at": placed_at[one], "mesh": library.mesh_for(ids[0])},
+		{"key": 2, "part": ids[1], "at": placed_at[other], "mesh": library.mesh_for(ids[1])}])
+	var a: Mechanism.Gear = pair.gear_at(1)
+	var b: Mechanism.Gear = pair.gear_at(2)
+	if a == null or b == null or a.kind == "worm" or b.kind == "worm" \
+			or absf(a.axis.dot(b.axis)) < 0.999:
+		return ""
+	var gap: Vector3 = b.centre - a.centre
+	var along: float = gap.dot(a.axis)
+	if absf(along) > Mechanism.PLANE_SLACK:
+		return ""
+	var apart: float = (gap - a.axis * along).length()
+	var mesh: float = a.radius + b.radius
+	return (" — %s and %s mesh with their centres %s LDU (%s studs) apart across "
+		% [Joints._teeth(a), Joints._teeth(b), _tidy(mesh),
+			_studs(mesh / STUD)]
+		+ "their axles, and these are %s: put their axles that far apart" % _tidy(apart))
+
+
+## What turns with what, for a model with gears in it: the gears in mesh,
+## those that nearly are (with the spacing they mesh at), and for each
+## axle the parts it grips, which turn with it, and the round holes it
+## turns in. Empty for a model without a gear.
+func _drive_said(model: Model, entries: Array, meshing: Dictionary,
+		placed_at: Dictionary) -> String:
+	var gears: Array = []
+	for entry: Array in entries:
+		if not Mechanism.spec_of(str(entry[3])).is_empty():
+			gears.append({"key": int(entry[0]) + 1, "part": entry[3], "at": entry[1],
+				"mesh": entry[2]})
+	if gears.is_empty():
+		return ""
+	var lines: PackedStringArray = PackedStringArray()
+	var said: Dictionary = {}
+	for index: Variant in meshing:
+		for other: Variant in meshing[index]:
+			if int(index) < int(other) and lines.size() < WORTH_SAYING:
+				lines.append("  brick %d meshes brick %d: %s" % [index, other,
+					meshing[index][other]])
+	# Nearly in mesh: in one plane, a little too far apart. Too near is an
+	# overlap, which says the same.
+	var all: Mechanism = Mechanism.build(gears)
+	for i: int in all.gears.size():
+		for j: int in range(i + 1, all.gears.size()):
+			var a: Mechanism.Gear = all.gears[i]
+			var b: Mechanism.Gear = all.gears[j]
+			if a.kind == "worm" or b.kind == "worm" or a.key == b.key \
+					or absf(a.axis.dot(b.axis)) < 0.999:
+				continue
+			if (meshing.get(a.key - 1, {}) as Dictionary).has(b.key - 1):
+				continue
+			var gap: Vector3 = b.centre - a.centre
+			var along: float = gap.dot(a.axis)
+			var apart: float = (gap - a.axis * along).length()
+			var over: float = apart - a.radius - b.radius
+			if absf(along) > Mechanism.PLANE_SLACK or over <= Mechanism.MESH_SLACK \
+					or over > NEARLY_MESH:
+				continue
+			lines.append("  brick %d and brick %d do not mesh: %s and %s mesh with "
+				% [a.key - 1, b.key - 1, Joints._teeth(a), Joints._teeth(b)]
+				+ "their centres %s LDU (%s studs) apart, and these are %s"
+				% [_tidy(a.radius + b.radius), _studs((a.radius + b.radius) / STUD),
+					_tidy(apart)])
+	var by_axle: Dictionary = {}   ## index -> [grips, turns in], each an Array of numbers
+	for one: Array in Joints.through(entries):
+		var shaft: int = one[0]
+		if not by_axle.has(shaft):
+			by_axle[shaft] = [[], []]
+		(by_axle[shaft][0 if one[2] == "grips" else 1] as Array).append(str(one[1]))
+	# Those that grip something first: a train's axles, before the frame's ties.
+	var order: Array = by_axle.keys()
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return (by_axle[a][0] as Array).size() > (by_axle[b][0] as Array).size())
+	var axles: int = 0
+	for shaft: int in order:
+		if axles >= WORTH_SAYING:
+			break
+		var grips := PackedStringArray(by_axle[shaft][0])
+		var turns := PackedStringArray(by_axle[shaft][1])
+		var part: Lbm.PartMesh = library.mesh_for(model.placements[shaft].part)
+		var kinds: Array = Joints._lines_of(part)[0] if part != null else []
+		if not kinds.any(func(line: Array) -> bool: return line[0] == "axle"):
+			continue
+		axles += 1
+		lines.append("  brick %d (%s, an axle): grips %s; turns in %s" % [shaft,
+			model.placements[shaft].part,
+			"bricks " + ", ".join(grips) if not grips.is_empty() else "nothing",
+			"bricks " + ", ".join(turns) if not turns.is_empty() else "nothing"])
+	if lines.is_empty():
+		return ""
+	return ("What turns with what. A part on an axle by an axle hole turns with it; "
+		+ "an axle in a round hole turns in it; gears in mesh turn each other. A gear "
+		+ "on a round hole spins free and drives nothing:\n" + "\n".join(lines))
+
+
+## How far past meshing two gears in one plane may be and still be said to
+## nearly mesh, LDU: two teeth of module 1.
+const NEARLY_MESH := 6.0
 
 
 ## Whether [param index] is in a section, turned, that turns on a joint
@@ -12365,6 +13593,107 @@ func _ensure_parts(model: Model) -> void:
 		for part_id: String in wanted.keys():
 			if library.is_resident(part_id):
 				wanted.erase(part_id)
+
+
+## The plate of each tile's size: what a tile is laid again as where
+## something stands on it.
+const TILE_PLATES: Dictionary = {
+	"3070b": "3024", "3070a": "3024", "3069b": "3023", "3069a": "3023",
+	"63864": "3623", "2431": "3710", "6636": "3666", "4162": "3460",
+	"3068b": "3022", "3068a": "3022", "26603": "3021", "87079": "3020",
+	"98138": "6141", "14769": "4032a",
+}
+
+
+## Every part a model needs, then the studs under whatever stands on a tile
+## (see [method _studs_where_stood_on]) and the plates that brings. Awaited,
+## as [method _ensure_parts] is. Every design and every edit comes through
+## here before it is checked, so what is checked is what is built.
+func _ready_to_check(model: Model) -> void:
+	await _ensure_parts(model)
+	if _studs_where_stood_on(model) > 0:
+		await _ensure_parts(model)
+
+
+## A part standing on a tile grips nothing: a tile has no stud for it. The
+## owner's orrery stood a collar on a shape's tiled top, and it floated —
+## held, the check said, because resting on a part counts as held up. A
+## builder tiles a top only where nothing will stand on it, and where
+## something goes on a tile the tile becomes the plate of its size. The
+## same size, not plates under the part and tiles round it: a top's tiles
+## often tie the plates under them together, and split, a rooms floor's
+## 1 x 2 tile left a 1 x 1 plate and the tile on it held by nothing. So
+## wherever a part that takes studs is put down studs-up on a tile, the tile
+## is that plate, in the same change, so one undo takes back both. Only a
+## tile square to the grid and on it, in no section; Shapes keeps the studs
+## of its own tops under what the design stands there (Patterns.expand).
+## Returns how many tiles changed.
+func _studs_where_stood_on(model: Model) -> int:
+	if library == null or builder == null:
+		return 0
+	var tiles: Array[int] = []
+	var tops: Dictionary = {}       ## a tile's top, in plates -> true
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		if TILE_PLATES.has(placement.part) and _square_on_grid(placement):
+			tiles.append(n)
+			tops[roundi(placement.y) + 1] = true
+	if tiles.is_empty():
+		return 0
+	# What could stand on one: a part that takes studs, studs up, its foot at
+	# a tile's top — and one this change puts down or moves. An edit is read
+	# from the whole model, and the person's own parts resting on their own
+	# tiles are theirs, not the edit's to re-lay.
+	var standing := BrickLattice.new()
+	standing.keeps_columns = false
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		if (placement.id != 0 and not placement.moved) \
+				or placement.face != "up" or not placement.section.is_empty() \
+				or not is_equal_approx(placement.y, roundf(placement.y)) \
+				or not tops.has(roundi(placement.y)):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if info == null or info.socket_count == 0 or mesh == null:
+			continue
+		standing.occupy_boxes(n + 1, builder.boxes_for(mesh, _transform(placement, mesh)))
+	# About a selection, a tile of the model round it is not this change's.
+	var scoped: bool = _keeps_to_focus()
+	var changed: int = 0
+	for n: int in tiles:
+		var tile: Placement = model.placements[n]
+		var mesh: Lbm.PartMesh = library.mesh_for(tile.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = _transform(tile, mesh)
+		if scoped and tile.id != 0 and not focus.holds(
+				SelectionScope.box_of(tile.part, at, library)):
+			continue
+		var box: PackedInt32Array = BrickLattice._bound_of(builder.boxes_for(mesh, at))
+		var per: float = float(BrickLattice.CELLS_PER_STUD)
+		var studs: Array[Vector2i] = []
+		for sx: int in range(floori(box[0] / per), ceili(box[3] / per)):
+			for sz: int in range(floori(box[2] / per), ceili(box[5] / per)):
+				studs.append(Vector2i(sx, sz))
+		if standing.standing_on(studs, box[4], n + 1).is_empty():
+			continue
+		# A part changed is another brick to the edit (Assistant._apply_edit):
+		# the tile comes off and the plate goes on, in this one change.
+		tile.part = str(TILE_PLATES[tile.part])
+		changed += 1
+	if changed > 0:
+		progress.emit("laid %d tile%s again as plates, under what stands on %s"
+			% [changed, "" if changed == 1 else "s", "it" if changed == 1 else "them"])
+	return changed
+
+
+## Studs up, square to the grid on whole studs and plates, in no section.
+static func _square_on_grid(placement: Placement) -> bool:
+	return placement.face == "up" and placement.section.is_empty() \
+		and is_equal_approx(placement.x, roundf(placement.x)) \
+		and is_equal_approx(placement.y, roundf(placement.y)) \
+		and is_equal_approx(placement.z, roundf(placement.z))
 
 
 ## Put a model in the world.
@@ -12882,26 +14211,49 @@ it, nothing is touching it — move it, do not give up on the idea.
 
 BUILDING WITH PINS AND AXLES
 Studs are not the only way parts join, and for anything with a \
-mechanism — a chassis, a steering linkage, a hinge, an arm that moves — \
-they are the wrong way. Technic beams join to each other with pins, \
-and check_design accepts a part held by a pin, an axle or a ball joint \
-exactly as it accepts one held by a stud. A beam pinned to another \
-beam with nothing underneath either of them is held.
+mechanism — a chassis, a steering linkage, a hinge, an arm that moves, \
+a gear train — they are the wrong way. check_design accepts a part held \
+by a pin, an axle or a ball joint exactly as it accepts one held by a \
+stud. A beam pinned to another beam with nothing underneath either of \
+them is held.
   The parts: 32523, 32316 and 32524 are Technic beams 3, 5 and 7, with \
-a hole every stud along their length. 3700, 3701 and 3894 are ordinary \
-bricks 1x2, 1x4 and 1x6 with holes through them, which is how a \
-mechanism meets a studded wall. 2780 is the friction pin that holds \
-two beams together and is the single most used Technic part there is; \
-3673 is the frictionless version for something that must turn; 4274 \
-is a pin with a stud on one end, which joins a hole to a stud. 3705 \
-and 4519 are axles 4 and 3, which turn inside an axle hole rather \
-than gripping it.
-  Call search_parts for "technic beam" or "technic pin", and \
-attachment_points for where the holes are. It lists every hole with \
-its x, y and z and which way the hole runs, and a pin goes in at that \
-position turned to run the same way. Do not work it out instead: a \
-hole sits at the middle of the part's thickness, which is not a whole \
-number of plates and is not the same on a beam as on a brick.
+a hole every stud along their length. 3700, 3701, 3894 and 3702 are \
+bricks 1x2, 1x4, 1x6 and 1x8 with holes through them, which is how a \
+mechanism meets a studded wall. 2780 is the friction pin that holds two \
+beams together; 3673 is the frictionless one, for something that must \
+turn; 4274 is a pin with a stud on one end. 4519, 3705, 3706 and 3707 \
+are axles 3, 4, 6 and 8. Gears: 3647 has 8 teeth, 69779 20, 3648b 24, \
+3649 40, and 4716 is a worm. A bush (3713) or a half bush (4265c) on an \
+axle against a wall stops it sliding. 6632, a thin liftarm with an axle \
+hole at each end, is a crank or an arm.
+  What turns: a round hole (every beam's and every brick's) lets an \
+axle turn in it; an axle hole (the cross in a gear, a bush, a liftarm's \
+end) grips the axle, and the part turns with it. A gear on a round hole \
+spins free and drives nothing. An axle carries every part on its line, \
+all along its length, so one axle goes through both walls of a frame \
+and the gear between them. attachment_points says of each hole which it \
+is, and check_design says what each axle grips and turns in.
+  Say a pin, an axle, a gear, a bush or a liftarm by its line: axis \
+"z" (the way it runs) and, for x, y and z, the point attachment_points \
+gives the hole it goes in. They are then where the part's own middle \
+goes, not its low corner. A part with more than one hole or axle takes \
+joint: n, numbered as attachment_points lists them, and rot turns it \
+about the line, a quarter at a time. To slide it along the line, change \
+the one coordinate the line runs along: a gear a stud further along an \
+axle running along z is z + 1. Do not work a corner out instead: a \
+hole sits at the middle of the part's thickness, and a gear's corner is \
+half its width off its hole.
+  Gears mesh with their centres 1.25 LDU a tooth apart across their \
+axles, in one plane: an 8 and a 24 at 40 LDU, which is 2 studs; 24 and \
+24 at 3 studs; 40 and 40 at 5; 8 and 40 at 3; 16 and 16 at 2; a worm \
+and a 24 at 2. So put the two axles through holes that far apart and \
+the gears at the same place along them. check_design forgives gears in \
+mesh and names each mesh; two too near, or nearly in mesh, are told the \
+spacing they mesh at. A gear between two others, an idler, makes the \
+last turn the same way as the first. Gears reduce by the ratio of their \
+teeth: an 8 driving a 24 turns it a third as fast. find_techniques with \
+"gear train" or "worm" shows how real sets built one, and \
+place_technique lays one of them where you say.
 
 WHAT MAKES A MODEL LOOK REAL
 The difference between a model that reads as the thing and one that \
@@ -13071,17 +14423,20 @@ each feature the subject is known by, then the detail. In this order:
      faults the judge found in them, to design out. The picture's \
      colours come with it as numbers.
   4. The feature list: what the subject is known by, given to \
-     submit_design as features — an owl's facial disc, eyes, beak, ear \
+     submit_design as features, each with where it goes (x, y, z and \
+     the way it faces out) — an owl's facial disc, eyes, beak, ear \
      tufts, wings, talons; a car's wheel arches, headlamps, grille, \
      windscreen, spoiler; a castle's gate, arrow slits, crenellations, \
      turret roofs.
-  5. Each feature, one at a time, once the shape stands: how real sets \
-     built it (find_techniques "owl eye", "car nose"; the app hands each \
-     listed feature back with three real pieces), then lay one with \
-     place_technique where it fits — turned, moved, in your colours — \
-     adapt one, or build it from the worked technique (show_technique; \
-     faces and features has the eye, the round face, the beak, ears, \
-     talons, headlamps and grille), and say in a line which you used. \
+  5. Each feature, one at a time, once the shape stands: the app looks \
+     up how real sets built it, lays the best piece that lays whole and \
+     fits where the feature goes, and hands it to you with a picture. \
+     settle_feature says what it is to be: accept it — moved, turned or \
+     recoloured first if it needs it — "next" for the next-best piece, \
+     reject it with a reason and build your own from the worked \
+     technique (show_technique; faces and features has the eye, the \
+     round face, the beak, ears, talons, headlamps and grille), or \
+     "built". A design is not finished until each feature is settled. \
      A feature is parts with depth, never a tile painted on a panel. A \
      face on a shaped head is the shape's "face", said when the shape is \
      submitted: it lays the disc, 2 x 2 eyes and a beak on side studs, \
@@ -13226,17 +14581,22 @@ alongside the bricks you write by hand:
            A body that is not a box is one object too, said as the \
            solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
            "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
-           "width": 10, "round": 1.5, "profile": [[0, 5], [2, 7], [9, 8], \
-           [24, 8], [26, 7]]}}, {"loft": {"along": "x", "centre": 5, \
-           "sections": [{"at": 8, "width": 9, "height": 1, "bottom": 7}, \
-           {"at": 12, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
-           {"at": 18, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
-           {"at": 23, "width": 9, "height": 1, "bottom": 7}]}}], "cuts": \
-           [{"revolve": {"axis": "z", "centre": [5, 1.5, -1], "profile": \
-           [[0, 2], [12, 2]]}}, {"revolve": {"axis": "z", "centre": [20, \
-           1.5, -1], "profile": [[0, 2], [12, 2]]}}]} is a car's body: \
-           its side profile pulled across ten studs with its shoulders \
-           rounded, a cabin lofted on it, two wheel arches cut out. It is \
+           "width": 8, "round": 1.5, "profile": [[0, 7], [3, 9], [8, 10], \
+           [20, 10], [21, 9]], "under": [[0, 2], [21, 2]]}}, {"loft": \
+           {"along": "x", "centre": 4, "color": 40, "sections": [{"at": 7, \
+           "width": 7, "height": 1, "bottom": 9.5}, {"at": 10, "width": 6, \
+           "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 15, "width": \
+           6, "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 19, \
+           "width": 7, "height": 1, "bottom": 9.5}]}}], "wheels": [4, 16]} \
+           is a Speed Champions car on its wheels: its side profile pulled \
+           across eight studs with its shoulders rounded and two plates of \
+           ground under it, a cabin lofted on it, and at x 4 and 16 an \
+           axle each — wheels and tyres, a Technic axle through Technic \
+           bricks, the body cut clear of each wheel's box and standing on \
+           the bricks — so it is one piece on its wheels (269 parts). \
+           Never raise a shape over nothing to make room for wheels you \
+           add later: it floats, and a round arch cut leaves a tyre's \
+           corners in the body. It is \
            laid as a builder lays one: bricks and plates inside; on the \
            surface, wherever it falls from one stud to the next, the \
            slope or curved slope whose fall is nearest; inverted slopes \
@@ -13352,6 +14712,10 @@ this is what the sets did.
   how_real_sets_build_this asks the same question about anything else: \
 a part of the model that is its own kind of thing, or a subject the \
 brief did not name in plain words.
+  find_techniques goes one step further: it finds the actual pieces \
+real sets built a thing with (a wheel arch, a beak, a turret roof), \
+each with its set, author and size, and place_technique lays one into \
+the model as built, turned and moved where it goes.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
@@ -13742,14 +15106,15 @@ and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture, each \
 said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
 "shapes") — and a head that looks at you with its "face" on its shape. \
-submit_design that first, with its assemblies and its features: what the \
-subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
+submit_design that first, with its assemblies and its features, each with \
+where it goes (x, y, z, facing): what the subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
 car's wheel arches, headlamps, grille, windscreen, spoiler).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
- 4. Each feature in turn: review_model {"feature": "eyes"} gives three real \
-sets' pieces for it and the worked technique; lay one with place_technique, \
-adapt one, or build it from show_technique, and say which. A feature is \
+ 4. Each feature in turn: the app lays the best real set's piece for it \
+where it goes and hands it over (the whole review, each settle, saving); \
+settle_feature accepts it (adjusted if need be), asks for the next, rejects \
+it with a reason, or says you built it. Saving waits for all. A feature is \
 parts with depth, never a tile painted on a panel.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
@@ -13764,9 +15129,19 @@ THE RULES: nothing overlaps; nothing floats (every part on the ground or \
 on a part under it); the model is one connected thing — parts side by side \
 are not joined, only stacking joins, so stagger the joints.
 
+A MECHANISM (gears, axles, a crank, a turntable): read_guide "pins" \
+first. Put a pin, an axle, a gear or a bush by its line, axis "z" and \
+the x, y, z attachment_points gives the hole, never by its corner. Gears \
+mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs.
+
 ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
 edit_selection; never submit_design.
+
+SKETCH FIRST, when the brief asks for it: three massings to choose between \
+before the full design — submit_design with "sketch": true, three times, \
+each under 150 parts and a different idea; then choose_sketch one and design \
+the whole model from it.
 
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
@@ -13774,7 +15149,11 @@ kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (what else the person can \
 do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
-animate_model, undo, open_model, parts_list, render_model, export_model)."""
+animate_model, undo, open_model, parts_list, render_model, export_model, \
+brickify, print_part, make_unique, job).
+
+A call answered with a job number is still working in the app: call job \
+about every 10 s until it gives the answer."""
 
 
 ## Names a session may ask read_guide for, beside the headings' own words.
@@ -13791,7 +15170,8 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"art": "BRICK ART", "mosaic": "BRICK ART",
 	"app": "THE REST OF THE APP", "menus": "THE REST OF THE APP", "floor": "THE REST OF THE APP",
 	"steps": "THE REST OF THE APP", "hose": "THE REST OF THE APP", "pose": "THE REST OF THE APP",
-	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP"}
+	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP",
+	"job": "THE REST OF THE APP", "jobs": "THE REST OF THE APP"}
 
 
 ## One section of the guidance by its name or a word of its heading: the
@@ -13927,10 +15307,11 @@ func _find_parts_like(query: String) -> String:
 	if not await RealSnippets.ensure_looks(self):
 		return "This build has no list of what parts look like (tools/part_looks.py)."
 	var found: Array = RealSnippets.search_looks(query, 6)
+	var printed: String = _printed_with(query)
 	if found.is_empty():
 		return ("No family of parts reads as \"%s\" in what is written about them. " % query
 			+ "Try a plainer word for the look (claw, feather, scale, exhaust, eye), "
-			+ "or search_parts for one you can name.")
+			+ "or search_parts for one you can name." + printed)
 	var rows := PackedStringArray()
 	for raw: Variant in found:
 		var family: Dictionary = raw
@@ -13940,7 +15321,27 @@ func _find_parts_like(query: String) -> String:
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
 	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
-		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in.")
+		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in."
+		+ printed)
+
+
+## Prints that show what find_parts_like was asked for, as a paragraph to
+## end its answer with, or "".
+##
+## The families it searches are plain moulds, described by what they read
+## as; a print is the same mould with a picture on, so none is among them.
+## But a control panel, a gauge or a grille is as often a print as a
+## shape, and a design told only of shapes builds a control panel out of
+## round tiles when the LEGO Group printed one on a 2 x 2 slope.
+func _printed_with(query: String) -> String:
+	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
+	if found.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for info: PartLibrary.PartInfo in found:
+		named.append("%s %s" % [info.id, _part_called(info.id)])
+	return ("\n\nPrinted with it: %s. search_parts \"%s print\" for more."
+		% ["; ".join(named), query])
 
 
 ## Each piece drawn on its own and set side by side, in the order found.
@@ -14032,11 +15433,13 @@ func _place_technique(args: Dictionary) -> Variant:
 
 
 ## A piece's parts as placements: turned a number of quarter turns about
-## the upright, moved by whole studs so its low corner is at `at` and
-## what was on the grid stays on it, colours swapped where `recolor` says.
-## A String says why it cannot be.
+## the upright, then, with [param up] other than "up", tipped whole so its
+## own up points that way (an eye built studs up, laid studs out on a
+## face), moved by whole studs so its low corner is at `at` and what was
+## on the grid stays on it, colours swapped where `recolor` says. A String
+## says why it cannot be.
 func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
-		recolor: Dictionary) -> Variant:
+		recolor: Dictionary, up: String = "up") -> Variant:
 	var model: LdrModel = LdrModel.parse(RealSnippets.ldr_text(entry), "piece")
 	var placed: Array = []
 	for item: Variant in model.flatten(library.parts):
@@ -14054,6 +15457,8 @@ func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
 		wanted.placements.append(as_placed)
 	await _ensure_parts(wanted)
 	var turn := Transform3D(Basis(Vector3.UP, posmod(turns, 4) * PI / 2.0), Vector3.ZERO)
+	if up != "up" and FACES.has(up):
+		turn = Transform3D(BrickLattice.basis_for(up, 0), Vector3.ZERO) * turn
 	var read: Array = []
 	var low := Vector3(INF, INF, INF)
 	for put: LdrModel.Placement in placed:
@@ -14326,7 +15731,27 @@ var _lookup_waiting: bool = false
 ## session outside the app can be handed this same list and call into
 ## the same implementations, which is the only way the two cannot drift.
 func tool_catalogue() -> Array:
-	return _tools() + focus_tools()
+	return _tools() + focus_tools() + sketch_tools()
+
+
+## Choosing a sketch, for a session outside the app: in the app's own loop
+## the person chooses, on the cards in the panel, so the loop is not offered it.
+func sketch_tools() -> Array:
+	return [{
+		"name": "choose_sketch",
+		"description": ("Choose one of the three sketches made with submit_design "
+			+ "\"sketch\": true. It goes on the baseplate as the massing the full "
+			+ "design is built from, and the other two are dropped. Then design the "
+			+ "whole model from it, and submit_design that without sketch."),
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"sketch": {"type": "integer", "description": "its number, 1 to 3"},
+			},
+			"required": ["sketch"],
+			"additionalProperties": false,
+		},
+	}]
 
 
 ## Run one tool the way a design run would.
@@ -14342,6 +15767,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return answer
 	var design: Model = _pending
 	_pending = null
+	await _ready_to_check(design)
 	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
 		return "Not applied — it does not hold together yet.\n%s" \
@@ -14360,6 +15786,8 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 			_feature_used = {}
 		_outside_features = design.features.duplicate()
 		_feature_now = ""
+		# The model is new, so whatever the pass laid is gone with the old one.
+		feature_pass().reset(design.feature_spots)
 		# A new design, so its surface and creative passes are still to come.
 		_outside_designed = true
 		_outside_creative_handed = false
@@ -14392,11 +15820,12 @@ set; this app's own designer always goes on from here, and so should you:
 the whole model measured against real sets of its size and kind, with what \
 to look for. view_model from two corners to see it. Fix the masses before \
 any detail.
-  2. Then each feature, one at a time{features}: review_model \
-{"feature": "<its name>"} says how real sets built it — three real pieces, \
-with ids — and the worked technique that builds one. Lay a real piece with \
-place_technique, adapt one, or build it from the technique, and say in a \
-line which you used, before the next feature.
+  2. Then each feature, one at a time{features}: the app lays the best \
+real set's piece for it where it goes and hands it to you with a picture \
+(the whole review hands the first). settle_feature says what it is to be: \
+accept it (moved, turned or recoloured first if it needs it), "next" for \
+the next-best, reject it with a reason and build your own, or "built". \
+Each settle hands the next. Saving waits until every feature is settled.
   3. Then review_model for each assembly in turn{names}: close up, \
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
@@ -14433,7 +15862,7 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String, feature: String = "", creative: bool = false) -> String:
+func review(assembly: String, feature: String = "", creative: bool = false) -> Variant:
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
@@ -14469,8 +15898,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 		# was read and put down, and the run went on to save.
 		var left: Array[String] = _features_left()
 		if not left.is_empty():
-			said.append("Once the silhouette is right, the first feature, the %s:\n\n%s"
-				% [left[0], await _review_feature(left[0])])
+			said.append("Once the silhouette is right, the first feature, the %s — the app "
+				% left[0] + "has laid a real set's piece for it:")
+			return _joined("\n\n".join(said), await _review_feature(left[0]))
 		return "\n\n".join(said)
 	var one: Dictionary = {}
 	for named: Dictionary in _outside_assemblies:
@@ -14508,15 +15938,15 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 ## Orthanc's last act was to save, with two of its three assemblies never
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
-func next_review() -> String:
+func next_review() -> Variant:
 	# A coroutine because review is: callers await it.
 	var undone: Array[String] = _features_left()
 	if not undone.is_empty():
 		var passed: String = _creative_passed()
-		return _first(passed, "Before it is finished: %d of its %d features %s not had "
-			% [undone.size(), _outside_features.size(), "has" if undone.size() == 1 else "have"]
-			+ "its turn yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
-				await _review_feature(undone[0])])
+		return _joined(_first(passed, "Before it is finished: %d of its %d features %s not "
+			% [undone.size(), _outside_features.size(), "is" if undone.size() == 1 else "are"]
+			+ "settled yet (%s). The next is the %s." % [", ".join(undone), undone[0]]),
+			await _review_feature(undone[0]))
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		# The surface pass before the creative pass; reminded, never refused.
@@ -14526,10 +15956,30 @@ func next_review() -> String:
 		return _first(surface_pass().reminder() if _outside_designed else "", _creative_next())
 	var name: String = left[0]
 	var passed_too: String = _creative_passed()
-	return _first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
+	return _joined(_first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
 		+ "a close look (%s). This app's own designer details each in turn; the " % ", ".join(left)
-		+ "next is the %s.\n\n%s" % [name, await review(name)])
+		+ "next is the %s." % name), await review(name))
+
+
+## Whether a session from outside may save yet: "" when it may; otherwise
+## why not, with the first feature not settled handed over, its piece laid.
+## Every bench session saved with features never worked, and saving handed
+## the next one back only after the file was written: the session read
+## "Written" and ended. A save that waits is a turn the design cannot skip.
+func save_gate() -> Variant:
+	if _busy or not _outside_standing:
+		return ""
+	var left: Array[String] = _features_left()
+	if left.is_empty():
+		return ""
+	progress.emit("not saved: %d features not settled" % left.size())
+	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
+		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
+			", ".join(left)]) + "the app lays the best real set's piece where it goes; "
+		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
+		+ "it with a reason, or says you built it. Then save again. The %s:" % left[0],
+		await _review_feature(left[0]))
 
 
 ## [param said] and then [param then], or [param then] alone.
@@ -14551,7 +16001,7 @@ func _not_yet_reviewed() -> Array[String]:
 ## A feature for a session from outside: how real sets built it and the
 ## worked technique, and from now until the next review what it uses is
 ## put down to this feature.
-func _review_feature(name: String) -> String:
+func _review_feature(name: String) -> Variant:
 	var known: String = name
 	for listed: String in _outside_features:
 		if listed.to_lower() == name.to_lower():
@@ -14562,21 +16012,12 @@ func _review_feature(name: String) -> String:
 	_note_feature("looked up %s" % known)
 	var of: int = _outside_features.find(known) + 1
 	progress.emit("working the %s (feature %d of %d)" % [known, of, _outside_features.size()])
-	var brief: String = str(await _feature_brief(known, of, _outside_features.size(), false))
-	var left: Array[String] = _features_left()
-	left.erase(known)
-	return brief + ("\n\nThen review_model {\"feature\": \"%s\"}." % left[0] if not left.is_empty()
-		else "\n\nIt is the last of the features; then the assemblies.")
+	return await _feature_brief(known, of, _outside_features.size(), true)
 
 
-## The features listed that have not had their turn: never looked up.
+## The features listed that have not been settled (settle_feature).
 func _features_left() -> Array[String]:
-	var left: Array[String] = []
-	for name: String in _outside_features:
-		var said: String = _feature_said(name)
-		if said == "not worked yet":
-			left.append(name)
-	return left
+	return feature_pass().open(_outside_features)
 
 
 func _features_to_review() -> String:
@@ -14584,7 +16025,7 @@ func _features_to_review() -> String:
 		return ("No features were listed. Name what the subject is known by in "
 			+ "submit_design's features, or review_model {\"feature\": \"eyes\"} "
 			+ "for each: a feature a real set solved is better than a first guess.")
-	return ("Its features, each to work in turn with review_model {\"feature\": ...}:\n%s"
+	return ("Its features, each laid by the app and settled in turn (settle_feature):\n%s"
 		% _features_record(_outside_features))
 
 
@@ -14888,6 +16329,7 @@ func _focus_stability() -> String:
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = builder.lattice
+	judge.floor_ids = scenery
 	var report: Stability.Report = judge.check(world)
 	var near := PackedStringArray()
 	for risk: Stability.Risk in report.risks:
@@ -15641,7 +17083,16 @@ func _tools() -> Array:
 				"description":
 					"which way the studs point. Omit for up."},
 			"rot": {"type": "integer", "description":
-				"quarter turns about the face direction, 0-3"},
+				"quarter turns about the face direction, 0-3; with axis, about that line"},
+			"axis": {"type": "string", "enum": ["x", "-x", "y", "-y", "z", "-z"],
+				"description": "for a pin, an axle, a gear, a bush or a beam put on "
+					+ "a line: the way its axle, pin or hole runs. x, y and z are then "
+					+ "where that joint's middle goes (the point attachment_points "
+					+ "gives a hole or an axle), not the low corner, and face is "
+					+ "not used."},
+			"joint": {"type": "integer", "description": "with axis: which of the "
+				+ "part's own holes, pins or axles goes there, numbered as "
+				+ "attachment_points lists them; omit for the one at its middle"},
 			"section": {"type": "string", "description":
 				"the section this brick belongs to, if any. Its x, y "
 				+ "and z are then that section's own coordinates, not "
@@ -15721,8 +17172,16 @@ func _tools() -> Array:
 				+ "with its own \"color\" if it wants one (the last that holds a stud "
 				+ "gives it its colour). Studs across and along, plates up, from at."},
 			"cuts": {"type": "array", "items": {"type": "object"}, "description":
-				"shape: solids taken away, said the same way: a wheel arch (a revolve "
-				+ "along z), a cockpit, a doorway."},
+				"shape: solids taken away, said the same way: a cockpit, a doorway; "
+				+ "\"keep\": true keeps the cut clear of every part."},
+			"wheels": {"type": "array", "items": {"type": "number"}, "description":
+				"shape: a car on its own wheels — studs along x of each axle's middle, "
+				+ "under a body laid along x 6, 8, 10 or 12 studs across. Each axle is "
+				+ "a wheel and tyre each side on a Technic axle through Technic bricks, "
+				+ "the body cut clear of each wheel's box and standing on the bricks "
+				+ "(its underside 5 plates up or lower over them), so the car is one "
+				+ "piece on its wheels. wheel_color is the rims' colour."},
+			"wheel_color": {"type": "integer", "description": "shape: the rims' colour"},
 			"loft": {"type": "object", "description":
 				"shape: {\"along\": \"x\" or \"z\", \"centre\": studs across "
 				+ "(half the widest unless said), \"sections\": [{\"at\": studs along, "
@@ -16030,7 +17489,10 @@ func _tools() -> Array:
 			"description": ("Find real parts by description. Returns part "
 				+ "numbers with their footprint, height and the colours "
 				+ "they were really made in. Use this instead of "
-				+ "guessing a part number."),
+				+ "guessing a part number. Printed parts are found by "
+				+ "what is on them with the word print: \"porsche print\", "
+				+ "\"control panel print\", \"3623 print\" (3623's prints); "
+				+ "a part with a sticker on, with sticker."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -16044,8 +17506,12 @@ func _tools() -> Array:
 		{
 			"name": "check_design",
 			"description": ("Check a list of parts for overlaps, floating "
-				+ "parts and whether it is one connected model. Safe to "
-				+ "call on a partial design while you work."),
+				+ "parts and whether it is one connected model, and weigh it: "
+				+ "whether it stands (its centre of mass against the edge of "
+				+ "what it stands on, in every pose its hinges and turntables "
+				+ "reach), the counterweight that would hold it, and its most "
+				+ "loaded stud joints. Safe to call on a partial design while "
+				+ "you work."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -16181,6 +17647,49 @@ func _tools() -> Array:
 			},
 		},
 		{
+			"name": "settle_feature",
+			"description": ("Say what a feature is to be, once the app has "
+				+ "laid a real set's piece for it where it goes (the whole "
+				+ "review, each settle and saving hand the next feature with "
+				+ "its piece laid and a picture): accept it — moved, turned "
+				+ "or recoloured first if it needs it — ask for the next-best "
+				+ "piece instead, reject it with a reason, or say you built "
+				+ "it yourself. Saving waits until every feature listed in "
+				+ "submit_design is settled."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"feature": {"type": "string", "description":
+						"the feature, as listed in submit_design's features"},
+					"verdict": {"type": "string",
+						"enum": ["accept", "next", "reject", "built"],
+						"description": "accept: keep the app's piece (adjusted "
+							+ "by move, turn or recolor first, if given); next: "
+							+ "take it off and lay the next-best piece; reject: "
+							+ "take it off, with a reason, and build it your own "
+							+ "way or leave it out; built: you built it yourself, "
+								+ "and the app's piece comes off (accept keeps it)"},
+					"reason": {"type": "string", "description":
+						"a sentence: what is wrong with the piece here (to "
+						+ "reject), or how you built it (built)"},
+					"move": {"type": "object", "description":
+						"accept, moved first: studs across and deep, plates up. "
+						+ "The other of a pair moves the mirror way.",
+						"properties": {"dx": {"type": "number"},
+							"dy": {"type": "number"}, "dz": {"type": "number"}},
+						"additionalProperties": false},
+					"turn": {"type": "integer", "description":
+						"accept, turned first: quarter turns on the spot"},
+					"recolor": {"type": "object", "description":
+						"accept, recoloured first: its colours to yours by "
+						+ "LDraw code, {\"15\": 1} makes its white blue",
+						"additionalProperties": {"type": "integer"}},
+				},
+				"required": ["feature", "verdict"],
+				"additionalProperties": false,
+			},
+		},
+		{
 			"name": "plan_scale",
 			"description": ("How big the model should be, worked out "
 				+ "before anything is placed. Give the real thing's "
@@ -16288,6 +17797,10 @@ func _tools() -> Array:
 					"face": {"type": "string",
 						"enum": ["up", "down", "+x", "-x", "+z", "-z"]},
 					"rot": {"type": "integer"},
+					"axis": {"type": "string", "enum": ["x", "-x", "y", "-y", "z", "-z"],
+						"description": "as a brick's: x, y, z are then where its joint's "
+							+ "middle goes"},
+					"joint": {"type": "integer"},
 				},
 				"additionalProperties": false,
 			},
@@ -16651,16 +18164,36 @@ func _tools() -> Array:
 							+ "sides another, the roof one and the sign "
 							+ "on it another. A model that is one thing "
 							+ "is one assembly."},
-					"features": {"type": "array", "items": {"type": "string"},
+					"features": {"type": "array", "items": {
+						"type": "object",
+						"properties": {
+							"name": {"type": "string"},
+							"x": {"type": "number", "description": "studs across"},
+							"y": {"type": "number", "description": "plates up"},
+							"z": {"type": "number", "description": "studs deep"},
+							"facing": {"type": "string",
+								"enum": ["+z", "-z", "+x", "-x", "up"],
+								"description": "the way it faces out; the front is +z"},
+						},
+						"required": ["name"],
+						"additionalProperties": false},
 						"description":
 							"what the subject is known by, a few words "
 							+ "each: an owl's facial disc, eyes, beak, ear "
 							+ "tufts, wings, talons; a car's wheel arches, "
-							+ "headlamps, grille, windscreen, spoiler. Once "
-							+ "the shape stands and you have looked at it "
-							+ "whole, each comes back to you on its own with "
-							+ "how real sets built it, to lay, adapt or build "
-							+ "before the assemblies are detailed."},
+							+ "headlamps, grille, windscreen, spoiler — and "
+							+ "where each goes: x, y, z on the model's surface "
+							+ "and the way it faces out (one of a pair; the "
+							+ "other is mirrored). Once the shape stands and "
+							+ "you have looked at it whole, each comes back to "
+							+ "you in turn with the best real set's piece for "
+							+ "it laid there by the app, to accept, adjust or "
+							+ "reject with settle_feature."},
+					"sketch": {"type": "boolean", "description":
+						"true for a sketch: massing only, under 150 parts, checked "
+						+ "and pictured but not built. Three are made to choose "
+						+ "between before the full design, each a different idea: "
+						+ "in silhouette, proportion or approach."},
 				},
 				"required": ["name", "description", "bricks", "assemblies", "features"],
 				"additionalProperties": false,

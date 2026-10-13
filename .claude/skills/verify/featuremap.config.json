@@ -311,7 +311,7 @@
       "kind": "lib",
       "label": "the window's commands over mcp",
       "entry": "src/net/app_tools.gd",
-      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, undo, open_model, parts_list, render_model, export_model)",
+      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, simulate_mechanism, undo, open_model, parts_list, render_model, export_model)",
       "area": "mcp"
     },
     {
@@ -1335,6 +1335,76 @@
       "entry": "src/ai/surface_pass.gd",
       "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
       "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "check the gear table",
+      "entry": "tools/gears.py",
+      "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "lib",
+      "label": "mechanisms",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
+      "label": "axles and gears on a line",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",
+      "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "sketch first",
+      "entry": "src/ai/sketches.gd",
+      "reach": "godot --headless --path . --script src/dev/sketch_probe.gd  (or the assistant panel: Sketch first beside Build it, then a card's Design this one; over MCP submit_design with sketch: true, three times, then choose_sketch)",
+      "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "3d model export",
+      "entry": "src/parts/mesh_export.gd",
+      "reach": "godot --headless --path . --script src/dev/mesh_export_probe.gd   (by hand: File, Export, then 3D model (.glb, .gltf, .obj, .stl)…)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "balance",
+      "entry": "src/assembly/balance.gd",
+      "reach": "godot --headless --path . --script src/dev/balance_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "balance readout",
+      "entry": "src/render/balance_mark.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
+      "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "gallery page",
+      "entry": "web/gallery.html",
+      "reach": "https://brickworks.diy/gallery   (gallery.js reads /api/share?op=list; locally relay_server.mjs serves /gallery)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "seed the gallery",
+      "entry": "tools/web/gallery_seed.mjs",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR; then BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR   (.env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "simulate mechanism",
+      "entry": "src/ui/simulate_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/simulate_probe.gd   (by hand: Tools, Simulate mechanism…, click an axle or a crank; over MCP: simulate_mechanism)",
+      "area": "geometry"
     }
   ]
 }

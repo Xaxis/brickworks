@@ -28,12 +28,13 @@
 ##              by restyle_model's own pass, some as masonry, some turned out.
 ##
 ## How it decides what is meant to be built on, in the order it asks:
-##   - only a stud with nothing on it, nothing of the model within a brick
-##     over it, and seen — open to the sky, or to the outside on two sides
-##     under something high over it, as a lower wing is — is open
-##     (standing_free): a stud something stands on, or a floor between walls
-##     and under a roof, is not finished; and each lay is checked again first,
-##     since anything may stand there by then;
+##   - only a stud with nothing on it (BrickLattice.standing_on, the same
+##     question a shape asks before it tiles its own top), nothing of the
+##     model within a brick over it, and seen — open to the sky, or to the
+##     outside on two sides under something high over it, as a lower wing is
+##     — is open (standing_free): a stud something stands on, or a floor
+##     between walls and under a roof, is not finished; and each lay is
+##     checked again first, since anything may stand there by then;
 ##   - only studs of bricks, plates, slopes, wedges, wings and baseplates are
 ##     read: a round plate's, a jumper's, a figure's or a plant's stud is the
 ##     detail itself; and a stud whose square is not all part (a wedge's
@@ -572,7 +573,7 @@ static func key_of(at: Vector3) -> Vector3i:
 ## lower wing is under the upper one. A stud something stands on, or will (a
 ## floor inside, under a roof, between walls), stays a stud.
 func standing_free(point: OpenPoints.Point, box: AABB) -> bool:
-	if point.by != 0:
+	if not _nothing_on(point):
 		return false
 	var reach: AABB = box.grow(8.0)
 	var at: Vector3 = point.at + point.way * 6.0
@@ -598,6 +599,23 @@ func standing_free(point: OpenPoints.Point, box: AABB) -> bool:
 		if clear:
 			open += 1
 	return open >= 2
+
+
+## Whether nothing stands on a stud: the lattice's own answer
+## (BrickLattice.standing_on, which shapes ask before a smooth top) for a stud
+## square to the world, in the main body; for one in a turned section, whose
+## square the lattice's world-square rooms do not fit, whether anything is
+## where its tip reaches (OpenPoints).
+func _nothing_on(point: OpenPoints.Point) -> bool:
+	if not point.section.is_empty() or point.way.dot(Vector3.UP) < 0.99:
+		return point.by == 0
+	var stud := Vector2i(floori(point.at.x / STUD), floori(point.at.z / STUD))
+	var top: int = roundi(point.at.y / BrickLattice.CELL)
+	for other: Variant in assistant.builder.lattice.standing_on([stud], top,
+			point.brick).values():
+		if not assistant.scenery.has(int(other)):
+			return false
+	return point.by == 0
 
 
 ## Whether a brick of the model other than the stud's own is at [param at].

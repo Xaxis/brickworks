@@ -1154,6 +1154,38 @@ func save() -> void:
 	_save_print()
 
 
+## Whether the part's geometry is still being fetched, so its areas are not
+## laid out yet.
+func fetching() -> bool:
+	return _then.is_valid()
+
+
+## The areas a print can go on now, by key: "sticker" for a sticker.
+func area_keys() -> PackedStringArray:
+	var keys := PackedStringArray()
+	for area: PartPrints.Area in _areas:
+		keys.append(area.key)
+	return keys
+
+
+## A session's picture (AppTools' print_part), put on [param key]'s area as
+## a picture from a file is — fitted to the face, inked — named and saved,
+## as Save print does. Why it was not saved, or "".
+func draw_and_save(picture: Image, key: String, title: String) -> String:
+	var at: int = area_keys().find(key) if not key.is_empty() else 0
+	if at < 0:
+		return "%s has no area called %s; it has %s" % [base, key, ", ".join(area_keys())]
+	_choose_area(at)
+	add_picture(picture, title)
+	set_title(title)
+	_save_print()
+	if visible:
+		var why: String = _status.text.trim_prefix("Not saved: ").trim_suffix(".")
+		close()
+		return why if not why.is_empty() else "it could not be saved"
+	return ""
+
+
 func start_from(id: String) -> void:
 	for n: int in _starts.size():
 		if str(_starts[n][1]) == id:

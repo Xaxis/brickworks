@@ -11,8 +11,9 @@
 // window.brickworksShare):
 //
 //   1. The owner, signed in (a throwaway account), with the example model
-//      on the baseplate, presses Share, names it, ticks Show who made it,
-//      and Publish: a link, /m/<id>.
+//      on the baseplate, presses Share, names it, ticks Show who made it
+//      and List it in the gallery, and Publish: a link, /m/<id>, and its
+//      card on /gallery, first, in a browser that never signed in.
 //   2. A browser that has never signed in opens the link: the link's page
 //      (og:title, og:image) goes straight on to the viewer, which shows the
 //      model, its name, author and part count, with no sign-in screen and
@@ -24,13 +25,18 @@
 //      somebody else's, in an iframe.
 //   3. Open in Brickworks from there: the sign-in screen, then, signed in
 //      as a second throwaway account, the model copied into their models.
-//   4. The owner presses Unpublish: the link's page, and the viewer, say
-//      the model is no longer shared.
+//      They share the copy, and its page says what it was remixed from,
+//      with a link to the owner's.
+//   4. The owner unticks List it in the gallery and updates the link: the
+//      card is gone from /gallery and the link still works. Then
+//      Unpublish: the link's page, and the viewer, say the model is no
+//      longer shared.
 //
-// Pictures in --out, 1_shared.png to 11_viewer_unpublished.png, and the
-// link's own picture as og_image.png. Both accounts are deleted at the end,
-// and their rows with them; the model was taken down first, so no file
-// is left in the bucket.
+// Pictures in --out, 1_shared.png to 11_viewer_unpublished.png (1b_gallery
+// and 9b_remix_shared and 9c_gallery_unlisted among them), and the link's
+// own picture as og_image.png. Both accounts are deleted at the end, and
+// their rows with them; both models were taken down first, so no file is
+// left in the bucket.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
@@ -106,7 +112,18 @@ async function until(page, test, what, seconds = 240, arg = null) {
 async function press(page, name, seconds = 60) {
   const end = Date.now() + seconds * 1000;
   for (;;) {
-    const at = (await controls(page))[name];
+    let at = (await controls(page))[name];
+    // Where it is, once two of the app's reports (twice a second) agree: a
+    // control that has just appeared, or moved because one above it did,
+    // is first reported where it was laid out before. Show who made it
+    // puts the author's field above List it in the gallery, and a click
+    // at the field's first report typed the credit into nothing.
+    for (let n = 0; at && n < 6; n += 1) {
+      await page.waitForTimeout(550);
+      const again = (await controls(page))[name];
+      if (again && again.x === at.x && again.y === at.y) break;
+      at = again;
+    }
     if (at) {
       await page.mouse.click(at.x, at.y);
       await page.waitForTimeout(400);
@@ -135,10 +152,30 @@ async function fetchText(url) {
     bytes: Buffer.from(await reply.arrayBuffer()) };
 }
 
+/// The gallery as a stranger sees it, in a browser: the cards it draws.
+async function galleryCards(name) {
+  const made = await context();
+  const page = await made.newPage();
+  listen(page, "gallery");
+  await page.goto(`${site}/gallery`, { waitUntil: "load", timeout: 120000 });
+  await until(page, () => document.documentElement.dataset.gallery, "the gallery's list", 60);
+  await page.evaluate(async () => {
+    await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+  });
+  const cards = await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
+    id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
+    about: a.querySelector("span").textContent,
+    picture: (a.querySelector("img") || {}).naturalWidth || 0 })));
+  await shot(page, name);
+  await made.close();
+  return cards;
+}
+
 let id = "";
 let link = "";
 let ownerPage = null;
 let madeCopier = false;
+let remixId = "";
 try {
   // --- 1. The owner shares
   console.log("the owner shares the model on the baseplate");
@@ -157,12 +194,19 @@ try {
   await type(ownerPage, "share_name", NAME);
   await press(ownerPage, "share_credit");
   await type(ownerPage, "share_author", AUTHOR);
+  check("List it in the gallery is there, and not ticked", !(await state(ownerPage)).panel.listed
+    && Boolean((await controls(ownerPage)).share_list));
+  await press(ownerPage, "share_list");
+  // What the app shows is published a few frames later, not at the click.
+  check("ticked", Boolean(await until(ownerPage, () => ((window.brickworksShare || {}).panel || {}).listed === true,
+    "the box ticked", 15).catch(() => false)));
   await press(ownerPage, "share_publish");
   const panel = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};
     return p.state === "published" || p.state === "failed" ? p : null;
   }, "publishing", 180);
   check(`published: ${panel.status}`, panel.state === "published");
+  check("...and listed in the gallery, it says", panel.listed === true && /listed in the gallery/.test(panel.status));
   id = panel.id;
   link = panel.url;
   check(`a link at this deployment: ${link}`, link === `${site}/m/${id}` && /^[A-Za-z0-9]{10}$/.test(id));
@@ -179,6 +223,14 @@ try {
   check(`its picture: ${picture.status} ${picture.type}, ${Math.round(picture.bytes.length / 1024)} KB`,
     picture.status === 200 && picture.type === "image/png" && picture.bytes.length > 1000);
   if (picture.status === 200) writeFileSync(path.join(out, "og_image.png"), picture.bytes);
+
+  console.log("its card on /gallery");
+  const cards = await galleryCards("1b_gallery.png");
+  const listedCard = cards.find((c) => c.id === id);
+  check(`on /gallery, first of ${cards.length}: "${listedCard && listedCard.name}", ${listedCard && listedCard.about}, its picture ${listedCard && listedCard.picture}px wide`,
+    cards[0] && cards[0].id === id && listedCard.name === NAME && listedCard.href === `/m/${id}`
+    && listedCard.about === `${bricks.toLocaleString("en-US")} part${bricks === 1 ? "" : "s"}, by ${AUTHOR}`
+    && listedCard.picture > 0);
 
   // --- 2. Somebody with no account opens it
   console.log("a browser that never signed in opens the link");
@@ -369,7 +421,45 @@ try {
   check(`...and saved there (${kept || copiedNow.writes.join(", ") || "nothing written"})`, Boolean(kept));
   await shot(visitor, "9_copied.png");
 
-  // --- 4. Unpublish
+  console.log("the copy, shared by the one who copied it");
+  await press(visitor, "tool_share");
+  await until(visitor, () => (window.brickworksShare.panel || {}).open, "their Share panel");
+  check(`it knows what it is a copy of (${(await state(visitor)).panel.remixed_from})`,
+    (await state(visitor)).panel.remixed_from === id);
+  await type(visitor, "share_name", "Share Flow Remix");
+  await press(visitor, "share_publish");
+  const remix = await until(visitor, () => {
+    const p = (window.brickworksShare || {}).panel || {};
+    return p.state === "published" || p.state === "failed" ? p : null;
+  }, "publishing the remix", 180);
+  remixId = remix.id || "";
+  check(`shared at a link of its own, not listed: ${remix.status}`, remix.state === "published"
+    && remixId && remixId !== id && remix.listed === false);
+  const remixPage = (await fetchText(`${site}/m/${remixId}`)).bytes.toString("utf8");
+  check("its page says remixed from, with a link to the owner's",
+    remixPage.includes(`Remixed from <a href="/m/${id}">${NAME}</a>`));
+  await shot(visitor, "9b_remix_shared.png");
+
+  // --- 4. Out of the gallery, then unpublished
+  console.log("the owner unticks List it in the gallery and updates the link");
+  // Closed and opened again, as somebody coming back to it would.
+  if ((await state(ownerPage)).panel.open) await press(ownerPage, "share_done");
+  await press(ownerPage, "tool_share");
+  await until(ownerPage, () => (window.brickworksShare.panel || {}).open, "the Share panel again");
+  // Opened again, the box says what the link is: listed.
+  await until(ownerPage, () => (window.brickworksShare.panel || {}).listed === true, "the box ticked, as the link is", 30);
+  await press(ownerPage, "share_list");
+  await press(ownerPage, "share_publish");
+  const unlisted = await until(ownerPage, () => {
+    const p = (window.brickworksShare || {}).panel || {};
+    return (p.state === "published" && /^Updated/.test(p.status)) || p.state === "failed" ? p : null;
+  }, "updating the link", 180);
+  check(`updated, not listed: ${unlisted.status}`, unlisted.state === "published" && unlisted.listed === false
+    && !/gallery/.test(unlisted.status));
+  const unlistedCards = await galleryCards("9c_gallery_unlisted.png");
+  check(`gone from /gallery (${unlistedCards.length} cards, none of it)`, !unlistedCards.some((c) => c.id === id));
+  check("and the link still works", (await fetchText(link)).status === 200);
+
   console.log("the owner takes it down");
   await press(ownerPage, "share_unpublish");
   const down = await until(ownerPage, () => {
@@ -410,6 +500,13 @@ try {
     const { access_token } = await mintSession(owner).catch(() => ({}));
     if (access_token) {
       await fetch(`${site}/api/share?op=unpublish&id=${id}`, { method: "POST",
+        headers: { ...headers, authorization: `Bearer ${access_token}` } }).catch(() => {});
+    }
+  }
+  if (remixId) {
+    const { access_token } = await mintSession(copier).catch(() => ({}));
+    if (access_token) {
+      await fetch(`${site}/api/share?op=unpublish&id=${remixId}`, { method: "POST",
         headers: { ...headers, authorization: `Bearer ${access_token}` } }).catch(() => {});
     }
   }

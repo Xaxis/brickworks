@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
 
 ## Sub-features
 
@@ -111,6 +111,69 @@ fixing what it got wrong.
   1 for the wall (that one landed on the next try, 6 s later), 105 s and
   116 s. The spikes are still small: landing first time did not make Claude
   bolder by itself.
+- `sketch first`: **Sketch first**, ticked beside Build it whenever the next
+  request would start a design from nothing (not for a change, not about a
+  selection: `ChatPanel._show_sketch_first`). Build it then calls
+  `Assistant.sketch`, which asks for three `submit_design` calls with
+  `sketch: true` in one reply (`SKETCH_ASK`), on `Brain.sketch_model()` at
+  `Brain.sketch_effort()` — Sonnet 5.5 at medium, or what is chosen when
+  that is cheaper or lower. Each sketch is read, refused past 150 parts
+  once its patterns are laid, checked (`_checked`), and drawn on a world of
+  its own that is in no tree and draws nothing (`BrickWorld.add_unseen`,
+  `Assistant._stage_of`) by `ModelShot` with no studs written on; nothing
+  touches the baseplate, and the stream's live drawing is off for the round.
+  `Sketches.measure` reads each one's size and its outline from the front,
+  the side and above, counted from its own ground corner; two within 15% on
+  every size whose outlines overlap 70% are one idea (`Sketches.alike`), and
+  the later one is sent back once for another (`SKETCH_REDOS`). After four
+  turns whatever there is is shown. Then `sketches_ready`: the run's card
+  closes saying what the three cost, and the panel shows a card for each —
+  picture, name, parts and size, its description, and Design this one
+  (`sketch_1` to `sketch_3` in `controls_by_name`). Choosing calls
+  `choose_sketch`: the sketch is put down as a design is (`_apply`, so
+  `built` and the build animation), the other two dropped, and the whole
+  model designed from it in a fresh conversation at the chosen model and
+  effort, opening on the chosen sketch's picture and its submit_design
+  input (`_sketch_opening`, `FROM_SKETCH`). The final bill line adds "the
+  sketches before it". A brief typed instead of choosing starts afresh.
+  Over MCP: each `submit_design` with `sketch: true` answers with its
+  picture and asks for the next; the third answers with all three and how
+  to choose; `choose_sketch` (`sketch_tools`, served outside only) puts one
+  down and says to design the whole from it. The panel shows a session's
+  three too, without buttons, and marks the one it chose. My Claude with
+  the box ticked, and `--ask-claude-code=… --sketch-first`, put
+  `Assistant.SKETCH_FIRST` after the brief; from the command line each
+  sketch is printed, its picture kept beside `--out` as `NAME_sketchN.png`,
+  and the session's time and tokens printed when one is chosen and at the
+  end (`ClaudeCode.spent`). `sketch_probe` (a recorded brain,
+  `tests/fixtures/sketches/lighthouse.json`), and in a browser
+  `tools/web/assistant_flow.mjs --recorded`, which answers Anthropic itself
+  with the same recording, presses Build it and then sketch 2's card, and
+  checks the requests' models.
+  A real run on the subscription (2026-10-13, Opus 5.5 through Claude Code,
+  `--sketch-first`, off-screen in software), held out: "A lighthouse on a
+  rocky coast, as a detailed display model about 30 cm tall." Three ideas,
+  each holding: a slender banded tower on a reef (71 parts, 16 x 16 studs,
+  84 plates), a short white tower on a stepped headland (98; 16 x 16, 48),
+  and a tapering banded tower with a keeper's cottage on a rock shelf (143;
+  28 x 24, 80). Six more were refused for passing 150 once their patterns
+  were laid (375, 561, 186, 168, 158, 159), which is why the refusal now
+  says patterns count and to use the biggest pieces. It chose the third
+  ("a lighthouse and a coast, and its tapered outline reads better"), and
+  the design from it was 572 parts: the tower and the cottage on a rock
+  shelf, a blue baseplate for the sea, a keeper, the lamp on a turntable.
+  The composition held; the taper and the red bands did not (black bands).
+  The sketches took 132 s of the session's 622, 13 replies, 712k tokens in
+  (643k of them cached) and 12.4k out; the design after them 490 s, 42
+  replies, 5,145k in (5,053k cached) and 39.4k out — a fifth of the time
+  and a quarter of the output, about 72¢ against $2.26 at Opus API prices,
+  and the 69k of rules the sketches wrote to the cache are what the design
+  then read at a twentieth of the price. The app's own loop sketches on Sonnet at medium,
+  cheaper again. The output tokens are from the session's transcript:
+  Claude Code's stream gives each reply's usage as it starts, so
+  `ClaudeCode.spent` counts input as it goes and output only from the
+  session's result. Pictures and the log: `shots/runs/sketch_lighthouse/`
+  in the drafts worktree.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -1053,6 +1116,18 @@ fixing what it got wrong.
   now samples only where a part is (`_lopsided`): a pair of wings, each the
   other's reflection, was called lopsided for the empty half of each box.
   Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  A car on its own wheels (`"wheels": [x, ...]`, `Shapes._wheels`, 2026-10-13):
+  every bench car that tried a shaped body gave it up — raised over nothing it
+  floated (126-183 parts), and with wheels added as bricks its slopes ran into
+  the tyres' boxes (a round arch cut leaves the box's corners), so it was built
+  by hand, studs up. Each axle is the d5b car's proven unit — 18976c01 each
+  side, a row of 32064a Technic bricks, an axle of the body's width less two
+  (`AXLES`: 6, 8, 10 or 12 across) — with keep box cuts round each wheel's whole
+  box and round the bricks, so the body over them stands on the bricks' studs
+  from five plates up; a body too wide or raised off the bricks is refused
+  saying so. `shapes_probe` ("a car on the shape's own wheels"): the guide's
+  example lays 269 parts, one piece, buildable, four wheels; 11 across and a
+  raised underside are refused with why.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
@@ -1152,10 +1227,28 @@ fixing what it got wrong.
   across its middle (was 45, z 2 to 5). Off for a sculpt's grid
   (`"sideways"`). Also: a course with nothing under it and nothing studded
   over it is laid in plates, not bricks (`bridges`, off for a grid): a
-  car's body over its arches came apart from its nose; and where another
-  shape of the same design stands on a shape's top, those studs are kept
-  (`Shapes.feet`, `_carried` from `Patterns.expand`): a cabin on a body
-  stood on tiles. The check's "resting on a smooth face" advice now fires
+  car's body over its arches came apart from its nose; and where anything
+  of the same design stands on a shape's top — another shape, a round, the
+  design's own bricks — those studs are kept (`Shapes.feet`,
+  `Patterns.feet_of`, `_carried` from `Patterns.expand`, laid again when
+  something other than a shape stands there): a cabin on a body stood on
+  tiles, and the owner's orrery collar floated. A tile something is put
+  down on later (edit_model, edit_selection, a design checked or submitted)
+  is laid again as the plate of its size (`Assistant._studs_where_stood_on`,
+  over `BrickLattice.standing_on`, "is anything standing on these studs"),
+  in the same change. Its size, not plates under the part and tiles round
+  it: a top's tiles tie the plates under them, and split, a rooms floor's
+  tile left a 1 x 1 plate held by nothing (`rooms_probe` failed). Only
+  parts this change adds or moves count, so an edit never re-lays the
+  person's own tiles. `standing_probe`: a ring shape, a round column,
+  plates one thick, each on a box's tiled top and on a revolve's rings of
+  tiles, gripped by the studs under them (a stud of the lower part reaching
+  into the upper, read off the connectors), the top round them still
+  smooth; a brick added later gripped, the tiles under it plates and the
+  rest still tiles; an edit about a selection one undo, which puts the
+  tiles back; a recolour elsewhere leaves a tile under the person's own
+  plate a tile. The
+  check's "resting on a smooth face" advice now fires
   only for a part that grips nothing (`_note_loose`): every row of a shell
   rests on the edge of the one under it. `shapes_probe` ("a side that
   curves up and down is laid on its side"): the egg, the hull and the bird
@@ -1299,7 +1392,20 @@ fixing what it got wrong.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
-  `features/parts.md` for how it is measured.
+  `features/parts.md` for how it is measured. A brief names a kind in whole
+  words, plurals and simple stems (`SubjectWords`), and a word made of a
+  kind and one of `SubjectWords.COMPOUND_ENDS` (a spaceship is space); every
+  other vocabulary that reads a brief (`Style.GROUP_WORDS`, `Style.TRAITS`,
+  `Style.TOWER_WORDS`, `Rooms.SAID`, `Techniques.named`) goes through the
+  same. The owner's orrery was reviewed as an aeroplane: "planet" began with
+  the plane kind. `subject_words_probe`: an orrery and a planetarium are no
+  kind of aeroplane in how_real_sets_build_this, the opening message and
+  review_model, and are a mechanism (`Style.TRAITS["mechanism"]`, told a gear
+  train from one crank, planets on arms, a heavy base, a counterweight);
+  every vocabulary against some seventy near misses (planet, carriage,
+  worship, giant, storey, shopkeeper, inspired…) matches none it does not
+  hold as a word; castles, a spaceship, fire engines, two buses, an X-wing
+  and a farmhouse still find theirs.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   83 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
@@ -1419,43 +1525,64 @@ fixing what it got wrong.
   four parts), and one picture of them side by side, 200 pixels a piece
   (`_snippet_picture`, headless: text only) — five with whole parts lists
   and a 1,600-pixel sheet was a long read a run made once.
-  Features, one at a time: `submit_design` takes `features` (required in
-  the schema: what the subject is known by — eyes, beak, ear tufts, wheel
-  arches, grille), `Model.features`. In the app's loop the whole look is for
-  the silhouette, then each feature comes back before the assemblies
-  (`_queue_features`, the same `_to_detail` queue, `TURNS_PER_FEATURE` 4):
-  `_feature_brief` — the best three real pieces for the brief's subject word
-  (`_subject_words`: the words the index knows as subjects, "owl") and the
-  feature, the worked technique for it (`Techniques.for_feature`: name words
-  count 2, use words 1, stemmed; none unless a name word matches), a small
-  picture, and "lay, adapt or build, and say which". What each tool did is
-  put down to the feature being worked (`_run_tool` wraps `_tool_answer`:
-  find_techniques, show_technique, place_technique that grew the model,
-  edits; `_feature_used`), said as each ends ("the eyes: real piece
-  7784-1/eye-rh laid") and all together as the run ends ("features:").
-  From outside: the build's answer lists the features as step 2,
-  `review_model {"feature": "eyes"}` gives the same brief as text and makes
-  it the feature being worked, a find_techniques whose words name a listed
-  feature is put down to it (`_feature_named`), the whole review lists what
-  each came to, and saving hands back a feature never looked at
-  (`next_review`, before assemblies). Told once, in the build's answer, the
-  first held-out owl worked none of them: it reviewed the whole once, edited
-  and saved in 174 s. So the whole review ends with the first feature never
-  looked at, brief and all, and every edit_model and place_technique answer
-  names the features not yet worked (`_with_features_left`). A
-  `--ask-claude-code` run prints the app's own progress lines ("app: working
-  the eyes (feature 1 of 4)", "app: the eyes: placed ..."), so a bench log
-  says which features were worked and with what; the session's own lines
-  name only the tool. None of HOW TO WORK reached a session from outside
-  until the guidance was headed by it: Claude Code reads about 3,800
-  characters of a server's instructions (`mcp.md`, `GUIDE_HEAD`,
-  `read_guide`). `features_probe` drives both with
-  replies written in it: the silhouette submitted with features, the eyes
-  handed back with real pieces and a piece that lays laid with
-  place_technique, the beak built from `beak or snout`, the run's record; and
-  from outside the build's answer, the whole review handing over the eyes,
-  review_model feature=, the piece put down to the eyes and its answer naming
-  the beak, save handing back the beak. Needs the index; SKIP without.
+  Features, one at a time, driven by the app (`src/ai/feature_pass.gd`,
+  2026-10-13): `submit_design` takes `features` (required in the schema: what
+  the subject is known by, each `{"name", "x", "y", "z", "facing"}` — where
+  it goes on the model and the way it faces out, +z the front; a bare string
+  still reads), `Model.features` and `Model.feature_spots`. In the app's loop
+  the whole look is for the silhouette, then each feature comes back before
+  the assemblies (`_queue_features`, `TURNS_PER_FEATURE` 4). For each, the
+  app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
+  searches the index for the subject word and the feature (`_subject_words`,
+  "owl eyes"), then the feature alone, and keeps up to six pieces that lay
+  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model);
+  `spot_for` takes the design's spot or reads one off the name (`WHERE`:
+  eyes high on the front, wheels low on the side, ear tufts on top, tails at
+  the back) on the model's surface at that height, not its box; `fit` tries
+  the piece as built with its front turned to the spot, then tipped whole so
+  its studs face out, seated by its lowest hollows on the free studs nearest
+  the spot that point its way — on the outside (`_outside`: nothing on the
+  stud, nothing between it and the model's edge the way the feature faces;
+  the d6 shop's awning and sign were laid on its floors), within `REACH` 4
+  studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
+  way put a starfighter's exhausts on its fuselage) — kept when no part runs
+  into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
+  `edit_model`, checked like any edit; a plural feature off the middle gets
+  its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,
+  where it was seated and how, its bricks, whether the spot was a guess, the
+  next-best, the worked technique, a picture framed on it from the way it
+  faces (`_proposal_picture`, none headless), and `SETTLE_HOW`.
+  `settle_feature {feature, verdict}`: `accept` (with `move`, `turn`,
+  `recolor` first: the same piece laid again in one edit with taking the
+  old off, so a refusal leaves it), `next` (taken off, the next candidate
+  laid), `reject` (a reason of three words or more; taken off), `built` (a
+  reason, or an edit put down to the feature; the app's piece is taken off). In the loop a settle ends the
+  feature's turn (`_feature_closed`) and the next comes; turns run out with
+  the piece standing and it is "kept". From outside: the build's answer says
+  so (step 2), the whole review hands the first feature with its piece laid,
+  each settle hands the next, after the last says the assemblies or the
+  creative pass are next; `save_model` refuses while any feature is not
+  settled (`Assistant.save_gate`, checked in `CommandSocket._run_own` before
+  anything is written) and hands the first open one back with its piece —
+  every bench session had saved with features unworked, and the old save
+  wrote the file and then handed the next feature, which the session read as
+  done. review_model, save_model and settle_feature answer with the picture
+  as blocks (`Assistant._joined`). What each came to is said as each ends
+  and all together as the run ends ("eyes: real piece 7784-1/eye-rh "eye rh"
+  laid by the app, accepted"; "beak: the app's piece rejected: ..."). A
+  `--ask-claude-code` run prints the app's progress lines ("app: working the
+  eyes (feature 1 of 4)", "app: the eyes: ..."), so a bench log says what
+  each came to. `features_probe` drives both with replies written in it: in
+  the loop the eyes laid from a real piece that lays (from "owl eyes": the
+  Batmobile's eye), accepted, the beak laid at the spot given and rejected
+  with a reason and taken off, the run's record; from outside save_model
+  refused with both open and the eyes laid as a mirrored pair, "next" laying
+  the next-best, accept with a move laying it a stud back and handing the
+  beak, a reason-less rejection refused, the last settle naming the next
+  step, save going ahead, the whole review's record. Windowed (`xvfb-run -a
+  godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
+  it writes the proposal's picture to `shots/features/eyes_proposal.png`.
+  Needs the index; SKIP without.
   The surface pass, before the creative pass (`src/ai/surface_pass.gd`,
   `SurfacePass`, 2026-10-13): the app reads the model's open up-facing studs
   exactly (OpenPoints: nothing on the stud, nothing within a brick over it,
@@ -1615,6 +1742,8 @@ godot --path .                                   # the Design panel
 tools/design.py "a small lighthouse"             # COSTS MONEY
 tools/design.py "a red sports car" --out models/car.ldr --effort max
 godot --headless --path . -- --ask="a small lighthouse" --out=/tmp/x.ldr --effort=low
+env -u ANTHROPIC_API_KEY xvfb-run -a godot --path . -- --mcp=8790 \
+  --ask-claude-code="a lighthouse" --sketch-first --out=/tmp/x.ldr   # three sketches first, on your plan
 ```
 
 Effort is one of `low medium high xhigh max`. The app needs the person's own key,
@@ -1645,6 +1774,8 @@ godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
+godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
 godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/selection_fit_probe.gd   # ...and the numbered picture: shots/selection_fit/points.png
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go

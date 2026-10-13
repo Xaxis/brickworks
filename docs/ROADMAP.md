@@ -1961,6 +1961,72 @@ judge wants an owl's heart-shaped face (a disc is round) and a body that is
 not a column; a real piece is read and never laid — whether the three a
 feature is handed are ever the right size is the next thing to measure.
 
+**The app works the features itself, and the car gets wheels (2026-10-13,
+design6).** The creative pass moved creativity because the app hands that turn
+over itself. The feature chain did not move the scores, because a session told
+which feature came next worked two of six and never laid a real piece. So the
+app now takes on the retrieval and the placing (`src/ai/feature_pass.gd`):
+- For each feature it searches the index for the subject and the feature, and
+  keeps the pieces that lay whole.
+- It seats the best one where the feature goes. Each feature now carries x, y,
+  z and facing in submit_design, and the fit tries the piece as built and
+  tipped studs out, on free studs, checked part by part and then whole.
+- It hands the piece over with a picture.
+- The design settles it with `settle_feature`: accept (moved, turned or
+  recoloured first), next, reject with a reason, or built.
+- From outside, the whole review, each settle and the save hand the next
+  feature. `save_model` refuses while one is open. Before, the save wrote the
+  file and then named the next feature, and every session ended there.
+
+The check also told the car to build a creature: "whale-tail" read as a whale
+and "rear-engine" as a machine (`Style.traits_of`).
+
+*The bench* (`DESIGN_SCORES.md`, `2026-10-13-d6`, one run each): technique and
+surface did not move. Over owl, car, shop and starfighter, technique went from
+3.75 to 3.75 and surface from 3.9 to 3.5, against a noise of 0.7 and 1.0. The
+owl reached technique 5, the first owl at 5. The shop fell below its d5b and
+creative runs, and the car built itself by hand again.
+
+The behaviour did change. All 20 features were settled, against 2 of 6 before,
+but none of the app's pieces was accepted: 10 were rejected and 10 marked
+"built". Every session gave every feature a position. The rejections name the
+seat: inside the shop's flat, on the starfighter's cockpit floor and the top of
+its fuselage, on the car's door tops. The fit had taken the nearest free stud
+anywhere within seven studs. The rest name the piece: a robot lion's paw for
+talons, a blue racer tail, two plates for a cornice.
+
+Three follow-ups came out of this:
+- A seat must be on the outside (`_outside`), within four studs of the spot
+  and, for a feature that faces sideways, within a stud and a half of its face.
+- "built" takes the app's piece off.
+- A shape takes `"wheels"`: the axles' positions along x. It lays the wheel
+  unit the d5b car proved (18976c01 each side, 32064a Technic bricks, an axle
+  two studs shorter than the body is wide), cuts the body clear of each
+  wheel's whole box, and stands the body on the bricks. The guide's car
+  example is this car: 269 parts, one piece, in `shapes_probe`.
+
+*Then d6b* (car and shop on 8dc02d3, one run each). The shop scored 5 / 5 / 5 /
+4 / 4, its best surface so far, but one run. The car said its body as a shape
+on its wheels, the shape stood (177 and 208 parts), and the car rebuilt it by
+hand anyway ("blockier", "lopsided"), keeping the wheel units: 3 / 4 / 4 / 4 /
+3, back to its baseline. The shop rejected its sign and awning as "laid inside
+the upstairs flat" again: a ray out through a window, or up through an open
+flat, reads as the outside.
+
+Left:
+- The seat. A ray out through a window, or up through a flat with no roof,
+  reads as the outside. The next test is whether any brick's box stands
+  further out at that height. 83f152e (four studs from the spot, a stud and a
+  half from its face) has not been measured.
+- The pieces themselves. The corpus has no owl and no 911 at this scale, and
+  a feature's best real piece is often a different subject's.
+- "Built" is still an easy way out. It needs one sentence, and the shop's
+  "corner door, built" was not there to the judge.
+- The shape's look at Speed Champions size: glass laid as trans bricks, studs
+  over the bonnet, a cabin the session calls blocky.
+- Surface overall: the shop's roof is a field of studs, and nothing yet tiles
+  an open top the design leaves.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

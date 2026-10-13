@@ -68,20 +68,47 @@ def without_figures(parts: list[tuple[str, int]], by_id: dict) -> list[tuple[str
     return [(p, c) for p, c in parts if not body(p)]
 
 
+# Words that end a word made of two, after a kind: SubjectWords.COMPOUND_ENDS.
+COMPOUND_ENDS = ("ship", "craft", "port", "station", "truck", "car", "boat", "plane",
+                 "house", "copter", "bike", "mobile", "man", "men")
+
+
+def _forms(word: str) -> list[str]:
+    """A word and the singular it may be: SubjectWords.forms."""
+    from snippets import stem
+    out = [word]
+    if stem(word) not in out:
+        out.append(stem(word))
+    if len(word) > 4 and word.endswith("es") and word[:-2] not in out:
+        out.append(word[:-2])
+    return out
+
+
+def kind_of_word(word: str, kinds: dict) -> str:
+    """The kind one word of a brief is, or "": SubjectWords.kind_of_word.
+    Whole words only — a planet is not a plane — and a word made of a kind
+    and one of COMPOUND_ENDS ("spaceship") is the kind."""
+    for form in _forms(word):
+        if len(form) >= 3 and form in kinds:
+            return form
+    for end in COMPOUND_ENDS:
+        for form in _forms(word):
+            if len(form) > len(end) + 3 and form.endswith(end):
+                for head in _forms(form[:-len(end)]):
+                    if head in kinds:
+                        return head
+    return ""
+
+
 def kinds_for(brief: str, kinds: dict, most: int = 3) -> list[str]:
     """The kinds a brief names, the way PartLibrary.kinds_for reads it."""
     found: list[tuple[int, str]] = []
     seen: set[str] = set()
-    for place, word in enumerate(brief.lower().split()):
-        bare = re.sub(r"[^a-z0-9]", "", word)
-        tries = [bare, bare.removesuffix("s"), bare.removesuffix("es")]
-        tries += [bare[:n] for n in range(len(bare) - 1, 3, -1)]
-        for form in tries:
-            if len(form) < 3 or form in seen or form not in kinds:
-                continue
+    for place, word in enumerate(re.findall(r"[a-z0-9]+", brief.lower())):
+        form = kind_of_word(word, kinds)
+        if form and form not in seen:
             seen.add(form)
             found.append((place, form))     # in the order the brief names them
-            break
     return [kind for _, kind in sorted(found)[:most]]
 
 

@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints, lib:flexible parts along a path -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism -->
 
 ## Sub-features
 
@@ -41,7 +41,43 @@ can occupy the same millimetre.
   the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
-  cantilever.
+  cantilever. It also says when the whole model tips over on what it stands
+  on ("tips", from Balance's support polygon), which its levels never could on
+  a baseplate: the plate is under every cut, as wide as the ground. Masses
+  count the tubes under a part; every one of seven bricks is within 6% of
+  BrickLink's weight (a 2x4 2.46 g against 2.32).
+- `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
+  whether the model stands on what it stands on, by how much, and which stud
+  joint gives first. The support polygon is the hull of every box within half
+  a plate of the lowest cell (the baseplate, `floor_ids`, left out); the
+  tipping margin is the centre of mass's distance to its nearest edge in
+  studs, the force angle the tilt that carries it over (atan(margin/height),
+  Papadopoulos and Rey). Stud joints that are bridges in the graph of what
+  holds what (studs from `Stability.contacts`, pins, clips, hinges and
+  turntables from `Joints`) carry everything beyond them: the moment about
+  the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
+  3 N (lets go), and the pull on a part hung under another. Joints in bonded
+  walls share load statics cannot split and are left to Stability's levels.
+  Counterweight advice is the least w at the best place (within 4 studs of
+  the far edge, or the middle of the base when poses tip more than one way)
+  that brings every pose half a stud inside, found by bisection, or the
+  studs the base would have to widen. Poses come as `{label, transforms}`:
+  `Poser.sweep` gives the Pose panel's animation frames, or every joint
+  swung through its reach a 15° step at a time (room checked as the slider
+  does); a mechanism's cycle will hand its frames over the same way. A pose
+  that puts a part through the floor is left out. check_design weighs the
+  design on the lattice it was checked on (`Assistant._weighed`, worker-safe)
+  and, once it stands in the world with joints to turn, over the sweep
+  (`_balance_said`), and puts the numbers and what to do in its result.
+- `balance readout`: Tools, Check stability (`Shell._check_stability`). The
+  margin in plain words on the status bar's line, kept there while the marks
+  are up (`Shell.balance_line`); the support polygon and the centre of mass
+  dropped onto it drawn on the floor over the model (`BalanceMark`, green,
+  amber within half a stud, red past the edge, a second ring for the worst
+  pose and a line for the margin); the part past each stud joint at half its
+  working load or more tinted amber to red (`BrickWorld.set_tinted`). Working
+  shows while it weighs, on a worker from 600 parts. A change to the model
+  takes the marks and the tint away.
 - `clutch`: whether two parts that touch could really hold each other. The
   lattice is 2 LDU and the connection system is 20, so a position can be legal
   on the grid and impossible in plastic — a brick three tenths of a stud across
@@ -118,6 +154,27 @@ can occupy the same millimetre.
   side pivots are one point on one axis (`MinifigData.PIVOTS`). The covers
   asked are where the parts really are (`Assistant._filled_by`), not the
   square turn the checker's lattice has them at.
+- `axles and gears on a line`: an axle or a pin is in every hole along its
+  whole length (`Joints.through`, by Mechanism's own rule: on the line to
+  1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
+  axle hole), "grips" in an axle hole and "turns" in a round one. Those pairs
+  hold and are forgiven like any pin (`Joints.pairs`), so one axle carries both
+  walls of a frame and the gear between them. Gears that `Mechanism.build`
+  finds in mesh (spur, crown, bevel, worm, ring, at the table's pitch to
+  1 LDU) are forgiven too and hold nothing (`Joints.meshing`): in the check,
+  by hand (`Builder.room_for`) and in `OpenPoints.test`. Two gears in one plane
+  that overlap are told the spacing they mesh at (`Assistant._gears_apart`);
+  two up to 6 LDU too far are said not to mesh, and the check says what each
+  axle grips and turns in (`Assistant._drive_said`). A placement may be said
+  by its line: `axis` (x, -x, y, -y, z, -z) and optional `joint` make x, y, z
+  where that joint's middle goes (`Assistant._onto_lines`), and a joint part
+  with no studs whose corner was written at another part's hole or axle, and
+  overlaps it there, is put in it and told so (`Assistant._seat`). The owner's
+  orrery session wrote 2780, 3706 and an axle through 3649 at the point
+  attachment_points gave, and every one was refused before this.
+  attachment_points numbers each part's joints with turns/grips;
+  look_at_model says each joint part's line; a turntable's turning point is a
+  joint, so its top goes on its base by one point.
 - `leaning on a joint`: a section turned about x or z must turn on a joint whose
   pin lies along its axis — a hinge brick, finger hinge plates, a clip on a bar,
   a ball — with one half outside the section and the other in it, or it is
@@ -162,13 +219,15 @@ can occupy the same millimetre.
 ## How to reach it
 
 GDScript: `src/assembly/lattice.gd` (cells, `cells_for_turned`, `is_square_to_grid`),
-`src/assembly/stability.gd`, and `Section` in `src/ai/assistant.gd`.
+`src/assembly/stability.gd`, `src/assembly/balance.gd` (with `Poser.sweep` in
+`src/assembly/pose.gd`), `src/render/balance_mark.gd`, and `Section` in
+`src/ai/assistant.gd`. In the app: Tools, Check stability.
 Python: `tools/ldraw/occupancy.py` (the same lattice, used by the mesh build).
 
 ## How to check it
 
 Static: the Python half is pinned by `tests/test_ldraw.py` — stud pitch 8 mm,
-brick 9.6 mm, plate a third of a brick, −Y up, and the lattice dividing every LEGO
+brick 9.6 mm, plate a third of a brick, −Y up, and the lattice dividing every LEGO®
 dimension. **The six tests that voxelise a part need numpy and scipy** and skip
 without them, which is 25 of the 67 cases.
 
@@ -182,11 +241,15 @@ godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles a
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
+godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
 godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
+godot --headless --path . --script src/dev/balance_probe.gd      # margins, joints, counterweight, poses by hand
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
+  --script src/dev/balance_view_probe.gd                         # the readout and the floor marks, in shots/balance/
 godot --headless --path . --script src/dev/holds_probe.gd        # and whether the assistant is told
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
 python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if installed
@@ -224,30 +287,170 @@ refuses has the part's own plastic inside a stud in the set file. A line
 ending "NOTHING IN THE WAY" is a real seat the rule refused, and the rule's to
 fix. 31 of 2,828, all in the way, on 2026-10-11.
 
-Mechanisms, research only (docs/MECHANISMS.md; no feature yet, not in the
-suite): gear trains read off the parts and turned. It reads the joints from
-the connectors (an axle keyed in an axle hole, an axle or a pin turning in a
-round hole, studs in sockets, a turntable's top on its base), the meshes from
-a table of tooth counts, and solves one linear equation per mesh:
+`mechanisms` (`src/assembly/mechanism.gd`, docs/MECHANISMS.md phase P1a; no UI or
+MCP tool yet): gear trains read off the parts and turned. It reads the bodies and
+joints from the connectors (an axle keyed in an axle hole, an axle or a pin turning
+in a round hole or a bore its size, studs in sockets, two pins through two beams, a
+turntable's top on its base, a differential's planet on its casing's stub, a
+driving ring on its ridged joiner and in the clutch gear it is pushed into), the
+gears from `assets/ldraw/gears.json` (see [pipeline](pipeline.md), `check the gear
+table`), and solves one linear equation per coupling (spur, crown, bevel, worm,
+ring, chain) by sparse elimination:
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/mechanism_probe.gd                                # and drawn, in shots/mechanism/
+godot --headless --path . --script src/dev/mechanism_sets.gd        # 42055 and 42082 read whole
 ```
 
-Proves it when it ends on "mechanism: gear trains read off the parts …". The
-cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
+The probe proves it when it ends on "mechanism: gear trains read off the parts …".
+The cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
 `tools/omr.py fetch`), an 8 driving a 24, the same axles also joined 16 to 16
-(locked, both meshes named), a worm driving a 24 (1/24), and a two-planet
-orrery (Mars's year 1.96 Earth years against 1.8808). With a display, every
-frame is read back off the renderer's copy, and each output must turn its
-ratio times the driver's step to 0.01°.
+(locked, both meshes named), a worm driving a 24 (1/24), a two-planet orrery
+(Mars's year 1.96 Earth years against 1.8808), a 12 carried round inside four
+24121 quarter rings (140/12 on its arm), a quarter held by nothing turning on its
+rim (12/140, the same way), a Flex-laid chain from a 24 to an 8 (3:1, the same
+way), a gearbox whose driving ring is in neutral and pushed into each clutch gear
+(free, then 1:1, then 3:1), and a 62821 differential (one driver leaves one
+freedom; two drivers decide it, and the sides' rates sum to twice the casing's to
+1e-6, the 32-bit transforms' precision). It first checks that the catalogue it
+reads has every table gear's hole: a catalogue built before `connectivity.py`
+read 3648's centre axle hole fails there. The fix is a sub-build of the parts
+`connectivity.py` changes, merged (`tools/build_meshes.py --only <ids and 200
+unchanged controls> --out DIR`, then `tools/merge_subbuild.py DIR ids.txt`; see
+[pipeline](pipeline.md)), or a full rebuild. With a display, every frame is read
+back off the renderer's copy, and each output must turn its ratio times the
+driver's step to 0.01°. The sets script ends on "mechanism sets: 2 read, every
+gear on what it turns on or said why not": each gear that floats is a near miss
+the file draws (42082 stands two 24s 2 LDU off their axles) or in a group that
+touches nothing else (42055's mine truck, a second model in the file), read
+again on its own with nothing floating there. Anything else fails, said with what
+stands on its axis and the holes its axles nearly turn in.
+
+Axles and gears: `axle_probe` ends on "axles: a pin and an axle go in the hole
+attachment_points names, an axle carries every part on its line, gears in mesh are
+not an overlap, and a crank turns an 8, a 24 and an arm at 1:3". It drives the
+tools a session calls (use_tool) with the numbers they hand back: the owner's
+sequence first (attachment_points on 3700 at 80, 0, 80 gives 81, 1.75, 80.5 along
+z; 2780 there by a quarter turn, by face +z and by axis, axle 3706 by a quarter
+turn and by axis, each applied with its middle in the hole; submit_design too; the
+same pin half a stud along still overlaps), an axle through a 40's hole at the
+point attachment_points gives it (grips the gear, turns in 3700); the brief's train
+(a frame of 3702s, a crank liftarm with a handle, an 8 and a 24 two studs apart, a
+bush and a half bush, an arm) buildable with the mesh named, then built and solved
+by `Mechanism`: the arm turns -1/3 of the crank, the handle, 8 and bush with the
+crank, the frame still; two 24s two studs apart refused with "60 LDU (3 studs)
+apart", an 8 and a 20 said not to mesh at 35 LDU; the orrery's stages (40 with 40
+five studs apart, a 24 to an 8 idler to a 24, a 20 driving a 12) with four meshes
+and rates -1, 3, -1 and 5/3; a worm on a crank's axle into a turntable whose top
+went on its base by the point attachment_points gave, 1/28 a turn; and by hand, a
+24 has room two studs from an 8 and none at 36 LDU. Windowed (`MESA_VK_WSI_DEBUG=sw
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/axle_probe.gd`)
+the train is drawn turning, 16 frames read back off the renderer's copy with the
+arm a third of the crank's step the other way to 0.01°, into `shots/axles/`. A
+catalogue without 3648's centre axle hole (before mech1's connector fix) fails
+the train: see `pipeline.md`.
+`simulate mechanism` (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`,
+docs/MECHANISMS.md phases P1b and P1c's readout): Tools, Simulate mechanism…, beside
+Check stability because both read the model and change none of it (Pose is under
+Build because each slider is an undo step). It reads the mechanism (Working: "Reading
+the mechanism…", on a worker from 600 parts), drives the part a sub-assembly named
+Crank, Motor, Handle or Driver marks, else the one selected, else the one that turns
+most of the train; a click on an axle or a crank (the Select tool is put in hand)
+drives that. The base is the baseplate and what stands on its studs, plus any
+sub-assembly named Frame, Base, Stand or Chassis. Turning parts are tinted by speed
+(blue slow to orange fast), the driver white, the meshes that lock a train red, free
+bodies amber, floating gears violet, each named with part numbers in the panel. Play
+turns the driver at the speed chosen, the slider covers the cycle (every turning part
+round at least once), Worst balance goes to the frame where it comes nearest tipping.
+The turning parts are drawn where the simulation puts them (`BrickWorld.set_drawn`):
+the model, the lattice, the history and `world.revision` never move. With a body
+named after a planet and another as the reference (Earth by default), periods read in
+its years against NASA's sidereal periods ("Mars arm: 1.96 Earth years; real 1.8808,
++4.2%"). The balance is `Shell.weigh_balance` over 72 frames of the cycle, the polygon
+and the centre of mass on the floor, and the turning part furthest past the base's
+edge named. Record draws one turn of the reference (or the driver) through
+`StudioRender.animate` into `RenderOutput` (WebP, and on the desktop frames and an
+MP4). Over MCP `simulate_mechanism` (AppTools, `SimulatePanel.for_session`) says the
+same with a picture of the worst frame; record=true is waited for 20 s and then left
+going in the app (the mcpjobs job tool was not in staging).
+
+```sh
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
+  --script src/dev/simulate_probe.gd           # add -- --write to write src/dev/fixtures/{orrery_two_planets,gears_locked}.ldr
+godot --path . --resolution 1400x900 -- --mcp=8795 &   # under xvfb; then
+tools/mcp_check.py --port=8795                 # simulate_mechanism as a session asks it
+```
+
+The probe ends on "simulate: a driver clicked, played, scrubbed and recorded, …".
+It builds its two models part by part on the baseplate: an 8 driving a 24 in a
+3709b (with a 16 free on the 8's axle and an 8 lying loose), then two 16s meshed
+too; and mechanism_probe's orrery on two pillars, its beam and turntable base named
+Frame. It clicks the 24 and then the 8's axle (each its driver, 1:3 and 3:1 the
+other way), plays (every played frame's 24 turns a third of the 8's step back, to
+0.0000°, read off `drawn_at`), scrubs to a quarter of the cycle, records 24 frames
+and reads every one back off the renderer's copy (`StudioRender.staged_transform`,
+through the panel's `frame_drawn`), finds the free 16 and the loose 8 named by
+number, the locked pair named and red, Mars's year "1.96 Earth years; real 1.8808,
++4.2%", the balance over 72 frames with "Furthest out: Mars arm, 3 studs past the
+left edge", Worst balance going to Crank at 329°, a recording of one Earth year
+(0.7143 crank turns) with Earth turning 1.4 and Mars 20/28 of every frame's crank
+step, simulate_mechanism through AppTools with a picture, and every part where it
+was built, the history as deep and `world.revision` unmoved throughout. Pictures:
+`shots/simulate/1_train.png` … `4_orrery_worst.png`, `5_session_picture.png` (the
+hero view a session gets), the recordings in `shots/simulate/{train,orrery}/`.
+On 2026-10-13 under a load of 50 on this box a 24-frame Quick recording took 79-88
+s, so over MCP a recording is past the 20 s wait and goes on in the app; the next
+call says it is done (mcp_check checks that path). With the solver broken on
+purpose (the two sides of a mesh pulling the same way, `_row`) eight checks fail:
+both clicks' ratios, the readout, every played and every recorded frame of the
+train, Earth's and Mars's rates and the recorded year; put back, all pass.
+`mcp_check` opens the two fixtures (written by the probe's `--write`) as a session
+can, and checks the driver, Mars's year, the balance, the picture (or, headless,
+that it says why there is none), reference= and targets= (Earth 0.5102 Mars years
+against 0.5 asked for, +2.0%), a refusal, record=true, and the locked train's
+meshes and floating gear by number.
+
+Balance: `balance_probe` ends on "balance: the margins, the joints and the
+counterweight come out as worked by hand, the shipped models stand, and the
+worst pose is found". Its cases and their answers by hand: a 1x8 plate on one
+stud of a 1x1 (the plate's weight on a 3 stud lever against 0.4 N·cm, and the
+whole 2.13 studs past the 1x1); a staircase of 2x4 plates a stud further out
+each (0.5 studs inside at 4, on the edge at 5, 0.5 past at 6; the root of 6
+carries five plates on 1 stud against 7.2 N·cm); a tower of 2x2s on a 1x1
+(half a stud, force angle atan(10/93.4) = 6.11°, no moment at its foot); a
+1x1 hung under a plate (pulled by its weight); a 2x2 held only by a link
+(adrift without it, carried by the foot with it); a 6x6 base with an arm 18
+studs out (tips 2.8 past; the advice, w·L = m·d with half a stud to spare,
+followed with 2x4 bricks, stands 0.6 inside, and Stability's own verdict says
+"tips" before and not after); house, car, lighthouse, castle and kart
+standing; a turntable arm over a 2x8 base, standing as built and 1.1 studs
+past the front edge at 90° of the 24-pose sweep, its middle-of-the-base
+counterweight m(1 + 2d) by hand, and the same pose found from a keyed
+animation; and check_design's words. On 2026-10-13 every check was made to
+fail once by breaking the code it guards (moment about the edge, the tubes,
+Stability's tipping, the sweep's two ways, the floor, the ground edges, the
+links, the hull's sign, the worst-pose pick, the advice's spare, the widen,
+the animation frames, a sweep that moved the model, check_design's weigh
+flag), each a one-line change, and passed again once put back.
+
+`balance_view_probe` ends on "balance view: the readout, the polygon and the
+centre of mass on the floor, the overloaded joint in red, the counterweight it
+asked for holds it up, and the worst pose of a sweep is found". Look at
+`shots/balance/1_tips.png` (red polygon under the 6x6 base, the white drop
+line and ring 4 studs right of it, the posts and the first arm plate tinted,
+the status line "Tips over, 4.1 studs past the right edge. Add 22 g …"),
+`2_stands.png` (green, the ring just inside the right edge beside the stack
+of 2x4s) and `3_swept.png` (a second, red ring past the front edge for "Arm
+at 90°"). Broken on purpose, it fails on: no Working line, no tint, the
+words gone with the message after 4 s, marks left after a change, no
+counterweight in the words, the marks never shown, and no poses swept.
 
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
 32.00 × 9.60 × 16.00 mm, three plates to a brick, 8.00 mm stud pitch. It prints
-one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
+one `--` line on purpose: LDraw draws a 1.6 mm stud where the LEGO Group moulds 1.8 mm.
 
 ## Gotchas
 
@@ -314,7 +517,7 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand
   bricks took **9.24 GB**, which is more than a browser gives the whole app, so
   the size of a model was capped by how collision was stored rather than by
-  anything about LEGO. Fifty thousand bricks now cost **180 MB** and 938 ms.
+  anything about LEGO® bricks. Fifty thousand bricks now cost **180 MB** and 938 ms.
 
   The migration's whole difficulty is that `brick_at` was a dictionary lookup
   and is now a search of the boxes near a cell. Four places asked it per cell

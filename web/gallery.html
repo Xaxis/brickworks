@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!--
+  The public gallery, at /gallery (and /gallery.html, which redirects
+  here): the models people chose to list when they shared them, newest
+  first, each a link to its own page, /m/<id>.
+
+  What is listed comes from /api/share?op=list (api/share.js), a page at
+  a time. gallery.js draws it, every name and credit as text and never as
+  markup: they were typed by strangers. No inline script, because the
+  site's content security policy allows none it has not hashed. The look
+  is /site.css, shared with every page of the site; what is below is only
+  what this page has and the others do not.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gallery · Models built in Brickworks</title>
+<meta name="description" content="Models people have built in Brickworks and chosen to share: open any of them to turn it in 3D, step through its build and get its parts list, or copy it into your own models to make it yours.">
+<link rel="canonical" href="https://brickworks.diy/gallery">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="The Brickworks gallery">
+<meta property="og:description" content="Models people have built in Brickworks and shared: turn them in 3D, step through the build, or copy one and make it yours.">
+<meta property="og:url" content="https://brickworks.diy/gallery">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A grey stone castle in bricks, designed by Claude, beside the words: design it here, build it on your table.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Brickworks gallery">
+<meta name="twitter:description" content="Models people have built in Brickworks and shared: turn them in 3D, step through the build, or copy one and make it yours.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.page-head { padding: clamp(48px, 8vw, 88px) 0 12px; }
+.page-head .lede { margin-bottom: 10px; }
+.listing { padding: 18px 0 72px; }
+/* Each card is the shape of the picture a share is published with,
+   1200 x 630, so the rows line up and the space is held before it comes. */
+.models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.model {
+	display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0;
+	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
+	background: var(--panel); box-shadow: var(--shadow);
+}
+.model:hover { border-color: var(--ink-faint); }
+.model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
+.model .frame { aspect-ratio: 1200 / 630; background: var(--bg-soft); overflow: hidden; }
+.model .frame img { width: 100%; height: 100%; object-fit: cover; }
+.model .frame.none {
+	display: grid; place-items: center; color: var(--ink-faint); font-size: 14px;
+	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
+}
+.model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
+/* A name is at most 80 characters (api/share.js); two lines of it here. */
+.model b {
+	color: var(--ink); font-size: 16px; font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
+.state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
+.more { margin-top: 26px; }
+.yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
+.yours h2 { font-size: clamp(22px, 3vw, 28px); }
+.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 16px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery" aria-current="page">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/changelog">Changelog</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery" aria-current="page">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/changelog">Changelog</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap page-head">
+		<p class="eyebrow">Gallery</p>
+		<h1>Built in Brickworks</h1>
+		<p class="lede">
+			Models people have made here and chosen to show. Open one to turn
+			it in 3D, step through its build and get its parts list, with no
+			account. Or press Open in Brickworks to copy it into your own
+			models and make it yours.
+		</p>
+	</div>
+
+	<section class="wrap listing" aria-label="Shared models">
+		<div class="models" id="models" aria-live="polite"></div>
+		<p class="state" id="loading">Fetching the gallery…</p>
+		<p class="state" id="empty" hidden>
+			Nothing is listed yet. Share a model from the app and tick
+			<b>List it in the gallery</b>, and it will be the first.
+		</p>
+		<p class="state" id="broken" hidden>
+			The gallery did not load just now. Try again in a minute.
+		</p>
+		<noscript>
+			<p class="state">The gallery is drawn with a little JavaScript, which is off in this browser.</p>
+		</noscript>
+		<div class="actions center more">
+			<button class="cta ghost" id="more" type="button" hidden>Show more</button>
+		</div>
+	</section>
+
+	<section class="wrap yours" aria-labelledby="yours-h">
+		<h2 id="yours-h">Put yours here</h2>
+		<p>
+			In the app, choose <b>File › Share…</b>, give the model a name and
+			tick <b>List it in the gallery</b>. It is a copy as it is then;
+			publish again to update it, or untick the box to take it out of the
+			gallery and keep the link.
+		</p>
+		<div class="actions"><a class="cta" href="/app">Open the app</a></div>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Design it here. Build it on your table. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Every model here was made and shared by the person credited, or by
+				someone who chose not to be; Brickworks does not check them before
+				they are listed. Something here that should not be? Tell us at
+				<a href="https://github.com/Xaxis/brickworks/issues">GitHub</a>.
+			</p>
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script src="/gallery.js" defer></script>
+</body>
+</html>

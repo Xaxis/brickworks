@@ -65,31 +65,21 @@ func kinds_for(words: String, most: int = 3) -> Array:
 	var found: Array = []
 	var seen: Dictionary = {}
 	var place: int = 0
-	for word: String in words.to_lower().split(" ", false):
+	for word: String in SubjectWords.of(words):
 		place += 1
-		var bare: String = ""
-		for ch: String in word:
-			if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
-				bare += ch
-		# A brief says castles and the catalogue says castle. And a
-		# brief says spaceship where the catalogue, which is reading
-		# real set names, says space — so a kind that the word begins
-		# with counts too, at four letters or more. Four because
-		# "car" would otherwise match "cargo" and "cart", and a
-		# prefix that short says nothing.
-		var tries: Array[String] = [bare, bare.trim_suffix("s"),
-			bare.trim_suffix("es")]
-		for at: int in range(bare.length() - 1, 3, -1):
-			tries.append(bare.substr(0, at))
-		for form: String in tries:
-			if form.length() < 3 or seen.has(form) or not kinds.has(form):
-				continue
-			seen[form] = true
-			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
-			entry["kind"] = form
-			entry["place"] = place
-			found.append(entry)
-			break
+		# A brief says castles and the catalogue says castle; it says
+		# spaceship where the catalogue, reading real set names, says space.
+		# Whole words only (SubjectWords): any kind a word began with was
+		# taken, so a planetarium and an orrery's planets were the plane
+		# kind, tail planes and jet engines.
+		var form: String = SubjectWords.kind_of_word(word, kinds)
+		if form.is_empty() or seen.has(form):
+			continue
+		seen[form] = true
+		var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
+		entry["kind"] = form
+		entry["place"] = place
+		found.append(entry)
 	# In the order the brief names them, because a brief names its subject
 	# first and its features after. Fewest sets first was the rule, and
 	# "a large space cruiser with ... two engine pods" came back as engine,
@@ -273,6 +263,92 @@ class PartInfo extends RefCounted:
 
 	func has_connector(kind: String) -> bool:
 		return int(connector_counts.get(kind, 0)) > 0
+
+	## What is on the part besides plastic, as bits: a print, which LDraw
+	## names a Pattern; a sticker put on it, which LDraw files as a Sticker
+	## Shortcut; or, alone, a sticker itself. Forty-nine parts have a print
+	## and a sticker both.
+	const PRINTED := 1
+	const STICKERED := 2
+	const STICKER := 4
+
+	## Which of those it is, read from what LDraw calls it, 0 for plain.
+	func decor() -> int:
+		if _decor < 0:
+			_decor = PartLibrary.decor_of(name, category)
+		return _decor
+
+	## The plain part a print or a stickered part is a version of: 3623
+	## for 3623pt1, 3068b for 3068bd2j. Empty for a plain part and for the
+	## 584 decorated parts whose plain part the catalogue does not have.
+	var print_of: String = ""
+	var _plain: PartInfo = null
+	var _printed: String = ""
+	var _decor: int = -1
+
+	## What is printed or stuck on it: the words of its name the plain
+	## part's has not got, '"PORSCHE" First Half' for 3623pt1, or what
+	## follows the first "with" when there is no plain part.
+	##
+	## Not the name less the plain one's from the front: 1995p01 is "Flame
+	## / Vapor Trail 3 x 12 with Axle Hole and Bright Light Yellow Marbled
+	## Core", 1995 the same without the colour, and the whole name left in
+	## made it a print of a flame.
+	func printed() -> String:
+		if not _printed.is_empty() or decor() == 0:
+			return _printed
+		var words: PackedStringArray = name.split(" ", false)
+		if _plain != null:
+			var plain_words: PackedStringArray = _plain.name.to_lower().split(" ", false)
+			var kept := PackedStringArray()
+			for word: String in words:
+				if not plain_words.has(word.to_lower()):
+					kept.append(word)
+			words = kept
+		elif name.contains(" with "):
+			words = name.substr(name.find(" with ")).split(" ", false)
+		if not words.is_empty() and words[0].to_lower() == "with":
+			words = words.slice(1)
+		if not words.is_empty() \
+				and words[-1].to_lower() in ["pattern", "patt.", "sticker", "stickers"]:
+			words = words.slice(0, -1)
+		_printed = " ".join(words)
+		return _printed
+	var _own: String = ""
+	var _keyed: String = ""
+
+	## The words a search finds it by, lowercase: its number, name and
+	## category, and "print" or "sticker" for what is on it, which LDraw's
+	## names say as Pattern and Sticker and a builder says as print.
+	func own_words() -> String:
+		if _own.is_empty():
+			var words: String = "%s %s %s" % [id, name, category]
+			if decor() & PRINTED:
+				words += " print"
+			if decor() & (STICKERED | STICKER):
+				words += " sticker"
+			_own = words.to_lower()
+		return _own
+
+	## Its !KEYWORDS, lowercase: what it was made for ("Porsche", "Speed
+	## Champions"), the sets it came in and its numbers at the shops, less
+	## the shops' names. "brick" is in every one of those, and with them
+	## a search for "brick" found 17,039 parts where it had found 3,633.
+	func keyword_words() -> String:
+		if _keyed.is_empty() and not keywords.is_empty():
+			var words := PackedStringArray()
+			for keyword: String in keywords:
+				var word: String = keyword.to_lower()
+				for shop: String in NOT_WORDS:
+					if word.begins_with(shop):
+						word = word.substr(shop.length())
+						break
+				words.append(word)
+			_keyed = " ".join(words)
+		return _keyed
+
+	const NOT_WORDS: Array[String] = ["bricklink ", "rebrickable ", "brickowl ",
+		"brick owl ", "brickset ", "set "]
 
 	## Footprint in whole studs, rounded up. Useful for sorting and for
 	## the assistant's reasoning; not a substitute for real collision.
@@ -522,6 +598,7 @@ func load_catalogue(path: String = "") -> bool:
 		var info: PartInfo = _read_part(entry)
 		parts[info.id] = info
 		_ordered_ids.append(info.id)
+	_index_prints()
 
 	_load_colors()
 	loaded.emit(parts.size())
@@ -1033,7 +1110,8 @@ func is_current(code: int) -> bool:
 	return colour_use(code).x > 0
 
 
-## Parts whose name, category or id contains every word of the query.
+## Parts whose name, category, id or keywords contain every word of the
+## query (PartLibrary.matched).
 ##
 ## A plain substring match: predictable, no index, and it scans 24,731
 ## short strings faster than a frame. What it must not do is stop at the
@@ -1072,7 +1150,126 @@ const ALSO_KNOWN_AS: Dictionary = {
 	"inverted slope": "slope brick inverted",
 	"cheese": "slope brick 31 1 x 1",
 	"jumper": "with 1 centre stud",
+	# A builder says print, LDraw says Pattern, and the index says print
+	# for every part LDraw names a Pattern (PartInfo.own_words). So
+	# "porsche print" finds 3623pt1, which it did not: no name has the
+	# word print in it (2026-10-13). Listed as themselves for the plural.
+	"print": "print",
+	"printed": "print",
+	"pattern": "print",
+	"patterned": "print",
+	"sticker": "sticker",
+	"stickered": "sticker",
+	"decal": "sticker",
 }
+
+
+## How a part answers the words of a query: not at all, by its own name,
+## number and category, or only with its !KEYWORDS too.
+const NOT_MATCHED := 0
+const BY_NAME := 1
+const BY_KEYWORDS := 2
+
+
+## Whether every word is in the part's own words, or failing that in
+## them and its keywords.
+##
+## The keywords were in the catalogue all along and nothing read them:
+## 15068pt2, a turbo printed on a Porsche, says Porsche only there. But a
+## part found only through its keywords answers the query less directly
+## than one whose name does, and the search lists those after
+## (PartsBin._sort_for). A plain query keeps the answers it had, in the
+## order it had them, with any new ones below.
+static func matched(info: PartInfo, needles: PackedStringArray) -> int:
+	var own: String = info.own_words()
+	var by: int = BY_NAME
+	for needle: String in needles:
+		if own.contains(needle):
+			continue
+		if not info.keyword_words().contains(needle):
+			return NOT_MATCHED
+		by = BY_KEYWORDS
+	return by
+
+
+## A print, a stickered part or a sticker, from what LDraw calls it.
+##
+## The name and not the number. LDraw ends every print's name with
+## "Pattern", where a p in the number is also a part moulded in two
+## colours: 61406p06 is a plate with a tooth whose tip is sand green.
+## A Sticker Shortcut is a part with its stickers on; the Sticker
+## category is the stickers themselves. One of your own is filed under
+## My prints or My stickers.
+static func decor_of(name: String, category: String) -> int:
+	if category == "Sticker" or category == PartPrints.MY_STICKERS:
+		return PartInfo.STICKER
+	var lowered: String = name.to_lower()
+	var on: int = 0
+	# The plain contains first: every part is read at start-up, a third of
+	# them say either word, and a regular expression is the slow part.
+	if category == PartPrints.MY_PRINTS or (lowered.contains("patt")
+			and PATTERN_WORD.search(lowered) != null
+			and not lowered.contains("without pattern")):
+		on |= PartInfo.PRINTED
+	if category == "Sticker Shortcut" or (lowered.contains("sticker")
+			and STICKER_WORD.search(lowered) != null):
+		on |= PartInfo.STICKERED
+	return on
+
+
+static var PATTERN_WORD := RegEx.create_from_string("\\bpatt(ern|\\.)")
+static var STICKER_WORD := RegEx.create_from_string("\\bstickers?\\b")
+## The plain part's number in a print's or a stickered part's: 3623 in
+## 3623pt1, 3068b in 3068bd2j, 3626c in 3626cp01. Minifig._family's
+## pattern, with a sticker's d beside a print's p.
+static var DECORATED_NUMBER := RegEx.create_from_string(
+	"^([a-z]?\\d+[a-z]?(?:-f\\d)?)[pd][0-9a-z]+$")
+
+## Plain part -> its prints and stickered versions, by number.
+var _prints: Dictionary = {}
+
+
+## Which plain part each print is of, and what is printed on it.
+##
+## By number first, which most parts fail at once: this runs as the
+## catalogue loads, on the web too.
+func _index_prints() -> void:
+	_prints.clear()
+	for id: String in _ordered_ids:
+		var found: RegExMatch = DECORATED_NUMBER.search(id)
+		if found == null:
+			continue
+		var info: PartInfo = parts[id]
+		if (info.decor() & (PartInfo.PRINTED | PartInfo.STICKERED)) == 0 \
+				or info.is_redirect():
+			continue
+		var plain: PartInfo = parts.get(found.get_string(1))
+		if plain == null or plain.is_redirect() or plain.decor() != 0:
+			continue
+		info.print_of = plain.id
+		info._plain = plain
+		if not _prints.has(plain.id):
+			_prints[plain.id] = []
+		(_prints[plain.id] as Array).append(id)
+
+
+## The prints and stickered versions of a plain part: the prints first,
+## then the most used, then by number. 3623 has eleven prints.
+func prints_of(plain: String) -> Array[PartInfo]:
+	var out: Array[PartInfo] = []
+	for id: Variant in _prints.get(plain, []):
+		var info: PartInfo = parts.get(id)
+		if info != null and info.reachable:
+			out.append(info)
+	out.sort_custom(func(a: PartInfo, b: PartInfo) -> bool:
+		var a_print: bool = (a.decor() & PartInfo.PRINTED) != 0
+		var b_print: bool = (b.decor() & PartInfo.PRINTED) != 0
+		if a_print != b_print:
+			return a_print
+		if a.in_sets != b.in_sets:
+			return a.in_sets > b.in_sets
+		return a.id.naturalnocasecmp_to(b.id) < 0)
+	return out
 
 
 ## A size as people type it: "2x4", "1 x2", "2×4".
@@ -1135,16 +1332,7 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 
 	for id: String in _ordered_ids:
 		var info: PartInfo = parts[id]
-		if info.is_redirect():
-			continue
-		var haystack: String = (
-			info.name + " " + info.category + " " + info.id).to_lower()
-		var matched: bool = true
-		for needle: String in needles:
-			if not haystack.contains(needle):
-				matched = false
-				break
-		if matched:
+		if not info.is_redirect() and matched(info, needles) != NOT_MATCHED:
 			results.append(info)
 
 	# Ranked against the translated words too, or a query the library

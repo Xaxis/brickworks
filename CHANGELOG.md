@@ -15,6 +15,27 @@ whole cycle.
 
 ### Added
 
+- Sketch first: a first design can begin with three quick sketches to
+  choose between, so you see whether your brief was understood before a
+  full design is paid for. Each is the model's main masses only, under 150
+  parts, made in one go on a cheaper Claude, checked, and shown as a picture
+  in the chat with what the three cost. Choose one and it goes on the
+  baseplate, and the whole model is designed from it at the model and
+  effort you chose. It is ticked beside Build it; untick it to go straight
+  to a full design. Claude over the connector, My Claude and a session of
+  your own can sketch too: `submit_design` with `sketch: true` answers
+  with the three pictures, and `choose_sketch` picks one.
+- Export the model as a 3D file: File, Export, 3D model… writes a GLB (the
+  default), a glTF, an OBJ with its MTL, or an STL, at the model's real
+  size, for Blender and other 3D programs, AR viewers and 3D printers. In a
+  glTF every part is a node under a node for its sub-model, each shape is
+  kept once however many times it is used, and each colour is a material
+  with its alpha and its finish (chrome, metallic, pearl, rubber), so even
+  the 9,429-part Orthanc writes whole. The STL is one mesh in millimetres,
+  standing on Z, for a slicer. OBJ and STL hold every triangle of every
+  part, so they say how many they can take and point at GLB past it. In a
+  browser it is a download (an OBJ and its MTL come as one zip); on the
+  desktop it goes to Downloads. Claude can do it too, with export_model.
 - Claude can do what you do from the menus, over the connector, My Claude
   and a session of your own: choose the floor, edit the build steps, lay a
   hose, tube or chain between two connectors, swing a hinge or a
@@ -97,6 +118,14 @@ whole cycle.
   Import: LEGO® Digital Designer's .lxf.
 
 ### Changed
+
+- Part search finds a printed part by what is printed on it: "porsche
+  print", "control panel print", "wood grain print", or "3623 print" for
+  every print of the 1 x 3 plate; "sticker" finds parts with stickers on.
+  It reads a part's keywords too, so "porsche" finds the turbo printed on
+  a Porsche, and the figure builder finds a torso by its character. Plain
+  searches answer as before. Claude is told when a part it finds has
+  prints.
 
 - A BrickLink Studio .io opens in its own colours. It was read from the
   copy inside that uses BrickLink's colour numbers, so white came in blue.

@@ -529,6 +529,7 @@ func _on_clear() -> void:
 	# publishing it must not replace that one at its link.
 	if store != null:
 		store.share_id = ""
+		store.remixed_from = ""
 	cleared.emit()
 	if job != null:
 		job.end()

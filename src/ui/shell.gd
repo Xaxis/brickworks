@@ -83,11 +83,11 @@ const MENUS: Array = [
 	["Build", ["timeline", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "flex", "minifig", "mosaic",
-		"brickify", "part_maker",
+		"brickify", "part_maker", "print_part", "sticker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "reseat", "-", "connector", "settings"]],
+		"stability", "simulate", "reseat", "-", "connector", "settings"]],
 	["Help", ["keys", "tour", "-", "website", "about"]],
 ]
 
@@ -96,7 +96,7 @@ const SUBMENU_ID := 10000
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
-	"export": ["export_ldraw", "export_io", "export_picture", "export_bricklink",
+	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
@@ -404,6 +404,7 @@ const DOING: Dictionary = {
 	"fit": "Fitting the view…", "fit_model": "Fitting the model…",
 	"turn_left": "Turning the model…", "turn_right": "Turning the model…",
 	"stability": "Checking stability…", "reseat": "Seating parts on their studs…",
+	"simulate": "Reading the mechanism…",
 	"cut": "Cutting away…", "xray": "Seeing through…", "grid": "Laying the stud grid…",
 	"step_new": "Making a step…", "step_earlier": "Moving the step…",
 	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
@@ -543,6 +544,10 @@ func _define() -> void:
 		func() -> void: bar._on_export_chosen(0), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
 		func() -> void: bar._on_export_chosen(4), something)
+	# src/ui/exports.gd, src/parts/mesh_export.gd.
+	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
+		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
+		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
 		func() -> void: bar._on_export_chosen(1), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
@@ -768,6 +773,14 @@ func _define() -> void:
 	_add("part_maker", "Part maker…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
+	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
+	# menus too: every command a session can match is one the menus have.
+	_add("print_part", "Print on a part…", 0, func() -> void:
+		(app.get("_studio") as PrintStudio).print_part(builder.held_part), Callable(),
+		"Draw a print on the part selected, printed where it stands, or on the part in hand")
+	_add("sticker", "Put a sticker on…", 0, func() -> void:
+		(app.get("_studio") as PrintStudio).sticker(), Callable(),
+		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
 		app.call("_refresh_preview"))
@@ -793,6 +806,12 @@ func _define() -> void:
 	_ticked("measure", func() -> bool: return verbs.measure != null and verbs.measure.active)
 	_add("stability", "Check stability", 0, _check_stability, something,
 		"Find the joints that would give way, and select the parts on them")
+	# src/ui/simulate_panel.gd. Beside Check stability rather than with Pose
+	# under Build: both read the model as it is built and change none of it,
+	# where every pose a slider sets is a step to undo.
+	_add("simulate", "Simulate mechanism…", 0, func() -> void: app.call("open_simulate"),
+		something, "Turn a gear train from a crank or an axle: how fast each part goes, "
+			+ "each arm's period, what locks it, and whether it stays standing as it turns")
 	_add("reseat", "Seat parts on their studs", 0, _reseat, something,
 		"Find parts a fraction of a stud off their studs, and offer to seat them")
 	_add("connector", "Claude connector…", 0, func() -> void:
@@ -1007,20 +1026,122 @@ func _instructions() -> void:
 		app.call("_toggle_steps")
 
 
+## Tools, Check stability: the joints that would give way, selected, and
+## then the balance (Balance) — the margin said here in the status bar, the
+## support polygon and the centre of mass drawn on the floor (BalanceMark),
+## and the stud joints carrying most against their studs tinted — over every
+## pose the Pose panel's animation or its sliders reach.
 func _check_stability() -> void:
 	var stability: Stability = app.get("_stability")
+	stability.floor_ids = store.scenery
 	var report: Stability.Report = stability.check(world)
-	if report.risks.is_empty():
-		bar.say("it stands up — no joint is carrying more than it can hold")
-		return
-	builder.selection.clear()
-	for risk: Stability.Risk in report.risks:
-		if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
-			builder.selection[risk.brick_id] = true
-	builder.selection_changed.emit(builder.selection.size())
-	bar.say("%d weak joint%s, selected: %s" % [report.risks.size(),
-		"" if report.risks.size() == 1 else "s",
-		report.weakest.message if report.weakest != null else ""])
+	var said: String = "it stands up — no joint is carrying more than it can hold"
+	# The joints Stability finds weak, apart from tipping, which the
+	# balance says better.
+	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind != "tips")
+	if not weak.is_empty():
+		builder.selection.clear()
+		for risk: Stability.Risk in weak:
+			if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
+				builder.selection[risk.brick_id] = true
+		builder.selection_changed.emit(builder.selection.size())
+		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
+			(weak[0] as Stability.Risk).message]
+	bar.say(said)
+	var balance: Balance.Report = await weigh_balance()
+	if balance != null and not balance.empty:
+		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
+
+
+var _balance_mark: BalanceMark = null
+## The last balance weighed, for a probe.
+var balance_shown: Balance.Report = null
+
+
+## The balance readout while its marks are on the floor: what the status
+## bar's line says once the message has gone (StatusBar), so the words stay
+## as long as the picture of them does.
+func balance_line() -> String:
+	if _balance_mark == null or _balance_mark.report == null:
+		return ""
+	return _balance_mark.report.words()
+
+
+## Whether the model stands on what it stands on (Balance), over the poses
+## [method _poses_to_weigh] gives, and shown: on the floor, and as tints. On
+## a worker for a big model, and Working shown either way, since the sweep
+## alone can take more than a frame. A mechanism's cycle (SimulatePanel)
+## gives its own, [param given]; [param show] false weighs without drawing,
+## and [param tint] false leaves the parts' tints to the caller.
+func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) -> Balance.Report:
+	var job: Working.Job = Working.begin("Weighing the model…")
+	await job.shown()
+	var poses: Array = given if given is Array else _poses_to_weigh()
+	var judge := Balance.new()
+	judge.library = library
+	judge.floor_ids = store.scenery
+	var weighed: Array = [null]
+	if world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+		judge.lattice = builder.lattice
+		weighed[0] = judge.measure(world.bricks(), poses)
+	else:
+		judge.lattice = builder.lattice.copy_for_reading()
+		var still: BrickWorld = world.copy_for_reading()
+		library.begin_reading()
+		var task: int = WorkerThreadPool.add_task(func() -> void:
+			weighed[0] = judge.measure(still.bricks(), poses), false, "weigh the balance")
+		library.reading_in(task)
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		library.end_reading(task)
+		still.free()
+	job.end()
+	var report: Balance.Report = weighed[0]
+	if report == null or not show:
+		return report
+	if _balance_mark == null:
+		_balance_mark = BalanceMark.new()
+		_balance_mark.world = world
+		app.add_child(_balance_mark)
+	_balance_mark.show_report(report, _tints(report) if tint else {})
+	balance_shown = report
+	return report
+
+
+## From this many parts the weighing goes to a worker, as the status bar's
+## does (Main.WEIGH_OFF_THREAD_FROM).
+const WEIGH_OFF_THREAD_FROM := 600
+
+
+## The poses to weigh: the Pose panel's, while its joints still stand as it
+## set them — its animation's frames when it has keys, otherwise every joint
+## swung through its reach (Poser.sweep) — or the joints found afresh.
+func _poses_to_weigh() -> Array:
+	var panel: PosePanel = app.get("_pose")
+	var poser: Poser = panel.poser if panel != null else null
+	if poser != null and poser.world != null and not poser.joints.is_empty() and poser.holds():
+		return poser.sweep(panel.animation)
+	poser = Poser.new()
+	poser.world = world
+	poser.builder = builder
+	poser.library = library
+	poser.assemblies = assemblies
+	poser.find()
+	return poser.sweep()
+
+
+## The part past each stud joint carrying half its working load or more —
+## the one that would come off — amber at half and red at all of it.
+func _tints(report: Balance.Report) -> Dictionary:
+	var tints: Dictionary = {}
+	for one: Balance.JointLoad in report.joints:
+		if one.ratio < 0.5 or store.scenery.has(one.beyond):
+			continue
+		tints[one.beyond] = BalanceMark.CLOSE.lerp(BalanceMark.TIPS,
+			clampf((one.ratio - 0.5) * 2.0, 0.0, 1.0))
+	return tints
 
 
 func _reseat() -> void:

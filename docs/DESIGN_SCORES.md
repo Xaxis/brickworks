@@ -288,6 +288,113 @@ studs-up again, technique 2 in the second. Not progress on the bench yet; what
 moved is that sessions now follow the process (they read the guide, review,
 and work features), where before none worked a single feature.
 
+## 2026-10-13-d6: commit 0b72f7f, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 5.0 | 4.0 | 4.0 | 5.0 | 5.0 | 10.0 | **5.5** | 1,019 | 1 |
+| corner_shop | 1 | 4.0 | 4.0 | 4.0 | 3.0 | 4.0 | 10.0 | **4.8** | 786 | 1 |
+| speed_champions | 1 | 3.0 | 3.0 | 3.0 | 3.0 | 3.0 | 10.0 | **4.2** | 157 | 2 |
+| starfighter | 1 | 5.0 | 3.0 | 5.0 | 4.0 | 4.0 | 10.0 | **5.2** | 479 | 2 |
+| **suite mean** | 4 | **4.2** | **3.5** | **4.0** | **3.8** | **4.0** | **10.0** | **4.9** |  |  |
+
+Weakest across the suite: **surface** (3.5), **technique** (3.8), **colour** (4.0).
+
+**What d6 says: the app-driven feature pass (0b72f7f).** The app now works
+each feature with the design instead of telling it which feature is next. It
+looks up how real sets built the feature, lays the best piece that lays whole
+where the feature goes, and hands it over with a picture. The session settles
+it with `settle_feature`: accept it (moved, turned or recoloured first), ask
+for the next, reject it with a reason, or say it built the feature itself.
+Saving refuses until every feature is settled. The four subjects against the
+re-scored baseline and the earlier rounds (likeness / surface / colour /
+technique / creative):
+
+| subject | baseline (re-scored) | d5 | d5b | creative | d6 |
+|---|---|---|---|---|---|
+| barn_owl | 4 / 3.5 / 4 / 4 / 4 | 4 / 3 / 4 / 4 / 5 | 4 / 4 / 4 / 4 / 4 | — | 5 / 4 / 4 / **5** / 5 |
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3 | 3 / 4 / 3 / 3 / 3 | 3 / 3 / 3 / 2 / 3 | 3 / 3 / 4 / 3 / 4 | 3 / 3 / 3 / 3 / 3 |
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3 | — | 5 / 4 / 5 / 4 / 5 | 6 / 4 / 6 / 4 / 6 | 4 / 4 / 4 / 3 / 4 |
+| starfighter | 6 / 4 / 5 / 4 / 5 | — | — | — | 5 / 3 / 5 / 4 / 4 |
+| the four | 4.5 / 3.9 / 4.3 / 3.75 / 3.75 | | | | 4.2 / 3.5 / 4.0 / 3.75 / 4.0 |
+
+**Technique and surface did not move.** Over the four subjects, technique went
+from 3.75 to 3.75 and surface from 3.9 to 3.5, against a run-to-run spread of
+0.7 and 1.0. The owl is the only cell outside the noise: technique 5, the
+first owl at 5 in five runs. The judge credits the face disc laid sideways
+and the wing panels hung at an angle, and it is one run. The shop came out
+below its d5b and creative runs on every visual dimension. The car hand-built
+a boxy body again. Renders: `bench/results/2026-10-13-d6/*/1/views_*.png` in
+the main checkout.
+
+**What did change is behaviour.** Every session settled every feature: 20 of
+20, against 2 of 6 in d5b. None was refused at the save, because the walk
+handed each feature over before the save was reached. But not one of the 20
+pieces the app laid was accepted: 10 were rejected with a reason and 10 were
+marked "built". The reasons say why:
+- **Most were about placement.** The awning and the sign were laid "inside
+  the flat"; the starfighter's canopy "on the cockpit floor where nobody can
+  see it"; its exhausts "on top of the fuselage, not on the engines"; the
+  car's headlamps "on the door tops by the windscreen". Every session gave
+  every feature a position (x, y, z, facing), so the spots were right. What
+  went wrong was the seat: the fit took the free stud nearest the spot,
+  anywhere within seven studs of it. That turned out to be an interior
+  floor, the cockpit floor or the top of the fuselage.
+- **The rest were the wrong piece.** A robot lion's paw for an owl's talons,
+  "a generic racer tail in blue and white", two tan plates for a cornice.
+  The corpus has no owl or 911 of this scale.
+- **"Built" is an easy way out.** It needs only a sentence. The shop said it
+  had built its corner door, and the judge saw no corner door.
+
+What the judge still says is missing, in its words. Technique: "mostly plain
+stacked bricks" and "no SNOT detailing, no angled corner sub-assembly" (shop);
+"plain bricks and plates stacked studs-up … no brackets or hinged
+sub-assemblies shaping the wings, nose or roofline" (car). Surface: "the whole
+roof is a large expanse of exposed studs" (shop); "every surface is a flat slab
+meeting the next at a right angle" (car); "the body is a straight-sided box"
+(owl).
+
+## 2026-10-13-d6b: commit 8dc02d3, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| corner_shop | 1 | 5.0 | 5.0 | 5.0 | 4.0 | 4.0 | 10.0 | **5.5** | 934 | 1 |
+| speed_champions | 1 | 3.0 | 4.0 | 4.0 | 4.0 | 3.0 | 10.0 | **4.7** | 154 | 2 |
+| **suite mean** | 2 | **4.0** | **4.5** | **4.5** | **4.0** | **3.5** | **10.0** | **5.1** |  |  |
+
+Weakest across the suite: **creativity** (3.5), **likeness** (4.0), **technique** (4.0).
+
+**What d6b says: the follow-ups (8dc02d3).** The batch ran the car and the shop
+again with three changes. A shape can now lay its own wheels. "Built" takes
+the app's piece off. And a piece is seated only on the model's outside. Before
+and after (likeness / surface / colour / technique / creative):
+
+| subject | baseline (re-scored) | d6 | d6b |
+|---|---|---|---|
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3 (4.7) | 3 / 3 / 3 / 3 / 3 (4.2) | 3 / 4 / 4 / 4 / 3 (4.7) |
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3 (4.8) | 4 / 4 / 4 / 3 / 4 (4.8) | 5 / 5 / 5 / 4 / 4 (5.5) |
+
+The shop's surface 5 is its best so far, and technique 4 matches its best
+(d5b, creative). Each is one run, and a one-point move on one subject is
+inside the noise. The car is back to its baseline and no higher.
+
+What the car did is the finding. It said its body as a shape with `"wheels":
+[4, 15]`, and the shape stood: built, 177 and 208 parts, where every earlier
+shaped car floated or overlapped its tyres. Then it rebuilt the body by hand
+anyway: "the second try came out blockier", "the generated body was coming out
+lopsided". It kept the wheel units. The judge credits it with mudguards, a
+curved windscreen and a curved fastback slope, but still calls it "a generic
+boxy red car". So the shape is now buildable on wheels, but its look at this
+size (stepped flanks, studs round the cowl, the cabin) does not yet beat a
+hand build.
+
+The shop rejected two of the app's pieces, the sign and the awning, as "laid
+inside the upstairs flat" again. Seats on the outside were not enough: a ray
+out through a window, or up through a flat with no roof over it, reads as the
+outside. 83f152e also keeps a seat within four studs of the spot and a stud and
+a half of its face, but no batch has measured that yet. Not one of the app's
+pieces has been accepted in either batch.
+
 ## 2026-10-13-surface: commit 62376c9, rubric v1, judge claude-opus-5-5
 
 | subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |

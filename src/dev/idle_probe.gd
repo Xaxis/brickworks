@@ -26,7 +26,20 @@
 ##
 ## `-- --every-frame` runs the app as it was, drawing every frame, for the
 ## number to compare with.
+##
+## On a model of its own choosing, the house (71 parts), or with
+## `-- --model=res://models/castle.ldr` a big one (2,438): the app opens on
+## whatever was last on the baseplate, which other probes leave there, and
+## this passed or failed with it. A frame of the castle in software is a
+## second or more, so work a few frames long that redraws the window for
+## nothing is seconds of it there: the first part taken in hand drew a
+## dozen pictures of parts out of sight, the whole window each time, and
+## kept the castle drawing for 23 s with the pointer still (2026-10-13).
+## The build animation is checked on the house alone: on the castle a
+## frame there outlasts several of its steps.
 extends SceneTree
+
+const SMALL := "res://models/house.ldr"
 
 var _failures: int = 0
 var _finished: bool = false
@@ -37,6 +50,8 @@ var _builder: Builder
 var _playback: BuildPlayback
 var _pointer: Vector2 = Vector2.ZERO
 var _virtual: bool = OS.get_environment("XAUTHORITY").contains("xvfb-run")
+## The model opened first, and whether it is the small one.
+var _model: String = SMALL
 ## The graphics card's time for the last frame drawn, summed.
 var _gpu_ms: float = 0.0
 var _gpu_frames: int = 0
@@ -49,6 +64,9 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame
 	var every_frame: bool = OS.get_cmdline_user_args().has("--every-frame")
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--model="):
+			_model = arg.trim_prefix("--model=")
 	# The app as it is used. Main draws only what changed, and leaves a
 	# probe as it found it unless the probe asked first: most probes count
 	# on a frame drawn for every frame they wait.
@@ -79,7 +97,13 @@ func _run() -> void:
 			_gpu_ms += gpu
 			_gpu_frames += 1)
 
-	# The sample model, its parts and the bin's pictures, all arrived.
+	var placed: int = int(_main.call("_open", _model))
+	print("  %s, %d parts" % [_model.get_file(), placed])
+	if placed <= 0:
+		_check("%s opened" % _model, false)
+		_finish()
+		return
+	# The model, its parts and the bin's pictures, all arrived.
 	var library: PartLibrary = _main.get("_library")
 	var began: int = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - began < 120000:
@@ -118,7 +142,8 @@ func _run() -> void:
 	await _turns()
 	await _drags()
 	await _edits()
-	await _animates()
+	if _model == SMALL:
+		await _animates()
 	await _hovers()
 	await _lights_a_button()
 	await _draws_a_part()

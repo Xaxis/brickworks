@@ -341,7 +341,8 @@ func test(placement: Assistant.Placement, skip: Dictionary = {},
 					assistant._square_transform(mate, theirs)))
 				if not own.collides_boxes(square):
 					continue
-		if theirs != null and _joined(mesh, at, theirs, brick.transform):
+		if theirs != null and _joined(mesh, at, theirs, brick.transform, placement.part,
+				brick.part_id):
 			continue
 		if theirs != null and assistant._seated(placement.part, at, brick.part_id,
 				brick.transform):
@@ -439,11 +440,13 @@ static func _reaches_into(mesh: Lbm.PartMesh, at: Transform3D, into: BrickLattic
 	return false
 
 
-## Whether a pin, axle, bar or clip joins two parts.
+## Whether a pin, axle, bar or clip joins two parts, or they are gears in
+## mesh, which the check forgives as it does a joint (Joints.meshing).
 static func _joined(one: Lbm.PartMesh, one_at: Transform3D, two: Lbm.PartMesh,
-		two_at: Transform3D) -> bool:
-	var entries: Array = [[1, one_at, one], [2, two_at, two]]
-	return not Joints.pairs(entries).is_empty() or not Joints.rounds(entries).is_empty()
+		two_at: Transform3D, one_id: String = "", two_id: String = "") -> bool:
+	var entries: Array = [[1, one_at, one, one_id], [2, two_at, two, two_id]]
+	return not Joints.pairs(entries).is_empty() or not Joints.rounds(entries).is_empty() \
+		or not Joints.meshing(entries).is_empty()
 
 
 static func _grown(packed: PackedInt32Array, cells: int) -> PackedInt32Array:
