@@ -1931,7 +1931,10 @@ could take.
 
 ## How progress is judged
 
-Rerun a brief and measure the model, never read the diff.
+Rerun a brief and measure the model, never read the diff. Since 2026-10-12
+the measuring stick is the design bench: `tools/bench/run.py` designs ten
+fixed held-out subjects and a calibrated judge scores them; its tables, the
+run-to-run noise and the weakest dimensions are `docs/DESIGN_SCORES.md`.
 `tools/claude_run.sh NAME` builds the Orthanc brief (or `--brief`) with the
 Claude Code on this machine over MCP — the way the owner builds from
 claude.ai — off-screen on its own port, and prints `tools/style.py` against
