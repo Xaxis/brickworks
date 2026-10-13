@@ -105,6 +105,25 @@ func _initialize() -> void:
 			_fail("%s found nothing" % word)
 
 	print("")
+	print("  a size typed without its spaces")
+	# LDraw spells a size "2 x 4" and nearly everyone types "2x4". The
+	# words of a query are matched one by one, so "brick 2x4" looked for
+	# the text "2x4" and found nothing at all (2026-10-12). Typed either
+	# way, the answer is the same part.
+	for pair: Array in [["brick 2x4", "brick 2 x 4"], ["plate 1x2", "plate 1 x 2"],
+			["tile 2×2", "tile 2 x 2"], ["slope 45 2X1", "slope 45 2 x 1"],
+			["window 1x2x2", "window 1 x 2 x 2"]]:
+		var typed: Array[PartLibrary.PartInfo] = library.search(pair[0], 1)
+		var spaced: Array[PartLibrary.PartInfo] = library.search(pair[1], 1)
+		if typed.is_empty() or spaced.is_empty():
+			_fail("%s found %d, %s found %d" % [pair[0], typed.size(), pair[1], spaced.size()])
+			continue
+		if typed[0].id != spaced[0].id:
+			_fail("%s -> %s, but %s -> %s" % [pair[0], typed[0].id, pair[1], spaced[0].id])
+			continue
+		print("  ok    %-16s %s" % [pair[0], typed[0].name.strip_edges().substr(0, 44)])
+
+	print("")
 	print("  whole words, not the starts of longer ones")
 	# "bar" used to be answered with Barrel 4.5 x 4.5, because "barrel"
 	# begins with "bar".

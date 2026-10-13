@@ -78,6 +78,7 @@ func _run() -> void:
 	await _select_by()
 	await _hide_and_isolate()
 	await _the_shell()
+	await _palette_paints_the_selection()
 	await _text_fields_give_keys_back()
 	await _seat_an_old_model()
 	await _replace_and_history()
@@ -696,6 +697,62 @@ func _shift_click(at: Vector2) -> void:
 	await _frames(2)
 
 
+## A colour clicked in the palette with a part selected paints it, as in
+## Studio. It only changed the colour in hand, and the brick a person had
+## selected stayed red (brickworks.diy at dd5c10c, 2026-10-12).
+func _palette_paints_the_selection() -> void:
+	print("  a colour clicked in the palette")
+	var bin: PartsBin = _main.get("_bin")
+	var verbs: EditVerbs = _main.get("_verbs")
+	await _key(KEY_ESCAPE)
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_put("3001", 4, Vector3(60, 24, 20))
+	await _frames(3)
+	var picked: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	var other: int = _bricks_near(Vector3(60, 0, 20))[0]
+	await _show_column("_bin_dock")
+	await _frames(10)
+	# Two swatches in sight in the palette's window, the way a person sees
+	# them: neither red nor the colour in hand.
+	var window: Rect2 = bin._palette_scroll.get_global_rect()
+	var seen: Array[Control] = []
+	for code: int in bin._swatches:
+		var here: Control = bin._swatches[code]
+		if code != 4 and code != bin.selected_color() and here.is_visible_in_tree() \
+				and window.encloses(here.get_global_rect()):
+			seen.append(here)
+	if seen.size() < 2:
+		_check("two swatches are in sight in the palette (%d)" % seen.size(), false)
+		return
+	var swatch: Control = seen[0]
+	var colour: int = int(swatch.get_meta("code"))
+	_select_only([picked])
+	await _click(swatch.get_global_rect().get_center())
+	_check("a colour clicked with a part selected paints it (%d, wanted %d)"
+		% [_world.get_brick(picked).color_code, colour],
+		_world.get_brick(picked).color_code == colour)
+	_check("...and nothing else (%d)" % _world.get_brick(other).color_code,
+		_world.get_brick(other).color_code == 4)
+	_check("...and it is the colour in hand now", _builder.held_color == colour)
+	await _key(KEY_Z, true)
+	_check("one undo puts its colour back (%d)" % _world.get_brick(picked).color_code,
+		_world.get_brick(picked).color_code == 4)
+	# With a part in hand the colour is for what goes down next, not a paint.
+	_select_only([picked])
+	await _key(KEY_Q)
+	_check("Q takes a part into hand, the selection still there (%s, %d selected)"
+		% [verbs.mode, _builder.selection.size()],
+		verbs.mode == "place" and _builder.selection.has(picked))
+	var next: int = int(seen[1].get_meta("code"))
+	await _click(seen[1].get_global_rect().get_center())
+	_check("...and a colour clicked then is the part's in hand (%d), painting nothing (%d)"
+		% [_builder.held_color, _world.get_brick(picked).color_code],
+		_builder.held_color == next and _world.get_brick(picked).color_code == 4)
+	await _key(KEY_ESCAPE)
+	_builder.clear_selection()
+
+
 ## The owner: "When the user names a build (renames it), the text input
 ## never loses focus and can't control the CAD controls." Each way out of
 ## a field, and then a view key that must act at once.
@@ -718,6 +775,10 @@ func _text_fields_give_keys_back() -> void:
 		await process_frame
 	_check("Enter ends the typing (%s)" % field.text, not field.has_focus()
 		and field.text.contains("Renamed"))
+	# The click took the whole name: it was "UntitledRenamed", which the
+	# check above passed (brickworks.diy at dd5c10c, 2026-10-12).
+	_check("...and what was typed is the name, not added to the old one (%s)" % field.text,
+		field.text == "Renamed")
 	await _key(KEY_1)
 	_check("...and 1 looks from the front at once", is_zero_approx(_camera._target_yaw)
 		and is_zero_approx(_camera._target_pitch))
@@ -930,6 +991,22 @@ func _the_parts_shelf() -> void:
 		return id.begins_with("3023") and not id.substr(4, 1).is_valid_int())
 	_check("searching 3023 lists the 3023 family first, not 30236 or the spider (%s)"
 		% str(first), first.size() >= 3 and first[0] == "3023b" and family)
+	# A size typed without its spaces, into the field, key by key. LDraw
+	# says "Brick  2 x  4" and the words were matched as typed, so
+	# "brick 2x4" found nothing (brickworks.diy at dd5c10c, 2026-10-12);
+	# and the builder's words the assistant's search knows ("cheese
+	# slope") the bin did not.
+	for asked: Array in [["brick 2x4", "3001"], ["plate 2x8", "3034"],
+			["2X4 brick", "3001"], ["cheese slope", "54200"]]:
+		await _click(bin._search.get_global_rect().get_center())
+		await _key(KEY_A, true)
+		await _type(str(asked[0]))
+		await create_timer(0.4).timeout
+		await _frames(3)
+		var led: String = bin._results[0].id if not bin._results.is_empty() else "nothing"
+		_check("typing \"%s\" in the search leads with %s (%s, %d found)"
+			% [asked[0], asked[1], led, bin._results.size()], led == str(asked[1]))
+		await _key(KEY_ESCAPE)
 	bin._search.text = ""
 	bin._run_search("")
 	PartShelf.clear()

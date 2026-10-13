@@ -1075,12 +1075,21 @@ const ALSO_KNOWN_AS: Dictionary = {
 }
 
 
+## A size as people type it: "2x4", "1 x2", "2×4".
+static var SIZE_TYPED := RegEx.create_from_string("(\\d)\\s*[x×]\\s*(?=\\d)")
+
+
 ## The query in the library's own words.
 ##
 ## Longest phrase first, so "cheese slope" is not taken apart by the
 ## entry for "cheese" before it has been recognised.
+##
+## And a size spelled the way LDraw spells it, "2 x 4". Nearly everyone
+## types "2x4", and the words of a query are matched one by one, so
+## "brick 2x4" looked for the text "2x4" in "Brick  2 x  4" and the bin
+## said nothing matches (brickworks.diy at dd5c10c, 2026-10-12).
 static func in_ldraw_words(query: String) -> String:
-	var text: String = " %s " % query.strip_edges().to_lower()
+	var text: String = " %s " % SIZE_TYPED.sub(query.strip_edges().to_lower(), "$1 x ", true)
 	var phrases: Array = ALSO_KNOWN_AS.keys()
 	phrases.sort_custom(func(a: String, b: String) -> bool:
 		return a.length() > b.length())

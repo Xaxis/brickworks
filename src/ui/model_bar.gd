@@ -119,6 +119,11 @@ func _build() -> void:
 		model_named.emit(model_name()))
 	# Escape puts back the name it had (FocusGuard).
 	_name.set_meta("revert_on_escape", true)
+	# A click takes the whole name, so what is typed replaces it. The caret
+	# went to the end, and a person who clicked "Untitled" and typed My
+	# House had a model called "UntitledMy House" (brickworks.diy at
+	# dd5c10c, 2026-10-12). A second click places the caret.
+	_name.select_all_on_focus = true
 	row.add_child(_name)
 
 	var push := Control.new()
