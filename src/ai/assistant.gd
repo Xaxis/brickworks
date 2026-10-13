@@ -1763,6 +1763,8 @@ func _detail_next(also: Array = []) -> bool:
 				+ TURNS_PER_ASSEMBLY * (_to_detail.size() + 1))
 		_detailing = one
 		_detail_turns = 0
+		# A settle said during an assembly's turn is not this feature's.
+		_feature_closed = false
 		_sent_back = false
 		_repairs = 0
 		_parts_before_pass = _parts_in(_bricks_inside({}))
@@ -8462,7 +8464,8 @@ const SETTLE_HOW := """Settle it with settle_feature {"feature": "{name}", \
 "verdict": ...}: "accept" keeps it (with move {dx, dy, dz} in studs and \
 plates, turn or recolor {"15": 1} to adjust it first); "next" takes it off \
 and lays the next-best piece; "reject" with a reason takes it off, to build \
-it your own way or leave it out; "built" if you built it yourself. A \
+it your own way or leave it out; "built" if you built it yourself (the \
+app's piece comes off). A \
 feature is parts with depth, never a tile painted on a panel. Saving waits \
 until every feature is settled."""
 
@@ -8601,6 +8604,10 @@ func _settle_feature(args: Dictionary) -> Variant:
 				one = FeaturePass.Proposal.new()
 				one.feature = name
 				features.proposals[name.to_lower()] = one
+			# Built its own way: the app's piece is not it. A session that said
+			# the proposed piece "sat at the neck" and settled built left it there.
+			elif not await features.take_off(one):
+				return "Could not take the %s's piece off; settle it another way." % name
 			one.verdict = "built"
 			one.reason = reason
 		_:
@@ -13337,17 +13344,22 @@ alongside the bricks you write by hand:
            A body that is not a box is one object too, said as the \
            solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
            "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
-           "width": 10, "round": 1.5, "profile": [[0, 5], [2, 7], [9, 8], \
-           [24, 8], [26, 7]]}}, {"loft": {"along": "x", "centre": 5, \
-           "sections": [{"at": 8, "width": 9, "height": 1, "bottom": 7}, \
-           {"at": 12, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
-           {"at": 18, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
-           {"at": 23, "width": 9, "height": 1, "bottom": 7}]}}], "cuts": \
-           [{"revolve": {"axis": "z", "centre": [5, 1.5, -1], "profile": \
-           [[0, 2], [12, 2]]}}, {"revolve": {"axis": "z", "centre": [20, \
-           1.5, -1], "profile": [[0, 2], [12, 2]]}}]} is a car's body: \
-           its side profile pulled across ten studs with its shoulders \
-           rounded, a cabin lofted on it, two wheel arches cut out. It is \
+           "width": 8, "round": 1.5, "profile": [[0, 7], [3, 9], [8, 10], \
+           [20, 10], [21, 9]], "under": [[0, 2], [21, 2]]}}, {"loft": \
+           {"along": "x", "centre": 4, "color": 40, "sections": [{"at": 7, \
+           "width": 7, "height": 1, "bottom": 9.5}, {"at": 10, "width": 6, \
+           "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 15, "width": \
+           6, "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 19, \
+           "width": 7, "height": 1, "bottom": 9.5}]}}], "wheels": [4, 16]} \
+           is a Speed Champions car on its wheels: its side profile pulled \
+           across eight studs with its shoulders rounded and two plates of \
+           ground under it, a cabin lofted on it, and at x 4 and 16 an \
+           axle each — wheels and tyres, a Technic axle through Technic \
+           bricks, the body cut clear of each wheel's box and standing on \
+           the bricks — so it is one piece on its wheels (269 parts). \
+           Never raise a shape over nothing to make room for wheels you \
+           add later: it floats, and a round arch cut leaves a tyre's \
+           corners in the body. It is \
            laid as a builder lays one: bricks and plates inside; on the \
            surface, wherever it falls from one stud to the next, the \
            slope or curved slope whose fall is nearest; inverted slopes \
@@ -15806,8 +15818,16 @@ func _tools() -> Array:
 				+ "with its own \"color\" if it wants one (the last that holds a stud "
 				+ "gives it its colour). Studs across and along, plates up, from at."},
 			"cuts": {"type": "array", "items": {"type": "object"}, "description":
-				"shape: solids taken away, said the same way: a wheel arch (a revolve "
-				+ "along z), a cockpit, a doorway."},
+				"shape: solids taken away, said the same way: a cockpit, a doorway; "
+				+ "\"keep\": true keeps the cut clear of every part."},
+			"wheels": {"type": "array", "items": {"type": "number"}, "description":
+				"shape: a car on its own wheels — studs along x of each axle's middle, "
+				+ "under a body laid along x 6, 8, 10 or 12 studs across. Each axle is "
+				+ "a wheel and tyre each side on a Technic axle through Technic bricks, "
+				+ "the body cut clear of each wheel's box and standing on the bricks "
+				+ "(its underside 5 plates up or lower over them), so the car is one "
+				+ "piece on its wheels. wheel_color is the rims' colour."},
+			"wheel_color": {"type": "integer", "description": "shape: the rims' colour"},
 			"loft": {"type": "object", "description":
 				"shape: {\"along\": \"x\" or \"z\", \"centre\": studs across "
 				+ "(half the widest unless said), \"sections\": [{\"at\": studs along, "
@@ -16286,7 +16306,8 @@ func _tools() -> Array:
 							+ "by move, turn or recolor first, if given); next: "
 							+ "take it off and lay the next-best piece; reject: "
 							+ "take it off, with a reason, and build it your own "
-							+ "way or leave it out; built: you built it yourself"},
+							+ "way or leave it out; built: you built it yourself, "
+								+ "and the app's piece comes off (accept keeps it)"},
 					"reason": {"type": "string", "description":
 						"a sentence: what is wrong with the piece here (to "
 						+ "reject), or how you built it (built)"},

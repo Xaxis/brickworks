@@ -194,7 +194,7 @@
                 "type": "number"
               },
               "cuts": {
-                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "description": "shape: solids taken away, said the same way: a cockpit, a doorway; \"keep\": true keeps the cut clear of every part.",
                 "items": {
                   "type": "object"
                 },
@@ -487,6 +487,17 @@
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
               },
+              "wheel_color": {
+                "description": "shape: the rims' colour",
+                "type": "integer"
+              },
+              "wheels": {
+                "description": "shape: a car on its own wheels \u2014 studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "window_color": {
                 "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",
                 "type": "integer"
@@ -739,7 +750,7 @@
           "type": "integer"
         },
         "verdict": {
-          "description": "accept: keep the app's piece (adjusted by move, turn or recolor first, if given); next: take it off and lay the next-best piece; reject: take it off, with a reason, and build it your own way or leave it out; built: you built it yourself",
+          "description": "accept: keep the app's piece (adjusted by move, turn or recolor first, if given); next: take it off and lay the next-best piece; reject: take it off, with a reason, and build it your own way or leave it out; built: you built it yourself, and the app's piece comes off (accept keeps it)",
           "enum": [
             "accept",
             "next",
@@ -1665,7 +1676,7 @@
                 "type": "number"
               },
               "cuts": {
-                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "description": "shape: solids taken away, said the same way: a cockpit, a doorway; \"keep\": true keeps the cut clear of every part.",
                 "items": {
                   "type": "object"
                 },
@@ -1957,6 +1968,17 @@
               "wall": {
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
+              },
+              "wheel_color": {
+                "description": "shape: the rims' colour",
+                "type": "integer"
+              },
+              "wheels": {
+                "description": "shape: a car on its own wheels \u2014 studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
               },
               "window_color": {
                 "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",

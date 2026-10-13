@@ -193,8 +193,14 @@ func _run() -> void:
 		"verdict": "reject", "reason": "no"})
 	_ok(_blocks_text(short).begins_with("Say why in a sentence"),
 		"a rejection without a reason is not taken")
+	var beak_piece: Array[int] = assistant.feature_pass().proposal("beak").ids.duplicate()
 	var done: Variant = await assistant.use_tool("settle_feature", {"feature": "beak",
-		"verdict": "reject", "reason": "the face key laid a beak already"})
+		"verdict": "built", "reason": "the face key laid a beak already"})
+	var gone: bool = not beak_piece.is_empty()
+	for id: int in beak_piece:
+		gone = gone and world.get_brick(id) == null
+	_ok(gone, "settled as built, the app's piece for the beak comes off (%d parts)"
+		% beak_piece.size())
 	_ok(_blocks_text(done).contains("Every feature is settled")
 		and _blocks_text(done).contains("review_model {\"assembly\": \"owl\"}"),
 		"the last one settled says what is next: %s" % _blocks_text(done).get_slice("\n\n", 2))
@@ -204,7 +210,7 @@ func _run() -> void:
 	var whole: Variant = await assistant.review("")
 	_ok(_blocks_text(whole).contains("eyes: real piece %s \"%s\" laid by the app, adjusted"
 		% [second.piece["id"], second.piece["name"]]) and _blocks_text(whole).contains(
-		"beak: the app's piece rejected: the face key"),
+		"beak: built by the design: the face key"),
 		"the whole review lists what each feature came to")
 
 	print("")

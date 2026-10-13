@@ -1053,6 +1053,18 @@ fixing what it got wrong.
   now samples only where a part is (`_lopsided`): a pair of wings, each the
   other's reflection, was called lopsided for the empty half of each box.
   Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  A car on its own wheels (`"wheels": [x, ...]`, `Shapes._wheels`, 2026-10-13):
+  every bench car that tried a shaped body gave it up — raised over nothing it
+  floated (126-183 parts), and with wheels added as bricks its slopes ran into
+  the tyres' boxes (a round arch cut leaves the box's corners), so it was built
+  by hand, studs up. Each axle is the d5b car's proven unit — 18976c01 each
+  side, a row of 32064a Technic bricks, an axle of the body's width less two
+  (`AXLES`: 6, 8, 10 or 12 across) — with keep box cuts round each wheel's whole
+  box and round the bricks, so the body over them stands on the bricks' studs
+  from five plates up; a body too wide or raised off the bricks is refused
+  saying so. `shapes_probe` ("a car on the shape's own wheels"): the guide's
+  example lays 269 parts, one piece, buildable, four wheels; 11 across and a
+  raised underside are refused with why.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
