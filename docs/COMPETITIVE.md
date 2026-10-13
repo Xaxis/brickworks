@@ -601,6 +601,13 @@ small WebP the app makes beside the big picture, so a page of them is light on
 a phone. A model this one came from is named only while it is listed, so a
 listed remix no longer makes public a link its owner only sent to some people.
 
+**People, 2026-10-13** (`supabase/people.sql`, `api/people.js`). Profiles at
+`/u/<handle>` by a name the builder chooses, listing only what they listed and
+are credited for; likes counted on each model; favourites, private; and
+collections, public (a page at `/c/<id>`) or private, gathered from any
+model's page. A visitor signs in where they are, with the app's own emailed
+code, and `/profile` is where they look after all of it.
+
 **Spec.**
 - `supabase/shared_models.sql` gets `listed boolean default false`, granted
   to the visitor's key.

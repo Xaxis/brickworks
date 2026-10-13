@@ -271,6 +271,7 @@ export function cardOf(origin, row) {
     kind: row.kind ?? null, tags: row.tags || [], licence: row.licence ?? null,
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
+    by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,
   };

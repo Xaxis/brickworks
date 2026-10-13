@@ -147,7 +147,10 @@ fi
 # /api/share is a model shared by link (the same keys, and the publishable
 # one for a visitor's read): /m/<id>, its pictures (.png, and .webp for the
 # gallery's cards) and its card are mapped
-# onto it. The viewer is /app?view=<id>: /app is the app's page itself,
+# onto it. /api/people is who shares them and what is done with them
+# (supabase/people.sql): profiles at /u/<handle>, collections at /c/<id>,
+# likes and favourites; the site's header and footer beside it too, as
+# _site.html. The viewer is /app?view=<id>: /app is the app's page itself,
 # query and all, so it needs no route of its own. Vercel's cron calls /api/share/sweep at
 # 04:17 UTC every day, with CRON_SECRET (set on the project, and in .env
 # for share_probe): it takes away the files of models whose row went with
@@ -175,8 +178,10 @@ for handler in api/*.js; do
   # page of the site and changes when the site's do; and which parts are
   # Technic and which make a model move, from the catalogue, counted when a
   # model is published.
-  if [ "$route" = share ]; then
+  if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
+  fi
+  if [ "$route" = share ]; then
     if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" | sed 's/^/deploy: /'; then
       echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
     fi
@@ -334,6 +339,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
+    { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
+    { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",

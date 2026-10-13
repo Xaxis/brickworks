@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!--
+  Your profile, at /profile (and /profile.html, which redirects here): the
+  name the gallery shows for you, chosen by you and never made from your
+  address; your favourites; and your collections, each public or private.
+
+  Signed in with the app's own sign-in in this browser (web/account.js):
+  a code sent to your email, no password, the same session the app keeps.
+  Everything comes from /api/people (api/people.js), and profile.js puts
+  every word on the page as text. No inline script: the site's security
+  policy allows none it has not hashed. The look is /site.css and
+  /directory.css; what is below is only what this page has.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your profile · Brickworks</title>
+<meta name="description" content="Your name in the Brickworks gallery, the models you keep to come back to, and your collections of them.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://brickworks.diy/profile">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Your profile in the Brickworks gallery">
+<meta property="og:description" content="Your name in the gallery, your favourites and your collections.">
+<meta property="og:url" content="https://brickworks.diy/profile">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your profile in the Brickworks gallery">
+<meta name="twitter:description" content="Your name in the gallery, your favourites and your collections.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/changelog">Changelog</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/changelog">Changelog</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap person mine">
+		<p class="eyebrow">Your profile</p>
+		<h1 id="title">You, in the gallery</h1>
+
+		<section id="signed-out" hidden>
+			<p class="lede">Sign in to choose the name the gallery shows for you, and to see
+				your favourites and collections. We email you a code: no password.</p>
+			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
+		</section>
+		<p class="state" id="loading">Looking for your sign-in…</p>
+
+		<section id="signed-in" hidden>
+			<p class="handle" id="who"></p>
+			<form class="profile-form" id="profile-form">
+				<h2>How the gallery shows you</h2>
+				<p class="note">Your models are on your profile when you list them and tick
+					<b>Show who made it</b>; a model shared without a name stays without one.</p>
+				<label>Name <input id="name" maxlength="40" autocomplete="nickname" required
+					placeholder="What you like to be called here"></label>
+				<label>Handle <span class="hint">brickworks.diy/u/<b id="handle-shown">…</b></span>
+					<input id="handle" maxlength="24" autocomplete="username" required
+						pattern="[a-z0-9][a-z0-9\-]{1,22}[a-z0-9]" placeholder="3 to 24 letters, digits and hyphens"></label>
+				<label>About you <textarea id="bio" maxlength="300" rows="3"
+					placeholder="What you build, a few words. Optional."></textarea></label>
+				<div class="actions">
+					<button class="cta" type="submit" id="save">Save</button>
+					<a class="cta ghost" id="view" href="/gallery" hidden>See your profile</a>
+					<button class="cta ghost" type="button" id="sign-out">Sign out</button>
+				</div>
+				<p class="said" id="profile-said" role="status"></p>
+			</form>
+
+			<section aria-labelledby="favourites-h">
+				<h2 id="favourites-h">Your favourites</h2>
+				<p class="note">Only you see these. Press Favourite on any model's page to keep it here.</p>
+				<div class="models" id="favourites"></div>
+				<p class="note" id="no-favourites" hidden>Nothing yet.</p>
+			</section>
+
+			<section aria-labelledby="lists-h">
+				<h2 id="lists-h">Your collections</h2>
+				<p class="note">Named lists of models. A public one has a page of its own and is on your
+					profile; a private one only you see. Add a model to one from its page.</p>
+				<form class="collect-new" id="new-list">
+					<label class="visually-hidden" for="new-name">A new collection's name</label>
+					<input id="new-name" maxlength="80" placeholder="A new collection's name">
+					<button class="cta ghost" type="submit">Make it</button>
+				</form>
+				<div class="lists-mine" id="lists"></div>
+				<p class="said" id="lists-said" role="status"></p>
+			</section>
+		</section>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Design it here. Build it on your table. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script src="/profile.js" type="module"></script>
+</body>
+</html>

@@ -581,6 +581,7 @@ ${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url }
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/share-page.js" defer></script>
+<script src="/model-page.js" type="module"></script>
 </head>
 <body data-viewer="${escapeHtml(`/app?view=${id}`)}" data-id="${id}">
 <a class="skip" href="#main">Skip to content</a>
@@ -596,6 +597,7 @@ ${header}
     <div class="side">
       <h1>${escapeHtml(model.name)}</h1>
       <p class="by">${escapeHtml(describe(model))}</p>
+      ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a></p>` : ""}
       ${fromLine}
       <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>
       <p class="counts"><span data-count="views">${count(model.views, "view")}</span>
@@ -604,6 +606,16 @@ ${header}
       <div class="actions">
         <a class="cta" href="/app?view=${id}">View in 3D</a>
         <a class="cta ghost" href="/app?copy=${id}">Open in Brickworks</a>
+      </div>
+      <div class="marks" id="marks" data-id="${id}" hidden>
+        <button type="button" class="mark" data-mark="like" aria-pressed="false">Like</button>
+        <button type="button" class="mark" data-mark="favourite" aria-pressed="false">Favourite</button>
+        <details class="collect"><summary>Add to a collection</summary>
+          <div class="collect-panel"><div class="collect-list"></div>
+            <form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>
+              <input id="new-list" maxlength="80" placeholder="A new collection">
+              <button class="cta ghost small" type="submit">Make it</button></form></div></details>
+        <p class="said" role="status"></p>
       </div>
       <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
         list, with no account. Open in Brickworks copies it into your own models, to change and make yours.</p>
@@ -691,17 +703,28 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 </html>`;
 }
 
-// What the pages may load and where they may send anything: themselves
-// only. The site's stylesheet and the page's own; the page's one script
-// (web/share-page.js), which counts a view on this same origin.
-const PAGE_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
-  + "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+// What the pages may load and where they may send anything: themselves,
+// and the sign-in service. The site's stylesheet and the page's own; the
+// page's scripts (web/share-page.js counts a view on this same origin,
+// web/model-page.js likes and keeps it for somebody signed in).
+/// Its policy, with the sign-in service (SUPABASE_URL) beside itself for
+/// a person who likes it, keeps it or puts it in a list (web/account.js).
+function pageCsp() {
+  let signIn = "";
+  try {
+    signIn = new URL(process.env.SUPABASE_URL || "").origin;
+  } catch {
+    signIn = "";
+  }
+  return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
+    + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+}
 const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors *";
 
 function html(response, status, body, { embed = false } = {}) {
   response.setHeader("Content-Type", "text/html; charset=utf-8");
-  response.setHeader("Content-Security-Policy", embed ? EMBED_CSP : PAGE_CSP);
+  response.setHeader("Content-Security-Policy", embed ? EMBED_CSP : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   // Never kept by the CDN, so a model taken down is gone at once.

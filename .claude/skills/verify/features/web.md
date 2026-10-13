@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow -->
 
 ## Sub-features
 
@@ -269,6 +269,60 @@ plan with Claude as the client.
   is not a robot's, a link preview's, a command line's or a headless
   browser's; it answers `{counted}` and nothing else. `/m/<id>.webp`
   (`op=thumb`) is the small picture.
+- `GET/POST /api/people` (`api/people.js`, `supabase/people.sql`, applied to
+  the live project 2026-10-13 with `tools/apply_sql.mjs`, dry-run first; the
+  first dry run found `public.profiles` already there — schema.sql's, a row
+  per account with its address — so the profile is `public.people` and that
+  table was left exactly as it was): tables `people` (account, handle 3 to 24
+  of a-z 0-9 and single hyphens, name 1 to 40, bio up to 300),
+  `model_likes`, `model_favourites`, `model_collections` (a 10-character id,
+  name, description, public), `model_collection_items`; all closed to the
+  publishable key; a trigger keeping `model_stats.likes`; `directory_card`
+  answering `by` {handle, name} for a credited model whose sharer has a
+  profile; `directory_models` taking `owner` (listed and credited only),
+  `collection`, `favourites`, `private` (set by the API for its owner's own
+  lists only, letting in models shared by link) and sort `added`;
+  `profile_page`, `collection_page`, `collection_count`. Ops: `me`
+  (session: profile or null — nothing is made from the address — and lists
+  with counts), `profile` POST (handle lower-cased and checked, a few kept
+  for the site 409, taken 409, name cleaned, bio cleaned), `profile` GET by
+  handle (name, bio, since, models_count, likes, public lists, a page of
+  models; never the account), `page` (`/u/<handle>`), `marks` (session:
+  liked, favourite, each list and whether it has the model), `like` and
+  `favourite` (session, `{on}` true or false else 400, a link that never was
+  404, idempotent; a like answers the count), `favourites` (session, sort
+  added), `collection` POST (made or changed, 50 a person), `uncollection`,
+  `collect` (500 a list), `collection` GET (a private one answers anybody
+  else 404, as none; anybody sees only listed models in a public one, its
+  owner every published one), `list_page` (`/c/<id>`, public only). HEAD as
+  GET. Pages made with the site's header and footer (`siteChrome`, `_site.html`
+  beside the function too), cards server-made (`cardHtml`), no script.
+- `profile and collection pages`: `/u/<handle>` — the name, @handle, since
+  when, about them, how many models in the gallery and likes, public
+  collections, and the models they listed and are credited for (never one
+  shared without a name); `/c/<id>` — a public collection's name, "N models,
+  collected by <their profile>", its description and its listed models in the
+  order they were put there. Every word escaped; og tags and a canonical link.
+- `your profile page` (`web/profile.html`, `web/profile.js`): `/profile`,
+  noindex. Signed out: Sign in (the dialog of `site sign-in`). Signed in: the
+  address it is for (only they see it), the name, handle and about-you form
+  (empty for a new account), Save and See your profile; favourites as cards
+  with Let it go; collections — a name to make a new one, each with its name,
+  Public, Save, Delete, Its page when public, and what is in it with Take it
+  out.
+- `like and keep a model` (`web/model-page.js`): on `/m/<id>`, hidden
+  until the script runs: Like (aria-pressed, the count beside the views
+  updated), Favourite, Add to a collection (each list ticked or not, a new
+  one named and made with the model in it). Signed out, each opens the
+  sign-in dialog first and goes on once signed in. The page's policy lets it
+  reach the sign-in service (`SUPABASE_URL`) as well as itself.
+- `site sign-in` (`web/account.js`): the app's own session in this browser
+  (`localStorage` `brickworks.session`), renewed when an access token kept for
+  the tab (`sessionStorage`) has run out and put back for the app; a dialog
+  asking for an address, sending a code (`/api/otp`), and redeeming it with
+  Supabase — so signing in on the site signs the app in, as
+  `web/authorize.js` does; `call()` for the site's API with the token.
+- `people browser flow` (`tools/web/people_flow.mjs`): below.
 - `directory` (`api/_directory.js`): what the list, a model's page and
   publishing share — `KINDS` (the same ids, in the same order, as
   `src/net/model_kinds.gd`), `LICENCES`, `SIZES`, `SORTS`; the edge's
@@ -863,6 +917,48 @@ owner's list with what each says; with the publishable key, the new columns
 readable, `search` not, `model_stats` and `model_views` closed, and the
 three functions not callable. 201 checks with `--master`, about two minutes
 locally (2026-10-13).
+
+People's part of it (since 2026-10-13, one more throwaway account): who-am-I
+signed out 401, a new account with no profile and no lists; eight refusals
+of a profile (handles of two letters, a symbol, a trailing hyphen, two
+hyphens together, 25 letters; one kept for the site 409; no name; about-you
+over 300), signed out 401; made with its handle lower-cased and its name and
+about-you cleaned; somebody else taking it 409; the profile listing only the
+listed, credited model, never one shared without a name or by link only, and
+never the account; `/u/<handle>` with the name escaped, that card alone, a
+canonical link and the site's header; an unknown handle 404; the credited
+model's page "Shared by" a link to it and the nameless one's not; a card's
+`by`; likes (signed out 401, `on: "yes"` 400, an unknown link 404, 1, again
+still 1, another account 2, unliked 1, the page "1 like", most liked in
+order, marks); a model shared by link kept in favourites, in nobody else's,
+signed out 401; a private list (made, two models in it, somebody else
+changing it 404, asking for it 404, no page) seen whole by its owner, made
+public showing anybody only the listed model, its page escaped with that card
+only, marks naming it, somebody else deleting it 404, its owner deleting it
+and its page gone; the five tables closed to the publishable key,
+`profile_page` not callable, and schema.sql's `profiles` as closed as
+before. 254 checks with `--master`, about two minutes locally.
+
+The pages and actions in a real browser, on a deployment (two throwaway
+accounts, deleted at the end with everything of theirs; one sign-in code sent
+to a Resend test address that delivers nowhere):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people
+```
+
+Proves it when it ends "people can sign in from a model, like it, keep it,
+collect it and be found by name": see the steps in its header — a signed-out
+visitor's Like opening the dialog (`1_sign_in_dialog.png`), the code minted
+on the test side typed in, the like going through with the count, Favourite,
+a collection made with the house in it (`2_model_marked-laptop.png`);
+`/profile` saying the address and offering no name, a name and handle saved,
+the house in favourites, the collection made public with its page
+(`3_profile-laptop.png`); `/c/<id>` and `/u/<owner>` signed out
+(`4_collection-laptop.png`, `5_profile_public-laptop.png`) and `/u/<visitor>`
+with the public list; and the model page (with the collection panel open),
+`/profile`, `/c/<id>` and `/u/<owner>` at 390 px with nothing sideways
+(`6_*-phone.png`); no console error or refused request.
 
 The list, asked hard (reads only):
 
