@@ -53,6 +53,8 @@ const MAPPED = [
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // The sitemap, with every listed model in it (api/share.js).
+  [/^\/sitemap\.xml$/, "share", "sitemap"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
@@ -95,7 +97,11 @@ async function route(name) {
 /// A file of web/, or null.
 function page(pathname) {
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
-  const name = named ? named[1] : pathname.slice(1);
+  // Any other page at its bare name, as deploy.sh serves them: /admin,
+  // /takedown, /download.
+  const bare = /^\/([a-z0-9-]+)\/?$/.exec(pathname);
+  const name = named ? named[1] : bare && existsSync(new URL(`${bare[1]}.html`, web)) ? `${bare[1]}.html`
+    : pathname.slice(1);
   if (!/^[a-z0-9_-]+\.[a-z]+$/.test(name)) return null;
   const file = new URL(name, web);
   if (!existsSync(file)) return null;

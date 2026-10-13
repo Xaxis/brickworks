@@ -41,6 +41,16 @@
 // else as one that does not exist; a public list's page; and every table
 // of it closed to the key every page has.
 //
+// And moderation (supabase/moderation.sql, api/_names.js, api/admin.js):
+// abuse and somebody else's names refused in titles, tags, credits,
+// handles and names; a report from anybody, limited; the site's owner
+// seeing the queue, letting one go, taking a model out so the same file is
+// refused at any other link, and taking an account out so nothing of it is
+// shown and nothing new listed, then letting it back; twenty collections an
+// hour; the sitemap with every listed model; the CDN keeping the list and
+// the pages (on a deployment); and the new tables and functions closed to
+// the key every page has.
+//
 // Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
@@ -66,7 +76,8 @@ const check = (ok, what) => {
   if (!ok) failures += 1;
 };
 
-async function call(path, { method = "GET", token, body, raw, headers: more = {} } = {}) {
+let asked = 0;
+async function call(path, { method = "GET", token, body, raw, headers: more = {}, cached = false } = {}) {
   const headers = { ...more };
   if (bypass) headers["x-vercel-protection-bypass"] = bypass;
   if (token) headers.authorization = `Bearer ${token}`;
@@ -78,7 +89,14 @@ async function call(path, { method = "GET", token, body, raw, headers: more = {}
     headers["content-type"] = "application/json";
     payload = JSON.stringify(body);
   }
-  const reply = await fetch(path.startsWith("http") ? path : base + path, {
+  // Asked past the CDN, which keeps pages, pictures and the list for up to
+  // a minute (api/share.js SHARED_CACHE): every read here checks what was
+  // just done. What the CDN keeps is checked on its own (cached: true).
+  let where = path.startsWith("http") ? path : base + path;
+  if ((method === "GET" || method === "HEAD") && !cached) {
+    where += `${where.includes("?") ? "&" : "?"}fresh=${Date.now().toString(36)}${(asked += 1).toString(36)}`;
+  }
+  const reply = await fetch(where, {
     method, headers, body: payload, redirect: "manual",
   });
   const bytes = Buffer.from(await reply.arrayBuffer());
@@ -143,6 +161,9 @@ const emailE = `delivered+bw-share-e-${rand}@resend.dev`;
 const emailF = `delivered+bw-share-f-${rand}@resend.dev`;
 // People's: one with a profile, credited and not, liked, kept and listed.
 const emailG = `delivered+bw-share-g-${rand}@resend.dev`;
+// Moderation's: a bad actor taken out, and an account that copies them.
+const emailH = `delivered+bw-share-h-${rand}@resend.dev`;
+const emailI = `delivered+bw-share-i-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 const ID = /^[A-Za-z0-9]{10}$/;
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
@@ -284,6 +305,7 @@ async function main() {
   await theGallery(tokenA, tokenB, id);
   await theDirectory(tokenA);
   await thePeople(tokenA, tokenB);
+  await theModeration(tokenA);
 
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
@@ -415,8 +437,24 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   check(!("owner" in card) && l.json?.per_page === 24 && typeof l.json?.more === "boolean",
     "...no owner, and a page of 24 that says whether there is another");
   check(!inList(l, unlistedId), "a model shared without the box ticked is not in it");
-  check(/no-cache|no-store/.test(l.headers.get("cache-control") || ""),
-    `the list is asked again each time (${l.headers.get("cache-control")})`);
+  // Vercel's CDN keeps s-maxage for itself and hands a browser what is
+  // left; on a deployment, the CDN answering a second asking is the proof.
+  const local = /127\.0\.0\.1|localhost/.test(base);
+  const kept = l.headers.get("cache-control") || "";
+  check(/public/.test(kept) && /max-age=0/.test(kept) && (!local || /s-maxage=30/.test(kept)),
+    `the list is kept by the CDN for half a minute, not by a browser (${kept})`);
+  if (!/127\.0\.0\.1|localhost/.test(base)) {
+    const same = `/api/share?op=list&page=1&kind=castle&sort=views&cdn=${rand}`;
+    await call(same, { cached: true });
+    const again = await call(same, { cached: true });
+    check(/HIT|STALE/.test(again.headers.get("x-vercel-cache") || ""),
+      `the same question again is answered by the CDN (${again.headers.get("x-vercel-cache")})`);
+    const page = `/m/${listedId}`;
+    await call(page, { cached: true });
+    const pageAgain = await call(page, { cached: true });
+    check(/HIT|STALE/.test(pageAgain.headers.get("x-vercel-cache") || ""),
+      `and so is a model's page asked again (${pageAgain.headers.get("x-vercel-cache")})`);
+  }
   const pages = [];
   for (const bad of ["0", "-1", "x", "1.5", "401"]) pages.push((await call(`/api/share?op=list&page=${bad}`)).status);
   check(pages.every((s) => s === 400), `a page that is not 1 to 400: 400 (${pages.join(", ")})`);
@@ -542,6 +580,9 @@ async function theDirectory(tokenA) {
   const f = await mintSession(emailF);
   const tokenF = f.access_token;
   const word = `zebrafinch${rand}`;
+  // A file of its own: the gallery's part, as the site's owner, took the
+  // probe's model out, and with it that very file at any other link.
+  const GATE = MODEL.replace("0 Probe Tower", `0 Probe Gate ${rand}`);
   const list = (query = "") => call(`/api/share?op=list&page=1${query}`);
   const ids = (l) => (l.json?.models || []).map((m) => m.id);
 
@@ -557,7 +598,7 @@ async function theDirectory(tokenA) {
   // What an owner says, cleaned at the edge.
   const ABOUT = `A gatehouse with a ${word} on the wall.\u0007\r\n\r\n\r\n\r\nIt <b>opens</b> & "closes".`;
   let r = await call("/api/share", { method: "POST", token: tokenA, body: {
-    name: "Probe Directory Gate", author: "Probe Builder", model: MODEL, image: PICTURE, thumb: THUMB,
+    name: "Probe Directory Gate", author: "Probe Builder", model: GATE, image: PICTURE, thumb: THUMB,
     listed: true, description: ABOUT, tags: "Castle, Tower!!, tower, <b>gate</b>, x",
     kind: "castle", licence: "cc-by-sa-4.0" } });
   const gate = r.json?.id || "";
@@ -727,7 +768,7 @@ async function theDirectory(tokenA) {
     "a copy of a listed model, itself shared by link, names the listed one");
   // Unlisted, the one it came from is no longer named.
   r = await call("/api/share", { method: "POST", token: tokenA, body: { id: gate, name: "Probe Directory Gate",
-    author: "Probe Builder", model: MODEL, listed: false } });
+    author: "Probe Builder", model: GATE, listed: false } });
   check(r.status === 200 && r.json?.description === `A gatehouse with a ${word} on the wall.\n\nIt <b>opens</b> & "closes".`
     && r.json?.licence === "cc-by-sa-4.0" && r.json?.kind === "castle" && r.json?.tags?.length === 3,
     "republished saying nothing about it: what it said is kept");
@@ -744,7 +785,7 @@ async function theDirectory(tokenA) {
   const thumbPublic = await fetch(`${SUPABASE}/storage/v1/object/public/shared-thumbs/${own}.webp`);
   check(thumbPublic.status >= 400, `the small pictures' bucket is not public (${thumbPublic.status})`);
   r = await call("/api/share", { method: "POST", token: tokenA, body: { id: gate, name: "Probe Directory Gate",
-    model: MODEL, description: "", tags: "", kind: "" } });
+    model: GATE, description: "", tags: "", kind: "" } });
   check(r.status === 200 && r.json?.description === null && r.json?.tags?.length === 0 && r.json?.kind === null
     && r.json?.licence === "cc-by-sa-4.0", "emptied, they are emptied; the licence, not said, is kept");
   r = await call("/api/share?op=mine", { token: tokenF });
@@ -914,12 +955,198 @@ async function thePeople(tokenA, tokenB) {
     `schema.sql's profiles, with addresses, as closed as before (${p.status})`);
 }
 
+/// Moderation (supabase/moderation.sql, api/_names.js, api/admin.js): what
+/// the gallery will not show in a name, a report from anybody, the site's
+/// owner taking a model out at every link and an account out whole, how
+/// often a person may do each thing, and the sitemap.
+async function theModeration(tokenA) {
+  console.log("moderation: names, reports, taking out, limits, the sitemap");
+  const h = await mintSession(emailH);
+  const tokenH = h.access_token;
+  const i = await mintSession(emailI);
+  const tokenI = i.access_token;
+  const publish = async (token, body) => {
+    const reply = await call("/api/share", { method: "POST", token, body: { model: SMALL, ...body } });
+    if (reply.json?.id) published.add(reply.json.id);
+    return reply;
+  };
+
+  // Names.
+  for (const [what, body] of [
+    ["a name with abuse in it, spelt round", { name: "my sh1t castle" }],
+    ["a name that is the LEGO Group's", { name: "My LEGO castle" }],
+    ["a licensed name, run together", { name: "StarWars cruiser" }],
+    ["a tag that is a licensed name", { name: "A cruiser", tags: "space, star wars" }],
+    ["a credit with abuse in it", { name: "A cruiser", author: "f u c k" }],
+    ["a description with a slur in it", { name: "A cruiser", description: "for you, n1gger" }],
+  ]) {
+    const r = await publish(tokenH, body);
+    check(r.status === 400, `${what}: 400 (${r.status}) "${r.json?.error}"`);
+  }
+  let r = await publish(tokenH, { name: "A starfighter", description: "Inspired by Star Wars, in my own colours." });
+  check(r.status === 201, `a description may say what inspired it (${r.status})`);
+  r = await call("/api/people?op=profile", { method: "POST", token: tokenH, body: { handle: `lego-fan-${rand}`, name: "x" } });
+  check(r.status === 409, `a handle with the LEGO Group's mark in it: 409 (${r.status}) "${r.json?.error}"`);
+  r = await call("/api/people?op=profile", { method: "POST", token: tokenH, body: { handle: `maker-${rand}`, name: "Batman" } });
+  check(r.status === 400, `a profile's name that is a licensed one: 400 (${r.status})`);
+  r = await call("/api/people?op=collection", { method: "POST", token: tokenH, body: { name: "Shit I like" } });
+  check(r.status === 400, `a collection's name with abuse in it: 400 (${r.status})`);
+
+  // A bad actor, as the gallery sees them: a profile, a listed model, a
+  // public collection.
+  const handle = `bad-actor-${rand}`;
+  r = await call("/api/people?op=profile", { method: "POST", token: tokenH, body: { handle, name: "Bad Actor" } });
+  check(r.status === 200, `the bad actor's profile (${r.status})`);
+  const BAD = MODEL.replace("0 Probe Tower", `0 Probe Bad ${rand}`);
+  r = await publish(tokenH, { name: "Probe Bad Model", author: "Bad Actor", model: BAD, listed: true });
+  const bad = r.json?.id || "";
+  check(r.status === 201, `their model, listed (${r.status} ${bad})`);
+  r = await publish(tokenH, { name: "Probe Bad Second", author: "Bad Actor", listed: true });
+  const second = r.json?.id || "";
+  r = await call("/api/people?op=collection", { method: "POST", token: tokenH, body: { name: "Probe bad list", public: true } });
+  const badList = r.json?.id || "";
+  await call("/api/people?op=collect", { method: "POST", token: tokenH, body: { collection: badList, model: second, on: true } });
+
+  // Reports, signed out and signed in.
+  const visitor = { "user-agent": `share-probe-${rand}` };
+  const report = (body, token) => call("/api/people?op=report", { method: "POST", token, body, headers: visitor });
+  r = await report({ model: bad, reason: "copied", note: "Copied from my own <b>castle</b>.", contact: "owner@example.com" });
+  check(r.status === 200 && r.json?.reported === true, `a model reported, signed out (${r.status})`);
+  for (const [what, body, status] of [
+    ["a reason that is not one", { model: bad, reason: "boring" }, 400],
+    ["two things at once", { model: bad, handle, reason: "spam" }, 400],
+    ["nothing named", { reason: "spam" }, 400],
+    ["a link that never was", { model: "QQQQQQQQQQ", reason: "spam" }, 404],
+    ["a note over 1000", { model: bad, reason: "other", note: "x".repeat(1001) }, 400],
+  ]) {
+    r = await report(body);
+    check(r.status === status, `a report of ${what}: ${status} (${r.status})`);
+  }
+  r = await report({ handle, reason: "offensive" }, tokenA);
+  check(r.status === 200, `a profile reported, signed in (${r.status})`);
+  r = await report({ collection: badList, reason: "spam" });
+  check(r.status === 200, `a public collection reported (${r.status})`);
+  let limited = null;
+  for (let n = 0; n < 6 && !limited; n += 1) {
+    r = await report({ model: second, reason: "spam" });
+    if (r.status !== 200) limited = r;
+  }
+  check(limited?.status === 429, `six reports an hour from one visitor, then 429 (${limited?.status}) "${limited?.json?.error}"`);
+
+  // The site's owner.
+  if (args.master) {
+    const m = await mintSession(process.env.MASTER_EMAIL);
+    const master = m.access_token;
+    r = await call("/api/admin", { token: master });
+    const mine = (r.json?.reports || []).filter((one) => one.model === bad || one.handle === handle || one.collection === badList);
+    const first = mine.find((one) => one.model === bad && one.reason === "copied") || {};
+    check(r.status === 200 && first.name === "Probe Bad Model" && first.note === "Copied from my own <b>castle</b>."
+      && first.contact === "owner@example.com" && first.email === emailH && !("reporter" in first) && !("visitor" in first),
+      `the owner's page has the reports, what was said, the way to reach them and the account; never who reported (${mine.length})`);
+    const profileReport = mine.find((one) => one.handle === handle);
+    r = await call(`/api/admin?op=dismiss&report=${profileReport?.id}`, { method: "POST", token: master });
+    check(r.status === 200, `a report let go (${r.status})`);
+    r = await call("/api/admin", { token: master });
+    check(!(r.json?.reports || []).some((one) => one.id === profileReport?.id), "and it is off the queue");
+    r = await call(`/api/admin?op=dismiss&report=${profileReport?.id}`, { method: "POST", token: tokenA });
+    check(r.status === 404, `anybody else letting one go: 404 (${r.status})`);
+
+    // Out by model: at this link and at any other.
+    r = await call(`/api/admin?op=unlist&id=${bad}`, { method: "POST", token: master });
+    check(r.status === 200 && r.json?.file_barred === true, `the model taken out, and its file barred (${r.status})`);
+    r = await call("/api/admin", { token: master });
+    check(!(r.json?.reports || []).some((one) => one.model === bad), "its reports settled");
+    r = await publish(tokenH, { name: "Probe Bad Again", author: "Bad Actor", model: BAD, listed: true });
+    check(r.status === 409, `the same file published again at a new link, listed: 409 (${r.status}) "${r.json?.error}"`);
+    r = await publish(tokenI, { name: "Probe Bad Copy", model: BAD.replace(/\r\n/g, "\n") + "\n\n", listed: true });
+    check(r.status === 409, `by another account, its line endings changed: 409 (${r.status})`);
+    r = await publish(tokenH, { name: "Probe Bad Again", model: BAD });
+    check(r.status === 201, `shared by link only: allowed (${r.status})`);
+    r = await publish(tokenH, { name: "Probe Changed", author: "Bad Actor", model: BAD.replace("3003.dat", "3004.dat"), listed: true });
+    check(r.status === 201, `a model that is not the same file: listed (${r.status})`);
+    const changed = r.json?.id || "";
+
+    // Out by account.
+    r = await call(`/api/admin?op=bar&id=${second}`, { method: "POST", token: master, body: { reason: "probe" } });
+    check(r.status === 200 && r.json?.barred === true && r.json?.unlisted >= 2,
+      `the account taken out by one of its models: ${r.json?.unlisted} unlisted, ${r.json?.files_barred} files barred`);
+    let l = await call("/api/share?op=list&page=1&q=probe%20bad");
+    check(![second, changed].some((id) => (l.json?.models || []).some((one) => one.id === id)), "every model of it out of the gallery");
+    r = await call(`/u/${handle}`);
+    check(r.status === 404, `its profile gone (${r.status})`);
+    r = await call(`/c/${badList}`);
+    check(r.status === 404, `its public collection gone (${r.status})`);
+    r = await publish(tokenH, { name: "Probe New Link", author: "Bad Actor", model: SMALL.replace("3001", "3002"), listed: true });
+    check(r.status === 409, `anything new it lists: 409 (${r.status}) "${r.json?.error}"`);
+    r = await publish(tokenH, { name: "Probe New Link", model: SMALL.replace("3001", "3002") });
+    check(r.status === 201, `by link only: allowed (${r.status})`);
+    r = await call("/api/admin", { token: master });
+    const out = (r.json?.barred || []).find((one) => one.email === emailH);
+    check(Boolean(out) && out.reason === "probe", "the owner's page lists the account, and why");
+    r = await call(`/api/admin?op=bar&id=${second}`, { method: "POST", token: tokenA });
+    check(r.status === 404, `anybody else taking an account out: 404 (${r.status})`);
+    r = await call(`/api/admin?op=unbar&account=${out?.account}`, { method: "POST", token: master });
+    check(r.status === 200, `let back in (${r.status})`);
+    r = await publish(tokenH, { name: "Probe Back", author: "Bad Actor", model: SMALL.replace("3001", "3005"), listed: true });
+    check(r.status === 201, `and it may list again (${r.status})`);
+  } else {
+    console.log("  --    the site's owner taking out a model and an account: with --master");
+  }
+
+  // How often: twenty lists an hour.
+  let made = 0;
+  let refused = null;
+  for (let n = 0; n < 22 && !refused; n += 1) {
+    r = await call("/api/people?op=collection", { method: "POST", token: tokenI, body: { name: `Probe list ${n}` } });
+    if (r.status === 200) made += 1;
+    else refused = r;
+  }
+  check(made === 20 && refused?.status === 429, `twenty collections an hour, then 429 (${made}, ${refused?.status})`);
+
+  // The sitemap.
+  r = await call("/sitemap.xml");
+  const locs = [...r.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((one) => one[1]);
+  const listed = (await call("/api/share?op=list&page=1")).json?.models || [];
+  check(r.status === 200 && /xml/.test(r.headers.get("content-type") || "") && locs.some((loc) => loc.endsWith("/gallery"))
+    && locs.some((loc) => loc.endsWith("/takedown")) && listed.every((one) => locs.includes(`${base}/m/${one.id}`))
+    && !locs.includes(`${base}/m/${bad}`),
+    `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`);
+
+  // The database, with the key every page has.
+  for (const table of ["reports", "barred_accounts", "barred_models", "act_log"]) {
+    const d = await anonRest(`${table}?select=*`);
+    check(d.status === 401 || d.status === 403, `${table} is closed to it (${d.status})`);
+  }
+  for (const [fn, args] of [["may_act", { actor: "x", act: "report", per_hour: 9, per_day: 9 }],
+    ["is_barred", { account: h.kept.user_id }], ["sitemap_pages", {}]]) {
+    const d = await anonRest(`rpc/${fn}`, { method: "POST", body: args });
+    check(d.status >= 400, `${fn} cannot be called with it (${d.status})`);
+  }
+}
+
 async function cleanUp() {
+  // What moderation keeps that does not go with an account: the files the
+  // site's owner barred, and reports of a profile by its handle. How often
+  // each account did things goes below; a signed-out visitor's counts go
+  // with the daily sweep, a day on.
+  const secret = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
+  const ids = [...published];
+  for (let at = 0; at < ids.length; at += 50) {
+    await fetch(`${SUPABASE}/rest/v1/barred_models?model=in.(${ids.slice(at, at + 50).join(",")})`,
+      { method: "DELETE", headers: secret }).catch(() => {});
+  }
+  await fetch(`${SUPABASE}/rest/v1/reports?handle=in.(probe-${rand},bad-actor-${rand})`,
+    { method: "DELETE", headers: secret }).catch(() => {});
   // Every model published here is taken down (the files go with that),
   // then every account, which takes their rows with them.
   const sessions = [];
-  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG]) {
+  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI]) {
     sessions.push(await mintSession(email).catch(() => null));
+  }
+  const accounts = sessions.filter(Boolean).map((one) => one.kept.user_id).filter(Boolean);
+  if (accounts.length) {
+    await fetch(`${SUPABASE}/rest/v1/act_log?who=in.(${accounts.join(",")})`, { method: "DELETE", headers: secret })
+      .catch(() => {});
   }
   for (const id of published) {
     for (const s of sessions) {
@@ -933,7 +1160,10 @@ async function cleanUp() {
   const goneE = await deleteAccount(emailE);
   const goneF = await deleteAccount(emailF);
   const goneG = await deleteAccount(emailG);
-  check(goneA && goneB && goneD && goneE && goneF && goneG, "every throwaway account deleted, and their rows with them");
+  const goneH = await deleteAccount(emailH);
+  const goneI = await deleteAccount(emailI);
+  check(goneA && goneB && goneD && goneE && goneF && goneG && goneH && goneI,
+    "every throwaway account deleted, and their rows with them");
   const left = await call(`/api/share?id=${[...published][0] || "QQQQQQQQQQ"}`);
   check(left.status === 404, `nothing left behind: the link is gone with the account (${left.status})`);
 }

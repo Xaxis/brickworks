@@ -235,6 +235,16 @@ try {
     const again = await mintSession(ownerEmail).catch(() => null);
     if (again) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: again.access_token });
   }
+  // How often each did things (supabase/moderation.sql act_log), which does
+  // not go with an account.
+  const secret = process.env.SUPABASE_SECRET_KEY || "";
+  for (const email of [ownerEmail, visitorEmail]) {
+    const one = await mintSession(email).catch(() => null);
+    if (one && one.kept.user_id) {
+      await fetch(`${String(process.env.SUPABASE_URL || "").replace(/\/+$/, "")}/rest/v1/act_log?who=eq.${one.kept.user_id}`,
+        { method: "DELETE", headers: { apikey: secret, authorization: `Bearer ${secret}` } }).catch(() => {});
+    }
+  }
   const gone = [await deleteAccount(ownerEmail), await deleteAccount(visitorEmail)];
   check("both throwaway accounts deleted, and everything of theirs with them", gone.every(Boolean));
 }

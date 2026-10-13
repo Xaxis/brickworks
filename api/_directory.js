@@ -7,7 +7,7 @@
 // printable line, or for a description printable lines, all capped), and
 // escaped by whatever puts it on a page.
 
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
@@ -275,6 +275,15 @@ export function cardOf(origin, row) {
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,
   };
+}
+
+/// A model file's fingerprint: its SHA-256, line endings and the space at
+/// its ends made the same, so the file a model was taken out of the gallery
+/// with is known again at any link (supabase/moderation.sql barred_models).
+export function modelHash(text) {
+  const plain = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n")
+    .split("\n").map((line) => line.trim()).filter(Boolean).join("\n");
+  return createHash("sha256").update(plain, "utf8").digest("hex");
 }
 
 // ---------------------------------------------------------------------------

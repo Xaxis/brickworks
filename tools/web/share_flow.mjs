@@ -158,28 +158,43 @@ async function type(page, name, text) {
 const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeout: 90000 })
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
 
+/// What a link answers now, asked past the CDN (which keeps pages and the
+/// list for up to a minute, api/share.js SHARED_CACHE) with a query of its
+/// own: this side checks what was just done.
+let asked = 0;
 async function fetchText(url) {
-  const reply = await fetch(url, { headers, redirect: "manual" });
+  const fresh = `${url}${url.includes("?") ? "&" : "?"}fresh=${Date.now()}-${asked += 1}`;
+  const reply = await fetch(fresh, { headers, redirect: "manual" });
   return { status: reply.status, type: reply.headers.get("content-type") || "",
     csp: reply.headers.get("content-security-policy") || "",
     bytes: Buffer.from(await reply.arrayBuffer()) };
 }
 
 /// The gallery as a stranger sees it, in a browser: the cards it draws.
-async function galleryCards(name, query = "") {
+/// The gallery as a stranger sees it, in a browser: the cards it draws.
+/// [settled] says when what it shows is what was just done: the CDN keeps
+/// the list for up to a minute (api/share.js SHARED_CACHE), so the page is
+/// loaded again until it is, for two minutes at most, as a person would.
+async function galleryCards(name, query = "", settled = () => true) {
   const made = await context();
   const page = await made.newPage();
   listen(page, "gallery");
-  await page.goto(`${site}/gallery${query}`, { waitUntil: "load", timeout: 120000 });
-  await until(page, () => document.documentElement.dataset.gallery === "ready"
-    || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
-  await page.evaluate(async () => {
-    await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
-  });
-  const cards = await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
-    id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
-    about: a.querySelector("span").textContent,
-    picture: (a.querySelector("img") || {}).naturalWidth || 0 })));
+  let cards = [];
+  const end = Date.now() + 120000;
+  for (;;) {
+    await page.goto(`${site}/gallery${query}`, { waitUntil: "load", timeout: 120000 });
+    await until(page, () => document.documentElement.dataset.gallery === "ready"
+      || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
+    await page.evaluate(async () => {
+      await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+    });
+    cards = await page.evaluate(() => [...document.querySelectorAll("#models a.model")].map((a) => ({
+      id: a.dataset.id, href: a.getAttribute("href"), name: a.querySelector("b").textContent,
+      about: a.querySelector("span").textContent,
+      picture: (a.querySelector("img") || {}).naturalWidth || 0 })));
+    if (settled(cards) || Date.now() > end) break;
+    await page.waitForTimeout(5000);
+  }
   await shot(page, name);
   await made.close();
   return cards;
@@ -256,16 +271,16 @@ try {
   if (picture.status === 200) writeFileSync(path.join(out, "og_image.png"), picture.bytes);
 
   console.log("its card on /gallery");
-  const cards = await galleryCards("1b_gallery.png");
+  const cards = await galleryCards("1b_gallery.png", "", (shown) => shown[0] && shown[0].id === id);
   const listedCard = cards.find((c) => c.id === id);
   check(`on /gallery, first of ${cards.length}: "${listedCard && listedCard.name}", ${listedCard && listedCard.about}, its picture ${listedCard && listedCard.picture}px wide`,
     cards[0] && cards[0].id === id && listedCard.name === NAME && listedCard.href === `/m/${id}`
     && listedCard.about === `${bricks.toLocaleString("en-US")} part${bricks === 1 ? "" : "s"}, by ${AUTHOR}`
     && listedCard.picture > 0);
-  const found = await galleryCards("1c_gallery_search.png", `?q=${WORD}`);
+  const found = await galleryCards("1c_gallery_search.png", `?q=${WORD}`, (shown) => shown.length > 0);
   check(`found by a word of its description in the search box: ${found.length} card, ${found[0] && found[0].name}`,
     found.length === 1 && found[0].id === id);
-  const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=views");
+  const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=views", (shown) => shown.some((c) => c.id === id));
   check(`and by its tag, most viewed first: ${tagged.map((c) => c.name).join(", ")}`,
     tagged.some((c) => c.id === id));
 
@@ -510,7 +525,7 @@ try {
   }, "updating the link", 180);
   check(`updated, not listed: ${unlisted.status}`, unlisted.state === "published" && unlisted.listed === false
     && !/gallery/.test(unlisted.status));
-  const unlistedCards = await galleryCards("9c_gallery_unlisted.png");
+  const unlistedCards = await galleryCards("9c_gallery_unlisted.png", "", (shown) => !shown.some((c) => c.id === id));
   check(`gone from /gallery (${unlistedCards.length} cards, none of it)`, !unlistedCards.some((c) => c.id === id));
   check("and the link still works", (await fetchText(link)).status === 200);
 
@@ -530,7 +545,12 @@ try {
   const late = await context();
   const lateComer = await late.newPage();
   listen(lateComer, "late");
-  const gone = await lateComer.goto(link, { waitUntil: "load", timeout: 120000 });
+  // Within the CDN's minute (SHARED_CACHE), as a person loading it again.
+  let gone = await lateComer.goto(link, { waitUntil: "load", timeout: 120000 });
+  for (const end = Date.now() + 120000; gone.status() !== 410 && Date.now() < end;) {
+    await lateComer.waitForTimeout(5000);
+    gone = await lateComer.reload({ waitUntil: "load", timeout: 120000 });
+  }
   await lateComer.waitForTimeout(1500);
   const said = await lateComer.evaluate(() => document.body.innerText);
   check(`the link says so: ${gone.status()} "${said.split("\n")[0]}"`, gone.status() === 410

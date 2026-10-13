@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow -->
 
 ## Sub-features
 
@@ -183,7 +183,7 @@ plan with Claude as the client.
   the picture and the way in, and `web/share-page.js` sends a person straight
   on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
   (`op=image`): the picture the app rendered, `Cross-Origin-Resource-Policy:
-  cross-origin`. Every answer here is `no-cache` or `no-store`: the picture was
+  cross-origin`. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) that opens the link in a tab — the threaded engine
@@ -214,7 +214,7 @@ plan with Claude as the client.
   unpublishing takes a model out of it. `GET ?op=list&page=1..400` (400
   otherwise): the listed, published rows through the publishable key, newest
   listed first, 24 a page and `more`, each `{id, name, author, parts,
-  listed_at, url, image}` (`image` null with no picture), `no-cache`. `/m/<id>`
+  listed_at, url, image}` (`image` null with no picture), `no-cache` then (`SHARED_CACHE` since the directory). `/m/<id>`
   says "Remixed from <a href=/m/X>title</a>" while X is published, and `GET
   ?id=` gives `remixed_from: {id, name, url}`. The site's owner takes a model
   out (`POST /api/admin?op=unlist&id=`, [account](account.md)): `listed` off
@@ -323,6 +323,61 @@ plan with Claude as the client.
   Supabase — so signing in on the site signs the app in, as
   `web/authorize.js` does; `call()` for the site's API with the token.
 - `people browser flow` (`tools/web/people_flow.mjs`): below.
+- **Moderation** (2026-10-13, `supabase/moderation.sql`, applied to the live
+  project that day, dry-run first; additions only): tables `reports` (one of a
+  model, a handle or a collection; a reason of spam, offensive, sexual,
+  violent, copied, trademark, personal, other; a note up to 1000; a contact;
+  the reporter's account or a visitor's day key; when it was settled and how),
+  `barred_accounts`, `barred_models` (a file's SHA-256), `act_log` and
+  `may_act(actor, act, per_hour, per_day)`; `is_barred`; `sitemap_pages`; and
+  `directory_models`, `profile_page` and `collection_page` again, showing
+  nothing of a barred account; all closed to the publishable key. What a
+  person may do, an hour and a day (`LIMITS` in `api/people.js`): a profile
+  saved 20/60, likes and favourites 300/2000, a collection made 20/60, models
+  put in lists 300/3000, reports 6/20 (by the account, or signed out by the
+  visitor's key); publishing and listing as before (`may_publish`,
+  `may_list`). The daily sweep lets `act_log` rows older than a day go.
+- `names filter` (`api/_names.js`): words compared with their disguises off
+  (case, accents, doubled letters, digits and symbols for letters, letters
+  spaced out), whole words with simple stems, so "Scunthorpe", "assassin",
+  "Dickens" and "peacock" pass. Abuse refused anywhere (a title, a credit, a
+  tag, a description, a handle, a profile's name or about-you, a
+  collection's name or description); names somebody else owns — the LEGO
+  Group's marks and the licensed names its sets are made under, run together
+  too ("StarWars") — refused in a title, a credit, a tag, a handle, a
+  profile's or a collection's name, but not in a description, which may say
+  what inspired it; not the names of kinds of part (Technic, minifigure).
+  Handles kept for the site itself (`RESERVED`). Refusals say what to do
+  instead, the mark written as `docs/TRADEMARKS.md` asks.
+- `report it` (`web/report.js`): Report it on a model's, a profile's and a
+  collection's page (hidden until the script runs), a dialog with the
+  reasons, a note, a way to reach the reporter, Send and thanks; signed in
+  (`account.js`) or not. `POST /api/people?op=report` (one thing named, a
+  reason that is one, 404 for what is not there, 429 past the limit).
+- `takedown page` (`web/takedown.html`, `web/takedown.js`): `/takedown`, in the
+  gallery's footer ("Press Report on its page, or see takedown requests"),
+  every server-made page's footer with it and beside each Report it; says how,
+  and has a form taking the page's address (a model's, a profile's or a
+  collection's), what is wrong, what is theirs and how to reach them, sent as
+  a report.
+- **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
+  `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
+  the site's own pages and every listed model, profile with a model in the
+  gallery and public collection with one (`sitemap_pages`), the CDN keeping
+  it an hour. **OG cards and structured data**: a model's page has og and
+  twitter cards with its description, a canonical link, and JSON-LD
+  (schema.org CreativeWork: name, url, description, image, author as
+  credited, licence, keywords, what it is based on, views and likes; "<"
+  written \u003c); a profile's and a collection's page have cards with
+  their first model's picture. **The CDN** keeps the list, a model's page and
+  its pictures, and profile and collection pages, for 30 s and serves them 30 s
+  more while it asks again (`SHARED_CACHE`, `public, max-age=0, s-maxage=30,
+  stale-while-revalidate=30`); a versioned small picture five minutes in a
+  browser; the viewer's JSON and everything signed in, never. A model taken
+  down or out leaves within a minute rather than at once; the probes ask past
+  the CDN with a query of their own, and the browser flows load a page again
+  until it shows what was done, for two minutes at most.
+- `moderation browser flow` (`tools/web/moderation_flow.mjs`): below.
 - `directory` (`api/_directory.js`): what the list, a model's page and
   publishing share — `KINDS` (the same ids, in the same order, as
   `src/net/model_kinds.gd`), `LICENCES`, `SIZES`, `SORTS`; the edge's
@@ -959,6 +1014,44 @@ the house in favourites, the collection made public with its page
 with the public list; and the model page (with the collection panel open),
 `/profile`, `/c/<id>` and `/u/<owner>` at 390 px with nothing sideways
 (`6_*-phone.png`); no console error or refused request.
+
+Moderation's part of it (since 2026-10-13, two more throwaway accounts;
+`--master` for the owner's half): six names refused (abuse spelt round, the
+LEGO Group's mark, a licensed name run together, as a tag, a credit with
+abuse, a description with a slur) and a description saying what inspired it
+allowed; a handle with the mark 409, a profile's licensed name 400, a
+collection's abusive name 400; reports signed out and signed in, of a model,
+a profile and a collection, five refusals, six an hour from one visitor then
+429; the owner's queue with what was said, the contact and the account and
+never the reporter, a report let go, anybody else letting one go 404; a model
+taken out with its file barred and its reports settled, the same file at a
+new link 409, by another account with its line endings changed 409, by link
+only allowed, a different file allowed; the account taken out by one of its
+models — every model of it out, its profile and public list 404, anything new
+listed 409, by link allowed, listed as taken out with why, anybody else
+taking one out 404, let back in and listing again; twenty collections an hour
+then 429; `/sitemap.xml` with the site's pages and every listed model and none
+taken out; and the four tables and three functions closed to the publishable
+key. On a deployment, also the list's and a model page's second asking
+answered by the CDN (`x-vercel-cache` HIT or STALE). It removes what it made
+that does not go with its accounts (barred fingerprints, reports by handle,
+its accounts' counts). 304 checks with `--master`, about two minutes locally.
+
+Reporting and acting on it, in a real browser on a deployment (one
+throwaway account; `MASTER_EMAIL` signed in as the tests are):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation
+```
+
+Proves it when it ends "a model can be reported, asked to be taken down, and
+taken out with its account": a signed-out visitor's Report it at 1280 and 390
+(`1_report-*.png`), sent with thanks; `/takedown` at both widths, its form sent
+(`2_takedown-*.png`); `/admin` with the three reports, what was said and the
+account (`3_admin_queue.png`); Take out — off the queue, out of the gallery;
+the second model reported and Take out the account — listed as out, its
+other model out, its profile 404, anything new 409 (`4_admin_barred.png`);
+Let back in; no console error or refused request anywhere.
 
 The list, asked hard (reads only):
 

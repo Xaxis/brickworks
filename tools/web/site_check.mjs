@@ -79,11 +79,14 @@ const PAGES = [
   { path: "/changelog", canonical: `${SITE}/changelog` },
   { path: "/faq", canonical: `${SITE}/faq` },
   { path: "/privacy", canonical: `${SITE}/privacy` },
+  { path: "/takedown", canonical: `${SITE}/takedown` },
   { path: "/admin", private: true },
   { path: "/profile", private: true },
 ];
 // The newest model in the gallery, whose page is the site's too.
-const newest = await get("/api/share?op=list&page=1");
+// Asked past the CDN, which keeps the list for up to a minute: a model a
+// probe has just taken down could still be first in a kept answer.
+const newest = await get(`/api/share?op=list&page=1&fresh=${Date.now()}`);
 let modelId = "";
 try {
   modelId = (JSON.parse(newest.body).models || [])[0]?.id || "";
@@ -141,6 +144,18 @@ for (const page of PAGES) {
   ok(`${page.path} 200, "${title}", canonical, description, card with its picture`);
 }
 
+// A model's page's structured data, which has to parse too.
+if (modelId) {
+  const block = (pageHtml[`/m/${modelId}`] || "").match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  try {
+    const data = JSON.parse(block ? block[1] : "");
+    if (data["@type"] !== "CreativeWork" || !data.name || !data.url) fail(`/m/${modelId} JSON-LD is not a CreativeWork with a name and a url`);
+    else ok(`/m/${modelId} JSON-LD: CreativeWork "${data.name}"`);
+  } catch (trouble) {
+    fail(`/m/${modelId} JSON-LD does not parse: ${trouble.message}`);
+  }
+}
+
 // The landing page's structured data, which is data and so has to parse.
 {
   const block = (pageHtml["/"] || "").match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
@@ -163,6 +178,7 @@ for (const [from, to] of [
   ["/gallery.html", "/gallery"],
   ["/changelog.html", "/changelog"],
   ["/faq.html", "/faq"],
+  ["/takedown.html", "/takedown"],
   ["/admin.html", "/admin"],
   ["/profile.html", "/profile"],
   ["/download.html?os=macos", "/download?os=macos"],
@@ -240,6 +256,8 @@ console.log("sitemap and robots");
 const sitemap = await get("/sitemap.xml");
 const listed = [...sitemap.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 if (sitemap.status !== 200 || !listed.length) fail(`sitemap.xml answered ${sitemap.status} with ${listed.length} pages`);
+// Every model in the gallery is in it, the newest among them.
+if (modelId && !listed.some((loc) => loc.endsWith(`/m/${modelId}`))) fail(`sitemap.xml does not list the newest model, /m/${modelId}`);
 for (const loc of listed) {
   const r = await get(loc.replace(SITE, "") || "/");
   if (r.status !== 200) fail(`sitemap lists ${loc}, which answers ${r.status}`);
@@ -314,7 +332,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
+  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/takedown", "takedown"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });

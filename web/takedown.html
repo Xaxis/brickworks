@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!--
+  Takedown requests, at /takedown (and /takedown.html, which redirects
+  here): how to tell the site's owner that something in the gallery is
+  yours, or should not be there, and what happens then.
+
+  The form sends a report like the Report button on every model's,
+  profile's and collection's page (/api/people?op=report, api/people.js),
+  with the way to reach you that a claim needs; the site's owner sees it
+  in the admin page's queue (api/admin.js), and nobody else does.
+  takedown.js does the sending, as text throughout. No inline script.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Takedown requests · Brickworks</title>
+<meta name="description" content="Something in the Brickworks gallery is yours, or should not be there? Tell us here, and it comes out of the gallery while we look.">
+<link rel="canonical" href="https://brickworks.diy/takedown">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Takedown requests for the Brickworks gallery">
+<meta property="og:description" content="Something in the gallery is yours, or should not be there? Tell us here.">
+<meta property="og:url" content="https://brickworks.diy/takedown">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Takedown requests for the Brickworks gallery">
+<meta name="twitter:description" content="Something in the gallery is yours, or should not be there? Tell us here.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/changelog">Changelog</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/changelog">Changelog</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap person takedown">
+		<p class="eyebrow">Takedown requests</p>
+		<h1>Something here is yours, or should not be</h1>
+		<p class="lede">The gallery shows what people chose to share. Brickworks does
+			not check each model before it is listed, so tell us when one should not
+			be there, and the site's owner takes it out.</p>
+
+		<section aria-labelledby="how-h">
+			<h2 id="how-h">The quick way</h2>
+			<p>Every model's page, every profile and every collection has a
+				<b>Report</b> button. Choose what is wrong and send it; you do not need
+				an account.</p>
+		</section>
+
+		<section aria-labelledby="claim-h">
+			<h2 id="claim-h">If it is your work, or your mark</h2>
+			<p>Give the page's address, say what is yours and how, and how to reach
+				you. While we look, we may take it out of the gallery; once we agree, it
+				stays out, and the same model published again cannot be listed. Its own
+				link is its sharer's to take down; we tell them.</p>
+			<form class="profile-form" id="claim">
+				<label>The page in the gallery
+					<input id="where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
+				<label>What is wrong
+					<select id="why">
+						<option value="copied">It copies my work</option>
+						<option value="trademark">It uses a name or a mark that is mine</option>
+						<option value="personal">It shows my personal information</option>
+						<option value="offensive">It is hateful or abusive</option>
+						<option value="other">Something else</option>
+					</select></label>
+				<label>What is yours, and how
+					<textarea id="what" maxlength="1000" rows="4" required
+						placeholder="Where your original is, and anything that shows it is yours."></textarea></label>
+				<label>How to reach you
+					<input id="contact" type="email" maxlength="200" required autocomplete="email"></label>
+				<div class="actions"><button class="cta" type="submit" id="send">Send the request</button></div>
+				<p class="said" id="said" role="status"></p>
+			</form>
+		</section>
+
+		<section aria-labelledby="else-h">
+			<h2 id="else-h">Anything else</h2>
+			<p>A problem with the app itself goes to
+				<a href="https://github.com/Xaxis/brickworks/issues">GitHub</a>, where
+				it is fixed in the open.</p>
+		</section>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Design it here. Build it on your table. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script src="/takedown.js" type="module"></script>
+</body>
+</html>

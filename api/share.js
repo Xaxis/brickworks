@@ -65,14 +65,16 @@
 // counted once per visitor per day, never for a robot.
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, NOTICE, SIZES, SORTS, Unacceptable, cardOf, cleanDescription, cleanKind,
   cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel, listQuery, looksLikePerson,
-  partFacts, siteChrome, visitorKey,
+  modelHash, partFacts, siteChrome, visitorKey,
 } from "./_directory.js";
+import { namesTrouble } from "./_names.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 600 * 1024;
@@ -432,6 +434,15 @@ async function mayPublish(owner) {
   return allowed === true;
 }
 
+async function barred(owner) {
+  return (await db("rpc/is_barred", { method: "POST", body: { account: owner } })) === true;
+}
+
+async function barredFile(text) {
+  const rows = await db(`barred_models?hash=eq.${modelHash(text)}&select=hash`);
+  return rows.length > 0;
+}
+
 async function mayList(owner) {
   const allowed = await db("rpc/may_list", { method: "POST", body: { account: owner } });
   return allowed === true;
@@ -532,6 +543,62 @@ function licenceWords(model) {
     + `purpose, as long as they credit ${creditOf(model)} and link to this page.${deed}</p>`;
 }
 
+/// What a search engine reads of the model: schema.org's CreativeWork,
+/// with its maker as credited, its licence, and what it was remixed from.
+/// A data block, never run, so the page's policy has nothing to allow; its
+/// "<" written as \u003c, so nothing typed can end the block.
+function structured(origin, id, model) {
+  const url = links(origin, id).url;
+  const parent = (model.from || [])[0];
+  const data = {
+    "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
+    description: model.description || describe(model), image: model.has_image ? `${url}.png` : undefined,
+    author: model.author ? { "@type": "Person", name: model.author } : undefined,
+    license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
+    keywords: (model.tags || []).join(", ") || undefined,
+    isBasedOn: parent && parent.id ? `${origin}/m/${parent.id}` : undefined,
+    interactionStatistic: [
+      { "@type": "InteractionCounter", interactionType: "https://schema.org/ViewAction", userInteractionCount: Number(model.views) || 0 },
+      { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: Number(model.likes) || 0 },
+    ],
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`;
+}
+
+/// /sitemap.xml: the site's own pages (web/sitemap.xml, beside this file
+/// as _sitemap.xml in a deployment) and every page of the directory a
+/// search engine may find — each listed model, each profile with a model in
+/// the gallery, each public collection (sitemap_pages, which leaves out
+/// whatever was barred). Kept by the CDN for an hour.
+async function sitemap(response, origin) {
+  let site = "";
+  for (const where of ["./_sitemap.xml", "../web/sitemap.xml"]) {
+    const url = new URL(where, import.meta.url);
+    if (existsSync(url)) {
+      site = readFileSync(url, "utf8");
+      break;
+    }
+  }
+  const pages = await db("rpc/sitemap_pages", { method: "POST", body: {} }) || {};
+  const day = (iso) => String(iso || "").slice(0, 10);
+  const entry = (loc, when, often, rank) => `  <url><loc>${escapeHtml(loc)}</loc>`
+    + `${when ? `<lastmod>${day(when)}</lastmod>` : ""}<changefreq>${often}</changefreq><priority>${rank}</priority></url>`;
+  const ours = [...site.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => `  ${m[0]}`);
+  const rows = [
+    ...ours,
+    ...(pages.models || []).map((m) => entry(`${origin}/m/${m.id}`, m.updated_at, "weekly", "0.6")),
+    ...(pages.people || []).map((p) => entry(`${origin}/u/${p.handle}`, p.updated_at, "weekly", "0.4")),
+    ...(pages.collections || []).map((c) => entry(`${origin}/c/${c.id}`, c.updated_at, "weekly", "0.3")),
+  ];
+  response.setHeader("Content-Type", "application/xml; charset=utf-8");
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=600");
+  return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${rows.join("\n")}
+</urlset>
+`);
+}
+
 /// A small card of a model, for the remix tree.
 function smallCard(card) {
   const picture = card.has_thumb ? `/m/${card.id}.webp` : card.has_image ? `/m/${card.id}.png` : "";
@@ -582,6 +649,8 @@ ${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url }
 <link rel="stylesheet" href="/directory.css">
 <script src="/share-page.js" defer></script>
 <script src="/model-page.js" type="module"></script>
+<script src="/report.js" type="module"></script>
+${structured(origin, id, model)}
 </head>
 <body data-viewer="${escapeHtml(`/app?view=${id}`)}" data-id="${id}">
 <a class="skip" href="#main">Skip to content</a>
@@ -619,6 +688,8 @@ ${header}
       </div>
       <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
         list, with no account. Open in Brickworks copies it into your own models, to change and make yours.</p>
+      <p class="note report-line"><button type="button" class="link" data-report="this model"
+        data-report-model="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
     </div>
   </div>
   ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
@@ -722,13 +793,22 @@ function pageCsp() {
 const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors *";
 
+/// What the CDN may keep, and for how long: what every visitor is shown
+/// (the list, a page, a picture) for half a minute, and given while it
+/// asks again for half a minute more, so a page shared widely is one
+/// function call a minute rather than one a visit. A browser asks the CDN
+/// each time. The cost is that a model taken down, unlisted or taken out
+/// leaves within a minute rather than at once (2026-10-13; it was no-cache
+/// before the directory, when the probe found a picture outliving its
+/// model by a minute at max-age=60).
+export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
+
 function html(response, status, body, { embed = false } = {}) {
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", embed ? EMBED_CSP : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  // Never kept by the CDN, so a model taken down is gone at once.
-  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Cache-Control", SHARED_CACHE);
   return response.status(status).end(body);
 }
 
@@ -759,6 +839,7 @@ async function read(request, response) {
   if (op === "mine") return mine(request, response, origin);
   if (op === "sweep") return sweep(request, response);
   if (op === "list") return gallery(request, response, origin);
+  if (op === "sitemap") return sitemap(response, origin);
 
   if (op === "page") {
     const page = await modelPage(id);
@@ -787,10 +868,11 @@ async function read(request, response) {
     response.setHeader("Content-Type", op === "image" ? "image/png" : "image/webp");
     // A link preview on any site may show it.
     response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-    // Asked again every time, like the pages. It was public for a minute,
-    // and Vercel's CDN went on serving the picture of a model already taken
-    // down or republished without one (share_probe on a preview, 2026-10-12).
-    response.setHeader("Cache-Control", "no-cache");
+    // Kept as briefly as the pages (SHARED_CACHE). The small picture's
+    // address says which version it is (?v=), so a browser keeps it a few
+    // minutes too; a republish is a new address.
+    response.setHeader("Cache-Control", op === "thumb" && request.query?.v
+      ? "public, max-age=300, s-maxage=600" : SHARED_CACHE);
     return response.status(200).end(picture);
   }
 
@@ -830,9 +912,9 @@ async function read(request, response) {
 async function gallery(request, response, origin) {
   const { asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES);
   const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
-  // Asked again each time, like the pages: a model unlisted or taken down
-  // leaves the gallery at once.
-  response.setHeader("Cache-Control", "no-cache");
+  // Kept briefly by the CDN, like the pages: the same question asked by
+  // a hundred phones is one call to the database.
+  response.setHeader("Cache-Control", SHARED_CACHE);
   return response.status(200).json({
     ...said,
     per_page: PER_PAGE,
@@ -904,6 +986,11 @@ async function publish(request, response) {
   }
   const listed = body.listed === true;
   const about = saidAbout(body);
+  // What a stranger may not be shown, in a name or anywhere it is said
+  // (api/_names.js): before anything is counted or stored.
+  const said = namesTrouble({ "The name": [name, "name"], "The credit": [author, "name"],
+    "A tag": [about.tags, "name"], "The description": [about.description, "words"] });
+  if (said) throw new Refusal(said);
 
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   let existing = null;
@@ -936,6 +1023,16 @@ async function publish(request, response) {
     throw new Refusal("the model this was copied from is all rights reserved, so its builder has not "
       + "let versions of it into the gallery: share it by link without listing it, or ask them", 422);
   }
+  // Taken out of the gallery for good, by the site's owner: the account,
+  // or this very file at any link (api/admin.js). 409, never 403 (above).
+  if (listed && (await barred(owner))) {
+    throw new Refusal("Brickworks took your models out of the gallery, so this one cannot be listed. "
+      + "It can still be shared by link: publish it without listing it.", 409);
+  }
+  if (listed && (await barredFile(body.model))) {
+    throw new Refusal("Brickworks took this model out of the gallery, so it cannot be listed again, "
+      + "at this link or another. It can still be shared by link: publish it without listing it.", 409);
+  }
   // Into the gallery, as against staying in it: only that is counted.
   const newlyListed = listed && !(existing && existing.published && existing.listed);
 
@@ -948,10 +1045,16 @@ async function publish(request, response) {
   }
 
   if (!id) id = newId();
-  await putFile(`${id}.mpd`, body.model, "text/plain");
-  if (picture) await putFile(`${id}.png`, picture, "image/png");
+  // A new link whose row is never written leaves no files behind: they go
+  // as the publish fails, rather than wait a day for the sweep.
+  const dropNew = (trouble) => {
+    if (!existing) return deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`]).catch(() => {}).then(() => { throw trouble; });
+    throw trouble;
+  };
+  await putFile(`${id}.mpd`, body.model, "text/plain").catch(dropNew);
+  if (picture) await putFile(`${id}.png`, picture, "image/png").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
-  if (thumb) await putFile(`${id}.webp`, thumb, "image/webp");
+  if (thumb) await putFile(`${id}.webp`, thumb, "image/webp").catch(dropNew);
   else if (existing) await deleteFiles([`${id}.webp`]).catch(() => {});
 
   const now = new Date().toISOString();
@@ -961,7 +1064,7 @@ async function publish(request, response) {
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {
-    await db("shared_models", { method: "POST", body: { id, owner, ...row } });
+    await db("shared_models", { method: "POST", body: { id, owner, ...row } }).catch(dropNew);
   }
 
   const origin = originOf(request);
@@ -1035,6 +1138,8 @@ async function sweep(request, response) {
   // once a day: today's and yesterday's.
   const yesterday = new Date(now - 24 * 3600 * 1000).toISOString().slice(0, 10);
   if (only.length === 0) await db(`model_views?day=lt.${yesterday}`, { method: "DELETE" });
+  // How often each account or visitor did things (may_act), kept a day.
+  if (only.length === 0) await db(`act_log?at=lt.${new Date(now - 24 * 3600 * 1000).toISOString()}`, { method: "DELETE" });
   return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone });
 }
 

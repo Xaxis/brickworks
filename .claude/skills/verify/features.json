@@ -368,6 +368,14 @@
       "tests": []
     },
     {
+      "id": "cli:moderation browser flow",
+      "kind": "cli",
+      "entry": "tools/web/moderation_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:oauth probe",
       "kind": "cli",
       "entry": "tools/web/oauth_probe.mjs",
@@ -849,6 +857,14 @@
       "kind": "lib",
       "entry": "src/net/model_kinds.gd",
       "reach": "the Share panel's Kind, guessed from the name and tags; godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:names filter",
+      "kind": "lib",
+      "entry": "api/_names.js",
+      "reach": "imported by api/share.js and api/people.js: abuse refused in any name or words, names somebody else owns in titles, tags, credits, handles and names",
       "area": "web",
       "tests": []
     },
@@ -1539,6 +1555,14 @@
       ]
     },
     {
+      "id": "ui:report it",
+      "kind": "ui",
+      "entry": "web/report.js",
+      "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:save as a studio model",
       "kind": "ui",
       "entry": "src/ui/exports.gd",
@@ -1677,6 +1701,14 @@
       "tests": [
         "tests/fixtures/collection/fake_rebrickable.py"
       ]
+    },
+    {
+      "id": "ui:takedown page",
+      "kind": "ui",
+      "entry": "web/takedown.html",
+      "reach": "https://brickworks.diy/takedown   (takedown.js sends a report with a way to reach the sender)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:the author's steps",

@@ -1496,6 +1496,34 @@
       "entry": "tools/web/people_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "names filter",
+      "entry": "api/_names.js",
+      "reach": "imported by api/share.js and api/people.js: abuse refused in any name or words, names somebody else owns in titles, tags, credits, handles and names",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "report it",
+      "entry": "web/report.js",
+      "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "takedown page",
+      "entry": "web/takedown.html",
+      "reach": "https://brickworks.diy/takedown   (takedown.js sends a report with a way to reach the sender)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "moderation browser flow",
+      "entry": "tools/web/moderation_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
+      "area": "web"
     }
   ]
 }
