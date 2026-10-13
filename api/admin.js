@@ -11,14 +11,22 @@
 // So it is the first thing that happens, it is done against a verified
 // token rather than anything the caller supplies, and it fails closed —
 // MASTER_EMAIL unset means nobody rather than everybody. There is nothing
-// about an account to change from here. The one write is the gallery's:
-// a model listed there that should not be (2026-10-13) is taken out, and
-// barred, so its owner cannot list it again. Its link still works; taking
-// that down is its owner's.
+// about an account to change from here. The writes are the gallery's: a
+// model listed there that should not be (2026-10-13) is taken out, and
+// barred, so its owner cannot list it again — and since the directory's
+// moderation (supabase/moderation.sql), neither can anybody list the same
+// file again at another link; and an account can be taken out whole, every
+// model of it, so that publishing again does not dodge it. Links still
+// work; taking those down is their owners'. What visitors reported is here
+// to act on, or to let go.
 //
-//   GET /api/admin                   accounts, sign-ins, connectors, the
-//                                    email sender, the gallery's models
-//   POST /api/admin?op=unlist&id=X   take X out of the gallery for good
+//   GET /api/admin                       accounts, sign-ins, connectors, the
+//                                        email sender, the gallery's models,
+//                                        open reports, accounts taken out
+//   POST /api/admin?op=unlist&id=X       take model X out of the gallery for good
+//   POST /api/admin?op=bar&id=X          take the account that shares X out of it
+//   POST /api/admin?op=unbar&account=U   let account U list again
+//   POST /api/admin?op=dismiss&report=N  let report N go: nothing wrong
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
@@ -26,8 +34,10 @@
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { modelHash } from "./_directory.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 function project() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -76,15 +86,16 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  if (request.method === "POST" && op === "unlist") {
+  const acts = { unlist, bar, unbar, dismiss };
+  if (request.method === "POST" && acts[op]) {
     try {
-      return await unlist(request, response);
+      return await acts[op](request, response);
     } catch (error) {
       return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
     }
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar or dismiss" });
   }
 
   try {
@@ -95,9 +106,37 @@ export default async function handler(request, response) {
   }
 }
 
+/// The model's file as published, for its fingerprint: null when its
+/// files went (taken down by its owner).
+async function modelText(id) {
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  const reply = await fetch(`${project()}/storage/v1/object/shared-models/${id}.mpd`, {
+    headers: { apikey: secret, authorization: `Bearer ${secret}` },
+    signal: AbortSignal.timeout(20000),
+  });
+  return reply.ok ? reply.text() : null;
+}
+
+/// The file's fingerprint kept, so that the same model published again at
+/// another link, by anybody, cannot be listed (api/share.js).
+async function barFile(id) {
+  const text = await modelText(id);
+  if (text === null) return false;
+  await db("barred_models?on_conflict=hash", { method: "POST",
+    body: { hash: modelHash(text), model: id }, prefer: "resolution=ignore-duplicates" });
+  return true;
+}
+
+/// What was reported about [where] (a PostgREST filter), settled.
+async function settle(where, resolution) {
+  await db(`reports?${where}&resolved_at=is.null`, { method: "PATCH",
+    body: { resolved_at: new Date().toISOString(), resolution } });
+}
+
 /// Out of the gallery, and barred from it: listed false, and a republish
-/// with the box ticked refused (api/share.js). The row and its files are
-/// untouched, so the link goes on working.
+/// with the box ticked refused (api/share.js), at this link or with the
+/// same file at any other. The row and its files are untouched, so the
+/// link goes on working.
 async function unlist(request, response) {
   const id = String(request.query?.id || "");
   if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
@@ -105,16 +144,69 @@ async function unlist(request, response) {
     method: "PATCH", body: { listed: false, listed_at: null, barred: true },
     prefer: "return=representation" });
   if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no model at that link" });
-  return response.status(200).json({ id, listed: false, barred: true });
+  const file = await barFile(id);
+  await settle(`model=eq.${id}`, "taken_out");
+  return response.status(200).json({ id, listed: false, barred: true, file_barred: file });
+}
+
+/// The account that shares a model, or one named, out of the gallery: none
+/// of its models listed or listable, its profile not shown, and the files
+/// of what it had listed barred too, so a new account cannot list them.
+async function bar(request, response) {
+  const id = String(request.query?.id || "");
+  let account = String(request.query?.account || "");
+  if (ID.test(id)) {
+    const rows = await db(`shared_models?id=eq.${id}&select=owner`);
+    if (!rows.length) return response.status(404).json({ error: "no model at that link" });
+    account = rows[0].owner;
+  }
+  if (!UUID.test(account)) return response.status(400).json({ error: "name a model (?id=) or an account (?account=)" });
+  const reason = String(request.body?.reason || "").slice(0, 200) || null;
+  await db("barred_accounts?on_conflict=account", { method: "POST", body: { account, reason },
+    prefer: "resolution=ignore-duplicates" });
+  const listed = await db(`shared_models?owner=eq.${account}&listed=is.true&select=id&limit=500`);
+  let files = 0;
+  for (const model of listed) if (await barFile(model.id)) files += 1;
+  await db(`shared_models?owner=eq.${account}&listed=is.true`, { method: "PATCH",
+    body: { listed: false, listed_at: null, barred: true } });
+  const models = (await db(`shared_models?owner=eq.${account}&select=id`)).map((m) => m.id);
+  for (let at = 0; at < models.length; at += 100) {
+    await settle(`model=in.(${models.slice(at, at + 100).join(",")})`, "account_barred");
+  }
+  const person = await db(`people?account=eq.${account}&select=handle`);
+  if (person.length) await settle(`handle=eq.${person[0].handle}`, "account_barred");
+  return response.status(200).json({ account, barred: true, unlisted: listed.length, files_barred: files });
+}
+
+/// An account let back: it may list again. What it had listed stays out
+/// (each model still barred); the owner of this page lists them again by
+/// hand if they should be.
+async function unbar(request, response) {
+  const account = String(request.query?.account || "");
+  if (!UUID.test(account)) return response.status(400).json({ error: "name an account: ?account=<id>" });
+  await db(`barred_accounts?account=eq.${account}`, { method: "DELETE" });
+  return response.status(200).json({ account, barred: false });
+}
+
+async function dismiss(request, response) {
+  const report = Number(request.query?.report);
+  if (!Number.isInteger(report) || report < 1) return response.status(400).json({ error: "name a report: ?report=<number>" });
+  await db(`reports?id=eq.${report}&resolved_at=is.null`, { method: "PATCH",
+    body: { resolved_at: new Date().toISOString(), resolution: "dismissed" } });
+  return response.status(200).json({ report, resolution: "dismissed" });
 }
 
 async function report() {
-  const [listed, tabs, gallery] = await Promise.all([
+  const [listed, tabs, gallery, reports, barred] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
     // What strangers can see in /gallery right now, and whose it is.
     asServer("/rest/v1/shared_models?listed=is.true&published=is.true"
       + "&select=id,owner,name,author,parts,listed_at&order=listed_at.desc&limit=500"),
+    // What visitors said should not be there, still to act on.
+    asServer("/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
+      + "shared_models(name,owner,listed,published)&order=at.desc&limit=300"),
+    asServer("/rest/v1/barred_accounts?select=account,at,reason&order=at.desc&limit=200"),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
@@ -158,5 +250,14 @@ async function report() {
       id: model.id, name: model.name, author: model.author, parts: model.parts,
       listed_at: model.listed_at, email: emails.get(model.owner) || null,
     })),
+    // Each open report with what it is about; the reporter is never named.
+    reports: reports.map((report) => ({
+      id: report.id, model: report.model, handle: report.handle, collection: report.collection,
+      reason: report.reason, note: report.note, contact: report.contact, at: report.at,
+      name: report.shared_models?.name ?? null, listed: report.shared_models?.listed ?? null,
+      email: report.shared_models ? emails.get(report.shared_models.owner) || null : null,
+    })),
+    barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
+      email: emails.get(one.account) || null })),
   };
 }

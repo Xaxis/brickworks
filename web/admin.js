@@ -123,6 +123,85 @@ function draw(data) {
     listed.append(row);
   }
   say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
+
+  // What was reported: strangers' words again, so text and never markup.
+  const reports = $("reports");
+  reports.replaceChildren();
+  for (const report of data.reports || []) {
+    const row = document.createElement("tr");
+    cell(row, when(report.at));
+    const about = document.createElement("td");
+    about.className = "model";
+    const link = document.createElement("a");
+    if (report.model) {
+      link.href = `/m/${encodeURIComponent(report.model)}`;
+      link.textContent = report.name ?? report.model;
+    } else if (report.handle) {
+      link.href = `/u/${encodeURIComponent(report.handle)}`;
+      link.textContent = `@${report.handle}`;
+    } else {
+      link.href = `/c/${encodeURIComponent(report.collection)}`;
+      link.textContent = `collection ${report.collection}`;
+    }
+    about.append(link);
+    row.append(about);
+    cell(row, report.reason);
+    cell(row, report.note ?? "—", report.note ? "said" : "faint");
+    cell(row, report.contact ?? "—", report.contact ? "" : "faint");
+    cell(row, report.email ?? "—", report.email ? "" : "faint");
+    const acts = document.createElement("td");
+    acts.className = "acts";
+    if (report.model) {
+      acts.append(act("Take out", () => confirm(`Take this model out of the gallery for good?`)
+        && post(`op=unlist&id=${encodeURIComponent(report.model)}`, "reports-note", "Taken out.")));
+      acts.append(act("Take out the account", () => confirm("Take every model of this account out of the gallery, and keep them out?")
+        && post(`op=bar&id=${encodeURIComponent(report.model)}`, "reports-note", "The account is out.")));
+    }
+    acts.append(act("Let it go", () => post(`op=dismiss&report=${encodeURIComponent(report.id)}`, "reports-note", "Let go.")));
+    row.append(acts);
+    reports.append(row);
+  }
+  say("reports-note", data.reports?.length ? "" : "Nothing is reported.");
+
+  const barred = $("barred");
+  barred.replaceChildren();
+  for (const one of data.barred || []) {
+    const row = document.createElement("tr");
+    cell(row, one.email ?? one.account);
+    cell(row, when(one.at));
+    cell(row, one.reason ?? "—", one.reason ? "" : "faint");
+    const acts = document.createElement("td");
+    acts.append(act("Let back in", () => post(`op=unbar&account=${encodeURIComponent(one.account)}`, "barred-note", "Let back in.")));
+    row.append(acts);
+    barred.append(row);
+  }
+  say("barred-note", data.barred?.length ? "" : "Nobody is taken out.");
+}
+
+function act(words, run) {
+  const button = document.createElement("button");
+  button.textContent = words;
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    const done = await run();
+    if (!done) button.disabled = false;
+  });
+  return button;
+}
+
+/// One of the owner's acts (api/admin.js), then the page drawn again.
+async function post(query, where, said) {
+  try {
+    const token = await accessToken();
+    const reply = await fetch(`/api/admin?${query}`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
+    if (!reply.ok) throw new Error(`The server said ${reply.status}.`);
+    await refresh();
+    say(where, said);
+    return true;
+  } catch (problem) {
+    say(where, problem.message, true);
+    return false;
+  }
 }
 
 /// Out of the gallery for good (api/admin.js ?op=unlist), asked first.

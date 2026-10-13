@@ -116,6 +116,7 @@ def public_text() -> dict[str, str]:
     texts: dict[str, str] = {}
     for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + [
             ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "api/_directory.js",
+            ROOT / "api/people.js", ROOT / "api/_names.js",
             ROOT / "src/boot/shell.html",
             ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "tools/brickworks_mcp.py",
             ROOT / "tools/release.py", ROOT / "tools/site.py"]:

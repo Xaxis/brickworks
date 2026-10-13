@@ -67,12 +67,27 @@ they have. A Claude connector belongs to the account that switched it on.
   address). Its one write (2026-10-13): `POST ?op=unlist&id=` takes a model
   out of the gallery and bars it (`listed` off, `barred` on; 404 for no such
   link, 400 for no id) — its link goes on working, and its owner cannot list
-  it again ([web](web.md)).
+  it again ([web](web.md)). Since the directory's moderation (2026-10-13,
+  `supabase/moderation.sql`): unlist also keeps the file's fingerprint
+  (`barred_models`, `modelHash`), so the same model listed again at any link,
+  by anybody, is refused 409, and settles its reports; `POST ?op=bar&id=`
+  (a model's account) or `&account=` takes an account out whole
+  (`barred_accounts`, its listed models unlisted and barred with their files,
+  its profile and public lists gone, its reports settled, anything it lists
+  refused 409); `?op=unbar&account=` lets it list again; `?op=dismiss&report=`
+  lets a report go. The GET also answers `reports` (open, newest first, each
+  with what it is about, its reason, note and contact, and the model's
+  account's address; never who reported) and `barred` (account, when, why,
+  address).
 - `admin page` (`web/admin.html`, `web/admin.js`): uses the app's session in
   that browser (renews it and puts the renewed one back), so there is one
   sign-in, in the app. Text only, never markup, for addresses people typed and
   names they chose. In the gallery: the listed models, each a link to its page,
-  with Take out (asks first, then `?op=unlist` and the page again).
+  with Take out (asks first, then `?op=unlist` and the page again). Above it,
+  Reported: each open report with a link to what it is about, why, what was
+  said, the way to reach them and the account, and Take out, Take out the
+  account (each asking first) and Let it go; and Accounts taken out, each with
+  Let back in. Proven by the moderation browser flow ([web](web.md)).
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.

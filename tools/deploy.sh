@@ -182,6 +182,9 @@ for handler in api/*.js; do
     cp web/gallery.html "$fn/_site.html"
   fi
   if [ "$route" = share ]; then
+    # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
+    # and every listed model, profile and public collection.
+    cp web/sitemap.xml "$fn/_sitemap.xml"
     if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" | sed 's/^/deploy: /'; then
       echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
     fi
@@ -321,6 +324,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
+    { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
     { "src": "/[.]well-known/oauth-authorization-server(/.*)?", "dest": "/api/oauth?op=metadata" },
