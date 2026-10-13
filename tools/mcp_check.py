@@ -17,6 +17,7 @@ server with no tools and no error to explain it.
 from __future__ import annotations
 
 import json
+import shutil
 import re
 import os
 import signal
@@ -25,6 +26,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 ROOT = Path(__file__).resolve().parent.parent
 RELAY = ROOT / "tools" / "brickworks_mcp.py"
@@ -248,6 +250,8 @@ def drive(relay: Relay) -> None:
     said = say("lay_flex", {"kind": "rope"})
     check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
 
+    simulate(relay, say, kept.parent)
+
     cached = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
     check("tools/mcp_tools.json names every tool the app serves, %d" % len(cached),
           {tool["name"] for tool in cached} == named)
@@ -259,6 +263,90 @@ def drive(relay: Relay) -> None:
     broken = relay.call("tools/call", {"arguments": {}})
     check("a call with no name is a JSON-RPC error",
           broken.get("error", {}).get("code") == -32602)
+
+
+FIXTURES = ROOT / "src" / "dev" / "fixtures"
+
+
+def simulate(relay: Relay, say: Callable[[str, dict], str], models: Path) -> None:
+    """simulate_mechanism, as a session asks it of a model it has open.
+
+    The models are src/dev/simulate_probe.gd's, written there with --write:
+    a session cannot yet seat an axle in a hole over MCP, so they are put in
+    the app's models and opened with open_model, which a session can do.
+    """
+    opened: list[Path] = []
+    try:
+        for fixture, name in (("orrery_two_planets.ldr", "orrery"),
+                              ("gears_locked.ldr", "gears")):
+            target = models / ("mcp-check-%s-%d.ldr" % (name, os.getpid()))
+            target.write_text((FIXTURES / fixture).read_text())
+            opened.append(target)
+        said = say("open_model", {"name": opened[0].stem, "discard_changes": True})
+        check("the two-planet orrery opens: %s" % said[:50], said.startswith("Opened"))
+        answer = relay.call("tools/call", {"name": "simulate_mechanism",
+                                           "arguments": {}}).get("result", {})
+        said = text_of(answer)
+        print("    %s" % said.replace("\n", " | ")[:900])
+        check("simulate_mechanism turns it from the crank its name marks",
+              said.startswith("Driven by Crank"))
+        check("...with Mars's year in Earth years against NASA's",
+              "Mars arm: 1.96 Earth years; real 1.8808, +4.2%" in said)
+        check("...and the balance over the whole cycle, the arm furthest out named",
+              "Balance over 72 frames of the cycle" in said and "Furthest out: Mars arm" in said)
+        blocks = answer.get("content", [])
+        drawn = any(block.get("type") == "image" for block in blocks)
+        if drawn:
+            check("...and a picture of it at its worst",
+                  all(block.get("data") and block.get("mimeType") == "image/png"
+                      for block in blocks if block.get("type") == "image"))
+        else:
+            check("...and, headless, says why there is no picture", "No picture" in said)
+        said = say("simulate_mechanism", {"reference": "Mars arm",
+                                          "targets": {"Earth": 0.5}})
+        check("reference= and targets= count Earth in Mars years against the one asked for",
+              "Earth: 0.5102 Mars years; asked for 0.5, +2.0%" in said)
+        said = say("simulate_mechanism", {"driver": "no such part"})
+        check("a driver that is not there is a refusal that says what to give: %s" % said[:40],
+              said.startswith("No part or sub-assembly"))
+        if drawn:
+            said = say("simulate_mechanism", {"record": True, "frames": 8})
+            going = re.search(r"written to (\S+\.webp)", said)
+            if going:
+                # Past 20 s it goes on in the app, and the answer says where it
+                # will be: waited for as a session would, then asked again.
+                print("    %s" % said.splitlines()[-1][:300])
+                last = Path(going.group(1))
+                if shutil.which("ffmpeg"):
+                    last = last.with_suffix(".mp4")
+                waited = time.time()
+                while time.time() - waited < 900 and not last.exists():
+                    time.sleep(5)
+                time.sleep(5)
+                said = say("simulate_mechanism", {})
+                check("...and the next call says the recording is done",
+                      "The recording asked for earlier is done" in said)
+            written = re.findall(r"wrote (\S+\.(?:webp|mp4))", said)
+            check("record=true keeps it: %s" % (", ".join(written) or said[-120:]),
+                  "Recorded 8 frames" in said and bool(written)
+                  and all(Path(path).exists() for path in written))
+            # Written where Render saves, the person's Downloads: taken away.
+            for path in written:
+                Path(path).unlink(missing_ok=True)
+            for folder in re.findall(r"frames in (\S+?)[;.]?(?:\s|$)", said):
+                if Path(folder).is_dir() and Path(folder).name.endswith("_mechanism"):
+                    shutil.rmtree(folder)
+        said = say("open_model", {"name": opened[1].stem, "discard_changes": True})
+        said = say("simulate_mechanism", {})
+        print("    %s" % said.replace("\n", " | ")[:600])
+        check("a locked train is said to be locked, its meshes by number",
+              "LOCKED" in said and "The ones that fight: #" in said)
+        check("...and a gear on no axle floating, by number",
+              "Floating (on no axle" in said)
+        said = say("clear_model", {})
+    finally:
+        for target in opened:
+            target.unlink(missing_ok=True)
 
 
 def drive_without_an_app() -> None:

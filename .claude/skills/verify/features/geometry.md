@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, ui:simulate mechanism -->
 
 ## Sub-features
 
@@ -305,6 +305,67 @@ the file draws (42082 stands two 24s 2 LDU off their axles) or in a group that
 touches nothing else (42055's mine truck, a second model in the file), read
 again on its own with nothing floating there. Anything else fails, said with what
 stands on its axis and the holes its axles nearly turn in.
+
+`simulate mechanism` (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`,
+docs/MECHANISMS.md phases P1b and P1c's readout): Tools, Simulate mechanism…, beside
+Check stability because both read the model and change none of it (Pose is under
+Build because each slider is an undo step). It reads the mechanism (Working: "Reading
+the mechanism…", on a worker from 600 parts), drives the part a sub-assembly named
+Crank, Motor, Handle or Driver marks, else the one selected, else the one that turns
+most of the train; a click on an axle or a crank (the Select tool is put in hand)
+drives that. The base is the baseplate and what stands on its studs, plus any
+sub-assembly named Frame, Base, Stand or Chassis. Turning parts are tinted by speed
+(blue slow to orange fast), the driver white, the meshes that lock a train red, free
+bodies amber, floating gears violet, each named with part numbers in the panel. Play
+turns the driver at the speed chosen, the slider covers the cycle (every turning part
+round at least once), Worst balance goes to the frame where it comes nearest tipping.
+The turning parts are drawn where the simulation puts them (`BrickWorld.set_drawn`):
+the model, the lattice, the history and `world.revision` never move. With a body
+named after a planet and another as the reference (Earth by default), periods read in
+its years against NASA's sidereal periods ("Mars arm: 1.96 Earth years; real 1.8808,
++4.2%"). The balance is `Shell.weigh_balance` over 72 frames of the cycle, the polygon
+and the centre of mass on the floor, and the turning part furthest past the base's
+edge named. Record draws one turn of the reference (or the driver) through
+`StudioRender.animate` into `RenderOutput` (WebP, and on the desktop frames and an
+MP4). Over MCP `simulate_mechanism` (AppTools, `SimulatePanel.for_session`) says the
+same with a picture of the worst frame; record=true is waited for 20 s and then left
+going in the app (the mcpjobs job tool was not in staging).
+
+```sh
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
+  --script src/dev/simulate_probe.gd           # add -- --write to write src/dev/fixtures/{orrery_two_planets,gears_locked}.ldr
+godot --path . --resolution 1400x900 -- --mcp=8795 &   # under xvfb; then
+tools/mcp_check.py --port=8795                 # simulate_mechanism as a session asks it
+```
+
+The probe ends on "simulate: a driver clicked, played, scrubbed and recorded, …".
+It builds its two models part by part on the baseplate: an 8 driving a 24 in a
+3709b (with a 16 free on the 8's axle and an 8 lying loose), then two 16s meshed
+too; and mechanism_probe's orrery on two pillars, its beam and turntable base named
+Frame. It clicks the 24 and then the 8's axle (each its driver, 1:3 and 3:1 the
+other way), plays (every played frame's 24 turns a third of the 8's step back, to
+0.0000°, read off `drawn_at`), scrubs to a quarter of the cycle, records 24 frames
+and reads every one back off the renderer's copy (`StudioRender.staged_transform`,
+through the panel's `frame_drawn`), finds the free 16 and the loose 8 named by
+number, the locked pair named and red, Mars's year "1.96 Earth years; real 1.8808,
++4.2%", the balance over 72 frames with "Furthest out: Mars arm, 3 studs past the
+left edge", Worst balance going to Crank at 329°, a recording of one Earth year
+(0.7143 crank turns) with Earth turning 1.4 and Mars 20/28 of every frame's crank
+step, simulate_mechanism through AppTools with a picture, and every part where it
+was built, the history as deep and `world.revision` unmoved throughout. Pictures:
+`shots/simulate/1_train.png` … `4_orrery_worst.png`, `5_session_picture.png` (the
+hero view a session gets), the recordings in `shots/simulate/{train,orrery}/`.
+On 2026-10-13 under a load of 50 on this box a 24-frame Quick recording took 79-88
+s, so over MCP a recording is past the 20 s wait and goes on in the app; the next
+call says it is done (mcp_check checks that path). With the solver broken on
+purpose (the two sides of a mesh pulling the same way, `_row`) eight checks fail:
+both clicks' ratios, the readout, every played and every recorded frame of the
+train, Earth's and Mars's rates and the recorded year; put back, all pass.
+`mcp_check` opens the two fixtures (written by the probe's `--write`) as a session
+can, and checks the driver, Mars's year, the balance, the picture (or, headless,
+that it says why there is none), reference= and targets= (Earth 0.5102 Mars years
+against 0.5 asked for, +2.0%), a refusal, record=true, and the locked train's
+meshes and floating gear by number.
 
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the

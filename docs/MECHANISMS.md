@@ -14,10 +14,13 @@ simulations of gear/Technic mechanics". Two more things were added on
   your own risk."
 
 This file is the research and the plan. Phase P1a's core is
-`src/assembly/mechanism.gd`, with its gear table `assets/ldraw/gears.json`;
-nothing is in the app's UI or over MCP yet (that is P1b). It is proven by
-`src/dev/mechanism_probe.gd` and, on real sets, `src/dev/mechanism_sets.gd`
-(recipes in `.claude/skills/verify/features/geometry.md`).
+`src/assembly/mechanism.gd`, with its gear table `assets/ldraw/gears.json`.
+It is proven by `src/dev/mechanism_probe.gd` and, on real sets,
+`src/dev/mechanism_sets.gd`. Phase P1b put it in the app: Tools, Simulate
+mechanism (`src/ui/simulate_panel.gd`, over `src/assembly/simulation.gd`), and
+`simulate_mechanism` over MCP, with P1c's period readout; proven by
+`src/dev/simulate_probe.gd` and `tools/mcp_check.py` (recipes in
+`.claude/skills/verify/features/geometry.md`; section 8 below).
 
 ## In short
 
@@ -406,8 +409,9 @@ then prove it turns, the same loop it already uses for `check_design`.
 **Phase S1 at rest is built** (2026-10-13): `src/assembly/balance.gd`, over
 the Pose panel's animation or every joint swept through its reach
 (`Poser.sweep`), in Tools, Check stability and in check_design's result. The
-gear-driven sweep waits for the mechanism module: it hands its frames to
-`Balance.measure` as poses. What follows is the research it was built from.
+gear-driven sweep is P1b's: Simulate mechanism hands the frames of a whole
+cycle to `Balance.measure` as poses (section 8). What follows is the research
+it was built from.
 
 **What the app checked before it** (`src/assembly/stability.gd`):
 
@@ -519,8 +523,8 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
 | phase | what ships | how it is proven | estimate |
 |---|---|---|---|
 | **P1a Gear trains** | **Shipped:** `src/assembly/mechanism.gd` lifted from the probe, with sparse elimination. The gear table as data (`assets/ldraw/gears.json`) with its pipeline check (`tools/gears.py`, `tests/test_gears.py`). Connector fixes in `connectivity.py` (3648a/b/24505, 3709b with 3738 and 32001, 6542a, the old differentials 6573/4141/73071, 32062 with 153 more), committed on their own first (293bea2) so a session can seat gears on axles. Ring gears (inner mesh: centres r_ring − r apart, same sense, within a quarter's arc; a ring on rollers turns about its own centre), chains on `Flex.SPROCKETS` (same sense, the links' ratio), clutch gears and driving rings, the differential (two freedoms: two drivers, or one and a held output). Locked, free and floating reports; drivers absolute. **Left:** racks (no prismatic joint yet, and the pitch lines in section 2 are unchecked); 42179's year train (not in the OMR); 6573's and 65414c01's planets (the shortcut is one part, so nothing in it can turn); 32187's centre hole; worm handedness; posing a chain's links along their loop. | The probe's cases plus: 42055 (140 gears) and 42082 (135), the OMR's sets with the most gears, read with every gear on what it turns on or a reason the file gives (`src/dev/mechanism_sets.gd`); a differential's Willis relation to 1e-6 under five pairs of drivers. Every check fails on a solver broken on purpose (section 7). | 4–5 agent days |
-| **P1b Simulate mode** | The panel (pick a driver, play, scrub, record), bodies tinted by speed, locked meshes highlighted. `simulate_mechanism` over MCP with its compact result, and `tools/mcp_tools.json` regenerated. | A windowed probe that clicks an axle and records. `tools/mcp_check.py` driving it the way a Claude session does. | 3–4 days |
-| **P1c The orrery** | Periods read out as planet years ("Mars: 1.96 Earth years; NASA 1.8808, +4.2%"). Turntables (56, 60) and the 140 tooth ring. A ratio search for the designer: the gear trains on the stud grid within n stages that come nearest a target. Every LEGO tooth count factors into primes ≤ 7 (bar the 22), so 365.25 = 3·487/4 can only be approximated; Brocot's method finds the nearest ([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)). | **Acceptance:** an orrery of at least the eight planets, built in the app by the owner or by Claude over MCP. Every arm's period within the error its gear train claims, checked frame by frame off the renderer as the probe does. Recorded to MP4 and WebP. | 2–3 days, plus the build |
+| **P1b Simulate mode** | **Shipped (section 8):** Tools, Simulate mechanism (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`): pick a driver (the one a sub-assembly named Crank marks, or a click), play, pause, scrub, speed, record to WebP and MP4; bodies tinted by speed; locked meshes red and named; free and floating parts named; the model never moved (`BrickWorld.set_drawn`); the balance over the whole cycle. `simulate_mechanism` over MCP with its compact result and a picture, and `tools/mcp_tools.json` regenerated. | `src/dev/simulate_probe.gd`, windowed, clicking the driver, playing, scrubbing and recording, every frame read back off the renderer, failing on a solver broken on purpose. `tools/mcp_check.py` driving it the way a Claude session does. | 3–4 days |
+| **P1c The orrery** | Periods read out as planet years ("Mars: 1.96 Earth years; NASA 1.8808, +4.2%"): **shipped with P1b**, in the panel and in simulate_mechanism, against NASA's sidereal periods or `targets=`. Turntables (56, 60) and the 140 tooth ring. A ratio search for the designer: the gear trains on the stud grid within n stages that come nearest a target. Every LEGO tooth count factors into primes ≤ 7 (bar the 22), so 365.25 = 3·487/4 can only be approximated; Brocot's method finds the nearest ([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)). | **Acceptance:** an orrery of at least the eight planets, built in the app by the owner or by Claude over MCP. Every arm's period within the error its gear train claims, checked frame by frame off the renderer as the probe does. Recorded to MP4 and WebP. | 2–3 days, plus the build |
 | **S1 Balance at rest and across the cycle** | The support polygon, centre of mass and force-angle tipping margin at every frame. Stud joint moments against the cited capacities. Counterweight advice. The heat map and margin readout. Numbers in `check_design` and `simulate_mechanism`. `Stability` rewritten on margins with sources. | Arrangements with known answers (a T on one stud, a cantilever of n plates). The owner's orrery reproduces "18 studs past the edge" at its worst angle, and a counterweight added by the advice brings it inside. | 3–4 days |
 | **P2 Linkages and closed loops** | Newton–Raphson on loop closure. Cranks, connecting rods, 4-bars, pistons, cardan joints, steering. Linear actuators as screws. Pneumatic cylinders as driven prismatics. Jam, toggle and free-motion reports. | A 4-bar's coupler curve against the closed form. A crank-slider's stroke. 42xxx steering racks from the OMR. | 1.5–2 weeks |
 | **S2 Dynamic loads** | Inverse dynamics over the P1/P2 motion: joint forces and torques, the zero-moment point, a motor torque budget against Philo's table. | A swinging arm against m·ω²·r and I·α by hand. A motor geared to stall reported as stalling. | 1 week |
@@ -746,3 +750,103 @@ axle, Mars's arm pinned across a 28 tooth turntable round that axle, both from
 one crank three studs away. Its Mars year is (28/20)² = 1.96 Earth years,
 against NASA's 686.98 / 365.256 = 1.8808: +4.2%. A second stage, (24/16)·(20/16)
 = 1.875, would be −0.3%. That is P1c's ratio search.
+
+## 8. Simulate mode (P1b), with the period readout (P1c)
+
+**Where it is.** Tools, Simulate mechanism…, beside Check stability. Both
+read the model as built and change none of it; Pose and animate is under
+Build because every pose a slider sets is a step to undo. The panel stands
+where Pose's does, over the model's left edge, and opening one closes the
+other. `src/ui/simulate_panel.gd` is the panel; `src/assembly/simulation.gd`
+reads the model into a `Mechanism`, names its bodies and says what it found.
+
+**What it does.**
+
+- **The driver.** A sub-assembly named Crank, Motor, Handle or Driver, else
+  the part selected, else the body with a gear that turns most of the train
+  and leaves least undecided. The Select tool is put in hand, so a click on
+  an axle or a crank drives that body instead.
+- **The base.** The baseplate and what stands on its studs, plus any
+  sub-assembly named Frame, Base, Stand or Chassis. That is how a person or a
+  session holds still a frame the connectors do not join (the turntable base
+  of section 7's orrery sits on a beam with nothing the parts record holding
+  it). Without a baseplate it is the largest rigid part.
+- **Tinted by speed**, blue slow to orange fast on a log scale, the driver
+  white; the meshes that lock a train red, free bodies amber, floating gears
+  violet, each also named with its part numbers in the panel.
+- **Play, pause, scrub and speed.** Play turns the driver at 0.1 to 2 turns a
+  second; the slider covers the cycle, a turn of the slowest turning body;
+  Worst balance goes to the frame where it comes nearest tipping.
+- **The model never moves.** The turning parts are drawn where the
+  simulation puts them (`BrickWorld.set_drawn`): their transforms, the
+  lattice, the history and the model's revision stay as they were, so a save
+  or an undo while it plays sees the model as built.
+- **Periods.** Every turning body's turns per driver turn, against the base
+  (the sidereal frame), the same or the other way when its line is parallel
+  to the driver's. With a reference (Earth when a body is named so), each
+  other's period in its turns, and for a body named after a planet against
+  NASA's sidereal period: "Mars arm: 1.96 Earth years; real 1.8808, +4.2%".
+- **Balance over the motion.** 72 frames of the cycle go to `Balance.measure`
+  through Shell's `weigh_balance` (polygon and centre of mass drawn on the
+  floor), and the turning body reaching furthest past the base's edge is
+  named, with the frame it does it at.
+- **Record.** One turn of the reference, or of the driver, in 24, 48 or 96
+  frames, through `StudioRender.animate` into `RenderOutput`, as Pose's
+  Render animation keeps one: an animated WebP, and on the desktop the frames
+  and, with ffmpeg, an MP4.
+- **Working** is up for every slow step: reading the mechanism (on a worker
+  from 600 parts), turning it, weighing it, recording.
+
+**Over MCP, `simulate_mechanism`** (`AppTools`, `SimulatePanel.for_session`)
+runs the same reading, driving and weighing and answers compactly: the
+driver and why, the base, each turning part's rate or period against the
+real one (or `targets=`), a locked train's meshes and the free and floating
+parts by number with what to do about each, the balance at the worst frame
+of the cycle with Balance's counterweight advice, and a picture of that
+frame from the hero view. `record=true` renders `turns=` turns of the
+reference in `frames=` frames; the call waits for it 20 s and then says it
+goes on in the app (the mcpjobs job tool was not in staging when this was
+built). It never changes the model, and leaves the panel as the person left
+it.
+
+**The proof** is `src/dev/simulate_probe.gd`, windowed, in the real scene
+with the mouse: an 8 driving a 24 (a 16 free on the 8's axle, an 8 lying
+loose, then two 16s meshed as well to lock it) and section 7's orrery on two
+pillars. Run 2026-10-13, abridged:
+
+```
+ok    a click on the 24 makes its axle the driver, the 8 then turning 3 the other way
+ok    a click on the 8's axle makes it the driver
+ok    the 24 turns a third of the 8's turn, the other way (-0.333333)
+ok    the 16 on a round hole is named free, by its number
+ok    the 8 lying loose is named floating, by its number
+ok    in every frame played the 24 turns a third of the 8's step back (39 frames, to 0.0000°)
+ok    while it played the model stood still: every part where it was built
+ok    in every frame drawn the 24 turns a third of the 8's 15° step back, to 0.0000°
+ok    ...naming the 16s and the 8 and 24 as the meshes that fight
+ok    the crank is the driver, as its sub-assembly's name marks it
+ok    Mars's year is 1.9600 Earth years against 1.8808, said with the error:
+      "Mars arm: 1.96 Earth years; real 1.8808, +4.2%"
+    balance: Balance over 72 frames of the cycle (1.4 turns of Crank): Stands, 0.8 studs
+    inside the right edge (a 9° tilt tips it) with Crank at 329°, its worst of 73 poses.
+    Furthest out: Mars arm, 3 studs past the left edge with Crank at 42°.
+ok    a recording of one Earth year: in every frame drawn Earth turns 1.4 of the crank's
+      step and Mars 20/28 (to 0.0000° and 0.0000°)
+ok    simulate_mechanism says the driver, the periods against NASA's and the balance,
+      with a picture
+simulate: a driver clicked, played, scrubbed and recorded, every frame's turn the tooth
+counts', a locked train named, Mars's year in Earth years against NASA's, the balance
+over the cycle, and the model never moved
+```
+
+With the solver broken on purpose (the two sides of a mesh pulling the same
+way) eight of those fail; put back, all pass. Over MCP `tools/mcp_check.py`
+opens the same two models, as a session can, and drives `simulate_mechanism`
+against a windowed app and a headless one. A 24-frame Quick recording took
+79-88 s on this box under a load of 50, so a session's recording is past the
+20 s wait and goes on in the app; the next call says it is done.
+
+**Left for later.** The ratio search P1c names; turntables of 56 and 60 and the
+140 tooth ring are read by P1a but not yet in a fixture here; linkages (P2);
+the frames of a recording are tinted only in the window, not in the WebP.
+When the job tool lands, a recording past 20 s should become a job.

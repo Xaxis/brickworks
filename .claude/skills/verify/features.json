@@ -928,7 +928,7 @@
       "id": "lib:the window's commands over mcp",
       "kind": "lib",
       "entry": "src/net/app_tools.gd",
-      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, undo, open_model, parts_list, render_model, export_model)",
+      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, simulate_mechanism, undo, open_model, parts_list, render_model, export_model)",
       "area": "mcp",
       "tests": []
     },
@@ -1482,6 +1482,14 @@
       "entry": "src/ui/sign_in_gate.gd",
       "reach": "godot --path .  (first open, signed out)  /  godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:simulate mechanism",
+      "kind": "ui",
+      "entry": "src/ui/simulate_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/simulate_probe.gd   (by hand: Tools, Simulate mechanism\u2026, click an axle or a crank; over MCP: simulate_mechanism)",
+      "area": "geometry",
       "tests": []
     },
     {

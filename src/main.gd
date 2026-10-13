@@ -126,6 +126,8 @@ var _figures: MinifigDialog
 var _render: RenderDialog
 ## Build, Pose and animate… (src/ui/pose_panel.gd).
 var _pose: PosePanel
+## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
+var _simulate: SimulatePanel
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -308,6 +310,8 @@ func _tell_page() -> void:
 		named.merge(_render.controls_by_name())
 	if _pose != null:
 		named.merge(_pose.controls_by_name())
+	if _simulate != null:
+		named.merge(_simulate.controls_by_name())
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
@@ -2605,6 +2609,23 @@ func _build_ui() -> void:
 	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_pose.position = Vector2(12, 48)
 	_pose.changed.connect(_on_model_edited)
+	# Tools, Simulate mechanism…: a gear train turned from its driver, in the
+	# same place over the model's left edge (src/ui/simulate_panel.gd). It
+	# changes nothing, so it has no changed signal: what turns is drawn.
+	_simulate = SimulatePanel.new()
+	_simulate.world = _world
+	_simulate.builder = _builder
+	_simulate.library = _library
+	_simulate.shell = _shell
+	_simulate.scenery = _store.scenery
+	_simulate.eye = _camera
+	_simulate.look = _render.look
+	_simulate.rig_lights = _render.rig_lights
+	_simulate.named = _bar.model_name
+	_over_model.add_child(_simulate)
+	_simulate.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_simulate.position = Vector2(12, 48)
+	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
@@ -3247,7 +3268,19 @@ func can_reshape_flex() -> bool:
 ## Build, Pose and animate….
 func open_pose() -> void:
 	_builder.hide_preview()
+	if _simulate.visible:
+		_simulate.close()
 	_pose.open()
+
+
+## Tools, Simulate mechanism…: the Select tool in hand, so a click on an
+## axle or a crank drives it rather than putting a part down.
+func open_simulate() -> void:
+	_builder.hide_preview()
+	if _pose.visible:
+		_pose.close()
+	_verbs.set_mode("select")
+	await _simulate.open()
 
 
 func _open_figures() -> void:
