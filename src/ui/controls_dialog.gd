@@ -1,5 +1,6 @@
 ## What everything does, and the things about it you can change: the
-## wheel, the navigation preset and the floor new models start on.
+## wheel, the navigation preset, the floor new models start on, and
+## whether the assistant is in the window at all.
 ##
 ## The strip along the bottom is a reminder, not a reference: it wraps,
 ## it drops the tail when the window is narrow, and it is deliberately
@@ -33,8 +34,11 @@ const POINTER_WIDE := 28.0
 const POINTER_TALL := 26.0
 
 var _rows: VBoxContainer
+var _done: Button
 
 signal changed
+## Settings, Assistant (AI): shown, or building by hand only.
+signal assistant_chosen(on: bool)
 
 
 func _ready() -> void:
@@ -82,6 +86,7 @@ func _build() -> void:
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
 	_presets(column)
 	_new_floor(column)
+	_assistant(column)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -103,6 +108,7 @@ func _build() -> void:
 	done.focus_mode = Control.FOCUS_NONE
 	done.pressed.connect(func() -> void: visible = false)
 	column.add_child(done)
+	_done = done
 
 
 ## The bindings, read from the one place they are written down.
@@ -266,6 +272,56 @@ func _new_floor(column: VBoxContainer) -> void:
 	column.add_child(note)
 
 
+## Settings, Assistant (AI): a plain choice of two, kept on this device
+## (ShellPrefs.assistant_shown). Off, nothing of AI is anywhere in the
+## window but this choice, and the connector is off with it.
+var assistant_on: CheckBox
+var assistant_off: CheckBox
+var _assistant_note: Label
+
+
+func _assistant(column: VBoxContainer) -> void:
+	var words := Label.new()
+	words.text = "Assistant (AI)"
+	words.add_theme_font_size_override("font_size", 12)
+	column.add_child(words)
+	var choice := ButtonGroup.new()
+	assistant_off = _choice(column, "Build by hand only", choice)
+	assistant_on = _choice(column, "Show the assistant: Claude designs and changes parts when you ask",
+		choice)
+	_assistant_note = Label.new()
+	_assistant_note.add_theme_font_size_override("font_size", 11)
+	_assistant_note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
+	_assistant_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_assistant_note)
+	_show_assistant_choice()
+	assistant_on.toggled.connect(func(on: bool) -> void:
+		if on != ShellPrefs.assistant_shown():
+			assistant_chosen.emit(on)
+		_show_assistant_choice())
+
+
+func _choice(column: VBoxContainer, text: String, group: ButtonGroup) -> CheckBox:
+	var box := CheckBox.new()
+	box.text = text
+	box.button_group = group
+	box.focus_mode = Control.FOCUS_NONE
+	box.add_theme_font_size_override("font_size", 12)
+	box.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(box)
+	return box
+
+
+func _show_assistant_choice() -> void:
+	var on: bool = ShellPrefs.assistant_shown()
+	assistant_on.set_pressed_no_signal(on)
+	assistant_off.set_pressed_no_signal(not on)
+	_assistant_note.text = ("Its column is on the right, on your own Claude plan or API key; "
+		+ "Brickworks bills nothing." if on
+		else "No assistant, no Claude and no AI anywhere in the window. "
+			+ "Claude connections are off while the assistant is off.")
+
+
 var _version: Label
 
 
@@ -301,4 +357,14 @@ func open() -> void:
 	_fill()
 	if new_floor != null:
 		new_floor.show_floor(ModelFloor.preferred(), false)
+	if assistant_on != null:
+		_show_assistant_choice()
 	visible = true
+
+
+## Its controls, for the page to find (Main._tell_page).
+func controls_by_name() -> Dictionary:
+	if not visible:
+		return {}
+	return {"assistant_on": assistant_on, "assistant_off": assistant_off,
+		"settings_done": _done}

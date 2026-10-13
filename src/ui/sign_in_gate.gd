@@ -118,9 +118,11 @@ func setup(with_account: Account) -> void:
 
 	column.add_child(HSeparator.new())
 	# What an account is and is not, where it is asked for.
+	# Claude only for a device that has the assistant (Settings, Assistant (AI)).
 	column.add_child(_line("An account is your email address and nothing "
 		+ "else. Your models are saved on this device, not with your "
-		+ "account; Claude runs on your own plan or API key.", 11, 0.6))
+		+ ("account; Claude runs on your own plan or API key." if ShellPrefs.assistant_shown()
+			else "account."), 11, 0.6))
 
 	account.changed.connect(_follow)
 	_follow()

@@ -799,6 +799,20 @@
     },
     {
       "kind": "ui",
+      "label": "assistant on or off",
+      "entry": "src/ui/controls_dialog.gd",
+      "reach": "godot --path .  (Tools, Settings…, Assistant (AI): Build by hand only, or Show the assistant; a first visit builds by hand)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "no AI in a browser",
+      "entry": "tools/web/noai_flow.mjs",
+      "reach": "node tools/web/noai_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/noai_web   (with .env sourced, against a local export served by tools/web/serve.py: the first visit, nothing of AI anywhere, on and off in Settings, a build to the booklet and an LDraw file)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "left-button navigation",
       "entry": "src/main.gd",
       "reach": "node tools/web/nav_flow.mjs --url=<a preview>/app --bypass=…   (or godot --path .: drag on nothing, Space/Alt-drag, O H Z F)",

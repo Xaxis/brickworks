@@ -164,6 +164,22 @@ func is_on() -> bool:
 	return _on
 
 
+## Off with the assistant (Settings, Assistant (AI)): nothing listens, and
+## nothing switches it on, not a sign-in and not a connection to the
+## account. What it was is kept, so the assistant on again puts it back.
+var held: bool = false
+
+
+func hold(off: bool) -> void:
+	if held == off:
+		return
+	held = off
+	if off:
+		_waiting_until = 0
+		if _on:
+			_hang_up()
+
+
 ## True once Claude has reached this address.
 func used() -> bool:
 	return _used
@@ -207,6 +223,8 @@ func off_here() -> bool:
 ## if Claude is connected to the account and the person has not switched it
 ## off here. Run when somebody signs in.
 func resume() -> void:
+	if held:
+		return
 	var saved: Dictionary = _read()
 	if bool(saved.get("on", false)) and not _token.is_empty():
 		start()
@@ -219,6 +237,8 @@ func resume() -> void:
 ## Brickworks filled in. Then ask every few seconds for ten minutes
 ## whether Claude has connected; the relay also says so the moment it has.
 func connect_claude() -> void:
+	if held:
+		return
 	start()
 	DisplayServer.clipboard_set(shared_address())
 	last_opened = claude_ai_link()
@@ -302,7 +322,7 @@ func _fetch(method: int, path: String, session: String) -> Array:
 
 ## Start listening, on the address this device keeps, or a new one.
 func start() -> void:
-	if _on:
+	if _on or held:
 		return
 	if account == null or not account.signed_in():
 		listening.emit(false, address())
@@ -327,12 +347,17 @@ func start() -> void:
 func stop(by_hand: bool = false) -> void:
 	if by_hand:
 		_off_here = true
-	if not _on:
-		_save()
-		return
+	var was_on: bool = _on
+	_on = false
+	_save()
+	if was_on:
+		_hang_up()
+
+
+## Stop listening and say so, leaving what is kept as it was.
+func _hang_up() -> void:
 	_on = false
 	_generation += 1
-	_save()
 	_http.cancel_request()
 	listening.emit(false, address())
 	_watch_the_page()

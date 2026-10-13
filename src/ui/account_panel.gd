@@ -162,9 +162,21 @@ func controls_by_name() -> Dictionary:
 ## Claude's half: the connector whose connections this shows.
 func use_connector(with: ClaudeConnector) -> void:
 	connector = with
-	_claude_box.visible = true
+	_claude_box.visible = claude_shown
 	connector.connections_changed.connect(func(_now: Array) -> void: _show_claude())
 	_show_claude()
+
+
+## Settings, Assistant (AI): off, nothing here speaks of Claude.
+var claude_shown: bool = true
+
+
+func show_claude(on: bool) -> void:
+	claude_shown = on
+	_claude_box.visible = on and connector != null
+	_sign_out.tooltip_text = "Sign out of Brickworks on this device. Your models stay here." \
+		+ (" Claude stops building in this tab, and stays connected to your account "
+			+ "until you disconnect it." if on else "")
 
 
 ## Which of Claude's apps are connected to this account, since when and

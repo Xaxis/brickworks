@@ -84,6 +84,11 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_bin_dock = _main.get("_bin_dock")
 	_chat_dock = _main.get("_chat_dock")
+	# Both columns, as a person who has the assistant on: which one is folded
+	# is what the centring is checked against. A first visit has only the
+	# parts (src/dev/noai_probe.gd).
+	_main.call("set_assistant", true)
+	await _frames(30)
 	if OS.get_cmdline_user_args().has("--ratio=2"):
 		await _two_to_the_unit()
 	_main.call("clear_model")

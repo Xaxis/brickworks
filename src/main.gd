@@ -78,6 +78,13 @@ var _connector_resumed: bool = false
 ## A probe about the sign-in screen puts it up for itself (set before the
 ## scene enters the tree). The session it signs in with is never kept.
 var gate_for_probe: bool = false
+## The first visit's one line offering the assistant, along the top of the
+## model ([method _offer_assistant]). A probe about it puts it up for itself,
+## as one about the sign-in screen does; any other sees the model as it was.
+var offer_for_probe: bool = false
+var _offer: HBoxContainer
+var _offer_settings: Button
+var _offer_close: Button
 ## A model shared by link (api/share.js). [member _viewing] is the link's id
 ## when this run is its read-only viewer (/app?view=<id>, as --view=<id>):
 ## no sign-in, nothing that edits, nothing written (_enter_view).
@@ -336,6 +343,11 @@ func _tell_page() -> void:
 		named.merge(_shell.status.working.controls_by_name())
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
+	if _controls != null:
+		named.merge(_controls.controls_by_name())
+	if _offer != null and _offer.visible:
+		named["offer_settings"] = _offer_settings
+		named["offer_close"] = _offer_close
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
 	# viewer opens — the timeline and the parts list.
 	if _share_panel != null:
@@ -394,6 +406,11 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksAskLayout = false", true)
 		JavaScriptBridge.eval("window.brickworksLayout = %s"
 			% JSON.stringify(_layout_for_page(to_window, per_css)), true)
+	# And every word the window shows, when a check asks: the canvas has no
+	# text a page can read (tools/web/noai_flow.mjs searches it for AI).
+	if bool(JavaScriptBridge.eval("window.brickworksAskWords === true", true)):
+		JavaScriptBridge.eval("window.brickworksAskWords = false", true)
+		JavaScriptBridge.eval("window.brickworksWords = %s" % JSON.stringify(words_shown()), true)
 	if not _page_title.is_empty():
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
 			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
@@ -465,6 +482,10 @@ func _tell_page() -> void:
 		# tools/web/browser.mjs).
 		"columns": {"parts": _bin_dock.is_open(), "assistant": _chat_dock.is_open(),
 			"share": _columns},
+		# Settings, Assistant (AI): whether the assistant is in the window at
+		# all (tools/web/noai_flow.mjs), and the first visit's line offering it.
+		"assistant": _shell.assistant_shown if _shell != null else false,
+		"offer": _offer != null and _offer.visible,
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
 		"brickified": _brickify.last_summary if _brickify != null else "",
 		# And the last picture laid in LEGO Art, for art_flow.mjs.
@@ -519,6 +540,50 @@ func _tell_page() -> void:
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
+
+
+## Every word the window shows a person: each control's text, its
+## placeholder and its tooltip, for every control on screen, and every row
+## of every menu and of the menu on a part, open or not, with its tooltip.
+## Read by tools/web/noai_flow.mjs through the page, to search for AI.
+func words_shown() -> PackedStringArray:
+	var out := PackedStringArray()
+	_words_in(get_tree().root, out)
+	if _shell != null:
+		for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
+			var button: MenuButton = _shell.menu(title)
+			if button != null:
+				_rows_in(button.get_popup(), out)
+		_rows_in(_shell.context, out)
+	return out
+
+
+func _words_in(node: Node, out: PackedStringArray) -> void:
+	if node is Control:
+		if not (node as Control).is_visible_in_tree():
+			return
+		for property: String in ["text", "placeholder_text", "tooltip_text"]:
+			var value: Variant = node.get(property)
+			if typeof(value) == TYPE_STRING and not str(value).is_empty():
+				out.append(str(value))
+	elif node is Window and not (node as Window).visible:
+		return
+	elif node is AcceptDialog:
+		out.append((node as AcceptDialog).dialog_text)
+	for child: Node in node.get_children():
+		_words_in(child, out)
+
+
+func _rows_in(popup: PopupMenu, out: PackedStringArray) -> void:
+	if popup == null:
+		return
+	for index: int in popup.item_count:
+		out.append(popup.get_item_text(index))
+		if not popup.get_item_tooltip(index).is_empty():
+			out.append(popup.get_item_tooltip(index))
+	for child: Node in popup.get_children():
+		if child is PopupMenu:
+			_rows_in(child, out)
 
 
 ## The model's part of the window and every panel's, in CSS pixels, and
@@ -1294,6 +1359,8 @@ func _select_inside(box: String) -> int:
 ## Edit, Ask Claude about this… (and the menu on a part): the assistant's
 ## panel, its next request about what is selected.
 func ask_about_selection() -> void:
+	if not _shell.assistant_shown:
+		return
 	_builder.hide_preview()
 	_chat_dock.set_open(true)
 	_chat.ask_about(_builder.selection.keys())
@@ -2257,11 +2324,14 @@ func _build_ui() -> void:
 	_chat_dock.holds = "the assistant"
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
+	# Rail and column, or neither: Settings, Assistant (AI) (set_assistant).
+	_chat_dock.visible = ShellPrefs.assistant_shown()
 	_chat.bind(_assistant)
 	# Claude asking for more room than the selection waits on the person: the
 	# panel the question is in comes into view.
 	_assistant.room_asked.connect(func(_why: String, _where: String) -> void:
-		_chat_dock.set_open(true))
+		if _chat_dock.visible:
+			_chat_dock.set_open(true))
 	# Claude as the client, on the person's own plan: this tab offered as
 	# a connector. Its requests are answered by a CommandSocket that never
 	# listens on a port — only its answer_rpc is used, the same code the
@@ -2273,6 +2343,8 @@ func _build_ui() -> void:
 	_connector = ClaudeConnector.new()
 	_connector.rpc = answering
 	_connector.account = _account
+	# Off with the assistant, before a sign-in can switch it on.
+	_connector.held = not ShellPrefs.assistant_shown()
 	add_child(_connector)
 	_chat.use_connector(_connector)
 	# On again with the same address if it was on last time, so the
@@ -2355,6 +2427,7 @@ func _build_ui() -> void:
 	$HUD.add_child(_controls)
 	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 	_bar.controls_wanted.connect(_controls.open)
+	_controls.assistant_chosen.connect(set_assistant)
 	# The strip along the bottom names what the middle button does, so
 	# it is wrong the moment somebody changes it.
 	_controls.changed.connect(func() -> void:
@@ -2365,6 +2438,7 @@ func _build_ui() -> void:
 	add_child(_picker)
 	_mosaic = MosaicDialog.new()
 	_mosaic.library = _library
+	_mosaic.claude_shown = ShellPrefs.assistant_shown()
 	$HUD.add_child(_mosaic)
 	_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 
@@ -2534,6 +2608,7 @@ func _build_ui() -> void:
 	# src/ui/shell.gd. The parts count is the status bar's.
 	_shell = Shell.new()
 	_shell.app = self
+	_shell.assistant_shown = ShellPrefs.assistant_shown()
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
 	# Claude's change to a selection made in one copy of a sub-assembly is
@@ -2585,6 +2660,7 @@ func _build_ui() -> void:
 	_seat_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_seat_offer)
 	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
+	_offer_assistant(_notices.get_child(0))
 	_bar.started_new.connect(_seat_offer.dismiss)
 	_bar.cleared.connect(_seat_offer.dismiss)
 
@@ -2728,6 +2804,7 @@ func _build_ui() -> void:
 	# Who is signed in, and the way out: from Account on the bar.
 	_account_panel = AccountPanel.new()
 	_account_panel.setup(_account)
+	_account_panel.show_claude(ShellPrefs.assistant_shown())
 	if _connector != null:
 		_account_panel.use_connector(_connector)
 	$HUD.add_child(_account_panel)
@@ -3008,7 +3085,7 @@ func _build_art(options: MosaicArt.Options) -> void:
 ## assistant, which plans it with make_art in whichever way the person
 ## designs — their key, or their own Claude on this machine.
 func _design_art_with_claude(said: String) -> void:
-	if _mosaic_source == null:
+	if _mosaic_source == null or not _shell.assistant_shown:
 		return
 	_assistant.art_source = _mosaic_source
 	_chat_dock.set_open(true)
@@ -3071,6 +3148,74 @@ var _arranging: bool = false
 var _tabbed: Array = []
 
 
+## Settings, Assistant (AI): the assistant in the window, or nothing of it
+## anywhere: its rail and column, Ask Claude in Edit and on a part, View,
+## Assistant and Tools, Claude connector, Design with Claude in Brick Art,
+## Claude in Account, its card in the tour. The connector goes off with it
+## and nothing switches it on again until the assistant is back, which
+## puts it back as it was. Kept on this device (ShellPrefs.assistant_shown).
+## Turned on, its column opens: it was asked for.
+func set_assistant(on: bool) -> void:
+	ShellPrefs.put("assistant", "on" if on else "off")
+	ShellPrefs.put("assistant_offered", true)
+	if _offer != null:
+		_offer.visible = false
+	_shell.set_assistant(on)
+	_mosaic.show_claude(on)
+	_account_panel.show_claude(on)
+	_connector.hold(not on)
+	if on and _account.signed_in():
+		_connector.resume()
+	_chat_dock.visible = on
+	if not on:
+		_arranging = true
+		_chat_dock.set_open(false, false)
+		_arranging = false
+	_columns = ""
+	_fit_panels()
+	if on and _columns != "drawers":
+		_chat_dock.set_open(true)
+
+
+## The first visit, which builds by hand: one line along the top of the
+## model saying where the assistant is, once, and never again — "Want an
+## assistant? Settings, Assistant", with the way there and a way to close it.
+func _offer_assistant(notes: Control) -> void:
+	_offer = HBoxContainer.new()
+	_offer.alignment = BoxContainer.ALIGNMENT_CENTER
+	_offer.add_theme_constant_override("separation", 8)
+	_offer.visible = false
+	var words := Label.new()
+	words.text = "Want an assistant? Settings, Assistant."
+	words.add_theme_font_size_override("font_size", 12)
+	words.add_theme_color_override("font_color", Color(1, 1, 1, 0.72))
+	_offer.add_child(words)
+	_offer_settings = Button.new()
+	_offer_settings.text = "Settings…"
+	_offer_settings.flat = true
+	_offer_settings.focus_mode = Control.FOCUS_NONE
+	_offer_settings.add_theme_font_size_override("font_size", 12)
+	_offer_settings.pressed.connect(func() -> void:
+		_offer.visible = false
+		_controls.open())
+	_offer.add_child(_offer_settings)
+	_offer_close = Button.new()
+	_offer_close.text = "×"
+	_offer_close.flat = true
+	_offer_close.tooltip_text = "Not now"
+	_offer_close.focus_mode = Control.FOCUS_NONE
+	_offer_close.add_theme_font_size_override("font_size", 14)
+	_offer_close.pressed.connect(func() -> void: _offer.visible = false)
+	_offer.add_child(_offer_close)
+	notes.add_child(_offer)
+	var first_visit: bool = str(ShellPrefs.value("assistant")).is_empty() \
+		and not ShellPrefs.assistant_shown() \
+		and not bool(ShellPrefs.value("assistant_offered"))
+	if first_visit and _viewing.is_empty() and (offer_for_probe or _gate_wanted()):
+		_offer.visible = true
+		ShellPrefs.put("assistant_offered", true)
+
+
 ## Fit the panels to the window, and decide how it shares them out.
 func _fit_panels() -> void:
 	if _bin_dock == null or _chat_dock == null or not _viewing.is_empty():
@@ -3094,12 +3239,15 @@ func _fit_panels() -> void:
 	# about 720 units, and the drawers came out 322 wide round panels
 	# that need 340, cut off down their right edge.
 	var units: float = get_viewport().get_visible_rect().size.x
-	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * 2.0 - 16.0, 220.0)
+	var rails: float = 2.0 if _chat_dock.visible else 1.0
+	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
 	_bin_dock.set_open_width(minf(336.0, drawer) if phone else 336.0)
 	_chat_dock.set_open_width(minf(340.0, drawer) if phone else 340.0)
 
-	# Whether both columns at their own widths leave the model its room.
-	var both: float = 336.0 + 340.0 + SideDock.RAIL_WIDTH * 2.0
+	# Whether both columns at their own widths leave the model its room:
+	# with the assistant off (set_assistant) there is only the one.
+	var both: float = 336.0 + SideDock.RAIL_WIDTH \
+		+ (340.0 + SideDock.RAIL_WIDTH if _chat_dock.visible else 0.0)
 	var share: String = "drawers" if phone else (
 		"turns" if units - both < MODEL_ROOM else "wide")
 	# Only when it changes. Arranging them on every resize would fight
@@ -3162,11 +3310,14 @@ func _arrange_columns() -> void:
 			assistant = bool(ShellPrefs.value("assistant_open"))
 		"turns":
 			var side: String = str(ShellPrefs.value("narrow_side"))
+			# With the assistant off, the window that showed it shows the parts.
+			if side == "assistant" and not _chat_dock.visible:
+				side = "parts"
 			parts = side == "parts"
 			assistant = side == "assistant"
 	_arranging = true
 	_bin_dock.set_open(parts, false)
-	_chat_dock.set_open(assistant, false)
+	_chat_dock.set_open(assistant and _chat_dock.visible, false)
 	_arranging = false
 
 
@@ -3186,7 +3337,9 @@ func _column_toggled() -> void:
 	match _columns:
 		"wide":
 			ShellPrefs.put("parts_open", _bin_dock.is_open())
-			ShellPrefs.put("assistant_open", _chat_dock.is_open())
+			# Folded because the assistant is off is not folded by the person.
+			if _chat_dock.visible:
+				ShellPrefs.put("assistant_open", _chat_dock.is_open())
 		"turns":
 			ShellPrefs.put("narrow_side", "parts" if _bin_dock.is_open()
 				else ("assistant" if _chat_dock.is_open() else ""))
@@ -3210,7 +3363,7 @@ func _tab_columns() -> void:
 	var back: Array = _tabbed if not _tabbed.is_empty() else [true, _columns == "wide"]
 	_tabbed = []
 	_bin_dock.set_open(bool(back[0]))
-	_chat_dock.set_open(bool(back[1]))
+	_chat_dock.set_open(bool(back[1]) and _chat_dock.visible)
 
 
 ## The strip over the model shows while something in it does.
