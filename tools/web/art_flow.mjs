@@ -165,7 +165,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 
 ok(await choosePicture(), "Build > Mosaic from a picture… brings up the page's file chooser");
 ok(await until(async () => Boolean((await controls()).mosaic_build), 120, "dialog"),
-  "the picture dialog comes up for galaxy.png, in LEGO Art");
+  "the picture dialog comes up for galaxy.png, in Brick Art");
 // Its picture of the result and what it comes to are worked out a moment
 // after it opens.
 await page.waitForTimeout(8000);

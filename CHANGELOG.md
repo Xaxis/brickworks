@@ -40,7 +40,7 @@ whole cycle.
   with the model. The baseplate can be made part of the model, counted
   and in the booklet's first step. Settings says what new models start
   on, and the assistant chooses one for what it builds.
-- Building instructions laid out as a LEGO booklet, from the toolbar's
+- Building instructions laid out like a LEGO® instruction booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of
   every part per step, several small steps to a page, every part outlined
@@ -52,7 +52,7 @@ whole cycle.
 - File, Export, BrickLink Studio model (.io): the model, its build order
   and a picture of it, in the zip Studio opens its own files from. Not
   yet seen opening in Studio itself; what is inside is plain LDraw.
-- LEGO Art: Mosaic lays a picture as a modern LEGO Art set builds one —
+- Brick Art: Mosaic lays a picture the way a modern LEGO® Art set builds one —
   2 × 4 tiles in courses, round and quarter-round accents, raised up to
   six plates deep, a panel at a time — or as classic 1 × 1 plates. Claude
   can plan one too, look at it, and revise it.
@@ -71,13 +71,13 @@ whole cycle.
   or BrickLink file, or your Rebrickable account — kept with your account;
   what a model still needs, what could stand in, and which models you
   could build.
-- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO at the size you
-  pick.
+- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO® bricks at the size
+  you pick.
 - Prints and stickers: draw a print or bring in a picture for any face of
   a part, or a sticker for a model, saved as real LDraw parts, and a
   model's sticker sheet printed at true size.
 - File, Export: a BrickLink wanted list and a Rebrickable parts list. File,
-  Import: LEGO Digital Designer's .lxf.
+  Import: LEGO® Digital Designer's .lxf.
 
 ### Changed
 
@@ -90,6 +90,12 @@ whole cycle.
   reaches it (Orthanc: 193 parts to 6), puts wheels on last, and builds
   sub-models a file places as callouts. The timeline numbers its steps
   as the booklet does, and an 8,600-part model's order takes 5 s, not 87.
+
+- The mosaic mode that lays a picture like a LEGO® Art set is now called
+  Brick Art, a name of our own. The app, the site and the designer
+  write LEGO® as the LEGO Group's Fair Play policy asks, and its notice is
+  in Help, About, on share pages and on every page of the site
+  (docs/TRADEMARKS.md).
 
 ## [0.2.0] - 2026-10-11
 

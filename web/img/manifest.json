@@ -8,9 +8,9 @@
   "width": 912,
   "height": 912,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a922749254032cacc/shots/art/galaxy_top.png",
-  "subject": "galaxy (LEGO Art)",
-  "alt": "A square LEGO mosaic seen straight from above: a spiral galaxy in light and dark blue round tiles curling around a glowing yellow and white core, on a black background scattered with white round-tile stars.",
-  "caption": "A spiral galaxy, built as a LEGO Art mosaic."
+  "subject": "galaxy (Brick Art)",
+  "alt": "A square LEGO® mosaic seen straight from above: a spiral galaxy in light and dark blue round tiles curling around a glowing yellow and white core, on a black background scattered with white round-tile stars.",
+  "caption": "A spiral galaxy, built as a Brick Art mosaic."
  },
  {
   "slug": "owl",
@@ -22,7 +22,7 @@
   "height": 900,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/owl_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
   "subject": "owl designed by Claude",
-  "alt": "A studio render of a barn owl built from LEGO bricks: a white face with large black eyes, a tan head, dark tan folded wings and a white chest, perched on a brown log on a small black base scattered with leaves, flowers and a grey mouse.",
+  "alt": "A studio render of a barn owl built from LEGO® bricks: a white face with large black eyes, a tan head, dark tan folded wings and a white chest, perched on a brown log on a small black base scattered with leaves, flowers and a grey mouse.",
   "caption": "A barn owl Claude designed, brick by brick."
  },
  {
@@ -46,10 +46,10 @@
   },
   "width": 872,
   "height": 744,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a922749254032cacc/shots/art/dialog.png",
-  "subject": "LEGO Art dialog",
-  "alt": "The Build this picture dialog with LEGO Art selected: a preview of a blue spiral galaxy mosaic above sliders set to 3 by 3 panels and 3 plates deep, five ticked options, and a count of 1,701 parts for a picture 48 by 48 studs, with Cancel and Build it buttons.",
-  "caption": "Turn a picture into a LEGO Art mosaic."
+  "source": "/tmp/claude-1000/-mnt-Projects-brickworks/44a75f29-dacb-4f88-8c1c-c4338fde4542/scratchpad/legal/desk/art_dialog.png, the desktop app at 1600 x 900 with mosaic_probe's galaxy at 48 studs on 3 x 3 panels, cropped to 362,72 872 x 744 (2026-10-13, the mode renamed Brick Art)",
+  "subject": "Brick Art dialog",
+  "alt": "The Build this picture dialog with Brick Art selected: a preview of a blue spiral galaxy mosaic above sliders set to 3 by 3 panels and 3 plates deep, five ticked options, a field to tell Claude how to plan it, and a count of 1,510 parts for a picture 48 by 48 studs, with Cancel and Build it buttons.",
+  "caption": "Turn a picture into a Brick Art mosaic."
  },
  {
   "slug": "render",
@@ -61,7 +61,7 @@
   "height": 750,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a6a153bba545810db/shots/render/castle_best.png",
   "subject": "studio render",
-  "alt": "A studio render of a grey stone LEGO castle on a plain white backdrop: crenellated walls and square towers flying red pennants, an arched gateway, a timber-topped watchtower and a courtyard with a red canopy, on a green baseplate edged by a blue moat.",
+  "alt": "A studio render of a grey stone LEGO® castle on a plain white backdrop: crenellated walls and square towers flying red pennants, an arched gateway, a timber-topped watchtower and a courtyard with a red canopy, on a green baseplate edged by a blue moat.",
   "caption": "A castle, rendered in the built-in studio."
  },
  {
@@ -126,7 +126,7 @@
   "height": 768,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/castle.png",
   "subject": "castle designed by Claude",
-  "alt": "A grey stone LEGO castle on a green baseplate ringed by a blue moat: crenellated walls and square towers flying red pennants, one tower under a timber roof, an arched gateway and a paved courtyard inside.",
+  "alt": "A grey stone LEGO® castle on a green baseplate ringed by a blue moat: crenellated walls and square towers flying red pennants, one tower under a timber roof, an arched gateway and a paved courtyard inside.",
   "caption": "A castle Claude designed from one sentence."
  },
  {
@@ -139,7 +139,7 @@
   "height": 640,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/orthanc-corner.webp",
   "subject": "Orthanc, front corner",
-  "alt": "The Tower of Orthanc in black LEGO bricks seen from a front corner: a tall tower of clustered piers banded with grey courses, rising to sharp curved horns, on a stepped plinth on a green baseplate.",
+  "alt": "The Tower of Orthanc in black LEGO® bricks seen from a front corner: a tall tower of clustered piers banded with grey courses, rising to sharp curved horns, on a stepped plinth on a green baseplate.",
   "caption": "Orthanc from the front corner."
  },
  {
@@ -178,7 +178,7 @@
   "height": 900,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/car_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
   "subject": "car",
-  "alt": "A studio render of a red LEGO sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front.",
+  "alt": "A studio render of a red LEGO® sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front.",
   "caption": "A sports car and its driver, designed by Claude."
  }
 ]

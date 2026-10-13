@@ -229,6 +229,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
+	_about.dialog_autowrap = true
 	add_child(_about)
 
 	# The layout as it was left. Which columns show is the window's to
@@ -389,7 +390,7 @@ func _define() -> void:
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
-	_add("import_lxf", "LEGO Digital Designer model (.lxf)…", 0, bar._import)
+	_add("import_lxf", "LEGO® Digital Designer model (.lxf)…", 0, bar._import)
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
@@ -893,10 +894,13 @@ func _toggle_full_screen() -> void:
 
 
 func _show_about() -> void:
-	_about.dialog_text = ("Brickworks %s\n\nBuild with real LEGO parts, by hand or with "
-		+ "the assistant, on the web or on your own computer.\n\n%s") % [
+	_about.dialog_text = ("Brickworks %s\n\nBuild with real LEGO® parts, by hand or with "
+		+ "the assistant, on the web or on your own computer.\n\n%s\n\n"
+		+ "Part geometry from the LDraw™ Parts Library, CC BY 4.0.\n"
+		+ "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
+		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.") % [
 		BuildInfo.version(), BuildInfo.describe()]
-	_about.popup_centered()
+	_about.popup_centered(Vector2i(460, 0))
 
 
 ## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
@@ -919,7 +923,7 @@ func _define_floor() -> void:
 				and store.model_floor.deep == side
 		made.radio = true
 	var custom: Command = _add("floor_custom", "Baseplate, other size…", 0, _ask_floor_size,
-		Callable(), "A baseplate of any size in eights of studs, cut from the ones LEGO sells")
+		Callable(), "A baseplate of any size in eights of studs, cut from the ones the LEGO Group sells")
 	custom.ticked = func() -> bool:
 		return store.model_floor.is_plate() and not (store.model_floor.across == store.model_floor.deep
 			and ModelFloor.SIZES.has(store.model_floor.across))

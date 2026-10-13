@@ -97,8 +97,8 @@ func _build() -> void:
 	modes.add_theme_constant_override("separation", 6)
 	column.add_child(modes)
 	var group := ButtonGroup.new()
-	_art_mode = _mode(modes, group, "LEGO Art",
-		"Panels of round tiles, quarter circles, smooth tiles and raised relief, as a LEGO Art set is built")
+	_art_mode = _mode(modes, group, "Brick Art",
+		"Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets")
 	_classic_mode = _mode(modes, group, "Classic",
 		"One 1 × 1 plate a pixel, flat")
 	_art_mode.button_pressed = true
@@ -157,8 +157,8 @@ func _build() -> void:
 	claude.add_child(_brief)
 	_ask = Button.new()
 	_ask.text = "Design with Claude"
-	_ask.tooltip_text = ("Claude looks at the picture and plans it as a LEGO Art "
-		+ "designer would — what stands out, the textures, the stars — with your "
+	_ask.tooltip_text = ("Claude looks at the picture and plans it as a designer of LEGO® Art "
+		+ "sets would — what stands out, the textures, the stars — with your "
 		+ "key or your own Claude, as the assistant designs")
 	_ask.add_theme_font_size_override("font_size", 12)
 	_ask.pressed.connect(design_with_claude)
@@ -309,9 +309,9 @@ func design_with_claude() -> void:
 ## What a design run is asked when the dialog hands it the picture: on the
 ## panels the person chose, since the size is theirs to decide.
 static func art_brief(said: String, panels: Vector2i) -> String:
-	var ask: String = ("Make the picture I chose into a LEGO Art set with make_art, "
-		+ "%d x %d panels: look_at_picture first, then plan it as a LEGO Art "
-		% [panels.x, panels.y] + "designer would.")
+	var ask: String = ("Make the picture I chose into Brick Art with make_art, "
+		+ "%d x %d panels: look_at_picture first, then plan it as a designer of "
+		% [panels.x, panels.y] + "LEGO® Art sets would.")
 	return ask if said.is_empty() else "%s %s" % [ask, said]
 
 

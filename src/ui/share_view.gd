@@ -80,7 +80,7 @@ func _build_bar() -> void:
 	_bar.add_child(row)
 
 	var home := Look.link("Brickworks", 13)
-	home.tooltip_text = "Brickworks: design LEGO models in your browser"
+	home.tooltip_text = "Brickworks: design LEGO® models in your browser"
 	home.pressed.connect(func() -> void: OS.shell_open(Deployment.api_base() + "/"))
 	home.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(home)

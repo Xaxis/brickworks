@@ -479,7 +479,7 @@ func _own_tools() -> Array:
 			"name": "review_model",
 			"description": ("Look a built model over the way Brickworks' own "
 				+ "designer does after a design stands: with no assembly, the "
-				+ "whole model measured against real LEGO sets of its size and "
+				+ "whole model measured against real LEGO® sets of its size and "
 				+ "kind — shapes, colours, the one-off pieces, how coarse — and "
 				+ "what to check it for; with an assembly named in "
 				+ "submit_design, that one close up, measured, with the parts "

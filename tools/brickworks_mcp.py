@@ -174,7 +174,8 @@ def tool_list(app: App) -> list[dict]:
 # Said only when the app is shut, which is the one time the real thing
 # cannot be fetched. Everything specific lives in the app.
 ABOUT = (
-    "Brickworks is a dimensionally exact LEGO CAD app, open in a window the "
+    "Brickworks is a dimensionally exact CAD app for LEGO® bricks, open in a "
+    "window the "
     "person is looking at. These tools are the same ones its own assistant "
     "uses: search the real part catalogue, check a design against the real "
     "collision lattice, look at what is built, and submit a design to stand "

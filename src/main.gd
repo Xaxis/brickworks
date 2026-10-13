@@ -2663,7 +2663,7 @@ const MOSAIC_TALL := 720.0
 func _build_art(options: MosaicArt.Options) -> void:
 	if _mosaic_source == null:
 		return
-	var job: Working.Job = Working.begin("Laying the picture out in LEGO Art…")
+	var job: Working.Job = Working.begin("Laying the picture out as Brick Art…")
 	await job.shown()
 	var art: MosaicArt.Art = _mosaic.current_art() if _mosaic != null else null
 	if art == null:
