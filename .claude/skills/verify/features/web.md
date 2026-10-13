@@ -321,7 +321,17 @@ plan with Claude as the client.
   1400 x 900 and 1440 x 900 at 2x and 3x the model keeps 60% of the width,
   with the assistant's key field and both rails on the page (a first visit
   there shows the assistant). The deploy's `--quick` set is 1400 x 900 at 2x,
-  1100 x 700 and the phone. A browser flow after a control in the folded
+  1100 x 700 and the phone. A page whose app never publishes its controls
+  within `START_MS` (5 minutes, arrival_check's budget; `--start=<s>`) is
+  its own failure, "the app did not start in N s (load L)", and fit_check
+  exits 2 when that is the only kind, which `deploy.sh` reports as not
+  starting rather than not fitting: a production deploy failed at load 80
+  with nothing on the page at one size, reported as every control "not
+  shown". Each size that started says how long it took ("up in N s").
+  Proved on a local export at load 30 to 45 (2026-10-13): `--quick` passes,
+  each size up in 17 to 25 s; `--quick --throttle=30 --start=120` (each
+  page's CPU slowed by Chromium's `Emulation.setCPUThrottlingRate`) says
+  "the app did not start in 120 s (load 46)" at every size and exits 2. A browser flow after a control in the folded
   column calls `openColumnFor(page, name)` (`tools/web/browser.mjs`), which
   clicks that column's rail as a person would, by `brickworksState.columns`.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and

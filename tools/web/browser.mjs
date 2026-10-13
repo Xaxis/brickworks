@@ -20,6 +20,11 @@ export const SOFTWARE = [
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
 ];
 
+// How long a page has for the app to come up and show its controls: five
+// minutes, which a fresh page of the web build drawn in software needs on a
+// loaded machine (arrival_check, fit_check).
+export const START_MS = 5 * 60 * 1000;
+
 let warned = false;
 
 async function signedIn(context) {

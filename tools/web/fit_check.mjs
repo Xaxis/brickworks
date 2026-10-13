@@ -24,8 +24,18 @@
 // control of the model tree, the properties or the sub-assembly banner
 // with its centre inside it is a panel over the model. In a laptop's
 // window the model must also keep 60% of the width.
-import { launch } from "./browser.mjs";
+//
+// A page whose app never came up is a failure of its own, said as one: "the
+// app did not start in N s (load L)", after arrival_check's five minutes
+// (START_MS; --start=<s> for fewer). A production deploy failed at load 80
+// with nothing at all on the page at one size, reported as every control
+// "not shown", on a build a rerun passed at every size. Up is the app
+// publishing its controls; the layout checks after it are as strict as ever.
+// --throttle=<n> slows each page's CPU n times (Chromium's
+// Emulation.setCPUThrottlingRate), to see a slow start reported as one.
+import { launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
+import { loadavg } from "node:os";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -39,6 +49,8 @@ const first = args.bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
   : url;
 mkdirSync(out, { recursive: true });
+const startWithin = args.start ? Number(args.start) * 1000 : START_MS;
+const throttle = Number(args.throttle || 1);
 
 // width, height, ratio, the controls that must be on the page there, and
 // the least share of the page's width the model keeps (0: not asked).
@@ -112,22 +124,55 @@ function viewFromCentres(where) {
   return [left.x, view.y - half, right.x - left.x, half * 2];
 }
 
+// Wait for the app to come up and lay out its toolbar, until a deadline:
+// the controls it publishes, or null if it never published any. A page busy
+// starting can keep a question waiting, so none waits past the deadline.
+async function started(page, until) {
+  let where = null;
+  while (Date.now() < until) {
+    // A question left waiting is dropped with the page; a page that went
+    // somewhere else meanwhile has nothing to say yet.
+    const asked = page.evaluate(() => window.brickworksControls || null).catch(() => null);
+    const now = await Promise.race([asked,
+      new Promise((done) => setTimeout(() => done(undefined), Math.max(until - Date.now(), 0)))]);
+    if (now === undefined) break;
+    where = now || where;
+    if (where && where.save) break;
+    await page.waitForTimeout(500);
+  }
+  return where;
+}
+
 const browser = await launch();
 let failed = 0;
+let unstarted = 0;
 for (const [width, height, ratio, wanted, share] of CASES) {
   const label = `${width}x${height}@${ratio}x`;
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio });
   const page = await context.newPage();
-  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
-  let where = null;
-  for (let n = 0; n < 600; n++) {
-    where = await page.evaluate(() => window.brickworksControls || null);
-    if (where && where.save) break;
-    await page.waitForTimeout(500);
+  if (throttle > 1) {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: throttle });
+  }
+  const opened = Date.now();
+  let trouble = "";
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: startWithin })
+    .catch((error) => { trouble = `: ${error.message.split("\n")[0]}`; });
+  const up = trouble ? null : await started(page, opened + startWithin);
+  const waited = Math.round((Date.now() - opened) / 1000);
+  if (!up) {
+    await page.screenshot({ path: `${out}/${label}.png`, timeout: 30000 }).catch(() => {});
+    failed++;
+    unstarted++;
+    console.log(`  FAIL  ${label}: the app did not start in ${waited} s (load ${loadavg()[0].toFixed(0)})${trouble}`);
+    await context.close();
+    continue;
   }
   await page.waitForTimeout(3000);
-  where = await page.evaluate(() => window.brickworksControls || {});
+  const where = await page.evaluate(() => window.brickworksControls || {});
   const outside = [];
+  // Up, but signed out: the sign-in screen is all there is.
+  if (where.signin_email && !where.save) outside.push("the sign-in screen is up (is .env sourced?)");
   for (const name of wanted) {
     const at = where[name];
     if (!at) {
@@ -171,12 +216,15 @@ for (const [width, height, ratio, wanted, share] of CASES) {
   const fits = outside.length === 0;
   const clear = over.length === 0;
   if (!fits || !clear) failed++;
-  console.log(`  ${fits ? "ok  " : "FAIL"}  ${label}: ${fits ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}`);
+  console.log(`  ${fits ? "ok  " : "FAIL"}  ${label}: ${fits ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}, up in ${waited} s`);
   const said = view ? `model [${view}]${layout ? `, ${layout.samples} points, columns ${layout.columns}` : " (from centres)"}` : "";
   const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width` : "";
   console.log(`  ${clear ? "ok  " : "FAIL"}  ${label}: ${clear ? `nothing over the model (${said}${kept})` : `${over.slice(0, 6).join("; ")}${over.length > 6 ? `; and ${over.length - 6} more` : ""} (${said})`}`);
   await context.close();
 }
 await browser.close();
-console.log(failed ? `${failed} failed` : "the app fits the page at every size and density, the model clear");
-process.exit(failed ? 1 : 0);
+// 2 when the only failures are sizes the app never started at.
+const misfits = failed - unstarted;
+const said = [misfits ? `${misfits} failed` : "", unstarted ? `the app did not start at ${unstarted} size(s)` : ""];
+console.log(failed ? said.filter(Boolean).join("; ") : "the app fits the page at every size and density, the model clear");
+process.exit(misfits ? 1 : unstarted ? 2 : 0);
