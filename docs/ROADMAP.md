@@ -1647,6 +1647,42 @@ upright. The egg, the bird and the hull keep their shells
 on side studs, rows fitted to its height), so the flank is smooth rather
 than upright plates. Pictures: `shots/d3/car_{before,after}_corner.png`.
 
+Held-out again on these three, on the subscription (`env -u
+ANTHROPIC_API_KEY`, under `heavy`), measured by `tools/style.py` (`other`
+for the owl, `vehicles` for the car) and `candidate_probe`:
+
+| run | parts | shapes | colours | sideways | curved | plain | mirrored | pieces |
+|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_d3`) | 613 | 53 | 11 | 32% | 9.3% | 47% | 79% | 1 |
+| *last round (`owl_r2`)* | *1,036* | *56* | *11* | *20%* | *10%* | *69%* | *87%* | *7* |
+| sports car (`car_d3`) | 120 | 35 | 7 | 3.4% | 13% | 46% | 100% | 1, and the driver, named |
+| *last round (`car_r2`)* | *174* | *36* | *7* | *9.2%* | *14%* | *47%* | *92%* | *2, named* |
+
+By eye (`shots/runs/{owl,car}_d3_{corner,front,close}.png`): the **owl**
+kept its shapes — an ellipsoid body with a loft for a tail, an ellipsoid
+head, a rounded box for a stone post — on a grassy base two plates thick
+that is one piece, and the whole owl is one piece and a landing-page
+candidate where `owl_r2` was seven. Its face and breast it laid as
+`studs_out` panels of white tiles, flat, and its head reads boxy, a round
+with studs on its crown; four of its submissions were refused first, each
+for curved slopes on a shell held by nothing or standing on a cheese slope
+(the 2 x 1 curved slope on its side, the last round's open problem). Plain
+fell from 69% to 47% and sideways rose to 32%; it is smaller. The **car**
+said its body as a shape once, a 5-plate extrusion over arches cut nearly
+to its top; the shells kept 43% of their plates each (so were kept), its
+nose came away in 14 parts held by nothing, and the run judged it "ragged"
+and built a red mid-engine coupe by hand, Speed Champions fashion, with a
+trans canopy, a wing on a hinge and a black diffuser — one piece, a
+candidate. One run each.
+
+Left: a shell for a thin body that lays its flank smooth (plates and tiles
+on side studs, rows fitted to its height), and its nose kept joined; a
+hull's bilge turned out in curved slopes (not started); the 2 x 1 curved
+slope on its side held by nothing; touching-but-unjoined as a fault, once
+the prisms, round towers, domes, rock and rooms the patterns lay are joined
+themselves; a round fill's rim wedges stacked wedge on wedge; an oval
+head's crown and a face in tiles that read round.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
