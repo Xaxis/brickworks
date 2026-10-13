@@ -254,7 +254,9 @@ func _saw(line: String) -> void:
 							said.emit(text)
 					"tool_use":
 						_tools_used += 1
-						progress.emit(_in_words(str(one.get("name", ""))))
+						var asked: Variant = one.get("input", {})
+						progress.emit(_in_words(str(one.get("name", "")),
+							asked if asked is Dictionary else {}))
 			_turns += 1
 		"result":
 			var ok: bool = not bool(event.get("is_error", false))
@@ -265,9 +267,17 @@ func _saw(line: String) -> void:
 			finished.emit(ok, summary)
 
 
-## A tool name as a person would say it.
-func _in_words(name: String) -> String:
+## A tool name as a person would say it. A review says which, so a run's
+## log shows the feature, the assembly or the creative pass it is on.
+func _in_words(name: String, input: Dictionary = {}) -> String:
 	var plain: String = name.trim_prefix("mcp__%s__" % SERVER)
+	if plain == "review_model":
+		if bool(input.get("creative", false)):
+			return "the creative pass"
+		for key: String in ["feature", "assembly"]:
+			if not str(input.get(key, "")).strip_edges().is_empty():
+				return "reviewing the %s" % str(input[key]).strip_edges()
+		return "reviewing the whole model"
 	return {
 		"search_parts": "looking for a part",
 		"check_design": "checking what it has",

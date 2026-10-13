@@ -185,6 +185,10 @@ func _run() -> void:
 		"a rich enough assembly is still sent back when the whole model "
 			+ "has too few one-off pieces")
 	await _reply(assistant, [{"type": "text", "text": "Done."}])
+	# A fresh design, so its creative pass (creative_probe) comes last.
+	_ok(ended.is_empty() and _text_of(assistant._messages.back()).begins_with(
+		"The creative pass"), "with the wall done, the creative pass comes last")
+	await _reply(assistant, [{"type": "text", "text": "Nothing to add."}])
 	_ok(not ended.is_empty() and bool(ended[0][0]), "and the run ends well")
 
 	print("\na design that will not hold is kept where it can be read back")

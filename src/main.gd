@@ -1013,6 +1013,12 @@ func _ask_claude_code(brief: String) -> void:
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
 				(Time.get_ticks_msec() - started) / 1000.0, words, _builder.history_depth()]))
+	# And what the creative pass came to, said by the app, so a run's log
+	# has what it added and not only that it was asked.
+	if about.is_empty():
+		_assistant.progress.connect(func(note: String) -> void:
+			if note.begins_with("the creative pass"):
+				print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0, note]))
 	var outcome: Array = await session.finished
 	_ask_went_well = bool(outcome[0])
 	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [

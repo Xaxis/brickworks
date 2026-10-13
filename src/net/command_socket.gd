@@ -486,8 +486,10 @@ func _own_tools() -> Array:
 				+ "real sets of the kind use that it has none of; with a feature "
 				+ "(eyes, beak, wheel arches, grille), three real sets' pieces for "
 				+ "it with ids for place_technique and the worked technique that "
-				+ "builds one. Call it after submit_design, then once per feature, "
-				+ "then once per assembly, working each before the next."),
+				+ "builds one; with creative, the creative pass — three touches "
+				+ "proposed for this subject and the best one or two added. Call it "
+				+ "after submit_design, then once per feature, then once per "
+				+ "assembly, working each before the next, then creative last."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -497,6 +499,9 @@ func _own_tools() -> Array:
 					"feature": {"type": "string", "description":
 						"a feature the subject is known by, as listed in "
 						+ "submit_design's features"},
+					"creative": {"type": "boolean", "description":
+						"true for the creative pass, once the features and "
+						+ "assemblies have had their turns"},
 				},
 				"additionalProperties": false,
 			},
@@ -576,7 +581,7 @@ func _own_tools_have(tool: String) -> bool:
 func _run_own(tool: String, input: Dictionary) -> String:
 	if tool == "review_model" and assistant != null:
 		return await assistant.review(str(input.get("assembly", "")),
-			str(input.get("feature", "")))
+			str(input.get("feature", "")), bool(input.get("creative", false)))
 	if app == null:
 		return "This app cannot do that from outside."
 	match tool:

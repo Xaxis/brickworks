@@ -213,8 +213,15 @@ func _run() -> void:
 		saved.begins_with("Written") and saved.contains("The west wall: ")
 		and saved.contains("last of its assemblies"))
 	var resaved: String = _text_of(await _ask("save_model", {"name": "brickworks-mcp-probe-next"}))
-	_check("...and once each has had its turn, saving only saves",
-		resaved.begins_with("Written") and not resaved.contains("close look"))
+	_check("...and once each has had its turn, saving hands the creative pass",
+		resaved.begins_with("Written") and not resaved.contains("close look")
+		and resaved.contains("Before it is finished: the creative pass"))
+	var passed: String = _text_of(await _ask("save_model", {"name": "brickworks-mcp-probe-next"}))
+	_check("...then says what it added (%s)" % passed.get_slice("\n\n", 1),
+		passed.begins_with("Written") and passed.contains("The creative pass"))
+	var last: String = _text_of(await _ask("save_model", {"name": "brickworks-mcp-probe-next"}))
+	_check("...and then saving only saves",
+		last.begins_with("Written") and not last.contains("creative pass"))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(
 		ModelStore.SAVE_DIR + "brickworks-mcp-probe-next.ldr"))
 	var nothing: String = _text_of(await _ask("review_model", {"assembly": "moat"}))
