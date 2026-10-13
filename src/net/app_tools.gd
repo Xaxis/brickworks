@@ -58,6 +58,7 @@ const COMMANDS: Dictionary = {
 	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
 	"sticker": "print_part",
 	"make_unique": "make_unique",
+	"simulate": "simulate_mechanism",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -127,6 +128,14 @@ by number, or round two sprockets; item= lays an existing one again.
 or a clip) and swings one to an angle, as far as it has room. \
 animate_model: poses at moments, played smoothly between and rendered as \
 an animation.
+ - simulate_mechanism: turns a gear train from its driver (a crank, an \
+axle, a sub-assembly named Crank or Motor) as Tools, Simulate does: each \
+arm's turns per driver turn, its period in a reference's turns (Earth \
+years) against the real one, what locks it, what floats, and the balance \
+over the whole cycle, with a picture; record=true keeps a WebP and an MP4. \
+Name each arm's sub-assembly after what it carries (Earth, Mars) and the \
+crank Crank; a frame not held stud by stud to the baseplate is held still \
+when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
 opens one. It cannot be undone: save_model first.
@@ -255,6 +264,29 @@ func definitions() -> Array:
 					}}},
 				"turntable": {"type": "boolean", "description": "turn the model round once over it"},
 				"render": {"type": "boolean", "description": "true when omitted"},
+			}},
+		},
+		{
+			"name": "simulate_mechanism",
+			"description": ("Turn the model's gear train as Tools, Simulate mechanism does, "
+				+ "without changing the model: from driver= (a part's number or a "
+				+ "sub-assembly's name; else the one named Crank, Motor or Handle, else the one "
+				+ "that turns most). It says each turning part's turns per driver turn and, with "
+				+ "reference= (the part periods are counted in; Earth when one is named so), "
+				+ "every other's period in its turns, against the real one for a planet or "
+				+ "targets= ({name: period}). It names a locked train's meshes and the free and "
+				+ "floating parts by number, and weighs the balance over the whole cycle: the "
+				+ "worst frame, the arm furthest past the base's edge, a picture of it there. "
+				+ "record=true also renders turns= turns of the reference (1) in frames= frames "
+				+ "(24) as a WebP and an MP4 where Render saves; past 20 s it goes on in the app."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
+				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
+				"targets": {"type": "object", "description": "name -> the period wanted, in the reference's turns",
+					"additionalProperties": {"type": "number"}},
+				"frames": {"type": "integer", "description": "frames in a recording, 2 to 240; 24 when omitted"},
+				"turns": {"type": "number", "description": "turns of the reference (or the driver) a recording covers; 1 when omitted"},
+				"record": {"type": "boolean"},
 			}},
 		},
 		{
@@ -413,6 +445,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _lay_flex(input)
 		"pose_model":
 			return _pose(input)
+		"simulate_mechanism":
+			return await _simulate(input)
 		"animate_model":
 			return await _animate(input, work)
 		"undo":
@@ -467,6 +501,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return str(input.get("op", "list")) == "list"
 		"set_floor", "pose_model":
 			return input.is_empty()
+		"simulate_mechanism":
+			return not bool(input.get("record", false))
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
 	return false
@@ -816,6 +852,18 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	if frames <= 0:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	return "%s: %s" % [said.left(1).to_upper() + said.substr(1), panel.rendered_words()]
+
+
+# -- simulating -------------------------------------------------------------------
+
+
+## Tools, Simulate mechanism's own reading, driving and weighing
+## (SimulatePanel.for_session), said for a session.
+func _simulate(input: Dictionary) -> Variant:
+	var panel: SimulatePanel = app.get("_simulate")
+	if panel == null:
+		return "This app has no Simulate mechanism."
+	return await panel.for_session(input)
 
 
 # -- undo -------------------------------------------------------------------------

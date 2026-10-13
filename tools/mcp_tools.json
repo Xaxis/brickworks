@@ -3347,6 +3347,42 @@
     "name": "animate_model"
   },
   {
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves; past 20 s it goes on in the app.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "description": "a part's number from look_at_model, or a sub-assembly's name",
+          "type": "string"
+        },
+        "frames": {
+          "description": "frames in a recording, 2 to 240; 24 when omitted",
+          "type": "integer"
+        },
+        "record": {
+          "type": "boolean"
+        },
+        "reference": {
+          "description": "the turning part periods are counted in: a number or a name",
+          "type": "string"
+        },
+        "targets": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "name -> the period wanted, in the reference's turns",
+          "type": "object"
+        },
+        "turns": {
+          "description": "turns of the reference (or the driver) a recording covers; 1 when omitted",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "simulate_mechanism"
+  },
+  {
     "description": "Take back the last change to the model, as Edit, Undo does — yours or the person's — or steps= of them. redo=true puts back what was undone. The answer names what was undone and what is next.",
     "input_schema": {
       "additionalProperties": false,

@@ -87,7 +87,7 @@ const MENUS: Array = [
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "reseat", "-", "connector", "settings"]],
+		"stability", "simulate", "reseat", "-", "connector", "settings"]],
 	["Help", ["keys", "tour", "-", "website", "about"]],
 ]
 
@@ -404,6 +404,7 @@ const DOING: Dictionary = {
 	"fit": "Fitting the view…", "fit_model": "Fitting the model…",
 	"turn_left": "Turning the model…", "turn_right": "Turning the model…",
 	"stability": "Checking stability…", "reseat": "Seating parts on their studs…",
+	"simulate": "Reading the mechanism…",
 	"cut": "Cutting away…", "xray": "Seeing through…", "grid": "Laying the stud grid…",
 	"step_new": "Making a step…", "step_earlier": "Moving the step…",
 	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
@@ -805,6 +806,12 @@ func _define() -> void:
 	_ticked("measure", func() -> bool: return verbs.measure != null and verbs.measure.active)
 	_add("stability", "Check stability", 0, _check_stability, something,
 		"Find the joints that would give way, and select the parts on them")
+	# src/ui/simulate_panel.gd. Beside Check stability rather than with Pose
+	# under Build: both read the model as it is built and change none of it,
+	# where every pose a slider sets is a step to undo.
+	_add("simulate", "Simulate mechanism…", 0, func() -> void: app.call("open_simulate"),
+		something, "Turn a gear train from a crank or an axle: how fast each part goes, "
+			+ "each arm's period, what locks it, and whether it stays standing as it turns")
 	_add("reseat", "Seat parts on their studs", 0, _reseat, something,
 		"Find parts a fraction of a stud off their studs, and offer to seat them")
 	_add("connector", "Claude connector…", 0, func() -> void:
@@ -1064,11 +1071,13 @@ func balance_line() -> String:
 ## Whether the model stands on what it stands on (Balance), over the poses
 ## [method _poses_to_weigh] gives, and shown: on the floor, and as tints. On
 ## a worker for a big model, and Working shown either way, since the sweep
-## alone can take more than a frame.
-func weigh_balance() -> Balance.Report:
+## alone can take more than a frame. A mechanism's cycle (SimulatePanel)
+## gives its own, [param given]; [param show] false weighs without drawing,
+## and [param tint] false leaves the parts' tints to the caller.
+func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) -> Balance.Report:
 	var job: Working.Job = Working.begin("Weighing the model…")
 	await job.shown()
-	var poses: Array = _poses_to_weigh()
+	var poses: Array = given if given is Array else _poses_to_weigh()
 	var judge := Balance.new()
 	judge.library = library
 	judge.floor_ids = store.scenery
@@ -1090,13 +1099,13 @@ func weigh_balance() -> Balance.Report:
 		still.free()
 	job.end()
 	var report: Balance.Report = weighed[0]
-	if report == null:
-		return null
+	if report == null or not show:
+		return report
 	if _balance_mark == null:
 		_balance_mark = BalanceMark.new()
 		_balance_mark.world = world
 		app.add_child(_balance_mark)
-	_balance_mark.show_report(report, _tints(report))
+	_balance_mark.show_report(report, _tints(report) if tint else {})
 	balance_shown = report
 	return report
 

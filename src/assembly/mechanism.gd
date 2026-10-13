@@ -1142,13 +1142,14 @@ func _loop_rows(joint: Joint) -> Array:
 ## Every joint's rate for the [param drivers]: body -> how fast it turns
 ## about its own joint's axis, against the ground (1.0 to drive it, 0.0 to
 ## hold it). Returns {ok, locked, said, culprits (each coupling whose removal
-## frees a locked train, said), freedoms (how many rates nothing decides),
-## free (the bodies whose own turn those leave undecided)}. A rate nothing
-## decides is left at 0 relative to what carries it, as friction would
-## have it: sails threaded on an axle go round with it.
+## frees a locked train, said), meshes (the same couplings, each [the key of
+## one gear, the other's], for naming and showing the parts), freedoms (how
+## many rates nothing decides), free (the bodies whose own turn those leave
+## undecided)}. A rate nothing decides is left at 0 relative to what carries
+## it, as friction would have it: sails threaded on an axle go round with it.
 func solve(drivers: Dictionary) -> Dictionary:
-	var out: Dictionary = {"ok": false, "locked": false, "said": "", "culprits": [], "free": [],
-		"freedoms": 0}
+	var out: Dictionary = {"ok": false, "locked": false, "said": "", "culprits": [], "meshes": [],
+		"free": [], "freedoms": 0}
 	var fixed: Array = []   ## [row, rhs]
 	for body: int in drivers:
 		var joint: Joint = _joint_of.get(body)
@@ -1183,6 +1184,7 @@ func solve(drivers: Dictionary) -> Dictionary:
 			fewer.remove_at(n)
 			if _eliminate(fixed + held + fewer, depth)["consistent"]:
 				(out["culprits"] as Array).append(used[n].said())
+				(out["meshes"] as Array).append([used[n].one.key, used[n].other.key])
 		out["said"] = "locked: the couplings ask for two different turns at once"
 		for one: Joint in tree:
 			one.rate = 0.0

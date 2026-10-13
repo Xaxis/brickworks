@@ -44,7 +44,9 @@ asking for an API key.
   and the design loop does not: `set_floor` (View, Floor), `edit_steps`
   (Edit, Build steps; the timeline), `lay_flex` (Build, Hose, tube or
   chain; Reshape), `pose_model` (Build, Pose; the hinge tool),
-  `animate_model` (Pose and animate's keys and Render), `undo` (Edit,
+  `animate_model` (Pose and animate's keys and Render),
+  `simulate_mechanism` (Tools, Simulate mechanism; `SimulatePanel.for_session`,
+  see [geometry](geometry.md)), `undo` (Edit,
   Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
   list; My collection, What do I need, What can I build), `render_model`
   (File, Render), `export_model` (File, Export, and Instructions),

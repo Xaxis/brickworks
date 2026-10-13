@@ -318,7 +318,7 @@
       "kind": "lib",
       "label": "the window's commands over mcp",
       "entry": "src/net/app_tools.gd",
-      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, undo, open_model, parts_list, render_model, export_model)",
+      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, simulate_mechanism, undo, open_model, parts_list, render_model, export_model)",
       "area": "mcp"
     },
     {
@@ -1391,6 +1391,13 @@
       "entry": "tools/web/gallery_seed.mjs",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR; then BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR   (.env sourced)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "simulate mechanism",
+      "entry": "src/ui/simulate_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/simulate_probe.gd   (by hand: Tools, Simulate mechanism…, click an axle or a crank; over MCP: simulate_mechanism)",
+      "area": "geometry"
     }
   ]
 }
