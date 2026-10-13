@@ -176,26 +176,26 @@ func _orthanc() -> void:
 	await _frames(30)
 	_check("Orthanc opens (%d parts)" % placed, placed > 8000)
 	var whole: AABB = _main.call("_built_bounds")
-	# Gandalf on the roof, behind a pinnacle from the front.
-	var gandalf: Array = _group("gandalf")
-	var guard: Array = _group("uruk_hai_guard_2")
-	_check("Gandalf is a sub-assembly of %d parts, a guard one of %d" % [gandalf.size(),
+	# The grey wizard on the roof, behind a pinnacle from the front.
+	var gandalf: Array = _group("grey_wizard")
+	var guard: Array = _group("tower_guard_2")
+	_check("The grey wizard is a sub-assembly of %d parts, a guard one of %d" % [gandalf.size(),
 		guard.size()], gandalf.size() > 5 and guard.size() > 5)
 	if gandalf.is_empty() or guard.is_empty():
 		return
 
-	# The whole tower in view: a click on Gandalf takes the sub-assembly, as
+	# The whole tower in view: a click on the grey wizard takes the sub-assembly, as
 	# it does by hand.
 	_camera.set_view("default")
 	_camera.frame(whole)
 	await _still()
 	_builder.select_brick(gandalf[0], false)
 	await _frames(2)
-	_check("a click on Gandalf selects all of him (%d of %d)" % [_builder.selection.size(),
+	_check("a click on the grey wizard selects all of him (%d of %d)" % [_builder.selection.size(),
 		gandalf.size()], _builder.selection.size() == gandalf.size())
 	await _judge("orthanc_gandalf", gandalf, 22, false)
-	# Saruman beside him, in the open.
-	var saruman: Array = _group("saruman")
+	# The white wizard beside him, in the open.
+	var saruman: Array = _group("white_wizard")
 	_builder.select_brick(saruman[0], false)
 	await _frames(2)
 	await _judge("orthanc_saruman", saruman, 22, false)

@@ -16,7 +16,8 @@ All part geometry derives from the LDraw Parts Library.
 - Required notice:
 
   > This application uses the LDraw™ Parts Library, © the LDraw community,
-  > licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  > licensed under CC BY 2.0 (https://creativecommons.org/licenses/by/2.0/)
+  > and CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
   > LDraw™ is a trademark owned and licensed by the Estate of James
   > Jessiman. This application is not affiliated with or endorsed by
   > LDraw.org.

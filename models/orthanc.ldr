@@ -1,12 +1,12 @@
 0 FILE orthanc.ldr
-0 Tower of Orthanc
+0 Wizard's Tower
 0 Name: orthanc.ldr
 0 Author: Brickworks
 
-1 16 280 -2008 -410 1 0 0 0 1 0 0 0 1 gandalf_the_grey.ldr
-1 16 430 -2008 -420 0 0 1 0 1 0 -1 0 0 saruman_the_white.ldr
-1 16 300 -48 -730 1 0 0 0 1 0 0 0 1 uruk_hai_guard_2.ldr
-1 16 500 -48 -730 1 0 0 0 1 0 0 0 1 uruk_hai_guard.ldr
+1 16 280 -2008 -410 1 0 0 0 1 0 0 0 1 grey_wizard.ldr
+1 16 430 -2008 -420 0 0 1 0 1 0 -1 0 0 white_wizard.ldr
+1 16 300 -48 -730 1 0 0 0 1 0 0 0 1 tower_guard_2.ldr
+1 16 500 -48 -730 1 0 0 0 1 0 0 0 1 tower_guard.ldr
 1 0 400 -24 -100 0 0 -1 0 1 0 1 0 0 2456.dat
 1 0 430 -24 -100 0 0 -1 0 1 0 1 0 0 3009.dat
 0 STEP
@@ -10696,9 +10696,9 @@
 1 0 380 -1648 -320 1 0 0 0 1 0 0 0 1 3068b.dat
 0
 0 NOFILE
-0 FILE gandalf_the_grey.ldr
-0 Gandalf the Grey
-0 Name: gandalf_the_grey.ldr
+0 FILE grey_wizard.ldr
+0 Grey wizard
+0 Name: grey_wizard.ldr
 0 Author: Brickworks
 
 1 72 0 -28 1.25 1 0 0 0 1 0 0 0 1 3816c.dat
@@ -10716,9 +10716,9 @@
 1 72 0 -99 1.25 1 0 0 0 1 0 0 0 1 6131.dat
 0
 0 NOFILE
-0 FILE saruman_the_white.ldr
-0 Saruman the White
-0 Name: saruman_the_white.ldr
+0 FILE white_wizard.ldr
+0 White wizard
+0 Name: white_wizard.ldr
 0 Author: Brickworks
 
 1 15 0 -28 1.25 1 0 0 0 1 0 0 0 1 3816c.dat
@@ -10735,9 +10735,9 @@
 1 15 0 -99 1.25 1 0 0 0 1 0 0 0 1 40251.dat
 0
 0 NOFILE
-0 FILE uruk_hai_guard_2.ldr
-0 Uruk-hai guard 2
-0 Name: uruk_hai_guard_2.ldr
+0 FILE tower_guard_2.ldr
+0 Tower guard 2
+0 Name: tower_guard_2.ldr
 0 Author: Brickworks
 
 1 0 0 -28 1.25 1 0 0 0 1 0 0 0 1 3816c.dat
@@ -10754,9 +10754,9 @@
 1 0 0 -96 1.25 1 0 0 0 1 0 0 0 1 60748.dat
 0
 0 NOFILE
-0 FILE uruk_hai_guard.ldr
-0 Uruk-hai guard
-0 Name: uruk_hai_guard.ldr
+0 FILE tower_guard.ldr
+0 Tower guard
+0 Name: tower_guard.ldr
 0 Author: Brickworks
 
 1 0 0 -28 1.25 1 0 0 0 1 0 0 0 1 3816c.dat

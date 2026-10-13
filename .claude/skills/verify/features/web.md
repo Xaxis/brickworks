@@ -595,7 +595,11 @@ plan with Claude as the client.
   (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
   bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
-  `/privacy`. Judge it at 390, 1280 and 1920 px:
+  `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
+  (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
+  draws the favicons, the manifest's icons and `assets/icon.png` from it,
+  `tools/web/make_share.mjs` the share card, and every header shows it as `.chip`
+  in `site.css`. Judge it at 390, 1280 and 1920 px:
   `node tools/web/page_shot.mjs --file=web/index.html --width=1920 --full`.
   Lighthouse (performance and accessibility at least 95), on a preview:
   `CHROME_PATH=~/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome npx

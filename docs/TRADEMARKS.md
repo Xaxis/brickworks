@@ -2,12 +2,93 @@
 
 How Brickworks writes about LEGO® bricks, and why. **This is compliance
 with the LEGO Group's published Fair Play policy. It is not legal advice.**
-Nobody here is a lawyer. The questions the policy does not answer are at
-the end, under "For counsel".
+Nobody here is a lawyer. Where the policy is silent we decided, under
+"Decisions, 2026-10-13"; what is still open is at the end, under "For
+counsel".
 
 LEGO® is a trademark of the LEGO Group of companies which does not
 sponsor, authorize or endorse this app. LEGO® Art, Technic, the Minifigure
 and the Brick and Knob configurations are also trademarks of the LEGO Group.
+
+## Decisions, 2026-10-13
+
+The owner: "Nothing should be waiting on me! You're fully capable of making
+the correct expert decision." These settle questions 1 to 4 and 6 of "For
+counsel" below. They are what an expert in the field would do with what is
+known today; anything that brings money in reopens them.
+
+**1. The logo is replaced.** The old mark was a red brick with two studs.
+The brochure names "the basic brick and the knobs" among the LEGO Group's
+marks and says they are "not to be copied, depicted or used in any way
+without the prior consent of the LEGO Group" [BR p.8]; the LEGO Group asked
+Held der Steine to drop a stylised brick from his logo in 2019; and this
+project's own earlier rule was "No stud-array pattern as a logo mark". A
+fan tool can draw bricks inside the app; its badge is a different thing,
+the one place where people read what we are. So the new mark is geometric
+and owes nothing to a brick: a cube with one corner cut away, as a CAD
+section shows a solid, in yellow, red and blue, with the cut a shade
+darker. No brick silhouette, no studs, and it still reads at 16 px.
+`web/icon.svg` is the one source; `tools/web/make_icons.mjs` draws the
+favicons, the web manifest's icons and `assets/icon.png` from it (the
+window, and the macOS and Windows icons Godot makes at export; the Linux
+download carries `favicon-512.png`). The site header (`.chip` in
+`web/site.css`, and the sign-in page's own copy), the share card
+(`tools/web/make_share.mjs`) and Help, About show it. The 404 page's wall
+and the web app's loading wall (`src/boot/shell.html`) lost their studs for
+the same reason: our own pictures draw no brick and knob.
+
+**2. The name stays: Brickworks.** A quick search on 2026-10-13 found no
+live registration of BRICKWORKS for software or toys:
+
+- USPTO 97709741, BRICKWORKS, Glen-Gery Corporation (a brick maker), filed
+  2022-12-08, abandoned. Its services included design of computer software
+  (class 42), which is the nearest anyone came.
+  (https://gleanmark.com/owner/glengerycorp, https://trademarks.justia.com/977/09/brickworks-97709741.html)
+- USPTO reg. 4802624, BRICKWORKS, masonry contracting (class 37), live.
+- USPTO reg. 7435871, BRICKWORKS DESIGN STUDIO, interior design (class 42),
+  and BRICKWORKS SUPPLY CENTER (class 35), both Glen-Gery, live.
+- USPTO 50062315, BRICKWORKS, CapFinancial Partners, ETF management
+  (class 36), filed 2026-08-20, pending.
+  (https://trademarkregistration.app/Trademark/Details/50062315)
+- Brickworks Limited of Australia holds marks for building materials
+  (class 19).
+- An LDraw model viewer called Brickworks was on the Mac App Store, last
+  updated around 2017 (https://apps.apple.com/us/app/id1176177802). No
+  registration for it was found. It is the closest in kind, and dormant.
+- EUIPO: its search is a script-only page that could not be read here; a
+  web search found no BRICKWORKS EU trade mark.
+
+None of these is software or toys in a live registration, and the ones
+that are live sit in classes far from ours (9, 28, 42 for a CAD app). The
+name stays. This is a search, not a clearance opinion: before anything
+paid, a clearance search of the USPTO, EUIPO and WIPO records in classes
+9, 28 and 42, and the old Mac app, by someone qualified.
+
+**3. Minifigures stay in the app, never in our branding.** The app draws
+them from the LDraw library, as Studio, LeoCAD and Mecabricks do, and has a
+minifigure builder. The Minifigure is a LEGO Group mark [BR p.14], so it is
+never a logo, a mascot, an icon of ours or the face of a page.
+
+**4. "Tower of Orthanc" becomes "Wizard's Tower".** Orthanc is a name from
+The Lord of the Rings, and Rebrickable bars trademarked names from fan
+models' names. Every public page, the pictures' alt text, the share card
+and the gallery seed say Wizard's Tower, and so does the model's own title
+(the first line of `models/orthanc.ldr`, which is what the app's bar, a
+share link and the booklet show). Its figures were named for characters
+from the same books, and are now the grey wizard, the white wizard and two
+tower guards. The file keeps its name, which probes and tools open it by,
+and so the app's list of examples still calls it Orthanc. Set numbers and
+names stay where they are facts about the LEGO Group's sets ("10237 Tower
+of Orthanc" in the designer's notes on colour).
+
+**5. Printed parts stay.** They are the LDraw library's, under its
+licences. The library is licensed CC BY 2.0 and CC BY 4.0 (1,488 of its
+parts are still under both, by its CAreadme.txt), so the credit names both,
+on every page's footer, in Help, About, on the booklet and in the README.
+
+**6. Brickworks stays free.** The policy covers non-commercial use only
+[FP] [BR p.9]. Any paid tier, ads, or selling parts lists or kits needs a
+fresh review of all of the above first.
 
 ## Sources
 
@@ -79,8 +160,8 @@ and renders of LDraw models, made by the runs listed in
 `web/img/manifest.json`. No box art, catalogue photos or official
 instructions. LDraw's own legal page lists "Rendered images generated from
 the LDraw library" as not derivative of the parts
-(https://www.ldraw.org/legal-info). The parts are credited, CC BY 4.0, in
-the site's footers, the app's About, the booklet and the README.
+(https://www.ldraw.org/legal-info). The parts are credited, CC BY 2.0 and CC BY 4.0,
+in the site's footers, the app's About, the booklet and the README.
 
 **4. The mark is not in our names.** Not in the app's name, the domain, the
 repository, a package, or a feature.
@@ -195,9 +276,11 @@ rebrickable.com refused the fetch).
 ## For counsel
 
 Questions the policy does not settle, and a person qualified to answer them
-should. Listed most pressing first.
+should. Listed most pressing first. Questions 1 to 4 and 6 were decided on
+2026-10-13 (above) rather than left waiting; they stay here as they were
+put, for whoever reviews them before anything paid.
 
-1. **Our logo is a red brick with two knobs.** `web/icon.svg`, the
+1. **Our logo was a red brick with two knobs** (decided: redrawn, Decision 1). `web/icon.svg`, the
    favicons, the app icon (`assets/icon.png`) and the share card all draw
    it. The brochure names among the LEGO Group's trademarks "the LEGO logo,
    the minifigure, the basic brick and the knobs", adds that "even though
@@ -216,18 +299,18 @@ should. Listed most pressing first.
    This project's own earlier rule, in `docs/ATTRIBUTION.md` before this
    file replaced it, was "No stud-array pattern as a logo mark", and the
    icon has two. Is our mark safe, or should it be redrawn without knobs?
-2. **The name Brickworks.** No clearance search has been done. There is a
+2. **The name Brickworks** (decided: kept, Decision 2). No clearance search has been done. There is a
    Mac App Store app called Brickworks, an LDraw model viewer by Matusalem
    Marques, last updated 2017 (https://apps.apple.com/us/app/id1176177802).
    Brickworks Limited is a large Australian maker of building materials. A
    quick search found no BRICKWORKS mark for software or toys (classes 9
    and 28), but that is not a search of the USPTO, EUIPO and WIPO records.
-3. **Minifigure likeness.** The Minifigure is a LEGO Group trademark
+3. **Minifigure likeness** (decided: in the app, never our branding, Decision 3). The Minifigure is a LEGO Group trademark
    [BR p.14]. The app has a minifigure builder and draws minifigures from
    LDraw parts, and the site's pictures show them (the Orthanc's two
    wizards, the car's driver). Fan tools have done this for thirty years;
    none of it is in our branding. Is that enough?
-4. **Real set numbers, set names and licensed names.** The designer's
+4. **Real set numbers, set names and licensed names** (decided: the gallery model renamed, set numbers kept as facts, Decision 4). The designer's
    worked examples name the sets they come from ("As the LEGO Group built it
    in 10182 Cafe Corner"), including licensed sets ("75969 Hogwarts
    Astronomy Tower", "21309 NASA Apollo Saturn V"). The site's best picture
@@ -242,7 +325,7 @@ should. Listed most pressing first.
    Group's printed parts, licensed ones among them; colour names and element
    numbers are the LEGO Group's. LDraw's position covers renders of its
    library; it does not speak for the artwork on a printed part.
-6. **Commercial use.** Fair Play covers non-commercial use only [FP]
+6. **Commercial use** (decided: free, and a fresh review before anything paid, Decision 6). Fair Play covers non-commercial use only [FP]
    [BR p.9]. Brickworks is free today. Anything paid — a subscription,
    ads, selling parts lists or kits — would need permission or advice.
 7. **"Compatible with".** We never claim compatibility; we say the app is

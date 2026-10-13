@@ -44,6 +44,8 @@ var _menus: Array[MenuButton] = []
 var _save_as: ConfirmationDialog
 var _save_as_name: LineEdit
 var _about: AcceptDialog
+## About's words, beside the mark.
+var _about_text: Label
 
 
 class Command extends RefCounted:
@@ -231,7 +233,24 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
-	_about.dialog_autowrap = true
+	# The mark beside the words, as an About box has it: the app's own icon
+	# (assets/icon.png, drawn from web/icon.svg by tools/web/make_icons.mjs).
+	var about_row := HBoxContainer.new()
+	about_row.add_theme_constant_override("separation", 18)
+	var mark := TextureRect.new()
+	mark.name = "mark"
+	mark.texture = load("res://assets/icon.png")
+	mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	mark.custom_minimum_size = Vector2(72, 72)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	about_row.add_child(mark)
+	_about_text = Label.new()
+	_about_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_about_text.custom_minimum_size = Vector2(380, 0)
+	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	about_row.add_child(_about_text)
+	_about.add_child(about_row)
 	add_child(_about)
 
 	# The layout as it was left. Which columns show is the window's to
@@ -1157,13 +1176,13 @@ func _toggle_full_screen() -> void:
 
 
 func _show_about() -> void:
-	_about.dialog_text = ("Brickworks %s\n\nBuild with real LEGO® parts, by hand or with "
-		+ "the assistant, on the web or on your own computer.\n\n%s\n\n"
-		+ "Part geometry from the LDraw™ Parts Library, CC BY 4.0.\n"
+	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, on the web "
+		+ "or on your own computer.\n\n%s\n\n"
+		+ "Part geometry from the LDraw™ Parts Library, CC BY 2.0 and CC BY 4.0.\n"
 		+ "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
 		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.") % [
 		BuildInfo.version(), BuildInfo.describe()]
-	_about.popup_centered(Vector2i(460, 0))
+	_about.popup_centered(Vector2i(520, 0))
 
 
 ## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a

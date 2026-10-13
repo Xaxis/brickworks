@@ -162,8 +162,17 @@ func _run() -> void:
 	await _click_control(_editor.controls_by_name()["print_lego"])
 	await _click_control(_editor.controls_by_name()["print_fit"])
 	var logo: PrintPicture = _editor.paper("slope").layer().picture
-	_check("the logo fitted, its background clear, in LEGO inks: %d" % logo.inks_used(),
-		logo.clear_back and logo.lego and logo.inks_used() <= 16)
+	# In LEGO inks is fewer colours than the picture's own: the mark's three
+	# faces and the three of its cut, antialiased against each other, come
+	# out in 28 inks (2026-10-13), where the picture as drawn has every shade
+	# of every edge. A fixed bound held only for the old mark, a red brick on
+	# a dark tile, which mapped to 16.
+	logo.lego = false
+	var shades: int = logo.inks_used()
+	logo.lego = true
+	_check("the logo fitted, its background clear, in LEGO inks: %d, from %d shades" % [
+		logo.inks_used(), shades],
+		logo.clear_back and logo.lego and logo.inks_used() < shades and logo.inks_used() <= 32)
 	await _frames(20)
 	await _shot("studio_slope_editor")
 	await _type_into(_editor._name, "Brickworks Logo")

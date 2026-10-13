@@ -31,7 +31,7 @@ whole cycle.
   glTF every part is a node under a node for its sub-model, each shape is
   kept once however many times it is used, and each colour is a material
   with its alpha and its finish (chrome, metallic, pearl, rubber), so even
-  the 9,429-part Orthanc writes whole. The STL is one mesh in millimetres,
+  the 9,429-part Wizard's Tower writes whole. The STL is one mesh in millimetres,
   standing on Z, for a slicer. OBJ and STL hold every triangle of every
   part, so they say how many they can take and point at GLB past it. In a
   browser it is a download (an OBJ and its MTL come as one zip); on the
@@ -133,7 +133,7 @@ whole cycle.
   the status bar instead of counted.
 
 - The build order no longer puts anything in the air before the model
-  reaches it (Orthanc: 193 parts to 6), puts wheels on last, and builds
+  reaches it (the Wizard's Tower: 193 parts to 6), puts wheels on last, and builds
   sub-models a file places as callouts. The timeline numbers its steps
   as the booklet does, and an 8,600-part model's order takes 5 s, not 87.
 
