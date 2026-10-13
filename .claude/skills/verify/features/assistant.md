@@ -1018,7 +1018,19 @@ fixing what it got wrong.
   side stud the core kept (`Plan.held` in `prune`), is not stitched, and
   samples a row only where every plate it reaches into is its own. Where
   turning sides out leaves the core in more pieces than upright, it is laid
-  upright (the probe car, cut by axle tunnels). Off for a sculpt's grid
+  upright (the probe car, cut by axle tunnels). Each shell is tried before
+  the core is laid (`lay_shell` with `trial`, on every side stud it was
+  given), and one whose kept parts cover less than `SHELL_KEEPS` (40%; a side and its mirror on the two together — a hull kept one flank at 65% and gave back the other at 55%, lopsided) of
+  the plates it took out of the core is given back (`drop_shell`: its
+  plates, the plates it kept clear and its side studs), and that side laid
+  upright; so is one held by no side stud, which before kept its plates
+  taken and laid none. The held-out car's body (8 wide, 3.5 plates over its
+  arches) lost two studs a side to shells that kept 5 of their 74 parts —
+  rows a stud apart from the top left its foot to no row — and eroded to a
+  strip four studs wide. `Shapes.last["shells_kept"]` says each shell's
+  parts kept and the share of its plates covered. `shapes_probe` ("a
+  minifigure-scale car's body keeps its flanks"): 74 parts, from z 0 to 7
+  across its middle (was 45, z 2 to 5). Off for a sculpt's grid
   (`"sideways"`). Also: a course with nothing under it and nothing studded
   over it is laid in plates, not bricks (`bridges`, off for a grid): a
   car's body over its arches came apart from its nose; and where another

@@ -1631,6 +1631,22 @@ patterns themselves lay pieces that touch (a prism's faces against its
 core, a column of side-stud bricks up a shaft). Those are to be joined
 before it can refuse a design.
 
+*A thin body kept whole.* The car's body, 8 wide and 3.5 plates over its
+arches, lost two studs a side to shells that kept 5 of their 74 parts:
+rows are laid a stud apart from the top, and on a body that short the
+lower row reached below the shape and was dropped, its plates already
+taken out of the core; the side studs found three plates behind the top
+row only under the cabin. A shell is now tried before the core is laid and
+given back (its plates, its clearance and its side studs) when its kept
+parts cover less than 40% of what it took (the car's 13%; the egg, bird, hull and owl 55 to 94%, a side and its mirror judged together), and that side is laid upright;
+so is one held by no side stud, which before kept its plates and laid
+none. The run's loft alone: before 45 parts, across its middle z 2 to 5
+(a strip four studs wide), 5 sideways; after 74 parts, z 0 to 7, laid
+upright. The egg, the bird and the hull keep their shells
+(`shapes_probe`). Not done: a shell made for a thin body (plates and tiles
+on side studs, rows fitted to its height), so the flank is smooth rather
+than upright plates. Pictures: `shots/d3/car_{before,after}_corner.png`.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
