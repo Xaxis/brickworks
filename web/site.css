@@ -1,8 +1,8 @@
 /*
   The look every page of brickworks.diy shares: the landing page, the
   downloads, the changelog and the 404. The app is a canvas and has its
-  own; this follows it — dark by default, the LEGO yellow for the way in,
-  a red 2 x 4 for the mark.
+  own; this follows it — dark by default, yellow for the way in, and the
+  mark from web/icon.svg.
 
   Contrast is measured, not eyeballed: every text colour here is at least
   4.5:1 on the background it sits on, in both schemes (WCAG AA). The old
@@ -90,17 +90,9 @@ code { font: 0.92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 	font-weight: 680; letter-spacing: -0.02em; font-size: 17.5px;
 	text-decoration: none; padding: 6px 4px;
 }
-/* A 2 x 4 in CSS, studs and all. */
-.chip {
-	position: relative; width: 30px; height: 15px; border-radius: 3px; flex: none;
-	background: var(--red);
-	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-.chip::before {
-	content: ""; position: absolute; inset: -3px 2px auto 2px; height: 4px;
-	background-image: radial-gradient(circle at 3.25px 100%, var(--red) 0 3px, transparent 3.1px);
-	background-size: 6.5px 100%; filter: brightness(1.12);
-}
+/* The mark (web/icon.svg): a cube with a corner cut away. The .chip every
+   page's header has, so a page shows it with no markup of its own. */
+.chip { width: 26px; height: 26px; flex: none; background: url(/icon.svg) center / contain no-repeat; }
 .nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 .nav a {
 	text-decoration: none; color: var(--ink-soft); font-size: 14.5px;

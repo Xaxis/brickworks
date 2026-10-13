@@ -74,17 +74,8 @@ main { width: min(100%, 440px); }
 	font-weight: 640; letter-spacing: -0.02em; font-size: 17px;
 	margin: 0 0 22px; color: inherit; text-decoration: none;
 }
-/* The site's 2x4, studs and all. */
-.chip {
-	position: relative; width: 30px; height: 15px; border-radius: 3px;
-	background: var(--red); flex: none;
-	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-.chip::before {
-	content: ""; position: absolute; inset: -3px 2px auto 2px; height: 4px;
-	background-image: radial-gradient(circle at 3.25px 100%, var(--red) 0 3px, transparent 3.1px);
-	background-size: 6.5px 100%; filter: brightness(1.12);
-}
+/* The mark, as the site's header has it (web/icon.svg). */
+.chip { width: 26px; height: 26px; flex: none; background: url(/icon.svg) center / contain no-repeat; }
 .card {
 	background: var(--panel);
 	border: 1px solid var(--line);

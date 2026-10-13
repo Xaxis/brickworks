@@ -25,7 +25,7 @@ const page_html = `<!doctype html>
   .words { flex: 1; padding: 66px 0 66px 72px; display: flex;
            flex-direction: column; justify-content: center; }
   .mark { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
-  .mark img { width: 54px; height: 54px; border-radius: 12px; }
+  .mark img { width: 52px; height: 52px; }
   .mark b { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
   h1 { font-size: 56px; line-height: 1.08; font-weight: 800;
        letter-spacing: -0.033em; max-width: 13ch; }
@@ -47,10 +47,10 @@ const page_html = `<!doctype html>
           background: linear-gradient(90deg, #11151b 0%, rgba(17,21,27,0) 38%); }
 </style>
 <div class="words">
-  <div class="mark"><img src="favicon-192.png"><b>Brickworks</b></div>
-  <h1>Design it here. Build it on your table.</h1>
-  <p>Describe it and Claude designs it in real bricks, on your own
-     Claude plan or API key. Then build it.</p>
+  <div class="mark"><img src="icon.svg"><b>Brickworks</b></div>
+  <h1>A complete CAD for LEGO® models.</h1>
+  <p>In any browser, nothing to install. It checks that your model
+     stands, and opens and saves Studio .io.</p>
   <div class="url">brickworks.diy</div>
 </div>
 <div class="shot"><img src="_castle.png"><div class="fade"></div></div>`;

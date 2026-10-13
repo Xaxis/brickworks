@@ -11,7 +11,8 @@
 
   It has to work before any of the engine exists, so it is one file with
   no dependencies, no fonts to fetch and no images. The bricks are drawn
-  as CSS boxes in real LEGO® colours.
+  as CSS boxes in real LEGO® colours, with no studs: our own pictures draw
+  no brick and knob (docs/TRADEMARKS.md, Decisions, 2026-10-13).
 
   The placeholders Godot substitutes at export time are the contract:
   $GODOT_PROJECT_NAME, $GODOT_HEAD_INCLUDE, $GODOT_URL, $GODOT_CONFIG,
@@ -138,22 +139,6 @@ body {
 }
 .brick.laid { opacity: 1; transform: translateY(0); }
 
-/* Studs, drawn as a repeating radial so a brick of any width gets the
-   right number without markup per stud. */
-.brick::before {
-	content: "";
-	position: absolute;
-	left: 0; right: 0;
-	top: -3px;
-	height: 4px;
-	background-image: radial-gradient(
-		circle at var(--stud-x, 12px) 100%,
-		currentColor 0 3.1px, transparent 3.2px);
-	background-size: var(--stud-pitch, 24px) 100%;
-	background-repeat: repeat-x;
-	filter: brightness(1.06);
-}
-
 .baseplate {
 	position: absolute;
 	left: -2.5%;
@@ -226,6 +211,7 @@ $GODOT_HEAD_INCLUDE
 
 	<p class="legal">
 		Part geometry from the LDraw™ Parts Library, licensed
+		<a href="https://creativecommons.org/licenses/by/2.0/">CC&nbsp;BY&nbsp;2.0</a> and
 		<a href="https://creativecommons.org/licenses/by/4.0/">CC&nbsp;BY&nbsp;4.0</a>.
 		LEGO® is a trademark of the LEGO Group of companies which does not
 		sponsor, authorize or endorse this site.
@@ -291,17 +277,11 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	const elements = bricks.map((brick) => {
 		const el = document.createElement("div");
 		el.className = "brick";
-		el.style.color = brick.color;
 		el.style.background = brick.color;
 		el.style.left = (brick.stud / COURSE_STUDS) * 100 + "%";
 		el.style.width = (brick.width / COURSE_STUDS) * 100 + "%";
 		el.style.bottom = brick.course * COURSE_HEIGHT + "%";
 		el.style.height = COURSE_HEIGHT - 1.5 + "%";
-		// Stud spacing in the brick's own width, so every brick gets the
-		// right count whatever its size.
-		const pitch = 100 / brick.width;
-		el.style.setProperty("--stud-pitch", pitch + "%");
-		el.style.setProperty("--stud-x", pitch / 2 + "%");
 		wall.appendChild(el);
 		return el;
 	});
