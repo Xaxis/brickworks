@@ -332,12 +332,17 @@ func _on_pick(id: int) -> void:
 	opened.emit(await open_with_progress(entry.path))
 
 
-## Open a saved model or an example, a slice at a time, the status bar
-## counting its parts as they go down (Working). How many landed.
+## Open a saved model or an example, the status bar saying so first
+## (Working) and drawn before the open, which is one long frame on a big
+## model. How many parts landed.
+##
+## Not a slice at a time: put down that way in a browser drawing in
+## software, Orthanc took 16 s, and 8.8 s with slices of a tenth of a
+## second, against 3.7 s in one frame (2026-10-13).
 func open_with_progress(path: String) -> int:
 	var job: Working.Job = Working.begin("Opening %s…" % path.get_file())
 	await job.shown()
-	var placed: int = await store.open_paced(path, job)
+	var placed: int = store.open(path)
 	job.end()
 	return placed
 
@@ -353,12 +358,13 @@ func _import() -> void:
 		_picker = ModelFilePicker.new()
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
-			# A slice at a time, the status bar counting the parts as they
-			# go down (Working), drawn before it begins.
+			# Reading a big model is a long frame: the status bar says so
+			# first (Working), and has been drawn before it begins. Not a
+			# slice at a time: see open_with_progress.
 			var job: Working.Job = Working.begin("Opening %s…" % file_name.get_file())
 			await job.shown()
-			var result: Dictionary = await store.open_text_paced(
-				text, file_name.get_basename(), job)
+			var result: Dictionary = store.open_text(
+				text, file_name.get_basename())
 			job.end()
 			if not str(result["error"]).is_empty():
 				_say(str(result["error"]))
