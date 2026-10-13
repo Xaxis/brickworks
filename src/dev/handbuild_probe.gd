@@ -1467,6 +1467,7 @@ func _first_timer() -> void:
 	await _menus_show_the_real_keys()
 	await _the_palette_stays_put()
 	await _the_note_says_the_selection()
+	await _an_untouched_example()
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -1640,6 +1641,36 @@ func _the_note_says_the_selection() -> void:
 	await _key(KEY_ESCAPE)
 	_check("nothing selected, it is the colour in hand again (%s)" % bin._colour_note.text,
 		not bin._colour_note.text.contains("selected"))
+
+
+## New on the first visit's example car, untouched, asked whether to save
+## it: an example as it shipped is nobody's unsaved work.
+func _an_untouched_example() -> void:
+	var shell: Shell = _main.get("_shell")
+	var bar: ModelBar = _main.get("_bar")
+	var placed: int = _main.call("_open", "res://models/car.ldr")
+	bar.opened.emit(placed)
+	await _frames(5)
+	shell.run("new")
+	await _frames(3)
+	_check("New on the example car, untouched, asks nothing (%d parts were there)" % placed,
+		placed > 0 and not bar._confirm_new.visible and _count() == 0)
+	bar._confirm_new.hide()
+	placed = _main.call("_open", "res://models/car.ldr")
+	bar.opened.emit(placed)
+	await _frames(5)
+	# Painted, it is somebody's work, and New asks.
+	_select_only([_model()[0].id])
+	_builder.held_color = 2 if _model()[0].color_code != 2 else 4
+	shell.run("paint")
+	_builder.clear_selection()
+	await _frames(3)
+	shell.run("new")
+	await _frames(3)
+	_check("...and once painted, New asks first", bar._confirm_new.visible and _count() > 0)
+	bar._confirm_new.hide()
+	_main.call("clear_model")
+	await _frames(3)
 
 
 # -- helpers ------------------------------------------------------------------

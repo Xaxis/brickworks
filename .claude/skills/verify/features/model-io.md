@@ -33,7 +33,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   New (Ctrl+N on the
   desktop) begins an empty baseplate, Untitled, with a fresh chat; it asks first
   when the model is not saved as it stands (`has_unsaved_work`: Untitled with
-  bricks, or bricks unlike the saved file's). There was no way to begin another
+  bricks, or bricks unlike the saved file's). An example as it shipped — the
+  first visit's car — is nobody's work: untouched (nothing to undo since it
+  opened), New asks nothing; it asked whether to save the car. There was no way to begin another
   model. `project_probe` (headless; puts this machine's autosave back) and
   `tools/web/project_flow.mjs` (types a name, saves, waits until the save and
   the named autosave are in the browser's storage, reloads, reads the tab,

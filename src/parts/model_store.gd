@@ -230,6 +230,11 @@ static func name_for(brief: String) -> String:
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
+	# An example as it shipped is nobody's work: New on the first visit's
+	# car, untouched, asked whether to save it. Nothing has been done to
+	# it while there is nothing to undo (an Open forgets the history).
+	if example and builder != null and builder.history_depth() == 0:
+		return false
 	var now: PackedStringArray = _brick_lines(to_text(UNTITLED))
 	if now.is_empty():
 		return false
