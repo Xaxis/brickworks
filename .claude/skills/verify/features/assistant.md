@@ -66,6 +66,17 @@ fixing what it got wrong.
   On the shipped Orthanc (9,429 parts) an edit is ~30 s, three checks of
   ten; the next edit reuses what held after the last. `selection_probe`,
   `handbuild_probe` (only=first_timer), `mcp_probe`.
+  A real run, on the subscription (2026-10-12): the shipped Orthanc, the 158
+  parts of its west horn selected with `--ask-about=4,15,235,300,22,34`,
+  "make this horn more jagged and menacing: two or three smaller spikes
+  along its outer edge". Opus 5.5 through Claude Code read `selection`, then
+  had 22 edits refused by the joints check (17 for an overlap, 5 for a part afloat) while it
+  found the studs of a horn laid in a turned section, landed two edits
+  (13 put down, 3 taken off: three 1 x 1 tooth plates and the tiles round
+  them in place of two 2 x 4s and a 2 x 3) as one undo step, and said so in
+  865 s. Nothing outside the room changed: the saved file differs from
+  `models/orthanc.ldr` in those 16 lines alone. The spikes are small; the
+  part was the hard thing, not the room.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
