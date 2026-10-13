@@ -293,6 +293,7 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 		"edit_selection": "changing the selection",
 		"look_at_picture": "looking at the picture",
 		"find_techniques": "looking up how real sets built it",
+		"read_guide": "reading the design guide",
 		"place_technique": "laying a piece as a real set built it",
 		"find_parts_like": "looking for a part by its look",
 	}.get(plain, plain.replace("_", " "))

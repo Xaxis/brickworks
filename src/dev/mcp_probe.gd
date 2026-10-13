@@ -81,6 +81,18 @@ func _run() -> void:
 		% guidance.length(), guidance.length() > 3000)
 	_check("...and it is the same words the design loop is given",
 		guidance.contains("COORDINATES") and guidance.contains("AT AN ANGLE"))
+	# Claude Code reads about 3,800 characters of it: the process comes first.
+	var head: String = guidance.substr(0, 3500)
+	_check("...headed, inside what a session reads, by how to work and the rules",
+		head.contains("HOW TO WORK") and head.contains("THE RULES") and head.contains("features")
+			and head.contains("read_guide"))
+	var section: String = _text_of(await _ask("read_guide", {"section": "shapes"}))
+	_check("read_guide serves a section in full: shapes, %d characters"
+		% section.length(), section.begins_with("SAY THE SHAPE") and section.contains("\"face\""))
+	var creative: String = _text_of(await _ask("read_guide", {"section": "creative"}))
+	_check("...and the head names the creative pass, which read_guide serves too",
+		head.contains("the creative pass: review_model {\"creative\": true}")
+			and creative.begins_with("THE CREATIVE PASS"))
 
 	# The tools, which the relay serves rather than carrying its own copy.
 	var tools: Dictionary = await _ask("__tools__", {})

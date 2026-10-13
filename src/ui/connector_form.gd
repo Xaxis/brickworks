@@ -466,6 +466,7 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"clear_model": return "Cleared the baseplate"
 		"save_model": return "Saved the model"
 		"show_technique": return "Looked up how to do %s" % about
+		"read_guide": return "Read the guide on %s" % about
 		"find_techniques": return "Looked up how real sets built %s" % about
 		"find_parts_like": return "Looked for a part that reads as %s" % about
 		"place_technique":
