@@ -26,12 +26,23 @@ static var keeps: bool = not OS.get_cmdline_args().has("--script")
 static var _recent: PackedStringArray = PackedStringArray()
 static var _favourites: PackedStringArray = PackedStringArray()
 static var _read_from: String = ""
+## When the file was last read or written here: another tab or window
+## that changes the shelf writes it too, and its parts are read again
+## before this one changes anything, rather than written over.
+static var _read_at: int = 0
+
+
+## Read the shelf again: another tab changed it (Main, _watch_other_tabs).
+static func reread() -> void:
+	_read_from = ""
 
 
 static func _load() -> void:
-	if _read_from == file:
+	if _read_from == file and (not keeps or not FileAccess.file_exists(file)
+			or FileAccess.get_modified_time(file) == _read_at):
 		return
 	_read_from = file
+	_read_at = FileAccess.get_modified_time(file) if FileAccess.file_exists(file) else 0
 	_recent = PackedStringArray()
 	_favourites = PackedStringArray()
 	var kept := ConfigFile.new()
@@ -47,7 +58,9 @@ static func _keep() -> void:
 	var kept := ConfigFile.new()
 	kept.set_value("shelf", "recent", _recent)
 	kept.set_value("shelf", "favourites", _favourites)
+	TabSession.writing(file)
 	kept.save(file)
+	_read_at = FileAccess.get_modified_time(file)
 
 
 ## A part was reached for: it goes to the front of the recent ones.

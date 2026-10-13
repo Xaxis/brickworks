@@ -85,6 +85,11 @@ func _run() -> void:
 	var guidance: String = assistant.guidance()
 	_check("the instructions' head is %d characters, under %d" % [head.length(), HEAD_MOST],
 		head.length() < HEAD_MOST and guidance.begins_with(head))
+	# And as the connector serves it, with its own note first (the tabs, and
+	# where the tab is): 3,537 characters before that note was cut down.
+	var served_head: int = ClaudeConnector.CONNECTED_NOTE.length() + head.length()
+	_check("...and %d with the connector's note before it, under %d" % [served_head, HEAD_MOST],
+		served_head < HEAD_MOST)
 	var served_sections := ""
 	var headings: Array[String] = []
 	var heading := RegEx.create_from_string("(?m)^[A-Z][A-Z ,'-]{4,}$")

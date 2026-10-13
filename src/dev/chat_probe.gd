@@ -460,7 +460,7 @@ func _run() -> void:
 	_check(not panel._claude_card() and panel._run_title.text == "Connector off",
 		"switching it off mid-build says so on the card")
 	connector.forget()
-	ClaudeConnector.where = "user://claude_connector.json"
+	ClaudeConnector.where = ""
 
 	OwnKey._this_visit = kept
 	print("")

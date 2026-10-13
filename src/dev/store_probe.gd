@@ -201,11 +201,63 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(inside)
 	DirAccess.remove_absolute(outside)
 
+	# Two tabs (or windows) with one saved model open (2026-10-13): when one
+	# saves it, the other is told and asked, not saved over in silence. The
+	# times are a file's, to the second, so each save waits for the next.
+	var here: ModelStore = _side(library)
+	var there: ModelStore = _side(library)
+	_brick(here, Vector3(0, 24, 0))
+	here.title = "Probe Shared"
+	var shared: String = ModelStore.saved_path("Probe Shared")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(shared))
+	_expect(here.save_as("Probe Shared"), "one tab saves Probe Shared")
+	_expect(there.open(shared) == 1 and not there.saved_elsewhere(),
+		"another opens it, and nothing has been saved elsewhere since")
+	OS.delay_msec(1100)
+	_brick(here, Vector3(40, 24, 0))
+	_expect(here.save_as("Probe Shared"), "the first adds a brick and saves again")
+	_expect(there.saved_elsewhere(), "...and the other, which has it open, is told")
+	_expect(not there.save_as("Probe Shared") and there.refused.contains("since this one opened it"),
+		"...and its own Save will not go over it unasked: %s" % there.refused)
+	there.know(shared)
+	_expect(not there.saved_elsewhere(), "kept its own, it is not asked again")
+	OS.delay_msec(1100)
+	_expect(there.save_as("Probe Shared") and ModelStore._count_bricks(shared) == 1,
+		"...and saving then replaces the other's, as chosen")
+	_expect(here.saved_elsewhere(), "...which the first is told of in turn")
+	here.open(shared)
+	OS.delay_msec(1100)
+	_expect(there.save_as("Probe Shared") and not here.saved_elsewhere(),
+		"the same bricks saved again elsewhere ask nothing")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(shared))
+
 	if _failures == 0:
 		print("round trip is lossless")
 	else:
 		print("%d difference(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+## A store with a world of its own, as each tab has.
+func _side(library: PartLibrary) -> ModelStore:
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.library = library
+	store.builder = builder
+	return store
+
+
+static func _brick(store: ModelStore, at: Vector3) -> void:
+	var id: int = store.world.add_brick("3001", 4, Transform3D(Basis(), at))
+	if id != 0:
+		store.builder.register(id, "3001", Transform3D(Basis(), at))
 
 
 static func _snapshot(world: BrickWorld) -> Array:

@@ -47,9 +47,9 @@ func _run() -> void:
 	Engine.max_fps = 0
 	# The app opens and autosaves this machine's own model. Nothing here
 	# edits it, and it is put back as it was regardless.
-	_had_autosave = FileAccess.file_exists(ModelStore.AUTOSAVE)
+	_had_autosave = FileAccess.file_exists(ModelStore.autosave())
 	if _had_autosave:
-		_autosave = FileAccess.get_file_as_bytes(ModelStore.AUTOSAVE)
+		_autosave = FileAccess.get_file_as_bytes(ModelStore.autosave())
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	await _frames(180)
@@ -449,9 +449,9 @@ func _shot_of(panel: Control, name: String) -> void:
 
 func _put_back_autosave() -> void:
 	if _had_autosave:
-		var file: FileAccess = FileAccess.open(ModelStore.AUTOSAVE, FileAccess.WRITE)
+		var file: FileAccess = FileAccess.open(ModelStore.autosave(), FileAccess.WRITE)
 		if file != null:
 			file.store_buffer(_autosave)
 			file.close()
-	elif FileAccess.file_exists(ModelStore.AUTOSAVE):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(ModelStore.AUTOSAVE))
+	elif FileAccess.file_exists(ModelStore.autosave()):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(ModelStore.autosave()))

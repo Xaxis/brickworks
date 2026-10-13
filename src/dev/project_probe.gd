@@ -42,7 +42,7 @@ func _run() -> void:
 	if playback != null:
 		playback.stop()
 
-	var autosave_was: String = FileAccess.get_file_as_string(ModelStore.AUTOSAVE)
+	var autosave_was: String = FileAccess.get_file_as_string(ModelStore.autosave())
 	var kept_at: String = ModelStore.SAVE_DIR + NAME + ".ldr"
 	store.keeps = true
 
@@ -66,7 +66,7 @@ func _run() -> void:
 	store.set("_dirty_at", 0)
 	store.tick()
 	_check("the autosave carries the name, not \"Working model\"",
-		FileAccess.get_file_as_string(ModelStore.AUTOSAVE).begins_with("0 " + NAME))
+		FileAccess.get_file_as_string(ModelStore.autosave()).begins_with("0 " + NAME))
 
 	# A restart, as far as the name goes: a fresh bar, and the autosave
 	# opened the way the app opens it.
@@ -110,7 +110,7 @@ func _run() -> void:
 
 	# An autosave from before, titled "Working model", opens as Untitled
 	# rather than under that placeholder.
-	var old := FileAccess.open(ModelStore.AUTOSAVE, FileAccess.WRITE)
+	var old := FileAccess.open(ModelStore.autosave(), FileAccess.WRITE)
 	old.store_string("0 Working model\n1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n")
 	old.close()
 	bar._name.text = "something else"
@@ -174,7 +174,7 @@ func _run() -> void:
 
 	# Leave the machine as it was.
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(kept_at))
-	var back := FileAccess.open(ModelStore.AUTOSAVE, FileAccess.WRITE)
+	var back := FileAccess.open(ModelStore.autosave(), FileAccess.WRITE)
 	back.store_string(autosave_was)
 	back.close()
 	store.keeps = false

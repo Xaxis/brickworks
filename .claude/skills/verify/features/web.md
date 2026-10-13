@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe -->
 
 ## Sub-features
 
@@ -38,12 +38,35 @@ plan with Claude as the client.
   in** (2026-10-11): `https://brickworks.diy/api/mcp`, one address for
   everybody, which Claude signs in to with OAuth (`api/oauth.js`, see
   [account](account.md)) — each call then goes to that account's open tab on
-  any device (`accountTabs`: answering before paused, the tab the connection
-  last built in, then in view, then latest heard; the handshake and tool list
-  from that tab, else the account's last, else the fullest recent one, so
-  Claude can add it before the app is opened) — and one browser's private
+  any device (`accountTabs`; which tab, exactly, is below; the handshake and
+  tool list from that tab, else the account's last, else the fullest recent
+  one, so Claude can add it before the app is opened) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
-  everyone who added one (`oneTab`). With no `t` and no good token: 401 and a
+  everyone who added one (`oneTab`).
+  **Several tabs, one account** (2026-10-13): each tab is a connector of its
+  own (its token is kept in its own session, see [model-io](model-io.md), "a
+  session per tab"; one token per browser had made a second tab take the
+  connector from the first), registered with its short id and its model's name
+  (`&tab=` on `op=hello`, `&model=` and `&used=` with `op=state` and
+  `op=next`, the model as each answer left it from the answer's `_meta`;
+  columns `tab`, `model`, `used_at` of `relay_tabs`). The relay answers two
+  tools of its own beside the app's, and every tool of the app's takes one
+  more argument (`toolsWithTabs`): `tabs` lists the open tabs (id, model, in
+  view or not or paused, used how long ago, which one this session's calls go
+  to); `select_tab` moves this session to another; `target` does one call in
+  the tab named. With no choice, a session's first call goes to the tab the
+  person used most recently (the page counts presses and focus,
+  `brickworksUsedAgo`; the desktop, the window having focus) and the session
+  stays there (`relay_picks`, keyed by the `Mcp-Session-Id` handed out at
+  initialize, or by the connection for a client that sends none, for two
+  hours), so the person clicking into another tab while Claude works does not
+  split the work between two models. Every answer from a tab begins "Tab k7qd,
+  “House”." and, when there are others, "2 other tabs are open; tabs lists
+  them." A target no tab has, or a session's tab that has closed, is refused
+  saying so with the open tabs listed, nothing done anywhere; told once, the
+  session's next call goes to the tab used most recently, named. The relay
+  tables are in `supabase/relay.sql` (applied 2026-10-13). `src/dev/tabs_probe.gd`
+  proves it (below). With no `t` and no good token: 401 and a
   `WWW-Authenticate` naming the protected resource metadata. Claude
   is the client, on the person's own plan; Brickworks never sees a login, a
   Claude token or a key, and never calls a model — Anthropic's terms allow exactly
@@ -76,7 +99,7 @@ plan with Claude as the client.
   (`op=hello`) and the relay answers those itself; `op=close` goes by
   `sendBeacon`; a call taken and not answered is handed out again on the next
   ask; the newest page load to switch on (`&i=`) takes over and an older one
-  gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
+  gets 409. The address is kept with the tab's session (`ClaudeConnector._file`) and the
   connector resumes on load, so it is added to Claude once. The relay is the
   page's own site on the web, and on the desktop `Deployment.api_base()` — the
   live site or `BRICKWORKS_API`, the deployment the account signs in to (it was
@@ -108,7 +131,31 @@ plan with Claude as the client.
   answered by the app's own tab with no address of the tab's ever given to
   Claude, a call told no tab is open once the tab is off, and refused after
   Disconnect. `tools/web/oauth_probe.mjs` covers the OAuth endpoints
-  ([account](account.md)). Real Claude Code went through the private address
+  ([account](account.md)).
+  **`tabs probe`** (`src/dev/tabs_probe.gd`, the same relay and `.env`, `--
+  8790`): one throwaway account with three tabs open in one process (three of
+  the app's own connectors, each with its own world, assistant, answering
+  socket, tab id and model: House, Castle, Lighthouse) and Claude signed in
+  with OAuth. All three switch on, none taking another's place; initialize
+  hands out an `Mcp-Session-Id`; the tool list has `tabs` and `select_tab`
+  and every app tool takes `target`; `tabs` lists the three with their
+  models and says a first call goes to the tab used last (the probe says each
+  tab's use as its page would, `op=state&used=`); the first call goes there
+  and names it, and the session stays there when the person clicks into
+  another; an edit with `target` lands in the house alone, read back from
+  every tab's world and over the relay; a target no tab has is refused;
+  `select_tab` moves the session; a second session keeps its own choice; and
+  the lighthouse's tab switched off mid-session makes the next call say it has
+  closed, with nothing done anywhere, and the call after go to the tab used
+  last, named. Against the relay of before (`api/` as it was at cc5294e,
+  served by that commit's `relay_server.mjs`, 2026-10-13) 25 of its 31 checks
+  fail: no session id, no tabs tool, no names in the answers, and the edit
+  meant for the house landed in the lighthouse. A headless app says nothing
+  of being used (`ClaudeConnector._used_ago` is -1: a headless window claims
+  focus, and every tab then looked used just now). A tab's long poll that
+  takes a call as its page closes hands it back (`nextForTab`), and a call
+  waiting on a tab that has said it closed is answered at once, not after
+  four minutes. Real Claude Code went through the private address
   first (2026-10-09): `claude -p` with
   `--mcp-config` naming the address (type http), `--strict-mcp-config` and
   `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,

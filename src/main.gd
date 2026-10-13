@@ -164,6 +164,11 @@ var _verbs: EditVerbs
 var _shell: Shell
 ## The offer to seat an old model's parts on their studs.
 var _seat_offer: SeatOffer
+var _reload_offer: ReloadOffer
+## When the files other tabs and windows share with this one were last
+## looked at (_watch_other_tabs), in ticks.
+var _tabs_looked: int = 0
+var _tabs_said_here: int = 0
 ## A picture of the model, and its parts list for a shop.
 var _exports: Exports
 ## The ruler: src/ui/measure.gd.
@@ -339,6 +344,8 @@ func _tell_page() -> void:
 		named.merge(_shell.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
+	if _reload_offer != null:
+		named.merge(_reload_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -760,6 +767,9 @@ func _show_name(name: String) -> void:
 		# named, and the tab said "Brickworks" over a model called Flow Tower.
 		_page_title = text
 		JavaScriptBridge.eval("document.title = %s" % JSON.stringify(text), true)
+		# And the model's name alone, which the page tells the connector's
+		# relay with each word that it is alive (ClaudeConnector).
+		JavaScriptBridge.eval("window.brickworksModelName = %s" % JSON.stringify(name), true)
 	else:
 		# With the version, as the title said before it had a name to say.
 		get_window().title = "%s %s" % [text, BuildInfo.version()]
@@ -1908,6 +1918,9 @@ func _build_ui() -> void:
 	if not _viewing.is_empty():
 		_store.keeps = false
 		_store.read_only = true
+	# Nor does any of those hold a tab's session (TabSession): a design
+	# run had taken the one the person's next window would have opened.
+	TabSession.driven = not _store.keeps
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
@@ -2285,6 +2298,7 @@ func _build_ui() -> void:
 	_connector = ClaudeConnector.new()
 	_connector.rpc = answering
 	_connector.account = _account
+	_connector.model_name = func() -> String: return _store.title
 	add_child(_connector)
 	_chat.use_connector(_connector)
 	# On again with the same address if it was on last time, so the
@@ -2599,6 +2613,19 @@ func _build_ui() -> void:
 	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
 	_bar.started_new.connect(_seat_offer.dismiss)
 	_bar.cleared.connect(_seat_offer.dismiss)
+	# Another tab (or window) saved the model this one has open: asked,
+	# never saved over in silence (ModelStore.saved_elsewhere).
+	_reload_offer = ReloadOffer.new()
+	_reload_offer.store = _store
+	_reload_offer.say = _bar.say
+	_reload_offer.reopen = func(path: String) -> void:
+		_bar.opened.emit(await _bar.open_with_progress(path))
+	_reload_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_reload_offer)
+	_bar.opened.connect(func(_bricks: int) -> void: _reload_offer.dismiss())
+	_bar.started_new.connect(_reload_offer.dismiss)
+	_bar.cleared.connect(_reload_offer.dismiss)
+	_store.saved_by_another.connect(_reload_offer.offer)
 
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
@@ -3969,6 +3996,37 @@ static func _nobody_looking() -> bool:
 		and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED
 
 
+## What other tabs (or windows) did to the files this one shares with them,
+## about once a second: a model another one saved that this one has open
+## is offered as a reload; the parts bin's shelf another one changed is
+## read again; a file another one deleted goes here too. On the web the
+## page has already copied their writes into this tab's user://
+## (src/boot/shell.html); on the desktop every window reads the one folder.
+func _watch_other_tabs() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _tabs_looked < 1000:
+		return
+	_tabs_looked = now
+	for change: Dictionary in TabSession.changed_elsewhere():
+		var path: String = str(change["path"])
+		if bool(change["gone"]) and FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+		if path == PartShelf.file:
+			PartShelf.reread()
+	if _reload_offer != null and not _reload_offer.showing() and _store.saved_elsewhere():
+		_reload_offer.offer(_store.title)
+	# A window says it still holds its session (TabSession._held).
+	if now - _tabs_said_here > 60000:
+		_tabs_said_here = now
+		TabSession.still_here()
+
+
+## The window closing lets its session go, so the next one to open takes
+## it at once rather than once the hold has run out.
+func _exit_tree() -> void:
+	TabSession.release()
+
+
 func _process(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
@@ -4008,6 +4066,7 @@ func _process(_delta: float) -> void:
 			_drop_dragged(get_viewport().get_mouse_position())
 	if _store != null:
 		_store.tick()
+		_watch_other_tabs()
 	_weigh()
 	_tell_page()
 	if _counts == null:
