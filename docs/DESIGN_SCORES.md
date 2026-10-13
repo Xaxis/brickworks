@@ -60,9 +60,9 @@ real-set pieces laid) and a small picture. After a batch, run
 `python3 tools/design_memory.py build` (it reads the main checkout's
 `bench/results/`) and commit the index: it merges into what the index holds,
 and it is now the only copy of the creative, d5 and d5b rounds' critiques and
-pictures, read before their worktrees went. It holds 32 designs: the
-baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2 and
-the surface round's 4. What is missing is
+pictures, read before their worktrees went. It holds 37 designs: the
+baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2, the
+surface round's 4 and the edges rounds' 5. What is missing is
 the re-score's own replies: the baseline keeps its first judgement's scores
 and words, with the re-scored build taken from the table below, and the
 design5 batches' build, judged on the old check and never re-scored, is not
@@ -468,3 +468,80 @@ only. Next: tiled staircases (a tread's tiles off, a slope or curved slope on
 the studs under them) and rounded edges where a body turns (curved slopes and
 wedge plates along a top edge or an outline that steps; the check already
 names the latter), proposed and settled the same way.
+
+## 2026-10-13-edges: commit e06ac7f, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 5.0 | 4.0 | 4.0 | 4.0 | 4.0 | 10.0 | **5.2** | 808 | 1 |
+| corner_shop | 1 | 5.0 | 5.0 | 5.0 | 4.0 | 4.0 | 4.0 | **4.5** | 1,167 | 64 |
+| speed_champions | 1 | 3.0 | 4.0 | 4.0 | 3.0 | 3.0 | 10.0 | **4.5** | 168 | 2 |
+| starfighter | 1 | 6.0 | 5.0 | 5.0 | 5.0 | 5.0 | 10.0 | **6.0** | 352 | 1 |
+| **suite mean** | 4 | **4.8** | **4.5** | **4.5** | **4.0** | **4.0** | **8.5** | **5.0** |  |  |
+
+Weakest across the suite: **technique** (4.0), **creativity** (4.0), **surface** (4.5).
+
+## 2026-10-13-edges-b: commit fcc308e, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| speed_champions | 1 | 3.0 | 4.0 | 4.0 | 3.0 | 4.0 | 10.0 | **4.7** | 194 | 2 |
+| **suite mean** | 1 | **3.0** | **4.0** | **4.0** | **3.0** | **4.0** | **10.0** | **4.7** |  |  |
+
+Weakest across the suite: **likeness** (3.0), **technique** (3.0), **surface** (4.0).
+
+**What the edges rounds say: tiled steps and hard top edges (e06ac7f,
+fcc308e).** The surface pass also covers staircases whose treads are tiles:
+the tread tiles come off and the slopes go on. On anything that is not a
+building, it also crowns a flat top whose edges drop away: curved slopes
+(15068, 11477) run along each such edge, falling outward, and the rest of
+the top is raised flush with a plate and tiles. Only the top's tiles are
+taken off, and any finding that takes parts off may not leave the model in
+more pieces. Against the surface round and earlier (likeness / surface /
+colour / technique / creative):
+
+| subject | baseline (re-scored) | d6 | d6b | surface | edges |
+|---|---|---|---|---|---|
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3 | 4 / 4 / 4 / 3 / 4 | 5 / 5 / 5 / 4 / 4 | 5 / 6 / 5 / 4 / 4 | 5 / 5 / 5 / 4 / 4 |
+| starfighter | 6 / 4 / 5 / 4 / 5 | 5 / 3 / 5 / 4 / 4 | — | 6 / 6 / 5 / 6 / 6 | 6 / 5 / 5 / 5 / 5 |
+| barn_owl | 4 / 3.5 / 4 / 4 / 4 | 5 / 4 / 4 / 5 / 5 | — | 4 / 4 / 4 / 4 / 4 | 5 / 4 / 4 / 4 / 4 |
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3 | 3 / 3 / 3 / 3 / 3 | 3 / 4 / 4 / 4 / 3 | 3 / 4 / 3 / 3 / 4 | 3 / 4 / 4 / 3 / 3, and b: 3 / 4 / 4 / 3 / 4 |
+
+**A null, honestly, and it holds the surface round's gain.** Surface was 5, 5,
+4 and 4, against 6, 6, 4 and 4 in the surface round. Every cell is within the
+1.0 run-to-run spread, so this lever neither helped nor hurt on the bench.
+Over the four, surface is 4.5, against the surface round's 5.0, d6's 3.5 and
+the baseline's 3.9. Only part of the lever reached the designs:
+- The starfighter crowned two tops. The judge still says "the nose steps down
+  in layers", and studs remain "along the dark-red wing stripes": only twelve
+  findings are laid at a time, and the session did not ask for the rest.
+- The car found nothing to round. It read the design's description, where
+  "roof" counted as a building word. The same model, read as a car, had three
+  tops rounded. Fixed in fcc308e, which reads the name only. Run again on
+  that commit (edges-b), it crowned two tops and rejected a third, the first
+  rejection in either round. Surface stayed at 4: "stepped edges where the
+  911's rounded wings and fastback should flow", "flanks ... walls of stacked
+  plain bricks", "exposed studs on the bonnet".
+- The owl had nothing the pass would finish. Its open studs lie among a
+  figure or an animal (yards), or are not open: something stands within a
+  brick of them.
+- The shop is a building, so it has no edges. Its build is 4 again: 64
+  pieces. The session laid its base as loose plates on the floor (35 pieces
+  without the pass), and the pass tiled the floor baseplate's own studs when
+  the session asked for its ground. When the floor went back to scenery,
+  those 29 tiles were left lying loose. fcc308e no longer finishes a
+  baseplate's studs.
+
+**Next, from the critiques: the plate-high steps need their own finding.**
+On every body that is not a building, the stepped fault the judge names is a
+plate high:
+- the starfighter's nose "steps down in layers";
+- the car's "stepped edges where the rounded wings and fastback should
+  flow";
+- the owl's breast "bands of tiles meet in hard steps", and its head and
+  wings are "a stepped, jagged layering of plates".
+The staircase cover skips a one-plate rise, because no slope is a plate
+tall. The real answer takes two plate steps at a time: a curved slope two
+plates tall (11477, 15068) laid over each pair of one-stud treads, cut and
+re-laid the way the crown is. After that come the flanks ("walls of stacked
+plain bricks"), which want sideways building, not a top.
