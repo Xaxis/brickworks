@@ -15851,21 +15851,19 @@ and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture, each \
 said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
 "shapes") — and a head that looks at you with its "face" on its shape. \
-submit_design that first, with its assemblies and its features, each with \
-where it goes (x, y, z, facing): what the subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
-car's wheel arches, headlamps, grille, windscreen, spoiler).
+submit_design that first, with its assemblies and features — what the \
+subject is known by (an owl's eyes, beak, ear tufts; a car's wheel arches, \
+headlamps, grille), each with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
- 4. Each feature in turn: the app lays the best real set's piece for it \
-where it goes and hands it over (the whole review, each settle, saving); \
-settle_feature accepts it (adjusted if need be), asks for the next, rejects \
-it with a reason, or says you built it. Saving waits for all. A feature is \
-parts with depth, never a tile painted on a panel.
+ 4. Each feature in turn: the app lays the best real set's piece where it \
+goes; settle_feature accepts it (adjusted if need be), asks for the next, \
+rejects it with a reason, or says you built it. Saving waits for all. A \
+feature is parts with depth, never a painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
-stud fields, slopes stud staircases and textures plain walls on the model; \
-settle each with settle_surface (accept, reject or keep, with a reason).
+studs and slopes staircases; settle each with settle_surface.
  7. Last, the creative pass: review_model {"creative": true} — three \
 touches proposed for this subject, the best one or two added. Then \
 save_model.
@@ -15894,8 +15892,7 @@ the whole model from it.
 
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
-kind of subject needs), "real", "colour", "angle" (sections turned any \
-way, on hinges), "round", \
+kind of subject needs), "real", "colour", "angle", "round", \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (what else the person can \
 do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
