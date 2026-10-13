@@ -161,6 +161,25 @@ func _run() -> void:
 	_ok(asked.begins_with("The creative pass") and asked.contains("1 creature"),
 		"review_model creative= hands it again, seeing the frog now")
 
+	print("\nfrom outside, the pass worked before the features is still said")
+	# Three of four bench sessions called it before their features; the save
+	# that handed the next feature never said what the pass had added.
+	world.clear()
+	builder.lattice.clear()
+	await assistant.use_tool("submit_design", {
+		"name": "frog pond", "description": "a pond on a base",
+		"bricks": [{"part": "3001", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 2, "x": 0, "y": 3, "z": 0, "rot": 0}],
+		"features": ["lily pads"]})
+	await assistant.review("", "", true)
+	await assistant.use_tool("edit_model", {"add": [
+		{"part": "3794b", "color": 2, "x": 0, "y": 6, "z": 0, "rot": 0},
+		{"part": "33320", "color": 10, "x": 0.5, "y": 7, "z": 0, "rot": 0}]})
+	var early: String = await assistant.next_review()
+	_ok(early.begins_with("The creative pass: 2 parts added")
+		and early.contains("The next is the lily pads"),
+		"saving says what the pass added, then hands the feature still waiting")
+
 	print("")
 	if _failures == 0:
 		print("OK creative_probe")

@@ -8587,10 +8587,21 @@ func _creative_review() -> String:
 ## assemblies have had their turns: the creative pass if it has not been
 ## handed; after it, what it added, said once; then "".
 func _creative_next() -> String:
+	var passed: String = _creative_passed()
+	if not passed.is_empty():
+		return passed
+	if _outside_designed and not _outside_creative_handed:
+		return ("Before it is finished: the creative pass, which this app's own "
+			+ "designer makes last.\n\n%s" % _creative_review())
+	return ""
+
+
+## What a creative pass from outside added, said once at the save after it,
+## or "" when none is running. Said before anything else saving hands back:
+## three of four bench sessions worked the pass before their features, and
+## the save that handed the next feature never said what the pass brought.
+func _creative_passed() -> String:
 	if _outside_creative.is_empty():
-		if _outside_designed and not _outside_creative_handed:
-			return ("Before it is finished: the creative pass, which this app's own "
-				+ "designer makes last.\n\n%s" % _creative_review())
 		return ""
 	var said: String = _creative_said(_outside_creative["parts"],
 		int(_outside_creative["count"]))
@@ -14341,18 +14352,25 @@ func next_review() -> String:
 	# A coroutine because review is: callers await it.
 	var undone: Array[String] = _features_left()
 	if not undone.is_empty():
-		return ("Before it is finished: %d of its %d features %s not had its turn "
+		var passed: String = _creative_passed()
+		return _first(passed, "Before it is finished: %d of its %d features %s not had "
 			% [undone.size(), _outside_features.size(), "has" if undone.size() == 1 else "have"]
-			+ "yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
+			+ "its turn yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
 				await _review_feature(undone[0])])
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		return _creative_next()
 	var name: String = left[0]
-	return ("Before it is finished: %d of its %d assemblies %s not had a close "
+	var passed_too: String = _creative_passed()
+	return _first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
-		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
-		+ "is the %s.\n\n%s" % [name, await review(name)])
+		+ "a close look (%s). This app's own designer details each in turn; the " % ", ".join(left)
+		+ "next is the %s.\n\n%s" % [name, await review(name)])
+
+
+## [param said] and then [param then], or [param then] alone.
+static func _first(said: String, then: String) -> String:
+	return then if said.is_empty() else "%s\n\n%s" % [said, then]
 
 
 ## The assemblies a session named that have had no close review yet, in

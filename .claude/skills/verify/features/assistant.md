@@ -1475,15 +1475,21 @@ fixing what it got wrong.
   outside: the build's answer makes it step 4, `review_model {"creative":
   true}` hands it, the whole review and the last assembly's end on it, and
   saving hands it once nothing else is left (`_creative_next`, only after a
-  submit_design from outside), then says what it added (or once, that it
-  added nothing), then only saves. A bench run's log shows "the creative
+  submit_design from outside); the save after the pass says what it added
+  (or once, that it added nothing) first, before any feature or assembly it
+  hands back (`_creative_passed`: three of four bench sessions worked the
+  pass before their features), then saving only saves. A bench run's log shows "the creative
   pass" for the call and "app: the creative pass: …" for what it added.
   `creative_probe` drives it with canned replies: owed to a design and not a
   revision, handed after the look with its kinds, subject and inventory, a
   frog on a jumper added and the model one piece, the record said, a pass
   that only calls tools ended after its six turns, and from outside the
-  answer, saving and review_model creative=. With the pass switched off, 12
-  of its checks fail. `place_technique` reads the piece
+  answer, saving and review_model creative=, and a pass worked before a
+  feature said at the save that hands the feature. With the pass switched
+  off, 12 of its checks fail. Measured (`2026-10-12-creative`, four subjects
+  one run each, docs/DESIGN_SCORES.md): every session called the pass, and
+  creativity went from 3.0 to 5.2 against the re-scored baseline, each
+  judge's reason naming what the pass added; none added a play feature. `place_technique` reads the piece
   with the app's own LDraw reader, turns it by quarter turns, moves its low
   corner to x, y, z by whole studs, swaps colours by `recolor`, and lays it
   through `edit_model`, so the joints checker refuses it like any edit; pieces
