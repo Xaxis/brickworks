@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism -->
 
 ## Sub-features
 
@@ -39,6 +39,36 @@ can occupy the same millimetre.
   thousand angled bricks took 185 s to place on the app's only thread (its
   looks timed out); 9.5 s now. `turned_probe` checks the cells are identical to
   the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
+- `turned any way on hinges` (`src/ai/hinges.gd`, `Section` in
+  `src/ai/assistant.gd`): a section turns yaw, then pitch, then roll (its +z
+  the nose: yaw swings it to +x, pitch lifts it, roll lifts its +x side), or
+  about any axis (`line`); is built `within` another, whose frame it rides;
+  and repeats round a centre (`around`, a `yaw` step per copy, children
+  copied with it). A single part's yaw/pitch/roll makes it a section of one
+  (`_turned_parts`), and edit_model's `turn` turns named bricks about their
+  middle, as the inspector's Turn/Tilt/Roll do (`Builder.turn_selection_basis`).
+  `hinge: "tilting" | "clip" | "click"` lays both halves (`_lay_hinge`): the
+  base where x, y, z say, in the parent's frame — in a frame of its own,
+  `<name> hinge`, turned by the yaw about its first stud, when the yaw is off
+  the square — and the top in the section, the line read off the parts'
+  shaft/bore or finger/fork records (`Hinges.line_of`); "click" is offered
+  only where the catalogue's 44302/44301 carry finger records. The check holds
+  a leaning section only through a Joints pair with a part outside it
+  (`leaning on nothing` otherwise), says a hinge asked to tip two ways, and
+  reads two-axis turned bricks from a file back into a section (`_adopted`).
+  `hinged_panels_probe`: two- and three-axis turns, a part turned alone,
+  within, round a centre, a panel on each hinge at three yaw/pitch pairs, a
+  dome 33 studs across of 12 strips (6, and 6 raised on spacers lapping over
+  them as scales) of 36 hinged panels at 48 two-axis angles under a dish,
+  held with no overlap, four sideways skins on side studs, an edit saying
+  only a new pitch, and a part tipped by the window read back tipped. It
+  fails on the code before (f2cbfe6): the dome's sections are not read at
+  all ("hinge": "clip" stops the reader), and with hinge: true its panels
+  lie at 2 angles with 115 overlaps. `-- --dome_ldr=PATH --band_ldr=PATH`
+  writes them out to look at (`bench_views.gd --views=corner,front,right,top`).
+  The quarter turns are exact (`Section.exact`) and frames lose their float
+  dust (`Section.dusted`): a skin on side studs read a ten-millionth of a
+  stud off was rasterised a cell away and called adrift.
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever. It also says when the whole model tips over on what it stands
@@ -239,6 +269,7 @@ godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
+godot --headless --path . --script src/dev/hinged_panels_probe.gd # turned any way, on hinges: a dome, a band of skins
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
 godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3

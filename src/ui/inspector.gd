@@ -35,6 +35,11 @@ var _x: SpinBox
 var _y: SpinBox
 var _z: SpinBox
 var _yaw: SpinBox
+## How far it is tipped off the square: its front lifted, its right side
+## lifted. Turn alone faced a panel round a dome and could not tip it back
+## to the curve.
+var _tilt: SpinBox
+var _roll: SpinBox
 var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
@@ -50,6 +55,7 @@ var _looked_at: int = 0
 ## number moves it.
 var _at: Vector3 = Vector3.ZERO
 var _facing: float = 0.0
+var _tilted := Vector2.ZERO
 ## The instructions' steps, worked out once per model state and only when
 ## asked for: brick id -> step number, and how many steps there are.
 var _steps_for: String = ""
@@ -144,9 +150,15 @@ func _ready() -> void:
 	_y = _number("Y", "Up from the baseplate, in LDU (a plate is 8)")
 	_z = _number("Z", "Front to back, in LDU (a stud is 20)")
 	_yaw = _number("Turn", "Which way it faces, in degrees about the vertical")
+	_tilt = _number("Tilt", "How far its front is lifted, in degrees, about a level line "
+		+ "across it through its middle")
+	_roll = _number("Roll", "How far its right side is lifted, in degrees, about a level "
+		+ "line front to back through its middle")
 	for spin: SpinBox in [_x, _y, _z]:
 		spin.value_changed.connect(func(_value: float) -> void: _moved())
 	_yaw.value_changed.connect(func(_value: float) -> void: _turned())
+	for spin: SpinBox in [_tilt, _roll]:
+		spin.value_changed.connect(func(_value: float) -> void: _tipped())
 
 	_facts = _text(12, 0.78)
 
@@ -378,7 +390,8 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	_place.visible = true
 	_actions.visible = true
 	_colour_row.visible = true
-	_set_place(brick.transform.origin, _yaw_of(brick.transform.basis))
+	_set_place(brick.transform.origin, _yaw_of(brick.transform.basis),
+		_tilt_of(brick.transform.basis))
 	# Counted up to a point: on a big model all of it is joined to all of it.
 	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
@@ -520,9 +533,10 @@ func _show_colours(codes: Array[int]) -> void:
 		+ ("\n" + " · ".join(shops) if not shops.is_empty() else "")
 
 
-func _set_place(at: Vector3, facing: float) -> void:
+func _set_place(at: Vector3, facing: float, tilted := Vector2.ZERO) -> void:
 	_at = at
 	_facing = facing
+	_tilted = tilted
 	var across: float = float(EditVerbs.SNAPS[shell.verbs.snap][0])
 	var up: float = float(EditVerbs.SNAPS[shell.verbs.snap][1])
 	# A step, not none: with no step a box shows every digit the float
@@ -536,6 +550,11 @@ func _set_place(at: Vector3, facing: float) -> void:
 	_yaw.step = 0.1
 	_yaw.custom_arrow_step = shell.verbs.turn_step
 	_yaw.set_value_no_signal(snappedf(facing, 0.1))
+	for pair: Array in [[_tilt, tilted.x], [_roll, tilted.y]]:
+		var spin: SpinBox = pair[0]
+		spin.step = 0.1
+		spin.custom_arrow_step = shell.verbs.turn_step
+		spin.set_value_no_signal(snappedf(float(pair[1]), 0.1))
 
 
 ## A number typed or stepped: the selection moved by the difference, in
@@ -545,7 +564,7 @@ func _moved() -> void:
 	var cells := Vector3i(roundi(by.x / BrickLattice.CELL), roundi(by.y / BrickLattice.CELL),
 		roundi(by.z / BrickLattice.CELL))
 	if cells == Vector3i.ZERO:
-		_set_place(_at, _facing)
+		_set_place(_at, _facing, _tilted)
 		return
 	if shell.builder.move_selection(cells) > 0:
 		shell.verbs.edited.call()
@@ -568,6 +587,48 @@ func _turned() -> void:
 		shell.bar.say("no room to turn it there")
 	_shown = ""
 	_refresh(true)
+
+
+## A tilt or a roll typed or stepped: the selection tipped by the
+## difference about its middle, as one step, or put back and said why. The
+## same turn a section's pitch and roll make, so a part tipped here reads
+## back as one tipped there.
+func _tipped() -> void:
+	var to := Vector2(_tilt.value, _roll.value)
+	if to.is_equal_approx(_tilted):
+		return
+	var facing: float = _yaw_of_turn()
+	var turn: Basis = Assistant.Section.turned(facing, to.x, to.y) \
+		* Assistant.Section.turned(facing, _tilted.x, _tilted.y).inverse()
+	if shell.builder.turn_selection_basis(turn, "tipped %+d°, rolled %+d°"
+			% [roundi(to.x - _tilted.x), roundi(to.y - _tilted.y)]) > 0:
+		shell.verbs.edited.call()
+		shell.bar.say("tilted %d°, rolled %d°" % [roundi(to.x), roundi(to.y)])
+	else:
+		shell.bar.say("no room to tip it there")
+	_shown = ""
+	_refresh(true)
+
+
+## The yaw the tilt is measured in: the one part's own, off the square, or
+## none for a group.
+func _yaw_of_turn() -> float:
+	var ids: Array = shell.builder.selection.keys()
+	if ids.size() != 1:
+		return 0.0
+	var brick: BrickWorld.Brick = shell.world.get_brick(int(ids[0]))
+	if brick == null:
+		return 0.0
+	var basis: Basis = brick.transform.basis.orthonormalized()
+	return Assistant.Section.angles_of(basis * BrickLattice.snap_basis(basis).inverse()).x
+
+
+## How far a part is tipped off the square, as [tilt, roll] in degrees: its
+## turn less the nearest square one, read as a section's pitch and roll.
+static func _tilt_of(basis: Basis) -> Vector2:
+	var b: Basis = basis.orthonormalized()
+	var off: Vector3 = Assistant.Section.angles_of(b * BrickLattice.snap_basis(b).inverse())
+	return Vector2(off.y, off.z)
 
 
 ## Which way a part faces about the vertical, in degrees, 0 to 360.
@@ -636,6 +697,8 @@ func controls_by_name() -> Dictionary:
 		out["prop_y"] = _y
 		out["prop_z"] = _z
 		out["prop_turn"] = _yaw
+		out["prop_tilt"] = _tilt
+		out["prop_roll"] = _roll
 	return out
 
 
