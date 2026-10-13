@@ -242,8 +242,11 @@ var _version: Label
 
 
 func _read_version() -> void:
+	# Beside the build, which is not beside the page: brickworks.diy/app is
+	# served from /b/<sha>/, and the page names the engine there. Resolved
+	# against the page itself, this asked /version.json and found nothing.
 	var where: Variant = JavaScriptBridge.eval(
-		"new URL('version.json', location.href).href")
+		"new URL('version.json', new URL(GODOT_CONFIG.executable, location.href)).href")
 	if typeof(where) != TYPE_STRING:
 		return
 	var http := HTTPRequest.new()

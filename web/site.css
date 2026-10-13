@@ -1,0 +1,235 @@
+/*
+  The look every page of brickworks.diy shares: the landing page, the
+  downloads, the changelog and the 404. The app is a canvas and has its
+  own; this follows it — dark by default, the LEGO yellow for the way in,
+  a red 2 x 4 for the mark.
+
+  Contrast is measured, not eyeballed: every text colour here is at least
+  4.5:1 on the background it sits on, in both schemes (WCAG AA). The old
+  "faint" grey was 42% white, 3.4:1, and it was on half the small print.
+*/
+:root {
+	--bg: #0e1013;
+	--bg-soft: #13161b;
+	--panel: #181c22;
+	--panel-hi: #1f242c;
+	--line: rgba(255, 255, 255, 0.1);
+	--ink: #eef0f4;
+	--ink-soft: #b7bcc5;
+	--ink-faint: #8d939d;
+	--red: #d0332f;
+	--yellow: #f2cd37;
+	--blue: #2a6fc4;
+	--green: #57c97e;
+	--accent: var(--yellow);
+	--on-accent: #17130a;
+	--focus: #7cb8ff;
+	--radius: 14px;
+	--page: 1140px;
+	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+	color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+	:root {
+		--bg: #f4f5f7;
+		--bg-soft: #eceef2;
+		--panel: #ffffff;
+		--panel-hi: #f7f8fa;
+		--line: rgba(15, 20, 28, 0.12);
+		--ink: #12161c;
+		--ink-soft: #424954;
+		--ink-faint: #5b626d;
+		--green: #1f7a3d;
+		--focus: #1f5fbf;
+		--shadow: 0 30px 60px -32px rgba(20, 30, 50, 0.35);
+		color-scheme: light;
+	}
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font: 400 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: inherit; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+code { font: 0.92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+[hidden] { display: none !important; }
+
+/* Keyboard focus, visible on every control in both schemes. */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+
+.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
+.skip {
+	position: absolute; left: 12px; top: -60px; z-index: 50;
+	background: var(--accent); color: var(--on-accent);
+	padding: 10px 14px; border-radius: 10px; font-weight: 650; text-decoration: none;
+}
+.skip:focus { top: 12px; }
+
+/* -- the bar --------------------------------------------------------- */
+
+.site-head {
+	position: sticky; top: 0; z-index: 20;
+	backdrop-filter: saturate(1.4) blur(14px);
+	-webkit-backdrop-filter: saturate(1.4) blur(14px);
+	background: color-mix(in srgb, var(--bg) 84%, transparent);
+	border-bottom: 1px solid var(--line);
+}
+.bar { display: flex; align-items: center; gap: 12px; min-height: 60px; }
+.mark {
+	display: inline-flex; align-items: center; gap: 10px;
+	font-weight: 680; letter-spacing: -0.02em; font-size: 17.5px;
+	text-decoration: none; padding: 6px 4px;
+}
+/* A 2 x 4 in CSS, studs and all. */
+.chip {
+	position: relative; width: 30px; height: 15px; border-radius: 3px; flex: none;
+	background: var(--red);
+	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.chip::before {
+	content: ""; position: absolute; inset: -3px 2px auto 2px; height: 4px;
+	background-image: radial-gradient(circle at 3.25px 100%, var(--red) 0 3px, transparent 3.1px);
+	background-size: 6.5px 100%; filter: brightness(1.12);
+}
+.nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.nav a {
+	text-decoration: none; color: var(--ink-soft); font-size: 14.5px;
+	padding: 8px 11px; border-radius: 9px; white-space: nowrap;
+}
+.nav a:hover, .nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
+.nav .cta { margin-left: 8px; }
+.nav a.cta, .nav a.cta:hover { color: var(--on-accent); background: var(--accent); }
+
+/* On a phone: the mark, the way in, and a menu for the rest. A <details>
+   so it opens with no script, which the site's security policy would
+   not run inline anyway. */
+.menu { display: none; position: relative; }
+.menu summary {
+	list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 9px;
+	border: 1px solid var(--line); font-size: 14.5px; color: var(--ink);
+}
+.menu summary::-webkit-details-marker { display: none; }
+.menu[open] summary { background: var(--panel); }
+.menu-list {
+	position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px;
+	display: grid; padding: 6px; border-radius: 12px;
+	background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.menu-list a { text-decoration: none; padding: 10px 12px; border-radius: 8px; color: var(--ink-soft); }
+.menu-list a:hover { background: var(--panel-hi); color: var(--ink); }
+@media (max-width: 860px) {
+	.nav a:not(.cta) { display: none; }
+	.menu { display: block; }
+}
+
+/* -- buttons ------------------------------------------------------- */
+
+.cta {
+	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+	min-height: 44px; padding: 10px 20px; border-radius: 11px;
+	font: inherit; font-weight: 640; font-size: 15.5px; white-space: nowrap;
+	text-decoration: none; cursor: pointer;
+	background: var(--accent); color: var(--on-accent); border: 1px solid transparent;
+}
+.cta:hover { filter: brightness(1.07); }
+.cta.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.cta.ghost:hover { background: var(--panel); filter: none; }
+.cta.big { min-height: 52px; padding: 14px 26px; font-size: 17px; border-radius: 13px; }
+.nav .cta { min-height: 38px; padding: 8px 14px; font-size: 14.5px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.actions.center { justify-content: center; }
+
+/* -- type ---------------------------------------------------------- */
+
+h1, h2, h3 { text-wrap: balance; }
+h1 {
+	margin: 0 0 16px; font-size: clamp(38px, 7.2vw, 74px); line-height: 1.02;
+	letter-spacing: -0.04em; font-weight: 720;
+}
+h2 {
+	margin: 0 0 10px; font-size: clamp(27px, 4.2vw, 42px); line-height: 1.1;
+	letter-spacing: -0.03em; font-weight: 690;
+}
+h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
+.eyebrow {
+	display: inline-block; margin: 0 0 14px; font-size: 13px; font-weight: 650;
+	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+}
+.lede { margin: 0 0 28px; font-size: clamp(17px, 2.2vw, 20px); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
+.sub { margin: 0 0 30px; color: var(--ink-soft); max-width: 66ch; font-size: 17px; text-wrap: pretty; }
+.note { margin: 14px 0 0; font-size: 14px; color: var(--ink-faint); }
+.center { text-align: center; }
+.center .lede, .center .sub { margin-inline: auto; }
+
+/* -- blocks -------------------------------------------------------- */
+
+main > section, .band { padding: clamp(56px, 9vw, 104px) 0; }
+main > section + section { border-top: 1px solid var(--line); }
+
+.card {
+	background: var(--panel); border: 1px solid var(--line);
+	border-radius: var(--radius); padding: 22px;
+}
+.card p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.dot {
+	display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none;
+	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3); margin-right: 9px; vertical-align: -1px;
+}
+
+.shot {
+	margin: 0; border-radius: var(--radius); overflow: hidden;
+	border: 1px solid var(--line); background: var(--bg-soft); box-shadow: var(--shadow);
+}
+.shot img { width: 100%; }
+figcaption { padding: 12px 16px 14px; font-size: 14px; color: var(--ink-soft); }
+figcaption b { display: block; color: var(--ink); font-size: 15px; font-weight: 640; }
+
+.stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; }
+.stat b { display: block; font-size: 28px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat span { font-size: 14px; color: var(--ink-soft); }
+
+details.qa {
+	border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+	padding: 0 20px;
+}
+details.qa + details.qa { margin-top: 10px; }
+details.qa summary {
+	cursor: pointer; padding: 16px 0; font-weight: 620; font-size: 16.5px;
+	list-style: none; display: flex; justify-content: space-between; gap: 16px;
+}
+details.qa summary::-webkit-details-marker { display: none; }
+details.qa summary::after { content: "+"; color: var(--ink-faint); font-weight: 500; font-size: 20px; line-height: 1; }
+details.qa[open] summary::after { content: "–"; }
+details.qa > div { padding: 0 0 18px; color: var(--ink-soft); }
+details.qa > div p { margin: 0 0 10px; }
+
+/* -- the foot ------------------------------------------------------ */
+
+.site-foot { border-top: 1px solid var(--line); padding: 48px 0 56px; font-size: 14px; color: var(--ink-faint); background: var(--bg-soft); }
+.foot-cols { display: grid; gap: 28px; grid-template-columns: 1.4fr repeat(3, 1fr); margin-bottom: 36px; }
+@media (max-width: 760px) { .foot-cols { grid-template-columns: 1fr 1fr; } .foot-cols > :first-child { grid-column: 1 / -1; } }
+.foot-cols h2 { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin: 4px 0 10px; font-weight: 650; }
+.foot-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.foot-cols a { color: var(--ink-soft); text-decoration: none; }
+.foot-cols a:hover { color: var(--ink); text-decoration: underline; }
+.foot-cols p { margin: 10px 0 0; max-width: 36ch; }
+.legal p { margin: 0 0 8px; max-width: 90ch; line-height: 1.7; }
+.legal a { color: var(--ink-soft); }
+
+/* Read aloud, not shown. */
+.visually-hidden {
+	position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+	overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

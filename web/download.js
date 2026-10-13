@@ -180,7 +180,8 @@
 
     document.getElementById("notes-title").textContent = "What is in " + release.version;
     document.getElementById("notes-summary").textContent = release.summary || "";
-    if (release.notes) document.getElementById("notes-link").href = release.notes;
+    // The site's own changelog, at this release, rather than the file on GitHub.
+    document.getElementById("notes-link").href = "/changelog#v" + release.version;
     if (release.page) document.getElementById("release-link").href = release.page;
     document.getElementById("notes").hidden = false;
   }

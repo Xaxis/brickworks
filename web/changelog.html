@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!--
+  What changed, at /changelog.
+
+  A template: tools/site.py fills the marker in <main> from CHANGELOG.md
+  and web/releases.json when the site is put together, so this page and
+  the release notes cannot disagree. Served as it stands here, it would
+  say nothing; look at it through `tools/site.py OUT`.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Changelog · Brickworks</title>
+<meta name="description" content="What changed in Brickworks, release by release: what is on the web now and what each desktop release for Linux, macOS and Windows added, changed and fixed.">
+<link rel="canonical" href="https://brickworks.diy/changelog">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Brickworks changelog">
+<meta property="og:description" content="What changed in Brickworks, release by release.">
+<meta property="og:url" content="https://brickworks.diy/changelog">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A grey stone castle in bricks, designed by Claude, beside the words: design it here, build it on your table.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Brickworks changelog">
+<meta name="twitter:description" content="What changed in Brickworks, release by release.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.page-head { padding: clamp(48px, 8vw, 88px) 0 8px; }
+.log { padding: 24px 0 88px; }
+.log > * { max-width: 760px; }
+.release { padding: 34px 0; border-top: 1px solid var(--line); }
+.release:first-child { border-top: 0; }
+.release h2 { font-size: clamp(24px, 3.4vw, 32px); margin-bottom: 4px; }
+.release h3 {
+	margin: 26px 0 8px; font-size: 13px; letter-spacing: 0.07em; text-transform: uppercase;
+	color: var(--ink-soft);
+}
+.release .when { margin: 0 0 16px; color: var(--ink-faint); font-size: 14.5px; }
+.release .when a { color: var(--ink-soft); }
+.release > p { color: var(--ink-soft); margin: 0 0 12px; }
+.release ul { margin: 0; padding-left: 20px; }
+.release li { margin: 0 0 10px; color: var(--ink-soft); }
+.release li::marker { color: var(--ink-faint); }
+.release code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/#gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/#how">How it works</a>
+			<a href="/#faq">FAQ</a>
+			<a href="/changelog" aria-current="page">Changelog</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/#gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/#how">How it works</a>
+				<a href="/#faq">FAQ</a>
+				<a href="/changelog" aria-current="page">Changelog</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap page-head">
+		<p class="eyebrow">Changelog</p>
+		<h1>What changed</h1>
+		<p class="lede">
+			The web app at brickworks.diy is updated continuously; a desktop
+			release is a snapshot of it with every part inside, so it works
+			offline. Newest first.
+		</p>
+		<div class="actions">
+			<a class="cta" href="/app">Open the app</a>
+			<a class="cta ghost" href="/download">Download for desktop</a>
+		</div>
+	</div>
+	<div class="wrap log">
+<!--changelog-->
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Design it here. Build it on your table. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/#how">How it works</a></li>
+					<li><a href="/#faq">FAQ</a></li>
+					<li><a href="/#private">Privacy</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies, which does not
+				sponsor, authorize or endorse this site.
+			</p>
+		</div>
+	</div>
+</footer>
+</body>
+</html>

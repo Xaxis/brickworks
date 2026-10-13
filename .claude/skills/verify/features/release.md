@@ -48,8 +48,8 @@ that offers each system its own build. The cycle and its cadence are
   each package there, and on macOS `codesign --verify --deep --strict` and
   `lipo -archs`. It builds nothing: the part library is not in git.
 - `download page`: `web/download.html` with `web/download.js`, served at
-  `/download.html` (deploy.sh copies every top-level file in `web/`; `/download`
-  without `.html` 308s home). Reads same-origin `releases.json`, detects the
+  `/download` (tools/site.py copies every file in `web/`; the old
+  `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the
   system (`?os=`, then client hints, `navigator.platform`, the user agent; a
   phone or an iPad gets no guess), offers its primary file with version,
   size and date, and shows every file with its SHA-256, a Copy button, the

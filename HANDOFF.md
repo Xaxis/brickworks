@@ -122,7 +122,7 @@ The recipe and every check are in `.claude/skills/verify/features/account.md`.
   deployment answering `enabled: false` (no Supabase configured) asks
   nobody to sign in; one that cannot be reached at all shows "Cannot reach
   Brickworks" with Try again, unless a session was kept. (5) The admin page
-  (`/admin.html`, MASTER_EMAIL only, read-only) uses the app's session in
+  (`/admin`, MASTER_EMAIL only, read-only) uses the app's session in
   that browser rather than a sign-in of its own. (6) Sign-in codes are rate
   limited per address and per network address, kept a day.
 - **Proven 2026-10-11, not yet in production.** `account_probe` (26
@@ -274,7 +274,7 @@ the parts list's What do I need?). Recipe and proofs:
 ## Desktop releases
 
 Linux, macOS and Windows builds are cut on a cadence, put on GitHub Releases
-and offered at brickworks.diy/download.html. `docs/RELEASING.md` is the
+and offered at brickworks.diy/download. `docs/RELEASING.md` is the
 whole cycle: when to cut one, the seven commands, what done looks like, and
 what the owner has to provide before macOS and Windows stop asking on first
 launch (an Apple Developer ID with an App Store Connect key; a Windows
@@ -292,7 +292,7 @@ says whether everything agrees with it.
    first with all of it. A master-level Orthanc goes on the homepage (task #29).
 2. **Desktop 0.1.0 is out** (2026-10-10): checked by the release workflow on
    Linux, macOS (Apple silicon and Intel) and Windows, then published from that
-   draft; brickworks.diy/download.html offers it. Next release by the cadence in
+   draft; brickworks.diy/download offers it. Next release by the cadence in
    `docs/RELEASING.md`.
 3. **Merged 2026-10-10:** the minifigure builder (`src/minifig/`, M or the
    Minifig button; `add_minifig` for the assistant), the custom element maker

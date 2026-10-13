@@ -106,7 +106,7 @@ func setup(with_account: Account) -> void:
 	_claude_box.add_child(_claude_disconnect)
 
 	_admin = Look.link("Accounts and connectors (admin)", 12)
-	_admin.uri = "/admin.html"
+	_admin.uri = "/admin"
 	column.add_child(_admin)
 
 	var spacer := Control.new()
@@ -227,7 +227,7 @@ func _follow() -> void:
 	# The admin page is a page of the site, so only where the site is.
 	_admin.visible = account.master and OS.has_feature("web")
 	if _admin.visible:
-		_admin.uri = Origin.here() + "/admin.html"
+		_admin.uri = Origin.here() + "/admin"
 
 
 ## Escape closes it, like the other panels.

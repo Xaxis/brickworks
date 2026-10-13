@@ -10,13 +10,20 @@
 // came out 566px wide and the whole page scrolled sideways. A status
 // code cannot see that. A browser at 390px can.
 import { launch } from "./browser.mjs";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
+import { serveDir } from "./static_server.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const target = args.url || ("file://" + resolve(args.file || "web/index.html"));
+// A file is served from its directory over http, not opened as a file: the
+// page names its stylesheet and pictures from the root (/site.css), which
+// file:// would look for at the top of the disk, and an unstyled page
+// measures nothing anyone sees.
+const file = resolve(args.file || "web/index.html");
+const site = args.url ? null : await serveDir(dirname(file));
+const target = args.url || `${site.url}/${basename(file)}`;
 const bypass = process.env.VERCEL_BYPASS;
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
@@ -70,6 +77,7 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
 }
 
 await browser.close();
+if (site) site.close();
 if (problems.length) {
   for (const p of problems) console.log(`  FAIL  ${p}`);
   process.exit(1);

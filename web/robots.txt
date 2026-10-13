@@ -1,0 +1,11 @@
+# brickworks.diy. The owner's account list, the API, the sign-in flow and
+# the versioned builds under /b/ are not pages anyone should land on from a
+# search; /app is the app itself, and welcome.
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+Disallow: /oauth/
+Disallow: /b/
+Allow: /
+
+Sitemap: https://brickworks.diy/sitemap.xml
