@@ -123,10 +123,13 @@ func _run() -> void:
 	var served: Array = []
 	for tool: Variant in connector.rpc.assistant.tool_catalogue() + connector.rpc._own_tools():
 		served.append(str((tool as Dictionary).get("name", "")))
+	# And the relay's own two, about the tabs (api/mcp.js, 2026-10-13).
+	served.append_array(["tabs", "select_tab"])
 	names.sort()
 	served.sort()
 	_check(names == served and names.has("set_floor") and names.has("export_model"),
-		"the tool list is the app's own, every one of its %d tools" % names.size())
+		"the tool list is the app's own, every one of its %d tools, and the relay's tabs and select_tab"
+			% (names.size() - 2))
 	await create_timer(1.5).timeout
 	_check(calls.has(""), "...and the tab hears that Claude has connected")
 	var found: Dictionary = await _claude(address, "tools/call",
@@ -166,7 +169,14 @@ func _run() -> void:
 			% _text_of(by_account[1] as Dictionary).substr(0, 40).replace("\n", " "))
 	_check(calls.size() > before and calls.has("search_parts"), "...and the tab saw it")
 	connector.stop()
-	await create_timer(1.0).timeout
+	# Until its word that it has closed has reached the relay (a third of a
+	# second here, and longer than a second on a loaded machine): the relay's
+	# own tabs tool says when.
+	for _wait: int in 20:
+		await create_timer(1.0).timeout
+		if _text_of((await _claude_as(signed_token, "tools/call", {"name": "tabs",
+				"arguments": {}}))[1] as Dictionary).contains("No Brickworks tab is open"):
+			break
 	var none_open: Array = await _claude_as(signed_token, "tools/call",
 		{"name": "search_parts", "arguments": {"query": "brick"}})
 	_check(_text_of(none_open[1] as Dictionary).contains("No Brickworks tab is open for the account"),
@@ -256,8 +266,8 @@ func _run() -> void:
 	# it is closed, and not after four minutes of waiting.
 	await _post(tab_url + "&op=state&visible=0", "")
 	var while_asleep: Dictionary = await _claude(address, "tools/list", {})
-	_check(((while_asleep.get("result", {}) as Dictionary).get("tools", []) as Array).size() == 1,
-		"the tool list is answered while the page is frozen, from what it sent")
+	_check(((while_asleep.get("result", {}) as Dictionary).get("tools", []) as Array).size() == 3,
+		"the tool list is answered while the page is frozen, from what it sent (and tabs, select_tab)")
 	var t0: int = Time.get_ticks_msec()
 	var hidden: Dictionary = await _claude(address, "tools/call",
 		{"name": "search_parts", "arguments": {"query": "brick"}})
@@ -296,7 +306,7 @@ func _run() -> void:
 		"...while Claude can still list the tools, to tell the person to open it")
 	other.forget()
 	_check(other.address().is_empty(), "Make a new address forgets the old one")
-	ClaudeConnector.where = "user://claude_connector.json"
+	ClaudeConnector.where = ""
 
 	print("\nsigning out")
 	other.start()

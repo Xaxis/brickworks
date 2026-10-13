@@ -420,6 +420,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	}
 	window.brickworksWrote = function (path, size) {
 		unstored.set(path, { size: size, at: Date.now() });
+		writing.set(path, Date.now());
 		if (!watching) watch();
 	};
 	window.brickworksStored = function (path) { return !unstored.has(path); };
@@ -431,15 +432,357 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		}
 	});
 
-	const engine = new Engine(GODOT_CONFIG);
-	engine.startGame({
-		onProgress: function (current, total) {
-			if (total > 0) {
-				downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
-				if (downloaded >= DOWNLOAD_SHARE) say("Sorting the bin…");
+	// -- Several tabs, one browser ------------------------------------
+	//
+	// Every tab of a site shares its IndexedDB, and user:// is kept there.
+	// But the engine does not read and write it file by file: it copies
+	// the whole of it into memory as the page starts, and after each write
+	// it makes the stored copy the same as its own — every file it holds
+	// put back, and every file it does not hold deleted (Emscripten's
+	// IDBFS.reconcile). So with two tabs open, whichever wrote last decided
+	// everything: a model saved in one tab was deleted by the next autosave
+	// of the other, a file changed in one was put back as it was, and both
+	// tabs reopened the one autosave — the other tab's model, under its
+	// name (2026-10-13).
+	//
+	// Three things make each tab its own and the person's files shared:
+	//
+	//   this tab   an id of its own (sessionStorage, which a reload keeps
+	//              and another tab does not have), held with a Web Lock for
+	//              the life of the page. Its working model and its Claude
+	//              connector live under user://sessions/<id>/
+	//              (src/parts/tab_session.gd). A new tab takes the most
+	//              recently used one no open tab holds, so closing the
+	//              browser and coming back tomorrow opens what was there; a
+	//              duplicated tab, whose id its original holds, gets another.
+	//   writes     a tab stores only what it changed itself: a file it has
+	//              not touched since it read it is never put back over
+	//              another tab's, and it deletes only what it knew and
+	//              nobody has changed since. Done here, on the way into
+	//              IndexedDB, since the engine's own copy cannot be told.
+	//   others'    each tab says what it stored (BroadcastChannel), and the
+	//              others copy it into their own user://, so Open lists a
+	//              model saved in another tab and the app can see that the
+	//              model it has open was saved elsewhere and offer to
+	//              reload it (ModelStore.saved_elsewhere). Never over a
+	//              write of this tab's own still on its way.
+	const USERFS = "/userfs";
+	const FILES = "FILE_DATA";
+	// A tab's own files: user://sessions/<id>/, which the engine keeps at
+	// /userfs/godot/app_userdata/Brickworks/sessions/<id>/ (the user folder
+	// is not /userfs itself), matched wherever the user folder is.
+	const SESSION_KEY = /^\/userfs\/(?:[^/]+\/)*?sessions\/([a-z2-9]{4,12})(?:\/|$)/;
+	const TAB_KEY = "brickworks.tab";
+	const LEGACY_KEY = "brickworks.legacy";
+	const TAB_SHAPE = /^[a-z2-9]{4,12}$/;
+	const LETTERS = "abcdefghjkmnpqrstuvwxyz23456789";
+	// path -> the stored version (its time) this tab's copy is.
+	const seen = new Map();
+	// path -> the bytes of a file copied in from another tab's write, so
+	// that copy is known for one of theirs when the engine puts it back.
+	const pulled = new Map();
+	// path -> when this tab wrote it, until its own copy is stored.
+	const writing = new Map();
+	// What other tabs stored that this one has copied in, for the app.
+	const changes = [];
+	const backlog = [];
+	const hooked = new WeakSet();
+	const told = [];
+	let started = false;
+	let pulling = false;
+	const native = {
+		get: IDBObjectStore.prototype.get,
+		put: IDBObjectStore.prototype.put,
+		del: IDBObjectStore.prototype.delete,
+		count: IDBObjectStore.prototype.count,
+	};
+	const files = ("BroadcastChannel" in window) ? new BroadcastChannel("brickworks-files") : null;
+
+	function same(a, b) {
+		if (!a || !b || a.length !== b.length) return false;
+		for (let n = 0; n < a.length; n++) if (a[n] !== b[n]) return false;
+		return true;
+	}
+	function ours(store) {
+		try { return store.name === FILES && store.transaction.db.name === USERFS; }
+		catch (e) { return false; }
+	}
+	function isDir(entry) { return entry && (entry.mode & 0o170000) === 0o040000; }
+	// What the engine is given in place of a write it is not to make: it
+	// waits on the transaction, not on the request.
+	function skipped() { return { onsuccess: null, onerror: null, result: undefined }; }
+	// Say what this tab stored once its transaction has.
+	function tell(store, path, at, gone) {
+		told.push({ path: path, at: at, gone: gone });
+		const tx = store.transaction;
+		if (hooked.has(tx)) return;
+		hooked.add(tx);
+		tx.addEventListener("complete", function () {
+			const said = told.splice(0);
+			for (const change of said) {
+				if (!change.gone) writing.delete(change.path);
 			}
-		},
+			if (files && said.length) files.postMessage({ from: window.brickworksTab, changes: said });
+		});
+	}
+	// The engine reading what is stored as the page starts: this tab's
+	// copy of each file is that version.
+	IDBObjectStore.prototype.get = function (key) {
+		const request = native.get.apply(this, arguments);
+		if (typeof key === "string" && ours(this) && this.transaction.mode === "readwrite") {
+			request.addEventListener("success", function () {
+				const entry = request.result;
+				if (entry && entry.timestamp) seen.set(key, stamp(entry.timestamp));
+			});
+		}
+		return request;
+	};
+	IDBObjectStore.prototype.put = function (value, key) {
+		if (typeof key !== "string" || !ours(this) || !value || !value.contents) {
+			return native.put.apply(this, arguments);
+		}
+		const at = stamp(value.timestamp);
+		const copied = pulled.get(key);
+		// Unchanged here since it was read, or since another tab's was
+		// copied in: what is stored is somebody else's newer one.
+		if ((copied && same(value.contents, copied)) || (!copied && seen.get(key) === at)) {
+			writing.delete(key);
+			if (copied) unstored.delete(key);
+			return skipped();
+		}
+		const request = native.put.apply(this, arguments);
+		const store = this;
+		request.addEventListener("success", function () {
+			seen.set(key, at);
+			pulled.delete(key);
+			tell(store, key, at, false);
+		});
+		return request;
+	};
+	IDBObjectStore.prototype.delete = function (key) {
+		if (typeof key !== "string" || !ours(this)) return native.del.apply(this, arguments);
+		const known = seen.get(key);
+		const copied = pulled.get(key);
+		// Never known here: another tab's, made since this one started.
+		if (known === undefined && !copied) return skipped();
+		const store = this;
+		const look = native.get.call(store, key);
+		look.onsuccess = function () {
+			const stored = look.result;
+			if (!stored) return;
+			// Changed by another tab since this one knew it: theirs stays.
+			if (stamp(stored.timestamp) !== known && !(copied && stored.contents && same(stored.contents, copied))) return;
+			const drop = function () {
+				native.del.call(store, key).onsuccess = function () {
+					seen.delete(key);
+					pulled.delete(key);
+					tell(store, key, 0, true);
+				};
+			};
+			if (!isDir(stored)) { drop(); return; }
+			// A folder only once nothing is left in it: a file stored
+			// without its folder stops the next page reading any of them.
+			const inside = native.count.call(store, IDBKeyRange.bound(key + "/", key + "/￿"));
+			inside.onsuccess = function () { if (inside.result === 0) drop(); };
+		};
+		return skipped();
+	};
+
+	// What is stored at each of [paths], read without the engine.
+	function readStored(paths) {
+		return new Promise(function (resolve) {
+			const found = new Map();
+			const opened = indexedDB.open(USERFS);
+			opened.onupgradeneeded = function () { opened.transaction.abort(); };
+			opened.onerror = function () { resolve(found); };
+			opened.onsuccess = function () {
+				const db = opened.result;
+				db.onversionchange = function () { db.close(); };
+				if (!db.objectStoreNames.contains(FILES)) { db.close(); resolve(found); return; }
+				const tx = db.transaction(FILES, "readonly");
+				const store = tx.objectStore(FILES);
+				for (const path of paths) {
+					const read = native.get.call(store, path);
+					read.onsuccess = function () { found.set(path, read.result || null); };
+				}
+				tx.oncomplete = function () { db.close(); resolve(found); };
+				tx.onerror = function () { db.close(); resolve(found); };
+			};
+		});
+	}
+	// Another tab's stored files, copied into this one's user://.
+	async function pull() {
+		if (!started || pulling) return;
+		pulling = true;
+		try {
+			while (backlog.length) {
+				const batch = backlog.splice(0);
+				const stored = await readStored(batch.map(function (c) { return c.path; }));
+				for (const change of batch) {
+					const entry = stored.get(change.path);
+					// This tab's own write of it is on its way, and lands after.
+					const mine = writing.get(change.path);
+					if (mine && Date.now() - mine < 120000) continue;
+					if (entry && entry.contents) {
+						const bytes = entry.contents.slice();
+						engine.copyToFS(change.path, bytes.buffer);
+						pulled.set(change.path, bytes);
+						seen.set(change.path, stamp(entry.timestamp));
+						changes.push({ path: change.path, gone: false });
+					} else if (!entry && change.gone) {
+						changes.push({ path: change.path, gone: true });
+					}
+				}
+			}
+		} catch (e) {
+			console.error("could not copy another tab's files", e);
+		}
+		pulling = false;
+	}
+	if (files) {
+		files.onmessage = function (event) {
+			const said = event.data || {};
+			for (const change of said.changes || []) {
+				const path = String(change.path || "");
+				if (!path.startsWith(USERFS + "/") || SESSION_KEY.test(path)) continue;
+				backlog.push({ path: path, gone: Boolean(change.gone) });
+			}
+			pull();
+		};
+	}
+	// The app asks for these about once a second: [{path, gone}], each
+	// path where the engine has it (/userfs/...).
+	window.brickworksTakeChanges = function () { return JSON.stringify(changes.splice(0)); };
+	// A write of the app's that is not a save (a setting, the parts bin's
+	// shelf): kept from being copied over until it is stored.
+	window.brickworksWriting = function (path) { writing.set(path, Date.now()); };
+
+	// When the person last used this tab: the relay sends a session's
+	// calls to the tab they used most recently (ClaudeConnector).
+	let usedAt = Date.now();
+	["pointerdown", "keydown", "wheel", "focus"].forEach(function (kind) {
+		window.addEventListener(kind, function () { usedAt = Date.now(); },
+			{ capture: true, passive: true });
+	});
+	window.brickworksUsedAgo = function () { return Math.max(0, Math.round((Date.now() - usedAt) / 1000)); };
+
+	// The sessions stored, each by the newest thing in it, and whether the
+	// working model from before tabs had their own is still there.
+	function storedSessions() {
+		return new Promise(function (resolve) {
+			const found = new Map();
+			let opened;
+			try { opened = indexedDB.open(USERFS); } catch (e) { resolve(found); return; }
+			// A first visit: nothing is stored, and the engine makes the store.
+			opened.onupgradeneeded = function () { opened.transaction.abort(); };
+			opened.onerror = function () { resolve(found); };
+			opened.onsuccess = function () {
+				const db = opened.result;
+				db.onversionchange = function () { db.close(); };
+				if (!db.objectStoreNames.contains(FILES)) { db.close(); resolve(found); return; }
+				const tx = db.transaction(FILES, "readonly");
+				tx.objectStore(FILES).index("timestamp").openKeyCursor().onsuccess = function (event) {
+					const cursor = event.target.result;
+					if (!cursor) return;
+					const key = String(cursor.primaryKey);
+					const session = SESSION_KEY.exec(key);
+					if (session) {
+						const id = session[1];
+						const at = stamp(cursor.key);
+						if (!(found.get(id) >= at)) found.set(id, at);
+					}
+					cursor.continue();
+				};
+				tx.oncomplete = function () { db.close(); resolve(found); };
+				tx.onerror = function () { db.close(); resolve(found); };
+			};
+		});
+	}
+	// Held for the life of the page, or false if another page holds it.
+	// [waitMs]: how long to wait for it — a reload's own id, which the page
+	// it replaces may let go of a moment after this one starts.
+	function hold(id, waitMs) {
+		if (!navigator.locks) return Promise.resolve(true);
+		return new Promise(function (resolve) {
+			const options = {};
+			let timer = null;
+			if (waitMs > 0 && typeof AbortController === "function") {
+				const stop = new AbortController();
+				options.signal = stop.signal;
+				timer = setTimeout(function () { stop.abort(); }, waitMs);
+			} else {
+				options.ifAvailable = true;
+			}
+			navigator.locks.request("brickworks-tab-" + id, options, function (lock) {
+				if (timer) clearTimeout(timer);
+				if (!lock) { resolve(false); return null; }
+				resolve(true);
+				return new Promise(function () {});
+			}).catch(function () { resolve(false); });
+		});
+	}
+	function freshId() {
+		const bytes = crypto.getRandomValues(new Uint8Array(5));
+		return Array.from(bytes, function (b) { return LETTERS[b % LETTERS.length]; }).join("");
+	}
+	// Which tab this is: one at a time across the browser's tabs, so two
+	// opened together never take the same one.
+	function claimTab() {
+		async function choose() {
+			let id = null;
+			try { id = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+			if (id && !TAB_SHAPE.test(id)) id = null;
+			if (id && !(await hold(id, 3000))) id = null;
+			let stored = null;
+			if (!id) {
+				stored = await storedSessions();
+				const newest = Array.from(stored.entries()).sort(function (a, b) { return b[1] - a[1]; });
+				for (const pair of newest) {
+					if (await hold(pair[0], 0)) { id = pair[0]; break; }
+				}
+			}
+			while (!id) {
+				const fresh = freshId();
+				if (!stored.has(fresh) && await hold(fresh, 0)) id = fresh;
+			}
+			try { sessionStorage.setItem(TAB_KEY, id); } catch (e) {}
+			// The working model and connector from before tabs had their
+			// own go to the first tab to open, and only to that one.
+			let legacy = false;
+			try {
+				if (!localStorage.getItem(LEGACY_KEY)) {
+					localStorage.setItem(LEGACY_KEY, id);
+					legacy = true;
+				}
+			} catch (e) {}
+			return { id: id, legacy: legacy };
+		}
+		// Somebody's shared model, opened to look at, keeps and writes
+		// nothing (ModelStore.read_only): it takes no tab's session either,
+		// or the person's next tab would not find the one they used last.
+		if (query.has("view")) return Promise.resolve({ id: freshId(), legacy: false });
+		if (!navigator.locks) return choose();
+		return navigator.locks.request("brickworks-claim", choose);
+	}
+
+	const engine = new Engine(GODOT_CONFIG);
+	claimTab().catch(function (trouble) {
+		console.error("could not choose this tab's session", trouble);
+		return { id: freshId(), legacy: false };
+	}).then(function (tab) {
+		window.brickworksTab = tab.id;
+		window.brickworksTabLegacy = tab.legacy;
+		return engine.startGame({
+			onProgress: function (current, total) {
+				if (total > 0) {
+					downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
+					if (downloaded >= DOWNLOAD_SHARE) say("Sorting the bin…");
+				}
+			},
+		});
 	}).then(function () {
+		started = true;
+		pull();
 		running = false;
 		downloaded = 1;
 		creep = 0;

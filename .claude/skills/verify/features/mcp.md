@@ -89,12 +89,21 @@ asking for an API key.
 - `keep the mcp in step`: `src/dev/mcp_sync_probe.gd`. Fails when
   `tools/mcp_tools.json` is not what the app serves (`-- --write` writes it
   again from the app; it was four tools behind when this was written), when
-  `GUIDE_HEAD` reaches 3,500 characters, when a tool is named in neither the
+  `GUIDE_HEAD` reaches 3,500 characters, or the connector's note
+  (`ClaudeConnector.CONNECTED_NOTE`) and the head together do (they were
+  3,537 when this check was added, 2026-10-13: the note was cut to what a
+  session cannot learn from the answers), when a tool is named in neither the
   head nor a section `read_guide` serves (`make_part` and `clear_model` were
   in neither), and when one of the window's commands (Shell) is in neither
   `AppTools.COMMANDS` (the tool that does it) nor `AppTools.WINDOW_ONLY`
   (why it is the window's alone). A command added to the menus fails it
   until it is placed in one.
+- Over the connector (`api/mcp.js`, not the desktop's port) a session also
+  has the relay's own `tabs` and `select_tab`, and a `target` argument on
+  every tool, to choose between the account's open tabs; every answer from a
+  tab begins by naming it and its model. See [web](web.md), "Several tabs,
+  one account". They are not the app's tools, so `tools/mcp_tools.json` does
+  not list them.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
   answer, writing any picture to `--png=PATH`. The same socket without the MCP
   wrapping, for a script, a person reading along, or an agent that would rather

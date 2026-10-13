@@ -531,11 +531,35 @@
       "tests": []
     },
     {
+      "id": "cli:tabs browser flow",
+      "kind": "cli",
+      "entry": "tools/web/tabs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/tabs_flow.mjs --url=<deployment>/app --out=shots/tabs   (with .env sourced)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:tabs probe",
+      "kind": "cli",
+      "entry": "src/dev/tabs_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabs_probe.gd -- 8790   (with .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the author's steps in a browser",
       "kind": "cli",
       "entry": "tools/web/steps_flow.mjs",
       "reach": "node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/steps_web   (a local export, with .env sourced)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:two windows check",
+      "kind": "cli",
+      "entry": "tools/windows_check.py",
+      "reach": "tools/windows_check.py   (two headless apps on ports 8851 and 8852, in a data folder of their own)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -592,6 +616,14 @@
       "entry": "src/collection/rebrickable_account.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "lib:a session per tab",
+      "kind": "lib",
+      "entry": "src/parts/tab_session.gd",
+      "reach": "node tools/web/relay_server.mjs 8790 --static=build/web, then node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app   (by hand: two tabs of /app, a different model in each, reload each)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -1414,6 +1446,14 @@
       "entry": "src/ui/part_shelf.gd",
       "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:reload a model saved elsewhere",
+      "kind": "ui",
+      "entry": "src/ui/reload_offer.gd",
+      "reach": "node tools/web/tabs_flow.mjs --url=<deployment>/app   (by hand: one model open in two tabs, save it in one; the other offers Reload it)",
+      "area": "model-io",
       "tests": []
     },
     {

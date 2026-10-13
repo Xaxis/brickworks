@@ -106,6 +106,34 @@
     },
     {
       "kind": "lib",
+      "label": "a session per tab",
+      "entry": "src/parts/tab_session.gd",
+      "reach": "node tools/web/relay_server.mjs 8790 --static=build/web, then node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app   (by hand: two tabs of /app, a different model in each, reload each)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "reload a model saved elsewhere",
+      "entry": "src/ui/reload_offer.gd",
+      "reach": "node tools/web/tabs_flow.mjs --url=<deployment>/app   (by hand: one model open in two tabs, save it in one; the other offers Reload it)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "two windows check",
+      "entry": "tools/windows_check.py",
+      "reach": "tools/windows_check.py   (two headless apps on ports 8851 and 8852, in a data folder of their own)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "tabs browser flow",
+      "entry": "tools/web/tabs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/tabs_flow.mjs --url=<deployment>/app --out=shots/tabs   (with .env sourced)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
       "label": "ldr read and write",
       "entry": "src/parts/ldr_model.gd",
       "reach": "godot --headless --path . --script src/dev/import_probe.gd",
@@ -571,6 +599,13 @@
       "label": "POST /api/mcp",
       "entry": "api/mcp.js",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "tabs probe",
+      "entry": "src/dev/tabs_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabs_probe.gd -- 8790   (with .env sourced)",
       "area": "web"
     },
     {
