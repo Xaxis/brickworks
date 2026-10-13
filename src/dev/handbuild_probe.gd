@@ -1469,6 +1469,7 @@ func _first_timer() -> void:
 	await _the_note_says_the_selection()
 	await _undo_says_what()
 	await _right_click_a_part()
+	await _drag_from_the_bin()
 	await _an_untouched_example()
 
 
@@ -1575,6 +1576,55 @@ func _menus_show_the_real_keys() -> void:
 	await _shot("first_timer_view_menu")
 	view.hide()
 	await _frames(3)
+
+
+## Dragging a part from the bin onto the model did nothing, and the part's
+## tooltip followed the pointer. Now the part is picked up and put down
+## where it is let go, as in Studio and Mecabricks.
+func _drag_from_the_bin() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	bin._search.text = "3003"
+	bin._run_search("3003")
+	await _frames(10)
+	var cell: Button = null
+	for child: Node in bin._grid.get_children():
+		if str(child.get_meta("part", "")) == "3003":
+			cell = child
+	_check("the bin offers Brick 2 x 2 to drag", cell != null)
+	if cell == null:
+		return
+	var tip: String = cell.tooltip_text
+	var from: Vector2 = cell.get_global_rect().get_center()
+	var to: Vector2 = _screen(Vector3(-100, 0, -140))
+	var before: int = _count()
+	await _move(from)
+	_button(from, true)
+	await _frames(2)
+	var tip_during: String = "unread"
+	for step: int in range(1, 13):
+		var event := InputEventMouseMotion.new()
+		event.position = _as_event(from.lerp(to, step / 12.0))
+		event.global_position = event.position
+		event.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(event)
+		await _frames(2)
+		if step == 6:
+			tip_during = cell.tooltip_text
+	await _frames(3)
+	_check("dragged over the model, its ghost follows the pointer (%s)" % _builder.held_part,
+		_builder.held_part == "3003" and _builder.has_preview())
+	_check("...with no tooltip along with it (\"%s\")" % tip_during, tip_during.is_empty())
+	await _shot("first_timer_bin_drag")
+	_button(to, false)
+	await _frames(6)
+	var landed: Array = _bricks_near(Vector3(-100, 0, -140)).filter(func(b: int) -> bool:
+		return _world.get_brick(b).part_id == "3003")
+	_check("let go, it is put down there (%d parts, was %d)" % [_count(), before],
+		_count() == before + 1 and landed.size() == 1)
+	_check("...and the part keeps its tooltip", cell.tooltip_text == tip)
+	await _key(KEY_ESCAPE)
 
 
 ## A right click on a part did nothing. Now a menu of what a person

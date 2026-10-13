@@ -1660,6 +1660,20 @@ func _build_ui() -> void:
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
+	# A part dragged out of the bin: in hand from the start of the drag
+	# (part_chosen), its ghost after the pointer over the model, and put
+	# down where it is let go. Let go over a panel, it stays in hand.
+	_bin.part_drag_moved.connect(func(at: Vector2) -> void:
+		if _over_panel_at(at):
+			_builder.hide_preview()
+		else:
+			_refresh_preview(at))
+	_bin.part_dropped.connect(func(at: Vector2) -> void:
+		if _over_panel_at(at):
+			return
+		_aim_at(at)
+		_builder.place()
+		_refresh_preview(at))
 
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).

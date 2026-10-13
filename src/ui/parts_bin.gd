@@ -1261,12 +1261,9 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	button.toggle_mode = true
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
-	button.tooltip_text += "\nRight-click to keep it in Favourites"
+	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
 	button.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
-			_toggle_favourite(info.id)
-			button.accept_event())
+		_cell_input(button, info.id, event))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1315,6 +1312,53 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		if ready_now:
 			image.show_picture(ready_now, false)
 	return button
+
+
+## A part pressed and dragged out of the bin: picked up, its ghost after
+## the pointer over the model, and put down where it is let go (Main), as
+## Studio and Mecabricks have it. A drag did nothing but carry the part's
+## tooltip along with the pointer (brickworks.diy, 2026-10-12).
+signal part_drag_moved(at: Vector2)
+signal part_dropped(at: Vector2)
+## How far the pointer goes with the button down before it is a drag.
+const DRAG_START := 8.0
+var _drag_from: Vector2 = Vector2.INF
+var _drag_part: String = ""
+
+
+func is_dragging_part() -> bool:
+	return not _drag_part.is_empty()
+
+
+func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if press != null:
+		if press.button_index == MOUSE_BUTTON_RIGHT and press.pressed:
+			_toggle_favourite(part_id)
+			button.accept_event()
+		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
+			_drag_from = press.global_position
+		elif press.button_index == MOUSE_BUTTON_LEFT:
+			_drag_from = Vector2.INF
+			if not _drag_part.is_empty():
+				_drag_part = ""
+				button.tooltip_text = str(button.get_meta("tip", button.tooltip_text))
+				part_dropped.emit(press.global_position)
+		return
+	var motion := event as InputEventMouseMotion
+	if motion == null or _drag_from == Vector2.INF \
+			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+		return
+	if _drag_part.is_empty():
+		if motion.global_position.distance_to(_drag_from) < DRAG_START:
+			return
+		_drag_part = part_id
+		# No tooltip while it is carried: it followed the pointer out.
+		button.set_meta("tip", button.tooltip_text)
+		button.tooltip_text = ""
+		_on_part(part_id)
+	part_drag_moved.emit(motion.global_position)
+	button.accept_event()
 
 
 static func _height_text(info: PartLibrary.PartInfo) -> String:
