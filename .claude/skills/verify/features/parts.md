@@ -181,7 +181,15 @@ the minifigure builder's grid and slots):
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/placeholder_probe.gd
 ```
 
-Proves it when it exits 0: a fresh grid starts all placeholders, every tile in
+`colour_probe` and `placeholder_probe` both open the parts bin by its rail
+first, as a person does. A 1400-wide window is about 1520 units, short of the
+1600 that holds both columns beside the model, so the columns take turns and a
+first visit shows the assistant with the bin folded. A folded bin has no tile in
+sight and draws no previews, which is right; until 2026-10-12 both probes read
+it as previews never drawn and no tiles in view (#98).
+
+Proves it when it exits 0: the bin opens from its rail, a fresh grid starts all
+placeholders, every tile in
 sight becomes its picture with no cell changing size, a grid scrolled to row 40
 before anything is drawn draws the rows in sight before the screenful below and
 none of the 130-odd far below or scrolled past, two parts with no geometry end

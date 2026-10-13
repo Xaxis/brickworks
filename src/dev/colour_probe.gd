@@ -52,6 +52,7 @@ func _run() -> void:
 	var bin: PartsBin = _main.get("_bin")
 	var builder: Builder = _main.get("_builder")
 	var library: PartLibrary = _main.get("_library")
+	await _open_bin(bin)
 
 	# An ordinary brick, which follows whatever colour is chosen.
 	for pair: Array in [[4, "Red"], [1, "Blue"], [14, "Yellow"], [0, "Black"]]:
@@ -303,6 +304,46 @@ func _every_colour_can_be_chosen(bin: PartsBin, builder: Builder,
 		shot.get_region(crop).save_png(ProjectSettings.globalize_path("res://shots/palette.png"))
 		print("  wrote shots/palette.png")
 	toggle.button_pressed = false
+
+
+## The parts bin opened by its rail, as a person opens it.
+##
+## A window under the design width (1600 units; this one is about 1520)
+## shows one column beside the model at a time, and a first visit shows
+## the assistant, so the bin starts folded. A folded bin has no tile in
+## sight and draws none, which is right; this probe read it as "no
+## preview drawn" for every colour until it opened the bin first.
+func _open_bin(bin: PartsBin) -> void:
+	var dock: SideDock = _main.get("_bin_dock")
+	if not dock.is_open():
+		await _click(dock.rail().get_global_rect().get_center())
+		await create_timer(SideDock.SLIDE_SECONDS * 2.0).timeout
+		for _n: int in 10:
+			await process_frame
+	var scroll: Control = bin.get("_scroll")
+	_say("the parts bin is open beside the model (%s wide)" % scroll.size.x,
+		dock.is_open() and scroll.is_visible_in_tree() and scroll.size.x > 100.0)
+
+
+## A click where a person would make it, in window pixels.
+func _click(at: Vector2) -> void:
+	var window := Vector2(DisplayServer.window_get_size())
+	var point: Vector2 = at * (window / root.get_visible_rect().size)
+	var move := InputEventMouseMotion.new()
+	move.position = point
+	move.global_position = point
+	Input.parse_input_event(move)
+	for _n: int in 3:
+		await process_frame
+	for down: bool in [true, false]:
+		var press := InputEventMouseButton.new()
+		press.button_index = MOUSE_BUTTON_LEFT
+		press.pressed = down
+		press.position = point
+		press.global_position = point
+		Input.parse_input_event(press)
+		for _n: int in 3:
+			await process_frame
 
 
 func _preview_colour(bin: PartsBin, part_id: String, code: int) -> Color:
