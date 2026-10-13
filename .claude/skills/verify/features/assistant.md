@@ -1215,10 +1215,28 @@ fixing what it got wrong.
   across its middle (was 45, z 2 to 5). Off for a sculpt's grid
   (`"sideways"`). Also: a course with nothing under it and nothing studded
   over it is laid in plates, not bricks (`bridges`, off for a grid): a
-  car's body over its arches came apart from its nose; and where another
-  shape of the same design stands on a shape's top, those studs are kept
-  (`Shapes.feet`, `_carried` from `Patterns.expand`): a cabin on a body
-  stood on tiles. The check's "resting on a smooth face" advice now fires
+  car's body over its arches came apart from its nose; and where anything
+  of the same design stands on a shape's top — another shape, a round, the
+  design's own bricks — those studs are kept (`Shapes.feet`,
+  `Patterns.feet_of`, `_carried` from `Patterns.expand`, laid again when
+  something other than a shape stands there): a cabin on a body stood on
+  tiles, and the owner's orrery collar floated. A tile something is put
+  down on later (edit_model, edit_selection, a design checked or submitted)
+  is laid again as the plate of its size (`Assistant._studs_where_stood_on`,
+  over `BrickLattice.standing_on`, "is anything standing on these studs"),
+  in the same change. Its size, not plates under the part and tiles round
+  it: a top's tiles tie the plates under them, and split, a rooms floor's
+  tile left a 1 x 1 plate held by nothing (`rooms_probe` failed). Only
+  parts this change adds or moves count, so an edit never re-lays the
+  person's own tiles. `standing_probe`: a ring shape, a round column,
+  plates one thick, each on a box's tiled top and on a revolve's rings of
+  tiles, gripped by the studs under them (a stud of the lower part reaching
+  into the upper, read off the connectors), the top round them still
+  smooth; a brick added later gripped, the tiles under it plates and the
+  rest still tiles; an edit about a selection one undo, which puts the
+  tiles back; a recolour elsewhere leaves a tile under the person's own
+  plate a tile. The
+  check's "resting on a smooth face" advice now fires
   only for a part that grips nothing (`_note_loose`): every row of a shell
   rests on the edge of the one under it. `shapes_probe` ("a side that
   curves up and down is laid on its side"): the egg, the hull and the bird

@@ -215,19 +215,23 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				var cell := Vector2i(int(raw[0]), int(raw[1]))
 				if columns.has(cell):
 					plan.studded[cell] = true
-		# And where another shape of the same design stands on this one's
-		# top: a car's cabin said as a shape on its body stood on the body's
-		# tiles, gripping nothing, and the run threw the body away.
+		# And where anything else of the same design stands on this one's
+		# top (Patterns.expand): a car's cabin said as a shape on its body
+		# stood on the body's tiles, gripping nothing, and the run threw the
+		# body away. Stud -> the heights of the feet there, in plates.
 		var carried: Dictionary = pattern.get("_carried", {})
 		for key: Variant in columns:
 			var cell: Vector2i = key
 			var world := Vector2i(cell.x + roundi(origin.x), cell.y + roundi(origin.z))
 			if not carried.has(world):
 				continue
+			var heights: Variant = carried[world]
 			var column: PackedInt32Array = columns[cell]
 			for j: int in range(tall - 1, -1, -1):
 				if column[j] >= 0:
-					if roundi(origin.y) + y0 + j + 1 == int(carried[world]):
+					var foot: int = roundi(origin.y) + y0 + j + 1
+					if (heights is Array and (heights as Array).has(foot)) \
+							or (not heights is Array and foot == int(heights)):
 						plan.studded[cell] = true
 					break
 		# A cut marked "keep" is kept clear of everything: a wedge's cut side, a
