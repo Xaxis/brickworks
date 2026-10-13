@@ -58,6 +58,11 @@ whole cycle.
   sub-models a file places as callouts. The timeline numbers its steps
   as the booklet does, and an 8,600-part model's order takes 5 s, not 87.
 
+- Export › Picture, a shared link's picture and a Studio file's thumbnail
+  put the model in the middle and fill the frame with it. They were framed
+  on the box round the model, so a flat car sat low in its own picture and
+  an L-shaped model off to one side.
+
 ## [0.2.0] - 2026-10-11
 
 A release about doing it right. Parts that are drawn inside their

@@ -30,6 +30,14 @@
 ##
 ## And a column folding, then folding mid-drag: the model glides to the new
 ## middle, and under a held button it stays where it is until let go.
+##
+## And, at 1x, the pictures: File › Export › Picture at its own size, the
+## share card's and the Studio thumbnail's, and the critique's shot, of a
+## flat car, Orthanc and an L, with each column folded (the view's lens
+## shifted one way, then the other): what is drawn in each has its middle
+## within 2% of the picture's, fills 80 to 97% of its narrower way and
+## touches no edge. Framed on the box round the model, the car's picture
+## sat 5% low and filled 64% of it, and the L's 9% low and 8% to the side.
 ## Pictures go to shots/centring/.
 extends SceneTree
 
@@ -106,6 +114,7 @@ func _run() -> void:
 		await _shot("%dx_%s_folded" % [_ratio, folded])
 
 	await _glides()
+	await _pictures()
 
 	print("")
 	if _failures == 0:
@@ -279,6 +288,101 @@ func _glides() -> void:
 	var settled: float = _camera.unproject_position(_camera.focus).x - _view().get_center().x
 	_check("...and once let go the view glides to the new middle (%.1f units off)" % settled,
 		absf(settled) < _view().size.x * 0.02)
+
+
+## Each picture of each model, with each column folded: the exported
+## picture follows the view's direction, which is the same both times, and
+## must not follow its lens, which is not. The critique's shot looks from
+## its own corner, so it is taken once, and so is Orthanc, whose 9,429
+## parts drawn in software in the window are most of the time this takes.
+## At 1x only: a picture is drawn at its own size, whatever the window's
+## pixels, and at 2x the window alone took the run past half an hour.
+func _pictures() -> void:
+	if _ratio != 1:
+		return
+	print("")
+	print("  pictures")
+	var began: int = Time.get_ticks_msec()
+	var picture: Picture = (_main.get("_exports") as Exports).picture
+	var shot := ModelShot.new()
+	shot.library = _library
+	shot.rulers = false
+	root.add_child(shot)
+	var sizes: Dictionary = {"export": Picture.SIZE, "share card": SharePanel.CARD,
+		"Studio thumbnail": Exports.STUDIO_THUMBNAIL}
+	for folded: String in ["assistant", "parts"]:
+		await _fold(folded)
+		for model: String in ["car", "orthanc", "L"]:
+			if model == "orthanc" and folded != "assistant":
+				continue
+			var opened: int = Time.get_ticks_msec()
+			# Not framed by Fit first: a picture is framed by itself, from the
+			# way the view looks and nothing else about it.
+			await _model(model)
+			for named: String in sizes:
+				if named != "export" and model != "car":
+					continue
+				var image: Image = await picture.take(sizes[named])
+				_framed("%dx, %s folded, %s's %s picture" % [_ratio, folded, model, named],
+					image, "%dx_%s_folded_%s_%s" % [_ratio, folded, model, named.to_snake_case()])
+			if folded == "assistant":
+				# Its viewport is made by its first picture.
+				if shot.get("_viewport") == null:
+					await shot.take(_world, "corner", _store.scenery)
+				# Drawn on nothing, so what is drawn is what is not clear.
+				var view: SubViewport = shot.get("_viewport")
+				view.transparent_bg = true
+				view.world_3d.environment.background_mode = Environment.BG_CLEAR_COLOR
+				_framed("%dx, %s's critique shot" % [_ratio, model],
+					await shot.take(_world, "corner", _store.scenery),
+					"%dx_%s_critique" % [_ratio, model])
+				view.transparent_bg = false
+				view.world_3d.environment.background_mode = Environment.BG_COLOR
+			print("    (%s, %.0f s)" % [model, (Time.get_ticks_msec() - opened) / 1000.0])
+	shot.queue_free()
+	print("    (the pictures took %.0f s)" % ((Time.get_ticks_msec() - began) / 1000.0))
+
+
+## What is drawn in a picture — everything not clear — has its middle within
+## 2% of the picture's, fills most of the picture's narrower way, and is not
+## cut by an edge.
+func _framed(what: String, image: Image, name: String) -> void:
+	if image == null:
+		_check("%s: there is one" % what, false)
+		return
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots/centring"))
+	image.save_png(ProjectSettings.globalize_path("res://shots/centring/%s.png" % name))
+	var frame := Vector2(image.get_size())
+	var drawn: Rect2i = image.get_used_rect()
+	var off: Vector2 = (Vector2(drawn.get_center()) - frame * 0.5) / frame
+	var fills: float = maxf(drawn.size.x / frame.x, drawn.size.y / frame.y)
+	var clear: bool = drawn.position.x > 0 and drawn.position.y > 0 \
+		and drawn.end.x < image.get_width() and drawn.end.y < image.get_height()
+	_check("%s: drawn %.1f%% %s and %.1f%% %s of the middle, filling %.0f%% of it%s (shots/centring/%s.png)"
+		% [what, absf(off.x) * 100.0, "left" if off.x < 0.0 else "right",
+		absf(off.y) * 100.0, "high" if off.y < 0.0 else "low", fills * 100.0,
+		"" if clear else ", cut by an edge", name],
+		absf(off.x) <= 0.02 and absf(off.y) <= 0.02 and fills >= 0.8 and fills <= 0.97 and clear)
+
+
+## A flat car (the example), a tall tower (Orthanc, 9,429 parts) or an L:
+## a long low arm and a short tall one, whose box is mostly empty.
+func _model(which: String) -> void:
+	_main.call("clear_model")
+	await _frames(3)
+	if which == "L":
+		for n: int in 8:
+			_put("3001", 1, Vector3(-160 + 80 * n, 24, -100))
+		for n: int in 5:
+			for level: int in 4:
+				_put("3003", 4, Vector3(-220, 24 + 24 * level, -60 + 40 * n))
+	else:
+		_main.call("_open", "res://models/%s.ldr" % which)
+	await _frames(5)
+	var playback: BuildPlayback = _main.get("_playback")
+	if playback != null:
+		playback.stop()
+	await _frames(3)
 
 
 # -- gestures -------------------------------------------------------------------

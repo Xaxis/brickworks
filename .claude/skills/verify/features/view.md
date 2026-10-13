@@ -102,7 +102,20 @@ picture the assistant is shown.
   it inside, then picks five parts from the world (a straight line from the
   eye reaches each first), checks hiding each changes the pixel at its point
   and a click there selects exactly it; on the code before this, the middle
-  is 168 units out. `tools/web/centre_check.mjs --url=…` does the centring
+  is 168 units out. Then, at 1x only (a picture is drawn at its own size
+  whatever the window's pixels), the pictures (`_pictures`): with each
+  column folded, Export › Picture at 2400 x 1600 of the example car and an
+  L of bricks (a long low arm, a short tall one), the car's share card
+  (1200 x 630) and Studio thumbnail (800 x 600), and once Orthanc; and the
+  critique's corner shot of all three drawn on clear (`ModelShot`). What is
+  drawn (`Image.get_used_rect`) has its middle within 2% of the picture's,
+  fills 80 to 97% of its narrower way and touches no edge (in
+  `shots/centring/`). Framed on the box round the model (before 2026-10-13)
+  the car's picture was 3% right and 5% low, filling 64%, and the L's 8%
+  left and 9% low, filling 44%; framed on every part's corners, all within
+  0.3%, filling 88 to 91%. The pictures take about 70 s of the run (358 s
+  at load 30 to 40), and say how long each model took.
+  `tools/web/centre_check.mjs --url=…` does the centring
   and the five clicks in Chromium at 1x and 2x (`brickworksLayout.centre`
   and `.targets`, `brickworksState.selection`).
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
@@ -358,7 +371,10 @@ picture the assistant is shown.
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
   edit, the bricks that edit added or moved restaged in magenta, so the design can
-  find its own change by looking rather than by re-reading coordinates. The stage
+  find its own change by looking rather than by re-reading coordinates. Framed
+  on every staged part's corners and the ruler's ends, the camera slid to their
+  middle (`ModelShot._staged_corners`; `centring_probe` checks the car, Orthanc
+  and an L within 2%: an L framed on its box sat 3% high). The stage
   is a copy of the world — the model keeps the colours it was given. It is
   staged again only when the world's `revision`, what is left out or what is
   picked out changed (`ModelShot._restage`, a slice a frame by `FramePace`
