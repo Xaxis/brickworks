@@ -1447,8 +1447,12 @@ fixing what it got wrong.
   the back) on the model's surface at that height, not its box; `fit` tries
   the piece as built with its front turned to the spot, then tipped whole so
   its studs face out, seated by its lowest hollows on the free studs nearest
-  the spot that point its way, kept when no part runs into the model and
-  one is held by it (`OpenPoints.test`); `lay` puts it down through
+  the spot that point its way — on the outside (`_outside`: nothing on the
+  stud, nothing between it and the model's edge the way the feature faces;
+  the d6 shop's awning and sign were laid on its floors), within `REACH` 4
+  studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
+  way put a starfighter's exhausts on its fuselage) — kept when no part runs
+  into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
   `edit_model`, checked like any edit; a plural feature off the middle gets
   its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,
   where it was seated and how, its bricks, whether the spot was a guess, the
@@ -1458,7 +1462,7 @@ fixing what it got wrong.
   `recolor` first: the same piece laid again in one edit with taking the
   old off, so a refusal leaves it), `next` (taken off, the next candidate
   laid), `reject` (a reason of three words or more; taken off), `built` (a
-  reason, or an edit put down to the feature). In the loop a settle ends the
+  reason, or an edit put down to the feature; the app's piece is taken off). In the loop a settle ends the
   feature's turn (`_feature_closed`) and the next comes; turns run out with
   the piece standing and it is "kept". From outside: the build's answer says
   so (step 2), the whole review hands the first feature with its piece laid,
