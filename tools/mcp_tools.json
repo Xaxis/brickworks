@@ -1986,6 +1986,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "sketch": {
+          "description": "true for a sketch: massing only, under 150 parts, checked and pictured but not built. Three are made to choose between before the full design, each a different idea: in silhouette, proportion or approach.",
+          "type": "boolean"
         }
       },
       "required": [
@@ -2832,6 +2836,23 @@
       "type": "object"
     },
     "name": "where_to_attach"
+  },
+  {
+    "description": "Choose one of the three sketches made with submit_design \"sketch\": true. It goes on the baseplate as the massing the full design is built from, and the other two are dropped. Then design the whole model from it, and submit_design that without sketch.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "sketch": {
+          "description": "its number, 1 to 3",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sketch"
+      ],
+      "type": "object"
+    },
+    "name": "choose_sketch"
   },
   {
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then creative last.",
