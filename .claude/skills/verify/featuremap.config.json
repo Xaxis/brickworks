@@ -253,6 +253,13 @@
     },
     {
       "kind": "cli",
+      "label": "check the gear table",
+      "entry": "tools/gears.py",
+      "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "cli",
       "label": "refresh the catalogue",
       "entry": "tools/refresh_catalogue.py",
       "reach": "tools/refresh_catalogue.py",
@@ -1131,6 +1138,13 @@
       "label": "flexible parts along a path",
       "entry": "src/assembly/flex.gd",
       "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
+      "label": "mechanisms",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
       "area": "geometry"
     },
     {

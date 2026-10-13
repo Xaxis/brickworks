@@ -4,7 +4,7 @@ The owner asked for "the ability to build and record accurate physics
 simulations of gear/Technic mechanics". Two more things were added on
 2026-10-13:
 
-- **The acceptance demo is a working LEGO orrery.** It is a gear train whose
+- **The acceptance demo is a working orrery of LEGO® bricks.** It is a gear train whose
   ratios give each planet its real orbital period relative to the others. A
   crank or a motor drives it, and it is simulated and recorded. It should be
   the first thing that works end to end.
@@ -13,9 +13,11 @@ simulations of gear/Technic mechanics". Two more things were added on
   still reaches about 18 studs past the base edge, so swing that arm hard at
   your own risk."
 
-This file is the research, the plan and the proof of concept. Nothing here is a
-feature yet. The proof of concept is `src/dev/mechanism_probe.gd` (recipe in
-`.claude/skills/verify/features/geometry.md`).
+This file is the research and the plan. Phase P1a's core is
+`src/assembly/mechanism.gd`, with its gear table `assets/ldraw/gears.json`;
+nothing is in the app's UI or over MCP yet (that is P1b). It is proven by
+`src/dev/mechanism_probe.gd` and, on real sets, `src/dev/mechanism_sets.gd`
+(recipes in `.claude/skills/verify/features/geometry.md`).
 
 ## In short
 
@@ -23,11 +25,15 @@ feature yet. The proof of concept is `src/dev/mechanism_probe.gd` (recipe in
   record their axles, pins, holes and studs. A gear's pitch radius is 1.25 LDU
   per tooth. That number was measured on real sets: 764 of 809 candidate gear
   pairs in the OMR's Technic sets agree to 0.3 LDU or better.
-- **The core works on a real set.** It is one linear equation per gear mesh
-  and one unknown per joint. It turns LEGO 8020's windmill 9:1 from crank to
-  sails, read straight off the set's file, with every frame of the drawing
-  checked against the tooth counts. It also turns a two-planet orrery. It
-  reports a locked train and names the meshes that lock it.
+- **The core works on real sets.** It is one linear equation per coupling
+  and one unknown per joint. It turns the windmill of LEGO® set 8020 9:1 from
+  crank to sails, read straight off the set's file, with every frame of the
+  drawing checked against the tooth counts. It turns a two-planet orrery, a
+  12 inside a 140 tooth ring, a chain, a gearbox with a driving ring and a
+  differential, whose sides' rates sum to twice its casing's. It reports a
+  locked train and names the meshes that lock it. It reads 42055 and 42082,
+  the OMR's two sets with the most gears, in two seconds each, and every gear
+  in them turns on something or the file says why not (section 7).
 - **The orrery needs only that core** (phase 1) plus a Simulate mode, a ratio
   readout in planet years, and turntables and ring gears. Linkages (phase 2)
   and dynamics (phase 3) are not on its path.
@@ -40,13 +46,13 @@ feature yet. The proof of concept is `src/dev/mechanism_probe.gd` (recipe in
   fast arms and come later (S2).
 - **"Accurate" means different things in each phase.** Kinematics can be
   exact. Statics can be honest to about a factor of two, because nobody has
-  published a measured LEGO clutch force. Dynamics would be qualitative. The
+  published a measured clutch force for LEGO® bricks. Dynamics would be qualitative. The
   section [What "accurate" can honestly mean](#what-accurate-can-honestly-mean)
   says why.
 
 ## 1. What exists elsewhere
 
-**No LEGO tool simulates dynamics.** The ones that move mechanisms all do
+**No tool for LEGO® models simulates dynamics.** The ones that move mechanisms all do
 driven kinematics: a driver moves, and everything else is solved from
 constraints.
 
@@ -56,7 +62,7 @@ constraints.
 | LDCad (Melkert) | Animation by Lua script. Flexible parts (hoses, chains, springs) are generated along paths. | Nothing is inferred: the script sets every part's pose each frame. The author said gear trains "need extra information on many parts (tooth count, radius, gear type, etc)". | [script API](https://www.melkert.net/LDCad/docs/scriptAPI), [forum 2021](https://forums.ldraw.org/post-42067.html), [meta](https://www.melkert.net/LDCad/tech/meta) |
 | BrickLink Studio | Hinge tool (turns everything connected about one pivot, with collision on mouse drags). Flex tool. Animation renders only building steps and camera turns. | No mechanism simulation. | [hinge](https://studiohelp.bricklink.com/hc/en-us/articles/5411433123351-Hinge-and-Rotation-tool), [render](https://studiohelp.bricklink.com/hc/en-us/articles/6507015818263) |
 | Mecabricks | Keyframe and node animation with parenting. | Hand-made math. Gear-train inference was requested in 2020 and never answered. | [Brickset](https://brickset.com/article/53762/mecabricks-let-s-animate-our-bricks!), [Eurobricks](https://www.eurobricks.com/forum/forums/topic/177590-mecabricks-animation-tools) |
-| LeoMCAD (CEIG 2018) | LEGO mechanical CAD with typed gear connectors (regular, crown, rack, worm, bevel). | Propagates motion depth-first. Constraints are enforced while assembling, not while simulating, so it moves mechanisms that Inventor locks. | [paper](https://diglib.eg.org/handle/10.2312/ceig20181163) |
+| LeoMCAD (CEIG 2018) | Mechanical CAD for LEGO® models with typed gear connectors (regular, crown, rack, worm, bevel). | Propagates motion depth-first. Constraints are enforced while assembling, not while simulating, so it moves mechanisms that Inventor locks. | [paper](https://diglib.eg.org/handle/10.2312/ceig20181163) |
 | TechnicBrickPower calculator (2021) | Upload an .ldr, click a gear, read the ratios. | Shows underconstrained differentials. With several motors it gives weighted sums. No chains, and it is sensitive to part orientation. | [Eurobricks](https://www.eurobricks.com/forum/forums/topic/186656-new-technic-gear-ratio-calculator-tool) |
 
 **Research we can build on:**
@@ -75,7 +81,7 @@ constraints.
   infers axes and tooth counts from shape and classifies pairs as spur, bevel
   or rack. Motion spreads breadth-first from a driver as ω₂ = ω₁·r₁/r₂.
   [pdf](https://www.cs.princeton.edu/courses/archive/spring11/cos598A/pdfs/Mitra10b.pdf)
-- **Xu et al. 2019, *Computational LEGO Technic Design*.** It builds models
+- **Xu et al. 2019, *Computational LEGO® Technic Design*.** It builds models
   from sketches with motion annotations and analyses balance and stress.
   [arXiv](https://arxiv.org/abs/2007.02245)
 - **Luo et al. 2015, *Legolization*, and StableLego (Liu et al., CMU, 2024).**
@@ -134,7 +140,7 @@ an opt-in layer that reuses the same joints. This plan does the same.
 - **Defaults are metric and capped.** The penetration slop and speculative
   distance are 2 cm, the convex radius is 5 cm, and the maximum angular
   velocity is **2700°/s (450 rpm)**. A Power Functions L motor at 390 rpm
-  geared up 40:8 would be clamped. LEGO scale needs the world scaled or the
+  geared up 40:8 would be clamped. The scale of LEGO® bricks needs the world scaled or the
   settings changed.
   [settings](https://raw.githubusercontent.com/godotengine/godot/master/modules/jolt_physics/jolt_project_settings.cpp)
 - **Determinism and the web.** Jolt is deterministic only with the same binary
@@ -149,18 +155,23 @@ The pipeline records every part's connectors (`tools/ldraw/connectivity.py`,
 
 | connector meeting | what it is | read by |
 |---|---|---|
-| axle (male) through an `axle_hole` | rigid: the hole's part turns with the axle | the probe: holes on an axle's line, within its length |
-| axle or pin through a `pin_hole`, or a round bore 6 LDU across | revolute about the line | the same |
-| stud in a socket (`PartMesh.sockets`, at the part's underside) | rigid | the probe |
-| two revolutes between the same two bodies on different lines | rigid: two pins through two beams | the probe, repeated until nothing changes |
-| a pin that carries nothing keyed | not a body: what it joins turn against each other on its line | the probe |
-| a turntable's top on its base | revolute about the base's axis | the probe (`TURNTABLES`); `Joints.rounds` already pairs them for the checker |
+| axle (male) through an `axle_hole` | rigid: the hole's part turns with the axle | `Mechanism`: holes on an axle's line, within its length |
+| axle or pin through a `pin_hole`, or a whole bore of radius 6 (an axle's size) | revolute about the line | the same |
+| stud in a socket (`PartMesh.sockets`, at the part's underside) | rigid | `Mechanism` |
+| two revolutes between the same two bodies on different lines | rigid: two pins through two beams | `Mechanism`, repeated until nothing changes |
+| a pin that carries nothing keyed | not a body: what it joins turn against each other on its line | `Mechanism` |
+| a turntable's top on its base | revolute about the base's axis | `Mechanism` (the table's `turntables`); `Joints.rounds` already pairs them for the checker |
+| a differential's planet on the stub inside its casing | revolute about the stub | `Mechanism` (the table's `stubs`: no connector records the stub) |
+| a driving ring on its ridged joiner, and in a clutch gear it reaches 4 LDU into | rigid | `Mechanism` (the table's `driving_rings`, `ring_carriers`, `clutch_gears`) |
+| a ring gear nothing it is fixed to turns on, meshing a gear on something that does | revolute about its own centre, on what carries that gear: it rides on rollers round its rim | `Mechanism` (a "rim" joint) |
 | a shaft in a coaxial bore of its size (clip on bar, hinge, turntable) | revolute | `Joints.rounds`, which the Poser already turns |
 
 **Gears: the tooth count is only in the name.** "Technic Gear 24 Tooth" is the
-only place the catalogue says 24. The probe keeps a table (`GEARS`) of kind,
-tooth count, hole (axle or round), and the offset of the pitch plane for
-right-angle meshes. A pitch radius of 1.25 LDU per tooth is module 1 mm. That
+only place the catalogue says 24. The table `assets/ldraw/gears.json` keeps
+each gear's kind, tooth count, hole (axle or round), the offset of its pitch
+plane for right-angle meshes and where its teeth are along its axis. It sits
+beside `ldd.json` rather than in `assets/knowledge`, which the web build
+leaves out of its pack. A pitch radius of 1.25 LDU per tooth is module 1 mm. That
 matches [BrickNerd's](https://bricknerd.com/home/everything-you-want-to-know-about-lego-gears-5-10-24)
 "teeth/16 studs", and it was measured on every gear in the 354 Technic sets in
 `vendor/omr` (the 42xxx and 8xxx files). The method:
@@ -175,8 +186,14 @@ matches [BrickNerd's](https://bricknerd.com/home/everything-you-want-to-know-abo
      crossing;
    - a worm: the distance between the two axis lines.
 
-The scripts were scratch work and were not kept. P1a's pipeline check is where
-they belong.
+`tools/gears.py measure` is that measurement, kept: over the 363 Technic sets
+the OMR has now, 855 parallel pairs in one plane stand within 8 LDU of
+meshing, 750 of them to 0.1 LDU and 67 more to 0.3. `tools/gears.py check`
+and `tests/test_gears.py` hold the table to the catalogue's names (every
+Technic part named with a tooth count is in it, or set aside with a reason),
+to the parts' own connectors (each gear has the hole the table says, on its
+axis), to module 1 mm (a spur gear is 2.5 (N + 2) LDU across) and, on 42055,
+42082 and 8020, to the spacing above.
 
 - **Parallel gears in one plane within 8 LDU of meshing: 809 pairs.**
   - 722 stand at 1.25·(N₁+N₂) LDU apart to 0.1 LDU.
@@ -220,30 +237,53 @@ they belong.
 
 **Gaps, and how to fill each:**
 
-1. **A gear table as data.** Move tooth count, kind, hole, face offset, axis
-   and plane into `assets/knowledge/gears.json`. Generate it from the names and
-   check it in the pipeline in two ways:
-   - Measured spacing in the OMR, as above.
-   - Each part's outside diameter. A spur gear's is 2.5·(N+2) LDU: 24t 64.78
-     against 65, 8t 24.86 against 25, 40t 104.7 against 105, 12t 35.39, 20t
-     55.2. The 16t is 43.28 against 45; its teeth are short.
-2. **Missing or wrong connectors.**
-   - The 24 tooth gear 3648a/3648b/24505 has no `axle_hole` at its centre (its
-     hole is drawn without the primitive). The table supplies it for now.
-   - 3709b, a Technic plate with holes, reads its three holes as bores but not
-     as `pin_hole`s. The probe accepts a 6 LDU bore as a round hole.
-   - 6542a, the 16 with clutch, has no hole at all.
-   - 32062, the notched axle 2, reads its notch as an `axle_hole`. Fix these in
-     `connectivity.py`; the probe works round them.
-3. **Unmeasured right-angle offsets:**
-   - the 28t and 36t double bevels (46372, 32498);
-   - the 14t and 22t bevels (4143, 69761);
-   - the bevels with a round hole;
-   - the 60t turntable's plane;
-   - the quarter ring 24121, four of which make the 140 tooth inner ring that
-     the best LEGO orreries use.
-   
-   Measure them from the sets the same way.
+1. **A gear table as data. Done (P1a).** `assets/ldraw/gears.json`, checked as
+   above. Its spur gears' outside diameters are 2.5·(N+2) LDU: 24t 64.78
+   against 65, 8t 24.86 against 25, 40t 104.7 against 105, 12t 35.39, 20t
+   55.2. The 16t is 43.28 against 45; its teeth are short. The 8 with a
+   clutch is excused: its hub is wider than its teeth.
+2. **Missing or wrong connectors. Done (P1a), in `connectivity.py`.** A
+   sub-build of the 179 parts it changes, with 200 unchanged parts as
+   controls, merges with `tools/merge_subbuild.py`; a full rebuild gives the
+   same. Until a checkout's catalogue has it, the probe's first check fails
+   and says so.
+   - The 24 tooth gear 3648a/3648b/24505 had no `axle_hole` at its centre: its
+     subpart `s/3648s02` draws an eighth of the hole, eight times mirrored,
+     from rectangles. `connectivity.py` now names the holes a file draws
+     without a primitive (`_UNDRAWN`), and the eight merge into one.
+   - 3709b reads its three holes as `pin_hole`s now, and so do its siblings
+     3738 and 32001, the Technic plates 2 x 8 and 2 x 6 with holes; 6542a, the
+     16 with clutch, has its centre `pin_hole`, and the old differentials
+     (6573, its casing 4141, and 73071) a `pin_hole` in each hub. All seven
+     draw their holes as plain cylinders. A rule for every such bore would not do: 4,970 parts
+     have a whole bore of that size with no hole on it, most of them
+     minifigure hands, hair and slopes' undersides. So they are named
+     (`_PLAIN_HOLES`). The 1 x N Technic plates (2719, 4262, 4263, 4442) are
+     drawn another way and are left.
+   - 32062's notch no longer reads as an `axle_hole`, nor do 153 more: an
+     axle-hole edge piece (axlehol2, axlehol3 and their kind) lying on the
+     part's own axle is that axle meeting its stop, its stud or its notch.
+     Axles with a stop (15462, 24316, 32209 ...), axle pins, towballs, CV
+     joints, shock absorbers and pneumatic cylinders all had one.
+   - Still open: 32187, the driving ring extension, has no hole at its centre
+     either.
+3. **Right-angle offsets, measured (P1a)** from the sets the same way:
+   - 4143, the 14t bevel: 96 pairs stand 17 and 17 from the crossing, so its
+     face offset is -0.5 (17 = 17.5 - 0.5).
+   - 32498, the 36t double bevel: 20 and 50 with a 12t double bevel, face 5.
+   - 87407, the 20t bevel with a peg hole: 20 and 27 with a 6589, face 5.
+   - 18938, the 60t turntable: its teeth are on its origin plane, measured
+     against a 36 at 120, a 20 at 100 and a 12 at 89.4.
+   - 48168, the 56t turntable: 20 LDU along its axis, which is +20 in the
+     app's axes (the probe had -20, and no case met it).
+   - 24121, the quarter ring: its teeth are inside, 140 to the circle, centred
+     on its origin; 48 pairs in the sets stand a 12t double bevel 160.1 from
+     the centre (175 - 15).
+   - 62821's 28t bevel ring is 25 along its axis from its origin, toward its
+     teeth: it meets a 20t double bevel whose axis passes through the casing's
+     middle (33 pairs at 0 and 40).
+   - Still unmeasured: 46372's right angle, 69761, 69762, 78442 (a quarter
+     ring of 60, taken to be inside like 24121) and 6573's planets.
 4. **Racks.** One offset per part (above).
 5. **Which way a worm's thread runs.** The probe assumes right-handed. The
    ratio does not depend on it, but the direction does. Read it from the
@@ -377,8 +417,8 @@ gear-driven sweep waits for the mechanism module: it hands its frames to
 - a slenderness limit.
 
 Its comment calls ~1 N per stud "the LEGO Group's own figure". That number is
-not published: LEGO's book says "the ideal strength's value must remain
-secret" (Konstanski, *The Secret Life of LEGO Bricks*, p. 22,
+not published: the LEGO Group's own book says "the ideal strength's value must remain
+secret" (Konstanski, *The Secret Life of LEGO® Bricks*, p. 22,
 [via Brick Architect](https://brickarchitect.com/cite/S4)). The check is also
 taken at rest only.
 
@@ -478,7 +518,7 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
 
 | phase | what ships | how it is proven | estimate |
 |---|---|---|---|
-| **P1a Gear trains** | `src/assembly/mechanism.gd` lifted from the probe. The gear table as data with its pipeline check. Connector fixes (3648, 3709b, 6542a, 32062). Ring gears (inner mesh: centres r_ring − r apart, same sense), chains on `Flex.SPROCKETS` (same sense, tooth ratio), racks with measured pitch lines, clutch gears and driving rings, the differential (two freedoms: two drivers, or one and a held output). Locked, free and floating reports. | The probe's cases plus: the OMR's sets with the most gears (42055: 122 gears, 42082: 102) read without a floating drivetrain body; 42179's year train read as 121.5:1 from its file if it can be got; a differential's Willis relation. | 4–5 agent days |
+| **P1a Gear trains** | **Shipped:** `src/assembly/mechanism.gd` lifted from the probe, with sparse elimination. The gear table as data (`assets/ldraw/gears.json`) with its pipeline check (`tools/gears.py`, `tests/test_gears.py`). Connector fixes in `connectivity.py` (3648a/b/24505, 3709b with 3738 and 32001, 6542a, the old differentials 6573/4141/73071, 32062 with 153 more), committed on their own first (293bea2) so a session can seat gears on axles. Ring gears (inner mesh: centres r_ring − r apart, same sense, within a quarter's arc; a ring on rollers turns about its own centre), chains on `Flex.SPROCKETS` (same sense, the links' ratio), clutch gears and driving rings, the differential (two freedoms: two drivers, or one and a held output). Locked, free and floating reports; drivers absolute. **Left:** racks (no prismatic joint yet, and the pitch lines in section 2 are unchecked); 42179's year train (not in the OMR); 6573's and 65414c01's planets (the shortcut is one part, so nothing in it can turn); 32187's centre hole; worm handedness; posing a chain's links along their loop. | The probe's cases plus: 42055 (140 gears) and 42082 (135), the OMR's sets with the most gears, read with every gear on what it turns on or a reason the file gives (`src/dev/mechanism_sets.gd`); a differential's Willis relation to 1e-6 under five pairs of drivers. Every check fails on a solver broken on purpose (section 7). | 4–5 agent days |
 | **P1b Simulate mode** | The panel (pick a driver, play, scrub, record), bodies tinted by speed, locked meshes highlighted. `simulate_mechanism` over MCP with its compact result, and `tools/mcp_tools.json` regenerated. | A windowed probe that clicks an axle and records. `tools/mcp_check.py` driving it the way a Claude session does. | 3–4 days |
 | **P1c The orrery** | Periods read out as planet years ("Mars: 1.96 Earth years; NASA 1.8808, +4.2%"). Turntables (56, 60) and the 140 tooth ring. A ratio search for the designer: the gear trains on the stud grid within n stages that come nearest a target. Every LEGO tooth count factors into primes ≤ 7 (bar the 22), so 365.25 = 3·487/4 can only be approximated; Brocot's method finds the nearest ([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)). | **Acceptance:** an orrery of at least the eight planets, built in the app by the owner or by Claude over MCP. Every arm's period within the error its gear train claims, checked frame by frame off the renderer as the probe does. Recorded to MP4 and WebP. | 2–3 days, plus the build |
 | **S1 Balance at rest and across the cycle** | The support polygon, centre of mass and force-angle tipping margin at every frame. Stud joint moments against the cited capacities. Counterweight advice. The heat map and margin readout. Numbers in `check_design` and `simulate_mechanism`. `Stability` rewritten on margins with sources. | Arrangements with known answers (a T on one stud, a cantilever of n plates). The owner's orrery reproduces "18 studs past the edge" at its worst angle, and a counterweight added by the advice brings it inside. | 3–4 days |
@@ -497,7 +537,7 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
   - Clockwork Solar System is under 0.15% for every planet with 153 gears.
   
   Two things are out of reach:
-  - **Phase.** Backlash leaves a few degrees; LEGO's own SPIKE motor spec is
+  - **Phase.** Backlash leaves a few degrees; the LEGO Group's own spec for the SPIKE motor is
     ±3° including gearbox slack. It does not accumulate unless something slips.
   - **Scale.** Distances and sizes are not to scale.
   
@@ -511,7 +551,7 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
   unmeasured. A small bench rig (a known arm, a known mass, a protractor) would
   pin them down, and is worth more than any model.
 - **Dynamics (S2, P3) is qualitative.**
-  - Friction and damping in LEGO joints are unmeasured.
+  - Friction and damping in the joints of LEGO® parts are unmeasured.
   - Jolt is tuned for metres, and is deterministic only per binary.
   
   "This arm will swing past the edge if driven at full speed" is a fair claim.
@@ -548,76 +588,161 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
   driver, so it is cheap anywhere. P3 with Jolt on the single-threaded web
   build is the performance risk.
 
-## 7. The proof of concept
+## 7. The proof
 
-`src/dev/mechanism_probe.gd`, phase 1's core and nothing else: no UI, nothing
-kept in the app. Run it with:
+The proof of concept became `src/assembly/mechanism.gd` in P1a, and
+`src/dev/mechanism_probe.gd` runs every case through it. Real sets are
+`src/dev/mechanism_sets.gd`. Run them with:
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/mechanism_probe.gd
+godot --headless --path . --script src/dev/mechanism_sets.gd
 ```
 
-Run 2026-10-13, windowed (the headless run gives the same ratios and skips the
-pictures):
+Run 2026-10-13, headless (the windowed run adds the drawn frames, below). The
+ratios in brackets are what the solver gave:
 
 ```
+the gear table and the parts it names
+ok    the table reads, 56 gears
+ok    every gear with a hole has it on its axis in the catalogue's connectors (all do)
 a real set: 8020's windmill (OMR)
-  57 parts, 5 bodies (the ground 40 parts), 4 joints in the tree, 0 closing loops, 0 floating; 4 gears, 2 meshes
-ok    two meshes: the 24 with an 8, and the crown at right angles with the other 8 (parallel 8-24, right angle 24-8)
 ok    the crown's axle turns 24/8 = 3 times the crank's, the other way (-3.000000)
 ok    the sails' axle turns 3 x 3 = 9 times the crank's (9.000000)
 ok    the sail plates go round with their axle (free on it, followed)
-ok    windmill: in every frame drawn the sails turns 9.0000 times the driver's step, to 0.0000°
+ok    nothing with a gear in it floats (0)
 the same two axles, also joined 16 to 16
-ok    it is locked, and says so (locked: the meshes ask for two different turns at once)
 ok    ...naming both meshes as the ones that fight (["parallel 8-24", "parallel 16-16"])
 a worm driving a 24
 ok    the 24 turns once for 24 turns of the worm (1/24.0000)
 a two-planet orrery: Earth on the central axle, Mars on a turntable, one crank
-ok    Earth's arm turns 28/20 = 1.4 times the crank, the other way (-1.400000)
-ok    Mars's arm turns 20/28 of the crank, the other way (-0.714286)
-ok    a Mars year is 1.9600 Earth years here, against 1.8808: +4.2%, (28/20)^2 the nearest two meshes of these gears give
-ok    orrery: in every frame drawn Mars's arm turns 0.7143 times the driver's step, to 0.0000°
-mechanism: gear trains read off the parts, every ratio its tooth counts', a locked train named, and the windmill and the orrery turned
+ok    a Mars year is 1.9600 Earth years here, against 1.8808: +4.2%
+a 12 carried round inside four quarter rings of 35 (140 in all)
+ok    on its arm the 12 turns 140/12 = 11.6667 times the arm, the other way (-11.666667)
+ok    the central axle, which nothing turns, stays still under its arm (0.000000)
+ok    one quarter on the far side: no mesh (none), and the 12 is left free
+ok    a quarter held by nothing turns on its rim about its centre, 12/140 = 0.085714 of the 12 and the same way (0.085714)
+a chain from a 24 to an 8
+ok    the 8 turns 12/4 = 3 times the 24, the same way (3.000000)
+a gearbox: a driving ring between a 24 and a 16 with clutches
+ok    in the middle the ring drives neither gear, and the output is free
+ok    pushed into the 16, the output turns 16/16 = 1 the other way (-1.000000)
+ok    pushed into the 24, the output turns 24/8 = 3 the other way (-3.000000)
+a differential (62821), its two freedoms and Willis's relation
+ok    one driver leaves one freedom, the sides and the planet undecided
+ok    the pinion turns the casing 20/28 of a turn (-0.714286)
+ok    two drivers decide it, and the sides sum to twice the casing every time, to 0.00000017881393
+        (0.000 + -1.429 = 2 x -0.714; 1.000 + 1.000 = 2 x 1.000; 1.000 + -1.000 = 2 x 0.000;
+         0.300 + 2.000 = 2 x 1.150; -1.929 + 0.500 = 2 x -0.714)
+mechanism: gear trains read off the parts, every ratio its tooth counts', a locked train named, a ring, a chain, a gearbox and a differential turned
 ```
 
-The pictures are in `shots/mechanism/` (16 windmill frames and 24 orrery
-frames, each as PNGs and a WebP).
+That is 43 checks, abridged here; the windowed run has 50, and the sets 3.
+Willis holds to 2e-7, not to 1e-12: the
+parts stand where 32-bit transforms put them, so a lever of 17 LDU is
+17.000001. Periods for P1c should come from the rates, which are exact to
+the tooth, not from re-measured transforms.
 
-**The windmill is LEGO 8020's windmill**, from the OMR
-(`8020-1_Windmill.mpd`, 57 parts, as published). The file was not touched. The
-probe found:
+Windowed, every frame of the windmill and the orrery is read back off the
+renderer's copy: the sails step 9.0000 times the crank to 0.0000°, Earth's arm
+1.4000 times, Mars's 0.7143 times. The pictures are in `shots/mechanism/` (16
+windmill frames and 24 orrery frames, each as PNGs and a WebP).
 
-- the frame: 40 parts held by studs and by 8 friction pins, two pins to each
-  joint;
-- three turning axles;
-- the sails: six plates threaded on their axle by round holes, free on it and
-  following it;
-- the crank: a steering arm keyed to the first axle.
+**Real sets.** 42055 and 42082, the OMR's two sets with the most gears, read in
+two seconds each:
 
-The 24 drives an 8 (3:1). That axle's crown gear drives an 8 at right angles
-(3:1 again). The sails turn 9 times for every turn of the crank. Every frame of
-the drawing was read back off the renderer's copy, and the sails' step was 9
-times the crank's to 0.0000°.
+```
+42055-1.mpd
+  3928 parts, 783 bodies (the ground 807 parts), 377 joints in the tree, 124 closing loops, 405 floating (3 with a gear); 140 gears, 70 couplings
+ok      apart: 302 parts with 3 gears touch no connector of the rest; read on their own [...] 0 gears floating
+ok    42055-1.mpd: of 3 floating, 0 near misses the file draws and 3 apart, none unexplained (0)
+42082-1.mpd
+  5025 parts, 1716 bodies (the ground 950 parts), 581 joints in the tree, 190 closing loops, 1134 floating (2 with a gear); 135 gears, 67 couplings
+  near miss: 24505 stands 2.0 LDU off the axle it is on, 15462, in the file
+  near miss: 24505 stands 2.0 LDU off the axle it is on, 59426, in the file
+ok    42082-1.mpd: of 2 floating, 2 near misses the file draws and 0 apart, none unexplained (0)
+mechanism sets: 2 read, every gear on what it turns on or said why not
+```
 
-**The orrery** is hand-placed: Earth's arm on the central axle, Mars's arm
-pinned across a 28 tooth turntable round that axle, and both driven from one
-crank three studs away. Its Mars year is (28/20)² = 1.96 Earth years, against
-NASA's 686.98 / 365.256 = 1.8808: +4.2%. Two meshes of these spacings can't do
-better. A second stage, (24/16)·(20/16) = 1.875, would be −0.3%. That is P1c's
-ratio search.
+What floats, and why:
+
+- **42055's mine truck.** The file's main model places two: the truck and the
+  excavator. The truck touches nothing of the excavator, so its three gears
+  float against the excavator's ground. Read on its own, its chassis is its
+  ground and nothing in it floats.
+- **42055's bucket wheel** floated until the "rim" joint. Its eight quarter
+  rings ride on rollers round their rim and turn on no axle, so no connector
+  says what they turn about. A ring meshing a gear on something that turns now
+  turns about its own centre on what carries that gear.
+- **42082's two 24s** stand 2 LDU off their axles in the file (z -78 for -80;
+  y -2 for 0). The reading allows 1.5 and reports these rather than mending
+  them.
+
+Many other bodies float (405 and 1134): panels held by pins in holes the
+connectors don't record, flexible hoses, tyres on rims (a shaft in a bore, which
+`Joints.rounds` reads for the checker and the mechanism does not need), and
+42082's two unofficial flexible sections that the catalogue does not have. None
+has a gear in it. The drivetrains do not yet read whole: from twelve inputs
+each, at most 10 joints of 42055's 377 turn and 15 of 42082's 581. Why is
+P1b's to find, with the sets' drivetrains drawn turning.
+
+**Every check fails on a solver broken on purpose.** Each mutation below was
+made to `mechanism.gd` (or the table) alone, the probe and the sets run, and
+the file put back. Each check failed under at least one:
+
+| broken | checks it failed |
+|---|---|
+| the two sides of a mesh pull the same way | every ratio's sense, Willis, the held side |
+| one side's lever counted twice | every ratio, the Mars year, Willis |
+| a contradiction never seen | the locked train, its culprits |
+| the culprits not named | the culprits |
+| no parallel meshes / no bevel pairs at right angles / no worm | each mesh count, and what turns through them |
+| a worm's lead doubled | 1/24 |
+| a ring's inside taken for an outside; a quarter's arc ignored; no rim joint | the ring's mesh, 140/12 and 128/12; the far quarter; the rim |
+| a chain against its sense; no link on a sprocket | 3:1 the same way; the chain found |
+| a driving ring in every clutch it touches; not keyed to its joiner | neutral; each gear pushed into |
+| no stub for the planet | the stub, the one freedom, the held side |
+| studs hold nothing; axles not keyed; two pins hold nothing; the held parts not held | the frame, nothing floating, the sets; Earth rides its arm; the base stays |
+| a free rate turns at 1, not 0 | the sails follow their axle |
+| a pose turned a tenth too far / at every joint's driver's angle / not at all | nothing moved at 0; every frame's step; the pictures change |
+| the largest pivot, not the one furthest from the ground | the central axle stays still |
+| drivers relative to their carrier | 128/12 |
+| the table missing; no hole on any axis; a gear the catalogue lacks; a part dropped | the table reads; the holes; the catalogue; 57 parts |
+
+The one check no solver can break is "every frame drawn": it is the
+renderer's.
 
 **What it found:**
 
-- The connector data is enough for bodies and joints once a few parts are
-  patched (§2's gaps). A gear table is the one thing that has to be added.
-- Two rules made the frame one body: studs in sockets, and two revolutes
-  between the same two bodies on different lines. Without them, 8 floating
-  pins and 6 pieces of frame hung off the axles.
+- The connector data is enough for bodies and joints once the parts' own
+  misreads are fixed (section 2's gaps, in `connectivity.py`). A gear table is
+  the one thing that has to be added.
+- A part can be a shaft and a holder at once: 87082, the long pin with a hole
+  across its middle, and the axle connectors with an axle of their own. Read as
+  holders only, their pins went into nothing, and 89 more of 42055's parts
+  hung loose from its frame.
+- Two rules made the windmill's frame one body: studs in sockets, and two
+  revolutes between the same two bodies on different lines. Without them, 8
+  floating pins and 6 pieces of frame hung off the axles.
 - The locked train needs no special case. The equations contradict, and
   dropping each mesh in turn names the ones that fight.
+- A driver is how fast its body turns against the ground. As a rate relative to
+  what carries it, an arm on an idle axle could stand still while the axle
+  turned back under it, and the ring case read 0 for 128/12.
 - Loops of fixed axes stay linear. A joint closing a loop adds five equations
-  and no new kind of solver.
+  and no new kind of solver. A differential is one: its casing turns on both
+  half axles.
 - A worm is one more term in the same equation (the thread's lead). Its
   direction depends on a handedness not yet read from the part.
+
+**The windmill is the windmill of LEGO® set 8020**, from the OMR
+(`8020-1_Windmill.mpd`, 57 parts, as published), and the file was not touched:
+the frame is 40 parts held by studs and by 8 friction pins, two pins to each
+joint; three axles turn; the sails are six plates threaded on their axle by
+round holes, free on it and following it; the crank is a steering arm keyed
+to the first axle. **The orrery** is hand-placed: Earth's arm on the central
+axle, Mars's arm pinned across a 28 tooth turntable round that axle, both from
+one crank three studs away. Its Mars year is (28/20)² = 1.96 Earth years,
+against NASA's 686.98 / 365.256 = 1.8808: +4.2%. A second stage, (24/16)·(20/16)
+= 1.875, would be −0.3%. That is P1c's ratio search.

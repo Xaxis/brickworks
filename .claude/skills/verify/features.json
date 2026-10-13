@@ -168,6 +168,16 @@
       "tests": []
     },
     {
+      "id": "cli:check the gear table",
+      "kind": "cli",
+      "entry": "tools/gears.py",
+      "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
+      "area": "pipeline",
+      "tests": [
+        "tests/test_gears.py"
+      ]
+    },
+    {
       "id": "cli:collection api probe",
       "kind": "cli",
       "entry": "tools/web/collection_probe.mjs",
@@ -742,6 +752,14 @@
       "entry": "src/parts/custom_parts.gd",
       "reach": "godot --headless --path . --script src/dev/element_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:mechanisms",
+      "kind": "lib",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
+      "area": "geometry",
       "tests": []
     },
     {

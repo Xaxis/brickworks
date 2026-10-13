@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:export for linux, cli:export for windows, cli:export for macos -->
+<!-- covers: cli:build the meshes, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -14,10 +14,22 @@ The Python side: LDraw in, mesh cache and catalogue out.
   (86 KB), through `write_colors`, the one writer of it: `build_meshes.py` calls
   the same function, and the two copies there were before had drifted to the
   point where neither filled the cross-references. It prints a `colour join:`
-  line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO
+  line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO®
   number, 197 a BrickLink number). `--colours` writes `colors.json` alone,
   without reading or rewriting the catalogue. See [parts](parts.md) for what each
   colour carries.
+- `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
+  holes `src/assembly/mechanism.gd` reads (the catalogue says how many teeth a
+  gear has only in its name). `tools/gears.py check` proves four things: every
+  Technic part named with a tooth count is in the table or in its `not_gears`
+  with a reason, and its count is the name's; every gear the table says has a
+  hole has it on its axis in its own connectors (`connectivity.py`, read fresh
+  from `vendor/ldraw`); a spur gear is 2.5 (N + 2) LDU across; and in real sets
+  (needs `vendor/omr`) parallel gears near meshing stand 1.25 LDU a tooth apart.
+  It ends on "gear table: 56 gears, 26 set aside, 0 problems". `tests/test_gears.py`
+  runs the same checks, each also against a table broken on purpose, and the
+  spacing on 42055, 42082 and 8020 (89 of 92 pairs within 0.3 LDU; at 1.3 LDU a
+  tooth none are).
 - `pack the web parts`: chooses which parts the WebAssembly build carries, smallest
   mesh first, with per-family caps so no family is absent entirely. Everything else
   is a fetch away at run time.
@@ -40,6 +52,8 @@ tools/fetch_data.sh                   # vendor/ldraw and vendor/rebrickable, fir
 tools/build_meshes.py                 # ~90 min on 20 cores; needs numpy and scipy
 tools/build_meshes.py --only 3001 ... --out DIR   # just those parts
 tools/merge_subbuild.py DIR ids.txt   # merge such a build back, with a safety check
+tools/gears.py check                  # the gear table against names, holes and sizes, ~3s
+tools/gears.py measure                # spacing in every OMR Technic set (heavy: a minute or two)
 tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
 tools/refresh_catalogue.py --colours  # colors.json alone (after tools/bricklink_colours.py)
 tools/web_pack.py --list              # say what would be included, write nothing
