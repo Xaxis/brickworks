@@ -28,10 +28,12 @@
 ##              by restyle_model's own pass, some as masonry, some turned out.
 ##
 ## How it decides what is meant to be built on, in the order it asks:
-##   - only a stud with nothing on it and nothing of the model above it is
-##     open (standing_free): a stud something stands on, or that a roof
-##     covers, is not finished; and each lay is checked again first, since a
-##     finding laid before it, or the design, may now stand there;
+##   - only a stud with nothing on it, nothing of the model within a brick
+##     over it, and seen — open to the sky, or to the outside on two sides
+##     under something high over it, as a lower wing is — is open
+##     (standing_free): a stud something stands on, or a floor between walls
+##     and under a roof, is not finished; and each lay is checked again first,
+##     since anything may stand there by then;
 ##   - only studs of bricks, plates, slopes, wedges, wings and baseplates are
 ##     read: a round plate's, a jumper's, a figure's or a plant's stud is the
 ##     detail itself; and a stud whose square is not all part (a wedge's
@@ -54,6 +56,9 @@ const PLATE := 8.0
 const TURNS := 4
 ## Findings laid at once; the rest are said and come with the next review.
 const MOST_FINDINGS := 12
+## How long laying may go on one finding at a time, when the edit of them all
+## was refused: a session's call is answered within three minutes or never.
+const LAYING_MS := 100000
 const MOST_STAIRCASES := 4
 const MOST_WALLS := 3
 const SMALLEST_FIELD := 4
@@ -122,6 +127,8 @@ class Finding extends RefCounted:
 	var restore: Array = []
 	## The bricks laid for it, once laid.
 	var ids: Array[int] = []
+	## The section its studs are in (a wing laid at an angle), or "".
+	var section: String = ""
 	## The view that sees it best: a slope falling toward -x or -z, or a wall
 	## facing that way, is seen from the far corner. "" for either.
 	var seen_from: String = ""
@@ -260,7 +267,7 @@ func hand() -> Variant:
 		return "The baseplate is bare: build the model before its surface."
 	assistant.progress.emit("the surface pass: reading the model's studs, steps and walls")
 	var found: Array[Finding] = find()
-	var laid: Array[Finding] = []
+	var to_lay: Array[Finding] = []
 	var offers: Array[Finding] = []
 	for one: Finding in found:
 		if one.offered:
@@ -268,15 +275,13 @@ func hand() -> Variant:
 			one.key = "G%d" % _offered
 			findings.append(one)
 			offers.append(one)
-			continue
-		if await _lay(one):
-			_numbered += 1
-			one.key = "S%d" % _numbered
-			findings.append(one)
-			laid.append(one)
 		else:
-			left_alone.append("a %s at %s, which could not be laid as it stands: %s"
-				% [one.kind, _where_said(one.box), _why_not])
+			to_lay.append(one)
+	var laid: Array[Finding] = await _lay_all(to_lay, Time.get_ticks_msec() + LAYING_MS)
+	for one: Finding in laid:
+		_numbered += 1
+		one.key = "S%d" % _numbered
+		findings.append(one)
 	if laid.is_empty() and offers.is_empty():
 		assistant.progress.emit("the surface pass: nothing to finish")
 		return ("The surface pass found nothing to finish: no open stud field, no stud "
@@ -478,11 +483,19 @@ func find() -> Array[Finding]:
 		left_alone.append("a Brick Art mosaic: its studs are the picture")
 		return out
 	_read = OpenPoints.read(assistant)
-	var tops: Dictionary = open_tops()
+	var points: Array = _points()
+	var tops: Dictionary = open_tops("", points)
 	var claimed: Dictionary = {}
 	var gone: Dictionary = {}
 	var stairs: Array[Finding] = _staircases(tops, claimed, gone)
 	var fields: Array[Finding] = _fields(tops, claimed)
+	# And each section's own: a wing laid at an angle is studs up in its own
+	# frame, and tiled in it. The starfighter's wings were open fields of
+	# studs, all in sections.
+	for name: Variant in _read.model.sections.keys():
+		var tilted: Dictionary = open_tops(str(name), points)
+		if not tilted.is_empty():
+			fields.append_array(_fields(tilted, {}, str(name)))
 	var walls: Array[Finding] = _walls(gone)
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
@@ -504,35 +517,48 @@ func find() -> Array[Finding]:
 	return out
 
 
-## Every open stud on the model, by where it is in half studs and lattice
-## cells up: {"at", "brick", "colour", "part"}. Open is standing_free, on a
-## part whose studs are finished, its square all part, outside every zone the
-## design kept.
-func open_tops() -> Dictionary:
+## Every connection point of the model's bricks, read once.
+func _points() -> Array:
+	if _read == null:
+		_read = OpenPoints.read(assistant)
+	var ids: Array = []
+	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
+		ids.append(brick.id)
+	return _read.points_of(ids)
+
+
+## Every open stud of the main body, or of one [param section], by where it is
+## in its own frame in half studs and lattice cells up: {"at" in the world,
+## "here" in its frame, "brick", "colour", "part"}. Open is standing_free, up
+## in its frame, on a part whose studs are finished, its square all part,
+## outside every zone the design kept.
+func open_tops(section: String = "", points: Array = []) -> Dictionary:
 	var out: Dictionary = {}
 	var bricks: Array[BrickWorld.Brick] = assistant._bricks_inside({})
 	if bricks.is_empty():
 		return out
-	if _read == null:
-		_read = OpenPoints.read(assistant)
-	var top: float = assistant._bounds_of(bricks).end.y
-	var ids: Array = []
-	for brick: BrickWorld.Brick in bricks:
-		ids.append(brick.id)
+	if points.is_empty():
+		points = _points()
+	var box: AABB = assistant._bounds_of(bricks)
 	var library: PartLibrary = assistant.library
-	for point: OpenPoints.Point in _read.points_of(ids):
-		if point.kind != "stud" or not point.section.is_empty() \
-				or point.way.dot(Vector3.UP) < 0.99:
+	for raw: Variant in points:
+		var point: OpenPoints.Point = raw
+		if point.kind != "stud" or point.section != section:
 			continue
-		if not standing_free(point, top):
+		if section.is_empty() and point.way.dot(Vector3.UP) < 0.99:
+			continue
+		if not section.is_empty() and (point.face != "up" or point.way.dot(Vector3.UP) < 0.5):
+			continue
+		if not standing_free(point, box):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(point.part)
-		if info == null or not finished_kind(info) or not _whole_square(point.at) \
+		if info == null or not finished_kind(info) or not _whole_square(point) \
 				or _in_zone(point.at):
 			continue
 		var brick: BrickWorld.Brick = assistant.world.get_brick(point.brick)
-		out[key_of(point.at)] = {"at": point.at, "brick": point.brick,
-			"colour": brick.color_code if brick != null else 16, "part": point.part}
+		out[key_of(point.local_at)] = {"at": point.at, "here": point.local_at,
+			"brick": point.brick, "colour": brick.color_code if brick != null else 16,
+			"part": point.part}
 	return out
 
 
@@ -540,20 +566,44 @@ static func key_of(at: Vector3) -> Vector3i:
 	return Vector3i(roundi(at.x / 10.0), roundi(at.y / 2.0), roundi(at.z / 10.0))
 
 
-## Whether nothing stands on a stud and nothing of the model is over it, up to
-## the model's top: a stud something stands on, or will (under a roof, an
-## overhang, a floor above), stays a stud.
-func standing_free(point: OpenPoints.Point, top: float) -> bool:
+## Whether a stud is open: nothing stands on it, nothing of the model is
+## within a brick over it, and it is seen — nothing over it out to the edge of
+## the model's [param box], or open to the outside on two sides at least, as a
+## lower wing is under the upper one. A stud something stands on, or will (a
+## floor inside, under a roof, between walls), stays a stud.
+func standing_free(point: OpenPoints.Point, box: AABB) -> bool:
 	if point.by != 0:
 		return false
-	var lattice: BrickLattice = assistant.builder.lattice
-	var y: float = point.at.y + 6.0
-	while y <= top + 4.0:
-		var other: int = lattice.brick_at(BrickLattice.to_cell(Vector3(point.at.x, y, point.at.z)))
-		if other != 0 and other != point.brick and not assistant.scenery.has(other):
-			return false
-		y += 8.0
-	return true
+	var reach: AABB = box.grow(8.0)
+	var at: Vector3 = point.at + point.way * 6.0
+	while reach.has_point(at):
+		if _other(point, at):
+			if at.distance_to(point.at) <= 30.0:
+				return false
+			break
+		at += point.way * 8.0
+	if not reach.has_point(at):
+		return true
+	var open: int = 0
+	for side: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+		# Over the stripes and greebles a brick tall on the same surface, and
+		# under what is over it: nothing is within a brick of it.
+		var along: Vector3 = point.at + point.way * 34.0
+		var clear: bool = true
+		while reach.has_point(along):
+			if _other(point, along):
+				clear = false
+				break
+			along += side * 8.0
+		if clear:
+			open += 1
+	return open >= 2
+
+
+## Whether a brick of the model other than the stud's own is at [param at].
+func _other(point: OpenPoints.Point, at: Vector3) -> bool:
+	var other: int = assistant.builder.lattice.brick_at(BrickLattice.to_cell(at))
+	return other != 0 and other != point.brick and not assistant.scenery.has(other)
 
 
 ## Whether a part's studs are ones a set finishes: a plain brick's, plate's,
@@ -570,12 +620,14 @@ static func finished_kind(info: PartLibrary.PartInfo) -> bool:
 	return true
 
 
-## Whether all of a stud's square is part, a little under its top: a tile
-## laid on a wedge's corner stud would overhang the edge.
-func _whole_square(at: Vector3) -> bool:
+## Whether all of a stud's square is part, a little under its top, in its own
+## frame: a tile laid on a wedge's corner stud would overhang the edge.
+func _whole_square(point: OpenPoints.Point) -> bool:
 	var lattice: BrickLattice = assistant.builder.lattice
+	var turn: Basis = _read.frame_of(point.brick).basis if _read != null else Basis.IDENTITY
 	for corner: Vector2 in [Vector2(-6, -6), Vector2(6, -6), Vector2(-6, 6), Vector2(6, 6)]:
-		if lattice.brick_at(BrickLattice.to_cell(at + Vector3(corner.x, -3.0, corner.y))) == 0:
+		var under: Vector3 = point.at + turn * Vector3(corner.x, -3.0, corner.y)
+		if lattice.brick_at(BrickLattice.to_cell(under)) == 0:
 			return false
 	return true
 
@@ -1046,7 +1098,7 @@ func _bricks_over(cells: Dictionary, bottom: float, colour: int) -> Array:
 
 ## The open stud fields left, each at one height and joined stud to stud:
 ## tiles for each that is not a yard, the ground offered, small ones left.
-func _fields(tops: Dictionary, claimed: Dictionary) -> Array[Finding]:
+func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Array[Finding]:
 	var out: Array[Finding] = []
 	var seen: Dictionary = {}
 	var small: int = 0
@@ -1080,6 +1132,7 @@ func _fields(tops: Dictionary, claimed: Dictionary) -> Array[Finding]:
 			continue
 		var one := Finding.new()
 		one.kind = "studs"
+		one.section = section
 		one.cells = field
 		one.box = box
 		one.studs = field.size()
@@ -1087,15 +1140,15 @@ func _fields(tops: Dictionary, claimed: Dictionary) -> Array[Finding]:
 		var colours: Dictionary = {}
 		for key: Vector3i in field:
 			var top: Dictionary = tops[key]
-			free[Vector2i(key.x, key.z)] = [top["at"], int(top["colour"])]
+			free[Vector2i(key.x, key.z)] = [top["here"], int(top["colour"])]
 			colours[int(top["colour"])] = true
-		var y: float = ((tops[field[0]] as Dictionary)["at"] as Vector3).y
-		one.offered = _ground(box, model_box)
+		var y: float = ((tops[field[0]] as Dictionary)["here"] as Vector3).y
+		one.offered = section.is_empty() and _ground(box, model_box)
 		var accents: int = 0
 		if field.size() >= ACCENTS_FROM and not one.offered:
 			accents = 1 if field.size() < 40 else (2 if field.size() < 80 else 3)
 		var made: Array[int] = []
-		one.add = _tiles_over(free, y, accents, made, true)
+		one.add = _tiles_over(free, y, accents, made, true, TILES, section)
 		one.accents = made
 		if one.add.is_empty():
 			continue
@@ -1104,10 +1157,10 @@ func _fields(tops: Dictionary, claimed: Dictionary) -> Array[Finding]:
 			names.append(assistant._colour_name(code).to_lower())
 		var across: int = roundi(box.size.x / STUD)
 		var deep: int = roundi(box.size.z / STUD)
-		one.said = "%s, %d open stud%s in %s, %d x %d studs %s." % [
+		one.said = "%s, %d open stud%s in %s, %d x %d studs %s%s." % [
 			"the ground, a floor things will stand on" if one.offered else _what_top(box, model_box),
 			field.size(), "" if field.size() == 1 else "s", ", ".join(names), across, deep,
-			_where_said(box)]
+			_where_said(box), "" if section.is_empty() else ", in section '%s'" % section]
 		one.laid = _pieces_said(one)
 		out.append(one)
 	if small > 0:
@@ -1162,7 +1215,7 @@ static func _lived_on(box: AABB, living: Array) -> bool:
 ## over it first; their indexes in [param made]. Every tile is tested to fit
 ## and hold as it stands ([param test]).
 func _tiles_over(free: Dictionary, y: float, accents: int, made: Array[int],
-		test: bool, parts: Array = TILES) -> Array:
+		test: bool, parts: Array = TILES, section: String = "") -> Array:
 	var out: Array = []
 	if free.is_empty():
 		return out
@@ -1204,7 +1257,7 @@ func _tiles_over(free: Dictionary, y: float, accents: int, made: Array[int],
 			var foot: Vector2i = (assistant.library.parts[id] as PartLibrary.PartInfo).footprint_studs()
 			var rot: int = 0 if (foot.x >= foot.y) == bool(best[2]) else 1
 			var span: Array[Vector2i] = [best[0], best[1]]
-			var placed: Dictionary = _tile_at(id, span, free, y, colour, rot)
+			var placed: Dictionary = _tile_at(id, span, free, y, colour, rot, section)
 			if test and not _fits(placed, {}):
 				continue
 			free.erase(best[0])
@@ -1227,7 +1280,7 @@ func _tiles_over(free: Dictionary, y: float, accents: int, made: Array[int],
 					return free.has(one) and int(free[one][1]) == colour):
 				continue
 			var placed: Dictionary = _tile_at(str(option[0]), span, free, y, colour,
-				int(option[3]))
+				int(option[3]), section)
 			if test and not _fits(placed, {}):
 				continue
 			for one: Vector2i in span:
@@ -1238,13 +1291,17 @@ func _tiles_over(free: Dictionary, y: float, accents: int, made: Array[int],
 
 
 func _tile_at(id: String, span: Array[Vector2i], free: Dictionary, y: float, colour: int,
-		rot: int) -> Dictionary:
+		rot: int, section: String = "") -> Dictionary:
 	var low := Vector2(INF, INF)
 	for c: Vector2i in span:
 		var at: Vector3 = (free[c] as Array)[0]
 		low = Vector2(minf(low.x, at.x), minf(low.y, at.z))
-	return {"part": id, "color": colour, "x": snappedf(low.x / STUD - 0.5, 0.05),
-		"y": snappedf(y / PLATE, 0.25), "z": snappedf(low.y / STUD - 0.5, 0.05), "rot": rot}
+	var placed: Dictionary = {"part": id, "color": colour,
+		"x": snappedf(low.x / STUD - 0.5, 0.05), "y": snappedf(y / PLATE, 0.25),
+		"z": snappedf(low.y / STUD - 0.5, 0.05), "rot": rot}
+	if not section.is_empty():
+		placed["section"] = section
+	return placed
 
 
 ## Parts that cover a rectangle, by area and then squareness, each way round
@@ -1428,29 +1485,135 @@ func _wall_finding(region: Array) -> Finding:
 var _why_not: String = ""
 
 
-## Lay a finding through edit_model, checked like any edit, after checking
-## again that its studs are still open: something may stand on them now.
+## Lay every finding in one edit, checked once, after checking again that
+## each one's studs are still open. A check of a model with sections is most of
+## a minute: laid one finding at a time, a review of the starfighter took six,
+## past the three minutes a session's call may take. One at a time only when
+## the edit as a whole is refused, so one bad finding costs only itself.
+func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
+	var ready: Array[Finding] = []
+	_read = OpenPoints.read(assistant)
+	var points: Array = _points()
+	var now: Dictionary = {}
+	for one: Finding in these:
+		_why_not = _not_ready(one, now, points)
+		if _why_not.is_empty():
+			ready.append(one)
+		else:
+			_could_not(one)
+	var add: Array = []
+	var remove: Array[int] = []
+	for one: Finding in ready:
+		add.append_array(one.add)
+		remove.append_array(one.remove)
+	if ready.size() > 1:
+		var ids: Array[int] = await _edit(add, remove)
+		if not ids.is_empty():
+			_share_out(ready, ids)
+			return ready
+	var out: Array[Finding] = []
+	for one: Finding in ready:
+		if Time.get_ticks_msec() > until:
+			more += 1
+			continue
+		var ids: Array[int] = await _edit(one.add, one.remove)
+		if ids.is_empty():
+			_could_not(one)
+			continue
+		one.ids = ids
+		_boxed(one)
+		out.append(one)
+	return out
+
+
+## Lay one finding (ground offered, tiled when asked), checked open first.
 func _lay(one: Finding) -> bool:
-	_why_not = ""
-	if not one.cells.is_empty():
-		_read = OpenPoints.read(assistant)
-		var now: Dictionary = open_tops()
-		for key: Vector3i in one.cells:
-			if not now.has(key):
-				_why_not = "something stands on its studs now"
-				return false
-	for id: int in one.remove:
-		if assistant.world.get_brick(id) == null:
-			_why_not = "a brick it lays again has gone"
-			return false
+	_read = OpenPoints.read(assistant)
+	_why_not = _not_ready(one, {}, _points())
+	if not _why_not.is_empty():
+		return false
 	var ids: Array[int] = await _edit(one.add, one.remove)
 	if ids.is_empty():
 		return false
 	one.ids = ids
-	if one.kind != "wall":
-		one.box = one.box.merge(assistant._bounds_of(_bricks(ids))) if one.box.has_volume() \
-			else assistant._bounds_of(_bricks(ids))
+	_boxed(one)
 	return true
+
+
+## Why a finding cannot be laid now, or "": its studs must all still be open
+## (anything may stand on them since it was found) and what it lays again must
+## still stand. [param now] keeps each frame's open studs, read once.
+func _not_ready(one: Finding, now: Dictionary, points: Array) -> String:
+	if not one.cells.is_empty():
+		if not now.has(one.section):
+			now[one.section] = open_tops(one.section, points)
+		var open: Dictionary = now[one.section]
+		for key: Vector3i in one.cells:
+			if not open.has(key):
+				return "something stands on its studs now"
+	for id: int in one.remove:
+		if assistant.world.get_brick(id) == null:
+			return "a brick it lays again has gone"
+	return ""
+
+
+func _could_not(one: Finding) -> void:
+	left_alone.append("a %s at %s, which could not be laid as it stands: %s"
+		% [one.kind, _where_said(one.box), _why_not])
+
+
+## The box of what was laid, for the picture's mark.
+func _boxed(one: Finding) -> void:
+	if one.kind == "wall" or one.ids.is_empty():
+		return
+	var laid: AABB = assistant._bounds_of(_bricks(one.ids))
+	one.box = one.box.merge(laid) if one.box.has_volume() else laid
+
+
+## The bricks one edit laid, given back to the findings they were laid for:
+## by part, frame and place as the model reads them back, and anything left
+## over to the finding nearest it.
+func _share_out(ready: Array[Finding], ids: Array[int]) -> void:
+	var wanted: Dictionary = {}
+	for id: int in ids:
+		wanted[id] = true
+	var fresh: Dictionary = {}
+	for placement: Assistant.Placement in assistant._model_from_world().placements:
+		if wanted.has(placement.id):
+			var mark: String = _signature(placement.part, placement.section, placement.x,
+				placement.y, placement.z)
+			if not fresh.has(mark):
+				fresh[mark] = []
+			(fresh[mark] as Array).append(placement.id)
+	var left: Dictionary = wanted.duplicate()
+	for one: Finding in ready:
+		one.ids = []
+		for raw: Variant in one.add:
+			var placed: Dictionary = raw
+			var mark: String = _signature(str(placed["part"]), str(placed.get("section", "")),
+				float(placed["x"]), float(placed["y"]), float(placed["z"]))
+			var list: Array = fresh.get(mark, [])
+			if not list.is_empty():
+				var id: int = int(list.pop_front())
+				one.ids.append(id)
+				left.erase(id)
+	for raw: Variant in left.keys():
+		var brick: BrickWorld.Brick = assistant.world.get_brick(int(raw))
+		if brick == null:
+			continue
+		var nearest: Finding = ready[0]
+		for one: Finding in ready:
+			if one.box.get_center().distance_to(brick.transform.origin) \
+					< nearest.box.get_center().distance_to(brick.transform.origin):
+				nearest = one
+		nearest.ids.append(int(raw))
+	for one: Finding in ready:
+		_boxed(one)
+
+
+static func _signature(part: String, section: String, x: float, y: float, z: float) -> String:
+	return "%s|%s|%s|%s|%s" % [part, section, snappedf(x, 0.1), snappedf(y, 0.25),
+		snappedf(z, 0.1)]
 
 
 ## Take a finding's pieces off and put back what they replaced.

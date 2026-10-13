@@ -1458,9 +1458,12 @@ fixing what it got wrong.
   the beak, save handing back the beak. Needs the index; SKIP without.
   The surface pass, before the creative pass (`src/ai/surface_pass.gd`,
   `SurfacePass`, 2026-10-13): the app reads the model's open up-facing studs
-  exactly (OpenPoints: nothing on the stud, nothing of the model over it to
-  the top, on a plain brick, plate, slope, wedge, wing or baseplate, its whole
-  square part) and finds three things — `studs`, a field of four or more
+  exactly (OpenPoints: nothing on the stud, nothing within a brick over it,
+  and seen — clear to the top, or open to the outside on two sides, as a
+  lower wing under the upper one is; on a plain brick, plate, slope, wedge,
+  wing or baseplate, its whole square part; in the main body and in each
+  section's own frame, so a wing laid at an angle is tiled in it) and finds
+  three things — `studs`, a field of four or more
   joined at one height, tiled in the colour under it, largest real sizes
   first (`TILES`, only sizes made in that colour) with one to three textured
   tiles (`ACCENTS`: grille 2412b, ingot 96910, jumper 15573) on a field of
@@ -1476,8 +1479,12 @@ fixing what it got wrong.
   in its box. Left alone, and said: a Brick Art mosaic, a field a figure,
   animal or plant stands among (a yard), fewer than four studs, anywhere the
   design kept or rejected; the ground (a plate or two up, spanning most of
-  the model) is offered as G1, laid only on "tile". Each finding is laid
-  through edit_model after its studs are checked open again, and the design
+  the model) is offered as G1, laid only on "tile". The findings are laid
+  in one edit_model (one check: a check of the starfighter is most of a
+  minute, and one at a time a review took six, past the relay's three) after
+  their studs are checked open again, one at a time only if that is refused
+  and for at most `LAYING_MS`; the bricks are given back to each finding by
+  part and place (`_share_out`), and the design
   gets one corner picture with each marked S1, S2 ...; `settle_surface`
   accepts (`plain`, `recolor` to adjust), rejects or keeps with a reason
   (pieces off, what they replaced put back, the zone never proposed again).

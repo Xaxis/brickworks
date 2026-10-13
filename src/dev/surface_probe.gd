@@ -155,6 +155,19 @@ func _run() -> void:
 	_ok(stairs.verdict == "kept" and _brick_at("3001", 3) != 0 and _brick_at("3001", 6) != 0,
 		"kept: the step bricks are back as they were: %s" % kept.get_slice("\n", 0))
 
+	print("\na wing laid at an angle is tiled in its own frame")
+	await _build_with("wing", _wing(), [{"name": "wing", "x": 0, "y": 3, "z": 0,
+		"axis": "z", "degrees": 15, "hinge": true}])
+	var wing_plate: int = _brick_of("3020")
+	var wing_open: int = _open_on(wing_plate)
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 500).replace("\n", "\n    "))
+	var tilted: SurfacePass.Finding = _finding("studs")
+	_ok(wing_open == 8 and tilted != null and tilted.section == "wing",
+		"the wing's %d open studs are found, in its section" % wing_open)
+	_ok(_open_on(wing_plate) == 0 and tilted != null and not tilted.ids.is_empty(),
+		"...and tiled in it: %d left open" % _open_on(wing_plate))
+
 	print("\na yard a minifigure stands on keeps its studs")
 	await _build("yard", _yard())
 	var yard: int = _brick_of("41539")
@@ -291,13 +304,26 @@ func _ground() -> Array:
 # -- helpers -------------------------------------------------------------------
 
 
+## A 1 x 2 brick and, hinged on it, a 2 x 4 plate: a wing.
+func _wing() -> Array:
+	return [{"part": "3004", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 1},
+		{"part": "3020", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 0, "section": "wing"}]
+
+
 ## A design from outside, on a bare baseplate.
 func _build(name: String, bricks: Array) -> void:
+	await _build_with(name, bricks, [])
+
+
+func _build_with(name: String, bricks: Array, sections: Array) -> void:
 	assistant._busy = false
 	world.clear()
 	builder.lattice.clear()
-	var built: Variant = await assistant.use_tool("submit_design", {"name": name,
-		"description": "a fixture", "bricks": bricks, "features": []})
+	var args: Dictionary = {"name": name, "description": "a fixture", "bricks": bricks,
+		"features": []}
+	if not sections.is_empty():
+		args["sections"] = sections
+	var built: Variant = await assistant.use_tool("submit_design", args)
 	if not str(built).begins_with("Built"):
 		print("    could not build the %s: %s" % [name, str(built).substr(0, 300)])
 
@@ -329,7 +355,8 @@ func _open_points() -> Array:
 		ids.append(brick.id)
 	var out: Array = []
 	for point: OpenPoints.Point in OpenPoints.read(assistant).points_of(ids):
-		if point.kind == "stud" and point.by == 0 and point.way.dot(Vector3.UP) > 0.99:
+		# Up, or up in a section tipped a little (a wing).
+		if point.kind == "stud" and point.by == 0 and point.way.dot(Vector3.UP) > 0.9:
 			out.append(point)
 	return out
 
