@@ -13,6 +13,12 @@
 ## piece can be found by, weighted by field, the query's words stemmed
 ## alike, with pieces from sets about the query's subject first. Change
 ## one, change the other: src/dev/snippets_probe.gd checks they agree.
+##
+## The desktop reads the index from its own files. The web build does not
+## carry it — 3.6 MB in the pack every visitor waits for, for the few who
+## design — so ensure() fetches it from beside the build (knowledge/,
+## which tools/export.sh web writes and deploy.sh serves under /b/<sha>/)
+## the first time a design asks, and keeps it for the visit.
 class_name RealSnippets
 extends RefCounted
 
@@ -22,6 +28,10 @@ const B := 0.75
 ## A piece that lays as it stands counts this much more (src/dev/
 ## snippet_verdicts.gd checked each alone).
 const LAYS := 1.25
+## A word naming the subject ("bird" in "bird beak") counts this much in a
+## piece's score: it has put the subject's sets first already, and within
+## them the feature asked for should decide.
+const SUBJECT_WEIGHT := 0.3
 
 const FILLER := ["the", "a", "an", "of", "and", "with", "for", "in", "on", "to",
 	"at", "by", "set", "model", "main", "mpd", "ldr", "dat", "sub", "submodel",
@@ -37,31 +47,52 @@ const IRREGULAR := {"feet": "foot", "teeth": "tooth", "leaves": "leaf",
 
 static var _document: Dictionary = {}
 static var _tried: bool = false
+static var _fetching: bool = false
 ## Stemmed word -> the subjects it names, from the index's own table.
 static var _subject_of: Dictionary = {}
 static var _by_id: Dictionary = {}
 
 
-## The index, read the first time anything asks. Empty when this build
-## has none.
+## The index, read from this build's own files the first time anything
+## asks. Empty when it has none — which on the web is until ensure() has
+## fetched it.
 static func document() -> Dictionary:
-	if not _tried:
+	if not _tried and (not OS.has_feature("web") or FileAccess.file_exists(INDEX)):
 		_tried = true
-		_document = read(INDEX)
-		_subject_of.clear()
-		_by_id.clear()
-		var subjects: Dictionary = _document.get("subjects", {})
-		for subject: String in subjects:
-			for word: Variant in [subject] + (subjects[subject] as Array):
-				for said: String in words(str(word)):
-					if not _subject_of.has(said):
-						_subject_of[said] = []
-					if not (_subject_of[said] as Array).has(subject):
-						(_subject_of[said] as Array).append(subject)
-		for raw: Variant in _document.get("entries", []):
-			var entry: Dictionary = raw
-			_by_id[str(entry["id"])] = entry
+		_take(read(INDEX))
 	return _document
+
+
+## The index, wherever this build keeps it: its own files, or on the web
+## fetched from beside the build. True when there is one. Awaited.
+static func ensure(host: Node) -> bool:
+	if not _tried and OS.has_feature("web") and not FileAccess.file_exists(INDEX):
+		while _fetching:
+			await host.get_tree().process_frame
+		if not _tried:
+			_fetching = true
+			_take(parse(await fetch(host, INDEX.get_file())))
+			_tried = true
+			_fetching = false
+	return available()
+
+
+## Lookups by subject word and by id, made once from a fresh index.
+static func _take(read_in: Dictionary) -> void:
+	_document = read_in
+	_subject_of.clear()
+	_by_id.clear()
+	var subjects: Dictionary = _document.get("subjects", {})
+	for subject: String in subjects:
+		for word: Variant in [subject] + (subjects[subject] as Array):
+			for said: String in words(str(word)):
+				if not _subject_of.has(said):
+					_subject_of[said] = []
+				if not (_subject_of[said] as Array).has(subject):
+					(_subject_of[said] as Array).append(subject)
+	for raw: Variant in _document.get("entries", []):
+		var entry: Dictionary = raw
+		_by_id[str(entry["id"])] = entry
 
 
 static func available() -> bool:
@@ -72,11 +103,36 @@ static func available() -> bool:
 static func read(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
-	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
-	if path.ends_with(".gz"):
+	return parse(FileAccess.get_file_as_bytes(path))
+
+
+## A file's bytes as the index, gzipped or not: told by its first two
+## bytes, because a server may unzip a .gz on the way (Content-Encoding)
+## or may not.
+static func parse(bytes: PackedByteArray) -> Dictionary:
+	if bytes.size() > 2 and bytes[0] == 0x1f and bytes[1] == 0x8b:
 		bytes = bytes.decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP)
+	if bytes.is_empty():
+		return {}
 	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
 	return parsed if parsed is Dictionary else {}
+
+
+## A file from beside the web build, or nothing.
+static func fetch(host: Node, file_name: String) -> PackedByteArray:
+	var http := HTTPRequest.new()
+	http.timeout = 60.0
+	host.add_child(http)
+	if http.request(Origin.build() + "knowledge/" + file_name) != OK:
+		http.queue_free()
+		return PackedByteArray()
+	var result: Array = await http.request_completed
+	http.queue_free()
+	if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
+		push_warning("real-set index: knowledge/%s did not arrive (%d, %d)"
+			% [file_name, int(result[0]), int(result[1])])
+		return PackedByteArray()
+	return result[3]
 
 
 static func stem(word: String) -> String:
@@ -119,7 +175,7 @@ static func query_words(query: String) -> Dictionary:
 	var found: PackedStringArray = words(query)
 	var out: Dictionary = {}
 	for word: String in found:
-		out[word] = float(out.get(word, 0.0)) + 1.0
+		out[word] = float(out.get(word, 0.0)) + (SUBJECT_WEIGHT if _subject_of.has(word) else 1.0)
 	for n: int in range(found.size() - 1):
 		if idf.has(found[n] + found[n + 1]):
 			out[found[n] + found[n + 1]] = float(out.get(found[n] + found[n + 1], 0.0)) + 2.0
@@ -236,10 +292,18 @@ static var _looks_tried: bool = false
 
 
 static func looks() -> Dictionary:
-	if not _looks_tried:
+	if not _looks_tried and (not OS.has_feature("web") or FileAccess.file_exists(LOOKS)):
 		_looks_tried = true
 		_looks = read(LOOKS)
 	return _looks
+
+
+## The same, fetched from beside the web build the first time. Awaited.
+static func ensure_looks(host: Node) -> bool:
+	if not _looks_tried and OS.has_feature("web") and not FileAccess.file_exists(LOOKS):
+		_looks_tried = true
+		_looks = parse(await fetch(host, LOOKS.get_file()))
+	return not looks().get("families", []).is_empty()
 
 
 ## The families whose look matches the query best, best first.

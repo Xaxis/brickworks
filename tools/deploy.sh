@@ -65,8 +65,17 @@ mkdir -p ".vercel/output/static/b/$sha"
 # The .br and .gz siblings are for a server that negotiates; Vercel does its own.
 for f in "$dir"/*; do
   case "$f" in *.br|*.gz|*/build.json) continue ;; esac
+  [ -d "$f" ] && continue           # knowledge/, copied below
   cp "$f" ".vercel/output/static/b/$sha/"
 done
+# The real-set index beside the build (export.sh web), fetched by the app
+# the first time a design asks for a technique; under /b/<sha>/, so cached
+# forever like the rest of the build.
+if [ ! -f "$dir/knowledge/snippets.json.gz" ] || [ ! -f "$dir/knowledge/part_looks.json" ]; then
+  echo "deploy FAILED: no knowledge/ beside the build in $dir (tools/export.sh web)"; exit 1
+fi
+mkdir -p ".vercel/output/static/b/$sha/knowledge"
+cp "$dir"/knowledge/* ".vercel/output/static/b/$sha/knowledge/"
 # What this build is and when it went out, read by the app's Help panel.
 # The owner, looking at the live site, could not tell when it had last
 # been deployed.

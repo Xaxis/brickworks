@@ -1701,7 +1701,8 @@ inventories, 768,000 placed in the files. 59 files are free for
 non-commercial use only and are left out of everything built from them.
 
 **The index**, `tools/snippets.py build` -> `assets/knowledge/snippets.json.gz`
-(2.3 MB, shipped in every export): **9,555 named sub-models of 2-60
+(3.6 MB with its descriptions; the desktop builds carry it, the web build fetches it from beside
+itself the first time a design asks): **9,555 named sub-models of 2-60
 building parts and 3,412 clusters of craft** (three a model, round
 brackets, hinges and slopes, `omr.found_clusters`), from 1,185 sets by 76
 modellers, every one credited, CC BY 2.0 and 4.0 only. Each with its size
@@ -1711,8 +1712,40 @@ by `place_technique`, the rest are shown to copy. Search is lexical, BM25
 over the name, what it sits in, a description, synonyms and kinds, and
 the set; the subject's own sets first, then sets about its kind. No
 vector database: whether embeddings would earn a place is what the recall
-below is for. The app reads the index in 2.6 s the first time a design
+below is for. The app reads the index in 2.5 s the first time a design
 asks (desktop).
+
+**Recall, ten queries written down before the index existed**: did the
+top five hold something an expert would use? Judged on the pictures
+(`tools/snippets.py search`, thumbnails from `src/dev/snippet_thumbs.gd`),
+first on names alone, then with Claude's descriptions of all but 13 of
+the 12,967 pieces (360 sheets of 36, Sonnet on the subscription, ~21 s a
+sheet, six at a time):
+
+| query | names only | with descriptions |
+|---|---|---|
+| owl eye | yes: 4349's eye (white ring, black stud) | yes: a puppy's and Venom's eyes, Batmobile "eyes"; no owl |
+| car nose | yes: Fire Rescue's, Changing Seasons' and the Fiat 500's fronts | yes, better: an F1 nose cone, a grille on a bracket, a headlamp cowl |
+| dragon wing | partly: 31031's parrot wings, plane wings | partly: Minecraft's ender dragon, a dragon-dance head, the parrot wings |
+| castle turret roof | yes: Tower Bridge's hinged panels, Hogwarts roofs | yes: and Tower Bridge's coned pinnacle |
+| bird beak | yes: 31031's parrot beak first | yes: a parrot's head with its beak, 31031's beak, small birds |
+| spaceship engine | yes: twin exhausts, a trans-orange glow | yes: and an engine pod with trans-red cones |
+| wheel arch | no: Technic arches and mudguards | yes: 4404's curved arch, "wheel arch mudguard" |
+| animal tail | yes: a fish's, two parrots' | yes: and a shark's tail fin |
+| tree canopy | yes: three trees | yes: a treetop of staggered leaf plates first |
+| locomotive front | yes: two diesel noses | yes: a nose with a grille, a steam boiler front |
+
+**Eight of ten on names, nine with descriptions**; the one left partial
+is the corpus, not the words: the repository has no dragon and no owl
+set. Descriptions fixed the one vocabulary miss (nobody names a wheel
+arch "wheel arch"; Claude, looking at it, did) and lifted car nose and
+owl eye from near misses to the thing. So **embeddings would not earn
+their place yet**: what is left is pieces the repository does not have.
+One ranking fix came out of reading them: once descriptions said "bird"
+of every small bird, "bird beak" put whole birds above the parrot's beak.
+A word naming the subject now counts 0.3 in a piece's score
+(`SUBJECT_WEIGHT`): it has already put the subject's sets first, and
+within them the feature asked for decides.
 
 **The tools.** `find_techniques(query, max_studs?, kinds?)` answers with
 the best five, credited, with a picture of them side by side;
@@ -1733,6 +1766,19 @@ positives (a curved slope seated on the stud of a part below, clips on
 bars), which refuse 31031's parrot beak. The verdict is in the index:
 search counts a piece that lays 1.25 times, and `find_techniques` says
 of each whether it lays or why not.
+
+**A design on the subscription**, "A barn owl as a detailed LEGO display
+model" (`shots/runs/owl_kn_*.png`, 204 s, 1,074 parts, one piece): it read
+as a barn owl — white heart-shaped face, nougat back and crown, black
+eyes, a tan beak, grey-washed wings, on a log post over a display base
+with rocks and a nameplate. It called `find_techniques` once, before
+building, and `find_parts_like` once, for the face; it placed nothing
+from the index, and there was no owl set to find. Measured against
+real sets since 2010: 70% plain (HIGH), 6.2% curves and 0% angled (LOW),
+45 shapes and 7 colours (LOW), 22% sideways, 88% symmetric. The index
+did not change how this design was built; the next lever is making the
+detail pass reach for a piece per feature, and a corpus with animals in
+it (the repository has 76 BrickHeadz but no Creator owl).
 
 
 ## Long term: custom elements

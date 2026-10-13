@@ -5,7 +5,7 @@
 #   (render the thumbnails: src/dev/snippet_thumbs.gd)
 #   tools/snippets.py batches --out DIR          sheets of pictures and part lists
 #   tools/describe_snippets.sh DIR [PARALLEL]    one Claude Code session a batch
-#   tools/snippets.py texts DIR                  into assets/knowledge/snippet_texts.jsonl
+#   tools/snippets.py texts DIR                  into assets/knowledge/snippet_texts.jsonl.gz
 #   tools/snippets.py build                      again, with the descriptions in
 #
 # The same for families of parts, which have no picture: tools/part_looks.py

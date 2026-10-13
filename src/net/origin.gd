@@ -31,3 +31,14 @@ static func here() -> String:
 	if value == null:
 		return ""
 	return str(value).rstrip("/")
+
+
+## The page's own directory, "https://brickworks.diy/b/<sha>/", where
+## files that ship beside a build are (export.sh web puts the real-set
+## index in knowledge/ there); empty on the desktop. Not the root: these
+## are this build's, and the /b/ path is what lets them be cached forever.
+static func build() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var value: Variant = JavaScriptBridge.eval("new URL('.', location.href).href", true)
+	return "" if value == null else str(value)

@@ -1211,8 +1211,8 @@ fixing what it got wrong.
   Bonnet, Grille, Wing, Tower Roof...) and three clusters of craft a model
   (`omr.found_clusters`), built by `tools/snippets.py build` from `vendor/omr/files`
   (`tools/omr.py fetch --themes all --min-parts 30`: every theme but `UNSCULPTED`)
-  into `assets/knowledge/snippets.json.gz`, which ships (`export_presets.cfg`
-  includes `assets/knowledge/*`). Each piece: set, modeller and licence (CC BY;
+  into `assets/knowledge/snippets.json.gz`, which the desktop exports carry and
+  the web build fetches from beside itself on first use (`web.md`). Each piece: set, modeller and licence (CC BY;
   non-commercial and share-alike files left out), part count, size in studs,
   parts and colours, kinds by `tools/style.py` (sideways, curved, hinged...), the
   LDraw lines to place it as built, and `text`: a line written by Claude from its
@@ -1220,12 +1220,18 @@ fixing what it got wrong.
   into `vendor/omr/thumbs/`, `tools/snippets.py batches` makes numbered sheets,
   `tools/describe_snippets.sh` runs Claude Code on the subscription — no
   `ANTHROPIC_API_KEY`, Read only, one `heavy` slot — and `tools/snippets.py
-  texts` keeps the answers in `assets/knowledge/snippet_texts.jsonl`). Search is
+  texts` keeps the answers in `assets/knowledge/snippet_texts.jsonl.gz`). Search is
   BM25 over fields (name x3, what it sits in, text x1.5, synonyms and kinds, the
   set x0.7), stemmed alike in Python and GDScript ("EyeL", "eyes" are eye; a
   Y-wing is not a wing; "wheel arch" also asks for "wheelarch"); pieces from sets
   about the query's subject come first, then sets about its kind (`SUBJECTS`: an
-  owl, then birds and animals), at most two a set. `find_techniques` answers with
+  owl, then birds and animals), at most two a set; the subject word itself counts
+  0.3 in the score (`SUBJECT_WEIGHT`), so within the subject's sets the feature
+  decides ("bird beak": a parrot's beak before whole birds). 12,954 of 12,967
+  pieces are described (360 sheets, Sonnet on the subscription, ~21 s a sheet).
+  Recall on ten queries written beforehand (`docs/ROADMAP.md`): 8 of 10 with
+  something an expert would use on names alone, 9 with descriptions; the miss
+  left is the corpus (no owl or dragon set). `find_techniques` answers with
   the best five, each credited, and one picture of them side by side
   (`_snippet_picture`, headless: text only). `place_technique` reads the piece
   with the app's own LDraw reader, turns it by quarter turns, moves its low

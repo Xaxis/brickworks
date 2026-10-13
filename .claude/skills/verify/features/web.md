@@ -299,6 +299,22 @@ plan with Claude as the client.
   and takes them again on every rebuild, so each one writes a new buffer. Run
   it against a local export the way `freeze check` does (`relay_server.mjs
   --static`) or a preview (`--bypass`); pictures in `--out`.
+- `the real-set index beside the build`: the index `find_techniques` searches
+  (`assets/knowledge/snippets.json.gz`, 3.6 MB with its descriptions) and the part looks
+  (`part_looks.json`) are not in the web pack: `export_presets.cfg` keeps
+  `assets/knowledge/*` out of both web presets, `tools/export.sh web` copies
+  them to `build/web/knowledge/`, and `deploy.sh` serves them at
+  `/b/<sha>/knowledge/` (immutable like the rest of the build; it refuses to
+  deploy a build without them). `RealSnippets.ensure()` fetches the index from
+  `Origin.build()` + `knowledge/` the first time a design asks, once a visit;
+  the desktop reads its own files. `tools/web/knowledge_check.mjs` proves it in
+  a fresh page: nothing under `knowledge/` is asked for while the app arrives,
+  idles and connects Claude; then `find_techniques` fetches the index once and
+  answers with credited pieces and a picture, `place_technique` lays one on a
+  plate without fetching again, and `find_parts_like` fetches the looks.
+  Measured 2026-10-12 on a local export in SwiftShader: nothing asked for in
+  arrival, 8 s idle or connecting; the first `find_techniques` 21.9 s, fetching
+  3.7 MB once, reading it and drawing five pieces in software.
 - `arrival check`: `tools/web/arrival_check.mjs` times what the owner meant by
   "the rendering after Claude reports being done is EXTREMELY SLOW": from
   submit_design's answer to the last brick drawn. It plays Claude over the
@@ -426,6 +442,7 @@ Static: `for f in api/*.js; do node --check $f; done`.
 Runtime — safe to run against production:
 
 ```sh
+node tools/web/knowledge_check.mjs --dir=build/web   # the real-set index stays out of arrival and comes when asked (.env sourced)
 curl -s https://brickworks.diy/api/account | python3 -m json.tool
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brickworks.diy/api/account
 curl -s -w ' %{http_code}\n' -X POST 'https://brickworks.diy/api/mcp?t=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&i=checking1&op=hello' \
