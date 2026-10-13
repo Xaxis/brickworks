@@ -77,6 +77,40 @@ fixing what it got wrong.
   865 s. Nothing outside the room changed: the saved file differs from
   `models/orthanc.ldr` in those 16 lines alone. The spikes are small; the
   part was the hard thing, not the room.
+  So the selection now says where a part can go, and a refusal says where
+  instead (`OpenPoints`, `src/ai/open_points.gd`, the check's own rules
+  asked of one part against the live lattice). `selection` gives each part
+  as edit_model reads it, `section='turned 25 2'` and that section's own
+  studs and plates for a part laid turned (it gave world corners, which no
+  edit could write back), names the sections, and counts the open points by
+  the way they face. `where_to_attach` lists every open stud, anti-stud,
+  side stud, pin hole, bar and clip of the selection, free or taken, grouped
+  by heading, with a picture of the room with the free ones numbered in cyan
+  (`ShotRuler.marks`); with `part=` it seats that part on them, each tried
+  with the ones before it standing, and gives placements that fit, hold and
+  keep to the room, to paste into edit_selection as they are (`toward=out`
+  puts outward-facing points first, `near=` those nearest a place). A
+  refused edit says, part by part, what each new part runs into or why
+  nothing holds it, and the nearest place it fits and holds (a plate up, half
+  a stud along; else the nearest free stud of the room it seats on), as a
+  placement (`Assistant._what_would_fit`). `check_only=true` tries a change
+  without making it. Other copies of the sub-assembly the change was made in
+  follow it in the same undo step (`Assemblies.copies_follow`,
+  `Assistant.assemblies`). New parts now really go into the selection's
+  sub-assembly: `Builder.set_path` called by the class's name reached
+  Resource's own one-argument set_path and failed. `selection_fit_probe`.
+  Measured on the subscription (2026-10-13, Opus 5.5 through Claude Code,
+  the same three requests on the code before and after, both with the short
+  guidance head): Orthanc's west horn, "more jagged and menacing: two or
+  three smaller spikes", had 12 edits refused before the first landed at
+  507 s (542 s in all) before, and 2 after (one a check_only try, one
+  reaching outside the room), landing at 277 s (283 s in all): three 1 x 3
+  plates set into the blade, each with a tooth plate standing out past the
+  edge. The car's bonnet ("sleeker, curved") and a castle wall ("weathering")
+  were easy either way: 0 and 0 refused, 53 s and 52 s for the bonnet; 0 and
+  1 for the wall (that one landed on the next try, 6 s later), 105 s and
+  116 s. The spikes are still small: landing first time did not make Claude
+  bolder by itself.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -1480,6 +1514,8 @@ godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
+godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow
+xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/selection_fit_probe.gd   # ...and the numbered picture: shots/selection_fit/points.png
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go
 godot --headless --path . --script src/dev/scanner_probe.gd     # half-written arguments yield whole bricks
 godot --headless --path . --script src/dev/reader_probe.gd      # the reassembled answer matches what was sent

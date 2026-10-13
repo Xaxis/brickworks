@@ -2463,7 +2463,7 @@
     "name": "selection"
   },
   {
-    "description": "Change the selected parts as edit_model does \u2014 take off, paint, move, put down \u2014 keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
+    "description": "Change the selected parts as edit_model does \u2014 take off, paint, move, put down \u2014 keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing, and the refusal says, part by part, what each ran into or why nothing holds it, and the nearest place it fits and holds. check_only=true tries a change without making it. Other copies of the sub-assembly follow the change. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2563,6 +2563,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "check_only": {
+          "description": "try the change without making it: says whether it would be applied, or why not and the nearest place each refused part fits and holds",
+          "type": "boolean"
         },
         "move": {
           "items": {
@@ -2770,5 +2774,87 @@
       "type": "object"
     },
     "name": "edit_selection"
+  },
+  {
+    "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"touches\" and more. Read \"shapes\" before saying a shape.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "description": "work, rules, shapes, subject, real, colour, angle, coordinates, sideways, pins, big, look, good, beautiful, touches, changing, kind or art",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section"
+      ],
+      "type": "object"
+    },
+    "name": "read_guide"
+  },
+  {
+    "description": "Where the selected parts can take another part: every open stud, anti-stud (the hollow underneath that takes a stud), side stud, pin hole, bar and clip, grouped by the way it faces, each with the part that carries it and where it is in the coordinates edit_selection takes (a section's own, for parts laid turned), and a picture with the free ones numbered. Give part= (and color=) and it seats that part on them and tries each against the model as it stands: what comes back fits and holds, to put in edit_selection's add as it is. toward= puts first the points facing that way (out: away from the model's middle, for spikes or detail on an outer face); near= {x, y, z} those nearest a place.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "its LDraw colour; the colour of the part it goes on when omitted",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "stud",
+            "anti-stud",
+            "pin hole",
+            "axle hole",
+            "pin",
+            "axle",
+            "bar",
+            "clip",
+            "ball",
+            "socket"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "description": "how many placements of part to give; 8 when omitted",
+          "type": "integer"
+        },
+        "near": {
+          "description": "studs and plates",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "part": {
+          "description": "a part to seat on the open points, e.g. 49668",
+          "type": "string"
+        },
+        "toward": {
+          "enum": [
+            "any",
+            "out",
+            "up",
+            "down",
+            "+x",
+            "-x",
+            "+z",
+            "-z"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "where_to_attach"
   }
 ]

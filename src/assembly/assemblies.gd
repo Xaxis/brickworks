@@ -505,7 +505,21 @@ func after_edit() -> int:
 	if step.is_empty() or is_same(step, _seen):
 		return 0
 	_seen = step
-	var touched: Dictionary = builder.touched_groups(step)
+	var followed: Array = copies_follow(builder.touched_groups(step))
+	var steps: Array = followed[0]
+	if not steps.is_empty():
+		builder.extend_last(steps)
+		changed.emit()
+	return int(followed[1])
+
+
+## Every other copy of the assemblies at [param touched] (paths, and
+## what they are in) built again from the one that changed. Returns
+## [history steps, copies rebuilt]; the caller keeps the steps with the
+## change that caused them, so one undo takes back both. Claude's change
+## to a selection gathers into a step of its own (Assistant.focus), which
+## after_edit, looking once at the newest step, would not see again.
+func copies_follow(touched: Dictionary) -> Array:
 	var paths_touched: Dictionary = {}
 	for group: String in touched:
 		var path: String = ""
@@ -534,10 +548,7 @@ func after_edit() -> int:
 			steps.append_array(realize(path, other, fit["at"], bool(fit["mirrored"])))
 			rebuilt += 1
 	_syncing = false
-	if not steps.is_empty():
-		builder.extend_last(steps)
-		changed.emit()
-	return rebuilt
+	return [steps, rebuilt]
 
 
 ## The parts of an assembly and everything inside it: part, colour, where,
