@@ -1,17 +1,21 @@
-## The left-hand column: the parts bin, and under it the model tree and the
-## properties of what is selected — everything for building by hand in one
-## column, as Studio keeps its palettes down the left, with the model's
-## structure over the selection's properties as Blender stacks its outliner
-## over its properties. The assistant has the right-hand column to itself.
+## The left-hand column: the parts bin, and under it the model tree, the
+## properties of what is selected and the colours — everything for building
+## by hand in one column, as Studio keeps its palettes down the left with
+## the colours at the foot, and the model's structure over the selection's
+## properties as Blender stacks its outliner over its properties. The
+## assistant has the right-hand column to itself.
 ##
 ## The tree and the properties floated over the model's top corners, where
 ## a click meant for a part landed on a panel, and in a window 1100 across
 ## they left no room to build. Docked here, the model has the middle.
 ##
-## Each section but the bin folds to its header (a click on its name). The
-## bar between two sections drags the height of the one that is not the
-## bin; the bin has whatever is left. The heights are remembered
-## (ShellPrefs), as the folds are.
+## The tree and the properties fold to their header (a click on its name),
+## and the properties fold themselves while nothing is selected. The bar
+## between two sections drags the height of the one that is not the bin;
+## the bin has whatever is left, so its parts grid takes the room. The
+## colours are as tall as the column says (PartsBin._fit_palette), never
+## as anything else does. The heights are remembered (ShellPrefs), as the
+## folds are.
 class_name PanelStack
 extends Container
 
@@ -44,6 +48,8 @@ func add_section(section: Control, kept_as: String = "") -> void:
 	add_child(section)
 	if section.has_signal("toggled"):
 		section.connect("toggled", func(_open: bool) -> void: queue_sort())
+	if section.has_signal("idled"):
+		section.connect("idled", func(_idle: bool) -> void: queue_sort())
 	_rebuild_bars()
 	queue_sort()
 
@@ -70,6 +76,12 @@ static func _is_open(section: Control) -> bool:
 	if not section.visible:
 		return false
 	return bool(section.call("is_open")) if section.has_method("is_open") else true
+
+
+## Open with nothing to show — the properties with nothing selected — and
+## so as tall as its header, the room going to the section that fills.
+static func _is_idle(section: Control) -> bool:
+	return section.has_method("is_idle") and bool(section.call("is_idle"))
 
 
 func _rebuild_bars() -> void:
@@ -102,9 +114,13 @@ func _resized_by(n: int, filler: Control) -> Control:
 	return _sections[n + 1] if at >= 0 and at <= n else _sections[n]
 
 
+## Only over a section a drag can size: one kept under a name, open, and
+## with something in it. A bar over the colours, whose height is the
+## column's to say, would take a drag and do nothing.
 func _shows_bar(n: int, filler: Control) -> bool:
 	var section: Control = _resized_by(n, filler)
-	return section != filler and _is_open(section)
+	return section != filler and _is_open(section) and not _is_idle(section) \
+		and not str(_kept_as[section]).is_empty()
 
 
 ## How tall each section is, top to bottom, in the room there is.
@@ -119,12 +135,13 @@ func heights(room: float) -> Array[float]:
 		least.append(floor_of)
 		if not section.visible:
 			out.append(0.0)
-		elif not _is_open(section) or section == filler:
+		elif not _is_open(section) or section == filler or _is_idle(section):
 			out.append(floor_of)
 		else:
-			# Its own height, whatever it shows: a section that grew with
+			# Its own height, whatever it shows. A section that grew with
 			# the selection moved everything under the parts bin, the
-			# colours a click was aimed at among them.
+			# colours a click was aimed at among them: the colours are the
+			# foot of the column now, under everything that changes.
 			out.append(maxf(float(_wanted.get(section, floor_of)), floor_of))
 		if n < _sections.size() - 1 and _shows_bar(n, filler):
 			bars += BAR

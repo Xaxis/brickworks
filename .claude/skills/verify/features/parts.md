@@ -61,10 +61,13 @@ geometry in front of them.
   what goes down next. `handbuild_probe` clicks one. The bracket keys and the
   eyedropper go through `_on_colour` without painting, which opens the long
   palette for a colour the short one does not show. The mosaic keeps its own 44 (`Mosaic.PALETTE`). The palette
-  is as tall as what it holds, up to 30% of the panel (`_fit_palette`): a
-  fixed 168 cut the last group's title in half at the foot of the first
-  screen. On a short panel it gives way first, to two rows of colours, and
-  the categories to one row: on a phone held sideways the parts list had
+  is a section of its own at the foot of the left-hand column
+  (`PartsBin.colours`, under the model tree and the properties), as tall as
+  what it holds up to 14% of the column and a scroll beyond
+  (`_fit_palette`): a fixed 168 cut the last group's title in half, and sized
+  by the bin it sat in, the parts grid had room for two rows at 1440 x 900.
+  Nothing but the window's height changes it. In a column under 700 units
+  the categories take one row: on a phone held sideways the parts list had
   been a sliver with no part in it. Otherwise the category buttons show two
   whole rows and a scroll bar, not the top of a third.
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the

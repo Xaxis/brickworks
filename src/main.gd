@@ -1682,7 +1682,7 @@ func _build_ui() -> void:
 	_bin_dock = SideDock.new()
 	_bin_dock.title = "Parts"
 	_bin_dock.icon = "parts"
-	_bin_dock.holds = "the parts bin, the model tree and the properties"
+	_bin_dock.holds = "the parts bin, the model tree, the properties and the colours"
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, 336.0)
 	layout.add_child(_bin_dock)
 
@@ -2093,6 +2093,10 @@ func _build_ui() -> void:
 	_shell.app = self
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	# The colours at the foot of the column, under the model tree and the
+	# properties: what those do moves the parts grid's foot, never them.
+	_stack.add_section(_bin.colours)
+	_bin.column = _stack
 	_counts = _shell.status.counts
 
 	# The ruler, and what it says, under the counts.

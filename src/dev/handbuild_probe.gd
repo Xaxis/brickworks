@@ -1470,6 +1470,7 @@ func _first_timer() -> void:
 	await _undo_says_what()
 	await _right_click_a_part()
 	await _drag_from_the_bin()
+	await _the_grid_has_room()
 	await _an_untouched_example()
 
 
@@ -1757,6 +1758,66 @@ func _undo_says_what() -> void:
 	shell.run("undo")
 	said = str(shell.status.fields()["message"])
 	_check("...and so does Edit, Undo (%s)" % said, said.begins_with("undid: "))
+
+
+## The parts grid had room for about two rows at 1440 x 900: the palette,
+## the model tree and an empty Properties took the column. And whatever
+## moves to make room, the palette must not: a part taken into hand, a brick
+## selected or the model tree opened left it where it was, so a colour is
+## clicked where it was seen.
+func _the_grid_has_room() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	var shell: Shell = _main.get("_shell")
+	var dock: SideDock = _main.get("_bin_dock")
+	var named: String = "%dx%d" % [DisplayServer.window_get_size().x,
+		DisplayServer.window_get_size().y]
+	if _bricks_near(Vector3(-60, 0, 20)).is_empty():
+		_put("3001", 4, Vector3(-60, 24, 20))
+	dock.set_open(true)
+	shell.outliner.set_open(false)
+	shell.inspector.set_open(true)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	bin._search.text = ""
+	bin.show_category("All")
+	await _frames(20)
+	# A cell and the space under it.
+	var rows: float = bin._scroll.size.y / 88.0
+	# Four rows and more at 1440 x 900, where it had two; at 1920 x 1080
+	# the window draws everything a fifth larger, and at 1280 x 720 there
+	# is less column to share.
+	var wanted: float = 4.0 if named == "1440x900" else 2.5
+	_check("at %s the parts grid shows %.1f rows of parts, nothing selected (%.0f px)"
+		% [named, rows, bin._scroll.size.y], rows >= wanted)
+	await _shot("first_timer_grid_" + named)
+	var white: Control = bin._swatches.get(15)
+	var was: Vector2 = white.get_global_rect().position
+	var cell: Button = bin._grid.get_child(1)
+	await _click(cell.get_global_rect().get_center())
+	await _frames(8)
+	_check("...a part taken into hand leaves the palette where it was (%s, %s)"
+		% [was, white.get_global_rect().position], white.get_global_rect().position == was)
+	await _key(KEY_ESCAPE)
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	_select_only([red])
+	await _frames(12)
+	_check("...and so does a brick selected, its properties open (%s)"
+		% white.get_global_rect().position, white.get_global_rect().position == was
+		and shell.inspector._title.is_visible_in_tree())
+	await _shot("first_timer_grid_selected_" + named)
+	shell.outliner.set_open(true)
+	await _frames(12)
+	_check("...and the model tree opened (%s)" % white.get_global_rect().position,
+		white.get_global_rect().position == was and shell.outliner.is_open())
+	_check("...with the parts grid still there to browse (%.1f rows)"
+		% (bin._scroll.size.y / 88.0), bin._scroll.size.y >= 88.0)
+	await _shot("first_timer_grid_tree_" + named)
+	shell.outliner.set_open(false)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	await _frames(8)
+	_check("...and nothing selected again, the room goes back to the grid (%.1f rows)"
+		% (bin._scroll.size.y / 88.0), bin._scroll.size.y / 88.0 >= wanted)
 
 
 ## New on the first visit's example car, untouched, asked whether to save

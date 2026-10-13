@@ -48,6 +48,11 @@ func _run() -> void:
 	root.add_child(_main)
 	for _n: int in 180:
 		await process_frame
+	# The bin out: a first visit narrower than 1600 shows the assistant with
+	# the bin folded to its rail, and a folded bin has no tiles in sight.
+	(_main.get("_bin_dock") as SideDock).set_open(true)
+	for _n: int in 30:
+		await process_frame
 
 	var bin: PartsBin = _main.get("_bin")
 	var builder: Builder = _main.get("_builder")
@@ -294,7 +299,9 @@ func _every_colour_can_be_chosen(bin: PartsBin, builder: Builder,
 	for _n: int in 10:
 		await RenderingServer.frame_post_draw
 	var shot: Image = root.get_texture().get_image()
-	var area: Rect2 = (bin as Control).get_global_rect()
+	# The bin and the colours under it, at the foot of the column.
+	var area: Rect2 = (bin as Control).get_global_rect().merge(
+		(bin.get("colours") as Control).get_global_rect())
 	var scale: Vector2 = Vector2(shot.get_size()) / root.get_visible_rect().size
 	var crop := Rect2i(Vector2i(area.position * scale), Vector2i(area.size * scale))
 	crop = crop.intersection(Rect2i(Vector2i.ZERO, shot.get_size()))
