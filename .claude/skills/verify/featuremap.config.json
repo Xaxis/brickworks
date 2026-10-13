@@ -808,7 +808,7 @@
       "kind": "cli",
       "label": "no AI in a browser",
       "entry": "tools/web/noai_flow.mjs",
-      "reach": "node tools/web/noai_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/noai_web   (with .env sourced, against a local export served by tools/web/serve.py: the first visit, nothing of AI anywhere, on and off in Settings, a build to the booklet and an LDraw file)",
+      "reach": "node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web   (with .env sourced, against a local export served by tools/web/relay_server.mjs --static=build/web: the first visit, nothing of AI anywhere, its button, off in Settings, a build to the booklet and an LDraw file, /app?assistant=on, and the relay's words when no tab is open)",
       "area": "building"
     },
     {

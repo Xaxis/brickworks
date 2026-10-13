@@ -3,14 +3,15 @@
 ## Assistant (AI): ShellPrefs.assistant_shown, Main.set_assistant).
 ##
 ##   godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd
+##   godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd -- --assistant=on
 ##
 ## Why: a builder on Reddit, 2026-10-13, of the assistant: "looks worryingly
 ## AI… a LOT of us… building freely and building things that are not AI
 ## designed". Someone who never wants AI must never have to see it.
 ##
 ## The first run: the parts bin open, the model in view, no assistant
-## anywhere, and one line offering it ("Want an assistant? Settings,
-## Assistant"), closed with its ×.
+## anywhere, and one button offering it, "Show the assistant", which one
+## press turns on, remembered, with its column open — what Settings does.
 ##
 ## Off: no AI by name — the assistant's column and rail, its panel, Ask
 ## Claude in Edit and on a part, View, Assistant and Tools, Claude connector,
@@ -21,8 +22,12 @@
 ## words, Brick Art, Account, My collection and the sign-in screen are
 ## searched for Claude, assistant, AI, Sketch first and Anthropic.
 ## Ctrl+K on a selection does nothing, and the connector cannot be switched
-## on. Then on, from Settings, by a click: every one of those back. Then off
-## again by a click, Settings saying the connections are off with it.
+## on. The first visit's button brings every one of those back; Settings
+## takes them away again by a click, saying the connections are off with
+## it, and brings them back.
+##
+## With -- --assistant=on, as /app?assistant=on is on the web: the app
+## opens with the assistant on, remembered, its column open, and no button.
 ##
 ## A short build with it off: parts put down by clicks on the baseplate, a
 ## step made of some of them, the booklet and the LDraw and a GLB written
@@ -68,13 +73,19 @@ func _run() -> void:
 		playback.stop()
 	await _frames(20)
 
-	await _first_run()
-	await _nothing_of_ai("with the assistant off")
-	await _turn("on")
-	await _all_of_it_back()
-	await _turn("off")
-	await _nothing_of_ai("off again")
-	await _build_by_hand()
+	if OS.get_cmdline_user_args().has("--assistant=on"):
+		await _from_the_address()
+	else:
+		await _first_run()
+		await _nothing_of_ai("on the first visit")
+		await _press_the_offer()
+		await _all_of_it_back("from_the_button")
+		await _turn("off")
+		await _nothing_of_ai("off in Settings")
+		await _turn("on")
+		await _all_of_it_back("from_settings")
+		await _turn("off")
+		await _build_by_hand()
 
 	_forget(OUT)
 	print("")
@@ -102,18 +113,48 @@ func _first_run() -> void:
 		"the model is in view, in the middle of its column (%s in %s)" % [
 			str(middle.round()), str(view.position.round())])
 	var offer: Control = _main.get("_offer")
-	var line: String = _texts_in(offer)
-	_ok(offer != null and offer.is_visible_in_tree()
-		and line.contains("Want an assistant? Settings, Assistant"),
-		"one line offers it: \"%s\"" % line.strip_edges())
+	var show: Button = _main.get("_offer_show")
+	_ok(offer != null and offer.is_visible_in_tree() and show != null
+		and show.is_visible_in_tree() and show.text == "Show the assistant",
+		"one button offers it: \"%s\"" % (show.text if show != null else _texts_in(offer).strip_edges()))
 	_ok(ShellPrefs.value("assistant_offered") == true,
-		"...once: kept as offered, so the next visit has no line")
+		"...once: kept as offered, so the next visit has no button")
 	await _shot("1_first_run")
-	var close: Button = _main.get("_offer_close")
-	if close != null:
-		await _click(close.get_global_rect().get_center())
-		await _frames(6)
-	_ok(offer != null and not offer.visible, "its × closes it")
+
+
+## The first visit's button, pressed: what Settings, Assistant does.
+func _press_the_offer() -> void:
+	print("
+the first visit's button, pressed")
+	var show: Button = _main.get("_offer_show")
+	_ok(show != null and show.is_visible_in_tree(), "Show the assistant is there to press")
+	if show == null:
+		return
+	await _click(show.get_global_rect().get_center())
+	await _frames(int(SideDock.SLIDE_SECONDS * 60) + 20)
+	var offer: Control = _main.get("_offer")
+	_ok((_main.get("_shell") as Shell).get("assistant_shown") == true
+		and ShellPrefs.value("assistant") == "on",
+		"one press turns the assistant on, kept as this device's (%s)" % ShellPrefs.value("assistant"))
+	_ok(not offer.visible, "...and the button is gone")
+
+
+## As /app?assistant=on: on before anything is built, remembered, its
+## column open, and no button offering what is already there.
+func _from_the_address() -> void:
+	print("
+opened with --assistant=on, as /app?assistant=on")
+	var chat: SideDock = _main.get("_chat_dock")
+	_ok((_main.get("_shell") as Shell).get("assistant_shown") == true
+		and ShellPrefs.value("assistant") == "on",
+		"the assistant is on, kept as this device's (%s)" % ShellPrefs.value("assistant"))
+	_ok(chat.is_visible_in_tree() and chat.rail().is_visible_in_tree() and chat.is_open(),
+		"its column is open, with its rail (columns \"%s\")" % _main.get("_columns"))
+	var offer: Control = _main.get("_offer")
+	_ok(offer != null and not offer.visible, "and no button offers it")
+	_ok((_main.get("_connector") as ClaudeConnector).get("held") == false,
+		"the connector can be switched on")
+	await _shot("8_from_the_address")
 
 
 # -- nothing of AI ------------------------------------------------------------
@@ -265,8 +306,8 @@ func _turn(to: String) -> void:
 	await _frames(int(SideDock.SLIDE_SECONDS * 60) + 20)
 
 
-func _all_of_it_back() -> void:
-	print("\nall of it back")
+func _all_of_it_back(how: String) -> void:
+	print("\nall of it back, %s" % how.replace("_", " "))
 	var shell: Shell = _main.get("_shell")
 	var chat: SideDock = _main.get("_chat_dock")
 	_ok(chat.is_visible_in_tree() and chat.rail().is_visible_in_tree() and chat.is_open(),
@@ -289,7 +330,7 @@ func _all_of_it_back() -> void:
 	await _frames(int(SideDock.SLIDE_SECONDS * 60) + 10)
 	var panel: ChatPanel = _main.get("_chat")
 	_ok(chat.is_open() and panel._chip.visible, "Ctrl+K asks about the selection again")
-	await _shot("6_assistant_back")
+	await _shot("6_assistant_back_%s" % how)
 	builder.selection.clear()
 	builder.selection_changed.emit(0)
 	var mosaic: MosaicDialog = _main.get("_mosaic")
@@ -381,7 +422,8 @@ func _ai_in_window() -> PackedStringArray:
 
 func _ai_in(node: Node) -> PackedStringArray:
 	var found := PackedStringArray()
-	if node == null:
+	# The first visit's one button offering the assistant is allowed its name.
+	if node == null or node == _main.get("_offer"):
 		return found
 	if node is Control:
 		var control: Control = node

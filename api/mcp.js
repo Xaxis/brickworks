@@ -111,20 +111,25 @@ function toolTrouble(id, text) {
   return { jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text }] } };
 }
 
+// A tab whose assistant is off (Settings, Assistant (AI)) holds its
+// connector off and is not open to Claude, so these say how to turn it on:
+// a first visit builds by hand.
 const NOT_OPEN =
   "The Brickworks tab this connector belongs to is not open, or its " +
-  "Claude connector is switched off. Ask the person to open " +
-  "https://brickworks.diy/app, sign in, and switch on the connector under " +
-  "\"Or with your Claude plan\" — on the same browser they set it up in, " +
-  "so the address is the one this connector uses — then try again.";
+  "assistant or its Claude connector is off. Ask the person to turn the " +
+  "assistant on — Settings, Assistant, or open brickworks.diy/app?assistant=on — " +
+  "sign in, and switch on the connector under \"Or with your Claude plan\", " +
+  "on the same browser they set it up in, so the address is the one this " +
+  "connector uses. Then try again.";
 
 // The same, for Claude signed in to an account: any of its tabs will do.
 const notOpenFor = (origin) =>
-  "No Brickworks tab is open for the account this connector is signed in " +
-  `to. Ask the person to open ${origin}/app in a browser and sign in with ` +
-  "the email address they connected Claude with — Claude finds the tab by " +
-  "itself, on any computer — and, if its panel shows \"Claude can build in " +
-  "this tab\" switched off, to switch it on. Then try again.";
+  "No Brickworks tab is open with its assistant on for the account this " +
+  "connector is signed in to. Ask the person to open Brickworks, signed in " +
+  "with the email address they connected Claude with, and turn the assistant " +
+  `on — Settings, Assistant, or open ${origin.replace(/^https?:\/\//, "")}/app?assistant=on — ` +
+  "Claude finds the tab by itself, on any computer; if its panel shows " +
+  "\"Claude can build in this tab\" switched off, they switch it on. Then try again.";
 
 const HIDDEN =
   "The Brickworks tab is open, but this browser has paused it out of view, " +

@@ -19,9 +19,10 @@ whole cycle.
   the window altogether — its column, Ask Claude about this… in the menus
   and on a part, Design with Claude in Brick Art, the Claude connector and
   its card in the tour — and switches the connector off with it. A first
-  visit starts this way, on the parts bin, with one line saying where the
-  assistant is; a computer that has used Claude here keeps it. Turned on
-  again, all of it comes back.
+  visit starts this way, on the parts bin, with one button, Show the
+  assistant, that turns it on in one press; brickworks.diy/app?assistant=on
+  opens with it on, and the site's links about Claude use that. A computer
+  that has used Claude here keeps it. Turned on again, all of it comes back.
 - Sketch first: a first design can begin with three quick sketches to
   choose between, so you see whether your brief was understood before a
   full design is paid for. Each is the model's main masses only, under 150

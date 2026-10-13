@@ -1,11 +1,13 @@
 // Brickworks with the assistant off, in a real browser: a complete CAD with
-// nothing of AI anywhere in the window, and the assistant back whole when a
-// person turns it on in Settings.
+// nothing of AI anywhere in the window, and the assistant back whole in one
+// step for whoever came for it.
 //
 //   set -a; . ./.env; set +a
 //   tools/export.sh web
-//   python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 0 &
-//   node tools/web/noai_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/noai_web
+//   node tools/web/relay_server.mjs 8790 --static=build/web &
+//   node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web
+//
+// (Against tools/web/serve.py, which has no /api/mcp, leave out --relay.)
 //
 // Why: a builder on Reddit, 2026-10-13, of the assistant: "looks worryingly
 // AI… a LOT of us… building freely and building things that are not AI
@@ -14,23 +16,30 @@
 // A first visit, at 1280 x 800: the parts bin open, the model in view, no
 // control of the assistant's on the page (its rail, its key field, its
 // brief, Sketch first, the connector's switch, Brick Art's Design with
-// Claude), and one line offering it, closed by its ×. Then every word the
+// Claude), and one button offering it, "Show the assistant". Then every word the
 // window shows (window.brickworksWords: each control on screen, every row of
 // every menu and of the menu on a part) searched for Claude, assistant, AI,
 // Sketch first and Anthropic: on the first screen, with the menu on
 // a part open, and with Brick Art open. Ctrl+K on a selection opens nothing.
-// Then Settings (the comma key), "Show the assistant": its rail, its column,
-// Ask Claude in the menus and on a part, and Design with Claude, all back.
-// Then "Build by hand only" again, Settings saying Claude connections are
+// Then the button, pressed once: its rail, its column, Ask Claude in the
+// menus and on a part, and Design with Claude, all back. Then Settings (the
+// comma key), "Build by hand only", Settings saying Claude connections are
 // off with it, and the connector off. Then a short build with it off: three
 // bricks taken from the bin by number and put down by clicks, one made a step
 // of its own (Shift+N), the booklet opened in its tab and the LDraw model
 // downloaded, neither with a word of AI in it. Last, the page opened again:
-// still off, and the line not offered twice. Pictures in --out; it fails if
-// a step does not happen or a script error reaches the console.
-import { launch, chooseAssistant } from "./browser.mjs";
+// still off, and the button not offered twice. Then a fresh visitor at
+// /app?assistant=on, the address the site and the connector's words give:
+// the assistant on, its column open, no button, the parameter gone from the
+// address, and still on when the page is opened again. With --relay, Claude
+// at a connector whose tab is not open is told how to turn the assistant on:
+// "Settings, Assistant, or open brickworks.diy/app?assistant=on". Pictures
+// in --out; it fails if a step does not happen or a script error reaches
+// the console.
+import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { randomBytes } from "node:crypto";
 import { deflateSync } from "node:zlib";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -49,7 +58,8 @@ mkdirSync(out, { recursive: true });
 // the assistant's.
 const AI = /Claude|[Aa]ssistant|\bAI\b|Sketch first|Anthropic/;
 const ITS_OWN = /^(assistant_rail|key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_|sketch_|mosaic_claude|mosaic_brief|account_connect_claude|account_disconnect_claude)/;
-const OFFER = "Want an assistant? Settings, Assistant.";
+// The first visit's one button, which may name it.
+const OFFER = "Show the assistant";
 
 const t0 = Date.now();
 const errors = [];
@@ -146,7 +156,7 @@ async function words() {
   await until(async () => Boolean(await page.evaluate(() => window.brickworksWords)), 20);
   return (await page.evaluate(() => window.brickworksWords)) || null;
 }
-// The words that name AI, but the first visit's one line offering it.
+// The words that name AI, but the first visit's one button offering it.
 async function aiWords() {
   const all = await words();
   if (!all) return null;
@@ -204,11 +214,10 @@ ok(s.assistant === false, `it builds by hand: the assistant is off (assistant ${
 ok(s.columns && s.columns.parts === true, `it opens on the parts bin (columns ${JSON.stringify(s.columns)})`);
 ok(Boolean((await controls())["part search"]), "...its search on the page");
 ok(s.bricks > 0, `...and the model in view, ${s.bricks} parts`);
-ok(s.offer === true && (await words() || []).includes(OFFER), `one line offers it: "${OFFER}"`);
+ok(s.offer === true && Boolean((await controls()).offer_show) && (await words() || []).includes(OFFER),
+  `one button offers it: "${OFFER}"`);
 await noAi("the first screen");
 await shot("first_visit");
-await click("offer_close");
-ok((await state()).offer === false, "its × closes it");
 
 console.log("\nnothing of AI, with it off");
 ok(await rightClick(), "a right click on a part opens its menu");
@@ -228,11 +237,12 @@ await noAi("Brick Art");
 await shot("brick_art_off");
 await key("Escape", 1500);
 
-console.log("\nSettings, Assistant (AI): on");
-ok(await chooseAssistant(page, true), "Settings, Show the assistant, by clicks");
-await wait(2000);
+console.log("\nthe first visit's button, pressed");
+ok(await click("offer_show"), "Show the assistant, clicked once");
+await wait(2500);
 s = await state();
-ok(s.assistant === true && s.columns.assistant === true, `its column is back, open (columns ${JSON.stringify(s.columns)})`);
+ok(s.assistant === true && s.offer === false, `the assistant is on and the button gone (offer ${s.offer})`);
+ok(s.columns.assistant === true, `its column is open (columns ${JSON.stringify(s.columns)})`);
 const back = await assistantControls();
 ok(back.includes("assistant_rail"), `...with its controls: ${back.join(", ")}`);
 let all = await words() || [];
@@ -325,9 +335,53 @@ s = await state();
 ok(s.assistant === false && s.offer === false, `still off, kept on this device, and not offered again (offer ${s.offer})`);
 await shot("next_visit");
 
+console.log("\na fresh visitor at /app?assistant=on");
+const fresh = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const other = await fresh.newPage();
+other.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+const asked = `${url}${url.includes("?") ? "&" : "?"}assistant=on`;
+await other.goto(bypass ? `${asked}&x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true` : asked,
+  { waitUntil: "domcontentloaded", timeout: 180000 });
+const otherState = async () => (await other.evaluate(() => window.brickworksState || {})) || {};
+for (let n = 0; n < 800 && !(await other.evaluate(() => (window.brickworksControls || {}).save)); n++) {
+  await other.waitForTimeout(500);
+}
+await other.waitForTimeout(Number(args.load || 15000));
+let o = await otherState();
+ok(o.assistant === true, `the assistant is on from the address (assistant ${o.assistant})`);
+ok(o.columns && o.columns.assistant === true, `...its column open (columns ${JSON.stringify(o.columns)})`);
+ok(o.offer === false, "...and no button offering it");
+ok(!other.url().includes("assistant="), `the parameter is gone from the address: ${other.url()}`);
+await other.screenshot({ path: `${out}/${String(++shots).padStart(2, "0")}_from_the_address.png`, timeout: 120000 }).catch(() => {});
+await other.reload({ waitUntil: "domcontentloaded" });
+for (let n = 0; n < 800 && !(await other.evaluate(() => (window.brickworksControls || {}).save)); n++) {
+  await other.waitForTimeout(500);
+}
+await other.waitForTimeout(Number(args.load || 15000));
+o = await otherState();
+ok(o.assistant === true, "...and still on when the page is opened again: remembered");
+await fresh.close();
+
+if (args.relay) {
+  console.log("\nClaude at a connector whose tab is not open");
+  const origin = new URL(url).origin;
+  const token = randomBytes(36).toString("base64url");
+  const asking = await fetch(`${origin}/api/mcp?t=${token}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "search_parts", arguments: { query: "brick" } } }),
+  }).catch((e) => ({ status: 0, json: async () => ({ error: String(e) }) }));
+  const answer = await asking.json().catch(() => ({}));
+  const told = (answer?.result?.content || []).map((c) => c.text).join(" ");
+  ok(asking.status === 200 && answer?.result?.isError
+    && told.includes("Settings, Assistant, or open brickworks.diy/app?assistant=on"),
+    `the relay says how to turn the assistant on: "${told.slice(0, 160)}"`);
+}
+
 ok(errors.length === 0, `no script error reached the console${errors.length ? `: ${errors.slice(0, 3).join(" | ")}` : ""}`);
 await browser.close();
 console.log(failed
   ? `\nno AI in a browser: ${failed} FAILED; pictures in ${out}`
-  : `\nno AI in a browser: off, nothing of it anywhere; on, all of it back; a build by hand to the booklet and the file; pictures in ${out}`);
+  : `\nno AI in a browser: off, nothing of it anywhere; one press or the address and all of it back; a build by hand to the booklet and the file; pictures in ${out}`);
 process.exit(failed ? 1 : 0);

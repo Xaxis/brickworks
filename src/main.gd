@@ -83,7 +83,7 @@ var gate_for_probe: bool = false
 ## as one about the sign-in screen does; any other sees the model as it was.
 var offer_for_probe: bool = false
 var _offer: HBoxContainer
-var _offer_settings: Button
+var _offer_show: Button
 var _offer_close: Button
 ## A model shared by link (api/share.js). [member _viewing] is the link's id
 ## when this run is its read-only viewer (/app?view=<id>, as --view=<id>):
@@ -346,7 +346,7 @@ func _tell_page() -> void:
 	if _controls != null:
 		named.merge(_controls.controls_by_name())
 	if _offer != null and _offer.visible:
-		named["offer_settings"] = _offer_settings
+		named["offer_show"] = _offer_show
 		named["offer_close"] = _offer_close
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
 	# viewer opens — the timeline and the parts list.
@@ -1935,6 +1935,8 @@ func _view_hover() -> void:
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
 func _build_ui() -> void:
+	# Before anything reads it: /app?assistant=on.
+	_assistant_from_address()
 	# The library has no scene tree of its own, so it borrows this one to
 	# park its HTTP requests on.
 	_library.set_fetch_host(self)
@@ -3177,28 +3179,35 @@ func set_assistant(on: bool) -> void:
 		_chat_dock.set_open(true)
 
 
-## The first visit, which builds by hand: one line along the top of the
-## model saying where the assistant is, once, and never again — "Want an
-## assistant? Settings, Assistant", with the way there and a way to close it.
+## The first visit, which builds by hand: one button along the top of the
+## model, "Show the assistant", once and never again. One press does what
+## Settings, Assistant does: on, remembered, its column open. Someone who
+## came for the assistant or the connector reaches it in one step, and the
+## × closes it for someone who did not.
 func _offer_assistant(notes: Control) -> void:
 	_offer = HBoxContainer.new()
 	_offer.alignment = BoxContainer.ALIGNMENT_CENTER
 	_offer.add_theme_constant_override("separation", 8)
 	_offer.visible = false
-	var words := Label.new()
-	words.text = "Want an assistant? Settings, Assistant."
-	words.add_theme_font_size_override("font_size", 12)
-	words.add_theme_color_override("font_color", Color(1, 1, 1, 0.72))
-	_offer.add_child(words)
-	_offer_settings = Button.new()
-	_offer_settings.text = "Settings…"
-	_offer_settings.flat = true
-	_offer_settings.focus_mode = Control.FOCUS_NONE
-	_offer_settings.add_theme_font_size_override("font_size", 12)
-	_offer_settings.pressed.connect(func() -> void:
-		_offer.visible = false
-		_controls.open())
-	_offer.add_child(_offer_settings)
+	_offer_show = Button.new()
+	_offer_show.text = "Show the assistant"
+	_offer_show.focus_mode = Control.FOCUS_NONE
+	_offer_show.add_theme_font_size_override("font_size", 12)
+	_offer_show.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# Drawn as a button: the engine's own on this strip read as a label.
+	for state: String in ["normal", "hover", "pressed"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = Color(Look.ACCENT, {"normal": 0.16, "hover": 0.3, "pressed": 0.4}[state])
+		face.border_color = Color(Look.ACCENT, 0.7)
+		face.set_border_width_all(1)
+		face.set_corner_radius_all(4)
+		face.content_margin_left = 12
+		face.content_margin_right = 12
+		face.content_margin_top = 2
+		face.content_margin_bottom = 3
+		_offer_show.add_theme_stylebox_override(state, face)
+	_offer_show.pressed.connect(func() -> void: set_assistant(true))
+	_offer.add_child(_offer_show)
 	_offer_close = Button.new()
 	_offer_close.text = "×"
 	_offer_close.flat = true
@@ -3214,6 +3223,29 @@ func _offer_assistant(notes: Control) -> void:
 	if first_visit and _viewing.is_empty() and (offer_for_probe or _gate_wanted()):
 		_offer.visible = true
 		ShellPrefs.put("assistant_offered", true)
+
+
+## /app?assistant=on (or =off): the assistant turned on, and remembered,
+## before anything is built, so a link from the site or the connector's
+## words reaches it in one step; on, its column is open in a window of any
+## width but a phone's. The parameter is then taken off the address, so a
+## reload or a bookmark is the app's own address. --assistant=on on the
+## desktop.
+func _assistant_from_address() -> void:
+	var asked: String = _argument("--assistant")
+	if not asked in ["on", "off"]:
+		return
+	ShellPrefs.put("assistant", asked)
+	ShellPrefs.put("assistant_offered", true)
+	if asked == "on":
+		ShellPrefs.put("assistant_open", true)
+		ShellPrefs.put("narrow_side", "assistant")
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""(function () {
+			var here = new URL(location.href);
+			here.searchParams.delete("assistant");
+			history.replaceState(history.state, "", here.pathname + here.search + here.hash);
+		})()""", true)
 
 
 ## Fit the panels to the window, and decide how it shares them out.

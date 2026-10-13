@@ -169,8 +169,9 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	var none_open: Array = await _claude_as(signed_token, "tools/call",
 		{"name": "search_parts", "arguments": {"query": "brick"}})
-	_check(_text_of(none_open[1] as Dictionary).contains("No Brickworks tab is open for the account"),
-		"with the tab switched off, Claude is told no tab of the account is open")
+	_check(_text_of(none_open[1] as Dictionary).contains("No Brickworks tab is open")
+		and _text_of(none_open[1] as Dictionary).contains("Settings, Assistant, or open "),
+		"with the tab switched off, Claude is told no tab of the account is open, and how to turn the assistant on")
 	connector.start()
 	await create_timer(3.0).timeout
 	var back_on: Array = await _claude_as(signed_token, "tools/call",

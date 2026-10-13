@@ -353,13 +353,22 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   are off while the assistant is off". On again, all of it is back and the
   connector as it was; its column opens, since it was asked for. A first visit
   builds by hand (a builder on Reddit, 2026-10-13: "a LOT of us… building
-  freely and building things that are not AI designed"), with one line along
-  the top of the model, "Want an assistant? Settings, Assistant", shown once;
-  a device that has used Claude before (its key, its connector or its choice
-  of model kept on it) keeps the assistant until someone chooses. A probe is a
-  first visit and sees the line only with `offer_for_probe`; a probe about the
-  assistant's own panel turns it on (`set_assistant(true)`). The desktop's
-  `--mcp` port is asked for on the command line and is not held.
+  freely and building things that are not AI designed"), with one button along
+  the top of the model, "Show the assistant", shown once: one press does what
+  Settings does. Anyone who comes for the assistant or the connector reaches
+  it in one step: `/app?assistant=on` (`--assistant=on` on the desktop,
+  `Main._assistant_from_address`) turns it on and remembers it before
+  anything is built, opens its column, and takes the parameter off the
+  address with `history.replaceState`; the site's links about Claude and the
+  connector use it. Claude at a connector whose tab is not open, or whose
+  assistant is off, is told by the relay (`api/mcp.js` `NOT_OPEN`,
+  `notOpenFor`) how to turn it on: "Settings, Assistant, or open
+  brickworks.diy/app?assistant=on". A device that has used Claude before (its
+  key, its connector or its choice of model kept on it) keeps the assistant
+  until someone chooses. A probe is a first visit and sees the button only
+  with `offer_for_probe`; a probe about the assistant's own panel turns it on
+  (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
+  command line and is not held.
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, `assistant_open` for a wide window; `narrow_side`, "parts" or
   "assistant", for which one a narrow window shows; a first visit opens on the
@@ -533,20 +542,26 @@ node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots
 # — every step a key or a click, with pictures in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # the assistant off: the first run on the parts bin with the model in view and
-# its one line offering the assistant; nothing of AI by name or by text in the
-# window, any menu, the menu on a part, Brick Art, Account, My collection, the
-# tour, About, the keys list, the sign-in screen, Check stability, the parts
-# list or Simulate; Ctrl+K inert; the connector held off; then on and off by
-# clicks in Settings, everything back and gone again; and a build by hand to
-# a step, the booklet, an LDraw file and a GLB. Pictures in shots/noai/
+# its one button offering the assistant; nothing of AI by name or by text in
+# the window, any menu, the menu on a part, Brick Art, Account, My collection,
+# the tour, About, the keys list, the sign-in screen, Check stability, the
+# parts list or Simulate; Ctrl+K inert; the connector held off; then the
+# button pressed, everything back; off and on by clicks in Settings; and a
+# build by hand to a step, the booklet, an LDraw file and a GLB. Pictures in
+# shots/noai/. Again with --assistant=on, as /app?assistant=on: on, kept, its
+# column open, no button
 godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd
-# ...and in a browser, against a local export, with .env sourced: the first
-# visit, every word the window shows searched for AI (window.brickworksWords),
-# Settings on and off by clicks, a build by hand to the booklet's tab and a
-# downloaded LDraw file, and the setting kept when the page is opened again
+godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd -- --assistant=on
+# ...and in a browser, against a local export and the deployment's functions,
+# with .env sourced: the first visit, every word the window shows searched for
+# AI (window.brickworksWords), the button pressed, Settings off by clicks, a
+# build by hand to the booklet's tab and a downloaded LDraw file, the setting
+# kept when the page is opened again; a fresh visitor at /app?assistant=on
+# (on, column open, the parameter gone from the address, kept); and the
+# relay's words to Claude when no tab is open (--relay)
 tools/export.sh web
-python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 0 &
-node tools/web/noai_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/noai_web
+node tools/web/relay_server.mjs 8790 --static=build/web &
+node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web
 # sub-assemblies and the model tree, at any window size: nothing over the
 # model, and the tree opened by its header
 godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd
