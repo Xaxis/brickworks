@@ -85,7 +85,9 @@ var _first_open_done: bool = false
 var _shared: SharedModels
 var _share_panel: SharePanel
 var _share_view: ShareView
-## The part under the pointer in the viewer, outlined and named.
+## The part under the pointer, outlined: in the viewer, and named beside
+## it; with Select in hand, what a click would take. -1 is not yet looked
+## at: what is under a still pointer may have changed.
 var _hover_outline: SelectionOutline
 var _hovered: int = 0
 var _hovered_from: Vector2 = Vector2(-1, -1)
@@ -1294,11 +1296,6 @@ func _enter_view() -> void:
 	_share_view.parts_wanted.connect(_toggle_parts)
 	_share_view.copy_wanted.connect(_open_copy)
 	_share_view.loading()
-	_hover_outline = SelectionOutline.new()
-	_hover_outline.world = _world
-	_hover_outline.library = _library
-	add_child(_hover_outline)
-	(_hover_outline.material_override as StandardMaterial3D).albedo_color = Color(0.45, 0.80, 1.0)
 	# A step scrubbed shows and hides parts under a pointer that has not moved.
 	_steps.reveal.connect(func(_ids: Dictionary) -> void:
 		_hovered_from = Vector2(-1, -1))
@@ -1454,6 +1451,35 @@ func _looking_key(key: InputEventKey) -> bool:
 				KEY_KP_6, KEY_KP_7:
 			return true
 	return false
+
+
+## With Select in hand, what a click would take, outlined faintly while the
+## pointer is on it, as Studio and Fusion do: what the click will pick, seen
+## before it is made. Not over a panel, not while a button is held, and not
+## round what is already selected, which has its own line.
+func _select_hover() -> void:
+	if _hover_outline == null or _verbs == null:
+		return
+	var under: int = 0
+	if _verbs.mode == "select" and not _verbs.shows_ghost() and not _verbs.is_view_tool() \
+			and not _dragging_part and Input.get_mouse_button_mask() == 0 \
+			and not (_measure != null and _measure.active) and not (_flex != null and _flex.active):
+		under = _brick_under_pointer()
+	if under == _hovered:
+		return
+	_hovered = under
+	var taken: Dictionary = {}
+	if under != 0 and not _builder.selection.has(under):
+		for brick_id: int in _builder.takes(under):
+			taken[brick_id] = true
+	_hover_outline.show_selection(taken)
+
+
+## What is under a still pointer may have changed: the selection did, or
+## the model. Looked at again next frame.
+func _look_under_again() -> void:
+	if _viewing.is_empty():
+		_hovered = -1
 
 
 ## The part under the pointer in the viewer: outlined, and named beside it.
@@ -2067,6 +2093,12 @@ func _build_ui() -> void:
 	_outline.world = _world
 	_outline.library = _library
 	add_child(_outline)
+	_hover_outline = SelectionOutline.new()
+	_hover_outline.world = _world
+	_hover_outline.library = _library
+	_hover_outline.colour = SelectionOutline.HOVER
+	_hover_outline.width = SelectionOutline.HOVER_WIDTH
+	add_child(_hover_outline)
 
 	_verbs = EditVerbs.new()
 	_verbs.builder = _builder
@@ -2149,7 +2181,7 @@ func _build_ui() -> void:
 	_exports.picture.world = _world
 	_exports.picture.camera = _camera
 	_exports.picture.scenery = _store.scenery
-	_exports.picture.aside = [_builder, _outline, _turning, _shell.see_inside.frame]
+	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame]
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)
@@ -2189,6 +2221,7 @@ func _build_ui() -> void:
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
+		_look_under_again()
 		if count == 0:
 			_bar.say("")
 		else:
@@ -2202,7 +2235,8 @@ func _build_ui() -> void:
 		# Painted, or taken off by undo: what the palette's note says too.
 		_tell_bin_selection()
 		if not _builder.selection.is_empty():
-			_outline.show_selection(_builder.selection))
+			_outline.show_selection(_builder.selection)
+		_look_under_again())
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant.scenery = _store.scenery
 
@@ -3351,6 +3385,8 @@ func _process(_delta: float) -> void:
 	_steer_from_keys(_delta)
 	if not _viewing.is_empty():
 		_view_hover()
+	else:
+		_select_hover()
 	if _cursors != null:
 		_cursors.show_for(_cursor_state())
 	# A box whose ending went somewhere else.

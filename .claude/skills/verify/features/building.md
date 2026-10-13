@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
 
 ## Sub-features
 
@@ -30,6 +30,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   whose screen position falls inside the box is selected (Shift adds to the
   selection). A plain drag there turns the view instead (`left-button
   navigation`). Releasing over a panel still ends the box.
+- `selection outline` (`src/render/selection_outline.gd`): what is selected has
+  one yellow line round its silhouette, as Studio, Fusion and Onshape draw it,
+  2.5 points wide (twice the pixels at 2x), over whatever hides it so a
+  selection is never lost; with Select in hand, the part a click would take
+  (its whole sub-assembly or figure) has a paler, finer blue line while the
+  pointer is on it, and the share viewer outlines the part it names the same way.
+  It was a box round every brick: a chain of 29 links came out as a yellow
+  scribble over the links (live, 2026-10-12). Drawn by the window, not in the
+  world: the selected parts go again, plain white, into a mask (a SubViewport
+  with a world of its own, looking through the view's own camera, attached by
+  `RenderingServer.viewport_attach_camera`, so a lens that shifts its frustum
+  is followed for free), then two passes over the selection's rectangle on
+  screen find each pixel's distance to the mask, along its row then down its
+  column (`outline_rows.gdshader`, `outline_line.gdshader`). Follows the cut-away
+  (what is cut off is not outlined, unless the cut leaves ghosts) and x-ray;
+  never in a picture, render or booklet, which draw the world in viewports of
+  their own. `outline_probe` asks the picture: one brick, a chain alone and on
+  its gears, Gandalf and Saruman on Orthanc, all 9,429 of Orthanc (a frame within
+  twice the bare one, nothing drawn standing still), a guard cut through and in
+  x-ray, and the hover — what selecting changed must lie round the parts, not
+  over them, and go all the way round. Run it at `--resolution 2800x1800 --
+  --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
+  picture at 1x and 2x, and its frames standing still.
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up
@@ -303,6 +326,15 @@ godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd
 godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
+# the selection's outline round its silhouette, never over it, for one brick,
+# a chain and Orthanc, through the cut and x-ray, and the hover's; at 1x and
+# at 2x (2800x1800 is the app at twice the pixels). Pictures in shots/outline/
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/outline_probe.gd
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 2800x1800x24" godot --path . \
+  --resolution 2800x1800 --script src/dev/outline_probe.gd -- --tag=2x
+# ...and in a browser, at 1x and 2x, standing still drawing nothing
+node tools/web/outline_check.mjs --dir=build/web   # after tools/export.sh web, .env sourced
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and
@@ -336,7 +368,10 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script s
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
-`handbuild` says "by hand: ... all work as a person uses them". Look at
+`handbuild` says "by hand: ... all work as a person uses them", `outline` says
+"a selection is drawn as a line round its silhouette, never over it, ..." (look
+at `shots/outline/<tag>/*.png`: a thin yellow line hugging each selection, the
+chain's inner edge too, no box anywhere). Look at
 `shots/handbuild/*.png` too: the ghosts in their colours, `shell.png`,
 `edit_menu.png`, `tools_menu.png`, `select_tool.png`, `properties.png`,
 `grid.png`, `tour.png`, the Select by and History menus, the seat offer and

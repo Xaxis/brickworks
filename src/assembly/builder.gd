@@ -411,20 +411,26 @@ func _live(brick_id: int) -> int:
 # -- working on several at once ------------------------------------------
 
 
-## Add the brick under the cursor to the selection, or take it out.
-func toggle_hovered() -> bool:
-	if _hovered == 0 or locked.has(_hovered):
-		return false
+## What a click with Select on this brick takes: none for a locked brick.
+func takes(brick_id: int) -> PackedInt64Array:
+	if brick_id == 0 or locked.has(brick_id):
+		return PackedInt64Array()
 	# A figure is one thing to whoever points at it. Picking out its
 	# arm alone and moving it would leave the arm floating beside the
 	# figure, which is not an edit anybody means.
-	var members: PackedInt64Array = figure_of(_hovered)
+	var members: PackedInt64Array = figure_of(brick_id)
 	# A sub-assembly is one thing to whoever points at it too, at the level
 	# being edited; and nothing outside the one being edited is.
 	if unit_of.is_valid():
-		members = unit_of.call(_hovered)
-		if members.is_empty():
-			return false
+		return unit_of.call(brick_id)
+	return members if members.size() > 1 else PackedInt64Array([brick_id])
+
+
+## Add the brick under the cursor to the selection, or take it out.
+func toggle_hovered() -> bool:
+	var members: PackedInt64Array = takes(_hovered)
+	if members.is_empty():
+		return false
 	if members.size() > 1:
 		var all_in: bool = true
 		for brick_id: int in members:

@@ -388,6 +388,14 @@
       "tests": []
     },
     {
+      "id": "cli:selection outline in a browser",
+      "kind": "cli",
+      "entry": "tools/web/outline_check.mjs",
+      "reach": "node tools/web/outline_check.mjs --dir=build/web   (with .env sourced, after tools/export.sh web; or --url=<a preview>/app)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:set inventories",
       "kind": "cli",
       "entry": "tools/collection_data.py",
@@ -1228,6 +1236,14 @@
       "tests": [
         "tests/fixtures/collection/fake_rebrickable.py"
       ]
+    },
+    {
+      "id": "ui:selection outline",
+      "kind": "ui",
+      "entry": "src/render/selection_outline.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/outline_probe.gd   (by hand: click a part with Select; point at one; Ctrl-A)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "ui:share panel",

@@ -21,8 +21,9 @@ var world: BrickWorld
 var camera: Camera3D
 var scenery: Dictionary = {}
 ## Everything drawn in the world that is not the model: the ghost, the
-## selection's outline, the turning mark. Hidden while the picture is
-## taken and shown again after.
+## turning mark. Hidden while the picture is taken and shown again after.
+## (The selection's outline is drawn over the window, not in the world, so
+## a picture never sees it.)
 var aside: Array[Node3D] = []
 ## Called after the picture, to put back whatever else hides bricks.
 var shown_again: Callable = func() -> void: pass

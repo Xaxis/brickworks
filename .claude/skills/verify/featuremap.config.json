@@ -1160,6 +1160,20 @@
       "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, poses a crane and downloads its animation; the posing half needs the pose panel merged)",
       "kind": "cli",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "selection outline",
+      "entry": "src/render/selection_outline.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/outline_probe.gd   (by hand: click a part with Select; point at one; Ctrl-A)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "selection outline in a browser",
+      "entry": "tools/web/outline_check.mjs",
+      "reach": "node tools/web/outline_check.mjs --dir=build/web   (with .env sourced, after tools/export.sh web; or --url=<a preview>/app)",
+      "area": "building"
     }
   ]
 }
