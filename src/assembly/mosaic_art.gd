@@ -29,8 +29,9 @@
 ## Two halves. [method read] works out a [Plan] from the picture — what each
 ## stud is (its style), how high it stands, whether it may take an accent —
 ## and [method lay] turns any plan into parts. The plan is the seam for the
-## assistant: Claude can draw the regions, relief and accents itself and
-## [method lay] builds whatever it says.
+## assistant: Claude draws the regions, relief and accents as an ArtPlan,
+## which comes here as a [Guide] that [method read] keeps to wherever it
+## says something and reads the picture wherever it does not.
 class_name MosaicArt
 extends RefCounted
 
@@ -68,8 +69,11 @@ const PLATES: Array = [
 
 ## The solid colours: the classic mosaic's palette without its
 ## transparent, pearl, metallic and chrome ones, which here are accents.
+## And Medium Lilac (85), which the classic palette lacks: the first Milky Way
+## Claude planned asked for it for the violet between the arms, was refused,
+## and the nearest the palette had was Magenta.
 const SOLID: Array[int] = [15, 71, 7, 72, 0, 4, 5, 27, 2, 10, 1, 9, 14, 25, 70, 28,
-	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378]
+	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378, 85]
 ## Finishes a star may take: trans-clear, glow-in-the-dark white, pearl
 ## white, metallic gold and silver, pearl gold and grey, and the trans
 ## colours a nebula is made of.
@@ -155,6 +159,12 @@ class Plan extends RefCounted:
 	var accent: PackedByteArray = PackedByteArray()
 	## For a quarter, the colour across the edge, which its cut corner shows.
 	var across_edge: PackedColorArray = PackedColorArray()
+	## A star's finish, a colour code, or -1 to match one to the picture.
+	var finish: PackedInt32Array = PackedInt32Array()
+	## The colour a stud is laid in whatever the picture says, or -1.
+	var fixed: PackedInt32Array = PackedInt32Array()
+	## The colours the picture is matched to, or empty for all of them.
+	var palette: PackedInt32Array = PackedInt32Array()
 	## The panels' colour, or -1 to choose one.
 	var base_colour: int = -1
 
@@ -182,8 +192,61 @@ class Plan extends RefCounted:
 		accent.fill(0)
 		across_edge.resize(a * d)
 		across_edge.fill(Color(0, 0, 0))
+		finish.resize(a * d)
+		finish.fill(-1)
+		fixed.resize(a * d)
+		fixed.fill(-1)
 		if want.size() != a * d:
 			want.resize(a * d)
+
+
+## What a designer has decided, stud by stud, for [method read] to keep to.
+## Made from an ArtPlan (src/assembly/art_plan.gd), which is where Claude's
+## regions become studs. Wherever it says nothing, the picture decides.
+class Guide extends RefCounted:
+	## A Tiling each.
+	var texture: PackedByteArray = PackedByteArray()
+	## Plates under the top element, or -1 to read it off the picture.
+	var relief: PackedInt32Array = PackedInt32Array()
+	## 1 where a contour may be laid in quarter circles.
+	var contours: PackedByteArray = PackedByteArray()
+	## 1 where a point of light in the picture may be a star.
+	var stars: PackedByteArray = PackedByteArray()
+	## The finish a star found there is laid in, or -1.
+	var finish: PackedInt32Array = PackedInt32Array()
+	## The one colour a region is laid in, or -1 for the picture's.
+	var colour: PackedInt32Array = PackedInt32Array()
+	## A star put exactly there, in this finish; -1 for none.
+	var point: PackedInt32Array = PackedInt32Array()
+	var palette: PackedInt32Array = PackedInt32Array()
+	var base_colour: int = -1
+	## How high relief read off the picture rises where [member relief]
+	## says nothing, or -1 for the options' depth. The options' depth is
+	## then the most anything stands, so it can be less than that.
+	var depth: int = -1
+
+	## Every stud left to the picture.
+	func sized(cells: int) -> void:
+		texture.resize(cells)
+		texture.fill(Tiling.PICTURE)
+		relief.resize(cells)
+		relief.fill(-1)
+		contours.resize(cells)
+		contours.fill(1)
+		stars.resize(cells)
+		stars.fill(1)
+		finish.resize(cells)
+		finish.fill(-1)
+		colour.resize(cells)
+		colour.fill(-1)
+		point.resize(cells)
+		point.fill(-1)
+
+
+## What a region's top is laid in: as the picture reads (round where it is
+## busy, smooth where it is flat), round tiles, or smooth tiles, whatever it
+## looks like.
+enum Tiling { PICTURE, ROUND, SMOOTH }
 
 
 ## What a plan came to.
@@ -268,8 +331,10 @@ static func make(image: Image, options: Options, library: PartLibrary) -> Art:
 
 
 ## The picture as a plan, every stud's style, relief and accents worked out
-## from it.
-static func analyse(image: Image, options: Options, library: PartLibrary) -> Plan:
+## from it, keeping to [param guide] wherever it says something. A guide
+## must be the size the panels come to.
+static func analyse(image: Image, options: Options, library: PartLibrary,
+		guide: Guide = null) -> Plan:
 	var plan := Plan.new()
 	if image == null or image.is_empty():
 		return plan
@@ -277,7 +342,24 @@ static func analyse(image: Image, options: Options, library: PartLibrary) -> Pla
 	plan.want = picture_cells(image, panels.x * PANEL, panels.y * PANEL)
 	black_point(plan.want, library)
 	plan.sized(panels.x * PANEL, panels.y * PANEL)
-	read(plan, options, library)
+	if guide != null and guide.texture.size() != plan.cells():
+		push_warning("an Art guide of %d studs for a picture of %d, left out"
+			% [guide.texture.size(), plan.cells()])
+		guide = null
+	if guide != null:
+		plan.palette = guide.palette
+		plan.base_colour = guide.base_colour
+		# A region in one colour is that colour to everything that reads
+		# the picture after this, so it is flat and its edge is an edge.
+		for i: int in plan.cells():
+			var code: int = guide.colour[i]
+			var colour: PartLibrary.BrickColor = library.color(code) if code >= 0 else null
+			if colour == null:
+				continue
+			plan.fixed[i] = code
+			plan.want[i] = Color(Mosaic._linear(colour.rgb.r), Mosaic._linear(colour.rgb.g),
+				Mosaic._linear(colour.rgb.b), plan.want[i].a)
+	read(plan, options, library, guide)
 	return plan
 
 
@@ -331,8 +413,10 @@ static func black_point(want: PackedColorArray, library: PartLibrary) -> void:
 		want[i] = Color(c.r + floor_.r * lift, c.g + floor_.g * lift, c.b + floor_.b * lift, c.a)
 
 
-## Fill in a plan's styles, relief and accents from its picture.
-static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
+## Fill in a plan's styles, relief and accents from its picture, keeping to
+## [param guide] where it says something.
+static func read(plan: Plan, options: Options, library: PartLibrary,
+		guide: Guide = null) -> void:
 	var n: int = plan.cells()
 	var lab := PackedVector3Array()
 	lab.resize(n)
@@ -347,9 +431,20 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 	var base_lab: Vector3 = _lab_of(library, plan.base_colour)
 
 	var star: PackedByteArray = _stars(plan, lab, hole)
+	if guide != null:
+		for i: int in n:
+			if guide.stars[i] == 0:
+				star[i] = 0
+			if guide.point[i] >= 0 and hole[i] == 0:
+				star[i] = 1
 	_calm(plan, lab, hole, star)
 	var ground: Vector3 = _ground(plan, lab, hole)
-	_relief(plan, lab, hole, clampi(options.depth, 0, MOST_DEPTH), ground)
+	var depth: int = options.depth if guide == null or guide.depth < 0 else guide.depth
+	_relief(plan, lab, hole, clampi(depth, 0, MOST_DEPTH), ground)
+	if guide != null:
+		for i: int in n:
+			if guide.relief[i] >= 0 and hole[i] == 0:
+				plan.relief[i] = clampi(guide.relief[i], 0, MOST_DEPTH)
 	# The ground the slopes are read off, before any star is lifted: a star
 	# set proud is not a hill to slope up to.
 	var terrain: PackedByteArray = plan.relief.duplicate()
@@ -362,7 +457,12 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 			if hole[i] == 1:
 				plan.style[i] = Style.HOLE
 				continue
+			var texture: int = Tiling.PICTURE if guide == null else guide.texture[i]
 			var style: int = Style.ROUND if options.round_texture else Style.SQUARE
+			if texture == Tiling.ROUND:
+				style = Style.ROUND
+			elif texture == Tiling.SMOOTH:
+				style = Style.SQUARE
 			var light: float = lab[i].x
 			var steps: float = 0.0
 			var lightest: float = -INF
@@ -382,10 +482,10 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 					count += 1
 			if count > 0:
 				mean /= count
-				if options.smooth_tiles and steps / count < FLAT:
+				if options.smooth_tiles and steps / count < FLAT and texture == Tiling.PICTURE:
 					style = Style.SQUARE
 
-			if options.contours:
+			if options.contours and (guide == null or guide.contours[i] == 1):
 				var g: Vector2 = _gradient(plan, lab, hole, x, z)
 				var big: float = maxf(absf(g.x), absf(g.y))
 				if g.length() > EDGE and minf(absf(g.x), absf(g.y)) > DIAGONAL * big:
@@ -407,12 +507,18 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 			if star[i] == 1:
 				style = Style.STAR
 				plan.accent[i] = 1 if options.accents else 0
+				if guide != null:
+					plan.finish[i] = guide.point[i] if guide.point[i] >= 0 else guide.finish[i]
 			elif count >= 3 and light >= lightest and light - mean > SPECK_RISE \
-					and options.round_texture:
+					and options.round_texture and texture != Tiling.SMOOTH:
 				style = Style.SPECK
 
-			if style != Style.STAR and options.depth > 0 \
-					and lab[i].distance_to(ground) >= BACKGROUND:
+			# Sloped up to what is higher, except the background. Told its
+			# height, a stud told 0 is background and one raised is not.
+			var sloping: bool = lab[i].distance_to(ground) >= BACKGROUND
+			if guide != null and guide.relief[i] >= 0:
+				sloping = guide.relief[i] > 0
+			if style != Style.STAR and options.depth > 0 and sloping:
 				var up := Vector2i.ZERO
 				var most: int = terrain[i]
 				for side: Vector2i in SIDES:
@@ -625,7 +731,7 @@ static func _blur(values: PackedFloat32Array, across: int, down: int,
 ## of the picture comes nearest, since it shows between round tiles and at
 ## every quarter circle's cut corner.
 static func base_for(plan: Plan, library: PartLibrary) -> int:
-	var palette: PackedInt32Array = colours_for(library, BASE, SOLID)
+	var palette: PackedInt32Array = colours_for(library, BASE, _among(plan, SOLID, library, BASE))
 	if palette.is_empty():
 		return 0
 	var labs: Array[Vector3] = []
@@ -647,6 +753,24 @@ static func base_for(plan: Plan, library: PartLibrary) -> int:
 		if int(votes[code]) > int(votes.get(most, 0)):
 			most = code
 	return most
+
+
+## [param among] cut to the plan's palette, where that leaves [param part]
+## a colour to be; otherwise all of it.
+static func _among(plan: Plan, among: Array[int], library: PartLibrary,
+		part: String) -> Array[int]:
+	if plan.palette.is_empty():
+		return among
+	var kept: Array[int] = []
+	for code: int in among:
+		if plan.palette.has(code):
+			kept.append(code)
+	return kept if not colours_for(library, part, kept).is_empty() else among
+
+
+static func _made_in(library: PartLibrary, part: String, code: int) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(part)
+	return info != null and library.color(code) != null and not info.never_made_in(code)
 
 
 ## The colours among [param among] that [param part] is not known never to
@@ -707,7 +831,7 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 	# What the plates of relief are laid in: the region's colour, matched
 	# without dither to a softened picture, so a run of them is one colour
 	# and merges into long plates. Their sides are seen from an angle.
-	var risers: PackedInt32Array = colours_for(library, RISER, SOLID)
+	var risers: PackedInt32Array = colours_for(library, RISER, _among(plan, SOLID, library, RISER))
 	var region := PackedInt32Array()
 	region.resize(n)
 	for z: int in plan.down:
@@ -742,8 +866,15 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 				among.append_array(SOLID)
 				if accented:
 					among.append_array(ACCENTS)
-				palettes[key] = colours_for(library, part, among)
+				palettes[key] = colours_for(library, part, _among(plan, among, library, part))
 			var choices: PackedInt32Array = palettes[key]
+			# Said outright: a region's one colour, or a star's finish,
+			# where the part is made in it. Nothing to make up for after.
+			var told: int = plan.fixed[i]
+			if style == Style.STAR and accented and plan.finish[i] >= 0:
+				told = plan.finish[i]
+			if told >= 0 and not _made_in(library, part, told):
+				told = -1
 			var target: Color = buffer[i]
 			var cover: float = 1.0
 			var shows := Color(0, 0, 0)
@@ -760,13 +891,13 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 					clampf((target.r - shows.r * (1.0 - cover)) / cover, 0.0, 1.0),
 					clampf((target.g - shows.g * (1.0 - cover)) / cover, 0.0, 1.0),
 					clampf((target.b - shows.b * (1.0 - cover)) / cover, 0.0, 1.0))
-			var pick: int = _nearest(target, choices, labs, accented)
+			var pick: int = told if told >= 0 else _nearest(target, choices, labs, accented)
 			if pick < 0:
 				continue
 			colour[i] = pick
 			# A star is a point of light in a finish, not a colour to make up
 			# for in the sky round it.
-			if options.dither and style != Style.STAR:
+			if options.dither and style != Style.STAR and told < 0:
 				var made: Color = Mosaic._from_oklab(labs[pick])
 				var seen: Color = made * cover + shows * (1.0 - cover)
 				_spread(buffer, plan, x, z, buffer[i] - seen)

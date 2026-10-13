@@ -518,6 +518,21 @@ func _on_send() -> void:
 		_close_run("Did not start", "")
 
 
+## Send [param text] as though it had been typed: how the mosaic dialog's
+## Design with Claude starts a run, the same run whichever way the person
+## designs. Empty when it went, otherwise why it could not.
+func ask(text: String) -> String:
+	if _working:
+		return "Still working on the last one."
+	var why: String = _why_not()
+	if not why.is_empty():
+		_status.text = why
+		return why
+	_input.text = text
+	_on_send()
+	return ""
+
+
 func new_chat() -> void:
 	# Ends the conversation, not the model. This used to call
 	# clear_built(), so a button labelled "New" with the tooltip "Start

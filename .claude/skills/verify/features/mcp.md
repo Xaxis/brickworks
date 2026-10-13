@@ -40,7 +40,9 @@ the session's lighthouse over the person's saved house. The design's
 `submit_design` name then names it (`Assistant.titled`). `example_name_probe`.
 (The list has grown since; among the later ones is `make_part`, with which a
 session makes a part LEGO has not made and builds with it — see
-[elements](elements.md).)
+[elements](elements.md) — and `make_art` and `look_at_picture`, with which
+it lays a picture as a LEGO Art set to a plan of its own — see
+[view](view.md).)
 
 ## How to reach it
 

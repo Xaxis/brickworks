@@ -148,6 +148,98 @@ func remember_reference(image: Image) -> bool:
 
 func forget_references() -> void:
 	references.clear()
+
+
+## The picture the person chose to make into a mosaic, for make_art.
+var art_source: Image = null
+## Said when make_art has laid a picture, for the window to look at it.
+signal art_laid(art: MosaicArt.Art)
+
+
+## The picture to make LEGO Art of: the one chosen for a mosaic, or failing
+## that the first one the person gave of what they want. Null if neither.
+func art_picture() -> Image:
+	if art_source != null and not art_source.is_empty():
+		return art_source
+	for block: Dictionary in references:
+		var image := Image.new()
+		var bytes: PackedByteArray = Marshalls.base64_to_raw(
+			str((block.get("source", {}) as Dictionary).get("data", "")))
+		if not bytes.is_empty() and image.load_png_from_buffer(bytes) == OK:
+			return image
+	return null
+
+
+## make_art: a plan read at the edge, laid, and put down in place of what
+## was there, as the mosaic dialog's Build does. The answer is the picture
+## face on, for whoever made the plan to judge it by.
+func _make_art(args: Dictionary) -> Variant:
+	var plan: ArtPlan = ArtPlan.parse(args, library)
+	if not plan.ok():
+		progress.emit("a LEGO Art plan that could not be laid")
+		return plan.trouble()
+	var art: MosaicArt.Art = plan.lay(art_picture(), library)
+	if art == null:
+		return plan.trouble()
+	if art.placements.is_empty():
+		return "Nothing was laid: the picture came to no studs."
+	if world == null or builder == null:
+		return "There is no baseplate here to lay it on."
+	await _ensure_parts(art.model())
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	scenery.clear()
+	forget_built()
+	_placed_ids = MosaicArt.put_down(art, world, builder, self)
+	_pending = null
+	# A finished piece of work, as an edit is: a run that lays it and says
+	# so has finished, rather than being asked to build something.
+	_edited = true
+	if not _busy:
+		_outside_standing = true
+		_outside_assemblies = []
+	if not plan.name.is_empty():
+		titled.emit(plan.name)
+	art_laid.emit(art)
+	built.emit(_placed_ids.size())
+	var said: String = ArtPlan.said_of(art)
+	progress.emit("laid a LEGO Art picture: %d parts" % _placed_ids.size())
+	var face: Image = MosaicArt.picture_of(art, library,
+		clampi(768 / maxi(art.plan.across, art.plan.down), 4, 12))
+	return [
+		{"type": "text", "text": ("Laid. %s\n\nThis is it face on, each element drawn "
+			% said + "as its shape and lighter the higher it stands. Does it read as the "
+			+ "subject from across a room — the subject standing out, the background "
+			+ "calm, the stars few and bright? If not, change the plan and call make_art "
+			+ "again; view_model shows it in 3D.")},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(face.save_png_to_buffer())}},
+	]
+
+
+## look_at_picture: what make_art would lay, for a session that cannot
+## otherwise see it — Claude Code over MCP is given a sentence, not the
+## picture.
+func _look_at_picture() -> Variant:
+	var picture: Image = art_picture()
+	if picture == null:
+		return ("No picture has been chosen. Draw one as make_art's svg: big simple "
+			+ "shapes in flat colours, one stud a pixel.")
+	var shown: Image = picture.duplicate()
+	var widest: int = maxi(shown.get_width(), shown.get_height())
+	if widest > REFERENCE_SIZE:
+		var scale: float = float(REFERENCE_SIZE) / widest
+		shown.resize(maxi(1, int(shown.get_width() * scale)),
+			maxi(1, int(shown.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
+	return [
+		{"type": "text", "text": ("The picture to make LEGO Art of, %d x %d pixels. "
+			% [picture.get_width(), picture.get_height()]
+			+ "Plan it with make_art; coordinates are fractions of it, 0 to 1 from the "
+			+ "top left, after any crop.")},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(shown.save_png_to_buffer())}},
+	]
 	_kept_pictures.clear()
 var _turns: int = 0
 var _nudges: int = 0
@@ -2089,6 +2181,14 @@ func _run_tool(block: Dictionary) -> Variant:
 			if laid is Array:
 				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
 			return "%s\n%s" % [rooms["summary"], str(laid)]
+		"make_art":
+			# A picture laid as a LEGO Art set, to a plan: see
+			# src/assembly/art_plan.gd.
+			progress.emit("laying out a LEGO Art picture")
+			return await _make_art(args)
+		"look_at_picture":
+			progress.emit("looking at the picture")
+			return _look_at_picture()
 		"make_part":
 			# A part LEGO has not made, made as a person makes one: see
 			# src/parts/part_tool.gd.
@@ -11434,6 +11534,13 @@ func _rules() -> String:
 that builds whatever you submit. Your designs get built, so they have to \
 hold together.
 
+LEGO ART
+A picture to hang up — LEGO Art, a mosaic, wall art, a portrait or a \
+scene in bricks — is not modelled with submit_design. Call make_art, \
+which lays it as a LEGO Art set while you decide what its designer \
+would. With a picture the person chose, look_at_picture first; with \
+none, draw it in make_art's svg.
+
 COORDINATES
 Positions are in brick units, not millimetres.
   x and z count studs across the baseplate.
@@ -13567,4 +13674,4 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-	] + [FigureTool.schema(), PartTool.schema()]
+	] + [FigureTool.schema(), PartTool.schema()] + ArtPlan.schemas()

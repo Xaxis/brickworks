@@ -80,6 +80,14 @@
       "tests": []
     },
     {
+      "id": "cli:LEGO Art in a browser",
+      "kind": "cli",
+      "entry": "tools/web/art_flow.mjs",
+      "reach": "node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:account browser flow",
       "kind": "cli",
       "entry": "tools/web/account_flow.mjs",
@@ -460,6 +468,14 @@
       "tests": []
     },
     {
+      "id": "lib:LEGO Art plans",
+      "kind": "lib",
+      "entry": "src/assembly/art_plan.gd",
+      "reach": "godot --headless --path . --script src/dev/art_plan_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:a big check on a worker",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",
@@ -795,6 +811,14 @@
       "entry": "src/main.tscn",
       "reach": "godot --path .",
       "area": "game",
+      "tests": []
+    },
+    {
+      "id": "ui:LEGO Art designed by Claude",
+      "kind": "ui",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
+      "area": "view",
       "tests": []
     },
     {

@@ -298,6 +298,8 @@ func _tell_page() -> void:
 		named.merge(_seat_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
+	if _mosaic != null and _mosaic.visible:
+		named.merge(_mosaic.controls_by_name())
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
 	# viewer opens — the timeline and the parts list.
 	if _share_panel != null:
@@ -411,6 +413,8 @@ func _tell_page() -> void:
 			"share": _columns},
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
 		"brickified": _brickify.last_summary if _brickify != null else "",
+		# And the last picture laid in LEGO Art, for art_flow.mjs.
+		"art": _art_said,
 		# The cut-away and x-ray (SeeInside), for tools/web/see_inside_flow.mjs:
 		# where the plane is, and how many parts are drawn see-through.
 		"cut": {"on": _world.is_cut(), "axis": _shell.see_inside.axis,
@@ -1935,9 +1939,12 @@ func _build_ui() -> void:
 				_bar.say("could not read that picture")
 			return
 		_mosaic_source = image
+		_assistant.art_source = image
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
 	_mosaic.art_wanted.connect(_build_art)
+	_mosaic.claude_wanted.connect(_design_art_with_claude)
+	_assistant.art_laid.connect(_art_laid)
 
 	# A 3D model laid in bricks, as a sub-assembly beside what is built.
 	_brickify = BrickifyDialog.new()
@@ -2464,15 +2471,51 @@ func _build_art(options: MosaicArt.Options) -> void:
 	_builder.forget_history()
 	_assistant.forget_built()
 	_store.scenery.clear()
-	var ids: PackedInt64Array = MosaicArt.put_down(art, _world, _builder, _assistant)
+	MosaicArt.put_down(art, _world, _builder, _assistant)
+	await _art_laid(art)
+
+
+## The mosaic dialog's Design with Claude: the picture handed to the
+## assistant, which plans it with make_art in whichever way the person
+## designs — their key, or their own Claude on this machine.
+func _design_art_with_claude(said: String) -> void:
+	if _mosaic_source == null:
+		return
+	_assistant.art_source = _mosaic_source
+	_chat_dock.set_open(true)
+	var why: String = _chat.ask(MosaicDialog.art_brief(said, _mosaic.chosen_panels()))
+	if not why.is_empty():
+		_bar.say(why)
+
+
+## What the last picture laid in LEGO Art came to, checked: its parts, its
+## panels and how many pieces it is, for the status line and for
+## tools/web/art_flow.mjs (window.brickworksState.art).
+var _art_said: Dictionary = {}
+
+
+## A picture laid in LEGO Art, by the dialog's Build or by make_art: looked
+## at, then checked as a design is, so the line says whether it is one piece.
+func _art_laid(art: MosaicArt.Art) -> void:
 	if _shell != null:
 		_shell.assemblies.changed.emit()
-
 	_camera.frame(_built_bounds(), 1.1)
-	_camera.set_view("isometric" if options.depth > 0 else "top")
+	var raised: bool = false
+	for plates: int in art.plan.relief:
+		raised = raised or plates > 0
+	_camera.set_view("isometric" if raised else "top")
 	_on_model_changed()
-	_bar.say("%s parts on %d × %d panels — press P for what to buy" % [
-		MosaicDialog._comma(ids.size()), art.panels.x, art.panels.y])
+	_art_said = {"parts": art.placements.size(), "panels": [art.panels.x, art.panels.y],
+		"pieces": 0, "ok": false}
+	_bar.say("%s parts on %d × %d panels — checking it holds together…" % [
+		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y])
+	var report: Dictionary = await _assistant._checked(art.model(), true)
+	_art_said["pieces"] = int(report.get("pieces", 0))
+	_art_said["ok"] = bool(report.get("ok", false))
+	_bar.say("%s parts on %d × %d panels, %s — press P for what to buy" % [
+		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y,
+		"one piece" if _art_said["pieces"] == 1 and _art_said["ok"]
+		else str(report.get("summary", ""))])
 
 
 ## Width below which the two panels cannot both sit beside the model.

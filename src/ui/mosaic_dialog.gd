@@ -46,12 +46,17 @@ var _quarters: CheckBox
 var _smooth: CheckBox
 var _accents: CheckBox
 var _blend: CheckBox
+var _brief: LineEdit
+var _ask: Button
+var _go: Button
 var _later: Timer
 ## What the Art comes to as chosen, worked out after each change.
 var last_art: MosaicArt.Art
 
 signal build_wanted(across: int, dither: bool)
 signal art_wanted(options: MosaicArt.Options)
+## The picture to be planned by Claude, with what the person said of it.
+signal claude_wanted(brief: String)
 signal cancelled
 
 
@@ -138,6 +143,27 @@ func _build() -> void:
 	_accents = _switch(styles, "Accent stars", "Stars in trans-clear, glow-in-the-dark and metallic where the part is made so")
 	_blend = _switch(styles, "Blend colours", "Mix nearby elements to suggest a colour the palette does not have")
 
+	# Or Claude decides it, as a LEGO Art designer would: what is raised,
+	# where the round texture goes, which stars glow. The switches above
+	# are the engine's own reading of the picture; this is a plan for it.
+	var claude := HBoxContainer.new()
+	claude.add_theme_constant_override("separation", 6)
+	_art_box.add_child(claude)
+	_brief = LineEdit.new()
+	_brief.placeholder_text = "Tell Claude: raise the core, make the stars glow…"
+	_brief.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_brief.add_theme_font_size_override("font_size", 12)
+	_brief.text_submitted.connect(func(_text: String) -> void: design_with_claude())
+	claude.add_child(_brief)
+	_ask = Button.new()
+	_ask.text = "Design with Claude"
+	_ask.tooltip_text = ("Claude looks at the picture and plans it as a LEGO Art "
+		+ "designer would — what stands out, the textures, the stars — with your "
+		+ "key or your own Claude, as the assistant designs")
+	_ask.add_theme_font_size_override("font_size", 12)
+	_ask.pressed.connect(design_with_claude)
+	claude.add_child(_ask)
+
 	_detail = Label.new()
 	_detail.add_theme_font_size_override("font_size", 12)
 	_detail.modulate = Color(1, 1, 1, 0.68)
@@ -157,10 +183,10 @@ func _build() -> void:
 		cancelled.emit())
 	buttons.add_child(cancel)
 
-	var go := Button.new()
-	go.text = "Build it"
-	go.pressed.connect(build)
-	buttons.add_child(go)
+	_go = Button.new()
+	_go.text = "Build it"
+	_go.pressed.connect(build)
+	buttons.add_child(_go)
 
 	_later = Timer.new()
 	_later.one_shot = true
@@ -226,6 +252,14 @@ func _switch(parent: Control, words: String, tip: String) -> CheckBox:
 	return box
 
 
+## Its controls, for the page to find (Main._tell_page): what
+## tools/web/art_flow.mjs presses.
+func controls_by_name() -> Dictionary:
+	return {"mosaic_art": _art_mode, "mosaic_classic": _classic_mode,
+		"mosaic_panels": _panels, "mosaic_brief": _brief, "mosaic_claude": _ask,
+		"mosaic_build": _go}
+
+
 func is_art() -> bool:
 	return _art_mode.button_pressed
 
@@ -255,6 +289,27 @@ func build() -> void:
 		art_wanted.emit(options())
 	else:
 		build_wanted.emit(int(_slider.value), _dither.button_pressed)
+
+
+## Hand the picture to Claude to plan, with whatever the person typed.
+func design_with_claude() -> void:
+	visible = false
+	claude_wanted.emit(_brief.text.strip_edges())
+	_brief.text = ""
+
+
+## What a design run is asked when the dialog hands it the picture: on the
+## panels the person chose, since the size is theirs to decide.
+static func art_brief(said: String, panels: Vector2i) -> String:
+	var ask: String = ("Make the picture I chose into a LEGO Art set with make_art, "
+		+ "%d x %d panels: look_at_picture first, then plan it as a LEGO Art "
+		% [panels.x, panels.y] + "designer would.")
+	return ask if said.is_empty() else "%s %s" % [ask, said]
+
+
+## The panels across and down as the sliders stand.
+func chosen_panels() -> Vector2i:
+	return Vector2i(int(_panels.value), int(_down.value))
 
 
 func show_for(image: Image) -> void:
