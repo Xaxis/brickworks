@@ -63,6 +63,24 @@ static func kinds_of(part: String) -> String:
 	return str(kinds.get(part, ""))
 
 
+## The words that put a brief with a group of real sets, first group first.
+const GROUP_WORDS: Array = [
+	[["orthanc", "mordor", "rivendell", "hobbit", "lord of the rings",
+		"wizard", "dragon", "elf", "elven", "dwarf", "fantasy", "castle",
+		"knight", "medieval", "fortress", "keep", "dungeon", "ruin",
+		"tolkien", "isengard", "sauron", "magic"], "fantasy"],
+	[["spaceship", "starship", "space", "rocket", "star wars", "x-wing",
+		"tie fighter", "shuttle", "satellite", "planet"], "space"],
+	[["car", "truck", "train", "locomotive", "bus", "plane", "aircraft",
+		"helicopter", "boat", "ship", "tractor", "motorbike", "vehicle"],
+		"vehicles"],
+	[["skyline", "landmark", "architecture", "cathedral", "skyscraper"],
+		"architecture"],
+	[["house", "shop", "station", "street", "town", "city", "building",
+		"cafe", "bakery", "school", "hotel", "modular"], "buildings_since_2010"],
+]
+
+
 ## Which real sets a brief is to be compared with.
 ##
 ## By what the brief says, because the brief is the only thing that
@@ -70,26 +88,12 @@ static func kinds_of(part: String) -> String:
 ## fantasy sets: twelve of the fourteen castles in the repository are
 ## from 1984-93 and build almost nothing sideways, which is not the bar.
 static func group_for(brief: String) -> String:
-	var said: String = brief.to_lower()
 	var groups: Dictionary = norms().get("groups", {}) as Dictionary
-	for pair: Array in [
-		[["orthanc", "mordor", "rivendell", "hobbit", "lord of the rings",
-			"wizard", "dragon", "elf", "elven", "dwarf", "fantasy", "castle",
-			"knight", "medieval", "fortress", "keep", "dungeon", "ruin",
-			"tolkien", "isengard", "sauron", "magic"], "fantasy"],
-		[["spaceship", "starship", "space", "rocket", "star wars", "x-wing",
-			"tie fighter", "shuttle", "satellite", "planet"], "space"],
-		[["car", "truck", "train", "locomotive", "bus", "plane", "aircraft",
-			"helicopter", "boat", "ship", "tractor", "motorbike", "vehicle"],
-			"vehicles"],
-		[["skyline", "landmark", "architecture", "cathedral", "skyscraper"],
-			"architecture"],
-		[["house", "shop", "station", "street", "town", "city", "building",
-			"cafe", "bakery", "school", "hotel", "modular"], "buildings_since_2010"],
-	]:
-		for word: String in pair[0]:
-			if said.contains(word) and groups.has(pair[1]):
-				return str(pair[1])
+	for pair: Array in GROUP_WORDS:
+		# Whole words (SubjectWords): "bust" is not a bus, nor a
+		# gatehouse a house.
+		if groups.has(pair[1]) and not SubjectWords.first_named(brief, pair[0]).is_empty():
+			return str(pair[1])
 	return "since_2010" if groups.has("since_2010") else ""
 
 
@@ -339,20 +343,21 @@ const TRAITS: Dictionary = {
 	"machine": ["mech", "robot", "machine", "crane", "excavator", "digger",
 		"engine", "factory", "windmill", "clock", "mill", "pump", "drill",
 		"walker", "turbine"],
+	# A model that moves on purpose, worked from one crank. The owner asked
+	# for an orrery; nothing here knew what one was but an aeroplane.
+	"mechanism": ["orrery", "planetarium", "tellurion", "armillary", "mechanism",
+		"kinetic", "automaton", "automata", "clockwork", "gearbox", "gear train",
+		"crank", "marble run"],
 }
 
 
-## The subject's traits, as {trait: true}. Whole words, plurals let in:
-## "car" is not in "carriage" or "scarlet".
+## The subject's traits, as {trait: true}. Whole words, plurals let in
+## (SubjectWords): "car" is not in "carriage" or "scarlet".
 static func traits_of(about: String) -> Dictionary:
-	var said: String = about.to_lower()
 	var found: Dictionary = {}
 	for one: String in TRAITS:
-		for word: String in TRAITS[one]:
-			var whole := RegEx.create_from_string("\\b%s(s|es)?\\b" % word)
-			if whole.search(said) != null:
-				found[one] = true
-				break
+		if not SubjectWords.first_named(about, TRAITS[one]).is_empty():
+			found[one] = true
 	if found.is_empty() and is_tower(about):
 		found["tower"] = true
 	return found
@@ -400,6 +405,12 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 		calls.append("for a machine: Technic beams pinned to Technic bricks for "
 			+ "arms and frames, a section on a hinge for a joint, grille tiles, "
 			+ "round plates and levers for the machinery's texture")
+	if traits.has("mechanism"):
+		calls.append("for a mechanism — an orrery, an automaton: a gear train from "
+			+ "one crank, Technic gears on axles through Technic bricks at the gears' "
+			+ "own spacing; what moves carried on arms off the turning axles, a planet "
+			+ "on a beam at its distance out; a heavy, wide base for it to turn on; a "
+			+ "counterweight opposite a long arm so it balances")
 	if not calls.is_empty():
 		return calls
 	# A building, a tower, a castle — or nothing the words said.
@@ -422,12 +433,12 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 
 ## Whether a brief is of a tower: what a clustered prism is for.
 static func is_tower(about: String) -> bool:
-	var said: String = about.to_lower()
-	for word: String in ["tower", "orthanc", "keep", "spire", "turret", "minaret",
-			"lighthouse", "citadel", "barad", "pinnacle"]:
-		if said.contains(word):
-			return true
-	return false
+	# Whole words: a shopkeeper is not a keep, and "inspired" not a spire.
+	return not SubjectWords.first_named(about, TOWER_WORDS).is_empty()
+
+
+const TOWER_WORDS: Array = ["tower", "orthanc", "keep", "spire", "turret", "minaret",
+	"lighthouse", "citadel", "barad", "pinnacle", "watchtower", "belltower"]
 
 
 static func _share(value: Variant) -> String:

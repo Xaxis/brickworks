@@ -1362,7 +1362,20 @@ fixing what it got wrong.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
-  `features/parts.md` for how it is measured.
+  `features/parts.md` for how it is measured. A brief names a kind in whole
+  words, plurals and simple stems (`SubjectWords`), and a word made of a
+  kind and one of `SubjectWords.COMPOUND_ENDS` (a spaceship is space); every
+  other vocabulary that reads a brief (`Style.GROUP_WORDS`, `Style.TRAITS`,
+  `Style.TOWER_WORDS`, `Rooms.SAID`, `Techniques.named`) goes through the
+  same. The owner's orrery was reviewed as an aeroplane: "planet" began with
+  the plane kind. `subject_words_probe`: an orrery and a planetarium are no
+  kind of aeroplane in how_real_sets_build_this, the opening message and
+  review_model, and are a mechanism (`Style.TRAITS["mechanism"]`, told a gear
+  train from one crank, planets on arms, a heavy base, a counterweight);
+  every vocabulary against some seventy near misses (planet, carriage,
+  worship, giant, storey, shopkeeper, inspired…) matches none it does not
+  hold as a word; castles, a spaceship, fire engines, two buses, an X-wing
+  and a farmhouse still find theirs.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   83 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round

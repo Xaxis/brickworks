@@ -65,31 +65,21 @@ func kinds_for(words: String, most: int = 3) -> Array:
 	var found: Array = []
 	var seen: Dictionary = {}
 	var place: int = 0
-	for word: String in words.to_lower().split(" ", false):
+	for word: String in SubjectWords.of(words):
 		place += 1
-		var bare: String = ""
-		for ch: String in word:
-			if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
-				bare += ch
-		# A brief says castles and the catalogue says castle. And a
-		# brief says spaceship where the catalogue, which is reading
-		# real set names, says space — so a kind that the word begins
-		# with counts too, at four letters or more. Four because
-		# "car" would otherwise match "cargo" and "cart", and a
-		# prefix that short says nothing.
-		var tries: Array[String] = [bare, bare.trim_suffix("s"),
-			bare.trim_suffix("es")]
-		for at: int in range(bare.length() - 1, 3, -1):
-			tries.append(bare.substr(0, at))
-		for form: String in tries:
-			if form.length() < 3 or seen.has(form) or not kinds.has(form):
-				continue
-			seen[form] = true
-			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
-			entry["kind"] = form
-			entry["place"] = place
-			found.append(entry)
-			break
+		# A brief says castles and the catalogue says castle; it says
+		# spaceship where the catalogue, reading real set names, says space.
+		# Whole words only (SubjectWords): any kind a word began with was
+		# taken, so a planetarium and an orrery's planets were the plane
+		# kind, tail planes and jet engines.
+		var form: String = SubjectWords.kind_of_word(word, kinds)
+		if form.is_empty() or seen.has(form):
+			continue
+		seen[form] = true
+		var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
+		entry["kind"] = form
+		entry["place"] = place
+		found.append(entry)
 	# In the order the brief names them, because a brief names its subject
 	# first and its features after. Fewest sets first was the rule, and
 	# "a large space cruiser with ... two engine pods" came back as engine,

@@ -1907,10 +1907,12 @@ static func named(what: String) -> Dictionary:
 		if str(technique["name"]).to_lower() == wanted:
 			return technique
 	# Near enough: "diagonal" should find "smooth diagonal", and a design
-	# that half-remembers a name should not be told nothing exists.
+	# that half-remembers a name should not be told nothing exists. In
+	# whole words (SubjectWords): as letters, "ear" found the hearth before
+	# the ears, and "ant" the planter.
 	for one: Variant in all():
 		var technique: Dictionary = one
-		if str(technique["name"]).to_lower().contains(wanted):
+		if SubjectWords.names(str(technique["name"]), wanted):
 			return technique
 	# A name inside what was asked, as whole words: "a castle bookcase"
 	# is the bookcase. Not as letters, or "street lamp" finds the tree.

@@ -95,21 +95,27 @@ const KINDS: Dictionary = {
 		"items": ["wall lantern", "barrels", "crates"]},
 }
 
-## The words a design uses for a room, to the kind it is. Read as parts
-## of what was said, so "Saruman's chamber" is a study and "the great hall"
-## a hall.
+## The words a design uses for a room, to the kind it is. Read as words of
+## what was said, so "Saruman's chamber" is a study and "the great hall" a
+## hall — whole words (SubjectWords), so a room on the top storey is not a
+## store, nor the inner keep an inn.
 const SAID: Array = [
-	[["palant", "seeing stone", "seeing-stone"], "palantir room"],
+	[["palantir", "seeing stone"], "palantir room"],
 	[["throne"], "throne room"],
-	[["librar", "book", "archive", "scriptor"], "library"],
-	[["study", "chamber", "office", "wizard", "solar", "alchem", "laborator"], "study"],
-	[["bed", "sleep", "dormitor", "barrack", "quarters"], "bedchamber"],
-	[["forge", "smith", "workshop", "foundry"], "forge"],
-	[["armour", "armor", "armory", "weapon", "treasur", "vault", "store"], "armoury"],
+	[["library", "librarian", "book", "archive", "scriptorium"], "library"],
+	[["study", "chamber", "office", "wizard", "solar", "alchemist", "alchemy",
+		"laboratory", "lab"], "study"],
+	[["bed", "bedroom", "sleep", "sleeping", "dormitory", "barrack", "quarters"],
+		"bedchamber"],
+	[["forge", "smith", "smithy", "blacksmith", "workshop", "foundry"], "forge"],
+	[["armour", "armor", "armoury", "armory", "weapon", "treasure", "treasury", "vault",
+		"store", "storeroom"], "armoury"],
 	[["dungeon", "cell", "prison", "gaol", "jail", "crypt", "cellar", "pit"], "dungeon"],
-	[["kitchen", "cook", "pantry", "larder", "scullery", "brew"], "kitchen"],
-	[["lookout", "watch", "observ", "platform", "top", "summit", "belfry"], "lookout"],
-	[["stair", "landing", "entrance", "vestibule", "lobby"], "stair"],
+	[["kitchen", "cook", "pantry", "larder", "scullery", "brewery", "brewhouse"], "kitchen"],
+	[["lookout", "watch", "watchtower", "observatory", "platform", "top", "summit",
+		"belfry"], "lookout"],
+	[["stair", "staircase", "stairwell", "landing", "entrance", "vestibule", "lobby"],
+		"stair"],
 	[["hall", "dining", "feast", "great", "common", "tavern", "inn"], "hall"],
 ]
 
@@ -287,9 +293,8 @@ static func kind_of(said: String) -> String:
 	if KINDS.has(words):
 		return words
 	for pair: Array in SAID:
-		for stem: String in pair[0]:
-			if words.contains(stem):
-				return str(pair[1])
+		if not SubjectWords.first_named(words, pair[0]).is_empty():
+			return str(pair[1])
 	return ""
 
 

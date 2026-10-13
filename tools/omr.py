@@ -196,7 +196,10 @@ def harvest(wanted: list[str], out: Path, most: int = 20) -> int:
         files = _submodels(text)
         known = {name.lower() for name in files}
         for name, placed in files.items():
-            word = next((w for w in wanted if w in name.lower()), None)
+            # Whole words, a plural let in: as letters, "tree" took every
+            # Street and "lamp" every Clamp.
+            said = re.findall(r"[a-z]+", re.sub(r"([a-z])([A-Z])", r"\1 \2", name).lower())
+            word = next((w for w in wanted if any(s in (w, w + "s", w + "es") for s in said)), None)
             if word is None or not 3 <= len(placed) <= most:
                 continue
             if any(" ".join(b[14:]).lower() in known for b in placed):
