@@ -104,6 +104,7 @@ func _run() -> void:
 	await _a_submodel()
 	await _the_ruler()
 	await _a_small_laptop()
+	await _floor_menu()
 	await _first_timer()
 
 	print("")
@@ -1667,6 +1668,92 @@ func _seated_near(mesh: Lbm.PartMesh, near: Vector3) -> Variant:
 
 ## What a first-time builder hit on brickworks.diy, the second round
 ## (2026-10-12): each check here failed there.
+## View, Floor, as a person uses it: a submenu with the sizes, the grid
+## floor, no floor and the colours, ticked where the model is; each choice
+## one undo, the model never moving; and the same in the properties with
+## nothing selected.
+func _floor_menu() -> void:
+	print("  View, Floor")
+	var shell: Shell = _main.get("_shell")
+	var floor_layer: FloorLayer = _main.get("_floor")
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	await _frames(3)
+	var view: MenuButton = shell.menu("View")
+	await _click(view.get_global_rect().get_center())
+	var popup: PopupMenu = view.get_popup()
+	var sub: PopupMenu = popup.find_child("floor", false, false) as PopupMenu
+	_check("View opens, with a Floor submenu", popup.visible and sub != null)
+	if sub == null:
+		popup.hide()
+		return
+	var names: Array = []
+	for index: int in sub.item_count:
+		names.append(sub.get_item_text(index))
+	_check("...offering %s" % ", ".join(PackedStringArray(names)),
+		names.has("Baseplate 16 × 16") and names.has("Baseplate 48 × 48")
+		and names.has("Grid floor") and names.has("No floor")
+		and names.has("Baseplate colour") and names.has("The baseplate is part of the model"))
+	sub.about_to_popup.emit()
+	var at_32: int = sub.get_item_index(shell.menu_id("floor_32"))
+	_check("...with the 32 x 32 ticked, as the model stands", sub.is_item_checked(at_32))
+	await _shot("floor_menu")
+	var before: String = str((_model()[0] as BrickWorld.Brick).transform)
+	var depth: int = _builder.history_depth()
+	sub.id_pressed.emit(shell.menu_id("floor_none"))
+	popup.hide()
+	await _frames(5)
+	_check("No floor takes the baseplate away (%s, %d plates)" % [_store.model_floor.words(),
+		_store.scenery.size()], _store.model_floor.kind == ModelFloor.NONE
+		and _store.scenery.is_empty())
+	_check("...in one step of the history, the model where it was",
+		_builder.history_depth() == depth + 1
+		and str((_model()[0] as BrickWorld.Brick).transform) == before)
+	await _shot("floor_none")
+	sub.id_pressed.emit(shell.menu_id("floor_48"))
+	await _frames(3)
+	var colours: PopupMenu = sub.find_child("floor_colour", false, false) as PopupMenu
+	_check("Baseplate colour is its own submenu", colours != null)
+	if colours != null:
+		colours.id_pressed.emit(shell.menu_id("floor_colour_19"))
+		await _frames(3)
+	var plate: BrickWorld.Brick = _world.get_brick(_store.scenery.keys()[0]) \
+		if not _store.scenery.is_empty() else null
+	_check("48 x 48, then Tan: one Tan Baseplate 48 x 48 under it (%s)" % _store.model_floor.words(),
+		plate != null and plate.part_id == "4186" and plate.color_code == 19)
+	await _shot("floor_tan_48")
+	await _key(KEY_Z, true)
+	_check("Ctrl-Z takes back the colour alone (%s)" % _store.model_floor.words(),
+		_store.model_floor.is_plate() and _store.model_floor.across == 48
+		and _store.model_floor.colour != 19)
+	await _key(KEY_Z, true)
+	_check("...and again, back to no floor", _store.model_floor.kind == ModelFloor.NONE)
+	# The model's own properties: nothing selected, the floor and its
+	# colour under the header, and "Part of the model".
+	_builder.clear_selection()
+	await _frames(10)
+	var picker: FloorPicker = shell.inspector.floor_picker
+	_check("with nothing selected, the properties say what the model stands on",
+		picker.is_visible_in_tree() or not shell.inspector.is_open()
+		or not (_main.get("_bin_dock") as SideDock).is_open())
+	picker.show_floor(_store.model_floor, false)
+	var choose: OptionButton = picker._kind
+	choose.select(1)
+	choose.item_selected.emit(1)
+	await _frames(5)
+	_check("...and choosing Baseplate 32 x 32 there lays it (%d plate)" % _store.scenery.size(),
+		_store.model_floor.is_plate() and _store.scenery.size() == 1)
+	picker._part.button_pressed = true
+	await _frames(5)
+	_check("...and Part of the model makes it a part (%d scenery, own %s)" % [
+		_store.scenery.size(), floor_layer.has_own_plate()],
+		_store.scenery.is_empty() and floor_layer.has_own_plate())
+	_check("...which View, Floor ticks", shell.ticked("floor_part") == 1)
+	await _key(KEY_Z, true)
+	_check("...and Ctrl-Z makes it the floor again", not floor_layer.has_own_plate()
+		and _store.scenery.size() == 1)
+
+
 func _first_timer() -> void:
 	print("  what a first-time builder hit, round two")
 	_main.call("clear_model")

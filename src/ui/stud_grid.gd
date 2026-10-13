@@ -3,8 +3,8 @@
 ## so a wall eight studs long reads at a glance as two squares of four.
 ##
 ## Drawn on top of the baseplate rather than the ground under it, which a
-## baseplate hides, and over the model's own footprint where there is no
-## baseplate.
+## baseplate hides, and over the ground the floor covers where there is no
+## baseplate: the model's own plate, or the grid floor's square.
 class_name StudGrid
 extends MeshInstance3D
 
@@ -12,6 +12,8 @@ var world: BrickWorld
 var library: PartLibrary
 ## The baseplate's bricks: id -> true.
 var scenery: Dictionary = {}
+## What the model stands on, for the ground when there is no baseplate.
+var floor_layer: FloorLayer
 
 var _material: StandardMaterial3D
 
@@ -29,6 +31,10 @@ func _ready() -> void:
 			redraw())
 	if world != null:
 		world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void:
+			if visible:
+				redraw())
+	if floor_layer != null:
+		floor_layer.changed.connect(func() -> void:
 			if visible:
 				redraw())
 	if visible:
@@ -67,8 +73,8 @@ func _line(lines: ImmediateMesh, from: Vector3, to: Vector3, at: float) -> void:
 	lines.surface_add_vertex(to)
 
 
-## The top of the baseplate, or a square of 32 studs on the ground when
-## there is none.
+## The top of the baseplate, the ground the floor covers when there is
+## none, or a square of 32 studs on the ground when there is neither.
 func _ground() -> AABB:
 	var box := AABB()
 	var first: bool = true
@@ -83,6 +89,10 @@ func _ground() -> AABB:
 			var here: AABB = (brick.transform * mesh.bounds).abs()
 			box = here if first else box.merge(here)
 			first = false
+	if first and floor_layer != null and floor_layer.area.size.length_squared() > 0.0:
+		# Just over the top of the model's own plate, or on the ground.
+		var lift: float = 0.0 if floor_layer.has_own_plate() else -0.15
+		return AABB(floor_layer.area.position + Vector3(0.0, lift, 0.0), floor_layer.area.size)
 	if first:
 		return AABB(Vector3(-320, -0.15, -320), Vector3(640, 0, 640))
 	# The plate's own top, below its studs: a baseplate's bounds include

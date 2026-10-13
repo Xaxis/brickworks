@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
 
 ## Sub-features
 
@@ -225,7 +225,41 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   select-by, tool, paint or removal touches it until `Shift-L` unlocks
   everything (`Builder.locked`). Not saved with the model; Open forgets it.
 - `stud grid` (`src/ui/stud_grid.gd`): View, Stud grid, or the grid button:
-  lines between the baseplate's studs, every fourth brighter.
+  lines between the baseplate's studs, every fourth brighter; with no
+  baseplate, over the ground the floor covers (`FloorLayer.area`).
+- `floor` (`src/render/floor_layer.gd`, `src/parts/model_floor.gd`): what the
+  model stands on, per model. View, Floor: Baseplate 16, 32 or 48 square, or
+  any size in eights (Baseplate, other size…, cut into the baseplates LDraw
+  has: 24 x 24 is a 3334 and a 3497), in a colour baseplates come in
+  (Baseplate colour); Grid floor (no plate: a faint ground with a line
+  between every stud); No floor. The same in the properties with nothing
+  selected (`FloorPicker`, two rows under the header), and Settings, New
+  models start on (`ShellPrefs` `new_floor`; also View, Floor, Start new
+  models on this floor). Each choice is one undo (`Builder` step `floor`) and
+  nothing built moves; plates are centred on the model and tiled to cover it,
+  as the one 32 x 32 always was. A baseplate is scenery (`ModelStore.scenery`):
+  not saved, not counted. The baseplate is part of the model (View, Floor, or
+  Part of the model in the properties) makes it a real part — counted in the
+  parts list and shop lists, saved, step 1 of the booklet, in a shared link's
+  count — and back, one undo each (`Builder` step `scenery`), nothing moving. A
+  model with a baseplate of its own lying at the ground (`FloorLayer.own_plates`,
+  a set opened from elsewhere) gets no plate laid under it, and is not lifted by
+  its plate's thickness on open (`ModelStore.lift_for`); deleting the model's
+  own plate brings the floor's back, and undoing that takes it away. With no
+  plate a part aimed at nothing falls to the ground at y = 0 and settles on the
+  same studs, so the first part lands exactly where it would on a plate; the
+  box, Fit, the cut-away and stability all work against the ground. Saved as
+  `0 !BRICKWORKS FLOOR BASEPLATE 32 32 288` / `GRID` / `NONE` in the head of
+  the model (`ModelFloor.written_into`), in the autosave, saves, LDraw and
+  Studio exports and shared links; a file that says nothing gets the floor new
+  models start on. Pictures use it: renders, Export picture, the share card
+  and the Studio thumbnail show the baseplate floor (and the grid never); a
+  model on No floor stands on the studio's floor alone. The booklet and the
+  designer's own pictures leave a scenery plate out (it is not in the box);
+  a plate made part of the model is in both. The designer chooses
+  (`submit_design` `floor`, `floor_colour`): none for a vehicle, a baseplate
+  in its ground's colour for a scene, made part of the build when the design
+  is done, and says so in the chat.
 - `tour` (`src/ui/tour.gd`): Help, Take the tour: eight cards, each lighting a
   part of the window (menus, toolbar, parts bin, the model, properties, status
   bar, assistant) with the rest dimmed; Next/Back or the arrows, Esc leaves.
@@ -375,6 +409,22 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 2800x1800x24" godot --path . \
   --resolution 2800x1800 --script src/dev/outline_probe.gd -- --tag=2x
 # ...and in a browser, at 1x and 2x, standing still drawing nothing
 node tools/web/outline_check.mjs --dir=build/web   # after tools/export.sh web, .env sourced
+# what the model stands on: each floor saved and read back, one undo each, the
+# model never moving; the first part on the grid floor and on none landing on
+# the same studs as on a plate, stacking, standing up; the stud grid, a box,
+# Fit and the cut-away with no plate; the plate made part of the model
+# (counted, saved, the booklet's step 1, reopened with none under it) and back;
+# a file's own plate; pictures on each floor. Pictures in shots/floor/
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/floor_probe.gd
+# ...View, Floor and the properties by hand (handbuild's floor_menu section)
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=floor_menu
+# ...and in a browser: View > Floor switched to none, grid and a 16 x 16, a part
+# put down on each, Tan, and the plate made part of the model
+PARTS_URL=http://127.0.0.1:8761/parts/ tools/export.sh web
+python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts &
+node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/floor_web
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and

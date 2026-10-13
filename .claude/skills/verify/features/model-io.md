@@ -12,6 +12,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`ModelStore.count_in`): each copy of a sub-model as its parts, a made part as
   one. It counted a sub-model's reference as a brick, "My House — 14 bricks" of
   a house the app called 13; `store_probe` checks both against what opens. A design that fails must leave the model it was asked to change alone.
+  What the model stands on goes with it (`ModelFloor`, see [building](building.md)
+  `floor`): `0 !BRICKWORKS FLOOR BASEPLATE 32 32 288`, `GRID` or `NONE` in the
+  head of the model, in the autosave, saves, LDraw and Studio exports and the
+  text a shared link carries, and is read back on open; a file without it gets
+  the floor new models start on. `floor_probe` round-trips each.
 - `ldr read and write`: real LDraw `.ldr`. Written files open in other LDraw
   tools, and files from them open here. A file's own build steps (`0 STEP`,
   `0 ROTSTEP`, a sub-model's steps of its own and the step each copy of it is
@@ -168,7 +173,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   then writes the house and the castle as LDD would and reads them back to
   the same placements, all 2,438 of the castle's that LDD has numbers for.
 - `picture of the model` (`src/ui/picture.gd`, File, Export → Picture): the model
-  alone — no baseplate, ghost or outline — from the view's direction, framed to
+  on its floor — on the baseplate it stands on when that is its floor, the plate
+  running out to the edges; alone when it has none; never a ghost, an outline or
+  a grid — from the view's direction, framed on the model to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
   the same world with a copy of the scene's environment that clears instead of
   drawing the sky. Downloaded in a browser, written to Downloads on the desktop.

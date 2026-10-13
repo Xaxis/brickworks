@@ -252,6 +252,14 @@
       "tests": []
     },
     {
+      "id": "cli:floor in a browser",
+      "kind": "cli",
+      "entry": "tools/web/floor_flow.mjs",
+      "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:freeze check",
       "kind": "cli",
       "entry": "tools/web/freeze_check.mjs",
@@ -992,6 +1000,14 @@
       "entry": "src/render/idle_draw.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:floor",
+      "kind": "ui",
+      "entry": "src/render/floor_layer.gd",
+      "reach": "godot --path .  (View, Floor; the properties with nothing selected; Settings, New models start on)",
+      "area": "building",
       "tests": []
     },
     {

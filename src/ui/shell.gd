@@ -77,7 +77,7 @@ const MENUS: Array = [
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
 	["Build", ["timeline", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
@@ -103,6 +103,12 @@ const SUBMENUS: Dictionary = {
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
+	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
+		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
+	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
+		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
+		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
+		"floor_colour_7"],
 }
 
 
@@ -185,6 +191,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	grid.world = world
 	grid.library = library
 	grid.scenery = store.scenery
+	grid.floor_layer = app.get("_floor")
 	app.add_child(grid)
 
 	tour = Tour.new()
@@ -525,6 +532,7 @@ func _define() -> void:
 	_add("grid", "Stud grid", 0, func() -> void: set_grid(not grid.visible), Callable(),
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
+	_define_floor()
 	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
 		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
 	_ticked("cut", func() -> bool: return see_inside.cutting)
@@ -744,7 +752,8 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			sub.add_theme_font_size_override("font_size", 13)
 			var words: String = {"recent": "Open recent", "import": "Import",
 				"export": "Export", "history": "History",
-				"select_by": "Select by", "cut_away": "Cut along", "steps": "Build steps"}[kind]
+				"select_by": "Select by", "cut_away": "Cut along", "steps": "Build steps",
+				"floor": "Floor", "floor_colour": "Baseplate colour"}[kind]
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(words, sub, SUBMENU_ID + popup.item_count)
 			if SUBMENUS.has(kind):
@@ -888,6 +897,106 @@ func _show_about() -> void:
 		+ "the assistant, on the web or on your own computer.\n\n%s") % [
 		BuildInfo.version(), BuildInfo.describe()]
 	_about.popup_centered()
+
+
+## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
+## step of the history, and none of them moves what is built.
+func _define_floor() -> void:
+	var floor_layer: FloorLayer = app.get("_floor")
+	var plate: Callable = func() -> bool: return store.model_floor.is_plate()
+	for studs: int in ModelFloor.SIZES:
+		var side: int = studs
+		var made: Command = _add("floor_%d" % side, "Baseplate %d × %d" % [side, side], 0,
+			func() -> void:
+				var chosen: ModelFloor = store.model_floor.copy()
+				chosen.kind = ModelFloor.BASEPLATE
+				chosen.across = side
+				chosen.deep = side
+				app.call("choose_floor", chosen), Callable(),
+			"Stand the model on a %d by %d baseplate" % [side, side])
+		made.ticked = func() -> bool:
+			return store.model_floor.is_plate() and store.model_floor.across == side \
+				and store.model_floor.deep == side
+		made.radio = true
+	var custom: Command = _add("floor_custom", "Baseplate, other size…", 0, _ask_floor_size,
+		Callable(), "A baseplate of any size in eights of studs, cut from the ones LEGO sells")
+	custom.ticked = func() -> bool:
+		return store.model_floor.is_plate() and not (store.model_floor.across == store.model_floor.deep
+			and ModelFloor.SIZES.has(store.model_floor.across))
+	custom.radio = true
+	for kind: Array in [[ModelFloor.GRID, "Grid floor",
+			"No baseplate: a faint ground with a line between the studs, as Studio has"],
+			[ModelFloor.NONE, "No floor",
+			"Nothing under the model, as a car or a ship stands on a table"]]:
+		var which: String = kind[0]
+		var made: Command = _add("floor_" + which, str(kind[1]), 0, func() -> void:
+			var chosen: ModelFloor = store.model_floor.copy()
+			chosen.kind = which
+			app.call("choose_floor", chosen), Callable(), str(kind[2]))
+		made.ticked = func() -> bool: return store.model_floor.kind == which
+		made.radio = true
+	for pair: Array in ModelFloor.COLOURS:
+		var code: int = pair[0]
+		var made: Command = _add("floor_colour_%d" % code, str(pair[1]), 0, func() -> void:
+			var chosen: ModelFloor = store.model_floor.copy()
+			chosen.colour = code
+			app.call("choose_floor", chosen), plate)
+		made.ticked = func() -> bool:
+			return store.model_floor.is_plate() and store.model_floor.colour == code
+		made.radio = true
+	_add("floor_part", "The baseplate is part of the model", 0, func() -> void:
+		app.call("floor_part_of_model", not floor_layer.has_own_plate()),
+		func() -> bool: return store.model_floor.is_plate() or floor_layer.has_own_plate(),
+		"Counted in the parts list and the shop lists, saved with the model and the first step of the booklet")
+	_ticked("floor_part", floor_layer.has_own_plate)
+	_add("floor_default", "Start new models on this floor", 0, func() -> void:
+		ModelFloor.prefer(store.model_floor)
+		bar.say("New models start on %s." % store.model_floor.words().to_lower()),
+		Callable(), "What New, and a model opened from a file that does not say, stand on")
+	_ticked("floor_default", func() -> bool:
+		return store.model_floor.same_as(ModelFloor.preferred()))
+
+
+var _floor_size: ConfirmationDialog
+var _floor_wide: SpinBox
+var _floor_deep: SpinBox
+
+
+## View, Floor, Baseplate, other size: across and deep, in studs.
+func _ask_floor_size() -> void:
+	if _floor_size == null:
+		_floor_size = ConfirmationDialog.new()
+		_floor_size.title = "Baseplate size"
+		_floor_size.ok_button_text = "Use it"
+		var asking := VBoxContainer.new()
+		var words := Label.new()
+		words.text = "How big, in studs? Baseplates are cut in eights."
+		asking.add_child(words)
+		var row := HBoxContainer.new()
+		asking.add_child(row)
+		_floor_wide = SpinBox.new()
+		_floor_deep = SpinBox.new()
+		for spin: SpinBox in [_floor_wide, _floor_deep]:
+			spin.min_value = ModelFloor.LEAST
+			spin.max_value = ModelFloor.MOST
+			spin.step = 8
+			spin.custom_minimum_size = Vector2(90, 0)
+		row.add_child(_floor_wide)
+		var by := Label.new()
+		by.text = " × "
+		row.add_child(by)
+		row.add_child(_floor_deep)
+		_floor_size.add_child(asking)
+		_floor_size.confirmed.connect(func() -> void:
+			var chosen: ModelFloor = store.model_floor.copy()
+			chosen.kind = ModelFloor.BASEPLATE
+			chosen.across = int(_floor_wide.value)
+			chosen.deep = int(_floor_deep.value)
+			app.call("choose_floor", chosen))
+		add_child(_floor_size)
+	_floor_wide.value = store.model_floor.across
+	_floor_deep.value = store.model_floor.deep
+	_floor_size.popup_centered()
 
 
 func set_grid(on: bool) -> void:
