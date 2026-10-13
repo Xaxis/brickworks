@@ -279,8 +279,123 @@ def extract(
             seen.add(k)
             unique.append(connection)
 
-    return (_merge_half_holes(unique) + rounds(library, name, max_depth=max_depth)
+    round_ones = rounds(library, name, max_depth=max_depth)
+    holes = _merge_half_holes(_without_axle_edges(unique, round_ones))
+    stem = name.rsplit("/", 1)[-1]
+    if stem.endswith(".dat"):
+        stem = stem[:-4]
+    return (holes + _plain_holes(stem, round_ones, holes) + round_ones
             + [c for c in said if c.kind in _ROUND_KINDS])
+
+
+# -- what the primitives get wrong ------------------------------------------
+#
+# Three ways the walk above misreads a Technic hole, found by reading gear
+# trains off real sets (docs/MECHANISMS.md, section 2): a hole drawn without
+# any hole primitive, an axle's own edges taken for a hole, and a hole that
+# is a plain cylinder.
+
+## Holes a file draws without a hole primitive, in that file's own frame:
+## file -> [(kind, position, axis)]. The walk adds them wherever the file
+## is used, so a subpart's hole appears in every part that draws with it.
+##
+##   3648s02  an eighth of the centre axle hole of the 24 tooth gear,
+##            3648a and 3648b (and 24505, an alias of 3648b). Drawn eight
+##            times, mirrored, from rectangles and partial cylinders, so
+##            the gear read as having no centre at all and floated free of
+##            its axle. The eight come out at one point, two ways along z,
+##            and _merge_half_holes makes them the one hole they are.
+_UNDRAWN: dict[str, list[tuple[ConnectorKind, Vec3, Vec3]]] = {
+    "3648s02": [(ConnectorKind.AXLE_HOLE, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 1.0))],
+}
+
+## The axle-hole primitives that draw only edges: a face's outline where
+## an axle meets something. An axle draws them too, where it meets its
+## own stop or notch: 32062, the notched axle 2, draws four axlehol2 at
+## the ends of its notch, and they merged into a hole at its middle. So
+## did 153 more parts: axles with a stop, a stud or a towball, axle pins,
+## CV joints, shock absorbers and pneumatic cylinders.
+_EDGE_PIECES = frozenset("""
+    axlehol2 axlehol3 axl2hol2 axl2hol3 axl2hol9 axl3hol2 axl3hol3 axl3hol9
+    axl4hol2 axl4hol3 axl5hol9
+""".split())
+
+
+def _without_axle_edges(connections: list[Connection],
+                        round_ones: list[Connection]) -> list[Connection]:
+    """Drop the edge pieces of an axle hole that lie on the part's own axle.
+
+    An edge piece on the line of a solid axle the part has, at or between
+    its ends, is that axle meeting a face of the part. A real hole there
+    would be drawn with more than its edges, and the closed and open hole
+    primitives are kept whatever they lie on.
+    """
+    axles = [c for c in round_ones
+             if c.kind is ConnectorKind.SHAFT and c.source in _AXLE_SIDE]
+    if not axles:
+        return connections
+    out: list[Connection] = []
+    for connection in connections:
+        if connection.kind is ConnectorKind.AXLE_HOLE \
+                and connection.source in _EDGE_PIECES \
+                and any(_on_round(connection.position, connection.axis, axle, 0.5)
+                        for axle in axles):
+            continue
+        out.append(connection)
+    return out
+
+
+def _on_round(point: Vec3, axis: Vec3, round_one: Connection, slack: float) -> bool:
+    """Whether a point lies on a round's line within its length, and the
+    axis runs along it."""
+    if abs(abs(axis.dot(round_one.axis)) - 1.0) > 0.01:
+        return False
+    gap = point - round_one.position
+    along = gap.dot(round_one.axis)
+    across = gap - round_one.axis * along
+    return across.length() <= 0.1 and -slack <= along <= round_one.length + slack
+
+
+## Parts whose Technic holes are plain cylinders: every whole bore they
+## have of a Technic hole's size is a pin hole. Without this they had bores
+## and no pin hole, and a pin went through them as through nothing in
+## particular.
+##
+##   3709b, 3738, 32001  the Technic plates 2 x 4, 2 x 8 and 2 x 6 with
+##                       holes, each hole a cylinder down into the tube
+##                       beneath it.
+##   6542a               the 16 tooth gear with clutch, its hub a cylinder
+##                       from z -8 to 10, where 6542b, the same gear
+##                       redrawn, has a peg hole.
+##   6573, 4141, 73071   the old differentials, a hub at each end: 6573
+##                       with its 16 and 24, 4141 the casing alone, and
+##                       73071 the casing with its crown wheel.
+##
+## A rule for every such bore would not do: 4,970 parts have a whole bore
+## of that size with no hole on it, most of them minifigure hands, hair
+## and slopes' undersides, and a pin goes in none of them.
+_PLAIN_HOLES = frozenset({"3709b", "3738", "32001", "6542a", "6573", "4141", "73071"})
+PLAIN_HOLE_RADIUS = 6.0
+
+
+def _plain_holes(stem: str, round_ones: list[Connection],
+                 holes: list[Connection]) -> list[Connection]:
+    """A pin hole at the middle of each whole bore of a Technic hole's size,
+    for a part in _PLAIN_HOLES, where it has no hole on that line already."""
+    if stem not in _PLAIN_HOLES:
+        return []
+    out: list[Connection] = []
+    for bore in round_ones:
+        if bore.kind is not ConnectorKind.BORE \
+                or abs(bore.radius - PLAIN_HOLE_RADIUS) > 0.1 or bore.arc < 0.99:
+            continue
+        if any(h.kind in (ConnectorKind.PIN_HOLE, ConnectorKind.AXLE_HOLE)
+               and _on_round(h.position, h.axis, bore, 2.0) for h in holes):
+            continue
+        out.append(Connection(kind=ConnectorKind.PIN_HOLE, gender=Gender.NEUTRAL,
+                              position=bore.position + bore.axis * (bore.length * 0.5),
+                              axis=bore.axis, source="bore"))
+    return out
 
 
 ## The meta line a part carries its own connectors in:
@@ -449,6 +564,13 @@ def _walk(
         return
 
     stack = stack | {name}
+
+    own = name.rsplit("/", 1)[-1]
+    for kind, at, way in _UNDRAWN.get(own[:-4] if own.endswith(".dat") else own, []):
+        axis = transform.transform_direction(way)
+        found.append(Connection(
+            kind=kind, gender=Gender.NEUTRAL, position=transform.transform_point(at),
+            axis=axis * (1.0 / max(axis.length(), 1e-9)), source=own))
 
     for command in ldfile.commands:
         if not isinstance(command, SubfileRef):
