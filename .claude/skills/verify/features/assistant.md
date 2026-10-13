@@ -1116,6 +1116,18 @@ fixing what it got wrong.
   now samples only where a part is (`_lopsided`): a pair of wings, each the
   other's reflection, was called lopsided for the empty half of each box.
   Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  A car on its own wheels (`"wheels": [x, ...]`, `Shapes._wheels`, 2026-10-13):
+  every bench car that tried a shaped body gave it up — raised over nothing it
+  floated (126-183 parts), and with wheels added as bricks its slopes ran into
+  the tyres' boxes (a round arch cut leaves the box's corners), so it was built
+  by hand, studs up. Each axle is the d5b car's proven unit — 18976c01 each
+  side, a row of 32064a Technic bricks, an axle of the body's width less two
+  (`AXLES`: 6, 8, 10 or 12 across) — with keep box cuts round each wheel's whole
+  box and round the bricks, so the body over them stands on the bricks' studs
+  from five plates up; a body too wide or raised off the bricks is refused
+  saying so. `shapes_probe` ("a car on the shape's own wheels"): the guide's
+  example lays 269 parts, one piece, buildable, four wheels; 11 across and a
+  raised underside are refused with why.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
@@ -1482,43 +1494,64 @@ fixing what it got wrong.
   four parts), and one picture of them side by side, 200 pixels a piece
   (`_snippet_picture`, headless: text only) — five with whole parts lists
   and a 1,600-pixel sheet was a long read a run made once.
-  Features, one at a time: `submit_design` takes `features` (required in
-  the schema: what the subject is known by — eyes, beak, ear tufts, wheel
-  arches, grille), `Model.features`. In the app's loop the whole look is for
-  the silhouette, then each feature comes back before the assemblies
-  (`_queue_features`, the same `_to_detail` queue, `TURNS_PER_FEATURE` 4):
-  `_feature_brief` — the best three real pieces for the brief's subject word
-  (`_subject_words`: the words the index knows as subjects, "owl") and the
-  feature, the worked technique for it (`Techniques.for_feature`: name words
-  count 2, use words 1, stemmed; none unless a name word matches), a small
-  picture, and "lay, adapt or build, and say which". What each tool did is
-  put down to the feature being worked (`_run_tool` wraps `_tool_answer`:
-  find_techniques, show_technique, place_technique that grew the model,
-  edits; `_feature_used`), said as each ends ("the eyes: real piece
-  7784-1/eye-rh laid") and all together as the run ends ("features:").
-  From outside: the build's answer lists the features as step 2,
-  `review_model {"feature": "eyes"}` gives the same brief as text and makes
-  it the feature being worked, a find_techniques whose words name a listed
-  feature is put down to it (`_feature_named`), the whole review lists what
-  each came to, and saving hands back a feature never looked at
-  (`next_review`, before assemblies). Told once, in the build's answer, the
-  first held-out owl worked none of them: it reviewed the whole once, edited
-  and saved in 174 s. So the whole review ends with the first feature never
-  looked at, brief and all, and every edit_model and place_technique answer
-  names the features not yet worked (`_with_features_left`). A
-  `--ask-claude-code` run prints the app's own progress lines ("app: working
-  the eyes (feature 1 of 4)", "app: the eyes: placed ..."), so a bench log
-  says which features were worked and with what; the session's own lines
-  name only the tool. None of HOW TO WORK reached a session from outside
-  until the guidance was headed by it: Claude Code reads about 3,800
-  characters of a server's instructions (`mcp.md`, `GUIDE_HEAD`,
-  `read_guide`). `features_probe` drives both with
-  replies written in it: the silhouette submitted with features, the eyes
-  handed back with real pieces and a piece that lays laid with
-  place_technique, the beak built from `beak or snout`, the run's record; and
-  from outside the build's answer, the whole review handing over the eyes,
-  review_model feature=, the piece put down to the eyes and its answer naming
-  the beak, save handing back the beak. Needs the index; SKIP without.
+  Features, one at a time, driven by the app (`src/ai/feature_pass.gd`,
+  2026-10-13): `submit_design` takes `features` (required in the schema: what
+  the subject is known by, each `{"name", "x", "y", "z", "facing"}` — where
+  it goes on the model and the way it faces out, +z the front; a bare string
+  still reads), `Model.features` and `Model.feature_spots`. In the app's loop
+  the whole look is for the silhouette, then each feature comes back before
+  the assemblies (`_queue_features`, `TURNS_PER_FEATURE` 4). For each, the
+  app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
+  searches the index for the subject word and the feature (`_subject_words`,
+  "owl eyes"), then the feature alone, and keeps up to six pieces that lay
+  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model);
+  `spot_for` takes the design's spot or reads one off the name (`WHERE`:
+  eyes high on the front, wheels low on the side, ear tufts on top, tails at
+  the back) on the model's surface at that height, not its box; `fit` tries
+  the piece as built with its front turned to the spot, then tipped whole so
+  its studs face out, seated by its lowest hollows on the free studs nearest
+  the spot that point its way — on the outside (`_outside`: nothing on the
+  stud, nothing between it and the model's edge the way the feature faces;
+  the d6 shop's awning and sign were laid on its floors), within `REACH` 4
+  studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
+  way put a starfighter's exhausts on its fuselage) — kept when no part runs
+  into the model and one is held by it (`OpenPoints.test`); `lay` puts it down through
+  `edit_model`, checked like any edit; a plural feature off the middle gets
+  its pair, mirrored. `_feature_brief` hands it over: the piece, its credit,
+  where it was seated and how, its bricks, whether the spot was a guess, the
+  next-best, the worked technique, a picture framed on it from the way it
+  faces (`_proposal_picture`, none headless), and `SETTLE_HOW`.
+  `settle_feature {feature, verdict}`: `accept` (with `move`, `turn`,
+  `recolor` first: the same piece laid again in one edit with taking the
+  old off, so a refusal leaves it), `next` (taken off, the next candidate
+  laid), `reject` (a reason of three words or more; taken off), `built` (a
+  reason, or an edit put down to the feature; the app's piece is taken off). In the loop a settle ends the
+  feature's turn (`_feature_closed`) and the next comes; turns run out with
+  the piece standing and it is "kept". From outside: the build's answer says
+  so (step 2), the whole review hands the first feature with its piece laid,
+  each settle hands the next, after the last says the assemblies or the
+  creative pass are next; `save_model` refuses while any feature is not
+  settled (`Assistant.save_gate`, checked in `CommandSocket._run_own` before
+  anything is written) and hands the first open one back with its piece —
+  every bench session had saved with features unworked, and the old save
+  wrote the file and then handed the next feature, which the session read as
+  done. review_model, save_model and settle_feature answer with the picture
+  as blocks (`Assistant._joined`). What each came to is said as each ends
+  and all together as the run ends ("eyes: real piece 7784-1/eye-rh "eye rh"
+  laid by the app, accepted"; "beak: the app's piece rejected: ..."). A
+  `--ask-claude-code` run prints the app's progress lines ("app: working the
+  eyes (feature 1 of 4)", "app: the eyes: ..."), so a bench log says what
+  each came to. `features_probe` drives both with replies written in it: in
+  the loop the eyes laid from a real piece that lays (from "owl eyes": the
+  Batmobile's eye), accepted, the beak laid at the spot given and rejected
+  with a reason and taken off, the run's record; from outside save_model
+  refused with both open and the eyes laid as a mirrored pair, "next" laying
+  the next-best, accept with a move laying it a stud back and handing the
+  beak, a reason-less rejection refused, the last settle naming the next
+  step, save going ahead, the whole review's record. Windowed (`xvfb-run -a
+  godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
+  it writes the proposal's picture to `shots/features/eyes_proposal.png`.
+  Needs the index; SKIP without.
   The creative pass, last (`CREATIVE_PASS`, `_creative_brief`, 2026-10-12):
   once the features and assemblies have had their turns, a fresh design
   (`_creative_wanted`, set by `_start` for a new conversation, never a

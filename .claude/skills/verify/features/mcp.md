@@ -92,6 +92,9 @@ the window's commands, ten more — see "the window's commands over mcp"
 above; and `choose_sketch`, with `submit_design`'s `sketch: true`, for
 Sketch first — see assistant.md, "sketch first". 38 in all on 2026-10-13;
 `mcp_sync_probe` keeps the count honest.)
+`settle_feature`, with which a session accepts, adjusts or rejects the real
+piece the app laid for each feature, and without which `save_model` refuses
+— see assistant.md, the design loop's features.)
 
 ## How to reach it
 

@@ -502,9 +502,9 @@ func _socket_tools() -> Array:
 				+ "what to check it for; with an assembly named in "
 				+ "submit_design, that one close up, measured, with the parts "
 				+ "real sets of the kind use that it has none of; with a feature "
-				+ "(eyes, beak, wheel arches, grille), three real sets' pieces for "
-				+ "it with ids for place_technique and the worked technique that "
-				+ "builds one; with creative, the creative pass — three touches "
+				+ "(eyes, beak, wheel arches, grille), the best real set's piece "
+				+ "for it laid by the app where it goes, with a picture, to settle "
+				+ "with settle_feature; with creative, the creative pass — three touches "
 				+ "proposed for this subject and the best one or two added. Call it "
 				+ "after submit_design, then once per feature, then once per "
 				+ "assembly, working each before the next, then creative last."),
@@ -597,7 +597,8 @@ func _own_tools_have(tool: String) -> bool:
 ## A coroutine: reviewing the whole model checks it, which a big model does
 ## on a worker thread (Assistant._checked) while the app goes on drawing.
 ## The window's other commands wait their turn as the assistant's tools do:
-## a render, a hose and a pose all draw or change the one model.
+## a render, a hose and a pose all draw or change the one model. A String,
+## or the blocks of an answer with a picture in it.
 func _run_own(tool: String, input: Dictionary) -> Variant:
 	if _the_app_tools().has(tool):
 		if not await _take_a_turn():
@@ -609,6 +610,12 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 	if tool == "review_model" and assistant != null:
 		return await assistant.review(str(input.get("assembly", "")),
 			str(input.get("feature", "")), bool(input.get("creative", false)))
+	# Not until its features are settled: saving handed the next one back
+	# only after the file was written, and every session then ended.
+	if tool == "save_model" and assistant != null:
+		var held: Variant = await assistant.save_gate()
+		if not (held is String and (held as String).is_empty()):
+			return held
 	if app == null:
 		return "This app cannot do that from outside."
 	match tool:
@@ -647,10 +654,10 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				ProjectSettings.globalize_path(path)]
 			# A run's last act is to save: so saving hands back the next
 			# assembly it has not looked at closely, if there is one.
-			var more: String = ""
+			var more: Variant = ""
 			if assistant != null:
 				more = await assistant.next_review()
-			return written if more.is_empty() else "%s\n\n%s" % [written, more]
+			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
 
 
