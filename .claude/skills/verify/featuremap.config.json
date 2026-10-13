@@ -1197,6 +1197,13 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "recall our own scored designs",
+      "entry": "src/ai/design_memory.gd",
+      "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
+      "area": "assistant"
+    },
+    {
       "kind": "ui",
       "label": "ask claude about the selection",
       "entry": "src/ai/selection_scope.gd",

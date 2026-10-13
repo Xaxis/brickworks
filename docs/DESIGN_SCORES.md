@@ -41,13 +41,55 @@ reason each:
 A subject's score is the mean of its runs; the suite's, the mean of its
 subjects. A design that left no model scores 1 everywhere: the person got
 nothing. Everything a run made — the `.ldr`, the log, the views, the
-probe, the measures, the prompt and the judge's raw reply — is under
-`bench/results/<date>/<subject>/<run>/`, gitignored.
+probe, the measures, the prompt and the judge's raw reply — is under the
+main checkout's `bench/results/<date>/<subject>/<run>/`, gitignored, from a
+worktree too: `run.py` finds it by git's common directory, because a
+worktree's untracked files go when it is removed, and the raw results of the
+re-score, creative, d5 and d5b rounds went that way on 2026-10-13.
 
 Two things to read before trusting a difference: the run-to-run spread
 below each table (the same code, the same subject, designed again), and
 the rubric version in each heading — scores under two versions do not
 compare.
+
+**Design memory, and what a batch holds out.** Every scored design is kept,
+with its critique, in `assets/knowledge/designs.json.gz`: subject, brief,
+the six scores, the judge's reasons, how it was built (`tools/style.py`'s
+shares, its most-used shaped parts, and from its log the features worked and
+real-set pieces laid) and a small picture. After a batch, run
+`python3 tools/design_memory.py build` (it reads the main checkout's
+`bench/results/`) and commit the index: it merges into what the index holds,
+and it is now the only copy of the creative, d5 and d5b rounds' critiques and
+pictures, read before their worktrees went. It holds 22 designs: the
+baseline's 13, the creative round's 4, d5's 2 and d5b's 3. What is missing is
+the re-score's own replies: the baseline keeps its first judgement's scores
+and words, with the re-scored build taken from the table below, and the
+design5 batches' build, judged on the old check and never re-scored, is not
+told as a fault. A designer asking `how_real_sets_build_this` with its
+subject, which a session does before building, and the app's own loop in its
+first message, is handed the best design of the nearest subject (a race car
+finds the Porsche, a parrot the owl, a corner store the shop), how it was
+built, the judge's three lowest reasons to design out, and its picture
+(`src/ai/design_memory.gd`).
+
+The ten subjects here are the test set, so memory must never hand a design
+the answer for the subject being scored. `run.py` starts every design with
+`--held-out=<subject id>`, and the memory leaves that subject's designs out
+for the whole run (when the session first asks, the app says "design memory:
+holding out ..." in the design's log; `design_memory_probe -- --held-out=ID`
+checks it). What a batch measures from this round on is what the designer
+learnt from the other nine subjects, as a person's new subject would, never
+its own past attempts. Rebuild the index between batches, and say in a
+batch's heading whether memory was on: every batch on a commit before it came
+in ran without it.
+
+What the first batch with memory should measure, against the last without:
+whether each session asked (`how real sets build this` in its log) and was
+held out; whether the faults the judge named for the other subjects stop
+recurring (studs-up bodies, stud fields, staircases where a curve should be:
+technique and surface, the two weakest); and that likeness does not fall,
+which would say a session copied the nearest design's picture rather than
+designing past it. A subject moves only beyond the 0.5 run-to-run spread.
 
 ## 2026-10-12: commit 0ddfaab, b887e96, rubric v1, judge claude-opus-5-5
 

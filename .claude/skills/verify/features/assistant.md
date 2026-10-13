@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, ui:ask claude about the selection -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, ui:ask claude about the selection -->
 
 ## Sub-features
 
@@ -1505,6 +1505,38 @@ fixing what it got wrong.
   (feather, claw, exhaust). `snippets_probe` checks credit, search, that the app
   and `tools/snippets.py search --ids` agree, and lays an eye, a car nose, a
   wing, a beak and a turret roof on a plate, whole and joined.
+- `recall our own scored designs`: `src/ai/design_memory.gd` over
+  `assets/knowledge/designs.json.gz`, which `tools/design_memory.py build`
+  writes from the design bench's records (every
+  `<batch>/<subject>/<run>/record.json` under the main checkout's
+  `bench/results/`, where `tools/bench/run.py` now writes from any worktree, or
+  `--results DIR`; dry runs and a re-score's `oldcheck/` left out) and merges
+  into what the index already holds: bench results are gitignored, and the
+  creative, d5 and d5b rounds' critiques survive only in the index. The
+  baseline's build is taken from the re-score's table in
+  `docs/DESIGN_SCORES.md` (`RESCORED`); the d5 batches' build, judged on the
+  old check, is not told (`OLD_CHECK`). Each design:
+  subject, title, brief, the judge's six scores and reasons, its visual mean
+  (buildability left out: the check mis-scored it before 26ddb89), how it was
+  built (`tools/style.py`'s shares and its five most-used shaped parts), what
+  its log says it did (features worked, worked techniques read, real-set pieces
+  laid, figures stood) and a 192-pixel JPEG of its corner view. Search is
+  BM25 like the real-set index (title x3, brief x1.5, kinds of subject,
+  features, the judge's words x0.3), with a subject word also asking for its
+  kinds (`snippets.SUBJECTS`: an eagle asks for birds); a design is near only
+  if the query shares a word of its title or a kind with it, so a revision is
+  handed nothing. `how_real_sets_build_this` answers with it after the
+  kinds data (`DesignMemory.recall`: the nearest subject's best design, its
+  scores, how it was built, the judge's three lowest reasons to design out, its
+  best, two more subjects in a line each, and its picture), and the app's own
+  loop has it in its first message (`opening_for`), in words only, because the
+  pictures there are the reference (`reference_probe`). `--held-out=ID[,ID]`
+  hides a subject's designs; `tools/bench/run.py` passes the subject under
+  test, so a bench score is never the memory of the same subject.
+  `design_memory_probe` measures recall on sixteen phrasings no title uses,
+  checks a revision gets nothing, that holding out hides the subject, and that
+  the tool, the first message and the guidance head carry it; run with
+  `-- --held-out=speed_champions` it checks the flag as the bench passes it.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -1597,6 +1629,9 @@ godot --headless --path . --script src/dev/detail_probe.gd      # each assembly 
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --headless --path . --script src/dev/snippets_probe.gd    # real sets' pieces found by what they are, credited, laid whole and joined
 python3 tools/minitest.py tests/test_snippets.py                # the search on a hand-made index: subject first, plurals, filters
+godot --headless --path . --script src/dev/design_memory_probe.gd  # our scored designs found by subject, the judge's faults handed over
+godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=speed_champions  # ...and never the subject under test
+python3 tools/design_memory.py list                             # what the memory holds: each design's scores and kinds
 godot --path . --resolution 1400x900 --script src/dev/technique_sheet_probe.gd  # and each looks like its name: shots/techniques/
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```

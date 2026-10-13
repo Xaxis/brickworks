@@ -169,6 +169,17 @@ def drive(relay: Relay) -> None:
     check("...with something in it, %d characters" % len(text_of(answer)),
           len(text_of(answer)) > 20)
 
+    # Asked with the subject before building, it also hands over our own
+    # scored designs of the nearest one and the judge's faults in them
+    # (src/ai/design_memory.gd). Not with the app started --held-out.
+    recalled = relay.call("tools/call", {
+        "name": "how_real_sets_build_this", "arguments": {"subject": "race car"}})
+    said = text_of(recalled.get("result", {}))
+    check("how_real_sets_build_this \"race car\" hands over our best Porsche "
+          "and what the judge faulted",
+          "FROM OUR OWN SCORED DESIGNS" in said and "Porsche" in said
+          and "What the judge faulted" in said)
+
     # From bare ground, or the design below lands inside whatever model
     # the app restored on start-up and comes back as an overlap. A session
     # arriving at an app somebody is already using faces the same thing,

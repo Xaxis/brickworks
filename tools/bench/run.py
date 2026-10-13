@@ -30,7 +30,9 @@ A run is, per subject and one at a time:
            the two anchors, the references, the views and the probe, and a
            fixed rubric; its JSON reply read into six scores.
 
-Everything lands in bench/results/<date>/<subject>/<run>/ (gitignored),
+Everything lands in the main checkout's bench/results/<date>/<subject>/<run>/
+(gitignored; from a worktree too, which takes its untracked files with it
+when it is removed),
 and each stage is skipped when its output is there, so a batch that was
 stopped is resumed by running the same command with the same --date.
 --dry-run puts a canned design and a canned judge's reply in place of
@@ -61,7 +63,20 @@ import running  # noqa: E402
 from bench import judge, scores, suite  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-RESULTS = ROOT / "bench" / "results"
+
+
+def _main_results() -> Path:
+    """bench/results in the main checkout, whichever worktree runs this.
+
+    Results are not committed, and a worktree's go with it when it is
+    removed: the raw results of four rounds went that way on 2026-10-13.
+    """
+    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                            cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    return (Path(common).parent if common else ROOT) / "bench" / "results"
+
+
+RESULTS = _main_results()
 CORE = Path.home() / ".claude" / "claude-core" / "bin"
 HEAVY, GPU = str(CORE / "heavy"), str(CORE / "gpu")
 # Where Godot keeps the app's user folder: under XDG_DATA_HOME when it is set,
@@ -189,7 +204,10 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     command = [HEAVY, "xvfb-run", "-a", f"--server-args={SCREEN}",
                "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(ROOT),
                "--log-file", str(run_dir / "godot_design.log"),
-               "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}"]
+               "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
+               # The subject's own scored designs are the answer under test:
+               # the designer's memory leaves them out (src/ai/design_memory.gd).
+               f"--held-out={subject.id}"]
     started = time.time()
     with log.open("w") as out:
         status = subprocess.run(command, cwd=ROOT, env=_billing_free_env(),
