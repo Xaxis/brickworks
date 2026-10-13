@@ -3,12 +3,12 @@
 ## Studio has a renderer for this and Mecabricks a Blender add-on; here
 ## the only picture of a model was a screenshot with the panels round it,
 ## or the command line's --shot, which nobody using the app would find.
-## So Export offers one: the model on its floor — no ghost, no outline, no
-## grid — seen from where the view is looking, framed to fill the picture,
-## at several times the screen's size. On the baseplate it stands on, when
-## its floor is one (ModelFloor), the plate running out to the edges as
-## ground; with no floor, alone with nothing behind it, so it sits on any
-## page. A car on No floor is a car, not a car parked on a lawn.
+## So Export offers one: the model alone — no baseplate, no ghost, no
+## outline, no grid — seen from where the view is looking, framed to fill
+## the picture, at several times the screen's size, with nothing behind it
+## so it sits on any page. A baseplate is in it only when it is part of the
+## model (ModelFloor), as Studio's and LEGO's own pictures have it: a car
+## on the plate the view stands it on is a car, not a car parked on a lawn.
 ##
 ## Drawn by a viewport of its own looking at the same world as the app's,
 ## with the scene's lights and a copy of its environment that clears to
@@ -62,12 +62,10 @@ func take(size: Vector2i = SIZE) -> Image:
 	_frame(lens, bounds, float(size.x) / float(size.y))
 	lens.current = true
 
-	# The model on its floor: the baseplate it stands on is in the picture,
-	# framed on the model (_model_bounds) so the plate is ground and not
-	# the subject. A floor with no plate has no scenery to show.
+	# The model alone.
 	var keep: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
-		if not brick.hidden:
+		if not scenery.has(brick.id) and not brick.hidden:
 			keep[brick.id] = true
 	world.show_only(keep)
 	var was_visible: Array[bool] = []

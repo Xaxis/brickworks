@@ -162,9 +162,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   then writes the house and the castle as LDD would and reads them back to
   the same placements, all 2,438 of the castle's that LDD has numbers for.
 - `picture of the model` (`src/ui/picture.gd`, File, Export → Picture): the model
-  on its floor — on the baseplate it stands on when that is its floor, the plate
-  running out to the edges; alone when it has none; never a ghost, an outline or
-  a grid — from the view's direction, framed on the model to
+  alone — no baseplate unless it is part of the model, no ghost, outline or grid
+  — from the view's direction, framed to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
   the same world with a copy of the scene's environment that clears instead of
   drawing the sky. Downloaded in a browser, written to Downloads on the desktop.

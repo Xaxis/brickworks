@@ -403,37 +403,39 @@ func _undo_until_scenery() -> bool:
 	return not _floor.has_own_plate() and _store.scenery.size() == 1
 
 
-## Pictures use the model's floor: the baseplate in the picture where it
-## is the floor, the studio's clear floor where there is none, never the grid.
+## Pictures are of the model: a render, Export picture, the share card and
+## the Studio thumbnail show a baseplate only when it is part of the model,
+## as Studio's and LEGO's own pictures do, and otherwise the studio's clean
+## floor. A car on the default floor is a car, not a car parked on a lawn.
+## The view keeps the floor as chosen. Drawn for the example car three ways.
 func _pictures() -> void:
 	print("  pictures")
-	_main.call("clear_model")
-	_put("3001", 4, Vector3(-20, 24, 0))
-	_put("3001", 1, Vector3(20, 48, 0))
 	var studio: StudioRender = null
-	for kind: String in [ModelFloor.BASEPLATE, ModelFloor.GRID, ModelFloor.NONE]:
-		_main.call("choose_floor", ModelFloor.make(kind, 32, 32, 19))
+	for case: String in ["default floor", "plate in the model", "no floor"]:
+		_store.open("res://models/car.ldr")
+		_store.model_floor = ModelFloor.make(ModelFloor.BASEPLATE)
+		_main.call("_lay_baseplate")
+		if case == "plate in the model":
+			_main.call("floor_part_of_model", true)
+		elif case == "no floor":
+			_main.call("choose_floor", ModelFloor.make(ModelFloor.NONE))
+		var name: String = case.replace(" ", "_")
 		_camera.frame(_main.call("_built_bounds"))
 		await _frames(20)
-		await _shot("view_" + kind)
+		await _shot("view_" + name)
+		var seen: float = _greenish(root.get_texture().get_image())
+		_check("%s: the view shows the floor as chosen (%.1f%% green)" % [case, seen * 100.0],
+			(seen > 0.05) == (case != "no floor"))
 		var exports: Exports = _main.get("_exports")
 		var image: Image = await exports.picture.take(Vector2i(600, 400))
 		if image == null:
-			_check("%s: a picture was taken" % kind, false)
+			_check("%s: a picture was taken" % case, false)
 			continue
-		var path: String = ProjectSettings.globalize_path("res://shots/floor/picture_%s.png" % kind)
-		image.save_png(path)
-		print("    picture: shots/floor/picture_%s.png" % kind)
-		# The corners of the picture are the floor, or nothing.
-		var corner: Color = image.get_pixel(4, image.get_height() - 4)
-		if kind == ModelFloor.BASEPLATE:
-			_check("on a baseplate, the picture stands it on the plate (corner %s)" % corner.to_html(),
-				corner.a > 0.9)
-		else:
-			_check("on %s, the picture is the model alone on nothing (corner %s)" % [kind,
-				corner.to_html()], corner.a < 0.1)
-		# And a render, Quick: the tan plate under it, or the sweep alone.
-		# The renderer File, Render… uses, set up as it sets it up.
+		image.save_png(ProjectSettings.globalize_path("res://shots/floor/picture_%s.png" % name))
+		print("    picture: shots/floor/picture_%s.png" % name)
+		var in_picture: float = _greenish(image)
+		# And a render, Quick, with the renderer File, Render… uses, set up as
+		# it sets it up.
 		if studio == null:
 			var dialog: RenderDialog = _main.get("_render")
 			studio = StudioRender.new()
@@ -449,17 +451,17 @@ func _pictures() -> void:
 		settings.view = "hero"
 		var render: Image = await studio.render(_world, settings)
 		if render == null:
-			_check("%s: a render was drawn" % kind, false)
+			_check("%s: a render was drawn" % case, false)
 			continue
-		render.save_png(ProjectSettings.globalize_path("res://shots/floor/render_%s.png" % kind))
-		print("    picture: shots/floor/render_%s.png" % kind)
-		var tan: float = _share_like(render, _library.color(19).rgb)
-		if kind == ModelFloor.BASEPLATE:
-			_check("...and the render is of it on its tan baseplate (%.0f%% tan)" % (tan * 100.0),
-				tan > 0.08)
+		render.save_png(ProjectSettings.globalize_path("res://shots/floor/render_%s.png" % name))
+		print("    picture: shots/floor/render_%s.png" % name)
+		var in_render: float = _greenish(render)
+		if case == "plate in the model":
+			_check("...the picture and the render stand it on its plate (%.1f%% and %.1f%% green)"
+				% [in_picture * 100.0, in_render * 100.0], in_picture > 0.05 and in_render > 0.05)
 		else:
-			_check("...and the render is of it alone on the studio's floor (%.1f%% tan)" % (tan * 100.0),
-				tan < 0.01)
+			_check("...the picture and the render are of the car alone (%.1f%% and %.1f%% green)"
+				% [in_picture * 100.0, in_render * 100.0], in_picture < 0.005 and in_render < 0.005)
 
 
 ## Settings says what a new model starts on, and New stands on it.
@@ -539,16 +541,19 @@ func _shadow_falls(kind: String) -> void:
 # -- helpers ------------------------------------------------------------------
 
 
-## How much of a picture is near this colour, in its own light or a shadow.
-func _share_like(image: Image, colour: Color) -> float:
+## How much of a picture is the dark green of the default baseplate, lit or
+## in shadow: greener than it is red or blue by a margin, as nothing in the
+## example car is. Its hue moves with the light and the picture's own
+## colour handling (0.33 in a picture, 0.37 in the view, 0.40 in LDraw), so
+## not a hue.
+func _greenish(image: Image) -> float:
 	var near: int = 0
 	var seen: int = 0
 	for y: int in range(0, image.get_height(), 3):
 		for x: int in range(0, image.get_width(), 3):
 			var c: Color = image.get_pixel(x, y)
 			seen += 1
-			# The same hue and saturation, at whatever lightness.
-			if absf(c.h - colour.h) < 0.04 and absf(c.s - colour.s) < 0.12 and c.v > 0.25:
+			if c.a > 0.5 and c.g > 0.08 and c.g > c.r * 1.4 and c.g > c.b * 1.15:
 				near += 1
 	return float(near) / float(maxi(seen, 1))
 
