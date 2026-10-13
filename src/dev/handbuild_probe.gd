@@ -99,6 +99,7 @@ func _run() -> void:
 	await _onto_side_studs()
 	await _mirrored()
 	await _studio_file()
+	await _author_steps()
 	await _swing_on_a_hinge()
 	await _a_submodel()
 	await _the_ruler()
@@ -1279,6 +1280,175 @@ func _studio_file() -> void:
 	_check("...under its file's name (%s)" % bar.model_name(), bar.model_name() == "Bay 2025")
 	_check("...and the part only Studio has is named in the status bar: \"%s\"" % bar._status.text,
 		bar._status.text.contains("1 not in the library, left out (m1a2b3c4_2025408_163200)"))
+
+
+## A model with its author's steps, opened, and its steps changed the ways
+## Studio, LeoCAD and LDCad change theirs: from the keys, the Edit menu and
+## the timeline's own buttons, each one undo.
+func _author_steps() -> void:
+	print("  the author's steps: shown, and changed by hand")
+	var bar: ModelBar = _main.get("_bar")
+	var shell: Shell = _main.get("_shell")
+	var steps: StepsBar = _main.get("_steps")
+	var import_menu: PopupMenu = shell.menu("File").get_popup().get_node("import")
+	import_menu.id_pressed.emit(shell.menu_id("import_ldraw"))
+	await _frames(3)
+	var picker: ModelFilePicker = bar._picker
+	if picker == null:
+		_check("File, Import, LDraw model asks for a file", false)
+		return
+	if picker._dialog != null:
+		picker._dialog.hide()
+	picker.take(FileAccess.get_file_as_bytes("res://tests/fixtures/steps/gatehouse.mpd"),
+		"gatehouse.mpd")
+	await _frames(10)
+	_check("gatehouse.mpd opens, 14 parts, every one in the author's step (%d)" % _count(),
+		_count() == 14 and _model().all(func(b: BrickWorld.Brick) -> bool: return b.step >= 0))
+	var yellow: int = _part_id("3003")
+	var blue: int = _part_id("3005", 1)
+	var white: int = _part_id("3004")
+	var green: int = _part_id("3022")
+
+	await _key(KEY_B)
+	_check("B opens the timeline in the author's steps (%s), at \"%s\"" % [
+		steps._order_button.text, steps._caption.text], steps.is_playing_back()
+		and steps.mode() == StepsBar.AUTHORS and steps._caption.text.begins_with("Step 1 of 6"))
+	var named: Dictionary = steps.controls_by_name()
+	_check("...with its step edits on the bar (%s)" % ", ".join(["earlier", "later", "merge",
+		"delete", "new"].filter(func(op: String) -> bool:
+			return named.has("steps_" + op) and (named["steps_" + op] as Button).is_visible_in_tree())),
+		["earlier", "later", "merge", "delete", "new"].all(func(op: String) -> bool:
+			return named.has("steps_" + op) and (named["steps_" + op] as Button).is_visible_in_tree()))
+	for _n: int in 2:
+		await _click((named["steps_next"] as Button).get_global_rect().get_center())
+	_check("Next twice: step 3, the yellow brick (\"%s\")" % steps._caption.text,
+		steps._caption.text.begins_with("Step 3 of 6"))
+	await _shot("author_steps_3")
+
+	# A click on the yellow brick, under the white one the timeline has not
+	# put on yet: the pointer passes through what is not drawn. It took the
+	# white brick, and Shift-] moved that.
+	_builder.clear_selection()
+	var under_white: Vector2 = _screen(Vector3(-20, 72, -10))
+	await _move(under_white)
+	await _click(under_white)
+	_check("a click on the yellow brick takes it, not the white one above it still to come "
+		+ "(%s)" % str(_builder.selection.keys()), _builder.selection.keys() == [yellow])
+	# Shift-] with the yellow brick selected: into the next step, the blue one's.
+	_select_only([yellow])
+	await _frames(2)
+	await _key(KEY_BRACKETRIGHT, false, true)
+	_check("Shift-] puts the selected part in the next step, with the blue brick "
+		+ "(yellow %d, blue %d; \"%s\")" % [_step(yellow), _step(blue), bar._status.text],
+		_step(yellow) == _step(blue) and _step(yellow) == 1
+		and bar._status.text.contains("moved 1 part to the next step"))
+	_check("...and the timeline follows: \"%s\"" % steps._caption.text,
+		steps._caption.text.begins_with("Step 3 of 5"))
+	await _key(KEY_Z, true)
+	_check("Ctrl-Z takes it back (yellow %d, blue %d; \"%s\")" % [_step(yellow), _step(blue),
+		steps._caption.text], _step(yellow) == 1 and _step(blue) == 2
+		and steps._caption.text.contains("of 6"))
+	await _key(KEY_BRACKETLEFT, false, true)
+	await _key(KEY_BRACKETLEFT, false, true)
+	_check("Shift-[ twice puts it in the first step, and no further (yellow %d)" % _step(yellow),
+		_step(yellow) == 0)
+	await _key(KEY_Z, true)
+	_check("...one undo for each press that changed it (yellow %d)" % _step(yellow),
+		_step(yellow) == 1)
+
+	# Edit, Build steps, New step from selection: the white brick out of the
+	# step that puts the windows on, into one of its own.
+	var edit_menu: PopupMenu = shell.menu("Edit").get_popup().get_node("steps")
+	var texts := PackedStringArray()
+	for index: int in edit_menu.item_count:
+		texts.append(edit_menu.get_item_text(index))
+	# The menu cannot write "[" as a key (Shell.UNDRAWN), so the line says it.
+	_check("Edit, Build steps lists the step edits, with their keys (%s)" % ", ".join(texts),
+		"Move to previous step    Shift+[" in texts and "Move to next step    Shift+]" in texts
+		and "New step from selection" in texts and "Merge with the next step" in texts
+		and edit_menu.get_item_accelerator(edit_menu.get_item_index(shell.menu_id("step_new")))
+			== KEY_MASK_SHIFT | KEY_N)
+	await _to_step(steps, "Step 5 of 6 · Window (2x), put on")
+	_check("Next to step 5, where the windows go on: \"%s\"" % steps._caption.text,
+		steps._caption.text.begins_with("Step 5 of 6 · Window (2x), put on"))
+	_select_only([white])
+	edit_menu.id_pressed.emit(shell.menu_id("step_new"))
+	await _frames(3)
+	_check("New step from selection: the white brick has a step of its own after the windows "
+		+ "(white %d, green %d; \"%s\")" % [_step(white), _step(green), steps._caption.text],
+		_step(white) == 4 and _step(green) == 5 and steps._caption.text.begins_with("Step 6 of 7"))
+	await _shot("author_steps_new")
+
+	# The timeline's own buttons, on the step showing.
+	_builder.clear_selection()
+	await _click((named["steps_back"] as Button).get_global_rect().get_center())
+	await _click((named["steps_merge"] as Button).get_global_rect().get_center())
+	_check("Back, then Merge with next: the white brick back with the windows (white %d, "
+		% _step(white) + "green %d; \"%s\")" % [_step(green), steps._caption.text],
+		_step(white) == 3 and _step(green) == 4 and steps._caption.text.contains("of 6"))
+	await _to_step(steps, "Step 4 of 6")
+	await _click((named["steps_earlier"] as Button).get_global_rect().get_center())
+	_check("Earlier on step 4: the blue brick before the yellow (blue %d, yellow %d; \"%s\")"
+		% [_step(blue), _step(yellow), steps._caption.text], _step(blue) == 1
+		and _step(yellow) == 2 and steps._caption.text.begins_with("Step 3 of 6"))
+	await _click((named["steps_delete"] as Button).get_global_rect().get_center())
+	_check("Delete step: its part joins the step before and the rest close up, nothing taken "
+		+ "off (blue %d, yellow %d, %d parts)" % [_step(blue), _step(yellow), _count()],
+		_step(blue) == 0 and _step(yellow) == 1 and _count() == 14)
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
+	_check("two undos, and the steps are the author's again (blue %d, yellow %d)"
+		% [_step(blue), _step(yellow)], _step(blue) == 2 and _step(yellow) == 1)
+
+	# A copy pasted while the timeline is on a step goes in that step.
+	await _to_step(steps, "Step 3 of 6")
+	_select_only([yellow])
+	await _key(KEY_C, true)
+	await _key(KEY_ESCAPE)
+	await _key(KEY_V, true)
+	var spot: Vector2 = _screen(Vector3(90, 0, 40))
+	await _move(spot)
+	await _move(spot + Vector2(1, 0))
+	await _click(spot + Vector2(1, 0))
+	var pasted: int = 0
+	for brick: BrickWorld.Brick in _model():
+		if brick.part_id == "3003" and brick.id != yellow:
+			pasted = brick.id
+	_check("a copy put down while the timeline is on step 3 goes in it (step %d; \"%s\")"
+		% [_step(pasted), steps._caption.text], pasted != 0 and _step(pasted) == 1
+		and steps._caption.text.begins_with("Step 3 of 6"))
+	await _key(KEY_Z, true)
+	steps.stop()
+	await _frames(2)
+	# With nothing selected [ and ] still change the colour in hand.
+	_builder.clear_selection()
+	var colour: int = _builder.held_color
+	await _key(KEY_BRACKETRIGHT)
+	_check("with nothing selected, ] still changes the colour in hand (%d to %d)"
+		% [colour, _builder.held_color], _builder.held_color != colour)
+
+
+## The timeline at the step whose caption begins [param caption], by its
+## Start and Next buttons.
+func _to_step(steps: StepsBar, caption: String) -> void:
+	var named: Dictionary = steps.controls_by_name()
+	await _click((named["steps_start"] as Button).get_global_rect().get_center())
+	for _n: int in 14:
+		if steps._caption.text.begins_with(caption):
+			return
+		await _click((named["steps_next"] as Button).get_global_rect().get_center())
+
+
+func _part_id(part: String, colour: int = -1) -> int:
+	for brick: BrickWorld.Brick in _model():
+		if brick.part_id == part and (colour < 0 or brick.color_code == colour):
+			return brick.id
+	return 0
+
+
+func _step(brick_id: int) -> int:
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	return brick.step if brick != null else -99
 
 
 func _exports() -> void:

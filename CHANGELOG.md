@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- A model's own build steps are kept. A Studio, LDCad, LeoCAD or Bricksmith
+  model opened and saved here kept its parts and lost its designer's steps,
+  which were replaced by the order Brickworks works out; now every part, and
+  every sub-model with steps of its own, keeps its step through open, edit
+  and save, as .ldr, .mpd and .io. The timeline opens such a model in
+  Author's steps and the booklet follows them. Steps can be changed as in
+  those tools: Edit, Build steps (Move to previous or next step, Shift-[ and
+  Shift-]; New step from selection, Shift-N; a step earlier or later, merged
+  with the next, or taken out), on the timeline too, each one undo.
+
 - Building instructions laid out as a LEGO booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of

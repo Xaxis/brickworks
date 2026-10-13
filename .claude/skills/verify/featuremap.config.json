@@ -190,6 +190,20 @@
     },
     {
       "kind": "ui",
+      "label": "the author's steps",
+      "entry": "src/assembly/author_steps.gd",
+      "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: open a Studio, LDCad or LeoCAD model; B opens the timeline in Author's steps; Shift-[ / Shift-] / Shift-N, Edit, Build steps, and the timeline's Earlier, Later, Merge with next, Delete step)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "the author's steps in a browser",
+      "entry": "tools/web/steps_flow.mjs",
+      "reach": "node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/steps_web   (a local export, with .env sourced)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "mosaic",
       "entry": "src/ui/mosaic_dialog.gd",
       "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",

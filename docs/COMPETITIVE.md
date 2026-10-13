@@ -318,6 +318,15 @@ Brickworks reads `0 STEP` into `LdrModel.Placement.step`, then drops it:
 So a Studio or LDCad model opened and saved here loses the steps its
 designer made, and the booklet never uses them.
 
+**Done, 2026-10-12** (`src/assembly/author_steps.gd`; the recipe is "the
+author's steps" in `.claude/skills/verify/features/view.md`). As specified,
+with what building it showed: a sub-model's steps are its own, so a copy's
+step in the model that places it is kept apart (`BrickWorld.unit_steps`);
+the steps Brickworks itself wrote into every file it saved are not an
+author's and are not kept (`0 Author: Brickworks` without the line
+`0 !BRICKWORKS AUTHORED_STEPS`); `0 ROTSTEP` ends a step too; and the
+timeline also reorders, merges and deletes steps.
+
 **Spec.**
 - On open, give `Brick` a `step: int = -1` set from `Placement.step` in
   `ModelStore.open_text`. The `.io` and `.lxf` readers open through it too.

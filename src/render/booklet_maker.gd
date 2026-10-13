@@ -64,7 +64,8 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_world = world
 	measured.clear()
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, scenery)
+	# In the author's steps, when the model has them.
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library, scenery, {}, true)
 	if steps.is_empty():
 		return ""
 	for index: int in steps.size():
@@ -322,6 +323,8 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			_ranks[index] = [first, rank]
 			entry.callout = _callout(step, pending, lots)
 			entry.lots = _lots_of(step.copies[0], lots, step.copies.size())
+			# An author's step puts on its own parts with the sub-assembly.
+			entry.lots.append_array(_lots_of(step.brick_ids, lots))
 			pending.clear()
 		else:
 			entry.lots = _lots_of(step.brick_ids, lots)

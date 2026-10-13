@@ -373,6 +373,9 @@ func _tell_page() -> void:
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
 		"carrying": _builder.is_carrying(),
+		# The timeline, while it is up: its order, caption and step's parts
+		# (tools/web/steps_flow.mjs).
+		"timeline": _steps.page_state() if _steps != null else {},
 		# What the renderer is drawing it with, and the frames this app's own
 		# work made slow, for tools/web/freeze_check.mjs: a browser's long
 		# tasks include drawing, which in software is most of a second a
@@ -491,7 +494,8 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 		return {"x": snappedf(on_page.x, 0.1), "y": snappedf(on_page.y, 0.1)}
 	var targets: Array = []
 	for one: Dictionary in _parts_to_click():
-		targets.append((point.call(one["at"]) as Dictionary).merged({"brick": one["brick"]}))
+		targets.append((point.call(one["at"]) as Dictionary).merged({"brick": one["brick"],
+			"part": _world.get_brick(int(one["brick"])).part_id}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
 		"covered": covered, "panels": panels, "columns": _columns,
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
@@ -1278,6 +1282,8 @@ func _share_wanted() -> void:
 ## read, renewed or written (Account.keeps), and the connector never starts.
 func _enter_view() -> void:
 	_shell.read_only = true
+	# Somebody else's steps, to step through and not to change.
+	_steps.editable = false
 	var column: Control = _bar.get_parent()
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
@@ -1785,11 +1791,25 @@ func _build_ui() -> void:
 	# The end of the timeline shows the model again as it was, which is
 	# with whatever was hidden by hand still hidden.
 	_steps.reveal.connect(func(ids: Dictionary) -> void:
+		# What the timeline has not put on yet is passed through by the
+		# pointer, as it is by the eye: a click on the step showing took
+		# the invisible part above it, and moving that a step moved the
+		# wrong one.
+		var ahead: Dictionary = {}
+		if not ids.is_empty():
+			for brick: BrickWorld.Brick in _world.bricks():
+				if not ids.has(brick.id):
+					ahead[brick.id] = true
+		_builder.lattice.ahead = ahead
 		if ids.is_empty() and _verbs != null:
 			_verbs.apply_hidden()
 		else:
 			_world.show_only(ids))
 	_steps.export_wanted.connect(_booklet_wanted)
+	_steps.edit_wanted.connect(func(op: String) -> void: _shell.edit_steps(op))
+	# A part put down while the timeline shows the author's steps goes in
+	# the step it is on.
+	_builder.place_step = _steps.place_step
 	middle.add_child(_steps)
 
 	# Room for two lines. The strip wraps rather than truncating when the
@@ -2768,6 +2788,12 @@ func _on_model_edited() -> void:
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
+	# The timeline in the author's steps shows the model as it now is: a
+	# part put down in the step showing, an undone step edit. (Worked out,
+	# it is the order it was when opened, as it always was: on Orthanc the
+	# working out takes five seconds.)
+	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
+		_steps.refresh()
 
 
 ## File, Render….
