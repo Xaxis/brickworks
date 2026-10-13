@@ -24,8 +24,16 @@ whole cycle.
   built in callouts ("2x") with an arrow to where they go, a cover, the
   finished model front and back, and the parts list by colour with
   element numbers. On the web it opens in a new tab, ready to print.
+- File, Export, BrickLink Studio model (.io): the model, its build order
+  and a picture of it, in the zip Studio opens its own files from. Not
+  yet seen opening in Studio itself; what is inside is plain LDraw.
 
 ### Changed
+
+- A BrickLink Studio .io opens in its own colours. It was read from the
+  copy inside that uses BrickLink's colour numbers, so white came in blue.
+  Files locked with AES open too, and a part only Studio has is named in
+  the status bar instead of counted.
 
 - The build order no longer puts anything in the air before the model
   reaches it (Orthanc: 193 parts to 6), puts wheels on last, and builds

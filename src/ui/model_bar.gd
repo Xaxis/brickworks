@@ -57,6 +57,8 @@ signal opened(bricks: int)
 ## ("bricklink" or "rebrickable").
 signal picture_wanted()
 signal shop_list_wanted(shop: String)
+## Export as a BrickLink Studio model (.io).
+signal studio_wanted()
 
 
 ## A button's face in each state, faint until pointed at.
@@ -349,7 +351,14 @@ func _import() -> void:
 			opened.emit(int(result["placed"]))
 			var note: String = "opened %d parts" % int(result["placed"])
 			if int(result["missing"]) > 0:
-				note += " — %d are not in the library" % int(result["missing"])
+				# Named, as an LDD model's are: a Studio model can use a part
+				# Studio made, which nothing else has.
+				var missing: Dictionary = result.get("missing_ids", {})
+				var count: int = 0
+				for id: String in missing:
+					count += int(missing[id])
+				note += " — %d not in the library, left out (%s)" % [count,
+					ModelStore.named_counts(missing)]
 			if int(result.get("waiting", 0)) > 0:
 				note += " — %d are still arriving, open it again in a moment" \
 					% int(result["waiting"])
@@ -361,7 +370,7 @@ func _import() -> void:
 
 
 ## What File, Export writes: 0 LDraw, 1 a picture, 2 BrickLink's list,
-## 3 Rebrickable's.
+## 3 Rebrickable's, 4 a Studio model.
 func _on_export_chosen(id: int) -> void:
 	match id:
 		0:
@@ -372,6 +381,8 @@ func _on_export_chosen(id: int) -> void:
 			shop_list_wanted.emit("bricklink")
 		3:
 			shop_list_wanted.emit("rebrickable")
+		4:
+			studio_wanted.emit()
 
 
 func _on_export() -> void:

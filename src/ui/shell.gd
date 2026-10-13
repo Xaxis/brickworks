@@ -96,7 +96,8 @@ const SUBMENU_ID := 10000
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
-	"export": ["export_ldraw", "export_picture", "export_bricklink", "export_rebrickable"],
+	"export": ["export_ldraw", "export_io", "export_picture", "export_bricklink",
+		"export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
@@ -382,6 +383,8 @@ func _define() -> void:
 		"Keep a copy of this model under another name")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: bar._on_export_chosen(0), something)
+	_add("export_io", "BrickLink Studio model (.io)", 0,
+		func() -> void: bar._on_export_chosen(4), something)
 	_add("export_picture", "Picture of the model (.png)", 0,
 		func() -> void: bar._on_export_chosen(1), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,

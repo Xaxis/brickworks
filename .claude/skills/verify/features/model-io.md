@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:open an ldd model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model -->
 
 ## Sub-features
 
@@ -91,12 +91,54 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is moved only where undoing exactly the old corner's error puts its studs on
   stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
 - `open a studio model` (`src/parts/studio_io.gd`, `src/ui/model_file_picker.gd`):
-  File, Import (or Open → From a file) reads LDraw or BrickLink Studio's `.io` — a zip with
-  Studio's published password around `model2.ldr` (or `model.ldr`), opened by
-  hand (PKWARE decryption, then the raw deflate wrapped as gzip, which Godot
-  inflates). The file is read as bytes, in a browser too.
-  `tests/fixtures/studio_bay.io` was made by the system's `zip -P`, not by
-  this app.
+  File, Import → BrickLink Studio model (or Open → From a file) reads Studio's
+  `.io`, on the desktop and in a browser (read as bytes). Two files Studio saved
+  were opened to learn the format (2.2.1, 2021, locked; 2.25.2, 2025, not
+  locked; neither kept, neither ours): a zip holding `model.ldr` (plain LDraw,
+  LDraw's colour and part numbers, `0 FILE` sub-models, `0 STEP`, a byte-order
+  mark and CRLF), `model2.ldr` (the same model in **BrickLink's** numbers —
+  white 1, black 11, tile 3068 — carrying every part's geometry),
+  `modelv1.ldr`/`modelv2.ldr` (Studio's own `10`/`11` lines), `.info`
+  (`{"version":"2.25.2_1","total_parts":1500,…}`), `thumbnail.png`,
+  `errorPartList.err` (`[]`) and `CustomParts/`. Only `model.ldr` is read,
+  through the LDraw reader, so no colour needs mapping. It read `model2.ldr`
+  first and opened a real set in BrickLink's colour numbers read as LDraw's;
+  its fixture had been made by hand with LDraw's numbers in `model2.ldr`. A
+  locked zip is opened by hand (Studio's published password, PKWARE's cipher,
+  its check byte refusing any other password; then raw deflate wrapped as
+  gzip), and so is one locked with WinZip's AES-128 or 256 (`StudioIo._aes`:
+  PBKDF2-HMAC-SHA1, AES-CTR on a little-endian counter, its HMAC checked; AE-2
+  states no CRC, so it inflates through `StreamPeerGZIP`, whose buffer has to
+  hold the whole output or it takes nothing in), which some early Studio
+  builds wrote by another reader's account. `io_probe` opens libarchive's own
+  AES-256 test file (`libarchive_aes256.zip`, BSD-2, docs/ATTRIBUTION.md) with
+  libarchive's password to its stated 6,818 bytes, then `bay_aes.io`. Studio's
+  "Untitled Model" first line is no name: the file's name is used. Studio
+  names a part it drew itself `bl_<BrickLink number>`; where the library has
+  that number it is that part (`ModelStore.studio_part`: bl_5095 is 5095);
+  otherwise it is left out and named in the status bar ("1 not in the library,
+  left out (bl_3068pb2483)") — every opened file's missing parts are named so
+  now (`open_text`'s `missing_ids`). Opened that way the 2025 set placed 1,498
+  of 1,501 with three BrickLink-only prints named; the 2021 one all 103.
+  `tests/fixtures/studio/make_fixtures.py` makes `bay_2025.io` and
+  `bay_2021.io` (locked by the system's `zip -P`) in those two shapes, and
+  `bay_aes.io`, with `model2.ldr` in BrickLink's numbers so reading the wrong
+  member fails. A damaged member makes Godot print `ERROR: Condition "err !=
+  1"` from its inflater: expected in `io_probe`'s refusals, not a failure.
+- `save as a studio model` (`src/ui/exports.gd` `studio_io`, `StudioIo.pack`):
+  File, Export → BrickLink Studio model (.io) writes `<name>.io` (downloaded in
+  a browser, to Downloads on the desktop): `model.ldr` (the model's LDraw with
+  its build order, CRLF), `.info` (`total_parts`, and the version of the older
+  Studio read, 2.2.1), `errorPartList.err` and an 800 x 600 thumbnail drawn by
+  `Picture` (none in a headless run), deflated, not locked, as Studio 2.25
+  writes its own. The zip is built in memory (Godot's ZIPPacker writes only to
+  a path); deflate and CRC come from Godot's gzip. **Not seen opening in
+  Studio** — there is no Studio on this machine — so nothing of Studio's own
+  (`model2.ldr`, `modelv2.ldr`) is guessed at; `model.ldr` is standard LDraw,
+  which Studio's own LDraw import reads. `io_probe` checks Godot's zip reader
+  and the system's `unzip -t` open it, and the round trip: the castle out to
+  .io and back is the same parts, colours, places and sub-models, the .io
+  carrying its LDraw and 510 steps exactly.
 - `open an ldd model` (`src/parts/ldd_lxf.gd`, `src/ui/model_file_picker.gd`):
   File, Import → LEGO Digital Designer model, or Open → From a file, reads
   LDD's `.lxf` (a zip around LXFML; the zip is read by `StudioIo`'s reader) or
@@ -173,6 +215,9 @@ godot --headless --path . --script src/dev/restore_probe.gd  # a failed design c
 godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still mean something
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
+godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, write, round trip, refusals
+python3 tests/fixtures/studio/make_fixtures.py   # after changing what the .io fixtures hold
+node tools/web/io_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: open an .io, export one, open it again
 python3 tools/ldd_map.py vendor/ldraw.xml   # after a newer ldraw.xml: assets/ldraw/ldd.json again
 tools/check.sh --network   # adds open_probe: opening the way the browser has to
 ```

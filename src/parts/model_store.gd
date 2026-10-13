@@ -327,10 +327,11 @@ func open(path: String) -> int:
 
 ## What a file calls its model: its first line, as LDraw has it, unless
 ## that is a placeholder, and then its file name. The autosave written
-## before it kept the name said "Working model", which is no name.
+## before it kept the name said "Working model", which is no name; Studio
+## starts every model "Untitled Model", whatever it is called.
 static func _title_of(model: LdrModel, file_name: String) -> String:
 	var said: String = model.main.title if model.main != null else ""
-	if not said.is_empty() and not said in ["Working model", "Model", "model"]:
+	if not said.is_empty() and not said in ["Working model", "Model", "model", "Untitled Model"]:
 		return said
 	var stem: String = file_name.get_basename()
 	if stem.is_empty() or stem == AUTOSAVE.get_file().get_basename():
@@ -363,6 +364,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	# other hand where it has one.
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
+		placement.part_id = studio_part(placement.part_id)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
 	if flattened.is_empty():
@@ -381,7 +383,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
 		if not library.parts.has(placement.part_id):
-			missing[placement.part_id] = true
+			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
 		elif not library.is_resident(placement.part_id):
 			# In the catalogue but not yet fetched, which on the web is
 			# most of it. Counted apart from missing, because asking for
@@ -394,8 +396,9 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 
 	if known.is_empty():
 		return {"placed": 0, "missing": missing.size(), "waiting": 0,
-			"error": "none of the %d parts in that file are in the library"
-				% missing.size()}
+			"missing_ids": missing,
+			"error": "none of the %d parts in that file are in the library (%s)"
+				% [missing.size(), named_counts(missing)]}
 
 	world.clear()
 	builder.lattice.clear()
@@ -438,7 +441,31 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
-		"waiting": waiting.size(), "error": ""}
+		"waiting": waiting.size(), "missing_ids": missing, "error": ""}
+
+
+## Part numbers and how many of each, as a person reads them: "3626cpr9
+## ×2, 973pb999", the first [param most], then "…".
+static func named_counts(counts: Dictionary, most: int = 6) -> String:
+	var named := PackedStringArray()
+	for id: String in counts:
+		named.append(id if int(counts[id]) == 1 else "%s ×%d" % [id, int(counts[id])])
+	return ", ".join(named.slice(0, most)) + (", …" if named.size() > most else "")
+
+
+## The LDraw part a Studio model means by [param part_id].
+##
+## Studio draws parts its copy of LDraw had not got yet itself, and names
+## them by BrickLink's number with "bl_" before it: a Studio set from 2025
+## used bl_5095, a curved slope LDraw has since drawn as 5095. Where the
+## library has that number it is that part; where it has not (a print only
+## BrickLink knows, bl_3068pb2483), the name is kept, and the part is left
+## out and named like any other the library has not got.
+func studio_part(part_id: String) -> String:
+	if part_id.begins_with("bl_") and not library.parts.has(part_id) \
+			and library.parts.has(part_id.substr(3)):
+		return part_id.substr(3)
+	return part_id
 
 
 ## Placements whose geometry is on its way, put down as each part arrives.
