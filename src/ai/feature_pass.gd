@@ -28,8 +28,12 @@ const LOOKED_AT := 40
 const MOST_PARTS := 40
 ## Pieces kept as candidates for a feature, in the index's order.
 const CANDIDATES := 6
-## How far from where the feature goes a piece may be seated, in LDU.
-const REACH := 7.0 * STUD
+## How far from where the feature goes a piece may be seated, in LDU, and
+## for a feature facing sideways how far in front of or behind that face.
+## Seven studs every way put a starfighter's exhausts on top of its
+## fuselage and its canopy on the cockpit floor.
+const REACH := 4.0 * STUD
+const DEPTH := 1.5 * STUD
 ## Open studs tried as a seat for one piece in one orientation.
 const SEATS := 28
 ## Whole edits tried for one feature before it is handed over as it is.
@@ -341,7 +345,8 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 	var out: Vector3 = Assistant.FACES.get(facing, Vector3.UP)
 	for point: OpenPoints.Point in read.points_of(ids):
 		if point.kind == "stud" and point.by == 0 and point.section.is_empty() \
-				and point.at.distance_to(target) <= REACH and _outside(point, out, box):
+				and point.at.distance_to(target) <= REACH and _outside(point, out, box) \
+				and (facing == "up" or absf((point.at - target).dot(out)) <= DEPTH):
 			free.append(point)
 	free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
 		return a.at.distance_to(target) < b.at.distance_to(target))
