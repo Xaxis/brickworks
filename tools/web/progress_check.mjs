@@ -267,7 +267,9 @@ function helpers(page) {
 // One press, measured. [press] does it; [done] says, from the page's state,
 // when it has finished; [heard] says, for a build without the bar, whether
 // anything on screen has answered yet.
-async function measure(page, name, press, done, heard, seconds = 300) {
+// With [settle], done is when the page has also gone quiet after it: the
+// parts bin is open at once, and then draws its pictures.
+async function measure(page, name, press, done, heard, seconds = 300, settle = false) {
   const { state, now, quiet } = helpers(page);
   const from = await now();
   const engineFrom = (await state()).now || 0;
@@ -285,6 +287,7 @@ async function measure(page, name, press, done, heard, seconds = 300) {
     await page.waitForTimeout(250);
   }
   await quiet(2000, 60000);
+  if (settle && doneAt !== null) doneAt = (await now()) - 2000;
   const facts = await page.evaluate(([a]) => {
     const p = window.brickworksFrames;
     const press = p.presses.filter((t) => t >= a)[0] ?? a;
@@ -357,7 +360,7 @@ try {
 
   if (wanted("bin")) {
     await measure(page, "bin", press(page, "parts_rail"),
-      async (s) => Boolean(s.columns && s.columns.parts), async () => false, 60);
+      async (s) => Boolean(s.columns && s.columns.parts), async () => false, 60, true);
     await h.quiet(3000, 120000);
   }
   if (wanted("booklet")) {

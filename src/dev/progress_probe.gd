@@ -89,10 +89,24 @@ func _run() -> void:
 	_check("the status bar has the bar in it", Working.shown_in != null
 		and Working.shown_in.is_inside_tree())
 
-	var placed: int = main.call("_open", "res://models/orthanc.ldr")
+	# Opened as Open's menu opens an example: a slice at a time, counted.
+	var bar: ModelBar = main.get("_bar")
+	var opened_at: int = Time.get_ticks_usec()
+	var counted_open: Array[int] = [0]
+	var open_watch := func() -> void:
+		var now: Working.Job = Working.current()
+		if now != null and now.words.begins_with("Putting down"):
+			counted_open[0] = maxi(counted_open[0], now.done)
+	process_frame.connect(open_watch)
+	var placed: int = await bar.open_with_progress("res://models/orthanc.ldr")
+	process_frame.disconnect(open_watch)
 	main.call("_lay_baseplate")
 	await _frames(30)
-	_check("Orthanc is open: %d parts" % placed, placed > 9000)
+	_check("Orthanc is open a slice at a time: %d parts, counted up to %d as they went down, the longest frame %.0f ms%s"
+		% [placed, counted_open[0], _worst_since(opened_at),
+			", in software, so not judged" if _software else ""],
+		placed > 9000 and counted_open[0] > 0 and not Working.is_busy()
+		and (_software or _worst_since(opened_at) <= BUDGET_MS * 2.0))
 
 	# -- Timeline --------------------------------------------------------
 	# B, as a person presses it: a key is handled before its frame's

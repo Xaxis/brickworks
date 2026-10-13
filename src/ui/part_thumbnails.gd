@@ -418,6 +418,13 @@ func _render(job: Dictionary) -> void:
 	_drawing = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
+	# Read back once the card has drawn it (GpuFence, as ModelShot reads):
+	# sooner, the read waits for it on the page's one thread, and a browser
+	# drawing in software held the page eight seconds over the first page
+	# of the bin (2026-10-12). The tiles still to come say so themselves;
+	# a line in the status bar as well came and went with every scroll and
+	# drew the whole window again for it.
+	await GpuFence.finished()
 
 	var image: Image = _viewport.get_texture().get_image()
 	_drawing = false

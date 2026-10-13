@@ -350,9 +350,52 @@ static func _title_of(model: LdrModel, file_name: String) -> String:
 ## does not carry, and "opened, 340 of 500 parts" is a true answer where
 ## "opened" is not.
 func open_text(text: String, name: String = "model") -> Dictionary:
-	var model: LdrModel = LdrModel.parse(text, name)
+	var result: Dictionary = {}
+	_open_into(result, text, name, null)
+	return result
+
+
+## [method open_text], a slice at a time (FramePace), with [param job]
+## saying how far it has got: read, then the parts put down and counted.
+## Orthanc's 9,429 parts were one frame of five and a half seconds in a
+## browser (2026-10-12). Refused while another is opening.
+func open_text_paced(text: String, name: String, job: Working.Job) -> Dictionary:
+	if opening:
+		return {"placed": 0, "missing": 0, "waiting": 0,
+			"error": "still opening the last one"}
+	opening = true
+	var result: Dictionary = {}
+	await _open_into(result, text, name, job)
+	opening = false
+	return result
+
+
+## [method open], a slice at a time: see [method open_text_paced].
+func open_paced(path: String, job: Working.Job) -> int:
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return 0
+	var result: Dictionary = await open_text_paced(text, path.get_file(), job)
+	if int(result["placed"]) > 0:
+		example = path.begins_with(EXAMPLE_DIR)
+	return int(result["placed"])
+
+
+## Whether a model is being opened a slice at a time.
+var opening: bool = false
+
+
+func _open_into(result: Dictionary, text: String, name: String, job: Working.Job) -> void:
+	var model: LdrModel = null
+	if job != null:
+		job.say("Reading %s…" % name)
+		model = await LdrModel.parse_paced(text, name, job)
+		await job.next()
+	else:
+		model = LdrModel.parse(text, name)
 	if model == null:
-		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
+		result.merge({"placed": 0, "missing": 0, "error": "that is not an LDraw file"})
+		return
 	# Parts the file brought with it, made here or somewhere else, join
 	# the library before anything asks whether the library has them.
 	var carried: Dictionary = CustomParts.take_from(library, model)
@@ -360,6 +403,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		push_warning("could not build a part the file carries: " + problem)
 
 	var flattened: Array = model.flatten(library.parts)
+	if job != null:
+		await job.next()
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
@@ -373,8 +418,9 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
 	if flattened.is_empty():
-		return {"placed": 0, "missing": 0, "waiting": 0,
-			"error": "there are no parts in that file"}
+		result.merge({"placed": 0, "missing": 0, "waiting": 0,
+			"error": "there are no parts in that file"})
+		return
 
 	# Everything decided before anything is destroyed.
 	#
@@ -400,10 +446,11 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 			known.append(placement)
 
 	if known.is_empty():
-		return {"placed": 0, "missing": missing.size(), "waiting": 0,
+		result.merge({"placed": 0, "missing": missing.size(), "waiting": 0,
 			"missing_ids": missing,
 			"error": "none of the %d parts in that file are in the library (%s)"
-				% [missing.size(), named_counts(missing)]}
+				% [missing.size(), named_counts(missing)]})
+		return
 
 	world.clear()
 	builder.lattice.clear()
@@ -417,8 +464,15 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	# Stood on the ground before anything is placed, from every part in it.
 	var up: Vector3 = lift_for(known)
 	var placed: int = 0
-	for item: Variant in known:
-		var placement: LdrModel.Placement = item
+	if job != null:
+		job.say("Putting down %s parts…" % Working.comma(known.size()))
+		job.count(0, known.size())
+		world.hold_drawing()
+	for at: int in known.size():
+		if job != null and job.due():
+			job.count(at)
+			await job.next()
+		var placement: LdrModel.Placement = known[at]
 		placement.transform.origin += up
 		# Asked for first: on the desktop the geometry is read from disk
 		# when it is asked for, and only a part that still has none is
@@ -433,6 +487,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		world.get_brick(brick_id).step = placement.step
 		builder.register(brick_id, placement.part_id, placement.transform)
 		placed += 1
+	if job != null:
+		world.release_drawing()
 	_awaited_in = world.generation()
 
 	# Ask for the ones that were not to hand, and put each down as it
@@ -449,8 +505,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	share_id = share_in(text)
 	example = false
 	loaded.emit(title, placed)
-	return {"placed": placed, "missing": missing.size(),
-		"waiting": waiting.size(), "missing_ids": missing, "error": ""}
+	result.merge({"placed": placed, "missing": missing.size(),
+		"waiting": waiting.size(), "missing_ids": missing, "error": ""})
 
 
 ## Part numbers and how many of each, as a person reads them: "3626cpr9
