@@ -588,6 +588,18 @@ $0.72 at medium (`HANDOFF.md`), and a person learns whether the brief was
 understood only after paying. BrickBench's three best agents cost $0.92
 to $5.90 a build [bb-paper].
 
+**Done, 2026-10-13** (`Assistant.sketch`, `src/ai/sketches.gd`; the recipe
+is "sketch first" in `.claude/skills/verify/features/assistant.md`). As
+specified, with what building it showed: the three are checked for being
+three ideas — two within 15% on every size whose outlines from the front,
+the side and above overlap 70% are one, and the later is sent back once;
+150 parts counts a pattern as the parts it lays; the design from the
+chosen sketch is a fresh conversation, opening on its picture and its
+parts, so the full model is not paid to read the sketches' turn; and
+over MCP `choose_sketch` picks. On the subscription, a held-out lighthouse
+sketched in 132 s and 12.4k tokens out against 490 s and 39.4k for the
+design after it.
+
 **Spec.**
 - *Sketch first* is a toggle beside Build it, on by default for a first
   design.

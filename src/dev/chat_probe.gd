@@ -114,6 +114,11 @@ func _run() -> void:
 	panel.designing.connect(func(brief: String) -> void: asked.append(brief))
 
 	print("a design is started")
+	# Sketch first is on for a first design; this is the plain design's card,
+	# and the sketches' is sketch_probe's.
+	_check(panel._sketch_first.visible and panel._sketch_first.button_pressed,
+		"Sketch first is beside Build it, ticked, for a first design")
+	panel._sketch_first.button_pressed = false
 	panel._input.text = "a small red house"
 	panel._on_send()
 	await process_frame

@@ -1435,6 +1435,14 @@
       "tests": []
     },
     {
+      "id": "ui:sketch first",
+      "kind": "ui",
+      "entry": "src/ai/sketches.gd",
+      "reach": "godot --headless --path . --script src/dev/sketch_probe.gd  (or the assistant panel: Sketch first beside Build it, then a card's Design this one; over MCP submit_design with sketch: true, three times, then choose_sketch)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "ui:snap and turn step",
       "kind": "ui",
       "entry": "src/ui/toolbar.gd",

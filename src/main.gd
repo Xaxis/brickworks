@@ -1027,6 +1027,9 @@ func _ask_claude_code(brief: String) -> void:
 		print("asking about %d parts inside %s, room %s" % [picked, about,
 			Assistant._box_words(_assistant.focus.region)])
 		brief = Assistant.selection_brief(brief, picked)
+	# Three massings first, the session choosing among them (Sketch first).
+	if about.is_empty() and _has_argument("--sketch-first"):
+		brief = Assistant.sketch_brief(brief)
 	if not design_with_claude_code(brief):
 		print("claude code: could not start")
 		_ask_went_well = false
@@ -1044,6 +1047,7 @@ func _ask_claude_code(brief: String) -> void:
 	_assistant.progress.connect(func(note: String) -> void:
 		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
 			note.replace("\n", "\n             ")]))
+	_watch_sketches(session, started)
 	if not about.is_empty():
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
@@ -1054,8 +1058,39 @@ func _ask_claude_code(brief: String) -> void:
 		outcome[0], _world.brick_count() - _store.scenery.size(),
 		(Time.get_ticks_msec() - started) / 1000.0,
 		str(outcome[1]).substr(0, 600)])
+	print("  the session spent %s over %d replies" % [_tokens_said(session.spent()),
+		session.replies()])
 	_camera.frame(_built_bounds())
 	await get_tree().process_frame
+
+
+## Sketch first, from the command line: each sketch said, its picture kept
+## beside --out as NAME_sketchN.png, and when one is chosen how long the
+## sketches took and what they spent, against the design after them.
+func _watch_sketches(session: ClaudeCode, started: int) -> void:
+	var out: String = _argument("--out")
+	_assistant.sketches_ready.connect(func(sketches: Array, _model: String,
+			_tokens: Brain.Spend, _ours: bool) -> void:
+		for one: Sketches.Sketch in sketches:
+			var kept: String = ""
+			if one.picture != null and not out.is_empty():
+				var path: String = "%s_sketch%d.png" % [out.get_basename(), one.number]
+				if one.picture.save_png(path) == OK:
+					kept = ", pictured at " + path
+			print("  [%5.1fs]   sketch %d, \"%s\": %d parts, %s, %s%s" % [
+				(Time.get_ticks_msec() - started) / 1000.0, one.number, one.name, one.parts,
+				one.measures(), "holds" if one.holds() else "does not hold", kept]))
+	_assistant.sketch_chosen.connect(func(number: int) -> void:
+		var so_far: Brain.Spend = session.spent()
+		print("  [%5.1fs]   chose sketch %d; the sketches took %.0fs, %d replies, %s in (%s of it cached)" % [
+			(Time.get_ticks_msec() - started) / 1000.0, number,
+			(Time.get_ticks_msec() - started) / 1000.0, session.replies(),
+			Brain.in_tokens(so_far.total_in()), Brain.in_tokens(so_far.cached)]))
+
+
+static func _tokens_said(tokens: Brain.Spend) -> String:
+	return "%s in (%s of it cached), %s out" % [Brain.in_tokens(tokens.total_in()),
+		Brain.in_tokens(tokens.cached), Brain.in_tokens(tokens.made)]
 
 
 ## Run at full speed when the window is a formality.

@@ -1219,6 +1219,13 @@
     },
     {
       "kind": "ui",
+      "label": "sketch first",
+      "entry": "src/ai/sketches.gd",
+      "reach": "godot --headless --path . --script src/dev/sketch_probe.gd  (or the assistant panel: Sketch first beside Build it, then a card's Design this one; over MCP submit_design with sketch: true, three times, then choose_sketch)",
+      "area": "assistant"
+    },
+    {
+      "kind": "ui",
       "label": "what the app is busy with",
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
