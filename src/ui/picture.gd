@@ -96,10 +96,7 @@ static func keep(image: Image, file_name: String, into: String = "") -> String:
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(bytes, file_name, "image/png")
 		return "downloaded %s" % file_name
-	var folder: String = into if not into.is_empty() \
-		else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	if folder.is_empty():
-		folder = OS.get_user_data_dir()
+	var folder: String = into if not into.is_empty() else Download.downloads()
 	var path: String = folder.path_join(file_name.replace("\\", "/").get_file())
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

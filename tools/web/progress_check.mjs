@@ -38,7 +38,11 @@
 // Two pages: a first visit (the example car) for the parts bin's first open,
 // Instructions, the Render dialog, LEGO Art's Build of a picture and
 // Brickify of the bunny; then Orthanc (9,429 parts) opened from a file, for
-// Timeline, Delete of all of it, Undo, and New.
+// Timeline, Save, File > Export > LDraw, Same colour from one part, Mirror
+// and Shift-E of all of it, Check stability, Delete of all of it, Undo, and
+// New's "Save, then start new" (the owner's freeze, 2026-10-13) — or New
+// without saving, with --only=new. The commands after Timeline are the ones
+// src/dev/command_probe.gd found holding the window longest.
 //
 // Fails when a press that is meant to show the bar (EXPECT) does not within
 // --heard ms (150), when one of the four that must stay alive (ALIVE) has
@@ -65,7 +69,8 @@ const only = args.only ? String(args.only).split(",") : null;
 const wanted = (name) => !only || only.includes(name);
 const bypass = process.env.BW_BYPASS || "";
 // The presses that show the bar, and the ones held to the frame budget.
-const EXPECT = new Set(["timeline", "booklet", "art", "brickify", "open", "delete", "undo", "new"]);
+const EXPECT = new Set(["timeline", "booklet", "art", "brickify", "open", "delete", "undo", "new",
+  "save", "export", "save_new", "mirror", "select_colour", "turn", "stability"]);
 const ALIVE = new Set(["timeline", "booklet", "art", "brickify"]);
 
 async function freePort() {
@@ -345,6 +350,34 @@ async function measure(page, name, press, done, heard, seconds = 300, settle = f
 }
 
 const said = (pattern) => (s) => pattern.test(String(s.said || ""));
+const idle = (s) => Object.keys(s.working || {}).length === 0;
+// A command from a menu, as a person picks it: the menu opened, a word that
+// only its item starts with typed (a menu jumps to what is typed, searching
+// on from where it is; a space would press the item it is on, and the rest
+// go to the app as keys: "Select by" pressed Select all and then B, the
+// timeline), or Down to it ([word, downs]), a submenu opened with the right
+// arrow; the caller presses Enter, and that is the press that is timed
+// (the menu opened and typed into took five seconds before it, and timed
+// from the first click Export was "heard" after 5.5 s).
+async function fromMenu(page, control, path) {
+  const at = await helpers(page).where(control);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForTimeout(1500);
+  for (let n = 0; n < path.length; n++) {
+    const [word, downs] = Array.isArray(path[n]) ? path[n] : [path[n], 0];
+    if (/\s/.test(word)) throw new Error(`a menu is typed into a word at a time, not "${word}"`);
+    if (word) await page.keyboard.type(word, { delay: 120 });
+    for (let d = 0; d < downs; d++) {
+      await page.waitForTimeout(300);
+      await page.keyboard.press("ArrowDown");
+    }
+    await page.waitForTimeout(600);
+    if (n < path.length - 1) {
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(1200);
+    }
+  }
+}
 const press = (page, name) => async () => {
   const at = await helpers(page).where(name);
   await page.mouse.click(at.x, at.y);
@@ -436,7 +469,8 @@ try {
   }
 
   // -- Orthanc, opened from a file -------------------------------------------
-  const big = ["open", "timeline", "delete", "undo", "new"].some(wanted);
+  const big = ["open", "timeline", "save", "export", "select_colour", "mirror", "turn",
+    "stability", "delete", "undo", "new", "save_new"].some(wanted);
   if (big) {
     let chooser = null;
     const at = await h.where("open");
@@ -465,7 +499,75 @@ try {
       if (doneAt) await page.mouse.click(doneAt.x, doneAt.y);
       await h.quiet(3000, 120000);
     }
+    // The owner (2026-10-13): "when I clicked 'Save and then new' it seemingly
+    // froze the app". Save worked out the build order on one frame; and
+    // every slow command now says so on the bar before it holds the page
+    // (Working.attend).
+    if (wanted("save")) {
+      await measure(page, "save", press(page, "save"),
+        async (s) => idle(s) && said(/saved|in this browser|could not save|stopped saving/)(s),
+        async (s) => said(/sav/i)(s), 600);
+      await h.quiet(3000, 120000);
+    }
+    if (wanted("export")) {
+      await fromMenu(page, "menu_file", ["Export", "LDraw"]);
+      await measure(page, "export", () => page.keyboard.press("Enter"),
+      async (s) => idle(s) && said(/downloaded|stopped|could not/)(s),
+      async (s) => said(/export/i)(s), 600);
+      await h.quiet(3000, 120000);
+    }
     const view = await h.where("view");
+    // With all of it selected, from the menus and keys a person would use.
+    const everything = async () => {
+      await page.mouse.move(view.x, view.y);
+      await page.keyboard.press("Control+a");
+      await page.waitForTimeout(3000);
+      await h.quiet(2000, 60000);
+    };
+    const putBack = async () => {
+      await page.mouse.move(view.x, view.y);
+      await page.keyboard.press("Control+z");
+      await h.quiet(3000, 120000);
+    };
+    if (wanted("select_colour")) {
+      // One part selected, then every part of its colour, from the
+      // toolbar's Select by.
+      await page.mouse.click(view.x, view.y);
+      await page.waitForTimeout(3000);
+      await h.quiet(2000, 60000);
+      // Its first item, Same colour, by Down: a menu searches on from the
+      // item it is on, so "Same" typed ran on past it, to Everything
+      // connected.
+      await fromMenu(page, "tool_select", [["", 1]]);
+      await measure(page, "select_colour", () => page.keyboard.press("Enter"),
+      async (s) => idle(s), async () => false, 300, true);
+      await page.keyboard.press("Escape");
+      await h.quiet(3000, 60000);
+    }
+    if (wanted("mirror")) {
+      await everything();
+      await measure(page, "mirror", async () => {
+        await page.mouse.move(view.x, view.y);
+        await page.keyboard.press("Shift+M");
+      }, async (s) => idle(s) && said(/mirror/)(s), async (s) => said(/mirror/)(s), 300, true);
+      await putBack();
+    }
+    if (wanted("turn")) {
+      await page.keyboard.press("Escape");
+      await measure(page, "turn", async () => {
+        await page.mouse.move(view.x, view.y);
+        await page.keyboard.press("Shift+E");
+      }, async (s) => idle(s), async () => false, 300, true);
+      await page.keyboard.press("Shift+Q");
+      await h.quiet(3000, 120000);
+    }
+    if (wanted("stability")) {
+      await fromMenu(page, "menu_tools", ["Check"]);
+      await measure(page, "stability", () => page.keyboard.press("Enter"),
+      async (s) => idle(s) && said(/stands up|weak joint/)(s), async (s) => said(/stands|weak/)(s), 300);
+      await page.keyboard.press("Escape");
+      await h.quiet(3000, 120000);
+    }
     if (wanted("delete") || wanted("undo")) {
       await page.mouse.move(view.x, view.y);
       await page.keyboard.press("Control+a");
@@ -481,7 +583,23 @@ try {
       }, async (s) => (s.bricks || 0) > 9000, async (s) => (s.bricks || 0) > 100, 300);
       await h.quiet(3000, 120000);
     }
-    if (wanted("new")) {
+    if (wanted("save_new")) {
+      // New asks first when the model has changed since it was opened; this
+      // presses its "Save, then start new".
+      const button = await h.where("new");
+      await page.mouse.click(button.x, button.y);
+      await page.waitForTimeout(4000);
+      const answer = (await h.controls()).new_save;
+      if (answer && ((await h.state()).bricks || 0) > 9000) {
+        await measure(page, "save_new", async () => { await page.mouse.click(answer.x, answer.y); },
+          async (s) => (s.bricks || 0) < 100 && idle(s), async (s) => said(/sav/i)(s), 600);
+      } else {
+        console.log(`  (save_new: ${answer ? "no question asked" : "no button to press in this build"}; not measured)`);
+        await page.keyboard.press("Escape");
+      }
+      await h.quiet(3000, 120000);
+    }
+    if (wanted("new") && ((await h.state()).bricks || 0) > 9000) {
       // New asks first when the model has changed since it was opened, and
       // it has: the press that clears it is the one that says so.
       const button = await h.where("new");

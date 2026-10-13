@@ -125,6 +125,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	world = app.get("_world")
 	library = app.get("_library")
 	store = app.get("_store")
+	bar.attend = attend
 	# The model's sub-assemblies, read off its bricks: src/assembly/assemblies.gd.
 	assemblies = Assemblies.new()
 	assemblies.world = world
@@ -221,10 +222,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_save_as_name.custom_minimum_size = Vector2(320, 0)
 	_save_as_name.text_submitted.connect(func(_text: String) -> void:
 		_save_as.hide()
-		_save_named(_save_as_name.text))
+		attend("save", _save_named.bind(_save_as_name.text)))
 	asking.add_child(_save_as_name)
 	_save_as.add_child(asking)
-	_save_as.confirmed.connect(func() -> void: _save_named(_save_as_name.text))
+	_save_as.confirmed.connect(func() -> void:
+		attend("save", _save_named.bind(_save_as_name.text)))
 	add_child(_save_as)
 
 	_about = AcceptDialog.new()
@@ -283,13 +285,152 @@ func command(name: String) -> Command:
 	return _commands.get(name)
 
 
-## Run a command by name, when it can be. True when it ran.
+## Run a command by name, when it can be. True when it ran, or will in a
+## frame: one known to be slow is said on the status bar first (Working).
 func run(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null or not can(name):
 		return false
-	found.run.call()
+	attend(name, func() -> Variant:
+		# Asked again: put off a frame, it may not be any more.
+		return found.run.call() if can(name) else null)
 	return true
+
+
+## Do [param work] as command [param name]: said first when it is slow,
+## timed, and its words on the bar for as long as it goes on (Working.attend).
+## The menus, the toolbar, the keys and the dialogs' buttons all come here.
+func attend(name: String, work: Callable) -> void:
+	var size: int = work_size(name)
+	var slow: bool = size >= int(SLOW_FROM.get(name,
+		FLOOR_SLOW_FROM if name.begins_with("floor_") else 1 << 30))
+	# A step edit is slow only the first time, when the model is given the
+	# worked-out steps (AuthorSteps.ensure).
+	if name.begins_with("step_") and world != null:
+		slow = slow and not AuthorSteps.any(world, store.scenery)
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS, slow, size)
+
+
+## How much a command has to do: the selection, for one that changes the
+## selection; what is in hand, for Paste; otherwise the model. Its costs
+## are kept by this (Working.attend): mirroring all of Orthanc is seconds,
+## and three of its parts nothing, and the bar must not flash for the three.
+func work_size(name: String) -> int:
+	if world == null:
+		return 0
+	if name in ON_THE_SELECTION:
+		return builder.selection.size()
+	if name == "paste":
+		return Carry.clipboard.size()
+	return world.brick_count() - store.scenery.size()
+
+
+## The commands whose work grows with the selection rather than the model.
+const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "paint",
+	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
+	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
+
+
+## What the bar says while a command works: "Saving…".
+func doing(name: String) -> String:
+	if DOING.has(name):
+		return str(DOING[name])
+	var found: Command = _commands.get(name)
+	var words: String = found.words.trim_suffix("…") if found != null else name
+	return "Working on %s…" % words.to_lower()
+
+
+## The commands a browser lets do what they do only inside the press
+## itself — open a file dialog, go full screen, open a page — which are
+## never put off a frame to say so first. (The clipboard is not among
+## them: in a browser the app keeps its own, EditVerbs.copy.)
+const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
+	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit"]
+
+## Laying a floor again under a big model: its plates cover more ground.
+const FLOOR_SLOW_FROM := 3000
+
+## Known to be slow from this much to do ([method work_size]), before they
+## have ever been timed here. From src/dev/command_probe.gd on Orthanc
+## (9,429 parts), where on the desktop these held one frame for one to four
+## seconds (mirror, replace, a first step edit, turning the model, the
+## collection, the stability check, a copy in hand) or a fifth of a second
+## to one second (painting, the selections, hiding, the lists, Cut): a
+## browser drawing in software takes several times longer. What can I
+## build? reads the collection against every set, whatever is on the
+## baseplate.
+const SLOW_FROM: Dictionary = {
+	"mirror": 200, "replace": 200, "duplicate": 300, "paste": 300, "cut_parts": 600,
+	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
+	"make_unique": 2000,
+	"step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
+	"step_later": 300, "step_merge": 300, "step_delete": 300,
+	"turn_left": 300, "turn_right": 300, "collection_build": 0, "collection_need": 1000,
+	"stability": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
+	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "reseat": 2000,
+	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
+	# New first asks whether the model on the baseplate is saved as it is.
+	"new": 2000,
+}
+
+## What the bar says for the commands that can take a while.
+const DOING: Dictionary = {
+	"new": "Starting a new model…", "save": "Saving…", "save_as": "Saving…",
+	"save_new": "Saving, then starting a new model…",
+	"clear": "Clearing the baseplate…",
+	"export_ldraw": "Exporting the model…", "export_io": "Exporting the Studio model…",
+	"export_picture": "Taking a picture of the model…",
+	"export_bricklink": "Exporting the BrickLink wanted list…",
+	"export_rebrickable": "Exporting the parts list…",
+	"render": "Opening Render…", "pose": "Opening Pose and animate…",
+	"instructions": "Making the instructions…", "share": "Opening Share…",
+	"undo": "Undoing…", "redo": "Redoing…", "history": "Going back…",
+	"cut_parts": "Cutting…", "copy": "Copying…", "paste": "Pasting…",
+	"duplicate": "Duplicating…", "delete": "Deleting…",
+	"select_all": "Selecting everything…", "select_none": "Selecting nothing…",
+	"select_colour": "Selecting the same colour…", "select_part": "Selecting the same part…",
+	"select_alike": "Selecting the same part and colour…",
+	"select_connected": "Selecting everything connected…",
+	"select_submodel": "Selecting the sub-model…", "select_inverse": "Selecting the opposite…",
+	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
+	"lock": "Locking…", "unlock": "Unlocking…", "paint": "Painting…",
+	"replace": "Replacing…", "mirror": "Mirroring…",
+	"make_submodel": "Making a sub-assembly…", "leave_submodel": "Ungrouping…",
+	"make_unique": "Making the copy unique…",
+	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
+	"collection": "Opening My collection…", "collection_need": "Working out what you need…",
+	"collection_build": "Working out what you can build…",
+	"fit": "Fitting the view…", "fit_model": "Fitting the model…",
+	"turn_left": "Turning the model…", "turn_right": "Turning the model…",
+	"stability": "Checking stability…", "reseat": "Seating parts on their studs…",
+	"cut": "Cutting away…", "xray": "Seeing through…", "grid": "Laying the stud grid…",
+	"step_new": "Making a step…", "step_earlier": "Moving the step…",
+	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
+	"step_delete": "Taking out the step…",
+}
+
+
+## The command a key is the shortcut of, or "": for timing and saying a
+## key the way the same command is from a menu.
+func command_for_key(key: InputEventKey) -> String:
+	if _by_key.is_empty():
+		for name: String in _commands:
+			var accel: int = (_commands[name] as Command).accel
+			if accel != 0 and not _by_key.has(accel):
+				_by_key[accel] = name
+		# Two keys for one thing.
+		_by_key[KEY_BACKSPACE] = "delete"
+	var accel: int = key.keycode
+	if key.ctrl_pressed or key.meta_pressed:
+		accel |= CTRL
+	if key.shift_pressed:
+		accel |= SHIFT
+	if key.alt_pressed:
+		accel |= ALT
+	return str(_by_key.get(accel, ""))
+
+
+var _by_key: Dictionary = {}
 
 
 func can(name: String) -> bool:
@@ -448,7 +589,7 @@ func _define() -> void:
 	_add("select_alike", "Same part and colour", 0, func() -> void: verbs.select_by("alike"),
 		selected)
 	_add("select_connected", "Everything connected", 0,
-		func() -> void: verbs.select_by("connected"), selected)
+		func() -> void: verbs.select_connected(), selected)
 	_add("select_submodel", "Same sub-model", 0, func() -> void: verbs.select_by("submodel"),
 		selected)
 	_add("select_inverse", "The opposite", 0, func() -> void: verbs.select_by("inverse"),
@@ -765,7 +906,8 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 				sub.id_pressed.connect(func(id: int) -> void: _open_recent(sub, id))
 			elif kind == "history":
 				sub.about_to_popup.connect(func() -> void: _fill_history(sub))
-				sub.id_pressed.connect(func(id: int) -> void: verbs.go_back(id + 1))
+				sub.id_pressed.connect(func(id: int) -> void:
+					attend("history", verbs.go_back.bind(id + 1)))
 		else:
 			var found: Command = _commands.get(item)
 			if found == null:

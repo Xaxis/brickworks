@@ -759,6 +759,13 @@ static func _line_numbers(at: Transform3D) -> String:
 		# brick in a re-saved model shows as changed when nothing
 		# has. It made a migration that touched three files look
 		# like one that had rewritten eight.
+		#
+		# A whole number, which most of them are (a rotation's 0s and 1s, a
+		# position on the grid), written straight off: the same text, and
+		# a model of nine thousand parts written in half the time.
+		if value == floorf(value) and absf(value) < 1e9:
+			numbers.append(str(int(value)))
+			continue
 		var places: int = 4 if n < 3 else 8
 		var shown: String = String.num(value, places) \
 			.rstrip("0").rstrip(".")

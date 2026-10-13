@@ -146,8 +146,15 @@ plan with Claude as the client.
   the card's fence the next press can come while the bin is still drawing,
   and its bar then waits for the card too). A first visit's car: the parts bin's first open,
   Instructions, Render, LEGO Art's Build of art_flow's galaxy at 48 across,
-  Brickify of the bunny; then Orthanc opened from a file: Timeline, Delete
-  of all of it, Undo, New. Fails when one that should show the bar does not
+  Brickify of the bunny; then Orthanc opened from a file: Timeline, Save
+  (the toolbar's), File > Export > LDraw (typed into the menus, as a person
+  finds them; a space in a menu presses the item it is on, so only words), the toolbar's Select by > Same colour from one part, Shift-M Mirror
+  and Shift-E of all of it, Tools > Check stability, Delete of all of it,
+  Undo, and New's "Save, then start new" (`brickworksControls.new_save`; the
+  owner's freeze, 2026-10-13; a build without that control is not
+  measured, and plain New is then, as `--only=new` asks). The commands after
+  Timeline are the ones `src/dev/command_probe.gd` found holding the window
+  longest. Fails when one that should show the bar does not
   within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
   work of its own over `--budget` ms (250) in one go, or a bar is left up; `--report-only` prints
   the table for a build from before. Leaves `progress.json` and a picture

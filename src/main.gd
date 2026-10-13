@@ -362,7 +362,13 @@ func _tell_page() -> void:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
 			continue
-		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
+		# A dialog's button is placed in the dialog, which is placed in the
+		# window (New's question: tools/web/progress_check.mjs).
+		var rect: Rect2 = control.get_global_rect()
+		var holder: Viewport = control.get_viewport()
+		if holder is Window and holder != get_window():
+			rect.position += Vector2((holder as Window).position)
+		var centre: Vector2 = (to_window * rect).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
 		var faces: Dictionary = _gizmo.face_points()
@@ -2392,9 +2398,9 @@ func _build_ui() -> void:
 	# Anything that changes the model marks it for saving. Placing and
 	# removing are somebody's own doing, so they also settle the
 	# question of whether the model on screen is the one to keep.
-	_builder.placed.connect(func(_id: int, _part: String) -> void:
-		_on_model_edited())
-	_builder.removed.connect(func(_id: int) -> void: _on_model_edited())
+	# Once a frame, not once a part (_edited_soon).
+	_builder.placed.connect(func(_id: int, _part: String) -> void: _edited_soon())
+	_builder.removed.connect(func(_id: int) -> void: _edited_soon())
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -3151,6 +3157,26 @@ func _on_model_edited() -> void:
 	# working out takes five seconds.)
 	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
 		_steps.refresh()
+
+
+## [method _on_model_edited] at the end of this frame, once however many
+## parts were placed or taken off in it. What it does is for the whole model
+## (the floor asks every part whether it is a baseplate): once a part,
+## taking all of Orthanc off held the window for a minute (2026-10-13,
+## command_probe).
+func _edited_soon() -> void:
+	if _edit_coming:
+		return
+	_edit_coming = true
+	_edited_now.call_deferred()
+
+
+var _edit_coming: bool = false
+
+
+func _edited_now() -> void:
+	_edit_coming = false
+	_on_model_edited()
 
 
 ## File, Render….
@@ -4652,6 +4678,18 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
+	# A command's key is that command, as from its menu: timed, and said on
+	# the status bar first when it is slow (Shell.attend). Echoes are a key
+	# held down, never put off.
+	var command: String = _shell.command_for_key(key) \
+		if _shell != null and _viewing.is_empty() and not key.echo else ""
+	if command.is_empty():
+		_key_pressed(key)
+	else:
+		_shell.attend(command, _key_pressed.bind(key))
+
+
+func _key_pressed(key: InputEventKey) -> void:
 	# Zoom from the keys every viewer answers to: + and -, on the main keys
 	# or the keypad, and Page Up and Down. A tap is a wheel notch; holding
 	# goes on in _steer_from_keys. "+" is shift and = on most keyboards and
