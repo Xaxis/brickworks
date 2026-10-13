@@ -286,7 +286,7 @@ func _build_tools() -> Control:
 			# comes is mostly under a millimetre itself.
 			var as_made: float = _as_made_thin()
 			if as_made >= 0.0:
-				_status.text += " %s as LEGO made it: %.0f%%." % [mould.base, as_made * 100.0]
+				_status.text += " %s as the LEGO Group made it: %.0f%%." % [mould.base, as_made * 100.0]
 		else:
 			mould.thickness = PackedFloat32Array()
 		_show())

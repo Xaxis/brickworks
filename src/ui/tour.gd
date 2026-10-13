@@ -22,7 +22,7 @@ var _lit: Rect2 = Rect2()
 func _stops() -> Array:
 	return [
 		["Welcome to Brickworks",
-			"A LEGO building program: real parts, real colours, and a model you can buy the bricks for. This tour points at each part of the window. Escape leaves it at any time.",
+			"A program for building with LEGO® bricks: real parts, real colours, and a model you can buy the bricks for. This tour points at each part of the window. Escape leaves it at any time.",
 			func() -> Control: return null],
 		["The menus",
 			"Everything Brickworks can do is in these six menus, with its key beside it: open and save, edit, the view, the build, the tools, and help.",

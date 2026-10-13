@@ -121,7 +121,7 @@ func _run() -> void:
 		# evidence that LEGO builds it this way.
 		var why: String = str(technique["why"])
 		if why.contains("model repository") and not (why.contains("model by ")
-				and why.contains("CC BY") and why.contains("As LEGO built it in ")):
+				and why.contains("CC BY") and why.contains("As the LEGO Group built it in ")):
 			_fail("%s is from a real set and does not credit it" % name)
 			continue
 		print("  ok    %-22s %d parts, %s" % [name,

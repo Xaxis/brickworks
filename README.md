@@ -235,7 +235,10 @@ trademark owned and licensed by the Estate of James Jessiman. This
 project is not affiliated with or endorsed by LDraw.org.
 
 LEGO® is a trademark of the LEGO Group of companies which does not
-sponsor, authorize or endorse this site.
+sponsor, authorize or endorse this app. LEGO® Art, Technic, the
+Minifigure and the Brick and Knob configurations are also trademarks of
+the LEGO Group. How the app follows the LEGO Group's Fair Play policy is
+in `docs/TRADEMARKS.md`.
 
 Full terms, including what may and may not be redistributed from each
 source, are in `docs/ATTRIBUTION.md`.

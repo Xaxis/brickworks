@@ -288,7 +288,7 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 		"edit_model": "changing it",
 		"clear_model": "clearing the baseplate",
 		"save_model": "saving",
-		"make_art": "laying out a LEGO Art picture",
+		"make_art": "laying out a Brick Art picture",
 		"selection": "looking at what is selected",
 		"edit_selection": "changing the selection",
 		"where_to_attach": "finding where parts fit on the selection",

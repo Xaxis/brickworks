@@ -337,6 +337,10 @@ function describe(row) {
   return row.author ? `${parts}, by ${row.author}` : parts;
 }
 
+// The LEGO Group's Fair Play policy asks for this on any page that names
+// its mark (docs/TRADEMARKS.md); tests/test_trademarks.py holds it here.
+const NOTICE = "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site.";
+
 const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -355,13 +359,14 @@ const PAGE_STYLE = `
   a.button { display: inline-block; padding: 10px 16px; border-radius: 9px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
   a.button.quiet { background: transparent; color: var(--ink); border: 1px solid currentColor; }
   footer { margin-top: 18px; font-size: .9rem; color: var(--soft); }
-  footer a { color: inherit; }`;
+  footer a { color: inherit; }
+  footer small { display: block; margin-top: 6px; font-size: .8rem; }`;
 
 function pageHead(origin, row, id, title) {
   const link = links(origin, id);
   const description = row
     ? `${describe(row)}. Turn it in 3D, step through the build, and get its booklet and parts list.`
-    : "A model built in Brickworks, the LEGO CAD app in your browser.";
+    : "A model built in Brickworks, the CAD app for LEGO® bricks in your browser.";
   const image = row && row.has_image ? link.image : `${origin}/share.png`;
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -408,7 +413,8 @@ ${pageHead(origin, row, id, title)}
       </div>
     </div>
   </div>
-  <footer>Shared from <a href="/">Brickworks</a>. Link: ${escapeHtml(link.url)}</footer>
+  <footer>Shared from <a href="/">Brickworks</a>. Link: ${escapeHtml(link.url)}
+    <small>${NOTICE}</small></footer>
 </main>
 </body>
 </html>`;
@@ -462,6 +468,7 @@ ${pageHead(origin, null, id, title)}
     <p>${escapeHtml(said)}</p>
     <div class="actions"><a class="button" href="/">Go to Brickworks</a></div>
   </div></div>
+  <footer><small>${NOTICE}</small></footer>
 </main>
 </body>
 </html>`;

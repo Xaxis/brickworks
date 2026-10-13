@@ -509,7 +509,7 @@ func _show_colours(codes: Array[int]) -> void:
 	var plain: int = library.plain_code(first.code)
 	var lego: String = ""
 	if not first.lego_name.is_empty():
-		lego = "LEGO %s%s" % [first.lego_name.replace("_", " "),
+		lego = "LEGO® %s%s" % [first.lego_name.replace("_", " "),
 			(" %d" % first.lego_ids[0]) if not first.lego_ids.is_empty() else ""]
 	var shops := PackedStringArray()
 	if library.bricklink_colour(plain) >= 0:

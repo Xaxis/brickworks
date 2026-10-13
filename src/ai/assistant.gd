@@ -184,7 +184,7 @@ func art_picture() -> Image:
 func _make_art(args: Dictionary) -> Variant:
 	var plan: ArtPlan = ArtPlan.parse(args, library)
 	if not plan.ok():
-		progress.emit("a LEGO Art plan that could not be laid")
+		progress.emit("a Brick Art plan that could not be laid")
 		return plan.trouble()
 	var art: MosaicArt.Art = plan.lay(art_picture(), library)
 	if art == null:
@@ -212,7 +212,7 @@ func _make_art(args: Dictionary) -> Variant:
 	art_laid.emit(art)
 	built.emit(_placed_ids.size())
 	var said: String = ArtPlan.said_of(art)
-	progress.emit("laid a LEGO Art picture: %d parts" % _placed_ids.size())
+	progress.emit("laid a Brick Art picture: %d parts" % _placed_ids.size())
 	# Laid again under the same name is a revision of the same picture.
 	if plan.name.to_lower() != _art_name:
 		_art_name = plan.name.to_lower()
@@ -257,7 +257,7 @@ func _look_at_picture() -> Variant:
 		shown.resize(maxi(1, int(shown.get_width() * scale)),
 			maxi(1, int(shown.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
 	return [
-		{"type": "text", "text": ("The picture to make LEGO Art of, %d x %d pixels. "
+		{"type": "text", "text": ("The picture to make into Brick Art, %d x %d pixels. "
 			% [picture.get_width(), picture.get_height()]
 			+ "Plan it with make_art; coordinates are fractions of it, 0 to 1 from the "
 			+ "top left, after any crop.")},
@@ -786,7 +786,7 @@ func opening_for(text: String) -> Array:
 	if not measured.is_empty() and not measured.begins_with("No kind") \
 			and not measured.begins_with("This build"):
 		opening.append({"type": "text", "text":
-			"Before you choose parts, this is how real LEGO sets of this "
+			"Before you choose parts, this is how real LEGO® sets of this "
 			+ "kind are actually built. It is measured over every "
 			+ "catalogued set, not advice.\n" + measured})
 	# And, for the same reason, what our own scored designs of the nearest
@@ -2449,7 +2449,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# src/assembly/art_plan.gd.
 			if _keeps_to_focus():
 				return _not_while_scoped()
-			progress.emit("laying out a LEGO Art picture")
+			progress.emit("laying out a Brick Art picture")
 			return await _make_art(args)
 		"look_at_picture":
 			progress.emit("looking at the picture")
@@ -6027,7 +6027,7 @@ func _at_display_proportions(pattern: Dictionary) -> Dictionary:
 		var laid: Dictionary = pattern.duplicate(true)
 		laid["courses"] = best
 		_pattern_advice.append(("No courses were said, so the tower is laid in %d: %s times "
-			+ "as tall as its base is wide (%s studs), as a display model stands — LEGO's "
+			+ "as tall as its base is wide (%s studs), as a display model stands — set "
 			+ "10237 is 21 cm across and 73 cm tall.") % [best, "%.1f" % DISPLAY_TALL,
 			roundi(wide)])
 		return laid
@@ -6035,7 +6035,7 @@ func _at_display_proportions(pattern: Dictionary) -> Dictionary:
 	var ratio: float = _display_height(pattern, courses) * PLATE / maxf(wide * STUD, 1.0)
 	if absf(ratio - DISPLAY_TALL) > DISPLAY_TALL * DISPLAY_SLACK:
 		_pattern_advice.append(("This tower stands %.1f times as tall as its base is wide "
-			+ "(%s studs); a display model stands about %s — LEGO's 10237 is 21 cm across "
+			+ "(%s studs); a display model stands about %s — set 10237 is 21 cm across "
 			+ "and 73 cm tall. %s, about %d courses, or leave courses out and they are "
 			+ "worked out.") % [ratio, roundi(wide), "%.1f" % DISPLAY_TALL,
 			"Taller" if ratio < DISPLAY_TALL else "Lower, or a wider radius", best])
@@ -12665,7 +12665,7 @@ func _what_a_set_is_made_of() -> String:
 				int(entry.get("most_of_one", 0))]
 			+ "any one piece, and %d%% of its pieces as big as a 2 x 4 "
 			% int(entry.get("big", 10)) + "brick")
-	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO set there "
+	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO® set there "
 		+ "is, by size:\n" + "\n".join(lines)
 		+ "\nThese are medians of real sets, not a target to hit exactly. "
 		+ "What they are for is the shape of the mistake: a model that is "
@@ -12703,10 +12703,10 @@ func _what_sets_are_built_from() -> String:
 			PackedStringArray(info.name.split(" ", false)))
 		lines.append("  %-8s %-42s %d sets" % [info.id, name, info.in_sets])
 	return ("\n\nTHE PARTS REAL SETS ARE MADE OF\nThe thirty most used "
-		+ "parts in LEGO history, counted over every catalogued set "
+		+ "parts in the history of LEGO® sets, counted over every catalogued set "
 		+ "inventory:\n" + "\n".join(lines)
 		+ "\n\nRead the shape of that list, not the individual numbers. A "
-		+ "LEGO set is mostly plates: the 2x4 brick everyone pictures is "
+		+ "LEGO® set is mostly plates: the 2x4 brick everyone pictures is "
 		+ "twenty-second, under the 1x1 round plate and four sizes of "
 		+ "tile. Plates let a shape be refined a plate at a time where "
 		+ "bricks force it in threes, and tiles are what makes a surface "
@@ -12723,11 +12723,16 @@ func _rules() -> String:
 that builds whatever you submit. Your designs get built, so they have to \
 hold together.
 
-LEGO ART
-A picture to hang up — LEGO Art, a mosaic, wall art, a portrait or a \
-scene in bricks — is not modelled with submit_design. Call make_art, \
-which lays it as a LEGO Art set while you decide what its designer \
-would. With a picture the person chose, look_at_picture first; with \
+When you write to the person, LEGO® is a brand name: in capitals, with \
+its ®, and an adjective (LEGO® bricks, a LEGO® set), never plural or \
+possessive. The company is the LEGO Group.
+
+BRICK ART
+A picture to hang up — a mosaic in the style of LEGO® Art sets, \
+wall art, a portrait or a scene in bricks — is not modelled with \
+submit_design. Call make_art, which lays it the way a LEGO® Art set is \
+laid while you decide what its designer would. With a picture the person \
+chose, look_at_picture first; with \
 none, draw it in make_art's svg. {31212}
 
 COORDINATES
@@ -13061,7 +13066,7 @@ alongside the bricks you write by hand:
            with a stair up the front to its door — Orthanc, a keep with \
            corner towers, anything clustered. With no "courses" it is \
            laid at a display model's proportions, 3.3 times as tall as \
-           its base is wide, horns and all (LEGO's 10237 is 21 cm \
+           its base is wide, horns and all (set 10237 is 21 cm \
            across and 73 cm tall), and the reply says how many; a run \
            that chose its own stood a thin tower on a base twice its \
            width, and its check says when the courses given are far \
@@ -13087,7 +13092,7 @@ alongside the bricks you write by hand:
            stuck on. The top is capped with a summit two plates thick, \
            which ties it all together; the reply says at what y (without \
            storeys, y + 3 x courses), so build on it two plates higher. \
-           Each horn is a blade, as LEGO's 10237 builds Orthanc's: \
+           Each horn is a blade, as set 10237 builds Orthanc's: \
            plates on their side pressed onto bricks with side studs on \
            the summit, edges cut by wedge plates, sweeping out from its \
            pier and back in to a point, so they open round the platform \
@@ -13243,8 +13248,8 @@ a model of the thing and a model of bricks.
   It is measurement, not instruction. Use what the shape calls for and \
 ignore the rest; a part that is characteristic of a kind is not a part \
 every set of that kind has. But do not pass over it because you already \
-have a picture in mind — the picture is what you remember of LEGO, and \
-this is what LEGO did.
+have a picture in mind — the picture is what you remember of LEGO® sets, and \
+this is what the sets did.
   how_real_sets_build_this asks the same question about anything else: \
 a part of the model that is its own kind of thing, or a subject the \
 brief did not name in plain words.
@@ -13274,7 +13279,7 @@ most of the library — not parts that were never sold.
 
 SOMETHING BIG
 A set-sized model — a ship, a building, a vehicle with a real interior \
-— is hundreds to thousands of parts. A real LEGO set of any ambition is \
+— is hundreds to thousands of parts. A real LEGO® set of any ambition is \
 a thousand to four thousand, and nothing here stops you: the checker \
 handles ten thousand parts and a model of fifty thousand fits in \
 memory. If what you have built is two hundred parts and the subject \
@@ -13441,7 +13446,7 @@ than sit on it with spikes stuck on. A prism's "storeys" steps a tower in \
 on ledges in one call; a round's stack takes a smaller diameter; a stack \
 of either, each a little smaller, says a taper in plain calls.
   Dark is not one colour. A big face of black or dark brown with nothing \
-on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
+on it photographs as a hole. The Tower of Orthanc set (10237) is 66% \
 black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
 bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
 bluish grey on its ledges: texture in the same colour, a second tone in \
@@ -13610,7 +13615,7 @@ func _guide_text() -> String:
 
 
 ## What a session reads first, inside the 3,800 characters that reach it.
-const GUIDE_HEAD := """You design LEGO models with this app's tools: it builds \
+const GUIDE_HEAD := """You design LEGO® models with this app's tools: it builds \
 what you submit, checks that it holds together, and refuses what does not. \
 Only the start of these instructions may reach you: read_guide gives any \
 section of the rest in full.
@@ -13665,7 +13670,7 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"creative": "THE CREATIVE PASS",
 	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
 	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
-	"art": "LEGO ART", "mosaic": "LEGO ART",
+	"art": "BRICK ART", "mosaic": "BRICK ART",
 	"app": "THE REST OF THE APP", "menus": "THE REST OF THE APP", "floor": "THE REST OF THE APP",
 	"steps": "THE REST OF THE APP", "hose": "THE REST OF THE APP", "pose": "THE REST OF THE APP",
 	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP"}
@@ -15717,7 +15722,7 @@ func _tools() -> Array:
 						+ "faces, so there is a cleft front and back)"},
 					"horns": {"type": "string", "enum": ["blade", "spire", "flat"],
 						"description": "what piers taller than the core rise "
-						+ "into: a blade (the default, as LEGO's 10237 builds "
+						+ "into: a blade (the default, as set 10237 builds "
 						+ "Orthanc's), a square spire stepping in to a point, or "
 						+ "flat, a turret's cap"},
 					"flare": {"type": "number", "description":
@@ -15946,8 +15951,8 @@ func _tools() -> Array:
 		{
 			"name": "show_technique",
 			"description": ("How a construction is actually made, in "
-				+ "part numbers and coordinates, most of them as LEGO "
-				+ "built them in real sets. By what they are for — %s. "
+				+ "part numbers and coordinates, most of them as the LEGO "
+				+ "Group built them in real sets. By what they are for — %s. "
 				% Techniques.listing()
 				+ "Ask before building one of these for the first time "
 				+ "— a bracket's sideways stud is not at a whole number "
@@ -15966,7 +15971,7 @@ func _tools() -> Array:
 		},
 		{
 			"name": "find_techniques",
-			"description": ("How real LEGO sets built a feature, found by "
+			"description": ("How real LEGO® sets built a feature, found by "
 				+ "what it is: the sub-assemblies of thousands of real sets "
 				+ "(an owl's eye, a car's nose, a dragon's wing, a turret "
 				+ "roof, a grille, a beak, a tree), each with a picture, its "
@@ -16016,7 +16021,7 @@ func _tools() -> Array:
 		{
 			"name": "place_technique",
 			"description": ("Lay one of find_techniques' pieces into the "
-				+ "model as LEGO built it: every part where the set has it, "
+				+ "model as the LEGO Group built it: every part where the set has it, "
 				+ "turned a number of quarter turns about the upright and "
 				+ "moved so its low corner is at x, y, z, in your colours "
 				+ "if you say which of its colours become which. Parts "
@@ -16095,11 +16100,11 @@ func _tools() -> Array:
 		},
 		{
 			"name": "how_real_sets_build_this",
-			"description": ("What real LEGO sets of this kind are "
+			"description": ("What real LEGO® sets of this kind are "
 				+ "actually built from — the parts they reach for far "
 				+ "more often than sets in general, and the colours "
 				+ "they use. Measured over fifteen thousand real sets, "
-				+ "so it is what LEGO's own designers did and not "
+				+ "so it is what the LEGO Group's own designers did and not "
 				+ "advice.\n\nCall it for any subject that is a kind of "
 				+ "set: a castle, a fire station, a spaceship, a train, "
 				+ "a house, a tractor, a police car. A castle set is "

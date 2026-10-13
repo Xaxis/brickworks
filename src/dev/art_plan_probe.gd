@@ -365,7 +365,7 @@ func _refusals() -> void:
 		["a panel colour no panel is made in", {"base_colour": 47},
 			"a 16 x 16 panel is not made in it"],
 		["a colour no Art set uses", {"regions": [{"everything": true, "colour": 999}]},
-			"is not a colour LEGO Art is laid in"],
+			"is not a colour LEGO® Art sets are laid in"],
 		["an svg that is not one", {"svg": "a galaxy"}, "svg must be the whole drawing"],
 		["a crop off the picture", {"crop": {"x": 0.5, "y": 0, "w": 0.8, "h": 1}},
 			"must lie on the picture"],
