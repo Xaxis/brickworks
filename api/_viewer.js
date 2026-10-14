@@ -120,7 +120,8 @@ background:var(--ground);overflow:hidden;touch-action:pan-y;outline:none}
 .stage.turns{cursor:grab}
 .stage.turns:active{cursor:grabbing}
 .stage:focus-visible{box-shadow:inset 0 0 0 3px var(--focus)}
-.stage img{width:100%;height:100%;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none}
+.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;
+user-select:none;-webkit-user-drag:none}
 .say{margin:0;padding:24px;max-width:46ch;text-align:center;color:var(--ground-ink)}
 .foot{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:20px}
 .foot:has(.views:empty):has(.where:empty):has(.turn[hidden]){display:none}
@@ -131,8 +132,9 @@ background:var(--ground);overflow:hidden;cursor:pointer}
 .views button img{width:100%;height:100%;object-fit:cover;display:block}
 .views button[aria-pressed=true]{border-color:var(--yellow);box-shadow:0 0 0 1px var(--yellow)}
 .where{flex:1;min-width:0;font-size:13px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.turn{flex:none;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;
+.turn{flex:none;margin-left:auto;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;
 background:var(--panel-hi);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+@media (max-width:420px){.views:not(:empty)~.where{display:none}}
 button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .waiting .stage{background:linear-gradient(90deg,var(--panel-hi) 25%,var(--panel) 50%,var(--panel-hi) 75%);
 background-size:200% 100%;animation:shimmer 1.4s linear infinite}

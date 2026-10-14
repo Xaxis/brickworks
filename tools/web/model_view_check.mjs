@@ -229,14 +229,19 @@ try {
   }
   check(listening, `the account's tab is listening for Claude: "${(await claudeState()).status || ""}"`);
 
-  // A small model: six parts, beside whatever the tab opened with.
+  // A small model: six parts, on bare ground.
   const design = { name: "Viewer check tower", bricks: [
     { part: "3001", color: 4, x: 10, y: 0, z: 10 }, { part: "3001", color: 1, x: 10, y: 3, z: 10 },
     { part: "3001", color: 14, x: 10, y: 6, z: 10 }, { part: "3003", color: 2, x: 10, y: 9, z: 10 },
     { part: "3003", color: 15, x: 10, y: 12, z: 10 }, { part: "3062b", color: 4, x: 10, y: 15, z: 10 },
   ] };
-  // On bare ground, so what the tab opened with is not in the way.
-  const cleared = await viewer.call("clear_model");
+  // On bare ground, so what the tab opened with is not in the way. The
+  // panel says it listens a moment before the relay has its hello.
+  let cleared = await viewer.call("clear_model");
+  for (let n = 0; n < 12 && /No Brickworks tab is open/.test(texts(cleared).join(" ")); n++) {
+    await tab.waitForTimeout(5000);
+    cleared = await viewer.call("clear_model");
+  }
   check(!cleared.result?.isError && !shownOf(cleared), `clear_model first, which shows nothing: "${texts(cleared).slice(-1)[0]?.slice(0, 60)}"`);
   let t0 = Date.now();
   const built = await viewer.call("submit_design", design);
@@ -333,8 +338,14 @@ try {
     await host.waitForTimeout(800);
     const seen = await frame.evaluate(() => {
       const img = document.getElementById("picture");
+      // Drawn, and whole: the picture's box inside the frame it is shown
+      // in, so none of the model is cut off.
+      const box = img.getBoundingClientRect();
+      const frameBox = document.getElementById("stage").getBoundingClientRect();
+      const whole = box.width > 50 && box.height > 50 && box.top >= frameBox.top - 1 && box.left >= frameBox.left - 1
+        && box.bottom <= frameBox.bottom + 1 && box.right <= frameBox.right + 1;
       return { name: document.getElementById("name").textContent, parts: document.getElementById("parts").textContent,
-        drawn: !img.hidden && img.complete && img.naturalWidth > 0, src: (img.src || "").slice(0, 22), alt: img.alt,
+        drawn: !img.hidden && img.complete && img.naturalWidth > 0 && whole, src: (img.src || "").slice(0, 22), alt: img.alt,
         views: document.querySelectorAll("#views button").length, where: document.getElementById("where").textContent,
         theme: document.documentElement.dataset.theme };
     });
@@ -353,8 +364,12 @@ try {
     `...and its turntable of ${one.seen.views}: "${one.seen.where}"`);
   check(Boolean(one.sized && one.sized.height > 150), `...and tells the host its size: ${JSON.stringify(one.sized)}`);
   await host.screenshot({ path: `${out}/2_submit_dark.png` });
-  await host.waitForTimeout(1800);
-  const moved = await one.frame.evaluate(() => document.getElementById("where").textContent);
+  // Watched, not sampled once: a slow screenshot can let it come round again.
+  let moved = one.seen.where;
+  for (let n = 0; n < 20 && moved === one.seen.where; n++) {
+    await host.waitForTimeout(200);
+    moved = await one.frame.evaluate(() => document.getElementById("where").textContent);
+  }
   check(moved !== one.seen.where, `...which turns by itself: "${one.seen.where}", then "${moved}"`);
 
   // Still, as for a person who asks for less motion: what follows is the keys.
