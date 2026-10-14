@@ -434,6 +434,14 @@
       "tests": []
     },
     {
+      "id": "cli:model view check",
+      "kind": "cli",
+      "entry": "tools/web/model_view_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   (with .env sourced; a throwaway account, deleted at the end)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:moderation browser flow",
       "kind": "cli",
       "entry": "tools/web/moderation_flow.mjs",
@@ -1195,6 +1203,14 @@
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
       "reach": "the gallery tool (AppTools): search brickworks.diy/gallery, open=<id> reads one as a reference with its credit and licence",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:the model in Claude",
+      "kind": "lib",
+      "entry": "src/net/model_views.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   (with .env sourced: the viewer page api/_viewer.js read through the relay, a real tab's answers, and the page in a sandboxed frame sent them as an MCP Apps host does; --relay-only against relay_server.mjs for the relay's half)",
       "area": "mcp",
       "tests": []
     },

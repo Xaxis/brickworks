@@ -104,6 +104,16 @@
 // another, and a tab that never said hello while signed in is handed no
 // work. That owner is what a call signed in to an account is routed by.
 //
+// The model, shown beside a call (2026-10-14). A client that shows a
+// server's own pages inline (MCP Apps: claude.ai, the Claude apps) is
+// handed one, a viewer of the model (api/_viewer.js): resources/list and
+// resources/read are answered here, without the tab, and the tools whose
+// answer is the model as it now stands name it in their _meta. Such a
+// client's calls to those tools ask the tab for the viewer's share of the
+// answer — the parts count and pictures a person looks at, in the answer's
+// _meta — and no other client's do, so what any other client sees is what
+// it saw before.
+//
 // Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
 // SUPABASE_PUBLISHABLE_KEY for accounts.
 
@@ -111,6 +121,10 @@ import { createHash, randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
+import {
+  ASK_VIEWS, EXTENSION, VIEWER_TOOLS, sessionFor, sessionShows, showsApps,
+  viewerListed, viewerRead, withViewer,
+} from "./_viewer.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
 const INSTANCE = /^[A-Za-z0-9_-]{8,40}$/;
@@ -137,6 +151,10 @@ const TAB_GONE_MS = 45_000;
 const HIDDEN_WAIT_MS = 20_000;
 const UNTAKEN_MS = 30_000;
 const PROTOCOL = "2025-06-18";
+// What this server does, said at initialize: the tool list can change
+// (below), and it serves the model's viewer, a resource, to a client that
+// shows such pages.
+const CAPABILITIES = { tools: { listChanged: true }, resources: {}, extensions: { [EXTENSION]: {} } };
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -380,10 +398,10 @@ const RELAY_TOOLS = [
 function toolsWithTabs(tools) {
   const own = (Array.isArray(tools) ? tools : []).map((tool) => {
     const schema = tool && tool.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {};
-    return {
+    return withViewer({
       ...tool,
       inputSchema: { type: "object", ...schema, properties: { ...(schema.properties || {}), target: TARGET } },
-    };
+    });
   });
   return [...own, ...RELAY_TOOLS];
 }
@@ -427,6 +445,7 @@ async function unpick(key) {
 // session, or, for a client that sends none, its connection or address.
 function oneTab(channel, session) {
   return {
+    shows: sessionShows(session),
     tabs: async () => {
       const tab = await tabOf(channel);
       return tab ? [tab] : [];
@@ -442,6 +461,7 @@ function oneTab(channel, session) {
 
 function accountTabs(grant, origin, session) {
   return {
+    shows: sessionShows(session),
     async tabs() {
       return await db(`relay_tabs?owner=eq.${grant.owner}&open=is.true`
         + `&select=${TAB}&order=seen_at.desc&limit=20`) || [];
@@ -574,6 +594,20 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   const id = message.id;
   const calling = message.method === "tools/call";
   const name = calling ? String(message.params?.name || "") : "";
+  // The model's viewer, served here: the tab need not be open to read it.
+  if (["resources/list", "resources/read", "resources/templates/list"].includes(message.method)) {
+    await where.used(message, null);
+    if (message.method === "resources/list") {
+      return response.status(200).json({ jsonrpc: "2.0", id, result: { resources: [viewerListed()] } });
+    }
+    if (message.method === "resources/templates/list") {
+      return response.status(200).json({ jsonrpc: "2.0", id, result: { resourceTemplates: [] } });
+    }
+    const uri = String(message.params?.uri || "");
+    const read = viewerRead(uri);
+    return response.status(200).json(read ? { jsonrpc: "2.0", id, result: read }
+      : rpcError(id, -32002, `no resource ${uri.slice(0, 200)}`));
+  }
   if (calling && RELAY_TOOLS.some((tool) => tool.name === name)) {
     await where.used(message, null);
     return await relayTool(where, message, response);
@@ -591,6 +625,11 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     const target = typeof args.target === "string" ? args.target.trim().toLowerCase() : "";
     delete args.target;
     message = { ...message, params: { ...message.params, arguments: args } };
+    // A client that shows the viewer: the tab adds what it shows.
+    if (VIEWER_TOOLS.includes(name) && (where.shows || showsApps(message))) {
+      const meta = message.params._meta && typeof message.params._meta === "object" ? message.params._meta : {};
+      message.params._meta = { ...meta, [ASK_VIEWS]: true };
+    }
     if (target) {
       tab = tabs.find((one) => idOf(one) === target && stateOf(one) !== "closed")
         || tabs.find((one) => idOf(one) === target) || null;
@@ -651,7 +690,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       jsonrpc: "2.0", id,
       result: {
         protocolVersion: message.params?.protocolVersion || PROTOCOL,
-        capabilities: { tools: { listChanged: true } },
+        capabilities: CAPABILITIES,
         serverInfo: { name: "brickworks", version: "1" },
         instructions: hello.instructions || "",
       },
@@ -681,7 +720,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
         jsonrpc: "2.0", id,
         result: {
           protocolVersion: message.params?.protocolVersion || PROTOCOL,
-          capabilities: { tools: { listChanged: true } },
+          capabilities: CAPABILITIES,
           serverInfo: { name: "brickworks", version: "1" },
           instructions: where.notOpen,
         },
@@ -775,7 +814,7 @@ async function forAccount(request, response) {
   // keeps one conversation's calls in the tab it chose (relay_picks).
   const session = sessionOf(request);
   const give = request.body && request.body.method === "initialize" && !session
-    ? randomBytes(24).toString("base64url") : null;
+    ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
   return await fromClaude(accountTabs(grant, origin, session || give), request.body, response, give, streams(request));
 }
 
@@ -908,7 +947,7 @@ export default async function handler(request, response) {
       // given; the tab is the address's either way.
       const session = sessionOf(request);
       const give = request.body && request.body.method === "initialize" && !session
-        ? randomBytes(24).toString("base64url") : null;
+        ? sessionFor(showsApps(request.body), randomBytes(24).toString("base64url")) : null;
       return await fromClaude(oneTab(channel, session || give), request.body, response, give, streams(request));
     }
     if (op === "hello") {

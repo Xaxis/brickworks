@@ -1,0 +1,430 @@
+// Does Claude show the model beside the call? MCP Apps, end to end.
+//
+//   set -a; . ./.env; set +a
+//   BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view
+//   node tools/web/relay_server.mjs 8797 &
+//   node tools/web/model_view_check.mjs --url=http://127.0.0.1:8797/app --relay-only
+//
+// claude.ai, the Claude apps and other hosts of the MCP Apps extension
+// (io.modelcontextprotocol/ui, spec 2026-01-26) can show a server's own page
+// inline in a conversation. The relay serves one, a viewer of the model
+// (api/_viewer.js); the tools whose answer is the model as it now stands
+// name it in their _meta; and a client that says it shows such pages is
+// given, in each of those answers' _meta, the parts count and pictures of
+// the model (src/net/model_views.gd).
+//
+// Played here from both ends, through the deployed relay, as claude.ai does
+// it: signed in with OAuth to a throwaway account (deleted at the end), with
+// a real tab of that account open in a browser answering the calls.
+//
+//   1. The relay alone: initialize says it serves resources and the
+//      extension; tools/list names the viewer on its tools, and the tool
+//      count is the app's 47 and the relay's two; resources/read gives the
+//      page, self-contained.
+//   2. A real tab: a design built, looked over and looked at by a session
+//      that shows pages, and the same calls by one that does not, whose
+//      answers carry nothing more and whose words and pictures are the same.
+//   3. A host, as the spec says one behaves: the page in a sandboxed frame
+//      under the spec's default content policy, the handshake answered, the
+//      real answers sent as tool-input and tool-result. The picture is
+//      drawn, the parts count shown, the turntable turns, and nothing is
+//      refused by the policy.
+//
+// Before 2026-10-14 the relay served no resources and named nothing, so
+// every check from 1 on failed. Costs nothing: no model is called.
+import { createHash, randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync } from "node:fs";
+
+// An account of its own, so no other test's tab is the one Claude's calls
+// go to. Set before browser.mjs is loaded, which reads it once.
+const email = `delivered+bwmodelview${Date.now().toString(36)}@resend.dev`;
+process.env.BW_TEST_EMAIL = email;
+const { launch, openColumnFor, withAssistant } = await import("./browser.mjs");
+const { mintSession } = await import("./session.mjs");
+
+// The throwaway account, and with it its connections and tabs. Not
+// session.mjs's deleteAccount, which never deletes BW_TEST_EMAIL's.
+async function dropAccount(id) {
+  if (!id) return false;
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  const gone = await fetch(`${process.env.SUPABASE_URL.replace(/\/+$/, "")}/auth/v1/admin/users/${id}`, {
+    method: "DELETE", headers: { apikey: secret, authorization: `Bearer ${secret}` } });
+  return gone.ok;
+}
+
+const args = Object.fromEntries(process.argv.slice(2).map((a) => {
+  const [k, ...rest] = a.replace(/^--/, "").split("=");
+  return [k, rest.join("=") || true];
+}));
+const url = withAssistant(args.url || "https://brickworks.diy/app");
+const site = new URL(url).origin;
+const out = args.out || "shots/model_view";
+mkdirSync(out, { recursive: true });
+const bypass = process.env.BW_BYPASS || "";
+const extra = bypass ? { "x-vercel-protection-bypass": bypass } : {};
+const withBypass = (address) => (bypass
+  ? `${address}${address.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : address);
+
+const EXTENSION = "io.modelcontextprotocol/ui";
+const MIME = "text/html;profile=mcp-app";
+const URI = "ui://brickworks/model.html";
+const SHOWN = ["submit_design", "look_at_model", "view_model", "edit_model"];
+// The spec's policy for a page that declares no domains (apps.mdx, "Content
+// Security Policy"), which is what this one declares.
+const DEFAULT_CSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+  + "img-src 'self' data:; media-src 'self' data:; connect-src 'none';";
+
+let failures = 0;
+const check = (ok, what) => {
+  console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`);
+  if (!ok) failures += 1;
+  return ok;
+};
+const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
+
+// Claude's sign-in to the account, as claude.ai does it (list_changed_check).
+async function claudeToken(session) {
+  const client = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+  const back = "https://claude.ai/api/mcp/auth_callback";
+  const verifier = b64url(randomBytes(32));
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const yes = await (await fetch(`${site}/api/oauth?op=approve`, {
+    method: "POST",
+    headers: { ...extra, "content-type": "application/json", authorization: `Bearer ${session}` },
+    body: JSON.stringify({ response_type: "code", client_id: client, redirect_uri: back,
+      code_challenge: challenge, code_challenge_method: "S256", state: "mv", resource: `${site}/api/mcp` }),
+  })).json();
+  const code = new URL(String(yes.redirect || "x:")).searchParams.get("code");
+  if (!code) throw new Error(`no code: ${JSON.stringify(yes).slice(0, 200)}`);
+  const tokens = await (await fetch(`${site}/oauth/token`, {
+    method: "POST",
+    headers: { ...extra, "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: back,
+      client_id: client, code_verifier: verifier, resource: `${site}/api/mcp` }).toString(),
+  })).json();
+  if (!tokens.access_token) throw new Error("no token");
+  return tokens.access_token;
+}
+
+// One conversation, as Claude: [shows] whether its client says, at
+// initialize, that it shows a server's pages.
+class Conversation {
+  constructor(token, shows) {
+    this.token = token;
+    this.shows = shows;
+    this.session = "";
+    this.sent = 0;
+  }
+  async ask(method, params = {}) {
+    this.sent += 1;
+    const answer = await fetch(`${site}/api/mcp`, {
+      method: "POST",
+      headers: { ...extra, "content-type": "application/json", accept: "application/json, text/event-stream",
+        authorization: `Bearer ${this.token}`, ...(this.session ? { "mcp-session-id": this.session } : {}) },
+      body: JSON.stringify({ jsonrpc: "2.0", id: this.sent, method, params }),
+    });
+    const given = answer.headers.get("mcp-session-id");
+    if (given && !this.session) this.session = given;
+    const raw = await answer.text();
+    const type = answer.headers.get("content-type") || "";
+    let messages = [];
+    if (type.startsWith("text/event-stream")) {
+      for (const event of raw.split(/\r?\n\r?\n/)) {
+        const data = event.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("\n");
+        if (data) messages.push(JSON.parse(data));
+      }
+    } else {
+      try { messages = [JSON.parse(raw)]; } catch { messages = []; }
+    }
+    return messages.find((m) => m.id === this.sent) || { error: { message: `status ${answer.status}: ${raw.slice(0, 120)}` } };
+  }
+  async start() {
+    const capabilities = this.shows ? { extensions: { [EXTENSION]: { mimeTypes: [MIME] } } } : {};
+    const said = await this.ask("initialize", { protocolVersion: "2025-06-18", capabilities,
+      clientInfo: { name: this.shows ? "model-view-check (shows pages)" : "model-view-check (text)", version: "1" } });
+    // A notification: no id, and no answer.
+    await fetch(`${site}/api/mcp`, {
+      method: "POST",
+      headers: { ...extra, "content-type": "application/json", accept: "application/json, text/event-stream",
+        authorization: `Bearer ${this.token}`, ...(this.session ? { "mcp-session-id": this.session } : {}) },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+    });
+    return said;
+  }
+  call(name, input = {}) { return this.ask("tools/call", { name, arguments: input }); }
+}
+
+const texts = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "text").map((b) => b.text);
+const images = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "image");
+const shownOf = (answer) => ((answer.result || {})._meta || {})["brickworks/view"];
+const kinds = (answer) => ((answer.result || {}).content || []).map((b) => b.type).join(",");
+
+let browser = null;
+let account = "";
+try {
+  console.log(`the model beside the call, at ${site}, as ${email}\n`);
+  const signedIn = await mintSession(email);
+  account = signedIn.kept.user_id;
+  const token = await claudeToken(signedIn.access_token);
+
+  console.log("1. the relay: what a host that shows pages is told");
+  const viewer = new Conversation(token, true);
+  const greeted = await viewer.start();
+  const caps = (greeted.result || {}).capabilities || {};
+  check(Boolean(caps.resources) && Boolean((caps.extensions || {})[EXTENSION]),
+    `initialize says it serves resources and ${EXTENSION}: ${JSON.stringify(caps)}`);
+  const listed = await viewer.ask("tools/list");
+  const tools = (listed.result || {}).tools || [];
+  const named = tools.filter((t) => t._meta && t._meta.ui && t._meta.ui.resourceUri === URI
+    && t._meta["ui/resourceUri"] === URI).map((t) => t.name);
+  check(SHOWN.every((n) => named.includes(n)) && named.length === SHOWN.length,
+    `tools/list names the viewer (_meta.ui.resourceUri, and "ui/resourceUri") on ${named.join(", ") || "none"}`);
+  const app = JSON.parse(readFileSync(new URL("../mcp_tools.json", import.meta.url), "utf8")).map((t) => t.name);
+  const names = tools.map((t) => t.name);
+  check(app.length === 47 && names.length === app.length + 2 && app.every((n) => names.includes(n))
+      && names.includes("tabs") && names.includes("select_tab"),
+    `...and the tools are the app's ${app.length} and the relay's tabs and select_tab: ${names.length}`);
+  const resources = ((await viewer.ask("resources/list")).result || {}).resources || [];
+  check(resources.some((r) => r.uri === URI && r.mimeType === MIME), `resources/list: ${resources.map((r) => `${r.uri} ${r.mimeType}`).join("; ") || "none"}`);
+  const read = await viewer.ask("resources/read", { uri: URI });
+  const page = (((read.result || {}).contents || [])[0]) || {};
+  const html = String(page.text || "");
+  check(page.uri === URI && page.mimeType === MIME && /^<!doctype html>/i.test(html),
+    `resources/read gives the page: ${page.mimeType}, ${html.length} characters`);
+  check(html.length > 0 && !/<(link|iframe)\b|\bsrc=["']?https?:|@import|url\(\s*["']?https?:|fetch\(|XMLHttpRequest/i.test(html),
+    "...self-contained: no font, script, style, picture or connection from anywhere");
+  check(Boolean(((page._meta || {}).ui || {}).csp), `...and says so in _meta.ui.csp: ${JSON.stringify(((page._meta || {}).ui || {}).csp)}`);
+  const missing = await viewer.ask("resources/read", { uri: "ui://brickworks/nothing.html" });
+  check(Boolean(missing.error), `an address that is not the viewer's is refused: ${missing.error?.message}`);
+  if (!html) throw new Error("no page to show: the rest has nothing to load");
+  // --relay-only: the relay's half, against tools/web/relay_server.mjs.
+  if (args["relay-only"]) throw Object.assign(new Error("the relay alone, as asked"), { asked: true });
+
+  console.log("\n2. a real tab answers: the session that shows pages, and one that does not");
+  browser = await launch();
+  const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: site });
+  // Connect Claude opens claude.ai, stood in for here.
+  await context.route(/^https:\/\/claude\.ai\//, (route) => route.fulfill({ status: 200, contentType: "text/html",
+    body: "<!doctype html><title>claude.ai (stand-in)</title>" }));
+  const tab = await context.newPage();
+  await tab.goto(withBypass(url), { waitUntil: "domcontentloaded", timeout: 180000 });
+  const controls = () => tab.evaluate(() => window.brickworksControls || {});
+  const claudeState = () => tab.evaluate(() => window.brickworksClaude || {});
+  let listening = false;
+  for (let n = 0; n < 600 && !listening; n++) {
+    listening = Boolean((await claudeState()).on);
+    if (listening) break;
+    const at = (await controls()).connect_claude;
+    if (at) {
+      const opened = context.waitForEvent("page", { timeout: 30000 }).catch(() => null);
+      await tab.mouse.click(at.x, at.y);
+      const claude = await opened;
+      if (claude) await claude.close();
+    } else if (n % 12 === 6) {
+      await openColumnFor(tab, "connect_claude");
+    }
+    await tab.waitForTimeout(500);
+  }
+  check(listening, `the account's tab is listening for Claude: "${(await claudeState()).status || ""}"`);
+
+  // A small model: six parts, on bare ground.
+  const design = { name: "Viewer check tower", bricks: [
+    { part: "3001", color: 4, x: 10, y: 0, z: 10 }, { part: "3001", color: 1, x: 10, y: 3, z: 10 },
+    { part: "3001", color: 14, x: 10, y: 6, z: 10 }, { part: "3003", color: 2, x: 10, y: 9, z: 10 },
+    { part: "3003", color: 15, x: 10, y: 12, z: 10 }, { part: "3062b", color: 4, x: 10, y: 15, z: 10 },
+  ] };
+  // On bare ground, so what the tab opened with is not in the way. The
+  // panel says it listens a moment before the relay has its hello.
+  let cleared = await viewer.call("clear_model");
+  for (let n = 0; n < 12 && /No Brickworks tab is open/.test(texts(cleared).join(" ")); n++) {
+    await tab.waitForTimeout(5000);
+    cleared = await viewer.call("clear_model");
+  }
+  check(!cleared.result?.isError && !shownOf(cleared), `clear_model first, which shows nothing: "${texts(cleared).slice(-1)[0]?.slice(0, 60)}"`);
+  let t0 = Date.now();
+  const built = await viewer.call("submit_design", design);
+  const builtShown = shownOf(built) || {};
+  check(!built.result?.isError && /Built\./.test(texts(built).join(" ")),
+    `submit_design builds it, in ${Math.round((Date.now() - t0) / 1000)} s: "${texts(built).join(" ").replace(/\s+/g, " ").slice(0, 70)}"`);
+  // The count the app itself states, which the viewer's must be.
+  let looked = await viewer.call("look_at_model");
+  const stated = Number((/(\d+) parts are on the baseplate/.exec(texts(looked).join(" ")) || [])[1]);
+  check(builtShown.parts === stated && stated >= design.bricks.length,
+    `...its answer's _meta carries the parts count, ${builtShown.parts}, as look_at_model states it (${stated})`);
+  const turntable = (builtShown.views || []);
+  const webp = (views) => views.every((v) => v.mimeType === "image/webp" && v.data.length > 1000);
+  // As many views as the tab drew in its budget (12 s), the front first.
+  check(turntable.length >= 1 && turntable[0].from === "corner" && webp(turntable),
+    `...and as much of a turntable as the budget drew, the front first: ${turntable.map((v) => `${v.from} ${Math.round(v.data.length / 1024)}k`).join(", ")}`);
+  check(kinds(built).split(",").every((k) => k === "text") && !built.result?.structuredContent,
+    `...while its content is words alone, as before, and there is no structuredContent (${kinds(built)})`);
+  // A turntable cut short by the budget is finished by the calls after it.
+  for (let n = 0; n < 3 && ((shownOf(looked) || {}).views || []).length < 4; n++) {
+    looked = await viewer.call("look_at_model");
+  }
+  const whole = (shownOf(looked) || {}).views || [];
+  check((shownOf(looked) || {}).parts === stated && whole.length === 4 && webp(whole),
+    `look_at_model carries the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
+  const carried = whole.reduce((n, v) => n + v.data.length, 0);
+  check(carried < 100000, `...in ${carried} characters, well inside the ~150,000 claude.ai keeps in a conversation`);
+  // A picture the tab cannot draw in 20 s comes back as letters, or as a
+  // job, whoever asked: on a loaded machine, asked again.
+  async function aPicture(conversation) {
+    let answer = await conversation.call("view_model", { from: "front" });
+    for (let n = 0; n < 3 && images(answer).length === 0; n++) {
+      console.log(`  (view_model came back without a picture: "${texts(answer).slice(-1)[0]?.slice(0, 60)}"; again)`);
+      await tab.waitForTimeout(15000);
+      answer = await conversation.call("view_model", { from: "front" });
+    }
+    return answer;
+  }
+  const viewed = await aPicture(viewer);
+  check(images(viewed).length === 1 && (shownOf(viewed) || {}).parts === stated
+      && ((shownOf(viewed) || {}).views || []).length === 0,
+    `view_model carries the count, and its own picture is the one shown (${kinds(viewed)})`);
+
+  const plain = new Conversation(token, false);
+  const plainGreeted = await plain.start();
+  check(Boolean(plainGreeted.result?.serverInfo), "a client that does not show pages connects as before");
+  const plainLooked = await plain.call("look_at_model");
+  const plainViewed = await aPicture(plain);
+  check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
+    "...its answers carry nothing for a viewer");
+  check(JSON.stringify(texts(plainLooked)) === JSON.stringify(texts(looked)),
+    "...and look_at_model's words are the same, word for word");
+  check(kinds(plainViewed) === kinds(viewed) && JSON.stringify(texts(plainViewed)) === JSON.stringify(texts(viewed))
+      && images(plainViewed)[0]?.mimeType === images(viewed)[0]?.mimeType,
+    `...and view_model's words and picture the same (${kinds(plainViewed)})`);
+  await tab.screenshot({ path: `${out}/1_tab.png`, timeout: 120000 }).catch(() => {});
+
+  console.log("\n3. a host, as the spec says one behaves");
+  const host = await browser.newPage({ viewport: { width: 760, height: 900 } });
+  const refused = [];
+  host.on("console", (m) => { if (/Content Security Policy|Refused to/i.test(m.text())) refused.push(m.text().slice(0, 200)); });
+  await host.setContent(`<!doctype html><html><head><style>
+    body{margin:0;padding:24px;background:#262624;font:14px system-ui}
+    body.light{background:#f5f4ed} iframe{display:block;width:100%;border:0;height:200px}
+    </style></head><body><iframe id="app" sandbox="allow-scripts"></iframe><script>
+    // The host's half (apps.mdx, "Lifecycle"): answer ui/initialize, and once
+    // the page says it is initialized, send it the call's input and result.
+    window.heard = [];
+    window.show = (html, tool, input, result, theme, policy) => new Promise((done) => {
+      const frame = document.getElementById("app");
+      const toPage = (m) => frame.contentWindow.postMessage(m, "*");
+      window.toPage = toPage;
+      window.onmessage = (e) => {
+        if (e.source !== frame.contentWindow) return;
+        const m = e.data || {};
+        window.heard.push(m.method || "answer");
+        if (m.method === "ui/initialize") {
+          toPage({ jsonrpc: "2.0", id: m.id, result: { protocolVersion: "2026-01-26",
+            hostInfo: { name: "model-view-check", version: "1" }, hostCapabilities: {},
+            hostContext: { theme, displayMode: "inline", availableDisplayModes: ["inline"],
+              toolInfo: { tool: { name: tool } } } } });
+        } else if (m.method === "ui/notifications/initialized") {
+          toPage({ jsonrpc: "2.0", method: "ui/notifications/tool-input", params: { arguments: input } });
+          toPage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: result });
+          done(true);
+        } else if (m.method === "ui/notifications/size-changed") {
+          window.size = m.params;
+          frame.style.height = m.params.height + "px";
+        }
+      };
+      const meta = document.createElement("meta");
+      meta.httpEquiv = "Content-Security-Policy";
+      meta.content = policy;
+      frame.srcdoc = html.replace(/<head>/i, "<head>" + meta.outerHTML);
+    });
+    </script></body></html>`);
+  const inFrame = async () => host.frames().find((f) => f !== host.mainFrame());
+  async function showIn(tool, input, answer, theme = "dark") {
+    await host.evaluate(() => { window.size = null; window.heard = []; });
+    const started = await Promise.race([
+      host.evaluate(([h, t, i, r, th, p]) => window.show(h, t, i, r, th, p),
+        [html, tool, input, answer.result, theme, DEFAULT_CSP]),
+      new Promise((done) => setTimeout(() => done(false), 20000)),
+    ]);
+    const frame = await inFrame();
+    await host.waitForTimeout(800);
+    const seen = await frame.evaluate(() => {
+      const img = document.getElementById("picture");
+      // Drawn, and whole: the picture's box inside the frame it is shown
+      // in, so none of the model is cut off.
+      const box = img.getBoundingClientRect();
+      const frameBox = document.getElementById("stage").getBoundingClientRect();
+      const whole = box.width > 50 && box.height > 50 && box.top >= frameBox.top - 1 && box.left >= frameBox.left - 1
+        && box.bottom <= frameBox.bottom + 1 && box.right <= frameBox.right + 1;
+      return { name: document.getElementById("name").textContent, parts: document.getElementById("parts").textContent,
+        drawn: !img.hidden && img.complete && img.naturalWidth > 0 && whole, src: (img.src || "").slice(0, 22), alt: img.alt,
+        views: document.querySelectorAll("#views button").length, where: document.getElementById("where").textContent,
+        theme: document.documentElement.dataset.theme };
+    });
+    const sized = await host.evaluate(() => window.size);
+    return { started, frame, seen, sized };
+  }
+
+  const one = await showIn("submit_design", design, built);
+  check(one.started, "the page asks ui/initialize and says it is initialized; the host sends the input and the result");
+  check(one.seen.drawn && one.seen.src.startsWith("data:image/webp"),
+    `submit_design: the model's picture is drawn (${one.seen.src}…, "${one.seen.alt}")`);
+  const count = `${stated.toLocaleString()} parts`;
+  check(one.seen.parts === count && one.seen.name === design.name,
+    `...with its name and parts count: "${one.seen.name}", "${one.seen.parts}"`);
+  // One view is a picture with its side named; more are a turntable with a
+  // button each.
+  check(one.seen.views === (turntable.length > 1 ? turntable.length : 0)
+      && (turntable.length > 1 ? /^Front right$/ : /^From the front right$/).test(one.seen.where),
+    `...as ${turntable.length > 1 ? `a turntable of ${one.seen.views}` : "one view"}: "${one.seen.where}"`);
+  check(Boolean(one.sized && one.sized.height > 150), `...and tells the host its size: ${JSON.stringify(one.sized)}`);
+  await host.screenshot({ path: `${out}/2_submit_dark.png` });
+
+  const whole3 = await showIn("look_at_model", {}, looked);
+  check(whole3.seen.drawn && whole3.seen.views === 4 && whole3.seen.parts === count && /Front right/.test(whole3.seen.where),
+    `look_at_model: the whole turntable and the count, "${whole3.seen.parts}", "${whole3.seen.where}"`);
+  // Watched, not sampled once: a slow screenshot can let it come round again.
+  let moved = whole3.seen.where;
+  for (let n = 0; n < 20 && moved === whole3.seen.where; n++) {
+    await host.waitForTimeout(200);
+    moved = await whole3.frame.evaluate(() => document.getElementById("where").textContent);
+  }
+  check(moved !== whole3.seen.where, `...which turns by itself: "${whole3.seen.where}", then "${moved}"`);
+
+  // Still, as for a person who asks for less motion: what follows is the keys.
+  await host.emulateMedia({ reducedMotion: "reduce" });
+  const three = await showIn("look_at_model", {}, looked);
+  await host.waitForTimeout(2000);
+  const still = await three.frame.evaluate(() => document.getElementById("where").textContent);
+  check(three.seen.where === "Front right" && still === "Front right",
+    `asked for less motion, it stays still: "${three.seen.where}", 2 s later "${still}"`);
+  await three.frame.focus("#stage");
+  await three.frame.press("#stage", "ArrowRight");
+  await host.waitForTimeout(300);
+  const turned = await three.frame.evaluate(() => ({ where: document.getElementById("where").textContent,
+    drawn: document.getElementById("picture").naturalWidth > 0 }));
+  check(/Back right/.test(turned.where) && turned.drawn, `the arrow key turns it a quarter: "${turned.where}"`);
+  await host.screenshot({ path: `${out}/3_look_dark.png` });
+  await host.evaluate(() => { document.body.classList.add("light"); window.toPage({ jsonrpc: "2.0",
+    method: "ui/notifications/host-context-changed", params: { theme: "light" } }); });
+  await host.waitForTimeout(500);
+  const light = await three.frame.evaluate(() => document.documentElement.dataset.theme);
+  check(light === "light", `the host turns light, and so does the page: ${light}`);
+  await host.screenshot({ path: `${out}/4_look_light.png` });
+  await host.evaluate(() => document.body.classList.remove("light"));
+
+  const two = await showIn("view_model", { from: "front" }, viewed);
+  check(two.seen.drawn && two.seen.src.startsWith("data:image/png") && two.seen.parts === count
+      && /From the front/.test(two.seen.where),
+    `view_model: its own picture, and the count: "${two.seen.where}", "${two.seen.parts}"`);
+  await host.screenshot({ path: `${out}/5_view_model.png` });
+  check(refused.length === 0, `the spec's default policy refused nothing${refused.length ? `: ${refused[0]}` : ""}`);
+} catch (trouble) {
+  if (!trouble.asked) check(false, `stopped: ${trouble.message}`);
+} finally {
+  if (browser) await browser.close().catch(() => {});
+  const gone = await dropAccount(account).catch(() => false);
+  console.log(`\nthe throwaway account ${gone ? "deleted" : "NOT deleted"}`);
+}
+console.log(failures ? `${failures} failure(s)` : "Claude is shown the model, and every other client what it saw before");
+process.exit(failures ? 1 : 0);

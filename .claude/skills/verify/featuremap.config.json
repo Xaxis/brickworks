@@ -1734,6 +1734,20 @@
       "entry": "tools/web/keep_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep   (with .env sourced)",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "the model in Claude",
+      "entry": "src/net/model_views.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   (with .env sourced: the viewer page api/_viewer.js read through the relay, a real tab's answers, and the page in a sandboxed frame sent them as an MCP Apps host does; --relay-only against relay_server.mjs for the relay's half)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "model view check",
+      "entry": "tools/web/model_view_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   (with .env sourced; a throwaway account, deleted at the end)",
+      "area": "web"
     }
   ]
 }
