@@ -71,7 +71,10 @@
     const parts = counted(model.parts, "part");
     about.textContent = model.author ? `${parts}, by ${model.author}` : parts;
     const numbers = document.createElement("small");
-    const said = [counted(model.views, "view")];
+    // Like the likes, said once there is one: "0 views" on every new card
+    // reads as a gallery nobody visits.
+    const said = [];
+    if (Number(model.views)) said.push(counted(model.views, "view"));
     if (Number(model.likes)) said.push(counted(model.likes, "like"));
     if (Number(model.remixes)) said.push(counted(model.remixes, "remix", "remixes"));
     numbers.textContent = said.join(" · ");

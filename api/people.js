@@ -443,7 +443,7 @@ export function cardHtml(card) {
   const picture = card.thumb ? `/m/${card.id}.webp${card.thumb.includes("?v=") ? `?v=${card.thumb.split("?v=")[1]}` : ""}`
     : card.image ? `/m/${card.id}.png` : "";
   const parts = count(card.parts, "part");
-  const said = [count(card.views, "view")];
+  const said = card.views ? [count(card.views, "view")] : [];
   if (card.likes) said.push(count(card.likes, "like"));
   if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
   return `<a class="model" href="/m/${card.id}" data-id="${card.id}">`
