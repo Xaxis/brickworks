@@ -150,8 +150,77 @@ static func expand(raw_patterns: Array, already: Array,
 	for cell: Variant in feet:
 		for standing: Dictionary in footings:
 			if standing.has(cell):
-				return _expanded(raw_patterns, already, trouble, library, footings, feet, [])
+				made = _expanded(raw_patterns, already, trouble, library, footings, feet, [])
+				_over_nothing(already, made, library)
+				return made
+	_over_nothing(already, made, library)
 	return made
+
+
+## Each shape's parts in what [method _expanded] made last: [from, to).
+static var _shape_spans: Array = []
+
+
+## A shape raised over nothing is said, with what would hold it: an owl's
+## body said at y 55 with its branch still to build came back as 358 parts
+## floating, and nothing said why.
+static func _over_nothing(already: Array, made: Array, library: PartLibrary) -> void:
+	# A brick in a section stands where its section is moved to, which is not
+	# known here.
+	for raw: Variant in already:
+		if raw is Dictionary and not str((raw as Dictionary).get("section", "")).is_empty():
+			return
+	for span: Array in _shape_spans:
+		var from: int = span[0]
+		var to: int = span[1]
+		var lowest: float = INF
+		for i: int in range(from, to):
+			lowest = minf(lowest, float((made[i] as Dictionary).get("y", 0.0)))
+		if to <= from or lowest <= 0.0:
+			continue
+		# The top of everything else, stud by stud.
+		var tops: Dictionary = {}    ## Vector3i(x, plate, z) -> true
+		for raw: Variant in already + made.slice(0, from) + made.slice(to):
+			for cell: Vector3i in _foot_cells(raw, library, true):
+				tops[cell] = true
+		var held: bool = false
+		for i: int in range(from, to):
+			for cell: Vector3i in _foot_cells(made[i], library, false):
+				held = held or tops.has(cell)
+			if held:
+				break
+		if not held:
+			Shapes.said.append(("A shape's underside is at y=%s, and nothing of the design "
+				% Shapes._num(lowest)) + "has its top there under it, so it floats. Build "
+				+ "what it stands on in the same design, its top at y=%s under the shape " \
+				% Shapes._num(lowest) + "(a stand, a post, a branch, a chassis), or bring "
+				+ "the shape's underside down onto what is there.")
+
+
+## The studs of a brick standing studs up on the grid, at its foot's plate
+## or, with [param top], at the plate over its top: Vector3i(x, plate, z).
+static func _foot_cells(raw: Variant, library: PartLibrary, top: bool) -> Array:
+	var out: Array = []
+	if not raw is Dictionary:
+		return out
+	var brick: Dictionary = raw
+	var at := Vector3(float(brick.get("x", 0.0)), float(brick.get("y", 0.0)),
+		float(brick.get("z", 0.0)))
+	if str(brick.get("face", "up")).to_lower() != "up" or at != at.round() \
+			or not str(brick.get("section", "")).is_empty():
+		return out
+	var part: String = str(brick.get("part", ""))
+	var info: PartLibrary.PartInfo = library.parts.get(part) if library != null else null
+	if info == null:
+		return out
+	var y: int = roundi(at.y)
+	if top:
+		y += roundi((info.size.y - (4.0 if info.stud_count > 0 else 0.0)) / 8.0)
+	var rot: int = posmod(int(brick.get("rot", 0)), 4)
+	for i: int in roundi(_spans(library, part, rot, "x")):
+		for k: int in roundi(_spans(library, part, rot, "z")):
+			out.append(Vector3i(roundi(at.x) + i, y, roundi(at.z) + k))
+	return out
 
 
 ## Where bricks stand: stud [x, z] -> the heights, in plates, of the feet
@@ -188,6 +257,8 @@ static func feet_of(bricks: Array, library: PartLibrary) -> Dictionary:
 static func _expanded(raw_patterns: Array, already: Array, trouble: Array,
 		library: PartLibrary, footings: Array, feet: Dictionary, others: Array) -> Array:
 	var made: Array = []
+	Shapes.said = []
+	_shape_spans = []
 	var n: int = -1
 	for raw: Variant in raw_patterns:
 		n += 1
@@ -212,6 +283,16 @@ static func _expanded(raw_patterns: Array, already: Array, trouble: Array,
 			if not carried.is_empty():
 				pattern = pattern.duplicate()
 				pattern["_carried"] = carried
+			# And the tops of what is laid before it, for a shape raised off the
+			# ground to know where its foot stands on something.
+			var under: Dictionary = {}
+			if library != null:
+				for brick: Variant in already + made:
+					for cell: Vector3i in _foot_cells(brick, library, true):
+						under[cell] = true
+			if not under.is_empty():
+				pattern = pattern.duplicate()
+				pattern["_under"] = under
 		var from: Array = already + made
 		var before: int = made.size()
 		match kind:
@@ -232,6 +313,8 @@ static func _expanded(raw_patterns: Array, already: Array, trouble: Array,
 					% kind + "repeat, mirror, fill, rock, round and shape")
 		if kind != "shape":
 			others.append_array(made.slice(before))
+		else:
+			_shape_spans.append([before, made.size()])
 		if made.size() > MOST:
 			trouble.append("that would be %d bricks or more, which is a "
 				% made.size() + "mistake in the numbers rather than a model")

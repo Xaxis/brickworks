@@ -6119,6 +6119,8 @@ func _read_model(args: Dictionary) -> Model:
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 		_pattern_advice.append_array(_round_by_panels(plain))
+		# What a shape could not join, or that one stands on nothing, with the fix.
+		_pattern_advice.append_array(Shapes.said)
 	else:
 		_pattern_trouble = []
 
@@ -15490,7 +15492,10 @@ alongside the bricks you write by hand:
            ground under it, a cabin lofted on it, and at x 4 and 16 an \
            axle each — wheels and tyres, a Technic axle through Technic \
            bricks, the body cut clear of each wheel's box and standing on \
-           the bricks — so it is one piece on its wheels (269 parts). \
+           the bricks, and a chassis of plates under them from nose to \
+           tail holding the nose and tail — so it is one piece on its \
+           wheels. If a shape cannot hold a part of itself, or stands on \
+           nothing, its reply says where and what to change. \
            Never raise a shape over nothing to make room for wheels you \
            add later: it floats, and a round arch cut leaves a tyre's \
            corners in the body. It is \
@@ -18224,8 +18229,9 @@ func _tools() -> Array:
 				"shape: a car on its own wheels — studs along x of each axle's middle, "
 				+ "under a body laid along x 6, 8, 10 or 12 studs across. Each axle is "
 				+ "a wheel and tyre each side on a Technic axle through Technic bricks, "
-				+ "the body cut clear of each wheel's box and standing on the bricks "
-				+ "(its underside 5 plates up or lower over them), so the car is one "
+				+ "on a chassis of plates under them from nose to tail; the body cut "
+				+ "clear of each wheel's box stands on the bricks (its underside 5 "
+				+ "plates up or lower over them) and the chassis, so the car is one "
 				+ "piece on its wheels. wheel_color is the rims' colour."},
 			"wheel_color": {"type": "integer", "description": "shape: the rims' colour"},
 			"loft": {"type": "object", "description":
