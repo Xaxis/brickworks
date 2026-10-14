@@ -1748,6 +1748,20 @@
       "entry": "src/dev/unrestored_probe.gd",
       "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "claude's design is one undo step",
+      "entry": "src/ai/claude_step.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "design undo probe",
+      "entry": "src/dev/design_undo_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant"
     }
   ]
 }

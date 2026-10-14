@@ -244,6 +244,14 @@
       ]
     },
     {
+      "id": "cli:design undo probe",
+      "kind": "cli",
+      "entry": "src/dev/design_undo_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -850,6 +858,14 @@
       "entry": "src/parts/part_editor.gd",
       "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:claude's design is one undo step",
+      "kind": "lib",
+      "entry": "src/ai/claude_step.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
       "tests": []
     },
     {
