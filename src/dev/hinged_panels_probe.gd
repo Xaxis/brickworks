@@ -10,7 +10,23 @@
 ## hinges, no two at the same angle (10143's shell; 21332), and a round band
 ## as skins built sideways on brackets (the BB-8 sets). This builds both as a
 ## design would say them and asks the check whether they hold.
+##
+## And whether the shell is closed. The first domes held, and from four sides
+## read as a cage: daylight between the strips and a stud of it between the
+## bands. So rays go out from the shell's centre every quarter degree, and
+## the widest one that meets no part, across a band or between two, is the
+## gap a person sees through. -- --measure=DESIGN.json,X,Y,Z,R measures a
+## design written out by another build (its centre and radius in LDU);
+## -- --shells lays and judges the shells alone.
 extends SceneTree
+
+## The widest see-through gap the probe lets pass, LDU, and the most of the
+## shell open. The aim is half a plate (4 LDU), what a builder would let
+## pass, and it is not met: slivers stay at the seams between bands and under
+## the panels near the pole, a stud and a fifth at the widest, and this holds
+## the shells there so they get no worse. 4042e8f's dome: 150.7 LDU, 19.9%.
+const MOST_GAP := 24.0
+const MOST_OPEN := 0.03
 
 var _failures: int = 0
 var _assistant: Assistant
@@ -41,12 +57,23 @@ func _run() -> void:
 	get_root().add_child(_assistant)
 	await process_frame
 
-	_turns()
-	_hinges()
-	_dome()
-	_band()
-	await _edits(world)
-	_window(world, builder)
+	var only_shells: bool = false
+	for one: String in OS.get_cmdline_user_args():
+		if one.begins_with("--measure="):
+			_measure(one.trim_prefix("--measure="))
+			quit(0)
+			return
+		only_shells = only_shells or one == "--shells"
+	if only_shells:
+		_dome()
+	else:
+		_turns()
+		_hinges()
+		_turned_on_studs()
+		_dome()
+		_band()
+		await _edits(world)
+		_window(world, builder)
 
 	print("")
 	print("%s: %d failure%s" % ["PASS" if _failures == 0 else "FAIL", _failures,
@@ -185,6 +212,58 @@ func _hinges() -> void:
 		str(_assistant._check(both, true)["feedback"]).contains("turns about one line"))
 
 
+# -- turned about the upright, on studs ---------------------------------------
+
+
+## A part turned off the square about the upright grips by one stud with
+## nothing else under it. Turning about the upright was let through as a part
+## on one stud swivels, and a 2 x 4 turned thirty degrees on a plate was
+## called buildable on studs that meet its tubes and walls.
+func _turned_on_studs() -> void:
+	print("")
+	print("  a part turned about the upright, on studs")
+	# Turned about its corner, so a 1 x 2's first socket lands on the stud at
+	# (2.5, 2.5) when its corner is that less the turned half stud.
+	var swing: Vector3 = Basis(Vector3.UP, deg_to_rad(30)) * Vector3(0.5, 0, 0.5)
+	var on_one := Vector2(2.5 - swing.x, 2.5 - swing.z)
+	var cases: Array = [
+		["a 2 x 4 turned 30 degrees on a plate", false, [
+			{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 2, "y": 1, "z": 2, "rot": 0, "yaw": 30}]],
+		["a 1 x 2 turned 30 degrees about one of a plate's studs", false, [
+			{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3023b", "color": 4, "x": on_one.x, "y": 1, "z": on_one.y, "rot": 0,
+				"yaw": 30}]],
+		["the same 1 x 2 on a round plate's one stud", true, [
+			{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "6141", "color": 72, "x": 2, "y": 1, "z": 2, "rot": 0},
+			{"part": "3023b", "color": 4, "x": on_one.x, "y": 2, "z": on_one.y, "rot": 0,
+				"yaw": 30}]],
+		["on a jumper's centre stud", true, [
+			{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3794b", "color": 72, "x": 2, "y": 1, "z": 2, "rot": 0},
+			{"part": "3023b", "color": 4, "x": on_one.x + 0.5, "y": 2, "z": on_one.y, "rot": 0,
+				"yaw": 30}]],
+		["hung under a round plate's one stud", true, [
+			{"part": "3941", "color": 72, "x": 2, "y": 0, "z": 2, "rot": 0},
+			{"part": "3958", "color": 72, "x": 0, "y": 3, "z": 0, "rot": 0},
+			{"part": "6141", "color": 72, "x": 0, "y": 2, "z": 0, "rot": 0},
+			{"part": "3023b", "color": 4, "x": on_one.x - 2, "y": 1, "z": on_one.y - 2,
+				"rot": 0, "yaw": 30}]],
+		["a 2 x 4 turned a quarter, square on its studs", true, [
+			{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 2, "y": 1, "z": 2, "rot": 0, "yaw": 90}]],
+	]
+	for one: Array in cases:
+		var verdict: Dictionary = _assistant._check(_assistant._read_model({"bricks": one[2]}),
+			true)
+		var refused: bool = str(verdict["feedback"]).contains("grip nothing")
+		_check("%s: %s" % [one[0], "holds" if bool(verdict["ok"]) else "refused"],
+			bool(verdict["ok"]) if bool(one[1]) else refused)
+		if bool(one[1]) != bool(verdict["ok"]):
+			print("     %s" % str(verdict["feedback"]).replace("\n", " ").substr(0, 400))
+
+
 # -- a dome of hinged panels -----------------------------------------------
 
 
@@ -194,216 +273,53 @@ func _dome_kind() -> String:
 	return Hinges.CLICK if Hinges.available(Hinges.CLICK, _library) else Hinges.CLIP
 
 
-## A hemisphere of flat panels, as a design says one: a ring of plates for
-## the equator, then two meridian strips — a panel hinged on the ring, and
-## each panel above hinged within the one below at the next band's angle —
-## each repeated round the centre, the second between the first's copies,
-## its panels raised four plates on a spacer and wider, so it laps over
-## its neighbours' edges as scales do and no gap shows between strips; a
-## dish on a column for the crown. [param strips] round in all, [param
-## bands] from the equator to the top, of which the lowest [param built]
-## are panels, each [param length] studs from hinge line to hinge line;
-## [param widths] the inner strips' panels band by band, [param over] the
-## outer ones'. With [param sphere], the ring stands on a column and the
-## same strips hang below it as well: a ball.
-func _round_args(strips: int, bands: int, built: int, length: int,
-		widths: Array, over: Array, sphere: bool = false) -> Dictionary:
-	var kind: String = _dome_kind()
-	var fit := Assistant.Section.from_dict({"name": "fit", "hinge": kind, "pitch": 1})
-	_assistant._fit_hinge(fit)
-	var pin: Vector3 = fit.pin_from_corner          ## the line from the base's corner
-	var line_in_top: Vector3 = -fit.origin_from_pin  ## the line in the panel's own frame
-	var step: float = 90.0 / float(bands)
-	# The line round the equator, where a chord of this length spans a band.
-	var radius: float = length * Assistant.STUD / (2.0 * sin(deg_to_rad(step * 0.5)))
-	var centre := Vector2(20, 20)    ## studs
-	# The ring's foot, in plates: on the ground for a dome, held up on a
-	# column for a ball, high enough for its lower half to hang clear.
-	var foot: int = 36 if sphere else 0
-	var bricks: Array = []
-	var sections: Array = []
-	var repeats: Array = []
-	for half: int in (2 if sphere else 1):
-		for strip: int in 2:
-			var stems: Array = ["band", "over"] if half == 0 else ["low", "under"]
-			var stem: String = stems[strip]
-			var first: String = "%s 1" % stem
-			# The strip's base: at the far side from the centre, turned round
-			# it by this strip's share. Above, standing on the ring's top, its
-			# nose to the centre, so pitch lifts the panel up and in with its
-			# studs facing out; below, hanging under the ring by its studs,
-			# its nose out, so a pitch past the upright tips the panel down
-			# and in, studs out again.
-			var yaw: float = (180.0 if half == 0 else 0.0) + strip * 360.0 / strips
-			var away: Vector3 = Basis(Vector3.UP, deg_to_rad(yaw - (180.0 if half == 0
-				else 0.0))) * Vector3(0, 0, radius)
-			var stands: int = foot + 2 if half == 0 else foot - 1
-			var line := Vector3(centre.x * Assistant.STUD + away.x,
-				stands * Assistant.PLATE + pin.y, centre.y * Assistant.STUD + away.z)
-			var stud := Vector3(10, 0, 10)
-			var corner: Vector3 = line - stud - Basis(Vector3.UP, deg_to_rad(yaw)) * (pin - stud)
-			# On whole studs: the base swivels on the stud of its first one.
-			corner = Vector3(roundf(corner.x / Assistant.STUD) * Assistant.STUD, corner.y,
-				roundf(corner.z / Assistant.STUD) * Assistant.STUD)
-			sections.append({"name": first, "x": corner.x / Assistant.STUD, "y": stands,
-				"z": corner.z / Assistant.STUD, "yaw": yaw,
-				"pitch": (90.0 - step * 0.5) if half == 0 else -(90.0 + step * 0.5),
-				"hinge": kind, "hinge_color": 72})
-			# Each next panel's base at the far end of the one before, in
-			# its frame: the line [param length] studs on from this one's.
-			var next: Vector3 = line_in_top + Vector3(0, 0, length * Assistant.STUD) - pin
-			for band: int in range(1, built):
-				sections.append({"name": "%s %d" % [stem, band + 1],
-					"within": "%s %d" % [stem, band], "x": next.x / Assistant.STUD,
-					"y": next.y / Assistant.PLATE, "z": next.z / Assistant.STUD,
-					"pitch": -step, "hinge": kind, "hinge_color": 72})
-			var rise: int = 0 if strip == 0 else 4
-			for band: int in built:
-				# Plates 1 x (L - 1) along the panel, side by side, as many as
-				# it is wide, centred on the hinge (x 0..1): the one over the
-				# hinge runs from the top half under its start to the next
-				# panel's base under its end. Tiles across them two studs
-				# deep, split one way and then the other row by row, so they
-				# tie the plates together whichever way the panel hangs. Laid
-				# in short pieces end to end, a panel above its hinge only
-				# rested on itself, and one hung below fell apart. The outer
-				# strip's stand on a spacer a stud wide.
-				var width: int = int((widths if strip == 0 else over)[mini(band,
-					(widths if strip == 0 else over).size() - 1)])
-				var name: String = "%s %d" % [stem, band + 1]
-				var far: int = length - 1
-				var long: String = _plate(1, far)
-				for y: int in rise:
-					bricks.append({"part": long, "color": 72, "x": 0, "y": y, "z": 0,
-						"rot": _rot_across(long, 1), "section": name})
-				var left: int = _pieces(width, false)[0].x
-				for x: int in range(left, left + width):
-					bricks.append({"part": long, "color": 71, "x": x, "y": rise, "z": 0,
-						"rot": _rot_across(long, 1), "section": name})
-				for z: int in range(0, far, 2):
-					var deep: int = mini(2, far - z)
-					for piece: Vector2i in _pieces(width, (z / 2) % 2 == 1):
-						var part: String = _tile(piece.y, deep)
-						bricks.append({"part": part, "color": 71, "x": piece.x,
-							"y": rise + 1, "z": z, "rot": _rot_across(part, piece.y),
-							"section": name})
-			repeats.append({"from": first, "times": strips / 2 - 1,
-				"around": {"x": centre.x, "z": centre.y}, "yaw": 720.0 / strips})
-	# Where the joints on the ring are, read off the strips as laid: each
-	# layer of the ring stands back a stud from the joints beside it — the
-	# top from those standing on it, the bottom from those hanging under it
-	# — since a clip's round reaches past the plates it joins, and each copy
-	# stands on the studs nearest where its turn carries it, not on a circle.
-	var above: Array[Vector3] = []
-	var below: Array[Vector3] = []
-	var laid: Assistant.Model = _assistant._read_model({"sections": sections,
-		"bricks": [], "repeat_section": repeats})
-	for section: Assistant.Section in laid.sections.values():
-		if section.hinge and section.within.is_empty():
-			var at: Vector3 = section.hinge_frame() * section.pin_from_corner
-			(below if section.name.begins_with("low") or section.name.begins_with("under")
-				else above).append(at)
-	# The ring: plates in two crossed layers, each a whole disc but there.
-	var ring_out: float = radius / Assistant.STUD + 4.0
-	for layer: int in 2:
-		var near: Array[Vector3] = above if layer == 1 else below
-		var cells: Dictionary = {}
-		for x: int in range(int(floor(centre.x - ring_out)), int(ceil(centre.x + ring_out))):
-			for z: int in range(int(floor(centre.y - ring_out)), int(ceil(centre.y + ring_out))):
-				var far: float = Vector2(x + 0.5 - centre.x, z + 0.5 - centre.y).length()
-				if far > ring_out or near.any(func(at: Vector3) -> bool:
-						return Vector2(at.x / Assistant.STUD - x - 0.5,
-							at.z / Assistant.STUD - z - 0.5).length() < 1.3):
-					continue
-				cells[Vector2i(x, z)] = true
-		# Rows along x below, columns along z above: each plate crosses the
-		# joints of the layer under it, so the ring is one piece.
-		for line_at: int in range(int(floor(centre.y - ring_out)) - 1, int(ceil(centre.y + ring_out)) + 1):
-			var run: Array[int] = []
-			for along: int in range(int(floor(centre.x - ring_out)) - 1,
-					int(ceil(centre.x + ring_out)) + 2):
-				var cell := Vector2i(along, line_at) if layer == 0 else Vector2i(line_at, along)
-				if cells.has(cell):
-					run.append(along)
-					continue
-				# A lone stud's plate left between two joints' clearances is
-				# held by nothing: left out.
-				if run.size() > 1:
-					_lay_run(bricks, foot + layer, line_at, run[0], run[-1] + 1, layer == 0)
-				run.clear()
-	# The crown: a dish over the top band, on a column of round bricks
-	# standing on the ring's lower layer.
-	var top: float = radius * sin(deg_to_rad(step * built)) / Assistant.PLATE + 2.0
-	var lift: int = foot + int(ceil(top)) + 5
-	_column(bricks, centre, foot + 2, lift)
-	bricks.append({"part": "50990b", "color": 71, "x": centre.x - 5, "y": lift,
-		"z": centre.y - 5, "rot": 0})
-	# And a ball stands on a column from a plate on the ground, up through
-	# the opening its lower half leaves round it.
-	if sphere:
-		bricks.append({"part": "3958", "color": 72, "x": centre.x - 3, "y": 0,
-			"z": centre.y - 3, "rot": 0})
-		_column(bricks, centre, 1, foot)
-	return {"name": "hinged ball" if sphere else "hinged dome", "sections": sections,
-		"bricks": bricks, "repeat_section": repeats, "radius": radius}
-
-
-## 2 x 2 round bricks, then round plates, from [param from] up to [param to]
-## plates, centred on [param centre].
-func _column(bricks: Array, centre: Vector2, from: int, to: int) -> void:
-	var y: int = from
-	while y + 3 <= to:
-		bricks.append({"part": "3941", "color": 72, "x": centre.x - 1, "y": y,
-			"z": centre.y - 1, "rot": 0})
-		y += 3
-	while y < to:
-		bricks.append({"part": "4032a", "color": 72, "x": centre.x - 1, "y": y,
-			"z": centre.y - 1, "rot": 0})
-		y += 1
-
-
 func _dome() -> void:
 	print("")
-	print("  a hinged-panel dome")
-	_judge(_round_args(12, 4, 3, 5, [5, 5, 3], [9, 7, 5]), 36, "--dome_ldr=",
-		"Hinged dome", "--dump=")
+	print("  a hinged-panel dome 24 studs across, said as one shell")
+	_judge({"pattern": "shell", "kind": "dome", "across": 24, "at": {"x": 20, "y": 0, "z": 20},
+		"color": 71}, "--dome_ldr=", "Hinged dome")
 	print("")
-	print("  and a ball: the same strips hung below the ring as well")
-	_judge(_round_args(12, 4, 3, 5, [5, 5, 3], [9, 7, 5], true), 72, "--ball_ldr=",
-		"Hinged ball", "")
+	print("  and one 32 across: more bands, every other strip stopping near the top")
+	_judge({"pattern": "shell", "kind": "dome", "across": 32, "at": {"x": 30, "y": 0, "z": 30},
+		"color": 15}, "--big_ldr=", "Hinged dome 32")
+	print("")
+	print("  and a ball 28 across on a stand: the same strips hung below the ring")
+	_judge({"pattern": "shell", "kind": "ball", "across": 28, "at": {"x": 20, "y": 0, "z": 20},
+		"color": 1}, "--ball_ldr=", "Hinged ball")
+	var trouble: Array = []
+	Shells.lay({"pattern": "shell", "kind": "ball", "across": 16}, _assistant._shell_hinge(),
+		trouble)
+	_check("a ball 16 across is refused, and pointed at skins: %s" % trouble,
+		not trouble.is_empty() and str(trouble[0]).contains("skins"))
+	trouble.clear()
+	Shells.lay({"pattern": "shell", "kind": "dome", "across": 16}, _assistant._shell_hinge(),
+		trouble)
+	_check("a dome 16 across, where no band of twelve fits, is refused and pointed at the "
+		+ "smooth dome: %s" % trouble, not trouble.is_empty()
+		and str(trouble[0]).contains("smooth dome"))
+	trouble.clear()
+	Shells.lay({"pattern": "shell", "kind": "dome", "across": 40}, _assistant._shell_hinge(),
+		trouble)
+	_check("a dome 40 across, past what holds yet, is refused saying so: %s" % trouble,
+		not trouble.is_empty() and str(trouble[0]).contains("not built yet"))
 
 
-## A dome's or a ball's design put to the check: every hinge's halves
-## joined, [param hinges] of them, the panels at as many two-axis angles,
-## held with nothing overlapping. Written out where -- [param flag]PATH asks,
-## and the design itself where -- [param dump]PATH does, to be put to
-## another build's check as it stands.
-func _judge(args: Dictionary, hinges: int, flag: String, title: String, dump: String) -> void:
-	var radius: float = float(args["radius"])
-	args.erase("radius")
-	for one: String in OS.get_cmdline_user_args():
-		if not dump.is_empty() and one.begins_with(dump):
-			var file := FileAccess.open(one.trim_prefix(dump), FileAccess.WRITE)
-			if file != null:
-				file.store_string(JSON.stringify(args, "\t"))
-				file.close()
-	var model: Assistant.Model = _assistant._read_model(args)
+## A shell put to the check: every hinge's halves joined, the panels at many
+## two-axis angles, held with nothing overlapping, and closed — no gap a
+## person sees through wider than MOST_GAP, no more than MOST_OPEN of it.
+## Written out where -- [param flag]PATH asks, and the design itself where
+## --design=PATH does.
+func _judge(pattern: Dictionary, flag: String, title: String) -> void:
+	var trouble: Array = []
+	var laid: Dictionary = Shells.lay(pattern, _assistant._shell_hinge(), trouble)
+	_check("laid as asked: %s" % (str(laid.get("said", "")) if trouble.is_empty() else trouble),
+		trouble.is_empty() and not laid.is_empty())
+	if laid.is_empty():
+		return
+	var model: Assistant.Model = _assistant._read_model({"patterns": [pattern]})
 	var verdict: Dictionary = _assistant._check(model, true)
 	print("     %s" % str(verdict["feedback"]).replace("\n", " ").substr(0,
-		900 if bool(verdict["ok"]) else 4000))
-	var adrift: Dictionary = {}
-	for index: Variant in verdict.get("floating", []):
-		var placement: Assistant.Placement = model.placements[int(index)]
-		adrift[placement.section] = int(adrift.get(placement.section, 0)) + 1
-	for name: String in adrift:
-		print("       floating in %s: %d" % [name, adrift[name]])
-	var floats: Array = verdict.get("floating", [])
-	for index: int in model.placements.size():
-		var placement: Assistant.Placement = model.placements[index]
-		if placement.section in ["low 1", "low 1 hinge", "low 2", "", "under 1"] and (
-				placement.section != "" or floats.has(index)):
-			print("       %s %d %s in '%s' at %s" % ["FLOATS" if floats.has(index) else "held",
-				index, placement.part, placement.section, placement.where()])
+		600 if bool(verdict["ok"]) else 3000))
 	for index: Variant in verdict.get("overlapping", {}):
 		var placement: Assistant.Placement = model.placements[int(index)]
 		var hit: int = int(verdict["overlapping"][index]) - 1
@@ -432,30 +348,225 @@ func _judge(args: Dictionary, hinges: int, flag: String, title: String, dump: St
 		if not held:
 			unjoined.append(name)
 	_check("all %d hinges' halves joined, %d not: %s" % [hinged, unjoined.size(),
-		", ".join(unjoined)], unjoined.is_empty() and hinged == hinges)
-	var panels: int = 0
+		", ".join(unjoined)], unjoined.is_empty() and hinged >= 24)
 	var angles: Dictionary = {}
-	var low := Vector3.INF
-	var high := -Vector3.INF
 	for index: int in model.placements.size():
-		var placement: Assistant.Placement = model.placements[index]
-		var at: Transform3D = _pose(model, index)
-		low = low.min(at.origin)
-		high = high.max(at.origin)
-		var section: Assistant.Section = model.section_for(placement)
-		if section == null or not section.hinge:
-			continue
-		panels += 1
-		var turn: Vector3 = Assistant.Section.angles_of(at.basis)
-		angles["%d %d" % [roundi(fposmod(turn.x, 360.0)), roundi(turn.y)]] = true
-	var across: float = (high.x - low.x) / Assistant.STUD
-	_check("%d panel parts at %d different two-axis angles, %.1f studs across"
-		% [panels, angles.size(), across], angles.size() >= hinges and across >= 20.0)
+		var section: Assistant.Section = model.section_for(model.placements[index])
+		if section != null and section.hinge:
+			var turn: Vector3 = Assistant.Section.angles_of(_pose(model, index).basis)
+			angles["%d %d" % [roundi(fposmod(turn.x, 360.0)), roundi(turn.y)]] = true
+	_check("panels at %d different two-axis angles" % angles.size(), angles.size() >= hinged)
 	_check("every panel held by its hinge, nothing overlapping: %s" % verdict["summary"],
 		bool(verdict["ok"]))
-	_check("and its lines are %.1f studs from the centre" % (radius / Assistant.STUD),
-		radius > 150.0)
+	var gaps: Dictionary = _gaps(model, laid["centre"], float(laid["radius"]),
+		float(laid["open_below"]) + 2.0 if pattern["kind"] == "ball" else -4.0)
+	_check("closed: the widest gap between panels in a band %.1f LDU (at %s), between "
+		% [gaps["band"], gaps["band at"]] + "bands %.1f (at %s), %.2f%% open; at most %.0f, %.0f%%"
+		% [gaps["bands"], gaps["bands at"], 100.0 * float(gaps["open"]), MOST_GAP,
+			100.0 * MOST_OPEN], _closed(gaps))
+	print("     open, every five degrees up from its foot: %s" % gaps["by latitude"])
+	for one: String in OS.get_cmdline_user_args():
+		if one.begins_with("--design="):
+			var file := FileAccess.open(one.trim_prefix("--design="), FileAccess.WRITE)
+			if file != null:
+				file.store_string(JSON.stringify({"patterns": [pattern]}, "\t"))
+				file.close()
 	_write_out(model, flag, title)
+
+
+## A design written out by another build, measured as a shell: "path, x, y,
+## z, radius", its centre and radius in LDU.
+func _measure(said: String) -> void:
+	var parts: PackedStringArray = said.split(",")
+	var design: Variant = JSON.parse_string(FileAccess.get_file_as_string(parts[0]))
+	if not design is Dictionary or parts.size() < 5:
+		print("  cannot read %s" % said)
+		return
+	var model: Assistant.Model = _assistant._read_model(design)
+	var gaps: Dictionary = _gaps(model, Vector3(float(parts[1]), float(parts[2]),
+		float(parts[3])), float(parts[4]), -4.0)
+	_check("%s: the widest gap between panels in a band %.1f LDU (at %s), between bands "
+		% [parts[0].get_file(), gaps["band"], gaps["band at"]] + "%.1f (at %s), %.2f%% open"
+		% [gaps["bands"], gaps["bands at"], 100.0 * float(gaps["open"])], _closed(gaps))
+
+
+static func _closed(gaps: Dictionary) -> bool:
+	return float(gaps["band"]) <= MOST_GAP and float(gaps["bands"]) <= MOST_GAP \
+		and float(gaps["open"]) <= MOST_OPEN
+
+
+## The see-through gaps in a shell round [param centre], [param radius] LDU
+## out: a ray every quarter degree from latitude [param lat_from] (a dome's
+## ring, the edge of a ball's opening round its stand) to the pole, each
+## asked whether it meets a part's cover
+## within the shell's thickness. Where one meets none, the gap there is as
+## wide as the shorter of its open run along its latitude and along its
+## meridian: a slit between two panels of a band is narrow across and long
+## up, one between bands the other way. {band, bands: the widest of each, LDU,
+## and where, as (latitude, longitude); open: the share of rays that meet
+## nothing}.
+func _gaps(model: Assistant.Model, centre: Vector3, radius: float, lat_from: float) -> Dictionary:
+	var step: float = 0.25
+	var lat_to: float = 89.0
+	var rows: int = int((lat_to - lat_from) / step)
+	var cols: int = int(360.0 / step)
+	var hit := PackedByteArray()
+	hit.resize(rows * cols)
+	# Within the shell's thickness: inside its hinges, outside its high
+	# panels' lips and a dome's drum.
+	var inner: float = radius - 60.0
+	var outer: float = radius + 80.0
+	for index: int in model.placements.size():
+		var mesh: Lbm.PartMesh = _library.mesh_for(model.placements[index].part)
+		if mesh == null:
+			continue
+		var pose: Transform3D = _pose(model, index)
+		var back: Transform3D = pose.affine_inverse()
+		var from_here: Vector3 = back * centre
+		var boxes: Array[AABB] = []
+		for box: AABB in mesh.boxes:
+			boxes.append(AABB(box.position * BrickLattice.CELL, box.size * BrickLattice.CELL))
+		if boxes.is_empty():
+			boxes.append(mesh.bounds)
+		for box: AABB in boxes:
+			var lo_lat: float = INF
+			var hi_lat: float = -INF
+			var lons: Array[float] = []
+			var flat_lo := Vector2(INF, INF)
+			var flat_hi := -Vector2(INF, INF)
+			var near: bool = false
+			for c: int in 8:
+				var corner: Vector3 = pose * (box.position
+					+ box.size * Vector3(c & 1, (c >> 1) & 1, (c >> 2) & 1))
+				var rel: Vector3 = corner - centre
+				var far: float = rel.length()
+				near = near or (far > inner - 40.0 and far < outer + 40.0)
+				var lat: float = rad_to_deg(asin(clampf(rel.y / maxf(far, 0.001), -1.0, 1.0)))
+				lo_lat = minf(lo_lat, lat)
+				hi_lat = maxf(hi_lat, lat)
+				lons.append(rad_to_deg(atan2(rel.x, rel.z)))
+				flat_lo = flat_lo.min(Vector2(corner.x, corner.z))
+				flat_hi = flat_hi.max(Vector2(corner.x, corner.z))
+			if not near:
+				continue
+			var lo_lon: float = lons.min()
+			var hi_lon: float = lons.max()
+			if hi_lon - lo_lon > 180.0:
+				for i: int in lons.size():
+					if lons[i] < 0.0:
+						lons[i] += 360.0
+				lo_lon = lons.min()
+				hi_lon = lons.max()
+			# A box over the axis spans every longitude, up to the pole.
+			if centre.x > flat_lo.x and centre.x < flat_hi.x and centre.z > flat_lo.y \
+					and centre.z < flat_hi.y:
+				lo_lon = -180.0
+				hi_lon = 180.0
+				if hi_lat > 0.0:
+					hi_lat = 90.0
+				else:
+					lo_lat = -90.0
+			var r0: int = maxi(0, int(floor((lo_lat - lat_from) / step)) - 1)
+			var r1: int = mini(rows - 1, int(ceil((hi_lat - lat_from) / step)) + 1)
+			var c0: int = int(floor(lo_lon / step)) - 1
+			var c1: int = int(ceil(hi_lon / step)) + 1
+			for r: int in range(r0, r1 + 1):
+				var lat: float = deg_to_rad(lat_from + (r + 0.5) * step)
+				for c: int in range(c0, c1 + 1):
+					var at: int = r * cols + posmod(c, cols)
+					if hit[at] != 0:
+						continue
+					var lon: float = deg_to_rad((c + 0.5) * step)
+					var way := Vector3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon))
+					if _meets(from_here, back.basis * way, box, inner, outer):
+						hit[at] = 1
+	# Each open ray's run along its latitude, LDU, walked from a covered one so
+	# a run across longitude 0 counts once.
+	var across := PackedFloat32Array()
+	across.resize(rows * cols)
+	for r: int in rows:
+		var each: float = deg_to_rad(step) * radius * cos(deg_to_rad(lat_from + (r + 0.5) * step))
+		var start: int = -1
+		for i: int in cols:
+			if hit[r * cols + i] != 0:
+				start = i
+				break
+		if start < 0:
+			for i: int in cols:
+				across[r * cols + i] = cols * each
+			continue
+		var i: int = 0
+		while i < cols:
+			if hit[r * cols + (start + i) % cols] != 0:
+				i += 1
+				continue
+			var j: int = i
+			while j < cols and hit[r * cols + (start + j) % cols] == 0:
+				j += 1
+			for k: int in range(i, j):
+				across[r * cols + (start + k) % cols] = (j - i) * each
+			i = j
+	var out := {"band": 0.0, "band at": Vector2.ZERO, "bands": 0.0, "bands at": Vector2.ZERO,
+		"open": 0.0}
+	var open: int = 0
+	var each_up: float = deg_to_rad(step) * radius
+	for c: int in cols:
+		var r: int = 0
+		while r < rows:
+			if hit[r * cols + c] != 0:
+				r += 1
+				continue
+			var s: int = r
+			while s < rows and hit[s * cols + c] == 0:
+				s += 1
+			var tall: float = (s - r) * each_up
+			for k: int in range(r, s):
+				open += 1
+				var wide: float = across[k * cols + c]
+				var gap: float = minf(wide, tall)
+				var at := Vector2(snappedf(lat_from + (k + 0.5) * step, 0.01),
+					snappedf((c + 0.5) * step, 0.01))
+				var key: String = "band" if wide <= tall else "bands"
+				if gap > float(out[key]):
+					out[key] = snappedf(gap, 0.1)
+					out[key + " at"] = at
+			r = s
+	out["open"] = float(open) / float(rows * cols)
+	# Where it is open: the share of rays through, every five degrees up.
+	var by_lat := PackedStringArray()
+	var per: int = int(5.0 / step)
+	for from_row: int in range(0, rows, per):
+		var through: int = 0
+		var all: int = 0
+		for r: int in range(from_row, mini(rows, from_row + per)):
+			for c: int in cols:
+				all += 1
+				through += 1 if hit[r * cols + c] == 0 else 0
+		by_lat.append("%d: %.1f%%" % [roundi(lat_from + from_row * step),
+			100.0 * through / maxf(all, 1)])
+	out["by latitude"] = ", ".join(by_lat)
+	return out
+
+
+## Whether a ray from [param from] along [param way] meets [param box]
+## between [param near] and [param far] along it.
+static func _meets(from: Vector3, way: Vector3, box: AABB, near: float, far: float) -> bool:
+	var t0: float = near
+	var t1: float = far
+	for axis: int in 3:
+		var lo: float = box.position[axis]
+		var hi: float = lo + box.size[axis]
+		if absf(way[axis]) < 1e-9:
+			if from[axis] < lo or from[axis] > hi:
+				return false
+			continue
+		var a: float = (lo - from[axis]) / way[axis]
+		var b: float = (hi - from[axis]) / way[axis]
+		t0 = maxf(t0, minf(a, b))
+		t1 = minf(t1, maxf(a, b))
+		if t0 > t1:
+			return false
+	return true
 
 
 # -- a band of skins built sideways ----------------------------------------
@@ -632,69 +743,6 @@ func _write_out(model: Assistant.Model, flag: String, title: String) -> void:
 		if file != null:
 			file.store_string(LdrModel.write_ldr(placements, title))
 			file.close()
-
-
-## Plates 1 x n laid end to end from [param from] to [param to] along a
-## row (z = [param at], along x) or a column (x = [param at], along z), at
-## height [param y].
-func _lay_run(bricks: Array, y: int, at: int, from: int, to: int, along_x: bool) -> void:
-	var here: int = from
-	while here < to:
-		# The longest plate there is that leaves no lone stud at the end: a
-		# 1 x 1 cut off between two joints' clearances is held by nothing.
-		var left: int = to - here
-		var used: int = 1
-		for size: int in [8, 6, 4, 3, 2, 1]:
-			if size <= left and (left - size != 1 or size == 1):
-				used = size
-				break
-		var part: String = {1: "3024", 2: "3023", 3: "3623", 4: "3710", 6: "3666",
-			8: "3460"}[used]
-		bricks.append({"part": part, "color": 72, "x": here if along_x else at, "y": y,
-			"z": at if along_x else here, "rot": 0 if along_x else 1})
-		here += used
-
-
-## The quarter turn that lays a part [param across] studs along x.
-func _rot_across(part: String, across: int) -> int:
-	var info: PartLibrary.PartInfo = _library.parts.get(part)
-	if info == null:
-		return 0
-	return 0 if roundi(info.size.x / Assistant.STUD) == across else 1
-
-
-## A panel's width as plates side by side, centred on its hinge's x 0..1:
-## [x, width] each, split the other way round when [param over].
-func _pieces(width: int, over: bool) -> Array[Vector2i]:
-	match width:
-		1:
-			return [Vector2i(0, 1)]
-		3:
-			return [Vector2i(-1, 3)]
-		5:
-			return [Vector2i(-2, 3), Vector2i(1, 2)] if over \
-				else [Vector2i(-2, 2), Vector2i(0, 3)]
-		7:
-			return [Vector2i(-3, 3), Vector2i(0, 4)] if over \
-				else [Vector2i(-3, 4), Vector2i(1, 3)]
-		9:
-			return [Vector2i(-4, 3), Vector2i(-1, 6)] if over \
-				else [Vector2i(-4, 6), Vector2i(2, 3)]
-	return [Vector2i(-(width - 1) / 2, width)]
-
-
-func _plate(width: int, deep: int) -> String:
-	var key: Vector2i = Vector2i(maxi(width, deep), mini(width, deep))
-	return str({Vector2i(1, 1): "3024", Vector2i(2, 1): "3023", Vector2i(2, 2): "3022",
-		Vector2i(3, 1): "3623", Vector2i(3, 2): "3021", Vector2i(4, 1): "3710",
-		Vector2i(4, 2): "3020", Vector2i(6, 2): "3795"}[key])
-
-
-func _tile(width: int, deep: int) -> String:
-	var key: Vector2i = Vector2i(maxi(width, deep), mini(width, deep))
-	return str({Vector2i(1, 1): "3070b", Vector2i(2, 1): "3069b", Vector2i(2, 2): "3068b",
-		Vector2i(3, 1): "63864", Vector2i(3, 2): "26603", Vector2i(4, 1): "2431",
-		Vector2i(4, 2): "87079", Vector2i(6, 2): "69729"}[key])
 
 
 func _pose(model: Assistant.Model, index: int) -> Transform3D:

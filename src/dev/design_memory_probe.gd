@@ -101,7 +101,9 @@ func _run() -> void:
 	_ok(said.contains("Nearest: a Porsche 911 Turbo"), "a race car is handed the Porsche")
 	_ok(said.contains("What the judge faulted") and said.contains("- technique "),
 		"...with the judge's faults, technique among them")
-	_ok(said.contains("Built with: studs sideways"), "...and how the best one was built")
+	# What it was built with, whatever the best design is now (the shapes
+	# round's car, 2026-10-14, has no studs sideways; the one before did).
+	_ok(said.contains("Built with: ") and said.contains("% "), "...and how the best one was built")
 	_ok(said.length() < 2600, "...in %d characters" % said.length())
 	var blocks: Array = DesignMemory.recall("race car")
 	_ok(blocks.any(func(block: Variant) -> bool:

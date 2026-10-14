@@ -275,8 +275,10 @@ func _run() -> void:
 			% connector.last_opened)
 	_check(connector.is_on() and offer._guide.visible
 			and offer._shared.text == "http://127.0.0.1:9/api/mcp"
-			and offer._signed_as.text.contains("probe@example.com"),
-		"...switches this tab on, and says what to do there, as whom")
+			and offer._signed_as.text.contains("probe@example.com")
+			and _text_of_label(offer, "_step_one") == "1. Press Add, then Connect.",
+		"...switches this tab on, and says what to do there, as whom: %s"
+			% _text_of_label(offer, "_step_one"))
 	_check(offer._status.text.begins_with("Waiting for you to connect in Claude")
 			and offer._connect.text == "Connect Claude again",
 		"...and waits for Claude: %s" % offer._status.text)
@@ -347,6 +349,40 @@ func _run() -> void:
 	_check(AccountPanel.when(stamp).begins_with("today at")
 			and AccountPanel.when("2026-01-05T10:00:00+00:00") == "5 Jan",
 		"times read as people say them: %s" % AccountPanel.when(stamp))
+
+	# An account that has had Claude connected (the deployment says so,
+	# op=connections "before", kept past a Disconnect) has Brickworks in its
+	# Claude already: Connect Claude goes to Claude's list of connectors, to
+	# press Connect on that one, and not to Add custom connector, which sets
+	# up another with its tool permissions to choose again. The owner did
+	# that four times in two days (2026-10-14).
+	print("\nconnecting again, for an account that has had Claude connected")
+	if connector.has_method("_take_connections"):
+		connector.call("_take_connections", {"connections": [], "before": true})
+	_check(account_panel._claude_state.text.begins_with("Not connected now")
+			and account_panel._claude_state.text.contains("Brickworks you already have in Claude"),
+		"Account says Connect Claude goes to the Brickworks they have: %s"
+			% account_panel._claude_state.text)
+	account_panel._claude_connect.pressed.emit()
+	await process_frame
+	_check(connector.last_opened == "https://claude.ai/customize/connectors",
+		"Connect Claude opens Claude's connectors, not Add custom connector: %s" % connector.last_opened)
+	_check(account_panel._claude_state.text.contains("Customize › Connectors")
+			and account_panel._claude_state.text.contains("select Brickworks")
+			and account_panel._claude_state.text.contains("Connect (or Reconnect")
+			and not account_panel._claude_state.text.contains("press Add"),
+		"...and says what to press there: %s" % account_panel._claude_state.text)
+	_check(offer._status.text.begins_with("Waiting for you to connect in Claude"),
+		"...and the assistant panel waits for Claude, not \"Connected\": %s" % offer._status.text)
+	offer._connect.pressed.emit()
+	await process_frame
+	_check(offer._guide.visible and _text_of_label(offer, "_guide_head").contains("Customize › Connectors")
+			and _text_of_label(offer, "_step_one").contains("select Brickworks and press Connect")
+			and _text_of_label(offer, "_step_one").contains("rather than adding it again")
+			and _text_of_label(offer, "_fallback").contains("Not in your list? Add custom connector"),
+		"the assistant panel's steps the same: %s" % _text_of_label(offer, "_step_one"))
+	connector.set("had_claude", false)
+	connector._waiting_until = 0
 	account_panel.queue_free()
 
 	# The way before: this browser's own address, added by hand, folded
@@ -480,6 +516,12 @@ static func _saying(panel: Node, words: String) -> PackedStringArray:
 			if text.to_lower().contains(words):
 				found.append(text)
 	return found
+
+
+## A label of [param node]'s by its field's name, or "" when it has none.
+static func _text_of_label(node: Object, field: String) -> String:
+	var label: Variant = node.get(field)
+	return (label as Label).text if label is Label else ""
 
 
 func _check(ok: bool, what: String) -> void:

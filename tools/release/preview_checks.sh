@@ -39,6 +39,7 @@ declare -A CMD=(
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
+  [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
 )
 ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose progress share_probe site download"

@@ -194,6 +194,8 @@ func _run() -> void:
 			world.clear()
 			builder.lattice.clear()
 
+	await _said_bodies(assistant, world, builder, store, out_dir)
+
 	print("")
 	print("  a round or cut plan is laid in round parts and wedges, not a staircase")
 	# Each of these came out a staircase of plain plates and bricks with no
@@ -560,6 +562,110 @@ const CAR_BODY: Dictionary = {"pattern": "shape", "color": 321, "solids": [
 		{"revolve": {"axis": "z", "centre": [16, 3.75, 0], "profile": [[0, 1.9], [2, 1.9]]}},
 		{"revolve": {"axis": "z", "centre": [16, 3.75, 6], "profile": [[0, 1.9], [2, 1.9]]}}]}
 
+## Bodies as design sessions said them, each of which the shape laid in
+## pieces or floating, and whose sessions then built the body again by hand,
+## square, without its curves: each must now be one piece, stand, and taper
+## at its ends into slopes, curved slopes and wedges that are held. And where
+## a shape cannot be held, the shape must say so, and how to hold it.
+func _said_bodies(assistant: Assistant, world: BrickWorld, builder: Builder,
+		store: ModelStore, out_dir: String) -> void:
+	print("")
+	print("  bodies as sessions said them: one piece, standing, ends held")
+	var shaped: Dictionary = {}
+	for entry: Array in Shapes.Plan.SLOPES + Shapes.Plan.INVERTED:
+		shaped[str(entry[3])] = true
+		shaped[str(entry[4])] = true
+	for part: String in Shapes.EDGE_PLATES + Shapes.EDGE_BRICKS + Shapes.ROUND_PLATES \
+			+ Shapes.ROUND_BRICKS + Patterns.WEDGES:
+		shaped[part] = true
+	for part: Variant in Patterns.HANDED:
+		shaped[str(part)] = true
+	var stability := Stability.new()
+	stability.library = _library
+	stability.lattice = builder.lattice
+	# [what, the design, the axis its ends are along ("" for none)]
+	for one: Array in [
+			["the steps round's car, its cockpit cut", {"patterns": [CAR_STEPS_CUT]}, "x"],
+			["the steps round's car, its fastback, studs on top", {"patterns": [CAR_STEPS_FASTBACK]}, "x"],
+			["a curved car, its nose four plates up", {"patterns": [CAR_CURVED_NOSE]}, "x"],
+			["a curved car, its tail past the back axle", {"patterns": [CAR_CURVED_TAIL]}, "x"],
+			["the sides round's car, its back axle at 15.5", {"patterns": [CAR_SIDES_AXLE]}, "x"],
+			["a locomotive's boiler, its smokebox black", {"patterns": [BOILER]}, ""],
+			["a ship's hull, its bow planked black", {"patterns": [HULL_BOW]}, "x"],
+			["a starfighter's nose on its stands", {"bricks": FIGHTER_NOSE_BRICKS,
+				"patterns": [FIGHTER_NOSE]}, "+z"],
+			["a dog on four legs", {"patterns": [DOG]}, ""]]:
+		var given: Dictionary = (one[1] as Dictionary).duplicate(true)
+		given["floor"] = "none"
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model(given)
+		await assistant._ensure_parts(model)
+		var verdict: Dictionary = assistant._check(model, true)
+		var floating: Array = verdict.get("floating", [])
+		var laid_pieces: int = int(Shapes.last.get("pieces", 0))
+		# Its ends: within two studs of each, the shaped parts there, none of
+		# them floating.
+		var ends: String = ""
+		var ends_ok: bool = true
+		if not str(one[2]).is_empty():
+			# "x" both its ends along x; "+z" its end towards +z alone.
+			var along: String = str(one[2]).right(1)
+			var both: bool = not str(one[2]).begins_with("+")
+			var low: float = INF
+			var high: float = -INF
+			var written: int = (given.get("bricks", []) as Array).size()
+			for index: int in range(written, model.placements.size()):
+				var p: Assistant.Placement = model.placements[index]
+				var a: float = p.x if along == "x" else p.z
+				low = minf(low, a)
+				high = maxf(high, a)
+			var at_low: int = 0
+			var at_high: int = 0
+			for index: int in range(written, model.placements.size()):
+				var p: Assistant.Placement = model.placements[index]
+				if not shaped.has(p.part) or floating.has(index):
+					continue
+				var a: float = p.x if along == "x" else p.z
+				at_low += 1 if a <= low + 2.0 else 0
+				at_high += 1 if a >= high - 3.0 else 0
+			ends = ", %d shaped parts at one end and %d at the other" % [at_low, at_high]
+			ends_ok = at_high > 0 and (at_low > 0 or not both)
+		assistant._apply(model)
+		for _n: int in 3:
+			await process_frame
+		var stands: Stability.Report = stability.check(world)
+		_check("%s: %s, %d piece%s, %d floating, the shape laid in %d%s; %s" % [one[0],
+			verdict["summary"], int(verdict["pieces"]), "" if int(verdict["pieces"]) == 1 else "s",
+			floating.size(), laid_pieces, ends, stands.summary()],
+			bool(verdict["ok"]) and int(verdict["pieces"]) == 1 and floating.is_empty()
+				and laid_pieces == 1 and ends_ok and stands.is_stable())
+		if not out_dir.is_empty():
+			var path: String = "%s/said_%s.ldr" % [out_dir, str(one[0]).split(",")[0].replace(" ", "_")
+				.replace("'", "")]
+			print("  saved %s: %s" % [path, store.export_to(path, "Model")])
+		world.clear()
+		builder.lattice.clear()
+	# What cannot be held is said, with the fix, by the shape itself.
+	for one: Array in [
+			["an owl's body said at y 55 with nothing under it", {"patterns": [OWL_RAISED]},
+				["underside is at y=55", "floats", "Build what it stands on"]],
+			["two engine pods said as one shape, six studs apart", {"patterns": [ENGINES]},
+				["does not touch the body", "x 23-26", "a shape of its own"]],
+			["a wheel asked at x 15.5", {"patterns": [CAR_SIDES_AXLE]}, ["laid at x=16"]]]:
+		var given: Dictionary = (one[1] as Dictionary).duplicate(true)
+		given["floor"] = "none"
+		var model: Assistant.Model = assistant._read_model(given)
+		var advice: String = "\n".join(PackedStringArray(assistant._check(model, true).get("advice", [])))
+		var said: bool = true
+		for words: String in one[2]:
+			said = said and advice.contains(words)
+		var line: String = ""
+		for piece: String in advice.split("\n"):
+			if piece.contains(str(one[2][0])):
+				line = piece
+		_check("%s is said, with the fix: %s" % [one[0], line.left(240)], said)
+
+
 ## The bricks with studs on a side a shell is held by, and how many lanes each.
 const SIDE_STUDS: Dictionary = {"87087": 1, "11211": 2, "30414": 4}
 
@@ -594,3 +700,126 @@ func _check(what: String, ok: bool) -> void:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
+
+
+## The steps round's car (2026-10-13-steps), its second request: its cockpit
+## cut into the body. Laid in 9 pieces; its session built the body by hand.
+const CAR_STEPS_CUT: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+	"solids": [{"extrude": {"along": "x", "width": 8, "round": 1.5, "profile": [[0, 5], [1,
+	6], [4, 7], [8, 8], [14, 8], [14.01, 13], [16, 11.5], [18, 9.5], [19, 8]],
+	"under": [[0, 2], [19, 2]]}}], "cuts": [{"box": {"from": [8, 8, 1], "size": [6, 8, 6]},
+	"keep": true}, {"box": {"from": [9, 4, 1], "size": [4, 8, 6]}, "keep": true}],
+	"wheels": [4, 14], "wheel_color": 71}
+
+## The same car's third request, a fastback, studs on top: 6 pieces, its nose
+## corners floating. The session: "the generator left the nose floating".
+const CAR_STEPS_FASTBACK: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4, "top": "studs",
+	"solids": [{"extrude": {"along": "x", "width": 8, "round": 1.5, "profile": [[0, 5], [1,
+	6], [4, 7], [8, 8], [14, 8], [14.01, 14], [16, 12], [18, 10], [19, 8]], "under": [[0,
+	2], [19, 2]]}}], "wheels": [4, 14], "wheel_color": 71}
+
+## A smoothly curved car (2026-10-14), its nose four plates up: 9 pieces.
+const CAR_CURVED_NOSE: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 321,
+	"solids": [{"extrude": {"along": "x", "width": 8, "round": 2, "profile": [[0, 4], [1,
+	5.5], [3, 6.5], [7, 7.5], [9, 8], [16, 8.5], [19, 8.5], [21, 7.5], [22, 6]],
+	"under": [[0, 2], [22, 2]]}}, {"loft": {"along": "x", "centre": 4, "color": 40,
+	"sections": [{"at": 7.5, "width": 7, "height": 1, "bottom": 7.5}, {"at": 10.5,
+	"width": 6, "height": 5, "bottom": 8, "round": 0.6}, {"at": 14, "width": 6,
+	"height": 5, "bottom": 8, "round": 0.6}, {"at": 19, "width": 6, "height": 1,
+	"bottom": 8.5}]}}], "wheels": [4, 17], "wheel_color": 71}
+
+## The same car's next request, its tail past the back axle: 6 pieces.
+const CAR_CURVED_TAIL: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+	"solids": [{"extrude": {"along": "x", "width": 8, "round": 1.5, "profile": [[0, 6], [2,
+	7], [7, 8], [17, 8], [21, 7.5], [22, 6.5]], "under": [[0, 2], [22, 2]]}},
+	{"loft": {"along": "x", "centre": 4, "color": 0, "sections": [{"at": 7.5, "width": 7,
+	"height": 1, "bottom": 7.5}, {"at": 10.5, "width": 6, "height": 6, "bottom": 7.5,
+	"round": 0.4}, {"at": 14.5, "width": 6, "height": 5, "bottom": 7.5, "round": 0.4},
+	{"at": 19.5, "width": 7, "height": 1, "bottom": 7.5}]}}], "wheels": [4, 17],
+	"wheel_color": 71}
+
+## The sides round's car (2026-10-14-sides), its back axle at x 15.5: its
+## Technic bricks half a stud off the body's studs, refused.
+const CAR_SIDES_AXLE: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+	"solids": [{"extrude": {"along": "x", "width": 8, "round": 1.5, "profile": [[0, 5], [1,
+	6], [6, 8], [17, 9], [19, 9], [20, 7]], "under": [[0, 2], [20, 2]]}},
+	{"loft": {"along": "x", "centre": 4, "color": 40, "sections": [{"at": 7, "width": 7,
+	"height": 1, "bottom": 8}, {"at": 10, "width": 6, "height": 6, "bottom": 8.5,
+	"round": 0.5}, {"at": 13, "width": 6, "height": 6, "bottom": 8.5, "round": 0.5},
+	{"at": 18, "width": 6, "height": 1, "bottom": 9}]}}], "wheels": [4, 15.5],
+	"wheel_color": 71}
+
+## A locomotive's boiler as the 2026-10-12 session said it, its smokebox
+## black, lying on the ground: the two colours met face to face and nothing
+## crossed, 2 pieces.
+const BOILER: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+	"solids": [{"revolve": {"axis": "x", "centre": [0, 7.5, 3], "profile": [[0, 3], [4,
+	3]]}, "color": 0}, {"revolve": {"axis": "x", "centre": [4, 7.5, 3], "profile": [[0, 3],
+	[18, 3]]}, "color": 288}]}
+
+## A ship's hull with its bow planked black: the bow's one tie to the hull
+## was an inverted curved slope counted holding what it does not, 2 pieces.
+const HULL_BOW: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 70,
+	"solids": [{"loft": {"along": "x", "centre": 5, "sections": [{"at": 6, "width": 9,
+	"height": 13, "bottom": 1, "round": 0.4, "keel": 0.6}, {"at": 10, "width": 10,
+	"height": 14, "bottom": 0, "round": 0.4, "keel": 0.6}, {"at": 26, "width": 10,
+	"height": 14, "bottom": 0, "round": 0.4, "keel": 0.6}, {"at": 34, "width": 7,
+	"height": 13, "bottom": 2, "round": 0.4, "keel": 0.5}]}}, {"loft": {"along": "x",
+	"centre": 5, "color": 0, "sections": [{"at": 0, "width": 2, "height": 10, "bottom": 5,
+	"round": 0.4, "keel": 0.5}, {"at": 3, "width": 7, "height": 12, "bottom": 2,
+	"round": 0.4, "keel": 0.6}, {"at": 6, "width": 9, "height": 13, "bottom": 1,
+	"round": 0.4, "keel": 0.6}]}}]}
+
+## The sides round's starfighter (2026-10-14-sides), its fuselage on its
+## stands as its session sent them: the nose past the stands in 3 pieces.
+const FIGHTER_NOSE_BRICKS: Array = [{"part": "3941", "color": 72, "x": 13, "y": 0, "z": 8, "rot": 0}, {"part": "3941",
+	"color": 72, "x": 13, "y": 3, "z": 8, "rot": 0}, {"part": "3022", "color": 72, "x": 13,
+	"y": 6, "z": 8, "rot": 0}, {"part": "3022", "color": 72, "x": 13, "y": 7, "z": 8,
+	"rot": 0}, {"part": "3941", "color": 72, "x": 25, "y": 0, "z": 8, "rot": 0},
+	{"part": "3941", "color": 72, "x": 25, "y": 3, "z": 8, "rot": 0}, {"part": "3022",
+	"color": 72, "x": 25, "y": 6, "z": 8, "rot": 0}, {"part": "3022", "color": 72, "x": 25,
+	"y": 7, "z": 8, "rot": 0}, {"part": "3941", "color": 72, "x": 19, "y": 0, "z": 30,
+	"rot": 0}, {"part": "3941", "color": 72, "x": 19, "y": 3, "z": 30, "rot": 0},
+	{"part": "3022", "color": 72, "x": 19, "y": 6, "z": 30, "rot": 0}, {"part": "3022",
+	"color": 72, "x": 19, "y": 7, "z": 30, "rot": 0}, {"part": "41539", "color": 72,
+	"x": 12, "y": 8, "z": 2, "rot": 0}, {"part": "41539", "color": 72, "x": 20, "y": 8,
+	"z": 2, "rot": 0}, {"part": "3027", "color": 72, "x": 12, "y": 8, "z": 10, "rot": 0},
+	{"part": "3028", "color": 72, "x": 17, "y": 8, "z": 16, "rot": 1}, {"part": "3958",
+	"color": 72, "x": 17, "y": 8, "z": 28, "rot": 0}, {"part": "3027", "color": 72,
+	"x": 12, "y": 9, "z": 2, "rot": 0}, {"part": "3027", "color": 72, "x": 12, "y": 9,
+	"z": 8, "rot": 0}, {"part": "3020", "color": 72, "x": 12, "y": 9, "z": 14, "rot": 0},
+	{"part": "3023", "color": 72, "x": 16, "y": 9, "z": 14, "rot": 1}, {"part": "3020",
+	"color": 72, "x": 24, "y": 9, "z": 14, "rot": 0}, {"part": "3023", "color": 72,
+	"x": 23, "y": 9, "z": 14, "rot": 1}, {"part": "3027", "color": 72, "x": 17, "y": 9,
+	"z": 14, "rot": 1}, {"part": "3958", "color": 72, "x": 17, "y": 9, "z": 30, "rot": 0}]
+
+const FIGHTER_NOSE: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15, "top": "studs",
+	"solids": [{"loft": {"along": "z", "centre": 20, "sections": [{"at": 0, "width": 6,
+	"height": 11, "bottom": 10, "round": 0.3}, {"at": 16, "width": 6, "height": 12,
+	"bottom": 10, "round": 0.3}, {"at": 30, "width": 4, "height": 7, "bottom": 10,
+	"round": 0.4}, {"at": 42, "width": 2, "height": 3, "bottom": 10, "round": 0.5}]}}]}
+
+## A dog on four legs a stud thick: its flank's shells took the legs into
+## themselves, held none of them, and the body floated.
+const DOG: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 70,
+	"solids": [{"ellipsoid": {"centre": [10, 15, 4], "radii": [7, 7, 3.5]}},
+	{"box": {"from": [5, 0, 2], "size": [2, 13, 1]}}, {"box": {"from": [5, 0, 5],
+	"size": [2, 13, 1]}}, {"box": {"from": [13, 0, 2], "size": [2, 13, 1]}},
+	{"box": {"from": [13, 0, 5], "size": [2, 13, 1]}}, {"ellipsoid": {"centre": [18.5, 20,
+	4], "radii": [3, 6, 2.5]}, "color": 19}]}
+
+## The sides round's owl (2026-10-14-sides), its body said at y 55 before
+## its branch was built: 358 parts floating, and nothing said why.
+const OWL_RAISED: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+	"solids": [{"ellipsoid": {"centre": [11, 67, 7.5], "radii": [6.5, 12, 5.5]}}],
+	"face": {"facing": "+z", "x": 11, "y": 67, "z": 13, "across": 8, "color": 15,
+	"rim": 84, "eyes": 0, "beak": 19}}
+
+## The sides round's starfighter's two engine pods said as one shape, six
+## studs apart: 2 pieces, and nothing said why.
+const ENGINES: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 71,
+	"solids": [{"loft": {"along": "z", "centre": 25, "sections": [{"at": 0, "width": 4,
+	"height": 8, "bottom": 6, "round": 0.6}, {"at": 14, "width": 4, "height": 8,
+	"bottom": 6, "round": 0.6}]}}, {"loft": {"along": "z", "centre": 15,
+	"sections": [{"at": 0, "width": 4, "height": 8, "bottom": 6, "round": 0.6}, {"at": 14,
+	"width": 4, "height": 8, "bottom": 6, "round": 0.6}]}}], "top": "studs"}

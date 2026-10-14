@@ -94,8 +94,7 @@ func setup(with_account: Account) -> void:
 	_claude_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
 	_claude_connect.pressed.connect(func() -> void:
 		connector.connect_claude()
-		_claude_state.text = ("claude.ai has opened with Brickworks filled in: "
-			+ "press Add, then Connect, and Allow when Brickworks asks."))
+		_claude_state.text = connector.connect_words())
 	_claude_box.add_child(_claude_connect)
 	_claude_disconnect = Button.new()
 	_claude_disconnect.text = "Disconnect Claude"
@@ -202,7 +201,10 @@ func _show_claude() -> void:
 		if it.get("last_used") != null:
 			line += ", last used %s" % when(str(it.get("last_used", "")))
 		lines.append(line)
-	if lines.is_empty():
+	if lines.is_empty() and connector.had_claude:
+		_claude_state.text = ("Not connected now. Connect Claude takes you to the "
+			+ "Brickworks you already have in Claude, to connect it again.")
+	elif lines.is_empty():
 		_claude_state.text = ("Not connected. Connect Claude once and it can "
 			+ "build in any Brickworks tab you have open, on your Claude plan."
 			if connector.connections_known else "Checking…")
@@ -210,6 +212,8 @@ func _show_claude() -> void:
 		_claude_state.text = "Connected — Claude can build in your open Brickworks tabs.\n" \
 			+ "\n".join(lines)
 	_claude_connect.visible = lines.is_empty()
+	_claude_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
+		if connector.had_claude else "Opens claude.ai with Brickworks filled in")
 	_claude_disconnect.visible = not lines.is_empty()
 
 

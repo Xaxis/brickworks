@@ -24,6 +24,20 @@ whole cycle.
   model says so once, with Download my models. And a save with no parts in
   it never goes over a model that has some, unless you cleared it.
 
+- A dome or a ball as one shape: Claude says `{"pattern": "shell", "kind":
+  "dome" or "ball", "across": 24}` and the app lays a closed shell of
+  hinged panels, as the LEGO® Death Star II set builds its own:
+  twelve strips of panels on clip hinges, each band's panels sized to the
+  round they are on, the strips taking turns so the higher ones lap the
+  lower ones' edges, wedge plates tapering each panel toward the top, a lip
+  over every seam between bands, a course of bricks closing the slot at
+  the foot, and for the crown discs of plates stepping in under a dish. A
+  dome is 20 to 32 studs across and a ball, on a stand with a course round
+  its middle, 24 to 32. Domes built by hand from the guide's recipe left
+  daylight between every strip and band; this one still shows slivers at
+  some seams, up to a stud wide, and its crown steps like a stack of
+  plates.
+
 - Parts and sections turned any way, held by real hinges. The properties
   panel has Tilt and Roll beside Turn, so a selection tips about its
   middle as well as turning round. A design can turn a section yaw, then
@@ -173,6 +187,13 @@ whole cycle.
   Files locked with AES open too, and a part only Studio has is named in
   the status bar instead of counted.
 
+- The Wizard's Tower stands with no weak joints again. Its door's arch
+  stood on one 1 x 1 each side, so once parts collided as their shapes the
+  status bar said "8 weak joints (overloaded)": 83 to 85 g on studs that
+  hold 80. A 1 x 2 across the wall under each foot of the arch now ties the
+  jamb into the wall behind. A tower Claude designs gets the same tie at
+  its door.
+
 - The build order no longer puts anything in the air before the model
   reaches it (the Wizard's Tower: 193 parts to 6), puts wheels on last, and builds
   sub-models a file places as callouts. The timeline numbers its steps
@@ -187,6 +208,14 @@ whole cycle.
   write LEGO® as the LEGO Group's Fair Play policy asks, and its notice is
   in Help, About, on share pages and on every page of the site
   (docs/TRADEMARKS.md).
+
+### Fixed
+
+- A part turned round the upright to an angle that is not a quarter turn
+  was accepted standing on several studs, which in plastic meet its tubes
+  and walls and grip nothing. The check now says so, and accepts it on the
+  one stud a part really swivels on: a round plate's, a jumper's centre
+  stud, a turntable.
 
 ## [0.2.0] - 2026-10-11
 

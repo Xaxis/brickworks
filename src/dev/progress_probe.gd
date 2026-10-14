@@ -138,6 +138,20 @@ func _run() -> void:
 	_check("Open's list says \"Opening orthanc.ldr…\" before it opens (%d parts then), and it opens: %d parts"
 		% [parts_then[0], placed], placed > 9000 and drawn_before[0] >= drawn_at_press
 		and parts_then[0] < 1000 and not Working.is_busy())
+	# The status bar weighs it as a person reads it. The tower the home page
+	# and the gallery show said "8 weak joints (overloaded)" once collision
+	# covers took the parts' shapes: its door's arch stood on a 1 x 1 each side.
+	var status: Label = main.get("_counts")
+	var weighed: String = ""
+	for _n: int in 2400:
+		await process_frame
+		if not bool(main.get("_weighing")) \
+				and int(main.get("_stability_revision")) == world.revision \
+				and (status.text.contains("stands up") or status.text.contains("weak joint")):
+			weighed = status.text
+			break
+	_check("...and its status bar says it stands, with no weak joint: \"%s\"" % weighed,
+		weighed.contains("stands up") and not weighed.contains("weak joint"))
 
 	# -- Timeline --------------------------------------------------------
 	# B, as a person presses it: a key is handled before its frame's

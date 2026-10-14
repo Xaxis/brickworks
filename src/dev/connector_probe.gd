@@ -101,7 +101,15 @@ func _run() -> void:
 	# Long enough for its hello and its first ask for work to reach the relay.
 	await create_timer(3.0).timeout
 	_check(connector.is_on(), "signed in, it switches on")
-	var owner: String = await _owner_of(address.get_slice("?t=", 1))
+	# Its hello carries the whole guidance and tool list and is verified
+	# against the accounts first: at a load of forty it had not landed in
+	# three seconds, so it is waited for, up to twenty.
+	var owner: String = ""
+	for _wait: int in 20:
+		owner = await _owner_of(address.get_slice("?t=", 1))
+		if not owner.is_empty():
+			break
+		await create_timer(1.0).timeout
 	_check(owner == account.user_id and not owner.is_empty(),
 		"the relay records the account as the connector's owner")
 
@@ -130,6 +138,23 @@ func _run() -> void:
 	_check(names == served and names.has("set_floor") and names.has("export_model"),
 		"the tool list is the app's own, every one of its %d tools, and the relay's tabs and select_tab"
 			% (names.size() - 2))
+	# And what each does to the person's work (MCP's annotations), which
+	# Claude decides from what to ask about: the app's from its one table,
+	# the relay's own two from the relay, both read-only.
+	var unsaid := PackedStringArray()
+	var read_only: int = 0
+	for tool: Variant in ((listed.get("result", {}) as Dictionary).get("tools", []) as Array):
+		var tool_name: String = str((tool as Dictionary).get("name", ""))
+		var hints: Dictionary = (tool as Dictionary).get("annotations", {}) as Dictionary
+		var want: Dictionary = CommandSocket.annotations(tool_name) if CommandSocket.HINTS.has(tool_name) \
+			else {"title": hints.get("title", ""), "readOnlyHint": true, "openWorldHint": false}
+		if str(hints.get("title", "")).is_empty() \
+				or JSON.stringify(hints, "", true) != JSON.stringify(want, "", true):
+			unsaid.append(tool_name)
+		read_only += 1 if bool(hints.get("readOnlyHint", false)) else 0
+	_check(unsaid.is_empty() and read_only > 10,
+		"...each with its annotations as the app's table says them, %d read-only%s" % [read_only,
+			"" if unsaid.is_empty() else ": not " + ", ".join(unsaid)])
 	await create_timer(1.5).timeout
 	_check(calls.has(""), "...and the tab hears that Claude has connected")
 	var found: Dictionary = await _claude(address, "tools/call",

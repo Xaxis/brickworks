@@ -181,8 +181,10 @@ function listOf(tools) {
 const LIST_CHANGED = { jsonrpc: "2.0", method: "notifications/tools/list_changed" };
 const CHANGED_WORDS =
   "Brickworks has been updated since this conversation listed its tools, and its tools have changed. " +
-  "List them again to see the new ones. If they do not appear, ask the person to reconnect Brickworks " +
-  "in Claude's connector settings (in Claude Code, /mcp), or to start a new conversation.";
+  "List them again to see the new ones. If they do not appear, a new conversation has them; failing " +
+  "that, the person disconnects and connects Brickworks on its page in Claude (Customize, Connectors, " +
+  "Brickworks), or in Claude Code runs /mcp and Reconnect. Not Disconnect Claude in Brickworks: that " +
+  "ends the connection, and they have to connect it and allow it again.";
 
 // Whether this conversation is to be told that its tools have changed: the
 // tab it works in serves another list than the one it was last given, and
@@ -246,8 +248,9 @@ const notOpenFor = (origin) =>
   "connector is signed in to. Ask the person to open Brickworks, signed in " +
   "with the email address they connected Claude with, and turn the assistant " +
   `on — Settings, Assistant, or open ${origin.replace(/^https?:\/\//, "")}/app?assistant=on — ` +
-  "Claude finds the tab by itself, on any computer; if its panel shows " +
-  "\"Claude can build in this tab\" switched off, they switch it on. Then try again.";
+  "Claude finds the tab by itself, on any computer; if its panel says Claude is " +
+  "\"switched off in this tab\", they turn on the switch beside \"Or with your Claude plan\". " +
+  "Nothing needs disconnecting. Then try again.";
 
 const HIDDEN =
   "The Brickworks tab is open, but this browser has paused it out of view, " +
@@ -357,6 +360,9 @@ const RELAY_TOOLS = [
       "session's calls go to. Call it when the person has more than one tab open, or when " +
       "an answer names a tab or model you did not expect.",
     inputSchema: { type: "object", properties: {} },
+    // As the app's own tools carry theirs (CommandSocket.HINTS): neither of
+    // these changes any model, or anything but which tab this session uses.
+    annotations: { title: "List the open tabs", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "select_tab",
@@ -367,6 +373,7 @@ const RELAY_TOOLS = [
       properties: { tab: { type: "string", description: "The tab's id, from tabs." } },
       required: ["tab"],
     },
+    annotations: { title: "Work in another tab", readOnlyHint: true, openWorldHint: false },
   },
 ];
 

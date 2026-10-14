@@ -108,6 +108,18 @@ signal connections_changed(connections: Array)
 var connections: Array = []
 ## Whether the connections have been asked for since the account changed.
 var connections_known: bool = false
+## Whether this account has had Claude (claude.ai and its apps) connected,
+## connected now or not: the deployment keeps it past a Disconnect
+## (api/oauth.js). The person's Claude has a Brickworks connector then, and
+## connecting again is Connect on that one. Adding it again from claude.ai's
+## "Add custom connector" sets one up anew, its tool permissions to choose
+## again: the owner disconnected and connected again four times in two days
+## this way, and re-enabled the tools after every one (2026-10-14).
+var had_claude: bool = false
+
+## Claude's own list of the person's connectors (Customize › Connectors),
+## where a Brickworks already there is connected again.
+const CONNECTORS := "https://claude.ai/customize/connectors"
 
 var _token: String = ""
 var _on: bool = false
@@ -251,18 +263,39 @@ func resume() -> void:
 
 ## The one click: listen here, put the shared address on the clipboard
 ## (for wherever the link cannot fill it in), and open claude.ai with
-## Brickworks filled in. Then ask every few seconds for ten minutes
+## Brickworks filled in — or, for an account that has had Claude connected
+## ([member had_claude]), Claude's list of connectors, where the Brickworks
+## it has is connected again. Then ask every few seconds for ten minutes
 ## whether Claude has connected; the relay also says so the moment it has.
 func connect_claude() -> void:
 	if held:
 		return
-	start()
-	DisplayServer.clipboard_set(shared_address())
-	last_opened = claude_ai_link()
-	if open_links:
-		OS.shell_open(last_opened)
+	# Waiting before switching on, which tells the panels at once: set after
+	# it, Connect Claude from Account left the assistant panel saying
+	# "Connected through this tab's private address" while Claude was not.
 	_waiting_until = Time.get_ticks_msec() + 600_000
 	_next_ask = Time.get_ticks_msec() + 5000
+	start()
+	DisplayServer.clipboard_set(shared_address())
+	last_opened = CONNECTORS if had_claude else claude_ai_link()
+	if open_links:
+		OS.shell_open(last_opened)
+
+
+## Where Connect Claude has sent the person and what to do there, in a
+## sentence: adding Brickworks the first time, connecting the one they have
+## after that. Claude's own names for it (claude.com/docs/connectors/
+## getting-started, read 2026-10-14): Customize › Connectors, Your
+## connectors, Connect, Reconnect, Tool permissions.
+func connect_words() -> String:
+	if had_claude:
+		return ("Claude's connectors have opened (Customize › Connectors): select "
+			+ "Brickworks under Your connectors, press Connect (or Reconnect, if it "
+			+ "says so), and Allow when Brickworks asks. Connect the one you have "
+			+ "rather than adding it again, which sets up a new one with its tool "
+			+ "permissions to choose again.")
+	return ("claude.ai has opened with Brickworks filled in: press Add, then "
+		+ "Connect, and Allow when Brickworks asks.")
 
 
 ## Whether the person has been sent to connect Claude and it has not yet.
@@ -273,6 +306,7 @@ func waiting_for_claude() -> bool:
 ## Ask the deployment which Claude apps are signed in to this account.
 func refresh_connections() -> void:
 	if account == null or not account.signed_in():
+		had_claude = false
 		_set_connections([])
 		return
 	_asking_connections = true
@@ -283,7 +317,16 @@ func refresh_connections() -> void:
 	var got: Array = await _fetch(HTTPClient.METHOD_GET, "/api/oauth?op=connections", session)
 	_asking_connections = false
 	if int(got[0]) == 200 and got[1] is Dictionary:
-		_set_connections(((got[1] as Dictionary).get("connections", []) as Array))
+		_take_connections(got[1] as Dictionary)
+
+
+## The deployment's answer (op=connections): the connections, and whether
+## the account has had Claude connected before.
+func _take_connections(body: Dictionary) -> void:
+	var now: Array = body.get("connections", []) as Array
+	had_claude = bool(body.get("before", false)) or now.any(func(one: Variant) -> bool:
+		return one is Dictionary and str((one as Dictionary).get("client", "")) == "Claude")
+	_set_connections(now)
 
 
 ## End Claude's connection to this account: one ([param id]) or all of

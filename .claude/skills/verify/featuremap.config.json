@@ -1699,6 +1699,13 @@
       "entry": "tools/web/keep_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep   (with .env sourced)",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "shells of hinged panels",
+      "entry": "src/ai/shells.gd",
+      "reach": "godot --headless --path . --script src/dev/hinged_panels_probe.gd",
+      "area": "geometry"
     }
   ]
 }

@@ -9,6 +9,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { db } from "./_db.js";
 
 export const SCOPE = "build";
+// claude.ai's published identity, which the Claude desktop and mobile apps
+// share: the client a "custom connector" on a Claude account signs in as.
+export const CLAUDE_AI = "https://claude.ai/oauth/mcp-oauth-client-metadata";
 // The tokens' shapes: a prefix to tell them apart at a glance, and 32
 // random bytes.
 const ACCESS = /^bwa_[A-Za-z0-9_-]{43}$/;
@@ -68,6 +71,36 @@ export async function grantOf(token, resource) {
   if (Date.parse(row.expires_at) <= Date.now()) return null;
   if (row.grant.resource !== resource) return null;
   return row.grant;
+}
+
+/// The account's record kept by the server alone (Supabase's app_metadata,
+/// which nobody signed in can write): one request to the accounts' admin
+/// API with the secret key. [change] is merged into it, key by key.
+async function accountRecord(owner, change = null) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  const reply = await fetch(`${base}/auth/v1/admin/users/${encodeURIComponent(owner)}`, {
+    method: change ? "PUT" : "GET",
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: change ? JSON.stringify({ app_metadata: change }) : undefined,
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!reply.ok) throw new Error(`accounts ${change ? "PUT" : "GET"}: ${reply.status}`);
+  const user = await reply.json();
+  return (user && user.app_metadata) || {};
+}
+
+/// That this account has had Claude (claude.ai and its apps) connected:
+/// kept past a Disconnect, so connecting again can send the person to the
+/// Brickworks connector they already have in Claude rather than to add a
+/// second one.
+export async function rememberClaude(owner) {
+  await accountRecord(owner, { claude_connected_at: new Date().toISOString() });
+}
+
+/// Whether this account has ever had Claude connected (rememberClaude).
+export async function hadClaude(owner) {
+  return Boolean((await accountRecord(owner)).claude_connected_at);
 }
 
 /// Which Claude a connection is, in words for the panel: Claude (claude.ai

@@ -238,6 +238,17 @@ fixing what it got wrong.
   connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
   — with a three-step guide (Add then Connect; sign in as <the account's
   address> and Allow; come back) and the address to paste if no tab opened.
+  **Connecting again** (2026-10-14): for an account that has had Claude
+  connected (`op=connections` says `before`, kept in the account's
+  server-only record past a Disconnect; `ClaudeConnector.had_claude`), Connect
+  Claude opens Claude's own list instead, `https://claude.ai/customize/
+  connectors`, and the steps say to select Brickworks under Your connectors and
+  press Connect (or Reconnect), not to add it again, which sets up a second one
+  with its tool permissions to choose again; Account says the same
+  (`connect_words`). Add custom connector stays for the first time, and as the
+  fallback when Brickworks is not in their list. Menu names as claude.com's
+  connector docs give them. `chat_probe` checks both: a new account gets Add,
+  one with a past connection gets the reconnect steps.
   Links beside it open, one at a time, **Claude Code** (the `claude mcp add
   --transport http brickworks …/api/mcp` command, then `/mcp` and
   Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,
@@ -665,11 +676,16 @@ fixing what it got wrong.
   than two studs in view, or faces narrower than four). A plain prism takes one
   only with `"door": true`. Both rows are one-wide through the door's courses
   and the course over the arch ties them; the windows on that face start a
-  storey over it. Found by run 17, whose stair led to a blank wall.
+  storey over it. Found by run 17, whose stair led to a blank wall. Each foot
+  of the arch carries two studs' worth of the wall over it: where the face
+  leaves a jamb one stud wide, the course under the foot is a 1 x 2 laid
+  across both rows, not a 1 x 1 in each (the Wizard's Tower's eight weak
+  joints were its two jambs, 1 x 1s carrying 83-85 g on studs that hold 80).
   `patterns_probe`: the guidance's cluster has the arch in `face 0` at y 12
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
-  it at x -2 and passes the check.
+  it at x -2 and passes the check; on both, the brick under each foot of the
+  arch is two studs or more, across both rows where the jamb is one stud.
 - `a tower on a plinth`: `"plinth": {"steps", "out", "stair", "rock"}` on `prism`
   (`Assistant._on_plinth`, `_foot`, `_plinth_crags`), the base as a call: every
   Orthanc built here stood on rubble and the owner named it. With `rock` (the
@@ -1128,6 +1144,33 @@ fixing what it got wrong.
   saying so. `shapes_probe` ("a car on the shape's own wheels"): the guide's
   example lays 269 parts, one piece, buildable, four wheels; 11 across and a
   raised underside are refused with why.
+  A shaped body comes back whole, or says why not (2026-10-14, the shapes
+  round): the sessions' own car requests (the steps round's "the generator
+  left the nose floating"), a curved car, a two-colour boiler, a hull with a
+  black bow, a fighter's nose on its stands and a dog on legs all came back
+  in pieces or floating. What changed in `Shapes`: the axles stand on a
+  chassis of plates from nose to tail (`_chassis`), and the wheels sit on
+  whole studs, said when moved; a foot off the ground (on wheels, or raised
+  onto the design's own bricks, `Patterns` passes `_under`) is laid in plates
+  and carries no slope where nothing is under it (`Plan.foot_on`); `stitch`
+  keeps a way of joining only if it leaves fewer pieces, or as many and a
+  bigger body (it used to re-lay the same pair 96 times; a sculpt's grid,
+  `brickify_probe`, still stitches the old way), and its last ways lay the pieces' plates and
+  bricks, the rest's beside them, then top tiles, then wedges, again as
+  bonded plates (`_replate`), hidden plates taking the commonest colour so
+  two colours face to face join; a slope's joins are read off its mesh
+  (`Shapes.part`'s `grips` under, `tops` over: an inverted curved 4 x 1
+  holds what stands on two of its studs, not four); a narrow strip on the
+  mirror takes the other plate's strip width, not 1 x 1s; a side's shell
+  stops above what hangs under it with no core behind (a leg); a part or
+  three no way can hold is left off and said. What it cannot hold it says in
+  the check's advice (`Shapes.said`): pieces apart with where and how to
+  join them, a shape standing on nothing with what to build under it
+  (`Patterns._over_nothing`). `shapes_probe` ("bodies as sessions said
+  them"): each of those bodies one piece, nothing floating, the shape laid
+  in one, standing (`Stability`), with shaped parts held at its ends; an
+  owl raised at y 55, two engine pods said as one shape and a wheel at 15.5
+  each said with the fix.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without

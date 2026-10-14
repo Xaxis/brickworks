@@ -16,7 +16,11 @@ assistant panel's **Connect Claude** opens claude.ai's *Add custom connector*
 dialog with the name and the address already filled in. They press Add, then
 Connect; Claude sends them to Brickworks to sign in with their email code (or
 straight to the question, if Brickworks is already signed in in that browser),
-they press Allow, and they are back in Claude, connected. A connector added on
+they press Allow, and they are back in Claude, connected. Connecting again
+after a Disconnect is **Connect** on the Brickworks already in their Claude
+(Customize › Connectors, Your connectors), which Connect Claude opens for an
+account that has had Claude connected: adding it again sets up a second one,
+with its tool permissions to choose again. A connector added on
 claude.ai is in the desktop and mobile apps too, and in Claude Code when it is
 signed in with the same Claude account.
 
@@ -157,7 +161,8 @@ From <https://claude.com/docs/connectors/building/authentication> unless noted:
 | Protected resource metadata | `/.well-known/oauth-protected-resource` and `…/api/mcp` |
 | Authorization server metadata | `/.well-known/oauth-authorization-server` (and with any path after it); issuer = the site |
 | Client identity | CIMD (Claude's and Claude Code's documents, read and kept an hour) or registration at `/oauth/register` |
-| Sign-in and consent | `/oauth/authorize` → `web/authorize.html`: the app's email code, or the app's session in that browser; one question naming who asks and where the answer goes |
+| Sign-in and consent | `/oauth/authorize` → `web/authorize.html`: the app's email code, or the app's session in that browser; one question naming who asks and where the answer goes, asked once: while the account still holds a connection to that same client (its id, the same return address, this server) a connection made again is answered with a code at once (`op=remembered`, 2026-10-14). Disconnect, a revocation or a replayed refresh token end it, and the next connection asks |
+| Tool annotations | every tool carries MCP's `annotations` — `title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` — from one table in the app (`CommandSocket.HINTS`; the relay's `tabs` and `select_tab` in `api/mcp.js`). Claude reads them in deciding what to ask about; the per-tool switches in Claude's own connector settings are Claude's, and the person's choices there stand |
 | Tokens | `/oauth/token`: S256 PKCE, exact return address (loopback: any port), resource checked; access an hour, refresh rotated, both kept only as SHA-256 |
 | Revocation | `/oauth/revoke` (RFC 7009), **Disconnect** in the app, or deleting the account |
 | Routing | each call goes to the account's open tab (`relay_tabs.owner`), whichever device |

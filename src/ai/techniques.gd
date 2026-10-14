@@ -1372,17 +1372,19 @@ static func all() -> Array:
 				+ "63868's clip on it); the plate over the hinge runs from the top "
 				+ "half to the next base, so the panel is one piece whichever way it "
 				+ "hangs. The panel above is a section within it, hinged at its "
-				+ "far end and folded in by one band's angle — so a strip from the "
-				+ "equator up is said once, in plates, and no angle is worked out "
-				+ "for a brick. Here three bands of one strip, the first standing "
-				+ "70 degrees up, each next folding 25 in, the strip faced 30 "
-				+ "degrees round on the one round stud its base swivels on — "
-				+ "nothing under the joint, since a clip's round reaches past the "
-				+ "plates it joins. A dome is this strip repeated round its centre "
-				+ "(repeat_section with around and yaw: read_guide \"round\"). "
-				+ "10143, the Death Star II, builds its shell of panels so on "
-				+ "click hinges, sixteen segments 22.5 degrees apart (find_techniques "
-				+ "\"shell\").",
+				+ "far end and folded in by one band's angle. What closes the shell "
+				+ "is here too: the first panel tapers toward the pole with wedge "
+				+ "plates in a left and right pair (41769b, 41770b), a stud in each "
+				+ "side over its length, since the round it covers narrows as it "
+				+ "climbs; and each panel's last row stands a plate higher, its tiles "
+				+ "reaching two studs on over the band above, which folds in under "
+				+ "them, so no daylight shows at the seam. The base swivels 30 degrees "
+				+ "round on one round brick's stud, the only stud under it: turned "
+				+ "off the square, a part grips by one stud. A whole dome or ball is "
+				+ "one pattern, {\"pattern\": \"shell\"}, twelve such strips taking "
+				+ "turns low and high so the high ones lap the low ones' edges "
+				+ "(read_guide \"round\"). 10143, the Death Star II, builds its shell "
+				+ "of panels so on click hinges (find_techniques \"shell\").",
 			"sections": [
 				{"name": "band 1", "x": 1, "y": 6, "z": 0, "yaw": 30, "pitch": 70,
 					"hinge": "clip"},
@@ -1394,16 +1396,24 @@ static func all() -> Array:
 			"bricks": [
 				{"part": "3001", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "3062b", "color": 72, "x": 1, "y": 3, "z": 0, "rot": 0},
-				{"part": "3710", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
+				{"part": "41769b", "color": 71, "x": -2, "y": 0, "z": 0, "rot": 0, "section": "band 1"},
 				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
-				{"part": "3710", "color": 71, "x": 1, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
+				{"part": "41770b", "color": 71, "x": 1, "y": 0, "z": 0, "rot": 0, "section": "band 1"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 1"},
-				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "3070b", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "3623", "color": 71, "x": -1, "y": 1, "z": 3, "rot": 0, "section": "band 1"},
+				{"part": "26603", "color": 71, "x": -1, "y": 2, "z": 3, "rot": 1, "section": "band 1"},
+				{"part": "63864", "color": 71, "x": 1, "y": 2, "z": 3, "rot": 1, "section": "band 1"},
 				{"part": "3710", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
 				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
 				{"part": "3710", "color": 71, "x": 1, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 2"},
-				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "3070b", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "3623", "color": 71, "x": -1, "y": 1, "z": 3, "rot": 0, "section": "band 2"},
+				{"part": "26603", "color": 71, "x": -1, "y": 2, "z": 3, "rot": 1, "section": "band 2"},
+				{"part": "63864", "color": 71, "x": 1, "y": 2, "z": 3, "rot": 1, "section": "band 2"},
 				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 3"},
 				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 0, "rot": 1, "section": "band 3"},
 				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 2, "rot": 1, "section": "band 3"},

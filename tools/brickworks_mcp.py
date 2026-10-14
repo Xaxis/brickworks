@@ -193,16 +193,22 @@ def tool_list(app: App) -> list[dict]:
 
 def _as_mcp(tools: list[dict]) -> list[dict]:
     """The app's schemas are Anthropic's shape (`input_schema`); MCP wants
-    `inputSchema`. Translated here because it is the only difference."""
-    return [
-        {
+    `inputSchema`. Translated here because it is the only difference. The
+    annotations (title, readOnlyHint and the rest) come from the app as
+    they are, from its one table of them (CommandSocket.HINTS)."""
+    listed = []
+    for tool in tools:
+        if not tool.get("name"):
+            continue
+        one = {
             "name": tool["name"],
             "description": tool.get("description", ""),
             "inputSchema": tool.get("input_schema") or tool.get("inputSchema") or {},
         }
-        for tool in tools
-        if tool.get("name")
-    ]
+        if tool.get("annotations"):
+            one["annotations"] = tool["annotations"]
+        listed.append(one)
+    return listed
 
 
 # Said only when the app is shut, which is the one time the real thing

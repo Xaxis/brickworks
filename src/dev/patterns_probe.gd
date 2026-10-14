@@ -557,6 +557,45 @@ func _clustered() -> void:
 		% its_check["summary"], (its_door[0] as Array).size() == 1
 			and is_equal_approx((its_door[0][0] as Assistant.Placement).x, -2.0)
 			and bool(its_check["ok"]))
+	# Each foot of the arch carries two studs' worth of the wall over it. On a
+	# jamb one stud wide it stood on two 1 x 1s, a column on one stud untied to
+	# the inside row: the Wizard's Tower's eight weak joints, 83-85 g on studs
+	# that hold 80. The brick under each foot is two studs or more, across both
+	# rows where the jamb is one stud.
+	var long_of := func(part: String) -> int:
+		for plain: String in Patterns.MASONRY:
+			if Patterns.MASONRY[plain] == part:
+				return int(Patterns.ONE_WIDE[plain])
+		return int(Patterns.ONE_WIDE.get(part, 0))
+	var feet := func(placements: Array, arch: Assistant.Placement) -> Array:
+		var said := PackedStringArray()
+		var tied: bool = true
+		for foot: float in [arch.x, arch.x + 3.0]:
+			var under: Assistant.Placement = null
+			for placement: Assistant.Placement in placements:
+				if placement.section != arch.section \
+						or absf(placement.y - (arch.y - 3.0)) > 0.01:
+					continue
+				var long: int = long_of.call(placement.part)
+				if placement.rot % 2 == 0 and absf(placement.z - arch.z) < 0.01 \
+						and foot > placement.x - 0.01 and foot < placement.x + long - 0.01:
+					under = placement
+				elif placement.rot % 2 == 1 and absf(placement.x - foot) < 0.01 \
+						and arch.z > placement.z - 0.01 and arch.z < placement.z + long - 0.01:
+					under = placement
+			if under == null:
+				said.append("nothing")
+				tied = false
+				continue
+			said.append("%s%s" % [under.part, " across both rows" if under.rot % 2 == 1 else ""])
+			tied = tied and int(long_of.call(under.part)) >= 2
+		return [", ".join(said), tied]
+	for laid: Array in [[model, door_found, "the guidance's"], [its, its_door, "the seventeenth's"]]:
+		if (laid[1][0] as Array).size() != 1:
+			continue
+		var stood: Array = feet.call((laid[0] as Assistant.Model).placements, laid[1][0][0])
+		_check("...%s arch's feet each on two studs or more, across both rows where its "
+			% laid[2] + "jamb is one stud: %s" % stood[0], bool(stood[1]))
 	# The summit is whole where a figure stands. Only its largest piece is
 	# kept, and the eighteenth Orthanc's ten-sided cluster lost a 6 x 6 block
 	# from its middle: six-long strips both ways over a block six by six, tied

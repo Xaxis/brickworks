@@ -110,6 +110,11 @@ static var _parts: Dictionary = {}
 ## and the sum a stud and its mirror add up to, its columns and plates.
 static var last: Dictionary = {}
 
+## What the shapes laid since Patterns.expand began say to the design: a
+## part they could not join, a shape standing on nothing. Read into the
+## check's advice, so the reason and the fix come with the shape.
+static var said: Array = []
+
 
 ## Every brick of a shape, or a reason in [param trouble].
 static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Array:
@@ -203,8 +208,43 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	var gridded: bool = false
 	for solid: Dictionary in solids:
 		gridded = gridded or solid["kind"] == GRID
+	# The wheels' Technic bricks and the chassis under them, put among the
+	# plan's own parts while it joins its pieces, so it counts what they hold.
+	var fixed: Array = []
+	for one: Dictionary in wheels:
+		var size := Vector2i.ZERO
+		var h: int = 1
+		if one.has("_size"):
+			size = one["_size"]
+		elif str(one["part"]) == "32064a":
+			size = Vector2i(2, 1)
+			h = 3
+		var corner := Vector3(float(one["x"]), float(one["y"]), float(one["z"]))
+		if size == Vector2i.ZERO or corner != corner.round():
+			continue
+		var cells: Array[Vector2i] = []
+		for i: int in size.x:
+			for k: int in size.y:
+				cells.append(Vector2i(roundi(corner.x) + i, roundi(corner.z) + k))
+		fixed.append({"part": one["part"], "color": one["color"], "x": corner.x,
+			"y": roundi(corner.y) - y0, "z": corner.z, "rot": one["rot"], "_cells": cells,
+			"_h": h, "_studs": cells, "_base": cells, "_fixed": true})
 	var build := func(sideways: bool) -> Array:
 		var plan := Plan.new(columns.duplicate(true), tall, smooth, library)
+		# Off the ground — on its own wheels, or raised onto what the design
+		# builds under it — its foot is held only where something is under it:
+		# the chassis, or a brick whose top is there.
+		plan.afloat = not fixed.is_empty() or not gridded and roundi(origin.y) + y0 > 0
+		for one: Dictionary in fixed:
+			if int(one["y"]) + int(one["_h"]) == 0:
+				for cell: Vector2i in one["_cells"]:
+					plan.foot_held[cell] = true
+		var under: Dictionary = pattern.get("_under", {})
+		for key: Variant in columns:
+			var cell: Vector2i = key
+			if under.has(Vector3i(cell.x + roundi(origin.x), roundi(origin.y) + y0,
+					cell.y + roundi(origin.z))):
+				plan.foot_held[cell] = true
 		plan.sides_smooth = bool(pattern.get("panels", true))
 		plan.wedges = bool(pattern.get("wedges", true))
 		if pattern.get("prefer") is Callable:
@@ -298,6 +338,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		if bool(pattern.get("stitch_first", false)):
 			plan.stitch()
 		plan.prune()
+		for one: Dictionary in fixed:
+			plan.made.append(one.duplicate(true))
 		plan.stitch()
 		return [plan, shells]
 	var built: Array = build.call(bool(pattern.get("sideways", not gridded)))
@@ -312,7 +354,47 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan = upright[0]
 			shells = []
 	var pieces: Array = plan.pieces()
+	# A part or three at a tip that no way of joining could hold are left
+	# off, and said: a fighter's nose ended in a stud-long row of plates, a
+	# stud wide, held by nothing, and the whole design was refused for it.
+	var left_off: Array = []
+	if pieces.size() > 1:
+		var gone: Dictionary = {}
+		for piece: Array in pieces.slice(1):
+			if piece.size() > 3:
+				continue
+			var low := Vector3(INF, INF, INF)
+			var high := -low
+			var held_fast: bool = false
+			for n: int in piece:
+				var one: Dictionary = plan.made[n]
+				held_fast = held_fast or bool(one.get("_fixed", false))
+				# Standing on what the design built under it is holding enough.
+				if int(round(float(one["y"]))) == 0 and plan.afloat:
+					for cell: Vector2i in one.get("_base", []):
+						held_fast = held_fast or plan.foot_held.has(cell)
+				var p := Vector3(float(one["x"]), float(one["y"]), float(one["z"]))
+				low = low.min(p)
+				high = high.max(p)
+			if held_fast:
+				continue
+			for n: int in piece:
+				gone[n] = true
+			left_off.append("x %s, y %s, z %s" % [_num(low.x + origin.x), _num(low.y + y0 + origin.y),
+				_num(low.z + origin.z)])
+		if not gone.is_empty():
+			var kept: Array = []
+			for n: int in plan.made.size():
+				if not gone.has(n):
+					kept.append(plan.made[n])
+			plan.made = kept
+			pieces = plan.pieces()
+			said.append("%d part%s of the shape at %s that nothing could hold %s left off: "
+				% [gone.size(), "" if gone.size() == 1 else "s", "; ".join(PackedStringArray(left_off)),
+				"is" if gone.size() == 1 else "are"] + "a tip a stud or two across, a plate or "
+				+ "three thick. To keep it, give it more to stand on there: wider, or a plate deeper.")
 	last["pieces"] = pieces.size()
+	last["left_off"] = left_off
 	# Where each piece but the largest is, for a probe to say: parts, and
 	# the low and high corner in studs and plates.
 	var apart: Array = []
@@ -326,7 +408,26 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			high = high.max(p)
 		apart.append([piece.size(), low + origin + Vector3(0, y0, 0), high + origin + Vector3(0, y0, 0)])
 	last["apart"] = apart
-	var made: Array = plan.made
+	# What could not be joined is said, where and how to join it. Left to the
+	# check, a car's nose came back "floating" and its session built the body
+	# again by hand, square and without its curves.
+	if pieces.size() > 1:
+		var where: PackedStringArray = []
+		for one: Array in apart.slice(0, 4):
+			var low: Vector3 = one[1]
+			var high: Vector3 = one[2]
+			where.append("%d part%s at x %s-%s, y %s-%s, z %s-%s" % [int(one[0]),
+				"" if int(one[0]) == 1 else "s", _num(low.x), _num(high.x), _num(low.y),
+				_num(high.y), _num(low.z), _num(high.z)])
+		if apart.size() > 4:
+			where.append("%d more" % (apart.size() - 4))
+		var why: Array = _apart_why(plan, pieces[1], pieces[0])
+		said.append("The shape laid on its own is %d pieces: %s %s held to the rest of it by "
+			% [pieces.size(), "; ".join(where), "is" if apart.size() == 1 else "are"]
+			+ "nothing, because %s. Unless what stands under %s holds %s, %s." % [why[0],
+			"it" if apart.size() == 1 else "them", "it" if apart.size() == 1 else "them", why[1]])
+	var made: Array = plan.made.filter(func(one: Dictionary) -> bool:
+		return not bool(one.get("_fixed", false)))
 	var turned_out: int = 0
 	for shell: Dictionary in shells:
 		var laid: Array = plan.lay_shell(shell, "straight" if surface == "none" else surface)
@@ -359,7 +460,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			out["face"] = one["face"]
 		placed.append(out)
 	for one: Dictionary in wheels:
-		var out: Dictionary = one.duplicate()
+		var out: Dictionary = {"part": one["part"], "color": one["color"], "rot": one["rot"]}
 		out["x"] = float(one["x"]) + origin.x
 		out["y"] = float(one["y"]) + origin.y
 		out["z"] = float(one["z"]) + origin.z
@@ -401,7 +502,12 @@ static func _wheels(pattern: Dictionary, solids: Array, cuts: Array, trouble: Ar
 	var rim: int = int(pattern.get("wheel_color", pattern.get("wheel_colour", 71)))
 	var out: Array = []
 	for raw: Variant in asked:
-		var c: float = snappedf(float(raw), 0.5)
+		# On a whole stud: the axle's bricks are two studs long about it, and at
+		# x 15.5 they stood half a stud off the body's studs and were refused.
+		var c: float = roundf(float(raw))
+		if not is_equal_approx(c, float(raw)):
+			said.append("A wheel asked at x=%s is laid at x=%s: its axle's Technic bricks "
+				% [_num(float(raw)), _num(c)] + "stand on whole studs.")
 		if c - 2.0 < box.position.x - 0.01 or c + 2.0 > box.end.x + 0.01:
 			trouble.append("a wheel at x=%s is not under the body (x %s to %s)" % [c,
 				box.position.x, box.end.x])
@@ -427,6 +533,47 @@ static func _wheels(pattern: Dictionary, solids: Array, cuts: Array, trouble: Ar
 				+ "x=%s: its underside there must be 5 plates up or lower (under), so it " % c)
 				+ "stands on them")
 			return []
+	out.append_array(_chassis(solids, box, z0, wide))
+	return out
+
+
+## A chassis: plates the width of the axles' Technic bricks, a plate under
+## them, from the body's front to its back, as a set's car stands on its
+## chassis plates. The body's foot between the wheels stands on it, so the
+## nose ahead of the front axle and the tail behind the back one are held
+## by it, and not only by what the body's fill happens to tie over the
+## axles: without it, the nose and tail corners of four of the bench's car
+## bodies were held by nothing, and their sessions built the body by hand.
+## Laid only where the body's underside is two plates up; lower, the body
+## is its own floor.
+static func _chassis(solids: Array, box: AABB, z0: int, wide: int) -> Array:
+	var middle: float = z0 + wide / 2.0
+	var xs: Array[int] = []
+	for x: int in range(floori(box.position.x), ceili(box.end.x)):
+		if _colour_at(solids, [], Vector3(x + 0.5, 1.5, middle), 0, []) >= 0:
+			return []
+		if _colour_at(solids, [], Vector3(x + 0.5, 2.5, middle), 0, []) >= 0:
+			xs.append(x)
+	if xs.is_empty():
+		return []
+	var deep: int = wide - 4
+	var lengths: Array = []
+	for entry: Array in CORE_PLATES:
+		if int(entry[1]) == deep:
+			lengths.append(entry)
+	lengths.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) > int(b[0]))
+	var out: Array = []
+	var x: int = xs[0]
+	var placed: bool = true
+	while x <= xs[-1] and placed:
+		placed = false
+		for entry: Array in lengths:
+			if int(entry[0]) <= xs[-1] + 1 - x:
+				out.append({"part": entry[2], "color": 0, "x": x, "y": 1, "z": z0 + 2,
+					"rot": entry[3], "_size": Vector2i(int(entry[0]), deep)})
+				x += int(entry[0])
+				placed = true
+				break
 	return out
 
 
@@ -455,6 +602,48 @@ static func feet(pattern: Dictionary) -> Dictionary:
 					out[Vector2i(x + roundi(origin.x), z + roundi(origin.z))] = y + roundi(origin.y)
 					break
 	return out
+
+
+## Why [param piece] of [param plan] is held by nothing of [param main], and
+## what in the shape's numbers would hold it: [why, fix].
+static func _apart_why(plan: Plan, piece: Array, main: Array) -> Array:
+	var rest: Dictionary = {}    ## Vector3i(x, plate, z) -> true
+	for n: int in main:
+		var one: Dictionary = plan.made[n]
+		var y: int = int(round(float(one["y"])))
+		for cell: Vector2i in one.get("_covers", one.get("_cells", [])):
+			for h: int in int(one.get("_h", 1)):
+				rest[Vector3i(cell.x, y + h, cell.y)] = true
+	var stacked: bool = false
+	var beside: bool = false
+	var edge: bool = false
+	for n: int in piece:
+		var one: Dictionary = plan.made[n]
+		var y: int = int(round(float(one["y"])))
+		for cell: Vector2i in one.get("_covers", one.get("_cells", [])):
+			for h: int in int(one.get("_h", 1)):
+				var here := Vector3i(cell.x, y + h, cell.y)
+				stacked = stacked or rest.has(here + Vector3i.UP) or rest.has(here + Vector3i.DOWN)
+				for step: Vector2i in OUT:
+					beside = beside or rest.has(here + Vector3i(step.x, 0, step.y))
+				for dx: int in [-1, 1]:
+					for dz: int in [-1, 1]:
+						edge = edge or rest.has(here + Vector3i(dx, 0, dz))
+					edge = edge or rest.has(here + Vector3i(dx, 1, 0)) or rest.has(here + Vector3i(dx, -1, 0)) \
+						or rest.has(here + Vector3i(0, 1, dx)) or rest.has(here + Vector3i(0, -1, dx))
+	if stacked:
+		return ["it stands on a slope or a tile of the body, or under one, and neither "
+			+ "holds a stud", "give it a flat top to stand on there: lower it a plate into the "
+			+ "body, or the body's top under it a plate, so a plate meets a plate"]
+	if beside:
+		return ["it meets the body only side by side, where nothing over or under both "
+			+ "reaches across", "let it reach a plate or more over or under the body where "
+			+ "they meet, and two studs wide or more, so a plate can cross the joint"]
+	if edge:
+		return ["it meets the body only at an edge", "let the two solids overlap by a "
+			+ "stud where they meet"]
+	return ["it does not touch the body", "move it to overlap the body by a stud, or say it "
+		+ "as a shape of its own on what holds it"]
 
 
 static func _empty(column: PackedInt32Array) -> bool:
@@ -939,9 +1128,27 @@ static func part(library: PartLibrary, id: String, inverted: bool = false) -> Di
 			if box.grow(0.01).has_point(probe):
 				grips.append(row)
 				break
+	# And the rows with a stud on top, from the same end: what stands on it is
+	# held there and nowhere else. An inverted curved 4 x 1 was counted
+	# holding what stood on all four of its studs; it has studs over two, and
+	# a ship's bow it was the only tie to came away from the hull.
+	var tops: Array[int] = []
+	for connector: Lbm.Connector in mesh.connectors:
+		# On its top: a stud lower down, where its top steps down, is under
+		# what stands over the part and reaches nothing.
+		if connector.kind != "stud" or connector.gender != "male" \
+				or connector.axis.normalized().dot(Vector3.UP) < 0.9 \
+				or connector.position.y < b.end.y - 4.5:
+			continue
+		var at: float = connector.position.z if along_z else connector.position.x
+		var n: int = clampi(floori((at - (b.position.z if along_z else b.position.x)) / 20.0), 0, d - 1)
+		var row: int = n if native in [0, 1] else d - 1 - n
+		if not tops.has(row):
+			tops.append(row)
+	tops.sort()
 	var found := {"id": id, "w": foot.x if along_z else foot.y, "d": d,
 		"h": int(round((b.size.y - (4.0 if studded else 0.0)) / 8.0)),
-		"turn": posmod(-native, 4), "grips": grips}
+		"turn": posmod(-native, 4), "grips": grips, "tops": tops}
 	_parts[key] = found
 	return found
 
@@ -1187,6 +1394,15 @@ class Plan extends RefCounted:
 	## Whether a section that is a disc of a size round parts come in is
 	## laid in them (round_runs).
 	var rounds: bool = true
+	## Off the ground: its foot is held only where [member foot_held] has the
+	## stud, a chassis or a brick under it.
+	var afloat: bool = false
+	var foot_held: Dictionary = {}
+
+	## Whether the stud [param cell] at the plan's foot stands on something:
+	## the ground, or off it, what is under it.
+	func foot_on(cell: Vector2i) -> bool:
+		return not afloat or foot_held.has(cell)
 	## Whether a course over nothing with nothing studded over it is laid in
 	## plates (lay). A sculpt's grid keeps its bricks: Brickify's own lay
 	## measures what it is, and a hollow sculpt lost 3% of itself.
@@ -1868,6 +2084,7 @@ class Plan extends RefCounted:
 		# far in its core starts; nothing over a round run.
 		var reach: Dictionary = {}    ## Vector2i(lane, j) -> one past the outermost
 		var inmost: Dictionary = {}   ## lane -> the least out of any stud in it
+		var occupied: Dictionary = {}    ## Vector3i(lane, out, j) -> true, the shape there
 		var most: int = -(1 << 30)
 		for key: Variant in columns:
 			var cell: Vector2i = key
@@ -1875,6 +2092,10 @@ class Plan extends RefCounted:
 			for j: int in tall:
 				if at(cell, j) < 0:
 					continue
+				# The shape's, whoever has laid it: a side and its mirror must
+				# read their cores alike, and the first side's own side studs
+				# stand in the second's core.
+				occupied[Vector3i(lt.x, lt.y, j)] = true
 				if taken.has(Vector3i(cell.x, j, cell.y)) or shelled.has(Vector3i(cell.x, j, cell.y)):
 					continue
 				var here := Vector2i(lt.x, j)
@@ -1884,13 +2105,21 @@ class Plan extends RefCounted:
 		if reach.is_empty():
 			return {}
 		var face: int = most - SHELL_DEPTH
+		# Whether the core is right behind the face at a lane's plate: a leg or
+		# a fin past the face with nothing of the core behind it is not the side
+		# curving, and a beast's flank took its legs into itself, held none of
+		# them, and stood on nothing.
+		var backed := func(at_: Vector2i) -> bool:
+			return occupied.has(Vector3i(at_.x, face - 1, at_.y)) \
+				and occupied.has(Vector3i(at_.x, face - SHELL_CORE, at_.y))
 		var patch: Array[Vector2i] = []
 		var low := Vector2i(1 << 30, 1 << 30)
 		var high := -low
 		var curves: bool = false
 		for key: Variant in reach:
 			var at_: Vector2i = key
-			if int(reach[at_]) <= face or int(inmost[at_.x]) > face - SHELL_CORE:
+			if int(reach[at_]) <= face or int(inmost[at_.x]) > face - SHELL_CORE \
+					or not backed.call(at_):
 				continue
 			# Steep: out no more than two studs in four plates up or down. A
 			# gentler fall is a top, which the slopes lay (a ramp's low end
@@ -1916,14 +2145,27 @@ class Plan extends RefCounted:
 			return {}
 		# And all of those lanes past the face, up and down: a crown left to
 		# the core above the shell stood on the shell's edge, held by nothing.
+		# Only where the core is behind them.
 		for key: Variant in reach:
 			var at_: Vector2i = key
-			if at_.x >= low.x and at_.x <= high.x and int(reach[at_]) > face:
+			if at_.x >= low.x and at_.x <= high.x and int(reach[at_]) > face and backed.call(at_):
 				low.y = mini(low.y, at_.y)
 				high.y = maxi(high.y, at_.y)
 		var top: int = high.y + 1
 		var rows: int = 2 * ceili((top - low.y) / 5.0)
 		var bottom: int = maxi(0, top - roundi(2.5 * rows))
+		# Its rows stop above what hangs under the side, a row pair short if
+		# they must: whole rows reaching into a leg took the leg's top.
+		var hanging: bool = false
+		for key: Variant in reach:
+			var at_: Vector2i = key
+			hanging = hanging or at_.x >= low.x and at_.x <= high.x and at_.y >= bottom \
+				and at_.y < low.y and int(reach[at_]) > face and not backed.call(at_)
+		while hanging and bottom < low.y and rows > 2:
+			rows -= 2
+			bottom = maxi(0, top - roundi(2.5 * rows))
+		if hanging and bottom < low.y:
+			return {}
 		# Taken out of the core: every plate of the box, past the face, that
 		# no shell before it has.
 		# And the box's plates outside the shape too: a wedge's cut side
@@ -2087,6 +2329,10 @@ class Plan extends RefCounted:
 		var mine: Dictionary = shell["cells"]
 		# The squares a face is laid in, left out of the shell's own plan.
 		var masked: Dictionary = {}    ## Vector2i(lane, row) from a0 and top
+		# The plates beside the shell it keeps clear, its own to reach into.
+		var beside: Dictionary = {}
+		for key: Vector3i in shell["outside"]:
+			beside[key] = true
 		var local_colour := func(x: float, j: float, z: float) -> int:
 			if masked.has(Vector2i(floori(x), floori(z))):
 				return -1
@@ -2097,18 +2343,25 @@ class Plan extends RefCounted:
 			# is the shell's or nobody's, or a round part's box beside it is
 			# overlapped.
 			var row: float = p.y + Shapes.PLATES_PER_STUD * (z - floorf(z) - 1.0)
+			# And every stud its plate reaches into, out from the face: a plate
+			# on its side is two fifths of a stud thick, and one whose middle
+			# was the shell's reached into the stud before it, where another
+			# side's side-stud brick stood.
+			var studs: Dictionary = {}
+			for out: float in [floorf(j) + 0.02, floorf(j) + 0.98]:
+				var q: Vector3 = to_world.call(x, out, z)
+				studs[Vector2i(floori(q.x), floori(q.z))] = true
 			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
 				if j_ < 0:
 					return -1
-				var key := Vector3i(floori(p.x), j_, floori(p.z))
-				if (taken.has(key) or at(Vector2i(key.x, key.z), j_) >= 0) and not mine.has(key):
-					return -1
+				for stud: Variant in studs:
+					var key := Vector3i((stud as Vector2i).x, j_, (stud as Vector2i).y)
+					if (taken.has(key) or at(stud, j_) >= 0) and not mine.has(key) \
+							and not (beside.has(key) and stud != Vector2i(floori(p.x), floori(p.z))):
+						return -1
 			return int(colour_at.call(p.x, p.y, p.z))
 		# Whether a point of the shell's frame is free for a face: every plate
 		# its row reaches into the shell's or nobody's, as for its own parts.
-		var beside: Dictionary = {}
-		for key: Vector3i in shell["outside"]:
-			beside[key] = true
 		var room := func(x: float, j: float, z: float) -> bool:
 			var p: Vector3 = to_world.call(x, j, z)
 			var row: float = p.y + Shapes.PLATES_PER_STUD * (z - floorf(z) - 1.0)
@@ -2582,9 +2835,13 @@ class Plan extends RefCounted:
 								# Standing on the shape's plates, so they have to be
 								# there: over a wheel arch a slope took the place of
 								# a bridge one plate thick and stood on nothing.
+								# Nor at the foot on wheels, where only the chassis
+								# holds a stud: a car's nose corner was a cheese
+								# slope on nothing, held by nothing.
 								if here < base or here > base + tall_ \
 										or (base > 0 and (at(at_, base - 1) < 0
-											or taken.has(Vector3i(at_.x, base - 1, at_.y)))):
+											or taken.has(Vector3i(at_.x, base - 1, at_.y)))) \
+										or (base == 0 and not foot_on(at_)):
 									fits = false
 									break
 								error += absf(float(here - base) - float(profile[n]))
@@ -2763,23 +3020,21 @@ class Plan extends RefCounted:
 			low = Vector2i(mini(low.x, one.x), mini(low.y, one.y))
 		var rot: int = posmod(Shapes.OUT.find(facing) + int(shape["turn"]), 4)
 		var from: int = pick["y"]
+		# Joined where the part really is: by the rows with studs on top to
+		# what stands on it, and by the rows a stud from below reaches into to
+		# what it stands on (Shapes.part's "tops" and "grips"), each read off
+		# its own mesh. Counted held by its high end, a curved slope, hollow
+		# there, was said to join what the check found apart.
+		var studs: Array[Vector2i] = _gripped(pick, shape, "tops")
+		var base: Array[Vector2i] = _gripped(pick, shape)
+		if base.is_empty():
+			base.append_array(high_row)
 		if under:
-			# Hung from the studs over it, its deep row against the stud
-			# beside that reaches lower.
+			# Hung from the studs over it.
 			made.append({"part": id, "color": pick["colour"], "x": low.x, "y": from,
-				"z": low.y, "rot": rot, "_cells": cells, "_h": tall_, "_studs": cells,
-				"_base": high_row, "_slope": true})
+				"z": low.y, "rot": rot, "_cells": cells, "_h": tall_, "_studs": studs,
+				"_base": base, "_slope": true})
 		else:
-			var studs: Array[Vector2i] = []
-			if pick["kind"] == "straight":
-				studs = high_row
-			# Held where it is thick: a stud under the thin end of a slope
-			# reaches into nothing, and the check called the plates under one
-			# floating. On its side, held only where a stud reaches in at all:
-			# a curved slope's high end is hollow (Shapes.part's "grips").
-			var base: Array[Vector2i] = high_row
-			if flank:
-				base = _gripped(pick, shape)
 			made.append({"part": id, "color": pick["colour"], "x": low.x, "y": from,
 				"z": low.y, "rot": rot, "_top": true, "_cells": cells, "_h": tall_,
 				"_studs": studs, "_base": base, "_slope": true})
@@ -2787,12 +3042,12 @@ class Plan extends RefCounted:
 
 	## The cells of a pick a stud from under it reaches into: its rows the
 	## part grips by, every stud across.
-	func _gripped(pick: Dictionary, shape: Dictionary) -> Array[Vector2i]:
+	func _gripped(pick: Dictionary, shape: Dictionary, rows: String = "grips") -> Array[Vector2i]:
 		var facing: Vector2i = pick["facing"]
 		var perp := Vector2i(absi(facing.y), absi(facing.x))
 		var out: Array[Vector2i] = []
 		for a: int in int(pick.get("wide", 1)):
-			for row: Variant in shape.get("grips", []):
+			for row: Variant in shape.get(rows, []):
 				out.append((pick["cell"] as Vector2i) + perp * a + facing * int(row))
 		return out
 
@@ -2825,6 +3080,13 @@ class Plan extends RefCounted:
 					# plates, the layers cross the joints. (A ceiling with more
 					# courses over it, as a hollow sculpt's is, keeps bricks.)
 					if bridges and j > 0 and at(cell, j - 1) < 0 and not body(cell, j + 3):
+						continue
+					# Nor at a foot off the ground with nothing under it: there
+					# the plates cross each other's joints and tie the foot
+					# together, which side by side bricks never are. A car's
+					# tail corners past its chassis, and a fighter's nose past
+					# its stands, were bricks at the foot held by nothing.
+					if bridges and j == 0 and not foot_on(cell):
 						continue
 					if _free(covered, cell, j) and _free(covered, cell, j + 1) \
 							and _free(covered, cell, j + 2):
@@ -3003,6 +3265,12 @@ class Plan extends RefCounted:
 	## again as parts one of which reaches across — and the same at the
 	## mirror. A car's nose stood on its own past the wheel arch, joined to
 	## the body by nothing over the arch's thin bridge.
+	##
+	## A way of joining is kept only if it leaves fewer pieces. Kept whether
+	## or not it did, the car's corner was laid again joined and the brick
+	## beside it left apart, then that brick joined and the corner left apart,
+	## 96 times over: its nose and its tail came back loose, and the run built
+	## the body by hand.
 	func stitch() -> void:
 		for _round: int in 96:
 			var found: Array = pieces()
@@ -3012,42 +3280,246 @@ class Plan extends RefCounted:
 			for n: int in found[0]:
 				main[n] = true
 			var joined_one: bool = false
+			# A sculpt's grid is stitched as it always was, each first way kept:
+			# its bunny's feet were joined to its body only through ways that
+			# left as many pieces on the way, and refused them it kept its feet
+			# alone. Its own check mends what is left.
+			if not bridges:
+				for piece: Array in found.slice(1):
+					if _pair_across(piece, main):
+						joined_one = true
+						break
+				if not joined_one:
+					for piece: Array in found.slice(1):
+						if _unedge(piece, main):
+							joined_one = true
+							break
+				if not joined_one:
+					break
+				continue
+			var before := Vector2i(found.size(), _bulk(found[0]))
 			for piece: Array in found.slice(1):
-				var pair: Array = _pair(piece, main)
-				if pair.is_empty():
-					continue
-				var twin: Array = _mirror_pair(pair)
-				var gone: Dictionary = {pair[0]: true, pair[1]: true}
-				var added: Array = _across(made[pair[0]], made[pair[1]])
-				if added.is_empty():
-					continue
-				if not twin.is_empty() and not gone.has(twin[0]) and not gone.has(twin[1]):
-					var mirrored: Array = _across(made[twin[0]], made[twin[1]])
-					if not mirrored.is_empty():
-						gone[twin[0]] = true
-						gone[twin[1]] = true
-						added.append_array(mirrored)
-				var kept: Array = []
-				for n: int in made.size():
-					if not gone.has(n):
-						kept.append(made[n])
-				kept.append_array(added)
-				made = kept
-				joined_one = true
-				break
+				if _join(piece, main, before):
+					joined_one = true
+					break
 			if not joined_one:
-				for piece: Array in found.slice(1):
-					if _unedge(piece, main):
-						joined_one = true
-						break
+				break
+
+	## How much of the shape a piece holds, in plates.
+	func _bulk(piece: Array) -> int:
+		var n: int = 0
+		for index: int in piece:
+			var one: Dictionary = made[index]
+			n += (one.get("_cells", []) as Array).size() * int(one.get("_h", 1))
+		return n
+
+	## [param piece] joined to the rest by the first way that leaves fewer
+	## pieces than [param before] says (x), or as many and the largest bigger
+	## (y), so a way that joins one piece and splits a smaller one off still
+	## counts, and nothing is undone and done again. [member made] as it was
+	## when no way does.
+	func _join(piece: Array, main: Dictionary, before: Vector2i) -> bool:
+		var ways: Array[Callable] = [
+			func() -> bool: return _pair_across(piece, main),
+			func() -> bool: return _unedge(piece, main),
 			# A sculpt's grid keeps its bricks, as it does over a bridge.
-			if not joined_one and bridges:
-				for piece: Array in found.slice(1):
-					if _unbrick(piece, main):
-						joined_one = true
-						break
-			if not joined_one:
+			func() -> bool: return bridges and _unbrick(piece, main),
+			func() -> bool: return bridges and _replate(piece, main, 1, 0),
+			func() -> bool: return bridges and _replate(piece, main, 2, 0),
+			func() -> bool: return bridges and _replate(piece, main, 3, 0),
+			# And the top's tiles with them, their studs left showing for the
+			# surface pass to tile: a nose lower than the body behind it meets
+			# it only in the plate of its own top, and a tile there joins
+			# nothing.
+			func() -> bool: return bridges and _replate(piece, main, 1, 1),
+			func() -> bool: return bridges and _replate(piece, main, 2, 1),
+			func() -> bool: return bridges and _replate(piece, main, 3, 1),
+			# And last the wedges, laid again square: a fighter's nose tapered
+			# in wedge plates that all began at the same stud, plate over
+			# plate, and met the body in a joint nothing crossed.
+			func() -> bool: return bridges and _replate(piece, main, 2, 2),
+			func() -> bool: return bridges and _replate(piece, main, 3, 2)]
+		var was: Array = made.duplicate()
+		for way: Callable in ways:
+			if bool(way.call()):
+				var after: Array = pieces()
+				if after.size() < before.x or after.size() == before.x and _bulk(after[0]) > before.y:
+					return true
+			made = was.duplicate()
+		return false
+
+	## A plate or brick of [param piece] and one of the rest side by side, laid
+	## again as parts one of which reaches across, and the same at the mirror.
+	## Whether it was.
+	func _pair_across(piece: Array, main: Dictionary) -> bool:
+		var pair: Array = _pair(piece, main)
+		if pair.is_empty():
+			return false
+		var twin: Array = _mirror_pair(pair)
+		var gone: Dictionary = {pair[0]: true, pair[1]: true}
+		var added: Array = _across(made[pair[0]], made[pair[1]])
+		if added.is_empty():
+			return false
+		if not twin.is_empty() and not gone.has(twin[0]) and not gone.has(twin[1]):
+			var mirrored: Array = _across(made[twin[0]], made[twin[1]])
+			if not mirrored.is_empty():
+				gone[twin[0]] = true
+				gone[twin[1]] = true
+				added.append_array(mirrored)
+		var kept: Array = []
+		for n: int in made.size():
+			if not gone.has(n):
+				kept.append(made[n])
+		kept.append_array(added)
+		made = kept
+		return true
+
+	## The plain plates and bricks of [param piece], and every plain plate and
+	## brick beside them out to [param reach] parts away, laid again as
+	## plates, plate by plate, each plate turned across the one under it — and
+	## the same at the mirror. Two parts side by side are joined only by what
+	## is over or under both; at a body's foot, under a slope, there is
+	## nothing, and a nose's corner, a column of 1 x 1s under a cheese slope
+	## beside the bricks of the body, was joined to nothing. As plates, the
+	## courses cross each other's joints there. Whether any were laid again.
+	func _replate(piece: Array, main: Dictionary, reach: int, kinds: int) -> bool:
+		var by_cell: Dictionary = {}    ## Vector3i(x, plate, z) -> index
+		for n: int in made.size():
+			var one: Dictionary = made[n]
+			if not _replatable(one, kinds):
+				continue
+			var y: int = int(round(float(one["y"])))
+			for cell: Vector2i in one["_cells"]:
+				for h: int in int(one["_h"]):
+					by_cell[Vector3i(cell.x, y + h, cell.y)] = n
+		var region: Dictionary = {}
+		for n: int in piece:
+			if _replatable(made[n], kinds):
+				region[n] = true
+		if region.is_empty():
+			return false
+		for _ring: int in reach:
+			var more: Dictionary = {}
+			for n: Variant in region:
+				var one: Dictionary = made[n]
+				var y: int = int(round(float(one["y"])))
+				for cell: Vector2i in one["_cells"]:
+					for h: int in int(one["_h"]):
+						for step: Vector2i in Shapes.OUT:
+							var m: int = int(by_cell.get(Vector3i(cell.x + step.x, y + h,
+								cell.y + step.y), -1))
+							if m >= 0 and not region.has(m):
+								more[m] = true
+			if more.is_empty():
 				break
+			region.merge(more)
+		var reaches_main: bool = false
+		for n: Variant in region:
+			reaches_main = reaches_main or main.has(n)
+		if not reaches_main:
+			return false
+		if not axis.is_empty():
+			for n: Variant in region.keys():
+				var twin: int = _mirror_part(made[n])
+				if twin >= 0:
+					region[twin] = true
+		var levels: Dictionary = {}    ## plate -> {cell: colour}
+		for n: Variant in region:
+			var one: Dictionary = made[n]
+			var y: int = int(round(float(one["y"])))
+			for h: int in int(one["_h"]):
+				if not levels.has(y + h):
+					levels[y + h] = {}
+				for cell: Vector2i in one["_cells"]:
+					(levels[y + h] as Dictionary)[cell] = int(one["color"])
+		var kept: Array = []
+		for n: int in made.size():
+			if not region.has(n):
+				kept.append(made[n])
+		var plates: Array = levels.keys()
+		plates.sort()
+		var plane: String = axis
+		for j: Variant in plates:
+			var cells: Dictionary = levels[j]
+			# Inside, where nothing shows, in the plate's commonest colour: two
+			# solids of two colours meeting face to face (a smokebox on its
+			# boiler) were laid each in its own parts, and nothing crossed.
+			var counts: Dictionary = {}
+			for cell: Variant in cells:
+				counts[cells[cell]] = int(counts.get(cells[cell], 0)) + 1
+			if counts.size() > 1:
+				var most: int = -1
+				for c: Variant in counts:
+					if most < 0 or int(counts[c]) > int(counts[most]) \
+							or int(counts[c]) == int(counts[most]) and int(c) < most:
+						most = int(c)
+				for cell: Variant in cells.keys():
+					if _hidden(cell, int(j)):
+						cells[cell] = most
+			# Laid as a mirror only where the plate's studs are their own
+			# mirror; elsewhere as they are.
+			if not plane.is_empty():
+				var same: bool = true
+				for cell: Variant in cells:
+					same = same and int(cells.get(reflect(cell), -1)) == int(cells[cell])
+				axis = plane if same else ""
+			for one: Dictionary in _layer(cells, int(j), Shapes.CORE_PLATES, -1):
+				kept.append(_annotated(one, Shapes.CORE_PLATES, 1, true))
+			axis = plane
+		made = kept
+		return true
+
+	## Whether the plate at [param cell], [param j] is the shape's on every
+	## side, over and under: inside, where its colour never shows.
+	func _hidden(cell: Vector2i, j: int) -> bool:
+		if at(cell, j - 1) < 0 or at(cell, j + 1) < 0:
+			return false
+		for step: Vector2i in Shapes.OUT:
+			if at(cell + step, j) < 0:
+				return false
+		return true
+
+	## A part that can be laid again as plates: a plain plate or brick of the
+	## core; with [param kinds] 1 a tile of the top as well, and with 2 a wedge
+	## plate or brick, square over its studs. Never a slope, a round part or a
+	## brick with a stud on a side.
+	func _replatable(one: Dictionary, kinds: int = 0) -> bool:
+		if kinds >= 2 and bool(one.get("_edge", false)) and not bool(one.get("_fixed", false)) \
+				and not (one["_cells"] as Array).is_empty():
+			return int(one["_h"]) in [1, 3]
+		var tops: bool = kinds >= 1
+		if one.has("panel") or one.has("_holds") or not _plain(one):
+			return false
+		var part: String = str(one["part"])
+		var tiles: Array = Shapes.CORE_PLATES if int(one["_h"]) == 1 else Shapes.CORE_BRICKS
+		if (one["_studs"] as Array).is_empty():
+			if not tops or int(one["_h"]) != 1:
+				return false
+			tiles = Shapes.TOPS
+		for entry: Array in tiles:
+			if str(entry[2]) == part:
+				return int(one["_h"]) in [1, 3]
+		return false
+
+	## The index of the part that is [param one]'s mirror, or -1.
+	func _mirror_part(one: Dictionary) -> int:
+		var want: Dictionary = {}
+		for cell: Vector2i in one["_cells"]:
+			want[reflect(cell)] = true
+		# A wedge's mirror is its other hand.
+		var edge: bool = bool(one.get("_edge", false))
+		for m: int in made.size():
+			var two: Dictionary = made[m]
+			if (two.get("part") != one.get("part") and not (edge and bool(two.get("_edge", false)))) \
+					or float(two["y"]) != float(one["y"]) \
+					or not two.has("_cells") or (two["_cells"] as Array).size() != want.size():
+				continue
+			var same: bool = true
+			for cell: Vector2i in two["_cells"]:
+				same = same and want.has(cell)
+			if same:
+				return m
+		return -1
 
 	## An edge part where [param piece] meets the rest, side by side at the
 	## same height, laid again as the plates or bricks of its studs, and its
@@ -3211,7 +3683,8 @@ class Plan extends RefCounted:
 	## A plate, a brick or a top tile: what can be laid again over the same
 	## studs as other plates, bricks or tiles. Not a slope or a wedge.
 	func _plain(one: Dictionary) -> bool:
-		if not one.has("_cells") or (one["_cells"] as Array).is_empty() or bool(one.get("_slope", false)):
+		if not one.has("_cells") or (one["_cells"] as Array).is_empty() or bool(one.get("_slope", false)) \
+				or bool(one.get("_fixed", false)):
 			return false
 		var studs: int = (one["_studs"] as Array).size()
 		return studs == (one["_cells"] as Array).size() or (studs == 0 and bool(one.get("_top", false)))
@@ -3592,6 +4065,7 @@ class Plan extends RefCounted:
 			if axis.is_empty():
 				out.append_array(_tile(wanted, j, int(c), tiles, laid, course))
 				continue
+			var got: Array = []
 			var middle: Vector2i = spine(j)
 			var strip: Dictionary = {}
 			var half: Dictionary = {}
@@ -3609,7 +4083,27 @@ class Plan extends RefCounted:
 				if (int(one[1]) if axis == "z" else int(one[0])) == width:
 					spanning.append(one)
 			if not strip.is_empty():
-				out.append_array(_tile(strip, j, int(c), spanning, laid, course))
+				got.append_array(_tile(strip, j, int(c), spanning, laid, course))
+				# Too narrow for its own width, the strip of the plate over or
+				# under: a fighter's nose two studs across, on the plates whose
+				# strip is four, was 1 x 1s a stud at a time, tied along it by
+				# nothing, and came apart row by row.
+				var other: Vector2i = spine(j + 1)
+				if other != middle and not strip.is_empty():
+					var inner: Dictionary = {}
+					for key: Variant in strip:
+						if across(key) >= other.x and across(key) <= other.y:
+							inner[key] = true
+					var narrow: Array = []
+					for tile: Variant in tiles:
+						var one: Array = tile
+						if (int(one[1]) if axis == "z" else int(one[0])) == other.y - other.x + 1:
+							narrow.append(one)
+					if not inner.is_empty():
+						got.append_array(_tile(_ordered(inner, j), j, int(c), narrow, laid, course))
+						for key: Variant in inner:
+							if laid.has(key):
+								strip.erase(key)
 				# What the strip could not take, one stud at a time, in pairs.
 				for key: Variant in strip.keys():
 					var cell: Vector2i = key
@@ -3617,16 +4111,51 @@ class Plan extends RefCounted:
 						continue
 					var single: Dictionary = {cell: true}
 					var side: Array = _tile(single, j, int(c), tiles, laid, course)
-					out.append_array(side)
+					got.append_array(side)
 					if reflect(cell) != cell:
 						for one: Dictionary in side:
-							out.append(_reflected(one, tiles))
+							got.append(_reflected(one, tiles))
 					strip.erase(cell)
 					strip.erase(reflect(cell))
 			var left: Array = _tile(_ordered(half, j), j, int(c), tiles, laid, course)
-			out.append_array(left)
+			got.append_array(left)
 			for one: Dictionary in left:
-				out.append(_reflected(one, tiles))
+				got.append(_reflected(one, tiles))
+			# A reflection is laid only where its studs are free: a side's
+			# studs turned out on one flank and not the other left the plate
+			# lopsided, and a reflected plate stood in a side-stud brick.
+			var free: Dictionary = by_colour[c]
+			var claimed: Dictionary = {}
+			for one: Dictionary in got:
+				var studs: Array[Vector2i] = _studs_of(one, tiles)
+				var fits: bool = true
+				for cell: Vector2i in studs:
+					fits = fits and free.has(cell) and not claimed.has(cell)
+				if not fits:
+					continue
+				for cell: Vector2i in studs:
+					claimed[cell] = true
+				out.append(one)
+			var rest: Dictionary = {}
+			for cell: Variant in free:
+				if not claimed.has(cell):
+					rest[cell] = true
+			if not rest.is_empty():
+				out.append_array(_tile(_ordered(rest, j), j, int(c), tiles, {}, course))
+		return out
+
+	## The studs a core part laid by [method _tile] covers.
+	func _studs_of(one: Dictionary, tiles: Array) -> Array[Vector2i]:
+		var size := Vector2i(1, 1)
+		for tile: Variant in tiles:
+			var entry: Array = tile
+			if str(entry[2]) == str(one["part"]) and int(entry[3]) == int(one["rot"]):
+				size = Vector2i(int(entry[0]), int(entry[1]))
+				break
+		var out: Array[Vector2i] = []
+		for dx: int in size.x:
+			for dz: int in size.y:
+				out.append(Vector2i(int(one["x"]) + dx, int(one["z"]) + dz))
 		return out
 
 	## A layer's studs laid in parts: bricks in a bond as a wall is

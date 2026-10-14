@@ -9,7 +9,10 @@
 // to /oauth/authorize. That page (web/authorize.html) signs them in with
 // the same email code as the app, or with the session the app already
 // keeps in that browser, and asks whether Claude may build in Brickworks
-// as them. Yes sends Claude back a code; Claude trades it here for a
+// as them — once: while that account is connected to that same client, a
+// connection made again (claude.ai reconnecting, another of Claude's apps)
+// is answered at once, until Disconnect in the app ends it (remembered,
+// 2026-10-14). Yes sends Claude back a code; Claude trades it here for a
 // token that names their account, and the relay (api/mcp.js) sends each
 // call it makes to that account's open tab, on whichever device.
 //
@@ -19,11 +22,14 @@
 //   POST /oauth/register     dynamic client registration    ?op=register
 //   GET  /oauth/authorize    the page, web/authorize.html, which asks:
 //   GET  /api/oauth?op=check      is this request one to show?
+//   POST /api/oauth?op=remembered has the signed-in person said yes to this
+//                                 client before? a code at once if so
 //   POST /api/oauth?op=approve    yes, as the signed-in person: a code
 //   POST /api/oauth?op=deny       no
 //   POST /oauth/token        a code or a refresh token for tokens  ?op=token
 //   POST /oauth/revoke       RFC 7009                       ?op=revoke
-//   GET  /api/oauth?op=connections   the signed-in account's connections
+//   GET  /api/oauth?op=connections   the signed-in account's connections,
+//                                    and whether it had Claude connected before
 //   POST /api/oauth?op=disconnect    end one (?id=) or all of them
 //
 // How Claude identifies itself. Claude (claude.ai, the desktop and mobile
@@ -46,7 +52,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
-import { SCOPE, clientLabel, originOf, resourceOf, secret, sha256 } from "./_oauth.js";
+import {
+  CLAUDE_AI, SCOPE, clientLabel, hadClaude, originOf, rememberClaude, resourceOf, secret, sha256,
+} from "./_oauth.js";
 
 const CODE_TTL_S = 120;
 const ACCESS_TTL_S = 3600;
@@ -336,22 +344,13 @@ async function check(request, response, origin) {
   });
 }
 
-async function approve(request, response, origin) {
-  let claims;
-  try {
-    claims = await verify(bearer(request));
-  } catch (trouble) {
-    return response.status(trouble instanceof AuthError ? trouble.status : 401)
-      .json({ error: trouble.message });
-  }
-  const asked = await authorization(fields(request), origin);
-  if (asked.refuse) return response.status(400).json({ refuse: asked.refuse });
-  if (asked.back) return response.status(200).json({ redirect: asked.back });
+/// Where the person goes back to with a code for [asked], as [owner].
+async function codeFor(asked, owner, origin) {
   const code = secret("bwk");
   await db("oauth_codes", {
     method: "POST",
     body: {
-      hash: sha256(code), client_id: asked.client.client_id, owner: claims.sub,
+      hash: sha256(code), client_id: asked.client.client_id, owner,
       redirect_uri: asked.redirect, code_challenge: asked.challenge,
       resource: asked.resource, scope: asked.scope, expires_at: iso(CODE_TTL_S * 1000),
     },
@@ -359,9 +358,40 @@ async function approve(request, response, origin) {
   await db(`oauth_clients?client_id=eq.${encodeURIComponent(asked.client.client_id)}`, {
     method: "PATCH", body: { used_at: iso() },
   });
-  return response.status(200).json({
-    redirect: withQuery(asked.redirect, { code, state: asked.state, iss: origin }),
-  });
+  return withQuery(asked.redirect, { code, state: asked.state, iss: origin });
+}
+
+async function approve(request, response, origin) {
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  const asked = await authorization(fields(request), origin);
+  if (asked.refuse) return response.status(400).json({ refuse: asked.refuse });
+  if (asked.back) return response.status(200).json({ redirect: asked.back });
+  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin) });
+}
+
+/// Asked by the page before it asks the person: has this account allowed
+/// this client already? If it still holds a connection to it — the same
+/// client, answered at the same return address, for this server — the code
+/// is given at once and nothing is asked, as an OAuth server does once
+/// someone has said yes. Otherwise { ask: true }. The client is the one
+/// named by its id (the address of its published document, or the id
+/// registration gave it), never another that calls itself by the same
+/// name; a loopback client is remembered at the port it was allowed on.
+/// Disconnect, a revocation, and a refresh token used by somebody else
+/// each end the connection, and the next one asks again.
+async function remembered(request, response, origin) {
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  const asked = await authorization(fields(request), origin);
+  // A request the page would not ask about is the page's to explain.
+  if (!asked.ok) return response.status(200).json({ ask: true });
+  const allowed = await db(`oauth_grants?owner=eq.${claims.sub}`
+    + `&client_id=eq.${encodeURIComponent(asked.client.client_id)}`
+    + `&redirect_uri=eq.${encodeURIComponent(asked.redirect)}`
+    + `&resource=eq.${encodeURIComponent(asked.resource)}&select=id&limit=1`);
+  if (!allowed || !allowed.length) return response.status(200).json({ ask: true });
+  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin) });
 }
 
 async function deny(request, response, origin) {
@@ -491,6 +521,7 @@ async function token(request, response, origin) {
     });
     const tokens = await issue(grant);
     await tellTabs(row.owner, clientLabel(grant)).catch(() => {});
+    if (client.client_id === CLAUDE_AI) await rememberClaude(row.owner).catch(() => {});
     if (Math.random() < 0.1) await db("rpc/oauth_sweep", { method: "POST", body: {} }).catch(() => {});
     return response.status(200).json(tokens);
   }
@@ -571,7 +602,12 @@ async function connections(request, response) {
   const claims = await signedIn(request, response);
   if (!claims) return response;
   const rows = await db(`oauth_grants?owner=eq.${claims.sub}`
-    + "&select=id,client_name,redirect_uri,client_info,created_at,used_at&order=created_at.desc") || [];
+    + "&select=id,client_id,client_name,redirect_uri,client_info,created_at,used_at&order=created_at.desc") || [];
+  // Whether Claude has a Brickworks connector for this account already,
+  // connected or not: then connecting again is Connect on that one, in
+  // Claude's own list, not adding a second (src/net/claude_connector.gd).
+  const before = rows.some((grant) => grant.client_id === CLAUDE_AI)
+    || await hadClaude(claims.sub).catch(() => false);
   return response.status(200).json({
     connections: rows.map((grant) => ({
       id: grant.id,
@@ -579,6 +615,7 @@ async function connections(request, response) {
       since: grant.created_at,
       last_used: grant.used_at,
     })),
+    before,
   });
 }
 
@@ -590,6 +627,11 @@ async function disconnect(request, response) {
   const gone = await db(`oauth_grants?owner=eq.${claims.sub}${id ? `&id=eq.${id}` : ""}`, {
     method: "DELETE", prefer: "return=representation",
   }) || [];
+  // Kept past the Disconnect, for a connection made before it was kept at
+  // connecting: the Brickworks connector is still in their Claude.
+  if (gone.some((grant) => grant.client_id === CLAUDE_AI)) {
+    await rememberClaude(claims.sub).catch(() => {});
+  }
   return response.status(200).json({ disconnected: gone.length });
 }
 
@@ -646,6 +688,7 @@ export default async function handler(request, response) {
       case "register": return await register(request, response);
       case "check": return await check(request, response, origin);
       case "approve": return await approve(request, response, origin);
+      case "remembered": return await remembered(request, response, origin);
       case "deny": return await deny(request, response, origin);
       case "token": return await token(request, response, origin);
       case "revoke": return await revoke(request, response);

@@ -6058,6 +6058,9 @@ func _floor_of(args: Dictionary) -> Dictionary:
 
 
 func _read_model(args: Dictionary) -> Model:
+	var shell_trouble: Array = []
+	var shell_said: Array = []
+	args = _with_shells(args, shell_trouble, shell_said)
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
@@ -6119,8 +6122,12 @@ func _read_model(args: Dictionary) -> Model:
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 		_pattern_advice.append_array(_round_by_panels(plain))
+		# What a shape could not join, or that one stands on nothing, with the fix.
+		_pattern_advice.append_array(Shapes.said)
 	else:
 		_pattern_trouble = []
+	_pattern_trouble.append_array(shell_trouble)
+	_pattern_advice.append_array(shell_said)
 
 	_repeat_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
@@ -7542,9 +7549,10 @@ func _lay_row_around(made: Array, section: String, lengths: Array, left: float,
 ## inside row behind the opening laid as the door, reddish brown log bricks
 ## set back a stud — in the inside row, so the opening is never a window onto
 ## an open back. Both rows are one-wide through the door's courses, and the
-## course over the arch ties them again. The seventeenth Orthanc built a
-## stair up to its tower and nothing at the top of it; Orthanc's great door
-## is up its steps.
+## course over the arch ties them again; and a jamb one stud wide is tied
+## under the arch's foot (see [method _lay_door_course]). The seventeenth
+## Orthanc built a stair up to its tower and nothing at the top of it;
+## Orthanc's great door is up its steps.
 const DOOR_ARCH := "6182"
 const DOOR_ARCH_COURSES := 2
 const DOOR_BELOW := 4
@@ -7555,17 +7563,33 @@ const DOOR_COLOUR := 70
 ## One course of a face's run through its door, whose arch's left end is at
 ## [param door]: the outside row around the opening (around the arch, where
 ## the arch is), the inside row around the door, and the door and the arch.
+##
+## The arch stands on one stud each side and hands down everything over it, so
+## each of its feet carries two studs' worth of wall. Where the face leaves the
+## jamb one stud wide, the course under each foot is a 1 x 2 laid across both
+## rows, which hands that on to both: two 1 x 1s there were a column on one
+## stud, untied to the inside row, and in the Wizard's Tower each of its
+## bricks carried 83 to 85 g where a stud holds 80.
 func _lay_door_course(made: Array, name: String, spec: Dictionary, left: float,
 		width: int, extra: int, radius: float, course: int, y: float, door: float,
 		clear: Callable) -> void:
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var colour: int = spec["colour"]
 	var arch: bool = course >= DOOR_BELOW
-	_lay_row_around(made, name, narrow, left, width + extra, door if arch else door + 1.0,
+	var tie_left: bool = course == DOOR_BELOW - 1 and absf(door - left) < 0.01
+	var tie_right: bool = course == DOOR_BELOW - 1 \
+		and absf(left + width + extra - (door + 4.0)) < 0.01
+	var from: float = door if arch else door + (0.0 if tie_left else 1.0)
+	var across: int = 4 if arch else 2 + int(tie_left) + int(tie_right)
+	_lay_row_around(made, name, narrow, left, width + extra, from,
 		y, radius - 1.0, course, colour, spec["mix_colour"], spec["mix"],
-		spec["masonry"], spec["sideways"], clear, 4 if arch else 2)
-	_lay_row_around(made, name, narrow, left, width, door + 1.0, y, radius - 2.0,
-		course + 1, colour, spec["mix_colour"], spec["mix"], 0.0, 0.0, Callable(), 2)
+		spec["masonry"], spec["sideways"], clear, across)
+	_lay_row_around(made, name, narrow, left, width, from if not arch else door + 1.0,
+		y, radius - 2.0, course + 1, colour, spec["mix_colour"], spec["mix"], 0.0, 0.0,
+		Callable(), across if not arch else 2)
+	for at: float in ([door] if tie_left else []) + ([door + 3.0] if tie_right else []):
+		made.append(_prism_brick(name, "3004", colour, at, y, radius - 2.0, 1,
+			spec["mix_colour"], spec["mix"], 0.0))
 	made.append(_prism_brick(name, DOOR_PANEL, DOOR_COLOUR, door + 1.0, y,
 		radius - 2.0, 0, -1, 0.0, 0.0))
 	if course == DOOR_BELOW:
@@ -10431,12 +10455,66 @@ func _fit_hinge(section: Section) -> void:
 		return
 
 
+## The shells a design says ({"pattern": "shell"}), laid into it as the
+## hinged sections and bricks they are, before anything is read: so a shell
+## is checked, edited and read back as any hinged section is. What each
+## came to goes in [param said], why one could not in [param trouble].
+func _with_shells(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	var shells: Array = patterns.filter(func(raw: Variant) -> bool:
+		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+			== "shell")
+	if shells.is_empty():
+		return args
+	var out: Dictionary = args.duplicate()
+	out["patterns"] = patterns.filter(func(raw: Variant) -> bool: return not shells.has(raw))
+	var sections: Array = (args.get("sections", []) as Array).duplicate() \
+		if args.get("sections") is Array else []
+	var bricks: Array = (args.get("bricks", []) as Array).duplicate() \
+		if args.get("bricks") is Array else []
+	var hinge: Dictionary = _shell_hinge()
+	if hinge.is_empty():
+		trouble.append("shell: this build cannot lay a clip hinge, which its panels hang on")
+		return out
+	for n: int in shells.size():
+		var raw: Dictionary = (shells[n] as Dictionary).duplicate()
+		if not raw.has("name") and shells.size() > 1:
+			raw["name"] = "shell %d" % (n + 1)
+		var laid: Dictionary = Shells.lay(raw, hinge, trouble)
+		if laid.is_empty():
+			continue
+		sections.append_array(laid["sections"])
+		bricks.append_array(laid["bricks"])
+		said.append(str(laid["said"]))
+	out["sections"] = sections
+	out["bricks"] = bricks
+	return out
+
+
+## The joint a shell's panels hang on, as [Shells] wants it: a clip on a
+## bar, its line read off the parts.
+func _shell_hinge() -> Dictionary:
+	if library == null or not Hinges.available(Hinges.CLIP, library):
+		return {}
+	var fit := Section.from_dict({"name": "fit", "hinge": Hinges.CLIP, "pitch": 1})
+	_fit_hinge(fit)
+	if not fit.hinge:
+		return {}
+	return {"kind": Hinges.CLIP, "pin": fit.pin_from_corner, "line": -fit.origin_from_pin}
+
+
 ## Round bodies too big for moulded parts, said as shapes of plates: a nudge
 ## to the way real sets build them. A ball asked for came back a lumpy
 ## ellipsoid of plates, the session having read of hinged panels and taken
 ## them for a dome's alone; the guide is read once, and the shape's answer
-## is read when the choice is made.
+## is read when the choice is made. And a body that curves two ways at once,
+## said as a loft, a revolve or a profile with rounded shoulders: a sports
+## car asked for "a smoothly curved body" was a loft of plates and curved
+## slopes stepping along its length, and the next an extruded profile, the
+## guide's skins and panels never reached for either time.
 const ROUND_PANELS_FROM := 12.0
+## A loft, revolve or extruded profile this long, rounded, curves both ways.
+const TWO_WAYS_FROM := 10.0
 
 
 static func _round_by_panels(patterns: Array) -> Array:
@@ -10448,13 +10526,33 @@ static func _round_by_panels(patterns: Array) -> Array:
 			var box: AABB = solid.get("box", AABB())
 			var across: float = maxf(box.size.x, box.size.z)
 			if solid["kind"] in ["dome", "ellipsoid"] and across >= ROUND_PANELS_FROM:
+				var panels: String = ("A round body that size reads smooth as hinged "
+					+ "panels, which one pattern lays closed: {\"pattern\": \"shell\", "
+					+ "\"kind\": \"dome\" or \"ball\", \"across\": %d, \"at\": {x, y, z}, "
+					% roundi(across) + "\"color\"} (read_guide \"round\"). ")
+				if across > Shells.LARGEST + 1.0:
+					panels = ("One shell of hinged panels is built up to %d studs across "
+						% roundi(Shells.LARGEST) + "so far; this one, skin. ")
+				elif across < Shells.SMALLEST_DOME:
+					panels = ("A dome that size reads smooth as four quarter domes "
+						+ "(show_technique \"smooth dome\", 16 across) or a dish. ")
 				said.append(("The %s %s studs across is laid in plates, and a curve of "
 					% [solid["kind"], Placement._num(snappedf(across, 0.5))])
-					+ "plates is a staircase however fine. A round body that size reads "
-					+ "smooth as panels on hinges, tipped to the curve, or skins on side "
-					+ "studs — above a ring and hung below it alike, for a ball (read_guide "
-					+ "\"round\", show_technique \"hinged panels\") — with the shape kept "
-					+ "inside as its core if you like.")
+					+ "plates is a staircase however fine. " + panels
+					+ "An egg or a body lying on its side reads smooth as skins on side "
+					+ "studs, with the shape kept inside as its core.")
+				return said
+			if solid["kind"] in ["loft", "revolve", "extrude"] \
+					and bool(solid.get("round", false)) and across >= TWO_WAYS_FROM \
+					and minf(box.size.x, box.size.z) >= 4.0:
+				said.append(("The %s %s studs long is rounded across as well as along it, "
+					% [solid["kind"], Placement._num(snappedf(across, 0.5))])
+					+ "and a body that curves two ways at once steps in plates however "
+					+ "fine. Real sets skin it: curved slopes built flat in a section and "
+					+ "stood out on bricks with side studs along its flanks (sideways "
+					+ "skins), wedge plates on its plan's diagonals, panels on hinges "
+					+ "where it is domed — over this shape kept as its core (read_guide "
+					+ "\"round\", show_technique \"sideways skins\").")
 				return said
 	return said
 
@@ -13624,7 +13722,9 @@ func _check_support(
 	var gives: Dictionary = {}       ## index -> indices it holds up
 	var clutched: Dictionary = {}    ## index -> true, held by some stud
 	var studs_in: Dictionary = {}    ## index -> [where, way] of studs in it
-	for pair: Array in _studs_reaching_in(model, cells_of, lattice):
+	var reaching: Array = _studs_reaching_in(model, cells_of, lattice)
+	_note_turned_studs(model, reaching, issues)
+	for pair: Array in reaching:
 		var owner: int = pair[0]
 		var into: int = pair[1]
 		if into >= model.placements.size():
@@ -13756,6 +13856,94 @@ func _check_support(
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
 				clutched.has(index), issues, studs_in.get(index, []))
+
+
+## How near a socket a stud from a part turned off the square has to land
+## to be in it, in studs: a cell. Turned about one stud, every other stud
+## between two parts lands a fraction of a stud from where it would grip,
+## and the slack the square case allows (a third of a stud) passed a 1 x 2
+## turned ten degrees on two studs.
+const TURNED_GRIP := 0.1
+
+
+## Studs into a part turned off the square about the upright, from one that
+## is not turned with it, landing anywhere but in a socket. Turning about
+## the upright was let through as a part on one stud swivels, and so it
+## does; but a 2 x 4 turned thirty degrees on a plate stands on studs that
+## meet its tubes and walls, and it was called buildable. What grips is one
+## stud in one socket with nothing else under it — a 1 x 1 round plate, a
+## jumper's centre stud, a turntable.
+##
+## Asked of the turned part's underside only. A square part on a turned
+## one's studs is the same plastic, but the prism pattern's cluster ties its
+## piers' walls, each at its own angle, with a summit of square plates laid
+## across their tops, and every Orthanc built with it would be refused. The
+## same pattern stands its turned walls on square studs too — a storey on
+## the ledge below, a horn on the summit, a tower on its plinth — and 23 of
+## patterns_probe's towers were refused for it: its own sections ("prism
+## ...") are let through until their footings are built another way (on
+## tiles or jumpers), which is that pattern's to do.
+func _note_turned_studs(model: Model, studs: Array, issues: Dictionary) -> void:
+	var frames: Dictionary = {}     ## section -> its basis in the world
+	var off: Dictionary = {}        ## Vector2i(owner, into) -> [count, degrees]
+	for one: Array in studs:
+		var owner: int = one[0]
+		var into: int = one[1]
+		if into >= model.placements.size() or owner >= model.placements.size():
+			continue
+		var below: Placement = model.placements[owner]
+		var above: Placement = model.placements[into]
+		if below.section == above.section or not _underside_known(above.part) \
+				or above.section.begins_with("prism ") or _swivels(above.part):
+			continue
+		var turned: Basis = _frame_of(model, above.section, frames)
+		var between: Basis = turned.inverse() * _frame_of(model, below.section, frames)
+		if BrickLattice.is_square_to_grid(between) or BrickLattice.is_square_to_grid(turned) \
+				or (between * Vector3.UP).dot(Vector3.UP) < 0.9999:
+			continue
+		var under_it: Array = _underside(model, into, [one.slice(2)])
+		var reaching: PackedVector2Array = under_it[0]
+		var takes: PackedVector2Array = under_it[2]
+		for stud: Vector2 in reaching:
+			var nearest: float = INF
+			for take: Vector2 in takes:
+				nearest = minf(nearest, stud.distance_to(take))
+			if nearest <= TURNED_GRIP or nearest >= HALF_OFF:
+				continue
+			var key := Vector2i(owner, into)
+			if not off.has(key):
+				off[key] = [0, Section.angles_of(between).x]
+			off[key][0] = int(off[key][0]) + 1
+	for key: Vector2i in off:
+		var below: Placement = model.placements[key.x]
+		var above: Placement = model.placements[key.y]
+		_note(issues, "off its studs",
+			"brick %d (%s at %s) sits on the studs of brick %d (%s at %s), turned %s degrees "
+			% [key.y, above.part, above.where(), key.x, below.part, below.where(),
+				Placement._num(snappedf(absf(float(off[key][1])), 0.1))]
+			+ "from it about the upright, so %d of the studs between them " % off[key][0]
+			+ "land between its sockets, against its tubes and walls, and grip "
+			+ "nothing. Turned off the square, a part grips by one stud with nothing "
+			+ "else under it: stand it on a 1 x 1 round plate, a jumper's centre "
+			+ "stud or a turntable, or turn it square.")
+
+
+## Whether [param part] turns on a shaft or in a bore of its own, as a
+## turntable's top does on its base: held by that, the studs its skirt
+## stands among beside the base are not what holds it. The corner on a
+## turntable, stood on a floor, was refused for them.
+func _swivels(part: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(part) if library != null else null
+	return info != null and (info.has_connector("shaft") or info.has_connector("bore"))
+
+
+## A section's turn in the world, the model's own for "", kept in [param
+## frames] once worked out.
+static func _frame_of(model: Model, name: String, frames: Dictionary) -> Basis:
+	if not frames.has(name):
+		var section: Section = model.sections.get(name) if not name.is_empty() else null
+		frames[name] = section.placed().basis if section != null else Basis.IDENTITY
+	return frames[name]
 
 
 ## Whether a part stands on the ground by its drawn shape, within a cell of
@@ -15229,57 +15417,31 @@ brackets 99780 and 99207), and on each side a section turned to face out \
 side's width, curved slopes (15068, 93606, 11477, 61678) falling away to \
 its ends, tiles between. Four skins round a square core read round. The \
 BB-8 sets and the Saturn V are built so.
-  Hinged panels, for a dome or a sphere bigger than a dish: the surface \
-cut into small flat panels, each a plate with tiles on it on a hinge, \
-tipped to the curve, no two at the same angle. 10143, the Death Star II, \
-is sixteen shell segments each turned 22.5 degrees from the last, \
-carrying panels on click hinges. Said as one strip from the equator up, \
-repeated round the centre:
-    1. Choose K bands, equator to top, and a panel length L studs, hinge \
-line to hinge line: at least 5, since each panel's own top half and the \
-next one's base both sit under it. Each band spans 90/K degrees, and the \
-lines lie on a circle of radius r = L / (2 sin(45/K)) studs: 4 bands of \
-L = 5 is 12.8, about 27 studs across over the panels.
-    2. A ring for the equator: plates in two crossed layers out to r + 4 \
-studs from the centre, its top at y = 2 — a whole disc, for the crown's \
-column to stand on, but for a stud's clearance round each hinge's line \
-beside it: a clip's round reaches past the plates it joins.
-    3. Band 1: a hinged section standing on the ring at the far side from \
-the centre, on whole studs, its nose to the centre (yaw 180 for one on the \
-+z side), pitch 90 - 45/K: nearly upright, its studs facing out.
-    4. Each band above: a hinged section within the one below, its base \
-at that one's far end ({HINGE NEXT}), pitch -90/K — folding in by a \
-band's angle.
-    5. In each band's section: plates 1 x (L - 1) along the panel from \
-z = 0, side by side, as many as it is wide, centred on the hinge's x 0..1 \
-(x from -1 for 3, -2 for 5); the one over the hinge runs from the top half \
-under its start to the next base under its end. Tiles across them, two \
-studs deep, split one way and then the other row by row, so they tie the \
-plates together. Laid in short pieces end to end, a panel only rests on \
-itself, and hung below a ring it falls apart.
-    6. Strips side by side leave a gap that widens as they climb, and \
-whatever is inside shows through it: a dome built so read as ribs over a \
-dark core. So lay two strips that take turns round it, as scales lap: the \
-second ("over 1") turned 360/N further round than the first, its panels \
-standing on a spacer — 1 x (L - 1) plates four high over its hinge halves, \
-x 0..1 — and wider, so they lap over the edges of the strips either side. \
-For N = 12 of 4 bands of L = 5: the first's panels 5, 5, 3 wide, the \
-second's 9, 7, 5; the top band left for the crown.
-    7. repeat_section for each, {from: "band 1", times: N/2 - 1, around: \
-{x, z} of the centre, yaw: 720 / N}, and the same from "over 1": \
-everything within each goes round with it, each copy's base on the studs \
-nearest where the turn carries it.
-    8. The crown: a dish just over the top band (50990b, 10 x 10, for r = \
-12.8) on a column of 2 x 2 round bricks from the ring.
-    9. A ball is the same strips hung below the ring as well, two more \
-strips repeated as these are: each one's base under the ring, held by its \
-studs (y one plate below the ring's foot), nose out (yaw 0 for one on the \
-+z side), pitch -(90 + 45/K), each band below within the one above at \
-pitch -90/K — the studs face out again. The ring's lower layer keeps a \
-stud clear of those joints, and the ring stands on a column of round \
-bricks from a plate on the ground, up through the opening the lower half \
-leaves — 36 plates up for r = 12.8.
-show_technique("hinged panels") is a small one, built and checked.
+  Hinged panels, for a dome or a ball bigger than a dish: the surface \
+cut into flat panels, each plates with tiles on them on a hinge, tipped \
+to the curve, no two at the same angle. 10143, the Death Star II, is \
+sixteen shell segments carrying panels on click hinges. Say it as one \
+pattern and the app lays it closed:
+    {"pattern": "shell", "kind": "dome" or "ball", "across": studs over \
+its panels, 20 to 32 (a ball 24 to 32), "at": {x, y, z} the middle of where \
+it stands, "color": the panels, "frame_color": its ring and hinges}
+Twelve strips of panels on clip hinges stand round a ring, each panel \
+hinged at the far end of the one below ({HINGE NEXT}) and folded in by a \
+band's angle. Each band's panels are sized to the round they are on: the \
+strips take turns, the low ones a little narrower than their share, the \
+high ones two plates up and wide enough to lap both their neighbours' \
+edges; wedge plates in left and right pairs taper each panel toward the \
+pole; each band's last row stands a plate higher, its tiles reaching two \
+studs over the band above, which folds in under them. Where the strips \
+would crowd near the top, discs of plates stepping in as the sphere does, \
+under a dish, are the crown; a course of bricks round the ring closes the \
+foot. A ball hangs the same strips under the ring, a course round its \
+middle, and stands on a column. Every band is a section named for its strip and band \
+("shell 3.2"), so an edit can recolour or turn one. Built by hand instead \
+— a partial dome, a shell that is not round — keep what closes it: no \
+panel wider than its share of the round at either end, the next strip's \
+over its edges, a lip over each seam. show_technique("hinged panels") is \
+one strip, built and checked.
 
 THE RULES YOUR DESIGN MUST SATISFY
 1. Nothing may overlap. Two parts cannot share space.
@@ -15490,7 +15652,10 @@ alongside the bricks you write by hand:
            ground under it, a cabin lofted on it, and at x 4 and 16 an \
            axle each — wheels and tyres, a Technic axle through Technic \
            bricks, the body cut clear of each wheel's box and standing on \
-           the bricks — so it is one piece on its wheels (269 parts). \
+           the bricks, and a chassis of plates under them from nose to \
+           tail holding the nose and tail — so it is one piece on its \
+           wheels. If a shape cannot hold a part of itself, or stands on \
+           nothing, its reply says where and what to change. \
            Never raise a shape over nothing to make room for wheels you \
            add later: it floats, and a round arch cut leaves a tyre's \
            corners in the body. It is \
@@ -15850,13 +16015,19 @@ two 61252 clips and its top handle in a 61252 clip on a 2 x 2 round \
 plate inside the crown, a 2 x 2 round tile on those clips closing it — \
 show_technique "smooth dome". A handle is a bar: \
 attachment_points lists it, and a quarter goes on its clips by axis and \
-joint at the clips' line.
+joint at the clips' line. A dome or a ball of any other size up to 32 \
+across: one shell of hinged panels (read_guide "round").
   A body that is not a box — a car's body, a hull, a fuselage, a \
 creature's body or head: the shape pattern, said as its solids (a loft \
 through sections, a profile extruded, a revolve, ellipsoids), which \
 lays its slopes, curved slopes, wedges and tiles for you, a round \
 section in round parts, and a side that curves up and down turned out \
 on side studs, so its outside is smooth parts and not a staircase. \
+Where a body curves two ways at once — a sports car's wings and roof, a \
+creature's back and flanks — its plates step however fine: skin it as \
+real sets do, curved slopes built flat in sections stood out on side \
+studs over the shape's core (sideways skins), panels on hinges where it \
+is a dome (read_guide "round"). \
 Shapes stack: a cabin said as a shape on a body keeps the body's studs \
 under it. When a shape comes back in pieces or floating, the check \
 names the parts: fix what it stands on or the cut that splits it, and \
@@ -18154,7 +18325,7 @@ func _tools() -> Array:
 		"properties": {
 			"pattern": {"type": "string",
 				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
-					"round", "shape"],
+					"round", "shape", "shell"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -18196,7 +18367,16 @@ func _tools() -> Array:
 					+ "curves up and down laid on its side on side studs, "
 					+ "tiles on top, one half and its mirror; a car's body, "
 					+ "a hull, a fuselage, an animal's body. Another shape "
-					+ "standing on it keeps its studs there."},
+					+ "standing on it keeps its studs there. shell: a dome or "
+					+ "a ball bigger than a dish, in one object — twelve "
+					+ "strips of flat panels on clip hinges round a ring, "
+					+ "each band's panels sized to its round, the strips "
+					+ "taking turns low and high so the high ones lap the "
+					+ "low ones' edges, tapered with wedge plates, each band "
+					+ "lapping the one above, under a dish; a ball hangs the "
+					+ "same strips under the ring on a stand. Its bands are "
+					+ "sections (\"shell 3.2\": strip 3, band 2) an edit "
+					+ "can turn or repaint."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -18208,7 +18388,12 @@ func _tools() -> Array:
 			"at": {"description":
 				"mirror: the line to reflect about, in studs. fill, round: "
 				+ "where the footprint's low corner sits, as {x, y, z} (a "
-				+ "round lying along x or z: the low end of it, on the ground)."},
+				+ "round lying along x or z: the low end of it, on the ground). "
+				+ "shell: the middle of where it stands, {x, y, z}."},
+			"kind": {"type": "string", "enum": ["dome", "ball"], "description":
+				"shell: a dome on its ring, or a ball on a stand"},
+			"frame_color": {"type": "integer", "description":
+				"shell: its ring, hinges and column (72 unless said)"},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
 			"solids": {"type": "array", "items": {"type": "object"}, "description":
@@ -18224,8 +18409,9 @@ func _tools() -> Array:
 				"shape: a car on its own wheels — studs along x of each axle's middle, "
 				+ "under a body laid along x 6, 8, 10 or 12 studs across. Each axle is "
 				+ "a wheel and tyre each side on a Technic axle through Technic bricks, "
-				+ "the body cut clear of each wheel's box and standing on the bricks "
-				+ "(its underside 5 plates up or lower over them), so the car is one "
+				+ "on a chassis of plates under them from nose to tail; the body cut "
+				+ "clear of each wheel's box stands on the bricks (its underside 5 "
+				+ "plates up or lower over them) and the chassis, so the car is one "
 				+ "piece on its wheels. wheel_color is the rims' colour."},
 			"wheel_color": {"type": "integer", "description": "shape: the rims' colour"},
 			"loft": {"type": "object", "description":
@@ -18274,10 +18460,12 @@ func _tools() -> Array:
 			"panels": {"type": "boolean", "description":
 				"shape: its straight sides as tiles on bricks with side studs every "
 				+ "other course (true, the default), or plain bricks (false)."},
-			"across": {"type": "number", "description": "fill, rock: studs in x"},
+			"across": {"type": "number", "description":
+				"fill, rock: studs in x; shell: studs across over its panels, 20 to 32 (a "
+				+ "ball 24 to 32)"},
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":
-				"fill, rock: the colour (rock: 72 if not said)"},
+				"fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71)"},
 			"height": {"type": "number", "description":
 				"rock: how tall, in plates"},
 			"length": {"type": "number", "description":

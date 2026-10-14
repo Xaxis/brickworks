@@ -1093,6 +1093,14 @@
       "tests": []
     },
     {
+      "id": "lib:shells of hinged panels",
+      "kind": "lib",
+      "entry": "src/ai/shells.gd",
+      "reach": "godot --headless --path . --script src/dev/hinged_panels_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:sideways building",
       "kind": "lib",
       "entry": "src/assembly/lattice.gd",
