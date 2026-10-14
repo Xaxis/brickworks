@@ -40,7 +40,8 @@ var _gallery: GalleryTool
 ## a prefix ending in "*", -> the tool.
 const COMMANDS: Dictionary = {
 	"new": "clear_model", "clear": "clear_model", "open": "open_model",
-	"save": "save_model", "save_as": "save_model",
+	"save": "save_model", "save_as": "save_model", "versions": "open_model",
+	"export_all": "export_model",
 	"export_ldraw": "export_model", "export_io": "export_model", "export_3d": "export_model",
 	"export_picture": "export_model", "export_bricklink": "export_model",
 	"export_rebrickable": "export_model", "instructions": "export_model",
@@ -141,7 +142,8 @@ is held with what it stands on; a frame held by nothing the parts record \
 is held still when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
-opens one. It cannot be undone: save_model first.
+opens one. It cannot be undone: save_model first. Each save is kept, the \
+last 20: name= with versions=true lists a model's, version=N opens one.
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" which \
 saved models it can build.
@@ -150,7 +152,7 @@ Best, up to 4K, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
-Export writes.
+Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: url= a link the app fetches, or pick=true opens the \
 window's file dialog for the person, after which brickify with neither \
@@ -310,10 +312,14 @@ func definitions() -> Array:
 			"name": "open_model",
 			"description": ("The person's saved models and the examples that come with the "
 				+ "app, with their part counts; name= opens one in place of what is on the "
-				+ "baseplate, as File, Open does. Opening cannot be undone, so it is refused "
-				+ "while the model has changes not saved, unless discard_changes=true."),
+				+ "baseplate, as File, Open does. Each save is kept as a version, the last 20, "
+				+ "as File, Versions… shows: versions=true lists name='s, newest first, and "
+				+ "version=N opens the Nth. Opening cannot be undone, so it is refused while "
+				+ "the model has changes not saved, unless discard_changes=true."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
+				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
+				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
 				"discard_changes": {"type": "boolean"},
 			}},
 		},
@@ -355,12 +361,13 @@ func definitions() -> Array:
 				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
 				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
 				+ "list .csv), or instructions (the building instructions as a booklet to "
-				+ "print). studio, picture and instructions are jobs: the answer is a job "
-				+ "number at once, and job gives the result."),
+				+ "print); all_models is every model the person saved, as LDraw in one .zip "
+				+ "(File, Export, All my models). studio, picture and instructions are jobs: "
+				+ "the answer is a job number at once, and job gives the result."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
-					"stl", "picture", "bricklink", "rebrickable", "instructions"]},
+					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models"]},
 			}},
 		},
 		{
@@ -922,8 +929,14 @@ func _open(input: Dictionary) -> String:
 		for list: Array in [["Saved", saved], ["Examples", examples]]:
 			var rows := PackedStringArray()
 			for entry: ModelStore.Entry in list[1]:
-				rows.append("%s (%d parts)" % [entry.name, entry.bricks])
+				var saves: int = 0 if entry.example else ModelVersions.of(
+					entry.path.get_file().get_basename()).size()
+				rows.append("%s (%d parts%s)" % [entry.name, entry.bricks,
+					", %d versions" % saves if saves > 1 else ""])
 			said.append("%s: %s." % [list[0], ", ".join(rows) if not rows.is_empty() else "none"])
+		# Where the browser may clear them, the person should hear it.
+		if StorageKeep.at_risk():
+			said.append(StorageKeep.words())
 		return "\n".join(said)
 	var chosen: ModelStore.Entry = null
 	for entry: ModelStore.Entry in saved + examples:
@@ -933,11 +946,32 @@ func _open(input: Dictionary) -> String:
 			chosen = entry
 	if chosen == null:
 		return "No model called %s. open_model with no name lists them." % name
+	var kept: Array[ModelVersions.Version] = [] as Array[ModelVersions.Version] \
+		if chosen.example else ModelVersions.of(chosen.path.get_file().get_basename())
+	if bool(input.get("versions", false)):
+		if kept.is_empty():
+			return "No saves of %s are kept as versions yet: each save from now on is." % chosen.name
+		var rows := PackedStringArray(["%s's saves, newest first (version=N opens one):"
+			% chosen.name])
+		for n: int in kept.size():
+			rows.append("%d. %s" % [n + 1, kept[n].describe()])
+		return "\n".join(rows)
+	var version: int = int(input.get("version", 0))
+	if input.has("version") and (version < 1 or version > kept.size()):
+		return ("%s has %d versions: version is 1 (the newest) to %d. versions=true lists them."
+			% [chosen.name, kept.size(), kept.size()]) if not kept.is_empty() \
+			else "No saves of %s are kept as versions yet." % chosen.name
 	if store.has_unsaved_work() and not bool(input.get("discard_changes", false)):
 		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
 			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
 	if assistant != null:
 		assistant.forget_built()
+	if version >= 1:
+		var landed: int = await bar.open_version(kept[version - 1], chosen.name)
+		if landed <= 0 and store.awaited.is_empty():
+			return "Could not read that version of %s." % chosen.name
+		return ("Opened %s as saved %s: %d parts. look_at_model to see it. The person's Save "
+			+ "makes it the newest save.") % [chosen.name, kept[version - 1].when(), landed]
 	var placed: int = await bar.open_with_progress(chosen.path)
 	bar.opened.emit(placed)
 	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed]
@@ -1059,6 +1093,11 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 	var store: ModelStore = app.get("_store")
 	var exports: Exports = app.get("_exports")
 	var bar: ModelBar = app.get("_bar")
+	# Every saved model, whatever is on the baseplate.
+	if str(input.get("format", "")) == "all_models":
+		var all: String = exports.all_models()
+		return all.left(1).to_upper() + all.substr(1) + "." if not all.is_empty() \
+			else "The person has no saved models yet."
 	if world.brick_count() - store.scenery.size() <= 0:
 		return "There is nothing on the baseplate to export yet."
 	var said: String = ""
@@ -1087,7 +1126,8 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
-			return "format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable or instructions."
+			return ("format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable, "
+				+ "instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
 
 

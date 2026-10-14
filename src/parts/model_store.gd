@@ -127,6 +127,10 @@ func _init() -> void:
 func touch() -> void:
 	_dirty_at = Time.get_ticks_msec()
 	_pending = true
+	# Parts on the baseplate again: whatever empties it next has to be the
+	# person's doing for an empty model to be written over a file.
+	if world != null and not _is_empty():
+		emptied = false
 
 
 ## The model on screen is now what somebody meant it to be, whatever it
@@ -135,6 +139,27 @@ func touch() -> void:
 ## overwriting their file with a worse copy of it.
 func adopt() -> void:
 	whole = true
+	# Their own edit took the last part off.
+	if world != null and _is_empty():
+		emptied = true
+
+
+## The baseplate is empty because the person emptied it: Clear, New, or an
+## edit of theirs taking the last part off. Only then is a model of no parts
+## written over a file that has parts in it ([method _write]). Anything else
+## that leaves it empty (a model that opened with none of its parts, the
+## catalogue not arriving, the app clearing it for its own work) is not the
+## person deleting their model, and the file keeps what it had.
+var emptied: bool = false
+
+
+## The person cleared the baseplate (File, Clear the baseplate).
+func cleared_by_person() -> void:
+	emptied = true
+
+
+func _is_empty() -> bool:
+	return world.brick_count() - scenery.size() <= 0
 
 
 ## Call once a frame. Writes the working model when it has settled.
@@ -190,6 +215,21 @@ func save_as(name: String) -> bool:
 		saved.emit(name)
 		return true
 	return false
+
+
+## Write the model on the baseplate to [param path] in the person's models
+## as Save writes them (kept as a version, never empty over a model with
+## parts, the page told), with its build steps, and without making it the
+## model's name: save_model over MCP, which names a file of its own.
+func save_file(path: String, file_title: String = "Model") -> bool:
+	var was: Array = [_known_path, _known_time, _known_lines]
+	var ok: bool = _write(path, file_title, true)
+	# Still watching the model's own file for saves from elsewhere.
+	if path != saved_path(title):
+		_known_path = was[0]
+		_known_time = was[1]
+		_known_lines = was[2]
+	return ok
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -274,8 +314,9 @@ func _saved_over_elsewhere(path: String, name: String) -> bool:
 func begin(name: String) -> void:
 	var wanted: String = name.strip_edges()
 	title = UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted)
-	# Nothing in it is missing, so the autosave may keep it.
+	# Nothing in it is missing, so the autosave may keep it — empty too.
 	whole = true
+	emptied = true
 	example = false
 	# New work is not the model that was shared: publishing it must not
 	# replace that one at its link, nor say it was copied from one.
@@ -377,6 +418,16 @@ func list_saved() -> Array[Entry]:
 	return found
 
 
+## Whether any model is saved here: without reading each, as list_saved does.
+static func any_saved() -> bool:
+	if not DirAccess.dir_exists_absolute(SAVE_DIR):
+		return false
+	for file_name: String in DirAccess.get_files_at(SAVE_DIR):
+		if file_name.ends_with(".ldr"):
+			return true
+	return false
+
+
 ## The models that ship with the app, prettied up for a menu.
 func list_examples() -> Array[Entry]:
 	var found: Array[Entry] = []
@@ -428,6 +479,33 @@ func open(path: String) -> int:
 		example = path.begins_with(EXAMPLE_DIR)
 		if path.begins_with(SAVE_DIR):
 			know(path)
+	return int(result["placed"])
+
+
+## The saves of the model on the baseplate kept as versions, newest first:
+## none for a model never saved (ModelVersions).
+func versions() -> Array[ModelVersions.Version]:
+	if title == UNTITLED or example:
+		return [] as Array[ModelVersions.Version]
+	return ModelVersions.of(_safe_name(title))
+
+
+## Open the version at [param path] on the baseplate, as the model it is a
+## version of: under its name, [param called] or the model on the
+## baseplate's, so Save makes it the newest save again. How many parts
+## landed; 0 when it could not be read, and nothing is changed.
+func open_version(path: String, called: String = "") -> int:
+	var text: String = ModelVersions.read(path)
+	if text.is_empty():
+		return 0
+	var name: String = called if not called.is_empty() else title
+	var result: Dictionary = open_text(text, name)
+	if int(result["placed"]) <= 0 and awaited.is_empty():
+		return 0
+	# The name it is saved under, whatever its first line says.
+	if title != name:
+		title = name
+		loaded.emit(title, int(result["placed"]))
 	return int(result["placed"])
 
 
@@ -573,6 +651,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 
 	_missing_at_open = missing.size()
 	whole = missing.is_empty() and awaited.is_empty()
+	# A model from a file: nobody emptied the baseplate.
+	emptied = false
 	title = _title_of(model, name)
 	share_id = share_in(text)
 	remixed_from = remix_in(text)
@@ -926,18 +1006,41 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
+	var text: String = with_share(written if not written.is_empty()
+		else to_text(title, with_steps), share_id, remixed_from)
+	# Never a model of no parts over a file that has some, unless the person
+	# emptied the baseplate ([member emptied]). The autosave fires on its
+	# own a few seconds after any change, so whatever left the baseplate
+	# bare, it wrote that over the model it had.
+	if not emptied and not _has_parts(text) and FileAccess.file_exists(path) \
+			and _count_bricks(path) > 0:
+		refused = ("Not saved: there are no parts on the baseplate, and “%s” has %d. "
+			% [title, _count_bricks(path)]
+			+ "Clear the baseplate first if it is meant to be empty.")
+		push_warning("kept %s: refused to write a model of no parts over it" % path)
+		return false
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	var text: String = with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from)
 	file.store_string(text)
 	file.close()
 	_tell_page_wrote(path, text.to_utf8_buffer().size())
 	if path.begins_with(SAVE_DIR):
 		know(path)
+		# Each save kept as a version too, the last 20 (File, Versions…).
+		var kept: String = ModelVersions.keep(path.get_file().get_basename(), text)
+		if not kept.is_empty():
+			_tell_page_wrote(kept, FileAccess.get_file_as_bytes(kept).size())
+		# A browser asked to keep the person's models, now that there are some.
+		StorageKeep.ask()
 	return true
+
+
+## Whether LDraw [param text] places anything: a line of type 1 anywhere.
+## Read without parsing it, since the autosave asks on every write.
+static func _has_parts(text: String) -> bool:
+	return text.begins_with("1 ") or text.find("\n1 ") >= 0
 
 
 ## [param text] with the link it is shared at and the link it was copied

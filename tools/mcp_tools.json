@@ -3794,7 +3794,7 @@
     "name": "undo"
   },
   {
-    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3804,6 +3804,14 @@
         "name": {
           "description": "a model's name from the list",
           "type": "string"
+        },
+        "version": {
+          "description": "open this save of name=, 1 the newest",
+          "type": "integer"
+        },
+        "versions": {
+          "description": "list name='s saves kept as versions",
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -3878,7 +3886,7 @@
     "name": "render_model"
   },
   {
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3893,7 +3901,8 @@
             "picture",
             "bricklink",
             "rebrickable",
-            "instructions"
+            "instructions",
+            "all_models"
           ],
           "type": "string"
         }

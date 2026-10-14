@@ -262,6 +262,14 @@
       "tests": []
     },
     {
+      "id": "cli:empty save probe",
+      "kind": "cli",
+      "entry": "src/dev/empty_save_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/empty_save_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:export a model",
       "kind": "cli",
       "entry": "src/main.gd",
@@ -339,6 +347,14 @@
       "entry": "tools/web/idle_check.mjs",
       "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:keep browser flow",
+      "kind": "cli",
+      "entry": "tools/web/keep_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep   (with .env sourced)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -667,6 +683,14 @@
       "tests": []
     },
     {
+      "id": "cli:versions probe",
+      "kind": "cli",
+      "entry": "src/dev/versions_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
@@ -768,6 +792,14 @@
       "entry": "src/assembly/brickify.gd",
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify",
+      "tests": []
+    },
+    {
+      "id": "lib:browser keeps the models",
+      "kind": "lib",
+      "entry": "src/net/storage_keep.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd   (the page's half: tools/web/keep_flow.mjs)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -954,6 +986,14 @@
       "entry": "src/net/model_kinds.gd",
       "reach": "the Share panel's Kind, guessed from the name and tags; godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:model versions",
+      "kind": "lib",
+      "entry": "src/parts/model_versions.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -1487,6 +1527,14 @@
       "tests": []
     },
     {
+      "id": "ui:models may be cleared warning",
+      "kind": "ui",
+      "entry": "src/ui/storage_offer.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --out=shots/keep   (with .env sourced)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
@@ -1902,6 +1950,14 @@
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:versions of a model",
+      "kind": "ui",
+      "entry": "src/ui/versions_dialog.gd",
+      "reach": "godot --path .  (File, Versions\u2026: the last 20 saves of the model on the baseplate, Open on one)",
+      "area": "model-io",
       "tests": []
     },
     {

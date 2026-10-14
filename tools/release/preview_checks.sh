@@ -36,6 +36,7 @@ declare -A CMD=(
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
+  [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"

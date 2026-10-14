@@ -5,7 +5,8 @@
 ## once signed in, and says so here rather than pretending), what the
 ## account holds — the address, not the models — and signs out. Signing
 ## out switches off this tab's Claude connector, because the connector
-## belongs to the account.
+## belongs to the account. On the web it says whether the browser agreed to
+## keep the models, which live only there (StorageKeep).
 ##
 ## And whether Claude is connected to the account (2026-10-11): which of
 ## its apps, since when and when last used, with Disconnect Claude, which
@@ -19,12 +20,13 @@ extends PanelContainer
 
 ## How big it would like to be, before the window has its say.
 const WIDE := 420.0
-const TALL := 430.0
+const TALL := 480.0
 
 var account: Account
 
 var _who: Label
 var _state: Label
+var _kept: Label
 var _admin: LinkButton
 var _sign_out: Button
 var _done: Button
@@ -70,9 +72,11 @@ func setup(with_account: Account) -> void:
 	_state = _line("", 12, 0.7)
 	column.add_child(_state)
 
-	column.add_child(_line("Your account is your email address. Your models "
-		+ "are saved on this device, not with it — export one as LDraw to "
-		+ "take it elsewhere.", 12, 0.7))
+	column.add_child(_line("Your account is your email address.", 12, 0.7))
+	# Where the models are, and on the web whether the browser agreed to
+	# keep them (StorageKeep): read again each time the panel opens.
+	_kept = _line(StorageKeep.words(), 12, 0.7)
+	column.add_child(_kept)
 
 	# Claude, connected to this account: shown once a connector is given.
 	_claude_box = VBoxContainer.new()
@@ -142,6 +146,7 @@ func setup(with_account: Account) -> void:
 
 func open() -> void:
 	_follow()
+	_kept.text = StorageKeep.words()
 	visible = not visible
 	if visible and connector != null and account.signed_in():
 		connector.refresh_connections()
@@ -157,6 +162,11 @@ func controls_by_name() -> Dictionary:
 	if _claude_connect.is_visible_in_tree():
 		named["account_connect_claude"] = _claude_connect
 	return named
+
+
+## What it says about where the models are kept, as it says it now.
+func storage_words() -> String:
+	return _kept.text if _kept != null else ""
 
 
 ## Claude's half: the connector whose connections this shows.

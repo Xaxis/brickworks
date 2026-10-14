@@ -35,6 +35,8 @@ var tour: Tour
 var collection: CollectionDialog
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
+## File, Versions…: src/ui/versions_dialog.gd.
+var versions: VersionsDialog
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -69,7 +71,7 @@ const ALT := KEY_MASK_ALT
 
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
-	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "-",
+	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "versions", "-",
 		"share", ">export", "render", "instructions", "-", "clear", "account", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
@@ -106,7 +108,7 @@ var assistant_shown: bool = true
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
-		"export_rebrickable"],
+		"export_rebrickable", "-", "export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
@@ -237,6 +239,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_save_as.confirmed.connect(func() -> void:
 		attend("save", _save_named.bind(_save_as_name.text)))
 	add_child(_save_as)
+
+	versions = VersionsDialog.new()
+	versions.store = store
+	versions.bar = bar
+	add_child(versions)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -573,6 +580,9 @@ func _define() -> void:
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
 		"Keep a copy of this model under another name")
+	# src/ui/versions_dialog.gd, src/parts/model_versions.gd.
+	_add("versions", "Versions…", 0, func() -> void: versions.open(), Callable(),
+		"The last %d saves of this model, to open one again" % ModelVersions.KEPT)
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -585,6 +595,10 @@ func _define() -> void:
 		func() -> void: await (app.get("_exports") as Exports).take_picture(), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
 		func() -> void: (app.get("_exports") as Exports).shop_list("bricklink"), something)
+	_add("export_all", "All my models (.zip)", 0,
+		func() -> void: (app.get("_exports") as Exports).all_models(),
+		func() -> bool: return ModelStore.any_saved(),
+		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
 		func() -> void: (app.get("_exports") as Exports).shop_list("rebrickable"), something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
@@ -1540,6 +1554,8 @@ func controls_by_name() -> Dictionary:
 		out.merge((parts_list as InventoryPanel).controls_by_name())
 	if see_inside != null:
 		out.merge(see_inside.controls_by_name())
+	if versions != null:
+		out.merge(versions.controls_by_name())
 	return out
 
 

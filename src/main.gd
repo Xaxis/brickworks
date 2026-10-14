@@ -174,6 +174,8 @@ var _seat_offer: SeatOffer
 var _reload_offer: ReloadOffer
 ## "Brickworks has been updated", with Reload (NewerBuild).
 var _update_offer: UpdateOffer
+## Once, where this browser may clear the person's models (StorageKeep).
+var _storage_offer: StorageOffer
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -357,6 +359,8 @@ func _tell_page() -> void:
 		named.merge(_reload_offer.controls_by_name())
 	if _update_offer != null:
 		named.merge(_update_offer.controls_by_name())
+	if _storage_offer != null:
+		named.merge(_storage_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -499,6 +503,14 @@ func _tell_page() -> void:
 			"tool": _verbs.mode if _verbs != null else ""},
 		# The status bar's line: what the mouse will do now.
 		"hint": _verbs.hint() if _verbs != null else "",
+		# Whether the browser agreed to keep the models, what Account says of
+		# it and the warning above the model, and File, Versions… (StorageKeep,
+		# tools/web/keep_flow.mjs).
+		"storage": {"state": StorageKeep.state(), "words": StorageKeep.words(),
+			"account": _account_panel.storage_words() if _account_panel != null else "",
+			"warning": _storage_offer.words() if _storage_offer != null else "",
+			"versions": _shell.versions.page_state() if _shell != null else {},
+			"title": _store.title},
 		# Which columns are open, and how the window shares them out: a
 		# narrow window shows one at a time, so a browser flow knows which
 		# rail to click for a control in the other (openColumnFor in
@@ -951,6 +963,10 @@ func _ready() -> void:
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
 	_maybe_copy()
+	# Somebody with saved models: the browser is asked to keep them, as it
+	# is at a first save (StorageKeep, ModelStore._write).
+	if ModelStore.any_saved():
+		StorageKeep.ask()
 
 	_unthrottle_if_nobody_is_watching()
 
@@ -1433,7 +1449,14 @@ func _make_room(name: String) -> void:
 
 
 ## Write what is on the baseplate to a file. Returns false if it could not.
+##
+## Into the person's models (save_model over MCP) as Save writes them, so it
+## is kept as a version and never empty over a model with parts. It went out
+## as an export, and an export on the web is a download: a session's save
+## there never reached the models at all.
 func save_model(path: String) -> bool:
+	if path.begins_with(ModelStore.SAVE_DIR):
+		return _store.save_file(path, "Model")
 	return _store.export_to(path, "Model")
 
 
@@ -2729,6 +2752,14 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
+
+	# This browser may clear the models, which are only in it: said once,
+	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
+	_storage_offer = StorageOffer.new()
+	_storage_offer.download_all = func() -> void: _exports.all_models()
+	_storage_offer.download_io = func() -> void: await _exports.studio_io()
+	_storage_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_storage_offer)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -4216,6 +4247,11 @@ func _watch_other_tabs() -> void:
 	# site now and then: src/boot/shell.html).
 	if _update_offer != null and not _update_offer.showing():
 		_update_offer.offer(NewerBuild.live())
+	# And, once, whether this browser may clear the models (StorageKeep):
+	# shown when there are saved models for it to clear.
+	if _storage_offer != null and _store.keeps and not _store.read_only \
+			and not _storage_offer.showing() and StorageKeep.at_risk():
+		_storage_offer.offer_if_due(ModelStore.any_saved())
 	# A window says it still holds its session (TabSession._held).
 	if now - _tabs_said_here > 60000:
 		_tabs_said_here = now

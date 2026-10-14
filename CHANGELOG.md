@@ -15,6 +15,15 @@ whole cycle.
 
 ### Added
 
+- Models that cannot vanish. Every save is kept as a version, the last 20
+  of each model: File, Versions… opens any of them again. File, Export,
+  All my models downloads every saved model in one .zip. In a browser,
+  Brickworks asks the browser to keep its storage at your first save, and
+  Account says whether it agreed. Where it would not, or in Safari, which
+  deletes a site's data after seven days without a visit, a line above the
+  model says so once, with Download my models. And a save with no parts in
+  it never goes over a model that has some, unless you cleared it.
+
 - Parts and sections turned any way, held by real hinges. The properties
   panel has Tilt and Roll beside Turn, so a selection tips about its
   middle as well as turning round. A design can turn a section yaw, then
