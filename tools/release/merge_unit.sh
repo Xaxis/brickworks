@@ -4,8 +4,10 @@
 # is regenerated into the merge commit, and Godot re-imports so new
 # class_names resolve; forgetting that broke probes after merges twice.
 set -u
-W=$1; REF=$2; MSG=$3
-cd "$W" || exit 1
+REF=$2; MSG=$3
+# Absolute, since the parse gate is handed it after the cd.
+W=$(cd "$1" && pwd) || exit 1
+cd "$W"
 HERE=$(cd "$(dirname "$0")" && pwd)
 ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 # Untracked files Godot's import made (.uid) that the branch also carries,
