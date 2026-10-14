@@ -1780,6 +1780,7 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 	var small_studs: int = 0
 	var living: Array = _living_boxes()
 	var model_box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
+	var tiled: Dictionary = _tiled_levels() if section.is_empty() else {}
 	for start: Vector3i in tops:
 		if seen.has(start) or claimed.has(Vector2i(start.x, start.z)):
 			continue
@@ -1796,7 +1797,13 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 						and not claimed.has(Vector2i(next.x, next.z)):
 					seen[next] = true
 					queue.append(next)
-		if field.size() < SMALLEST_FIELD:
+		# Fewer than four is a detail, unless it is set in a tiled top: the
+		# studs a joint leaves. A shape whose top tile joined nothing lays that
+		# tile again as a plate to join it, its studs left for this pass, and
+		# the shapes round's car and locomotive kept them: "studs on the wings
+		# and sills", "loose studs show on the smokebox top".
+		var joint: bool = field.size() < SMALLEST_FIELD and _set_in_tiles(field, tiled)
+		if field.size() < SMALLEST_FIELD and not joint:
 			small += 1
 			small_studs += field.size()
 			continue
@@ -1833,7 +1840,8 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 		var across: int = roundi(box.size.x / STUD)
 		var deep: int = roundi(box.size.z / STUD)
 		one.said = "%s, %d open stud%s in %s, %d x %d studs %s%s." % [
-			"the ground, a floor things will stand on" if one.offered else _what_top(box, model_box),
+			"the ground, a floor things will stand on" if one.offered
+				else ("a joint's studs in a tiled top" if joint else _what_top(box, model_box)),
 			field.size(), "" if field.size() == 1 else "s", ", ".join(names), across, deep,
 			_where_said(box), "" if section.is_empty() else ", in section '%s'" % section]
 		one.laid = _pieces_said(one)
@@ -1842,6 +1850,38 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 		left_alone.append("%d smaller group%s of fewer than %d studs (%d studs), detail"
 			% [small, "" if small == 1 else "s", SMALLEST_FIELD, small_studs])
 	return out
+
+
+## The tiles of the main body lying face up, by stud and by the height of
+## their top and of their foot, in lattice cells: Vector3i(x, y, z) -> true,
+## keyed as [method key_of] keys a stud.
+func _tiled_levels() -> Dictionary:
+	var out: Dictionary = {}
+	for raw: Variant in tile_tops().values():
+		var one: Dictionary = raw
+		var at: Vector3 = one["at"]
+		out[key_of(at)] = true
+		out[key_of(Vector3(at.x, float(one["top"]), at.z))] = true
+	return out
+
+
+## Whether a few open studs are set in a tiled top: a tile beside one of them,
+## lying at its height or with its top there, and no open stud of a field
+## round them. A part's own few studs in a top of its own colour that nothing
+## tiled are a detail and are left.
+func _set_in_tiles(field: Array[Vector3i], tiled: Dictionary) -> bool:
+	if tiled.is_empty():
+		return false
+	var beside: int = 0
+	for key: Vector3i in field:
+		for step: Vector3i in [Vector3i(2, 0, 0), Vector3i(-2, 0, 0), Vector3i(0, 0, 2),
+				Vector3i(0, 0, -2)]:
+			var next: Vector3i = key + step
+			if field.has(next):
+				continue
+			if tiled.has(next):
+				beside += 1
+	return beside > 0
 
 
 ## What a top is, by where it is on the model: "the top" for the highest,

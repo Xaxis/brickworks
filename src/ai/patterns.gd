@@ -232,7 +232,7 @@ static func feet_of(bricks: Array, library: PartLibrary) -> Dictionary:
 		if not raw is Dictionary:
 			continue
 		var brick: Dictionary = raw
-		var at := Vector3(float(brick.get("x", 0.0)), float(brick.get("y", 0.0)),
+		var at := Vector3(float(brick.get("x", 0.0)), foot_plate(brick, library),
 			float(brick.get("z", 0.0)))
 		if str(brick.get("face", "up")).to_lower() != "up" \
 				or not str(brick.get("section", "")).is_empty() or at != at.round():
@@ -249,6 +249,45 @@ static func feet_of(bricks: Array, library: PartLibrary) -> Dictionary:
 					out[cell] = []
 				(out[cell] as Array).append(roundi(at.y))
 	return out
+
+
+## The plate a part's foot stands at. A design places a part by its cover's
+## low corner, and a part whose cover hangs below its foot — a towball's
+## ball, a socket, a buffer beam's buffers — is placed lower than the plate
+## its tubes sit on: the towball plate on a car's top at y 9 is said at y
+## 8.5, and was taken for a part off the grid, so the shape under it tiled
+## its studs and the hitch stood on tiles, held by nothing. Its y raised by
+## how far the cover hangs below its tubes' plate, read off its mesh.
+static func foot_plate(brick: Dictionary, library: PartLibrary) -> float:
+	var y: float = float(brick.get("y", 0.0))
+	var mesh: Lbm.PartMesh = library.mesh_for(str(brick.get("part", ""))) \
+		if library != null else null
+	if mesh == null:
+		return y
+	# Its foot is the lowest of its cover over the studs its tubes take; what
+	# hangs lower beyond them is the ball, the socket, the buffers.
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "tube" and connector.gender == "female" \
+				and connector.axis.normalized().dot(Vector3.DOWN) > 0.9:
+			var at := Vector2(connector.position.x, connector.position.z)
+			low = low.min(at - Vector2(10.0, 10.0))
+			high = high.max(at + Vector2(10.0, 10.0))
+	if low.x == INF or mesh.boxes.is_empty():
+		return y
+	var foot: float = INF
+	var lowest: float = INF
+	for raw: AABB in mesh.boxes:
+		var box := AABB(raw.position * BrickLattice.CELL, raw.size * BrickLattice.CELL)
+		lowest = minf(lowest, box.position.y)
+		if box.end.x > low.x + 0.5 and box.position.x < high.x - 0.5 \
+				and box.end.z > low.y + 0.5 and box.position.z < high.y - 0.5:
+			foot = minf(foot, box.position.y)
+	if foot == INF or foot - lowest < 3.0:
+		return y
+	var raised: float = y + (foot - lowest) / 8.0
+	return roundf(raised) if absf(raised - roundf(raised)) < 0.15 else raised
 
 
 ## The patterns' bricks, each shape told where the other shapes stand on it

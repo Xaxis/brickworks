@@ -5,7 +5,8 @@ for: an animal, a car at Speed Champions scale, a rocket at display
 scale, a modular building, a castle, a starfighter, a bust, a botanical,
 a machine with Technic function and a landscape vignette; and two more
 added for the sides round (2026-10-14), a steam locomotive and a sailing
-ship, to check on bodies no round was tuned for. None of them
+ship, to check on bodies no round was tuned for, and two for the cabins
+round, a fire truck and a passenger aircraft. None of them
 is a brief any design round was tuned on (the castle, the fire station,
 Orthanc); the barn owl and the Falcon Heavy were looked at in earlier
 rounds and stay because the owner asked for them by name.
@@ -222,6 +223,31 @@ SUITE: tuple[Subject, ...] = (
         (OmrSet("6286-1", "6286-1.mpd",
                 "the LEGO Group's own Pirates 6286 Skull's Eye Schooner, a two-masted "
                 "sailing ship"),),
+    ),
+    # Added 2026-10-14 for the cabins round, never run before it: a cab with a
+    # windscreen on a truck, and a cockpit and a cabin on an aircraft, the two
+    # other bodies a cabin's or a canopy's rake is part of.
+    Subject(
+        "fire_truck", "a fire truck",
+        "A fire engine with an extending ladder at minifigure scale, in the style of "
+        "LEGO® City fire sets, 6 studs wide: a crew cab, the ladder on a turntable, hose "
+        "and lockers, with a firefighter.",
+        "minifigure, 6 studs wide", "vehicles",
+        (OmrSet("4208-1", "4208-1.mpd",
+                "the LEGO Group's own City 4208 4 x 4 Fire Truck"),
+         OmrSet("6480-1", "6480-1.mpd",
+                "the LEGO Group's own Town 6480 Hook and Ladder Truck")),
+    ),
+    Subject(
+        "passenger_aircraft", "a passenger aircraft",
+        "A twin-engined passenger jet at minifigure scale, in the style of LEGO® City "
+        "airport sets: a cockpit, a cabin with windows and seats, swept wings with an "
+        "engine under each, a tail fin and landing gear, with a pilot.",
+        "minifigure", "vehicles",
+        (OmrSet("3181-1", "3181-1.mpd",
+                "the LEGO Group's own City 3181 Passenger Plane"),
+         OmrSet("7893-1", "7893-1.mpd",
+                "the LEGO Group's own City 7893 Passenger Plane")),
     ),
 )
 

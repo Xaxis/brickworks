@@ -11348,7 +11348,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
 	var pieces: int = each_piece.size()
 	var apart: Dictionary = _standing_apart(model, each_piece, floating,
-		_touching(each_piece, lattice, boxes_of), _outside(each_piece, box_of))
+		_touching(each_piece, lattice, boxes_of), _outside(each_piece, box_of), box_of)
 	for piece: Array in apart["loose"]:
 		_note(issues, "loose", _loose_said(model, piece))
 
@@ -11387,6 +11387,15 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# meant to stand apart is named, and the person sees it as an item of
 	# its own. What stands against the model unjoined (bricks side by side,
 	# a seam) is a remark still, each piece said where it is.
+	# A vehicle's part that nothing couples, each said, with how sets couple
+	# one: told only that a piece stood against the model, the shapes round's
+	# locomotive left its tender as it was.
+	var uncoupled: Array = apart["uncoupled"]
+	if not uncoupled.is_empty():
+		feedback += "\n\n"
+		for found: Dictionary in uncoupled.slice(0, WORTH_SAYING):
+			feedback += _uncoupled_said(model, found) + " "
+		feedback += COUPLE_HOW
 	var apart_loose: int = (apart["loose"] as Array).size()
 	if apart_loose > 0:
 		feedback += ("\n\nA piece apart from the model is either a part "
@@ -11441,6 +11450,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		## ones that stand apart as items of their own, and how many pieces
 		## those and the figures standing apart are.
 		"loose": apart_loose,
+		## A vehicle's parts on wheels in line with it that nothing couples.
+		"uncoupled": uncoupled.size(),
 		"items": apart["items"],
 		"named": int(apart["named"]),
 		## Of those, the figures: no name of their own to say.
@@ -12838,9 +12849,10 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 ## loose, and fails. The model is the largest piece with a part of the
 ## design's in it; a piece of the person's own is theirs to leave.
 func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
-		touching: Dictionary = {}, outside: Dictionary = {}) -> Dictionary:
+		touching: Dictionary = {}, outside: Dictionary = {},
+		box_of: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"loose": [], "unjoined": [], "items": PackedStringArray(),
-		"against": 0, "named": 0, "figures": 0}
+		"against": 0, "named": 0, "figures": 0, "uncoupled": []}
 	if pieces.size() <= 1:
 		return out
 	var main: int = -1
@@ -12885,6 +12897,16 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		if (against.has(n) or not outside.has(n)) and _our_figure(model, piece, floating):
 			out["named"] = int(out["named"]) + 1
 			out["figures"] = int(out["figures"]) + 1
+			continue
+		# A vehicle's own part beside it, in line with it on wheels of its own
+		# — a tender, a trailer, a carriage — is coupled to it, or it stays
+		# behind when the model is pulled, named or not. The shapes round's
+		# locomotive came out in two pieces, its tender butted against the
+		# drawbar plate with no hitch or magnet, and the check said only that
+		# it was a piece against the model, to join with a plate across.
+		var coupled: Dictionary = _uncoupled(model, piece, pieces[main], floating, box_of)
+		if not coupled.is_empty():
+			(out["uncoupled"] as Array).append(coupled)
 			continue
 		# Inside the model's plan — a face of a prism against its posts, a
 		# part on the floor of a courtyard — is not standing apart from it.
@@ -12982,6 +13004,113 @@ func _a_figure(parts: Array) -> bool:
 		if not Minifig.role_of(id, library.parts.get(id)).is_empty():
 			worn += 1
 	return worn * 2 >= parts.size()
+
+
+## Whether a piece apart from the model is a vehicle's own part left
+## uncoupled: of the design's, held up, rolling on wheels of its own as the
+## model does, end to end with it along x or z — its feet level with the
+## model's, its side in line with it, no more than [constant COUPLE_GAP]
+## studs off its end. {"piece", "along", "gap" in studs, "behind"} or {}.
+## The rule reads how the two stand, not what they are: a tender, a
+## trailer, a carriage and a wagon stand that way, and a jetty by a boat, a
+## tree by a house or a figure by a car do not.
+func _uncoupled(model: Model, piece: Array, main: Array, floating: Dictionary,
+		box_of: Dictionary) -> Dictionary:
+	if piece.size() < 4 or box_of.is_empty():
+		return {}
+	var designed: bool = false
+	var adrift: bool = true
+	var rolls: bool = false
+	for index: int in piece:
+		var placement: Placement = model.placements[index]
+		designed = designed or placement.mine
+		adrift = adrift and floating.has(index)
+		rolls = rolls or _rolls(placement.part)
+	if not designed or adrift or not rolls:
+		return {}
+	var main_rolls: bool = false
+	for index: int in main:
+		if _rolls(model.placements[index].part):
+			main_rolls = true
+			break
+	if not main_rolls:
+		return {}
+	var bounds := func(indices: Array) -> Array:
+		var lo := Vector3i(1 << 30, 1 << 30, 1 << 30)
+		var hi := -lo
+		for index: int in indices:
+			var corners: Array = box_of.get(index, [])
+			if corners.is_empty():
+				continue
+			lo = lo.min(corners[0])
+			hi = hi.max(corners[1])
+		return [lo, hi]
+	var mine: Array = bounds.call(piece)
+	var theirs: Array = bounds.call(main)
+	var p_lo: Vector3i = mine[0]
+	var p_hi: Vector3i = mine[1]
+	var m_lo: Vector3i = theirs[0]
+	var m_hi: Vector3i = theirs[1]
+	if absi(p_lo.y - m_lo.y) > 6 * BrickLattice.CELLS_PER_PLATE:
+		return {}
+	var stud: int = BrickLattice.CELLS_PER_STUD
+	for axis: int in [0, 2]:
+		var other: int = 2 - axis
+		var gap: int = maxi(p_lo[axis] - m_hi[axis], m_lo[axis] - p_hi[axis])
+		var shared: int = mini(p_hi[other], m_hi[other]) - maxi(p_lo[other], m_lo[other])
+		var narrow: int = mini(p_hi[other] - p_lo[other], m_hi[other] - m_lo[other])
+		if gap >= -NEAR[axis] and gap <= COUPLE_GAP * stud and shared * 2 >= narrow:
+			return {"piece": piece, "along": "x" if axis == 0 else "z",
+				"gap": maxf(0.0, float(gap) / stud), "behind": p_lo[axis] > m_hi[axis] - NEAR[axis]}
+	return {}
+
+
+## How far off a model's end, in studs, a part of it on wheels may stand and
+## still be its car to couple: a tender a stud or two back, a trailer on its
+## drawbar's length.
+const COUPLE_GAP := 8
+
+
+## Whether a part is a wheel, a tyre or a bogie: what a vehicle's part rolls on.
+func _rolls(part_id: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info == null:
+		return false
+	if info.category in ["Wheel", "Tyre"]:
+		return true
+	return (info.name.contains("Wheel") or info.name.contains("Tyre")) \
+		and not info.name.contains("Steering") and not info.name.contains("Ship")
+
+
+## What the check says of a part of a vehicle that nothing couples, and how
+## sets couple one.
+static func _uncoupled_said(model: Model, found: Dictionary) -> String:
+	var piece: Array = found["piece"]
+	var name: String = ""
+	for index: int in piece:
+		name = _assembly_of(model, model.placements[index])
+		if not name.is_empty():
+			break
+	var where: String = _loose_said(model, piece).replace(", joined to nothing of the model", "")
+	var gap: float = float(found["gap"])
+	var off: String = "against it" if gap < 0.5 else "%s stud%s off it" % [
+		Placement._num(gap), "" if is_equal_approx(gap, 1.0) else "s"]
+	var who: String = "" if name.is_empty() else "The %s, " % name
+	var end: String = ("+" if bool(found["behind"]) else "-") + str(found["along"])
+	return ("%s%s rolls on wheels of its own at the model's %s end, %s, and nothing "
+		% [who, where, end, off]
+		+ "couples it to the model: it stays behind when the model is pulled and comes "
+		+ "away when it is picked up.")
+
+
+## How sets couple a vehicle's parts, said once after the parts it is for.
+const COUPLE_HOW := ("Couple each at the ends that meet, as sets do: a towball on one "
+	+ "and a towball socket over it on the other (14417, plate 1 x 2 with a towball on its "
+	+ "side; 14704, plate 1 x 2 with its socket; show_technique \"towball hitch\"); for a "
+	+ "train's cars "
+	+ "a buffer beam with a sealed magnet at each end, the magnets touching (64422; "
+	+ "show_technique \"magnet coupling\"); or a Technic liftarm pinned (2780) into a "
+	+ "Technic brick's hole (3700) on each. Coupled, the two are one piece to the check.")
 
 
 ## The assembly a placement is in: its own, as a file or the baseplate
@@ -15639,18 +15768,21 @@ alongside the bricks you write by hand:
 
            A body that is not a box is one object too, said as the \
            solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
-           "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
-           "width": 8, "round": 1.5, "profile": [[0, 7], [3, 9], [8, 10], \
-           [20, 10], [21, 9]], "under": [[0, 2], [21, 2]]}}, {"loft": \
-           {"along": "x", "centre": 4, "color": 40, "sections": [{"at": 7, \
-           "width": 7, "height": 1, "bottom": 9.5}, {"at": 10, "width": 6, \
-           "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 15, "width": \
-           6, "height": 6, "bottom": 9.5, "round": 0.4}, {"at": 19, \
-           "width": 7, "height": 1, "bottom": 9.5}]}}], "wheels": [4, 16]} \
-           is a Speed Champions car on its wheels: its side profile pulled \
-           across eight studs with its shoulders rounded and two plates of \
-           ground under it, a cabin lofted on it, and at x 4 and 16 an \
-           axle each — wheels and tyres, a Technic axle through Technic \
+           "z": 0}, "color": 4, "bands": [{"from": 12, "to": 15, "color": \
+           40}], "solids": [{"extrude": {"along": "x", "width": 8, "round": \
+           1.5, "profile": [[0, 7], [3, 9], [8, 10], [20, 10], [21, 9]], \
+           "under": [[0, 2], [21, 2]]}}, {"extrude": {"along": "x", "from": \
+           1, "width": 6, "round": 1, "profile": [[8, 10], [11, 18], [13, \
+           18], [20, 11]], "screen": true}}], "wheels": [4, 16]} is a Speed \
+           Champions car on its wheels: its side profile pulled across \
+           eight studs with its shoulders rounded and two plates of ground \
+           under it; its cabin its own side profile on it, six studs wide, \
+           the front climbing from the bonnet to the roof as glass — \
+           "screen" lays a windscreen at that rake, standing on the \
+           bonnet's plates, the roof on its top studs — and the roof \
+           falling from there to the tail in curved slopes, a fastback, a \
+           band of glass round it for its side windows; and at x 4 and 16 \
+           an axle each — wheels and tyres, a Technic axle through Technic \
            bricks, the body cut clear of each wheel's box and standing on \
            the bricks, and a chassis of plates under them from nose to \
            tail holding the nose and tail — so it is one piece on its \
@@ -15672,6 +15804,16 @@ alongside the bricks you write by hand:
            belly), and a solid's own "color" a part of it (a canopy). The \
            car that was told every check to use wedge plates and curved \
            slopes and used none of them would have had both from this. \
+           A cabin, a cab or a cockpit is its own side profile on the \
+           body, never a loft with a flat top (a box with glass stood up \
+           on it): "screen": true on that solid, or {"from": 8, "to": 11, \
+           "color": 47} naming the stretch along it and the glass, lays a \
+           windscreen (92583 or 4176 six studs across, 3823 or 57783 four) \
+           where its front climbs 6 to 8 plates over 2 or 3 studs to the \
+           roof, the roof two plates over its top row; behind it let the \
+           roof fall to the tail, and the reply says what it laid or why \
+           none fits. A truck's cab climbs steeply over 2 studs, an \
+           aircraft's cockpit where the nose climbs to the fuselage. \
            A head's face is said on it: "face": {"facing": "+z", "x": 10, \
            "y": 53, "z": 11, "across": 6, "color": 15, "rim": 84, "eyes": \
            0, "beak": 19} leaves a square of 6 out of the curved side \
@@ -16032,6 +16174,19 @@ Shapes stack: a cabin said as a shape on a body keeps the body's studs \
 under it. When a shape comes back in pieces or floating, the check \
 names the parts: fix what it stands on or the cut that splits it, and \
 keep the body — rebuilt by hand, its curves are lost.
+  A cabin or a canopy — a car's, a truck's or a train's cab, a \
+cockpit: its own side profile on the body, "screen": true where its \
+front climbs to the roof, so a windscreen is laid at that rake with the \
+roof on its top studs, and the roof falling behind it to the tail in \
+curved slopes; inverted slopes under anything that overhangs (read_guide \
+"shapes", show_technique "raked screen and falling roof"). A loft with a \
+flat top is a box with glass stood upright on it.
+  Parts that roll apart — a tender, a trailer, a carriage, a wagon: \
+coupled to what pulls them, never butted against it — a towball in a \
+socket, magnet couplers touching, or a Technic liftarm pinned into \
+both (show_technique "towball hitch", "magnet coupling"). \
+A rocket's stages stand on each other's studs, or on a Technic axle \
+through both.
   Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
 plates (show_technique "smooth diagonal"). A curved surface — a \
 bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
@@ -16321,6 +16476,9 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"rules": "THE RULES YOUR DESIGN MUST SATISFY", "shapes": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
+	"cabin": "SAY THE SHAPE, DO NOT COUNT IT OUT", "canopy": "SAY THE SHAPE, DO NOT COUNT IT OUT",
+	"screen": "SAY THE SHAPE, DO NOT COUNT IT OUT", "windscreen": "SAY THE SHAPE, DO NOT COUNT IT OUT",
+	"coupling": "WHAT THE SUBJECT NEEDS", "couplings": "WHAT THE SUBJECT NEEDS",
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
 	"round": "ROUND BODIES AND DOMES", "dome": "ROUND BODIES AND DOMES",
 	"domes": "ROUND BODIES AND DOMES", "sphere": "ROUND BODIES AND DOMES",
@@ -18421,16 +18579,20 @@ func _tools() -> Array:
 				+ "\"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far "
 				+ "its lower half narrows to a V, \"offset\": studs across}, ...]} — "
 				+ "the section between each two is in between; width 0 at an end is "
-				+ "a point."},
+				+ "a point; \"screen\" as on an extrude."},
 			"extrude": {"type": "object", "description":
 				"shape: {\"along\": \"x\" or \"z\", \"from\": studs across, "
 				+ "\"width\": studs, \"profile\": [[studs along, plates up], ...] "
 				+ "its top seen from the side, \"under\": the same for its underside "
-				+ "(0 unless said), \"round\": studs its top edges are rounded by}."},
+				+ "(0 unless said), \"round\": studs its top edges are rounded by, "
+				+ "\"screen\": true where its front climbs to a roof as glass (a cabin, "
+				+ "a cab, a cockpit) — a windscreen laid at that rake, the roof on its "
+				+ "top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is "
+				+ "its own profile on the body, its roof falling to the tail."},
 			"revolve": {"type": "object", "description":
 				"shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], "
 				+ "\"profile\": [[along it (plates up y, studs along x or z), radius "
-				+ "in studs], ...]}."},
+				+ "in studs], ...]}; along x or z, \"screen\" as on an extrude."},
 			"box": {"type": "object", "description":
 				"shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], "
 				+ "\"round\": studs its plan corners are rounded by, \"chamfer\": "
