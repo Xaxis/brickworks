@@ -32,6 +32,11 @@ plan with Claude as the client.
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
   meshes in object storage" line ends "to upload : 0".
+  A release goes through `tools/release/` (README there): a staging
+  worktree, each ready unit merged as the user with a parse gate, then
+  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
+  the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
+  serves <sha>` and the live site check and share probe pass.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
