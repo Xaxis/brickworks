@@ -195,8 +195,9 @@ try {
   check(names.includes("search_parts"), `tools/list with no tab of this account open: the app's ${names.length} tools`);
   const noTab = await mcp(tk.access_token, "tools/call", { name: "search_parts", arguments: { query: "brick" } }, 3);
   const noTabText = (noTab.json?.result?.content || []).map((c) => c.text).join(" ");
-  check(noTab.json?.result?.isError && noTabText.includes("No Brickworks tab is open for the account"),
-    "a call with no tab open is told so, in words Claude can pass on");
+  check(noTab.json?.result?.isError && noTabText.includes("No Brickworks tab is open")
+    && noTabText.includes("Settings, Assistant, or open "),
+    "a call with no tab open is told so, and how to turn the assistant on, in words Claude can pass on");
   const forged = await mcp(`bwa_${b64url(randomBytes(32))}`, "tools/list", {}, 4);
   check(forged.status === 401 && /error="invalid_token"/.test(forged.headers.get("www-authenticate") || ""),
     "a made-up token: 401, invalid_token");

@@ -1,5 +1,5 @@
-## The few things every panel draws the same way: a link, a tick box and
-## a switch.
+## The few things every panel draws the same way: a link, a tick box, one
+## of a choice and a switch.
 ##
 ## The app has no theme of its own and every panel styles itself, which
 ## is fine until two panels need the same thing to look like the same
@@ -31,6 +31,14 @@ const CHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="1
 <rect x="1" y="1" width="14" height="14" rx="3" fill="#8fbcff"/>
 <path d="M4.3 8.2 L6.9 10.8 L11.8 5.4" fill="none" stroke="#0f1520" stroke-width="2"
  stroke-linecap="round" stroke-linejoin="round"/></svg>"""
+## One of a choice (a CheckBox in a ButtonGroup): Settings, Assistant (AI)
+## had a chosen ring beside the engine's unchosen one, which was nothing.
+const RADIO_UNCHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+<circle cx="8" cy="8" r="6.25" fill="#ffffff" fill-opacity="0.06"
+ stroke="#d4d9e2" stroke-opacity="0.78" stroke-width="1.5"/></svg>"""
+const RADIO_CHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+<circle cx="8" cy="8" r="7" fill="#8fbcff"/>
+<circle cx="8" cy="8" r="3" fill="#0f1520"/></svg>"""
 const SWITCH_OFF := """<svg xmlns="http://www.w3.org/2000/svg" width="34" height="18">
 <rect x="1.75" y="2.75" width="30.5" height="12.5" rx="6.25" fill="#ffffff" fill-opacity="0.07"
  stroke="#d4d9e2" stroke-opacity="0.7" stroke-width="1.5"/>
@@ -45,6 +53,10 @@ const PICTURES: Dictionary = {
 	"CheckBox/checked": [CHECKED, false],
 	"CheckBox/unchecked_disabled": [UNCHECKED, true],
 	"CheckBox/checked_disabled": [CHECKED, true],
+	"CheckBox/radio_unchecked": [RADIO_UNCHECKED, false],
+	"CheckBox/radio_checked": [RADIO_CHECKED, false],
+	"CheckBox/radio_unchecked_disabled": [RADIO_UNCHECKED, true],
+	"CheckBox/radio_checked_disabled": [RADIO_CHECKED, true],
 	"CheckButton/unchecked": [SWITCH_OFF, false],
 	"CheckButton/checked": [SWITCH_ON, false],
 	"CheckButton/unchecked_disabled": [SWITCH_OFF, true],

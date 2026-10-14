@@ -400,6 +400,14 @@
       "tests": []
     },
     {
+      "id": "cli:no AI in a browser",
+      "kind": "cli",
+      "entry": "tools/web/noai_flow.mjs",
+      "reach": "node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web   (with .env sourced, against a local export served by tools/web/relay_server.mjs --static=build/web: the first visit, nothing of AI anywhere, its button, off in Settings, a build to the booklet and an LDraw file, /app?assistant=on, and the relay's words when no tab is open)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:oauth probe",
       "kind": "cli",
       "entry": "tools/web/oauth_probe.mjs",
@@ -1210,6 +1218,14 @@
       "entry": "src/ai/selection_scope.gd",
       "reach": "godot --path .  (select parts, right-click one: Ask Claude about this\u2026, or Ctrl+K; over MCP the selection and edit_selection tools)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "ui:assistant on or off",
+      "kind": "ui",
+      "entry": "src/ui/controls_dialog.gd",
+      "reach": "godot --path .  (Tools, Settings\u2026, Assistant (AI): Build by hand only, or Show the assistant; a first visit builds by hand)",
+      "area": "building",
       "tests": []
     },
     {

@@ -96,6 +96,13 @@ const MENUS: Array = [
 ## Submenu rows are numbered from here, clear of the commands.
 const SUBMENU_ID := 10000
 
+## The assistant's commands: in no menu, and never run, while it is off
+## (Settings, Assistant (AI): ShellPrefs.assistant_shown).
+const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "panel_assistant", "connector"]
+
+## Whether the assistant is in the window: [method set_assistant].
+var assistant_shown: bool = true
+
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
@@ -459,6 +466,8 @@ func can(name: String) -> bool:
 	if found == null:
 		return false
 	if read_only and not name in LOOKING:
+		return false
+	if not assistant_shown and name in ASSISTANT_COMMANDS:
 		return false
 	return not found.can.is_valid() or bool(found.can.call())
 
@@ -922,7 +931,7 @@ func _menu(title: String, items: Array) -> MenuButton:
 
 func _fill(popup: PopupMenu, items: Array) -> void:
 	popup.add_theme_font_size_override("font_size", 13)
-	for item: String in items:
+	for item: String in _shown(items):
 		if item == "-":
 			popup.add_separator()
 		elif item.begins_with(">"):
@@ -967,6 +976,39 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 				popup.add_item(words, id, shown)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
+
+
+## A menu's rows as the window shows them: without the assistant's while
+## it is off, and without the line that set them apart from the rest.
+func _shown(items: Array) -> Array:
+	var out: Array = []
+	for item: String in items:
+		if not assistant_shown and item in ASSISTANT_COMMANDS:
+			continue
+		if item == "-" and (out.is_empty() or out.back() == "-"):
+			continue
+		out.append(item)
+	while not out.is_empty() and out.back() == "-":
+		out.pop_back()
+	return out
+
+
+## Settings, Assistant (AI): the menus and the menu on a part made again,
+## with the assistant's commands or without them.
+func set_assistant(on: bool) -> void:
+	if on == assistant_shown:
+		return
+	assistant_shown = on
+	if _menus.is_empty():
+		return
+	_ids.clear()
+	for n: int in _menus.size():
+		var popup: PopupMenu = _menus[n].get_popup()
+		popup.clear(true)
+		_fill(popup, MENUS[n][1])
+	if context != null:
+		context.queue_free()
+		context = null
 
 
 ## Greyed where it would do nothing, ticked where it is on.

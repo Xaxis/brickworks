@@ -22,7 +22,7 @@
 //
 // A build from before the shift fails the first: the model's middle is about
 // 18% of the view's width to the side.
-import { launch } from "./browser.mjs";
+import { launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -92,6 +92,11 @@ for (const ratio of [1, 2]) {
 
   await controlAt("model_name");
   await wait(8000);
+  await key("Escape");
+  // Both columns, as a person who has the assistant on: which one is folded
+  // is what the centring is checked against. A first visit has only the
+  // parts bin (Settings, Assistant (AI)).
+  await turnAssistantOn(page);
   await key("Escape");
   const columns = (await state()).columns || {};
   console.log(`  ${ratio}x: 1280 x 720, ${(await state()).bricks} parts, columns ${columns.share}`);

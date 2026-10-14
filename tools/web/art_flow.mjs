@@ -19,7 +19,7 @@
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
 // doing nothing.
-import { launch } from "./browser.mjs";
+import { launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -189,7 +189,10 @@ ok(panels.length === across && Boolean(s?.tree?.["Frame#1"]),
 await page.waitForTimeout(6000);
 await shot("2_laid.png");
 
-// Design with Claude: the picture again, a brief, and the button.
+// Design with Claude: the assistant turned on in Settings (a first visit
+// builds by hand, and Brick Art has no Claude in it then), the picture
+// again, a brief, and the button.
+await turnAssistantOn(page);
 ok(await choosePicture(), "and again, for Design with Claude");
 const brief = await where("mosaic_brief");
 const tool = (await state())?.mode;

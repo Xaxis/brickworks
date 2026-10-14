@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
 
 ## Sub-features
 
@@ -357,9 +357,41 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `tour` (`src/ui/tour.gd`): Help, Take the tour: eight cards, each lighting a
   part of the window (menus, toolbar, parts bin, the model, properties, status
   bar, assistant) with the rest dimmed; Next/Back or the arrows, Esc leaves.
+  Seven with the assistant off: its card goes with it.
+- `assistant on or off` (`src/ui/controls_dialog.gd`, `ShellPrefs.assistant_shown`,
+  `Main.set_assistant`): Tools, Settings…, **Assistant (AI)**: "Build by hand
+  only" or "Show the assistant", kept on this device (`assistant` in
+  `user://shell.cfg`). Off, nothing of AI is anywhere in the window: no
+  assistant column or rail (its key form, Sketch first and the connector's
+  switch are in it), no Ask Claude in Edit or on a part and Ctrl+K does
+  nothing, no View, Assistant or Tools, Claude connector…, no brief or Design
+  with Claude in Brick Art, no Claude in Account, the sign-in screen, My
+  collection or About, and the tour without its card. The connector is held
+  off (`ClaudeConnector.hold`): nothing switches it on, a sign-in or a
+  connection to the account included, and Settings says "Claude connections
+  are off while the assistant is off". On again, all of it is back and the
+  connector as it was; its column opens, since it was asked for. A first visit
+  builds by hand (a builder on Reddit, 2026-10-13: "a LOT of us… building
+  freely and building things that are not AI designed"), with one button along
+  the top of the model, "Show the assistant", shown once: one press does what
+  Settings does. Anyone who comes for the assistant or the connector reaches
+  it in one step: `/app?assistant=on` (`--assistant=on` on the desktop,
+  `Main._assistant_from_address`) turns it on and remembers it before
+  anything is built, opens its column, and takes the parameter off the
+  address with `history.replaceState`; the site's links about Claude and the
+  connector use it. Claude at a connector whose tab is not open, or whose
+  assistant is off, is told by the relay (`api/mcp.js` `NOT_OPEN`,
+  `notOpenFor`) how to turn it on: "Settings, Assistant, or open
+  brickworks.diy/app?assistant=on". A device that has used Claude before (its
+  key, its connector or its choice of model kept on it) keeps the assistant
+  until someone chooses. A probe is a first visit and sees the button only
+  with `offer_for_probe`; a probe about the assistant's own panel turns it on
+  (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
+  command line and is not held.
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, `assistant_open` for a wide window; `narrow_side`, "parts" or
-  "assistant", for which one a narrow window shows), the model tree and the
+  "assistant", for which one a narrow window shows; a first visit opens on the
+  parts, the assistant folded until asked for), the model tree and the
   properties folded and their heights in the column (`tree_height`,
   `properties_height`), the key
   strip, the grid, the snap and the turn step are kept in `user://shell.cfg`
@@ -528,9 +560,31 @@ node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and
 # a 1280 x 720 window with nothing over the model, and the columns taking
-# turns (the assistant first, Q bringing the parts bin out, a rail's click
-# switching) — every step a key or a click, with pictures in shots/handbuild/
+# turns (a first visit on the parts with no assistant, the assistant turned on
+# opening its column, Q bringing the parts bin out, a rail's click switching)
+# — every step a key or a click, with pictures in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
+# the assistant off: the first run on the parts bin with the model in view and
+# its one button offering the assistant; nothing of AI by name or by text in
+# the window, any menu, the menu on a part, Brick Art, Account, My collection,
+# the tour, About, the keys list, the sign-in screen, Check stability, the
+# parts list or Simulate; Ctrl+K inert; the connector held off; then the
+# button pressed, everything back; off and on by clicks in Settings; and a
+# build by hand to a step, the booklet, an LDraw file and a GLB. Pictures in
+# shots/noai/. Again with --assistant=on, as /app?assistant=on: on, kept, its
+# column open, no button
+godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd
+godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd -- --assistant=on
+# ...and in a browser, against a local export and the deployment's functions,
+# with .env sourced: the first visit, every word the window shows searched for
+# AI (window.brickworksWords), the button pressed, Settings off by clicks, a
+# build by hand to the booklet's tab and a downloaded LDraw file, the setting
+# kept when the page is opened again; a fresh visitor at /app?assistant=on
+# (on, column open, the parameter gone from the address, kept); and the
+# relay's words to Claude when no tab is open (--relay)
+tools/export.sh web
+node tools/web/relay_server.mjs 8790 --static=build/web &
+node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web
 # sub-assemblies and the model tree, at any window size: nothing over the
 # model, and the tree opened by its header
 godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd

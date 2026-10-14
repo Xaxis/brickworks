@@ -466,10 +466,14 @@ func _wheel_over_the_interface() -> void:
 	var colours: ScrollContainer = bin.get("_palette_scroll")
 	await _unmoved_by_scrolling("the colours", _centre(colours))
 	# A window with room for one column beside the model shows one at a
-	# time, the assistant's on a first visit: each is opened for its own
-	# checks, the assistant's here and the bin's again after.
+	# time: each is opened for its own checks, the assistant's here and the
+	# bin's again after. The assistant is turned on first, as a person who
+	# wants it does: a first visit builds by hand (src/dev/noai_probe.gd).
 	var chat_dock: SideDock = _main.get("_chat_dock")
 	var bin_dock: SideDock = _main.get("_bin_dock")
+	if not chat_dock.visible:
+		_main.call("set_assistant", true)
+		await _frames(30)
 	if not chat_dock.is_open():
 		chat_dock.set_open(true, false)
 		await _frames(5)
