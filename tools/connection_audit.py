@@ -186,7 +186,54 @@ TYPES = [
 ## baseplate the whole restaurant on it.
 OFF_THE_GROUND = 8.0
 ## What is done about each kind of gap, said in the table.
-STATUS: dict[str, str] = {}
+STATUS: dict[str, str] = {
+    "stands a little off the ground in the file":
+        "Within a cell (2 LDU) of the ground a square part now stands on it "
+        "(`Assistant._on_the_ground`): opening a file rounds its lift up to a whole cell, and "
+        "a wheel's cover stops a cell above its tread. Left: 3 to 8 LDU up, a model drawn "
+        "with something under the table (a figure's feet under a car's tyres); allowing that "
+        "much would let a design's part hover.",
+    "stands on parts the catalogue does not have":
+        "Left: the file uses parts the catalogue has not got (unofficial treads, tyres, "
+        "panels), and what stood on them has nothing under it. The catalogue's gap, not a "
+        "joint's.",
+    "touches nothing held":
+        "Left: nothing held within a cell of the cluster: parts hung on strings and chains "
+        "drawn as paths, held by a missing part, or placed apart in the file.",
+    "read off its place":
+        "Left: a part turned about two axes at once, which no section of one axis can say, so "
+        "the reading puts it at the nearest square turn and its joints miss. Agent angles' "
+        "sections at any angle are the fix.",
+    "click hinge":
+        "Fixed: LDraw's clh* primitives read as a finger and a fork on the line they turn on "
+        "(`connectivity._HINGES`), paired by `Joints.rounds`.",
+    "clip on bar or handle":
+        "Fixed where the clip's eye is up to 1.5 LDU off the bar (`ROUND_OFF_AXIS`, was 1), "
+        "as LDraw draws a clip turned to an odd angle. `attachment_points` lists bars and clips "
+        "and a part goes on one by axis and joint.",
+    "towball":
+        "Fixed for a towball in a Joint-8 socket: a whole sphere 16 LDU across reads as a ball "
+        "and `Joints.balls` holds it in a socket at its middle at any turn. Left: the older "
+        "towball sockets (3491) are drawn from chords and have no socket connector.",
+    "ball and socket":
+        "Fixed where the ball is turned in its socket (`Joints.balls`). Left: Technic ball "
+        "joints whose socket is drawn as plain cylinders.",
+    "Technic pin or axle":
+        "Fixed in part by agent axles: an axle holds every hole along it (`Joints.through`). "
+        "Left: holes drawn without a hole primitive, and pins in parts read off their place.",
+    "hose, string or chain":
+        "Left: flexible parts (chain links, treads, strings) drawn segment by segment are held "
+        "by what they wrap round, which no connector says.",
+    "hinge":
+        "Left: hinge panels (2440) and plates whose pin is a half cylinder under 2 LDU, and "
+        "old finger hinges (4275/4276) drawn without clh primitives.",
+    "turntable":
+        "Left: Technic chain tread round a turntable (3873 on 18938), which is a chain.",
+    "studs that do not clutch":
+        "Left, and more than before: 2878, a train bogie, held its wheelset 70720c01 only "
+        "while both covers were boxes. Its bearings are not read as bores, so the axle in "
+        "them is no joint, and the cars on 7 files' bogies float.",
+}
 ## The kinds that are not a joint: no part on either side to blame.
 APART = ("stands a little off the ground in the file",
          "stands on parts the catalogue does not have", "touches nothing held")
@@ -412,6 +459,11 @@ def report(out: Path, write: Path | None, before: Path | None = None) -> int:
     say("to one joint: of the joints between it and the held parts it touches, the first")
     say("in this table's order, read off what the two parts are and which of their")
     say("connectors meet there. *Instances* is the floating parts so put down.")
+    if was is not None:
+        say("")
+        say("A row can rise. A part that touched another's cover counted as held while")
+        say("covers were boxes; now that a cover is the part's shape, the joint it lacks")
+        say("shows, and a cluster that was held is put down to it.")
     say("")
     say("## By connection type")
     say("")

@@ -12,14 +12,14 @@
 // joint and allowed (brickworksState.on_joint, can_place), what the status
 // bar said (hint), and how many parts there are. Pictures at each step, to
 // be looked at.
-import { launch } from "./browser.mjs";
+import { launch, withAssistant } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = args.url || "https://brickworks.diy/app";
+const url = withAssistant(args.url || "https://brickworks.diy/app");
 const out = args.out || "shots/technic_web";
 const ratio = Number(args.ratio || 1);
 const first = args.bypass

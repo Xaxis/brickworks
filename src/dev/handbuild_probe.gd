@@ -2427,17 +2427,22 @@ func _screen(point: Vector3) -> Vector2:
 
 
 ## A laptop's window has room beside the model for one column. A first
-## visit shows the assistant, the parts bin folded to its rail: designing
-## with Claude is what the landing page sends people in for. A part put in
-## hand brings the bin out, and a click on a rail switches.
+## visit opens on the parts bin, with no assistant (src/dev/noai_probe.gd);
+## turned on in Settings, its column opens and the bin folds to its rail. A
+## part put in hand brings the bin out, and a click on a rail switches.
 func _one_column_at_a_time() -> void:
 	var bin: SideDock = _main.get("_bin_dock")
 	var chat: SideDock = _main.get("_chat_dock")
+	_check("a first visit opens on the parts bin, with no assistant",
+		bin.is_open() and not chat.visible)
+	# The rest of this probe has the assistant, as a person who turns it on.
+	_main.call("set_assistant", true)
+	await _frames(30)
 	if str(_main.get("_columns")) != "turns":
 		print("    (this window has room for both columns, so they do not take turns here)")
 		return
 	print("  one column at a time beside the model")
-	_check("a first visit shows the assistant, the parts bin folded to its rail",
+	_check("the assistant turned on opens its column, the parts bin folded to its rail",
 		chat.is_open() and not bin.is_open())
 	var verbs: EditVerbs = _main.get("_verbs")
 	await _key(KEY_Q)

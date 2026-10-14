@@ -210,6 +210,14 @@
       "tests": []
     },
     {
+      "id": "cli:compare media",
+      "kind": "cli",
+      "entry": "tools/web/compare_media.mjs",
+      "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:connect Claude browser flow",
       "kind": "cli",
       "entry": "tools/web/oauth_flow.mjs",
@@ -397,6 +405,14 @@
       "entry": "tools/web/moderation_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:no AI in a browser",
+      "kind": "cli",
+      "entry": "tools/web/noai_flow.mjs",
+      "reach": "node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web   (with .env sourced, against a local export served by tools/web/relay_server.mjs --static=build/web: the first visit, nothing of AI anywhere, its button, off in Settings, a build to the booklet and an LDraw file, /app?assistant=on, and the relay's words when no tab is open)",
+      "area": "building",
       "tests": []
     },
     {
@@ -1213,6 +1229,14 @@
       "tests": []
     },
     {
+      "id": "ui:assistant on or off",
+      "kind": "ui",
+      "entry": "src/ui/controls_dialog.gd",
+      "reach": "godot --path .  (Tools, Settings\u2026, Assistant (AI): Build by hand only, or Show the assistant; a first visit builds by hand)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:balance readout",
       "kind": "ui",
       "entry": "src/render/balance_mark.gd",
@@ -1273,6 +1297,14 @@
       "kind": "ui",
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:compare page",
+      "kind": "ui",
+      "entry": "web/compare.html",
+      "reach": "https://brickworks.diy/compare   (Brickworks next to Studio and LDD, each point on a real model; linked from the home page and the FAQ)",
       "area": "web",
       "tests": []
     },

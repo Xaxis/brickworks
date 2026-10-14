@@ -73,6 +73,10 @@ var _loaded_for: String = ""
 signal said(text: String)
 
 
+## What happens to a Rebrickable key: [method _rebrickable_note].
+var _rb_note: Label
+
+
 ## Take the app's parts and put the panel on screen, hidden.
 func attach(main: Node) -> void:
 	app = main
@@ -108,7 +112,17 @@ func _ready() -> void:
 ## Open on one page: "own", "need" or "build".
 func open(page: String = "own") -> void:
 	visible = true
+	_rb_note.text = _rebrickable_note()
 	_show(page)
+
+
+## What happens to a Rebrickable key, and, with the assistant in the window
+## (Settings, Assistant (AI)), what it can do with the collection.
+static func _rebrickable_note() -> String:
+	return ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
+		+ "not kept; what comes back replaces the sets and loose parts in this collection."
+		+ (" Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+			if ShellPrefs.assistant_shown() else ""))
 
 
 func is_showing() -> bool:
@@ -301,9 +315,8 @@ func _own_page() -> Control:
 	_button(account, "Fetch", _fetch_rebrickable, "collection_rb_go",
 		"Read your sets and parts lists from your Rebrickable account")
 	var note := Label.new()
-	note.text = ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
-		+ "not kept; what comes back replaces the sets and loose parts in this collection. "
-		+ "Ask the assistant for \"a small house from my collection\" and it builds from what you own.")
+	note.text = _rebrickable_note()
+	_rb_note = note
 	note.add_theme_font_size_override("font_size", 11)
 	note.modulate = Color(1, 1, 1, 0.55)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

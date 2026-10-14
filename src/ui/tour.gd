@@ -1,7 +1,8 @@
 ## Help, Take the tour: the parts of the window one at a time, each lit
 ## with a frame round it and a card saying what it is for.
 ##
-## Seven cards, Back and Next, Escape or Done to leave. Nothing is changed
+## Eight cards (seven with the assistant off), Back and Next, Escape or
+## Done to leave. Nothing is changed
 ## by taking it; it only points.
 class_name Tour
 extends Control
@@ -18,8 +19,20 @@ var _at: int = 0
 var _lit: Rect2 = Rect2()
 
 
-## [heading, words, what to light: a function returning a Control or null]
+## [heading, words, what to light: a function returning a Control or null].
+## The assistant's card only while it is in the window (Settings, Assistant
+## (AI)): off, the tour is of the CAD and nothing else.
 func _stops() -> Array:
+	var stops: Array = _every_stop()
+	if not shell.assistant_shown:
+		stops = stops.filter(func(stop_here: Array) -> bool: return stop_here[0] != ASSISTANT_STOP)
+	return stops
+
+
+const ASSISTANT_STOP := "The assistant"
+
+
+func _every_stop() -> Array:
 	return [
 		["Welcome to Brickworks",
 			"A program for building with LEGO® bricks: real parts, real colours, and a model you can buy the bricks for. This tour points at each part of the window. Escape leaves it at any time.",
@@ -45,7 +58,7 @@ func _stops() -> Array:
 		["The status bar",
 			"What just happened, or what the tool in use does; how many parts, whether it would stand up, what is selected, the snap and the turn step.",
 			func() -> Control: return shell.status],
-		["The assistant",
+		[ASSISTANT_STOP,
 			"Describe a model and Claude designs and builds it here, part by part — or connect your own Claude to build in this window.",
 			func() -> Control: return _opened("_chat_dock")],
 	]

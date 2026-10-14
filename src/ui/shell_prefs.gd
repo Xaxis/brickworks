@@ -16,7 +16,9 @@ const WHERE := "user://shell.cfg"
 ## Every setting and what a first visit gets.
 const DEFAULTS: Dictionary = {
 	"parts_open": true,
-	"assistant_open": true,
+	# Folded to its rail until asked for: a first visit opens on the CAD
+	# itself, the parts bin and the model.
+	"assistant_open": false,
 	"inspector_open": true,
 	# Folded to its header under the parts bin: a model with no
 	# sub-assemblies has one row in it, and the properties use the room.
@@ -27,10 +29,15 @@ const DEFAULTS: Dictionary = {
 	"properties_height": 230.0,
 	# In a window with room for one column beside the model, the one
 	# showing: "parts" (the bin, the tree and the properties), "assistant",
-	# or "" for neither (Main._fit_panels). A first visit gets the
-	# assistant: designing with Claude is what the landing page sends
-	# people in to do, and folded to a rail a newcomer may never find it.
-	"narrow_side": "assistant",
+	# or "" for neither (Main._fit_panels). A first visit gets the parts:
+	# Brickworks is a CAD first, and the assistant one choice in it.
+	"narrow_side": "parts",
+	# Settings, Assistant (AI): "on", "off", or "" until somebody chooses
+	# ([method assistant_shown]).
+	"assistant": "",
+	# Whether the first visit's one line offering the assistant has been
+	# shown (Main._offer_assistant): once, and never again.
+	"assistant_offered": false,
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",
@@ -53,6 +60,29 @@ static var frozen: bool = false
 ## False under --script, so a probe changes nothing on disk.
 static func keeps() -> bool:
 	return not frozen and not OS.get_cmdline_args().has("--script")
+
+
+## Whether the assistant is in the window at all (Settings, Assistant
+## (AI)). Off, nothing of AI is anywhere in it: no column, no Ask Claude,
+## no Design with Claude, no connector, no word of it in the tour or the
+## help (a builder on Reddit, 2026-10-13: "a LOT of us… building freely and
+## building things that are not AI designed").
+##
+## Until somebody chooses, a first visit builds by hand, and a device that
+## has used Claude here keeps it as it had it: its key, its connector or
+## its choice of model are kept on it. A probe is a first visit.
+static func assistant_shown() -> bool:
+	var chosen: String = str(value("assistant"))
+	if chosen.is_empty():
+		return keeps() and used_claude_here()
+	return chosen == "on"
+
+
+static func used_claude_here() -> bool:
+	for kept: String in [OwnKey.WHERE, ClaudeConnector.where, Brain.where]:
+		if FileAccess.file_exists(kept):
+			return true
+	return false
 
 
 static func value(name: String) -> Variant:

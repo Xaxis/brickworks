@@ -48,6 +48,10 @@ var _accents: CheckBox
 var _blend: CheckBox
 var _brief: LineEdit
 var _ask: Button
+## The brief and Design with Claude: gone while the assistant is off
+## (Settings, Assistant (AI)), which leaves the Art to the switches above.
+var _claude_row: HBoxContainer
+var claude_shown: bool = true
 var _go: Button
 var _later: Timer
 ## What the Art comes to as chosen, worked out after each change.
@@ -161,7 +165,9 @@ func _build() -> void:
 	# are the engine's own reading of the picture; this is a plan for it.
 	var claude := HBoxContainer.new()
 	claude.add_theme_constant_override("separation", 6)
+	claude.visible = claude_shown
 	_art_box.add_child(claude)
+	_claude_row = claude
 	_brief = LineEdit.new()
 	_brief.placeholder_text = "Tell Claude: raise the core, make the stars glow…"
 	_brief.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -258,6 +264,13 @@ func _switch(parent: Control, words: String, tip: String) -> CheckBox:
 	return box
 
 
+## Settings, Assistant (AI): Claude's half of the Art shown, or none of it.
+func show_claude(on: bool) -> void:
+	claude_shown = on
+	if _claude_row != null:
+		_claude_row.visible = on
+
+
 ## Its controls, for the page to find (Main._tell_page): what
 ## tools/web/art_flow.mjs presses.
 func controls_by_name() -> Dictionary:
@@ -307,6 +320,8 @@ func current_art() -> MosaicArt.Art:
 
 ## Hand the picture to Claude to plan, with whatever the person typed.
 func design_with_claude() -> void:
+	if not claude_shown:
+		return
 	visible = false
 	claude_wanted.emit(_brief.text.strip_edges())
 	_brief.text = ""

@@ -26,9 +26,13 @@ const MATES: Dictionary = {
 }
 
 ## A shaft is in a bore when the two are one axis to within this, in LDU.
-## Half a cell: a bar a cell off a clip's axis is beside the clip, not in
-## it, and its cover says so.
-const ROUND_OFF_AXIS := 1.0
+## Three quarters of a cell: a bar a cell off a clip's axis is beside the
+## clip, not in it, and its cover says so. Not half: a real set drawn with a
+## clip turned to 66 degrees (20015's 60470a on 48336's handle) has the
+## clip's eye 1.1 LDU off the bar, as LDraw's six decimals put it, and the
+## 24 parts hung off it floated. Mechanism's axles allow the same
+## (LINE_SLACK).
+const ROUND_OFF_AXIS := 1.5
 ## And when the bore is no more than this wider or narrower than the
 ## shaft. A hinge plate's pin is drawn 3.9 across in an eye of 4 (2430 in
 ## 2429), and a bar in a pin hole, 4 in 6, rattles: real sets do not hang
@@ -306,6 +310,90 @@ static func lines_up(plug_at: Vector3, plug_way: Vector3,
 	return (gap - socket_way * along).length() <= OFF_AXIS
 
 
+## How far apart a ball's middle and a socket's may be and the ball be in
+## the socket, in LDU. A ball is 16 across; a cell is 2.
+const BALL_SLACK := 2.0
+
+
+## Balls in sockets, both ways round: key -> {other key -> true}. A Joint-8
+## ball or a towball (a sphere 16 LDU across, which is what a towball is:
+## tools/ldraw/connectivity.py reads both as "ball") in a socket whose
+## middle is its middle, whichever way either is turned. [method pairs]
+## asks a ball to line up with its socket's axis, which a ball turned in its
+## socket, as a towball on a trailer always is, does not: 3184's 2508
+## towballs in 98263's sockets held nothing, and 235 parts floated.
+static func balls(entries: Array) -> Dictionary:
+	var sockets: Dictionary = {}   ## bucket -> Array of [key, middle]
+	var found: Array = []          ## [key, middle]
+	for entry: Array in entries:
+		var part: Lbm.PartMesh = entry[2]
+		if part == null:
+			continue
+		var at: Transform3D = entry[1]
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind == "ball":
+				found.append([entry[0], at * connector.position])
+			elif connector.kind == "socket":
+				var middle: Vector3 = at * connector.position
+				var box: Vector3i = _bucket(middle)
+				if not sockets.has(box):
+					sockets[box] = []
+				(sockets[box] as Array).append([entry[0], middle])
+	var held: Dictionary = {}
+	for ball: Array in found:
+		var home: Vector3i = _bucket(ball[1])
+		for dx: int in [-1, 0, 1]:
+			for dy: int in [-1, 0, 1]:
+				for dz: int in [-1, 0, 1]:
+					for socket: Array in sockets.get(home + Vector3i(dx, dy, dz), []):
+						if socket[0] != ball[0] \
+								and (socket[1] as Vector3).distance_to(ball[1]) <= BALL_SLACK:
+							_add(held, ball[0], socket[0])
+							_add(held, socket[0], ball[0])
+	return held
+
+
+## [param more]'s joints added to [param into]'s, both key -> {key -> true}.
+static func merge(into: Dictionary, more: Dictionary) -> void:
+	for key: Variant in more:
+		for other: Variant in more[key]:
+			_add(into, key, other)
+
+
+## The line a part turns on as one half of a hinge, in its own frame:
+## [a point on it, its way], or [] for none. A click hinge's finger or fork
+## first (the middle of its knuckle), then a round a pin or a bar is (a
+## hinge brick's pin and eye, a hinge plate's, a clip's or a bar's: radius
+## 3.5 to 6.5, the longest), then a ball or a socket's centre with no way
+## (Vector3.ZERO), which turns about any. For laying a hinge's two halves
+## on one line from the parts' own data.
+static func hinge_line_of(mesh: Lbm.PartMesh) -> Array:
+	if mesh == null:
+		return []
+	var best: Lbm.Connector = null
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "finger" or connector.kind == "fork":
+			return [connector.position + connector.axis * (connector.length * 0.5),
+				connector.axis.normalized()]
+		if (connector.kind == "shaft" or connector.kind == "bore") \
+				and connector.radius >= 3.5 and connector.radius <= 6.5 \
+				and (best == null or connector.length > best.length):
+			best = connector
+	if best != null:
+		return [best.position + best.axis * (best.length * 0.5), best.axis.normalized()]
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "ball" or connector.kind == "socket":
+			return [connector.position, Vector3.ZERO]
+	return []
+
+
+## The kinds of round and what each fits: a shaft in a bore of its size,
+## a click hinge's finger in a fork (tools/ldraw/connectivity.py, _HINGES),
+## and neither in the other's.
+const ROUND_FAMILY: Dictionary = {"shaft": "round", "bore": "round",
+	"finger": "hinge", "fork": "hinge"}
+
+
 ## Something round turning in something round that fits it, both ways
 ## round: key -> {other key -> Array of zones}.
 ##
@@ -335,7 +423,7 @@ static func rounds(entries: Array) -> Dictionary:
 			continue
 		var at: Transform3D = entry[1]
 		for connector: Lbm.Connector in part.connectors:
-			if connector.kind != "shaft" and connector.kind != "bore":
+			if not ROUND_FAMILY.has(connector.kind):
 				continue
 			var start: Vector3 = at * connector.position
 			var end: Vector3 = at * (connector.position + connector.axis * connector.length)
@@ -343,8 +431,9 @@ static func rounds(entries: Array) -> Dictionary:
 			var length: float = way.length()
 			if length < 0.001:
 				continue
-			var row: Array = [entry[0], start, way / length, length, connector.radius]
-			if connector.kind == "shaft":
+			var row: Array = [entry[0], start, way / length, length, connector.radius,
+				ROUND_FAMILY[connector.kind]]
+			if connector.kind == "shaft" or connector.kind == "finger":
 				shafts.append(row)
 				if not shafts_of.has(entry[0]):
 					shafts_of[entry[0]] = []
@@ -430,7 +519,7 @@ static func _span(row: Array, origin: Vector3, way: Vector3) -> Vector2:
 
 ## Whether a shaft is in a bore: one axis, one size, and reaching in.
 static func _fits(shaft: Array, bore: Array) -> bool:
-	if absf(float(shaft[4]) - float(bore[4])) > ROUND_FIT:
+	if shaft[5] != bore[5] or absf(float(shaft[4]) - float(bore[4])) > ROUND_FIT:
 		return false
 	if not _coaxial(shaft, bore):
 		return false

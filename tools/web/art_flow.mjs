@@ -19,7 +19,7 @@
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
 // doing nothing.
-import { launch } from "./browser.mjs";
+import { launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -189,7 +189,10 @@ ok(panels.length === across && Boolean(s?.tree?.["Frame#1"]),
 await page.waitForTimeout(6000);
 await shot("2_laid.png");
 
-// Design with Claude: the picture again, a brief, and the button.
+// Design with Claude: the assistant turned on in Settings (a first visit
+// builds by hand, and Brick Art has no Claude in it then), the picture
+// again, a brief, and the button.
+await turnAssistantOn(page);
 ok(await choosePicture(), "and again, for Design with Claude");
 const brief = await where("mosaic_brief");
 const tool = (await state())?.mode;
@@ -211,7 +214,16 @@ const handed = await until(async () => {
 const after = await state();
 ok(Boolean(after?.columns?.assistant) && !(await controls()).mosaic_build,
   `Design with Claude closes the dialog and opens the assistant: ${JSON.stringify(after?.columns)}`);
-ok(handed, `and with no key of its own, says what is needed rather than nothing: "${told}"`);
+// The status line is the first place it is said, and under load a mode's
+// hint can replace it between two polls; the assistant's column keeps it,
+// so the window's words (Main.words_shown) are read too.
+if (!told) {
+  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
+  for (let n = 0; n < 40 && !(await page.evaluate(() => window.brickworksWords)); n++) await page.waitForTimeout(500);
+  const shown = (await page.evaluate(() => window.brickworksWords)) || [];
+  told = shown.find((w) => /key of your own/i.test(w)) || "";
+}
+ok(handed || told !== "", `and with no key of its own, says what is needed rather than nothing: "${told}"`);
 await page.waitForTimeout(4000);
 await shot("3_claude.png");
 await browser.close();

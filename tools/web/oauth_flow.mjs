@@ -26,12 +26,13 @@
 // The throwaway account and everything of it are deleted at the end.
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
+import { withAssistant } from "./browser.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = args.url || "https://brickworks.diy/app";
+const url = withAssistant(args.url || "https://brickworks.diy/app");
 const site = new URL(url).origin;
 const out = args.out || "shots/oauth";
 mkdirSync(out, { recursive: true });

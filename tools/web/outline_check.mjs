@@ -32,7 +32,8 @@ const out = args.out || "shots/outline_web";
 mkdirSync(out, { recursive: true });
 const seconds = Number(args.seconds || 5);
 const model = args.model || "res://models/orthanc.ldr";
-const who = args.who || "saruman";
+// The figures were renamed with the tower (docs/TRADEMARKS.md, decision 4).
+const who = args.who || "white wizard";
 const bypass = process.env.BW_BYPASS || "";
 
 async function freePort() {
@@ -173,10 +174,10 @@ try {
     for (let n = 0; n < 600; n++) {
       now = await state();
       if (now.bricks > 1000 && !now.playing && now.places && now.places[Object.keys(now.places)
-        .find((p) => p.toLowerCase().includes(who))]) break;
+        .find((p) => p.toLowerCase().replace(/_/g, " ").includes(who))]) break;
       await page.waitForTimeout(1000);
     }
-    const path = Object.keys(now.places || {}).find((p) => p.toLowerCase().includes(who));
+    const path = Object.keys(now.places || {}).find((p) => p.toLowerCase().replace(/_/g, " ").includes(who));
     ok(Boolean(path), `${model} open (${now.bricks} parts), ${path || who} on the page`);
     if (!path) { await page.close(); continue; }
     await page.waitForTimeout(8000);

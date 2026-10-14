@@ -163,8 +163,12 @@ can occupy the same millimetre.
   pipeline records each part's **shafts** (cylinders facing out) and **bores**
   (facing in, after `BFC INVERTNEXT`) with radius and length
   (`connectivity.rounds`); `Joints.rounds` pairs a shaft with a coaxial bore of
-  the same size (within `ROUND_FIT` 1 LDU across and `ROUND_OFF_AXIS` 1 LDU off
-  the axis) that it reaches into, and the checker forgives an overlap between
+  the same size (within `ROUND_FIT` 1 LDU across and `ROUND_OFF_AXIS` 1.5 LDU off
+  the axis: 20015's clip turned to 66 degrees is 1.1 off its bar as LDraw draws
+  it) that it reaches into, and a click hinge's **finger** with its **fork**
+  (`connectivity._HINGES`: the clh* primitives, each turning about its own x
+  line; `Joints.ROUND_FAMILY` keeps a finger out of a bore and a bar out of a
+  fork), and the checker forgives an overlap between
   the two only where every shared cell lies inside a bore on that axis that the
   other part reaches into, and not in plastic standing inside that bore
   (`Joints.overlap_within`, `Assistant._joints_out`) — so the same two parts
@@ -252,6 +256,25 @@ can occupy the same millimetre.
   part's cover is its own stretched (`Builder.boxes_for`): the turned covers
   took a turn only, and gave a piece 40 long a cover one long.
 
+- `balls in sockets`: a Joint-8 ball (joint8ball) or a towball (a whole
+  `8-8sphe` 16 LDU across, facing out: 2508, 2736) in a Joint-8 socket whose
+  middle is its middle, whichever way either is turned (`Joints.balls`,
+  `BALL_SLACK` 2 LDU), joined as a pin is, for support and forgiveness.
+  `Joints.pairs` still pairs a ball with a socket on one axis as before.
+- `covers that are the part` (`tools/ldraw/occupancy.py`): past the box limit
+  a cover is tried exact up to `COARSE_LIMIT` (768) boxes, then at 4, 6, 8,
+  12 and 16 LDU grains, kept exact within `JOINT_ROOM` (24 LDU) of a bar or
+  a hole and cut by the big flat faces of the part's hull, before it falls
+  back to its bounding box: 58846 (exact, 706) and 95188 (393) were solid
+  squares, 87375 a solid block (now 748 boxes at 4 LDU). Each column's ray
+  is cast again a hair to either side of the cell's middle, along x and
+  along z, where it runs along an edge in plan, and a cell on an upright face
+  slanted in plan is inside neither side, so two parts meeting on a seam at
+  45 degrees through cell middles share none; a face square to x or z keeps
+  its cells (60601's pane, drawn from one cell middle to another, is three
+  layers). A column with no plastic at any
+  height is not filled (a ring plate's opening, a tyre lying flat), and holes
+  are plugged while a layer is filled and cleared after (18897's cavity).
 - `connection audit` (`src/dev/connection_audit.gd`, `tools/connection_audit.py`):
   every set in vendor/omr opened as File, Open does and checked with only
   the ground holding; each floating cluster put down to the joint it touches
@@ -283,6 +306,7 @@ godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/hinged_panels_probe.gd # turned any way, on hinges: a dome, a band of skins
+godot --headless --path . --script src/dev/dome_probe.gd         # four 87375 clipped on four 58846, held; 58846/95188 nest (vendor/omr)
 python3 tools/connection_audit.py run [--shards 6 --parallel 2]   # every real set, under heavy, hours
 python3 tools/connection_audit.py report --before DIR --write docs/CONNECTIONS.md
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes

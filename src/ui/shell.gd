@@ -96,6 +96,13 @@ const MENUS: Array = [
 ## Submenu rows are numbered from here, clear of the commands.
 const SUBMENU_ID := 10000
 
+## The assistant's commands: in no menu, and never run, while it is off
+## (Settings, Assistant (AI): ShellPrefs.assistant_shown).
+const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "panel_assistant", "connector"]
+
+## Whether the assistant is in the window: [method set_assistant].
+var assistant_shown: bool = true
+
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
@@ -311,15 +318,18 @@ func run(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null or not can(name):
 		return false
-	attend(name, func() -> Variant:
+	attend(name, func() -> void:
 		# Asked again: put off a frame, it may not be any more.
-		return found.run.call() if can(name) else null)
+		if can(name):
+			await found.run.call())
 	return true
 
 
 ## Do [param work] as command [param name]: said first when it is slow,
 ## timed, and its words on the bar for as long as it goes on (Working.attend).
 ## The menus, the toolbar, the keys and the dialogs' buttons all come here.
+## [param work] is awaited to its end, so a command awaits the coroutines
+## it sets going: one called without await goes on unseen and untimed.
 func attend(name: String, work: Callable) -> void:
 	var size: int = work_size(name)
 	var slow: bool = size >= int(SLOW_FROM.get(name,
@@ -386,7 +396,9 @@ const SLOW_FROM: Dictionary = {
 	"step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
 	"step_later": 300, "step_merge": 300, "step_delete": 300,
 	"turn_left": 300, "turn_right": 300, "collection_build": 0, "collection_need": 1000,
-	"stability": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
+	# Everything connected walks the model from the part: 464 ms on the
+	# 536-part station, unsaid on a device that had not timed it before.
+	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
 	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
@@ -459,6 +471,8 @@ func can(name: String) -> bool:
 	if found == null:
 		return false
 	if read_only and not name in LOOKING:
+		return false
+	if not assistant_shown and name in ASSISTANT_COMMANDS:
 		return false
 	return not found.can.is_valid() or bool(found.can.call())
 
@@ -560,19 +574,19 @@ func _define() -> void:
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
 		"Keep a copy of this model under another name")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
-		func() -> void: bar._on_export_chosen(0), something)
+		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: bar._on_export_chosen(4), something)
+		func() -> void: await (app.get("_exports") as Exports).studio_io(), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
 		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: bar._on_export_chosen(1), something)
+		func() -> void: await (app.get("_exports") as Exports).take_picture(), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: bar._on_export_chosen(2), something)
+		func() -> void: (app.get("_exports") as Exports).shop_list("bricklink"), something)
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: bar._on_export_chosen(3), something)
+		func() -> void: (app.get("_exports") as Exports).shop_list("rebrickable"), something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/pose_panel.gd.
@@ -589,9 +603,9 @@ func _define() -> void:
 	_add("quit", "Quit", CTRL | KEY_Q, func() -> void: app.get_tree().quit(),
 		func() -> bool: return not OS.has_feature("web"))
 	# Edit
-	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: verbs.press("undo"),
+	_add("undo", "Undo", CTRL | KEY_Z, func() -> void: await verbs.press("undo"),
 		func() -> bool: return builder.history_depth() > 0, "Take back the last change")
-	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: verbs.press("redo"),
+	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: await verbs.press("redo"),
 		func() -> bool: return not builder._redo.is_empty(), "Put it back")
 	# Not "cut": that is the cut-away (K), defined under View, and a second
 	# command of one name replaced the first, so Edit, Cut sliced the model
@@ -604,8 +618,8 @@ func _define() -> void:
 		"Hold a copy of what was copied: click to put it down, R turns it")
 	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
 		selected, "Hold a copy of the selection, to put down beside it")
-	_add("delete", "Delete", KEY_DELETE, func() -> void: verbs.press("delete"), selected,
-		"Take the selection off the model")
+	_add("delete", "Delete", KEY_DELETE, func() -> void: await verbs.press("delete"),
+		selected, "Take the selection off the model")
 	_add("select_all", "Select all", CTRL | KEY_A, func() -> void: verbs.select_by("all"),
 		something)
 	_add("select_none", "Select nothing", 0, func() -> void: verbs.select_by("none"), selected)
@@ -614,7 +628,7 @@ func _define() -> void:
 	_add("select_alike", "Same part and colour", 0, func() -> void: verbs.select_by("alike"),
 		selected)
 	_add("select_connected", "Everything connected", 0,
-		func() -> void: verbs.select_connected(), selected)
+		func() -> void: await verbs.select_connected(), selected)
 	_add("select_submodel", "Same sub-model", 0, func() -> void: verbs.select_by("submodel"),
 		selected)
 	_add("select_inverse", "The opposite", 0, func() -> void: verbs.select_by("inverse"),
@@ -630,8 +644,8 @@ func _define() -> void:
 		"Keep the selection from being picked out, moved, painted or taken off")
 	_add("unlock", "Unlock everything", SHIFT | KEY_L, func() -> void: verbs.unlock_all(),
 		func() -> bool: return not builder.locked.is_empty())
-	_add("paint", "Paint the selection", KEY_C, func() -> void: verbs.press("paint"), selected,
-		"Paint the selection the colour in hand")
+	_add("paint", "Paint the selection", KEY_C, func() -> void: await verbs.press("paint"),
+		selected, "Paint the selection the colour in hand")
 	_add("replace", "Replace with the part in hand", 0, func() -> void: verbs.replace(),
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
@@ -745,8 +759,8 @@ func _define() -> void:
 		return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN \
 			or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 	# Build
-	_add("timeline", "Timeline", KEY_B, func() -> void: bar.timeline_wanted.emit(), something,
-		"Play the build from an empty baseplate to the finished model and back")
+	_add("timeline", "Timeline", KEY_B, func() -> void: await app.call("_toggle_steps"),
+		something, "Play the build from an empty baseplate to the finished model and back")
 	_ticked("timeline", func() -> bool:
 		return (app.get("_steps") as StepsBar).is_playing_back())
 	_add("parts_list", "Parts list", KEY_P, func() -> void: bar.parts_wanted.emit(), something,
@@ -828,7 +842,7 @@ func _define() -> void:
 	# src/ui/simulate_panel.gd. Beside Check stability rather than with Pose
 	# under Build: both read the model as it is built and change none of it,
 	# where every pose a slider sets is a step to undo.
-	_add("simulate", "Simulate mechanism…", 0, func() -> void: app.call("open_simulate"),
+	_add("simulate", "Simulate mechanism…", 0, func() -> void: await app.call("open_simulate"),
 		something, "Turn a gear train from a crank or an axle: how fast each part goes, "
 			+ "each arm's period, what locks it, and whether it stays standing as it turns")
 	_add("reseat", "Seat parts on their studs", 0, _reseat, something,
@@ -922,7 +936,7 @@ func _menu(title: String, items: Array) -> MenuButton:
 
 func _fill(popup: PopupMenu, items: Array) -> void:
 	popup.add_theme_font_size_override("font_size", 13)
-	for item: String in items:
+	for item: String in _shown(items):
 		if item == "-":
 			popup.add_separator()
 		elif item.begins_with(">"):
@@ -967,6 +981,39 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 				popup.add_item(words, id, shown)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
+
+
+## A menu's rows as the window shows them: without the assistant's while
+## it is off, and without the line that set them apart from the rest.
+func _shown(items: Array) -> Array:
+	var out: Array = []
+	for item: String in items:
+		if not assistant_shown and item in ASSISTANT_COMMANDS:
+			continue
+		if item == "-" and (out.is_empty() or out.back() == "-"):
+			continue
+		out.append(item)
+	while not out.is_empty() and out.back() == "-":
+		out.pop_back()
+	return out
+
+
+## Settings, Assistant (AI): the menus and the menu on a part made again,
+## with the assistant's commands or without them.
+func set_assistant(on: bool) -> void:
+	if on == assistant_shown:
+		return
+	assistant_shown = on
+	if _menus.is_empty():
+		return
+	_ids.clear()
+	for n: int in _menus.size():
+		var popup: PopupMenu = _menus[n].get_popup()
+		popup.clear(true)
+		_fill(popup, MENUS[n][1])
+	if context != null:
+		context.queue_free()
+		context = null
 
 
 ## Greyed where it would do nothing, ticked where it is on.
@@ -1033,16 +1080,16 @@ func _save_named(name: String) -> void:
 		return
 	bar._name.text = called
 	bar._name.text_changed.emit(called)
-	bar._on_save()
+	await bar._on_save()
 
 
 ## The booklet, where the app has one of its own to open; the timeline,
 ## where the booklet is made from, where it does not.
 func _instructions() -> void:
 	if app.has_method("_booklet_wanted"):
-		app.call("_booklet_wanted")
+		await app.call("_booklet_wanted")
 	else:
-		app.call("_toggle_steps")
+		await app.call("_toggle_steps")
 
 
 ## Tools, Check stability: the joints that would give way, selected, and
@@ -1176,8 +1223,9 @@ func _toggle_full_screen() -> void:
 
 
 func _show_about() -> void:
-	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, on the web "
-		+ "or on your own computer.\n\n%s\n\n"
+	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
+		+ (" or with the assistant" if assistant_shown else "")
+		+ ", on the web or on your own computer.\n\n%s\n\n"
 		+ "Part geometry from the LDraw™ Parts Library, CC BY 2.0 and CC BY 4.0.\n"
 		+ "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
 		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.") % [

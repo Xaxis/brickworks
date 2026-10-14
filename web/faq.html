@@ -81,16 +81,16 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 	<p class="lede">If yours is not here, <a href="https://github.com/Xaxis/brickworks/issues">ask it on GitHub</a>.</p>
 
 	<h2 id="claude">Designing with Claude</h2>
-	<p class="sub">Building by hand needs nothing but an account. To have Claude design, bring your own Claude, one of two ways. Brickworks bills nothing.</p>
+	<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own Claude, one of two ways. Brickworks bills nothing.</p>
 	<div class="ways">
 		<div class="card way">
 			<h3>Your Claude plan</h3>
 			<p class="for">Claude Pro or Max · no key, nothing to install</p>
 			<ol>
-				<li>In the app, press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
+				<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
 				<li>Or in Claude Code, then <b>/mcp</b> and Authenticate:
 					<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
-				<li>With Brickworks open, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
+				<li>With Brickworks open and its assistant on, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
 			</ol>
 			<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
 		</div>
@@ -99,7 +99,7 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 			<p class="for">Pay as you go · from the Anthropic Console</p>
 			<ol>
 				<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, safest in a workspace of its own, with a spend limit, set to expire.</li>
-				<li>Paste it into the app. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
+				<li>Paste it into <a href="/app?assistant=on">the app’s assistant</a>. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
 				<li>Describe what you want and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
 			</ol>
 			<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
@@ -107,13 +107,17 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 	</div>
 
 	<h2 id="questions">Questions people ask</h2>
+	<details class="qa" id="studio">
+		<summary>Why Brickworks, when BrickLink Studio exists?</summary>
+		<div><p>Studio is the community’s standard and does a lot well. Brickworks runs in any browser with nothing to install, weighs balance and joint strength, turns gear trains at their real ratios, opens and saves Studio <code>.io</code>, and exports STL, OBJ and GLB. <a href="/compare">See each on a real model</a>.</p></div>
+	</details>
 	<details class="qa">
 		<summary>Is Brickworks free?</summary>
 		<div><p>Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks.</p></div>
 	</details>
 	<details class="qa">
 		<summary>Do I need a Claude subscription?</summary>
-		<div><p>No. Everything but the assistant works without one: you can build entirely by hand, and View, Assistant closes its column. To bring Claude in, connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console.</p></div>
+		<div><p>No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or <a href="/app?assistant=on">open the app with it on</a>: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console.</p></div>
 	</details>
 	<details class="qa">
 		<summary>Does Brickworks see my API key?</summary>
@@ -227,8 +231,9 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 	"@context": "https://schema.org",
 	"@type": "FAQPage",
 	"mainEntity": [
+		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser with nothing to install, weighs balance and joint strength, turns gear trains at their real ratios, opens and saves Studio .io, and exports STL, OBJ and GLB. Each is shown on a real model at brickworks.diy/compare." } },
 		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks." } },
-		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one: you can build entirely by hand, and View, Assistant closes its column. To bring Claude in, connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
+		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
 		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
 		{ "@type": "Question", "name": "Where are my models saved?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, or on your computer in the desktop app, not on a server and not with your account. Export them as LDraw .ldr or Studio .io. A model goes online only when you share it by link." } },
 		{ "@type": "Question", "name": "Can it open my BrickLink Studio, LDD or LDraw files?", "acceptedAnswer": { "@type": "Answer", "text": "Yes: Studio .io (locked ones too), LEGO® Digital Designer .lxf, and LDraw .ldr and .mpd. It saves LDraw and .io, exports glTF, OBJ and STL, and turns OBJ, STL and glTF models into bricks." } },

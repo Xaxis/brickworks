@@ -27,6 +27,14 @@ whole cycle.
   told how (read_guide "round", show_technique "hinged panels" and
   "sideways skins").
 
+- Build by hand only: Settings, Assistant (AI) takes the assistant out of
+  the window altogether — its column, Ask Claude about this… in the menus
+  and on a part, Design with Claude in Brick Art, the Claude connector and
+  its card in the tour — and switches the connector off with it. A first
+  visit starts this way, on the parts bin, with one button, Show the
+  assistant, that turns it on in one press; brickworks.diy/app?assistant=on
+  opens with it on, and the site's links about Claude use that. A computer
+  that has used Claude here keeps it. Turned on again, all of it comes back.
 - Sketch first: a first design can begin with three quick sketches to
   choose between, so you see whether your brief was understood before a
   full design is paid for. Each is the model's main masses only, under 150
@@ -130,6 +138,18 @@ whole cycle.
   Import: LEGO® Digital Designer's .lxf.
 
 ### Changed
+
+- The build check holds what real sets hold, measured against every set in
+  the LDraw model repository (docs/CONNECTIONS.md): click hinges, a towball
+  or a ball turned in its socket, and a clip turned to an odd angle on its
+  bar now hold, and a model whose wheels stand a hair off the ground stands
+  on them. Curved and concave parts — domes, quarter rings, dishes,
+  windscreens, ring plates — collide as their shapes, not as solid boxes,
+  so what real sets put inside one fits, and parts that meet on a seam at
+  45 degrees no longer overlap there. attachment_points lists a part's bars
+  and clips, and a part goes on a bar or a clip by axis and joint. A smooth
+  dome 16 studs across is a worked construction (show_technique "smooth
+  dome"), and a search for a dome says so.
 
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for

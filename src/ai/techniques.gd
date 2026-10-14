@@ -1527,6 +1527,66 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "smooth dome",
+			"group": "round bodies",
+			# A search with one of these words in it is told of this.
+			"asked_by": ["dome", "domes", "domed", "hemisphere", "hemispherical",
+				"observatory", "planetarium", "greenhouse", "igloo"],
+			"when": "a smooth dome 16 studs across, glass or solid — an "
+				+ "observatory, a greenhouse, a habitat, a planetarium, a "
+				+ "lamp room, an orrery's cover",
+			"why": "Four 87375 quarter domes, radius 8, on a ring of four "
+				+ "58846 tapered 10 x 10 corners whose slope carries the dome's "
+				+ "curve on out. A quarter's two handles are bars: the bottom "
+				+ "one in two 61252 clips standing outward on 1 x 1 plates on "
+				+ "the corners' studs, under the shell, and the top one in a "
+				+ "61252 on a 2 x 2 round plate inside the crown, and a 2 x 2 "
+				+ "round tile on those four clips' studs closes the crown; for a "
+				+ "cap that shows, a 4 x 4 dish (3960) on the same clips instead, "
+				+ "at x -2, y 20.75, z -2 here. The ring is open in the middle and "
+				+ "holds nothing there: a deck of plates under it needs something "
+				+ "under its middle, or a second layer crossing the first. A "
+				+ "quarter goes "
+				+ "on by its bottom bar: axis the way the handle runs, joint 0, "
+				+ "x, y, z the middle of its two clips' line.",
+			"bricks": [
+				{"part": "58846", "color": 71, "x": -10, "y": 0, "z": 0, "rot": 0},
+				{"part": "58846", "color": 71, "x": -10, "y": 0, "z": -10, "rot": 3},
+				{"part": "58846", "color": 71, "x": 0, "y": 0, "z": -10, "rot": 2},
+				{"part": "58846", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1},
+				{"part": "3024", "color": 71, "x": -1, "y": 3, "z": 6, "rot": 0},
+				{"part": "3024", "color": 71, "x": 0, "y": 3, "z": 6, "rot": 0},
+				{"part": "3024", "color": 71, "x": -1, "y": 3, "z": -7, "rot": 0},
+				{"part": "3024", "color": 71, "x": 0, "y": 3, "z": -7, "rot": 0},
+				{"part": "3024", "color": 71, "x": -7, "y": 3, "z": 0, "rot": 0},
+				{"part": "3024", "color": 71, "x": -7, "y": 3, "z": -1, "rot": 0},
+				{"part": "3024", "color": 71, "x": 6, "y": 3, "z": 0, "rot": 0},
+				{"part": "3024", "color": 71, "x": 6, "y": 3, "z": -1, "rot": 0},
+				{"part": "61252", "color": 71, "x": -1, "y": 3.75, "z": 6, "rot": 0},
+				{"part": "61252", "color": 71, "x": 0, "y": 3.75, "z": 6, "rot": 0},
+				{"part": "61252", "color": 71, "x": -1, "y": 3.75, "z": -8, "rot": 2},
+				{"part": "61252", "color": 71, "x": 0, "y": 3.75, "z": -8, "rot": 2},
+				{"part": "61252", "color": 71, "x": -8, "y": 3.75, "z": 0, "rot": 3},
+				{"part": "61252", "color": 71, "x": -8, "y": 3.75, "z": -1, "rot": 3},
+				{"part": "61252", "color": 71, "x": 6, "y": 3.75, "z": 0, "rot": 1},
+				{"part": "61252", "color": 71, "x": 6, "y": 3.75, "z": -1, "rot": 1},
+				{"part": "4032a", "color": 71, "x": -1, "y": 18, "z": -1, "rot": 0},
+				{"part": "61252", "color": 71, "x": -1, "y": 18.75, "z": 0, "rot": 0},
+				{"part": "61252", "color": 71, "x": -2, "y": 18.75, "z": -1, "rot": 3},
+				{"part": "61252", "color": 71, "x": 0, "y": 18.75, "z": -2, "rot": 2},
+				{"part": "61252", "color": 71, "x": 0, "y": 18.75, "z": 0, "rot": 1},
+				{"part": "14769", "color": 47, "x": -1, "y": 20, "z": -1, "rot": 0},
+				{"part": "87375", "color": 47, "axis": "x", "joint": 0,
+					"x": 0, "y": 4.75, "z": 7.5},
+				{"part": "87375", "color": 47, "axis": "z", "joint": 0,
+					"x": -7.5, "y": 4.75, "z": 0},
+				{"part": "87375", "color": 47, "axis": "-x", "joint": 0,
+					"x": 0, "y": 4.75, "z": -7.5},
+				{"part": "87375", "color": 47, "axis": "-z", "joint": 0,
+					"x": 7.5, "y": 4.75, "z": 0},
+			],
+		},
+		{
 			"name": "ring of cones under a round plate",
 			"group": "round bodies",
 			"when": "engine nozzles, the bells under a rocket, lamps under a "

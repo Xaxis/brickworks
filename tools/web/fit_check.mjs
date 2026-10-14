@@ -33,7 +33,13 @@
 // publishing its controls; the layout checks after it are as strict as ever.
 // --throttle=<n> slows each page's CPU n times (Chromium's
 // Emulation.setCPUThrottlingRate), to see a slow start reported as one.
-import { launch, START_MS } from "./browser.mjs";
+//
+// Each size twice: as a first visit has it, building by hand with no
+// assistant, and with the assistant turned on in Settings as a person who
+// wants it does (turnAssistantOn), its column and its key field among the
+// controls asked for. A build from before the setting has the assistant on
+// from the start, and is checked once.
+import { launch, START_MS, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { loadavg } from "node:os";
 
@@ -56,17 +62,19 @@ const throttle = Number(args.throttle || 1);
 // the least share of the page's width the model keeps (0: not asked).
 //
 // A window under the design width (1600 units across) has room beside the
-// model for one column, and a first visit shows the assistant's, with the
-// parts bin folded to its rail: the key field is asked for at every
-// desktop size, and both rails where one column shows. On a phone the
-// panels are drawers and start closed. Phones were asked only for New and
-// Save while the toolbar, a thousand units in one row, pushed Clear and
-// the assistant's rail off the side of every phone: there the assistant
-// could not be opened at all.
+// model for one column. A first visit shows the parts bin and no assistant;
+// turned on, the assistant's column opens and the parts bin folds to its
+// rail: then the key field is asked for at every desktop size, and both
+// rails where one column shows. On a phone the panels are drawers and start
+// closed. Phones were asked only for New and Save while the toolbar, a
+// thousand units in one row, pushed Clear and the assistant's rail off the
+// side of every phone: there the assistant could not be opened at all.
 const BOTH = ["model_name", "new", "save", "clear", "key_field", "use_key"];
 const ONE = ["model_name", "new", "save", "clear", "key_field", "use_key", "parts_rail",
   "assistant_rail"];
 const PHONE = ["new", "save", "clear", "parts_rail", "assistant_rail"];
+// The assistant's, asked for only once it is on.
+const ITS_OWN = ["key_field", "use_key", "assistant_rail"];
 const ALL = [
   [1600, 900, 1, BOTH, 0],
   [1920, 1080, 2, BOTH, 0],
@@ -169,6 +177,29 @@ for (const [width, height, ratio, wanted, share] of CASES) {
     continue;
   }
   await page.waitForTimeout(3000);
+  const byHand = await page.evaluate(() => (window.brickworksState || {}).assistant === false);
+  if (byHand) {
+    if (!(await fits(page, label + " by hand", wanted.filter((n) => !ITS_OWN.includes(n)), share, width, height))) failed++;
+    if (!(await turnAssistantOn(page))) {
+      console.log(`  FAIL  ${label}: the assistant could not be turned on in Settings`);
+      failed++;
+    }
+  }
+  if (!(await fits(page, byHand ? label + " with the assistant" : label, wanted, share, width, height))) failed++;
+  console.log(`        ${label}: up in ${waited} s`);
+  await context.close();
+}
+await browser.close();
+// 2 when the only failures are sizes the app never started at.
+const misfits = failed - unstarted;
+const said = [misfits ? `${misfits} failed` : "", unstarted ? `the app did not start at ${unstarted} size(s)` : ""];
+console.log(failed ? said.filter(Boolean).join("; ") : "the app fits the page at every size and density, the model clear");
+process.exit(misfits ? 1 : unstarted ? 2 : 0);
+
+
+// Every control asked for inside the page, and nothing but the view cube
+// over the model. True when both hold.
+async function fits(page, label, wanted, share, width, height) {
   const where = await page.evaluate(() => window.brickworksControls || {});
   const outside = [];
   // Up, but signed out: the sign-in screen is all there is.
@@ -212,19 +243,12 @@ for (const [width, height, ratio, wanted, share] of CASES) {
   }
   // A large canvas drawn in software can take longer than a screenshot's
   // default wait; the picture is evidence, not the check.
-  await page.screenshot({ path: `${out}/${label}.png`, timeout: 120000 }).catch(() => {});
-  const fits = outside.length === 0;
+  await page.screenshot({ path: `${out}/${label.split(" ").join("_")}.png`, timeout: 120000 }).catch(() => {});
+  const inPage = outside.length === 0;
   const clear = over.length === 0;
-  if (!fits || !clear) failed++;
-  console.log(`  ${fits ? "ok  " : "FAIL"}  ${label}: ${fits ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}, up in ${waited} s`);
+  console.log(`  ${inPage ? "ok  " : "FAIL"}  ${label}: ${inPage ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}`);
   const said = view ? `model [${view}]${layout ? `, ${layout.samples} points, columns ${layout.columns}` : " (from centres)"}` : "";
   const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width` : "";
   console.log(`  ${clear ? "ok  " : "FAIL"}  ${label}: ${clear ? `nothing over the model (${said}${kept})` : `${over.slice(0, 6).join("; ")}${over.length > 6 ? `; and ${over.length - 6} more` : ""} (${said})`}`);
-  await context.close();
+  return inPage && clear;
 }
-await browser.close();
-// 2 when the only failures are sizes the app never started at.
-const misfits = failed - unstarted;
-const said = [misfits ? `${misfits} failed` : "", unstarted ? `the app did not start at ${unstarted} size(s)` : ""];
-console.log(failed ? said.filter(Boolean).join("; ") : "the app fits the page at every size and density, the model clear");
-process.exit(misfits ? 1 : unstarted ? 2 : 0);

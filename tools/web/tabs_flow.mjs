@@ -41,7 +41,7 @@
 //
 // Signs in as a throwaway account of its own, deleted at the end, so the
 // tabs other flows have open on the shared test account are not among its.
-import { launch } from "./browser.mjs";
+import { launch, withAssistant } from "./browser.mjs";
 import { mintSession, STORAGE_KEY } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -50,7 +50,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = String(args.url || "http://127.0.0.1:8790/app");
+const url = withAssistant(String(args.url || "http://127.0.0.1:8790/app"));
 const out = args.out || "shots/tabs";
 const bypass = args.bypass || process.env.BW_BYPASS || "";
 mkdirSync(out, { recursive: true });
@@ -402,8 +402,11 @@ await wait(3000);
 const gone = await call(token, session, "edit_model", {
   add: [{ part: "3005", color: 4, x: 0, y: 0, z: 20, rot: 0 }] });
 check(`the tree's tab closed, the session's next call says so: "${gone.words.split(".")[0]}"`,
+  // Closed before the call reached it, nothing was done; closed with the
+  // call in it, the relay cannot know, and says so. Both are honest.
   gone.error && gone.words.includes(`The tab this session was working in, ${wood.id}`)
-    && gone.words.includes("has closed, so nothing was done"));
+    && (gone.words.includes("has closed, so nothing was done")
+      || gone.words.includes("closed before it answered, so whether it was done is not known")));
 check(`...and nothing was done in the tabs still open: ${(await state(home.page)).bricks}, ${(await state(cart.page)).bricks}`,
   (await state(home.page)).bricks === home.bricks && (await state(cart.page)).bricks === cart.bricks + 1);
 

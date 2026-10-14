@@ -78,21 +78,73 @@ const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claud
 
 /// Open the column a control lives in, if it is folded, by its rail — as a
 /// person does. A window under the design width (1600 units across: every
-/// laptop) shows one column beside the model at a time, and a first visit
-/// shows the assistant, so the parts bin's controls (and the model tree's
-/// and the properties') are not on the page until its rail is clicked. A
-/// flow's wait for a control calls this while the control has not shown.
-/// Does nothing on a build that does not say which columns are open
-/// (brickworksState.columns, from 2026-10-12), or when the control's column
-/// is open already, so it is safe to call again. True when it clicked.
+/// laptop) shows one column beside the model at a time, so the other
+/// column's controls are not on the page until its rail is clicked. And a
+/// first visit builds by hand, with no assistant at all (Settings,
+/// Assistant (AI)): a control of the assistant's turns it on first
+/// ([turnAssistantOn]), which opens its column. A flow's wait for a control
+/// calls this while the control has not shown. Does nothing on a build that
+/// does not say which columns are open (brickworksState.columns, from
+/// 2026-10-12), or when the control's column is open already, so it is safe
+/// to call again. True when it clicked.
 export async function openColumnFor(page, name) {
-  const state = await page.evaluate(() => (window.brickworksState || {}).columns || null);
+  const everything = await page.evaluate(() => window.brickworksState || {});
+  const state = everything.columns || null;
   if (!state) return false;
   const column = ASSISTANT.test(name) ? "assistant" : "parts";
+  if (column === "assistant" && everything.assistant === false) return turnAssistantOn(page);
   if (state[column] !== false) return false;
   const rail = await page.evaluate((n) => (window.brickworksControls || {})[n], `${column}_rail`);
   if (!rail) return false;
   await page.mouse.click(rail.x, rail.y);
   await page.waitForTimeout(1500);
   return true;
+}
+
+/// The app's address as the site links to it for someone who came for the
+/// assistant: `assistant=on` added (Main._assistant_from_address). A first
+/// visit builds by hand with the connector held off, so a flow that drives
+/// Claude through the connector arrives this way, as such a person does.
+export function withAssistant(address) {
+  if (/[?&]assistant=/.test(address)) return address;
+  return `${address}${address.includes("?") ? "&" : "?"}assistant=on`;
+}
+
+/// The assistant on, as a person turns it on: Settings (the comma key), the
+/// choice "Show the assistant", and Done. A first visit builds by hand, with
+/// no assistant anywhere in the window (the app's ShellPrefs.assistant_shown),
+/// so a flow that drives the assistant asks for it first; turned on, its
+/// column opens. Does nothing on a build that does not say
+/// (brickworksState.assistant, from 2026-10-13) or when it is on already.
+/// True when it turned it on.
+export async function turnAssistantOn(page) {
+  return chooseAssistant(page, true);
+}
+
+/// Settings, Assistant (AI): on or off, by the clicks a person makes. True
+/// when it changed it.
+export async function chooseAssistant(page, on) {
+  const now = () => page.evaluate(() => (window.brickworksState || {}).assistant);
+  const was = await now();
+  if (was === undefined || was === on) return false;
+  const named = () => page.evaluate(() => window.brickworksControls || {});
+  const choice = on ? "assistant_on" : "assistant_off";
+  for (let tries = 0; tries < 60 && !(await named())[choice]; tries++) {
+    // The comma key is Settings; a page that has not had a click yet may
+    // not have the keys, so the model is clicked once to give them to it.
+    if (tries === 8) {
+      const view = (await named()).view;
+      if (view) await page.mouse.click(view.x, view.y);
+    }
+    if (tries % 8 === 0) await page.keyboard.press("Comma");
+    await page.waitForTimeout(500);
+  }
+  const where = (await named())[choice];
+  if (!where) return false;
+  await page.mouse.click(where.x, where.y);
+  for (let tries = 0; tries < 40 && (await now()) !== on; tries++) await page.waitForTimeout(250);
+  const done = (await named()).settings_done;
+  if (done) await page.mouse.click(done.x, done.y);
+  await page.waitForTimeout(1500);
+  return (await now()) === on;
 }

@@ -116,5 +116,86 @@
   "subject": "car",
   "alt": "A studio render of a red LEGO® sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front.",
   "caption": "A sports car and its driver, designed by Claude."
+ },
+ {
+  "slug": "compare-tabs",
+  "files": {
+   "poster": "compare-tabs.webp",
+   "webm": "compare-tabs.webm",
+   "mp4": "compare-tabs.mp4"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene tabs: the castle, kart and orrery tabs brought to the front in turn; poster: scene browser",
+  "subject": "the browser window with three tabs, each its own model",
+  "alt": "A Chromium window at brickworks.diy/app with three tabs open, a castle, a Technic go-kart and an orrery of the Sun and eight planets, each brought to the front in turn and each showing its own model in the builder.",
+  "caption": "In a browser, nothing to install"
+ },
+ {
+  "slug": "compare-stability",
+  "files": {
+   "poster": "compare-stability.webp",
+   "webm": "compare-stability.webm",
+   "mp4": "compare-stability.mp4"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene stability: the tree's tab, the parts column folded, Tools, Check stability",
+  "subject": "Tools, Check stability on the tree",
+  "alt": "A tree of LEGO® bricks in the builder: Tools, Check stability is chosen, and the base the tree stands on is drawn green on the baseplate with a line down from its centre of mass, which falls 2 studs inside the back edge.",
+  "caption": "Will it stand? Will it hold?"
+ },
+ {
+  "slug": "compare-simulate",
+  "files": {
+   "poster": "compare-simulate.webp",
+   "webm": "compare-simulate.webm",
+   "mp4": "compare-simulate.mp4"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene simulate: Tools, Simulate mechanism…, Play for 150 s, the 43 frames the page drew kept at 8 a second; poster: the panel's readout",
+  "subject": "Tools, Simulate mechanism on the orrery",
+  "alt": "Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's year against NASA's, Mercury 0.24 Earth years against 0.2408 and Mars 1.875 against 1.8808, and the gears, tinted blue for slow and orange for fast, turn the planets' arms round the central shaft.",
+  "caption": "Gear trains turn at their real ratios"
+ },
+ {
+  "slug": "compare-io",
+  "files": {
+   "640": "compare-io-640.webp",
+   "1200": "compare-io-1200.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene io: the tree's tab, File, Export, the .io line lit",
+  "subject": "File, Export, BrickLink Studio model (.io)",
+  "alt": "The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.",
+  "caption": "Your Studio files, in and out"
+ },
+ {
+  "slug": "compare-export3d",
+  "files": {
+   "640": "compare-export3d-640.webp",
+   "1200": "compare-export3d-1200.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene export3d: the kart's tab, File, Export, 3D model…, the format list opened",
+  "subject": "Export a 3D model, its formats",
+  "alt": "Export a 3D model, over a Technic go-kart: the model as a 3D file at its real size, for Blender, AR or a 3D printer, with the list of formats open: GLB, glTF, OBJ with its colours, and STL to 3D print.",
+  "caption": "STL, OBJ and GLB"
+ },
+ {
+  "slug": "compare-booklet",
+  "files": {
+   "640": "compare-booklet-640.webp",
+   "1200": "compare-booklet-1200.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "~/.claude/claude-core/bin/heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --url=https://brickworks.diy/app (headed Chromium on SwiftShader, the window grabbed by ffmpeg's x11grab), 2026-10-13, then node tools/web/compare_media.mjs --encode (its CROPS); scene booklet: the kart's tab, the toolbar's Instructions, the booklet's tab at its last page of steps",
+  "subject": "the kart's booklet in its own tab",
+  "alt": "The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.",
+  "caption": "Instructions in one press"
  }
 ]

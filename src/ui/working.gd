@@ -174,8 +174,8 @@ static func is_busy() -> bool:
 ## and seconds on Orthanc), and one known to be slow is said first —
 ## "Saving…" drawn, then the command run the frame after. One not known is
 ## run at once and timed, and is said first from then on. A command that
-## goes on after it returns (a coroutine) and has not said what it is doing
-## gets its own words on the bar until it ends.
+## goes on after it returns (a coroutine) is timed to its end, and one that
+## has not said what it is doing gets its own words on the bar until then.
 ##
 ## Fast commands never flash a bar: one is said first only when what it
 ## cost the last time and what it costs on average are both over
@@ -209,7 +209,7 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 		slow: bool = false, size: int = 0) -> void:
 	# Inside another command: that one is being timed and said.
 	if _depth > 0:
-		run.call()
+		await run.call()
 		return
 	var parts: int = size
 	var said: Job = null
@@ -218,37 +218,47 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 		await said.shown()
 	var begun_before: int = _begun
 	var from: int = Time.get_ticks_usec()
+	# Only what it does before its first await is inside it: a command
+	# pressed while this one waits on a frame is a command of its own.
+	var going := _Going.new()
 	_depth += 1
-	var state: Variant = run.call()
+	going.go(run)
 	_depth -= 1
-	# A coroutine still going hands back its state; it signals when done.
-	var going: bool = state is Object and is_instance_valid(state) \
-		and (state as Object).get_class() == "GDScriptFunctionState"
-	var finished: Array[bool] = [not going]
-	if going:
-		(state as Object).connect("completed", func(_result: Variant) -> void:
-			finished[0] = true, CONNECT_ONE_SHOT)
-	# What it held: the rest of this frame's work, whatever it set going.
-	if _frame_end != null and is_instance_valid(_frame_end):
-		await _frame_end.ended
-	var held: float = (Time.get_ticks_usec() - from) / 1000.0
-	_remember(name, parts, held)
-	# It began a job of its own that is still going: that says what it does.
-	if finished[0] or _has_job_since(begun_before):
-		if said != null:
-			said.end()
-		return
 	# Still going after it returned, and saying nothing: said, until it ends.
-	if said == null:
+	if not going.finished and said == null:
 		var tree: SceneTree = Engine.get_main_loop() as SceneTree
 		for _n: int in GOES_ON_FRAMES:
 			await tree.process_frame
-			if finished[0] or _has_job_since(begun_before):
-				return
-		said = begin(doing)
-	while not finished[0]:
-		await (Engine.get_main_loop() as SceneTree).process_frame
-	said.end()
+			if going.finished:
+				break
+		# Unless it began a job of its own: that says what it does.
+		if not going.finished and not _has_job_since(begun_before):
+			said = begin(doing)
+	if not going.finished:
+		await going.ended
+	# What it held: to its end, and the rest of the frame it ended in,
+	# whatever it set going.
+	if _frame_end != null and is_instance_valid(_frame_end):
+		await _frame_end.ended
+	_remember(name, parts, (Time.get_ticks_usec() - from) / 1000.0)
+	if said != null:
+		said.end()
+
+
+## A command run to its end, however many frames that takes. [method go]
+## is called without await, so it hands back at the command's first await
+## and goes on with it; [member finished] says whether it has ended. Godot 4
+## waits on a coroutine only with await: taking its result without await,
+## to wait on its state object as Godot 3 did, is a script error in a debug
+## build, which stops the caller there.
+class _Going extends RefCounted:
+	signal ended
+	var finished: bool = false
+
+	func go(run: Callable) -> void:
+		await run.call()
+		finished = true
+		ended.emit()
 
 
 ## Whether a job begun after the [param count]th is still going.
