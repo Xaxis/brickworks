@@ -3,11 +3,12 @@
 # on with CONFLICTS, once they are resolved and added by hand: the same feature
 # map, commit, import and tool-list steps.
 set -u
+# Before the cd below: $0 may be relative to where it was called from.
+HERE=$(cd "$(dirname "$0")" && pwd)
 MSG=$2
 # Absolute, since the parse gate is handed it after the cd.
 W=$(cd "$1" && pwd) || exit 1
 cd "$W"
-HERE=$(cd "$(dirname "$0")" && pwd)
 ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 if git diff --name-only --diff-filter=U | grep -q .; then echo "STILL CONFLICTED:"; git diff --name-only --diff-filter=U; exit 2; fi
 ~/.claude/claude-core/bin/featuremap generate --write >/dev/null 2>&1
