@@ -309,7 +309,7 @@
                 "type": "object"
               },
               "extrude": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is its own profile on the body, its roof falling to the tail.",
                 "type": "object"
               },
               "face": {
@@ -355,7 +355,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude.",
                 "type": "object"
               },
               "masonry": {
@@ -460,7 +460,7 @@
                 "type": "number"
               },
               "revolve": {
-                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}.",
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude.",
                 "type": "object"
               },
               "rise": {
@@ -709,7 +709,7 @@
       "readOnlyHint": true,
       "title": "Show a technique"
     },
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, round body lying down, dome and cone cap, smooth dome, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, round body lying down, dome and cone cap, smooth dome, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin, towball hitch, magnet coupling; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch, raked screen and falling roof; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2197,7 +2197,7 @@
                 "type": "object"
               },
               "extrude": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by, \"screen\": true where its front climbs to a roof as glass (a cabin, a cab, a cockpit) — a windscreen laid at that rake, the roof on its top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is its own profile on the body, its roof falling to the tail.",
                 "type": "object"
               },
               "face": {
@@ -2243,7 +2243,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point; \"screen\" as on an extrude.",
                 "type": "object"
               },
               "masonry": {
@@ -2348,7 +2348,7 @@
                 "type": "number"
               },
               "revolve": {
-                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}.",
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}; along x or z, \"screen\" as on an extrude.",
                 "type": "object"
               },
               "rise": {
