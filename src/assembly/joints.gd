@@ -634,6 +634,59 @@ static func _in_a_zone(point: Vector3, zones: Array, slack: float) -> bool:
 	return false
 
 
+## What holds without a stud, a pin, a clip or a hinge: by glue, and by
+## being one thing. key -> {other key -> true}, both ways. The build check
+## (Assistant._check, check_design, review_model, the bench's probe) and the
+## balance (Balance) both join what this says, so a model is in as many
+## pieces to the one as it stands in for the other.
+##
+## A sticker is held by the face it lies on: of the parts behind its film
+## (Stickers.lies_on), the one it covers most. Film is no joint, so a
+## sticker over two parts leaves them as joined as they were. The check
+## joined what sits on a part's top, and a sticker has no connector: two cab
+## plates stuck on a locomotive's sides were two pieces of their own.
+##
+## And a flexible thing is one thing (Flex.one_thing): a hose's rings, a
+## string's braids, a cable's or a vine's segments, a chain's links, each one
+## with the rest. It is held wherever any of it is, as the plastic says: a
+## string by the studs its ends sit on, a hose by the pins in its ends; and
+## one end left free hangs from the other. A sailing ship's rigging was
+## counted braid by braid, and the ship called 64 pieces.
+##
+## And magnets that touch hold each other: a train's cars on their couplings.
+##
+## A part touching nothing is still a piece of its own: nothing here joins
+## what is not there. [param entries] are [key, Transform3D, Lbm.PartMesh,
+## part id, path], the path the sub-model it is in (Assemblies.path_of), ""
+## for none.
+static func held_otherwise(entries: Array, library: PartLibrary) -> Dictionary:
+	var held: Dictionary = {}
+	var films: Array = []
+	var solid: Array = []          ## [key, transform, box] of what a film can lie on
+	var magnets: Array = []        ## [key, "", box in the world]
+	for entry: Array in entries:
+		var part: Lbm.PartMesh = entry[2]
+		if part == null:
+			continue
+		if Stickers.sticks(library, str(entry[3])):
+			films.append(entry)
+			continue
+		solid.append([entry[0], entry[1], part.bounds])
+		var info: PartLibrary.PartInfo = library.parts.get(str(entry[3]))
+		if info != null and info.category == "Magnet":
+			magnets.append([entry[0], "", (entry[1] as Transform3D) * part.bounds])
+	for film: Array in films:
+		var under: Array = Stickers.lies_on(film[1], (film[2] as Lbm.PartMesh).bounds,
+			solid, film[0])
+		if not under.is_empty():
+			_add(held, film[0], under[0][0])
+			_add(held, under[0][0], film[0])
+	for pair: Array in Flex.one_thing(entries, library) + Flex.touching(magnets):
+		_add(held, pair[0], pair[1])
+		_add(held, pair[1], pair[0])
+	return held
+
+
 ## The widest hole or peg [method pushed_in] reads, in LDU: a Technic pin
 ## hole's bore. A hand's grip and a clip's eye are 4, an arm's shoulder 5;
 ## anything wider is a turntable, a round brick's inside or a dish, whose

@@ -297,9 +297,32 @@ godot --headless --path . --script src/dev/balance_probe.gd      # margins, join
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/balance_view_probe.gd                         # the readout and the floor marks, in shots/balance/
 godot --headless --path . --script src/dev/holds_probe.gd        # and whether the assistant is told
+godot --headless --path . --script src/dev/pieces_probe.gd       # a sticker, a string: one piece everywhere that counts
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
 python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if installed
 ```
+
+`pieces_probe` holds the one rule for what is held without a stud, a pin, a
+clip or a hinge (`Joints.held_otherwise`): a sticker is held by the face it
+lies on (`Stickers.lies_on`, the one it covers most); a flexible thing's
+pieces are one thing (`Flex.one_thing`: a kind the flex tool lays, or a part
+LDraw names a Segment, a Chain Link or a Chain Tread), held where any of it
+is; and magnets that touch hold each other. It builds each case in the real
+scene, the sticker put on with `print_part` and the string laid with
+`lay_flex` over MCP, and asks every place that counts: the design check
+(check_design, review_model, the bench's `candidate_probe`), an edit's check
+of what it leaves hanging, Check stability's balance (`adrift`) and the status
+bar's "stands up". A brick wall with our sticker on its +z face and one of
+LDraw's on its -z is one piece; a string between two masts on a hull is one
+piece with it, still one with its far mast's top taken off, and still one with
+its braids loose in the model; two magnets end to end are one piece and a stud
+apart two; a brick in the air and a sticker held in the air touching nothing
+are pieces of their own. And a car with its driver in it is a car, not "a
+figure apart" (`Assistant._a_figure`: half its parts or more a figure's) from
+a bigger car beside it that nothing couples, as the sides round's locomotive
+was from its tender; a figure alone on the ground is still let stand apart.
+On b219bdb, before the rule, the sticker, string, magnet and driver lines
+fail.
 
 `joints_probe` ends on "the joints real sets use pass, and the same parts apart
 do not": each family where real sets put it, and wrong — a bar through a brick
