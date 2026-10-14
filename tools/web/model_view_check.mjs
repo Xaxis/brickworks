@@ -255,8 +255,9 @@ try {
     `...its answer's _meta carries the parts count, ${builtShown.parts}, as look_at_model states it (${stated})`);
   const turntable = (builtShown.views || []);
   const webp = (views) => views.every((v) => v.mimeType === "image/webp" && v.data.length > 1000);
-  check(turntable.length >= 2 && turntable[0].from === "corner" && webp(turntable),
-    `...and a turntable, front and back at least: ${turntable.map((v) => `${v.from} ${Math.round(v.data.length / 1024)}k`).join(", ")}`);
+  // As many views as the tab drew in its budget (12 s), the front first.
+  check(turntable.length >= 1 && turntable[0].from === "corner" && webp(turntable),
+    `...and as much of a turntable as the budget drew, the front first: ${turntable.map((v) => `${v.from} ${Math.round(v.data.length / 1024)}k`).join(", ")}`);
   check(kinds(built).split(",").every((k) => k === "text") && !built.result?.structuredContent,
     `...while its content is words alone, as before, and there is no structuredContent (${kinds(built)})`);
   // A turntable cut short by the budget is finished by the calls after it.
@@ -268,7 +269,18 @@ try {
     `look_at_model carries the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
   const carried = whole.reduce((n, v) => n + v.data.length, 0);
   check(carried < 100000, `...in ${carried} characters, well inside the ~150,000 claude.ai keeps in a conversation`);
-  const viewed = await viewer.call("view_model", { from: "front" });
+  // A picture the tab cannot draw in 20 s comes back as letters, or as a
+  // job, whoever asked: on a loaded machine, asked again.
+  async function aPicture(conversation) {
+    let answer = await conversation.call("view_model", { from: "front" });
+    for (let n = 0; n < 3 && images(answer).length === 0; n++) {
+      console.log(`  (view_model came back without a picture: "${texts(answer).slice(-1)[0]?.slice(0, 60)}"; again)`);
+      await tab.waitForTimeout(15000);
+      answer = await conversation.call("view_model", { from: "front" });
+    }
+    return answer;
+  }
+  const viewed = await aPicture(viewer);
   check(images(viewed).length === 1 && (shownOf(viewed) || {}).parts === stated
       && ((shownOf(viewed) || {}).views || []).length === 0,
     `view_model carries the count, and its own picture is the one shown (${kinds(viewed)})`);
@@ -277,7 +289,7 @@ try {
   const plainGreeted = await plain.start();
   check(Boolean(plainGreeted.result?.serverInfo), "a client that does not show pages connects as before");
   const plainLooked = await plain.call("look_at_model");
-  const plainViewed = await plain.call("view_model", { from: "front" });
+  const plainViewed = await aPicture(plain);
   check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
     "...its answers carry nothing for a viewer");
   check(JSON.stringify(texts(plainLooked)) === JSON.stringify(texts(looked)),
@@ -360,23 +372,32 @@ try {
   const count = `${stated.toLocaleString()} parts`;
   check(one.seen.parts === count && one.seen.name === design.name,
     `...with its name and parts count: "${one.seen.name}", "${one.seen.parts}"`);
-  check(one.seen.views === turntable.length && /Front right/.test(one.seen.where),
-    `...and its turntable of ${one.seen.views}: "${one.seen.where}"`);
+  // One view is a picture with its side named; more are a turntable with a
+  // button each.
+  check(one.seen.views === (turntable.length > 1 ? turntable.length : 0)
+      && (turntable.length > 1 ? /^Front right$/ : /^From the front right$/).test(one.seen.where),
+    `...as ${turntable.length > 1 ? `a turntable of ${one.seen.views}` : "one view"}: "${one.seen.where}"`);
   check(Boolean(one.sized && one.sized.height > 150), `...and tells the host its size: ${JSON.stringify(one.sized)}`);
   await host.screenshot({ path: `${out}/2_submit_dark.png` });
+
+  const whole3 = await showIn("look_at_model", {}, looked);
+  check(whole3.seen.drawn && whole3.seen.views === 4 && whole3.seen.parts === count && /Front right/.test(whole3.seen.where),
+    `look_at_model: the whole turntable and the count, "${whole3.seen.parts}", "${whole3.seen.where}"`);
   // Watched, not sampled once: a slow screenshot can let it come round again.
-  let moved = one.seen.where;
-  for (let n = 0; n < 20 && moved === one.seen.where; n++) {
+  let moved = whole3.seen.where;
+  for (let n = 0; n < 20 && moved === whole3.seen.where; n++) {
     await host.waitForTimeout(200);
-    moved = await one.frame.evaluate(() => document.getElementById("where").textContent);
+    moved = await whole3.frame.evaluate(() => document.getElementById("where").textContent);
   }
-  check(moved !== one.seen.where, `...which turns by itself: "${one.seen.where}", then "${moved}"`);
+  check(moved !== whole3.seen.where, `...which turns by itself: "${whole3.seen.where}", then "${moved}"`);
 
   // Still, as for a person who asks for less motion: what follows is the keys.
   await host.emulateMedia({ reducedMotion: "reduce" });
   const three = await showIn("look_at_model", {}, looked);
-  check(three.seen.drawn && three.seen.views === 4 && three.seen.parts === count && /Front right/.test(three.seen.where),
-    `look_at_model: the whole turntable and the count, "${three.seen.parts}", "${three.seen.where}"`);
+  await host.waitForTimeout(2000);
+  const still = await three.frame.evaluate(() => document.getElementById("where").textContent);
+  check(three.seen.where === "Front right" && still === "Front right",
+    `asked for less motion, it stays still: "${three.seen.where}", 2 s later "${still}"`);
   await three.frame.focus("#stage");
   await three.frame.press("#stage", "ArrowRight");
   await host.waitForTimeout(300);

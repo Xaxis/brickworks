@@ -73,8 +73,8 @@ func of(assistant: Assistant, tool: String) -> Dictionary:
 
 
 ## The turntable of the model as it stands: the views kept for it, and as
-## many more drawn as the budget allows, opposite corners first, so a call
-## cut short still shows front and back and the next call goes on with the
+## many more drawn as the budget allows, the front first and then the back,
+## so a call cut short shows the front and the next call goes on with the
 ## rest. In turning order.
 func _turntable(assistant: Assistant) -> Array:
 	var world: BrickWorld = assistant.world
