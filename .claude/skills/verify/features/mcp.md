@@ -88,6 +88,20 @@ asking for an API key.
   refused at once (nothing built, nothing to draw with, a plan that will not
   parse) is not a job, so its refusal is the answer. The guidance is in the
   answers themselves and one line of `GUIDE_HEAD`.
+- **Every tool says what it does to the person's work** (2026-10-14): MCP's
+  `annotations` — `title`, `readOnlyHint`, `destructiveHint` (can take work
+  away: clear, submit, edit, open, undo, Brick Art, restyle), `idempotentHint`
+  and `openWorldHint` (fetches from outside: references, the gallery, a
+  brickify or print link) — from one table, `CommandSocket.HINTS`, a row per
+  tool with its title and kind (look, file, add, remove). They are in
+  `served_tools` (the desktop's port, the connector's tab), `__tools__`, so
+  `tools/mcp_tools.json` and `tools/brickworks_mcp.py`, and the relay passes
+  them on, adding its own for `tabs` and `select_tab` (`api/mcp.js`). Claude
+  reads them in deciding what to ask about; the per-tool switches in Claude's
+  connector settings stay Claude's. `mcp_sync_probe` fails on a tool with no
+  row or a row with no tool, `read_only_probe` calls every read-only one,
+  `connector_probe` checks the relay's tools/list carries them as the table
+  says, and `mcp_check.py` that `tools/brickworks_mcp.py` passes them on.
 - `keep the mcp in step`: `src/dev/mcp_sync_probe.gd`. Fails when
   `tools/mcp_tools.json` is not what the app serves (`-- --write` writes it
   again from the app; it was four tools behind when this was written), when
@@ -371,14 +385,19 @@ All of these are in `tools/check.sh`.
   (`_busy`) shows a draft now. `read_only_probe` opens a model and calls every
   tool that only looks — check_design, the searches, the guides, the looks,
   the selection, where_to_attach, edit_selection check_only, review_model of
-  the whole and the creative pass — and the parts, colours and transforms are
-  the same to the byte after each. (review_model with a feature lays a real
-  set's piece by design: a change, one step to undo.)
+  the whole and the creative pass, search_gear_ratio, look_at_picture,
+  find_reference, and through the socket on the app's scene parts_list, gallery
+  and job — and the parts, colours and transforms are the same to the byte
+  after each; and it fails if a tool `CommandSocket.HINTS` calls read-only (so
+  Claude is told it is) is not among them. (review_model with a feature lays a
+  real set's piece by design: a change, one step to undo, so it is not
+  read-only.)
 - **What a session changes is one undo step, its own.** An edit_model from
   outside went into no history at all, so the person's Undo after it took back
   their own last part and left Claude's edit standing. Every call through
   `CommandSocket._run` (the MCP port, the web connector, a subscription
-  session) that is not in `ONLY_LOOK` or `NOT_A_STEP` has its change made one
+  session) that changes the model (its row of `CommandSocket.HINTS` is not
+  look or file) and is not in `NOT_A_STEP` has its change made one
   step, "Claude's edit model (1 put down)": a call that keeps its own history
   (the window's commands, edit_selection) folded into one, any other as the
   difference (`SelectionScope.steps_back`). The socket's own tools too:

@@ -415,15 +415,126 @@ static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
 ## The tools, as tools/list gives them.
 func served_tools() -> Array:
 	var listed: Array = []
-	if assistant != null:
-		for tool: Variant in assistant.tool_catalogue() + _own_tools():
-			var one: Dictionary = tool
-			listed.append({
-				"name": one.get("name", ""),
-				"description": one.get("description", ""),
-				"inputSchema": one.get("input_schema", {}),
-			})
+	for one: Dictionary in catalogue():
+		listed.append({
+			"name": one.get("name", ""),
+			"description": one.get("description", ""),
+			"inputSchema": one.get("input_schema", {}),
+			"annotations": one.get("annotations", {}),
+		})
 	return listed
+
+
+## Every tool a session is served, in the app's own shape, each with its
+## MCP annotations ([constant HINTS]): what __tools__ answers, and so what
+## tools/mcp_tools.json and tools/brickworks_mcp.py carry.
+func catalogue() -> Array:
+	var listed: Array = []
+	if assistant == null:
+		return listed
+	for tool: Variant in assistant.tool_catalogue() + _own_tools():
+		var one: Dictionary = (tool as Dictionary).duplicate()
+		one["annotations"] = annotations(str(one.get("name", "")))
+		listed.append(one)
+	return listed
+
+
+## What each tool does to the person's work, said to every client with the
+## list as MCP's tool annotations: a title, and whether it only looks
+## (readOnlyHint), can take work away (destructiveHint), does no more when
+## called twice alike (idempotentHint) and fetches from outside Brickworks
+## (openWorldHint). Claude reads them in deciding what to ask the person
+## about; what the person has chosen in Claude stands over them. One row
+## per tool served — mcp_sync_probe fails on a tool without one — and
+## read_only_probe calls every tool that looks and holds it to changing
+## nothing. The relay's own two, tabs and select_tab, say theirs in
+## api/mcp.js.
+##   look    changes nothing: not the model, not a file
+##   file    writes a file (a picture, an export); the model is unchanged
+##   add     changes the model, taking nothing the person built away
+##   remove  can take parts away, or put something in the model's place
+## And after the kind: "again", called twice alike it does no more than
+## once; "world", it fetches from outside Brickworks.
+const HINTS := {
+	"search_parts": ["Search the parts", "look"],
+	"check_design": ["Check a design", "look"],
+	"read_guide": ["Read the design guide", "look"],
+	"show_technique": ["Show a technique", "look"],
+	"find_techniques": ["Find how real sets built it", "look"],
+	"find_parts_like": ["Find parts by their look", "look"],
+	"place_technique": ["Place a real set's piece", "add"],
+	"settle_feature": ["Settle a feature's piece", "add"],
+	"plan_scale": ["Plan the scale", "look"],
+	"find_reference": ["Find pictures of the real thing", "look", "world"],
+	"how_real_sets_build_this": ["What real sets of its kind use", "look"],
+	"attachment_points": ["Where a part attaches", "look"],
+	"search_gear_ratio": ["Find a gear train", "look"],
+	# Lays the person's plain bricks again as ribs, bands and panels.
+	"restyle_model": ["Restyle the walls", "remove"],
+	"add_rooms": ["Add furnished rooms", "add"],
+	"edit_model": ["Edit the model", "remove"],
+	"look_at_model": ["List what is built", "look"],
+	"view_model": ["Look at the model", "look"],
+	"settle_surface": ["Settle the surface pass", "add"],
+	"submit_design": ["Build a design", "remove"],
+	"add_minifig": ["Add a minifigure", "add"],
+	"make_part": ["Make a new part", "add"],
+	# It replaces what is on the baseplate.
+	"make_art": ["Lay a picture as Brick Art", "remove"],
+	"look_at_picture": ["See the chosen picture", "look"],
+	"selection": ["What is selected", "look"],
+	"edit_selection": ["Change the selection", "remove"],
+	"where_to_attach": ["Where the selection takes a part", "look"],
+	"choose_sketch": ["Choose a sketch", "remove"],
+	# The feature and surface passes lay pieces, for settle_feature and
+	# settle_surface to keep or take off again.
+	"review_model": ["Review the model", "add"],
+	"clear_model": ["Clear the baseplate", "remove", "again"],
+	# A file, and the next feature's piece laid: never over the person's.
+	"save_model": ["Save the model", "add"],
+	"set_floor": ["Set what it stands on", "add", "again"],
+	"edit_steps": ["Edit the build steps", "add"],
+	"lay_flex": ["Lay a hose, tube or chain", "add"],
+	"pose_model": ["Pose a joint", "add", "again"],
+	"animate_model": ["Animate the model", "add"],
+	"simulate_mechanism": ["Simulate the mechanism", "file"],
+	"undo": ["Undo or redo", "remove"],
+	# In place of the model, and with discard_changes its unsaved changes.
+	"open_model": ["Open a model", "remove"],
+	"parts_list": ["List the parts", "look"],
+	"render_model": ["Render a picture", "file"],
+	"export_model": ["Export the model", "file"],
+	"brickify": ["Brickify a 3D model", "add", "world"],
+	"print_part": ["Print on a part", "add", "world"],
+	"make_unique": ["Make a copy unique", "add"],
+	"gallery": ["Search the gallery", "look", "world"],
+	# cancel=true stops only the session's own job.
+	"job": ["Follow a long job", "look"],
+}
+const KINDS: Array[String] = ["look", "file", "add", "remove"]
+
+
+## [param name]'s annotations, from its row in [constant HINTS]; {} for a
+## tool with none.
+static func annotations(name: String) -> Dictionary:
+	var row: Array = HINTS.get(name, [])
+	if row.size() < 2:
+		return {}
+	var kind: String = str(row[1])
+	var said: Dictionary = {"title": str(row[0]), "readOnlyHint": kind == "look",
+		"openWorldHint": "world" in row}
+	# Meaningful, MCP says, only for a tool that changes something.
+	if kind != "look":
+		said["destructiveHint"] = kind == "remove"
+		said["idempotentHint"] = "again" in row
+	return said
+
+
+## Whether a call to [param name] leaves the model as it was (it looks, or
+## writes a file), so no record of the model is taken for it.
+static func leaves_the_model(name: String) -> bool:
+	var row: Array = HINTS.get(name, [])
+	return row.size() >= 2 and str(row[1]) in ["look", "file"]
 
 
 ## Which tools this app serves, in short: a hash of [method served_tools],
@@ -512,8 +623,7 @@ func _answer(client: Client, line: String) -> void:
 		if assistant == null:
 			_reply(client, id, false, "the app has no assistant")
 			return
-		_send(client, {"id": id, "ok": true,
-			"tools": assistant.tool_catalogue() + _own_tools()})
+		_send(client, {"id": id, "ok": true, "tools": catalogue()})
 		return
 	if tool == "__about__":
 		if assistant == null:
@@ -624,14 +734,7 @@ func _run(name: String, input: Dictionary, work: Working.Job) -> Variant:
 	return answer
 
 
-## The tools that only look, which a probe holds to changing nothing
-## (src/dev/read_only_probe.gd): no record of the model is taken for them.
-const ONLY_LOOK: Array[String] = ["search_parts", "check_design", "read_guide",
-	"show_technique", "find_techniques", "find_parts_like", "plan_scale",
-	"find_reference", "how_real_sets_build_this", "attachment_points",
-	"look_at_model", "view_model", "look_at_picture", "selection", "where_to_attach",
-	"parts_list", "render_model", "export_model"]
-## And the ones whose change is no step of the history: undo walks it, and
+## The ones whose change is no step of the history: undo walks it, and
 ## opening a model begins another.
 const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
 
@@ -640,7 +743,7 @@ const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
 ## the history; {} for a call that only looks.
 func _before_change(name: String) -> Dictionary:
 	if assistant == null or assistant.builder == null or assistant.world == null \
-			or name in ONLY_LOOK or name in NOT_A_STEP:
+			or leaves_the_model(name) or name in NOT_A_STEP:
 		return {}
 	var builder: Builder = assistant.builder
 	var last: Dictionary = builder.last_step()

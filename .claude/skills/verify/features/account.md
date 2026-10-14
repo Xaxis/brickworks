@@ -115,7 +115,13 @@ they have. A Claude connector belongs to the account that switched it on.
   `GET /api/oauth?op=connections` (Bearer session: id, client — "Claude",
   "Claude Code" or what it registered as — since, last used) and
   `POST /api/oauth?op=disconnect[&id=]`. A connection is deleted with its
-  account. Issuing tokens tells the account's open tabs
+  account. **Asked once** (2026-10-14): `POST /api/oauth?op=remembered` (Bearer
+  session, the request's fields) answers with a code at once when the account
+  still holds a connection (`oauth_grants`) to that same client — by its id,
+  never its name — at the same return address, for this server; otherwise
+  `{ask: true}`. A loopback client is remembered at the port it was allowed on.
+  Disconnect, a revocation and a replayed refresh token delete the connection,
+  so the next one asks again. Issuing tokens tells the account's open tabs
   (`brickworks/connected` on the relay), so the panel says so at once.
 - `connect Claude sign-in page` (`web/authorize.html`, `web/authorize.js`,
   served at `/oauth/authorize` with its own security policy and no
@@ -130,7 +136,10 @@ they have. A Claude connector belongs to the account that switched it on.
   Supabase) and keeps the new session where the app looks, unless the app here
   is signed in as someone else; then one question, naming who asks and the host
   the answer goes back to (with a warning for a loopback program); Allow posts
-  `op=approve` with the session and follows the answer back to Claude.
+  `op=approve` with the session and follows the answer back to Claude. Signed
+  in (either way), the page first asks `op=remembered`, and an account already
+  connected to that app goes straight back with its code, asked nothing ("You
+  allowed Claude before…").
 - `share panel` (`src/ui/share_panel.gd`, File › Share… and Share on the
   toolbar, `tool_share`; since 2026-10-12): publishes the open model as the
   signed-in account (`POST /api/share`, [web](web.md)) — its LDraw
@@ -227,7 +236,7 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_probe.mjs --url=<deployment>
 ```
 
 Proves it when it ends "Claude can sign in to Brickworks, and nothing else can"
-(60 checks, 62 on a deployment): the 401 and its pointer, both metadata documents and their path
+(69 checks, 71 on a deployment): the 401 and its pointer, both metadata documents and their path
 variants, `/oauth/authorize` serving the page (on a deployment: no COOP, not
 frameable); Claude by its published document — told "Claude, claude.ai", no code
 without a session, a code with state and `iss`, a wrong verifier refused and the
@@ -240,9 +249,14 @@ random loopback port, an undeclared path refused; registration and what it
 refuses (`javascript:`, plain http elsewhere, a fragment, none), no PKCE and
 `plain` sent back `invalid_request`, another resource `invalid_target`, an
 unknown client refused, a secret client refused without its secret and served
-with it; Cancel `access_denied`; the connections listed for the account only;
-revocation ending a connection; Disconnect ending the rest at once; a refresh
-token replayed after the grace ending its connection.
+with it; Cancel `access_denied`; a second connection from the same account
+(`op=remembered`) given a code at once that trades for tokens, while nobody
+signed in gets 401, another account, a client registered as "Claude" at
+Claude's return address, and Claude Code on another port are asked; the
+connections listed for the account only; revocation ending a connection and
+what was allowed with it; Disconnect ending the rest at once, and the next
+connection asked again; a refresh token replayed after the grace ending its
+connection.
 
 The whole of it in a real browser, on a deployment (a throwaway account, deleted
 at the end; one email to a Resend test address; about four minutes):
@@ -259,12 +273,15 @@ puts the address on the clipboard, and the panel waits; then, as claude.ai: the
 claude.ai's callback (stood in for; nothing reaches claude.ai) with code, state
 and `iss`, tokens; the panel saying "Connected to Claude" by itself and Connect
 giving way to Disconnect; initialize, the tool list and a search answered by the
-tab, and a design built with the tab's frames stopped (out of view); then a
-second browser not signed in — address, Email me a code (really sent), a wrong
-code refused, the minted code, the question, Allow, its session kept — whose
-token builds in the first browser's tab; Account listing the connection and
-Disconnect Claude refusing both tokens at once. Pictures `1_before_connect.png`
-to `10_disconnected.png`.
+tab, and a design built with the tab's frames stopped (out of view); claude.ai
+connecting again sent straight back with a code, the question not put (this
+account allowed it already), and that code traded; then a second browser not
+signed in — address, Email me a code (really sent), a wrong code refused, the
+minted code, and nothing more asked — whose token builds in the first
+browser's tab; Account listing the connection and Disconnect Claude refusing
+all three tokens at once; then claude.ai connecting after that asked the
+question again, and Allow connecting it. Pictures `1_before_connect.png` to
+`11_asked_again.png`.
 
 On a deployment, in a real browser (needs `.env` sourced; `BW_BYPASS` for a
 preview):

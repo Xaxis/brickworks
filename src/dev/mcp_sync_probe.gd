@@ -7,8 +7,11 @@
 ## added to the menus, a tool given a new argument, a tool nobody's
 ## guidance mentions. Nothing fails when it does — a session just cannot do
 ## what the person can, or never hears that it could. So three things, each
-## of which drifted before this existed:
+## of which drifted before this existed, and a fourth:
 ##
+##   Every tool carries MCP's annotations — a title, readOnlyHint and the
+##     rest — from its row of CommandSocket.HINTS, and no row outlives its
+##     tool. Claude decides from them what to ask the person about.
 ##   tools/mcp_tools.json is what the app serves. The relay answers
 ##     tools/list from it while the app is closed; it was two tools and an
 ##     argument behind. --write writes it again from the app.
@@ -46,14 +49,46 @@ func _run() -> void:
 	await process_frame
 
 	# What __tools__ answers, which is what the relay writes to the file.
-	var served: Array = assistant.tool_catalogue() + socket._own_tools()
+	var served: Array = socket.catalogue()
 	var names: Array[String] = []
 	for tool: Dictionary in served:
 		names.append(str(tool["name"]))
 	_check("the app serves %d tools" % served.size(), served.size() >= 30)
 
+	# 0. Each says what it does to the person's work, from its row of the
+	# one table (CommandSocket.HINTS), in what every client is given.
+	var unhinted := PackedStringArray()
+	for name: String in names:
+		var row: Array = CommandSocket.HINTS.get(name, [])
+		if row.size() < 2 or str(row[0]).strip_edges().is_empty() \
+				or not str(row[1]) in CommandSocket.KINDS:
+			unhinted.append(name)
+	_check("every tool has its row of CommandSocket.HINTS, a title and a kind%s" % (
+		"" if unhinted.is_empty() else ": not " + ", ".join(unhinted)), unhinted.is_empty())
+	var gone := PackedStringArray()
+	for name: String in CommandSocket.HINTS.keys():
+		if not names.has(name):
+			gone.append(name)
+	_check("...and no row is for a tool no longer served%s" % (
+		"" if gone.is_empty() else ": " + ", ".join(gone)), gone.is_empty())
+	var bare := PackedStringArray()
+	var looking: int = 0
+	for tool: Dictionary in socket.served_tools():
+		var said: Dictionary = tool.get("annotations", {}) as Dictionary
+		if str(said.get("title", "")).is_empty() or not said.has("readOnlyHint") \
+				or (not bool(said["readOnlyHint"]) and not said.has("destructiveHint")):
+			bare.append(str(tool["name"]))
+		looking += 1 if bool(said.get("readOnlyHint", false)) else 0
+	_check("tools/list gives each its annotations, %d of them read-only%s" % [looking,
+		"" if bare.is_empty() else ": not " + ", ".join(bare)], bare.is_empty() and looking > 10)
+
 	# 1. The cached list is the served one.
 	var path: String = ProjectSettings.globalize_path(CACHED)
+	# Not an app that came up without its catalogue, which serves nothing:
+	# that wrote the copy empty (2026-10-14).
+	if write and served.size() < 30:
+		print("  not written: the app serves %d tools" % served.size())
+		write = false
 	if write:
 		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 		file.store_string(JSON.stringify(served, "  ") + "\n")

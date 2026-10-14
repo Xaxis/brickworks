@@ -1,5 +1,10 @@
 [
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Search the parts"
+    },
     "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number. Printed parts are found by what is on them with the word print: \"porsche print\", \"control panel print\", \"3623 print\" (3623's prints); a part with a sticker on, with sticker.",
     "input_schema": {
       "additionalProperties": false,
@@ -19,6 +24,11 @@
     "name": "search_parts"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Check a design"
+    },
     "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model, and weigh it: whether it stands (its centre of mass against the edge of what it stands on, in every pose its hinges and turntables reach), the counterweight that would hold it, and its most loaded stud joints. Safe to call on a partial design while you work.",
     "input_schema": {
       "additionalProperties": false,
@@ -659,6 +669,11 @@
     "name": "check_design"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Read the design guide"
+    },
     "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"creative\" and more. Read \"shapes\" before saying a shape.",
     "input_schema": {
       "additionalProperties": false,
@@ -676,6 +691,11 @@
     "name": "read_guide"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Show a technique"
+    },
     "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, round body lying down, dome and cone cap, smooth dome, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
@@ -693,6 +713,11 @@
     "name": "show_technique"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Find how real sets built it"
+    },
     "description": "How real LEGO® sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too — \"owl eye\", \"car nose\" — and pieces from sets about it come first.",
     "input_schema": {
       "additionalProperties": false,
@@ -732,6 +757,11 @@
     "name": "find_techniques"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Find parts by their look"
+    },
     "description": "Parts by what they look like in a model, not by their catalogue name: \"feather\", \"claw\", \"exhaust\", \"eyelid\", \"scales\", \"leaf\". Each family of parts comes with what builders use it for and its commonest part numbers. search_parts finds a part you can name; this finds the one you can only describe.",
     "input_schema": {
       "additionalProperties": false,
@@ -749,6 +779,13 @@
     "name": "find_parts_like"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Place a real set's piece"
+    },
     "description": "Lay one of find_techniques' pieces into the model as the LEGO Group built it: every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
     "input_schema": {
       "additionalProperties": false,
@@ -792,6 +829,13 @@
     "name": "place_technique"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Settle a feature's piece"
+    },
     "description": "Say what a feature is to be, once the app has laid a real set's piece for it where it goes (the whole review, each settle and saving hand the next feature with its piece laid and a picture): accept it — moved, turned or recoloured first if it needs it — ask for the next-best piece instead, reject it with a reason, or say you built it yourself. Saving waits until every feature listed in submit_design is settled.",
     "input_schema": {
       "additionalProperties": false,
@@ -851,6 +895,11 @@
     "name": "settle_feature"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Plan the scale"
+    },
     "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
     "input_schema": {
       "additionalProperties": false,
@@ -871,6 +920,11 @@
     "name": "plan_scale"
   },
   {
+    "annotations": {
+      "openWorldHint": true,
+      "readOnlyHint": true,
+      "title": "Find pictures of the real thing"
+    },
     "description": "Pictures of a real thing, so you can build to what it looks like rather than to what you recall of it. Ask for this first for any subject that exists — a lighthouse, a tractor, a kingfisher, a particular building — and judge the proportions off the picture before you place a brick. The pictures come from Wikimedia Commons, which carries what is free to use: each is named and credited, and a famous ship from a film will not be there, so check what came back is the thing before building to it.",
     "input_schema": {
       "additionalProperties": false,
@@ -888,6 +942,11 @@
     "name": "find_reference"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "What real sets of its kind use"
+    },
     "description": "What real LEGO® sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what the LEGO Group's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.\n\nWith it comes our own best design of the nearest subject, as the design bench's judge scored it: how it was built, what it did best, and the faults to design out before you build.",
     "input_schema": {
       "additionalProperties": false,
@@ -905,6 +964,11 @@
     "name": "how_real_sets_build_this"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Where a part attaches"
+    },
     "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, and the bars (a handle is one) and clips a clip-on-bar joint is made of, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it.",
     "input_schema": {
       "additionalProperties": false,
@@ -960,6 +1024,11 @@
     "name": "attachment_points"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Find a gear train"
+    },
     "description": "The gear trains of real spur gears (8 to 40 teeth) nearest a ratio, every mesh at a spacing the stud grid gives: an orrery's year, a clock's hour, a reduction for a slow arm. ratio= is output turns per input turn, negative for the other way round; or period= input turns per output turn. With to= [x, z] the output's axle stands that many studs from the input's, and the answer gives every axle between, on a grid point within within= studs of the line; without it, each mesh's spacing. Each train with its fraction, its error, its gears by part. Lay them as it says, and simulate_mechanism shows the ratio the parts give.",
     "input_schema": {
       "additionalProperties": false,
@@ -1004,6 +1073,13 @@
     "name": "search_gear_ratio"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Restyle the walls"
+    },
     "description": "A finishing pass over what is already built, wall by wall: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air, and the outer row of two-wide ones, are laid again in place as one structure per wall — ribs (a column of round plates on bricks with a stud on the side, every few studs), bands (a course of grille), panels (grille between the ribs, framed by a plain stud at each end and a plain course at each ledge, as 10237 Orthanc textures its black), grid (ribs and bands) or courses (round bricks, a recessed line) — in the wall's own colour, never a part at a time. A dark wall gets panels unasked; a light wall not given a style gets a scatter of dressed bricks (sideways) and masonry. The faces of a prism or a cluster too, in their own sections, and a model opened from a file. Done for you, in one call, checked like any edit.",
     "input_schema": {
       "additionalProperties": false,
@@ -1073,6 +1149,13 @@
     "name": "restyle_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Add furnished rooms"
+    },
     "description": "Floors and furnished rooms inside a building that already stands — a tower, a keep, a house — in one call, as a real set opens at the back onto them (10237 Orthanc: a library, Saruman's chamber, a dungeon, the palantír). Give the building's box (where) or, for a prism, the prism's own at, sides and radius (prism), and the floors bottom up, each a kind of room: library, study, bedchamber, hall, throne room, forge, armoury, dungeon, kitchen, lookout, palantir room, stair. Each floor is laid as plates and tiles held up on columns; each room is furnished from the worked examples real sets built — bookcases, a fireplace, an anvil, a four-poster bed, lamps, chests, barrels — against its walls and facing in, varied by the seed; stair: true climbs to the next floor. The shell is left as it is and the edit is checked like any other, so build it open at the back (a prism's open, or no back wall) for the rooms to be seen. This is where a real set's different pieces and colours are, and a solid shell has none of them.",
     "input_schema": {
       "additionalProperties": false,
@@ -1175,6 +1258,13 @@
     "name": "add_rooms"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Edit the model"
+    },
     "description": "Change what is already built without describing it again. Takes the numbers look_at_model prints beside each brick. Use this for any change to an existing model — moving a wall, recolouring a roof, taking a chimney off, adding a door — and only use submit_design when starting something new. Everything is checked together before any of it is applied, so a change that would not hold together changes nothing.",
     "input_schema": {
       "additionalProperties": false,
@@ -1553,6 +1643,11 @@
     "name": "edit_model"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List what is built"
+    },
     "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there — adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
     "input_schema": {
       "additionalProperties": false,
@@ -1592,6 +1687,11 @@
     "name": "look_at_model"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Look at the model"
+    },
     "description": "Look at what is on the baseplate. This is the only way to see whether the thing you are building looks like the thing you were asked for. check_design tells you a model is legal; this tells you what it is.",
     "input_schema": {
       "additionalProperties": false,
@@ -1650,6 +1750,13 @@
     "name": "view_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Settle the surface pass"
+    },
     "description": "Settle what the surface pass laid (review_model {\"surface\": true}, or the app's own turn for it): accept a finding, adjusted if need be; reject it with a reason, which takes the app's pieces off and puts back what they replaced; or keep the studs there for good with a reason — a yard, a mosaic, a studded texture, where a touch will stand. \"tile\" lays ground the pass only offered.",
     "input_schema": {
       "additionalProperties": false,
@@ -1692,6 +1799,13 @@
     "name": "settle_surface"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Build a design"
+    },
     "description": "Submit the finished model, with every part. It replaces everything on the baseplate that you put there — including anything you added with edit_model. If you have been building with edit_model, the model is already built: say so and stop, rather than submitting a list that is missing the additions.",
     "input_schema": {
       "additionalProperties": false,
@@ -2512,6 +2626,13 @@
     "name": "submit_design"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Add a minifigure"
+    },
     "description": "Stand a minifigure in the model, made from real parts in their real places: who lives in it, guards it, works in it. Add them once the model is built — submitting a whole new design replaces them. Each slot takes a part number or a few words matched against the names of the parts made for it (\"wizard hat\", \"long beard\", \"robe\", \"staff\"); leave a slot out for a plain one. It stands on whatever is highest under its feet, two studs side by side, and is refused if something is in the way. Its parts are not counted in the model's variety, as a set's figures are not.",
     "input_schema": {
       "additionalProperties": false,
@@ -2620,6 +2741,13 @@
     "name": "add_minifig"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make a new part"
+    },
     "description": "Make a part the LEGO Group has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
     "input_schema": {
       "additionalProperties": false,
@@ -2733,6 +2861,13 @@
     "name": "make_part"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Lay a picture as Brick Art"
+    },
     "description": "Lay a picture as a LEGO® Art set is laid — 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa — on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever a mosaic, a picture in bricks, wall art or something like a LEGO® Art set is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a designer of LEGO® Art sets decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
     "input_schema": {
       "additionalProperties": false,
@@ -2950,6 +3085,11 @@
     "name": "make_art"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "See the chosen picture"
+    },
     "description": "The picture the person chose to make into Brick Art, as they gave it, with its size in pixels. Look at it before writing a make_art plan from it. When there is none it says so: draw one in make_art's svg.",
     "input_schema": {
       "additionalProperties": false,
@@ -2959,6 +3099,11 @@
     "name": "look_at_picture"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "What is selected"
+    },
     "description": "What the person has selected in Brickworks — the parts they mean by \"this\", \"these\" or \"the selected\": each by number with where it stands, their box, the sub-assembly they are in, the room a change about them may use, how the joints round them stand, and pictures with them picked out, close up and in the whole model. Call it whenever a request is about part of the model, then change that part with edit_selection.",
     "input_schema": {
       "additionalProperties": false,
@@ -2968,6 +3113,13 @@
     "name": "selection"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Change the selection"
+    },
     "description": "Change the selected parts as edit_model does — take off, paint, move, put down — keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing, and the refusal says, part by part, what each ran into or why nothing holds it, and the nearest place it fits and holds. check_only=true tries a change without making it. Other copies of the sub-assembly follow the change. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
     "input_schema": {
       "additionalProperties": false,
@@ -3387,6 +3539,11 @@
     "name": "edit_selection"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Where the selection takes a part"
+    },
     "description": "Where the selected parts can take another part: every open stud, anti-stud (the hollow underneath that takes a stud), side stud, pin hole, bar and clip, grouped by the way it faces, each with the part that carries it and where it is in the coordinates edit_selection takes (a section's own, for parts laid turned), and a picture with the free ones numbered. Give part= (and color=) and it seats that part on them and tries each against the model as it stands: what comes back fits and holds, to put in edit_selection's add as it is. toward= puts first the points facing that way (out: away from the model's middle, for spikes or detail on an outer face); near= {x, y, z} those nearest a place.",
     "input_schema": {
       "additionalProperties": false,
@@ -3452,6 +3609,13 @@
     "name": "where_to_attach"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Choose a sketch"
+    },
     "description": "Choose one of the three sketches made with submit_design \"sketch\": true. It goes on the baseplate as the massing the full design is built from, and the other two are dropped. Then design the whole model from it, and submit_design that without sketch.",
     "input_schema": {
       "additionalProperties": false,
@@ -3469,6 +3633,13 @@
     "name": "choose_sketch"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Review the model"
+    },
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), the best real set's piece for it laid by the app where it goes, with a picture, to settle with settle_feature; with surface, the surface pass — the app tiles the open stud fields, slopes the staircases (plate steps two at a time), rounds a body's hard top edges, skins its plain flanks and textures a building's plain walls on the model, to settle each with settle_surface; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then surface, then creative last.",
     "input_schema": {
       "additionalProperties": false,
@@ -3495,6 +3666,13 @@
     "name": "review_model"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Clear the baseplate"
+    },
     "description": "Take everything off the baseplate and start from bare ground. Do this before building something new, or the new thing is built into the old one.",
     "input_schema": {
       "additionalProperties": false,
@@ -3504,6 +3682,13 @@
     "name": "clear_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Save the model"
+    },
     "description": "Write what is on the baseplate to an LDraw .ldr file in this app's models, where its Open finds it and other LDraw tools can read it. A name, not a path; it will not write over a model the person saved.",
     "input_schema": {
       "additionalProperties": false,
@@ -3521,6 +3706,13 @@
     "name": "save_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Set what it stands on"
+    },
     "description": "Choose what the model stands on, as View, Floor does: a baseplate (studs across and deep, in eights from 8 to 192, in a colour baseplates come in), a grid floor with no plate, or none — a vehicle stands on a table, a scene on a baseplate in its ground's colour. part_of_model=true makes the baseplate a part of the model: counted, saved, step 1 of the booklet. Nothing built moves. With nothing given it says what it is now.",
     "input_schema": {
       "additionalProperties": false,
@@ -3554,6 +3746,13 @@
     "name": "set_floor"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Edit the build steps"
+    },
     "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
@@ -3592,6 +3791,13 @@
     "name": "edit_steps"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Lay a hose, tube or chain"
+    },
     "description": "Lay a hose, tube, string or chain, as Build, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends.",
     "input_schema": {
       "additionalProperties": false,
@@ -3682,6 +3888,13 @@
     "name": "lay_flex"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Pose a joint"
+    },
     "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way.",
     "input_schema": {
       "additionalProperties": false,
@@ -3699,6 +3912,13 @@
     "name": "pose_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Animate the model"
+    },
     "description": "Animate the model as Build, Pose's keys do: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list. Rendering needs the app in a window and is a job (job gives the result); render=false only sets the keys, for the person to play.",
     "input_schema": {
       "additionalProperties": false,
@@ -3741,6 +3961,13 @@
     "name": "animate_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Simulate the mechanism"
+    },
     "description": "Turn the model's gear train as Tools, Simulate mechanism does, without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result).",
     "input_schema": {
       "additionalProperties": false,
@@ -3777,6 +4004,13 @@
     "name": "simulate_mechanism"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Undo or redo"
+    },
     "description": "Take back the last change to the model, as Edit, Undo does — yours or the person's — or steps= of them. redo=true puts back what was undone. The answer names what was undone and what is next.",
     "input_schema": {
       "additionalProperties": false,
@@ -3794,6 +4028,13 @@
     "name": "undo"
   },
   {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Open a model"
+    },
     "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
     "input_schema": {
       "additionalProperties": false,
@@ -3811,6 +4052,11 @@
     "name": "open_model"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List the parts"
+    },
     "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" says which of their saved models their collection builds.",
     "input_schema": {
       "additionalProperties": false,
@@ -3833,6 +4079,13 @@
     "name": "parts_list"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Render a picture"
+    },
     "description": "Render the model as File, Render does: a picture, or a turntable (a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable when omitted); size 720p, 1080p, 4k or square; view hero, front, side, back, low or top. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result, a picture with it. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
@@ -3878,6 +4131,13 @@
     "name": "render_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Export the model"
+    },
     "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
     "input_schema": {
       "additionalProperties": false,
@@ -3906,6 +4166,13 @@
     "name": "export_model"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false,
+      "title": "Brickify a 3D model"
+    },
     "description": "Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an OBJ, STL or glTF/GLB laid at the size asked (studs along its longest side) in slopes, curves and tiles, or plain bricks and plates, as one sub-assembly named after the file, beside what is built. url= an http(s) link to the file, fetched by the app (96 MB at most; an OBJ's .mtl and a .gltf's .bin come from beside it). pick=true opens the window's file dialog for the person to choose one on their computer, and says so; once they have, brickify with neither lays what the panel shows. Laying is a job: the answer is a job number, and job gives the result.",
     "input_schema": {
       "additionalProperties": false,
@@ -3964,6 +4231,13 @@
     "name": "brickify"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false,
+      "title": "Print on a part"
+    },
     "description": "Print a picture on a part of the model, or stick it on as a sticker, as Build, Print on a part… and Put a sticker on… do. brick= the part's number in look_at_model. A print goes on one of the part's printable areas (area=, the first when omitted; a wrong one is answered with its areas), and the printed part takes the part's place in its colour, a part of its own from then on. sticker=true makes a sticker the size of the part's side= face (up, down, +x, -x, +z, -z), running over the faces in the same plane beside it unless span=false, and sticks it on. The picture: svg= drawn by you (a whole <svg> with a viewBox in the face's proportions; flat colours print best), or picture_url= an http(s) link to a PNG, JPEG, WebP or SVG.",
     "input_schema": {
       "additionalProperties": false,
@@ -4013,6 +4287,13 @@
     "name": "print_part"
   },
   {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make a copy unique"
+    },
     "description": "Cut one copy of a sub-assembly loose from the others, as Edit, Make this copy unique does: it becomes a sub-assembly of its own, so changing it changes no other copy. assembly= its path or name (\"Wheel#2\" or \"Wheel (copy 2)\"), or brick= a part in it.",
     "input_schema": {
       "additionalProperties": false,
@@ -4030,6 +4311,11 @@
     "name": "make_unique"
   },
   {
+    "annotations": {
+      "openWorldHint": true,
+      "readOnlyHint": true,
+      "title": "Search the gallery"
+    },
     "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort; each with its link id, part count, credit and licence. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, and its picture — to learn how it is built. Read-only: nothing on the baseplate changes. Credit its builder and keep to its licence in anything made from it.",
     "input_schema": {
       "additionalProperties": false,
@@ -4097,6 +4383,11 @@
     "name": "gallery"
   },
   {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Follow a long job"
+    },
     "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, a mechanism's recording, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
     "input_schema": {
       "additionalProperties": false,

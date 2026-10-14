@@ -11,8 +11,11 @@
 //
 // Then Allow sends the request and the session's access token to
 // /api/oauth?op=approve, which checks both again and answers with where to
-// send the person: back to Claude, with a code. Everything shown is put on
-// the page as text, never markup.
+// send the person: back to Claude, with a code. Once is enough: signed in,
+// the page first asks /api/oauth?op=remembered whether this account is
+// connected to this same app already, and if it is goes straight back with
+// a code, asking nothing. Everything shown is put on the page as text,
+// never markup.
 
 const $ = (id) => document.getElementById(id);
 // Where the app keeps its session (src/account/account.gd).
@@ -23,6 +26,7 @@ const request = Object.fromEntries(new URLSearchParams(location.search));
 let project = null; // { url, key }: where codes are redeemed
 let session = null; // { access, email }
 let email = "";
+let client = "Claude"; // who is asking, as the server names it
 
 function show(step) {
   for (const id of STEPS) $(id).classList.toggle("hide", id !== step);
@@ -118,6 +122,29 @@ function toAllow() {
   $("allow").focus();
 }
 
+/// Whether this account has allowed this app before and is still connected
+/// to it: then Brickworks answers at once, as it did the first time, and
+/// the person is not asked again (op=remembered). Disconnect, in Account in
+/// Brickworks, ends that, and the next connection asks.
+async function remembered() {
+  try {
+    const reply = await fetch("/api/oauth?op=remembered", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${session.access}` },
+      body: JSON.stringify(request),
+    });
+    const body = await json(reply);
+    if (!reply.ok || !body.redirect) return false;
+    $("leaving-why").textContent = `You allowed ${client} before, signed in as `
+      + `${session.email || "this account"}. Disconnect it any time from Account in Brickworks.`;
+    show("leaving");
+    location.assign(body.redirect);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function start() {
   // What the request is, before anything is asked of the person.
   let checked;
@@ -148,7 +175,8 @@ async function start() {
     return show("refused");
   }
 
-  for (const name of document.querySelectorAll(".client")) name.textContent = checked.client;
+  client = checked.client;
+  for (const name of document.querySelectorAll(".client")) name.textContent = client;
   const back = $("back-to");
   back.replaceChildren();
   if (checked.loopback) {
@@ -176,7 +204,7 @@ async function start() {
     return show("refused");
   }
   session = await renewKept();
-  if (session) return toAllow();
+  if (session) return (await remembered()) || toAllow();
   show("email-step");
 }
 
@@ -221,7 +249,7 @@ $("code-form").addEventListener("submit", async (event) => {
     if (!reply.ok || !body.access_token) return say(readable(body), true);
     keep(body);
     session = { access: body.access_token, email: body.user?.email || email };
-    toAllow();
+    if (!(await remembered())) toAllow();
   } catch {
     say("Could not reach Brickworks to sign in. Check your connection.", true);
   } finally {

@@ -14,10 +14,19 @@
 ## the same, to the byte, after every one as before. And a part's geometry is
 ## waited for, never refused: attachment_points answered "has not arrived
 ## yet" for a Technic beam on the web.
+##
+## Claude is told which tools are read-only (MCP's readOnlyHint, from
+## CommandSocket.HINTS), and decides from it what to ask the person about.
+## So every tool that table calls read-only is called here — the window's
+## own (the parts list, the gallery, a job) through the socket a session's
+## calls come in by, on the app's scene — and one it calls read-only that
+## nothing here calls fails.
 extends SceneTree
 
 var _failures: int = 0
 var _world: BrickWorld
+## Each tool called, by name.
+var _called: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -83,12 +92,16 @@ func _run() -> void:
 		["where_to_attach", {"part": "3024"}],
 		["edit_selection", {"add": [{"part": "3024", "color": 4, "x": 0, "y": 40, "z": 0}],
 			"check_only": true}],
+		["search_gear_ratio", {"ratio": 0.3333}],
+		["look_at_picture", {}],
+		["find_reference", {"subject": "a lighthouse"}],
 	]
 	for call: Array in calls:
-		var was: String = _standing()
+		_called[str(call[0])] = true
+		var was: String = _standing(_world)
 		var answer: Variant = await assistant.use_tool(str(call[0]), call[1])
 		var said: String = _text_of(answer)
-		_ok(_standing() == was, "%s %s changes nothing: %s" % [call[0],
+		_ok(_standing(_world) == was, "%s %s changes nothing: %s" % [call[0],
 			JSON.stringify(call[1]).left(50), said.left(60).replace("\n", " ")])
 		if str(call[0]) == "attachment_points" and (call[1] as Dictionary).has("part"):
 			_ok(not said.contains("has not arrived") and said.contains("32523"),
@@ -96,13 +109,60 @@ func _run() -> void:
 	# Not a feature's review: that lays the best real set's piece for it, as
 	# its description says, and is one step to undo (claude_undo_probe).
 	for asked: Array in [["", "", false], ["", "", true]]:
-		var was: String = _standing()
+		var was: String = _standing(_world)
 		var said: String = await assistant.review(str(asked[0]), str(asked[1]), bool(asked[2]))
-		_ok(_standing() == was, "review_model %s changes nothing: %s" % [
+		_ok(_standing(_world) == was, "review_model %s changes nothing: %s" % [
 			"creative" if asked[2] else "whole", said.left(60).replace("\n", " ")])
 	_ok(_world.brick_count() == opened, "the model is the %d parts it opened as" % opened)
 	builder.selection.clear()
 	assistant.unfocus()
+
+	# The window's own that only look, which need the window: through the
+	# socket a session's calls come in by, on the app's scene.
+	print("\nthe window's own that only look, called as a session calls them")
+	var main: Node = load("res://src/main.tscn").instantiate()
+	root.add_child(main)
+	for _n: int in 60:
+		await process_frame
+	var playback: BuildPlayback = main.get("_playback")
+	if playback != null:
+		playback.stop()
+	var socket := CommandSocket.new()
+	socket.assistant = main.get("_assistant")
+	socket.app = main
+	main.add_child(socket)
+	var app_store: ModelStore = main.get("_store")
+	app_store.keeps = false
+	var app_parts: int = app_store.open("res://models/house.ldr")
+	# Shown whole, not assembling, so nothing moves but what a call moves.
+	if playback != null:
+		playback.stop()
+	await process_frame
+	var app_world: BrickWorld = main.get("_world")
+	_ok(app_parts > 20, "the house opened in the app: %d parts" % app_parts)
+	var sent: int = 0
+	for call: Array in [["parts_list", {}], ["parts_list", {"which": "need"}],
+			["gallery", {"q": "castle"}], ["job", {}]]:
+		_called[str(call[0])] = true
+		var was: String = _standing(app_world)
+		sent += 1
+		var answer: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": sent,
+			"method": "tools/call", "params": {"name": call[0], "arguments": call[1]}})
+		var said: String = _text_of(((answer as Dictionary).get("result", {}) as Dictionary)
+			.get("content", []))
+		_ok(_standing(app_world) == was and not said.is_empty(), "%s %s changes nothing: %s" % [
+			call[0], JSON.stringify(call[1]), said.left(60).replace("\n", " ")])
+
+	# Every tool the table calls read-only (CommandSocket.HINTS, which
+	# every client is told) is one called above.
+	var uncalled := PackedStringArray()
+	for name: String in CommandSocket.HINTS.keys():
+		if bool(CommandSocket.annotations(name).get("readOnlyHint", false)) and not _called.has(name):
+			uncalled.append(name)
+	_ok(uncalled.is_empty(), "every tool Claude is told is read-only was called here%s" % (
+		"" if uncalled.is_empty() else ": not " + ", ".join(uncalled)))
+	main.queue_free()
+	await process_frame
 
 	print("")
 	if _failures > 0:
@@ -113,9 +173,9 @@ func _run() -> void:
 
 
 ## Every part on the baseplate: its number, part, colour and transform.
-func _standing() -> String:
+func _standing(world: BrickWorld) -> String:
 	var rows := PackedStringArray()
-	for brick: BrickWorld.Brick in _world.bricks():
+	for brick: BrickWorld.Brick in world.bricks():
 		rows.append("%d %s %d %s" % [brick.id, brick.part_id, brick.color_code, brick.transform])
 	rows.sort()
 	return "\n".join(rows)
