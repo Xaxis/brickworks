@@ -361,7 +361,17 @@ axis, read from a file (10179's hinge at 53 degrees with a jumper and a bar on
 it, 6285's rail on three hinges, 75144's panel, 21307's hinge at 60): each in
 one piece, where read square they were refused in two. On a catalogue built
 before the rounds its first five lines fail, and every case that should pass
-fails with them.
+fails with them. "Stood on the ground by its shape": a wheel spun 16 degrees on
+its axle through a Technic brick, opened and checked as a design, then the lot
+tipped a degree about two axes as 8281's sidecar is drawn, and the wheel's
+geometry fetched after the model opened (the web) — each on its tyre, held; a
+turned part's box hangs below it, and on 3a39926 the model stood on the box,
+floating, and the late wheel never came down (`Lbm.PartMesh.lowest_at`,
+`ModelStore.lift_for` and `_settle`, the check's "below ground", Balance's
+`_through_floor`). And two bricks drawn 76 LDU up: from another tool they
+come down onto the ground and hold, saved by this app they keep their height.
+"A part drawn from what its file carries": a plate built
+from a subpart under `s\` and a primitive the file carries, a brick on it.
 
 `clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
 2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2

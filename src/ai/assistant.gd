@@ -10907,11 +10907,12 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# In a section, y is measured from the section's pivot, not the
 		# ground, so it is where the brick ends up that says. A hinge top
 		# leaning on a tilting hinge was refused as below the ground at
-		# twenty-eight LDU above it.
+		# twenty-eight LDU above it. By its shape, not its box: a tyre spun
+		# on its axle hangs its box 8 LDU below its tread, and a wheel
+		# standing on its tread was refused as below the ground.
 		var under_ground: bool = placement.y < 0
 		if not placement.section.is_empty():
-			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
-			under_ground = info != null and (at * info.bounds).position.y < -1.0
+			under_ground = part.lowest_at(at) < -1.0
 		if under_ground and (placement.id == 0 or placement.moved):
 			_note(issues, "below ground",
 				"brick %d (%s) is at y=%d, below the ground" % [

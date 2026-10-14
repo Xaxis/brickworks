@@ -270,6 +270,117 @@ func _initialize() -> void:
 1 0 0 -22 70 0 0 1 0.866 0.5 0 -0.5 0.866 0 23443.dat
 """)
 
+	print("\nstood on the ground by its shape, not its box")
+	# A part turned off the grid hangs its box below itself wherever it does
+	# not fill the box. A model opened was stood on the lowest box, so a car
+	# whose wheels are drawn spun on their axles, as Technic sets draw them,
+	# stood on its tyres' boxes 8 to 12 LDU up and was called floating whole:
+	# 8281's sidecar, all 98 of its parts, and most of 8110's 4,026. A wheel
+	# with its tyre (3482c04) spun 16 degrees on a square axle through a
+	# Technic brick, drawn 5 LDU into the ground so that opening it must
+	# stand it up; then the lot tipped a degree two ways as the sidecar is
+	# drawn.
+	var wheel: Array = [["3700", 4, Vector3(0, -40, 0), Basis.IDENTITY],
+		["3705", 0, Vector3(0, -30, -30), Basis(Vector3(0, 0, 1), Vector3(0, 1, 0),
+			Vector3(-1, 0, 0))],
+		["3482c04", 0, Vector3(0, -30, -40), Basis(Vector3(0, 0, 1), deg_to_rad(16.26))]]
+	await _passes("a wheel spun 16 degrees on its axle stands on its tyre",
+		_carried_text(Basis.IDENTITY, wheel), true)
+	var sidecar := Basis(Vector3(1, 0.017, 0), Vector3(-0.017, 1, 0.017),
+		Vector3(0, -0.017, 1)).orthonormalized()
+	await _passes("and tipped a degree about two axes as 8281's sidecar is drawn",
+		_carried_text(sidecar, wheel), true)
+	# And with the wheel's geometry arriving after the model opened, as on the
+	# web for a part outside the pack: stood on the wheel's box until it is
+	# here, then down onto its tyre, to the height a desktop opens it at.
+	var text: String = "0 joints probe\n" + _carried_text(sidecar, wheel) + "\n"
+	_clear()
+	_store.open_text(text, "wheel")
+	var desktop: float = _height_of("3700")
+	_clear()
+	var root: String = _library._root
+	var late: String = _library.parts["3482c04"].mesh_hash
+	_library._mesh_cache.erase(late)
+	_library._root = "user://no-parts-here/"
+	_store.open_text(text, "wheel")
+	var waiting: int = _store.awaited.size()
+	var opened: float = _height_of("3700")
+	_library._root = root
+	_store.place_awaited("3482c04")
+	var settled: float = _height_of("3700")
+	_assistant._ground_only = true
+	var held: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_ok(waiting == 1 and opened > settled and is_equal_approx(settled, desktop)
+		and int(held.get("floating", []).size()) == 0,
+		("its wheel fetched after it opened: stood %.0f LDU up on the box, then %.0f, "
+			+ "as a desktop opens it (%.0f), and held (%s)") % [opened, settled, desktop,
+			held["summary"]])
+	_clear()
+	# And a model another tool drew up in the air comes down onto the ground:
+	# its origin is that tool's. 30285's dinosaur is drawn 21 LDU up, and
+	# stood there every part of it floated. One this app saved keeps its height.
+	var aloft: String = "1 4 0 -100 0 1 0 0 0 1 0 0 0 1 3001.dat\n" \
+		+ "1 1 0 -124 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+	_store.open_text("0 Drawn up in the air\n" + aloft, "aloft")
+	var landed: float = _height_of("3001")
+	_assistant._ground_only = true
+	var stood: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_clear()
+	_store.open_text("0 Drawn up in the air\n0 Author: Brickworks\n" + aloft, "kept")
+	var kept: float = _height_of("3001")
+	_clear()
+	_ok(is_equal_approx(landed, 24.0) and int(stood.get("floating", []).size()) == 0
+		and is_equal_approx(kept, 100.0),
+		("a model drawn 76 LDU up by another tool comes down onto the ground (%s), "
+			+ "held (%s); saved by this app it keeps its height (%s)") % [
+			landed - 24.0, stood["summary"], kept - 24.0])
+
+	print("\na part drawn from what its file carries")
+	# A file carries the parts it uses that LDraw has not got, and the
+	# subparts and primitives they are drawn from. Only the parts were read,
+	# and by their bare names, so 1,401 parts real sets' files carry could
+	# not be built: 10283's Technic pins, drawn from a friction rib the file
+	# carries as a primitive, and printed parts whose print is a subpart
+	# named s\... — and whatever stood on one floated. A plate drawn from a
+	# subpart under s\, drawn from a primitive, and a 2 x 2 brick on it.
+	await _passes("a plate drawn from a subpart and a primitive the file carries, a brick on it",
+		"""
+0 FILE fx-carried.ldr
+0 Carried parts
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 fx - plate.dat
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+0 FILE fx - plate.dat
+0 Plate 2 x 2 Drawn From What Its File Carries
+0 Name: fx - plate.dat
+0 !LDRAW_ORG Unofficial_Part
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\\fx - plates01.dat
+1 16 10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+0 NOFILE
+0 FILE s\\fx - plates01.dat
+0 ~Plate 2 x 2 Body
+0 Name: s\\fx - plates01.dat
+0 !LDRAW_ORG Unofficial_Subpart
+1 16 0 0 0 20 0 0 0 8 0 0 0 20 fx - cube.dat
+0 NOFILE
+0 FILE fx - cube.dat
+0 Cube
+0 Name: fx - cube.dat
+0 !LDRAW_ORG Unofficial_Primitive
+4 16 -1 0 -1 1 0 -1 1 0 1 -1 0 1
+4 16 -1 1 -1 -1 1 1 1 1 1 1 1 -1
+4 16 -1 0 -1 -1 1 -1 1 1 -1 1 0 -1
+4 16 -1 0 1 1 0 1 1 1 1 -1 1 1
+4 16 -1 0 -1 -1 0 1 -1 1 1 -1 1 -1
+4 16 1 0 -1 1 1 -1 1 1 1 1 0 1
+0 NOFILE
+""")
+
 	print("")
 	if _failures == 0:
 		print("the joints real sets use pass, and the same parts apart do not")
@@ -363,7 +474,11 @@ func _design(ldraw: String, sections: bool = false) -> Assistant.Model:
 ## turned [param degrees] about the upright through the origin.
 static func _turned_text(degrees: float, parts: Array) -> String:
 	# LDraw's y points down, so a turn about it is the same matrix.
-	var turn := Basis(Vector3.UP, deg_to_rad(degrees))
+	return _carried_text(Basis(Vector3.UP, deg_to_rad(degrees)), parts)
+
+
+## The same, all carried by [param turn], in LDraw's own axes.
+static func _carried_text(turn: Basis, parts: Array) -> String:
 	var lines := PackedStringArray()
 	for one: Array in parts:
 		var at: Vector3 = turn * (one[2] as Vector3)
@@ -383,6 +498,8 @@ func _passes(said: String, ldraw: String, sections: bool = false) -> void:
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(bool(verdict["ok"]) and model.placements.size() >= 2,
 		"%s (%s)" % [said, verdict["summary"]])
+	if not bool(verdict["ok"]):
+		print("        " + str(verdict.get("feedback", "")).left(600).replace("\n", "\n        "))
 
 
 ## Read from a file with its sections, and passed in one piece: a part a
@@ -476,6 +593,14 @@ func _leaning(hinged: bool, degrees: float) -> Dictionary:
 	model.sections["lean"] = Assistant.Section.from_dict({"name": "lean",
 		"x": pivot.x, "y": pivot.y, "z": pivot.z, "axis": axis, "degrees": degrees})
 	return _assistant._check(model, true)
+
+
+## Where the first brick of a part stands, its origin's height in LDU.
+func _height_of(part_id: String) -> float:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			return brick.transform.origin.y
+	return NAN
 
 
 func _clear() -> void:

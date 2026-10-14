@@ -273,7 +273,8 @@ func _lowest(model: Assistant.Model, members: Array) -> Array:
 		var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
 		if brick == null or mesh == null:
 			continue
-		var shape: float = (brick.transform * mesh.bounds).position.y
+		# By its shape: a turned part's box hangs below it (Lbm.PartMesh.lowest_at).
+		var shape: float = mesh.lowest_at(brick.transform)
 		var cover: PackedInt32Array = _builder.lattice.boxes_of(brick.id)
 		var low: int = 0x7FFFFFFF
 		for n: int in range(1, cover.size(), 6):
