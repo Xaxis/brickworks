@@ -7,7 +7,7 @@
 // What it asks of a deployment, every answer read off the wire:
 //
 //   the pages answer 200 at their bare names (/, /gallery, /download, /changelog,
-//     /faq, /privacy, /admin, /profile), each with its own title, description and canonical link and
+//     /compare, /faq, /privacy, /admin, /profile), each with its own title, description and canonical link and
 //     an Open Graph card whose picture is really there; and so does the page
 //     of the gallery's newest model, /m/<id>, made by api/share.js;
 //   each old .html address answers 308 to its bare one, query and all, and
@@ -19,8 +19,8 @@
 //     depth, inside /b/<sha>/ too; /parts/ and /sets/ keep their plain 404s;
 //   sitemap.xml lists only pages that answer 200, and robots.txt keeps
 //     /admin out;
-//   every link and picture on every page resolves, and every #fragment is
-//     an id on its page;
+//   every link, picture, clip, poster and script on every page resolves,
+//     and every #fragment is an id on its page;
 //   in a browser: no page logs an error, none scrolls sideways at 390 px,
 //     and /app boots with the address bar still saying /app and its Help
 //     panel's version.json found beside the build.
@@ -77,6 +77,7 @@ const PAGES = [
   { path: "/download", canonical: `${SITE}/download` },
   { path: "/gallery", canonical: `${SITE}/gallery` },
   { path: "/changelog", canonical: `${SITE}/changelog` },
+  { path: "/compare", canonical: `${SITE}/compare` },
   { path: "/faq", canonical: `${SITE}/faq` },
   { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/takedown", canonical: `${SITE}/takedown` },
@@ -177,6 +178,7 @@ for (const [from, to] of [
   ["/download.html", "/download"],
   ["/gallery.html", "/gallery"],
   ["/changelog.html", "/changelog"],
+  ["/compare.html", "/compare"],
   ["/faq.html", "/faq"],
   ["/takedown.html", "/takedown"],
   ["/admin.html", "/admin"],
@@ -306,6 +308,9 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
   for (const set of html.matchAll(/srcset="([^"]+)"/g)) {
     for (const item of set[1].split(",")) pictures.push(item.trim().split(/\s+/)[0]);
   }
+  // The clips too (/compare's), their posters, and every script a page names:
+  // a clip that is not there shows only its poster, and nothing says so.
+  for (const m of html.matchAll(/<(?:source|script|video)\b[^>]*\s(?:src|poster)="([^"]+)"/g)) pictures.push(m[1]);
   const styles = [...html.matchAll(/<link\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
   let count = 0;
   for (const href of new Set(hrefs)) {
@@ -332,7 +337,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/takedown", "takedown"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
+  ["/compare", "compare"], ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/profile", "profile"], ["/takedown", "takedown"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
@@ -356,6 +361,29 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
         clientW: document.documentElement.clientWidth,
         broken: [...document.images].filter((i) => !i.naturalWidth).map((i) => i.currentSrc || i.src),
       }));
+      // A page's clips (/compare's): none fetched before it is scrolled to,
+      // and each, scrolled to, playing on its own, muted. Playwright's
+      // Chromium has no H.264, so this is the WebM; the MP4 is checked
+      // above as a file that answers.
+      const clips = await page.evaluate(() => [...document.querySelectorAll("video[data-play]")]
+        .map((v) => ({ below: v.getBoundingClientRect().top > innerHeight, loading: v.networkState === 2 })));
+      if (clips.length) {
+        const early = clips.filter((c) => c.below && c.loading).length;
+        if (early) fail(`${path} at ${label} width fetches ${early} clips before they are scrolled to`);
+        const played = [];
+        for (let n = 0; n < clips.length; n++) {
+          await page.evaluate((i) => document.querySelectorAll("video[data-play]")[i].scrollIntoView({ block: "center" }), n);
+          await page.waitForTimeout(4000);
+          played.push(await page.evaluate((i) => {
+            const v = document.querySelectorAll("video[data-play]")[i];
+            return { time: v.currentTime, paused: v.paused, muted: v.muted, src: v.currentSrc.split("/").pop() };
+          }, n));
+        }
+        const still = played.filter((p) => p.paused || p.time < 0.5 || !p.muted);
+        if (still.length) fail(`${path} at ${label} width: ${still.length} of ${clips.length} clips did not play, muted: ${JSON.stringify(still)}`);
+        else ok(`${path} at ${label} width: ${clips.length} clips play muted when scrolled to (${played.map((p) => p.src).join(", ")})`);
+        await page.evaluate(() => window.scrollTo(0, 0));
+      }
       if (seen.scrollW > seen.clientW + 1) fail(`${path} at ${label} width scrolls sideways (${seen.scrollW}px in ${seen.clientW}px)`);
       if (seen.broken.length) fail(`${path} at ${label} width has broken pictures: ${seen.broken.slice(0, 3).join(", ")}`);
       // A 404 is the page's own answer here, not an error in it.

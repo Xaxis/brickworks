@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!--
+  Brickworks next to BrickLink Studio and LEGO® Digital Designer, at
+  /compare. A builder answered the owner's Reddit post with "Studio exists,
+  LDD exists… why?"; the home page answers in a sentence and links here,
+  where each answer is shown on a real model, so nobody has to take it on
+  trust.
+
+  Every claim about Studio or LDD was checked on 2026-10-13 against the
+  sources linked at the foot (Studio's own help centre, and the LEGO Group's
+  notice that LDD is retired); a claim that could not be sourced was cut.
+  Studio has project tabs and an instruction maker of its own, so neither
+  is claimed as ours alone. Products are named only as facts about them
+  (docs/TRADEMARKS.md). Short on purpose, under 400 words: the home page
+  was cut from 2,564 words to 500 for being bloated.
+
+  The pictures and clips are of the live app in a real Chromium window,
+  taken by tools/web/compare_media.mjs (img/manifest.json says how). Clips
+  are muted MP4s with a poster, preload="none", played by compare.js only
+  while on screen.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brickworks next to Studio and LDD</title>
+<meta name="description" content="Brickworks beside BrickLink Studio and LEGO® Digital Designer, each point shown on a real model: in any browser with nothing to install, balance and joint strength in every pose, gear trains at their real ratios, Studio .io in and out, and STL, OBJ and GLB.">
+<link rel="canonical" href="https://brickworks.diy/compare">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Brickworks next to Studio and LDD">
+<meta property="og:description" content="Studio exists. Here is Brickworks beside it, each point shown on a real model.">
+<meta property="og:url" content="https://brickworks.diy/compare">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.page { padding: clamp(48px, 8vw, 96px) 0; }
+.page h1 { font-size: clamp(34px, 5.6vw, 58px); max-width: 16ch; }
+.page .lede { margin-bottom: 0; }
+.points { display: grid; gap: clamp(44px, 7vw, 88px); margin: clamp(44px, 7vw, 80px) 0 0; padding: 0; list-style: none; }
+.point { display: grid; gap: clamp(18px, 3.5vw, 48px); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: center; }
+.point:nth-child(even) .shot { order: 2; }
+.point h2 { font-size: clamp(24px, 3vw, 32px); }
+.point p { margin: 0; color: var(--ink-soft); max-width: 46ch; text-wrap: pretty; }
+.point .them { margin-top: 12px; font-size: 15px; color: var(--ink-faint); }
+.shot img, .shot video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-soft); }
+.shot video:not([controls]) { cursor: pointer; }
+@media (max-width: 760px) {
+	.point { grid-template-columns: 1fr; }
+	.point:nth-child(even) .shot { order: 0; }
+}
+.close { margin-top: clamp(56px, 8vw, 96px); padding-top: clamp(32px, 5vw, 48px); border-top: 1px solid var(--line); }
+.close h2 { font-size: clamp(22px, 2.6vw, 28px); }
+.close p { color: var(--ink-soft); max-width: 62ch; margin: 0 0 24px; }
+.close .sources { margin: 40px 0 0; font-size: 13.5px; color: var(--ink-faint); max-width: 90ch; }
+.sources a { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/#assistant">Assistant</a>
+			<a href="/faq">FAQ</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/#assistant">Assistant</a>
+				<a href="/faq">FAQ</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main" class="wrap page">
+	<h1>Studio exists. Why Brickworks?</h1>
+	<p class="lede">
+		BrickLink Studio is the community’s standard, and it does a lot well:
+		parts from the BrickLink catalogue, photoreal renders, an instruction
+		maker. LEGO® Digital Designer was retired by the LEGO Group in 2022.
+		Here is Brickworks beside them, each point shown in the app on a real model.
+	</p>
+
+	<ol class="points">
+		<li class="point">
+			<figure class="shot">
+				<video data-play muted loop playsinline preload="none" controls
+					poster="/img/compare-tabs.webp" width="1200" height="750"
+					aria-label="A Chromium window at brickworks.diy/app with three tabs open, a castle, a Technic go-kart and an orrery of the Sun and eight planets, each brought to the front in turn and each showing its own model in the builder.">
+					<source src="/img/compare-tabs.webm" type="video/webm">
+					<source src="/img/compare-tabs.mp4" type="video/mp4">
+				</video>
+			</figure>
+			<div>
+				<h2>In a browser, nothing to install</h2>
+				<p>Open brickworks.diy/app on any computer and build. Every tab is its own project. Desktop apps too, if you prefer.</p>
+				<p class="them">Studio is a desktop app for Windows and Mac.</p>
+			</div>
+		</li>
+		<li class="point">
+			<figure class="shot">
+				<video data-play muted loop playsinline preload="none" controls
+					poster="/img/compare-stability.webp" width="1200" height="750"
+					aria-label="A tree of LEGO® bricks in the builder: Tools, Check stability is chosen, and the base the tree stands on is drawn green on the baseplate with a line down from its centre of mass, which falls 2 studs inside the back edge.">
+					<source src="/img/compare-stability.webm" type="video/webm">
+					<source src="/img/compare-stability.mp4" type="video/mp4">
+				</video>
+			</figure>
+			<div>
+				<h2>Will it stand? Will it hold?</h2>
+				<p>Check stability weighs each joint against what its studs can hold, and the centre of mass against the base, in every pose the hinges reach.</p>
+				<p class="them">Studio’s check flags weak parts and groups that can’t stand, and calls itself “very conservative”. LDD had none.</p>
+			</div>
+		</li>
+		<li class="point">
+			<figure class="shot">
+				<video data-play muted loop playsinline preload="none" controls
+					poster="/img/compare-simulate.webp" width="1200" height="750"
+					aria-label="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's year against NASA's, Mercury 0.24 Earth years against 0.2408 and Mars 1.875 against 1.8808, and the gears, tinted blue for slow and orange for fast, turn the planets' arms round the central shaft.">
+					<source src="/img/compare-simulate.webm" type="video/webm">
+					<source src="/img/compare-simulate.mp4" type="video/mp4">
+				</video>
+			</figure>
+			<div>
+				<h2>Gear trains turn at their real ratios</h2>
+				<p>Simulate turns the crank and every gear follows. This orrery keeps all eight planets’ years within 0.35% of NASA’s.</p>
+				<p class="them">Studio’s animations build the model or circle the camera.</p>
+			</div>
+		</li>
+		<li class="point">
+			<figure class="shot">
+				<img src="/img/compare-io-640.webp"
+					srcset="/img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
+					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+					width="1200" height="750" loading="lazy" decoding="async"
+					alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
+			</figure>
+			<div>
+				<h2>Your Studio files, in and out</h2>
+				<p>Open a Studio <code>.io</code>, locked ones too, and save back to <code>.io</code>. LDD’s <code>.lxf</code> opens as well.</p>
+			</div>
+		</li>
+		<li class="point">
+			<figure class="shot">
+				<img src="/img/compare-export3d-640.webp"
+					srcset="/img/compare-export3d-640.webp 640w, /img/compare-export3d-1200.webp 1200w"
+					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+					width="1200" height="750" loading="lazy" decoding="async"
+					alt="Export a 3D model, over a Technic go-kart: the model as a 3D file at its real size, for Blender, AR or a 3D printer, with the list of formats open: GLB, glTF, OBJ with its colours, and STL to 3D print.">
+			</figure>
+			<div>
+				<h2>STL, OBJ and GLB</h2>
+				<p>True to size, for a 3D printer, Blender or the web.</p>
+				<p class="them">Studio’s 3D exports are COLLADA and POV-Ray.</p>
+			</div>
+		</li>
+		<li class="point">
+			<figure class="shot">
+				<img src="/img/compare-booklet-640.webp"
+					srcset="/img/compare-booklet-640.webp 640w, /img/compare-booklet-1200.webp 1200w"
+					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+					width="1200" height="750" loading="lazy" decoding="async"
+					alt="The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.">
+			</figure>
+			<div>
+				<h2>Instructions in one press</h2>
+				<p>A booklet with the parts for every step, laid out for you and ready to print.</p>
+			</div>
+		</li>
+	</ol>
+
+	<section class="close" aria-labelledby="assistant-h">
+		<h2 id="assistant-h">And an assistant, only if you want one</h2>
+		<p>
+			Claude, on your own plan or key, checks the physics and designs on
+			request. Or build entirely by hand: View, Assistant closes it.
+			<a href="/faq#claude">How it works</a>
+		</p>
+		<div class="actions">
+			<a class="cta big" href="/app">Open Brickworks</a>
+			<a class="cta ghost big" href="/download">Download</a>
+		</div>
+		<p class="sources">
+			Sources, checked 13 October 2026. Studio:
+			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5404381697559">what it is</a>,
+			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6501498505111-Stability-check">stability check</a>,
+			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6507015818263-Animation">animation</a>,
+			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502197862679-Exporting-to-other-formats">export formats</a>.
+			LDD:
+			<a href="https://www.lego.com/en-us/service/help-topics/article/about-lego-digital-designer">retired</a>,
+			<a href="https://www.brothers-brick.com/2022/01/12/lego-fully-discontinuing-lego-digital-designer-in-favor-of-bricklink-studio">in 2022</a>,
+			<a href="https://wireless-earth.de/private/invisiblehand_eng.html">no stability check</a>.
+		</p>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/faq">FAQ</a></li>
+					<li><a href="/privacy">Privacy</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
+			</p>
+		</div>
+	</div>
+</footer>
+<script src="/compare.js" defer></script>
+</body>
+</html>

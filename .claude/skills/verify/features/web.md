@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check -->
 
 ## Sub-features
 
@@ -873,11 +873,41 @@ plan with Claude as the client.
   with its build's engine named under `/b/<sha>/`, COOP/COEP and the app's CSP, not
   cached, and the build's files immutable; unknown addresses the 404 page with a
   404; the sitemap's pages 200 and robots keeping `/admin` out; every link,
-  picture and `#fragment` on every page resolving (external links fail only when
-  gone, 404 or 410); and in a browser, no page logging an error or scrolling
+  picture, clip, poster, script and `#fragment` on every page resolving (external
+  links fail only when gone, 404 or 410); and in a browser, no page logging an error or scrolling
   sideways at 390 px, with a full-page shot of each at 390 and 1280 px in `--out`,
   and `/app` booting with the address bar still `/app` and its `version.json`
   found. About four minutes on SwiftShader.
+- `compare page` (`web/compare.html`, `web/compare.js`, `img/compare-*`): the
+  answer to "Studio exists, LDD exists… why?" (a builder on Reddit), linked from
+  the home page's first sentence and the FAQ's first question (`#studio`). Under
+  400 words: Studio's strengths in one line, then six points, each one claim on
+  a real model with what Studio or LDD does, sourced at the foot (Studio's help
+  centre; the LEGO Group's and The Brothers Brick's notices that LDD is retired;
+  a page saying LDD has no stability check), checked 2026-10-13. Studio has
+  project tabs and an instruction maker, so neither is claimed as ours alone;
+  its stability check exists, so the claim is what ours adds (loads per joint,
+  the margin, every pose the hinges reach). A claim about Studio or LDD that
+  cannot be sourced is cut, not softened. The clips are muted, looping, `preload
+  ="none"` with a poster, WebM then MP4 (Playwright's Chromium has no H.264, so
+  a check there plays the WebM), and `compare.js` plays each only while it is on
+  screen and never for `prefers-reduced-motion`. Judge it at 390 and 1280 px
+  (site check's shots) and with Lighthouse on the preview (performance at least
+  95 on mobile): `npx lighthouse@12 <preview>/compare --form-factor=mobile ...`
+  as for the landing page.
+- `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
+  of `/compare` from the live app in a real, headed Chromium window on
+  SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
+  `heavy xvfb-run -a --server-args="-screen 0 1600x1000x24" node --env-file=.env
+  tools/web/compare_media.mjs --out=shots/compare`, about eleven minutes, then
+  `node tools/web/compare_media.mjs --encode` writes `web/img/compare-*` (crops
+  in `CROPS`). Each scene reads back what it did and fails the run if it did not
+  happen: the castle, kart, orrery and tree open (by `?model=`, as the home
+  page's links do: typing into Open…'s list in software let the first letters
+  through to the app as keys, and K left the kart cut away), Simulate
+  mechanism's readout naming Mars, Play playing, Check stability saying how
+  many studs inside, the booklet's tab with pages. Look at every picture before
+  encoding: a menu that did not open still makes a picture.
 - `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a
   key, asks for a small house and records every answer from Anthropic, with a
   screenshot at each step. With its default fake key it is free and proves the

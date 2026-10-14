@@ -210,6 +210,14 @@
       "tests": []
     },
     {
+      "id": "cli:compare media",
+      "kind": "cli",
+      "entry": "tools/web/compare_media.mjs",
+      "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:connect Claude browser flow",
       "kind": "cli",
       "entry": "tools/web/oauth_flow.mjs",
@@ -1289,6 +1297,14 @@
       "kind": "ui",
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:compare page",
+      "kind": "ui",
+      "entry": "web/compare.html",
+      "reach": "https://brickworks.diy/compare   (Brickworks next to Studio and LDD, each point on a real model; linked from the home page and the FAQ)",
       "area": "web",
       "tests": []
     },
