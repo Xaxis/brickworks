@@ -1155,6 +1155,48 @@ fixing what it got wrong.
   in one, standing (`Stability`), with shaped parts held at its ends; an
   owl raised at y 55, two engine pods said as one shape and a wheel at 15.5
   each said with the fix.
+  Cabins, couplings and the studs a joint leaves (2026-10-14, the cabins
+  round, after the shapes round's judge named "a boxy cabin with a flat roof
+  and an upright windscreen", a tender coupled to nothing, studs on tops).
+  A loft, extrude or revolve with `"screen"` (true: its steepest climb, carried
+  along the whole climb, `_climb`; or `{"from", "to", "color", "part"}`) is laid
+  by `Plan.screen`: of `Shapes.SCREENS` (92583, 4176, 3823, 57783, each read off
+  its mesh by `screen_part`: across, along its rake, plates, its top studs and
+  the studs its tubes grip), the one nearest the solid's rake, the roof's full
+  height and its width, centred on the mirror, its top row where the roof is;
+  its plates carved and taken, no slope fitted there (`screened`), the plates
+  it grips studded (a plate or two laid under them where the shape is lower),
+  and a roof of a plate and a tile over its top row on its top studs. Said in
+  the reply only if it survives the joining (`_said` on the part); a side
+  turned out that loses it is laid upright again; an odd width or a climb no
+  screen fits is said with the numbers that fit. A shape that says no screen
+  and whose raised solid climbs three plates within three studs is told how
+  (`_screen_hints`). The guide's car example is a cabin said by its own
+  profile with `"screen": true` and a band of glass. A vehicle's part on its
+  own wheels, end to end with the model within `COUPLE_GAP` studs, its feet
+  level and its side in line, coupled by nothing (`_uncoupled`, before the
+  named-item rule: a named tender is still uncoupled) is said with where it
+  is and `COUPLE_HOW`; the check reports `"uncoupled"`. A train's buffer beam
+  with a sealed magnet (64422) is a magnet to `Joints.is_magnet`. A part
+  whose cover hangs below its foot (a towball, a socket, buffers) stands on a
+  shape's studs at its tubes' plate (`Patterns.foot_plate`), so the shape
+  keeps studs under it. The surface pass tiles fewer than four open studs
+  when a tile lies beside them at their height (`_set_in_tiles`): "a joint's
+  studs in a tiled top". Techniques: "raked screen and falling roof",
+  "towball hitch" (14417 and 14704, two studs apart on one grid), "magnet
+  coupling" (two 64422 on 2 x 2 plates, seven studs between their middles).
+  `cabins_probe`: the four screens read; the guide's car, the bench car's own
+  loft said with a screen, a truck's cab and an aircraft's round fuselage
+  each lay a windscreen in glass, said in the reply, one piece, a mirror,
+  the car's roof falling in curved slopes; the bench car's flat loft with no
+  screen is told to say one; an engine and a tender a stud apart are two
+  pieces with the tender named uncoupled and the fix, a sign beside a car is
+  not, and coupled by the towball pair or the magnet beams the two are one
+  piece; the guide's car's six joints' studs set in tiles are all tiled by
+  the surface pass. On the tree before (24d36aa) 21 of them fail: no screen
+  is read or laid, nothing is said, the tender is not named, the towball pair
+  stands on tiles and the magnet beams are two pieces, neither technique
+  exists, and four of the car's six groups of studs are left as detail.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without

@@ -101,10 +101,23 @@ const TOPS: Array = [
 	[1, 3, "63864", 1], [2, 1, "3069b", 0], [1, 2, "3069b", 1], [1, 1, "3070b", 0],
 ]
 
+## The windscreens a raked front is laid in, where a solid says "screen":
+## the way a set builds a cabin or a canopy, a windscreen standing on the
+## plates at the foot of its rake, leaning back to the roof, the roof on its
+## top studs. The commonest in LDraw's official models first: 92583 and 4176
+## six studs across, 3823 and 57783 four. Each read off its own mesh
+## (screen_part).
+const SCREENS: Array = ["92583", "4176", "3823", "57783"]
+## Glass, where a screen names no colour: trans-black, as a set's windscreen
+## is; trans-clear where the part was never made in it.
+const GLASS: Array = [40, 47]
+
 ## What each surface part is, read once off its own mesh: "w" studs across
 ## its fall, "d" along it, "h" plates tall, and "turn", the quarter turns
 ## that make rot = facing + turn point its fall that way.
 static var _parts: Dictionary = {}
+## And each windscreen, as screen_part reads it.
+static var _screens: Dictionary = {}
 
 ## What the last shape laid came to, for a probe to read: its mirror axis
 ## and the sum a stud and its mirror add up to, its columns and plates.
@@ -131,6 +144,11 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			+ "\"box\", \"ellipsoid\" or \"dome\", or several in \"solids\"")
 		return []
 	var wheels: Array = _wheels(pattern, solids, cuts, trouble)
+	if not trouble.is_empty():
+		return []
+	# A front said as glass: where each windscreen goes is worked out on the
+	# plan, once the solids are sampled (Plan.screen).
+	var screens: Array = _screens_asked(solids, trouble)
 	if not trouble.is_empty():
 		return []
 	var bands: Array = []
@@ -299,6 +317,13 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.round_runs()
 		last["rounds"] = plan.round_made.size()
 		last["round_runs"] = plan.round_said
+		# Before the sides are turned out and the surface is sloped: the plates
+		# a windscreen stands in are taken first, and no slope is fitted there.
+		for one: Dictionary in screens:
+			var asked: Dictionary = one.duplicate()
+			asked["origin"] = origin
+			asked["y0"] = y0
+			plan.screen(asked)
 		var shells: Array = []
 		if sideways:
 			shells = plan.shells()
@@ -347,12 +372,33 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	var shells: Array = built[1]
 	# Turning a side out must not cut the core in two: a car's arches left
 	# a body six studs wide over them, and it came apart in ten pieces.
-	# Laid upright again where it does.
-	if not shells.is_empty() and plan.pieces().size() > 1:
+	# Laid upright again where it does. Nor take away what a windscreen
+	# stands on: a round fuselage turned out at its nose lost the plates
+	# under its cockpit's screen, and the screen with them.
+	if not shells.is_empty() and (plan.pieces().size() > 1
+			or plan.screens_kept() < plan.screens_laid):
 		var upright: Array = build.call(false)
-		if (upright[0] as Plan).pieces().size() < plan.pieces().size():
-			plan = upright[0]
+		var up: Plan = upright[0]
+		if up.pieces().size() < plan.pieces().size() \
+				or (up.pieces().size() == plan.pieces().size()
+					and up.screens_kept() > plan.screens_kept()):
+			plan = up
 			shells = []
+	# What each screen laid, or why it laid none; and a steep front of a raised
+	# solid said with no screen, which is how a session says a cabin.
+	said.append_array(plan.screens_said)
+	var unheld: Array = plan.screens_where.duplicate()
+	for one: Dictionary in plan.made:
+		if bool(one.get("_screen", false)):
+			said.append(one["_said"])
+			unheld.erase(one["_where"])
+	for where: Variant in unheld:
+		said.append(("The windscreen at the screen at %s could not be held: what it stands " % where)
+			+ "on was laid otherwise. Give the front a plate or two more under its foot, "
+			+ "or say the shape with \"sideways\": false.")
+	last["screens"] = plan.screens_kept()
+	if screens.is_empty():
+		said.append_array(_screen_hints(solids, y0))
 	var pieces: Array = plan.pieces()
 	# A part or three at a tip that no way of joining could hold are left
 	# off, and said: a fighter's nose ended in a stud-long row of plates, a
@@ -575,6 +621,234 @@ static func _chassis(solids: Array, box: AABB, z0: int, wide: int) -> Array:
 				placed = true
 				break
 	return out
+
+
+## The screens the solids say, each {"along", "from", "to", "centre",
+## "colour", "parts"} in the shape's own studs: "screen": true on a loft, an
+## extrude or a revolve finds its steepest rise or fall; {"from", "to"} names
+## the stretch along it; either may say "color" and "part".
+##
+## Why a shape says it. The judge's fault on the shapes round's car was the
+## session's own cabin, "a boxy cabin with a flat roof and an upright
+## windscreen": every car session said a cabin as a loft with a flat top,
+## laid in body-coloured slopes, and fitted a windscreen afterwards by hand,
+## if at all. A set's cabin is a windscreen element at its rake, the roof on
+## its studs, curved slopes falling away behind.
+static func _screens_asked(solids: Array, trouble: Array) -> Array:
+	var out: Array = []
+	for solid: Dictionary in solids:
+		var spec: Dictionary = solid["spec"]
+		var asked: Variant = spec.get("screen", null)
+		if asked == null or (asked is bool and not bool(asked)):
+			continue
+		if not str(solid["kind"]) in ["loft", "extrude", "revolve"]:
+			trouble.append("a screen goes on a loft, an extrude or a revolve laid along x or "
+				+ "z: the solid whose front is the glass")
+			continue
+		var along: String = str(spec.get("along", spec.get("axis", "x"))).to_lower()
+		if not along in ["x", "z"]:
+			trouble.append("a screen goes on a solid laid along x or z, not %s" % along)
+			continue
+		var given: Dictionary = asked if asked is Dictionary else {}
+		var stretch := Vector2.ZERO
+		if given.has("from") and given.has("to"):
+			stretch = Vector2(float(given["from"]), float(given["to"]))
+			if stretch.y < stretch.x:
+				stretch = Vector2(stretch.y, stretch.x)
+		else:
+			var line: Array = _top_line(solid, along)
+			stretch = _climb(line, _steepest(line, 3))
+			if stretch == Vector2.ZERO:
+				trouble.append("a screen on a solid whose top rises nowhere by three plates "
+					+ "or more: say where its glass is, \"screen\": {\"from\": .., \"to\": ..} "
+					+ "along %s, or let its front rise to the roof" % along)
+				continue
+		var parts: Array = SCREENS
+		if given.has("part"):
+			parts = [str(given["part"])]
+		out.append({"along": along, "from": stretch.x, "to": stretch.y,
+			"centre": _middle_across(solid, along),
+			"colour": int(given.get("color", given.get("colour", -1))), "parts": parts})
+	return out
+
+
+## The middle of a solid across the axis it is laid along, in studs.
+static func _middle_across(solid: Dictionary, along: String) -> float:
+	var spec: Dictionary = solid["spec"]
+	match str(solid["kind"]):
+		"loft":
+			return float(spec["_middle"])
+		"extrude":
+			return float(spec.get("from", 0.0)) + float(spec.get("width", 0.0)) / 2.0
+		"revolve":
+			var centre: Vector3 = _vec(spec.get("centre", spec.get("center", [0, 0, 0])))
+			return centre.z if along == "x" else centre.x
+	var box: AABB = solid["box"]
+	return (box.get_center().z if along == "x" else box.get_center().x)
+
+
+## A solid's top along its middle, a stud at a time: [Vector2(stud along,
+## plates up to its top)], each where the solid is at that stud.
+static func _top_line(solid: Dictionary, along: String) -> Array:
+	var box: AABB = solid["box"]
+	var middle: float = _middle_across(solid, along)
+	var from: int = floori((box.position.x if along == "x" else box.position.z) + 0.01)
+	var to: int = ceili((box.end.x if along == "x" else box.end.z) - 0.01)
+	var low: int = floori(box.position.y)
+	var high: int = ceili(box.end.y)
+	var out: Array = []
+	for a: int in range(from, to):
+		for j: int in range(high - 1, low - 1, -1):
+			var p := Vector3(a + 0.5, j + 0.5, middle) if along == "x" \
+				else Vector3(middle, j + 0.5, a + 0.5)
+			if _inside(solid, p):
+				out.append(Vector2(a, j + 1))
+				break
+	return out
+
+
+## The stretch of [param line] where its top changes most within three
+## studs, by [param least] plates or more: Vector2(first stud, past the
+## last), or ZERO.
+static func _steepest(line: Array, least: int) -> Vector2:
+	var best := Vector2.ZERO
+	var most: float = 0.0
+	for n: int in line.size():
+		var one: Vector2 = line[n]
+		for k: int in range(1, 4):
+			if n + k >= line.size():
+				break
+			var two: Vector2 = line[n + k]
+			if not is_equal_approx(two.x - one.x, float(k)):
+				break
+			var change: float = absf(two.y - one.y)
+			if change >= least and change / k > most + 0.01:
+				most = change / k
+				best = Vector2(one.x, two.x + 1.0)
+	return best
+
+
+## [param stretch] of [param line] carried on along the whole climb it is
+## in, each way while the top keeps rising (or falling) a stud at a time:
+## from the bonnet to the roof, not only its steepest studs.
+static func _climb(line: Array, stretch: Vector2) -> Vector2:
+	if stretch == Vector2.ZERO:
+		return stretch
+	var top: Dictionary = {}
+	for one: Vector2 in line:
+		top[roundi(one.x)] = one.y
+	var a: int = roundi(stretch.x)
+	var b: int = roundi(stretch.y) - 1
+	var way: float = signf(float(top[b]) - float(top[a]))
+	while top.has(a - 1) and signf(float(top[a]) - float(top[a - 1])) == way:
+		a -= 1
+	while top.has(b + 1) and signf(float(top[b + 1]) - float(top[b])) == way:
+		b += 1
+	return Vector2(a, b + 1)
+
+
+## What a shape that says no screen is told, once: a solid raised off the
+## ground whose top rises steeply to a roof, laid in slopes of its own
+## colour, is how every session said a cabin. Said with the fix.
+static func _screen_hints(solids: Array, y0: int) -> Array:
+	for solid: Dictionary in solids:
+		if not str(solid["kind"]) in ["loft", "extrude"]:
+			continue
+		var spec: Dictionary = solid["spec"]
+		var along: String = str(spec.get("along", "x")).to_lower()
+		if not along in ["x", "z"]:
+			continue
+		var line: Array = _top_line(solid, along)
+		var stretch: Vector2 = _steepest(line, 3)
+		if stretch == Vector2.ZERO:
+			continue
+		var low: float = INF
+		var high: float = -INF
+		for one: Vector2 in line:
+			if one.x >= stretch.x and one.x < stretch.y:
+				low = minf(low, one.y)
+				high = maxf(high, one.y)
+		# A cabin stands on a body: its foot well off the ground. A body's own
+		# nose rising from its bumper is not one.
+		if low < y0 + 6:
+			continue
+		return [("A solid's top rises %d plates over %d studs at %s %s-%s, to %s, and is laid "
+			% [roundi(high - low), roundi(stretch.y - stretch.x) - 1, along, _num(stretch.x),
+				_num(stretch.y), _num(high)])
+			+ "there in slopes of its own colour. If that is a cabin's or a canopy's front, it "
+			+ "is glass at that rake: say \"screen\": true on that solid and a windscreen is "
+			+ "laid there, on the plates at its foot, the roof on its top studs, as a set "
+			+ "builds one; let the roof fall behind it to the tail, a fastback, in curved "
+			+ "slopes rather than standing flat."]
+	return []
+
+
+## What a windscreen is, read off its own mesh: "w" studs across, "d" along
+## its rake, "h" plates tall without its studs, "turn" as part() has it (the
+## quarter turns that point its rake from its top towards its foot along
+## +z), and [across, row from its top end] of the studs on its top ("tops")
+## and of the studs under it that its tubes grip ("grips"). {} for a part
+## that is not laid on studs and leant back along its depth, with every top
+## stud in its top row, so the roof over that row holds by them.
+static func screen_part(library: PartLibrary, id: String) -> Dictionary:
+	if _screens.has(id):
+		return _screens[id]
+	_screens[id] = {}
+	if library == null:
+		return {}
+	var info: PartLibrary.PartInfo = library.parts.get(id)
+	var mesh: Lbm.PartMesh = library.mesh_for(id)
+	if info == null or mesh == null:
+		return {}
+	var b: AABB = mesh.bounds
+	var foot: Vector2i = info.footprint_studs()
+	var tops: Array = []
+	var tubes: Array = []
+	for connector: Lbm.Connector in mesh.connectors:
+		var up: float = connector.axis.normalized().dot(Vector3.UP)
+		if connector.kind == "stud" and connector.gender == "male" and up > 0.9 \
+				and connector.position.y > b.end.y - 4.6:
+			tops.append(Vector2(connector.position.x, connector.position.z))
+		elif connector.gender == "female" and up < -0.9 and connector.position.y < b.position.y + 6.0:
+			tubes.append(Vector2(connector.position.x, connector.position.z))
+	if tops.is_empty() or tubes.is_empty():
+		return {}
+	var top_z: float = 0.0
+	for one: Vector2 in tops:
+		top_z += one.y / tops.size()
+	var foot_z: float = 0.0
+	for one: Vector2 in tubes:
+		foot_z += one.y / tubes.size()
+	if absf(foot_z - top_z) < 10.0:
+		return {}
+	var native: int = 0 if top_z < foot_z else 2
+	var cell := func(x: float, z: float) -> Vector2i:
+		var i: int = clampi(floori((x - b.position.x) / 20.0), 0, foot.x - 1)
+		var k: int = clampi(floori((z - b.position.z) / 20.0), 0, foot.y - 1)
+		return Vector2i(i, k) if native == 0 else Vector2i(foot.x - 1 - i, foot.y - 1 - k)
+	var top_cells: Array[Vector2i] = []
+	for one: Vector2 in tops:
+		var c: Vector2i = cell.call(one.x, one.y)
+		if c.y != 0:
+			return {}
+		if not top_cells.has(c):
+			top_cells.append(c)
+	# A tube grips the studs round it: those whose middles are within half a
+	# stud of it either way.
+	var grips: Array[Vector2i] = []
+	for one: Vector2 in tubes:
+		for i: int in foot.x:
+			for k: int in foot.y:
+				var middle := Vector2(b.position.x + 10.0 + 20.0 * i, b.position.z + 10.0 + 20.0 * k)
+				if absf(middle.x - one.x) <= 10.5 and absf(middle.y - one.y) <= 10.5:
+					var c: Vector2i = cell.call(middle.x, middle.y)
+					if not grips.has(c):
+						grips.append(c)
+	var found := {"id": id, "w": foot.x, "d": foot.y,
+		"h": int(round((b.size.y - 4.0) / 8.0)), "turn": posmod(-native, 4),
+		"tops": top_cells, "grips": grips}
+	_screens[id] = found
+	return found
 
 
 ## Where a shape's foot is, stud by stud: world (x, z) -> the plate its
@@ -2684,6 +2958,211 @@ class Plan extends RefCounted:
 		["under", 2, 3, "", "3660a", [0.0, 1.8]],
 	]
 
+	## The studs a windscreen stands over: no slope is fitted to them.
+	var screened: Dictionary = {}
+	## Why each screen laid none, in a line; how many it laid, and where.
+	var screens_said: Array = []
+	var screens_laid: int = 0
+	var screens_where: Array = []
+
+	## The windscreens still among [member made].
+	func screens_kept() -> int:
+		var n: int = 0
+		for one: Dictionary in made:
+			n += 1 if bool(one.get("_screen", false)) else 0
+		return n
+
+	## A windscreen where [param spec] (Shapes._screens_asked, with "origin"
+	## and "y0") says the glass is: of the screens that fit across the solid's
+	## middle, the one whose rake is nearest the solid's own, its top row
+	## where the roof is, standing on the plates at its foot. Its plates are
+	## taken out of the shape and kept from everything else; the plates its
+	## tubes grip keep their studs, a plate or two laid under them where the
+	## shape is lower; and over its top row the roof is two plates, a plate on
+	## its top studs and a tile, so the roof holds by them, as a set's does.
+	func screen(spec: Dictionary) -> void:
+		var along_x: bool = str(spec["along"]) == "x"
+		var unit := Vector2i(1, 0) if along_x else Vector2i(0, 1)
+		var origin: Vector3 = spec.get("origin", Vector3.ZERO)
+		var y0: int = int(spec.get("y0", 0))
+		var cell_at := func(a: int, u: int) -> Vector2i:
+			return Vector2i(a, u) if along_x else Vector2i(u, a)
+		# Its middle across: the mirror's, when the shape is its own mirror
+		# across the rake.
+		var centre: float = float(spec["centre"])
+		if axis == ("z" if along_x else "x"):
+			centre = (sum + 1) / 2.0
+		var mids: Array[int] = []
+		if absf(centre - roundf(centre)) < 0.01:
+			mids.append(roundi(centre) - 1)
+			mids.append(roundi(centre))
+		else:
+			mids.append(floori(centre))
+		var heights: Dictionary = tops()
+		var top_at := func(a: int) -> int:
+			var best: int = -1
+			for u: int in mids:
+				best = maxi(best, int(heights.get(cell_at.call(a, u), -1)))
+			return best
+		var a0: int = floori(float(spec["from"]) + 0.01)
+		var a1: int = ceili(float(spec["to"]) - 0.01)
+		var name_of := func(a: float) -> String:
+			return Shapes._num(a + (origin.x if along_x else origin.z))
+		var where: String = "%s %s-%s" % [spec["along"], name_of.call(a0), name_of.call(a1)]
+		var first: int = top_at.call(a0)
+		var last: int = top_at.call(a1 - 1)
+		if a1 - a0 < 2 or first < 0 or last < 0 or first == last:
+			screens_said.append(("The screen at %s is laid as the shape: its top does not "
+				% where) + "rise or fall there. Say the stretch where the front climbs to the "
+				+ "roof, two studs or more along it.")
+			return
+		# Its foot towards the lower end, its top row towards the roof.
+		var fall: int = -1 if last > first else 1
+		var facing: Vector2i = unit * fall
+		var roof_top: int = -1
+		for a: int in range(a0 - 1, a1 + 1):
+			roof_top = maxi(roof_top, top_at.call(a))
+		var best: Dictionary = {}
+		var off_centre: bool = false
+		for raw: Variant in spec["parts"]:
+			var s: Dictionary = Shapes.screen_part(library, str(raw))
+			if s.is_empty():
+				continue
+			var w: int = int(s["w"])
+			var d: int = int(s["d"])
+			var h: int = int(s["h"])
+			var start: int = roundi(centre - w / 2.0)
+			if axis == ("z" if along_x else "x"):
+				# Centred on the mirror, or the shape is lopsided: a screen an even
+				# number of studs across on a body an odd number across is neither.
+				if posmod(sum + 1 - w, 2) != 0:
+					off_centre = true
+					continue
+				start = (sum + 1 - w) / 2
+			for a_hi: int in range(a0 - 1, a1 + 1):
+				var a_lo: int = a_hi + fall * (d - 1)
+				if mini(a_hi, a_lo) < a0 - 1 or maxi(a_hi, a_lo) > a1:
+					continue
+				var t: int = top_at.call(a_hi)
+				var base: int = t - 2 - h
+				var low_top: int = top_at.call(a_lo)
+				if t < 0 or low_top < 0 or base < 1:
+					continue
+				# Every stud of its top row is the shape's, and every stud it
+				# grips stands within two plates under its foot.
+				var fits: bool = true
+				for u: int in range(start, start + w):
+					fits = fits and heights.has(cell_at.call(a_hi, u))
+				for g: Vector2i in s["grips"]:
+					var under: Vector2i = cell_at.call(a_hi + fall * g.y, start + g.x)
+					var top: int = int(heights.get(under, -1))
+					fits = fits and top >= 1 and base - top <= 2
+				if not fits:
+					continue
+				# The roof's width over its top row, studs within three plates of
+				# its top either side of the middle.
+				var wide: int = 0
+				for u: int in range(start - 2, start + w + 2):
+					wide += 1 if int(heights.get(cell_at.call(a_hi, u), -1)) >= t - 3 else 0
+				# Nearest the solid's own rake, the roof's full height, as wide as
+				# the roof: a four-wide screen in a six-wide cabin stands between
+				# pillars, a six-wide one is the cabin's whole front.
+				var score: float = absf(float(low_top) - (base + float(h) / d)) \
+					+ 3.0 * (roof_top - t) + 0.75 * absi(wide - w)
+				if best.is_empty() or score < float(best["score"]) - 0.01 \
+						or (absf(score - float(best["score"])) <= 0.01 and w > int(best["w"])):
+					best = {"s": s, "w": w, "d": d, "h": h, "start": start, "a_hi": a_hi,
+						"base": base, "t": t, "score": score}
+		if best.is_empty() and off_centre:
+			screens_said.append(("No windscreen is laid at the screen at %s: the shape is an " % where)
+				+ "odd number of studs across, and a windscreen is four or six, so it cannot "
+				+ "stand on its middle. Say the body an even number of studs across, its "
+				+ "middle on a line between studs (a centre of 4, not 3.5).")
+			return
+		if best.is_empty():
+			screens_said.append(("No windscreen fits the screen at %s: it rises %d plates " % [
+				where, absi(last - first)]) + "there, and a windscreen (92583, 4176, 3823 or "
+				+ "57783) stands 4 or 6 plates tall over 2 or 3 studs, four or six studs across, "
+				+ "with the roof two plates over its top. Let the front rise 6 to 8 plates over "
+				+ "2 or 3 studs to the roof, four or six studs wide at the roof.")
+			return
+		var s: Dictionary = best["s"]
+		var id: String = str(s["id"])
+		var w: int = best["w"]
+		var d: int = best["d"]
+		var h: int = best["h"]
+		var start: int = best["start"]
+		var a_hi: int = best["a_hi"]
+		var base: int = best["base"]
+		var glass: int = int(spec.get("colour", -1))
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		var colours: Array = ([glass] if glass >= 0 else []) + Shapes.GLASS
+		for one: Variant in colours:
+			glass = int(one)
+			if info == null or not info.never_made_in(glass):
+				break
+		# The roof's colour, from the top of the shape over the screen's top row.
+		var roof: int = -1
+		for u: int in mids:
+			roof = maxi(roof, at(cell_at.call(a_hi, u), int(best["t"]) - 1))
+		var cells: Array[Vector2i] = []
+		for b: int in d:
+			for i: int in w:
+				var cell: Vector2i = cell_at.call(a_hi + fall * b, start + i)
+				cells.append(cell)
+				var column := PackedInt32Array()
+				if columns.has(cell):
+					column = columns[cell]
+				else:
+					column.resize(tall)
+					column.fill(-1)
+				for j: int in range(base, tall):
+					if b == 0 and j >= base + h and j < base + h + 2:
+						if column[j] < 0:
+							column[j] = roof
+					elif b > 0 or j < base + h + 2:
+						column[j] = -1
+				columns[cell] = column
+				screened[cell] = true
+				for j: int in range(base, base + h):
+					taken[Vector3i(cell.x, j, cell.y)] = true
+		var grips: Array[Vector2i] = []
+		for g: Vector2i in s["grips"]:
+			var cell: Vector2i = cell_at.call(a_hi + fall * g.y, start + g.x)
+			grips.append(cell)
+			var column: PackedInt32Array = columns[cell]
+			var top: int = -1
+			for j: int in range(base - 1, -1, -1):
+				if column[j] >= 0:
+					top = j + 1
+					break
+			if top > 0 and base - top <= 2:
+				for j: int in range(top, base):
+					column[j] = column[top - 1]
+			columns[cell] = column
+			studded[cell] = true
+		var studs: Array[Vector2i] = []
+		for t: Vector2i in s["tops"]:
+			studs.append(cell_at.call(a_hi + fall * t.y, start + t.x))
+		var low := Vector2i(1 << 30, 1 << 30)
+		for one: Vector2i in cells:
+			low = Vector2i(mini(low.x, one.x), mini(low.y, one.y))
+		var rot: int = posmod(Shapes.OUT.find(facing) + int(s["turn"]), 4)
+		var foot_at: int = a_hi + fall * (d - 1)
+		# Said only if it is still there once the shape is joined and pruned
+		# (Shapes.lay): a windscreen said and not laid is worse than none said.
+		var laid: String = (("The screen at %s is a windscreen, %s (%s), %d studs across, "
+			% [where, id, info.name if info != null else id, w])
+			+ "its foot at %s %s standing on the plates at y=%s, leaning back %d plates over "
+			% [spec["along"], name_of.call(foot_at), Shapes._num(base + y0 + origin.y), h]
+			+ "%d studs to its top row at %s %s, the roof on its top studs two plates over it."
+			% [d, spec["along"], name_of.call(a_hi)])
+		made.append({"part": id, "color": glass, "x": low.x, "y": base, "z": low.y,
+			"rot": rot, "_cells": cells, "_h": h, "_studs": studs, "_base": grips,
+			"_screen": true, "_said": laid, "_where": where})
+		screens_laid += 1
+		screens_where.append(where)
+
 	## Surface parts wherever the top falls away from one stud to the next,
 	## and wherever the foot rises: for each run of studs going down, the
 	## slope whose own fall is the nearest to the shape's, standing on the
@@ -2773,7 +3252,8 @@ class Plan extends RefCounted:
 	## The runs going down from a higher stud, and the slope that fits each.
 	func _fit(picks: Array, kind: String, under: bool) -> void:
 		var height: Dictionary = feet() if under else tops()
-		var used: Dictionary = {}
+		# Not on a windscreen's studs: its glass is the surface there.
+		var used: Dictionary = screened.duplicate()
 		# From the top of every fall down (from the foot up, under it), each
 		# slope's own surface then the height of the studs it covers, so the
 		# next one down carries on from it. Taken in order along x, a ramp

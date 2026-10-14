@@ -762,7 +762,7 @@ static func held_otherwise(entries: Array, library: PartLibrary) -> Dictionary:
 			continue
 		solid.append([entry[0], entry[1], part.bounds])
 		var info: PartLibrary.PartInfo = library.parts.get(str(entry[3]))
-		if info != null and info.category == "Magnet":
+		if is_magnet(info):
 			magnets.append([entry[0], "", (entry[1] as Transform3D) * part.bounds])
 	for film: Array in films:
 		var under: Array = Stickers.lies_on(film[1], (film[2] as Lbm.PartMesh).bounds,
@@ -774,6 +774,23 @@ static func held_otherwise(entries: Array, library: PartLibrary) -> Dictionary:
 		_add(held, pair[0], pair[1])
 		_add(held, pair[1], pair[0])
 	return held
+
+
+## Whether a part carries a magnet: the magnet family's own, and a train's
+## buffer beam or coupling with its magnet in it. The Emerald Night (10194)
+## couples its tender with 64422, "Train Buffer Beam with Sealed Magnet",
+## filed under Train, and the check had it two pieces. A casing or a holder
+## without its magnet ("for Sealed Magnet") holds nothing.
+static func is_magnet(info: PartLibrary.PartInfo) -> bool:
+	if info == null:
+		return false
+	if info.category == "Magnet":
+		return true
+	return _MAGNET_NAME.search(info.name) != null
+
+
+static var _MAGNET_NAME: RegEx = RegEx.create_from_string(
+	"\\b(with|and) (Black |Sealed )?Magnet\\b|^Train Buffer Sealed Magnet$")
 
 
 ## The widest hole or peg [method pushed_in] reads, in LDU: a Technic pin

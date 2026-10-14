@@ -1984,6 +1984,83 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "raked screen and falling roof",
+			"group": "windows and doors",
+			"when": "a cabin's or a canopy's front and roof — a car's, a truck's or a "
+				+ "train's cab, a cockpit — built by hand; on a shape, say \"screen\" on "
+				+ "the cabin's solid instead and the same is laid for you",
+			"why": "A windscreen (92583, 3 x 6 x 2) stands on the plates at the foot of "
+				+ "its rake and leans back to its top row, two studs at its corners; the "
+				+ "cabin's back pillars rise beside the seats to the same height, and the "
+				+ "roof plate lies on the windscreen's top studs and the pillars, so the "
+				+ "glass holds the roof's front as a set's does. The roof falls behind it to "
+				+ "the tail in curved slopes, a fastback, never a flat lid on a box; tiles "
+				+ "over the rest. Here the front is towards +z: turn it with rot.",
+			"bricks": [
+				{"part": "3036", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 1},
+				{"part": "92583", "color": 40, "x": 0, "y": 1, "z": 4, "rot": 0},
+				{"part": "3622", "color": 4, "x": 0, "y": 1, "z": 1, "rot": 1},
+				{"part": "3622", "color": 4, "x": 5, "y": 1, "z": 1, "rot": 1},
+				{"part": "3622", "color": 4, "x": 0, "y": 4, "z": 1, "rot": 1},
+				{"part": "3622", "color": 4, "x": 5, "y": 4, "z": 1, "rot": 1},
+				{"part": "3032", "color": 4, "x": 0, "y": 7, "z": 1, "rot": 0},
+				{"part": "15068", "color": 4, "x": 0, "y": 8, "z": 1, "rot": 2},
+				{"part": "15068", "color": 4, "x": 2, "y": 8, "z": 1, "rot": 2},
+				{"part": "15068", "color": 4, "x": 4, "y": 8, "z": 1, "rot": 2},
+				{"part": "3069b", "color": 4, "x": 0, "y": 8, "z": 3, "rot": 1},
+				{"part": "87079", "color": 4, "x": 1, "y": 8, "z": 3, "rot": 0},
+				{"part": "3069b", "color": 4, "x": 5, "y": 8, "z": 3, "rot": 1},
+			],
+		},
+		{
+			"name": "towball hitch",
+			"group": "machines and joints",
+			"when": "a trailer, a caravan, a wagon or a tender pulled behind something "
+				+ "on wheels of its own: coupled, so the two are one model",
+			"why": "A plate with a towball on its side (14417) on the back of what "
+				+ "pulls, its ball standing out past the end, and on the front of what "
+				+ "follows the plate with the socket (14704) turned to face it, over the "
+				+ "ball, both on their vehicle's top at the same height: the ball in the "
+				+ "socket holds the two together and lets the trailer swing. The socket's "
+				+ "studs stand two studs on from the ball's, so both stay on one grid with "
+				+ "a stud between the two. x, y and z are each part's corner as the app "
+				+ "reads it, the ball and the socket hanging below and beyond their "
+				+ "plates: a plate standing at y is said at y - 0.5.",
+			"bricks": [
+				{"part": "3020", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "14417", "color": 0, "x": 1, "y": 0.5, "z": 1, "rot": 0},
+				{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 3, "rot": 0},
+				{"part": "14704", "color": 0, "x": 1, "y": 0.5, "z": 2, "rot": 2},
+			],
+		},
+		{
+			"name": "magnet coupling",
+			"group": "machines and joints",
+			"when": "a train's cars, a locomotive and its tender, carriages and wagons: "
+				+ "coupled end to end as the LEGO® train sets couple theirs",
+			"why": "A buffer beam with a sealed magnet (64422) on the end of each car, "
+				+ "its tongue on a 2 x 2 plate over the car's last two rows and the beam "
+				+ "with its buffers hanging past the end, the two magnets touching between "
+				+ "the cars, seven studs between the plates' middles: the Emerald Night "
+				+ "(10194) couples its tender so. The beam hangs five and a half plates "
+				+ "under its tongue, so the car stands that high (here on bricks). x, y "
+				+ "and z are each beam's corner as the app reads it: its tongue's middle "
+				+ "is 3.5 studs along x and 1.5 studs along its length (3.5 for the beam "
+				+ "turned back) from it, and its tongue's foot is at y + 5.5.",
+			"bricks": [
+				{"part": "3001", "color": 0, "x": 2, "y": 0, "z": 0, "rot": 1},
+				{"part": "3001", "color": 0, "x": 2, "y": 3, "z": 0, "rot": 1},
+				{"part": "3958", "color": 2, "x": 0, "y": 6, "z": 0, "rot": 0},
+				{"part": "3022", "color": 0, "x": 2, "y": 7, "z": 4, "rot": 0},
+				{"part": "64422", "color": 0, "x": -0.5, "y": 2.5, "z": 3.5, "rot": 0},
+				{"part": "3001", "color": 0, "x": 2, "y": 0, "z": 13, "rot": 1},
+				{"part": "3001", "color": 0, "x": 2, "y": 3, "z": 13, "rot": 1},
+				{"part": "3958", "color": 2, "x": 0, "y": 6, "z": 11, "rot": 0},
+				{"part": "3022", "color": 0, "x": 2, "y": 7, "z": 11, "rot": 0},
+				{"part": "64422", "color": 0, "x": -0.5, "y": 2.5, "z": 8.5, "rot": 2},
+			],
+		},
+		{
 			"name": "lid or hatch raised on hinges",
 			"group": "creative touches",
 			"when": "a play feature shown working — a hatch, a lid, a canopy, "
