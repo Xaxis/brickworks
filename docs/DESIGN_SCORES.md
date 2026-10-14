@@ -776,3 +776,102 @@ time, read course by course as the check's own staircase advice is: a bow,
 a nose, a skull. That is what the judge names on four of six. Then the
 build check: a sticker on an upright face, and a string's segments,
 should each be one with what they are on.
+
+## 2026-10-14-shapes: commit ecb3ae4, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sailing_ship | 1 | 6.0 | 4.0 | 5.0 | 4.0 | 5.0 | 10.0 | **5.7** | 1,211 | 1 |
+| speed_champions | 1 | 4.0 | 4.0 | 4.0 | 3.0 | 4.0 | 10.0 | **4.8** | 188 | 2 |
+| starfighter | 1 | 6.0 | 6.0 | 6.0 | 5.0 | 5.0 | 6.0 | **5.7** | 408 | 3 |
+| steam_locomotive | 1 | 6.0 | 5.0 | 6.0 | 5.0 | 5.0 | 6.0 | **5.5** | 457 | 2 |
+| **suite mean** | 4 | **5.5** | **4.8** | **5.2** | **4.2** | **4.8** | **8.0** | **5.4** |  |  |
+
+Weakest across the suite: **technique** (4.2), **surface** (4.8), **creativity** (4.8).
+
+**What the shapes round says: a shaped body comes back whole (6fd49e0, run
+on ecb3ae4).** The car was the weakest subject every round, likeness 3, and
+its sessions kept giving up the shape pattern: the steps round's said "the
+generator left the nose floating" and built the body by hand in 71 bricks.
+The lever was to make the session's first, shaped attempt hold, so it is
+kept.
+
+The diagnosis first: every shape request the sessions sent (204 of them,
+from their transcripts) run again through the pattern as sent and alone,
+and six bodies a session would say. On b219bdb and on a077567 the steps
+car's cockpit cut came back in 9 pieces and its fastback in 6, a curved
+car's nose in 9 and its tail in 6, the sides car's back axle at 15.5 off
+its studs, a two-colour boiler in 2, a hull with a black bow in 2, a
+fighter's nose past its stands in 3 to 9 and a dog on legs a stud thick
+floating whole; an owl said at y 55 floated with nothing said. The causes:
+
+- `stitch` laid one pair again joined and broke the next, then the other
+  way, 96 times; nothing checked a move joined anything.
+- Nothing ran under a car's nose and tail: the body stood on the axles'
+  Technic bricks alone, and a slope at its foot stood on nothing.
+- The plan's joins were wrong. A curved slope was counted held by its
+  hollow high end, and an inverted curved 4 x 1 by four studs where it has
+  two (read off each mesh now, `grips` and `tops`); that inverted slope was
+  a ship's bow's only tie to its hull.
+- Two colours face to face never shared a part (a smokebox on its boiler).
+- On the mirror, a strip two studs wide on the plates whose strip is four
+  was 1 x 1s, so a fighter's nose came apart row by row.
+- A side's shell took a leg hanging under it into itself, held none of it,
+  and the body stood on nothing.
+
+The fix is in the generator, for any body: a chassis of plates under the
+axles from nose to tail; a foot off the ground laid in plates where nothing
+is under it; a stitch that keeps a way only if it leaves fewer pieces (or
+as many and a bigger body), whose last ways lay the pieces' plates, tiles
+and wedges again as bonded plates, hidden plates in the commonest colour;
+joins read off the parts' meshes; the narrow strip laid in the other
+plate's width; a shell that stops above what hangs with no core behind it.
+What it still cannot hold it says in the reply, with the fix: pieces apart
+and why, a shape standing on nothing, a wheel moved onto whole studs, a
+stud-sized tip left off. `shapes_probe` holds the twelve as fixtures, each
+failing on a077567.
+
+**Two car sessions on the subscription first** (`2026-10-14-shapes-trial`,
+6fd49e0). Both kept the shaped body. The first sent one shape, its nose
+four plates up as the curved car's was, and built on it to the end: 184
+parts, one piece with the driver apart, likeness 4. The second sent four
+shapes, refining the wings and arches in the pattern rather than by hand,
+212 parts; it ended in 2 pieces only because the creative pass stuck a
+licence plate on an upright face, which the check counts apart. Likeness
+3. Neither reply needed a word from the generator: every shape came back
+whole.
+
+**Held out, on the subscription, one run a subject** (likeness / surface /
+colour / technique / creative / build):
+
+| subject | sides | shapes |
+|---|---|---|
+| speed_champions | 3 / 3 / 3 / 3 / 3 / 10 | 4 / 4 / 4 / 3 / 4 / 10 |
+| starfighter | 6 / 5 / 5 / 5 / 4 / 10 | 6 / 6 / 6 / 5 / 5 / 6 |
+| steam_locomotive | 6 / 6 / 6 / 5 / 5 / 5 | 6 / 5 / 6 / 5 / 5 / 6 |
+| sailing_ship | 5 / 3 / 4 / 3 / 4 / 4 | 6 / 4 / 5 / 4 / 5 / 10 |
+
+**On likeness, honestly.** The car is 4, and 4 and 3 in the two trial
+sessions: 3.7 over three runs, where every round before was 3 (3.5 in the
+re-scored baseline). Each run alone is inside the 1.0 spread; the three
+together are the first car runs above 3.5, and the first whose sessions
+kept a shaped body. The ship is 6 against 5, the starfighter and the
+locomotive 6 against 6: inside the spread. What the judge now faults on the
+car is not a floating nose or brick walls but the shape the session said:
+"a boxy cabin with a flat roof and an upright windscreen", headlamps "stood
+up like towers", studs on the wings and sills.
+
+**What reached the designs, from each log:** all four bench sessions and
+both trials laid a shaped body and kept it; the car's, the ship's hull and
+the fighter's nose came back whole on the first call. The locomotive's
+tender was said a part-plate off its chassis; the reply said "A shape's
+underside is at y=9, and nothing of the design has its top there under it,
+so it floats. Build what it stands on ... or bring the shape's underside
+down", and the session fixed it on the next call. Build fell on two for
+reasons not the shape's: the starfighter's two figures stand apart unnamed,
+the locomotive's tender is not coupled.
+
+**Next.** The car's cabin: a fastback roof and a raked windscreen are what
+the judge names, and the session says them as a loft with a flat top. And
+the studs a joint leaves on a top, where a tile there had joined nothing,
+for the surface pass to tile.
