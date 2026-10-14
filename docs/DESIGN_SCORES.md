@@ -60,9 +60,10 @@ real-set pieces laid) and a small picture. After a batch, run
 `python3 tools/design_memory.py build` (it reads the main checkout's
 `bench/results/`) and commit the index: it merges into what the index holds,
 and it is now the only copy of the creative, d5 and d5b rounds' critiques and
-pictures, read before their worktrees went. It holds 41 designs: the
+pictures, read before their worktrees went. It holds 47 designs: the
 baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2, the
-surface round's 4, the edges rounds' 5 and the steps round's 4. What is missing is
+surface round's 4, the edges rounds' 5, the steps round's 4 and the sides
+round's 6 (its locomotive and ship the first of their subjects). What is missing is
 the re-score's own replies: the baseline keeps its first judgement's scores
 and words, with the re-scored build taken from the table below, and the
 design5 batches' build, judged on the old check and never re-scored, is not
@@ -628,3 +629,141 @@ body over it is not; and it is tiles straight on the studs with a rounded
 end at each end, a plate proud. Replayed through the pass, the round's car
 with its skins taken back off gets none: both black courses are left as
 "its wheels' sill", and only the crown on its deck is laid.
+
+## 2026-10-14-sides: commit 226967d, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 5.0 | 4.0 | 4.0 | 4.0 | 6.0 | 4.0 | **4.5** | 986 | 5 |
+| corner_shop | 1 | 6.0 | 6.0 | 6.0 | 5.0 | 6.0 | 10.0 | **6.5** | 1,041 | 1 |
+| sailing_ship | 1 | 5.0 | 3.0 | 4.0 | 3.0 | 4.0 | 4.0 | **3.8** | 840 | 64 |
+| speed_champions | 1 | 3.0 | 3.0 | 3.0 | 3.0 | 3.0 | 10.0 | **4.2** | 248 | 2 |
+| starfighter | 1 | 6.0 | 5.0 | 5.0 | 5.0 | 4.0 | 10.0 | **5.8** | 558 | 1 |
+| steam_locomotive | 1 | 6.0 | 6.0 | 6.0 | 5.0 | 5.0 | 5.0 | **5.5** | 272 | 4 |
+| **suite mean** | 6 | **5.2** | **4.5** | **4.7** | **4.2** | **4.7** | **7.2** | **5.1** |  |  |
+
+Weakest across the suite: **technique** (4.2), **surface** (4.5), **colour** (4.7).
+
+**What the sides round says: the surface pass reads a body's sides
+(226967d).** After the steps round, surface had not moved for two rounds
+(6/6/4/3), and the judge's fault on bodies had moved from their tops to
+their sides: the starfighter's "fuselage sides are a terrace of stacked
+plates", the car's "flanks and tail are plain brick walls", the owl's
+"head and body are rough, stepped blocks" and "the right wing is a flat
+plate with its studs showing".
+
+The diagnosis first, from the steps round's four models, voxelised a stud
+by a plate, each exposed side face read by the part that owns it:
+
+| model | exposed side faces | plate edges | bricks | turned (SNOT) | slopes | layer pairs whose outline steps |
+|---|---|---|---|---|---|---|
+| starfighter | 1,152 | 44% | 18% | 0% | 16% | 20% |
+| car | 1,158 | 17% | 24% | 15% | 14% | 14-23% |
+| owl | 3,396 | 19% | 21% | 51% | 4% | 11-17% |
+| shop | 10,822 | 8% | 67% | 2% | 3% | 2-12% |
+
+- The starfighter's fuselage was built by hand of plates the body's width.
+  Behind the cockpit it is a flush wall: four grey plates, a dark red
+  stripe plate and a brick. Ahead of it the nose narrows a stud at a time,
+  and its layers stand at different widths, one two studs in between the
+  ones over and under it. Plate edges and outline steps, and no SNOT.
+- The car's session tried the shape pattern, said "the generator left the
+  nose floating", and built the body by hand in 71 bricks: flat walls of
+  bricks and plates, square in plan. Its only turned parts were the steps
+  round's skins on its black course. Bare bricks and plates, no shaping.
+- The owl is half SNOT already: the shape pattern's shells, the face, the
+  wings on their side. What reads as stepped is the shells' own stepped
+  plan. And its wing is a plate on its side whose studs point out, open:
+  the pass read only studs that point up.
+- The shop is a building. Its sides are walls, masonry since the steps
+  round. Not a sides problem.
+
+The lever chosen was (a), the pass reading the sides, not (b), the
+designer building them right. Six rounds of words moved nothing and two
+app-driven passes did. Every design runs the pass, where (b) depends on a
+session taking the shape pattern, which the car's session tried and gave
+up. (a) can move surface, not likeness: nothing it lays changes a
+silhouette. Two findings:
+
+- **A side of plates** (`_plate_flanks`): a course of three plain plates
+  stacked at a face, or one brick under plates, one colour, four studs or
+  more, with the body over it in that colour, flush or a stud back. Its
+  outer row is cut, the rest of each plate laid again, and laid as bricks
+  with studs on the side under the brick flank's skin. The skin covers the
+  plate edges and a step a stud back. Runs that cut the same plates are one
+  finding, since a fuselage of plates its full width has both sides in
+  them, and opposite sides are trimmed to match.
+- **Studs on a side** (`_side_fields`): open studs pointing sideways, four
+  or more on a grid, tiled on their side in their own colour.
+
+Replayed on earlier rounds' models before the batch, every one kept its
+pieces. The steps starfighter got both fuselage sides skinned for five
+studs behind the cockpit, under its wings where they barely show, and its
+tail end. The steps owl got both wing panels and two strips tiled (the
+judge's "flat plate with its studs showing"). The edges-b car got its
+tail skinned; its sides were left, "under a wider course" over the
+arches. The surface round's starfighter got three white flanks of
+plates beside two of bricks.
+
+Held out and on the subscription as every batch, one run a subject,
+design memory on, and two subjects never run before. The five visual
+scores (likeness / surface / colour / technique / creative):
+
+| subject | surface | edges | steps | sides |
+|---|---|---|---|---|
+| corner_shop | 5 / 6 / 5 / 4 / 4 | 5 / 5 / 5 / 4 / 4 | 6 / 6 / 6 / 5 / 5 | 6 / 6 / 6 / 5 / 6 |
+| starfighter | 6 / 6 / 5 / 6 / 6 | 6 / 5 / 5 / 5 / 5 | 6 / 6 / 5 / 6 / 4 | 6 / 5 / 5 / 5 / 4 |
+| barn_owl | 4 / 4 / 4 / 4 / 4 | 5 / 4 / 4 / 4 / 4 | 4 / 4 / 4 / 4 / 5 | 5 / 4 / 4 / 4 / 6 |
+| speed_champions | 3 / 4 / 3 / 3 / 4 | 3 / 4 / 4 / 3 / 3 | 3 / 3 / 4 / 3 / 3 | 3 / 3 / 3 / 3 / 3 |
+| the four | 4.5 / 5.0 / 4.25 / 4.25 / 4.5 | 4.75 / 4.5 / 4.5 / 4.0 / 4.0 | 4.75 / 4.75 / 4.75 / 4.5 / 4.25 | 5.0 / 4.5 / 4.5 / 4.25 / 4.75 |
+| steam_locomotive (new) | | | | 6 / 6 / 6 / 5 / 5 |
+| sailing_ship (new) | | | | 5 / 3 / 4 / 3 / 4 |
+
+**On surface, a null for the third round running.** Surface is 6, 5, 4
+and 3 on the four, against 6, 6, 4 and 3 in the steps round. Every cell is
+within the 1.0 run-to-run spread. Over the four it is 4.5, against 4.75,
+4.5 and 5.0 in the three rounds before. The four's mean of means is 5.25,
+against the steps round's 5.5. The two held-out subjects have no earlier
+run: they are a baseline, surface 6 on the locomotive and 3 on the ship.
+
+**What reached the designs, from each log and model:**
+- **Flank skins reached four of six.** The locomotive got the most: dark
+  green skins on both cab sides, the cab's back and the tender's sides and
+  end, of brick courses. Its session kept four findings and accepted
+  eight. The judge saw them: "the tender sides are rounded at the ends",
+  surface 6. The owl's two flank findings went on its display stand, a
+  stack of black plates, not the owl. The car and the starfighter got one
+  each. The pass's line did not say which flanks were of plates; it does
+  now ("2 flanks skinned (1 of plates)", "8 side studs tiled").
+- **What the judge faults on sides now is outlines that step, not flush
+  faces.** The car: "the sides read as a staircase of blocks". The
+  starfighter: "the nose is a staircase of stacked curved slopes and
+  bricks", and "the grey wing-root block is a plain brick wall". The owl:
+  "staircase edges where the rounded skull and folded wings should be".
+  The ship: "the hull steps in plate by plate at the bow and stern instead
+  of curving". A skin lies on a straight face. A bow, a nose or a skull
+  that narrows a stud at a time needs wedge plates along the outline, and
+  the pass does not lay those.
+- **Beyond the 0.7 spread, against the steps round:** the owl's likeness
+  and creativity up a point, the shop's creativity up a point, the
+  starfighter's technique and the car's colour down a point. One run each,
+  and none of them is the pass's: nothing it lays changes a silhouette or
+  a colour. This starfighter's session built its fuselage of bricks, "no
+  visible SNOT shaping".
+- **Build fell on three, none of it the pass's doing.** The owl is 5
+  pieces: four stacks of 1 x 1 plates and cheese slopes on its head, left
+  against it when the session took its ear wedges off just before the
+  pass. Every edit of the pass is held to the piece count it found, and
+  three were refused for splitting the model. The locomotive is 4 pieces:
+  the creative pass stuck two cab plates on its cab-side skins, and the
+  check counts a sticker on an upright face as a piece of its own (it
+  joins what sits on a part's top, and a sticker has no connector). The
+  ship is 64 pieces: its rigging is a string of 227 braided segments, and
+  the check counts 63 bits of it as pieces of their own. The last two are
+  the build check's faults, not the design's.
+
+**Next.** First, wedge plates along an outline that steps a stud at a
+time, read course by course as the check's own staircase advice is: a bow,
+a nose, a skull. That is what the judge names on four of six. Then the
+build check: a sticker on an upright face, and a string's segments,
+should each be one with what they are on.

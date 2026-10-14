@@ -1632,7 +1632,33 @@ fixing what it got wrong.
   bottom), one under a wider course whose face reaches past either end over
   open space, or one in a colour the body over it is not — the steps
   round's car had its black course between the wheels skinned, and the
-  judge saw "black slabs ... like blocks"; and `wall`, for a building only, a
+  judge saw "black slabs ... like blocks". And a side built of plates
+  (`_plate_flanks`, 2026-10-14 sides), which a brick flank cannot read: at
+  a face of the main body, a course of three plain plates stacked (or one
+  plain brick, under plates: one brick course is no brick flank), one
+  colour, four studs along or more, nothing in front, and over it, within a
+  stud behind the skin's span, the body in the course's colour
+  (`_skin_backed`: flush, or a step a stud back, which the skin covers;
+  never a stripe painted out). Its outer row is cut (`_cut`, the rest of
+  each plate laid again in plates), laid as bricks with studs on the side,
+  and skinned as a flank is (`_skin_pieces`); faces are read top down, no
+  skin over another or over a brick flank's. Runs that cut the same parts
+  are one finding (`_sharing`): a body of plates its full width has both
+  sides in the same plates, and two findings may not take one part — the
+  later run gives up a corner stud, and a run sharing a part at another
+  height is left. `_off_the_body` holds for it too. And open studs on a
+  part's side (`_side_fields`): pointing sideways, nothing on them, nothing
+  within a stud and a half out, on a part whose studs are finished, four or
+  more joined on a grid a stud apart, one colour — tiled on their side
+  (`_onto_side`), largest tiles first; "the right wing is a flat plate with
+  its studs showing" (the steps round's owl). The record says both apart
+  (`Finding.of`): "2 flanks skinned (1 of plates)", "8 side studs tiled".
+  `surface_probe`: a body of
+  seven plates stacked, a stud narrower over its fourth on one side, gets
+  both sides skinned in one finding (two 30414s a side, 5520 at each end, a
+  2 x 4 between, the three plates cut to 2 x 8s) in as many pieces; one
+  course of 1 x 8 bricks under plates gets both sides; two side-stud bricks'
+  eight open side studs all tiled. And `wall`, for a building only, a
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
   in its box with masonry only (`"turned_out": false`: no stud turned out).
