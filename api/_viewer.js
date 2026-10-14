@@ -119,7 +119,8 @@ background:var(--yellow);color:var(--on-accent);font-variant-numeric:tabular-num
 background:var(--ground);overflow:hidden;touch-action:pan-y;outline:none}
 .stage.turns{cursor:grab}
 .stage.turns:active{cursor:grabbing}
-.stage:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+.stage:focus-visible::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 3px var(--focus);
+pointer-events:none}
 .stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;
 user-select:none;-webkit-user-drag:none}
 .say{margin:0;padding:24px;max-width:46ch;text-align:center;color:var(--ground-ink)}
