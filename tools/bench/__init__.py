@@ -4,6 +4,7 @@
     python3 tools/bench/run.py run [--subjects barn_owl,bonsai] [--run 2] [--date D]
     python3 tools/bench/run.py run --dry-run          canned design, canned judge, no network
     python3 tools/bench/run.py summary --date D [--append docs/DESIGN_SCORES.md]
+    python3 tools/bench/run.py pairs | calibrate | rank    the pairwise judge
 
 Design rounds had been judged by rerunning one or two subjects once and
 reading tools/style.py. A run varies a lot, and "elegant" was judged by
@@ -15,5 +16,7 @@ scores, so a round is a number with a known noise.
 suite.py    the subjects, their briefs, scales and reference pictures
 judge.py    the rubric, the prompt, the call and the reading of the reply
 scores.py   the probe's and the judge's output read into records, and the summary
-run.py      the stages: design, views, probe, style, references, judge
+run.py      the stages: design, views, probe, style, references, judge; pairs, calibrate, rank
+pairwise.py which of two designs is better: the prompt, the reply, Bradley-Terry ELO, intervals
+calibrate.py pairs whose answer is known: a real set and a naive stack of it, a design and a fault
 """

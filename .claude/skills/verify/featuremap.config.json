@@ -1204,6 +1204,13 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "judge design rounds in pairs",
+      "entry": "tools/bench/pairwise.py",
+      "reach": "python3 tools/bench/run.py pairs --dry-run --subjects sailing_ship; python3 tools/bench/run.py rank --dry-run --subjects sailing_ship   (for real: env -u ANTHROPIC_API_KEY ... pairs, calibrate, rank)",
+      "area": "assistant"
+    },
+    {
       "kind": "lib",
       "label": "real sets' pieces by what they are",
       "entry": "src/ai/real_snippets.gd",

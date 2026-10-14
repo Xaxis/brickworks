@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
 
 ## Sub-features
 
@@ -30,6 +30,11 @@ fixing what it got wrong.
   subjects designed on the subscription, rendered, checked, measured and scored
   1-10 on six dimensions by a judge calibrated by two anchor pictures; tables in
   `docs/DESIGN_SCORES.md`. Under How to check it, "The design bench".
+- `judge design rounds in pairs`: `tools/bench/pairwise.py`, through
+  `tools/bench/run.py pairs`, `calibrate` and `rank`: every two designs of a
+  subject judged A or B per dimension, both orders, fitted as Bradley-Terry ELO
+  with intervals, and each lever's change with the run-to-run spread in it.
+  Under How to check it, "The pairwise judge".
 - `ask claude about the selection`: select parts, right-click one and choose
   **Ask Claude about this…** (top of the part's menu; also Edit, and Ctrl+K).
   The assistant panel opens with a chip, "About 46 selected parts", and the
@@ -1956,6 +1961,57 @@ named in `judge_prompt.txt`; and `summary` prints a row per subject, the suite
 mean, the run-to-run spread and the three weakest dimensions. The baseline
 (13 runs, 2026-10-12) took 2 h 26 min once its `heavy` slot came; a judge call is
 about 20 s and reads 7-9 pictures.
+
+### The pairwise judge: which of two designs is better, and is a round's gain real
+
+The 1-10 judge moves 0.7-1.0 between two designs of the same code, so most
+rounds land inside its noise. `tools/bench/pairwise.py` asks instead which of two
+designs of one subject is better, per dimension and overall, A or B with a
+reason, both orders (BrickBench's method), and fits Bradley-Terry ELO with 95%
+intervals from 1,000 resampled pairs. `tools/bench/calibrate.py` makes pairs
+whose answer is known, to measure the judge first.
+
+```sh
+python3 tools/bench/run.py pairs --dry-run --subjects sailing_ship   # canned reply, into bench/results/dry-pairwise/
+python3 tools/bench/run.py rank --dry-run --subjects sailing_ship    # both orders split: every ELO 1000
+env -u ANTHROPIC_API_KEY python3 tools/bench/run.py pairs --jobs 4   # every two designs of each subject, from every batch
+env -u ANTHROPIC_API_KEY python3 tools/bench/run.py pairs --subjects starfighter --repeat 2   # the judge alone, asked again
+XDG_DATA_HOME=$PWD/.scratch-data ~/.claude/claude-core/bin/gpu python3 tools/bench/run.py calibrate --draw-only
+#   (or: ... calibrate --draw-only --software --jobs 3, the same renderer on lavapipe under heavy)
+env -u ANTHROPIC_API_KEY python3 tools/bench/run.py calibrate --absolute --jobs 4
+python3 tools/bench/run.py rank --out /tmp/ranking.md                # ELO, run-to-run spread, each lever
+python3 tools/minitest.py tests/test_pairwise.py   # the fit on synthetic pairs, the reply, the faults
+```
+
+A subject's pool is every batch's runs that have their three views
+(`bench/results/<batch>/<subject>/<run>/views_*.png`), never `pairwise*`, `dry-*`
+or `anchors`. Each design's pictures are copied to
+`bench/results/pairwise/<subject>/designs/<code>_<view>.png`, the code a hash of
+its batch and run, so the judge cannot read a round from a file name. Each
+ordered verdict is `judged/<codeA>-<codeB>.json` (`-2` for a repeat), skipped when
+there, so a stopped run resumes. `ROUNDS`, `LEVERS` and `TWINS` in `run.py` say
+which round each batch is, what each lever is read against, and which designs
+were made on the same code (the run-to-run spread). `calibrate` writes its models
+(a real set and a naive stack of it; a design and the same design with its
+tiles off, in one colour, or without its figures) to
+`bench/results/pairwise/calibration/models/`, draws each with `bench_views.gd`
+(a fresh worktree needs `godot --headless --path . --import` first), and judges
+each pair both orders `--repeats` times; `--absolute` scores each model 1-10 too.
+Draw first and apart: `--draw-only` inside one `gpu` lease waits for the GPU
+once and no call to the judge holds it. When the GPU's queue is long,
+`--software` draws on lavapipe under `heavy` with Godot's Forward+ renderer
+(`GODOT_GPU=1` pinned to the lavapipe ICD; the wrapper's plain software path is
+the compatibility renderer, which shades differently): measured against the GPU
+on the 75895 Porsche, 70 of 1,048,576 pixels differ by more than 16 of 255.
+
+Proves it when: the dry run's `rank` prints 1000 for both ship designs (a judge
+that always says A cancels over both orders); `tests/test_pairwise.py` passes
+(strengths given back within 25 ELO, the 95% interval round the truth on 85% or
+more, one tile in four taken off in file order); `calibrate` prints its
+agreement (2026-10-14: 256 of 256 verdicts on 24 known pairs, both orders the
+same on 99%); and every `judged/*.json` lists in `looked_at` all six design
+pictures (456 of 456 on 2026-10-14). A call is about 22 s; four at once judge a
+subject of 12 designs (132 calls) in about 13 minutes.
 
 ## Gotchas
 

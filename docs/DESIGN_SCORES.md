@@ -50,7 +50,8 @@ re-score, creative, d5 and d5b rounds went that way on 2026-10-13.
 Two things to read before trusting a difference: the run-to-run spread
 below each table (the same code, the same subject, designed again), and
 the rubric version in each heading — scores under two versions do not
-compare.
+compare. Since 2026-10-14 every round is also judged in pairs, with
+intervals that carry the run-to-run spread: "Judged in pairs", next.
 
 **Design memory, and what a batch holds out.** Every scored design is kept,
 with its critique, in `assets/knowledge/designs.json.gz`: subject, brief,
@@ -92,6 +93,183 @@ recurring (studs-up bodies, stud fields, staircases where a curve should be:
 technique and surface, the two weakest); and that likeness does not fall,
 which would say a session copied the nearest design's picture rather than
 designing past it. A subject moves only beyond the 0.5 run-to-run spread.
+
+## Judged in pairs: what each round really did (2026-10-14)
+
+The 1-10 judge's scores move by 0.7-1.0 between two designs of the same
+code, so most rounds below were called inside the noise. BrickBench judges
+its designs in pairs, and its judge agreed with 102 people on 34 of 36
+pairs ([RESEARCH.md](RESEARCH.md), unit 4). `tools/bench/pairwise.py` brings
+that method here, and every round so far has been judged again with it.
+`run.py pairs`, `calibrate` and `rank` reproduce everything below; the
+recipe is "The pairwise judge" in `.claude/skills/verify/features/assistant.md`.
+
+**How it judges.**
+- Two designs of one subject, each as its three views from the same cameras,
+  with the subject's references and each design's build check.
+- The pictures are copied under six-letter names, so no file name says which
+  round made a design.
+- The judge is Claude Opus 5.5 through Claude Code on the subscription, with
+  the Read tool only. It must answer A or B on each of the six dimensions and
+  overall, with a sentence of reason. Every one of its verdicts opened all six
+  design pictures.
+- Every pair is asked both ways round. Where the two orders disagree, the pair
+  is a tie.
+- Strengths are fitted per subject by Bradley-Terry, as BrickBench's `elo.py`
+  does: Hunter's MM, with half a virtual tie between every two designs. They
+  are given as ELO, 1000 being the subject's average design. A design 100
+  above another is preferred 64% of the time, and 200 above, 76%.
+- Intervals are 95%, from 1,000 resamplings of the pairs with both orders
+  kept together.
+
+**What it read.** Every design under `bench/results` that has its three views:
+7 owls, 8 shops, 12 cars, 7 starfighters, 2 locomotives and 2 ships. Every
+two designs of a subject, both ways: 138 pairs, 276 verdicts, about 22 s
+each. The bust, the bonsai, the gatehouse, the Falcon Heavy, the crane and
+the cabin have one design each, so nothing to compare.
+
+### Is it right? Pairs whose answer is known
+
+Each known pair is a model and a version of it that is worse in a way nobody
+would argue with (`tools/bench/calibrate.py`). Both were drawn now by the same
+renderer, and each pair was judged both ways, twice.
+- **A real set against a naive stack of itself** (5 pairs): 75895 Porsche,
+  10194 Emerald Night, 6286 schooner, 10281 bonsai and 75102 X-wing. The
+  stack is the set's own shape in plain bricks, studs up, in its three
+  commonest colours. The set should win every visual dimension and overall.
+- **A design against itself with a fault put in** (19 pairs), on five recent
+  designs: the steps round's shop and starfighter, the sides round's
+  locomotive and owl, and the shapes round's car. The faults: every tile
+  taken off (surface and overall); one tile in four taken off (the same at a
+  quarter of the size); every part in its commonest colour (colour and
+  overall); its figures and animals taken out (creativity).
+
+The 1-10 judge scored the same pictures once each, with the same anchors as
+every bench design; its overall is its mean.
+
+| known pairs | known dimensions | the pairwise judge, both orders, twice | the 1-10 judge |
+|---|---|---|---|
+| a real set against its naive stack, 5 | 30 | 120 of 120 verdicts right | 30 higher |
+| every tile off, one colour, no figures, 14 | 24 | 96 of 96 | 18 higher, 6 the same |
+| one tile in four off, 5 | 10 | 40 of 40 | 4 higher, 4 the same, 2 lower |
+| all 24 | 64 | 256 of 256 (95%: 99-100%) | 52 higher, 10 the same, 2 lower |
+
+- **Agreement.** Every one of the 256 verdicts named the model without the
+  fault, so every one of the 64 known dimensions was right in both orders and
+  both times.
+- **Its spread.** The two orders named the same design on 331 of 336
+  dimension verdicts (99%). Asked again in the same order, 331 of 336 (99%).
+  It picked the model shown first 337 times of 672 (50%).
+- **Where the 1-10 judge falls short.** It tied creativity with and without
+  the shop's and the starfighter's figures, and the locomotive's surface with
+  and without its 50 tiles. With one tile in four off, it saw the fault on
+  the starfighter and the car only. It scored the shop and the owl higher
+  without those tiles (means 5.5 against 4.7, and 4.8 against 4.5).
+
+**What it does not show.** Even the smaller fault is plain to see, and the
+pairwise judge resolves every one. Its limit was not reached here; the
+rounds' own designs, below, are where it splits. And on a pair that
+differs in one thing, it names the better model on nearly every other
+dimension as well: on the dimensions a fault was not meant to change, 399
+of 416 verdicts (96%) went to the model without it. A forced choice between
+two equals goes to the better model overall. So read overall first. A
+dimension says where the judge sees the difference, not a measure
+independent of the others.
+
+### How much is the judge, how much the design
+
+- **The judge alone.** Every starfighter and owl pair asked again gave the
+  same answer on 90% and 95% of dimension verdicts. Fitted again, a design's
+  overall ELO moved by 48 and 43 on average.
+- **The two orders, over the rounds.** On the 138 pairs, both orders named
+  the same design on 81% of dimension verdicts. The judge picked the model
+  shown first 43% of the time. Asking both ways cancels that lean.
+- **Run to run.** Four pairs of designs were made on the same code: the
+  baseline's two owls, two shops and two cars, and the shapes round's two
+  trial cars. Overall they are 160, 253, 251 and 384 ELO apart. Pooled, one
+  design sits 194 ELO from its code's mean (likeness 134, surface 204). Four
+  pairs are few: that 194 could be anything from 0.6 to 2.9 times itself.
+
+The judge's own noise is about a quarter of a design's. Two designs of one
+brief on the same code differ by as much as most rounds do. The judge can
+tell designs apart; one design a round cannot tell a lever from luck.
+
+### Every design, best first
+
+Overall ELO. Each design's interval is about ±100 to ±200
+(`run.py rank` prints them, and each dimension).
+
+| subject | best first: round, overall ELO | agrees with the 1-10 order (Spearman) |
+|---|---|---|
+| starfighter | surface 1384, sides 1170, edges 1058, steps 1004, shapes 1004, d6 769, baseline 612 | 0.81 |
+| corner_shop | sides 1408, steps 1264, surface 1097, baseline 1047, d6b 948, edges 847, baseline 793, d6 595 | 0.50 |
+| barn_owl | d6 1324, edges 1324, sides 1124, steps 1004, surface 882, baseline 751, baseline 591 | 0.40 |
+| speed_champions | shapes trial 1350, d6b 1224, shapes 1224, baseline 1188, edges 997, surface 967, shapes trial 967, baseline 936, edges-b 936, d6 737, steps 737, sides 737 | 0.70 |
+| steam_locomotive | sides 1191, shapes 809 (one pair) | |
+| sailing_ship | shapes 1191, sides 809 (one pair) | |
+
+### Each lever
+
+Each round against the round it was read against above, as the mean over the
+subjects run in both, overall and on the dimension it aimed at. "Judge" is
+the judge's own 95% interval: could it tell these designs apart? "Runs" adds
+a design's luck, 194 ELO: is the lever real? Bold where that excludes 0.
+
+| round | against | subjects | overall | judge | runs | its dimension | judge | runs | 1-10 mean |
+|---|---|---|---|---|---|---|---|---|---|
+| d6, the feature pass | baseline | 4 | +40 | -65, +114 | -225, +302 | technique +19 | -80, +96 | -212, +197 | +0.31 |
+| d6b | d6 | 2 | **+420** | +255, +542 | +15, +805 | technique +569 | +420, +669 | +216, +818 | +0.58 |
+| surface | baseline | 4 | +266 | +154, +330 | -10, +501 | surface +153 | +49, +223 | -146, +408 | +0.56 |
+| edges | surface | 4 | -34 | -124, +69 | -297, +243 | surface -11 | -102, +95 | -280, +273 | -0.10 |
+| steps | edges | 4 | -47 | -139, +52 | -318, +222 | surface +95 | -9, +181 | -176, +392 | +0.44 |
+| sides | steps | 4 | +108 | +1, +189 | -196, +385 | surface -26 | -109, +69 | -321, +268 | -0.25 |
+| shapes | sides | 4 | +69 | -72, +211 | -238, +360 | likeness +66 | -64, +194 | -152, +285 | +0.11 |
+
+Each round against the baseline, overall:
+
+| round | subjects | overall | judge | runs | 1-10 mean |
+|---|---|---|---|---|---|
+| d6 | 4 | +40 | -65, +114 | -225, +302 | +0.31 |
+| d6b | 2 | +95 | -30, +208 | -243, +449 | +0.46 |
+| surface | 4 | +266 | +154, +330 | -10, +501 | +0.56 |
+| edges | 4 | +233 | +134, +289 | -42, +447 | +0.46 |
+| steps | 4 | +186 | +71, +260 | -89, +427 | +0.90 |
+| sides | 4 | **+294** | +192, +350 | +11, +536 | +0.65 |
+| shapes | 2 | +255 | +125, +349 | -113, +594 | +0.73 |
+
+**Reading it, honestly.**
+- **Designs are better than the baseline's.** Every round from the surface
+  round on is 186 to 294 ELO ahead of it, and the judge's own interval
+  excludes 0 for each. With a design's luck in, only the sides round clears 0
+  (+294, so its design is preferred to a baseline design about 85% of the
+  time).
+- **The surface round is where the step up came.** Against the baseline it is
+  +266 overall, and the judge credits its likeness (+235), colour (+213) and
+  creativity (+318) as much as its surface (+153). With luck in, its interval
+  reaches -10. It also measures the staging branch it ran on, which the
+  baseline did not have (d5b's process, the guidance head, design memory),
+  not the surface pass alone.
+- **Edges, steps and shapes are nulls, even to the judge alone.** Overall
+  -34, -47 and +69, every interval across 0. Steps' +95 on surface is not
+  resolved either (-9 to +181). The 1-10 judge had steps at +0.44; the
+  pairwise judge does not see it.
+- **Sides is a gain to the judge, not beyond luck.** +108 (+1 to +189), but
+  -196 to +385 with a design's luck in. Most of it is creativity (+251) and
+  likeness (+160), which the pass does not touch.
+- **d6b is the largest step of any round, on two subjects.** +420 overall,
+  +569 on technique, clearing 0 just (+15 to +805). Its car and its shop are
+  all the evidence.
+- **The two judges disagree where both are inside the noise.** The 1-10
+  judge has sides at -0.25 and steps at +0.44; the pairwise judge has them
+  at +108 and -47. Neither is resolved.
+
+**What a round needs from now on.** The judge is not the limit any more; one
+design a subject is. With one design a subject on four subjects, a lever has
+to move about 270 ELO to show (1.96 x 194 x the square root of 2/4). To show
++200 (preferred 76%), design each subject twice in the round and twice in the
+round it is read against. To show +100 (64%), about seven times. So the next
+round runs with `--run 2` on four subjects, then `run.py pairs` and
+`run.py rank`, and quotes its lever's interval with runs in it.
 
 ## 2026-10-12: commit 0ddfaab, b887e96, rubric v1, judge claude-opus-5-5
 

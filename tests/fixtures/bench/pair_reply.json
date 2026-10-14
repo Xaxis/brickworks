@@ -1,0 +1,17 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "result": "",
+ "structured_output": {
+  "looked_at": ["photo1.jpg", "aaaaaa_corner.png", "aaaaaa_front.png", "aaaaaa_close.png", "bbbbbb_corner.png", "bbbbbb_front.png", "bbbbbb_close.png"],
+  "likeness": {"better": "A", "reason": "A's roofline and wheel arches read as the subject; B's cabin is a box."},
+  "surface": {"better": "B", "reason": "B's bonnet is tiled smooth; A shows a field of studs on it."},
+  "colour": {"better": "A", "reason": "A has the black trim and grille; B is one red throughout."},
+  "technique": {"better": "A", "reason": "A's sides are built studs out under tiles; B is stacked bricks."},
+  "creativity": {"better": "B", "reason": "B's driver holds a trophy; A has no story."},
+  "buildability": {"better": "A", "reason": "Both are one piece; A's wheels sit on whole studs."},
+  "overall": {"better": "A", "reason": "A would ship; B reads as a generic red car."}
+ },
+ "modelUsage": {"canned-judge": {"inputTokens": 0, "outputTokens": 0}}
+}
