@@ -118,6 +118,16 @@ async function remembered(session, { clientId, redirect, challenge, state = "r-"
 
 const exchange = (form, headers = {}) => call("/oauth/token", { method: "POST", form, headers });
 
+/// The account a session is of, as the accounts' admin API has it (read only).
+async function accountOf(sessionToken) {
+  const sub = JSON.parse(Buffer.from(sessionToken.split(".")[1], "base64url").toString("utf8")).sub;
+  const url = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  const reply = await fetch(`${url}/auth/v1/admin/users/${sub}`,
+    { headers: { apikey: key, authorization: `Bearer ${key}` } });
+  return reply.ok ? reply.json() : null;
+}
+
 console.log(`Claude signing in to Brickworks at ${base}\n`);
 const email = `delivered+bwoauth${Date.now().toString(36)}@resend.dev`;
 const { access_token: session } = await mintSession(email);
@@ -159,6 +169,10 @@ try {
     check((page.headers.get("content-security-policy") || "").includes("frame-ancestors 'none'"),
       "...and cannot be framed");
   }
+
+  const newAccount = await call("/api/oauth?op=connections", { headers: { authorization: `Bearer ${session}` } });
+  check(newAccount.status === 200 && (newAccount.json?.connections || []).length === 0 && newAccount.json?.before === false,
+    `a new account: no connections, and none before (so Connect Claude adds Brickworks to Claude): before=${newAccount.json?.before}`);
 
   console.log("\nClaude (claude.ai and the Claude apps), by its published identity");
   const p1 = pkce();
@@ -373,7 +387,8 @@ try {
   const claudeOne = (mine.json?.connections || []).find((c) => c.client === "Claude" && c.last_used);
   check(Boolean(claudeOne), "...with when Claude last used it");
   const notMine = await call("/api/oauth?op=connections", { headers: { authorization: `Bearer ${theirs}` } });
-  check((notMine.json?.connections || []).length === 0, "another account sees none of them");
+  check((notMine.json?.connections || []).length === 0 && notMine.json?.before === false,
+    "another account sees none of them, and had none");
   const noOne = await call("/api/oauth?op=connections");
   check(noOne.status === 401, "nobody signed in sees nothing: 401");
 
@@ -395,6 +410,11 @@ try {
   check(refreshAfter.status === 400 && refreshAfter.json?.error === "invalid_grant", "...and so is its refresh token");
   const left = await call("/api/oauth?op=connections", { headers: { authorization: `Bearer ${session}` } });
   check((left.json?.connections || []).length === 0, "none left");
+  check(left.json?.before === true,
+    "...but the account had Claude: Connect Claude goes to the Brickworks in its Claude, not to add another");
+  const record = await accountOf(session);
+  check(Boolean(record?.app_metadata?.claude_connected_at) && record?.app_metadata?.provider === "email",
+    `kept in the account's server-only record, beside what was there: ${JSON.stringify(Object.keys(record?.app_metadata || {}))}`);
   const askedAgain = await remembered(session, { clientId: CLAUDE, redirect: CALLBACK, challenge: pkce().challenge });
   check(askedAgain.reply.json?.ask === true && !askedAgain.code,
     "...and the next connection asks again: Disconnect ended what was allowed");

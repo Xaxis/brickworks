@@ -87,7 +87,7 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 			<h3>Your Claude plan</h3>
 			<p class="for">Claude Pro or Max · no key, nothing to install</p>
 			<ol>
-				<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
+				<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too. Connecting again later, after a Disconnect, is <b>Connect</b> on the Brickworks in <b>Customize › Connectors</b>, which <b>Connect Claude</b> opens for you then.</li>
 				<li>Or in Claude Code, then <b>/mcp</b> and Authenticate:
 					<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
 				<li>With Brickworks open and its assistant on, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
@@ -141,7 +141,11 @@ thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
 	</details>
 	<details class="qa" id="new-tools">
 		<summary>Claude can’t see a new Brickworks tool. What now?</summary>
-		<div><p>Brickworks tells Claude when its tools change, and a Claude app that listens for that picks them up by itself. If yours hasn’t, reload the Brickworks tab first if it says it has been updated. Then start a new conversation. If the tool is still missing, reconnect Brickworks: on claude.ai under Settings, Connectors; in Claude Code, run <code>/mcp</code>, choose brickworks and Reconnect.</p></div>
+		<div><p>Brickworks tells Claude when its tools change, and a Claude app that listens for that picks them up by itself. If yours hasn’t, reload the Brickworks tab first if it says it has been updated. Then start a new conversation. If the tool is still missing, reconnect Brickworks in Claude: <b>Customize › Connectors</b>, select Brickworks, <b>Disconnect</b>, then <b>Connect</b>; in Claude Code, run <code>/mcp</code>, choose brickworks and Reconnect. Not <b>Disconnect Claude</b> in Brickworks: that ends Claude’s connection, and you connect it and allow it again.</p></div>
+	</details>
+	<details class="qa" id="tool-permissions">
+		<summary>Claude asks before every Brickworks tool. Can it stop asking?</summary>
+		<div><p>Yes, in Claude: <b>Customize › Connectors</b>, select Brickworks, and under <b>Tool permissions</b> choose <b>Always allow</b> for the tools you trust, or press <b>Always allow</b> when Claude asks. Those switches are Claude’s, so Brickworks cannot set them for you. It does tell Claude which of its tools only look and change nothing. Brickworks asks you to Allow once, and not again while Claude stays connected. To connect again after a Disconnect, press <b>Connect</b> on the Brickworks already in your connectors rather than adding it again: adding it again sets up a new one, with its tool permissions to choose again.</p></div>
 	</details>
 	<details class="qa">
 		<summary>What do I need to run it?</summary>

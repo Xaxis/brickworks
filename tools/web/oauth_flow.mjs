@@ -389,6 +389,18 @@ try {
     "all three connections' tokens are refused at once, and told where to sign in again");
   check(Boolean(await where("account_connect_claude", 20)), "...and Account offers Connect Claude again");
   await shot("10_disconnected");
+  // This account has had Claude connected: Brickworks is in its Claude
+  // already, so Connect Claude goes to Claude's connectors, to connect that
+  // one, not to Add custom connector, which sets up another.
+  const openedAgain = context.waitForEvent("page", { timeout: 30000 });
+  await click("account_connect_claude");
+  const listTab = await openedAgain.catch(() => null);
+  await listTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(listTab?.url() === "https://claude.ai/customize/connectors",
+    `Connect Claude again, for an account that had Claude: Claude's connectors, not Add custom connector: ${listTab?.url()}`);
+  await listTab?.close();
+  await page.waitForTimeout(1000);
+  await shot("10b_connect_again");
 
   console.log("\nclaude.ai connects again after Disconnect");
   const askedAfter = authorizationRequest(found.server, found.resource);

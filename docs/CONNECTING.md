@@ -16,7 +16,11 @@ assistant panel's **Connect Claude** opens claude.ai's *Add custom connector*
 dialog with the name and the address already filled in. They press Add, then
 Connect; Claude sends them to Brickworks to sign in with their email code (or
 straight to the question, if Brickworks is already signed in in that browser),
-they press Allow, and they are back in Claude, connected. A connector added on
+they press Allow, and they are back in Claude, connected. Connecting again
+after a Disconnect is **Connect** on the Brickworks already in their Claude
+(Customize › Connectors, Your connectors), which Connect Claude opens for an
+account that has had Claude connected: adding it again sets up a second one,
+with its tool permissions to choose again. A connector added on
 claude.ai is in the desktop and mobile apps too, and in Claude Code when it is
 signed in with the same Claude account.
 

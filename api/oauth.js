@@ -28,7 +28,8 @@
 //   POST /api/oauth?op=deny       no
 //   POST /oauth/token        a code or a refresh token for tokens  ?op=token
 //   POST /oauth/revoke       RFC 7009                       ?op=revoke
-//   GET  /api/oauth?op=connections   the signed-in account's connections
+//   GET  /api/oauth?op=connections   the signed-in account's connections,
+//                                    and whether it had Claude connected before
 //   POST /api/oauth?op=disconnect    end one (?id=) or all of them
 //
 // How Claude identifies itself. Claude (claude.ai, the desktop and mobile
@@ -51,7 +52,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
-import { SCOPE, clientLabel, originOf, resourceOf, secret, sha256 } from "./_oauth.js";
+import {
+  CLAUDE_AI, SCOPE, clientLabel, hadClaude, originOf, rememberClaude, resourceOf, secret, sha256,
+} from "./_oauth.js";
 
 const CODE_TTL_S = 120;
 const ACCESS_TTL_S = 3600;
@@ -518,6 +521,7 @@ async function token(request, response, origin) {
     });
     const tokens = await issue(grant);
     await tellTabs(row.owner, clientLabel(grant)).catch(() => {});
+    if (client.client_id === CLAUDE_AI) await rememberClaude(row.owner).catch(() => {});
     if (Math.random() < 0.1) await db("rpc/oauth_sweep", { method: "POST", body: {} }).catch(() => {});
     return response.status(200).json(tokens);
   }
@@ -598,7 +602,12 @@ async function connections(request, response) {
   const claims = await signedIn(request, response);
   if (!claims) return response;
   const rows = await db(`oauth_grants?owner=eq.${claims.sub}`
-    + "&select=id,client_name,redirect_uri,client_info,created_at,used_at&order=created_at.desc") || [];
+    + "&select=id,client_id,client_name,redirect_uri,client_info,created_at,used_at&order=created_at.desc") || [];
+  // Whether Claude has a Brickworks connector for this account already,
+  // connected or not: then connecting again is Connect on that one, in
+  // Claude's own list, not adding a second (src/net/claude_connector.gd).
+  const before = rows.some((grant) => grant.client_id === CLAUDE_AI)
+    || await hadClaude(claims.sub).catch(() => false);
   return response.status(200).json({
     connections: rows.map((grant) => ({
       id: grant.id,
@@ -606,6 +615,7 @@ async function connections(request, response) {
       since: grant.created_at,
       last_used: grant.used_at,
     })),
+    before,
   });
 }
 
@@ -617,6 +627,11 @@ async function disconnect(request, response) {
   const gone = await db(`oauth_grants?owner=eq.${claims.sub}${id ? `&id=eq.${id}` : ""}`, {
     method: "DELETE", prefer: "return=representation",
   }) || [];
+  // Kept past the Disconnect, for a connection made before it was kept at
+  // connecting: the Brickworks connector is still in their Claude.
+  if (gone.some((grant) => grant.client_id === CLAUDE_AI)) {
+    await rememberClaude(claims.sub).catch(() => {});
+  }
   return response.status(200).json({ disconnected: gone.length });
 }
 
