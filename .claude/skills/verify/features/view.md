@@ -412,6 +412,15 @@ picture the assistant is shown.
   waited 16 to 33 s on the page's thread; now 8 to 25 ms, the longest task
   went from 17-33 s to 2-3.6 s and the slowest input from 17-33 s to 3.6 s,
   with the page running at 60 frames a second while the card drew it.
+  Held for anything but the person: a key, a click or the pointer moving is
+  drawn while it waits (`GpuFence._asked`, the root window's `window_input`),
+  the frame it changed and whatever else changes in the 500 ms after it. The
+  parts bin reads its pictures back the same way, eight at a time, and over
+  Orthanc in software its first eight held the drawing 30 s and more after
+  the model opened: a click on the white wizard selected him at once and the
+  window went on showing the frame from before it, "nothing selected" and no
+  outline (2026-10-14, `outline_check`, whose idle looks showed the
+  selection never left).
 - `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
   is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
   edge lines, and without one a wall of forty bricks and a wall of four drew as
