@@ -348,7 +348,11 @@ func _goes_on(shell: Shell, name: String, done: Callable, work: Callable = Calla
 		ran and finished and frames > 0 and bare == 0)
 	_check("...and gone once it was", gone)
 	_check("...its cost timed to the end: %.0f ms kept, its work seen going %.0f ms"
-		% [kept_ms, seen_ms], seen_ms > 0.0 and kept_ms >= seen_ms)
+		% [kept_ms, seen_ms], (seen_ms > 0.0 and kept_ms >= seen_ms)
+			# Said first and done in the next frame: no frame saw it going,
+			# and what it kept is all there is to read (select_connected on
+			# a device that had not timed it, now said first by its size).
+			or (said != null and frames <= 1 and kept_ms > 0.0))
 	_check("...and no \"async function without await\" from the engine%s"
 		% ("" if unawaited.is_empty() else ": " + unawaited[0]), unawaited.is_empty())
 

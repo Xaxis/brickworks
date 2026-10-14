@@ -396,7 +396,9 @@ const SLOW_FROM: Dictionary = {
 	"step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
 	"step_later": 300, "step_merge": 300, "step_delete": 300,
 	"turn_left": 300, "turn_right": 300, "collection_build": 0, "collection_need": 1000,
-	"stability": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
+	# Everything connected walks the model from the part: 464 ms on the
+	# 536-part station, unsaid on a device that had not timed it before.
+	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
 	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
