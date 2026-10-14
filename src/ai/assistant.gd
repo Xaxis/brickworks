@@ -15189,7 +15189,9 @@ how it is built, not by what the subject is.
 4x4, 44375b 6x6, 3961 8x8, 50990b 10x10), round bricks and plates for a \
 column, cones for a taper, round corner bricks for a quarter ring \
 (85080 2x2, 2577 and 48092 4x4). Up to about ten studs across, a dish \
-or a stack of round plates under curved slopes is the whole answer.
+or a stack of round plates under curved slopes is the whole answer. \
+A smooth dome 16 studs across is four 87375 quarter domes clipped on \
+58846 tapered corners: show_technique "smooth dome".
   Sideways skins, for a band, a body lying on its side, an egg, a car's \
 curved flank: a core with studs out on its sides (11211, 87087, 4733, \
 brackets 99780 and 99207), and on each side a section turned to face out \
@@ -16118,7 +16120,6 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"rules": "THE RULES YOUR DESIGN MUST SATISFY", "shapes": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
-	"dome": "WHAT THE SUBJECT NEEDS", "domes": "WHAT THE SUBJECT NEEDS",
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
 	"round": "ROUND BODIES AND DOMES", "dome": "ROUND BODIES AND DOMES",
 	"domes": "ROUND BODIES AND DOMES", "sphere": "ROUND BODIES AND DOMES",

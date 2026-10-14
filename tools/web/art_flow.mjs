@@ -214,7 +214,16 @@ const handed = await until(async () => {
 const after = await state();
 ok(Boolean(after?.columns?.assistant) && !(await controls()).mosaic_build,
   `Design with Claude closes the dialog and opens the assistant: ${JSON.stringify(after?.columns)}`);
-ok(handed, `and with no key of its own, says what is needed rather than nothing: "${told}"`);
+// The status line is the first place it is said, and under load a mode's
+// hint can replace it between two polls; the assistant's column keeps it,
+// so the window's words (Main.words_shown) are read too.
+if (!told) {
+  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
+  for (let n = 0; n < 40 && !(await page.evaluate(() => window.brickworksWords)); n++) await page.waitForTimeout(500);
+  const shown = (await page.evaluate(() => window.brickworksWords)) || [];
+  told = shown.find((w) => /key of your own/i.test(w)) || "";
+}
+ok(handed || told !== "", `and with no key of its own, says what is needed rather than nothing: "${told}"`);
 await page.waitForTimeout(4000);
 await shot("3_claude.png");
 await browser.close();
