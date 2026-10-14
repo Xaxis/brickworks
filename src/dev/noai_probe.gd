@@ -228,8 +228,11 @@ func _nothing_of_ai(when: String) -> void:
 		return "%s %s" % [stop[0], stop[1]]))
 	_ok(_ai.search(tour) == null, "the tour is of the CAD alone, %d cards" % stops.size())
 	shell.call("_show_about")
+	# Its words are a label in the dialog since the About rewrite, not the
+	# dialog's own text, which is empty and would pass this unread.
 	var about: AcceptDialog = shell.get("_about")
-	_ok(_ai.search(about.dialog_text) == null, "About says nothing of it")
+	var about_words: String = (shell.get("_about_text") as Label).text
+	_ok(not about_words.is_empty() and _ai.search(about_words) == null, "About says nothing of it")
 	about.hide()
 	var keys: PackedStringArray = []
 	for binding: ControlsHint.Binding in ControlsHint.for_keyboard():
@@ -345,7 +348,7 @@ func _all_of_it_back(how: String) -> void:
 	_ok(stops.any(func(stop: Array) -> bool: return stop[0] == "The assistant"),
 		"the tour has the assistant's card again, %d cards" % stops.size())
 	shell.call("_show_about")
-	_ok((shell.get("_about") as AcceptDialog).dialog_text.contains("with the assistant"),
+	_ok((shell.get("_about_text") as Label).text.contains("with the assistant"),
 		"About says it builds by hand or with the assistant")
 	(shell.get("_about") as AcceptDialog).hide()
 	_ok((_main.get("_connector") as ClaudeConnector).get("held") == false,

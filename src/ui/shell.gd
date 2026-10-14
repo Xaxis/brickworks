@@ -1218,8 +1218,9 @@ func _toggle_full_screen() -> void:
 
 
 func _show_about() -> void:
-	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, on the web "
-		+ "or on your own computer.\n\n%s\n\n"
+	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
+		+ (" or with the assistant" if assistant_shown else "")
+		+ ", on the web or on your own computer.\n\n%s\n\n"
 		+ "Part geometry from the LDraw™ Parts Library, CC BY 2.0 and CC BY 4.0.\n"
 		+ "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
 		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.") % [
