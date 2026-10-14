@@ -226,6 +226,14 @@
       "tests": []
     },
     {
+      "id": "cli:decorated parts in a browser",
+      "kind": "cli",
+      "entry": "tools/web/decor_flow.mjs",
+      "reach": "node --env-file=.env tools/web/decor_flow.mjs --url=<a preview>/app --out=shots/decor_web",
+      "area": "prints",
+      "tests": []
+    },
+    {
       "id": "cli:design from a brief",
       "kind": "cli",
       "entry": "tools/design.py",
@@ -1111,6 +1119,14 @@
       "tests": []
     },
     {
+      "id": "lib:studio decorations",
+      "kind": "lib",
+      "entry": "src/parts/studio_decor.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd -- --real=<a Studio .io>   (by hand: Open, From a file on this computer, a Studio .io with prints or stickers)",
+      "area": "prints",
+      "tests": []
+    },
+    {
       "id": "lib:studio renderer",
       "kind": "lib",
       "entry": "src/render/studio_render.gd",
@@ -1647,6 +1663,14 @@
       "kind": "ui",
       "entry": "src/prints/print_editor.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: hold a part, Parts bin > Print\u2026; or in the figure builder, Draw a print\u2026)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:printed versions",
+      "kind": "ui",
+      "entry": "src/prints/printed_versions.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
       "area": "prints",
       "tests": []
     },

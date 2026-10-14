@@ -73,7 +73,7 @@ const MENUS: Array = [
 		"share", ">export", "render", "instructions", "-", "clear", "account", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
+		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "printed_versions", "mirror",
 		"-", "ask_claude", "-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
 		"rename_assembly", "make_unique", "-", ">steps", "-", "reshape_flex"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -648,6 +648,15 @@ func _define() -> void:
 		selected, "Paint the selection the colour in hand")
 	_add("replace", "Replace with the part in hand", 0, func() -> void: verbs.replace(),
 		selected, "Swap the selection for the part you hold, each in its own colour")
+	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
+	_add("printed_versions", "Printed versions…", 0, func() -> void:
+		var studio: PrintStudio = app.get("_studio")
+		if studio != null:
+			studio.open_versions(),
+		func() -> bool:
+			var studio: PrintStudio = app.get("_studio")
+			return studio != null and studio.offers_versions(),
+		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
 	# src/ai/selection_scope.gd: Claude changes these parts and the room round
@@ -867,7 +876,7 @@ func _define() -> void:
 ## each the command Edit or Build has, greyed where it would do nothing.
 ## A right click on a part did nothing (brickworks.diy, 2026-10-12).
 const ON_A_PART: Array = ["ask_claude", "-", "select_connected", "-", "hide", "isolate", "-", "paint",
-	"copy", "delete", "-", "make_submodel", "-", "show_properties"]
+	"printed_versions", "copy", "delete", "-", "make_submodel", "-", "show_properties"]
 var context: PopupMenu
 
 

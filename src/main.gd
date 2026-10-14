@@ -449,6 +449,9 @@ func _tell_page() -> void:
 		"own_plate": _floor != null and _floor.has_own_plate(),
 		"held": _builder.held_part,
 		"custom": _library.custom.keys(),
+		# The parts the model is made of, by number: a printed version swapped
+		# in (tools/web/decor_flow.mjs) is one the canvas cannot name.
+		"parts": _part_ids_now(),
 		# The tool in use and what is selected, so a browser check can
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
@@ -563,6 +566,26 @@ func _tell_page() -> void:
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
+
+
+## The model's parts by number, each once, the first 300: worked out again
+## only when the model has changed.
+func _part_ids_now() -> Array:
+	if _world.revision != _part_ids_at:
+		_part_ids_at = _world.revision
+		var seen: Dictionary = {}
+		for item: Variant in _world.bricks():
+			var brick: BrickWorld.Brick = item
+			if not _store.scenery.has(brick.id):
+				seen[brick.part_id] = true
+				if seen.size() >= 300:
+					break
+		_part_ids = seen.keys()
+	return _part_ids
+
+
+var _part_ids: Array = []
+var _part_ids_at: int = -1
 
 
 ## Every word the window shows a person: each control's text, its
@@ -2546,6 +2569,7 @@ func _build_ui() -> void:
 	_studio.world = _world
 	_studio.builder = _builder
 	_studio.camera = _camera
+	_studio.thumbnails = _thumbnails
 	add_child(_studio)
 	_studio.setup($HUD)
 	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
@@ -4959,6 +4983,8 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 	var mouse: Vector2 = at
 	if not (mouse.x < INF):
 		mouse = get_viewport().get_mouse_position()
+	# A sticker in hand over a tile's top is squared to the screen.
+	_builder.view_up = _camera.global_transform.basis.y
 	_builder.update_preview(
 		_camera.ray_origin(mouse),
 		_camera.ray_normal(mouse))

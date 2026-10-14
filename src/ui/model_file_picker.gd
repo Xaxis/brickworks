@@ -56,6 +56,8 @@ func take(bytes: PackedByteArray, file_name: String) -> void:
 			if not str(read["error"]).is_empty():
 				failed.emit(str(read["error"]))
 				return
+			# Studio's own prints and Part Designer parts, carried in.
+			notes = str(read.get("note", ""))
 			picked.emit(str(read["text"]), file_name)
 		"lxf", "lxfml":
 			var read: Dictionary = LddLxf.read(bytes, file_name.get_basename())

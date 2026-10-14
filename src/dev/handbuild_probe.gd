@@ -1334,17 +1334,35 @@ func _studio_file() -> void:
 		return
 	if picker._dialog != null:
 		picker._dialog.hide()
+	# The file's Part Designer part comes in with it (StudioDecor.carried),
+	# kept here and not in the person's bin; it is built where its 3001.dat
+	# can be read, a checkout with the LDraw library, and named as left out
+	# where it cannot (the web build).
+	var kept_in: String = CustomParts.dir
+	var keeping: bool = CustomParts.keeps
+	CustomParts.dir = OS.get_user_data_dir().path_join("handbuild_probe_parts/")
+	CustomParts.keeps = false
 	picker.take(bytes, "bay_2025.io")
 	await _frames(10)
+	CustomParts.dir = kept_in
+	CustomParts.keeps = keeping
+	var whole: bool = not PartForge._read_library("3001.dat").is_empty()
 	var parts: Array = _model().map(func(b: BrickWorld.Brick) -> String: return b.part_id)
 	parts.sort()
-	_check("a Studio .io opens its model, sub-model and all (%s)" % str(parts),
-		parts == ["3001", "3001", "3004", "3022", "3068b"])
-	_check("...in LDraw's colours, not BrickLink's (%s)" % _colours(),
-		_colours() == {4: 1, 15: 1, 14: 1, 1: 1, 0: 1})
+	var wanted: Array = ["3001", "3001", "3004", "3022", "3068b"]
+	var colours: Dictionary = {4: 1, 15: 1, 14: 1, 1: 1, 0: 1}
+	if whole:
+		wanted.append("m1a2b3c4_2025408_163200")
+		colours[71] = 1
+	_check("a Studio .io opens its model, sub-model and all (%s)" % str(parts), parts == wanted)
+	_check("...in LDraw's colours, not BrickLink's (%s)" % _colours(), _colours() == colours)
 	_check("...under its file's name (%s)" % bar.model_name(), bar.model_name() == "Bay 2025")
-	_check("...and the part only Studio has is named in the status bar: \"%s\"" % bar._status.text,
-		bar._status.text.contains("1 not in the library, left out (m1a2b3c4_2025408_163200)"))
+	if whole:
+		_check("...its Part Designer part among them, from the file: \"%s\"" % bar._status.text,
+			bar._status.text.begins_with("opened 6 parts") and not bar._status.text.contains("left out"))
+	else:
+		_check("...and the part only Studio has is named in the status bar: \"%s\"" % bar._status.text,
+			bar._status.text.contains("1 not in the library, left out (m1a2b3c4_2025408_163200)"))
 
 
 ## A model with its author's steps, opened, and its steps changed the ways

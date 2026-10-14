@@ -47,6 +47,9 @@ var floor_picker: FloorPicker
 var _joined_button: Button
 var _lock_button: Button
 var _hide_button: Button
+## Edit, Printed versions…, for one part the LEGO Group printed or put a
+## sticker on: under its name, with how many there are.
+var _versions_button: Button
 
 ## What was last shown, so nothing is redrawn while nothing changes.
 var _shown: String = ""
@@ -127,6 +130,18 @@ func _ready() -> void:
 
 	_title = _text(14, 0.95)
 	_ids = _text(12, 0.7)
+	_versions_button = Button.new()
+	_versions_button.flat = true
+	_versions_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_versions_button.focus_mode = Control.FOCUS_NONE
+	_versions_button.add_theme_font_size_override("font_size", 12)
+	_versions_button.add_theme_color_override("font_color", Color(0.55, 0.78, 1.0))
+	_versions_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_versions_button.tooltip_text = ("Swap it for one of the prints or stickered versions the LEGO "
+		+ "Group made of it")
+	_versions_button.visible = false
+	_versions_button.pressed.connect(func() -> void: shell.run("printed_versions"))
+	_body.add_child(_versions_button)
 	_colour_row = HBoxContainer.new()
 	_colour_row.add_theme_constant_override("separation", 8)
 	_body.add_child(_colour_row)
@@ -369,7 +384,7 @@ func _show_floor() -> void:
 func _show_nothing() -> void:
 	_title.text = ""
 	_ids.text = ""
-	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions]:
+	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions, _versions_button]:
 		control.visible = false
 
 
@@ -386,6 +401,10 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	var custom: bool = library.custom.has(brick.part_id)
 	_ids.text = ("Made here · %s" % brick.part_id) if custom else (
 		"LDraw %s · BrickLink %s" % [brick.part_id, brick.part_id.trim_suffix(".dat")])
+	var studio: PrintStudio = shell.app.get("_studio") if shell.app != null else null
+	var versions: int = studio.versions_of(brick.part_id).size() if studio != null else 0
+	_versions_button.visible = versions > 0 and not Stickers.sticks(library, brick.part_id)
+	_versions_button.text = "Printed versions… (%d)" % versions
 	_show_colours([brick.color_code])
 	_place.visible = true
 	_actions.visible = true
@@ -417,6 +436,7 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	_title.visible = true
 	_ids.visible = true
 	_title.text = "%d parts selected" % bricks.size()
+	_versions_button.visible = false
 	var kinds: Dictionary = {}
 	var colours: Array[int] = []
 	var box := AABB()
@@ -692,6 +712,8 @@ func controls_by_name() -> Dictionary:
 	if not is_visible_in_tree():
 		return {}
 	var out: Dictionary = {"properties": _header}
+	if _open and _versions_button.is_visible_in_tree():
+		out["prop_versions"] = _versions_button
 	if _open and _place.visible:
 		out["prop_x"] = _x
 		out["prop_y"] = _y

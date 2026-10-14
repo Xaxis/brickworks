@@ -5224,6 +5224,10 @@ static func _technique_for(query: String) -> String:
 ## builds a badge out of plates, or does without. 3623 has eleven, and
 ## "porsche print" did not find the one a Porsche wants (2026-10-13).
 func _prints_note(info: PartLibrary.PartInfo) -> String:
+	# A film goes on a face, not on studs: placed as a brick it floats.
+	if info.decor() & PartLibrary.PartInfo.STICKER:
+		return ", a sticker: print_part {\"brick\": N, \"sticker_part\": \"%s\", \"side\": …} " \
+			% info.id + "lays it on that part's face"
 	if not info.print_of.is_empty():
 		return (", a print of %s" if info.decor() & PartLibrary.PartInfo.PRINTED
 			else ", %s with a sticker on") % info.print_of

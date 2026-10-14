@@ -1664,6 +1664,27 @@
       "entry": "tools/bench/pairwise.py",
       "reach": "python3 tools/bench/run.py pairs --dry-run --subjects sailing_ship; python3 tools/bench/run.py rank --dry-run --subjects sailing_ship   (for real: env -u ANTHROPIC_API_KEY ... pairs, calibrate, rank)",
       "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "printed versions",
+      "entry": "src/prints/printed_versions.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions…, its right-click menu, or Properties' Printed versions…)",
+      "area": "prints"
+    },
+    {
+      "kind": "lib",
+      "label": "studio decorations",
+      "entry": "src/parts/studio_decor.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd -- --real=<a Studio .io>   (by hand: Open, From a file on this computer, a Studio .io with prints or stickers)",
+      "area": "prints"
+    },
+    {
+      "kind": "cli",
+      "label": "decorated parts in a browser",
+      "entry": "tools/web/decor_flow.mjs",
+      "reach": "node --env-file=.env tools/web/decor_flow.mjs --url=<a preview>/app --out=shots/decor_web",
+      "area": "prints"
     }
   ]
 }

@@ -74,7 +74,8 @@ static func face_at(world: BrickWorld, library: PartLibrary, origin: Vector3, di
 	var struck_normal := Vector3.ZERO
 	for item: Variant in world.bricks():
 		var brick: BrickWorld.Brick = item
-		if is_sticker(library, brick.part_id):
+		# Not onto another film: a sticker goes on the part, not on a sticker.
+		if sticks(library, brick.part_id):
 			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
@@ -131,7 +132,7 @@ static func face_at(world: BrickWorld, library: PartLibrary, origin: Vector3, di
 			grew = false
 			for item: Variant in world.bricks():
 				var brick: BrickWorld.Brick = item
-				if face.bricks.has(brick.id) or is_sticker(library, brick.part_id):
+				if face.bricks.has(brick.id) or sticks(library, brick.part_id):
 					continue
 				var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 				if mesh == null:
@@ -355,9 +356,28 @@ static func make(library: PartLibrary, picture: Image, size: Vector2, title: Str
 
 
 ## Stick a sticker on a face, through the builder so one undo takes it
-## off. Returns the brick, or 0.
-static func stick(builder: Builder, sticker_id: String, face: Face) -> int:
-	return builder.put_part(sticker_id, FILM, face.transform())
+## off: one made here, or one of LDraw's, in [param colour] (the film's
+## colour where nothing is printed; white, as a sticker sheet is, unless
+## said). Returns the brick, or 0.
+static func stick(builder: Builder, sticker_id: String, face: Face, colour: int = FILM) -> int:
+	var film: Lbm.PartMesh = builder.library.mesh_for(sticker_id)
+	var at: Transform3D = laid_on(face, film.bounds) if film != null else face.transform()
+	return builder.put_part(sticker_id, colour, at)
+
+
+## Where a film whose own box is [param film] goes to lie on [param face]:
+## its middle on the face's middle, its back on the face, its picture's
+## down the face's down, turned [param quarter_turns] about the face. One
+## made here is drawn round its own middle with its back at 0, as LDraw
+## draws its stickers (169585a: a box 0.25 thick under y 0, centred), so
+## either lands where Face.transform says; this only makes sure of it.
+static func laid_on(face: Face, film: AABB, quarter_turns: int = 0) -> Transform3D:
+	var at: Transform3D = face.transform()
+	if posmod(quarter_turns, 4) != 0:
+		at.basis = Basis(face.normal, posmod(quarter_turns, 4) * PI * 0.5) * at.basis
+	var middle: Vector3 = film.get_center()
+	at.origin -= at.basis * Vector3(middle.x, film.position.y, middle.z)
+	return at
 
 
 ## The model's stickers: sticker id -> the bricks that are it.

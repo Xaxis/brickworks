@@ -87,10 +87,29 @@ func studio_io() -> String:
 	var image: Image = await picture.take(STUDIO_THUMBNAIL)
 	if image != null and not image.is_empty():
 		thumbnail = image.save_png_to_buffer()
-	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text))
+	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text),
+		studio_parts(world, library))
 	var line: String = _give_bytes(bytes, _file("io"), "application/octet-stream", folder)
 	say.call(line)
 	return line
+
+
+## The model's prints and stickers as Studio carries a decorated part, for
+## an .io's CustomParts/: file name -> text (StudioDecor.studio_text). The
+## model.ldr beside them carries them as LDraw has them, TEXMAP and !DATA,
+## for every other program and for opening here again.
+static func studio_parts(model: BrickWorld, parts: PartLibrary) -> Dictionary:
+	var out: Dictionary = {}
+	for item: Variant in model.bricks():
+		var id: String = (item as BrickWorld.Brick).part_id
+		if out.has(id + ".dat"):
+			continue
+		var text: String = parts.custom_source(id)
+		var mesh: Lbm.PartMesh = parts.mesh_for(id)
+		if text.is_empty() or mesh == null or not PartPrints.has_pictures(text):
+			continue
+		out[id + ".dat"] = StudioDecor.studio_text(id, text, mesh.print_files)
+	return out
 
 
 ## File, Export, 3D model…: which format, GLB unless another was chosen
