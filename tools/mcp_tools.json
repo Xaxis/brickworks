@@ -548,7 +548,7 @@
                 "type": "integer"
               },
               "wheels": {
-                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, on a chassis of plates under them from nose to tail; the body cut clear of each wheel's box stands on the bricks (its underside 5 plates up or lower over them) and the chassis, so the car is one piece on its wheels. wheel_color is the rims' colour.",
                 "items": {
                   "type": "number"
                 },
@@ -2319,7 +2319,7 @@
                 "type": "integer"
               },
               "wheels": {
-                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, the body cut clear of each wheel's box and standing on the bricks (its underside 5 plates up or lower over them), so the car is one piece on its wheels. wheel_color is the rims' colour.",
+                "description": "shape: a car on its own wheels — studs along x of each axle's middle, under a body laid along x 6, 8, 10 or 12 studs across. Each axle is a wheel and tyre each side on a Technic axle through Technic bricks, on a chassis of plates under them from nose to tail; the body cut clear of each wheel's box stands on the bricks (its underside 5 plates up or lower over them) and the chassis, so the car is one piece on its wheels. wheel_color is the rims' colour.",
                 "items": {
                   "type": "number"
                 },
