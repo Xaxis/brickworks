@@ -306,6 +306,7 @@ godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/hinged_panels_probe.gd # turned any way, on hinges: a dome, a band of skins
+godot --headless --path . --script src/dev/dome_probe.gd         # four 87375 clipped on four 58846, held; 58846/95188 nest (vendor/omr)
 python3 tools/connection_audit.py run [--shards 6 --parallel 2]   # every real set, under heavy, hours
 python3 tools/connection_audit.py report --before DIR --write docs/CONNECTIONS.md
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes

@@ -5188,7 +5188,27 @@ func _search(query: String, limit: int) -> String:
 			told = _prints_named(info)
 	if not told.is_empty():
 		lines.append(told)
+	var worked: String = _technique_for(query)
+	if not worked.is_empty():
+		lines.append(worked)
 	return "\n".join(lines)
+
+
+## A worked construction for what a search asked about, said under its
+## answer: a technique names the words it answers ("asked_by"). A session
+## asked for "a smooth hemispherical dome on a square base" read the shapes
+## guide, laid two stepped domes, searched "dome hemisphere", found a 4 x 4
+## dome and built that, four studs across, never knowing four 87375 quarter
+## domes make one sixteen across: the guide said so where it did not look.
+static func _technique_for(query: String) -> String:
+	var words: PackedStringArray = query.to_lower().split(" ", false)
+	for one: Variant in Techniques.all():
+		var technique: Dictionary = one
+		for word: String in technique.get("asked_by", []):
+			if words.has(word):
+				return ("Built from real parts as sets build it: show_technique \"%s\" — %s."
+					% [technique["name"], technique["when"]])
+	return ""
 
 
 ## What a part in a search's answer has printed on it, or what prints of
@@ -15315,7 +15335,9 @@ alongside the bricks you write by hand:
            layers stacks it, rise says how far apart, and shrink takes \
            studs off each layer so it tapers.
 
-             a dome          ellipse, layers 8, shrink 2
+             a dome          ellipse, layers 8, shrink 2 (stepped;
+                             smooth and 16 across is four 87375s:
+                             show_technique "smooth dome")
              a cone          ellipse, layers 10, shrink 4
              a round tube    the round pattern (below), not a fill
              a hull          rectangle, layers 6, rise 3, shrink 0
@@ -15788,7 +15810,15 @@ fuselage, a funnel, a tree trunk, a column: the round pattern, upright \
 or lying along x or z. Never square bricks stacked into a round: that \
 is the one way a real set never builds it.
   Tapered or domed — a nose, a spire, a dome, a cone: the round \
-pattern's nose; a fill with layers and a shrink; cones and dishes.
+pattern's nose; a fill with layers and a shrink; cones and dishes. A \
+smooth dome 16 studs across, glass or solid (an observatory, a greenhouse, \
+a habitat, a planetarium): four 87375 quarter domes on a ring of four \
+58846 tapered corners, each quarter held by the bar of its bottom handle in \
+two 61252 clips and its top handle in a 61252 clip on a 2 x 2 round \
+plate inside the crown, a 2 x 2 round tile on those clips closing it — \
+show_technique "smooth dome". A handle is a bar: \
+attachment_points lists it, and a quarter goes on its clips by axis and \
+joint at the clips' line.
   A body that is not a box — a car's body, a hull, a fuselage, a \
 creature's body or head: the shape pattern, said as its solids (a loft \
 through sections, a profile extruded, a revolve, ellipsoids), which \
@@ -16088,6 +16118,7 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"rules": "THE RULES YOUR DESIGN MUST SATISFY", "shapes": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
+	"dome": "WHAT THE SUBJECT NEEDS", "domes": "WHAT THE SUBJECT NEEDS",
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
 	"round": "ROUND BODIES AND DOMES", "dome": "ROUND BODIES AND DOMES",
 	"domes": "ROUND BODIES AND DOMES", "sphere": "ROUND BODIES AND DOMES",
@@ -16161,14 +16192,18 @@ func _show_technique(wanted: String) -> String:
 		var brick: Dictionary = raw
 		var face: String = str(brick.get("face", "up"))
 		var inside: String = str(brick.get("section", ""))
-		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s%s" % [
+		# A part put by its line: x, y and z are where that joint's middle
+		# goes, and said as such.
+		var line: String = "" if not brick.has("axis") \
+			else " axis=%s joint=%d" % [brick["axis"], int(brick.get("joint", 0))]
+		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s%s%s" % [
 			brick["part"], brick["color"],
 			Placement._num(float(brick["x"])),
 			Placement._num(float(brick["y"])),
 			Placement._num(float(brick["z"])),
 			brick.get("rot", 0),
 			"" if face == "up" else " face=" + face,
-			"" if inside.is_empty() else " section=" + inside])
+			"" if inside.is_empty() else " section=" + inside, line])
 	# A section's bricks are in its own coordinates and go where it goes.
 	# Told only to add to x, y and z, a design would move them twice and
 	# take a turntable's top off its base.

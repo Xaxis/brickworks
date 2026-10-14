@@ -147,7 +147,9 @@ whole cycle.
   windscreens, ring plates — collide as their shapes, not as solid boxes,
   so what real sets put inside one fits, and parts that meet on a seam at
   45 degrees no longer overlap there. attachment_points lists a part's bars
-  and clips, and a part goes on a bar or a clip by axis and joint.
+  and clips, and a part goes on a bar or a clip by axis and joint. A smooth
+  dome 16 studs across is a worked construction (show_technique "smooth
+  dome"), and a search for a dome says so.
 
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for
