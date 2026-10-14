@@ -398,7 +398,10 @@ for (const size of sizes) {
     // with the old model still standing.
     // Then within three frames of being in view (the ground laid wider
     // under a design that outgrew it is the second), on the app's own work.
-    const built = /^Built/.test(row.submitSaid) && row.bricks === size;
+    // Every answer through the relay now opens on the tab it acted on
+    // (api/mcp.js header, since 2026-10-13): what was done comes after it.
+    const said = String(row.submitSaid || "").replace(/^Tab \S+, “[^”]*”\.(?: [^\n]*?tabs lists them\.)?\s*/, "");
+    const built = /^Built/.test(said) && row.bricks === size;
     const over = !built || !row.settled || row.drawnFrame === null || row.drawnFrame > 3
       || row.ownToDrawn > budget;
     if (over) failures += 1;
