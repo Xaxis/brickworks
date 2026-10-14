@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check -->
 
 ## Sub-features
 
@@ -120,6 +120,28 @@ asking for an API key.
   tab begins by naming it and its model. See [web](web.md), "Several tabs,
   one account". They are not the app's tools, so `tools/mcp_tools.json` does
   not list them.
+- `the model in Claude` (MCP Apps, 2026-10-14): claude.ai and the Claude
+  apps show the model inline beside `submit_design`, `look_at_model`,
+  `view_model` and `edit_model`. The relay serves one `ui://brickworks/model.html`
+  resource (`api/_viewer.js`, `text/html;profile=mcp-app`, self-contained:
+  site colours, system fonts, no WebGL), answers `resources/list` and
+  `resources/read` without the tab, says `resources` and the
+  `io.modelcontextprotocol/ui` extension at `initialize`, and names the page
+  on those four tools in `_meta.ui.resourceUri` (and the older flat
+  `"ui/resourceUri"`). Only a client that says at `initialize` (or in a
+  request's `_meta`, protocol 2026-07-28) that it shows such pages is given
+  more: its session id starts `app`, and its calls to those tools carry
+  `_meta["brickworks/views"]` to the tab, which adds `_meta["brickworks/view"]`
+  to the answer (`src/net/model_views.gd`): the parts count and, for
+  `submit_design` and `look_at_model`, a turntable of four corners, 480 px
+  WebP, under 100,000 characters, drawn once per change of the model. Never
+  `structuredContent`: Claude Code gives the model that in place of the
+  words. Every other client's answers are byte for byte what they were. A
+  call that became a job carries no pictures (the model is still going up).
+  `tools/web/model_view_check.mjs` proves it on a deployment: the relay's
+  half, a real tab, a session that shows pages and one that does not, and
+  the page in a sandboxed frame under the spec's default policy, sent the
+  real answers as a host sends them.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
   answer, writing any picture to `--png=PATH`. The same socket without the MCP
   wrapping, for a script, a person reading along, or an agent that would rather
@@ -212,6 +234,8 @@ godot --headless --path . --script src/dev/app_tools_probe.gd      # the window'
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
+BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)
+node tools/web/model_view_check.mjs --url=http://127.0.0.1:8797/app --relay-only   # ...its relay half, with relay_server.mjs 8797
 tools/mcp_check.py --port=8846 --jobs                     # ...in a window: Orthanc's turntable as a job
 ```
 

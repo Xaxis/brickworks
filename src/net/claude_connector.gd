@@ -807,9 +807,13 @@ func _answer(token: String, work: Dictionary) -> void:
 	# Which tab answered, and what its model is called now: the relay
 	# starts every answer by naming them, so a session working with several
 	# tabs open knows where each call landed (api/mcp.js).
+	# Added to what the answer carries already (the viewer's, ModelViews).
 	if (answer as Dictionary).get("result") is Dictionary:
-		((answer as Dictionary)["result"] as Dictionary)["_meta"] = {
-			"brickworks/tab": tab(), "brickworks/model": _model()}
+		var carried: Dictionary = (answer as Dictionary)["result"]
+		var meta: Dictionary = carried.get("_meta") if carried.get("_meta") is Dictionary else {}
+		meta["brickworks/tab"] = tab()
+		meta["brickworks/model"] = _model()
+		carried["_meta"] = meta
 	await _ask(_reply, "%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
 		int(work.get("id", 0))], JSON.stringify(answer))
 	var result: Dictionary = (answer as Dictionary).get("result", {}) as Dictionary

@@ -394,11 +394,33 @@ func answer_rpc(request: Dictionary) -> Variant:
 		if not _told_newer and not NewerBuild.live().is_empty():
 			_told_newer = true
 			content.append({"type": "text", "text": NEWER_WORDS})
-		return _result(sent_id, {"content": content, "isError": false})
+		var result: Dictionary = {"content": content, "isError": false}
+		# For a client that shows the model beside the call (ModelViews),
+		# asked for by the relay: the content above is the same either way.
+		if ModelViews.TOOLS.has(name) and ModelViews.asked(params):
+			var shown: Dictionary = await _shown(name)
+			if not shown.is_empty():
+				result["_meta"] = {ModelViews.KEY: shown}
+		return _result(sent_id, result)
 	if method in ["resources/list", "prompts/list"]:
 		return _result(sent_id, {"resources": [], "prompts": []})
 	return {"jsonrpc": "2.0", "id": sent_id,
 		"error": {"code": -32601, "message": "no method %s" % method}}
+
+
+var _views := ModelViews.new()
+
+
+## What the viewer is shown of the model after [param name]'s call: {} when
+## the call became a job (the model is still being built) or the app is
+## another call's, rather than wait for it.
+func _shown(name: String) -> Dictionary:
+	if assistant == null or jobs.running() != null or _in_hand > 0:
+		return {}
+	_in_hand += 1
+	var shown: Dictionary = await _views.of(assistant, name)
+	_hand_back()
+	return shown
 
 
 var _told_newer: bool = false

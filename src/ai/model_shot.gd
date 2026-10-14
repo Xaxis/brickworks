@@ -66,6 +66,9 @@ const ANGLES: Dictionary = {
 	# seen: one corner shows two faces and hides the other two, which is
 	# how a model was judged good with a blank front.
 	"far corner": Vector3(-0.72, 0.52, -0.72),
+	# And the other two, for a turntable of four (ModelViews).
+	"back right": Vector3(0.72, 0.52, -0.72),
+	"front left": Vector3(-0.72, 0.52, 0.72),
 	"front": Vector3(0.0, 0.18, 1.0),
 	"back": Vector3(0.0, 0.18, -1.0),
 	"left": Vector3(-1.0, 0.18, 0.0),
