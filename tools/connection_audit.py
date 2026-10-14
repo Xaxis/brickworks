@@ -235,8 +235,9 @@ STATUS: dict[str, str] = {
         "Fixed in part by agent axles: an axle holds every hole along it (`Joints.through`). "
         "Left: holes drawn without a hole primitive, and pins in parts read off their place.",
     "hose, string or chain":
-        "A flexible thing is one thing (`Flex.one_thing`), and a hose LSynth drew, whose pieces "
-        "a file carries named LS and a number, is one too (joints4). Left: flexible parts "
+        "A flexible thing is one thing (`Flex.one_thing`), and so are a hose LSynth drew, whose "
+        "pieces a file carries named LS and a number, and every piece LDraw draws one element "
+        "in (a pneumatic tube's ends with its segments; joints4). Left: flexible parts "
         "(chain links, treads, strings) drawn segment by segment are held by what they wrap "
         "round, which no connector says.",
     "hinge":

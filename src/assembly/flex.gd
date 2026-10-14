@@ -1196,6 +1196,18 @@ static func strung(library: PartLibrary, part_id: String) -> String:
 	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
 	if info != null and _lsynth(info.name):
 		return info.name.strip_edges().to_upper()
+	# And every piece LDraw draws one element in, by its number: "71533k01",
+	# "~Technic Pneumatic Tube End", is the same tube as "71533k03", its
+	# segments. Only the segments were one thing, so 8849's tubes, held by
+	# their ends on the valves, floated a segment off each end.
+	var kit: String = _kit_of(part_id)
+	if info != null and not kit.is_empty() and info.name.begins_with("~"):
+		# The kind the flex tool lays, where it lays another piece of it.
+		kind_of_piece("")
+		for laid: String in _piece_kinds:
+			if _kit_of(laid) == kit:
+				return str(_piece_kinds[laid])
+		return kit
 	if info == null or not (_a_word(info.name, "Segment") or _a_word(info.name, "Segments")
 			or info.name.contains("Chain Link") or info.name.contains("Chain Tread")):
 		return ""
@@ -1207,6 +1219,16 @@ static func strung(library: PartLibrary, part_id: String) -> String:
 	if at > 0 and family.left(at).is_valid_int():
 		family = family.left(at)
 	return family
+
+
+## The element a kit piece is a piece of: "71533" for "71533k01", "" for a
+## part that is no piece.
+static func _kit_of(part_id: String) -> String:
+	var at: int = part_id.rfind("k")
+	if at <= 0 or not part_id.substr(at + 1).is_valid_int():
+		return ""
+	var base: String = part_id.left(at)
+	return base if base.left(base.length() - 1).is_valid_int() or base.is_valid_int() else ""
 
 
 ## Whether a part's name is an LSynth hose piece's: LS and a number, alone.

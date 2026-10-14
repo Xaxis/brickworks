@@ -332,8 +332,10 @@ python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if
 clip or a hinge (`Joints.held_otherwise`): a sticker is held by the face it
 lies on (`Stickers.lies_on`, the one it covers most); a flexible thing's
 pieces are one thing (`Flex.one_thing`: a kind the flex tool lays, or a part
-LDraw names a Segment, a Chain Link or a Chain Tread), held where any of it
-is; and magnets that touch hold each other. It builds each case in the real
+LDraw names a Segment, a Chain Link or a Chain Tread, or any piece LDraw draws
+one element in, a "~" part numbered NNNNkNN, with the element's other pieces,
+or a piece of a hose LSynth drew, named LS and a number; `Flex.strung`), held
+where any of it is; and magnets that touch hold each other. It builds each case in the real
 scene, the sticker put on with `print_part` and the string laid with
 `lay_flex` over MCP, and asks every place that counts: the design check
 (check_design, review_model, the bench's `candidate_probe`), an edit's check
@@ -386,7 +388,8 @@ catalogue with `moved_by` (`tools/build_meshes.py`, the 68 stubs that turn or
 shift what they forward to). "An older hinge's knuckles": 8849's 4276b hinged up
 square on a 4275b on a 1 x 2 brick, held by its fingers' rounds lying on one line
 between the other's (`Joints._knuckles`, in `Joints.rounds`, so a section leans
-on them too). On 3a39926 the new lines fail.
+on them too). And a pneumatic tube's segment (71533k03) out to the side of its
+end (71533k01), one thing with it. On 3a39926 the new lines fail.
 
 `clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
 2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2

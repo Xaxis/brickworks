@@ -469,6 +469,15 @@ func _initialize() -> void:
 0 NOFILE
 """)
 
+	# And the pieces LDraw draws one element in are one thing: a pneumatic
+	# tube's end (71533k01) and its segments (71533k03). A segment out to the
+	# side of an end standing on a 1 x 1 brick, touching only the end.
+	_holds_standing("a pneumatic tube's segment is one thing with its end", """
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 0 0 -44 0 1 0 0 0 1 0 0 0 1 71533k01.dat
+1 0 6 -42 0 0 4 0 -1 0 0 0 0 1 71533k03.dat
+""", 3)
+
 	print("")
 	if _failures == 0:
 		print("the joints real sets use pass, and the same parts apart do not")
