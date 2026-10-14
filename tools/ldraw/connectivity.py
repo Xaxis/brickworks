@@ -59,6 +59,8 @@ class ConnectorKind(Enum):
     SOCKET = "socket"
     SHAFT = "shaft"          # round and solid: a bar, a pin, a turntable's disc
     BORE = "bore"            # round and empty: a clip, a hollow stud, a hinge's eye
+    FINGER = "finger"        # a click hinge's single finger, along the line it turns on
+    FORK = "fork"            # a click hinge's two fingers: the gap a single one turns in
 
 
 class Gender(Enum):
@@ -195,6 +197,28 @@ _register(
     Gender.FEMALE,
 )
 _register("joint8ball", ConnectorKind.BALL, Gender.MALE)
+
+## A towball is a whole sphere 16 LDU across, the size of a Joint-8 ball and
+## drawn the way joint8ball draws its own (8-8sphe at a scale of 8), but on
+## its own, so it was no ball: 2508's towball and 2736's, in a Joint-8 socket
+## as sets put them, held nothing. The sphere facing out, at that size, is
+## a ball at its middle; one drawn inside out is a cavity, not a ball.
+_BALL_SPHERE = "8-8sphe"
+BALL_RADIUS = 8.0
+
+
+def _ball(at: Matrix, inward: bool) -> "Connection | None":
+    """A ball where a whole sphere of a ball's size is drawn facing out."""
+    if inward:
+        return None
+    radii = [at.transform_direction(v).length()
+             for v in (Vec3(1.0, 0.0, 0.0), Vec3(0.0, 1.0, 0.0), Vec3(0.0, 0.0, 1.0))]
+    if max(radii) - min(radii) > 0.1 or abs(radii[0] - BALL_RADIUS) > 0.5:
+        return None
+    axis = at.transform_direction(_LOCAL_AXIS)
+    return Connection(kind=ConnectorKind.BALL, gender=Gender.MALE,
+                      position=at.transform_point(Vec3(0.0, 0.0, 0.0)),
+                      axis=axis * (1.0 / max(axis.length(), 1e-9)), source=_BALL_SPHERE)
 _register("joint8socket1 joint8socket2 joint8socket3", ConnectorKind.SOCKET,
           Gender.FEMALE)
 
@@ -404,7 +428,8 @@ def _plain_holes(stem: str, round_ones: list[Connection],
 ## radius. Written by the app for a part changed from another's mesh,
 ## whose triangles no longer say where its studs and holes are.
 CONNECTOR_META = "!BRICKWORKS"
-_ROUND_KINDS = (ConnectorKind.SHAFT, ConnectorKind.BORE)
+_ROUND_KINDS = (ConnectorKind.SHAFT, ConnectorKind.BORE, ConnectorKind.FINGER,
+                ConnectorKind.FORK)
 
 
 def said_connectors(library: Library, name: str) -> list[Connection]:
@@ -572,13 +597,24 @@ def _walk(
             kind=kind, gender=Gender.NEUTRAL, position=transform.transform_point(at),
             axis=axis * (1.0 / max(axis.length(), 1e-9)), source=own))
 
+    inverted = False
     for command in ldfile.commands:
+        if isinstance(command, MetaLine):
+            inverted = command.keyword == "BFC" and "INVERTNEXT" in command.text.upper().split()
+            continue
         if not isinstance(command, SubfileRef):
             continue
+        inward, inverted = inverted, False
 
         stem = command.filename.rsplit("/", 1)[-1]
         if stem.endswith(".dat"):
             stem = stem[:-4]
+
+        if stem == _BALL_SPHERE:
+            ball = _ball(transform @ command.matrix, inward)
+            if ball is not None:
+                found.append(ball)
+            continue
 
         entry = _CONNECTORS.get(stem)
         if entry is not None:
@@ -674,6 +710,53 @@ ROUND_LENGTH = 1.0
 ROUND_WIDEST = 63.75
 
 
+## Click hinges. LDraw draws a locking hinge's fingers from the clh*
+## primitives, and each turns about its own x axis through (0, y, z) — read
+## off where the circles each is drawn with are centred (every one of them
+## on that line). A single finger is centred on x = 0; a dual finger is two
+## halves at one origin, turned half round about z (its !HELP), whose
+## fingers stand from |x| = 3 out, so the gap a single finger turns in is
+## |x| < 3, and each half records its own side of it. Nothing in the files
+## is a pin: the joint is the two lines being one, so it is recorded as a
+## length of round on that line, a finger in a fork, as a shaft in a bore.
+##
+## Unlisted on purpose: clh2c, clh3q, clh5s, clh6c, clh-finger and clh-base
+## are pieces the listed ones are drawn from.
+HINGE_RADIUS = 6.0
+HINGE_GAP = 3.0
+_HINGES: dict[str, tuple[ConnectorKind, float, float]] = {
+    "clh1": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh2": (ConnectorKind.FINGER, -7.0, 0.0),
+    "clh3": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh6": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh6d": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh6u": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh8": (ConnectorKind.FINGER, 0.0, -7.0),
+    "clh9": (ConnectorKind.FINGER, -7.0, 0.0),
+    "clh12": (ConnectorKind.FINGER, -7.0, 0.0),
+    "clh13": (ConnectorKind.FINGER, -7.0, 0.0),
+    "clh15": (ConnectorKind.FINGER, 0.0, -10.0),
+    "clh4": (ConnectorKind.FORK, 0.0, 4.0),
+    "clh5": (ConnectorKind.FORK, 0.0, 10.0),
+    "clh7": (ConnectorKind.FORK, 0.0, 4.0),
+    "clh10": (ConnectorKind.FORK, 0.0, 4.0),
+    "clh11": (ConnectorKind.FORK, 0.0, 4.0),
+    "clh14": (ConnectorKind.FORK, 0.0, 10.0),
+}
+
+
+def _hinge_piece(found: list["_Piece"], stem: str, at: Matrix) -> None:
+    """A click hinge's finger or its half of a fork, on the line it turns on."""
+    kind, y, z = _HINGES[stem]
+    low, high = (-HINGE_GAP, HINGE_GAP) if kind is ConnectorKind.FINGER else (0.0, HINGE_GAP)
+    start = at.transform_point(Vec3(low, y, z))
+    end = at.transform_point(Vec3(high, y, z))
+    if (end - start).length() < 1e-6:
+        return
+    found.append(_Piece(kind=kind, radius=HINGE_RADIUS, start=start, end=end, arc=1.0,
+                        source=stem, continues=False))
+
+
 @dataclass(slots=True)
 class _Piece:
     kind: ConnectorKind
@@ -753,6 +836,11 @@ def _round_walk(
         if stem.endswith(".dat"):
             stem = stem[:-4]
 
+        if stem in _HINGES:
+            # A leaf: what it is drawn with is its teeth, not a round of
+            # anything (half rounds 0.25 across at its sides).
+            _hinge_piece(found, stem, child)
+            continue
         surface = _SURFACE.match(stem)
         if surface is not None:
             if certified and (keep.bores if child_invert else keep.shafts):
@@ -885,7 +973,8 @@ def _merge_rounds(pieces: list[_Piece]) -> list[Connection]:
             continue
         out.append(Connection(
             kind=kind,
-            gender=Gender.MALE if kind is ConnectorKind.SHAFT else Gender.FEMALE,
+            gender=(Gender.MALE if kind in (ConnectorKind.SHAFT, ConnectorKind.FINGER)
+                    else Gender.FEMALE),
             position=foot + way * low,
             axis=way,
             source=source,

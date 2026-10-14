@@ -1030,3 +1030,121 @@ def test_a_redirect_still_renders_its_target(library: Library) -> None:
     target = flatten(library, "3665.dat")
     assert len(stub.triangles) == len(target.triangles)
     assert stub.bounds() == target.bounds()
+
+
+# -- click hinges, and covers that are the part --------------------------------
+
+
+def _line(connection) -> tuple:
+    """A round's line in a frame: its middle and its way."""
+    p, a = connection.position, connection.axis
+    middle = (p.x + a.x * connection.length / 2, p.y + a.y * connection.length / 2,
+              p.z + a.z * connection.length / 2)
+    return middle, (a.x, a.y, a.z)
+
+
+def test_a_click_hinge_finger_and_fork_are_one_line_when_put_together(
+        library: Library) -> None:
+    """44302a's two fingers and 44301a's one are drawn from clh primitives and
+    nothing else, so neither had a connector and a locking hinge held nothing
+    (180 floating parts put down to it in the first 362 real sets). Each now
+    has its turning line: a fork on 44302a, a finger on 44301a, and laid end
+    to end as sets lay them (44301a turned half round, 60 along) the two lines
+    are one."""
+    fork = [c for c in extract(library, "44302a.dat") if c.kind is ConnectorKind.FORK]
+    finger = [c for c in extract(library, "44301a.dat") if c.kind is ConnectorKind.FINGER]
+    assert len(fork) == 1 and len(finger) == 1
+    assert fork[0].gender is Gender.FEMALE and finger[0].gender is Gender.MALE
+    (fx, fy, fz), fway = _line(fork[0])
+    (gx, gy, gz), gway = _line(finger[0])
+    # 44301a turned half round about y and moved 60 along x.
+    gx, gz = 60.0 - gx, -gz
+    assert abs(abs(fway[2]) - 1.0) < 1e-6 and abs(abs(gway[2]) - 1.0) < 1e-6
+    assert (fx, fy, fz) == pytest.approx((gx, gy, gz), abs=0.01)
+
+
+def test_a_part_without_click_hinges_has_no_finger(library: Library) -> None:
+    """A finger or a fork comes only from a clh primitive: a brick, a plate
+    with a clip and a hinge brick have none."""
+    for part in ("3001.dat", "61252.dat", "3830.dat", "3831.dat"):
+        kinds = {c.kind for c in extract(library, part)}
+        assert ConnectorKind.FINGER not in kinds and ConnectorKind.FORK not in kinds, part
+
+
+@needs_numpy
+def test_a_quarter_dome_is_covered_as_a_shell_not_its_box() -> None:
+    """87375, a quarter dome, is past the box limit at full grain, and its
+    cover was its bounding box: everything under the dome and the clips on
+    its handles collided with it. It is a coarser shell now: far fewer cells
+    than its box, its handle still in it, its hollow open, and room round
+    its bottom handle for a clip."""
+    cells, _connectors = _built_cover("87375.dat")
+    xs = [c[0] for c in cells]
+    ys = [c[1] for c in cells]
+    zs = [c[2] for c in cells]
+    box = (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1) * (max(zs) - min(zs) + 1)
+    assert len(cells) < box * 0.4, (len(cells), box)
+    # App axes, cells of 2 LDU: the bottom handle runs along x at y -120,
+    # z 120 LDU.
+    assert (0, -60, 60) in cells
+    # Under the crown, the hollow of the dome.
+    assert (0, -40, 30) not in cells and (0, -30, 25) not in cells
+    # A clip's ring round the handle, 6 LDU under it.
+    assert (0, -63, 60) not in cells
+
+
+@needs_numpy
+def test_four_quarter_domes_meet_at_their_seams_without_sharing_a_cell() -> None:
+    """The four quarters of a dome meet edge to edge on planes at 45 degrees
+    through lattice points, so a face ran through cell middles, and a cell on
+    it was inside both quarters: the dome overlapped itself along every seam.
+    A quarter and the next, turned a quarter either way about the dome's
+    axis (app x 0, z -30 LDU), share no cell."""
+    cells, _connectors = _built_cover("87375.dat")
+    # A cell's middle is at (2x + 1, 2z + 1) LDU; turned a quarter about
+    # (0, -30) it is the middle of (-z - 16, x - 15), or of (z + 15, -x - 16)
+    # the other way.
+    one = {(-z - 16, y, x - 15) for x, y, z in cells}
+    other = {(z + 15, y, -x - 16) for x, y, z in cells}
+    assert not (cells & one) and not (cells & other)
+
+
+@needs_numpy
+def test_a_pane_keeps_the_cells_its_faces_run_through() -> None:
+    """60601's glass is drawn between z 3 and z 7, both cell middles (cells
+    1 and 3), and square to z. Its faces' cells are the pane's: a seam at 45
+    degrees gives its cells to neither side, a face square to the grid does
+    not, or the pane is its middle layer alone and stands in its frame
+    touching nothing."""
+    cells, _connectors = _built_cover("60601.dat")
+    layers = {z: sum(1 for c in cells if c[2] == z) for z in (1, 2, 3)}
+    assert layers[1] >= 150 and layers[3] >= 150 and layers[2] >= 250
+
+
+@needs_numpy
+@pytest.mark.parametrize("part", ["58846.dat", "95188.dat"])
+def test_a_tapered_quarter_ring_is_covered_as_its_shape(part: str) -> None:
+    """58846 and 95188, the 10 x 10 and 6 x 6 tapered quarter rings, were
+    their bounding boxes, solid squares: nothing a real set nests in one
+    fitted. Each is its shape now: well under its box, and open at the
+    corners of its square that the quarter ring does not reach."""
+    cells, _connectors = _built_cover(part)
+    xs = [c[0] for c in cells]
+    ys = [c[1] for c in cells]
+    zs = [c[2] for c in cells]
+    box = (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1) * (max(zs) - min(zs) + 1)
+    assert len(cells) < box * 0.7, (len(cells), box)
+    middle = (min(ys) + max(ys)) // 2
+    corners = [(x, middle, z) for x in (min(xs), max(xs)) for z in (min(zs), max(zs))]
+    assert sum(1 for c in corners if c not in cells) >= 2, part
+
+
+@needs_numpy
+def test_a_round_plate_with_an_opening_is_open_through_it() -> None:
+    """11833, a 4 x 4 round plate with a 2 x 2 round opening, filled its
+    opening layer by layer like a brick's underside, so a round brick put
+    through it, as sets put one, collided with it. A column with no plastic
+    at any height is open now, and the plate round it is still there."""
+    cells, _connectors = _built_cover("11833.dat")
+    assert not [c for c in cells if c[0] in (-1, 0) and c[2] in (-1, 0)]
+    assert (15, -1, 0) in cells

@@ -4351,15 +4351,15 @@ func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> Str
 		var where: String = "x=%s y=%s z=%s" % [Placement._num(point.x / STUD),
 			Placement._num(point.y / PLATE), Placement._num(point.z / STUD)]
 		var said: String = AXLE_WORDS.get(joint[0], "")
-		if joint[0] == "axle" or joint[0] == "pin":
-			# Its length, so a gear can be put anywhere along it.
+		if joint[0] == "axle" or joint[0] == "pin" or joint[0] == "bar":
+			# Its length, so a gear or a clip can be put anywhere along it.
 			said = said % _studs(float(joint[3]) * 2.0 / STUD)
 		lines.append("  joint %d: %s at %s, running %s — %s" % [n, joint[0], where,
 			_which_axis(way), said])
 	if lines.is_empty():
 		return ""
 	return ("\n\nIts joints, each at its middle:\n" + "\n".join(lines)
-		+ "\nTo put a pin, an axle, a gear or a bush on one, give it axis: the way the "
+		+ "\nTo put a pin, an axle, a gear, a bush or a clip on one, give it axis: the way the "
 		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
 		+ "where its own middle goes, not its low corner. Slide it along by changing "
 		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
@@ -4373,6 +4373,9 @@ const AXLE_WORDS: Dictionary = {
 	"pin": "a pin %s studs long, for round holes",
 	"turntable": ("where it turns: its top and its base both go here, each by axis "
 		+ "\"y\" and this point"),
+	"bar": ("a bar %s studs long: a clip, a hand or a hollow stud grips it anywhere "
+		+ "along it, at any angle round it"),
+	"clip": "grips a bar laid along this line (a clip, a hollow stud, a bar holder)",
 }
 
 
@@ -4540,7 +4543,8 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 
 ## The lines a part joins by, in its own frame, in the order attachment_points
 ## numbers them: [kind, middle, way, half its length along the line]. kind is
-## "axle", "pin", "axle hole" or "pin hole". An axle's or a pin's middle is
+## "axle", "pin", "axle hole" or "pin hole", then "bar" or "clip" ([method
+## _bar_kind]). An axle's or a pin's middle is
 ## halfway along it (Mechanism reads the same lines, Joints.through matches
 ## them); a hole's is halfway through the part (JointSnap.ends_of).
 ##
@@ -4578,7 +4582,42 @@ static func _joint_lines(part: Lbm.PartMesh, part_id: String = "") -> Array:
 				again = true
 		if not again:
 			out.append([kind, end.at, end.axis, end.reach])
+	# And after those, so a Technic part's numbering is what it was: the bars
+	# and what grips one (a clip, a hollow stud, a bar holder, a hand). The
+	# owner's session building a dome was told 87375, a quarter dome whose
+	# two handles are bars, had no connection points at all, and gave up on
+	# it.
+	for connector: Lbm.Connector in part.connectors:
+		var kind: String = _bar_kind(connector)
+		if kind.is_empty():
+			continue
+		var middle: Vector3 = connector.position + connector.axis * (connector.length * 0.5)
+		var again: bool = false
+		for one: Array in out:
+			if one[0] == kind and (one[1] as Vector3).distance_to(middle) < 1.0:
+				again = true
+		if not again:
+			out.append([kind, middle, connector.axis, connector.length * 0.5])
 	return out
+
+
+## The radius of a bar, LDU: 3.18 mm across. A clip, a hand, a hollow stud
+## and a bar holder grip one; LDraw draws each a round 4 LDU in radius.
+const BAR_RADIUS := 4.0
+
+
+## What a round connector is to a bar: "bar" (a shaft a bar's size, long
+## enough to grip) or "clip" (a bore that size: a clip's eye, a hollow
+## stud, a bar holder, a hand — the part file keeps no arc to tell an open
+## one from a closed one, and a bar goes into either along its line), or "".
+static func _bar_kind(connector: Lbm.Connector) -> String:
+	if absf(connector.radius - BAR_RADIUS) > 0.5:
+		return ""
+	if connector.kind == "shaft" and connector.length >= 4.0:
+		return "bar"
+	if connector.kind == "bore" and connector.length >= 2.0:
+		return "clip"
+	return ""
 
 
 ## [method _joint_lines] by part, worked out once each.
@@ -4586,15 +4625,25 @@ static var _joints_of: Dictionary = {}
 
 
 ## Which of a part's joints is nearest its middle: the one a placement on a
-## line takes when it names none.
+## line takes when it names none. A Technic joint before a bar or a clip,
+## so a part that has both is put by its pin, axle or hole as it was.
 static func _middle_joint(part: Lbm.PartMesh, lines: Array) -> int:
 	var centre: Vector3 = part.bounds.get_center()
-	var best: int = 0
-	for n: int in lines.size():
-		if (lines[n][1] as Vector3).distance_to(centre) \
-				< (lines[best][1] as Vector3).distance_to(centre) - 0.5:
-			best = n
-	return best
+	var best: int = -1
+	for technic: bool in [true, false]:
+		for n: int in lines.size():
+			if technic and str(lines[n][0]) in BAR_KINDS:
+				continue
+			if best < 0 or (lines[n][1] as Vector3).distance_to(centre) \
+					< (lines[best][1] as Vector3).distance_to(centre) - 0.5:
+				best = n
+		if best >= 0:
+			return best
+	return 0
+
+
+## The joints a bar makes, as [method _joint_lines] names them.
+const BAR_KINDS: Array[String] = ["bar", "clip"]
 
 
 ## The four square turns that carry [param local] onto [param want], a
@@ -4658,8 +4707,8 @@ func _on_its_line(placement: Placement) -> void:
 		return
 	var lines: Array = _joint_lines(part, placement.part)
 	if lines.is_empty():
-		placement.odd_axis = ("is said by its axis, but has no pin, axle or hole "
-			+ "to put on a line; give its low corner instead")
+		placement.odd_axis = ("is said by its axis, but has no pin, axle, hole, bar "
+			+ "or clip to put on a line; give its low corner instead")
 		return
 	var n: int = placement.joint if placement.joint >= 0 else _middle_joint(part, lines)
 	if n >= lines.size():
@@ -4725,7 +4774,7 @@ func _seat(model: Model) -> void:
 		for line: Array in _joint_lines(part):
 			var row: Array = [index, line[0], at * (line[1] as Vector3),
 				(at.basis * (line[2] as Vector3)).normalized(), line[3]]
-			if str(line[0]).ends_with("hole"):
+			if _takes_one(str(line[0])):
 				holes.append(row)
 			else:
 				shafts.append(row)
@@ -4755,7 +4804,7 @@ func _seat(model: Model) -> void:
 		var was: String = placement.where()
 		_put_on_line(placement, part, line, point, basis)
 		_pattern_advice.append(("brick %d (%s): put %s brick %d's %s. Its x, y, z (%s) "
-			% [index, placement.part, "in" if str(target[1]).ends_with("hole") else "on",
+			% [index, placement.part, "in" if _takes_one(str(target[1])) else "on",
 				target[0], target[1], was]
 			+ "were a point on that %s, so they were read as where its middle goes; " % (
 				"hole" if str(target[1]).ends_with("hole") else str(target[1]))
@@ -4765,20 +4814,19 @@ func _seat(model: Model) -> void:
 
 
 ## The joint of a part and the hole or the axle of another that [param
-## point] is on: [joint number, the other's row], or [] for none. A pin or
-## an axle goes into a hole (a pin not into an axle hole); a hole goes onto
-## an axle or a pin.
+## point] is on: [joint number, the other's row], or [] for none, by what
+## goes into what ([constant GOES_IN]): a pin or an axle into a hole (a pin
+## not into an axle hole), a bar into a clip, and each the other way round.
+## A turntable's point is for a placement by its axis and nothing else.
 func _hole_at(point: Vector3, lines: Array, holes: Array, shafts: Array,
 		own: int) -> Array:
 	for n: int in lines.size():
 		var kind: String = lines[n][0]
-		var male: bool = not kind.ends_with("hole")
+		if not GOES_IN.has(kind):
+			continue
+		var male: bool = not _takes_one(kind)
 		for row: Array in (holes if male else shafts):
-			if row[0] == own:
-				continue
-			if male and kind == "pin" and row[1] == "axle hole":
-				continue
-			if not male and kind == "axle hole" and row[1] == "pin":
+			if row[0] == own or not (GOES_IN[kind] as Array).has(row[1]):
 				continue
 			var gap: Vector3 = point - (row[2] as Vector3)
 			var along: float = gap.dot(row[3])
@@ -4788,6 +4836,19 @@ func _hole_at(point: Vector3, lines: Array, holes: Array, shafts: Array,
 				continue
 			return [n, row]
 	return []
+
+
+## What each kind of joint line goes into, or takes: see [method _hole_at].
+const GOES_IN: Dictionary = {
+	"pin": ["pin hole"], "axle": ["pin hole", "axle hole"],
+	"pin hole": ["pin", "axle"], "axle hole": ["axle"],
+	"bar": ["clip"], "clip": ["bar"],
+}
+
+
+## Whether a joint line is the kind something goes into: a hole or a clip.
+static func _takes_one(kind: String) -> bool:
+	return kind.ends_with("hole") or kind == "clip"
 
 
 ## Whether a part has studs of its own (a brick, a plate), which a joint's
@@ -10715,6 +10776,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	## to overlap and the lattice finds out in placement order.
 	var entries: Array = _mating_entries(model)
 	var joined: Dictionary = Joints.both_ways(entries)
+	## And a ball in its socket, a towball's too, whichever way each turns:
+	## held and forgiven as a pin is. See [method Joints.balls].
+	Joints.merge(joined, Joints.balls(entries))
 	## And which turn in something round that fits them, with where: a clip
 	## on a bar, a bar in a hollow stud, a hinge, a turntable. See
 	## [method Joints.rounds].
@@ -13552,8 +13616,8 @@ func _check_support(
 		# is not this design's to answer for.
 		# Unless what is asked is what an edit leaves hanging: then only the
 		# ground holds (_left_hanging).
-		if floor_y <= 0 or (placement.id != 0 and not placement.moved
-				and not _ground_only):
+		if floor_y <= 0 or (floor_y <= 2 and _on_the_ground(placement, model)) \
+				or (placement.id != 0 and not placement.moved and not _ground_only):
 			grounded.append(index)
 			continue
 
@@ -13642,6 +13706,26 @@ func _check_support(
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
 				clutched.has(index), issues, studs_in.get(index, []))
+
+
+## Whether a part stands on the ground by its drawn shape, within a cell of
+## it, where its cover stops short of it. A cover keeps the cells whose
+## middles are in the part, and a wheel's tread or a train's wheelset whose
+## lowest point is an LDU above a cell's line keeps none in the cell under
+## it; and opened from a file, a model stands on its lowest point rounded up
+## to a whole cell, which a bucket's handle drawn 1.6 LDU under the
+## baseplate made 2. So the trains of 10014 and 10020 stood an LDU up on
+## their wheels, 10243's restaurant two on its baseplate, and the whole of
+## each was called floating. Square parts only: a turned part's box reaches
+## below its shape, and its cover, which keeps every cell it touches, does
+## not stop short of the ground.
+func _on_the_ground(placement: Placement, model: Model) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(placement.part) if library != null else null
+	if part == null:
+		return false
+	var at: Transform3D = _transform(placement, part, model.section_for(placement))
+	return BrickLattice.is_square_to_grid(at.basis) \
+		and (at * part.bounds).position.y <= BrickLattice.CELL + 0.01
 
 
 static func _gives(gives: Dictionary, holder: int, held: int) -> void:
@@ -18700,7 +18784,10 @@ func _tools() -> Array:
 			"name": "attachment_points",
 			"description": ("Where a part's studs are and the exact "
 				+ "coordinates something sitting on each one would "
-				+ "take. Ask about a brick that is already placed by "
+				+ "take, and its joints: holes, pins, axles, and the bars "
+				+ "(a handle is one) and clips a clip-on-bar joint is made "
+				+ "of, each by its middle and the way it runs, numbered "
+				+ "for a placement by axis and joint. Ask about a brick that is already placed by "
 				+ "its number, or about one you are considering by "
 				+ "giving part and position. Use this rather than "
 				+ "working out sideways positions yourself — a stud on "

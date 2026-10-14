@@ -40,6 +40,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from scipy.ndimage import binary_fill_holes
+from scipy.spatial import ConvexHull, QhullError
 
 from .connectivity import ConnectorKind, Gender
 from .connectivity import Connection
@@ -117,6 +118,11 @@ class Occupancy:
         )
 
 
+## How far a column's ray is moved off its cell's middle to tell which side
+## of a face the middle is on, LDU: far below anything drawn. See [voxelise].
+TIE = 1.3e-4
+
+
 def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     """Solid-voxelise a mesh by stabbing a ray up each cell column.
 
@@ -126,6 +132,16 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     the winding rather than a parity count is what lets it cope with the
     parts whose geometry is not perfectly closed: a missed triangle
     leaves a local error instead of inverting everything above it.
+
+    A cell whose middle is on an upright face slanted in plan is inside
+    neither side of it. Counted inside, as a cell on any face was, it was
+    inside both parts meeting there: four 87375 quarter domes meet on
+    seams at 45 degrees (x + z = 30 passes x = 15, z = 15, a cell's
+    middle), and overlapped all along them. A face square to x or z keeps
+    its cells, and so does a face slanted only in height, as a slope's is:
+    60601's pane is drawn from one cell middle to another, and without
+    those cells it was a third of itself and stood in its frame touching
+    nothing.
     """
     if not mesh.triangles:
         return Occupancy((0, 0, 0), (0, 0, 0), np.zeros(0, dtype=bool))
@@ -149,15 +165,36 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     shape = (
         int(max(1, extent[0])), int(max(1, extent[1])), int(max(1, extent[2])))
 
-    grid = np.zeros(shape, dtype=bool)
+    grid, touchy = _stab(tri, origin, shape, cell, 0.0, 0.0)
+    if touchy.any():
+        # Which side of an upright face a column on it is, by moving its ray
+        # a hair off it each way along x and along z, in only the columns
+        # whose middles are on an edge in plan. On a face square to z,
+        # moving along x leaves the ray on it and the two moves agree; on a
+        # face square to x, moving along z does. Slanted, neither does.
+        moved = {(dx, dz): _stab(tri, origin, shape, cell, dx, dz, touchy)[0]
+                 for dx, dz in ((TIE, 0.0), (-TIE, 0.0), (0.0, TIE), (0.0, -TIE))}
+        agreed = ((moved[(TIE, 0.0)] & moved[(-TIE, 0.0)])
+                  | (moved[(0.0, TIE)] & moved[(0.0, -TIE)]))
+        grid = np.where(touchy[:, None, :], agreed, grid)
 
-    # Column centres, so a ray never runs exactly along a shared edge
-    # where it could be counted twice or not at all.
-    xs = (np.arange(shape[0]) + origin[0] + 0.5) * cell
-    zs = (np.arange(shape[2]) + origin[2] + 0.5) * cell
+    return Occupancy(
+        origin=(int(origin[0]), int(origin[1]), int(origin[2])),
+        shape=shape,
+        bits=grid.reshape(-1).copy(),
+    )
 
-    # Crossings per column, gathered triangle by triangle.
-    crossings: dict[tuple[int, int], list[tuple[float, int]]] = {}
+
+def _stab(
+    tri: np.ndarray, origin: np.ndarray, shape: tuple[int, int, int], cell: float,
+    dx: float, dz: float, columns: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The cells inside by a ray up each column, ``dx`` and ``dz`` LDU off
+    its middle, and the columns whose rays are within TIE of an edge of a
+    triangle in plan. With ``columns``, only those columns are stabbed."""
+    xs = (np.arange(shape[0]) + origin[0] + 0.5) * cell + dx
+    zs = (np.arange(shape[2]) + origin[2] + 0.5) * cell + dz
+    y_base = (np.arange(shape[1]) + origin[1] + 0.5) * cell
 
     ax, ay, az = tri[:, 0, 0], tri[:, 0, 1], tri[:, 0, 2]
     bx, by, bz = tri[:, 1, 0], tri[:, 1, 1], tri[:, 1, 2]
@@ -166,7 +203,15 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     # Twice the signed area of the triangle projected onto XZ. Its sign is
     # the facing: positive means the triangle's normal has +Y in it.
     area2 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax)
+    # How far each barycentric coordinate moves when the ray moves TIE:
+    # the opposite edge's length over the area. Twice that, to be sure.
+    reach = np.stack([np.hypot(bx - cx, bz - cz), np.hypot(cx - ax, cz - az),
+                      np.hypot(ax - bx, az - bz)], axis=1)
+    reach = 2.0 * TIE * reach / np.maximum(np.abs(area2), 1e-300)[:, None]
 
+    touchy = np.zeros((shape[0], shape[2]), dtype=bool)
+    # Crossings per column, gathered triangle by triangle.
+    crossings: dict[tuple[int, int], list[tuple[float, int]]] = {}
     for n in range(tri.shape[0]):
         if abs(area2[n]) < 1e-12:
             continue  # edge-on to the column direction; contributes nothing
@@ -182,6 +227,11 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
         k1 = min(shape[2] - 1, int(np.ceil(z1 / cell)) - int(origin[2]))
         if i0 > i1 or k0 > k1:
             continue
+        wanted = None
+        if columns is not None:
+            wanted = columns[i0 : i1 + 1, k0 : k1 + 1]
+            if not wanted.any():
+                continue
 
         px = xs[i0 : i1 + 1]
         pz = zs[k0 : k1 + 1]
@@ -192,7 +242,15 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
         w1 = ((cx[n] - gx) * (az[n] - gz) - (cz[n] - gz) * (ax[n] - gx)) / area2[n]
         w2 = 1.0 - w0 - w1
 
+        if columns is None:
+            e0, e1, e2 = reach[n]
+            touchy[i0 : i1 + 1, k0 : k1 + 1] |= (
+                (w0 >= -e0) & (w1 >= -e1) & (w2 >= -e2)
+                & ((np.abs(w0) <= e0) | (np.abs(w1) <= e1) | (np.abs(w2) <= e2)))
+
         inside = (w0 >= 0.0) & (w1 >= 0.0) & (w2 >= 0.0)
+        if wanted is not None:
+            inside &= wanted
         if not inside.any():
             continue
 
@@ -204,8 +262,9 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
             crossings.setdefault(key, []).append(
                 (float(y[local_i, local_k]), direction))
 
-    y_base = (np.arange(shape[1]) + origin[1] + 0.5) * cell
-
+    # Up the column a face at a cell's middle counts on both sides: a part
+    # resting on another there is held by the cell under it.
+    grid = np.zeros(shape, dtype=bool)
     for (i, k), hits in crossings.items():
         hits.sort()
         winding = 0
@@ -219,12 +278,7 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
                     grid[i, first:last, k] = True
             winding += direction
             previous = height
-
-    return Occupancy(
-        origin=(int(origin[0]), int(origin[1]), int(origin[2])),
-        shape=shape,
-        bits=grid.reshape(-1).copy(),
-    )
+    return grid, touchy
 
 
 ## The bore of a Technic pin or axle hole, in LDU.  peghole draws its
@@ -287,21 +341,60 @@ def fill_cavities(
         return occupancy
 
     before = occupancy.to_grid()
-    grid = before.copy()
+    found = holes(connections or [])
+    bores = _bore(occupancy, found, whole_line=False) if found else None
+    # The holes plugged while it fills: a hole through a wall into a cavity
+    # opens the cavity to the outside in the layers it crosses, and they
+    # stayed hollow. 18897, a 6 x 6 round brick with a hole in each side,
+    # was hollow 12 LDU deep all round once its cover was exact. The bores
+    # are cleared again below.
+    grid = before.copy() if bores is None else before | bores
     for y in range(grid.shape[1]):
         filled = binary_fill_holes(grid[:, y, :])
         if filled is not None:
             grid[:, y, :] = filled
 
-    found = holes(connections or [])
-    if found:
-        grid = grid & ~_bore(occupancy, found, whole_line=False)
+    # A hole right through the part, top to bottom, is a closed ring in
+    # every layer too, and filled like a brick's underside — but nothing is
+    # spoken for in it: a ring plate's middle, a round plate's opening, a
+    # tyre lying flat. Where a column holds no plastic at any height, its
+    # fill is taken back: a brick's cavity has the brick's top over it. Not
+    # on a stud's line, though: a stud below is held by the plastic just
+    # past its tip, and 3062b, a round brick bored through its open stud,
+    # stood on nothing once its bore was open.
+    through = ~before.any(axis=1) & ~_stud_lines(occupancy, connections or [])
+    grid &= ~(through[:, None, :] & ~before)
+
+    if bores is not None:
+        grid = grid & ~bores
 
     for window, room in _clip_rooms(occupancy, bars(connections or []), before):
         grid[window] &= ~(room & ~before[window])
 
     return Occupancy(
         origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))
+
+
+## How far from a stud's or a tube's upright line a through hole is kept
+## filled, in LDU: a stud's radius and a cell.
+STUD_CLEAR = 8.0
+
+
+def _stud_lines(occupancy: Occupancy, connections: list[Connection]) -> np.ndarray:
+    """The columns (x, z) within STUD_CLEAR of an upright stud, tube or ridge
+    of the part's: where a stud goes, and is held by finding plastic."""
+    shape = occupancy.shape
+    near = np.zeros((shape[0], shape[2]), dtype=bool)
+    xs = (np.arange(shape[0]) + occupancy.origin[0] + 0.5) * CELL
+    zs = (np.arange(shape[2]) + occupancy.origin[2] + 0.5) * CELL
+    gx, gz = np.meshgrid(xs, zs, indexing="ij")
+    for c in connections:
+        if c.kind not in (ConnectorKind.STUD, ConnectorKind.TUBE, ConnectorKind.RIDGE) \
+                or abs(c.axis.y) < 0.99:
+            continue
+        # Connections are in LDraw's axes; the grid's z is LDraw's turned.
+        near |= (gx - c.position.x) ** 2 + (gz + c.position.z) ** 2 <= STUD_CLEAR * STUD_CLEAR
+    return near
 
 
 ## A bar's radius, in LDU: 3.2 mm across, within BAR_FIT.
@@ -729,9 +822,10 @@ def to_boxes(
     gives the same answer as a test against the grid.
 
     Returns ``(x, y, z, width, height, depth)`` tuples in absolute lattice
-    coordinates. Parts that will not reduce to ``limit`` boxes fall back
-    to their bounding box, which over-reports rather than under-reports:
-    it can refuse a legal placement but never allows an illegal one.
+    coordinates. Parts that will not reduce to ``limit`` boxes are covered
+    at a coarser grain (COARSE_GRAINS), and past that by their bounding
+    box, each of which over-reports rather than under-reports: it can
+    refuse a legal placement but never allows an illegal one.
 
     Except in a hole. A refused placement there is not a rare one, it is
     the one the hole exists for. Of the 2,790 parts built before this with
@@ -777,11 +871,41 @@ def to_boxes(
         if exact is not None:
             return exact
     whole = _greedy(bounds, occupancy.origin, 1)
-    if not found and not rooms:
+    carved = None
+    if found or rooms:
+        carved = _bore(occupancy, found, whole_line=True)
+        for window, room in rooms:
+            carved[window] |= room
+
+    # A shell — a dome, a dish, a windscreen, a cockpit — is thousands of
+    # boxes at full grain, and its bounding box fills its inside: 87375, a
+    # quarter dome, was one solid box, so the clips that hold its handles
+    # and anything under the dome collided with it, and the dome the owner's
+    # session asked for could not be built. Coarser grains keep the inside
+    # open and over-report only near the surface: 87375 is 2,198 boxes at
+    # 2 LDU, 630 at 4. The finest that fits COARSE_LIMIT is kept. Near a
+    # bar or a hole it stays exact, because that is where another part
+    # comes close: a 61252 holding 87375's handle stands 4 LDU from the
+    # handle's knuckle, and at 8 LDU the dome's cover was in it.
+    exact = _near_lines(occupancy, [(b.point, b.axis, 0.0, b.length) for b in bars(
+        connections or [])] + [(h.point, h.axis, *(h.span or (-HOLE_LINE, HOLE_LINE)))
+                               for h in found], JOINT_ROOM)
+    # And never outside the part's convex hull: the blocks then over-report
+    # only into the hollow of a shell, never across its outside or the flat
+    # faces it meets its neighbours on. Four 87375s meet edge to edge on
+    # planes at 45 degrees, and blocks reaching across those were each in
+    # the next quarter.
+    hull = _in_hull(grid)
+    for grain in COARSE_GRAINS:
+        blocky = (_blocky(grid, grain) & bounds & hull & ~exact) | (grid & exact)
+        if carved is not None:
+            blocky &= ~(carved & ~grid)
+        boxes = _greedy(blocky, occupancy.origin, COARSE_LIMIT)
+        if boxes is not None:
+            return boxes
+
+    if carved is None:
         return whole or []
-    carved = _bore(occupancy, found, whole_line=True)
-    for window, room in rooms:
-        carved[window] |= room
     bounds &= ~(carved & ~grid)
     return _greedy(bounds, occupancy.origin, CARVED_LIMIT) or whole or []
 
@@ -791,6 +915,89 @@ def to_boxes(
 ## cover however many boxes that takes (up to CARVED_LIMIT). 24121, a
 ## quarter of a ring of 140, is 7.6.
 MOSTLY_AIR = 3.0
+## The grains, in cells, a cover past its limit is tried at before its
+## bounding box: 2 (exact, given more boxes), 4, 6, 8, 12 and 16 LDU.
+COARSE_GRAINS = (1, 2, 3, 4, 6, 8)
+## The most boxes a cover past its limit may take at a grain: past it, the
+## next grain. 58846, the 10 x 10 tapered quarter ring, is exact at 712.
+COARSE_LIMIT = 768
+## How far from a bar's or a hole's line a coarse cover stays exact, LDU:
+## the plate of a clip on the bar, 20 from its eye.
+JOINT_ROOM = 24.0
+## How far along a hole's line it does, either side of its middle, for a
+## hole the connectors give no depth: through the part.
+HOLE_LINE = 40.0
+
+
+def _in_hull(grid: np.ndarray) -> np.ndarray:
+    """The cells whose middles are inside the flat faces of the occupied
+    cells' convex hull: every occupied cell, and none past a face the part
+    is cut flat on (a quarter dome's seams and rim, a quarter ring's ends).
+    Only the big flat faces: clipped to a curve as well, a shell's blocks
+    come out a staircase of boxes (87375: 1,883 at 4 LDU, 693 without), and
+    a curve meets no neighbour flush. All of them where the cells are too
+    few or too flat for a hull."""
+    points = np.argwhere(grid).astype(float) + 0.5
+    whole = np.ones(grid.shape, dtype=bool)
+    if len(points) < 4:
+        return whole
+    try:
+        hull = ConvexHull(points)
+    except (QhullError, ValueError):
+        return whole
+    # The hull's triangles, gathered by the plane they nearly lie in: a flat
+    # face at 45 degrees is a staircase of cells, and its hull a fan of
+    # facets a few degrees apart.
+    planes: dict[tuple, list] = {}
+    for simplex, equation in zip(hull.simplices, hull.equations):
+        a, b, c = points[simplex]
+        area = 0.5 * float(np.linalg.norm(np.cross(b - a, c - a)))
+        key = tuple(np.round(equation[:3] * 10.0).astype(int))
+        entry = planes.setdefault(key, [[], 0.0])
+        entry[0].append(equation)
+        entry[1] += area
+    total = sum(entry[1] for entry in planes.values())
+    centres = np.indices(grid.shape).reshape(3, -1).T.astype(float) + 0.5
+    inside = np.ones(len(centres), dtype=bool)
+    for equations, area in planes.values():
+        if area < FLAT_FACE * total:
+            continue
+        # Each facet bounds every occupied cell, so cutting by all of them
+        # loses none. A little slack, for a cell on the face.
+        for equation in equations:
+            inside &= centres @ equation[:3] + equation[3] <= 1e-6
+    return inside.reshape(grid.shape) | grid
+
+
+## The share of a hull's surface a flat face must be to cut a coarse cover.
+FLAT_FACE = 0.02
+
+
+def _near_lines(occupancy: Occupancy, lines: list, reach: float) -> np.ndarray:
+    """The cells whose middles are within ``reach`` of any of ``lines``,
+    each (point, unit axis, from, to) in LDU along it, application axes."""
+    shape = occupancy.shape
+    out = np.zeros(shape, dtype=bool)
+    if not lines:
+        return out
+    centres = [(np.arange(shape[n]) + occupancy.origin[n] + 0.5) * CELL for n in range(3)]
+    gx, gy, gz = np.meshgrid(*centres, indexing="ij")
+    for point, axis, low, high in lines:
+        dx, dy, dz = gx - point[0], gy - point[1], gz - point[2]
+        along = np.clip(dx * axis[0] + dy * axis[1] + dz * axis[2], low, high)
+        px, py, pz = dx - along * axis[0], dy - along * axis[1], dz - along * axis[2]
+        out |= px * px + py * py + pz * pz <= reach * reach
+    return out
+
+
+def _blocky(grid: np.ndarray, grain: int) -> np.ndarray:
+    """Every block of grain cells a side, from the grid's corner, that has a
+    cell occupied, occupied whole."""
+    sx, sy, sz = grid.shape
+    padded = np.pad(grid, ((0, (-sx) % grain), (0, (-sy) % grain), (0, (-sz) % grain)))
+    blocks = padded.reshape(padded.shape[0] // grain, grain, padded.shape[1] // grain,
+                            grain, padded.shape[2] // grain, grain).any(axis=(1, 3, 5))
+    return blocks.repeat(grain, 0).repeat(grain, 1).repeat(grain, 2)[:sx, :sy, :sz]
 
 
 ## The boxes a hole is allowed on top of the limit. Opening a hole costs

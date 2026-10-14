@@ -1070,9 +1070,14 @@ const WHOLE: Array[String] = ["hat_extra", "cape", "arms", "hands", "legs",
 ## none either, its cover being its two end studs, 16 LDU across, which
 ## no hand closes on. The bent spring's top is never read in its hips'
 ## hole, and turned a quarter its foot's cells miss the middle of the
-## legs' hole it is in.
+## legs' hole it is in. 11641, a basketball net on an axle, is no hand's to
+## hold either: 115 LDU long and with no bar, it is slid along the grip
+## until it is out of the floor, its nearest plastic 32 LDU from the grip.
+## It was one piece only while its cover was its bounding box, which
+## reached back into the grip.
 const STILL_APART: Dictionary = {"56823": "a thread", "71149": "a braided string",
-	"43741-f2": "the bent spring, turned a quarter"}
+	"43741-f2": "the bent spring, turned a quarter",
+	"11641": "a basketball net, slid off the hand"}
 
 ## Held by the bar of a hilt or a handle, which the builder used to slide
 ## through the hand like a spear's shaft until the hand was round the

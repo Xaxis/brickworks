@@ -139,6 +139,16 @@ whole cycle.
 
 ### Changed
 
+- The build check holds what real sets hold, measured against every set in
+  the LDraw model repository (docs/CONNECTIONS.md): click hinges, a towball
+  or a ball turned in its socket, and a clip turned to an odd angle on its
+  bar now hold, and a model whose wheels stand a hair off the ground stands
+  on them. Curved and concave parts — domes, quarter rings, dishes,
+  windscreens, ring plates — collide as their shapes, not as solid boxes,
+  so what real sets put inside one fits, and parts that meet on a seam at
+  45 degrees no longer overlap there. attachment_points lists a part's bars
+  and clips, and a part goes on a bar or a clip by axis and joint.
+
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for
   every print of the 1 x 3 plate; "sticker" finds parts with stickers on.
