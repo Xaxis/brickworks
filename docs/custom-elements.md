@@ -199,8 +199,12 @@ only)", reference sizes 416 x 320 for a head, 608 x 512 for a torso), for 28
 parts, and a decal tool applies an image to a part's surface; no drawing in
 the app or layers are documented, and its curved-surface projection is
 reported to miss faces. It exports custom parts in its own format
-(`0 PE_TEX_INFO <base64>` and UVs appended to each triangle), which other
-LDraw programs do not read. Primary (studiohelp.bricklink.com) and forum.
+(`0 PE_TEX_INFO <base64>` and UVs appended to each triangle, or a projection
+box), which other LDraw programs do not read; Brickworks reads it into
+TEXMAP and writes ours back in it (`src/parts/studio_decor.gd`, 2026-10-14).
+Primary (studiohelp.bricklink.com) and forum; the format as ldr_tools
+reverse-engineered it from Studio's own code, checked against a file Studio
+saved.
 
 **What Mecabricks does.** Decorations are uploaded as PNGs painted in
 another program on a UV layout Mecabricks provides, for parts it has

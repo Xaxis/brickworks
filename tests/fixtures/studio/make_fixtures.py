@@ -239,9 +239,143 @@ def make_gatehouse() -> None:
             out.writestr(zipfile.ZipInfo(name, WHEN), data, zipfile.ZIP_DEFLATED)
 
 
+def _picture(width: int, height: int, colours: list[tuple[int, int, int]]) -> bytes:
+    """An RGBA PNG in bands of ``colours`` across, a clear pixel round its edge
+    as Studio's prints have (a picture mapped into 0.045 to 0.955)."""
+    rows = b""
+    for y in range(height):
+        row = b"\x00"
+        for x in range(width):
+            if x in (0, width - 1) or y in (0, height - 1):
+                row += bytes((0, 0, 0, 0))
+            else:
+                band = min(len(colours) - 1, x * len(colours) // width)
+                # The top quarter darker, so a picture upside down is seen.
+                r, g, b = colours[band]
+                if y < height // 4:
+                    r, g, b = r // 2, g // 2, b // 2
+                row += bytes((r, g, b, 255))
+        rows += row
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(
+            ">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6,
+                                                            0, 0, 0)) \
+        + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+
+
+# The decorated parts decor_2025.io carries, as Studio carries them.
+PRINT = "3068pb9001"          # a catalogue print: model2.ldr, faces with coordinates
+STICKERED = "2431pb9002"      # a sticker, which Studio files as the part with it on
+DESIGNED = "m1a2b3c4_2025408_170000"   # Part Designer's decal: CustomParts/, a box
+PRINT_PICTURE = _picture(32, 32, [(201, 26, 9), (255, 255, 255), (13, 105, 171)])
+STICKER_PICTURE = _picture(64, 16, [(242, 205, 55), (27, 42, 52)])
+DECAL_PICTURE = _picture(32, 32, [(75, 159, 74), (242, 205, 55)])
+
+
+def _tile(half_x: float, half_z: float, colour: int, uvs: bool) -> list[str]:
+    """A tile flattened as model2.ldr has a part: its top (at y 0) two
+    triangles, carrying 0.045 to 0.955 when ``uvs``, as set 31213's lips do;
+    its sides and bottom (at y 8) without. Wound counter-clockwise."""
+    x, z = half_x, half_z
+
+    def t(*corners: tuple[float, float, float]) -> str:
+        return "3 %d %s" % (colour, " ".join("%.3f %.3f %.3f" % c for c in corners))
+
+    top = [t((-x, 0, z), (-x, 0, -z), (x, 0, -z)), t((-x, 0, z), (x, 0, -z), (x, 0, z))]
+    if uvs:
+        top = [top[0] + " 0.045 0.955 0.045 0.045 0.955 0.045",
+               top[1] + " 0.045 0.955 0.955 0.045 0.955 0.955"]
+    sides = [
+        t((-x, 0, -z), (-x, 8, -z), (x, 8, -z)), t((-x, 0, -z), (x, 8, -z), (x, 0, -z)),
+        t((x, 0, z), (x, 8, z), (-x, 8, z)), t((x, 0, z), (-x, 8, z), (-x, 0, z)),
+        t((-x, 0, z), (-x, 8, z), (-x, 8, -z)), t((-x, 0, z), (-x, 8, -z), (-x, 0, -z)),
+        t((x, 0, -z), (x, 8, -z), (x, 8, z)), t((x, 0, -z), (x, 8, z), (x, 0, z)),
+        t((-x, 8, -z), (-x, 8, z), (x, 8, z)), t((-x, 8, -z), (x, 8, z), (x, 8, -z)),
+    ]
+    return top + sides
+
+
+def make_decor() -> None:
+    """decor_2025.io: a Studio 2.25 file whose model uses a catalogue print
+    (bl_3068pb9001), a stickered tile (bl_2431pb9002, a sticker as Studio has
+    one), a part made in Part Designer with a decal on it, and bl_3001, a part
+    LDraw has, which must stay the library's. model2.ldr carries the print and
+    the stickered tile flattened with coordinates on their faces, in BrickLink's
+    numbers (-1 their colour); CustomParts/ the Part Designer part, an MPD whose
+    picture is cast by a projection box (PE_TEX_INFO with sixteen numbers) on
+    its own tile, the box's x and z mirrored and its min and max given so the
+    picture's top is the tile's back, as the lips' is."""
+    import base64
+    turn = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+    model = ["0 FILE decor_2025.io"] + _header("Untitled Model", "decor_2025", 4) + [
+        "1 4 0.000000 -24.000000 0.000000 %s bl_3001.dat" % " ".join("%f" % v for v in turn),
+        "1 15 0.000000 -24.000000 0.000000 %s bl_%s.dat" % (" ".join("%f" % v for v in turn), PRINT),
+        "0 STEP",
+        "1 0 60.000000 -8.000000 0.000000 %s bl_%s.dat" % (" ".join("%f" % v for v in turn),
+                                                         STICKERED),
+        "1 14 -60.000000 -8.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn),
+                                                       DESIGNED),
+        "0 STEP", "0 NOFILE"]
+    model2 = ["0 FILE decor_2025.io"] + _header("Untitled Model", "decor_2025", 4) + [
+        "1 5 0.000000 -24.000000 0.000000 %s 3001.dat" % " ".join("%f" % v for v in turn),
+        "1 1 0.000000 -24.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn), PRINT),
+        "1 11 60.000000 -8.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn),
+                                                       STICKERED),
+        "1 3 -60.000000 -8.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn), DESIGNED),
+        "0 NOFILE",
+        "0 FILE %s.dat" % PRINT,
+        "0 Tile 2 x 2 with Red, White and Blue Bands Pattern",
+        "0 Name:  %s" % PRINT, "0 Author:  ", "0 BL_Item_No %s" % PRINT,
+        "0 PE_TEX_INFO " + base64.b64encode(PRINT_PICTURE).decode()] + _tile(20, 20, -1, True) + [
+        "0 NOFILE",
+        "0 FILE %s.dat" % STICKERED,
+        "0 Tile 1 x 4 with Yellow and Black Stripes (Sticker) - Set 9999",
+        "0 Name:  %s" % STICKERED, "0 Author:  ",
+        "0 PE_TEX_INFO " + base64.b64encode(STICKER_PICTURE).decode()] + _tile(40, 10, -1, True) + [
+        "0 NOFILE",
+        "0 FILE 3001.dat", "0 Brick  2 x  4", "0 Name: 3001.dat"] + _tile(40, 20, -1, False) + [
+        "0 NOFILE"]
+    # Part Designer's own file: the box at the tile's top, two LDU deep, its x
+    # and z mirrored as Part Designer's are, cast on the tile's faces turned up.
+    box = "0.0 -0.5 0.0 -40.0 0.0 0.0 0.0 -2.0 0.0 0.0 0.0 -40.0 20.0 -20.0 -20.0 20.0"
+    designed = [
+        "0 FILE %s.dat" % DESIGNED,
+        "0 Tile 2 x 2 with Green and Yellow Decal",
+        "0 Name:  %s.dat" % DESIGNED, "0 Author:  ",
+        "0 BFC CERTIFY CCW",
+        "0 PE_TEX_PATH 0",
+        "0 PE_TEX_INFO %s %s" % (box, base64.b64encode(DECAL_PICTURE).decode()),
+        "1 16 0 0 0 1 0 0 0 1 0 0 0 1 %s-tile.dat" % DESIGNED,
+        "0 NOFILE",
+        "0 FILE %s-tile.dat" % DESIGNED,
+        "0 BFC CERTIFY CCW"] + _tile(20, 20, 16, False) + ["0 NOFILE"]
+    members = [
+        ("model.ldr", _studio_text(model)),
+        ("model2.ldr", _studio_text(model2)),
+        ("thumbnail.png", _png()),
+        ("errorPartList.err", b"[]"),
+        (".info", json.dumps({"version": "2.25.2_1", "total_parts": 4, "parts_db_version": 151},
+                             separators=(",", ":")).encode()),
+        ("CustomParts/%s.dat" % DESIGNED, _studio_text(designed)),
+    ]
+    with zipfile.ZipFile(os.path.join(HERE, "decor_2025.io"), "w", zipfile.ZIP_DEFLATED) as out:
+        for name, data in members:
+            out.writestr(zipfile.ZipInfo(name, WHEN), data, zipfile.ZIP_DEFLATED)
+
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["decor"]:
+        make_decor()
+        print("wrote decor_2025.io in", HERE)
+        sys.exit(0)
     make_2025()
     make_2021()
     make_aes()
     make_gatehouse()
-    print("wrote bay_2025.io, bay_2021.io, bay_aes.io and gatehouse_2025.io in", HERE)
+    make_decor()
+    print("wrote bay_2025.io, bay_2021.io, bay_aes.io, gatehouse_2025.io and decor_2025.io in",
+          HERE)

@@ -187,6 +187,11 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue
+		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
+		# 5095): the library's, as ModelStore.studio_part reads the name.
+		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
+		if id.begins_with("bl_") and plain != null and not plain.custom:
+			continue
 		var carried: Dictionary = model.embedded_parts.duplicate()
 		carried.merge(model.embedded_data)
 		var result: Dictionary = add(library, text, id,

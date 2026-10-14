@@ -117,6 +117,26 @@ def start_app(port: int) -> subprocess.Popen:
                        % (port, PATIENCE, log.name))
 
 
+def small_png() -> str:
+    """A 24 x 16 PNG, red with a white band, as base64: a picture as a person
+    hands one over in the conversation."""
+    import base64
+    import struct
+    import zlib
+    rows = b""
+    for y in range(16):
+        rows += b"\x00" + b"".join(bytes((255, 255, 255, 255)) if 4 <= y < 8
+                                   else bytes((201, 26, 9, 255)) for _ in range(24))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(
+            ">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 24, 16, 8, 6, 0, 0, 0)) \
+        + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+    return base64.b64encode(png).decode()
+
+
 def text_of(result: dict) -> str:
     return "".join(block.get("text", "") for block in result.get("content", [])
                    if block.get("type") == "text")
@@ -276,6 +296,25 @@ def drive(relay: Relay) -> None:
           parts.startswith("2 pieces in 1 lots") and "3001" in parts)
     said = say("lay_flex", {"kind": "rope"})
     check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
+
+    # A picture the person gave in the conversation, handed over as its own
+    # bytes (print_part's picture_data), printed on a brick of the model and
+    # read back off the model's parts.
+    numbered = re.search(r"#(\d+)", listed or "")
+    if numbered:
+        said = say("print_part", {"brick": int(numbered.group(1)), "picture_data": small_png(),
+                                  "name": "MCP check"})
+        parts = say("parts_list", {})
+        check("print_part prints a base64 PNG on #%s: %s" % (numbered.group(1), said[:70]),
+              said.startswith("Printed it where it stands") and "bw-3001-p" in parts)
+        # The printed part took the plain one's place, under a number of its own.
+        printed = re.search(r"It is #(\d+)", said)
+        said = say("print_part", {"brick": int(printed.group(1) if printed else numbered.group(1)),
+                                  "picture_data": "data:application/pdf;base64,JVBERi0xLjc="})
+        check("...and refuses what is not a picture, saying so: %s" % said[:60],
+              "application/pdf" in said and "not a picture" in said)
+    else:
+        check("the build steps name a part to print on", False)
 
     simulate(relay, say, kept.parent)
     # The gallery (src/net/gallery_tool.gd), read-only, from the app's own

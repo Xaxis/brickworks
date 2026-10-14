@@ -5,7 +5,7 @@ app or brought in from a picture file, saved as real LDraw parts with !TEXMAP
 and their pictures carried in the model file, and a model's sticker sheet
 printed at true size.
 
-<!-- covers: lib:custom prints, ui:print designer, lib:stickers, lib:sticker sheet, ui:prints and stickers in the parts bin, cli:prints and stickers in a browser -->
+<!-- covers: lib:custom prints, ui:print designer, lib:stickers, lib:sticker sheet, ui:prints and stickers in the parts bin, cli:prints and stickers in a browser, ui:printed versions, lib:studio decorations, cli:decorated parts in a browser -->
 
 ## Sub-features
 
@@ -143,6 +143,58 @@ down, ±x, ±z; `PrintStudio.sticker_on` aims at that face from just outside
 it, as a click does, `span` as Shift does not). One undo step; the answer
 names the new part's number. `app_tools_probe` covers it.
 
+A picture from the conversation (2026-10-14): `picture_data=` is the
+picture's own bytes, base64 (wrapped or not, URL-safe or not, padding left
+off or not) or a `data:` URI (`data:image/png;base64,…`, or an SVG
+percent-encoded), read by `PictureFile.from_data`: at most 2 MiB decoded
+(`MOST_DATA_BYTES`; the desktop socket takes a 4 MiB line and Vercel a 4.5 MB
+body), and anything else refused by what it is (`PictureFile.what_it_is`: a
+PDF, a GIF, a phone's HEIC, a zip, a web page, JSON; a PNG cut short is
+"cut short or damaged"; `data:application/pdf` names its type). The app's
+own Add a picture… refuses a file the same way (`not_read`).
+
+- `printed versions` (`src/prints/printed_versions.gd`, `PrintedVersions`;
+  `PrintStudio.versions_of`, `swap_to`): Edit, Printed versions…, the
+  right-click menu's, and Properties' "Printed versions… (N)" under a part's
+  name, for a part the LEGO Group printed or put a sticker on
+  (`PartLibrary.prints_of` of its plain part, `plain_of`: 3068b for
+  3068bpb0001 and for a print made here). A grid of the versions drawn with
+  their prints (`PartThumbnails`, `printed=true`), the plain part first,
+  narrowed by words; a click swaps every selected part of that kind for it,
+  each in its colour where it stands (`Builder.replace_selection`), one undo.
+  A session: `print_part` `versions=` lists them ("" for all, "control" for
+  those with the word), `version=` swaps; a part that is no version is
+  refused. LDraw's own stickers (category Sticker, 2,580 of them) and ours
+  in hand go on the face under the pointer, lying on it, their middle on its
+  middle (`Builder._preview_sticker`, `Stickers.laid_on`), R turning them a
+  quarter about it, never onto studs or onto another film (`face_at` skips
+  every `sticks` part); a session's `sticker_part=` with `side=` does the
+  same (`PrintStudio.stick_part_on`), the film white unless `colour=`.
+- `studio decorations` (`src/parts/studio_decor.gd`, `StudioDecor`): what a
+  BrickLink Studio `.io` carries of its own, read in and written out. Studio
+  has no TEXMAP: a print, a sticker (Studio files one as the part with it
+  on, 2431pb0038 for LDraw's 2431d01) and a Part Designer decal carry their
+  picture as `0 PE_TEX_INFO [16 numbers] <base64 PNG>` named by
+  `0 PE_TEX_PATH` (-1 this file, else subfile indices counting type-1 lines;
+  the longest wins), on faces with `u v` after their corners (v up from the
+  foot) or cast by the 16 numbers' box (ldr_tools' reading of Studio's DLL,
+  line for line: faces that meet the box or face its -Y). `model2.ldr` has
+  every part flattened in BrickLink's colours (-1 its own); model.ldr names a
+  Studio print `bl_<BrickLink number>`; Part Designer's files are
+  `CustomParts/<name>.dat` (`StudioIo` now reads every member, keyed by its
+  whole path). `carried` appends each `bl_` part and each CustomParts part
+  model.ldr names, model2.ldr's flattened copy first, as an LDraw part
+  (`From Studio` in the bin) with its faces in PLANAR TEXMAP blocks — a
+  triangle's affine map is exactly a PLANAR projection (`_map_of`), so faces
+  sharing one share a block — and its pictures as !DATA, so the model opens
+  through `CustomParts.take_from` (which leaves `bl_5095` to the library's
+  5095). A subfile the library cannot give here comes from model2.ldr's copy
+  (`_forge_reads`). Out: `Exports.studio_parts` writes every pictured part
+  in the model into `CustomParts/` in Studio's form (`studio_text`: each
+  picture's faces in a `-tex<n>` subfile with coordinates, named by
+  `PE_TEX_PATH n`), beside model.ldr's TEXMAP and !DATA. Not seen in Studio
+  itself: there is no Studio on this box.
+
 ## How to reach it
 
 ```sh
@@ -161,6 +213,9 @@ tools/build_custom.py shots/print_probe.mpd --check
 # source .env first so browser.mjs signs the page in; a preview is behind Vercel's login
 # without BW_BYPASS, and the flow sees only "Log in to Vercel"
 BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=https://<a preview>/app --out=shots/studio_web
+godot --headless --path . --script src/dev/decor_probe.gd     # -- --real=<a Studio .io> for one of your own
+python3 tests/fixtures/studio/make_fixtures.py decor           # after changing what decor_2025.io holds
+BW_BYPASS=$VERCEL_BYPASS node tools/web/decor_flow.mjs --url=https://<a preview>/app --out=shots/decor_web
 ```
 
 Proves it when:
@@ -233,8 +288,47 @@ Proves it when:
   a second, empty browser with all its printed parts. No script error reaches
   the console. **Look at** `shots/studio_web/*.png`.
 
+- `decor_probe` ends `decor: a picture given as data prints, a Studio file's prints,
+  stickers and decal open drawn, ours go out in Studio's form and come back the
+  same, a part swaps for its printed versions, and LDraw's stickers lie on the
+  face`: six pictures as data read and nine refused, each saying what it is;
+  `tests/fixtures/studio/decor_2025.io` (made by `make_fixtures.py decor` in the
+  shape of a Studio 2.25.2 file) opens 4 of 4 with nothing missing, `bl_3001` the
+  library's 3001, its print and stickered tile (from model2.ldr) and its Part
+  Designer decal (CustomParts/, cast by a box) each with the file's picture bytes
+  and, at the corners, the coordinates the file gave (0.045 to 0.955; the decal 0
+  to 1, on the tile's top only); a print and a sticker made here, written for
+  CustomParts/ and read back, with the same picture and coordinates at every
+  printed corner, and the .io opening whole; 3068b's 432 versions, Printed
+  versions… offering the plain part first, a swap in place in its colour as one
+  undo and back, "3001" refused; 003428d in hand over a tile lying on its top in
+  the middle, R turning it, put down and stuck to the tile, and 003435c stuck on a
+  brick's front by `stick_part_on`. With `--real=` set 31213's own Studio file
+  (2.25.2, not ours to publish) opened 1,501 of its 1,500 counted parts with none
+  missing, and its three Studio prints (bl_63864pb265, bl_11477pb200,
+  bl_3068pb2483) drawn with their pictures, 2026-10-14.
+- `decor_flow.mjs` ends `decor flow: a picture printed from a file, a sticker stuck
+  on, a tile swapped for a printed version, a .io out and in, and a Studio file's
+  decorations, in the browser`: the scene opened, a photograph printed on 3068b
+  through Add a picture… and clicked down, a sticker across the two 2431s, one of
+  them clicked and swapped through Properties' Printed versions…, File > Export >
+  BrickLink Studio model with the sticker and the print in CustomParts/ in PE_TEX
+  form and in model.ldr as TEXMAP and !DATA, and in a second empty browser that
+  .io (print, sticker and version back) and decor_2025.io (bl_3068pb9001,
+  bl_2431pb9002, m1a2b3c4_2025408_170000) opened. **Look at**
+  `shots/decor_web/*.png`.
+
 ## Gotchas
 
+- **Studio's pictures are not TEXMAP, and its v runs up.** A PE_TEX face's
+  `u v` count from the picture's foot (Studio is Unity; set 31213's lips put
+  0.955 at the tile's back), TEXMAP's from its top: `_face` turns one into the
+  other, and `studio_text` turns it back. Studio is not known to read TEXMAP,
+  so an exported .io carries ours twice: in CustomParts/ for Studio, in
+  model.ldr for everything else and for opening here.
+- **A packed array in a Dictionary is a copy, a third time.** `studio_text`
+  gathered each picture's faces into PackedStringArrays held in a Dictionary,
+  and every `-tex` subfile came out empty: Arrays now.
 - **A print is a surface with texture coordinates, and nothing else is.** The
   .lbm format has no UVs; a printed part's are worked out when it is built, from
   its file's TEXMAP lines, and live only in memory (`Lbm.PartMesh.prints`). A
@@ -292,6 +386,6 @@ Proves it when:
 - **Studio and LDCad were not run here** (neither runs on this Linux box);
   LDView 4.7 (its release AppImage, extracted, under Xvfb) was, and draws the
   prints where the app does (`shots/print_ldview_front.png`, `_back.png`). The
-  files keep to the TEXMAP spec as LDView reads it; Studio's own PartDesigner
-  writes `PE_TEX_INFO` instead, which other programs do not read
-  (docs/custom-elements.md).
+  files keep to the TEXMAP spec as LDView reads it; Studio writes
+  `PE_TEX_INFO` instead (docs/custom-elements.md), which `StudioDecor` reads
+  and writes.

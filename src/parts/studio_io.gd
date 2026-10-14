@@ -45,8 +45,11 @@ const INFO_VERSION := "2.2.1_1"
 static var _crc_table: PackedInt64Array = PackedInt64Array()
 
 
-## The LDraw text inside an .io file: {"text": ..., "error": ""}, or an
-## error saying what was wrong.
+## The LDraw text inside an .io file: {"text": ..., "error": "", "note": what
+## of Studio's own it carried}, or an error saying what was wrong. Studio's
+## own parts the model names — its prints and stickers (bl_…), and parts made
+## in its Part Designer, from model2.ldr and CustomParts/ — come with it as
+## LDraw parts with their pictures (StudioDecor.carried).
 static func read(bytes: PackedByteArray) -> Dictionary:
 	var entries: Dictionary = _entries(bytes)
 	if entries.has("error"):
@@ -61,16 +64,38 @@ static func read(bytes: PackedByteArray) -> Dictionary:
 	if data.is_empty():
 		return {"text": "", "error": "could not unpack the model from that .io file: "
 			+ "it is damaged, or locked with a password that is not Studio's"}
-	# Studio starts the text with a byte-order mark, which LDraw's line
-	# types are not read through.
+	var text: String = _text_of(data)
+	var model2: String = ""
+	if entries.has("model2.ldr"):
+		model2 = _text_of(_unpack(bytes, entries["model2.ldr"]))
+	var custom: Dictionary = {}
+	for name: String in entries:
+		if name.begins_with("customparts/") and name.ends_with(".dat"):
+			custom[name.trim_prefix("customparts/")] = _text_of(_unpack(bytes, entries[name]))
+	var carried: Dictionary = StudioDecor.carried(text, model2, custom)
+	# What of Studio's own was left out, and why; what came in is counted
+	# when the model opens, with every other part.
+	var notes: PackedStringArray = carried["notes"]
+	return {"text": carried["text"], "error": "", "note": "; ".join(notes.slice(0, 3)),
+		"studio_parts": carried["read"]}
+
+
+## A member's bytes as text: Studio starts its text with a byte-order mark,
+## which LDraw's line types are not read through.
+static func _text_of(data: PackedByteArray) -> String:
 	if data.size() >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
 		data = data.slice(3)
-	return {"text": data.get_string_from_utf8(), "error": ""}
+	return data.get_string_from_utf8()
+
 
 
 ## An .io file holding [param text] as its model.ldr, with [param
-## thumbnail] (PNG bytes, or none) and [param parts] counted in .info.
-static func pack(text: String, thumbnail: PackedByteArray, parts: int) -> PackedByteArray:
+## thumbnail] (PNG bytes, or none) and [param parts] counted in .info;
+## [param custom] (file name -> text) goes in CustomParts/, where Studio
+## keeps the parts its Part Designer made: the model's own prints and
+## stickers in Studio's way of carrying a picture (StudioDecor.studio_text).
+static func pack(text: String, thumbnail: PackedByteArray, parts: int,
+		custom: Dictionary = {}) -> PackedByteArray:
 	# Studio writes its LDraw with Windows line ends, as LDraw allows.
 	var ldr: String = text.replace("\r\n", "\n").replace("\n", "\r\n")
 	var members: Array = [
@@ -80,6 +105,10 @@ static func pack(text: String, thumbnail: PackedByteArray, parts: int) -> Packed
 	]
 	if not thumbnail.is_empty():
 		members.append(["thumbnail.png", thumbnail])
+	var names: Array = custom.keys()
+	names.sort()
+	for name: String in names:
+		members.append(["CustomParts/" + name, str(custom[name]).to_utf8_buffer()])
 	return zip(members)
 
 
@@ -197,8 +226,10 @@ static func _entries(bytes: PackedByteArray) -> Dictionary:
 		if data + packed > bytes.size():
 			return {"error": "that .io file is damaged"}
 		# Studio's custom parts are in a folder of their own, under names a
-		# model's own files could have; only the top level is the model's.
-		if name.contains("/") or name.contains("\\"):
+		# model's own files could have: kept by their whole path, so only
+		# the top level is the model's.
+		name = name.replace("\\", "/")
+		if name.ends_with("/"):
 			continue
 		out[name.to_lower()] = {"at": data, "packed": packed, "size": size,
 			"method": method, "crc": crc, "encrypted": flags & 0x01 != 0,

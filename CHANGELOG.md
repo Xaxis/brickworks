@@ -15,6 +15,20 @@ whole cycle.
 
 ### Added
 
+- Decorated parts, brought in and taken out. A BrickLink Studio file opens
+  with its prints, its stickers and the parts made in Studio's Part Designer,
+  each with its picture, where they used to be left out (set 31213's file now
+  opens all 1,501 parts, its three Studio prints drawn); an .io saved here
+  carries your own prints and stickers in Studio's form too (not yet seen
+  opening in Studio itself). Any part the LEGO Group printed or put a sticker
+  on can be swapped for one of those versions: Edit, Printed versions…, on a
+  part's right-click menu, or under its name in Properties. LDraw's own
+  stickers go on the face they are put on, lying on it. And Claude can print
+  a picture handed over as its own data, base64 or a data: URI, not only a
+  web link (print_part's picture_data, up to 2 MB), swap a part for a
+  printed version (version=) and stick on one of LDraw's stickers
+  (sticker_part=).
+
 - Parts and sections turned any way, held by real hinges. The properties
   panel has Tilt and Roll beside Turn, so a selection tips about its
   middle as well as turning round. A design can turn a section yaw, then

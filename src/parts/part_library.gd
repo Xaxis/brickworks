@@ -143,6 +143,11 @@ func plain_code(code: int) -> int:
 	return found.plain_code if found != null else code
 
 
+## BrickLink's colour numbers -> LDraw's plain colour for each, filled as the
+## colours load: for reading a Studio file's model2.ldr.
+static var by_bricklink: Dictionary = {}
+
+
 ## The colour number a BrickLink wanted list or catalogue page names this
 ## code by: its plain colour's (a Rubber Black tyre is a Black one), or -1
 ## where BrickLink has none known, which is left off and never guessed.
@@ -690,6 +695,11 @@ func _load_colors() -> void:
 		color.sets = int(entry.get("sets", 0))
 		color.current = bool(entry.get("current", false))
 		color.plain_code = int(entry.get("plain_code", color.code))
+		# BrickLink's number back to LDraw's plain colour: a Studio file's
+		# model2.ldr is in BrickLink's numbers (StudioDecor).
+		if color.bricklink >= 0 and (not by_bricklink.has(color.bricklink)
+				or color.plain_code == color.code):
+			by_bricklink[color.bricklink] = color.code
 
 		var material_kind: String = ""
 		var material: Variant = entry.get("material", null)

@@ -903,8 +903,11 @@ func move_bricks(moves: Dictionary) -> int:
 ## one was is left as it was. Returns [how many swapped, how many did not].
 ##
 ## Kept on its studs: a part of a different footprint is centred on the
-## stud grid its own way, and stands on what the old one stood on.
-func replace_selection(part_id: String) -> Vector2i:
+## stud grid its own way, and stands on what the old one stood on. With
+## [param in_place], exactly where the old one stood: a printed version of
+## the same mould (PrintStudio.swap_to), whose print can reach a hair past
+## the plain part's box, is the same part and must not move.
+func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 	var alive: PackedInt64Array = _living_selection()
 	var into: Lbm.PartMesh = library.mesh_for(part_id)
 	if alive.is_empty() or into == null:
@@ -917,7 +920,8 @@ func replace_selection(part_id: String) -> Vector2i:
 		if brick.part_id == part_id:
 			continue
 		var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		var at: Transform3D = _in_place_of(brick.transform, was, into)
+		var at: Transform3D = brick.transform if in_place \
+			else _in_place_of(brick.transform, was, into)
 		lattice.release(brick_id)
 		var packed: PackedInt32Array = boxes_for(into, at)
 		if lattice.collides_boxes(packed):
@@ -1500,6 +1504,9 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		_ghost.visible = false
 		_ghost_valid = false
 		return
+	if Stickers.sticks(library, held_part):
+		_preview_sticker(part, origin, direction)
+		return
 
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	_hovered = hit.brick_id
@@ -1529,6 +1536,31 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
 		if _seated_on != 0 else room_for(held_part, _ghost_transform)
+	_show_ghost(part)
+
+
+## Which way the screen's up is: a sticker in hand over a face that lies (a
+## tile's top) is turned square to the edge nearest the screen's foot, as
+## Put a sticker on… turns one. Main sets it with each aim.
+var view_up: Vector3 = Vector3.UP
+
+
+## A sticker in hand — one of LDraw's (its Sticker category) or one made
+## here — goes on the face it is over, lying on it, its middle on the
+## face's middle, and not on studs: a film is held by its glue, the face
+## under it (Stickers.lies_on), and a sticker put down on the grid floated
+## a plate over the brick it was for. R turns it about the face.
+func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -> void:
+	var face: Stickers.Face = Stickers.face_at(world, library, origin, direction, false, view_up)
+	if face == null:
+		_ghost.visible = false
+		_ghost_valid = false
+		_hovered = 0
+		return
+	_hovered = face.bricks[0]
+	_ghost_transform = Stickers.laid_on(face, part.bounds, held_rotation)
+	_seated_on = 0
+	_ghost_valid = true
 	_show_ghost(part)
 
 

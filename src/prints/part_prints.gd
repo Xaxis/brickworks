@@ -752,6 +752,8 @@ static func bin_for(text: String) -> String:
 		return MY_STICKERS
 	if is_print(text):
 		return MY_PRINTS
+	if text.contains(StudioDecor.FROM_STUDIO):
+		return StudioDecor.CATEGORY
 	return "Custom"
 
 
@@ -841,22 +843,27 @@ static func build(text: String, id: String, pictures: Dictionary) -> PartForge.R
 	if not built.problem.is_empty() or built.mesh == null:
 		return built
 	var mesh: Lbm.PartMesh = built.mesh
+	# One texture a picture: a part read from Studio has a block for every
+	# way its faces are mapped, a head's dozens all one picture.
+	var textures: Dictionary = {}
 	for n: int in mesh.surfaces.size():
 		var code: int = mesh.surface_colors[n]
 		if code < UNDER_PICTURE or code >= UNDER_PICTURE + blocks.size():
 			continue
 		var at: Dictionary = blocks[code - UNDER_PICTURE]
 		var name: String = at["picture"]
-		var bytes: PackedByteArray = pictures.get(name, PackedByteArray())
-		var picture := Image.new()
-		if bytes.is_empty() or picture.load_png_from_buffer(bytes) != OK:
-			built.problem = "its picture %s is missing" % name
-			return built
+		if not textures.has(name):
+			var bytes: PackedByteArray = pictures.get(name, PackedByteArray())
+			var picture := Image.new()
+			if bytes.is_empty() or picture.load_png_from_buffer(bytes) != OK:
+				built.problem = "its picture %s is missing" % name
+				return built
+			textures[name] = texture_of(picture)
+			(textures[name] as Texture2D).resource_name = name
+			mesh.print_files[name] = bytes
 		mesh.surfaces[n] = _with_uv(mesh.surfaces[n], _area_of(at))
 		mesh.surface_colors[n] = Lbm.COLOR_INHERIT
-		mesh.prints[n] = texture_of(picture)
-		(mesh.prints[n] as Texture2D).resource_name = name
-		mesh.print_files[name] = bytes
+		mesh.prints[n] = textures[name]
 	return built
 
 

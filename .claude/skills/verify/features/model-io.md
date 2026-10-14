@@ -201,10 +201,16 @@ Whether what you built is still there tomorrow, and still means the same thing.
   "Untitled Model" first line is no name: the file's name is used. Studio
   names a part it drew itself `bl_<BrickLink number>`; where the library has
   that number it is that part (`ModelStore.studio_part`: bl_5095 is 5095);
-  otherwise it is left out and named in the status bar ("1 not in the library,
-  left out (bl_3068pb2483)") — every opened file's missing parts are named so
-  now (`open_text`'s `missing_ids`). Opened that way the 2025 set placed 1,498
-  of 1,501 with three BrickLink-only prints named; the 2021 one all 103.
+  otherwise it comes from the file itself, with its picture (2026-10-14:
+  `StudioDecor.carried`, from `model2.ldr`'s flattened copy or `CustomParts/`;
+  see [prints](prints.md)), and what still cannot be had is left out and named
+  in the status bar — every opened file's missing parts are named so (`open_text`'s
+  `missing_ids`). The 2025 set placed 1,498 of 1,501 with three BrickLink-only
+  prints named; it now places all 1,501 with the three prints drawn
+  (`decor_probe -- --real=`). The 2021 one all 103. `bay_2025.io`'s Part
+  Designer part (a `1 16 … 3001.dat` in `CustomParts/parts/`) is built where the
+  checkout has the LDraw library and named as left out where it has not (the
+  web build): `io_probe` expects whichever this checkout can do.
   `tests/fixtures/studio/make_fixtures.py` makes `bay_2025.io` and
   `bay_2021.io` (locked by the system's `zip -P`) in those two shapes, and
   `bay_aes.io`, with `model2.ldr` in BrickLink's numbers so reading the wrong

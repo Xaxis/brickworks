@@ -58,6 +58,10 @@ func _check(what: String, ok: bool) -> void:
 
 func _run() -> void:
 	await process_frame
+	# A Studio file's own parts are built and kept as a file's carried parts
+	# are: here, never in the person's bin.
+	CustomParts.dir = OS.get_user_data_dir().path_join("io_probe_parts/")
+	CustomParts.keeps = false
 	_library = PartLibrary.new()
 	if not _library.load_catalogue():
 		_check("the catalogue loads", false)
@@ -191,14 +195,26 @@ func _opened_by_the_picker() -> void:
 	var result: Dictionary = _store.open_text(str(got[0][0]), "bay_2025")
 	await process_frame
 	var missing: Dictionary = result.get("missing_ids", {})
-	_check("five placed, and the one only Studio has is named, not dropped in silence: "
-		+ "%d placed, missing %s" % [int(result["placed"]), ModelStore.named_counts(missing)],
-		int(result["placed"]) == 5 and missing == {CUSTOM: 1})
+	# The part Studio's Part Designer made comes from the file's CustomParts/
+	# (StudioDecor.carried) and is built where its 3001.dat can be read: a
+	# checkout with the LDraw library. Where it cannot (the web build), it is
+	# named, not dropped in silence.
+	var whole: bool = not PartForge._read_library("3001.dat").is_empty()
+	if whole:
+		_check("all six placed, the Part Designer part from CustomParts/ among them: "
+			+ "%d placed, missing %s" % [int(result["placed"]), ModelStore.named_counts(missing)],
+			int(result["placed"]) == 6 and missing.is_empty() and _library.parts.has(CUSTOM))
+	else:
+		_check("five placed, and the one only Studio has is named, not dropped in silence: "
+			+ "%d placed, missing %s" % [int(result["placed"]), ModelStore.named_counts(missing)],
+			int(result["placed"]) == 5 and missing == {CUSTOM: 1})
 	var colours: Dictionary = {}
 	for brick: BrickWorld.Brick in _world.bricks():
 		colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
-	_check("in the world in LDraw's colours (%s)" % colours,
-		colours == {4: 1, 15: 1, 14: 1, 1: 1, 0: 1})
+	var wanted: Dictionary = {4: 1, 15: 1, 14: 1, 1: 1, 0: 1}
+	if whole:
+		wanted[71] = 1
+	_check("in the world in LDraw's colours (%s)" % colours, colours == wanted)
 	_check("...under its file's name, not the \"Untitled Model\" Studio heads every model "
 		+ "with (%s)" % _store.title, _store.title == "Bay 2025")
 	picker.queue_free()

@@ -486,6 +486,78 @@ func _prints() -> void:
 			and film.transform.basis.y.normalized().is_equal_approx(Vector3.FORWARD))
 	said = await _say("print_part", {"brick": brick, "sticker": true, "side": "sideways", "svg": svg})
 	_check("a side there is not is refused: %s" % said.left(60), said.begins_with("side is one of"))
+	await _decor()
+
+
+## A picture the person gave in the conversation, handed over as its own
+## bytes; the LEGO Group's printed versions of a part; and one of LDraw's
+## stickers stuck on a face: each read back off the model.
+func _decor() -> void:
+	print("── a picture as data, printed versions, LDraw's stickers ──")
+	_main.call("clear_model")
+	var tile: int = _put("3068b", Vector3(10, 8, 10))
+	var was: Transform3D = _world.get_brick(tile).transform
+	var photo := Image.create_empty(64, 64, false, Image.FORMAT_RGBA8)
+	photo.fill(Color(0.1, 0.4, 0.8))
+	photo.fill_rect(Rect2i(8, 8, 24, 48), Color(1.0, 0.85, 0.1))
+	var data: String = Marshalls.raw_to_base64(photo.save_png_to_buffer())
+	var depth: int = _builder.history_depth()
+	var said: String = await _say("print_part", {"brick": tile, "picture_data": data,
+		"name": "Probe photo"})
+	var printed: BrickWorld.Brick = null
+	for one: BrickWorld.Brick in _world.bricks():
+		if one.transform.is_equal_approx(was) and not _store.scenery.has(one.id):
+			printed = one
+	var mesh: Lbm.PartMesh = _library.mesh_for(printed.part_id) if printed != null else null
+	_check("picture_data, a PNG as base64, prints on the tile where it stands: %s" % said.left(90),
+		printed != null and printed.part_id.begins_with("bw-3068b-p") and mesh != null
+			and not mesh.print_files.is_empty() and _builder.history_depth() == depth + 1)
+	said = await _say("print_part", {"brick": printed.id if printed != null else tile,
+		"picture_data": "data:image/jpeg;base64," + Marshalls.raw_to_base64(
+			photo.save_jpg_to_buffer(0.9)), "sticker": true, "side": "up", "name": "Probe jpeg"})
+	_check("...and a JPEG as a data: URI, as a sticker on it: %s" % said.left(70),
+		said.begins_with("Stuck") and Stickers.in_model(_world, _library).size() == 1)
+	said = await _say("print_part", {"brick": printed.id if printed != null else tile,
+		"picture_data": Marshalls.raw_to_base64("%PDF-1.7 not a picture".to_ascii_buffer())})
+	_check("...a PDF given as data is refused, saying what it is: %s" % said.left(80),
+		said.contains("is a PDF"))
+	_main.call("clear_model")
+	tile = _put("3068b", Vector3(10, 8, 10))
+	was = _world.get_brick(tile).transform
+	said = await _say("print_part", {"brick": tile})
+	_check("no picture, and the answer names the part's printed versions: %s" % said.right(110),
+		said.contains("version=") and said.contains("3068b"))
+	said = await _say("print_part", {"brick": tile, "versions": "control"})
+	var first: RegExMatch = RegEx.create_from_string("\\n  (3068b[a-z0-9]+):").search(said)
+	_check("versions=\"control\" lists the control panels the LEGO Group printed on it: %s" % (
+		said.split("\n")[0]), first != null and said.contains("version"))
+	if first == null:
+		return
+	depth = _builder.history_depth()
+	said = await _say("print_part", {"brick": tile, "version": first.get_string(1)})
+	var swapped: BrickWorld.Brick = null
+	for one: BrickWorld.Brick in _world.bricks():
+		if one.transform.is_equal_approx(was) and not _store.scenery.has(one.id):
+			swapped = one
+	_check("version= swaps it for %s where it stands, in its colour, one undo: %s" % [
+		first.get_string(1), said.left(70)], swapped != null
+		and swapped.part_id == first.get_string(1) and swapped.color_code == 7
+		and _builder.history_depth() == depth + 1 and said.contains("It is #%d" % swapped.id))
+	said = await _say("print_part", {"brick": swapped.id if swapped != null else tile,
+		"version": "3001"})
+	_check("...a part that is no version of it is refused: %s" % said.left(60),
+		said.contains("is not a version"))
+	var brick: int = _put("3001", Vector3(100, 24, 10))
+	said = await _say("print_part", {"brick": brick, "sticker_part": "003435c", "side": "-z"})
+	var film: BrickWorld.Brick = _world.get_brick(_studio_placed())
+	_check("sticker_part= sticks LDraw's 003435c on the brick's front, lying on it: %s" % said.left(80),
+		film != null and film.part_id == "003435c" and film.color_code == Stickers.FILM
+			and film.transform.basis.y.normalized().is_equal_approx(Vector3.FORWARD)
+			and Stickers.stuck_to(_world, _library, film.id) == PackedInt64Array([brick]))
+
+
+func _studio_placed() -> int:
+	return (_main.get("_studio") as PrintStudio).last_placed
 
 
 ## One copy of a sub-assembly cut loose from the others.

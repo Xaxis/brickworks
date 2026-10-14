@@ -925,6 +925,27 @@
     },
     {
       "kind": "ui",
+      "label": "printed versions",
+      "entry": "src/prints/printed_versions.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions…, its right-click menu, or Properties' Printed versions…)",
+      "area": "prints"
+    },
+    {
+      "kind": "lib",
+      "label": "studio decorations",
+      "entry": "src/parts/studio_decor.gd",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd -- --real=<a Studio .io>   (by hand: Open, From a file on this computer, a Studio .io with prints or stickers)",
+      "area": "prints"
+    },
+    {
+      "kind": "cli",
+      "label": "decorated parts in a browser",
+      "entry": "tools/web/decor_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/decor_flow.mjs --url=<a preview>/app --out=shots/decor_web   (with .env sourced)",
+      "area": "prints"
+    },
+    {
+      "kind": "ui",
       "label": "docked panels",
       "entry": "src/ui/panel_stack.gd",
       "reach": "godot --path .  (the left-hand column: parts bin, model tree, properties; fold a header, drag the bar between two; under 1600 units across one column shows beside the model) and node tools/web/fit_check.mjs",

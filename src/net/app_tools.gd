@@ -58,7 +58,7 @@ const COMMANDS: Dictionary = {
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
 	"stability": "review_model", "ask_claude": "selection",
 	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
-	"sticker": "print_part",
+	"sticker": "print_part", "printed_versions": "print_part",
 	"make_unique": "make_unique",
 	"simulate": "simulate_mechanism",
 }
@@ -155,8 +155,11 @@ Export writes.
 as one sub-assembly: url= a link the app fetches, or pick=true opens the \
 window's file dialog for the person, after which brickify with neither \
 lays what they chose.
- - print_part: a picture (svg= you draw, or picture_url=) printed on a \
-part where it stands, or with sticker=true stuck on one of its faces.
+ - print_part: a picture (svg= you draw, picture_data= a picture the person \
+gave you, as base64, or picture_url=) printed on a part where it stands, or \
+with sticker=true stuck on one of its faces; or the LEGO Group's own: \
+version= one of the part's printed versions (versions= lists them), \
+sticker_part= a sticker LDraw has, stuck on a face.
  - make_unique: one copy of a sub-assembly cut loose from the others, so \
 changing it changes no other.
  - gallery: what people built and shared at brickworks.diy/gallery, searched \
@@ -400,8 +403,14 @@ func definitions() -> Array:
 				+ "size of the part's side= face (up, down, +x, -x, +z, -z), running over the "
 				+ "faces in the same plane beside it unless span=false, and sticks it on. "
 				+ "The picture: svg= drawn by you (a whole <svg> with a viewBox in the face's "
-				+ "proportions; flat colours print best), or picture_url= an http(s) link to "
-				+ "a PNG, JPEG, WebP or SVG."),
+				+ "proportions; flat colours print best), picture_data= a picture's own bytes "
+				+ "as base64 or a data: URI (a PNG or JPEG the person gave you in the "
+				+ "conversation; at most 2 MB, smaller is quicker), or picture_url= an http(s) "
+				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Edit, Printed "
+				+ "versions… does: version= one of the part's printed or stickered versions from "
+				+ "the library (versions=\"words\" lists them) swaps the part for it where it "
+				+ "stands; sticker_part= a sticker the library has (search_parts \"sticker\") "
+				+ "sticks it on the side= face, lying on it."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["brick"], "properties": {
 				"brick": {"type": "integer", "description": "the part's number in look_at_model"},
@@ -411,8 +420,18 @@ func definitions() -> Array:
 					"description": "a sticker's face; +z when omitted"},
 				"span": {"type": "boolean"},
 				"svg": {"type": "string"},
+				"picture_data": {"type": "string",
+					"description": "the picture's bytes as base64, or a data:image/…;base64, URI"},
 				"picture_url": {"type": "string"},
 				"name": {"type": "string", "description": "what the print or sticker is called"},
+				"versions": {"type": "string",
+					"description": "list the part's printed versions with these words in their names; \"\" for all"},
+				"version": {"type": "string",
+					"description": "a printed or stickered version of the part, by id, to swap it for"},
+				"sticker_part": {"type": "string",
+					"description": "a sticker from the library, by id, to stick on the side= face"},
+				"colour": {"type": "integer",
+					"description": "the film's LDraw colour for sticker_part; white (15) when omitted"},
 			}},
 		},
 		{
@@ -1223,11 +1242,38 @@ func _print_part(input: Dictionary) -> String:
 	var brick: BrickWorld.Brick = _brick(int(input["brick"]))
 	if brick == null:
 		return "No part numbered %d (look_at_model numbers them)." % int(input["brick"])
+	var builder: Builder = app.get("_builder")
+	var depth: int = builder.history_depth()
+	studio.last_placed = 0
+	# The LEGO Group's own: a printed version of the part, or a sticker of
+	# the library's, as Edit, Printed versions… and a sticker in hand do.
+	if input.has("versions"):
+		return _versions_of(studio, brick, str(input["versions"]))
+	if input.has("version") or input.has("sticker_part"):
+		var done: String
+		if input.has("version"):
+			done = await studio.swap_to(PackedInt64Array([brick.id]),
+				str(input["version"]).strip_edges().to_lower())
+		else:
+			done = await studio.stick_part_on(brick.id, str(input.get("side", "+z")),
+				str(input["sticker_part"]).strip_edges().to_lower(),
+				int(input.get("colour", Stickers.FILM)))
+		_one_undo_since(depth)
+		var put: BrickWorld.Brick = (app.get("_world") as BrickWorld).get_brick(studio.last_placed)
+		return done if put == null or not (done.begins_with("Swapped") or done.begins_with("Stuck")) \
+			else "%s It is #%d, %s." % [done, put.id, put.part_id]
 	var picture: Image = null
 	if input.has("svg"):
 		picture = PictureFile.decode(str(input["svg"]).to_utf8_buffer(), "svg")
 		if picture == null:
 			return "That svg could not be drawn: give a whole <svg> with a viewBox."
+	elif input.has("picture_data"):
+		# A picture the person gave in the conversation, handed over as its
+		# own bytes: what neither a link nor an svg can carry.
+		var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
+		if read.has("error"):
+			return _sentence(str(read["error"]))
+		picture = read["image"]
 	elif input.has("picture_url"):
 		var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
 			PictureFile.MOST_BYTES)
@@ -1235,15 +1281,18 @@ func _print_part(input: Dictionary) -> String:
 			return str(fetched["error"])
 		picture = PictureFile.decode(fetched["bytes"])
 		if picture == null:
-			return "That link is not to a picture this can read: a PNG, JPEG, WebP, BMP or SVG."
+			return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
 	else:
-		return "Give the picture: svg= drawn by you, or picture_url= an http(s) link to one."
+		var printed: int = studio.versions_of(brick.part_id).size()
+		return ("Give the picture: svg= drawn by you, picture_data= a picture's own bytes as "
+			+ "base64 (one the person gave you), or picture_url= an http(s) link to one.%s" % (
+				(" Or version= one of the %d printed versions the LEGO Group made of %s: "
+					% [printed, studio.plain_of(brick.part_id)]
+					+ "versions=\"\" lists them, versions=\"words\" those with the words on them.")
+					if printed > 0 else ""))
 	var sticker: bool = bool(input.get("sticker", false))
 	var title: String = str(input.get("name", "My Sticker" if sticker else "My Print")) \
 		.strip_edges().left(60)
-	var builder: Builder = app.get("_builder")
-	var depth: int = builder.history_depth()
-	studio.last_placed = 0
 	var said: String
 	if sticker:
 		said = await studio.sticker_on(brick.id, str(input.get("side", "+z")),
@@ -1255,6 +1304,45 @@ func _print_part(input: Dictionary) -> String:
 	if placed == null:
 		return said
 	return "%s It is #%d, %s." % [said, placed.id, placed.part_id]
+
+
+## The printed and stickered versions of [param brick]'s part, those with
+## [param words] in their names, for a session to choose one by version=.
+func _versions_of(studio: PrintStudio, brick: BrickWorld.Brick, words: String) -> String:
+	var plain: String = studio.plain_of(brick.part_id)
+	var all: Array[PartLibrary.PartInfo] = studio.versions_of(brick.part_id)
+	if all.is_empty():
+		return ("%s has no printed or stickered versions in the library: print one of your own "
+			% plain + "with svg=, picture_data= or picture_url=.")
+	var found: Array[PartLibrary.PartInfo] = studio.versions_of(brick.part_id, words)
+	if found.is_empty():
+		return "None of the %d versions of %s has \"%s\" in its name; versions=\"\" lists them all." \
+			% [all.size(), plain, words.strip_edges()]
+	var said := PackedStringArray()
+	said.append("#%d is %s. %d of the %d versions of %s%s, the most used first:" % [brick.id,
+		brick.part_id, found.size(), all.size(), plain,
+		" with \"%s\"" % words.strip_edges() if not words.strip_edges().is_empty() else ""])
+	for info: PartLibrary.PartInfo in found.slice(0, 30):
+		var on_it: String = info.printed()
+		if on_it.length() > 70:
+			on_it = on_it.left(70) + "…"
+		said.append("  %s: %s%s%s" % [info.id, on_it,
+			" (stickered)" if info.decor() & PartLibrary.PartInfo.PRINTED == 0 else "",
+			", in %d sets" % info.in_sets if info.in_sets > 0 else ""])
+	if found.size() > 30:
+		said.append("  and %d more: versions=\"words\" narrows them." % (found.size() - 30))
+	said.append("print_part {\"brick\": %d, \"version\": \"%s\"} swaps it for one, in its colour "
+		% [brick.id, found[0].id] + "where it stands; \"version\": \"%s\" makes it plain again." % plain)
+	return "\n".join(said)
+
+
+## Words said as a sentence: a capital first and a full stop last.
+static func _sentence(words: String) -> String:
+	var said: String = words.strip_edges()
+	if said.is_empty():
+		return said
+	said = said.left(1).to_upper() + said.substr(1)
+	return said if said.ends_with(".") or said.ends_with("?") else said + "."
 
 
 # -- making a copy unique ---------------------------------------------------------------
