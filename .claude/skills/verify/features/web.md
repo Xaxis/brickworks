@@ -481,14 +481,26 @@ plan with Claude as the client.
   empty on day one. The Godot half opens each file in the real app and
   publishes it through the real Share panel (Show who made it: Brickworks;
   List it in the gallery ticked) into a `SharedModels` that keeps the body —
-  so the picture is the panel's own; the node half publishes those bodies to a
+  so the pictures are the panel's own; the node half publishes those bodies to a
   deployment's `/api/share`, updating at its link any model that account
-  already shares under the same title. Seeded 2026-10-13, from a preview:
-  Wizard's Tower (`models/orthanc.ldr`) and A castle, from one sentence
+  already shares under the same title. The list is
+  `tools/web/gallery_seeds/seeds.json`, beside the four files that are not in
+  `models/`: each model's file, title, what its page says (a sentence or two,
+  its tags, its kind, its licence, CC BY 4.0 for all) and, for two, the way
+  the view is turned for its picture (`turn`, [yaw, pitch] in degrees: the
+  tower from lower down, the car from its front). The Godot half types them
+  into the panel's own boxes and menus and checks each body says them, with
+  a 480 x 252 card picture. Seeded 2026-10-13: Wizard's Tower
+  (`models/orthanc.ldr`) and A castle, from one sentence
   (`models/castle.ldr`), A barn owl and A sports car, and its driver (the
   homepage's renders), A three-core heavy-lift rocket and A small modular
-  corner shop (the bench's best, 2026-10-12). Titles carry no licensed name
-  (films, books, brands): the tower is Wizard's Tower on every public page.
+  corner shop (the bench's best, 2026-10-12); re-seeded the same day with
+  their words, kinds, licences and card pictures, and Orrery of the Sun and
+  eight planets (`models/orrery.ldr`) added, first in the gallery since it
+  was listed last (an update keeps its listing time). Titles carry no
+  licensed name (films, books, brands): the tower is Wizard's Tower on every
+  public page, and since the re-seed its file's figures are named as the
+  app's are, not as the book's.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
@@ -1329,13 +1341,19 @@ the first preview of 2026-10-13.
 Seeding (once; again only to change the seeds — it updates them in place):
 
 ```sh
-godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- \
+    --seed-list=tools/web/gallery_seeds/seeds.json --seed-out=DIR
 BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR [--dry]
 ```
 
 Proves it when the first ends "the gallery's models, as the app shares them"
-(each a 1200 x 630 picture, listed, credited) and the second "N models in the
-gallery, shared by gallery@brickworks.diy", every line `ok`.
+(each a 1200 x 630 picture, listed, credited; a 480 x 252 card picture; its
+words, tags, kind and licence as the list says) and the second "N models in
+the gallery, shared by gallery@brickworks.diy", every line `ok`, each seed
+`updated` but one newly added. DIR keeps each picture as `<n>.png` and
+`<n>-thumb.png`, to look at before publishing. Then
+`/api/share?op=list` carries each one's description, kind and licence, and
+its `thumb`.
 
 **Build it.** The pages, headless, in about half a minute (the catalogue load):
 
