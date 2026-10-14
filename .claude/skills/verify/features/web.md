@@ -755,7 +755,11 @@ plan with Claude as the client.
   that outgrew it, a frame after it is built. But a build animation is timed
   by the clock: 2.5 s of it was two to five frames here and 150 on a graphics
   card, so counted in frames alone it failed one run and passed the next;
-  asked whether it plays, it fails every time. If a case's tab never answers
+  asked whether it plays, it fails every time. A call still going after 20 s
+  answers with a job (`src/net/tool_jobs.gd`): the Falcon's check did at a
+  load of 50, and the submit after it was refused as the app being busy. The
+  check polls `job` as a session does, and the job's last answer is the
+  call's. If a case's tab never answers
   the connector, the case is tried again on a fresh page, up to three pages
   in all. The test account is shared by every check on the machine, and a
   page can come up saying "Sign in to Brickworks again to connect Claude".

@@ -223,6 +223,20 @@ async function runCase(size, mode) {
     return answer.json();
   }
   const said = (answer) => (answer.result?.content || []).map((c) => c.text || "").join(" ").replace(/\s+/g, " ");
+  // A call still going after 20 s answers with a job (src/net/tool_jobs.gd),
+  // as the Falcon's check did on a loaded machine, and the submit after it
+  // was refused as the app being busy. Polled as a session polls it: the
+  // job's last answer is the call's.
+  async function tool(name, args) {
+    let answer = await claude("tools/call", { name, arguments: args });
+    const started = /Started job (\d+)/.exec(said(answer));
+    if (!started) return answer;
+    for (let tries = 0; tries < longest / 10000; tries++) {
+      answer = await claude("tools/call", { name: "job", arguments: { id: Number(started[1]) } });
+      if (!/is still going/.test(said(answer))) break;
+    }
+    return answer;
+  }
   await claude("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "arrival_check", version: "1" } });
   await claude("tools/list", {});
 
@@ -282,10 +296,10 @@ async function runCase(size, mode) {
   if (mode === "hidden") { await seeing(true); await page.waitForTimeout(1000); }
   let t = Date.now();
   const checked = flow === "check"
-    ? await claude("tools/call", { name: "check_design", arguments: input }) : {};
+    ? await tool("check_design", input) : {};
   const checkMs = Date.now() - t;
   t = Date.now();
-  const submitted = await claude("tools/call", { name: "submit_design", arguments: input });
+  const submitted = await tool("submit_design", input);
   const submitMs = Date.now() - t;
   const answeredAt = await now();
   // The moment of showing taken before the tab is shown: the frames it was
@@ -371,7 +385,9 @@ async function runCase(size, mode) {
     drawnMs, drawnFrame, ownToDrawn, idleMs, instances: final, worstOwn: Math.round(worstOwn), worstTask: Math.round(worstTask),
     worstInput, goingUp, waitFrames: between.length,
     waitWork: Math.round(between.reduce((s, [, , own]) => s + own, 0)),
-    checkSaid: said(checked).slice(0, 60), submitSaid: said(submitted).slice(0, 60),
+    // A job's last answer says which job it was before what was done.
+    checkSaid: said(checked).replace(/Job \d+ \(\w+\) is done, after \d+ s: /, "").slice(0, 60),
+    submitSaid: said(submitted).replace(/Job \d+ \(\w+\) is done, after \d+ s: /, "").slice(0, 60),
   };
 }
 
