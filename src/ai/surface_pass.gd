@@ -181,6 +181,10 @@ class Finding extends RefCounted:
 	var ids: Array[int] = []
 	## The section its studs are in (a wing laid at an angle), or "".
 	var section: String = ""
+	## What it reads that a top or a brick course is not: "plates" for a
+	## flank of plates, "side" for studs on a part's side; "" otherwise. The
+	## record says them apart: the sides round's log could not.
+	var of: String = ""
 	## The view that sees it best: a slope falling toward -x or -z, or a wall
 	## facing that way, is seen from the far corner. "" for either.
 	var seen_from: String = ""
@@ -253,6 +257,8 @@ func record() -> String:
 	var walls: int = 0
 	var rounded: int = 0
 	var skinned: int = 0
+	var of_plates: int = 0
+	var on_sides: int = 0
 	for one: Finding in findings:
 		var verdict: String = one.verdict if one.settled() else (
 			"offered" if one.offered else "not settled")
@@ -260,7 +266,10 @@ func record() -> String:
 		if verdict in ["accepted", "adjusted", "left"]:
 			match one.kind:
 				"studs":
-					tiled += one.studs
+					if one.of == "side":
+						on_sides += one.studs
+					else:
+						tiled += one.studs
 				"staircase":
 					sloped += 1
 				"wall":
@@ -269,6 +278,7 @@ func record() -> String:
 					rounded += 1
 				"flank":
 					skinned += 1
+					of_plates += 1 if one.of == "plates" else 0
 	var said := PackedStringArray()
 	for verdict: String in ["accepted", "adjusted", "left", "rejected", "kept", "offered",
 			"not settled"]:
@@ -277,6 +287,8 @@ func record() -> String:
 	var kept := PackedStringArray()
 	if tiled > 0:
 		kept.append("%d studs tiled" % tiled)
+	if on_sides > 0:
+		kept.append("%d side studs tiled" % on_sides)
 	if sloped > 0:
 		kept.append("%d staircase%s sloped" % [sloped, "" if sloped == 1 else "s"])
 	if walls > 0:
@@ -284,7 +296,8 @@ func record() -> String:
 	if rounded > 0:
 		kept.append("%d top%s rounded" % [rounded, "" if rounded == 1 else "s"])
 	if skinned > 0:
-		kept.append("%d flank%s skinned" % [skinned, "" if skinned == 1 else "s"])
+		kept.append("%d flank%s skinned%s" % [skinned, "" if skinned == 1 else "s",
+			" (%d of plates)" % of_plates if of_plates > 0 else ""])
 	return "%d finding%s: %s%s" % [findings.size(), "" if findings.size() == 1 else "s",
 		", ".join(said), "" if kept.is_empty() else "; " + ", ".join(kept)]
 
@@ -3050,6 +3063,7 @@ func _plate_skins(group: Array) -> Array:
 			band[_cell_of(one_run, int(along))] = true
 	var one := Finding.new()
 	one.kind = "flank"
+	one.of = "plates"
 	var before: Dictionary = _taken_off.duplicate()
 	if not _cut(one, ids, band, {}):
 		_taken_off = before
@@ -3263,6 +3277,7 @@ func _side_tiles(field: Array, facing: String, colour: int) -> Finding:
 		return null
 	var one := Finding.new()
 	one.kind = "studs"
+	one.of = "side"
 	one.add = tiles
 	one.studs = covered.size()
 	var box := AABB(field[0] as Vector3, Vector3.ZERO)

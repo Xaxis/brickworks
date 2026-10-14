@@ -309,6 +309,7 @@ func _run() -> void:
 		% [_count(_bricks(), ["3035"]), _count(_bricks(), ["3034"])])
 	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
 		% pieces_before)
+	_ok(plated != null and plated.of == "plates", "...told apart in the record as of plates")
 	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "reject",
 		"reason": "the fuselage keeps its plates here"})
 	_ok(_count(_bricks(), ["30414", "5520", "87079"]) == 0
@@ -351,6 +352,9 @@ func _run() -> void:
 	_ok(_sideways(["2431", "3069b", "3068b", "87079", "63864"]) >= 2,
 		"...by tiles laid on their side (%d)" % _sideways(["2431", "3069b", "3068b", "87079",
 			"63864"]))
+	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "accept"})
+	_ok(assistant.surface_pass().record().contains("8 side studs tiled"),
+		"...and the record says them apart from tops: %s" % assistant.surface_pass().record())
 
 	print("\nevery finding is laid at once, not twelve of them")
 	await _build("pillars", _pillars())

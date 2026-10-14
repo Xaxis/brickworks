@@ -1651,7 +1651,9 @@ fixing what it got wrong.
   within a stud and a half out, on a part whose studs are finished, four or
   more joined on a grid a stud apart, one colour — tiled on their side
   (`_onto_side`), largest tiles first; "the right wing is a flat plate with
-  its studs showing" (the steps round's owl). `surface_probe`: a body of
+  its studs showing" (the steps round's owl). The record says both apart
+  (`Finding.of`): "2 flanks skinned (1 of plates)", "8 side studs tiled".
+  `surface_probe`: a body of
   seven plates stacked, a stud narrower over its fourth on one side, gets
   both sides skinned in one finding (two 30414s a side, 5520 at each end, a
   2 x 4 between, the three plates cut to 2 x 8s) in as many pieces; one
