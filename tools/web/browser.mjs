@@ -101,6 +101,15 @@ export async function openColumnFor(page, name) {
   return true;
 }
 
+/// The app's address as the site links to it for someone who came for the
+/// assistant: `assistant=on` added (Main._assistant_from_address). A first
+/// visit builds by hand with the connector held off, so a flow that drives
+/// Claude through the connector arrives this way, as such a person does.
+export function withAssistant(address) {
+  if (/[?&]assistant=/.test(address)) return address;
+  return `${address}${address.includes("?") ? "&" : "?"}assistant=on`;
+}
+
 /// The assistant on, as a person turns it on: Settings (the comma key), the
 /// choice "Show the assistant", and Done. A first visit builds by hand, with
 /// no assistant anywhere in the window (the app's ShellPrefs.assistant_shown),

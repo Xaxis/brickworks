@@ -41,7 +41,7 @@
 //
 // Signs in as a throwaway account of its own, deleted at the end, so the
 // tabs other flows have open on the shared test account are not among its.
-import { launch } from "./browser.mjs";
+import { launch, withAssistant } from "./browser.mjs";
 import { mintSession, STORAGE_KEY } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -50,7 +50,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = String(args.url || "http://127.0.0.1:8790/app");
+const url = withAssistant(String(args.url || "http://127.0.0.1:8790/app"));
 const out = args.out || "shots/tabs";
 const bypass = args.bypass || process.env.BW_BYPASS || "";
 mkdirSync(out, { recursive: true });

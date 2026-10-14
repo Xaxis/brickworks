@@ -368,7 +368,9 @@ if (args.relay) {
   const token = randomBytes(36).toString("base64url");
   const asking = await fetch(`${origin}/api/mcp?t=${token}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    // A preview answers nothing past its protection without the bypass.
+    headers: { "content-type": "application/json",
+      ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}) },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
       params: { name: "search_parts", arguments: { query: "brick" } } }),
   }).catch((e) => ({ status: 0, json: async () => ({ error: String(e) }) }));
