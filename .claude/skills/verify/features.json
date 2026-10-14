@@ -693,6 +693,14 @@
       "tests": []
     },
     {
+      "id": "cli:typing probe",
+      "kind": "cli",
+      "entry": "src/dev/typing_probe.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/typing_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:unrestored probe",
       "kind": "cli",
       "entry": "src/dev/unrestored_probe.gd",

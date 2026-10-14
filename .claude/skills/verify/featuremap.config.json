@@ -1762,6 +1762,13 @@
       "entry": "src/dev/design_undo_probe.gd",
       "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
       "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "typing probe",
+      "entry": "src/dev/typing_probe.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/typing_probe.gd",
+      "area": "view"
     }
   ]
 }
