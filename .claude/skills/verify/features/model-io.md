@@ -210,7 +210,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`decor_probe -- --real=`). The 2021 one all 103. `bay_2025.io`'s Part
   Designer part (a `1 16 … 3001.dat` in `CustomParts/parts/`) is built where the
   checkout has the LDraw library and named as left out where it has not (the
-  web build): `io_probe` expects whichever this checkout can do.
+  web build): `io_probe` and `handbuild_probe` expect whichever this checkout can do.
   `tests/fixtures/studio/make_fixtures.py` makes `bay_2025.io` and
   `bay_2021.io` (locked by the system's `zip -P`) in those two shapes, and
   `bay_aes.io`, with `model2.ldr` in BrickLink's numbers so reading the wrong

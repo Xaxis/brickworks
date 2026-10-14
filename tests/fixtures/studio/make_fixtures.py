@@ -312,7 +312,7 @@ def make_decor() -> None:
     turn = (1, 0, 0, 0, 1, 0, 0, 0, 1)
     model = ["0 FILE decor_2025.io"] + _header("Untitled Model", "decor_2025", 4) + [
         "1 4 0.000000 -24.000000 0.000000 %s bl_3001.dat" % " ".join("%f" % v for v in turn),
-        "1 15 0.000000 -24.000000 0.000000 %s bl_%s.dat" % (" ".join("%f" % v for v in turn), PRINT),
+        "1 15 20.000000 -32.000000 0.000000 %s bl_%s.dat" % (" ".join("%f" % v for v in turn), PRINT),
         "0 STEP",
         "1 0 60.000000 -8.000000 0.000000 %s bl_%s.dat" % (" ".join("%f" % v for v in turn),
                                                          STICKERED),
@@ -321,7 +321,7 @@ def make_decor() -> None:
         "0 STEP", "0 NOFILE"]
     model2 = ["0 FILE decor_2025.io"] + _header("Untitled Model", "decor_2025", 4) + [
         "1 5 0.000000 -24.000000 0.000000 %s 3001.dat" % " ".join("%f" % v for v in turn),
-        "1 1 0.000000 -24.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn), PRINT),
+        "1 1 20.000000 -32.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn), PRINT),
         "1 11 60.000000 -8.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn),
                                                        STICKERED),
         "1 3 -60.000000 -8.000000 0.000000 %s %s.dat" % (" ".join("%f" % v for v in turn), DESIGNED),

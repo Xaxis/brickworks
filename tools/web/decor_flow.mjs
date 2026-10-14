@@ -1,18 +1,17 @@
 // Decorated parts in a real browser, as a person adds them by hand: a picture
 // from a file printed on a 2 x 2 tile, a sticker stuck across two 1 x 4
-// tiles, one of those tiles swapped for a printed version the LEGO Group
+// tiles, the plain white 2 x 2 swapped for a printed version the LEGO Group
 // made of it (Properties > Printed versions…), the model taken out as a
 // BrickLink Studio .io and brought back in a browser that has never seen it,
 // and a Studio file's own print, sticker and Part Designer decal opened.
 //
-//   set -a; . ./.env; set +a
-//   BW_BYPASS=$VERCEL_BYPASS node tools/web/decor_flow.mjs --url=https://<a preview>/app --out=shots/decor_web
+//   node --env-file=.env tools/web/decor_flow.mjs --url=https://<a preview>/app --out=shots/decor_web   (VERCEL_BYPASS, or BW_BYPASS, gets past the preview's login)
 //   node tools/web/decor_flow.mjs --url=http://127.0.0.1:8147/index.html --out=…   (a local export)
 //
 // Opens tests/fixtures/prints/scene.ldr through Open… > From a file; Print…
 // with "or print on" 3068b and a photograph through Add a picture… (the
 // page's own file input), covered, saved and clicked down; Stickers… > New
-// sticker…, a click on the two tiles, filled and saved; a click on a tile,
+// sticker…, a click on the two tiles, filled and saved; a click on the white tile,
 // Properties' Printed versions…, the first print chosen; File > Export >
 // BrickLink Studio model (.io), read with Python's zipfile (CustomParts/
 // holds the sticker and the print with PE_TEX lines, model.ldr the same as
@@ -32,7 +31,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "http://127.0.0.1:8147/index.html";
-const bypass = process.env.BW_BYPASS || "";
+const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
@@ -173,7 +172,7 @@ ok(await $.until(async () => Boolean((await $.controls()).open), 400, "app"), "t
 await page.waitForTimeout(Number(args.load || 15000));
 
 await $.open(scene);
-ok(await $.until(async () => (await $.state()).bricks >= 4, 120, "scene"),
+ok(await $.until(async () => (await $.state()).bricks === 4 && (await $.parts()).includes("3037"), 120, "scene"),
   `the scene opened through Open… > From a file: ${(await $.state()).bricks} parts`);
 await page.waitForTimeout(8000);
 
@@ -226,12 +225,16 @@ ok(await $.until(async () => (await $.custom()).some((id) => /^bw-st-/.test(id) 
 await page.waitForTimeout(4000);
 await $.shot("2_sticker.png");
 
-// 3. One of the tiles swapped for a printed version: click it (the film has
-// no cover, so the click finds the tile under it), then Printed versions…
+// 3. A tile swapped for a printed version: the plain white 2 x 2 to the left
+// of the two tiles the sticker covers (a click on those picks the sticker),
+// then Properties' Printed versions…. Where it is drawn is where the scene's
+// view puts it; a few points round there, the first that picks a part with
+// versions.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(1500);
 let picked = false;
-for (const [dx, dy] of [[0, 0], [0, 14], [0, -14], [24, 0]]) {
+for (const [dx, dy] of [[-206, 50], [-196, 44], [-216, 56], [-190, 60], [-226, 40], [-206, 30],
+  [-60, 40], [60, 20], [-120, 60]]) {
   await page.mouse.click(view.x + dx, view.y + dy);
   await page.waitForTimeout(2500);
   if ((await $.state()).selected === 1 && (await $.controls()).prop_versions) {
@@ -247,8 +250,8 @@ ok(await $.until(async () => Boolean((await $.controls()).version_1), 120, "vers
 await page.waitForTimeout(6000);
 await $.shot("3_versions.png");
 await $.click("version_1");
-ok(await $.until(async () => (await $.parts()).some((id) => /^2431[pd]/.test(id) && !versionsBefore.has(id)),
-  120, "swapped"), `swapped where it stands for ${(await $.parts()).filter((id) => /^2431[pd]/.test(id))}`);
+ok(await $.until(async () => (await $.parts()).some((id) => /^3068b[pd]/.test(id) && !versionsBefore.has(id)),
+  120, "swapped"), `swapped where it stands for ${(await $.parts()).filter((id) => /^3068b[pd]/.test(id))}`);
 await page.waitForTimeout(4000);
 await $.shot("4_swapped.png");
 
@@ -297,7 +300,7 @@ if (download) {
     const made = await $$.custom();
     const now = await $$.parts();
     return made.some((id) => /^bw-st-/.test(id)) && made.some((id) => /^bw-3068b-p/.test(id))
-      && now.some((id) => /^2431[pd]/.test(id));
+      && now.some((id) => /^3068b[pd]/.test(id));
   }, 240, "io reopened"), `the .io opens with its print, its sticker and the printed version: [${await $$.custom()}]`);
   await fresh.waitForTimeout(8000);
   await $$.shot("5_reopened.png");

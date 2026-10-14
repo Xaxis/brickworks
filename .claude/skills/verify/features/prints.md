@@ -215,7 +215,7 @@ tools/build_custom.py shots/print_probe.mpd --check
 BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=https://<a preview>/app --out=shots/studio_web
 godot --headless --path . --script src/dev/decor_probe.gd     # -- --real=<a Studio .io> for one of your own
 python3 tests/fixtures/studio/make_fixtures.py decor           # after changing what decor_2025.io holds
-BW_BYPASS=$VERCEL_BYPASS node tools/web/decor_flow.mjs --url=https://<a preview>/app --out=shots/decor_web
+node --env-file=.env tools/web/decor_flow.mjs --url=https://<a preview>/app --out=shots/decor_web
 ```
 
 Proves it when:
@@ -310,12 +310,13 @@ Proves it when:
 - `decor_flow.mjs` ends `decor flow: a picture printed from a file, a sticker stuck
   on, a tile swapped for a printed version, a .io out and in, and a Studio file's
   decorations, in the browser`: the scene opened, a photograph printed on 3068b
-  through Add a picture… and clicked down, a sticker across the two 2431s, one of
-  them clicked and swapped through Properties' Printed versions…, File > Export >
+  through Add a picture… and clicked down, a sticker across the two 2431s, the white
+  3068b clicked (a click on the 2431s picks the sticker) and swapped through Properties' Printed versions…, File > Export >
   BrickLink Studio model with the sticker and the print in CustomParts/ in PE_TEX
   form and in model.ldr as TEXMAP and !DATA, and in a second empty browser that
   .io (print, sticker and version back) and decor_2025.io (bl_3068pb9001,
-  bl_2431pb9002, m1a2b3c4_2025408_170000) opened. **Look at**
+  bl_2431pb9002, m1a2b3c4_2025408_170000) opened: all 15 against the preview of
+  6023f74, 2026-10-14, in 249 s. **Look at**
   `shots/decor_web/*.png`.
 
 ## Gotchas
