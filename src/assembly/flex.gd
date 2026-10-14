@@ -1171,6 +1171,131 @@ static func items_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return found
 
 
+## How near two pieces of one thing are to count as touching, LDU: a ring's
+## box grown by this either way meets the next ring's.
+const TOUCHING := 1.0
+## The cube pieces are sorted into to find the ones touching, LDU.
+const TOUCH_BUCKET := 24.0
+
+
+## Which flexible thing a part is a piece of, as a key two pieces of one
+## share: a kind the flex tool lays ([method kind_of_piece]), or another that
+## LDraw draws in pieces along its bend, by the number of the part they are
+## pieces of (57539 for 57539k01 and k02). Those are a hose, a cable, a vine,
+## a strap or a string LDraw names a Segment ("~Hose Flexible 19L Segment",
+## "~Electric Power Functions 2.0 6-Wire Ribbon Cable Segment"), and a chain's
+## or a tread's links. "" for any other part.
+static func strung(library: PartLibrary, part_id: String) -> String:
+	var kind: String = kind_of_piece(part_id)
+	if not kind.is_empty():
+		return kind
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info == null or not (_a_word(info.name, "Segment") or _a_word(info.name, "Segments")
+			or info.name.contains("Chain Link") or info.name.contains("Chain Tread")):
+		return ""
+	var family: String = part_id
+	var at: int = family.rfind("k")
+	if at > 0 and family.substr(at + 1).is_valid_int():
+		family = family.left(at)
+	at = family.rfind("p")
+	if at > 0 and family.left(at).is_valid_int():
+		family = family.left(at)
+	return family
+
+
+## Whether [param word] is in [param text] as a word: "Segment" is in "~Hose
+## Flexible 12L Segment Hose" and not in "7-Segmented Trunk".
+static func _a_word(text: String, word: String) -> bool:
+	var at: int = text.find(word)
+	while at >= 0:
+		var before: String = text.substr(at - 1, 1) if at > 0 else " "
+		var after: String = text.substr(at + word.length(), 1)
+		if not (before.to_lower() != before.to_upper() or after.to_lower() != after.to_upper()):
+			return true
+		at = text.find(word, at + 1)
+	return false
+
+
+## Which flexible pieces are one thing with which, as pairs of keys: every
+## piece of an item with the rest of it, an item being a sub-model of one
+## thing's pieces alone, as the flex tool lays one and [method items_in] reads
+## it; and a piece in no item with each piece of its thing it touches in the
+## same sub-model, which is how most of the LDraw model repository's sets
+## have their hoses. [param entries] are [key, transform, part, part id,
+## path] (Joints.held_otherwise).
+static func one_thing(entries: Array, library: PartLibrary) -> Array:
+	var family_of: Dictionary = {}   ## part id -> strung(), asked once a part
+	var items: Dictionary = {}       ## path -> [family, entries]; "" once anything else is in it
+	var loose: Array = []            ## [key, family|path, box]
+	var pairs: Array = []
+	for entry: Array in entries:
+		var id: String = str(entry[3])
+		if not family_of.has(id):
+			family_of[id] = strung(library, id)
+		var family: String = family_of[id]
+		var path: String = str(entry[4])
+		if path.is_empty():
+			if not family.is_empty():
+				loose.append(entry)
+			continue
+		if not items.has(path):
+			items[path] = [family, []]
+		var item: Array = items[path]
+		if str(item[0]) != family:
+			item[0] = ""
+		(item[1] as Array).append(entry)
+	for path: String in items:
+		var item: Array = items[path]
+		var in_it: Array = item[1]
+		if not str(item[0]).is_empty():
+			for n: int in range(1, in_it.size()):
+				pairs.append([in_it[0][0], in_it[n][0]])
+			continue
+		for entry: Array in in_it:
+			if not str(family_of[str(entry[3])]).is_empty():
+				loose.append(entry)
+	var rows: Array = []
+	for entry: Array in loose:
+		var part: Lbm.PartMesh = entry[2]
+		if part != null:
+			rows.append([entry[0], str(family_of[str(entry[3])]) + "|" + str(entry[4]),
+				(entry[1] as Transform3D) * part.bounds])
+	pairs.append_array(touching(rows))
+	return pairs
+
+
+## Which of [param rows] ([key, group, box]) touch another of their group,
+## their boxes grown by [constant TOUCHING], as pairs of keys. In cubes: a hose
+## in a set's sub-model is thousands of rings, and every one against every
+## other is millions.
+static func touching(rows: Array) -> Array:
+	var cubes: Dictionary = {}       ## group -> {cube -> Array of [key, box]}
+	var seen: Dictionary = {}
+	var pairs: Array = []
+	for row: Array in rows:
+		var group: String = row[1]
+		if not cubes.has(group):
+			cubes[group] = {}
+		var mine: Dictionary = cubes[group]
+		var box: AABB = (row[2] as AABB).abs().grow(TOUCHING)
+		var low := Vector3i((box.position / TOUCH_BUCKET).floor())
+		var high := Vector3i((box.end / TOUCH_BUCKET).floor())
+		for x: int in range(low.x, high.x + 1):
+			for y: int in range(low.y, high.y + 1):
+				for z: int in range(low.z, high.z + 1):
+					var cube := Vector3i(x, y, z)
+					if not mine.has(cube):
+						mine[cube] = []
+					for other: Array in mine[cube]:
+						var pair := Vector2i(mini(int(other[0]), int(row[0])),
+							maxi(int(other[0]), int(row[0])))
+						if not seen.has(pair) and box.intersects(other[1]):
+							seen[pair] = true
+							pairs.append([other[0], row[0]])
+					(mine[cube] as Array).append([row[0], box])
+	return pairs
+
+
 ## The part a shop sells a swept item as: the kind's straight part nearest
 ## its length, which is the part it was laid as. "" for a chain or a tread,
 ## which are sold as their links, and where the library has none of the

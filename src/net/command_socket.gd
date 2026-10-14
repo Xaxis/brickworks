@@ -49,6 +49,19 @@ var assistant: Assistant
 ## The app itself, for the two things only it can do.
 var app: Node = null
 
+## Calls from outside at their work now, on any socket (the port's, and the
+## web connector's). What one puts down is the session's, and Main shows it
+## whole rather than assembling it (BuildPlayback), so the model on screen
+## is the one the answer describes. A design Claude submitted to a tab in
+## view went on going up for 2.5 s after Claude was told it was built: on a
+## graphics card that is 150 frames (tools/web/arrival_check.mjs, 2026-10-13).
+static var _at_work: int = 0
+
+
+## Whether a call from outside is at its work now.
+static func at_work() -> bool:
+	return _at_work > 0
+
 ## One connection, with everything about it in one place.
 ##
 ## Held as objects rather than as parallel arrays indexed by position.
@@ -563,7 +576,9 @@ func _call(name: String, input: Dictionary) -> Array:
 			# One step too: a review lays a feature's piece, saving can hand
 			# the next feature back laid, and clearing takes everything off.
 			var before: Dictionary = _before_change(name)
+			_at_work += 1
 			var said: Variant = await _run_own(name, input)
+			_at_work -= 1
 			_one_step(name, before)
 			return said, doing), true]
 	if not await _take_a_turn():
@@ -599,10 +614,12 @@ func _heard(note: String) -> void:
 func _run(name: String, input: Dictionary, work: Working.Job) -> Variant:
 	var before: Dictionary = _before_change(name)
 	var answer: Variant
+	_at_work += 1
 	if _the_app_tools().has(name):
 		answer = await _the_app_tools().run(name, input, work)
 	else:
 		answer = await assistant.use_tool(name, input)
+	_at_work -= 1
 	_one_step(name, before)
 	return answer
 

@@ -32,6 +32,11 @@ plan with Claude as the client.
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
   meshes in object storage" line ends "to upload : 0".
+  A release goes through `tools/release/` (README there): a staging
+  worktree, each ready unit merged as the user with a parse gate, then
+  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
+  the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
+  serves <sha>` and the live site check and share probe pass.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
@@ -481,14 +486,26 @@ plan with Claude as the client.
   empty on day one. The Godot half opens each file in the real app and
   publishes it through the real Share panel (Show who made it: Brickworks;
   List it in the gallery ticked) into a `SharedModels` that keeps the body —
-  so the picture is the panel's own; the node half publishes those bodies to a
+  so the pictures are the panel's own; the node half publishes those bodies to a
   deployment's `/api/share`, updating at its link any model that account
-  already shares under the same title. Seeded 2026-10-13, from a preview:
-  Wizard's Tower (`models/orthanc.ldr`) and A castle, from one sentence
+  already shares under the same title. The list is
+  `tools/web/gallery_seeds/seeds.json`, beside the four files that are not in
+  `models/`: each model's file, title, what its page says (a sentence or two,
+  its tags, its kind, its licence, CC BY 4.0 for all) and, for two, the way
+  the view is turned for its picture (`turn`, [yaw, pitch] in degrees: the
+  tower from lower down, the car from its front). The Godot half types them
+  into the panel's own boxes and menus and checks each body says them, with
+  a 480 x 252 card picture. Seeded 2026-10-13: Wizard's Tower
+  (`models/orthanc.ldr`) and A castle, from one sentence
   (`models/castle.ldr`), A barn owl and A sports car, and its driver (the
   homepage's renders), A three-core heavy-lift rocket and A small modular
-  corner shop (the bench's best, 2026-10-12). Titles carry no licensed name
-  (films, books, brands): the tower is Wizard's Tower on every public page.
+  corner shop (the bench's best, 2026-10-12); re-seeded the same day with
+  their words, kinds, licences and card pictures, and Orrery of the Sun and
+  eight planets (`models/orrery.ldr`) added, first in the gallery since it
+  was listed last (an update keeps its listing time). Titles carry no
+  licensed name (films, books, brands): the tower is Wizard's Tower on every
+  public page, and since the re-seed its file's figures are named as the
+  app's are, not as the book's.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them. Since the directory
@@ -747,10 +764,19 @@ plan with Claude as the client.
   by the same numbers. Fails when a case is not drawn within three frames of
   being in view (frames that drew; 0 when it was on the screen already as
   the tab was shown), or took more than `--budget` ms (2,000) of the engine's own
-  work to get there. It is judged in frames because in software a frame of a
+  work to get there, or the app said the model was still going up
+  (`brickworksState.playing`, asked every 250 ms) after the answer, in view.
+  It is judged in frames because in software a frame of a
   4,000-part model is 2 to 3 s of rasterising, which a graphics card does in
   milliseconds. Three frames because the ground is laid wider under a design
-  that outgrew it, a frame after it is built. If a case's tab never answers
+  that outgrew it, a frame after it is built. But a build animation is timed
+  by the clock: 2.5 s of it was two to five frames here and 150 on a graphics
+  card, so counted in frames alone it failed one run and passed the next;
+  asked whether it plays, it fails every time. A call still going after 20 s
+  answers with a job (`src/net/tool_jobs.gd`): the Falcon's check did at a
+  load of 50, and the submit after it was refused as the app being busy. The
+  check polls `job` as a session does, and the job's last answer is the
+  call's. If a case's tab never answers
   the connector, the case is tried again on a fresh page, up to three pages
   in all. The test account is shared by every check on the machine, and a
   page can come up saying "Sign in to Brickworks again to connect Claude".
@@ -767,6 +793,19 @@ plan with Claude as the client.
   only after 9 s. `EditVerbs.brick_at` now keeps its last answer until the ray
   or `BrickLattice.revision` changes, and answers nothing out of view
   (`Main._watch_view`).
+
+  It caught the build animation outliving the answer (2026-10-13): every
+  shown case drawn on frame 4 or 5, 1.5 to 1.9 s after submit_design
+  answered, on brickworks.diy and on local exports of da0dd3d. Each frame's
+  instanced draws (`changes` in `.frames.json`) showed every batch's count
+  rising a step a frame for 2.5 s from the build: `BuildPlayback` raising
+  `visible_instance_count`. A check from outside had put the design down as
+  a draft, so the submit had nothing new to play; since a8e1aa5 it never
+  does, and the submit put all of it down to go up in view. Measured, not
+  read: da0dd3d with only that check line put back drew all three shown
+  cases on frame 0 or 1, never going up. What a session's
+  call puts down is now drawn whole as it answers (`CommandSocket.at_work`;
+  see [view](view.md) `build animation`).
 - `idle check`: `tools/web/idle_check.mjs` loads the app in Chromium, lets
   it settle (the model, its parts and the bin's pictures in, nothing
   moving), and counts what a page standing still costs for 15 s: the
@@ -1329,13 +1368,19 @@ the first preview of 2026-10-13.
 Seeding (once; again only to change the seeds — it updates them in place):
 
 ```sh
-godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- \
+    --seed-list=tools/web/gallery_seeds/seeds.json --seed-out=DIR
 BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR [--dry]
 ```
 
 Proves it when the first ends "the gallery's models, as the app shares them"
-(each a 1200 x 630 picture, listed, credited) and the second "N models in the
-gallery, shared by gallery@brickworks.diy", every line `ok`.
+(each a 1200 x 630 picture, listed, credited; a 480 x 252 card picture; its
+words, tags, kind and licence as the list says) and the second "N models in
+the gallery, shared by gallery@brickworks.diy", every line `ok`, each seed
+`updated` but one newly added. DIR keeps each picture as `<n>.png` and
+`<n>-thumb.png`, to look at before publishing. Then
+`/api/share?op=list` carries each one's description, kind and licence, and
+its `thumb`.
 
 **Build it.** The pages, headless, in about half a minute (the catalogue load):
 

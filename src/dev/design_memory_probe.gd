@@ -70,7 +70,8 @@ func _run() -> void:
 				and not str(entry.get("thumb", "")).is_empty() and not str(entry["built"]).is_empty():
 			whole += 1
 	_ok(entries.size() >= 20, "%d scored designs" % entries.size())
-	_ok(subjects.size() == 10, "of the suite's ten subjects (%d)" % subjects.size())
+	# Ten, and two held out since the sides round (tools/bench/suite.py).
+	_ok(subjects.size() == 12, "of the suite's twelve subjects (%d)" % subjects.size())
 	_ok(whole == entries.size(), "each with six scores, the judge's reasons, how it was "
 		+ "built and a picture (%d of %d)" % [whole, entries.size()])
 

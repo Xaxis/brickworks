@@ -52,7 +52,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   x-ray, and the hover — what selecting changed must lie round the parts, not
   over them, and go all the way round. Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
-  picture at 1x and 2x, and its frames standing still. The mask and the
+  picture at 1x and 2x, and its frames standing still; before the picture it
+  leaves the page 6 s (`--idle`) with no input and looks at the selection
+  four times a second, which nothing but input may take away. It failed on
+  the live site with the selection there all along: the parts bin's
+  read-backs held the drawing (`GpuFence`) and the picture was of the frame
+  before the click; a person's input is now drawn through the hold. The mask and the
   passes are drawn again only when the selection, the lens, the cut or the
   window changed, and the overlay otherwise lays the line it has; the mask is
   depth-tested, so a fragment behind more of the selection is not drawn. A
@@ -553,7 +558,8 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/outline_probe.gd
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 2800x1800x24" godot --path . \
   --resolution 2800x1800 --script src/dev/outline_probe.gd -- --tag=2x
-# ...and in a browser, at 1x and 2x, standing still drawing nothing
+# ...and in a browser, at 1x and 2x: a click's selection kept through 6 s with no
+# input and drawn round, and standing still drawing nothing
 node tools/web/outline_check.mjs --dir=build/web   # after tools/export.sh web, .env sourced
 # what the outline costs a frame with all of Orthanc selected, still and turning,
 # by the processor's time, against the same frames with nothing selected

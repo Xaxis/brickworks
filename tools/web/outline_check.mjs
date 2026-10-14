@@ -14,8 +14,9 @@
 // upside down, a render target's colours converted, a line half as wide at
 // 2x — so this looks at the browser's own picture of it.
 //
-// Opens Orthanc, clicks Saruman on its roof (window.brickworksState.places says where he
-// is), and counts the pixels in the selection's yellow round him against the
+// Opens Orthanc, clicks the white wizard on its roof (window.brickworksState.places
+// says where he is), watches the selection through --idle (6) seconds with no
+// input, and counts the pixels in the selection's yellow round him against the
 // same picture before the click; then counts the frames drawn over --seconds
 // (5) standing still. Pictures in --out (shots/outline_web).
 import { launch } from "./browser.mjs";
@@ -31,6 +32,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const out = args.out || "shots/outline_web";
 mkdirSync(out, { recursive: true });
 const seconds = Number(args.seconds || 5);
+const idle = Number(args.idle || 6);
 const model = args.model || "res://models/orthanc.ldr";
 // The figures were renamed with the tower (docs/TRADEMARKS.md, decision 4).
 const who = args.who || "white wizard";
@@ -203,7 +205,20 @@ try {
     ok(picked > 1, `a click on ${path} selects him: ${picked} parts`);
     // Off him, so the hover's own line is not in the picture.
     await page.mouse.move(at.x + 300, at.y + 200);
-    await page.waitForTimeout(4000);
+    // Then nothing from the person for --idle seconds, the selection looked
+    // at four times a second: nothing but input may take it away, and the
+    // picture after is of it, not of a frame from before the click. Over
+    // Orthanc the parts bin's read-backs held the drawing (GpuFence) for
+    // 30 s and more, and the picture 4 s after the click was still the one
+    // from before it (2026-10-14).
+    const held = [];
+    for (let n = 0; n < idle * 4; n++) {
+      await page.waitForTimeout(250);
+      held.push((await state()).selected || 0);
+    }
+    const lost = held.filter((count) => count !== picked);
+    ok(lost.length === 0, `${idle} s with no input: still ${picked} selected in ${held.length - lost.length} `
+      + `of ${held.length} looks${lost.length ? ` (${[...new Set(lost)].join(", ")} in the others)` : ""}`);
     const after = decodePng(await page.screenshot({ path: `${out}/${ratio}x_selected.png`, timeout: 180000 }));
     ok(after.width === 1400 * ratio, `the picture is ${after.width} device pixels across`);
     const was = yellow(before, box);
@@ -217,7 +232,7 @@ try {
     const drawn = frames.filter((f) => f[1] > 0).length;
     ok(drawn <= seconds, `standing still with him outlined: ${drawn} frames drawn in ${seconds} s (${frames.length} engine frames)`);
     ok(errors.length === 0, `no script or shader errors${errors.length ? ": " + errors.join(" | ") : ""}`);
-    report[`${ratio}x`] = { picked, yellow_before: was, yellow_after: is, drawn, frames: frames.length, errors };
+    report[`${ratio}x`] = { picked, idle_looks: held.length, idle_lost: lost.length, yellow_before: was, yellow_after: is, drawn, frames: frames.length, errors };
     await page.close();
   }
 } finally {
@@ -226,6 +241,6 @@ try {
   if (server) server.kill();
 }
 console.log(failures === 0
-  ? "\noutline in the browser: drawn round a click's selection at 1x and 2x, and nothing drawn standing still"
+  ? "\noutline in the browser: a click's selection kept with no input and drawn round at 1x and 2x, and nothing drawn standing still"
   : `\noutline in the browser: ${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

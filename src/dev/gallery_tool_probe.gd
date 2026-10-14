@@ -11,7 +11,10 @@
 ## page of models with their link ids, credits, licences and counts; a
 ## search and a kind; refusals that say what is wrong; a model opened as a
 ## reference with its size, its parts by kind, the most used, its credit,
-## its licence and its picture as an image block; a link that is not one,
+## its licence and its picture as an image block; every model on the first
+## page opened in turn, each with what its owner wrote, its kind and its
+## licence as the list says it (the project's seed models, on a fresh
+## gallery); a link that is not one,
 ## and one never shared; and the baseplate exactly as it was. Then each
 ## licence's words, from answers played here (FakeGallery), since what a
 ## session may do with a model is the point of saying whose it is.
@@ -73,6 +76,7 @@ func _run() -> void:
 
 	print("── searching ──")
 	var said: String = _text(await _call({}))
+	var first_page: String = said
 	_check("a page of the gallery, newest first: %s" % said.get_slice("\n", 0),
 		said.begins_with("The gallery at ") and said.contains("newest first") and said.contains(" parts"))
 	var first: String = said.get_slice("\n", 1)
@@ -112,6 +116,20 @@ func _run() -> void:
 	var bare: Dictionary = await _call({"open": id, "picture": false})
 	_check("picture=false leaves it out", (bare.get("content", []) as Array).all(
 		func(block: Dictionary) -> bool: return str(block.get("type", "")) != "image"))
+	# Every model a session finds on the first page reads as what its page
+	# says: its words, its kind and tags, and its licence as the list has it.
+	print("── every model on the first page ──")
+	for line: String in first_page.split("\n"):
+		var each: String = line.get_slice("(", 1).get_slice(")", 0)
+		if not line.contains(" — ") or not SharedModels.is_id(each):
+			continue
+		said = _text(await _call({"open": each, "picture": false}))
+		var licence: String = said.get_slice("Licence: ", 1).get_slice(" —", 0)
+		_check("%s\n        %s\n        %s · %s" % [said.get_slice("\n", 0).left(110),
+			said.get_slice("About it: ", 1).get_slice("\n", 0) if said.contains("About it: ") else "(nothing said about it)",
+			said.get_slice("Kind: ", 1).get_slice("\n", 0) if said.contains("Kind: ") else "no kind",
+			licence], said.contains("/m/%s" % each) and said.contains("Read-only")
+			and (line.contains(licence) if licence != "none chosen" else line.contains("no licence chosen")))
 	_check("the baseplate is as it was (%d parts)" % world.brick_count(), world.brick_count() == before)
 	var shell: Shell = _main.get("_shell")
 	shell.read_only = true

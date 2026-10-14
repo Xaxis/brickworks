@@ -227,6 +227,12 @@ them back.
 
 ### Fixed
 
+- A sticker on an upright face, each bit of a string, hose, cable or chain,
+  and cars coupled by magnets no longer count as pieces of their own. The
+  check that says a model is "in 4 pieces", and Check stability, hold a
+  sticker by the face it lies on and a flexible part where its ends are
+  fixed. A brick touching nothing is still loose. And a vehicle with its
+  driver in it is no longer let stand apart as "a figure".
 - Wing plates, turntable tops, flags, antennas and plant leaves placed at
   whole studs stood a tenth of a stud off the studs below them.
 - Every model opens standing on the ground.

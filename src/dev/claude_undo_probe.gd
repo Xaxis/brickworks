@@ -12,6 +12,8 @@
 ## and keeps the person's part; a second Undo takes the person's part. Then
 ## every tool that changes the model, each called as a session calls it: one
 ## step more to undo, and undoing it puts back the model exactly as it was.
+## Last, a session's design is on show whole as its call answers, where the
+## app's own goes up a step at a time (BuildPlayback).
 extends SceneTree
 
 var _failures: int = 0
@@ -113,6 +115,32 @@ func _run() -> void:
 		# Done again, so the next call has what this one made to work on.
 		_builder.redo()
 
+	# Claude is told a design is built as its call answers. In view it then
+	# went on going up for 2.5 s (BuildPlayback): 150 frames on a graphics
+	# card of a model that was not yet what the answer said.
+	print("\nwhat a session puts down is on show, whole, as its call answers")
+	var design: Dictionary = {"name": "A wall", "description": "a black wall", "bricks": wall}
+	# On the bare ground again, as above: clear_model laid a baseplate.
+	_world.clear()
+	_builder.lattice.clear()
+	store.scenery.clear()
+	assistant.forget_built()
+	said = await _call("submit_design", design)
+	_ok(said.contains("Built. %d bricks" % wall.size()) and not playback.is_playing()
+		and _hidden() == 0, "a session's design is drawn whole, not assembled (%d of %d hidden, %s): %s"
+		% [_hidden(), _world.brick_count(), "playing" if playback.is_playing() else "not playing",
+			said.left(30)])
+	_world.clear()
+	_builder.lattice.clear()
+	assistant.forget_built()
+	said = str(await assistant.use_tool("submit_design", design))
+	_ok(said.contains("Built. %d bricks" % wall.size()), "the app puts the same design down itself: %s"
+		% said.left(30))
+	_ok(playback.is_playing() and _hidden() > 0,
+		"...and the same design put down by the app itself goes up a step at a time (%d hidden)"
+		% _hidden())
+	playback.stop()
+
 	print("")
 	if _failures > 0:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
@@ -138,6 +166,15 @@ func _first_of_theirs(theirs: int) -> int:
 		if brick.id != theirs and not (_socket.assistant.scenery as Dictionary).has(brick.id):
 			return brick.id
 	return 0
+
+
+## Bricks standing but not drawn: the build animation's still to come.
+func _hidden() -> int:
+	var count: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.hidden:
+			count += 1
+	return count
 
 
 ## What stands, as "part colour transform" -> how many: the same model,
