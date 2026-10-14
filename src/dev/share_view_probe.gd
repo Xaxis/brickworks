@@ -399,7 +399,8 @@ func _build_it(text: String, count: int) -> void:
 	drawn = _drawn_colour(world, a_fresh)
 	_ok(_near(drawn, own), "...and a new one in its own colour (%s)" % drawn)
 	var outline: SelectionOutline = _main.get("_build_outline")
-	_ok(outline.visible and not outline._drawn.is_empty(), "the new parts are outlined")
+	_ok(outline.visible and not (outline._shared.is_empty() and outline._copied.is_empty()),
+		"the new parts are outlined")
 	var lots: Array[Dictionary] = pages.lots(3)
 	var named := PackedStringArray()
 	for lot: Dictionary in lots:
