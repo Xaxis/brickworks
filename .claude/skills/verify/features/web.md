@@ -784,7 +784,9 @@ plan with Claude as the client.
   rising a step a frame for 2.5 s from the build: `BuildPlayback` raising
   `visible_instance_count`. A check from outside had put the design down as
   a draft, so the submit had nothing new to play; since a8e1aa5 it never
-  does, and the submit put all of it down to go up in view. What a session's
+  does, and the submit put all of it down to go up in view. Measured, not
+  read: da0dd3d with only that check line put back drew all three shown
+  cases on frame 0 or 1, never going up. What a session's
   call puts down is now drawn whole as it answers (`CommandSocket.at_work`;
   see [view](view.md) `build animation`).
 - `idle check`: `tools/web/idle_check.mjs` loads the app in Chromium, lets
