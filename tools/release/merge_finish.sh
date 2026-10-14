@@ -3,8 +3,10 @@
 # on with CONFLICTS, once they are resolved and added by hand: the same feature
 # map, commit, import and tool-list steps.
 set -u
-W=$1; MSG=$2
-cd "$W" || exit 1
+MSG=$2
+# Absolute, since the parse gate is handed it after the cd.
+W=$(cd "$1" && pwd) || exit 1
+cd "$W"
 HERE=$(cd "$(dirname "$0")" && pwd)
 ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 if git diff --name-only --diff-filter=U | grep -q .; then echo "STILL CONFLICTED:"; git diff --name-only --diff-filter=U; exit 2; fi
