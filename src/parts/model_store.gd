@@ -500,6 +500,13 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		placement.part_id = studio_part(placement.part_id)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
+		# A retired number as the part it became, where its stub puts it
+		# (PartLibrary.moved_by), before the lift is worked out from it and
+		# before it waits for geometry by the right name.
+		var real: String = library.resolve(placement.part_id)
+		if real != placement.part_id:
+			placement.transform = placement.transform * library.moved_by(placement.part_id)
+			placement.part_id = real
 	if flattened.is_empty():
 		return {"placed": 0, "missing": 0, "waiting": 0,
 			"error": "there are no parts in that file"}

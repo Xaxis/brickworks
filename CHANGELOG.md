@@ -158,7 +158,11 @@ whole cycle.
   onto the ground (one this app saved keeps its height). A part a file
   carries is built from the subparts and primitives the file carries for
   it, where 1,401 such parts in real sets' files could not be built, and
-  what stood on them floated.
+  what stood on them floated. A part opened by a retired number is the new
+  part where the old one put it: 3139 tyres came in as 3139b turned across
+  their own axles, drawn right but checked and saved a quarter turn wrong.
+  A part nobody has moved is checked where it stands, a figure's part at
+  any angle among them, and a hose LSynth drew is one piece.
 
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for

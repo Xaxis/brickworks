@@ -157,9 +157,12 @@ func _audit(path: String) -> Dictionary:
 	row["kinds"] = _kinds(str(report.get("summary", "")))
 
 	# Brick id -> placement index, and whether the reading puts each part
-	# where the file has it.
+	# where the file has it (counted, for what a session reads back), and
+	# whether the check does (what a cluster is put down to: a part nobody
+	# moved is checked where it stands, Assistant._joined_at).
 	var index_of: Dictionary = {}
 	var misread: Dictionary = {}
+	var checked_off: Dictionary = {}
 	for index: int in model.placements.size():
 		var placement: Assistant.Placement = model.placements[index]
 		index_of[placement.id] = index
@@ -170,6 +173,8 @@ func _audit(path: String) -> Dictionary:
 		var read: Transform3D = _assistant._transform(placement, mesh, model.section_for(placement))
 		if not _same(read, brick.transform):
 			misread[index] = true
+		if not _same(_assistant._joined_at(placement, mesh, model), brick.transform):
+			checked_off[index] = true
 	row["misread"] = misread.size()
 	row["misread_floating"] = floating.keys().filter(func(i: int) -> bool:
 		return misread.has(i)).size()
@@ -216,7 +221,7 @@ func _audit(path: String) -> Dictionary:
 		clusters.append(members)
 	var said: Array = []
 	for members: Array in clusters:
-		said.append(_cluster(model, members, floating, touching, misread))
+		said.append(_cluster(model, members, floating, touching, checked_off))
 	said.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["size"]) > int(b["size"]))
 	row["clusters"] = said
@@ -225,8 +230,9 @@ func _audit(path: String) -> Dictionary:
 	return row
 
 
-## A cluster said: its size, its parts by id, how many are misread, and
-## each held part it touches with the connectors at the contact.
+## A cluster said: its size, its parts by id, how many the check puts off
+## their place ([param misread]), and each held part it touches with the
+## connectors at the contact.
 func _cluster(model: Assistant.Model, members: Array, floating: Dictionary,
 		touching: Dictionary, misread: Dictionary) -> Dictionary:
 	var parts: Dictionary = {}

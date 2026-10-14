@@ -95,6 +95,26 @@ class LDrawFile:
         return bool(self.moved_to)
 
     @property
+    def moved_by(self) -> list[float]:
+        """Where a redirect stub puts the part it forwards to: its reference
+        line's twelve numbers (x y z, then the matrix by rows), or nothing
+        where that is the identity, as it is for all but 68 stubs. 3139
+        draws 3139b a quarter turn round, 2714 draws 2714a 82 LDU along."""
+        if not self.moved_to:
+            return []
+        from .parser import SubfileRef
+
+        wanted = self.moved_to if self.moved_to.endswith(".dat") else f"{self.moved_to}.dat"
+        for command in self.commands:
+            if isinstance(command, SubfileRef) and command.filename.rsplit("/", 1)[-1] == wanted:
+                m = command.matrix
+                numbers = [m.x, m.y, m.z, m.a, m.b, m.c, m.d, m.e, m.f, m.g, m.h, m.i]
+                if numbers == [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]:
+                    return []
+                return [round(v, 6) for v in numbers]
+        return []
+
+    @property
     def is_physical_colour(self) -> bool:
         """A mould that is moulded in fixed colours (printed or multi-shot).
 

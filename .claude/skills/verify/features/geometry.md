@@ -371,7 +371,17 @@ floating, and the late wheel never came down (`Lbm.PartMesh.lowest_at`,
 `_through_floor`). And two bricks drawn 76 LDU up: from another tool they
 come down onto the ground and hold, saved by this app they keep their height.
 "A part drawn from what its file carries": a plate built
-from a subpart under `s\` and a primitive the file carries, a brick on it.
+from a subpart under `s\` and a primitive the file carries, a brick on it; and
+two pieces of a hose LSynth drew (named LS and a number), end to end, the first
+on a 1 x 1 brick, held as one thing (`Flex.strung`). "Checked where it stands": a
+ski (a figure's part, read at the nearest square turn) turned 44 degrees on a
+plate and a 1 x 1 plate on its tip, held, where the check had put the ski square
+(`Assistant._joined_at` for everything nobody has moved: its cover, its studs,
+its joints, whether it is on the ground). "A retired number": 3139, whose stub
+draws 3139b a quarter turn round, opens as 3139b where the stub puts it and saves
+and reopens there (`PartLibrary.moved_by`, `BrickWorld._place`); it needs a
+catalogue with `moved_by` (`tools/build_meshes.py`, the 68 stubs that turn or
+shift what they forward to). On 3a39926 the new lines fail.
 
 `clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
 2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2

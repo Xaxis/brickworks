@@ -337,6 +337,52 @@ func _initialize() -> void:
 			+ "held (%s); saved by this app it keeps its height (%s)") % [
 			landed - 24.0, stood["summary"], kept - 24.0])
 
+	print("\nchecked where it stands")
+	# A part nobody has moved is checked where the file has it, not where the
+	# reading can say it is. A figure's parts are read at the nearest square
+	# turn (10182's arch of skis, 7893's mechanical arms), and LSynth draws a
+	# hose's pieces sheared and stretched: 3,661 parts of real sets were
+	# checked off their place. A ski turned 44 degrees on a 6 x 6 plate, read
+	# square, and a 1 x 1 brick put down beside it, where the ski read square
+	# would be and the ski is not: refused, as overlapping the ski, though
+	# nothing is there; and put down on the ski itself, refused.
+	var ski_turn := Basis(Vector3.UP, deg_to_rad(44.0))
+	var ski: String = "0 A ski on a plate\n1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3958.dat\n" \
+		+ _carried_text(ski_turn, [["6120", 15, Vector3(0, -12, 0), Basis.IDENTITY]]) + "\n"
+	var beside: Dictionary = await _added_to(ski, "1 4 -30 -32 30 1 0 0 0 1 0 0 0 1 3005.dat")
+	var onto: Dictionary = await _added_to(ski, "1 4 -10 -32 -10 1 0 0 0 1 0 0 0 1 3005.dat")
+	_ok(bool(beside["ok"]) and not bool(onto["ok"]) and str(onto["summary"]).contains("overlap"),
+		"a brick put down beside a ski turned 44 degrees fits (%s), and on the ski is refused (%s)"
+			% [beside["summary"], onto["summary"]])
+
+	print("\na retired number, where its stub puts the part it became")
+	# LDraw keeps a retired number as a stub that draws the new part; 68 of
+	# them turn or shift it. 3139, a tyre, draws 3139b a quarter turn round.
+	# Opened, the tyre was renamed 3139b where the stub stood, so it was
+	# drawn right and checked, read back and saved turned across its axle:
+	# 179 of the model repository's tyres. Needs a catalogue that says where
+	# each stub puts its part (tools/build_meshes.py moved_by).
+	var stub: PartLibrary.PartInfo = _library.parts.get("3139")
+	_clear()
+	_store.open_text("0 A retired tyre\n1 0 0 -30 0 1 0 0 0 1 0 0 0 1 3139.dat\n", "retired")
+	var opened_as: BrickWorld.Brick = _world.bricks()[0] if _world.brick_count() > 0 else null
+	# Where the file draws it, across: the open stands it on the ground, so
+	# only its height is the open's.
+	var drawn: AABB = stub.bounds if stub != null else AABB()
+	var renamed: AABB = AABB()
+	if opened_as != null and _library.parts.has(opened_as.part_id):
+		renamed = opened_as.transform * (_library.parts[opened_as.part_id] as PartLibrary.PartInfo).bounds
+		renamed.position.y = drawn.position.y
+	var saved: String = _store.to_text("retired")
+	_clear()
+	_store.open_text(saved, "retired again")
+	var again: BrickWorld.Brick = _world.bricks()[0] if _world.brick_count() > 0 else null
+	_ok(opened_as != null and opened_as.part_id == "3139b" and renamed.is_equal_approx(drawn)
+		and again != null and again.transform.is_equal_approx(opened_as.transform),
+		"3139 opens as 3139b standing as the stub draws it (%s, %s), and saves and reopens there"
+			% [renamed, drawn])
+	_clear()
+
 	print("\na part drawn from what its file carries")
 	# A file carries the parts it uses that LDraw has not got, and the
 	# subparts and primitives they are drawn from. Only the parts were read,
@@ -378,6 +424,25 @@ func _initialize() -> void:
 4 16 -1 0 1 1 0 1 1 1 1 -1 1 1
 4 16 -1 0 -1 -1 0 1 -1 1 1 -1 1 -1
 4 16 1 0 -1 1 1 -1 1 1 1 1 0 1
+0 NOFILE
+""")
+
+	# And a hose LSynth drew: the file carries its pieces, named LS and a
+	# number. Read as parts of their own, a piece that touched only the next
+	# piece floated, and so did 1,100 pieces of real sets' hoses. Two pieces
+	# end to end, the first on a 1 x 1 brick, the second out in the air.
+	await _passes("an LSynth hose's pieces are one thing, held where one of them is", """
+0 FILE fx-hose.ldr
+0 A hose LSynth drew
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 0 0 -32 0 1 0 0 0 1 0 0 0 1 fx - ls60.dat
+1 0 20 -32 0 1 0 0 0 1 0 0 0 1 fx - ls60.dat
+0 NOFILE
+0 FILE fx - ls60.dat
+0 LS60
+0 Name: fx - ls60.dat
+0 !LDRAW_ORG Unofficial_Part
+1 16 0 2 0 10 0 0 0 2 0 0 0 5 box.dat
 0 NOFILE
 """)
 
@@ -593,6 +658,24 @@ func _leaning(hinged: bool, degrees: float) -> Dictionary:
 	model.sections["lean"] = Assistant.Section.from_dict({"name": "lean",
 		"x": pivot.x, "y": pivot.y, "z": pivot.z, "axis": axis, "degrees": degrees})
 	return _assistant._check(model, true)
+
+
+## A file opened, and the line [param added] checked as a brick an edit puts
+## down among what stands there: the check's verdict.
+func _added_to(text: String, added: String) -> Dictionary:
+	_clear()
+	_store.open_text(text + added + "\n", "added")
+	await process_frame
+	var model: Assistant.Model = _assistant._model_from_world()
+	var last: Assistant.Placement = model.placements[model.placements.size() - 1]
+	for placement: Assistant.Placement in model.placements:
+		if placement.part == added.get_slice(" ", 14).trim_suffix(".dat"):
+			last = placement
+	last.id = 0
+	last.moved = true
+	var verdict: Dictionary = _assistant._check(model, true)
+	_clear()
+	return verdict
 
 
 ## Where the first brick of a part stands, its origin's height in LDU.

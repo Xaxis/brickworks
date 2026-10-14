@@ -196,6 +196,10 @@ class PartInfo extends RefCounted:
 	## correctly, because each forwards to its target, but they are not
 	## things anyone should be offered.
 	var moved_to: String = ""
+	## And where the stub puts that part, in the stub's own frame: a turn or
+	## a shift for 68 of them (3139, a tyre, forwards to 3139b a quarter
+	## turn round), the identity for the rest.
+	var moved_by: Transform3D = Transform3D.IDENTITY
 
 	func is_redirect() -> bool:
 		return not moved_to.is_empty()
@@ -624,6 +628,9 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	info.packed = bool(entry.get("packed", true))
 	info.reachable = bool(entry.get("reachable", true))
 	info.moved_to = entry.get("moved_to", "")
+	var moved_by: Variant = entry.get("moved_by", [])
+	if moved_by is Array and (moved_by as Array).size() == 12:
+		info.moved_by = LdrModel.to_transform(PackedFloat64Array(moved_by))
 	info.unofficial = bool(entry.get("unofficial", false))
 	info.custom = bool(entry.get("custom", false))
 	info.ldraw_category = str(entry.get("ldraw_category", ""))
@@ -1369,6 +1376,24 @@ func resolve(part_id: String) -> String:
 			return at
 		at = info.moved_to
 	return at
+
+
+## Where [method resolve]'s part goes for one placed at the identity by
+## [param part_id]: the turns and shifts of every stub on the way. A part
+## opened by its old number is the new one placed there, so a file's 3139
+## tyres, renamed 3139b where they stood, stood turned across their own
+## axles: drawn right, since the stub's geometry is the new part turned,
+## and checked, read back and saved wrong.
+func moved_by(part_id: String) -> Transform3D:
+	var at: String = part_id
+	var by := Transform3D.IDENTITY
+	for _hop: int in 8:
+		var info: PartInfo = parts.get(at)
+		if info == null or not info.is_redirect() or not parts.has(info.moved_to):
+			return by
+		by = by * info.moved_by
+		at = info.moved_to
+	return by
 
 
 func ids() -> PackedStringArray:

@@ -1184,12 +1184,18 @@ const TOUCH_BUCKET := 24.0
 ## pieces of (57539 for 57539k01 and k02). Those are a hose, a cable, a vine,
 ## a strap or a string LDraw names a Segment ("~Hose Flexible 19L Segment",
 ## "~Electric Power Functions 2.0 6-Wire Ribbon Cable Segment"), and a chain's
-## or a tread's links. "" for any other part.
+## or a tread's links. And a hose LSynth drew, the hose maker MLCad and LDCad
+## draw with, whose pieces a file carries named LS and a number ("9390 -
+## LS60.dat", "LS60"): read as parts of their own, 1,100 pieces of real sets'
+## hoses floated wherever a piece touched only its neighbours (9390, 364,
+## 8841, 7750). "" for any other part.
 static func strung(library: PartLibrary, part_id: String) -> String:
 	var kind: String = kind_of_piece(part_id)
 	if not kind.is_empty():
 		return kind
 	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info != null and _lsynth(info.name):
+		return info.name.strip_edges().to_upper()
 	if info == null or not (_a_word(info.name, "Segment") or _a_word(info.name, "Segments")
 			or info.name.contains("Chain Link") or info.name.contains("Chain Tread")):
 		return ""
@@ -1201,6 +1207,12 @@ static func strung(library: PartLibrary, part_id: String) -> String:
 	if at > 0 and family.left(at).is_valid_int():
 		family = family.left(at)
 	return family
+
+
+## Whether a part's name is an LSynth hose piece's: LS and a number, alone.
+static func _lsynth(name: String) -> bool:
+	var said: String = name.strip_edges()
+	return said.length() > 2 and said.left(2).to_upper() == "LS" and said.substr(2).is_valid_int()
 
 
 ## Whether [param word] is in [param text] as a word: "Segment" is in "~Hose

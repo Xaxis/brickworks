@@ -188,22 +188,31 @@ OFF_THE_GROUND = 8.0
 ## What is done about each kind of gap, said in the table.
 STATUS: dict[str, str] = {
     "stands a little off the ground in the file":
-        "Within a cell (2 LDU) of the ground a square part now stands on it "
-        "(`Assistant._on_the_ground`): opening a file rounds its lift up to a whole cell, and "
-        "a wheel's cover stops a cell above its tread. Left: 3 to 8 LDU up, a model drawn "
+        "Fixed for most (joints4): opening a file stood the model on each part's box, and a "
+        "turned part's box hangs below it, so a car on wheels drawn spun on their axles stood "
+        "up to 12 LDU in the air on them; a turned part is now measured by its cover "
+        "(`Lbm.PartMesh.lowest_at`), and a file another tool drew up in the air comes down "
+        "onto the ground (`ModelStore.lift_for`). Within a cell of the ground a part stands on "
+        "it by its shape (`Assistant._on_the_ground`). Left: 3 to 8 LDU up, a model drawn "
         "with something under the table (a figure's feet under a car's tyres); allowing that "
         "much would let a design's part hover.",
     "stands on parts the catalogue does not have":
-        "Left: the file uses parts the catalogue has not got (unofficial treads, tyres, "
-        "panels), and what stood on them has nothing under it. The catalogue's gap, not a "
-        "joint's.",
+        "Fixed in part (joints4): a part a file carries is built from the subparts and "
+        "primitives the file carries for it (`LdrModel.embedded_sources`); only parts were "
+        "read, by bare name, and 1,401 carried parts could not be built. Left: parts neither "
+        "LDraw nor the file has (unofficial treads, tyres, panels).",
     "touches nothing held":
         "Left: nothing held within a cell of the cluster: parts hung on strings and chains "
         "drawn as paths, held by a missing part, or placed apart in the file.",
     "read off its place":
-        "Left: a part turned about two axes at once, which no section of one axis can say, so "
-        "the reading puts it at the nearest square turn and its joints miss. Agent angles' "
-        "sections at any angle are the fix.",
+        "Fixed (joints4): a part turned two ways is read in a section turned so (agent "
+        "angles), and what the reading still cannot say — a figure's parts, which it reads at "
+        "the nearest square turn, and pieces LSynth draws sheared and stretched — is checked "
+        "where it stands when nothing has moved it (`Assistant._joined_at`). And a retired "
+        "number is the new part where its stub puts it (`PartLibrary.moved_by`): 68 stubs turn "
+        "or shift it, and 3139's tyres stood turned across their own axles. A cluster is put "
+        "down here only where the check puts a part off its place; the reading's own misses "
+        "are counted above.",
     "click hinge":
         "Fixed: LDraw's clh* primitives read as a finger and a fork on the line they turn on "
         "(`connectivity._HINGES`), paired by `Joints.rounds`.",
@@ -222,17 +231,23 @@ STATUS: dict[str, str] = {
         "Fixed in part by agent axles: an axle holds every hole along it (`Joints.through`). "
         "Left: holes drawn without a hole primitive, and pins in parts read off their place.",
     "hose, string or chain":
-        "Left: flexible parts (chain links, treads, strings) drawn segment by segment are held "
-        "by what they wrap round, which no connector says.",
+        "A flexible thing is one thing (`Flex.one_thing`), and a hose LSynth drew, whose pieces "
+        "a file carries named LS and a number, is one too (joints4). Left: flexible parts "
+        "(chain links, treads, strings) drawn segment by segment are held by what they wrap "
+        "round, which no connector says.",
     "hinge":
         "Left: hinge panels (2440) and plates whose pin is a half cylinder under 2 LDU, and "
         "old finger hinges (4275/4276) drawn without clh primitives.",
     "turntable":
         "Left: Technic chain tread round a turntable (3873 on 18938), which is a chain.",
     "studs that do not clutch":
-        "Left, and more than before: 2878, a train bogie, held its wheelset 70720c01 only "
-        "while both covers were boxes. Its bearings are not read as bores, so the axle in "
-        "them is no joint, and the cars on 7 files' bogies float.",
+        "Left: 2878, a train bogie, on its wheelset 70720c01 or its wheels 57878. Its bearings "
+        "are half cones, which nothing reads as a bore, and LDraw draws them 2.25 LDU below "
+        "the axle they hold, so no joint of one line pairs them; a rule loose enough to would "
+        "hold an axle beside any cone. The cars on 7 files' bogies float.",
+    "Technic, no pin or axle at the contact":
+        "3895 on 6636 was 10283's stand: the shuttle's pins are parts the file carries, drawn "
+        "from a friction rib it carries as a primitive, and are built now (joints4).",
 }
 ## The kinds that are not a joint: no part on either side to blame.
 APART = ("stands a little off the ground in the file",

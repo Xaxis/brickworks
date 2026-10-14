@@ -1032,6 +1032,21 @@ def test_a_redirect_still_renders_its_target(library: Library) -> None:
     assert stub.bounds() == target.bounds()
 
 
+def test_a_redirect_that_moves_its_target_says_where(library: Library) -> None:
+    """68 stubs turn or shift the part they forward to, and the catalogue
+    says where (moved_by), so a part opened by its old number is the new
+    one placed there. 3139, a tyre, draws 3139b a quarter turn round; read
+    as 3139b where the stub stood, a file's tyres stood turned across their
+    axles. A stub that only forwards says nothing."""
+    tyre = library.get("3139.dat")
+    assert tyre is not None and tyre.moved_to == "3139b"
+    assert tyre.moved_by == [0, 0, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0]
+    shifted = library.get("2714.dat")
+    assert shifted is not None and shifted.moved_by[:3] == [-82, 0, 0]
+    plain = library.get("100.dat")
+    assert plain is not None and plain.moved_by == []
+
+
 # -- click hinges, and covers that are the part --------------------------------
 
 
