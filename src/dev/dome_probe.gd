@@ -112,9 +112,9 @@ func _initialize() -> void:
 	var dome: Lbm.PartMesh = _library.mesh_for("87375")
 	var bars: Array = _bars(dome)
 	_ok(bars.size() == 2, "87375 has two bars, its handles: %d" % bars.size())
-	var told: String = _assistant._attachment_points({"part": "87375", "x": 0, "y": 0, "z": 0})
+	var told: String = await _assistant._attachment_points({"part": "87375", "x": 0, "y": 0, "z": 0})
 	_ok(told.count(": bar at") == 2, "attachment_points lists both handles as bars")
-	var clip_told: String = _assistant._attachment_points({"part": "61252", "x": 0, "y": 0,
+	var clip_told: String = await _assistant._attachment_points({"part": "61252", "x": 0, "y": 0,
 		"z": 0})
 	_ok(clip_told.contains(": clip at"), "attachment_points lists 61252's clip")
 	_ok(_box_count("87375") > 1 and _box_count("58846") > 8,
