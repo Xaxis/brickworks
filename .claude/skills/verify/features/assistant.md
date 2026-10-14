@@ -665,11 +665,16 @@ fixing what it got wrong.
   than two studs in view, or faces narrower than four). A plain prism takes one
   only with `"door": true`. Both rows are one-wide through the door's courses
   and the course over the arch ties them; the windows on that face start a
-  storey over it. Found by run 17, whose stair led to a blank wall.
+  storey over it. Found by run 17, whose stair led to a blank wall. Each foot
+  of the arch carries two studs' worth of the wall over it: where the face
+  leaves a jamb one stud wide, the course under the foot is a 1 x 2 laid
+  across both rows, not a 1 x 1 in each (the Wizard's Tower's eight weak
+  joints were its two jambs, 1 x 1s carrying 83-85 g on studs that hold 80).
   `patterns_probe`: the guidance's cluster has the arch in `face 0` at y 12
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
-  it at x -2 and passes the check.
+  it at x -2 and passes the check; on both, the brick under each foot of the
+  arch is two studs or more, across both rows where the jamb is one stud.
 - `a tower on a plinth`: `"plinth": {"steps", "out", "stair", "rock"}` on `prism`
   (`Assistant._on_plinth`, `_foot`, `_plinth_crags`), the base as a call: every
   Orthanc built here stood on rubble and the owner named it. With `rock` (the

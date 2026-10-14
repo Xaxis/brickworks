@@ -164,6 +164,13 @@ whole cycle.
   Files locked with AES open too, and a part only Studio has is named in
   the status bar instead of counted.
 
+- The Wizard's Tower stands with no weak joints again. Its door's arch
+  stood on one 1 x 1 each side, so once parts collided as their shapes the
+  status bar said "8 weak joints (overloaded)": 83 to 85 g on studs that
+  hold 80. A 1 x 2 across the wall under each foot of the arch now ties the
+  jamb into the wall behind. A tower Claude designs gets the same tie at
+  its door.
+
 - The build order no longer puts anything in the air before the model
   reaches it (the Wizard's Tower: 193 parts to 6), puts wheels on last, and builds
   sub-models a file places as callouts. The timeline numbers its steps

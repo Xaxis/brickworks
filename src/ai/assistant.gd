@@ -7536,9 +7536,10 @@ func _lay_row_around(made: Array, section: String, lengths: Array, left: float,
 ## inside row behind the opening laid as the door, reddish brown log bricks
 ## set back a stud — in the inside row, so the opening is never a window onto
 ## an open back. Both rows are one-wide through the door's courses, and the
-## course over the arch ties them again. The seventeenth Orthanc built a
-## stair up to its tower and nothing at the top of it; Orthanc's great door
-## is up its steps.
+## course over the arch ties them again; and a jamb one stud wide is tied
+## under the arch's foot (see [method _lay_door_course]). The seventeenth
+## Orthanc built a stair up to its tower and nothing at the top of it;
+## Orthanc's great door is up its steps.
 const DOOR_ARCH := "6182"
 const DOOR_ARCH_COURSES := 2
 const DOOR_BELOW := 4
@@ -7549,17 +7550,33 @@ const DOOR_COLOUR := 70
 ## One course of a face's run through its door, whose arch's left end is at
 ## [param door]: the outside row around the opening (around the arch, where
 ## the arch is), the inside row around the door, and the door and the arch.
+##
+## The arch stands on one stud each side and hands down everything over it, so
+## each of its feet carries two studs' worth of wall. Where the face leaves the
+## jamb one stud wide, the course under each foot is a 1 x 2 laid across both
+## rows, which hands that on to both: two 1 x 1s there were a column on one
+## stud, untied to the inside row, and in the Wizard's Tower each of its
+## bricks carried 83 to 85 g where a stud holds 80.
 func _lay_door_course(made: Array, name: String, spec: Dictionary, left: float,
 		width: int, extra: int, radius: float, course: int, y: float, door: float,
 		clear: Callable) -> void:
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var colour: int = spec["colour"]
 	var arch: bool = course >= DOOR_BELOW
-	_lay_row_around(made, name, narrow, left, width + extra, door if arch else door + 1.0,
+	var tie_left: bool = course == DOOR_BELOW - 1 and absf(door - left) < 0.01
+	var tie_right: bool = course == DOOR_BELOW - 1 \
+		and absf(left + width + extra - (door + 4.0)) < 0.01
+	var from: float = door if arch else door + (0.0 if tie_left else 1.0)
+	var across: int = 4 if arch else 2 + int(tie_left) + int(tie_right)
+	_lay_row_around(made, name, narrow, left, width + extra, from,
 		y, radius - 1.0, course, colour, spec["mix_colour"], spec["mix"],
-		spec["masonry"], spec["sideways"], clear, 4 if arch else 2)
-	_lay_row_around(made, name, narrow, left, width, door + 1.0, y, radius - 2.0,
-		course + 1, colour, spec["mix_colour"], spec["mix"], 0.0, 0.0, Callable(), 2)
+		spec["masonry"], spec["sideways"], clear, across)
+	_lay_row_around(made, name, narrow, left, width, from if not arch else door + 1.0,
+		y, radius - 2.0, course + 1, colour, spec["mix_colour"], spec["mix"], 0.0, 0.0,
+		Callable(), across if not arch else 2)
+	for at: float in ([door] if tie_left else []) + ([door + 3.0] if tie_right else []):
+		made.append(_prism_brick(name, "3004", colour, at, y, radius - 2.0, 1,
+			spec["mix_colour"], spec["mix"], 0.0))
 	made.append(_prism_brick(name, DOOR_PANEL, DOOR_COLOUR, door + 1.0, y,
 		radius - 2.0, 0, -1, 0.0, 0.0))
 	if course == DOOR_BELOW:
