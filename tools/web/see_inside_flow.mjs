@@ -149,8 +149,9 @@ ok(Boolean(big), `the tower opened: ${(await state()).bricks} parts`);
 await page.waitForTimeout(20000);
 await shot("2_tower.png");
 const before = await state();
-// Saruman, in his room two thirds of the way up, not Saruman 2 at the gate.
-const figure = Object.keys(before.places || {}).find((p) => /^saruman(?!\s*2)/i.test(p))
+// The white wizard, in his room two thirds of the way up (renamed with the
+// tower, docs/TRADEMARKS.md).
+const figure = Object.keys(before.places || {}).find((p) => /^white[ _]wizard/i.test(p))
   || Object.keys(before.places || {})[0];
 ok(Boolean(figure), `a figure in it to look for: ${figure}, his parts at heights ${JSON.stringify((before.heights || {})[figure])}`);
 // Closer, with the wheel, which zooms to the pointer: framed whole, a figure
