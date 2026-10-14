@@ -112,6 +112,24 @@ static func studio_parts(model: BrickWorld, parts: PartLibrary) -> Dictionary:
 	return out
 
 
+## Every saved model in one .zip, each the .ldr it is kept as: File, Export,
+## All my models, and the warning shown where a browser may clear them
+## (StorageOffer). On the web a person's models are in the browser and
+## nowhere else, and this is a copy of their own that outlives it.
+func all_models() -> String:
+	var members: Array = []
+	for entry: ModelStore.Entry in store.list_saved():
+		members.append([entry.path.get_file(), FileAccess.get_file_as_bytes(entry.path)])
+	if members.is_empty():
+		say.call("no saved models to download yet")
+		return ""
+	var line: String = _give_bytes(StudioIo.zip(members),
+		"brickworks_models_%s.zip" % Time.get_date_string_from_system(), "application/zip", folder)
+	line += " — %d model%s" % [members.size(), "" if members.size() == 1 else "s"]
+	say.call(line)
+	return line
+
+
 ## File, Export, 3D model…: which format, GLB unless another was chosen
 ## last, and what each is for and holds.
 func ask_model_3d() -> void:

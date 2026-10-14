@@ -15,6 +15,15 @@ whole cycle.
 
 ### Added
 
+- Models that cannot vanish. Every save is kept as a version, the last 20
+  of each model: File, Versions… opens any of them again. File, Export,
+  All my models downloads every saved model in one .zip. In a browser,
+  Brickworks asks the browser to keep its storage at your first save, and
+  Account says whether it agreed. Where it would not, or in Safari, which
+  deletes a site's data after seven days without a visit, a line above the
+  model says so once, with Download my models. And a save with no parts in
+  it never goes over a model that has some, unless you cleared it.
+
 - A dome or a ball as one shape: Claude says `{"pattern": "shell", "kind":
   "dome" or "ball", "across": 24}` and the app lays a closed shell of
   hinged panels, as the LEGO® Death Star II set builds its own:

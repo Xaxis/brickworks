@@ -1685,6 +1685,55 @@
       "entry": "tools/web/decor_flow.mjs",
       "reach": "node --env-file=.env tools/web/decor_flow.mjs --url=<a preview>/app --out=shots/decor_web",
       "area": "prints"
+    },
+    {
+      "kind": "lib",
+      "label": "model versions",
+      "entry": "src/parts/model_versions.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "versions of a model",
+      "entry": "src/ui/versions_dialog.gd",
+      "reach": "godot --path .  (File, Versions…: the last 20 saves of the model on the baseplate, Open on one)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "browser keeps the models",
+      "entry": "src/net/storage_keep.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd   (the page's half: tools/web/keep_flow.mjs)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "models may be cleared warning",
+      "entry": "src/ui/storage_offer.gd",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --out=shots/keep   (with .env sourced)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "versions probe",
+      "entry": "src/dev/versions_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/versions_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "empty save probe",
+      "entry": "src/dev/empty_save_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/empty_save_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "keep browser flow",
+      "entry": "tools/web/keep_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep   (with .env sourced)",
+      "area": "model-io"
     }
   ]
 }

@@ -38,6 +38,9 @@ const DEFAULTS: Dictionary = {
 	# Whether the first visit's one line offering the assistant has been
 	# shown (Main._offer_assistant): once, and never again.
 	"assistant_offered": false,
+	# Whether the warning that this browser may clear the person's models
+	# has been shown (StorageOffer): once on a device, and never again.
+	"storage_warned": false,
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

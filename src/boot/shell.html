@@ -412,6 +412,63 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		}
 	});
 
+	// -- Keeping the models -------------------------------------------
+	//
+	// A person's models are in this site's storage in the browser and
+	// nowhere else. A browser may clear that storage when it runs short of
+	// space unless the site asked to keep it (navigator.storage.persist) and
+	// was let; Safari deletes what a site's scripts stored after seven days
+	// without a visit (MDN, "Storage quotas and eviction criteria"). The app
+	// asks at the first save, or as somebody with saved models arrives
+	// (src/net/storage_keep.gd), and once a page. What the browser answered
+	// is kept in localStorage (brickworks.storage) and read by the app, which
+	// says where the models stand in Account and warns once where they may
+	// go (src/ui/storage_offer.gd).
+	const KEEP_KEY = "brickworks.storage";
+	const agent = navigator.userAgent || "";
+	const keep = {
+		supported: Boolean(navigator.storage && navigator.storage.persist),
+		// What persisted() or persist() last said; null until one has.
+		persisted: null,
+		asked: false,
+		answered: false,
+		// WebKit's own browser, or any browser on an iPhone or iPad, which are
+		// all WebKit: the seven days apply to it.
+		safari: /AppleWebKit/.test(agent) && !/Chrome|Chromium|Edg\/|OPR\/|Android/.test(agent),
+	};
+	if (navigator.storage && navigator.storage.persisted) {
+		navigator.storage.persisted().then(function (yes) {
+			if (!keep.answered) keep.persisted = Boolean(yes);
+		}).catch(function () {});
+	}
+	function recordKeep() {
+		try {
+			localStorage.setItem(KEEP_KEY, JSON.stringify({
+				granted: keep.persisted === true, at: new Date().toISOString(),
+				supported: keep.supported, safari: keep.safari,
+			}));
+		} catch (e) {}
+	}
+	window.brickworksPersist = function () {
+		if (keep.asked) return;
+		keep.asked = true;
+		if (!keep.supported) {
+			keep.persisted = false;
+			keep.answered = true;
+			recordKeep();
+			return;
+		}
+		navigator.storage.persist().then(function (granted) {
+			keep.persisted = Boolean(granted);
+		}, function () {
+			keep.persisted = false;
+		}).then(function () {
+			keep.answered = true;
+			recordKeep();
+		});
+	};
+	window.brickworksStorage = function () { return JSON.stringify(keep); };
+
 	// -- Several tabs, one browser ------------------------------------
 	//
 	// Every tab of a site shares its IndexedDB, and user:// is kept there.

@@ -383,6 +383,26 @@ func open_with_progress(path: String) -> int:
 	return placed
 
 
+## A save of a model kept as a version (File, Versions…; open_model over
+## MCP), opened in place of what is on the baseplate as Open opens a model,
+## under the name it is a save of: [param name], or the model on the
+## baseplate's. How many parts landed: 0 when it could not be read, and then
+## nothing on the baseplate has changed.
+func open_version(version: ModelVersions.Version, name: String = "") -> int:
+	if name.is_empty():
+		name = store.title
+	var job: Working.Job = Working.begin("Opening “%s” as saved %s…" % [name, version.when()])
+	await job.shown()
+	var placed: int = store.open_version(version.path, name)
+	job.end()
+	if placed <= 0 and store.awaited.is_empty():
+		return 0
+	opened.emit(placed)
+	_say("opened “%s” as saved %s, %d parts — Save makes it the newest save"
+		% [name, version.when(), version.parts])
+	return placed
+
+
 ## Somebody else's .ldr, from wherever they keep it.
 ##
 ## The picker has to be asked while the click that opened the menu is
@@ -506,6 +526,8 @@ func _on_clear() -> void:
 	if store != null:
 		store.share_id = ""
 		store.remixed_from = ""
+		# The person emptied it: the autosave may keep it empty.
+		store.cleared_by_person()
 	cleared.emit()
 	if job != null:
 		job.end()

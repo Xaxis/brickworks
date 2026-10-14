@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow -->
 
 ## Sub-features
 
@@ -339,6 +339,35 @@ Whether what you built is still there tomorrow, and still means the same thing.
   say the same number. `inventory_probe` ("flexible parts, counted as they are
   sold") lays each kind and a chain, checks the list, both shop lists, a file
   round trip, and runs the server's own `checkModel` on the written file.
+- `model versions` and `versions of a model` (2026-10-14,
+  `src/parts/model_versions.gd`, `src/ui/versions_dialog.gd`): every save
+  (Save, Save as, a copy, `save_model` over MCP) is also kept under
+  `user://versions/<model>/<ms>-<parts>-<bytes>.ldr.gz`, gzipped, the last 20
+  of each model, all of them under 16 MB together (oldest first, never a
+  model's newest). A save that changes nothing keeps no second copy. File,
+  Versions… lists the model on the baseplate's, newest first, and Open on one
+  puts it there under the model's name (`ModelBar.open_version`), so Save
+  makes it the newest; with changes not saved it says so, with Save beside it.
+  `open_model` over MCP lists them (`versions=true`) and opens one
+  (`version=N`). File, Export, All my models (`Exports.all_models`,
+  `export_model all_models`) downloads every saved model in one .zip.
+- `the empty-save guard` (`ModelStore._write`, `ModelStore.emptied`): no
+  write of a model with no parts goes over a file with parts unless the
+  person emptied the baseplate (Clear, New, their own edit taking the last
+  part off). The autosave wrote whatever the baseplate held a few seconds
+  after any change, an empty one too. A model that opened short of parts is
+  still never autosaved (`whole`).
+- `browser keeps the models` and `models may be cleared warning`
+  (`src/net/storage_keep.gd`, `src/ui/storage_offer.gd`, and "Keeping the
+  models" in `src/boot/shell.html`): on the web the app asks
+  `navigator.storage.persist()` at the first save, or as somebody with saved
+  models arrives, once a page, and the page keeps the answer in localStorage
+  (`brickworks.storage`). Account says which it is ("Your models are kept on
+  this device…" or "…may be cleared by the browser"), and that the account
+  keeps no copy. Refused, unsupported, or Safari (seven days without a visit),
+  a strip above the model warns once a device (`ShellPrefs` `storage_warned`),
+  with Download my models (the .zip) and This one for Studio (.io).
+  `brickworksState.storage` carries all of it for a browser check.
 
 ## How to reach it
 
@@ -378,7 +407,20 @@ tools/check.sh --network   # adds open_probe: opening the way the browser has to
 node tools/web/relay_server.mjs 8790 --static=build/web &
 node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app --out=shots/tabs
 tools/windows_check.py      # two windows of the desktop app, a model each
+# versions, the browser asked to keep the models, the one warning, over MCP too
+godot --headless --path . --script src/dev/versions_probe.gd
+godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
+# the page's half in real Chromium, persist() played refused and granted
+BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep
 ```
+
+`versions_probe` proves it when it ends "a model's last 20 saves are kept and
+open again, and the browser is asked to keep them"; `empty_save_probe` when it
+ends "no save of no parts goes over a model with parts unless the person
+emptied it" (on main both its empty checks fail: the autosave and Save wrote
+the empty model); `keep_flow` when it ends "the browser is asked to keep the
+models, a refusal is warned of once, and every save is kept to open again".
+On production before 2026-10-14 the flow fails at the first save (never asked).
 
 And the round trip, which is the one to run after touching the writer:
 
