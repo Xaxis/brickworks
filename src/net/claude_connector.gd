@@ -270,13 +270,16 @@ func resume() -> void:
 func connect_claude() -> void:
 	if held:
 		return
+	# Waiting before switching on, which tells the panels at once: set after
+	# it, Connect Claude from Account left the assistant panel saying
+	# "Connected through this tab's private address" while Claude was not.
+	_waiting_until = Time.get_ticks_msec() + 600_000
+	_next_ask = Time.get_ticks_msec() + 5000
 	start()
 	DisplayServer.clipboard_set(shared_address())
 	last_opened = CONNECTORS if had_claude else claude_ai_link()
 	if open_links:
 		OS.shell_open(last_opened)
-	_waiting_until = Time.get_ticks_msec() + 600_000
-	_next_ask = Time.get_ticks_msec() + 5000
 
 
 ## Where Connect Claude has sent the person and what to do there, in a

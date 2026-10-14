@@ -372,6 +372,8 @@ func _run() -> void:
 			and account_panel._claude_state.text.contains("Connect (or Reconnect")
 			and not account_panel._claude_state.text.contains("press Add"),
 		"...and says what to press there: %s" % account_panel._claude_state.text)
+	_check(offer._status.text.begins_with("Waiting for you to connect in Claude"),
+		"...and the assistant panel waits for Claude, not \"Connected\": %s" % offer._status.text)
 	offer._connect.pressed.emit()
 	await process_frame
 	_check(offer._guide.visible and _text_of_label(offer, "_guide_head").contains("Customize › Connectors")
