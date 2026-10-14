@@ -309,6 +309,8 @@ var _mass := PackedFloat64Array()
 var _middle: Array[Vector3] = []
 var _rest: Array[Transform3D] = []
 var _bounds: Array[AABB] = []
+## The sub-model each is in (Assemblies.path_of), for what holds it otherwise.
+var _paths: Array[String] = []
 var _index_of: Dictionary = {}
 ## The graph: node per part and one for the floor, edges both ways.
 var _edge_a := PackedInt32Array()
@@ -331,8 +333,9 @@ var _floor_y: float = 0.0
 
 ## Weigh [param bricks] as they stand and in each of [param poses], and say
 ## how it stands at the worst. [param links] are pairs of brick ids held by
-## something other than studs — a pin, an axle, a clip, a hinge — when the
-## caller has them already (the design check does); found here otherwise.
+## something other than studs — a pin, an axle, a clip, a hinge, a sticker's
+## glue, a string's braids — when the caller has them already (the design
+## check does); found here otherwise.
 func measure(bricks: Array, poses: Array = [], links: Variant = null) -> Report:
 	var report := Report.new()
 	_read(bricks)
@@ -411,6 +414,7 @@ func _read(bricks: Array) -> void:
 	_middle.clear()
 	_rest.clear()
 	_bounds.clear()
+	_paths.clear()
 	_index_of.clear()
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
@@ -429,6 +433,7 @@ func _read(bricks: Array) -> void:
 		_middle.append(part.bounds.get_center())
 		_rest.append(brick.transform)
 		_bounds.append(part.bounds)
+		_paths.append(Assemblies.path_of(brick))
 
 
 ## Where it touches the floor: every box within ON_FLOOR of the lowest cell
@@ -477,13 +482,15 @@ static func support_of(boxes: Dictionary) -> Dictionary:
 	return {"hull": hull, "floor_y": lowest * BrickLattice.CELL, "grounded": grounded}
 
 
-## Pairs held by pins, axles, clips, hinges and turntables.
+## Pairs held by pins, axles, clips, hinges and turntables, and by glue and
+## by being one thing (Joints.held_otherwise), as the design check joins them.
 func _links() -> Array:
 	var entries: Array = []
 	for n: int in _ids.size():
-		entries.append([_ids[n], _rest[n], library.mesh_for(_parts[n])])
+		entries.append([_ids[n], _rest[n], library.mesh_for(_parts[n]), _parts[n], _paths[n]])
 	var out: Array = []
-	for held: Dictionary in [Joints.both_ways(entries), Joints.rounds(entries)]:
+	for held: Dictionary in [Joints.both_ways(entries), Joints.rounds(entries),
+			Joints.held_otherwise(entries, library)]:
 		for one: Variant in held:
 			for other: Variant in held[one]:
 				out.append([int(one), int(other)])

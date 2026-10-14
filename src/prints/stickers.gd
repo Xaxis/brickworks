@@ -208,6 +208,53 @@ static func is_sticker(library: PartLibrary, part_id: String) -> bool:
 	return not text.is_empty() and text.contains(STICKER_BY)
 
 
+## Whether a part holds by its glue: a film laid on a face, one of ours or
+## one LDraw files as a Sticker (PartLibrary.decor_of). What it is stuck to
+## is [method lies_on]'s.
+static func sticks(library: PartLibrary, part_id: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	return info != null and (info.decor() & PartLibrary.PartInfo.STICKER) != 0
+
+
+## Points a little behind a film at [param at], across it, [param film] its
+## own box: where what it is stuck to is. Its printed face is its top, as
+## LDraw draws a sticker and [method text_for] writes one.
+static func behind(at: Transform3D, film: AABB) -> Array[Vector3]:
+	var middle: Vector3 = film.get_center()
+	var points: Array[Vector3] = []
+	for i: int in 5:
+		for j: int in 5:
+			points.append(at * Vector3(middle.x + (i / 4.0 - 0.5) * film.size.x * 0.9,
+				film.position.y - 0.5, middle.z + (j / 4.0 - 0.5) * film.size.z * 0.9))
+	return points
+
+
+## What a film at [param at] lies on, of [param parts] ([key, transform, box in
+## its own axes]): each whose box holds a point behind it ([method behind]), as
+## [key, how many of the points], most first. [param skip] is the film's own key.
+## The booklet's question (what it goes on after) and the build check's (what
+## holds it) both, so the two cannot disagree about where a sticker is.
+static func lies_on(at: Transform3D, film: AABB, parts: Array, skip: Variant = null) -> Array:
+	var points: Array[Vector3] = behind(at, film)
+	var near: AABB = (at * film).grow(2.0)
+	var found: Array = []
+	for part: Array in parts:
+		if skip != null and part[0] == skip:
+			continue
+		var box: AABB = ((part[1] as Transform3D) * (part[2] as AABB)).grow(0.3)
+		if not box.intersects(near):
+			continue
+		var hits: int = 0
+		for point: Vector3 in points:
+			if box.has_point(point):
+				hits += 1
+		if hits > 0:
+			found.append([part[0], hits])
+	found.sort_custom(func(a: Array, b: Array) -> bool:
+		return int(a[1]) > int(b[1]) or (int(a[1]) == int(b[1]) and int(a[0]) < int(b[0])))
+	return found
+
+
 ## A sticker's size in LDU, from its file.
 static func size_of(library: PartLibrary, part_id: String) -> Vector2:
 	for raw: String in library.custom_source(part_id).split("\n"):
@@ -331,29 +378,23 @@ static func in_model(world: BrickWorld, library: PartLibrary) -> Dictionary:
 
 
 ## The bricks a placed sticker is stuck to: those under its film, found
-## by looking a little behind it at points across it. What the booklet
-## needs to show it in the step after they are put in.
+## by looking a little behind it at points across it ([method lies_on]),
+## the one it covers most first, which is the one the build check holds it
+## by. What the booklet needs to show it in the step after they are put in.
 static func stuck_to(world: BrickWorld, library: PartLibrary, sticker_brick: int) -> PackedInt64Array:
 	var out := PackedInt64Array()
 	var sticker: BrickWorld.Brick = world.get_brick(sticker_brick)
-	if sticker == null:
+	var film: Lbm.PartMesh = library.mesh_for(sticker.part_id) if sticker != null else null
+	if film == null:
 		return out
-	var size: Vector2 = size_of(library, sticker.part_id)
-	var points: Array[Vector3] = []
-	for i: int in 5:
-		for j: int in 5:
-			var local := Vector3((i / 4.0 - 0.5) * size.x * 0.9, -0.5, (j / 4.0 - 0.5) * size.y * 0.9)
-			points.append(sticker.transform * local)
+	var parts: Array = []
 	for item: Variant in world.bricks():
 		var brick: BrickWorld.Brick = item
-		if brick.id == sticker_brick or is_sticker(library, brick.part_id):
+		if sticks(library, brick.part_id):
 			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh == null:
-			continue
-		var box: AABB = (brick.transform * mesh.bounds).grow(0.3)
-		for p: Vector3 in points:
-			if box.has_point(p):
-				out.append(brick.id)
-				break
+		if mesh != null:
+			parts.append([brick.id, brick.transform, mesh.bounds])
+	for found: Array in lies_on(sticker.transform, film.bounds, parts, sticker_brick):
+		out.append(int(found[0]))
 	return out

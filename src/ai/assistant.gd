@@ -433,6 +433,10 @@ class Placement extends RefCounted:
 	## stands apart on purpose (a stand, a sign) be told from one that came
 	## loose (Assistant._standing_apart).
 	var group: String = ""
+	## And which copy of which sub-model, as the brick has it
+	## (BrickWorld.Brick.unit): what makes a hose laid as one item one thing
+	## to the check, as it is to the parts list (Joints.held_otherwise).
+	var unit: String = ""
 	## A turn of this one part, yaw then pitch then roll in degrees, about
 	## its own corner: zero for none. Read into a section of its own before
 	## anything else sees it ([method Assistant._turned_parts]), since a part
@@ -3384,6 +3388,7 @@ func _model_from_world() -> Model:
 			kept_in.id = brick.id
 			kept_in.mine = mine.has(brick.id)
 			kept_in.group = brick.group
+			kept_in.unit = brick.unit
 			model.placements.append(kept_in)
 			continue
 		var at: Vector3 = _to_studs(brick, info)
@@ -3412,6 +3417,7 @@ func _model_from_world() -> Model:
 		placement.id = brick.id
 		placement.mine = mine.has(brick.id)
 		placement.group = brick.group
+		placement.unit = brick.unit
 		model.placements.append(placement)
 	return model
 
@@ -10643,6 +10649,9 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
+	# Its table of which parts are a hose's pieces filled here, not raced on
+	# the worker (Joints.held_otherwise).
+	Flex.kind_of_piece("")
 	var named: Dictionary = {}
 	for placement: Placement in model.placements:
 		named[placement.part] = true
@@ -11114,11 +11123,17 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# A round joint holds both ways, as a pin does: a flag clipped to a
 	# lance hangs from the lance, and a turntable's top is held by its base.
 	var holds: Dictionary = joined.duplicate(true)
-	for index: Variant in rounds:
-		if not holds.has(index):
-			holds[index] = {}
-		for other: Variant in rounds[index]:
-			(holds[index] as Dictionary)[other] = true
+	# And what holds by glue or by being one thing: a sticker on the face it
+	# lies on, a string's braids with each other (Joints.held_otherwise).
+	var with_paths: Array = entries.map(func(entry: Array) -> Array:
+		var placement: Placement = model.placements[int(entry[0])]
+		return entry + [Assemblies.path_from(placement.group, placement.unit)])
+	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library)]:
+		for index: Variant in held:
+			if not holds.has(index):
+				holds[index] = {}
+			for other: Variant in held[index]:
+				(holds[index] as Dictionary)[other] = true
 	_check_support(model, cells_of, lattice, issues, crowded, holds,
 		loose, boxes_of, floating)
 	for kind: String in loose:
@@ -11343,7 +11358,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		"standing_overlaps": collided,
 	}
 	if weigh:
-		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, joined, rounds, alone)
+		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, holds, alone)
 	return checked
 
 
@@ -11380,10 +11395,10 @@ func _balance_said(report: Dictionary, trial: Model, applied: bool) -> String:
 ## Whether a checked design would stand (Balance), on the lattice it was
 ## checked on: each placement that went in by its key there (its index and
 ## one), with whatever was standing already (the negative keys), and the
-## pins, axles, clips and hinges the check already found joining them.
+## pins, axles, clips, hinges, stickers and strings the check already found
+## joining them.
 func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
-		boxes_of: Dictionary, joined: Dictionary, rounds: Dictionary,
-		alone: bool) -> Balance.Report:
+		boxes_of: Dictionary, holds: Dictionary, alone: bool) -> Balance.Report:
 	var bricks: Array = []
 	for index: int in boxes_of:
 		var placement: Placement = model.placements[index]
@@ -11398,10 +11413,9 @@ func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
 				brick.transform))
 			key -= 1
 	var links: Array = []
-	for held: Dictionary in [joined, rounds]:
-		for one: Variant in held:
-			for other: Variant in held[one]:
-				links.append([int(one) + 1, int(other) + 1])
+	for one: Variant in holds:
+		for other: Variant in holds[one]:
+			links.append([int(one) + 1, int(other) + 1])
 	var judge := Balance.new()
 	judge.library = library
 	judge.lattice = lattice
@@ -12819,7 +12833,7 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 			out["items"] = items
 			out["named"] = int(out["named"]) + 1
 			continue
-		if Minifig.is_figure(parts, library):
+		if _a_figure(parts):
 			out["named"] = int(out["named"]) + 1
 			out["figures"] = int(out["figures"]) + 1
 			continue
@@ -12853,7 +12867,23 @@ func _our_figure(model: Model, piece: Array, floating: Dictionary) -> bool:
 		designed = designed or placement.mine
 		adrift = adrift and floating.has(index)
 		parts.append({"part": placement.part})
-	return designed and not adrift and Minifig.is_figure(parts, library)
+	return designed and not adrift and _a_figure(parts)
+
+
+## Whether a piece's parts ([{part}]) are a figure, and not a model with a
+## figure in it: a torso and a head among them (Minifig.is_figure), and half
+## of them or more a figure's own or what it holds. The sides round's
+## locomotive, its driver standing in its cab, was 136 parts, and called "a
+## figure apart" from the tender that nothing coupled to it.
+func _a_figure(parts: Array) -> bool:
+	if not Minifig.is_figure(parts, library):
+		return false
+	var worn: int = 0
+	for one: Dictionary in parts:
+		var id: String = str(one["part"])
+		if not Minifig.role_of(id, library.parts.get(id)).is_empty():
+			worn += 1
+	return worn * 2 >= parts.size()
 
 
 ## The assembly a placement is in: its own, as a file or the baseplate
