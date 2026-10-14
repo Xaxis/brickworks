@@ -1415,6 +1415,20 @@
     },
     {
       "kind": "ui",
+      "label": "compare page",
+      "entry": "web/compare.html",
+      "reach": "https://brickworks.diy/compare   (Brickworks next to Studio and LDD, each point on a real model; linked from the home page and the FAQ)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "compare media",
+      "entry": "tools/web/compare_media.mjs",
+      "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "privacy page",
       "entry": "web/privacy.html",
       "reach": "https://brickworks.diy/privacy",
