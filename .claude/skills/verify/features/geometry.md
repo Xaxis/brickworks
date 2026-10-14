@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:audit connections in real sets, lib:gear ratio search -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:audit connections in real sets, lib:gear ratio search -->
 
 ## Sub-features
 
@@ -58,23 +58,70 @@ can occupy the same millimetre.
   reads two-axis turned bricks from a file back into a section (`_adopted`).
   `hinged_panels_probe`: two- and three-axis turns, a part turned alone,
   within, round a centre, a panel on each hinge at three yaw/pitch pairs, a
-  dome 33 studs across of 12 strips (6, and 6 raised on spacers lapping over
-  them as scales) of 36 hinged panels at 48 two-axis angles under a dish,
-  and a ball of 72 at 84 angles with the same strips hung below its ring on
-  a column, each held with no overlap (each panel's 1 x 4 plates run its
-  length, or a hung one falls apart, and the ring keeps a stud clear of every
-  joint beside it), four sideways skins on side studs, an edit saying
-  only a new pitch, and a part tipped by the window read back tipped. It
-  fails on the code before (f2cbfe6): the dome's sections are not read at
-  all ("hinge": "clip" stops the reader), and with hinge: true its panels
-  lie at 2 angles with 115 overlaps. `-- --dome_ldr=PATH --band_ldr=PATH`
-  `--ball_ldr=PATH` writes them out to look at (`bench_views.gd
-  --views=corner,front,right,top`). A `shape` dome or ellipsoid 12 studs
-  across or more is answered with a nudge to panels or skins
-  (`Assistant._round_by_panels`).
+  part turned about the upright on studs (below), the shells (below), four
+  sideways skins on side studs, an edit saying only a new pitch, and a part
+  tipped by the window read back tipped. A `shape` dome or ellipsoid 12 studs
+  across or more is answered with a nudge to the `shell` pattern (under 20,
+  to the smooth dome; past 32, to skins), and a loft, revolve or extruded
+  profile ten long and rounded with one to skins
+  (`Assistant._round_by_panels`). A part turned off the square about the
+  upright, standing (or a section's part resting) on studs from a part not
+  turned with it, is refused "off its studs" unless each stud under it lands
+  in a socket (`Assistant._note_turned_studs`): a 2 x 4 or 1 x 2 turned 30
+  degrees on a plate is refused, the 1 x 2 on a round plate's stud, a
+  jumper's centre stud or hung under a round plate holds, and a quarter turn
+  holds as before. A part turning on its own shaft or bore (a turntable's
+  top) is held by that (`Assistant._swivels`); `techniques_probe`'s corner
+  on a turntable stood on a floor was refused without it. Only the turned
+  part's underside is asked, and the prism
+  pattern's own sections ("prism ...") are let through: its storeys, horns
+  and plinths stand turned walls on square studs, and `patterns_probe` had
+  23 of its towers refused for it.
   The quarter turns are exact (`Section.exact`) and frames lose their float
   dust (`Section.dusted`): a skin on side studs read a ten-millionth of a
   stud off was rasterised a cell away and called adrift.
+- `shells of hinged panels` (`src/ai/shells.gd`, read by
+  `Assistant._with_shells` before anything else in a design): `{"pattern":
+  "shell", "kind": "dome" | "ball", "across", "at", "color", "frame_color"}`
+  laid as the hinged sections and bricks a design would say; a dome 20 to 32
+  studs across, a ball 24 to 32 (`LARGEST`: bigger is not yet shown to hold;
+  built with every other strip stopping near the pole, a dome 40 and a ball 36
+  ran into themselves), refused past that with a pointer to skins. Twelve
+  strips on clip hinges round a ring, each base swivelling on one stud (a
+  round plate's or a jumper's) at a radius where all twelve land on the
+  half-stud grid (`RINGS`). The ring is a disc out past the swivels with a
+  course of bricks round its edge closing the slot under the panels, capped
+  with plates only where no first-band panel's wide foot comes down over it
+  (`Plan._under_panels`); a ball's ring is its equator, with a second course
+  hung under it (stopped inside its lines instead, it left a belt round the
+  middle half open). Each band's widths come from where a panel's plane meets
+  its neighbours' (`Plan._meet`), at both its ends: low strips inside that
+  line, high ones two plates up reaching past the low edges as seen from the
+  centre (`Plan._reach`). Lips keep a margin across and, near the pole where
+  the planes meet at a slant, `CLEAR` square to the other plane
+  (`Plan._room`). Wedge plates taper each panel; a panel's tile seams are laid
+  each way they go until every part is held from its hinge through studs
+  (`Plan._held`; a wedge's studs are on its straight edge only): one row two
+  deep tied no column to the next, and domes 12 and 16 had edge plates
+  floating. Plate runs never end in a stud-long piece (`_lay_run`). Where the
+  strips would crowd, the crown: discs of plates in the panels' colour from
+  the top band's high ends, stepping in as the sphere does, under the dish
+  that covers the last (`Plan._crown`). Every other strip stopping there and
+  the rest going on a step up was tried and taken out: those had to be
+  fourteen studs wide, stood out like wings, and a real session said so and
+  built a stepped fill instead; one flat disc read as a lid on a cone.
+  `hinged_panels_probe` (`-- --shells` for these alone) lays a dome 24 and 32
+  and a ball 28, checks each buildable with every hinge's halves joined,
+  refuses a ball 16 (pointing at skins), a dome 16 (at the smooth dome) and
+  a dome 40, and casts a ray from the centre every quarter degree to measure the widest see-through gap within
+  a band and between bands, and how open it is every five degrees up. Half a
+  plate was the aim and is not met: a dome 24 is 0.29% open with slivers up to
+  12.8 LDU at its seams, a dome 32 0.26% and 19.2, a ball 28 0.50% and 10.0,
+  and `MOST_GAP` (24 LDU) and `MOST_OPEN` (3%) hold them there.
+  `-- --measure=DESIGN.json,X,Y,Z,R` measures another build's design
+  (4042e8f's dome: 150.7 LDU, 19.9% open on the catalogue with true covers).
+  `-- --dome_ldr= --big_ldr= --ball_ldr= --band_ldr=` write them out to look at
+  (`bench_views.gd --views=corner,front,right,back,left,top`).
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever. It also says when the whole model tips over on what it stands

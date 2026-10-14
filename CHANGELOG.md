@@ -15,6 +15,20 @@ whole cycle.
 
 ### Added
 
+- A dome or a ball as one shape: Claude says `{"pattern": "shell", "kind":
+  "dome" or "ball", "across": 24}` and the app lays a closed shell of
+  hinged panels, as the LEGO® Death Star II set builds its own:
+  twelve strips of panels on clip hinges, each band's panels sized to the
+  round they are on, the strips taking turns so the higher ones lap the
+  lower ones' edges, wedge plates tapering each panel toward the top, a lip
+  over every seam between bands, a course of bricks closing the slot at
+  the foot, and for the crown discs of plates stepping in under a dish. A
+  dome is 20 to 32 studs across and a ball, on a stand with a course round
+  its middle, 24 to 32. Domes built by hand from the guide's recipe left
+  daylight between every strip and band; this one still shows slivers at
+  some seams, up to a stud wide, and its crown steps like a stack of
+  plates.
+
 - Parts and sections turned any way, held by real hinges. The properties
   panel has Tilt and Roll beside Turn, so a selection tips about its
   middle as well as turning round. A design can turn a section yaw, then
@@ -185,6 +199,14 @@ whole cycle.
   write LEGO® as the LEGO Group's Fair Play policy asks, and its notice is
   in Help, About, on share pages and on every page of the site
   (docs/TRADEMARKS.md).
+
+### Fixed
+
+- A part turned round the upright to an angle that is not a quarter turn
+  was accepted standing on several studs, which in plastic meet its tubes
+  and walls and grip nothing. The check now says so, and accepts it on the
+  one stud a part really swivels on: a round plate's, a jumper's centre
+  stud, a turntable.
 
 ## [0.2.0] - 2026-10-11
 
