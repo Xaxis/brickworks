@@ -187,6 +187,8 @@ func _place(item: Dictionary, offset: Vector3, world: BrickWorld,
 		if part == null:
 			print("  %s: no part %s" % [item["label"], put.part])
 			continue
+		# One said by its line (the smooth dome's quarters) put on it.
+		assistant._on_its_line(put)
 		var at: Transform3D = assistant._transform(put, part, section)
 		var id: int = world.add_brick(put.part, put.color, at)
 		if id != 0:

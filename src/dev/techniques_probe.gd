@@ -66,6 +66,9 @@ func _run() -> void:
 		for raw: Variant in technique.get("sections", []):
 			var section: Assistant.Section = Assistant.Section.from_dict(raw)
 			model.sections[section.name] = section
+		# A part said by its line (axis, joint) is put there as a design's
+		# is: the smooth dome's quarters go on their clips that way.
+		assistant._onto_lines(model)
 		var verdict: Dictionary = assistant._check(model)
 		if not bool(verdict["ok"]):
 			_fail("%s does not build: %s" % [name, verdict["summary"]])

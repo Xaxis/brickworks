@@ -229,6 +229,10 @@ STATUS: dict[str, str] = {
         "old finger hinges (4275/4276) drawn without clh primitives.",
     "turntable":
         "Left: Technic chain tread round a turntable (3873 on 18938), which is a chain.",
+    "studs that do not clutch":
+        "Left, and more than before: 2878, a train bogie, held its wheelset 70720c01 only "
+        "while both covers were boxes. Its bearings are not read as bores, so the axle in "
+        "them is no joint, and the cars on 7 files' bogies float.",
 }
 ## The kinds that are not a joint: no part on either side to blame.
 APART = ("stands a little off the ground in the file",
@@ -455,6 +459,11 @@ def report(out: Path, write: Path | None, before: Path | None = None) -> int:
     say("to one joint: of the joints between it and the held parts it touches, the first")
     say("in this table's order, read off what the two parts are and which of their")
     say("connectors meet there. *Instances* is the floating parts so put down.")
+    if was is not None:
+        say("")
+        say("A row can rise. A part that touched another's cover counted as held while")
+        say("covers were boxes; now that a cover is the part's shape, the joint it lacks")
+        say("shows, and a cluster that was held is put down to it.")
     say("")
     say("## By connection type")
     say("")
