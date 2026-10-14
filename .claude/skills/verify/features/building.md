@@ -249,7 +249,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (windowed, Orthanc and the car: the bar up in the frame pressed, before the
   work; the timeline's longest frame against 200 ms; the same steps as
   `Instructions.plan`; Cancel and a second press stop it; Open's list says
-  "Opening…" before Orthanc lands; delete all and undo say so first; the
+  "Opening…" before Orthanc lands; delete all and undo say so first; Check
+  stability and Everything connected through `Shell.run` on Orthanc, and
+  Everything connected as the properties panel hands it to `Shell.attend`,
+  the bar up every frame until their work is done, the cost kept for them
+  at least as long as the work was seen going, and no "async function
+  without await" caught from the engine (an `OS.add_logger` Logger); the
   car's booklet counted and stoppable) and
   `tools/web/progress_check.mjs` ([web](web.md)).
   Every command, too, without asking (2026-10-13, the owner: "when I clicked
@@ -265,10 +270,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   known to be slow — the least of its last and its average cost over
   `SAY_FIRST_MS` (150), or `Shell.SLOW_FROM` before it has ever run — has
   the bar up with its own words (`Shell.DOING`: "Saving…", "Mirroring…")
-  and drawn before it runs, the frame after. A coroutine that goes on more
-  than two frames after it returns, saying nothing, gets its words on the bar
-  until it ends. A command a browser only lets happen inside the press (a
-  file dialog, full screen, a page) is never put off (`Shell.IN_THE_PRESS`).
+  and drawn before it runs, the frame after. A command that goes on after
+  it returns (a coroutine) is awaited to its end (`Working._Going`, called
+  without await so only what it does before its first await counts as
+  inside it), its cost timed to that end, and when it goes on more than two
+  frames with no job of its own its words are on the bar until then. Every
+  command's work awaits what it sets going (the menu lambdas, `_key_pressed`,
+  `_save_named`, `ask_for_new`; the exports and Timeline call their work
+  straight off rather than through a signal). Until 2026-10-13 it took a
+  coroutine's result without await and looked for its
+  GDScriptFunctionState, as Godot 3 did, so every async command (Check
+  stability, Save of a big model, Everything connected) was timed only to
+  its first await; and a debug build stops a caller that takes it with
+  "Trying to call an async function without await", so there `Shell.run`
+  took every one for finished at once, and one handed straight to
+  `Working.attend` (a dialog's button, the properties panel's) stopped
+  `Working.attend` itself, leaving every later command taken for one inside
+  it. A command a browser only lets happen inside the press (a file dialog,
+  full screen, a page) is never put off (`Shell.IN_THE_PRESS`).
   Save, the exports and Share work out a big model's build order a slice at
   a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
   `export_paced`; `ModelBar._on_save` returns whether it saved), with
