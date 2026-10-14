@@ -175,10 +175,12 @@ can occupy the same millimetre.
   meeting anywhere else still collide. A round joint holds both ways for
   support and pieces, as a pin does. Pins, panes and rounds are forgiven inside
   a section too, which nothing was before. Needs a catalogue built with the
-  rounds; see `pipeline.md`. Joints are matched where a part is: one read off
-  the world on no grid, outside any section and not moved by the edit (a
-  minifigure's part, read back at the nearest square turn), has its joints
-  read off its own transform (`Assistant._joined_at`). Read square, a hand
+  rounds; see `pipeline.md`. And an older hinge's knuckles: rounds of one size
+  on one line, a round of one part ending where two of another's begin and end
+  (`Joints._knuckles`: 4275b's fingers and 4276b's), held both ways and
+  forgiving nothing. Joints are matched where a part is: one read off the
+  world and not moved by the edit, in a section or not, is checked where it
+  stands, its cover and studs as well as its joints (`Assistant._joined_at`). Read square, a hand
   turned 45 degrees in its arm had its peg nowhere near the arm's socket, so
   no hand was joined to its arm and whether a figure was one piece depended
   on which cells the squared parts shared: run 5's Orthanc had Saruman's
@@ -381,7 +383,10 @@ its joints, whether it is on the ground). "A retired number": 3139, whose stub
 draws 3139b a quarter turn round, opens as 3139b where the stub puts it and saves
 and reopens there (`PartLibrary.moved_by`, `BrickWorld._place`); it needs a
 catalogue with `moved_by` (`tools/build_meshes.py`, the 68 stubs that turn or
-shift what they forward to). On 3a39926 the new lines fail.
+shift what they forward to). "An older hinge's knuckles": 8849's 4276b hinged up
+square on a 4275b on a 1 x 2 brick, held by its fingers' rounds lying on one line
+between the other's (`Joints._knuckles`, in `Joints.rounds`, so a section leans
+on them too). On 3a39926 the new lines fail.
 
 `clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
 2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2

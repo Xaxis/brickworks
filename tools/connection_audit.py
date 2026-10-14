@@ -215,7 +215,11 @@ STATUS: dict[str, str] = {
         "are counted above.",
     "click hinge":
         "Fixed: LDraw's clh* primitives read as a finger and a fork on the line they turn on "
-        "(`connectivity._HINGES`), paired by `Joints.rounds`.",
+        "(`connectivity._HINGES`), paired by `Joints.rounds`. And the older finger hinges "
+        "(4275b's three fingers, 4276b's two), whose fingers' ends are rounds on one line, a "
+        "finger of one between two of the other (`Joints._knuckles`, joints4). Left: where "
+        "LDraw draws the halves off one line (6682's, opened 30 degrees, 2.4 LDU apart), and "
+        "10240's X-wing, whose body touches its stand's column with no joint at the contact.",
     "clip on bar or handle":
         "Fixed where the clip's eye is up to 1.5 LDU off the bar (`ROUND_OFF_AXIS`, was 1), "
         "as LDraw draws a clip turned to an odd angle. `attachment_points` lists bars and clips "
@@ -236,8 +240,9 @@ STATUS: dict[str, str] = {
         "(chain links, treads, strings) drawn segment by segment are held by what they wrap "
         "round, which no connector says.",
     "hinge":
-        "Left: hinge panels (2440) and plates whose pin is a half cylinder under 2 LDU, and "
-        "old finger hinges (4275/4276) drawn without clh primitives.",
+        "Left: hinge panels (2440) and plates whose pin is a half cylinder under 2 LDU. Old "
+        "finger hinges (4275/4276) hold by their knuckles where they lie on one line "
+        "(`Joints._knuckles`).",
     "turntable":
         "Left: Technic chain tread round a turntable (3873 on 18938), which is a chain.",
     "studs that do not clutch":

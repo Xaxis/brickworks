@@ -337,6 +337,29 @@ func _initialize() -> void:
 			+ "held (%s); saved by this app it keeps its height (%s)") % [
 			landed - 24.0, stood["summary"], kept - 24.0])
 
+	# And a part read off a file stands on the ground within the cell the open
+	# stood the model up: its lowest point, rounded up to a whole cell, can be
+	# a cell up already. A round plate drawn half an LDU into the ground, a
+	# wheel beside it an LDU above: opened, the plate stands 1.5 up and the
+	# wheel 3, as 4549's train and 6482's car stood on their wheels.
+	_holds_standing("a wheel 3 LDU up beside a plate the open stood a cell up stands on the ground",
+		"""
+1 0 0 -7.5 0 1 0 0 0 1 0 0 0 1 4073.dat
+1 0 60 -36 0 1 0 0 0 1 0 0 0 1 3482c04.dat
+""", 2)
+
+	print("\nan older hinge's knuckles")
+	# 4275b's three fingers and 4276b's two draw each finger's end as a round
+	# on the line they turn on, a finger of one between two of the other, and
+	# no round in a bore: the plate hinged up on another was held by nothing.
+	# 8849's pair, folded square, on a 1 x 2 brick, the hinged half out in
+	# the air beside it.
+	_holds_standing("4276b hinged up square on 4275b, held by its knuckles", """
+1 7 0 8 0 1 0 0 0 1 0 0 0 1 3004.dat
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 4275b.dat
+1 4 26 -26 0 0 1 0 1 0 0 0 0 -1 4276b.dat
+""", 3)
+
 	print("\nchecked where it stands")
 	# A part nobody has moved is checked where the file has it, not where the
 	# reading can say it is. A figure's parts are read at the nearest square
@@ -658,6 +681,19 @@ func _leaning(hinged: bool, degrees: float) -> Dictionary:
 	model.sections["lean"] = Assistant.Section.from_dict({"name": "lean",
 		"x": pivot.x, "y": pivot.y, "z": pivot.z, "axis": axis, "degrees": degrees})
 	return _assistant._check(model, true)
+
+
+## A file opened and checked as it stands, only the ground holding: all
+## [param parts] of it held.
+func _holds_standing(said: String, text: String, parts: int) -> void:
+	_clear()
+	_store.open_text("0 joints probe\n" + text.strip_edges() + "\n", "standing")
+	_assistant._ground_only = true
+	var verdict: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_ok(_world.brick_count() == parts and (verdict.get("floating", []) as Array).is_empty(),
+		"%s (%d parts, %s)" % [said, _world.brick_count(), verdict["summary"]])
+	_clear()
 
 
 ## A file opened, and the line [param added] checked as a brick an edit puts

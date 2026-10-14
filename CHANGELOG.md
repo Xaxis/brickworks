@@ -162,7 +162,8 @@ whole cycle.
   part where the old one put it: 3139 tyres came in as 3139b turned across
   their own axles, drawn right but checked and saved a quarter turn wrong.
   A part nobody has moved is checked where it stands, a figure's part at
-  any angle among them, and a hose LSynth drew is one piece.
+  any angle among them, and a hose LSynth drew is one piece. The older
+  finger hinge plates (4275b, 4276b) hold by their fingers.
 
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for

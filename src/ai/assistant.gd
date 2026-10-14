@@ -13753,11 +13753,23 @@ func _check_support(
 ## each was called floating. By its shape, turned or not (Lbm.PartMesh.
 ## lowest_at): a turned part's box reaches below it, and a tyre a file draws a
 ## hair off the square was a turned part.
+##
+## Within two cells for a part read off the world that nothing has moved. The
+## open stands a model on its lowest point rounded up to a whole cell, so that
+## point is up to a cell above the ground, and a part a file stands within a
+## cell of the ground stands within two of it here: 4549's train and 6482's
+## car had their wheels 2.5 and 3 LDU up, beside a bogie and a figure's feet
+## the open stood a cell up. Read back at the nearest cell they were at 2;
+## checked where they stand, as they are now, they floated. A part a design
+## or an edit puts down stands on the ground within one cell, so nothing it
+## places hovers.
 func _on_the_ground(placement: Placement, model: Model) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(placement.part) if library != null else null
 	if part == null:
 		return false
-	return part.lowest_at(_joined_at(placement, part, model)) <= BrickLattice.CELL + 0.01
+	var cells: float = 1.0 if placement.id == 0 or placement.moved else 2.0
+	return part.lowest_at(_joined_at(placement, part, model)) \
+		<= cells * BrickLattice.CELL + 0.01
 
 
 static func _gives(gives: Dictionary, holder: int, held: int) -> void:
