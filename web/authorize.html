@@ -8,7 +8,8 @@
   and Claude, as MCP's authorization spec has it, sends them here. This
   page signs them in with the same email code as the app — or, if the app
   is already signed in in this browser, with that session — and asks once
-  whether Claude may build in Brickworks as them. Yes sends them back to
+  whether Claude may build in Brickworks as them (not again while that
+  account stays connected to the same app). Yes sends them back to
   Claude with a code that Claude trades for a token (api/oauth.js); the
   relay then sends Claude's calls to their open Brickworks tab.
 
@@ -184,8 +185,8 @@ footer p { margin: 8px 0 0; color: var(--ink-faint); font-size: 12px; }
 				<li>and save it there.</li>
 			</ul>
 			<p class="faint">Nothing else: not your email, your other models, or
-				your Claude conversations. Disconnect it any time from Account in
-				Brickworks.</p>
+				your Claude conversations. You are not asked again while it stays
+				connected; Disconnect it any time from Account in Brickworks.</p>
 			<p class="back" id="back-to"></p>
 			<button class="go" id="allow" type="button">Allow</button>
 			<button class="quiet" id="deny" type="button">Cancel</button>
@@ -195,6 +196,7 @@ footer p { margin: 8px 0 0; color: var(--ink-faint); font-size: 12px; }
 		<section id="leaving" class="hide">
 			<h1>Connected</h1>
 			<p class="soft" id="leaving-to">Taking you back to Claude…</p>
+			<p class="faint" id="leaving-why"></p>
 		</section>
 
 		<p class="say" id="say" role="status" aria-live="polite"></p>

@@ -16,17 +16,28 @@
 // itself is stood in for: nothing reaches it), trade the code for tokens,
 // and call tools with the token: the signed-in tab answers, out of view
 // too (its frames stopped, as a hidden tab's are), and the panel says
-// Connected. Then the same sign-in from another browser that is not signed
-// in: the email code, minted on this side, typed into the page — and that
+// Connected. claude.ai connecting again is sent straight back with a code,
+// asked nothing: this account allowed it already. Then the same sign-in
+// from another browser that is not signed in: the email code, minted on
+// this side, typed into the page, and again nothing more asked — and that
 // browser's token builds in the first one's tab, as another device would.
-// Last, Account shows the connections and Disconnect Claude ends them:
-// both tokens are refused at once.
+// Then Account shows the connections and Disconnect Claude ends them: every
+// token is refused at once. Last, claude.ai connecting after that is asked
+// again, and Allow connects it.
 //
 // Costs nothing: no model is called. Emails one Resend test address.
 // The throwaway account and everything of it are deleted at the end.
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
-import { withAssistant } from "./browser.mjs";
+
+// An account of its own, so no other test's tab of the shared test account
+// can be the one Claude's calls go to. Set before browser.mjs is loaded,
+// which reads it once: a static import of it ran first, and the flow signed
+// in as the shared test account and disconnected its Claude (2026-10-14).
+const email = `delivered+bwoauthflow${Date.now().toString(36)}@resend.dev`;
+process.env.BW_TEST_EMAIL = email;
+const { launch, openColumnFor, withAssistant } = await import("./browser.mjs");
+const { mintCode } = await import("./session.mjs");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -37,12 +48,6 @@ const site = new URL(url).origin;
 const out = args.out || "shots/oauth";
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
-// An account of its own, so no other test's tab of the shared test account
-// can be the one Claude's calls go to.
-const email = `delivered+bwoauthflow${Date.now().toString(36)}@resend.dev`;
-process.env.BW_TEST_EMAIL = email;
-const { launch, openColumnFor } = await import("./browser.mjs");
-const { mintCode } = await import("./session.mjs");
 
 const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
 const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
@@ -124,6 +129,21 @@ function authorizationRequest(server, resource) {
     code_challenge_method: "S256", state, scope: "build offline_access", resource: resource.resource,
   })) asked.searchParams.set(key, value);
   return { address: asked.toString(), verifier, state };
+}
+
+/// What the sign-in page did with a request: sent the browser back to
+/// claude.ai ("back"), or put the question ("asked").
+async function outcome(tab) {
+  for (let n = 0; n < 160; n++) {
+    if (tab.url().startsWith(CALLBACK)) return "back";
+    const asking = await tab.evaluate(() => {
+      const step = document.querySelector("#allow-step");
+      return Boolean(step && !step.classList.contains("hide"));
+    }).catch(() => false);
+    if (asking) return "asked";
+    await tab.waitForTimeout(250);
+  }
+  return "neither";
 }
 
 async function trade(server, resource, back, verifier) {
@@ -261,6 +281,20 @@ try {
     "...Connect Claude gives way to Disconnect");
   await shot("4_connected");
 
+  console.log("\nclaude.ai connects again (reconnected in Claude, or another of its apps)");
+  const askedTwice = authorizationRequest(found.server, found.resource);
+  const signInTwice = await context.newPage();
+  await signInTwice.goto(askedTwice.address, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const twice = await outcome(signInTwice);
+  check(twice === "back" && new URL(signInTwice.url()).searchParams.get("state") === askedTwice.state,
+    `allowed already by this account: back to claude.ai's callback with a code, the question not put (${twice})`);
+  await signInTwice.screenshot({ path: `${out}/4b_allowed_before.png` }).catch(() => {});
+  const tokensTwice = twice === "back"
+    ? await trade(found.server, found.resource, signInTwice.url(), askedTwice.verifier) : { status: 0 };
+  const firstAgain = tokensTwice.json?.access_token;
+  check(tokensTwice.status === 200 && /^bwa_/.test(firstAgain || ""), "...and that code is traded for tokens");
+  await signInTwice.close();
+
   console.log("\nClaude builds, through the one address");
   const hello = await claude(first, "initialize", { protocolVersion: "2025-06-18", capabilities: {},
     clientInfo: { name: "claude-ai", version: "0.1.0" } });
@@ -308,17 +342,15 @@ try {
   await away.fill("#code", code);
   await away.screenshot({ path: `${out}/7_authorize_code.png` });
   await away.click("#verify");
-  await away.waitForSelector("#allow-step:not(.hide)", { timeout: 30000 });
-  check((await away.textContent("#signed-in-as")) === email, "the code signs in, and the one question follows");
-  await away.screenshot({ path: `${out}/8_authorize_allow.png` });
-  // Read on Brickworks' own page, before Allow sends it on to claude.ai.
-  const kept = await away.evaluate(() => JSON.parse(localStorage.getItem("brickworks.session") || "{}").email);
-  check(kept === email, "...and that browser keeps the session, so the app there opens signed in");
-  await away.click("#allow");
-  await away.waitForURL((address) => address.toString().startsWith(CALLBACK), { timeout: 30000 });
-  const tokens2 = await trade(found.server, found.resource, away.url(), askedAgain.verifier);
+  // This account allowed Claude in the first browser, and is connected to
+  // it still: signed in here, it is not asked again.
+  const awayOutcome = await outcome(away);
+  check(awayOutcome === "back",
+    `the code signs in, and, Claude being allowed by this account already, nothing more is asked (${awayOutcome})`);
+  const tokens2 = awayOutcome === "back"
+    ? await trade(found.server, found.resource, away.url(), askedAgain.verifier) : { json: null };
   second = tokens2.json?.access_token;
-  check(/^bwa_/.test(second || ""), "Allow, and the code traded: a second connection");
+  check(/^bwa_/.test(second || ""), "...and the code traded: a second connection");
   // That browser is another device now: the app there opens signed in, from
   // the session the sign-in page kept, and listens by itself.
   const device = await elsewhere.newPage();
@@ -330,7 +362,7 @@ try {
   }
   const signedThere = await device.evaluate(() => window.brickworksAccount?.email);
   check(signedThere === email && there.on && (there.connected || []).includes("Claude"),
-    `the app in that browser opens signed in and listens by itself, nothing pressed: "${there.status}"`);
+    `the app in that browser opens signed in, from the session the sign-in page kept, and listens by itself, nothing pressed: "${there.status}"`);
   await device.screenshot({ path: `${out}/8b_second_device.png`, timeout: 120000 }).catch(() => {});
   const across = await claude(second, "tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
   check(textOf(across).includes("3004"), "its calls go to one of the account's open tabs");
@@ -351,11 +383,30 @@ try {
     `...this tab stops listening, and the panel says so: "${after.status}"`);
   const refused1 = await claude(first, "tools/list");
   const refused2 = await claude(second, "tools/list");
-  check(refused1.status === 401 && refused2.status === 401
+  const refused3 = await claude(firstAgain, "tools/list");
+  check(refused1.status === 401 && refused2.status === 401 && refused3.status === 401
       && /resource_metadata=/.test(refused1.headers.get("www-authenticate") || ""),
-    "both tokens are refused at once, and told where to sign in again");
+    "all three connections' tokens are refused at once, and told where to sign in again");
   check(Boolean(await where("account_connect_claude", 20)), "...and Account offers Connect Claude again");
   await shot("10_disconnected");
+
+  console.log("\nclaude.ai connects again after Disconnect");
+  const askedAfter = authorizationRequest(found.server, found.resource);
+  const signInAfter = await context.newPage();
+  await signInAfter.goto(askedAfter.address, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const afterOutcome = await outcome(signInAfter);
+  const questionAfter = afterOutcome === "asked" ? await signInAfter.textContent("#allow-step h1") : "";
+  check(afterOutcome === "asked" && /Let Claude build in Brickworks/.test(questionAfter),
+    `the question is put again, Disconnect having ended what was allowed (${afterOutcome})`);
+  await signInAfter.screenshot({ path: `${out}/11_asked_again.png` });
+  if (afterOutcome === "asked") {
+    await signInAfter.click("#allow");
+    await signInAfter.waitForURL((address) => address.toString().startsWith(CALLBACK), { timeout: 30000 });
+    const tokensAfter = await trade(found.server, found.resource, signInAfter.url(), askedAfter.verifier);
+    const hiAfter = await claude(tokensAfter.json?.access_token, "tools/list");
+    check(tokensAfter.status === 200 && hiAfter.status === 200, "...and Allow connects Claude again");
+  }
+  await signInAfter.close();
 } finally {
   await browser.close().catch(() => {});
   if (otherBrowser) await otherBrowser.close().catch(() => {});

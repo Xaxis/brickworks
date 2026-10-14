@@ -190,6 +190,15 @@ def drive(relay: Relay) -> None:
                   if not isinstance((t.get("inputSchema") or {}).get("properties"), dict)]
     check("every tool has an inputSchema, %d without" % len(schemaless),
           not schemaless)
+    # And what it does to the person's work, as the app's table says it
+    # (CommandSocket.HINTS): Claude reads these in deciding what to ask.
+    unsaid = [t["name"] for t in listed
+              if not (t.get("annotations") or {}).get("title")
+              or "readOnlyHint" not in (t.get("annotations") or {})]
+    looks = [t["name"] for t in listed if (t.get("annotations") or {}).get("readOnlyHint")]
+    check("every tool has its annotations, %d without; read-only: %d, search_parts among them"
+          % (len(unsaid), len(looks)), not unsaid and "search_parts" in looks
+          and "clear_model" not in looks)
 
     found = relay.call("tools/call", {
         "name": "search_parts", "arguments": {"query": "wedge", "limit": 5}})

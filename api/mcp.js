@@ -357,6 +357,9 @@ const RELAY_TOOLS = [
       "session's calls go to. Call it when the person has more than one tab open, or when " +
       "an answer names a tab or model you did not expect.",
     inputSchema: { type: "object", properties: {} },
+    // As the app's own tools carry theirs (CommandSocket.HINTS): neither of
+    // these changes any model, or anything but which tab this session uses.
+    annotations: { title: "List the open tabs", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "select_tab",
@@ -367,6 +370,7 @@ const RELAY_TOOLS = [
       properties: { tab: { type: "string", description: "The tab's id, from tabs." } },
       required: ["tab"],
     },
+    annotations: { title: "Work in another tab", readOnlyHint: true, openWorldHint: false },
   },
 ];
 

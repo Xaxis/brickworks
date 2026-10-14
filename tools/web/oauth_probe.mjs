@@ -15,8 +15,10 @@
 // own calls made directly); the code is traded with PKCE for tokens; the
 // token reaches the MCP address, and a call goes to the account's tab
 // (played here by this probe, as a tab would: hello, next, answer).
-// Then refresh, rotation and a reused refresh token, revocation, the
-// account's list of connections and Disconnect. And the refusals: a wrong
+// Then refresh, rotation and a reused refresh token; a second connection
+// from the same account given its code with nothing asked, and asked again
+// once revoked or disconnected; revocation, the account's list of
+// connections and Disconnect. And the refusals: a wrong
 // verifier, a wrong or undeclared return address, a code used twice, no
 // PKCE, another server's resource, an unknown client, a missing secret.
 //
@@ -97,6 +99,21 @@ async function authorize(session, { clientId, redirect, challenge, state = "s-" 
   });
   const to = approved.json?.redirect ? new URL(approved.json.redirect) : null;
   return { checked, approved, to, code: to?.searchParams.get("code"), state };
+}
+
+/// The page's question before it asks: has this account allowed this
+/// client before? A code at once if so (the page then asks nothing), else
+/// { ask: true }.
+async function remembered(session, { clientId, redirect, challenge, state = "r-" + b64url(randomBytes(6)) }) {
+  const params = {
+    response_type: "code", client_id: clientId, redirect_uri: redirect, code_challenge: challenge,
+    code_challenge_method: "S256", state, resource: `${base}/api/mcp`, scope: "build",
+  };
+  const reply = await call("/api/oauth?op=remembered", {
+    method: "POST", headers: session ? { authorization: `Bearer ${session}` } : {}, body: params,
+  });
+  const to = reply.json?.redirect ? new URL(reply.json.redirect) : null;
+  return { reply, to, code: to?.searchParams.get("code"), state };
 }
 
 const exchange = (form, headers = {}) => call("/oauth/token", { method: "POST", form, headers });
@@ -318,6 +335,36 @@ try {
   check(deniedTo.searchParams.get("error") === "access_denied" && deniedTo.searchParams.get("state") === "d",
     "Cancel sends Claude back access_denied");
 
+  console.log("\na second connection from the same account (the page's op=remembered)");
+  const p9 = pkce();
+  const again = await remembered(session, { clientId: CLAUDE, redirect: CALLBACK, challenge: p9.challenge });
+  check(again.reply.status === 200 && /^bwk_/.test(again.code || "") && again.to.origin + again.to.pathname === CALLBACK
+      && again.to.searchParams.get("state") === again.state && again.to.searchParams.get("iss") === base,
+    "Claude, allowed by this account before: a code at once, with the state and the issuer, and nothing asked");
+  const againTokens = await exchange({ grant_type: "authorization_code", code: again.code, redirect_uri: CALLBACK,
+    client_id: CLAUDE, code_verifier: p9.verifier, resource: `${base}/api/mcp` });
+  check(againTokens.status === 200 && /^bwa_/.test(againTokens.json?.access_token || ""),
+    "...a code like any other, traded with its verifier for tokens");
+  const p10 = pkce();
+  const nobody = await remembered(null, { clientId: CLAUDE, redirect: CALLBACK, challenge: p10.challenge });
+  check(nobody.reply.status === 401 && !nobody.code, "asked with nobody signed in: 401, no code");
+  const theirsAsked = await remembered(theirs, { clientId: CLAUDE, redirect: CALLBACK, challenge: p10.challenge });
+  check(theirsAsked.reply.json?.ask === true && !theirsAsked.code,
+    "another account, which never allowed Claude: asked");
+  const lookalike = await call("/oauth/register", { method: "POST", body: {
+    client_name: "Claude", redirect_uris: [CALLBACK], token_endpoint_auth_method: "none" } });
+  const named = await remembered(session, { clientId: lookalike.json?.client_id, redirect: CALLBACK,
+    challenge: p10.challenge });
+  check(lookalike.status === 201 && named.reply.json?.ask === true && !named.code,
+    "a client that registered as \"Claude\", at Claude's own return address: asked, for it is not the client allowed");
+  const port = Number(new URL(cc).port);
+  const otherPort = await remembered(session, { clientId: CLAUDE_CODE,
+    redirect: cc.replace(`:${port}/`, `:${port === 59999 ? 40000 : port + 1}/`), challenge: p10.challenge });
+  check(otherPort.reply.json?.ask === true && !otherPort.code,
+    "Claude Code on another loopback port: asked, for only the return address allowed is remembered");
+  const ccAgain = await remembered(session, { clientId: CLAUDE_CODE, redirect: cc, challenge: p10.challenge });
+  check(/^bwk_/.test(ccAgain.code || ""), "...and on the same one, not asked");
+
   console.log("\nthe account's connections");
   const mine = await call("/api/oauth?op=connections", { headers: { authorization: `Bearer ${session}` } });
   const clients = (mine.json?.connections || []).map((c) => c.client);
@@ -336,6 +383,9 @@ try {
   check(revoked.status === 200, "Claude Code's refresh token revoked (RFC 7009): 200");
   const ccAfter = await mcp(ccTokens.json.access_token, "tools/list", {}, 7);
   check(ccAfter.status === 401, "...and its whole connection with it: its access token is refused");
+  const ccForgotten = await remembered(session, { clientId: CLAUDE_CODE, redirect: cc, challenge: pkce().challenge });
+  check(ccForgotten.reply.json?.ask === true && !ccForgotten.code,
+    "...and what was allowed with it: Claude Code is asked again");
   const gone = await call("/api/oauth?op=disconnect", { method: "POST", headers: { authorization: `Bearer ${session}` } });
   check(gone.status === 200 && gone.json?.disconnected >= 2, `Disconnect Claude: ${gone.json?.disconnected} connection(s) ended`);
   const afterDisconnect = await mcp(r1.json.access_token, "tools/list", {}, 8);
@@ -345,6 +395,9 @@ try {
   check(refreshAfter.status === 400 && refreshAfter.json?.error === "invalid_grant", "...and so is its refresh token");
   const left = await call("/api/oauth?op=connections", { headers: { authorization: `Bearer ${session}` } });
   check((left.json?.connections || []).length === 0, "none left");
+  const askedAgain = await remembered(session, { clientId: CLAUDE, redirect: CALLBACK, challenge: pkce().challenge });
+  check(askedAgain.reply.json?.ask === true && !askedAgain.code,
+    "...and the next connection asks again: Disconnect ended what was allowed");
 
   console.log("\na refresh token used again long after it was replaced");
   const p8 = pkce();
