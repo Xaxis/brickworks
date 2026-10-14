@@ -194,7 +194,10 @@ def _stop_leftovers(port: int) -> list[int]:
     return [pid for pid, _args in ended]
 
 
-def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None) -> dict:
+def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None,
+           extra: tuple[str, ...] = ()) -> dict:
+    """The real loop on one brief; `extra` goes to the app after the bench's own
+    arguments (tools/bench/brickbench.py keeps its runs to a list of parts)."""
     done = run_dir / "design.json"
     if done.exists():
         result = json.loads(done.read_text())
@@ -227,7 +230,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
                "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
                # The subject's own scored designs are the answer under test:
                # the designer's memory leaves them out (src/ai/design_memory.gd).
-               f"--held-out={subject.id}"]
+               f"--held-out={subject.id}", *extra]
     started = time.time()
     with log.open("w") as out:
         status = subprocess.run(command, cwd=ROOT, env=_billing_free_env(),
@@ -266,14 +269,15 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
 LAVAPIPE = "/usr/share/vulkan/icd.d/lvp_icd.json"
 
 
-def render(model: Path, prefix: Path, log: Path, software: bool = False) -> list[Path]:
+def render(model: Path, prefix: Path, log: Path, software: bool = False,
+           views: tuple[str, ...] = VIEWS) -> list[Path]:
     """Corner, front and close of a model, on the GPU, as PREFIX_{view}.png.
 
     `software` draws the same renderer on lavapipe under `heavy` instead,
     for when the GPU's queue is long; both sides of a comparison are drawn
-    the same way.
+    the same way. `views` takes others of ModelShot's angles instead.
     """
-    wanted = [prefix.parent / f"{prefix.name}_{v}.png" for v in VIEWS]
+    wanted = [prefix.parent / f"{prefix.name}_{v}.png" for v in views]
     if all(p.exists() for p in wanted):
         return wanted
     prefix.parent.mkdir(parents=True, exist_ok=True)
@@ -281,7 +285,8 @@ def render(model: Path, prefix: Path, log: Path, software: bool = False) -> list
                "timeout", "--kill-after=30", "900", "godot", "--path", str(ROOT), "--resolution", "1600x900",
                "--log-file", str(log.with_name(log.stem + "_godot.log")),
                "--script", "src/dev/bench_views.gd", "--",
-               f"--model={model}", f"--views_out={prefix}"]
+               f"--model={model}", f"--views_out={prefix}",
+               *([f"--views={','.join(views)}"] if views != VIEWS else [])]
     env = (_billing_free_env(GODOT_GPU="1", VK_ICD_FILENAMES=LAVAPIPE, VK_DRIVER_FILES=LAVAPIPE,
                              MESA_VK_WSI_DEBUG="sw") if software
            else _billing_free_env(MESA_VK_WSI_DEBUG="sw"))

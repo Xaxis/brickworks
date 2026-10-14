@@ -1666,6 +1666,20 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "run the designer on BrickBench",
+      "entry": "tools/bench/brickbench.py",
+      "reach": "python3 tools/minitest.py tests/test_brickbench.py; python3 tools/bench/brickbench.py report --date 2026-10-14   (the run: prompts, parts, design, export, verify, zip, fetch, views, pairs; the recipe is BrickBench in features/assistant.md; never submitted)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "keep a run to a list of parts",
+      "entry": "src/parts/parts_only.gd",
+      "reach": "godot --headless --path . --script src/dev/parts_only_probe.gd   (and -- --parts-only=bench/results/brickbench-2026-10-14/bricknet_parts.txt)",
+      "area": "assistant"
+    },
+    {
       "kind": "ui",
       "label": "printed versions",
       "entry": "src/prints/printed_versions.gd",
