@@ -359,8 +359,11 @@ static func _body(made: Array, centre: Vector2, y: float, d: int, plates: int,
 			for pair: Array in parts["halves"]:
 				var tall: int = int(pair[1])
 				# Halves stacked on halves are two columns; a plate between
-				# makes the pair one piece, and costs a plate.
-				var tie: int = 1 if below == "halves" else 0
+				# makes the pair one piece, and costs a plate. So do halves
+				# on a Technic course: their hollow is over the course's
+				# middle brick, which stood loose under it, held by nothing
+				# (85941's cover was its box and hid it).
+				var tie: int = 1 if below == "halves" or below == "course" else 0
 				if left >= tall + tie and _made_in(str(pair[0]), colour):
 					if tie > 0:
 						made.append(_part(str(parts["plate"]), colour, low, y))

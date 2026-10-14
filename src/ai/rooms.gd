@@ -711,6 +711,18 @@ func _take_out(item: int) -> void:
 	if one["role"] == "plate":
 		for at: Vector2i in one["cells"]:
 			(_floors[int(one["floor"])]["plated"] as Dictionary).erase(at)
+	elif one["role"] == "stair":
+		# And a ladder takes the props it gave the floor above with it. Left,
+		# the plate over its pillar counted itself held by a pillar that was
+		# not there, and the check found it floating: a tower's library lost
+		# a floor plate and its two tiles that way.
+		var k: int = int(one["floor"])
+		var level: Dictionary = _floors[k]
+		level.erase("climb")
+		if level.has("ladder_at"):
+			level.erase("ladder_at")
+			if k + 1 < _floors.size():
+				_floors[k + 1]["props"] = []
 
 
 ## The studs of floor k a thing can stand on: all of the ground, a laid
@@ -870,6 +882,15 @@ func _plan_ladder(k: int) -> void:
 					high["reserved"][at + by + DIRS[front]] = true
 				for at: Vector2i in pillar:
 					high["props"].append(at + by)
+				# And under it, where it stands on a floor of plates: a column
+				# from the room below to a stud of its pillar, kept clear of
+				# that room's furniture. Left to the end, a log pile in the
+				# dungeon had the stud a column wanted, and the forge's ladder
+				# went out with the plates it stood on.
+				if k > 0 and not bool(low["ground"]) and not bool(low["existing"]):
+					var foot: Vector2i = (pillar[0] as Vector2i) + by
+					(low["columns"] as Array).append(foot)
+					(_floors[k - 1]["reserved"] as Dictionary)[foot] = true
 				low["ladder_at"] = {"bricks": placed, "cells": cells}
 				return
 

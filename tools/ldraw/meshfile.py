@@ -78,7 +78,9 @@ is one end of its axis, axis runs to the other end (so its length is the
 round's), and the gender byte is its radius in quarter LDU. Their gender
 is their kind's own, a shaft male and a bore female, and a round joint
 needs a radius where the record has no other room for one. A reader that
-predates them sees a kind it does not know and passes over it.
+predates them sees a kind it does not know and passes over it. A click
+hinge's finger and fork (connectivity._HINGES) are laid out the same way,
+a finger male and a fork female.
 
 Why the connectivity rides along with the geometry
 --------------------------------------------------
@@ -143,11 +145,11 @@ class Surface:
 # Connector kinds, as a byte.  The order is the wire format; append only.
 CONNECTOR_KINDS = (
     "stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
-    "clip", "bar", "ball", "socket", "shaft", "bore",
+    "clip", "bar", "ball", "socket", "shaft", "bore", "finger", "fork",
 )
 GENDERS = ("male", "female", "neutral")
 # The kinds whose gender byte is a radius; see the layout above.
-ROUND_KINDS = {"shaft": "male", "bore": "female"}
+ROUND_KINDS = {"shaft": "male", "bore": "female", "finger": "male", "fork": "female"}
 # Quarter LDU per step of that byte.
 ROUND_STEPS = 4.0
 

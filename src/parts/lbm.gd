@@ -24,10 +24,11 @@ const SOCKET_SIZE := 8
 ## Wire order of connector kinds and genders; append only.
 const KINDS: PackedStringArray = [
 	"stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
-	"clip", "bar", "ball", "socket", "shaft", "bore"]
+	"clip", "bar", "ball", "socket", "shaft", "bore", "finger", "fork"]
 const GENDERS: PackedStringArray = ["male", "female", "neutral"]
 ## The kinds whose gender byte is a radius, and the gender they have.
-const ROUNDS: Dictionary = {"shaft": "male", "bore": "female"}
+const ROUNDS: Dictionary = {"shaft": "male", "bore": "female", "finger": "male",
+	"fork": "female"}
 ## Quarter LDU per step of that byte.
 const ROUND_STEPS := 4.0
 const VERTEX_SIZE := 10
