@@ -1734,6 +1734,20 @@
       "entry": "tools/web/keep_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep   (with .env sourced)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "working model that could not open",
+      "entry": "src/ui/restore_notice.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd   (start-up with a working model none of whose parts are in the catalogue: kept in File, Open, said above the model)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "unrestored probe",
+      "entry": "src/dev/unrestored_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
+      "area": "model-io"
     }
   ]
 }

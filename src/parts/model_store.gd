@@ -194,11 +194,70 @@ func write_now() -> String:
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
 
-## Restore the working model from the last session, if there is one.
+## Restore the working model from the last session, if there is one. How
+## many of its parts come back: put down now, or on their way (on the web,
+## parts not fetched yet go down as they arrive, and nothing may be opened
+## over them meanwhile). 0 when there is none, or none of it can be had.
+##
+## Main opens the sample car when this is 0, and the car's autosave wrote
+## over the working model a few seconds later: one none of whose parts were
+## in this build's catalogue went for good, and nothing said so. So a model
+## with parts that cannot be opened is kept first, as it was, among the
+## person's models ([method _keep_unopened]).
 func restore() -> int:
-	if not FileAccess.file_exists(autosave()):
+	unrestored = ""
+	var path: String = autosave()
+	if not FileAccess.file_exists(path):
 		return 0
-	return open(autosave())
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return 0
+	var result: Dictionary = open_text(text, path.get_file())
+	# What is awaited is this model's only when it opened: one that did not
+	# leaves the last model's there.
+	var opened: bool = str(result["error"]).is_empty()
+	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
+	if back == 0 and count_in(text) > 0:
+		_keep_unopened(text, str(result["error"]))
+	return back
+
+
+## What the person is told when the working model could not be opened at
+## start-up and was kept ([method restore]), or "".
+var unrestored: String = ""
+## The working model could not be opened at start-up, and was kept: Main
+## says so above the model, in [param words].
+signal not_restored(words: String)
+
+
+## Keep [param text], the working model that could not be opened, where the
+## person finds their models (File › Open, and Download my models on the
+## web), under its name and "- could not open"; or nowhere new when it is
+## saved as it is already. A later build that has its parts opens it. When it
+## cannot be written anywhere, this tab keeps no working model, so the file
+## is not written over either.
+func _keep_unopened(text: String, why: String) -> void:
+	var name: String = title_in(text, "")
+	if name.is_empty():
+		name = "Working model"
+	var kept: String = name
+	var same: String = saved_path(name)
+	if not FileAccess.file_exists(same) \
+			or _brick_lines(FileAccess.get_file_as_string(same)) != _brick_lines(text):
+		kept = unused_name("%s - could not open" % name)
+		if not NewerBuild.may_write(saved_path(kept)) or not _store(saved_path(kept), text):
+			keeps = false
+			unrestored = ("Your last model, “%s”, could not be opened: %s. It could not be "
+				+ "copied anywhere, so it is left as it was and this %s keeps nothing "
+				+ "until it is reloaded.") % [name, why, "tab" if OS.has_feature("web") else "window"]
+			push_warning("could not keep the working model that did not open: " + why)
+			not_restored.emit(unrestored)
+			return
+	# As File › Open lists it: by its file's name.
+	unrestored = ("Your last model, “%s”, could not be opened: %s. It is kept as it was, "
+		+ "as “%s” in File › Open.") % [name, why, saved_path(kept).get_file().get_basename()]
+	push_warning("the working model did not open (%s); kept as %s" % [why, saved_path(kept)])
+	not_restored.emit(unrestored)
 
 
 func save_as(name: String) -> bool:
@@ -1019,6 +1078,12 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	return _store(path, text)
+
+
+## [param text] written to [param path] as it is, the page told; in the
+## person's models, kept as a version too.
+func _store(path: String, text: String) -> bool:
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])

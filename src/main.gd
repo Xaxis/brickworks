@@ -176,6 +176,8 @@ var _reload_offer: ReloadOffer
 var _update_offer: UpdateOffer
 ## Once, where this browser may clear the person's models (StorageKeep).
 var _storage_offer: StorageOffer
+## The working model could not be opened at start-up: where it is kept.
+var _restore_notice: RestoreNotice
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -361,6 +363,8 @@ func _tell_page() -> void:
 		named.merge(_update_offer.controls_by_name())
 	if _storage_offer != null:
 		named.merge(_storage_offer.controls_by_name())
+	if _restore_notice != null:
+		named.merge(_restore_notice.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -963,7 +967,8 @@ func _ready() -> void:
 		# where a first visit does: it restored this machine's autosave,
 		# so a probe saw whatever the last test or agent had left — a
 		# minifigure once, and X lifted the whole figure where the probe
-		# meant to lift a brick.
+		# meant to lift a brick. One that cannot be opened is kept, and said
+		# to be, before the sample's autosave can go over it (ModelStore.restore).
 		if not OS.get_cmdline_args().has("--script"):
 			placed = _store.restore()
 		if placed == 0:
@@ -2754,6 +2759,12 @@ func _build_ui() -> void:
 	_bar.started_new.connect(_reload_offer.dismiss)
 	_bar.cleared.connect(_reload_offer.dismiss)
 	_store.saved_by_another.connect(_reload_offer.offer)
+	# The working model could not be opened at start-up and was kept, not
+	# written over: said, with where it is (ModelStore.restore).
+	_restore_notice = RestoreNotice.new()
+	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_restore_notice)
+	_store.not_restored.connect(_restore_notice.tell)
 	# A newer build is live: said above the model, with Reload, which keeps
 	# the model on the baseplate first (_watch_other_tabs asks).
 	_update_offer = UpdateOffer.new()

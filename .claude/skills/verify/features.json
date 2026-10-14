@@ -685,6 +685,14 @@
       "tests": []
     },
     {
+      "id": "cli:unrestored probe",
+      "kind": "cli",
+      "entry": "src/dev/unrestored_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:update probe",
       "kind": "cli",
       "entry": "src/dev/update_probe.gd",
@@ -2016,6 +2024,14 @@
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:working model that could not open",
+      "kind": "ui",
+      "entry": "src/ui/restore_notice.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd   (start-up with a working model none of whose parts are in the catalogue: kept in File, Open, said above the model)",
+      "area": "model-io",
       "tests": []
     },
     {
