@@ -747,10 +747,15 @@ plan with Claude as the client.
   by the same numbers. Fails when a case is not drawn within three frames of
   being in view (frames that drew; 0 when it was on the screen already as
   the tab was shown), or took more than `--budget` ms (2,000) of the engine's own
-  work to get there. It is judged in frames because in software a frame of a
+  work to get there, or the app said the model was still going up
+  (`brickworksState.playing`, asked every 250 ms) after the answer, in view.
+  It is judged in frames because in software a frame of a
   4,000-part model is 2 to 3 s of rasterising, which a graphics card does in
   milliseconds. Three frames because the ground is laid wider under a design
-  that outgrew it, a frame after it is built. If a case's tab never answers
+  that outgrew it, a frame after it is built. But a build animation is timed
+  by the clock: 2.5 s of it was two to five frames here and 150 on a graphics
+  card, so counted in frames alone it failed one run and passed the next;
+  asked whether it plays, it fails every time. If a case's tab never answers
   the connector, the case is tried again on a fresh page, up to three pages
   in all. The test account is shared by every check on the machine, and a
   page can come up saying "Sign in to Brickworks again to connect Claude".
@@ -767,6 +772,17 @@ plan with Claude as the client.
   only after 9 s. `EditVerbs.brick_at` now keeps its last answer until the ray
   or `BrickLattice.revision` changes, and answers nothing out of view
   (`Main._watch_view`).
+
+  It caught the build animation outliving the answer (2026-10-13): every
+  shown case drawn on frame 4 or 5, 1.5 to 1.9 s after submit_design
+  answered, on brickworks.diy and on local exports of da0dd3d. Each frame's
+  instanced draws (`changes` in `.frames.json`) showed every batch's count
+  rising a step a frame for 2.5 s from the build: `BuildPlayback` raising
+  `visible_instance_count`. A check from outside had put the design down as
+  a draft, so the submit had nothing new to play; since a8e1aa5 it never
+  does, and the submit put all of it down to go up in view. What a session's
+  call puts down is now drawn whole as it answers (`CommandSocket.at_work`;
+  see [view](view.md) `build animation`).
 - `idle check`: `tools/web/idle_check.mjs` loads the app in Chromium, lets
   it settle (the model, its parts and the bin's pictures in, nothing
   moving), and counts what a page standing still costs for 15 s: the

@@ -35,8 +35,9 @@
 // --flow=submit submits with no check first, so every brick is new to it.
 //
 // Passes when every case is drawn within three frames of being in view, on
-// no more than --budget ms (2,000) of the engine's own work. Costs nothing:
-// no model is called.
+// no more than --budget ms (2,000) of the engine's own work, and the app
+// never says the model is still going up (its build animation) once the
+// tab is in view with the answer given. Costs nothing: no model is called.
 import { launch, openColumnFor, START_MS } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -297,14 +298,20 @@ async function runCase(size, mode) {
   // The page asked something every 250 ms: how long the answer takes is how
   // long the page would have ignored a person. Not a pointer moved over the
   // model, which moves the held part's ghost and so changes what is drawn.
+  // What it asks: whether the app says the model is still going up (the
+  // build animation, brickworksState.playing). In view that is a model not
+  // yet what the answer said, however few frames a slow machine drew of it:
+  // 2.5 s of going up was two frames here in software, 150 on a graphics
+  // card, so counted in frames it passed one run in three (2026-10-13).
   let poking = true;
   let worstInput = 0;
+  let goingUp = false;
   const poker = (async () => {
     let n = 0;
     while (poking) {
       n += 1;
       const t0 = Date.now();
-      await page.evaluate(() => 0).catch(() => {});
+      if (await page.evaluate(() => !!(window.brickworksState || {}).playing).catch(() => false)) goingUp = true;
       worstInput = Math.max(worstInput, Date.now() - t0);
       await new Promise((done) => setTimeout(done, 250));
     }
@@ -362,7 +369,7 @@ async function runCase(size, mode) {
   return {
     size, mode, bricks: state.bricks, checkMs, submitMs, settled,
     drawnMs, drawnFrame, ownToDrawn, idleMs, instances: final, worstOwn: Math.round(worstOwn), worstTask: Math.round(worstTask),
-    worstInput, waitFrames: between.length,
+    worstInput, goingUp, waitFrames: between.length,
     waitWork: Math.round(between.reduce((s, [, , own]) => s + own, 0)),
     checkSaid: said(checked).slice(0, 60), submitSaid: said(submitted).slice(0, 60),
   };
@@ -398,15 +405,16 @@ for (const size of sizes) {
     // with the old model still standing.
     // Then within three frames of being in view (the ground laid wider
     // under a design that outgrew it is the second), on the app's own work.
+    // And never still going up once answered (see goingUp above).
     // Every answer through the relay now opens on the tab it acted on
     // (api/mcp.js header, since 2026-10-13): what was done comes after it.
     const said = String(row.submitSaid || "").replace(/^Tab \S+, “[^”]*”\.(?: [^\n]*?tabs lists them\.)?\s*/, "");
     const built = /^Built/.test(said) && row.bricks === size;
     const over = !built || !row.settled || row.drawnFrame === null || row.drawnFrame > 3
-      || row.ownToDrawn > budget;
+      || row.ownToDrawn > budget || row.goingUp;
     if (over) failures += 1;
     const s = (ms) => (ms === null ? "never" : `${(ms / 1000).toFixed(1)} s`);
-    console.log(`${over ? "FAIL" : "ok  "} ${String(size).padStart(4)} ${mode.padEnd(6)} ${s(row.checkMs).padStart(7)} ${s(row.submitMs).padStart(8)} | ${(row.settled ? s(row.drawnMs) : `>${s(longest)}`).padStart(7)} ${(row.settled ? `(${row.drawnFrame}, ${row.ownToDrawn} ms)` : "").padEnd(16)} ${(row.settled ? s(row.idleMs) : "-").padStart(8)} ${String(row.worstOwn).padStart(7)} ms ${String(row.worstTask).padStart(6)} ${String(row.worstInput).padStart(6)} | ${String(row.bricks).padStart(6)} ${String(row.instances).padStart(9)}  ${row.waitFrames} (${s(row.waitWork)})  ${row.submitSaid.slice(0, 40)}`);
+    console.log(`${over ? "FAIL" : "ok  "} ${String(size).padStart(4)} ${mode.padEnd(6)} ${s(row.checkMs).padStart(7)} ${s(row.submitMs).padStart(8)} | ${(row.settled ? s(row.drawnMs) : `>${s(longest)}`).padStart(7)} ${(row.settled ? `(${row.drawnFrame}, ${row.ownToDrawn} ms)` : "").padEnd(16)} ${(row.settled ? s(row.idleMs) : "-").padStart(8)} ${String(row.worstOwn).padStart(7)} ms ${String(row.worstTask).padStart(6)} ${String(row.worstInput).padStart(6)} | ${String(row.bricks).padStart(6)} ${String(row.instances).padStart(9)}  ${row.waitFrames} (${s(row.waitWork)})  ${row.submitSaid.slice(0, 40)}${row.goingUp ? "  STILL GOING UP after the answer" : ""}`);
   }
 }
 console.log(failures

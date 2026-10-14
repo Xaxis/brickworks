@@ -2760,7 +2760,13 @@ func _build_ui() -> void:
 		# already does not vanish to be built again.
 		# Nor when nobody can see it: a design made from claude.ai with the
 		# tab out of view is there, whole, when the tab is looked at.
-		if not _driven and not _out_of_view and _playback.play_new(_assistant.fresh_ids):
+		# Nor for a session's call (CommandSocket.at_work): Claude is told
+		# what is built as the call answers, and in view the model went on
+		# going up for 2.5 s after that. Since a check from outside stopped
+		# putting the design down first (a8e1aa5), every design submitted
+		# over the connector did. Only the app's own designs go up.
+		if not _driven and not _out_of_view and not CommandSocket.at_work() \
+				and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
