@@ -168,11 +168,17 @@ picture the assistant is shown.
 - `build animation`: what the assistant just put down goes up on the baseplate
   in build order instead of appearing at once (`BuildPlayback`, played from
   `Main`'s `built` handler; never in a run driven from the command line). Only
+  the app's own designs go up: what a session's call puts down (the web
+  connector, the MCP port; `CommandSocket.at_work`) is drawn whole as the call
+  answers, because the answer tells Claude it is built. Since a check from
+  outside stopped putting the design down (a8e1aa5), every design submitted to
+  a tab in view went up for 2.5 s after that answer, and `arrival check` failed
+  every shown case (2026-10-13); `claude_undo_probe` holds both halves. Only
   what is new: `Assistant.fresh_ids` is what the last build or edit put down or
   moved, and everything else stays on show (`BuildPlayback.play_new`), so a
-  recolour plays nothing and `add_rooms` plays the rooms; a design shown by
-  `check_design` (or drawn as it streamed in) and then submitted unchanged is
-  already standing and plays nothing either. Up to
+  recolour plays nothing and `add_rooms` plays the rooms; a design the app's own
+  run showed as a draft (or drew as it streamed in) and then submitted unchanged
+  is already standing and plays nothing either. Up to
   `PLANNED_UP_TO` (200) new bricks the order is the booklet's
   (`Instructions.plan`); past it, course by course, one sort of packed keys. A
   step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
