@@ -39,7 +39,14 @@
 ##              tiles a plate proud with a rounded end at each end (_flanks).
 ##              Not for a building, nor a course that is not the body's: a
 ##              sill on wheels, a chassis under a wider course, a course in a
-##              colour the body over it is not (_off_the_body);
+##              colour the body over it is not (_off_the_body); and a side
+##              of plates: three plates stacked, or one brick under plates,
+##              their outer row cut and laid again with studs turned out,
+##              the same skin over the plates' edges and any step a stud
+##              back over them, both sides of plates the body's width in
+##              one finding (_plate_flanks);
+##   side studs studs on a part's side, open, four or more: tiled on their
+##              side in their own colour (_side_fields);
 ##   wall       a building's long plain wall of one-wide bricks, one colour:
 ##              laid again by restyle_model's own pass, some as masonry, no
 ##              stud turned out.
@@ -560,8 +567,13 @@ func find() -> Array[Finding]:
 		var tilted: Dictionary = open_tops(str(name), points)
 		if not tilted.is_empty():
 			fields.append_array(_fields(tilted, {}, str(name)))
-	# A building's long plain walls are textured; a body's flanks skinned.
+	# And the studs on a part's side: a plate laid on its side, studs out.
+	fields.append_array(_side_fields(points))
+	# A building's long plain walls are textured; a body's flanks skinned,
+	# of brick courses and of plates.
 	var walls: Array[Finding] = _walls(gone) if _straight_first() else _flanks(gone)
+	if not _straight_first():
+		walls.append_array(_plate_flanks(gone, walls.duplicate()))
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
 	edges.sort_custom(by_size)
@@ -2457,32 +2469,11 @@ func _skin(run: Array, course: float) -> Finding:
 		var over: BrickWorld.Brick = assistant.world.get_brick(id) if id != 0 else null
 		if over == null or over.color_code != colour:
 			return null
-	var pieces: Array = []
-	var n: int = 0
-	var ends: bool = long >= SHORTEST_SKIN and not _never_made(SKIN_END, colour)
-	if ends:
-		var rounded: Vector3 = _rounded_end(SKIN_END)
-		var low: Dictionary = _onto_side(SKIN_END, colour, studs.slice(0, 2), facing,
-			-along_way, rounded)
-		var high: Dictionary = _onto_side(SKIN_END, colour, studs.slice(long - 2, long), facing,
-			along_way, rounded)
-		if rounded == Vector3.ZERO or low.is_empty() or high.is_empty():
-			ends = false
-		else:
-			pieces.append(low)
-			pieces.append(high)
-			n = 2
-	var stop: int = long - 2 if ends else long
-	while n < stop:
-		var part: int = mini(4, stop - n)
-		if _never_made(SKIN_TILES[part], colour):
-			return null
-		var tile: Dictionary = _onto_side(SKIN_TILES[part], colour, studs.slice(n, n + part),
-			facing)
-		if tile.is_empty():
-			return null
-		pieces.append(tile)
-		n += part
+	var pieces: Array = _skin_pieces(studs, colour, facing, along_way)
+	if pieces.is_empty():
+		return null
+	var ends: bool = pieces.any(func(placed: Dictionary) -> bool:
+		return str(placed["part"]) == SKIN_END)
 	for placed: Variant in pieces:
 		if not _fits(placed as Dictionary, skip, bricks + inner):
 			return null
@@ -2518,6 +2509,42 @@ func _skin(run: Array, course: float) -> Finding:
 	one.laid = _pieces_said(one)
 	one.seen_from = "corner" if facing.begins_with("+") else "far corner"
 	return one
+
+
+## A skin on a row of side studs, in order along [param along_way]: tiles two
+## studs tall straight on them, facing [param facing], with a rounded end at
+## each end where the part was made in the colour. [] where a tile was never
+## made in it or does not go on.
+func _skin_pieces(studs: Array[Vector3], colour: int, facing: String,
+		along_way: Vector3) -> Array:
+	var long: int = studs.size()
+	var pieces: Array = []
+	var n: int = 0
+	var ends: bool = long >= SHORTEST_SKIN and not _never_made(SKIN_END, colour)
+	if ends:
+		var rounded: Vector3 = _rounded_end(SKIN_END)
+		var low: Dictionary = _onto_side(SKIN_END, colour, studs.slice(0, 2), facing,
+			-along_way, rounded)
+		var high: Dictionary = _onto_side(SKIN_END, colour, studs.slice(long - 2, long), facing,
+			along_way, rounded)
+		if rounded == Vector3.ZERO or low.is_empty() or high.is_empty():
+			ends = false
+		else:
+			pieces.append(low)
+			pieces.append(high)
+			n = 2
+	var stop: int = long - 2 if ends else long
+	while n < stop:
+		var part: int = mini(4, stop - n)
+		if _never_made(SKIN_TILES[part], colour):
+			return []
+		var tile: Dictionary = _onto_side(SKIN_TILES[part], colour, studs.slice(n, n + part),
+			facing)
+		if tile.is_empty():
+			return []
+		pieces.append(tile)
+		n += part
+	return pieces
 
 
 ## Which way a tile's rounded end looks in its own frame, laid flat: the end
@@ -2654,6 +2681,600 @@ func _onto_side(id: String, colour: int, studs: Array[Vector3], facing: String,
 				"y": snappedf(corner.y / PLATE, 0.25), "z": snappedf(corner.z / STUD, 0.1),
 				"face": facing, "rot": rot}
 	return {}
+
+
+# -- the sides of a body built of plates ------------------------------------------
+
+
+## The sides of a body built of plates, which a flank of brick courses does
+## not read: at the face, three plain plates stacked (or one plain brick) in
+## one colour, the face over them for a skin to lie on, flush or a stud back
+## where the plates above step in. A body a session builds by hand in plates
+## terraces by construction: "the fuselage sides are a terrace of stacked
+## plates" (the steps round's starfighter), and its car's "flanks ... plain
+## brick walls" were one course of bricks under plates, where a brick flank
+## needs two courses of bricks. The course's outer row is cut, the rest of
+## each part laid again in its own kind (_cut), and laid as bricks with studs
+## on the side; on those studs, the brick flank's skin: tiles two studs tall,
+## a plate proud, a rounded end at each end. It covers the plates' edges and
+## a step a stud back over them. Courses are tried from the top down, and no
+## skin is laid over another (the brick flanks' [param skins] first).
+func _plate_flanks(gone: Dictionary, skins: Array[Finding]) -> Array[Finding]:
+	var out: Array[Finding] = []
+	if _read == null:
+		_read = OpenPoints.read(assistant)
+	var standing: Array[BrickWorld.Brick] = assistant._bricks_inside({})
+	# Every plain plate and brick of the main body by the cells it fills,
+	# [half-stud x, plate up, half-stud z] -> id, and each one's [bottom
+	# plate, plates tall, colour].
+	var owner: Dictionary = {}
+	var held: Dictionary = {}
+	for brick: BrickWorld.Brick in standing:
+		if gone.has(brick.id) or _taken_off.has(brick.id):
+			continue
+		var placement: Assistant.Placement = _read.by_id.get(brick.id)
+		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(brick.part_id)
+		if placement == null or placement.face != "up" or not placement.section.is_empty() \
+				or info == null or mesh == null or not _plain(info) in ["plate", "brick"]:
+			continue
+		var tint: PartLibrary.BrickColor = assistant.library.color(brick.color_code)
+		if tint != null and tint.is_transparent():
+			continue
+		var box: AABB = (brick.transform * mesh.bounds).abs()
+		if _in_zone(box.get_center()):
+			continue
+		var bottom: int = roundi(box.position.y / PLATE)
+		var tall: int = roundi((box.size.y - 4.0) / PLATE)
+		held[brick.id] = [bottom, tall, brick.color_code]
+		for c: Vector2i in _cells_of(box):
+			for up: int in range(bottom, bottom + tall):
+				owner[Vector3i(c.x, up, c.y)] = brick.id
+	# Each of those cells open to a side, by the face and its row:
+	# "facing|row" -> {along -> {plate up -> id}}, in half studs.
+	var faces: Dictionary = {}
+	for key: Vector3i in owner:
+		for way: Vector2i in WAYS:
+			if _other_than(0, _beside(key, way, 2.0)):
+				continue
+			var name: String = "%s|%d" % [_facing_of(way), key.x if way.x != 0 else key.z]
+			if not faces.has(name):
+				faces[name] = {}
+			var along: int = key.z if way.x != 0 else key.x
+			var columns: Dictionary = faces[name]
+			if not columns.has(along):
+				columns[along] = {}
+			(columns[along] as Dictionary)[key.y] = owner[key]
+	var wheel_top: float = _wheel_top(standing)
+	var brick_skins: Array[AABB] = []
+	for other: Finding in skins:
+		brick_skins.append(other.box)
+	# Every run a course can be laid again on, each face's highest first:
+	# {"facing", "row", "up", "run" [half studs along], "courses" {along ->
+	# [ids, colour]}, "box" its skin's}.
+	var candidates: Array = []
+	for name: String in faces:
+		var columns: Dictionary = faces[name]
+		var facing: String = name.get_slice("|", 0)
+		var row: int = int(name.get_slice("|", 1))
+		# Where a course can be laid again with a skin over it:
+		# Vector2i(along, plate up) -> [its ids, colour].
+		var anchors: Dictionary = {}
+		var ups: Dictionary = {}
+		var lowest: int = 1 << 30
+		for along: int in columns:
+			var column: Dictionary = columns[along]
+			for up: int in column:
+				lowest = mini(lowest, up)
+				var course: Array = _course_at(column, up, held)
+				if course.is_empty() or not _skin_backed(facing, row, along, up, int(course[1])):
+					continue
+				anchors[Vector2i(along, up)] = course
+				ups[up] = true
+		var levels: Array = ups.keys()
+		levels.sort()
+		levels.reverse()
+		# The height each stud along this face is skinned over: no skin over
+		# another.
+		var claimed: Dictionary = {}
+		for up: int in levels:
+			# By colour: a run is one colour, as the face over it is.
+			var by_colour: Dictionary = {}
+			for at: Vector2i in anchors:
+				if at.y != up:
+					continue
+				var unclaimed: bool = true
+				for span: Variant in claimed.get(at.x, []):
+					unclaimed = unclaimed and (up * PLATE + 44.0 <= float((span as Array)[0])
+						or up * PLATE + 4.0 >= float((span as Array)[1]))
+				var colour: int = int((anchors[at] as Array)[1])
+				if unclaimed:
+					if not by_colour.has(colour):
+						by_colour[colour] = []
+					(by_colour[colour] as Array).append(at.x)
+			var runs: Array = []
+			for colour: int in by_colour:
+				var alongs: Array = by_colour[colour]
+				alongs.sort()
+				runs.append_array(_runs_of(alongs))
+			for one_run: Array in runs:
+				var courses: Dictionary = {}
+				for along: Variant in one_run:
+					courses[int(along)] = anchors[Vector2i(int(along), up)]
+				var entries: Array = _entries(one_run, facing, row, courses, up)
+				var why: String = _off_the_body(entries, float(up), float(lowest), wheel_top)
+				if not why.is_empty():
+					left_alone.append(why)
+					continue
+				var box: AABB = _skin_box(one_run, up, facing, row)
+				if brick_skins.any(func(other: AABB) -> bool:
+						return other.grow(-1.0).intersects(box.grow(-1.0))):
+					continue
+				candidates.append({"facing": facing, "row": row, "up": up, "run": one_run,
+					"courses": courses, "box": box})
+				for along: Variant in one_run:
+					if not claimed.has(int(along)):
+						claimed[int(along)] = []
+					(claimed[int(along)] as Array).append([up * PLATE + 4.0, up * PLATE + 44.0])
+	# Runs that cut the same parts are one finding: a body of plates the width
+	# of it has both its sides in the same plates, and two findings may not
+	# take off one part.
+	for group: Array in _sharing(_mirrored(candidates)):
+		var tried: Array = group.duplicate()
+		while not tried.is_empty():
+			var made: Array = _plate_skins(tried)
+			if made[0] != null:
+				out.append(made[0])
+				break
+			tried.remove_at(int(made[1]))
+	return out
+
+
+## Runs on opposite sides over the same stretch, each trimmed to what the
+## other has: a skin on one side of a body and not the other reads as a
+## mistake. The steps round's starfighter had its +x side found ten studs
+## long and its -x side five.
+static func _mirrored(candidates: Array) -> Array:
+	var out: Array = []
+	for one: Dictionary in candidates:
+		var facing: String = one["facing"]
+		var opposite: String = ("-" if facing.begins_with("+") else "+") + facing.substr(1)
+		var run: Array = one["run"]
+		var kept: Dictionary = {}
+		var partnered: bool = false
+		for other: Dictionary in candidates:
+			var across: Array = other["run"]
+			if str(other["facing"]) != opposite or int(across[-1]) < int(run[0]) \
+					or int(across[0]) > int(run[-1]):
+				continue
+			partnered = true
+			for along: Variant in run:
+				if int(along) >= int(across[0]) and int(along) <= int(across[-1]):
+					kept[int(along)] = true
+		if not partnered:
+			out.append(one)
+			continue
+		var alongs: Array = []
+		for along: Variant in run:
+			if kept.has(int(along)):
+				alongs.append(along)
+		for piece: Array in _runs_of(alongs):
+			var trimmed: Dictionary = one.duplicate()
+			trimmed["run"] = piece
+			trimmed["box"] = _skin_box(piece, int(one["up"]), facing, int(one["row"]))
+			out.append(trimmed)
+	return out
+
+
+## Half studs along a face in runs a stud apart, each SHORTEST_SKIN or more.
+static func _runs_of(alongs: Array) -> Array:
+	var runs: Array = []
+	var run: Array = []
+	for along: Variant in alongs + [null]:
+		if along != null and not run.is_empty() and int(along) == int(run[-1]) + 2:
+			run.append(along)
+			continue
+		if run.size() >= SHORTEST_SKIN:
+			runs.append(run)
+		run = [] if along == null else [along]
+	return runs
+
+
+## The runs that cut the same parts, together, the longest first; a run on a
+## course at another height than one it shares a part with is left, and where
+## two runs meet at a corner the later gives up the corner stud.
+static func _sharing(candidates: Array) -> Array:
+	var order: Array = candidates.duplicate()
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a["run"] as Array).size() > (b["run"] as Array).size())
+	var groups: Array = []
+	var group_of: Dictionary = {}
+	for one: Dictionary in order:
+		var joined: Array = []
+		var clash: bool = false
+		for along: Variant in one["run"]:
+			for id: int in ((one["courses"] as Dictionary)[int(along)] as Array)[0]:
+				if not group_of.has(id):
+					continue
+				var found: int = group_of[id]
+				if int(((groups[found] as Array)[0] as Dictionary)["up"]) != int(one["up"]):
+					clash = true
+				elif not joined.has(found):
+					joined.append(found)
+		if clash:
+			continue
+		var g: int = groups.size()
+		if joined.is_empty():
+			groups.append([])
+		else:
+			joined.sort()
+			g = joined[0]
+			for other: int in joined.slice(1):
+				(groups[g] as Array).append_array(groups[other])
+				for moved: Dictionary in groups[other]:
+					for along: Variant in moved["run"]:
+						for id: int in ((moved["courses"] as Dictionary)[int(along)] as Array)[0]:
+							group_of[id] = g
+				groups[other] = []
+		(groups[g] as Array).append(one)
+		for along: Variant in one["run"]:
+			for id: int in ((one["courses"] as Dictionary)[int(along)] as Array)[0]:
+				group_of[id] = g
+	var out: Array = []
+	for group: Array in groups:
+		if group.is_empty():
+			continue
+		# A corner stud is one run's: the cells a run's bricks go in.
+		var used: Dictionary = {}
+		var kept: Array = []
+		for one: Dictionary in group:
+			var alongs: Array = []
+			for along: Variant in one["run"]:
+				if not used.has(_cell_of(one, int(along))):
+					alongs.append(along)
+			var runs: Array = _runs_of(alongs)
+			if runs.is_empty():
+				continue
+			runs.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
+			var trimmed: Dictionary = one.duplicate()
+			trimmed["run"] = runs[0]
+			for along: Variant in runs[0]:
+				used[_cell_of(one, int(along))] = true
+			kept.append(trimmed)
+		if not kept.is_empty():
+			out.append(kept)
+	return out
+
+
+## The cell a run's brick goes in [param along] it: [half-stud x, z].
+static func _cell_of(one: Dictionary, along: int) -> Vector2i:
+	return Vector2i(along, int(one["row"])) if str(one["facing"]).ends_with("z") \
+		else Vector2i(int(one["row"]), along)
+
+
+## The point [param off] LDU beyond the face of cell [param key] that looks
+## [param way], half way up the plate.
+static func _beside(key: Vector3i, way: Vector2i, off: float) -> Vector3:
+	return Vector3(key.x * 10.0 + signf(way.x) * (10.0 + off), key.y * PLATE + 4.0,
+		key.z * 10.0 + signf(way.y) * (10.0 + off))
+
+
+static func _facing_of(way: Vector2i) -> String:
+	if way.x != 0:
+		return "+x" if way.x > 0 else "-x"
+	return "+z" if way.y > 0 else "-z"
+
+
+## The course of a face at plate [param up] of a [param column]: one plain
+## brick from there, or three plain plates stacked from there, one colour:
+## [their ids, the colour], or [] for anything else.
+static func _course_at(column: Dictionary, up: int, held: Dictionary) -> Array:
+	var ids: Array[int] = []
+	for k: int in 3:
+		if not column.has(up + k):
+			return []
+		var id: int = column[up + k]
+		if not ids.has(id):
+			ids.append(id)
+	var colour: int = int((held[ids[0]] as Array)[2])
+	if ids.size() == 1:
+		var one: Array = held[ids[0]]
+		return [ids, colour] if int(one[0]) == up and int(one[1]) == 3 else []
+	if ids.size() != 3:
+		return []
+	for k: int in 3:
+		var one: Array = held[ids[k]]
+		if int(one[0]) != up + k or int(one[1]) != 1 or int(one[2]) != colour:
+			return []
+	return [ids, colour]
+
+
+## Whether a skin on the course at plate [param up], [param along] half studs
+## along the face [param facing] of row [param row], would lie on the body:
+## nothing in front of it from just under it to its top, and over the course,
+## within a stud behind it, the body in the course's colour, so it lies over
+## the face, or over a step a stud back, and paints no stripe out.
+func _skin_backed(facing: String, row: int, along: int, up: int, colour: int) -> bool:
+	var out: Vector3 = Assistant.FACES[facing]
+	var face: float = row * 10.0 + 10.0 * (out.x + out.z)
+	var at := func(a: float, y: float, off: float) -> Vector3:
+		var across: float = face + (out.x + out.z) * off
+		return Vector3(across, y, a) if absf(out.x) > 0.5 else Vector3(a, y, across)
+	var bottom: float = up * PLATE
+	for side: float in [-6.0, 6.0]:
+		var a: float = along * 10.0 + side
+		for y: float in [-2.0, 6.0, 14.0, 22.0, 30.0, 38.0, 42.0]:
+			for off: float in [2.0, 7.0]:
+				if _other_than(0, at.call(a, bottom + y, off)):
+					return false
+		for y: float in [28.0, 36.0, 42.0]:
+			var behind: int = 0
+			for off: float in [-2.0, -22.0]:
+				behind = assistant.builder.lattice.brick_at(BrickLattice.to_cell(
+					at.call(a, bottom + y, off)))
+				if behind != 0 and not assistant.scenery.has(behind):
+					break
+				behind = 0
+			var brick: BrickWorld.Brick = assistant.world.get_brick(behind) if behind != 0 \
+				else null
+			if brick == null or brick.color_code != colour:
+				return false
+	return true
+
+
+## A run of a plate face as _off_the_body reads a flank's: a stud each.
+func _entries(run: Array, facing: String, row: int, courses: Dictionary, up: int) -> Array:
+	var out: Array = []
+	var along_x: bool = facing.ends_with("z")
+	for along: Variant in run:
+		var course: Array = courses[int(along)]
+		out.append({"facing": facing, "along_x": along_x, "depth": (row - 1) / 2.0,
+			"along": (int(along) - 1) / 2.0, "long": 1,
+			"placement": Assistant.Placement.from_dict({"part": "3005",
+				"color": int(course[1]), "x": 0, "y": up, "z": 0, "rot": 0})})
+	return out
+
+
+## A group of runs' skins, as one finding: every course's outer row cut, the
+## rest of each part laid again (_cut), bricks with studs on the side laid
+## where each row was, and the skin on them. [the finding, -1], or [null, the
+## run that does not fit or is not held], nothing taken.
+func _plate_skins(group: Array) -> Array:
+	var ids: Array[int] = []
+	var band: Dictionary = {}
+	for one_run: Dictionary in group:
+		for along: Variant in one_run["run"]:
+			for id: int in ((one_run["courses"] as Dictionary)[int(along)] as Array)[0]:
+				if not ids.has(id):
+					ids.append(id)
+			band[_cell_of(one_run, int(along))] = true
+	var one := Finding.new()
+	one.kind = "flank"
+	var before: Dictionary = _taken_off.duplicate()
+	if not _cut(one, ids, band, {}):
+		_taken_off = before
+		return [null, 0]
+	var rest: Array = one.add.duplicate()
+	var skip: Dictionary = {}
+	for id: int in one.remove:
+		skip[id] = true
+	var made: Array = []
+	var said := PackedStringArray()
+	var plates: bool = false
+	var ends: bool = false
+	for n: int in group.size():
+		var one_run: Dictionary = group[n]
+		var run: Array = one_run["run"]
+		var up: int = one_run["up"]
+		var facing: String = one_run["facing"]
+		var row: int = one_run["row"]
+		var out: Vector3 = Assistant.FACES[facing]
+		var along_x: bool = facing.ends_with("z")
+		var along_way: Vector3 = Vector3.RIGHT if along_x else Vector3.BACK
+		var colour: int = int(((one_run["courses"] as Dictionary)[int(run[0])] as Array)[1])
+		# The row again, its studs turned out.
+		var bricks: Array = []
+		var studs: Array[Vector3] = []
+		var at: float = (int(run[0]) - 1) / 2.0
+		var left: int = run.size()
+		var fits: bool = true
+		while left > 0 and fits:
+			var long: int = 4 if left >= 4 else (2 if left >= 2 else 1)
+			var turned: Array = _turned_out(SIDE_STUDS[long], colour, at, float(up),
+				(row - 1) / 2.0, along_x, long, out)
+			fits = not turned.is_empty()
+			if fits:
+				bricks.append(turned[0])
+				studs.append_array(turned[1] as Array)
+			at += long
+			left -= long
+		for placed: Variant in bricks:
+			fits = fits and _fits(placed as Dictionary, skip, rest + made)
+		var pieces: Array = []
+		if fits:
+			studs.sort_custom(func(a: Vector3, b: Vector3) -> bool:
+				return a.dot(along_way) < b.dot(along_way))
+			pieces = _skin_pieces(studs, colour, facing, along_way)
+			for placed: Variant in pieces:
+				fits = fits and _fits(placed as Dictionary, skip, rest + made + bricks)
+		if not fits or pieces.is_empty():
+			_taken_off = before
+			return [null, n]
+		made.append_array(bricks + pieces)
+		one.studs += studs.size()
+		var box: AABB = one_run["box"]
+		one.box = box if not one.box.has_volume() else one.box.merge(box)
+		for raw: Variant in (one_run["courses"] as Dictionary).values():
+			plates = plates or ((raw as Array)[0] as Array).size() == 3
+		ends = ends or pieces.any(func(placed: Dictionary) -> bool:
+			return str(placed["part"]) == SKIN_END)
+		said.append("%s %s" % [facing, _where_said(box)])
+		one.seen_from = "corner" if facing.begins_with("+") else "far corner"
+	var colour: int = int((((group[0] as Dictionary)["courses"] as Dictionary).values()[0]
+		as Array)[1])
+	one.add = rest + made
+	one.said = "the flank%s %s, %s in %s, skinned on its side: " % [
+		"" if group.size() == 1 else "s", " and ".join(said),
+		"three plates stacked" if plates else "a course of bricks with plates over it",
+		assistant._colour_name(colour).to_lower()] \
+		+ "the course's outer row laid again as bricks with studs turned out, the rest of " \
+		+ "each part laid again, and on them tiles a plate proud%s, " % (
+			", rounded at both ends" if ends else "") \
+		+ "over the plates' edges and any step a stud back over them."
+	one.laid = _pieces_said(one)
+	return [one, -1]
+
+
+## Where a run's skin stands: from a plate over the course's bottom, two studs
+## tall, a plate proud of the face.
+static func _skin_box(run: Array, up: int, facing: String, row: int) -> AABB:
+	var out: Vector3 = Assistant.FACES[facing]
+	var from: float = (int(run[0]) - 1) * 10.0
+	var face: float = row * 10.0 + 10.0 * (out.x + out.z)
+	var low_corner := Vector3(from, up * PLATE + 4.0, face)
+	var size := Vector3(run.size() * STUD, 40.0, PLATE)
+	if not facing.ends_with("z"):
+		low_corner = Vector3(face, low_corner.y, from)
+		size = Vector3(PLATE, 40.0, run.size() * STUD)
+	if facing.begins_with("-"):
+		if facing.ends_with("z"):
+			low_corner.z -= PLATE
+		else:
+			low_corner.x -= PLATE
+	return AABB(low_corner, size)
+
+
+# -- studs on a side -------------------------------------------------------------
+
+
+## Open studs on a part's side, four or more together in one colour: a plate
+## laid on its side with its studs out, a course turned out with nothing on
+## it. "The right wing is a flat plate with its studs showing" (the steps
+## round's owl): open_tops reads only studs that point up. Each is tiled on
+## its side in its own colour, largest tiles first; what no tile fits stays.
+func _side_fields(points: Array) -> Array[Finding]:
+	var out: Array[Finding] = []
+	var groups: Dictionary = {}
+	for raw: Variant in points:
+		var point: OpenPoints.Point = raw
+		if point.kind != "stud" or not point.section.is_empty() or point.by != 0 \
+				or absf(point.way.y) > 0.1 or _in_zone(point.at):
+			continue
+		var facing: String = ""
+		for name: String in ["+x", "-x", "+z", "-z"]:
+			if point.way.dot(Assistant.FACES[name]) > 0.99:
+				facing = name
+		var info: PartLibrary.PartInfo = assistant.library.parts.get(point.part)
+		var brick: BrickWorld.Brick = assistant.world.get_brick(point.brick)
+		if facing.is_empty() or info == null or brick == null or not finished_kind(info):
+			continue
+		var clear: bool = true
+		for reach: float in [6.0, 14.0, 22.0, 30.0]:
+			clear = clear and not _other_than(point.brick, point.at + point.way * reach)
+		if not clear:
+			continue
+		var key: String = "%s|%s|%d" % [facing,
+			snappedf(point.at.dot(Assistant.FACES[facing]), 1.0), brick.color_code]
+		if not groups.has(key):
+			groups[key] = []
+		(groups[key] as Array).append(point.at)
+	for key: String in groups:
+		var facing: String = key.get_slice("|", 0)
+		var colour: int = int(key.get_slice("|", 2))
+		for field: Array in _side_clusters(groups[key], facing):
+			if field.size() < SMALLEST_FIELD:
+				continue
+			var one: Finding = _side_tiles(field, facing, colour)
+			if one != null:
+				out.append(one)
+	return out
+
+
+## Studs on one face, by joined groups: a stud's neighbours are a stud along or
+## up from it, on the same grid.
+static func _side_clusters(studs: Array, facing: String) -> Array:
+	var along: Vector3 = Vector3.RIGHT if facing.ends_with("z") else Vector3.BACK
+	var cell := func(at: Vector3) -> Vector2i:
+		return Vector2i(roundi(at.dot(along) / 10.0), roundi(at.y / 2.0))
+	var by_cell: Dictionary = {}
+	for at: Vector3 in studs:
+		by_cell[cell.call(at)] = at
+	var seen: Dictionary = {}
+	var out: Array = []
+	for start: Vector2i in by_cell:
+		if seen.has(start):
+			continue
+		var field: Array = []
+		var todo: Array[Vector2i] = [start]
+		seen[start] = true
+		while not todo.is_empty():
+			var c: Vector2i = todo.pop_back()
+			field.append(by_cell[c])
+			for step: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 10),
+					Vector2i(0, -10)]:
+				if by_cell.has(c + step) and not seen.has(c + step):
+					seen[c + step] = true
+					todo.append(c + step)
+		out.append(field)
+	return out
+
+
+## A side field's tiles, laid on their side on its studs, largest first: a
+## finding, or null where no tile goes on.
+func _side_tiles(field: Array, facing: String, colour: int) -> Finding:
+	var along: Vector3 = Vector3.RIGHT if facing.ends_with("z") else Vector3.BACK
+	var low := Vector2(INF, INF)
+	for at: Vector3 in field:
+		low = Vector2(minf(low.x, at.dot(along)), minf(low.y, at.y))
+	var grid: Dictionary = {}
+	for at: Vector3 in field:
+		grid[Vector2i(roundi((at.dot(along) - low.x) / STUD),
+			roundi((at.y - low.y) / STUD))] = at
+	var order: Array = grid.keys()
+	order.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	var covered: Dictionary = {}
+	var tiles: Array = []
+	var options: Array = _rectangles(TILES, colour)
+	for raw: Variant in order:
+		var c: Vector2i = raw
+		if covered.has(c):
+			continue
+		for option: Array in options:
+			var span: Array[Vector2i] = []
+			for i: int in int(option[1]):
+				for k: int in int(option[2]):
+					span.append(c + Vector2i(i, k))
+			var unlaid: Callable = func(s: Vector2i) -> bool:
+				return grid.has(s) and not covered.has(s)
+			if not span.all(unlaid):
+				continue
+			var studs: Array[Vector3] = []
+			for s: Vector2i in span:
+				studs.append(grid[s])
+			var placed: Dictionary = _onto_side(str(option[0]), colour, studs, facing)
+			if placed.is_empty() or not _fits(placed, {}, tiles):
+				continue
+			tiles.append(placed)
+			for s: Vector2i in span:
+				covered[s] = true
+			break
+	if covered.size() < SMALLEST_FIELD:
+		return null
+	var one := Finding.new()
+	one.kind = "studs"
+	one.add = tiles
+	one.studs = covered.size()
+	var box := AABB(field[0] as Vector3, Vector3.ZERO)
+	for at: Vector3 in field:
+		box = box.expand(at)
+	one.box = box.grow(10.0)
+	one.said = "an open field of %d studs on a side, facing %s, %s %s, tiled on its " % [
+		covered.size(), facing, assistant._colour_name(colour).to_lower(),
+		_where_said(one.box)] + "side in its own colour, largest first."
+	one.laid = _pieces_said(one)
+	one.seen_from = "corner" if facing.begins_with("+") else "far corner"
+	return one
 
 
 # -- laying --------------------------------------------------------------------

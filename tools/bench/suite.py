@@ -3,7 +3,9 @@
 Ten subjects spanning the kinds of thing a person asks a LEGO designer
 for: an animal, a car at Speed Champions scale, a rocket at display
 scale, a modular building, a castle, a starfighter, a bust, a botanical,
-a machine with Technic function and a landscape vignette. None of them
+a machine with Technic function and a landscape vignette; and two more
+added for the sides round (2026-10-14), a steam locomotive and a sailing
+ship, to check on bodies no round was tuned for. None of them
 is a brief any design round was tuned on (the castle, the fire station,
 Orthanc); the barn owl and the Falcon Heavy were looked at in earlier
 rounds and stay because the owner asked for them by name.
@@ -198,6 +200,28 @@ SUITE: tuple[Subject, ...] = (
                "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/Dove_Lake_Boatshed.jpg/1280px-Dove_Lake_Boatshed.jpg",
                "CC BY-SA 4.0", "Ttrevask",
                "a weathered wooden boatshed on a lake shore with jagged peaks behind")),
+    ),
+    # Added 2026-10-14, never in a round before the sides round: a gain on the
+    # four subjects every round runs should hold on bodies nobody tuned for.
+    # A locomotive's cab and tender and a ship's hull are bodies with long
+    # sides, which is what that round changed.
+    Subject(
+        "steam_locomotive", "a steam locomotive",
+        "A steam locomotive and its tender at minifigure scale, 6 studs wide, in the style "
+        "of LEGO® train sets: boiler, smokebox, cab, driving wheels with side rods.",
+        "minifigure, 6 studs wide", "vehicles",
+        (OmrSet("10194-1", "10194-1.mpd",
+                "the LEGO Group's own Creator Expert 10194 Emerald Night, a steam "
+                "locomotive and tender"),),
+    ),
+    Subject(
+        "sailing_ship", "a sailing ship",
+        "A two-masted sailing ship at minifigure scale, about 40 studs long: a curved hull "
+        "with a raised stern, masts with sails and rigging, and cannons.",
+        "minifigure, about 40 studs long", "vehicles",
+        (OmrSet("6286-1", "6286-1.mpd",
+                "the LEGO Group's own Pirates 6286 Skull's Eye Schooner, a two-masted "
+                "sailing ship"),),
     ),
 )
 

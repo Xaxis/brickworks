@@ -10,6 +10,10 @@
 ##   a body's flank of six plain bricks gets a skin on its side, tiles a
 ##   plate proud, and one under a course of another colour is left;
 ##   a car's black course between its wheels, under its red body, gets none;
+##   a body of stacked plates gets a skin on both sides in one finding, over
+##   the step a stud back on one, the plates' outer row laid again with studs
+##   turned out; one course of bricks under plates (a car's side) gets one;
+##   open studs on a part's side get tiles on their side;
 ##   sixteen small tops are all laid in one review;
 ##   a yard a minifigure stands on keeps its studs;
 ##   a building's long plain wall is laid again with masonry, no stud
@@ -276,6 +280,78 @@ func _run() -> void:
 	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
 		% pieces_before)
 
+	print("\na body of stacked plates gets a skin on both sides, over the step on one")
+	await _build("speeder fuselage", _plate_body())
+	pieces_before = await _pieces()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 900).replace("\n", "\n    "))
+	var plated: SurfacePass.Finding = null
+	for one: SurfacePass.Finding in assistant.surface_pass().findings:
+		if one.kind == "flank" and one.said.contains("three plates stacked"):
+			plated = one
+	_ok(plated != null and not plated.ids.is_empty() and plated.said.contains("flanks"),
+		"the plates' flanks are found and laid, both sides as one finding")
+	var near_side: int = 0
+	var far_side: int = 0
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id == "30414":
+			if brick.transform.origin.z < 40.0:
+				near_side += 1
+			else:
+				far_side += 1
+	_ok(near_side == 2 and far_side == 2, "...their outer row laid again with studs turned "
+		+ "out, two 1 x 4s a side (%d and %d)" % [near_side, far_side])
+	_ok(_sideways(["5520"]) == 4 and _sideways(["87079"]) == 2, "...and on them, on their "
+		+ "side, a rounded end at each end (%d) and a 2 x 4 tile between (%d)"
+		% [_sideways(["5520"]), _sideways(["87079"])])
+	_ok(_count(_bricks(), ["3035"]) == 1 and _count(_bricks(), ["3034"]) == 6,
+		"...the three plates under the skin cut, each one's rest laid again (%d 4 x 8, %d 2 x 8)"
+		% [_count(_bricks(), ["3035"]), _count(_bricks(), ["3034"])])
+	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
+		% pieces_before)
+	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "reject",
+		"reason": "the fuselage keeps its plates here"})
+	_ok(_count(_bricks(), ["30414", "5520", "87079"]) == 0
+		and _count(_bricks(), ["3035"]) == 4, "rejected, the plates are back whole")
+
+	print("\nwhere one side cannot be skinned all along, the other side matches it")
+	await _build("speeder fuselage", _plate_body() + [{"part": "3005", "color": 0, "x": 0,
+		"y": 0, "z": -1, "rot": 0}])
+	await assistant.surface_review()
+	var by_side: Array = [{}, {}]
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id in SurfacePass.SIDE_STUDS.values():
+			var side: Dictionary = by_side[0 if brick.transform.origin.z < 40.0 else 1]
+			side[brick.part_id] = int(side.get(brick.part_id, 0)) + 1
+	_ok(by_side[0] == by_side[1] and by_side[0] == {"30414": 1, "11211": 1, "87087": 1},
+		"a post in front of a stud of the -z side: both sides skinned seven studs (%s, %s)"
+		% [str(by_side[0]), str(by_side[1])])
+
+	print("\na course of bricks under plates gets a skin: a car's side")
+	await _build("racing car", _brick_under_plates())
+	pieces_before = await _pieces()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 700).replace("\n", "\n    "))
+	_ok(_count(_bricks(), ["30414"]) == 4 and _count(_bricks(), ["3008"]) == 0,
+		"both sides' course laid again with studs turned out (%d 30414)"
+		% _count(_bricks(), ["30414"]))
+	_ok(_sideways(["5520"]) == 4 and _sideways(["87079"]) == 2,
+		"...and skinned (%d rounded ends, %d 2 x 4 tiles)" % [_sideways(["5520"]),
+			_sideways(["87079"])])
+	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
+		% pieces_before)
+
+	print("\nopen studs on a side get tiles on their side")
+	await _build("speeder", _side_studs())
+	var side_open: int = _open_sideways()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 500).replace("\n", "\n    "))
+	_ok(side_open == 8 and _open_sideways() == 0,
+		"the side's %d open studs are all covered (%d left)" % [side_open, _open_sideways()])
+	_ok(_sideways(["2431", "3069b", "3068b", "87079", "63864"]) >= 2,
+		"...by tiles laid on their side (%d)" % _sideways(["2431", "3069b", "3068b", "87079",
+			"63864"]))
+
 	print("\nevery finding is laid at once, not twelve of them")
 	await _build("pillars", _pillars())
 	said = _text_of(await assistant.surface_review())
@@ -513,6 +589,38 @@ func _car() -> Array:
 	return out
 
 
+## A red body of plates 8 studs long and 4 deep, seven plates tall: four 4 x
+## 8 plates, then three plates a stud narrower on the +z side (a 2 x 8 and a 1
+## x 8 each), so that side steps back a stud over its fourth plate.
+func _plate_body() -> Array:
+	var out: Array = []
+	for up: int in 4:
+		out.append({"part": "3035", "color": 4, "x": 0, "y": up, "z": 0, "rot": 0})
+	for up: int in range(4, 7):
+		out.append({"part": "3034", "color": 4, "x": 0, "y": up, "z": 0, "rot": 0})
+		out.append({"part": "3460", "color": 4, "x": 0, "y": up, "z": 2, "rot": 0})
+	return out
+
+
+## A red body 8 long and 4 deep: one course of bricks, a 1 x 8 on each side
+## of a 2 x 8, and three 4 x 8 plates on it.
+func _brick_under_plates() -> Array:
+	var out: Array = [{"part": "3008", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3007", "color": 4, "x": 0, "y": 0, "z": 1, "rot": 0},
+		{"part": "3008", "color": 4, "x": 0, "y": 0, "z": 3, "rot": 0}]
+	for up: int in range(3, 6):
+		out.append({"part": "3035", "color": 4, "x": 0, "y": up, "z": 0, "rot": 0})
+	return out
+
+
+## Two 1 x 4 bricks with studs on a side, one on the other, on a 1 x 4 plate:
+## eight side studs open, in two rows.
+func _side_studs() -> Array:
+	return [{"part": "3710", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "30414", "color": 72, "x": 0, "y": 1, "z": 0, "rot": 0},
+		{"part": "30414", "color": 72, "x": 0, "y": 4, "z": 0, "rot": 0}]
+
+
 ## Sixteen 2 x 2 columns in a row on two 2 x 16 plates, a brick and three
 ## bricks tall by turns: sixteen tops of four studs, each a finding.
 func _pillars() -> Array:
@@ -610,6 +718,18 @@ func _open_points() -> Array:
 		if point.kind == "stud" and point.by == 0 and point.way.dot(Vector3.UP) > 0.9:
 			out.append(point)
 	return out
+
+
+## Open studs that point sideways, nothing on them.
+func _open_sideways() -> int:
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _bricks():
+		ids.append(brick.id)
+	var n: int = 0
+	for point: OpenPoints.Point in OpenPoints.read(assistant).points_of(ids):
+		if point.kind == "stud" and point.by == 0 and absf(point.way.y) < 0.1:
+			n += 1
+	return n
 
 
 func _open_on(brick: int) -> int:
