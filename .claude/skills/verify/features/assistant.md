@@ -238,6 +238,17 @@ fixing what it got wrong.
   connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
   — with a three-step guide (Add then Connect; sign in as <the account's
   address> and Allow; come back) and the address to paste if no tab opened.
+  **Connecting again** (2026-10-14): for an account that has had Claude
+  connected (`op=connections` says `before`, kept in the account's
+  server-only record past a Disconnect; `ClaudeConnector.had_claude`), Connect
+  Claude opens Claude's own list instead, `https://claude.ai/customize/
+  connectors`, and the steps say to select Brickworks under Your connectors and
+  press Connect (or Reconnect), not to add it again, which sets up a second one
+  with its tool permissions to choose again; Account says the same
+  (`connect_words`). Add custom connector stays for the first time, and as the
+  fallback when Brickworks is not in their list. Menu names as claude.com's
+  connector docs give them. `chat_probe` checks both: a new account gets Add,
+  one with a past connection gets the reconnect steps.
   Links beside it open, one at a time, **Claude Code** (the `claude mcp add
   --transport http brickworks …/api/mcp` command, then `/mcp` and
   Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,

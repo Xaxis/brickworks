@@ -5,7 +5,10 @@
 ## already filled in (claude.ai's own install link), they press Add and
 ## Connect, sign in to Brickworks and allow it, and Claude is connected —
 ## to their account, once, for every Brickworks tab they open, on any
-## device. Then they ask Claude to build, and it builds in the tab, where
+## device. An account that has had Claude connected is sent instead to
+## Claude's list of connectors, to connect the Brickworks it has there
+## again, since adding it again sets one up anew, its tool permissions to
+## choose again. Then they ask Claude to build, and it builds in the tab, where
 ## they watch it. The same for Claude Code (a command to paste) and the
 ## Claude desktop app (which shows what was added on claude.ai). Brickworks
 ## never sees a Claude login, token or key, and never calls a model: Claude
@@ -32,6 +35,9 @@ var _state_row: HBoxContainer
 var _dot: ColorRect
 var _status: Label
 var _guide: VBoxContainer
+var _guide_head: Label
+var _step_one: Label
+var _fallback: Label
 var _signed_as: Label
 var _shared: LineEdit
 var _copy: Button
@@ -134,17 +140,20 @@ func setup(with: ClaudeConnector) -> void:
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_state_row.add_child(_status)
 
-	# After Connect Claude: what to do in the tab that just opened.
+	# After Connect Claude: what to do in the tab that just opened — adding
+	# Brickworks the first time, connecting the one there after that
+	# ([member ClaudeConnector.had_claude]; the words are set in _show).
 	_guide = _box()
-	_guide.add_child(_line("claude.ai has opened in a new tab with Brickworks "
-		+ "filled in. There:", 12, 0.85))
-	_guide.add_child(_line("1. Press Add, then Connect.", 12, 0.85))
+	_guide_head = _line("", 12, 0.85)
+	_guide.add_child(_guide_head)
+	_step_one = _line("", 12, 0.85)
+	_guide.add_child(_step_one)
 	_signed_as = _line("", 12, 0.85)
 	_guide.add_child(_signed_as)
 	_guide.add_child(_line("3. Come back: this says Connected. Then ask Claude: "
 		+ ASK, 12, 0.85))
-	_guide.add_child(_line("No new tab? In Claude, open Customize, Connectors, "
-		+ "Add custom connector, and paste this (it is copied):", 11, 0.7))
+	_fallback = _line("", 11, 0.7)
+	_guide.add_child(_fallback)
 	var shared_row := _row()
 	_guide.add_child(shared_row)
 	_shared = _field(shared_row, "")
@@ -386,6 +395,23 @@ func _show() -> void:
 	var who: String = connector.account.email if connector.account != null else ""
 	_signed_as.text = ("2. Sign in to Brickworks as %s if asked, and press Allow." % who
 		if not who.is_empty() else "2. Sign in to Brickworks if asked, and press Allow.")
+	if connector.had_claude:
+		_guide_head.text = ("Claude's connectors have opened in a new tab "
+			+ "(Customize › Connectors). There:")
+		_step_one.text = ("1. Under Your connectors, select Brickworks and press "
+			+ "Connect, or Reconnect if it says so. Connect the one you have rather "
+			+ "than adding it again, which sets up a new one with its tool "
+			+ "permissions to choose again.")
+		_fallback.text = ("In the Claude desktop app: Customize in the sidebar, then "
+			+ "Connectors. Not in your list? Add custom connector there, and paste "
+			+ "this (it is copied):")
+	else:
+		_guide_head.text = "claude.ai has opened in a new tab with Brickworks filled in. There:"
+		_step_one.text = "1. Press Add, then Connect."
+		_fallback.text = ("No new tab? In Claude, open Customize, Connectors, "
+			+ "Add custom connector, and paste this (it is copied):")
+	_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
+		if connector.had_claude else "Opens claude.ai with Brickworks filled in")
 	_shared.text = connector.shared_address()
 	_command.text = connector.claude_code_command()
 	for one: Node in _desktop_box.find_children("*", "LineEdit", true, false):

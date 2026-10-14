@@ -113,7 +113,10 @@ they have. A Claude connector belongs to the account that switched it on.
   as SHA-256 only. `/oauth/revoke` (RFC 7009): a refresh token ends its
   connection, an access token itself. The account's own:
   `GET /api/oauth?op=connections` (Bearer session: id, client — "Claude",
-  "Claude Code" or what it registered as — since, last used) and
+  "Claude Code" or what it registered as — since, last used — and `before`:
+  whether the account has had Claude connected, kept in its server-only record,
+  Supabase's `app_metadata.claude_connected_at`, written when claude.ai's client
+  connects and when Disconnect ends one, so it outlives the Disconnect) and
   `POST /api/oauth?op=disconnect[&id=]`. A connection is deleted with its
   account. **Asked once** (2026-10-14): `POST /api/oauth?op=remembered` (Bearer
   session, the request's fields) answers with a code at once when the account
@@ -236,7 +239,7 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_probe.mjs --url=<deployment>
 ```
 
 Proves it when it ends "Claude can sign in to Brickworks, and nothing else can"
-(69 checks, 71 on a deployment): the 401 and its pointer, both metadata documents and their path
+(72 checks, 74 on a deployment): the 401 and its pointer, both metadata documents and their path
 variants, `/oauth/authorize` serving the page (on a deployment: no COOP, not
 frameable); Claude by its published document — told "Claude, claude.ai", no code
 without a session, a code with state and `iss`, a wrong verifier refused and the
@@ -253,9 +256,10 @@ with it; Cancel `access_denied`; a second connection from the same account
 (`op=remembered`) given a code at once that trades for tokens, while nobody
 signed in gets 401, another account, a client registered as "Claude" at
 Claude's return address, and Claude Code on another port are asked; the
-connections listed for the account only; revocation ending a connection and
-what was allowed with it; Disconnect ending the rest at once, and the next
-connection asked again; a refresh token replayed after the grace ending its
+connections listed for the account only, `before` false for a new account and
+another; revocation ending a connection and what was allowed with it;
+Disconnect ending the rest at once, and the next connection asked again, with
+`before` still true and kept beside the record's own `provider`; a refresh token replayed after the grace ending its
 connection.
 
 The whole of it in a real browser, on a deployment (a throwaway account, deleted
@@ -279,7 +283,9 @@ account allowed it already), and that code traded; then a second browser not
 signed in — address, Email me a code (really sent), a wrong code refused, the
 minted code, and nothing more asked — whose token builds in the first
 browser's tab; Account listing the connection and Disconnect Claude refusing
-all three tokens at once; then claude.ai connecting after that asked the
+all three tokens at once; Connect Claude then opening Claude's connectors
+(`https://claude.ai/customize/connectors`), not Add custom connector, the
+account having had Claude; then claude.ai connecting after that asked the
 question again, and Allow connecting it. Pictures `1_before_connect.png` to
 `11_asked_again.png`.
 
