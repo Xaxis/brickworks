@@ -239,7 +239,10 @@ licence and counts, and how to read one crediting its builder; a search, a
 kind most viewed first, nothing found said so; a kind, a size, a sort and an
 open that are not one refused in words, and a link never shared; one opened
 with its link, licence, sub-assemblies, size, parts by kind, the most used and
-"Read-only", its picture an image block, `picture=false` leaving it out, the
+"Read-only", its picture an image block, `picture=false` leaving it out;
+every model on the first page opened in turn, each printed with what its owner
+wrote, its kind and tags and its licence, which must be the one its line in
+the list gave (one check a model: the seven seed models, 2026-10-13); the
 baseplate's part count unchanged, and still answered while the tab shows a
 shared model; then, from answers played by `FakeGallery`, each licence's
 words, the owner's description, kind and tags, a size and kinds read from the

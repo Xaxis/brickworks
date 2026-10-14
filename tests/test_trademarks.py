@@ -121,7 +121,8 @@ def public_text() -> dict[str, str]:
             ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "tools/brickworks_mcp.py",
             ROOT / "tools/release.py", ROOT / "tools/site.py"]:
         texts[path.relative_to(ROOT).as_posix()] = plain(path.read_text())
-    for path in [ROOT / "tools/mcp_tools.json", ROOT / "web/img/manifest.json"]:
+    for path in [ROOT / "tools/mcp_tools.json", ROOT / "web/img/manifest.json",
+                 ROOT / "tools/web/gallery_seeds/seeds.json"]:
         strings = json_strings(json.loads(path.read_text()))
         texts[path.relative_to(ROOT).as_posix()] = " \n".join(strings)
     for path in sorted((ROOT / "src").rglob("*.gd")):
