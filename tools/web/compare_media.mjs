@@ -64,7 +64,7 @@ const STABILITY = "Tree:tree";
 const CROPS = {
   tabs: { clip: true, x: 0, y: 0, w: 1600, poster: "browser" },
   stability: { clip: true, x: 228, y: 87, w: 1100, from: 12.8, to: 20.6, speed: 1.15, poster: "stability" },
-  simulate: { clip: true, x: 20, y: 160, w: 1200, poster: "simulate", distinct: true, fps: 8 },
+  simulate: { clip: true, x: 20, y: 145, w: 1160, poster: "simulate", distinct: true, fps: 8 },
   io: { x: 90, y: 86, w: 1100 },
   export3d: { x: 362, y: 170, w: 1060 },
   booklet: { x: 0, y: 0, w: 1600 },
