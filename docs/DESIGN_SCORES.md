@@ -762,6 +762,15 @@ run: they are a baseline, surface 6 on the locomotive and 3 on the ship.
   the check counts 63 bits of it as pieces of their own. The last two are
   the build check's faults, not the design's.
 
+  **Re-scored with one rule for pieces (f515bcd, 2026-10-14).** The probe
+  and the judge ran again on both runs; the first records are in each
+  run's `oldcheck/`. The ship is 1 piece, a candidate: build 4 to 10, mean
+  3.83 to 5.33 (surface, technique and creativity each up 1, inside the
+  spread). The locomotive is 2: build 5 to 6, mean 5.50 either way. Its 2
+  are real: the tender butts against the drawbar plate with no hitch or
+  magnet, which the old check had excused because the driver in the cab
+  made the locomotive "a figure apart".
+
 **Next.** First, wedge plates along an outline that steps a stud at a
 time, read course by course as the check's own staircase advice is: a bow,
 a nose, a skull. That is what the judge names on four of six. Then the
