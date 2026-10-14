@@ -342,6 +342,16 @@
       "tests": []
     },
     {
+      "id": "cli:judge design rounds in pairs",
+      "kind": "cli",
+      "entry": "tools/bench/pairwise.py",
+      "reach": "python3 tools/bench/run.py pairs --dry-run --subjects sailing_ship; python3 tools/bench/run.py rank --dry-run --subjects sailing_ship   (for real: env -u ANTHROPIC_API_KEY ... pairs, calibrate, rank)",
+      "area": "assistant",
+      "tests": [
+        "tests/test_pairwise.py"
+      ]
+    },
+    {
       "id": "cli:keep the mcp in step",
       "kind": "cli",
       "entry": "src/dev/mcp_sync_probe.gd",

@@ -1657,6 +1657,13 @@
       "entry": "tools/web/compare_media.mjs",
       "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "judge design rounds in pairs",
+      "entry": "tools/bench/pairwise.py",
+      "reach": "python3 tools/bench/run.py pairs --dry-run --subjects sailing_ship; python3 tools/bench/run.py rank --dry-run --subjects sailing_ship   (for real: env -u ANTHROPIC_API_KEY ... pairs, calibrate, rank)",
+      "area": "assistant"
     }
   ]
 }

@@ -186,18 +186,19 @@ def nothing_built(why: str) -> Judgement:
 
 
 def call(text: str, cwd: Path, readable: list[Path], model: str = "opus",
-         timeout: int = 900) -> tuple[dict, float]:
+         timeout: int = 900, schema: dict | None = None) -> tuple[dict, float]:
     """Ask Claude Code, on the subscription, with the Read tool and nothing else.
 
     Billing variables are taken out of the environment so the call is on
-    the plan this machine is signed in to, never an API key.
+    the plan this machine is signed in to, never an API key. `schema` is
+    the reply's shape: the 1-10 scores unless the pairwise judge says its own.
     """
     env = {k: v for k, v in os.environ.items()
            if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
     command = ["claude", "-p", text, "--model", model,
                "--tools", "Read", "--allowedTools", "Read",
                "--restricted", "--strict-mcp-config", "--no-session-persistence",
-               "--output-format", "json", "--json-schema", json.dumps(SCHEMA)]
+               "--output-format", "json", "--json-schema", json.dumps(schema or SCHEMA)]
     for path in readable:
         command += ["--add-dir", str(path)]
     started = time.time()
