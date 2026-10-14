@@ -45,25 +45,17 @@ signal parts_wanted()
 signal mosaic_wanted()
 ## Someone wants to turn a 3D model into bricks (BrickifyDialog).
 signal brickify_wanted()
-## The timeline: the build from empty to finished and back.
-signal timeline_wanted()
 ## Someone wants to make a minifigure.
 signal minifig_wanted()
 signal controls_wanted()
 ## Someone wants to see who is signed in, or sign out.
 signal account_wanted()
 signal opened(bricks: int)
-## Export's picture of the model, and its parts list for a shop
-## ("bricklink" or "rebrickable").
-signal picture_wanted()
-signal shop_list_wanted(shop: String)
-## Export as a BrickLink Studio model (.io).
-signal studio_wanted()
 
 
 ## How a dialog's button runs its command, said on the status bar first when
 ## it is slow: Shell.attend. As it is, without a shell.
-var attend: Callable = func(_name: String, work: Callable) -> void: work.call()
+var attend: Callable = func(_name: String, work: Callable) -> void: await work.call()
 
 
 ## A button's face in each state, faint until pointed at.
@@ -434,22 +426,6 @@ func _import() -> void:
 	_picker.ask()
 
 
-## What File, Export writes: 0 LDraw, 1 a picture, 2 BrickLink's list,
-## 3 Rebrickable's, 4 a Studio model.
-func _on_export_chosen(id: int) -> void:
-	match id:
-		0:
-			_on_export()
-		1:
-			picture_wanted.emit()
-		2:
-			shop_list_wanted.emit("bricklink")
-		3:
-			shop_list_wanted.emit("rebrickable")
-		4:
-			studio_wanted.emit()
-
-
 func _on_export() -> void:
 	if store == null:
 		return
@@ -490,7 +466,7 @@ func ask_for_new() -> void:
 			% model_name() + "A new model replaces it on the baseplate.")
 		_confirm_new.popup_centered()
 		return
-	_start_new()
+	await _start_new()
 
 
 func _start_new() -> void:

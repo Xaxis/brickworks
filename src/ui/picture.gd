@@ -31,9 +31,17 @@ var aside: Array[Node3D] = []
 var shown_again: Callable = func() -> void: pass
 
 
+## Whether a picture can be taken at all: a headless run draws no frame,
+## and [method take] waits for two to be drawn.
+static func possible() -> bool:
+	return DisplayServer.get_name() != "headless"
+
+
 ## Draw the model and return the picture, or null if there is nothing to
-## draw. Takes a few frames.
+## draw or nothing can be drawn ([method possible]). Takes a few frames.
 func take(size: Vector2i = SIZE) -> Image:
+	if not possible():
+		return null
 	var corners: PackedVector3Array = await _corners()
 	if corners.is_empty():
 		return null

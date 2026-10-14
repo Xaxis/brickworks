@@ -33,6 +33,9 @@ func take_picture() -> String:
 	if world.brick_count() - scenery.size() <= 0:
 		say.call("nothing to take a picture of")
 		return ""
+	if not Picture.possible():
+		say.call("no picture: a run with no window draws nothing")
+		return ""
 	say.call("taking the picture…")
 	var image: Image = await picture.take()
 	if image == null:
@@ -78,13 +81,12 @@ func studio_io() -> String:
 	if text.is_empty():
 		say.call("stopped writing the Studio file")
 		return ""
-	# A headless run draws nothing, and a Studio file without its picture
-	# is still the model.
+	# A headless run draws nothing (Picture.possible), and a Studio file
+	# without its picture is still the model.
 	var thumbnail := PackedByteArray()
-	if DisplayServer.get_name() != "headless":
-		var image: Image = await picture.take(STUDIO_THUMBNAIL)
-		if image != null and not image.is_empty():
-			thumbnail = image.save_png_to_buffer()
+	var image: Image = await picture.take(STUDIO_THUMBNAIL)
+	if image != null and not image.is_empty():
+		thumbnail = image.save_png_to_buffer()
 	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text))
 	var line: String = _give_bytes(bytes, _file("io"), "application/octet-stream", folder)
 	say.call(line)

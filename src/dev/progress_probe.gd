@@ -14,6 +14,14 @@
 ##   - Cancel, and Timeline pressed again, both stop it and leave no bar
 ##     and no timeline;
 ##   - deleting all of it and undoing that say so first;
+##   - Check stability and Everything connected, commands that go on after
+##     they return (coroutines), run as their menu items run them
+##     (Shell.run), and Everything connected as the properties panel's
+##     button hands it over (Shell.attend): the bar up every frame until
+##     their work is done and gone after, the cost Working.attend keeps for
+##     them timed to that end, and no "async function without await" from
+##     the engine, which a debug build printed for every one while
+##     Working.attend still waited on them as Godot 3 did;
 ##   - the booklet of the example car counts its pictures, can be stopped,
 ##     and is gone from the bar when it is written.
 ##
@@ -28,9 +36,31 @@ var _failures: int = 0
 var _last_us: int = 0
 var _gaps: Array = []   ## [end in usec, ms]
 var _software: bool = false
+var _errors := _Errors.new()
+
+
+## What the engine prints as an error, kept to be read: a script error in a
+## debug build is printed and the run goes on.
+class _Errors extends Logger:
+	var lines: PackedStringArray = []
+	var _lock := Mutex.new()
+
+	func _log_error(function: String, file: String, line: int, code: String,
+			rationale: String, _editor_notify: bool, _error_type: int,
+			_script_backtraces: Array[ScriptBacktrace]) -> void:
+		_lock.lock()
+		lines.append("%s %s (%s:%d, %s)" % [code, rationale, file, line, function])
+		_lock.unlock()
+
+	func since(from: int) -> PackedStringArray:
+		_lock.lock()
+		var said: PackedStringArray = lines.slice(from)
+		_lock.unlock()
+		return said
 
 
 func _initialize() -> void:
+	OS.add_logger(_errors)
 	_run()
 
 
@@ -188,6 +218,40 @@ func _run() -> void:
 	_check("...puts them back, and the bar goes: %d" % world.brick_count(),
 		world.brick_count() == standing and not Working.is_busy())
 
+	# -- commands that go on after they return ---------------------------
+	# Tools, Check stability: the joints, then the balance weighed on a
+	# worker over many frames. Said first (Shell.SLOW_FROM).
+	shell.balance_shown = null
+	await _goes_on(shell, "stability", func() -> bool: return shell.balance_shown != null)
+	# Select by, Everything connected, from one part, followed a slice at a
+	# time: on the station, since on Orthanc in a window drawn in software
+	# every slice is a frame of over a second, and it takes minutes.
+	main.call("_open", "res://models/station.ldr")
+	main.call("_lay_baseplate")
+	await _frames(30)
+	var first_part: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if not store.scenery.has(brick.id):
+			first_part = brick.id
+			break
+	# Done when it selects what it found.
+	var selected_again: Array[bool] = [false]
+	var mark: Callable = func(_count: int) -> void: selected_again[0] = true
+	# As its menu item runs it, and as the properties panel's button hands
+	# the coroutine itself straight to Working.attend.
+	for work: Callable in [Callable(), verbs.select_connected]:
+		builder.selection.clear()
+		builder.selection[first_part] = true
+		builder.selection_changed.emit(1)
+		await _frames(3)
+		selected_again[0] = false
+		builder.selection_changed.connect(mark)
+		await _goes_on(shell, "select_connected", func() -> bool: return selected_again[0], work)
+		builder.selection_changed.disconnect(mark)
+		print("    (%d of %d parts selected)" % [builder.selection.size(), world.brick_count()])
+	verbs.select_by("none")
+	await _frames(3)
+
 	# -- the booklet of the example car ----------------------------------
 	main.call("_open", "res://models/car.ldr")
 	main.call("_lay_baseplate")
@@ -224,6 +288,69 @@ func _run() -> void:
 	print("%d FAILURE(S)" % _failures if _failures
 		else "every slow thing said so at once and kept the window alive")
 	quit(1 if _failures else 0)
+
+
+## Command [param name], a coroutine, run as its menu item runs it
+## (Shell.run), or as a button hands its own [param work] over
+## (Shell.attend), watched a frame at a time until [param done] says its
+## work is done: the bar up every one of those frames and gone after, the
+## cost Working.attend keeps for it at least as long as the work was seen
+## going, and nothing from the engine about calling it without await.
+##
+## The work was seen going from when it had surely begun — at once, or for
+## one said first (its words on the bar, Shell.doing), the first frame
+## another job of its own was up — to the last frame before it was done.
+func _goes_on(shell: Shell, name: String, done: Callable, work: Callable = Callable(),
+		seconds: float = 120.0) -> void:
+	var errors_from: int = _errors.lines.size()
+	var parts: int = shell.work_size(name)
+	# Only this run's cost, whatever ran under this name before.
+	Working.costs.clear()
+	var ran: bool = true
+	if work.is_valid():
+		shell.attend(name, work)
+	else:
+		ran = shell.run(name)
+	var now: int = Time.get_ticks_usec()
+	var said: Working.Job = Working.current() if Working.is_busy() \
+		and Working.current().words == shell.doing(name) else null
+	var begun_at: int = now if said == null else -1
+	var going_at: int = now
+	var frames: int = 0
+	var bare: int = 0
+	var finished: bool = false
+	var until: int = Time.get_ticks_msec() + int(seconds * 1000.0)
+	while ran and Time.get_ticks_msec() < until:
+		await process_frame
+		now = Time.get_ticks_usec()
+		if bool(done.call()):
+			finished = true
+			break
+		frames += 1
+		going_at = now
+		if begun_at < 0 and Working.is_busy() and Working.current() != said:
+			begun_at = now
+		if not (Working.is_busy() and Working.shown_in.visible):
+			bare += 1
+	var gone: bool = false
+	for _n: int in 10:
+		await process_frame
+		if not Working.is_busy():
+			gone = true
+			break
+	var seen_ms: float = (going_at - begun_at) / 1000.0 if begun_at >= 0 else -1.0
+	var kept_ms: float = Working.expected_ms(name, parts)
+	var unawaited: PackedStringArray = PackedStringArray(Array(_errors.since(errors_from)).filter(
+		func(line: String) -> bool: return line.contains("async function")))
+	_check("%s through %s%s: its work done after %d frames, the bar up in %d of them"
+		% [name, "Shell.attend" if work.is_valid() else "Shell.run",
+			" (said first)" if said != null else "", frames, frames - bare],
+		ran and finished and frames > 0 and bare == 0)
+	_check("...and gone once it was", gone)
+	_check("...its cost timed to the end: %.0f ms kept, its work seen going %.0f ms"
+		% [kept_ms, seen_ms], seen_ms > 0.0 and kept_ms >= seen_ms)
+	_check("...and no \"async function without await\" from the engine%s"
+		% ("" if unawaited.is_empty() else ": " + unawaited[0]), unawaited.is_empty())
 
 
 ## A key pressed and let go, as the window would hand it over.

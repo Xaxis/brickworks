@@ -2367,7 +2367,6 @@ func _build_ui() -> void:
 		_inset(_figures, 1040.0, 660.0)
 		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
-	_bar.timeline_wanted.connect(_toggle_steps)
 	# The booklet is Build, Instructions and the toolbar's Instructions
 	# button (Shell._instructions, which calls _booklet_wanted).
 
@@ -2652,9 +2651,6 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
-	_bar.picture_wanted.connect(_exports.take_picture)
-	_bar.shop_list_wanted.connect(_exports.shop_list)
-	_bar.studio_wanted.connect(_exports.studio_io)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -5000,7 +4996,7 @@ func _key_pressed(key: InputEventKey) -> void:
 				if key.keycode == KEY_A and (key.ctrl_pressed or key.meta_pressed):
 					_verbs.select_by("all")
 				if key.keycode == KEY_S and (key.ctrl_pressed or key.meta_pressed) and _bar:
-					_bar._on_save()
+					await _bar._on_save()
 				return
 			var way: Vector3 = {KEY_W: Vector3.FORWARD, KEY_S: Vector3.BACK,
 				KEY_A: Vector3.LEFT, KEY_D: Vector3.RIGHT}[key.keycode]
@@ -5032,7 +5028,7 @@ func _key_pressed(key: InputEventKey) -> void:
 			if key.shift_pressed:
 				_turn_model(1 if key.keycode == KEY_E else -1)
 		KEY_B:
-			_toggle_steps()
+			await _toggle_steps()
 		KEY_P:
 			_toggle_parts()
 		KEY_M:
@@ -5061,7 +5057,7 @@ func _key_pressed(key: InputEventKey) -> void:
 				if _builder.paint_brick(under, _builder.held_color):
 					_on_model_edited()
 		KEY_DELETE, KEY_BACKSPACE:
-			_delete_selection()
+			await _delete_selection()
 		KEY_G:
 			# And take a colour and part back off the model, into hand.
 			if _brick_under_pointer() != 0 \
@@ -5123,7 +5119,7 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_Z:
 			# The same undo as Edit's, which says what it took back.
 			if key.ctrl_pressed or key.meta_pressed:
-				_verbs.press("redo" if key.shift_pressed else "undo")
+				await _verbs.press("redo" if key.shift_pressed else "undo")
 				_refresh_preview()
 		KEY_COMMA:
 			# Where a preferences panel lives in every app on this
@@ -5139,7 +5135,7 @@ func _key_pressed(key: InputEventKey) -> void:
 			# Not on the web, where Ctrl+N is the browser's new window and
 			# never reaches the page.
 			if (key.ctrl_pressed or key.meta_pressed) and _bar:
-				_bar.ask_for_new()
+				await _bar.ask_for_new()
 		KEY_ESCAPE:
 			# Leaving playback first. Escape reads as "out of this mode",
 			# and quitting the app because someone wanted the whole model
