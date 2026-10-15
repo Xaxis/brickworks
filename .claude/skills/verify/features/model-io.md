@@ -426,7 +426,9 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --b
 ```
 
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
-open again, and the browser is asked to keep them"; `empty_save_probe` when it
+open again, and the browser is asked to keep them" (Account follows the
+browser's answer while it is open: it was read once as the panel opened, up to
+400 ms old, and keep_flow's granted half read the unanswered words); `empty_save_probe` when it
 ends "no save of no parts goes over a model with parts unless the person
 emptied it" (on main both its empty checks fail: the autosave and Save wrote
 the empty model); `unrestored_probe` when it ends "a working model that cannot

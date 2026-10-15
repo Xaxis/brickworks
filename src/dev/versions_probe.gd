@@ -139,6 +139,19 @@ func _run() -> void:
 		account.storage_words().begins_with("Your models are kept on this device: this browser has agreed"))
 	account.visible = false
 	_check("...and nothing is warned", not offer.offer_if_due(true) and not offer.showing())
+	# The browser answers while Account is open: Firefox asks the person, and
+	# Chromium's answer can land just after the panel read the last one.
+	StorageKeep.pretend({"asked": true})
+	account.open()
+	var asking: String = account.storage_words()
+	StorageKeep.pretend({"asked": true, "answered": true, "kept": true})
+	await _until(func() -> bool: return account.storage_words().begins_with(
+		"Your models are kept on this device: this browser has agreed"), 2.0)
+	_check("the browser agrees while Account is open, and Account says so: %s"
+		% account.storage_words().left(70), asking.contains("not with your account")
+		and account.storage_words().begins_with(
+			"Your models are kept on this device: this browser has agreed"))
+	account.visible = false
 	StorageKeep.pretend({"asked": true, "answered": true, "kept": false})
 	account.open()
 	_check("refused: Account says they may be cleared by the browser",
