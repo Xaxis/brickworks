@@ -2002,6 +2002,10 @@ var _turned_cache: Dictionary = {}
 ## and locked because the design loop and a connector could both check.
 var _turned_off_main: Dictionary = {}
 var _turned_lock := Mutex.new()
+## Stretched covers already worked out, by part and its basis exactly, as
+## the turned ones are (each thread its own, the worker's locked).
+var _stretched_cache: Dictionary = {}
+var _stretched_off_main: Dictionary = {}
 
 
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
@@ -2014,14 +2018,39 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 		# of tube made four long (Flex). Its cover is its own made as long,
 		# turned the way it is turned; the turned covers below take a turn
 		# and nothing else, and gave a piece four long a cover one long.
-		var stretched: Array[AABB] = []
-		var source: Array[AABB] = part.boxes
-		if source.is_empty():
-			source = [AABB(part.bounds.position / BrickLattice.CELL,
-				part.bounds.size / BrickLattice.CELL)]
-		for box: AABB in source:
-			stretched.append(AABB(box.position * stretch, box.size * stretch).abs())
-		return BrickLattice.boxes_for_turned(stretched, cell, at.basis.orthonormalized())
+		#
+		# And worked out once for each part and basis, and shifted, as a
+		# turned cover is: it never depends on where the part stands. A file
+		# whose turns are written to five places has its columns a hair off
+		# a length of one, so every such part of a real set is stretched, and
+		# checked where it stands each was worked out cell by cell again: 273
+		# of 42112's 1,224 parts.
+		var exact: Array = [part.get_instance_id(), at.basis]
+		var on_main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
+		var drawn: PackedInt32Array
+		if on_main:
+			drawn = _stretched_cache.get(exact, PackedInt32Array())
+		else:
+			_turned_lock.lock()
+			drawn = _stretched_off_main.get(exact, PackedInt32Array())
+			_turned_lock.unlock()
+		if drawn.is_empty():
+			var stretched: Array[AABB] = []
+			var source: Array[AABB] = part.boxes
+			if source.is_empty():
+				source = [AABB(part.bounds.position / BrickLattice.CELL,
+					part.bounds.size / BrickLattice.CELL)]
+			for box: AABB in source:
+				stretched.append(AABB(box.position * stretch, box.size * stretch).abs())
+			drawn = BrickLattice.boxes_for_turned(stretched, Vector3i.ZERO,
+				at.basis.orthonormalized())
+			if on_main:
+				_stretched_cache[exact] = drawn
+			else:
+				_turned_lock.lock()
+				_stretched_off_main[exact] = drawn
+				_turned_lock.unlock()
+		return BrickLattice.moved_by(drawn, cell)
 	if part.boxes.is_empty():
 		# No cover was built for this part, so fall back to the bounding
 		# box by way of the cell path, which already handles the
