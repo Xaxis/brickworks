@@ -110,9 +110,17 @@
 // resources/read are answered here, without the tab, and the tools whose
 // answer is the model as it now stands name it in their _meta. Such a
 // client's calls to those tools ask the tab for the viewer's share of the
-// answer — the parts count and pictures a person looks at, in the answer's
-// _meta — and no other client's do, so what any other client sees is what
-// it saw before.
+// answer — the parts count, the model packed and a picture, in the
+// answer's _meta — and no other client's do, so what any other client sees
+// is what it saw before.
+//
+// And the page asks for what it shows itself (2026-10-15), since a host
+// need not hand it _meta and most of claude.ai's sessions do not say they
+// show pages: through the host, tools/call to the viewer's own tools, which
+// a session that shows pages is listed with _meta.ui.visibility ["app"] so
+// its model is never given them, or resources/read of brickworks://viewer/…
+// from a host that will not call a tool its model was not given. Either
+// goes to the session's tab as a call of the viewer's, answered at once.
 //
 // Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
 // SUPABASE_PUBLISHABLE_KEY for accounts.
@@ -122,8 +130,8 @@ import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
 import {
-  ASK_VIEWS, EXTENSION, VIEWER_TOOLS, sessionFor, sessionShows, showsApps,
-  viewerListed, viewerRead, withViewer,
+  ASK_VIEWS, EXTENSION, VIEWER_ONLY, VIEWER_TOOLS, asRead, isViewerOnly, partRead, sessionFor, sessionShows,
+  showsApps, viewerAsked, viewerListed, viewerPart, viewerRead, withViewer,
 } from "./_viewer.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
@@ -395,7 +403,9 @@ const RELAY_TOOLS = [
   },
 ];
 
-function toolsWithTabs(tools) {
+// [shows]: the session's client shows pages, and is given the viewer's
+// own tools too, for its page alone.
+function toolsWithTabs(tools, shows = false) {
   const own = (Array.isArray(tools) ? tools : []).map((tool) => {
     const schema = tool && tool.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {};
     return withViewer({
@@ -403,7 +413,7 @@ function toolsWithTabs(tools) {
       inputSchema: { type: "object", ...schema, properties: { ...(schema.properties || {}), target: TARGET } },
     });
   });
-  return [...own, ...RELAY_TOOLS];
+  return [...own, ...RELAY_TOOLS, ...(shows ? VIEWER_ONLY : [])];
 }
 
 // Which tab a session is working in (relay_picks): set by its first call
@@ -592,8 +602,21 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     return response.status(202).end();
   }
   const id = message.id;
+  // A host reading what the viewer would otherwise call for: that call,
+  // made in the session's tab and answered as a read.
+  let readFor = "";
+  if (message.method === "resources/read") {
+    const asked = viewerAsked(message.params?.uri);
+    if (asked) {
+      readFor = String(message.params.uri);
+      message = { ...message, method: "tools/call", params: { name: asked.name, arguments: asked.arguments } };
+    }
+  }
   const calling = message.method === "tools/call";
   const name = calling ? String(message.params?.name || "") : "";
+  // The card's own call: no header, and never the one that hears the tools
+  // have changed, which is Claude's to hear.
+  const viewerCall = calling && isViewerOnly(name);
   // The model's viewer, served here: the tab need not be open to read it.
   if (["resources/list", "resources/read", "resources/templates/list"].includes(message.method)) {
     await where.used(message, null);
@@ -604,6 +627,12 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       return response.status(200).json({ jsonrpc: "2.0", id, result: { resourceTemplates: [] } });
     }
     const uri = String(message.params?.uri || "");
+    const part = viewerPart(uri);
+    if (part) {
+      const geometry = await partRead(part, uri);
+      return response.status(200).json(geometry ? { jsonrpc: "2.0", id, result: geometry }
+        : rpcError(id, -32002, `no part geometry ${part}`));
+    }
     const read = viewerRead(uri);
     return response.status(200).json(read ? { jsonrpc: "2.0", id, result: read }
       : rpcError(id, -32002, `no resource ${uri.slice(0, 200)}`));
@@ -668,11 +697,11 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   if (served && where.listKey) {
     if (["initialize", "tools/list"].includes(message.method)) {
       await listGiven(where.listKey, served);
-    } else if (calling || stream) {
+    } else if ((calling || stream) && !viewerCall) {
       changed = await toBeTold(where.listKey, served);
     }
   }
-  const send = (answer) => answerWith(response, answer, changed, stream);
+  const send = (answer) => answerWith(response, readFor ? asRead(answer, readFor) : answer, changed, stream);
 
   // The handshake and the tool list, from what the tab sent when it
   // switched on: answered whether or not the tab is awake to answer.
@@ -683,7 +712,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       return send({ jsonrpc: "2.0", id, result: {} });
     }
     if (message.method === "tools/list") {
-      return send({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools) } });
+      return send({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools, where.shows) } });
     }
     if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
     return send({
@@ -750,7 +779,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     const [done] = await db(`relay?id=eq.${row.id}&select=response,taken_at`);
     if (done && done.response) {
       await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-      return send(calling ? withHeader(done.response, tab, tabs) : done.response);
+      return send(calling && !viewerCall ? withHeader(done.response, tab, tabs) : done.response);
     }
     // The page has said it is closing, or, not taken at all, has stopped
     // since: say so now rather than at the end of four minutes.

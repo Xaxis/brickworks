@@ -52,6 +52,14 @@ var _column_bucket: Dictionary = {}
 ## brick id -> one box around all of its boxes, tested first so two
 ## bricks that are merely in the same bucket cost six comparisons.
 var _bounds: Dictionary = {}
+## brick id -> its boxes laid out by the rows of cells (y, z) they cover
+## ([method _rows_of]), for a brick of more than [constant ROWS_FROM] boxes:
+## what a box meets of it is the few boxes on the rows that box covers, not
+## every box of it. A turned part's cover is a box a row, and 42112's
+## mixer drum, a part its file carries, turned on its truck, is 23,309.
+var _rows: Dictionary = {}
+## Boxes from which a brick is laid out by rows.
+const ROWS_FROM := 24
 ## Bricks the pointer passes through: hidden ones, so the inside of a
 ## model can be reached with its roof hidden. They still take up their
 ## room — nothing can be put down inside a hidden brick.
@@ -730,6 +738,12 @@ func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
 	revision += 1
 	_boxes[brick_id] = packed
 	_bounds[brick_id] = _bound_of(packed)
+	var rows: Array = _rows_of(packed, _bounds[brick_id]) \
+		if packed.size() > ROWS_FROM * 6 else []
+	if rows.is_empty():
+		_rows.erase(brick_id)
+	else:
+		_rows[brick_id] = rows
 	var seen: Dictionary = {}
 	var n: int = 0
 	while n < packed.size():
@@ -766,12 +780,14 @@ func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 		skip: Dictionary = {}) -> PackedInt64Array:
 	var found: Dictionary = {}
 	var mine: PackedInt32Array = _bound_of(packed)
+	var plain: bool = _plain(packed)
 	for other: int in _near(packed):
 		if other == ignore or skip.has(other):
 			continue
-		if not _overlaps(mine, _bounds.get(other, PackedInt32Array())):
+		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+		if not _overlaps_pairwise(mine, bound):
 			continue
-		if _overlaps(packed, _boxes.get(other, PackedInt32Array())):
+		if _meets(packed, mine, plain, other, bound):
 			found[other] = true
 	return PackedInt64Array(found.keys())
 
@@ -790,19 +806,128 @@ func near_bounds(packed: PackedInt32Array, ignore: int = 0) -> PackedInt64Array:
 
 func collides_boxes(packed: PackedInt32Array, ignore: int = 0) -> bool:
 	var mine: PackedInt32Array = _bound_of(packed)
+	var plain: bool = _plain(packed)
 	for other: int in _near(packed):
 		if other == ignore:
 			continue
-		if not _overlaps(mine, _bounds.get(other, PackedInt32Array())):
+		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+		if not _overlaps_pairwise(mine, bound):
 			continue
-		if _overlaps(packed, _boxes.get(other, PackedInt32Array())):
+		if _meets(packed, mine, plain, other, bound):
 			return true
 	return false
 
 
-## The bricks sharing a bucket with any of these boxes.
+## Whether boxes ([param packed], [param mine] their bound, [param plain]
+## none of them empty along an axis) meet brick [param other]'s, whose bound
+## is [param bound]: by its rows where it is laid out by them, else as
+## [method _overlaps] does.
+func _meets(packed: PackedInt32Array, mine: PackedInt32Array, plain: bool, other: int,
+		bound: PackedInt32Array) -> bool:
+	var theirs: PackedInt32Array = _boxes.get(other, PackedInt32Array())
+	var rows: Array = _rows.get(other, [])
+	if plain and not rows.is_empty():
+		return _meets_rows(packed, theirs, bound, rows)
+	return _overlaps_within(packed, mine, theirs, bound)
+
+
+## Whether none of these boxes is empty along an axis, where pair by pair
+## and by rows could answer differently.
+static func _plain(packed: PackedInt32Array) -> bool:
+	var n: int = 0
+	while n < packed.size():
+		if packed[n] >= packed[n + 3] or packed[n + 1] >= packed[n + 4] \
+				or packed[n + 2] >= packed[n + 5]:
+			return false
+		n += 6
+	return true
+
+
+## A brick's boxes laid out by the rows of cells (y, z) they cover, inside
+## [param bound]: [lowest y, lowest z, rows high, rows deep, the first box on
+## each row (-1 for none), the next on the same row of each entry, the box
+## (its offset) of each entry]. Empty when a box is empty along an axis.
+static func _rows_of(packed: PackedInt32Array, bound: PackedInt32Array) -> Array:
+	if not _plain(packed):
+		return []
+	var lo_y: int = bound[1]
+	var lo_z: int = bound[2]
+	var high: int = bound[4] - bound[1]
+	var deep: int = bound[5] - bound[2]
+	var heads := PackedInt32Array()
+	heads.resize(high * deep)
+	heads.fill(-1)
+	var next := PackedInt32Array()
+	var whose := PackedInt32Array()
+	var j: int = 0
+	while j < packed.size():
+		for y: int in range(packed[j + 1], packed[j + 4]):
+			var row: int = (y - lo_y) * deep - lo_z
+			for z: int in range(packed[j + 2], packed[j + 5]):
+				next.append(heads[row + z])
+				heads[row + z] = whose.size()
+				whose.append(j)
+		j += 6
+	return [lo_y, lo_z, high, deep, heads, next, whose]
+
+
+## Whether any of [param packed] (none empty along an axis) meets a box of
+## [param theirs], laid out by [param rows] inside [param bound]. Each box
+## asks the rows it covers there, or, where that is more rows than the
+## other has boxes (a baseplate's one box against a small part), every box
+## of the other, pair by pair: either answers exactly.
+static func _meets_rows(packed: PackedInt32Array, theirs: PackedInt32Array,
+		bound: PackedInt32Array, rows: Array) -> bool:
+	var lo_y: int = rows[0]
+	var lo_z: int = rows[1]
+	var hi_y: int = lo_y + int(rows[2])
+	var deep: int = rows[3]
+	var hi_z: int = lo_z + deep
+	var heads: PackedInt32Array = rows[4]
+	var next: PackedInt32Array = rows[5]
+	var whose: PackedInt32Array = rows[6]
+	var boxes: int = theirs.size() / 6
+	var i: int = 0
+	while i < packed.size():
+		var from_x: int = packed[i]
+		var to_x: int = packed[i + 3]
+		var y0: int = maxi(packed[i + 1], lo_y)
+		var y1: int = mini(packed[i + 4], hi_y)
+		var z0: int = maxi(packed[i + 2], lo_z)
+		var z1: int = mini(packed[i + 5], hi_z)
+		if from_x >= bound[3] or to_x <= bound[0] or y0 >= y1 or z0 >= z1:
+			i += 6
+			continue
+		if (y1 - y0) * (z1 - z0) > boxes:
+			var j: int = 0
+			while j < theirs.size():
+				if from_x < theirs[j + 3] and theirs[j] < to_x \
+						and packed[i + 1] < theirs[j + 4] and theirs[j + 1] < packed[i + 4] \
+						and packed[i + 2] < theirs[j + 5] and theirs[j + 2] < packed[i + 5]:
+					return true
+				j += 6
+			i += 6
+			continue
+		for y: int in range(y0, y1):
+			var row: int = (y - lo_y) * deep - lo_z
+			for z: int in range(z0, z1):
+				var at: int = heads[row + z]
+				while at >= 0:
+					var o: int = whose[at]
+					if from_x < theirs[o + 3] and theirs[o] < to_x:
+						return true
+					at = next[at]
+		i += 6
+	return false
+
+
+## The bricks sharing a bucket with any of these boxes, in the order they
+## are first met. Each bucket is read once: a turned part's cover is
+## hundreds of boxes in a handful of buckets, and every box read every brick
+## in its bucket again.
 func _near(packed: PackedInt32Array) -> PackedInt64Array:
 	var seen: Dictionary = {}
+	var read: Dictionary = {}
 	var n: int = 0
 	while n < packed.size():
 		for bx: int in range(_floor_div(packed[n], BUCKET),
@@ -811,7 +936,11 @@ func _near(packed: PackedInt32Array) -> PackedInt64Array:
 					_floor_div(packed[n + 4] - 1, BUCKET) + 1):
 				for bz: int in range(_floor_div(packed[n + 2], BUCKET),
 						_floor_div(packed[n + 5] - 1, BUCKET) + 1):
-					var here: Variant = _bucket.get(Vector3i(bx, by, bz))
+					var key := Vector3i(bx, by, bz)
+					if read.has(key):
+						continue
+					read[key] = true
+					var here: Variant = _bucket.get(key)
 					if here == null:
 						continue
 					for brick_id: int in here:
@@ -821,7 +950,127 @@ func _near(packed: PackedInt32Array) -> PackedInt64Array:
 
 
 ## Whether any box of one set meets any box of the other.
+##
+## Pair by pair it costs the product of the two counts, and a turned part's
+## cover is a box a row of cells (compress): two Technic beams turned side
+## by side were a hundred thousand tests to say they do not meet, and the
+## checks that ask it of every part's neighbours (what it runs into, what
+## sits on it, what a section touches, the pieces) took 42112's audit from
+## 36 seconds to 16 minutes once its parts were checked where they stand.
+## Past [constant PAIRWISE_UP_TO] pairs only the boxes inside where the two
+## sets' bounds meet are taken, and one set is laid out by the rows of
+## cells (y, z) it covers there, for each box of the other to look up the
+## rows it covers: two boxes meet only where both bounds do, and only on a
+## row both cover. The same answer as pair by pair, which still answers for
+## a set with a box empty along an axis (a sliver's cover rounds to one).
 static func _overlaps(a: PackedInt32Array, b: PackedInt32Array) -> bool:
+	if a.size() * b.size() <= PAIRWISE_UP_TO * 36:
+		return _overlaps_pairwise(a, b)
+	return _overlaps_within(a, _bound_of(a), b, _bound_of(b))
+
+
+## Pairs of boxes past which [method _overlaps] looks by rows.
+const PAIRWISE_UP_TO := 48
+
+
+## [method _overlaps] with each set's bound (_bound_of) given.
+static func _overlaps_within(a: PackedInt32Array, bound_a: PackedInt32Array,
+		b: PackedInt32Array, bound_b: PackedInt32Array) -> bool:
+	if a.is_empty() or b.is_empty():
+		return false
+	# A few boxes against many: every pair is no more than going through
+	# the many once, which looking by rows does anyway.
+	if a.size() * b.size() <= PAIRWISE_UP_TO * 36 or a.size() <= 24 or b.size() <= 24:
+		return _overlaps_pairwise(a, b)
+	# Where the two bounds meet: nothing meets outside it.
+	var lo_x: int = maxi(bound_a[0], bound_b[0])
+	var lo_y: int = maxi(bound_a[1], bound_b[1])
+	var lo_z: int = maxi(bound_a[2], bound_b[2])
+	var hi_x: int = mini(bound_a[3], bound_b[3])
+	var hi_y: int = mini(bound_a[4], bound_b[4])
+	var hi_z: int = mini(bound_a[5], bound_b[5])
+	var region := PackedInt32Array([lo_x, lo_y, lo_z, hi_x, hi_y, hi_z])
+	var mine: PackedInt32Array = _inside(a, region)
+	var theirs: PackedInt32Array = _inside(b, region)
+	# A box empty along an axis: pair by pair, as it always was.
+	if mine.size() == 1 or theirs.size() == 1:
+		return _overlaps_pairwise(a, b)
+	if lo_x >= hi_x or lo_y >= hi_y or lo_z >= hi_z or mine.is_empty() or theirs.is_empty():
+		return false
+	var rows_mine: int = _rows_in(mine, region)
+	var rows_theirs: int = _rows_in(theirs, region)
+	# Laid out by rows only where that is cheaper than every pair.
+	if (rows_mine + rows_theirs) * 2 >= (mine.size() / 6) * (theirs.size() / 6):
+		return _overlaps_pairwise(mine, theirs)
+	if rows_mine < rows_theirs:
+		var swap: PackedInt32Array = mine
+		mine = theirs
+		theirs = swap
+	# The smaller laid out: the boxes on each row, as lists through [next].
+	var deep: int = hi_z - lo_z
+	var heads := PackedInt32Array()
+	heads.resize((hi_y - lo_y) * deep)
+	heads.fill(-1)
+	var next := PackedInt32Array()
+	var whose := PackedInt32Array()
+	var j: int = 0
+	while j < theirs.size():
+		for y: int in range(maxi(theirs[j + 1], lo_y), mini(theirs[j + 4], hi_y)):
+			var row: int = (y - lo_y) * deep - lo_z
+			for z: int in range(maxi(theirs[j + 2], lo_z), mini(theirs[j + 5], hi_z)):
+				next.append(heads[row + z])
+				heads[row + z] = whose.size()
+				whose.append(j)
+		j += 6
+	var i: int = 0
+	while i < mine.size():
+		var from_x: int = mine[i]
+		var to_x: int = mine[i + 3]
+		for y: int in range(maxi(mine[i + 1], lo_y), mini(mine[i + 4], hi_y)):
+			var row: int = (y - lo_y) * deep - lo_z
+			for z: int in range(maxi(mine[i + 2], lo_z), mini(mine[i + 5], hi_z)):
+				var at: int = heads[row + z]
+				while at >= 0:
+					var o: int = whose[at]
+					if from_x < theirs[o + 3] and theirs[o] < to_x:
+						return true
+					at = next[at]
+		i += 6
+	return false
+
+
+## The boxes of [param packed] that meet [param region], as they are; one
+## number, 0, when a box of it is empty along an axis, whichever box it is.
+## (An empty region can pass a box: say nothing of it then.)
+static func _inside(packed: PackedInt32Array, region: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var n: int = 0
+	while n < packed.size():
+		if packed[n] >= packed[n + 3] or packed[n + 1] >= packed[n + 4] \
+				or packed[n + 2] >= packed[n + 5]:
+			return PackedInt32Array([0])
+		if packed[n] < region[3] and region[0] < packed[n + 3] \
+				and packed[n + 1] < region[4] and region[1] < packed[n + 4] \
+				and packed[n + 2] < region[5] and region[2] < packed[n + 5]:
+			out.append_array(packed.slice(n, n + 6))
+		n += 6
+	return out
+
+
+## How many rows of cells (y, z) the boxes cover inside [param region],
+## counted a box at a time.
+static func _rows_in(packed: PackedInt32Array, region: PackedInt32Array) -> int:
+	var total: int = 0
+	var n: int = 0
+	while n < packed.size():
+		total += (mini(packed[n + 4], region[4]) - maxi(packed[n + 1], region[1])) \
+			* (mini(packed[n + 5], region[5]) - maxi(packed[n + 2], region[2]))
+		n += 6
+	return total
+
+
+## [method _overlaps], pair by pair.
+static func _overlaps_pairwise(a: PackedInt32Array, b: PackedInt32Array) -> bool:
 	var i: int = 0
 	while i < a.size():
 		var j: int = 0
@@ -849,6 +1098,7 @@ func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 
 func release(brick_id: int) -> void:
 	revision += 1
+	_rows.erase(brick_id)
 	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
 	if packed.is_empty():
 		_boxes.erase(brick_id)
@@ -902,7 +1152,26 @@ func brick_at(cell: Vector3i) -> int:
 	if here == null:
 		return 0
 	for brick_id: int in here:
+		# Its bound first: a bucket of turned parts is thousands of boxes.
+		var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+		if bound.is_empty() or cell.x < bound[0] or cell.x >= bound[3] \
+				or cell.y < bound[1] or cell.y >= bound[4] \
+				or cell.z < bound[2] or cell.z >= bound[5]:
+			continue
 		var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
+		var rows: Array = _rows.get(brick_id, [])
+		if not rows.is_empty():
+			# Inside its bound, so on one of its rows: the boxes on it.
+			var heads: PackedInt32Array = rows[4]
+			var next: PackedInt32Array = rows[5]
+			var whose: PackedInt32Array = rows[6]
+			var at: int = heads[(cell.y - int(rows[0])) * int(rows[3]) + cell.z - int(rows[1])]
+			while at >= 0:
+				var o: int = whose[at]
+				if cell.x >= packed[o] and cell.x < packed[o + 3]:
+					return brick_id
+				at = next[at]
+			continue
 		var n: int = 0
 		while n < packed.size():
 			if cell.x >= packed[n] and cell.x < packed[n + 3] \
@@ -953,6 +1222,7 @@ func clear() -> void:
 	_bucket.clear()
 	_column_bucket.clear()
 	_bounds.clear()
+	_rows.clear()
 	unseen.clear()
 	see_through.clear()
 	ahead = {}
@@ -969,6 +1239,7 @@ func copy_for_reading() -> BrickLattice:
 	copy._boxes = _boxes.duplicate()
 	copy._bucket = _bucket.duplicate()
 	copy._bounds = _bounds.duplicate()
+	copy._rows = _rows.duplicate()
 	return copy
 
 

@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -140,8 +140,52 @@ asking for an API key.
   call that became a job carries no pictures (the model is still going up).
   `tools/web/model_view_check.mjs` proves it on a deployment: the relay's
   half, a real tab, a session that shows pages and one that does not, and
-  the page in a sandboxed frame under the spec's default policy, sent the
-  real answers as a host sends them.
+  the page in a sandboxed frame under the policy it declares, sent the
+  real answers as a host sends them, in a browser with no WebGL (the
+  turntable fallback, asked for through the host).
+- `the model in Claude in 3D` (2026-10-15): the page is the real model in
+  3D. Source `tools/viewer/` (`card.html`, `card.js`, `lbm.js`, `scene.js`);
+  `tools/viewer/build.mjs` bundles it with three.js 0.186.1 into one
+  self-contained page, `api/_viewer_page.js` (committed: the deploy builds
+  nothing; `--check` holds the source to the build). The tab packs the model
+  (`src/net/model_scene.gd`: per brick its number, part, colour, place and
+  turn, in deflated columns, a few bytes a brick) and the page fetches each
+  part's own `.lbm` from where the app does (`PARTS_URL`, the one origin in
+  `_meta.ui.csp.connectDomains`), drawn instanced in the app's own colours
+  (`BrickColor.shown`). It orbits (drag, wheel or pinch, arrow keys, 0 back),
+  picks a part (an outline, `ui/update-model-context` saying "brick #N, a
+  3022 … in Red, at the front left, near the top", and `viewer_pick`
+  selecting it in the tab so `selection` reads it), asks for full screen
+  (`ui/request-display-mode`), and calls the tab back through the host:
+  Check (`viewer_check`: Tools, Check stability's weak joints and the stud
+  joints at half their working load or more, tinted as the app tints them,
+  amber to red, the rest clay; "Ask Claude to fix them" is `ui/message`),
+  Instructions (`viewer_steps`: the booklet's own `Instructions.plan`, a
+  step at a time, the step's parts outlined and listed), Parts
+  (`viewer_parts`: `Inventory` and the BrickLink wanted list, downloaded by
+  `ui/download-file` where the host offers it, else copied or shown), and
+  Open in Brickworks (`ui/open-link` to `/app?tab=<id>`). It does not wait
+  on `_meta`: with none (a host that strips it, or a session that never said
+  it shows pages, which is most of claude.ai's), it asks `viewer_scene`
+  itself, and from a host that will not call a tool its model was not
+  listed, reads `brickworks://viewer/scene` (and `/check`, `/steps`,
+  `/parts`), which the relay turns into the same call. A frame without WebGL
+  asks `viewer_scene {views: true}` for the four-corner turntable. The
+  renderer is let go 20 s after the card leaves the screen (a conversation
+  has a card per build, a browser only so many WebGL contexts) and comes back
+  when it returns. Answers that carry the model now carry the front corner
+  only, not four, and the scene; the turntable is drawn only when asked.
+- `the viewer's own tools` (`src/net/viewer_tools.gd`): `viewer_scene`,
+  `viewer_check`, `viewer_steps`, `viewer_parts`, `viewer_pick`, answered in
+  `CommandSocket.answer_rpc` before any of the app's, without taking the
+  app's turn (a card asks while Claude works). Listed by the relay with
+  `_meta.ui.visibility ["app"]`, and only to a session that shows pages: a
+  client that does not is listed the same 49 tools as before. Not in the
+  app's catalogue, so `tools/mcp_tools.json` and `mcp_sync_probe` do not
+  change, and the tab's panel does not say Claude is at work for them
+  (`ClaudeConnector._answer`). None changes the model; `viewer_pick` selects,
+  and only while the card's model is the tab's (`of`).
+- `viewer tools probe`, `viewer readers check`, `app host check`: below.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
   answer, writing any picture to `--png=PATH`. The same socket without the MCP
   wrapping, for a script, a person reading along, or an agent that would rather
@@ -236,6 +280,37 @@ tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)
 node tools/web/model_view_check.mjs --url=http://127.0.0.1:8797/app --relay-only   # ...its relay half, with relay_server.mjs 8797
+godot --headless --path . --script src/dev/viewer_tools_probe.gd            # the viewer's own tools, on the real scene
+node tools/viewer/scene_check.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene.json   # the card reads what the tab packed
+node tools/viewer/build.mjs --deps=DIR --check                               # the committed page is the build of tools/viewer/
+BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=DIR/basic-host --out=shots/app_host   # in the MCP Apps reference host
+node tools/viewer/first_paint.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene_400.json --scene=.../scene_4000.json   # sizes and first paint, after viewer_tools_probe -- --sizes
+```
+
+The reference host is ext-apps' `examples/basic-host`, used as it is, in a
+directory of its own (downloaded code): `git clone --depth 1
+https://github.com/modelcontextprotocol/ext-apps`, copy `examples/basic-host`
+out, `npm install --ignore-scripts` there, then build its two pages with its own
+vite (`INPUT=<dir>/index.html` and `INPUT=<dir>/sandbox.html`, `vite build <dir>
+--config <dir>/vite.config.ts`). The check runs its `serve.ts` with node, points
+the browser from its fixed sandbox address (`localhost:8081`) to `--port`+1, and
+stands three MCP connections between it and the relay, each signed in with
+OAuth: one that strips `_meta` from every result, one that never says it shows
+pages and refuses the page any tool its model was not listed, and one that
+passes everything on.
+
+Proves it when: "the page asks the tab for the model itself (tools/call
+viewer_scene)" and "draws the model in 3D: WebGL …% of it the model" with every
+part drawn, for the host that strips `_meta`, first; then a drag turns it, a
+click is in basic-host's Model Context and in the tab's `selection`, Check
+tints (warm pixels up, the rest clay), the instructions step forward and back,
+Parts gives the BrickLink list, full screen is given, Open in Brickworks opens
+`/app?tab=<the tab>`; the strict host's page reads `brickworks://viewer/scene`
+and draws the same; the host that passes `_meta` draws from it without asking,
+and keeps the viewer's tools from its own list. Against main it fails at "the
+page asks the tab for the model itself".
+
+```sh
 tools/mcp_check.py --port=8846 --jobs                     # ...in a window: Orthanc's turntable as a job
 ```
 
