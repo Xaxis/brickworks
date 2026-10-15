@@ -4402,6 +4402,16 @@ func _exact_points_said(part_id: String, at: Transform3D) -> String:
 	var shape: Exact.Shape = Exact.shape_for(library, part_id)
 	if shape == null or shape.kind.is_empty():
 		return ""
+	# Only where it says more than the studs above do: a plain brick's studs
+	# up and holes under them are the whole of it, and saying them twice is
+	# noise.
+	var says_more: bool = false
+	for k: int in shape.kind.size():
+		var up: float = absf((at.basis * -shape.frames[k].basis.y).normalized().y)
+		if not (shape.kind[k] == Exact.STUD or shape.kind[k] == Exact.HOLE) or up < 0.99:
+			says_more = true
+	if not says_more:
+		return ""
 	var groups: Dictionary = {}     ## "open pointing -x" -> [where...]
 	var order: Array = []
 	for k: int in shape.kind.size():
@@ -4426,7 +4436,7 @@ func _exact_points_said(part_id: String, at: Transform3D) -> String:
 			" and %d more" % more if more > 0 else ""])
 		if lines.size() >= 8:
 			break
-	return ("\n\nIts connectors exactly, as BrickBench's check reads them (a stud meets a hole, "
+	return ("\n\nWhere it joins, exactly as BrickBench's check reads it (a stud meets a hole, "
 		+ "open or tube pointing the same way; a bar a clip; a hinge its other half), each at its "
 		+ "own point:\n" + "\n".join(lines) + "\nA part seats where its connector's point is "
 		+ "one of these; one that misses by up to a plate is moved onto it when checked.")
@@ -11823,6 +11833,13 @@ func _seat_exactly(model: Model, exact: ExactCheck) -> String:
 		+ "(the app does this on every check; nothing to change): %s." % ", ".join(said))
 
 
+## Whether item [param i] is a placement in one of the prism pattern's own
+## sections.
+static func _in_a_prism(model: Model, i: int) -> bool:
+	return i >= 0 and i < model.placements.size() \
+		and model.placements[i].section.begins_with("prism ")
+
+
 ## Lattice cell [param cell] as a placement's studs or plates ([param per] LDU
 ## each): the number that reads back as that cell.
 static func _into_cell(cell: int, per: float) -> float:
@@ -11868,6 +11885,12 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		# are drawn either way. Held by their axles, as the lattice has them.
 		if (meshing.get(a, {}) as Dictionary).has(b) or (meshing.get(b, {}) as Dictionary).has(a):
 			continue
+		# The prism pattern's own turned walls, which meet each other and their
+		# square summit inside each other by their real shapes: judged by the
+		# lattice, as the turned studs under them are (_note_turned_studs),
+		# until the pattern lays its corners another way.
+		if _in_a_prism(model, a) or _in_a_prism(model, b):
+			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
 			if a < count and b < count and not already.has(Vector2i(a, b)):
@@ -11899,7 +11922,7 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		var section: String = model.placements[index].section
 		if _exact_subject(model, index) and exact.items[index] != null \
 				and not floating.has(index) and not crowded.has(section) \
-				and not stuck.has(section):
+				and not stuck.has(section) and not section.begins_with("prism "):
 			subjects.append(index)
 	if subjects.is_empty():
 		return
@@ -12002,9 +12025,9 @@ func _without_dressing(model: Model, gave_way: Dictionary,
 	model.placements = kept
 	var report: Dictionary = _check(model, alone, weigh)
 	var left: int = gave_way.size()
-	var said: String = ("%d dressing tile%s on side studs would have "
+	var said: String = ("%d finishing part%s (a tile on a side stud, a rim's wedge) would "
 		% [left, "" if left == 1 else "s"]
-		+ "overlapped a brick and %s left out; the faces keep the rest."
+		+ "have run into another part and %s left out; the rest keeps its finish."
 		% ("was" if left == 1 else "were"))
 	report["feedback"] = "%s\n%s" % [report["feedback"], said]
 	(report["advice"] as Array).append(said)

@@ -1027,12 +1027,17 @@ func request_exact(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	if info == null or info.mesh_hash.is_empty():
 		return false
-	if _fetching_exact.has(info.mesh_hash):
+	if _fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id):
 		return true
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
 	if OS.has_feature("web") and remote_parts.is_empty():
 		return false
+	# A check of a big design asks for a shape a part: a few at a time, as
+	# the geometry is fetched, the rest in turn.
+	if _fetching_exact.size() >= MAX_IN_FLIGHT:
+		_exact_waiting.append(part_id)
+		return true
 	_fetching_exact[info.mesh_hash] = true
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
@@ -1045,8 +1050,9 @@ func request_exact(part_id: String) -> bool:
 	return true
 
 
-## Exact shapes being fetched: hash -> true.
+## Exact shapes being fetched: hash -> true; and parts waiting their turn.
 var _fetching_exact: Dictionary = {}
+var _exact_waiting: PackedStringArray = PackedStringArray()
 
 ## Emitted when a part's exact shape has been fetched or found not to exist.
 signal exact_fetched(part_id: String)
@@ -1055,7 +1061,7 @@ signal exact_fetched(part_id: String)
 ## Whether a part's exact shape is still on its way.
 func is_exact_on_its_way(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
-	return info != null and _fetching_exact.has(info.mesh_hash)
+	return info != null and (_fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id))
 
 
 func _on_fetched_exact(_result: int, code: int, _headers: PackedStringArray,
@@ -1064,6 +1070,10 @@ func _on_fetched_exact(_result: int, code: int, _headers: PackedStringArray,
 	_fetching_exact.erase(hash_name)
 	Exact.keep(hash_name, body if code == 200 else PackedByteArray())
 	exact_fetched.emit(part_id)
+	while not _exact_waiting.is_empty() and _fetching_exact.size() < MAX_IN_FLIGHT:
+		var next: String = _exact_waiting[0]
+		_exact_waiting.remove_at(0)
+		request_exact(next)
 
 
 ## Drop cached geometry. The catalogue stays; only vertices go. A made
