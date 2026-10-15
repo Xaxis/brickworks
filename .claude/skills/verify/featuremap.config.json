@@ -1751,6 +1751,13 @@
     },
     {
       "kind": "cli",
+      "label": "measure brickify against outside models",
+      "entry": "tools/bench/brickify_bench.py",
+      "reach": "python3 tools/bench/brickify_bench.py report OUT   (the run: prepare, godot --headless --script src/dev/brickify_bench.gd -- JOBS OUT, outside, measure, pictures; the recipe is in features/brickify.md; docs/BRICKIFY.md is the write-up)",
+      "area": "brickify"
+    },
+    {
+      "kind": "cli",
       "label": "run the designer on BrickBench",
       "entry": "tools/bench/brickbench.py",
       "reach": "python3 tools/minitest.py tests/test_brickbench.py; python3 tools/bench/brickbench.py report --date 2026-10-14   (the run: prompts, parts, design, export, verify, zip, fetch, views, pairs; the recipe is BrickBench in features/assistant.md; never submitted)",
