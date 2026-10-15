@@ -230,7 +230,20 @@ plan with Claude as the client.
   Timeline are the ones `src/dev/command_probe.gd` found holding the window
   longest. Fails when one that should show the bar does not
   within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
-  work of its own over `--budget` ms (250) in one go, or a bar is left up; `--report-only` prints
+  work of its own over `--budget` ms (250) in one go, or a bar is left up.
+  What the long frames at a job's end were, which no timer had caught
+  (2026-10-15): Brickify put the whole bunny down in its last frame (its
+  slice was asked before each part but spent only by putting them down); the
+  hover asked whether a 170-part Brick Art panel under the pointer was a
+  figure and threw the answer away (`Builder.takes`), the first such question
+  building the figures' index in one go (`Minifig.index_paced` now, for the
+  Timeline); and Brickify's bar came a second late because the pointer leaving
+  a part let go of the outline's window-sized render targets in the frame of
+  the press, and a browser waits for the card to finish before it makes new
+  ones (`SelectionOutline._size_targets`, now four seconds later). A frame
+  that waits in WebGL is named by the call it waited in: wrap the context's
+  methods and sum by name, as `instrument()` does by frame; `checkFramebufferStatus`
+  is a render target made. `--report-only` prints
   the table for a build from before. Leaves `progress.json` and a picture
   after each press in `--out` (shots/progress).
 - `GET/POST /api/share` (`api/share.js`, `supabase/shared_models.sql`, applied

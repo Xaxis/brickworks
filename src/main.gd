@@ -3287,6 +3287,9 @@ func _art_laid(art: MosaicArt.Art) -> void:
 		"pieces": 0, "ok": false}
 	_bar.say("%s parts on %d × %d panels — checking it holds together…" % [
 		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y])
+	# Looked at, then checked, a frame each: together they were one of
+	# 171 ms on the desktop.
+	await get_tree().process_frame
 	var report: Dictionary = await _assistant._checked(art.model(), true)
 	_art_said["pieces"] = int(report.get("pieces", 0))
 	_art_said["ok"] = bool(report.get("ok", false))

@@ -617,6 +617,9 @@ func brickify(job: Working.Job = null) -> void:
 		(result["model"] as Assistant.Model).placements.size()))
 	_put_job = job
 	var ids: PackedInt64Array = await _put_down(result, mesh.name)
+	# What follows it down (the camera, the model told it changed) in a frame
+	# of its own, as the selection it ends with is.
+	await job.next()
 	_put_job = null
 	job.end()
 	_busy = false
@@ -751,6 +754,8 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 			if _put_job != null:
 				_put_job.count(from)
 			await pace.next()
+	# Drawn, undone as one and selected in a frame after the last of them.
+	await pace.next()
 	world.release_drawing()
 	var ids := PackedInt64Array()
 	for step: Dictionary in steps:

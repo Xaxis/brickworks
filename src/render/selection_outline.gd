@@ -423,7 +423,14 @@ func _shrink_if_still_empty(emptied_at: int) -> void:
 		_resize(Vector2i(2, 2))
 
 
+## Counted as the card's time, as ModelShot's render target is
+## (Main._watch_own_frames): each new target asks the card whether it is
+## complete, which in a browser waits for everything queued. Brickify's
+## last frame, its 557 parts selected, waited 2.4 s here in software.
 func _resize(wanted: Vector2i) -> void:
-	if _mask.size != wanted:
-		for view: SubViewport in [_mask, _rows, _line]:
-			view.size = wanted
+	if _mask.size == wanted:
+		return
+	var asked: int = Time.get_ticks_usec()
+	for view: SubViewport in [_mask, _rows, _line]:
+		view.size = wanted
+	ModelShot.gpu_wait_us += Time.get_ticks_usec() - asked
