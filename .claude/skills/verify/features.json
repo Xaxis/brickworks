@@ -482,6 +482,14 @@
       "tests": []
     },
     {
+      "id": "cli:page places probe",
+      "kind": "cli",
+      "entry": "src/dev/page_places_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/page_places_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",

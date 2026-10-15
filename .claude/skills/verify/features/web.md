@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe -->
 
 ## Sub-features
 
@@ -969,7 +969,13 @@ plan with Claude as the client.
   ratio of two the panels take far more of the page, and the cursor check's
   "middle of the model" was the parts bin there. `window.brickworksCursor` is
   the pointer's state (`Cursors.show_state`), for `tools/web/cursor_check.mjs`.
-  A centre is where the control was when it was published, so what a flow
+  A centre is published only once the control has stayed there for a
+  telling (`Main._page_places`): one shown in the frame the page was told is
+  not laid out yet, and the warning that the browser may clear the models is
+  offered in that frame every second, so its Download my models was published
+  440 px from where it is drawn and keep_flow pressed nothing, one run in two
+  (2026-10-14; `page_places_probe`). So a control is in the map about a second
+  after it appears, and gone from it at once. Still, what a flow
   clicks must not move once it is on screen: LEGO Art's brief sat over a
   description that grew from one line to three a moment after the dialog
   opened, the click landed on the text, and the brief was typed into the

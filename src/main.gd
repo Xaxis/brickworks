@@ -334,93 +334,7 @@ func _tell_page() -> void:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
-	var where: Dictionary = {}
-	var named: Dictionary = _chat.controls_by_name()
-	if _bar != null:
-		named.merge(_bar.controls_by_name())
-	if _figures != null and _figures.visible:
-		named.merge(_figures.controls_by_name())
-	if _render != null and _render.visible:
-		named.merge(_render.controls_by_name())
-	if _pose != null:
-		named.merge(_pose.controls_by_name())
-	if _simulate != null:
-		named.merge(_simulate.controls_by_name())
-	if _elements != null:
-		named.merge(_bin.controls_by_name())
-		named.merge(_elements.controls_by_name())
-	if _studio != null:
-		named.merge(_studio.controls_by_name())
-	if _account_panel != null:
-		named.merge(_account_panel.controls_by_name())
-	if _shell != null:
-		named.merge(_shell.controls_by_name())
-	if _seat_offer != null:
-		named.merge(_seat_offer.controls_by_name())
-	if _reload_offer != null:
-		named.merge(_reload_offer.controls_by_name())
-	if _update_offer != null:
-		named.merge(_update_offer.controls_by_name())
-	if _storage_offer != null:
-		named.merge(_storage_offer.controls_by_name())
-	if _restore_notice != null:
-		named.merge(_restore_notice.controls_by_name())
-	if _brickify != null:
-		named.merge(_brickify.controls_by_name())
-	if _shell != null:
-		named.merge(_shell.status.working.controls_by_name())
-	if _mosaic != null and _mosaic.visible:
-		named.merge(_mosaic.controls_by_name())
-	if _controls != null:
-		named.merge(_controls.controls_by_name())
-	if _offer != null and _offer.visible:
-		named["offer_show"] = _offer_show
-		named["offer_close"] = _offer_close
-	# Sharing: the owner's panel, the viewer's bar, and the two things the
-	# viewer opens — the timeline and the parts list.
-	if _share_panel != null:
-		named.merge(_share_panel.controls_by_name())
-	if _share_view != null:
-		named.merge(_share_view.controls_by_name())
-	if _build_mode != null:
-		named.merge(_build_mode.controls_by_name())
-	if _inventory != null:
-		named.merge(_inventory.controls_by_name())
-	if _steps != null:
-		named.merge(_steps.controls_by_name())
-	if _flex != null:
-		named.merge(_flex.controls_by_name())
-	# And the model's own part of the window, the column the box select
-	# is laid over (the box itself is hidden until one is drawn): a
-	# browser test aiming at the model found a panel there at a device
-	# ratio of two, where the panels take more of the page.
-	if _marquee != null:
-		named["view"] = _marquee.get_parent()
-	# The view cube's arrows and buttons, and below its visible faces.
-	if _gizmo != null:
-		named.merge(_gizmo.controls_by_name())
-	# And the two rails, which on a phone are the only way to either panel:
-	# the toolbar once ran wider than a phone and took the assistant's off
-	# the page.
-	if _bin_dock != null:
-		named["parts_rail"] = _bin_dock.rail()
-		named["assistant_rail"] = _chat_dock.rail()
-	# The way in. While the sign-in screen is up nothing else can be
-	# pressed, so nothing else is said to be there.
-	if _gated():
-		named = _gate.controls_by_name()
-	for name: String in named:
-		var control: Control = named[name]
-		if control == null or not control.is_visible_in_tree():
-			continue
-		# A dialog's button is placed in the dialog, which is placed in the
-		# window (New's question: tools/web/progress_check.mjs).
-		var rect: Rect2 = control.get_global_rect()
-		var holder: Viewport = control.get_viewport()
-		if holder is Window and holder != get_window():
-			rect.position += Vector2((holder as Window).position)
-		var centre: Vector2 = (to_window * rect).get_center() / per_css
-		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
+	var where: Dictionary = _page_places(_page_controls(), to_window, per_css)
 	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
 		var faces: Dictionary = _gizmo.face_points()
 		for face: String in faces:
@@ -582,6 +496,120 @@ func _tell_page() -> void:
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
+
+
+## Every control the page may press, by the name a browser check knows it by.
+func _page_controls() -> Dictionary:
+	var named: Dictionary = _chat.controls_by_name()
+	if _bar != null:
+		named.merge(_bar.controls_by_name())
+	if _figures != null and _figures.visible:
+		named.merge(_figures.controls_by_name())
+	if _render != null and _render.visible:
+		named.merge(_render.controls_by_name())
+	if _pose != null:
+		named.merge(_pose.controls_by_name())
+	if _simulate != null:
+		named.merge(_simulate.controls_by_name())
+	if _elements != null:
+		named.merge(_bin.controls_by_name())
+		named.merge(_elements.controls_by_name())
+	if _studio != null:
+		named.merge(_studio.controls_by_name())
+	if _account_panel != null:
+		named.merge(_account_panel.controls_by_name())
+	if _shell != null:
+		named.merge(_shell.controls_by_name())
+	if _seat_offer != null:
+		named.merge(_seat_offer.controls_by_name())
+	if _reload_offer != null:
+		named.merge(_reload_offer.controls_by_name())
+	if _update_offer != null:
+		named.merge(_update_offer.controls_by_name())
+	if _storage_offer != null:
+		named.merge(_storage_offer.controls_by_name())
+	if _restore_notice != null:
+		named.merge(_restore_notice.controls_by_name())
+	if _brickify != null:
+		named.merge(_brickify.controls_by_name())
+	if _shell != null:
+		named.merge(_shell.status.working.controls_by_name())
+	if _mosaic != null and _mosaic.visible:
+		named.merge(_mosaic.controls_by_name())
+	if _controls != null:
+		named.merge(_controls.controls_by_name())
+	if _offer != null and _offer.visible:
+		named["offer_show"] = _offer_show
+		named["offer_close"] = _offer_close
+	# Sharing: the owner's panel, the viewer's bar, and the two things the
+	# viewer opens — the timeline and the parts list.
+	if _share_panel != null:
+		named.merge(_share_panel.controls_by_name())
+	if _share_view != null:
+		named.merge(_share_view.controls_by_name())
+	if _build_mode != null:
+		named.merge(_build_mode.controls_by_name())
+	if _inventory != null:
+		named.merge(_inventory.controls_by_name())
+	if _steps != null:
+		named.merge(_steps.controls_by_name())
+	if _flex != null:
+		named.merge(_flex.controls_by_name())
+	# And the model's own part of the window, the column the box select
+	# is laid over (the box itself is hidden until one is drawn): a
+	# browser test aiming at the model found a panel there at a device
+	# ratio of two, where the panels take more of the page.
+	if _marquee != null:
+		named["view"] = _marquee.get_parent()
+	# The view cube's arrows and buttons, and below its visible faces.
+	if _gizmo != null:
+		named.merge(_gizmo.controls_by_name())
+	# And the two rails, which on a phone are the only way to either panel:
+	# the toolbar once ran wider than a phone and took the assistant's off
+	# the page.
+	if _bin_dock != null:
+		named["parts_rail"] = _bin_dock.rail()
+		named["assistant_rail"] = _chat_dock.rail()
+	# The way in. While the sign-in screen is up nothing else can be
+	# pressed, so nothing else is said to be there.
+	if _gated():
+		named = _gate.controls_by_name()
+	return named
+
+
+## Where the page sees each of [param named]'s controls, by name, in its own
+## pixels: told only once a control is where it was at the last telling.
+##
+## A control shown this frame has not been laid out yet: its containers sort
+## their children at the end of the frame. The warning that the browser may
+## clear the models is offered in the same frame the page is told, every
+## second (_watch_other_tabs), so its Download my models was told at its
+## place before layout, 440 px from where it is drawn, for half a second; a
+## check that pressed it there pressed nothing (keep_flow, 2026-10-14).
+func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> Dictionary:
+	var seen: Dictionary = {}
+	var where: Dictionary = {}
+	for name: String in named:
+		var control: Control = named[name]
+		if control == null or not control.is_visible_in_tree():
+			continue
+		# A dialog's button is placed in the dialog, which is placed in the
+		# window (New's question: tools/web/progress_check.mjs).
+		var rect: Rect2 = control.get_global_rect()
+		var holder: Viewport = control.get_viewport()
+		if holder is Window and holder != get_window():
+			rect.position += Vector2((holder as Window).position)
+		var centre: Vector2 = (to_window * rect).get_center() / per_css
+		var at: Dictionary = {"x": roundi(centre.x), "y": roundi(centre.y)}
+		seen[name] = at
+		if _told_places.get(name, {}) == at:
+			where[name] = at
+	_told_places = seen
+	return where
+
+
+## Where each control was at the last telling (_page_places).
+var _told_places: Dictionary = {}
 
 
 ## The model's parts by number, each once, the first 300: worked out again
