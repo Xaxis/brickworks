@@ -44,7 +44,7 @@ const PICKED = 0xffd84d;
 const NEW_IN_STEP = 0x3b9eff;
 // Where the camera starts: the app's front-right corner (ModelShot "corner").
 const CORNER = new Vector3(0.72, 0.52, 0.72).normalize();
-const FETCHING = 8;
+const FETCHING = 12;
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -1432,7 +1432,14 @@ window.addEventListener("message", (event) => {
   } else if (m.method === "ui/notifications/tool-result") {
     show(p).catch((trouble) => card.errors.push(`show: ${trouble.message}`));
   } else if (m.method === "ui/notifications/tool-cancelled") {
-    if (!view) say("Stopped before it finished.", false);
+    // Stopped, or given up on by the host while the tab went on: the model
+    // is whatever the tab has now, which is still worth showing.
+    shown = true;
+    clearTimeout(kick);
+    if (!view) {
+      say("Stopped before it finished. Getting the model as it stands…", true);
+      fetched({ content: [{ type: "text", text: "Stopped before it finished." }] });
+    }
   } else if (m.method === "ui/notifications/host-context-changed") {
     context(p);
   }
