@@ -185,7 +185,7 @@ can occupy the same millimetre.
   no hand was joined to its arm and whether a figure was one piece depended
   on which cells the squared parts shared: run 5's Orthanc had Saruman's
   raised right hand as a piece of its own. `minifig_probe`'s "one piece, as
-  the design checker reads it" holds it. For pieces only (not support, not
+  the design checker reads it" holds it. For pieces and for support (not
   overlaps), `Joints.pushed_in` also joins what is pushed into what without
   two connectors to pair: a bore no wider than a pin hole (6 LDU) whose middle
   another part's cover fills (anything in a hand's grip, a clip's eye, an
@@ -379,9 +379,11 @@ from a subpart under `s\` and a primitive the file carries, a brick on it; and
 two pieces of a hose LSynth drew (named LS and a number), end to end, the first
 on a 1 x 1 brick, held as one thing (`Flex.strung`). "Checked where it stands": a
 ski (a figure's part, read at the nearest square turn) turned 44 degrees on a
-plate and a 1 x 1 plate on its tip, held, where the check had put the ski square
-(`Assistant._joined_at` for everything nobody has moved: its cover, its studs,
-its joints, whether it is on the ground). "A retired number": 3139, whose stub
+plate, and a 1 x 1 brick put down beside it where the ski read square would be:
+it fits, and put down on the ski it is refused (`Assistant._joined_at` for
+everything nobody has moved: its cover, its studs, its joints, whether it is on
+the ground). And 6022's archer, his bow arm swung about the torso's line and not
+its own, holds his bow: the arm's peg is pushed into the torso, which holds. "A retired number": 3139, whose stub
 draws 3139b a quarter turn round, opens as 3139b where the stub puts it and saves
 and reopens there (`PartLibrary.moved_by`, `BrickWorld._place`); it needs a
 catalogue with `moved_by` (`tools/build_meshes.py`, the 68 stubs that turn or

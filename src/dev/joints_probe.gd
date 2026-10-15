@@ -377,6 +377,23 @@ func _initialize() -> void:
 	_ok(bool(beside["ok"]) and not bool(onto["ok"]) and str(onto["summary"]).contains("overlap"),
 		"a brick put down beside a ski turned 44 degrees fits (%s), and on the ski is refused (%s)"
 			% [beside["summary"], onto["summary"]])
+	# Where it stands, a figure's arm is where the file swung it: 6022's
+	# archer has his bow arm swung about the torso's line and not its own, so
+	# its peg is 8 degrees off the socket's and no round pairs them. Read
+	# square, it had rested on the torso; checked where it stands, the arm,
+	# its hand and the bow hung in the air. What is pushed into what holds.
+	_holds_standing("6022's archer, his bow arm swung about the torso's line, holds his bow", """
+1 0 10 -32 1 1 0 0 0 1 0 0 0 1 3815.dat
+1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3817.dat
+1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3816.dat
+1 4 10 -64 1 1 0 0 0 1 0 0 0 1 973p42.dat
+1 1 25.552 -55 1 0.985 0.17 0 -0.12 0.697 0.707 0.12 -0.697 0.707 3819.dat
+1 1 -5.552 -55 1 0.985 -0.17 0 0.17 0.985 0 0 0 1 3818.dat
+1 14 -13.688 -37.24 -8.884 0.985 -0.12 0.12 0.17 0.697 -0.697 0 0.707 0.707 3820.dat
+1 14 33.688 -49.431 -18.547 0.968 0.227 -0.11 -0.223 0.974 0.048 0.118 -0.022 0.993 3820.dat
+1 14 10 -92 1 0.986 0 -0.169 0 1 0 0.169 0 0.986 3626ap01.dat
+1 6 35.265 -47.365 -27.556 -0.062 0.192 -0.98 -0.22 0.955 0.201 0.974 0.227 -0.017 4499.dat
+""", 10)
 
 	print("\na retired number, where its stub puts the part it became")
 	# LDraw keeps a retired number as a stub that draws the new part; 68 of

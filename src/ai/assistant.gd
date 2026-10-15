@@ -11129,7 +11129,16 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var with_paths: Array = entries.map(func(entry: Array) -> Array:
 		var placement: Placement = model.placements[int(entry[0])]
 		return entry + [Assemblies.path_from(placement.group, placement.unit)])
-	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library)]:
+	# And what is pushed into what without a connector to pair: a carrot in
+	# a hand's grip, a spring in its hips, an arm's peg in its torso. It made
+	# a figure one piece and held none of it: an arm a file swings about the
+	# torso's line, not its own, has its peg 8 degrees off the socket's, and
+	# 6022's archer hung his bow arm in the air once the arm was checked where
+	# it stands (Joints.pushed_in).
+	var pushed: Dictionary = Joints.pushed_in(entries.filter(
+		func(entry: Array) -> bool: return cells_of.has(entry[0])),
+		_filled_by(cells_of, lattice))
+	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library), pushed]:
 		for index: Variant in held:
 			if not holds.has(index):
 				holds[index] = {}
@@ -12974,23 +12983,14 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 	for index: int in cells_of:
 		joined[index] = []
 	# And the joints, which support counts and this did not: a flag clipped
-	# to a lance was held up and yet a piece of its own.
+	# to a lance was held up and yet a piece of its own. With what is pushed
+	# into what (a carrot in a hand's grip, a cape round a neck), so a whole
+	# minifigure is one piece, as it is in the hand ([method _check]).
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
 			if joined.has(index) and joined.has(other):
 				joined[index].append(other)
 				joined[other].append(index)
-	# And what is pushed into what without a connector to pair: a carrot
-	# in a hand's grip, a spring in its hips, a cape round a neck. A whole
-	# minifigure is one piece, as it is in the hand. See
-	# [method Joints.pushed_in].
-	var pushed: Dictionary = Joints.pushed_in(_mating_entries(model).filter(
-		func(entry: Array) -> bool: return cells_of.has(entry[0])),
-		_filled_by(cells_of, lattice))
-	for index: Variant in pushed:
-		for other: Variant in pushed[index]:
-			if joined.has(index) and joined.has(other):
-				joined[index].append(other)
 	# What sits directly on each brick, asked as a slab across its top
 	# rather than cell by cell. A brick is nine thousand six hundred
 	# cells and each was a question for the lattice: free while a cell
