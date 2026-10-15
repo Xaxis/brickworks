@@ -2,6 +2,7 @@
 """Brickworks' designer on BrickBench's Model setting, run here and judged against BrickAgent.
 
     python3 tools/bench/brickbench.py prompts --upstream DIR    the ten prompts, the brief each is given
+                                              [--skip 10]       ...or the ten after them, held out
     python3 tools/bench/brickbench.py parts --upstream DIR      BrickNet's parts, as --parts-only reads them
     heavy python3 tools/bench/brickbench.py design [--tasks model-001,...] [--jobs 2]
     python3 tools/bench/brickbench.py export --python PY        model.mpd and build.py for each design
@@ -106,11 +107,14 @@ def batch_dir(date: str) -> Path:
 # -- the prompts and the parts -------------------------------------------
 
 
-def first_tasks(tasks_json: str, count: int = COUNT) -> list[dict]:
-    """The first `count` prompts of a setting, in the file's order, each with its brief."""
+def first_tasks(tasks_json: str, count: int = COUNT, skip: int = 0) -> list[dict]:
+    """`count` prompts of a setting after the first `skip`, in the file's order, each with its brief.
+
+    The first ten were the ones the designer was first measured on; `skip` 10
+    takes the next ten, held out from anything tuned on those."""
     tasks = json.loads(tasks_json)
     return [{"id": t["id"], "prompt": t["prompt"], "brief": brief_for(t["prompt"]),
-             "questions": len(t.get("questions", []))} for t in tasks[:count]]
+             "questions": len(t.get("questions", []))} for t in tasks[skip:skip + count]]
 
 
 def brief_for(prompt: str) -> str:
@@ -429,13 +433,15 @@ def subject_for(task: dict) -> suite.Subject:
 
 def do_prompts(args: argparse.Namespace, batch: Path) -> int:
     upstream = _upstream(args)
-    tasks = first_tasks((upstream / "benchmark" / SETTING / "tasks.json").read_text(), COUNT)
+    tasks = first_tasks((upstream / "benchmark" / SETTING / "tasks.json").read_text(), COUNT, args.skip)
     batch.mkdir(parents=True, exist_ok=True)
     commit = subprocess.run(["git", "-C", str(upstream), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True).stdout.strip()
     bench._write_json(batch / "prompts.json", tasks)
     bench._write_json(batch / "upstream.json", {"repository": "https://github.com/kulits/BrickAgent",
-                                                 "commit": commit, "chosen": "the first ten, in file order"})
+                                                 "commit": commit,
+                                                 "chosen": "the first ten, in file order" if not args.skip
+                                                 else f"ten in file order after the first {args.skip}, held out"})
     for t in tasks:
         print(f"{t['id']}  {t['prompt']}")
     return 0
@@ -758,6 +764,8 @@ def main() -> int:
     parser.add_argument("--upstream", default="", help="a clone of BrickAgent")
     parser.add_argument("--python", default="", help="a Python with brickagent and pybullet")
     parser.add_argument("--tasks", default="", help="task ids, comma-separated; all ten if not said")
+    parser.add_argument("--skip", type=int, default=0,
+                        help="prompts: the ten after the first SKIP (10: model-011 to model-020)")
     parser.add_argument("--jobs", type=int, default=2, help="designs (at most 2) or judge calls at once")
     parser.add_argument("--timeout", type=int, default=2700, help="seconds a design may take")
     parser.add_argument("--which", default="ours,theirs", help="verify: ours, theirs or both")

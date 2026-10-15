@@ -449,6 +449,10 @@ class Placement extends RefCounted:
 	var standing_at: Variant = null
 	## The part that stands there, which an edit may change.
 	var standing_part: String = ""
+	## LDU past the 2 LDU lattice cell x, y and z put it in, for a part seated
+	## on a connector the cells cannot say (ExactCheck.seat): a round part's
+	## stud an LDU off the cell its corner falls in.
+	var nudge := Vector3.ZERO
 
 	## Where the exact check takes this to be: where it stands while it is
 	## standing and unmoved, else [param built] (where it will be built).
@@ -11784,29 +11788,27 @@ func _seat_exactly(model: Model, exact: ExactCheck) -> String:
 	var said := PackedStringArray()
 	for index: int in moved:
 		var move: Vector3 = moved[index]
-		var cells: Vector3 = move / BrickLattice.CELL
-		if not cells.is_equal_approx(cells.round()):
-			# Not a whole cell: a placement cannot say it. Put back.
-			var placement: Placement = model.placements[index]
-			exact.place(index, placement.part, _transform(placement,
-				library.mesh_for(placement.part), model.section_for(placement)))
-			continue
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		var at: Transform3D = _transform(placement, part).translated(move)
 		var corner: Vector3i = _corner_cell(part, placement.part, at.basis)
-		var want: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.5) + corner
-		var was := Vector3(placement.x, placement.y, placement.z)
-		# The cell's own number of studs and plates, which a whole stud is
-		# written as; nudged into the cell only where the float would floor
-		# to the one before it.
-		placement.x = _into_cell(want.x, STUD)
-		placement.y = _into_cell(want.y, PLATE)
-		placement.z = _into_cell(want.z, STUD)
+		# The cell the seated origin is in, written as its own number of studs
+		# and plates, and the rest of the way as a nudge: whole cells for a
+		# move of whole cells, an LDU over for a round part's odd stud.
+		var cell: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.001)
+		var was := [placement.x, placement.y, placement.z, placement.nudge]
+		placement.x = _into_cell(cell.x + corner.x, STUD)
+		placement.y = _into_cell(cell.y + corner.y, PLATE)
+		placement.z = _into_cell(cell.z + corner.z, STUD)
+		placement.nudge = Vector3.ZERO
+		placement.nudge = at.origin - _transform(placement, part).origin
+		if placement.nudge.length() < 0.001:
+			placement.nudge = Vector3.ZERO
 		if not _transform(placement, part).origin.is_equal_approx(at.origin):
-			placement.x = was.x
-			placement.y = was.y
-			placement.z = was.z
+			placement.x = was[0]
+			placement.y = was[1]
+			placement.z = was[2]
+			placement.nudge = was[3]
 			exact.place(index, placement.part, _transform(placement, part))
 			continue
 		if said.size() < WORTH_SAYING:
@@ -11947,6 +11949,11 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		pieces[root[index]] = members
 	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
 	for key: Variant in pieces:
+		# Standing square on what is under it, clear of everything, it stays
+		# where it is when the model stands, as BrickBench's simulation finds
+		# it; that it comes away in the hand the loose advice says.
+		if exact.rests(pieces[key]):
+			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 
 
@@ -15040,7 +15047,7 @@ func _square_transform(placement: Placement,
 	var corner: Vector3i = _corner_cell(part, placement.part, basis)
 	var want := BrickLattice.to_cell(Vector3(
 		placement.x * STUD, placement.y * PLATE, placement.z * STUD))
-	return Transform3D(basis, BrickLattice.to_ldu(want - corner))
+	return Transform3D(basis, BrickLattice.to_ldu(want - corner) + placement.nudge)
 
 
 # -- applying ------------------------------------------------------------

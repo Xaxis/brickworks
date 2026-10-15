@@ -16,10 +16,10 @@
 ## is asked of the studs under the part, not of the grid.
 ##
 ## Since 2026-10-14 (ExactCheck) a part a few LDU off its studs is seated on
-## them as it is checked, and one resting on a smooth face with nothing
-## joining it is a fault, as BrickBench's check has it. The thing this
-## probe still guards hardest is that it stays quiet about the eight models
-## that ship with the app, which are known good.
+## them as it is checked; one standing square on a smooth face is still
+## advice, since it stays where it is, as BrickBench's simulation finds. The
+## thing this probe guards hardest is that it stays quiet about the eight
+## models that ship with the app, which are known good.
 extends SceneTree
 
 var _failures: int = 0
@@ -178,11 +178,9 @@ func _check_smooth(assistant: Assistant) -> void:
 	print("\nstanding something on a face with nothing to grip it")
 	var tile: Dictionary = _stack(assistant, "3068b", "3003", 0.0, 1.0)
 	_ok(tile["smooth"], "a brick on a 2x2 tile is told the tile grips nothing")
-	# A fault now, as BrickBench's check has it: nothing joins it, so it
-	# falls off when the model is lifted, and its simulation lets it fall.
-	_ok(not tile["ok"] and str(tile["said"]).contains("not held")
-			and str(tile["said"]).contains("rests on"),
-		"...and it is not held, so the design is refused until something joins it")
+	# Standing square on the tile it stays, as BrickBench's simulation finds:
+	# advice, not a fault (ExactCheck.rests).
+	_ok(tile["ok"], "...and it is advice, so the design still passes")
 
 	var brick: Dictionary = _stack(assistant, "3003", "3003", 0.0, 3.0)
 	_ok(not brick["smooth"], "a brick on a brick is not")

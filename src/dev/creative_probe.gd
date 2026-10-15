@@ -96,9 +96,11 @@ func _run() -> void:
 		"...small and joined, never at the likeness's cost")
 	_ok(brief.contains("What it has now: no figure, no creature, no printed part, "
 		+ "nothing that hinges or turns."), "...with what the model has of touches already")
-	_ok(brief.contains("\"lid or hatch raised on hinges\"") and brief.contains("\"small creature\"")
-		and brief.contains("\"display stand with a nameplate\""),
-		"...and the creative touches group's worked techniques by name")
+	# Not the hinged lid, withdrawn until it is read again from its set: as
+	# written its hinge tops fold into their bases (Techniques.WITHDRAWN).
+	_ok(brief.contains("\"small creature\"") and brief.contains("\"display stand with a nameplate\"")
+		and not brief.contains("\"lid or hatch raised on hinges\""),
+		"...and the creative touches group's worked techniques by name, none withdrawn")
 	_ok(_said("the creative pass: proposing touches for it"), "the progress line says so")
 
 	print("\nit proposes three and adds the best: a frog on a jumper, on the bank")

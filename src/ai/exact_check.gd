@@ -29,9 +29,13 @@ extends RefCounted
 ## off its stud, docs/BRICKBENCH.md), and a tile stood on a side stud a plate
 ## (8) off it; a jumper's half stud (10) is a placement on purpose.
 const SEAT_REACH := 8.0
-## How near a ground counts as on it, in LDU (verify.py: 0.01, after
-## its own rounding; our parts stand on whole cells).
-const ON_GROUND := 0.5
+## How near the ground counts as on it, in LDU: as near as a part counts as
+## touching another (TOUCH), since a piece that much above the floor drops
+## onto it, which BrickBench's simulation lets pass. A skeleton's feet are
+## drawn an LDU or two above where its cover meets the floor.
+const ON_GROUND := 2.5
+## How near the ground a part stands on it, which a seat never moves it off.
+const STANDS := 0.5
 ## A mate this far off is said as the fix for a collision, in LDU.
 const FIX_REACH := 24.0
 
@@ -192,9 +196,96 @@ func pieces(extra: Array, among: Dictionary = {}) -> PackedInt32Array:
 	return root
 
 
-## The ground: y = 0, the floor every model stands on here.
-func on_ground(i: int) -> bool:
-	return items[i] != null and (items[i] as Exact.Item).lo.y <= ON_GROUND
+## The ground: y = 0, the floor every model stands on here. Within ON_GROUND
+## a piece is held by it; [param within] 0.5 asks whether a part stands on
+## it, which a seat never moves off it.
+func on_ground(i: int, within: float = ON_GROUND) -> bool:
+	return items[i] != null and (items[i] as Exact.Item).lo.y <= within
+
+
+## Whether a piece of [param members] that nothing joins stands where it is,
+## as BrickBench's simulation would leave it (two seconds of gravity, every
+## piece a rigid body, friction high): clear of everything by its real shape,
+## and its centre of mass over where it touches what is under and beside it,
+## read off the parts' own convex pieces rather than their boxes. A dish lying
+## on a round brick stands, and a log in the groove of two below it; a tile
+## half off a round plate's edge, one flat against a wall and a gem on a
+## slope do not.
+func rests(members: Array) -> bool:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	var mass: float = 0.0
+	var middle := Vector3.ZERO
+	var touching := PackedVector3Array()
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null or not item.shape.has_pieces():
+			return false
+		for p: Exact.Piece in item.shape.pieces:
+			var box: Array = Exact.box_in(p.lo, p.hi, item.at)
+			var size: Vector3 = (box[1] as Vector3) - (box[0] as Vector3)
+			var weight: float = maxf(size.x * size.y * size.z, 0.001)
+			mass += weight
+			middle += ((box[0] as Vector3) + (box[1] as Vector3)) * 0.5 * weight
+		for j: int in Exact._near(items, int(i), PackedInt32Array(), TOUCH + Exact.TAU):
+			if mine.has(j) or items[j] == null:
+				continue
+			var found: Variant = between(int(i), j)
+			if found is Dictionary and not (found as Dictionary).is_empty():
+				return false
+			_touching(item, items[j], touching)
+	if touching.size() < 3 or mass <= 0.0:
+		return false
+	var centre: Vector3 = middle / mass
+	var under := PackedVector2Array()
+	var below: bool = false
+	for point: Vector3 in touching:
+		under.append(Vector2(point.x, point.z))
+		below = below or point.y < centre.y
+	return below and Geometry2D.is_point_in_polygon(Vector2(centre.x, centre.z),
+		Geometry2D.convex_hull(under))
+
+
+## How near two parts' surfaces count as touching, LDU: a piece this far
+## above what it would rest on drops onto it, which BrickBench's simulation
+## lets pass as long as nothing moves more than 3 LDU.
+const TOUCH := 2.5
+
+
+## The points where items [param a] and [param b] touch, into [param out]:
+## each corner of a piece of one within TOUCH of a piece of the other.
+static func _touching(a: Exact.Item, b: Exact.Item, out: PackedVector3Array) -> void:
+	var to_a: Transform3D = a.at.affine_inverse()
+	var to_b: Transform3D = b.at.affine_inverse()
+	for pa: Exact.Piece in a.shape.pieces:
+		var box_a: Array = Exact.box_in(pa.lo, pa.hi, a.at)
+		for pb: Exact.Piece in b.shape.pieces:
+			var box_b: Array = Exact.box_in(pb.lo, pb.hi, b.at)
+			var lo: Vector3 = (box_a[0] as Vector3).max(box_b[0])
+			var hi: Vector3 = (box_a[1] as Vector3).min(box_b[1])
+			if hi.x - lo.x < -TOUCH or hi.y - lo.y < -TOUCH or hi.z - lo.z < -TOUCH:
+				continue
+			for v: Vector3 in pb.verts:
+				var w: Vector3 = b.at * v
+				if _outside(pa, to_a * w) <= TOUCH:
+					out.append(w)
+			for v: Vector3 in pa.verts:
+				var w: Vector3 = a.at * v
+				if _outside(pb, to_b * w) <= TOUCH:
+					out.append(w)
+
+
+## How far point [param x] (in the piece's own frame) is outside convex piece
+## [param p], by its faces; its box for a piece with none.
+static func _outside(p: Exact.Piece, x: Vector3) -> float:
+	if p.normals.is_empty():
+		var past: Vector3 = (p.lo - x).max(x - p.hi)
+		return maxf(past.x, maxf(past.y, past.z))
+	var worst: float = -INF
+	for k: int in p.normals.size():
+		worst = maxf(worst, p.normals[k].dot(x) - p.spans[2 * k + 1])
+	return worst
 
 
 ## What item [param i] rests on, the highest thing under it: an item index
@@ -333,7 +424,7 @@ func _only_kind(i: int, kind: int) -> bool:
 ## the hole goes onto the part with the stud (a hat onto a head, a crystal onto
 ## its plate, never the plate onto the crystal); otherwise the smaller goes.
 func _moves_onto(i: int, mine: int, onto: int, movable: Dictionary, moved: Dictionary) -> bool:
-	if not movable.has(onto) or moved.has(onto) or on_ground(onto):
+	if not movable.has(onto) or moved.has(onto) or on_ground(onto, STANDS):
 		return true
 	var kind: int = (items[i] as Exact.Item).shape.kind[mine]
 	if kind == Exact.STUD:
@@ -392,6 +483,88 @@ static func _n(value: float) -> String:
 	return str(value).trim_suffix(".0")
 
 
+## The pieces of [param wanted] that no connection joins to anything outside
+## them, each moved whole where a move of up to SEAT_REACH seats one of its
+## connectors on a part outside it, joins it there and runs it into nothing
+## it was not in already: into [param moved], as the seat does a part.
+func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> void:
+	var among := PackedInt32Array()
+	var around: Dictionary = wanted.duplicate()
+	for i: Variant in near:
+		for j: int in (near[i] as PackedInt32Array):
+			around[j] = true
+	for i: Variant in around:
+		among.append(int(i))
+	among.sort()
+	var edges: Array = Exact.connections(items, among)
+	var root: PackedInt32Array = Exact.pieces(items.size(), edges)
+	var groups: Dictionary = {}       ## root -> its members, if every one may move
+	var fixed: Dictionary = {}        ## roots with a member that may not move
+	for i: int in among:
+		if items[i] == null:
+			continue
+		if not wanted.has(i) or on_ground(i, STANDS):
+			fixed[root[i]] = true
+			continue
+		var members: Array = groups.get(root[i], [])
+		members.append(i)
+		groups[root[i]] = members
+	for key: Variant in groups:
+		var members: Array = groups[key]
+		if fixed.has(key) or members.size() < 2:
+			continue
+		var mine: Dictionary = {}
+		for i: Variant in members:
+			mine[int(i)] = true
+		var best: Dictionary = {}
+		for i: Variant in members:
+			var outside := PackedInt32Array()
+			for j: int in (near.get(int(i), PackedInt32Array()) as PackedInt32Array):
+				if not mine.has(j):
+					outside.append(j)
+			if outside.is_empty():
+				continue
+			var found: Dictionary = Exact.seat_move(items, int(i), SEAT_REACH, 0.0, outside)
+			if not found.is_empty() and (best.is_empty()
+					or float(found["residual"]) < float(best["residual"])):
+				best = found
+				best["at"] = int(i)
+		if best.is_empty() or float(best["residual"]) < 0.05:
+			continue
+		var move: Vector3 = best["move"]
+		var was: Dictionary = {}
+		for i: Variant in members:
+			was[int(i)] = items[int(i)]
+			items[int(i)] = Exact.Item.new((items[int(i)] as Exact.Item).shape,
+				(items[int(i)] as Exact.Item).at.translated(move))
+		# Into nothing it was not in already, and joined outside itself once there.
+		var good: bool = true
+		for i: Variant in members:
+			for j: int in Exact._near(items, int(i), among, Exact.TAU):
+				if mine.has(j) or items[j] == null:
+					continue
+				if not Exact.clash(items[int(i)], items[j]).is_empty() \
+						and Exact.clash(was[int(i)], items[j]).is_empty():
+					good = false
+					break
+			if not good:
+				break
+		var joined: bool = false
+		if good:
+			var these := PackedInt32Array(among)
+			for edge: Array in Exact.connections(items, these):
+				if mine.has(int(edge[0])) != mine.has(int(edge[2])):
+					joined = true
+					break
+		if not good or not joined:
+			for i: Variant in members:
+				items[int(i)] = was[int(i)]
+			continue
+		_asked.clear()
+		for i: Variant in members:
+			moved[int(i)] = move
+
+
 ## Whether a connector of item [param i] meets another part's exactly, by
 ## [param points] (the connectors of every item by their point to the LDU).
 func _meets_exactly(i: int, points: Dictionary) -> bool:
@@ -423,10 +596,11 @@ func unheld_said(members: Array, name: Callable) -> String:
 		who += " and %d part%s joined to it" % [rest, "" if rest == 1 else "s"]
 	var where: String = "rests on %s without a connection" % name.call(on) if on >= 0 \
 		else "touches nothing that holds it"
-	return ("%s %s: no stud, clip, hinge or axle joins it to the rest, so it falls off "
-		% [who, where] + "when the model is picked up (and BrickBench's check lets it fall). "
-		+ "Put it on a stud or in a clip, or under something that clutches it; "
-		+ "attachment_points lists where a part joins.")
+	return ("%s %s: no stud, clip, hinge or axle joins it to the rest, and it does not "
+		% [who, where] + "stand square where it is (its weight is past what is under it, it "
+		+ "leans on a slope or a side, or it runs into something), so it falls — BrickBench's "
+		+ "check lets it fall. Put it on a stud or in a clip, or under something that "
+		+ "clutches it; attachment_points lists where a part joins.")
 
 
 # -- seating --------------------------------------------------------------
@@ -486,7 +660,7 @@ func _seat(movable: Array) -> Dictionary:
 		if found.is_empty():
 			continue
 		var onto: int = int(found["item"])
-		if on_ground(i) or not _moves_onto(i, int(found["mine"]), onto, wanted, moved):
+		if on_ground(i, STANDS) or not _moves_onto(i, int(found["mine"]), onto, wanted, moved):
 			continue
 		var was: Exact.Item = items[i]
 		var move: Vector3 = found["move"]
@@ -505,6 +679,11 @@ func _seat(movable: Array) -> Dictionary:
 			continue
 		_asked.clear()
 		moved[i] = move
+	# A piece of them joined to each other and to nothing else, the whole of
+	# it off by a few LDU (a log pile built on its own and set down a fifth of
+	# a stud off its base): moved together, by the move that seats the nearest
+	# of its connectors on another part's.
+	_seat_pieces(wanted, near, moved)
 	# A pin through the middle of a hole, its collar inside it (a pin's middle
 	# put at the hole's middle, as a placement by its line does): slid along
 	# its line, a whole cell at a time, until a half of it is in the hole and
