@@ -25,7 +25,7 @@
 ## posed arms standing. And attachment_points says the addresses.
 ##
 ## On code without attach (7740d22) every placement lands at its corner, 0, 0,
-## 0, and every pose case fails.
+## 0, and all 43 checks fail.
 ##
 ## --out=DIR writes each case's design as DIR/<case>.ldr, for BrickBench's own
 ## verify.py (tools/bench/brickbench.py has the export).

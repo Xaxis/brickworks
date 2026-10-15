@@ -819,6 +819,253 @@ larger part.
 - **Creativity** fell on the held-out ten where unasked figures had been
   its source.
 
+## 2026-10-15: parts put on each other by their connectors
+
+The lean and exact work left one gap the "what is left" lists named first:
+our sessions placed every part by its low corner on a 2 LDU lattice, and
+BrickAgent's place them connector to connector. A clip on a bar, an arm on a
+shoulder at 30 degrees, a head on its neck are each the joint arithmetic a
+session gets wrong when it has to say a corner, so ours built none of them:
+0% clips, bars, balls and hinges on the held-out characters, against
+BrickAgent's 4%. This gives our designer BrickAgent's attach (`f64620b`;
+`9e147ef` after the bench says, in a refusal, which connectors do mate).
+
+### What a session says
+
+Any brick of submit_design, check_design or edit_model may say, instead of
+x, y, z, face and rot:
+
+```json
+{"part": "3818", "color": 15, "name": "right arm",
+ "attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}}
+```
+
+- `to` is the part it goes on and that part's connector: a part of the same
+  call by its `name`, one named in an earlier call (the name is kept with the
+  world), a section of one by its name, or a brick standing by its number,
+  `"#41.stud[3]"`.
+- A connector is addressed as BrickAgent addresses it: its type (a stud's,
+  a hole's or an axle's subtype: stud, open, hole, tube, post, axle, cross,
+  pin, socket, bar, clip; else hinge, ball, fixed) and its place among that
+  type in BrickNet's order. They are BrickNet's own labels, read off the exact
+  shapes the check already has; a part BrickNet does not have uses the
+  catalogue's studs, tubes, pins, axles, bars, clips and balls.
+- `by` is the new part's own connector, left out when only one fits.
+- `yaw` turns it about the joint's axis: a hinge's or a clip's angle, an
+  arm's swing. `flip` turns an axle, bar or hinge joint end for end, `slide`
+  moves it along an axle, `align` points one of the part's directions along
+  one of the model's, and `orient` gives its whole orientation, which a ball
+  takes any of and a hinge, clip or axle only about its own line.
+- On a ball, `align` points the part that way whatever the ball's axis
+  (`["-x", [0, -0.5, 0.87]]`: out along +z and 30 degrees down). BrickAgent's
+  align turns about the joint's axis alone, which on a ball standing up
+  cannot lift an arm.
+
+### What the app does with it
+
+- **The pose is BrickAgent's.** `src/assembly/attach.gd` is
+  `brickagent.joints.placement` (MIT) in the app's frame: the target's
+  connector frame, turned by yaw (and flipped), times the inverse of the
+  source's. A pin in its socket said with no slide is slid, a whole LDU at a
+  time, to the least slide that clears it of the part it goes in by their
+  exact shapes, where BrickAgent reads a collar table: a minifigure's head
+  comes to rest on the torso's top, as BrickAgent seats it.
+- **It is written as a placement the rest of the app reads.** Square to the
+  part it goes on, it is a placement in that part's frame with what lies past
+  the lattice cell as a nudge (a leg on its hips, a plate on a side stud).
+  Turned off the square, it is a section of one, named for the part, within
+  the section of the part it goes on, so a hand goes where its arm goes. The
+  nudge is now kept with a section's bricks across edits, as the corner was.
+- **The check holds it by its joint.** A part attached by a clip, a hinge or
+  a ball at an angle is a joint the lattice's cells cannot see; it is held by
+  the part it went on wherever BrickNet's labels still join the two, and a
+  leaning section is held by any such joint that is not a stud. The exact
+  check judges everything else as before: collisions by the real shapes,
+  pieces by BrickNet's connections.
+- **What it cannot do it says**, and builds nothing somewhere else instead:
+  a connector the part does not have, two that do not mate, a name nothing
+  has, an orientation that would tilt a hinge's axis, a part with neither a
+  corner nor an attach. Since `9e147ef` a refusal also says which pairs of
+  the two parts' connectors do mate, the nearest first: a bench session
+  asked for a flame's bar in a round brick's hollow stud ("open"), and the
+  same spot is the brick's clip.
+- **attachment_points says every connector by its address** with where it
+  is and the way it points (`near=` lists those by a point); look_at_model
+  says each part's name; mirror leaves attached parts to each side's own.
+
+### Worked techniques
+
+show_technique gains a group, "figures and joints", each built and checked
+by `techniques_probe` as every technique is, and each laid in one call by
+place_technique with the technique's name:
+
+| technique | joint | parts |
+|---|---|---|
+| posed minifigure | hips, legs, arms, hands, neck, hat, a tool in a hand | 12 |
+| limb on a clip | a bar in a clip, flipped and turned | 4 |
+| ball shoulder | a ball, aimed with align | 4 |
+| head on a neck | a ball, the head on the socket plate | 6 |
+| tail on a bar | a clip on a bar | 4 |
+| hinged wing | click hinge plates, the wing on them | 4 |
+
+The guide's FIGURES section points at them in one line, and the head's step 2
+says "on joints (attach; read_guide "figures")".
+
+### The proof: seated where BrickAgent seats them, and valid by verify.py
+
+`src/dev/by_connector_probe.gd` builds one case a joint kind as a design
+says it, and asks three things of each: that every part lands where
+BrickAgent's own `attach` puts it (the poses below were printed by
+brickagent b3df55e, MIT, for the same calls), that BrickNet's labels join
+each part to the one it went on and its colliders find no two parts more
+than 1 LDU into each other, and that our whole check passes the design.
+
+| case | joint | off BrickAgent's pose | joined, clear | our check | verify.py |
+|---|---|---|---|---|---|
+| a brick on a stud, turned a quarter | stud and hole | 0.0000 LDU | yes | passes | valid |
+| a round plate on a side stud | open stud and tube | 0.0000 LDU | yes | passes | valid |
+| a bar in a clip, slid 4 LDU and turned 30 degrees | bar and clip | 0.0004 LDU | yes | passes | valid |
+| a ball in its socket, swung 150 degrees | ball | 0.0004 LDU | yes | passes | valid |
+| a hinge opened 30 degrees | click hinge | 0.0003 LDU | yes | passes | valid |
+| the same hinge folded the way it does not open | click hinge | 0.0003 LDU | overlaps | refused, named as the hinge | (BrickAgent's check refuses it too) |
+| an axle through a beam, slid 32 LDU | axle and pin hole | 0.0000 LDU | yes | passes | valid |
+| a minifigure on a plate: legs on the hips, the torso on its fixed joint, arms swung 240 and 230 degrees, hands, the head turned 20 degrees on its neck, a hat, an axe in a hand | hinges, fixed, pin and socket, open stud, bar and clip | 0.001 LDU | yes | passes | valid |
+
+verify.py is BrickBench's own, run on each case exported by
+`brickbench.py`'s `export_one`: all seven valid, one piece each, no
+collisions, nothing unstable. Through the tools as a session uses them,
+submit_design stands a figure, edit_model hangs hands on arms named in that
+design and a hat on its head by number, a later edit passes with the posed
+arms standing, and read back every part is written where it stands. Six
+refusals say why, and the last says what does mate. On the code before this
+(7740d22, the lean and exact merge) all 43 of the probe's checks fail: every
+part said by its connectors lands at 0, 0, 0.
+
+### The controlled comparison, on ten more held-out prompts
+
+**The prompts.** model-041 to model-050, the ten after the first forty in
+file order, used by no run before: a puzzle cube with its top layer turned,
+a potato toy, a balloon dog, a toilet with a head, a paperclip with eyes, an
+armchair that hugs a pillow, a dumpster on fire, a lava lamp, a seated
+statue of a thinking man, a pinball machine. Characters and things.
+
+**The two arms.**
+- **lean**: the merged lean and exact tree (`7740d22`), as it was.
+- **attach**: the same with attach (`f64620b`).
+
+Each ran from a `git archive` of its commit with the same private catalogue
+(exact's shapes linked in), two designs a prompt, two at a time, on the
+subscription, kept to BrickNet's 14,441 parts: 40 designs. Every design was
+checked by their `verify.py`, drawn by our renderer from the same four
+cameras, and judged by our pairwise judge against every other design of its
+prompt and BrickAgent's: 200 verdicts, both orders of every pair
+(`bench/results/brickbench-2026-10-15-attach`; the commands are those under
+"Repeat it" with `prompts --start 41`, `--arm lean` and `--arm attach`, each
+`--app` an archive of its commit, and `compare --arms lean,attach`).
+
+| dimension | lean ELO (95%) | attach ELO (95%) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| likeness | 802 (590-903) | 868 (679-966) | 1330 (1197-1609) |
+| surface | 886 (674-962) | 917 (701-1000) | 1197 (1070-1591) |
+| colour | 913 (739-988) | 890 (727-962) | 1197 (1084-1589) |
+| technique | 862 (679-945) | 874 (679-951) | 1264 (1133-1592) |
+| creativity | 886 (783-950) | 850 (760-908) | 1265 (1188-1402) |
+| buildability | 966 (883-1031) | 1040 (966-1113) | 994 (896-1091) |
+| **overall** | **811 (622-903)** | **860 (670-948)** | **1329 (1197-1600)** |
+
+Bradley-Terry over the arms, as their `elo.py` fits systems; the intervals
+resample the ten prompts with all their verdicts. Our judge, not BrickBench's.
+
+| head to head | verdicts for attach | 95% | prompts attach won every time / split / lost |
+|---|---|---|---|
+| attach vs lean, overall | 46 of 80 (58%) | 47-68% | 2 / 7 / 1 |
+| attach vs lean, likeness | 48 of 80 (60%) | 49-70% | 3 / 6 / 1 |
+| attach vs lean, technique | 42 of 80 (52%) | 42-63% | 1 / 8 / 1 |
+| attach vs lean, surface | 43 of 80 (54%) | 43-64% | 1 / 9 / 0 |
+| attach vs BrickAgent, overall | 2 of 40 (5%) | 1-17% | 0 / 1 / 9 |
+| lean vs BrickAgent, overall | 2 of 40 (5%) | 1-17% | 0 / 1 / 9 |
+
+| arm | valid (verify.py) | parts | stacked | plain | shaped | tiles | joints (median / pooled) | parts off the square |
+|---|---|---|---|---|---|---|---|---|
+| lean | 16 of 20 | 194.5 | 58% | 55% | 35% | 12% | 0% / 0.6% | 9.8%, in 9 builds |
+| attach | **17 of 20** | 124 | 62% | 54% | 39% | 12% | 0% / 0.8% | 12.6%, in 7 builds |
+| BrickAgent | 10 of 10 | 174.5 | 42% | 32% | 44% | 26% | 1% / 1.2% | 26.2%, in 6 builds |
+
+Medians over each arm's builds (`brickbench.py compare`); pooled is every
+build's parts together; off the square is any part not on one of the 24
+square orientations. On these prompts BrickAgent's own joint share is 1%,
+not the 4% of its characters (model-031 to 040): only the toilet's head, the
+armchair, the dumpster and the paperclip call for a joint at all.
+
+**What the sessions did with it**, from their Claude Code transcripts:
+- **7 of 20 sessions attached parts, 211 of the 2,867 bricks they sent**,
+  none in the other arm. All of it was what the corner could not say: a flame
+  on a round brick's hollow stud turned to its own angle (the dumpster, 80
+  and 93 parts), tooth plates aimed out of an armchair's side studs as
+  eyelashes (20), jumper plates turned 15 degrees on a paperclip's studs as
+  raised eyebrows (12), eyes on side studs.
+- **No session asked for the new techniques by name**, and none posed a
+  figure on its joints: the statue was a shape and a stack in both arms, the
+  balloon dog a stack of round parts. These prompts sent most sessions to the
+  shape patterns (8 of 20 read "shapes"); one read "figures", and its one
+  line did not move it.
+- **Six answers refused an attach**, all in the dumpster's two sessions, each
+  fixed on the next call: a bar asked into a round brick's hollow stud, which
+  takes a stud's kind (the same spot is its clip, which a bar goes in; the
+  refusal says so now, `9e147ef`), a stud on a part that has an open one.
+- **Where it was used, the judge preferred it**: 8 of 8 verdicts for the
+  dumpster, 7 of 8 for the armchair. Where it was not, the two arms traded
+  prompts as two runs of one arm do (the balloon dog 0 of 8, the pinball
+  machine 8 of 8, neither with an attached part).
+
+**What it did.**
+- **Validity held and edged up**: 17 of 20 against 16, against their 10 of
+  10. Of the three that failed, two have a piece our check called standing
+  that verify.py's simulation moved more than 3 LDU (a dish resting on a
+  round plate; a trash can lying on its side, which rolled); the third is a
+  flame against a tipped lid that verify.py counts as a collision and our
+  exact check (exact_dump) does not. All three are the exact check's to
+  close; none was an attached part off its seat.
+- **The judge leaned to it, not past the noise on overall**: 58% of the 80
+  verdicts between the arms, 47-68%; likeness just clear, 60% (49-70%);
+  buildability up 74 ELO. Neither arm won more than 2 of 40 against
+  BrickAgent.
+- **The vocabulary barely moved**: shaped 39% against 35%, parts off the
+  square 12.6% against 9.8%, against BrickAgent's 44% and 26%. Joints are a
+  little of each arm's builds and of theirs on these prompts.
+
+### No regression on big subjects
+
+The car and the fire truck went through `tools/bench/run.py` on the attach
+code (`9e147ef`), two designs each, as round `2026-10-15-attach`, and were
+judged in pairs against every design of their subject from every round.
+All four sessions put a few parts by their connectors (1 to 8).
+
+| subject | 1-10 mean, run 1 / run 2 | the figures round's | pairwise ELO, run 1 / run 2 | the figures round's | against the figures round's designs, overall |
+|---|---|---|---|---|---|
+| car (speed_champions) | 4.17 / 4.33 | 4.17 / 4.17 | 872 / 1162 | 997 / 979 | 5 of 8 (31-86%) |
+| fire truck | 6.00 / 6.33 | 6.67 / 6.67 | 965 / 1251 | 965 / 1198 | 5 of 8 (31-86%) |
+
+Against the cabins round they won 4 of 8 (car) and 5 of 8 (fire truck).
+The run-to-run spread is wider than any of it: the car's two designs are
+290 ELO apart. No regression; no gain shown either. The tables are in
+[DESIGN_SCORES.md](DESIGN_SCORES.md).
+
+### What is left
+
+- **Figures on joints.** The tool is there and exact; the sessions use it for
+  details, not for a figure's limbs. The guide sends a character to "figures"
+  and three in twenty read it. What would move it is guidance in the answers
+  a session reads anyway: check_design's reply on a character naming the
+  joint techniques, or plan_scale's figure answer laying a posed minifigure
+  in one call (place_technique "posed minifigure").
+- **The exact check's last gaps**, from verify.py's three failures above: a
+  piece joined to nothing that it calls standing and the simulation moves,
+  and one collision at an angle it does not find.
+- **variety_probe** waits more than 20 minutes on a 535-part check with every
+  part at the origin, on `7740d22` as here: the exact check asks every pair.
+  face, rooms, detail and print fail on `7740d22` too (exact's "left").
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is

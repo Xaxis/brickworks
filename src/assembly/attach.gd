@@ -273,20 +273,21 @@ static func source_for(points: Array, target: Point, type: String, index: Varian
 			if fits.size() == 1:
 				chosen = fits[0]
 		if not compatible(target, chosen):
-			return {"error": "its %s does not fit a %s: a %s takes %s" % [chosen.said(),
-				target.said(), target.type, takes(target.type)]}
+			return {"error": "has %s%s, which does not fit %s: %s takes %s" % [chosen.address(),
+				chosen.said().trim_prefix(chosen.type), _a(target.said()), _a(target.type),
+				takes(target.type)]}
 		return {"point": chosen}
 	var fits: Array = points.filter(func(p: Point) -> bool: return compatible(target, p))
 	if fits.size() == 1:
 		return {"point": fits[0]}
 	if fits.is_empty():
-		return {"error": "has nothing that fits a %s (a %s takes %s); it has %s" % [
-			target.said(), target.type, takes(target.type), listing(points)]}
+		return {"error": "has nothing that fits %s (%s takes %s); it has %s" % [
+			_a(target.said()), _a(target.type), takes(target.type), listing(points)]}
 	var names := PackedStringArray()
 	for p: Point in fits.slice(0, 6):
 		names.append(p.address())
-	return {"error": "has %d connectors that fit a %s; say which with by: %s%s" % [fits.size(),
-		target.type, ", ".join(names), "..." if fits.size() > 6 else ""]}
+	return {"error": "has %d connectors that fit %s; say which with by: %s%s" % [fits.size(),
+		_a(target.type), ", ".join(names), "..." if fits.size() > 6 else ""]}
 
 
 ## The pairs of connectors that do mate, said as attach takes them: each of
@@ -312,6 +313,11 @@ static func mates_said(theirs: Array, mine: Array, ref: String, near: Point = nu
 		said.append(str(row[1]) + (" (the same spot)" if near != null and float(row[0]) < 1.0
 			else ""))
 	return "; what does mate: " + "; ".join(said)
+
+
+## A word with its article: "a stud", "an open".
+static func _a(word: String) -> String:
+	return ("an " if "aeiou".contains(word.left(1)) else "a ") + word
 
 
 ## A part's connectors in a line: "8 stud, 8 hole, 3 tube".
@@ -353,8 +359,8 @@ static func direction(said: Variant) -> Variant:
 ## their axis, a fixed joint none).
 static func pose(target: Transform3D, a: Point, b: Point, options: Dictionary = {}) -> Dictionary:
 	if not compatible(a, b):
-		return {"error": "a %s does not take a %s: a %s takes %s" % [a.said(), b.said(), a.type,
-			takes(a.type)]}
+		return {"error": "%s does not take %s: %s takes %s" % [_a(a.said()), _a(b.said()),
+			_a(a.type), takes(a.type)]}
 	var angle: float = float(options.get("yaw", 0.0))
 	var offset: float = float(options.get("slide", 0.0))
 	var flip: Variant = options.get("flip")

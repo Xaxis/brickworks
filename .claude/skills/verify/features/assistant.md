@@ -2214,7 +2214,7 @@ godot --headless --path . --script src/dev/techniques_probe.gd                  
 ```
 
 Needs `assets/generated/exact/`; without it the probe says SKIPPED. Proves it when
-`by_connector_probe` ends "42 passed, 0 failed": a brick on a stud, a round plate on
+`by_connector_probe` ends "43 passed, 0 failed": a brick on a stud, a round plate on
 a side stud, a bar in a clip, a ball, a hinge, an axle and a twelve-part posed
 minifigure (legs, hips, torso, arms, hands, head on its neck, hat, an axe in a hand)
 each land within 0.001 LDU of where brickagent's `placement()` (b3df55e) puts them,
@@ -2223,7 +2223,7 @@ hinge folded the way it does not open is refused as the hinge, as BrickAgent's c
 refuses it; through submit_design and edit_model a part attaches to a part named in
 an earlier call and to a brick by number, a later edit passes with the posed arms
 standing, and read back every attached part is written where it stands; what cannot
-be done is refused saying why. On the code before it (7740d22) its pose cases fail:
+be done is refused saying why, with the pairs that do mate (a bar asked into a round brick's hollow stud is told of the clip at the same spot). On the code before it (7740d22) all 43 fail:
 every part lands at 0, 0, 0. The `--out` files, exported by `brickbench.py`'s
 `export_one` and checked by BrickBench's own `verify.py`, are valid where the
 connector probe says so (scratch `verify_probe.py` in the 2026-10-15 run;
