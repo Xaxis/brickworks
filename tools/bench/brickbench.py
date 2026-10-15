@@ -880,6 +880,10 @@ def vocabulary(model: Path, parts: "style.Parts") -> dict:
             "baseplate": bases[0] if bases else ""}
 
 
+# The measures of `vocabulary` that are shares of a build's building parts.
+SHARES = ("stacked", "plain", "shaped", "tile", "joints")
+
+
 @dataclass(frozen=True, slots=True)
 class Field:
     """Several arms on one dimension: ELO with 95% intervals, prompts resampled."""
@@ -977,9 +981,10 @@ def compare(batch: Path, arms: list[str], runs: int) -> str:
                     valid += bool(_verification(batch, side, task["id"]).get("valid"))
         if not rows:
             continue
-        medians = [statistics.median([r[k] for r in rows]) for k in keys]
+        medians = {k: statistics.median([r[k] for r in rows]) for k in keys}
         out.append(f"| {system} | {len(rows)} | {valid} | {sum(bool(r['baseplate']) for r in rows)} | "
-                   + " | ".join(f"{m:g}" for m in medians) + " |")
+                   + " | ".join(f"{100 * medians[k]:.0f}%" if k in SHARES else f"{medians[k]:g}"
+                                for k in keys) + " |")
     return "\n".join(out) + "\n"
 
 

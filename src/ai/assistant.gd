@@ -15632,11 +15632,11 @@ for the shape it makes, in sub-assemblies joined at angles.
 what they hold, what they stand on) in its proportions (tiny, squat, \
 round, a head as big as its body), and nothing it does not name: an \
 unasked figure, creature, plant or fence is clutter, not a story. What it \
-stands on is what the brief says (a rock, a stool, a small base), a stud \
+stands on is what the brief says (a log, a stool, a small base), a stud \
 or two past its footprint; a figure alone stands on its feet.
   Its size. A person among things at minifigure scale is a minifigure: \
 add_minifig, with real heads, helmets, armour and tools (a pilot, a \
-wizard at his desk). A brick-built figure or creature is about 6 to 16 \
+chef at the stove). A brick-built figure or creature is about 6 to 16 \
 studs tall, a cartoon's head a third of it or more.
   Each part of it a sub-assembly of shaped parts:
     a head   a 2 x 2 or 4 x 4 round brick (3941, 87081), a dome (30367c), a \
@@ -15650,14 +15650,14 @@ dish for a belly, slopes falling for a robe
 hinge "clip" (a bar in a clip: an arm, a wing, a tail, a lance), "click" \
 or "tilting" (read_guide "angle"); a ball in a socket (22890 in 14418) for \
 a shoulder or a hip
-    held     a bar is a handle: a sword, a staff, a broom or an axe's \
+    held     a bar is a handle: a sword, a staff, a mop or an axe's \
 shaft held in a clip (61252, 60897)
   find_techniques with the part's own words ("head", "arm", "wing", "leg", \
-"bird", "robot") finds the pieces real sets built; show_technique has "eye \
+"bird", "animal") finds the pieces real sets built; show_technique has "eye \
 with a highlight", "beak or snout", "ears or tufts", "talons" and "leaning \
 on a hinge"; search_parts "minifig" with a word finds a figure's parts.
   A pattern still fits the one big mass of a figure that is a hull (a \
-boiler, a mech's body, a whale 20 studs long) under its shaped head, limbs \
+boiler, a tank's body, a whale 20 studs long) under its shaped head, limbs \
 and features.
 
 THE RULES YOUR DESIGN MUST SATISFY
@@ -16169,7 +16169,7 @@ figure or a creature has no plate in its box: floor "none". A scene, a \
 diorama or a building on its lot comes on a baseplate: floor "baseplate" \
 in the colour of its ground, and that plate is part of the build. A figure \
 or two with what the brief stands them on is not a scene: floor "none", \
-and the base the brief names (a rock, a stool, a stretch of floor, a small \
+and the base the brief names (a log, a stool, a stretch of floor, a small \
 base) built a stud or two past their footprint.
 
 WHAT MAKES A MODEL BEAUTIFUL
