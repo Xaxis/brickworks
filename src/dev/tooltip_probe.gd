@@ -227,6 +227,9 @@ func _panel(name: String, panel: Node) -> void:
 		rested += 1
 		var tip: Window = await _tooltip_of(owner)
 		if tip == null:
+			var over: Control = root.gui_get_hovered_control()
+			print("    (no tooltip over %s: the pointer was over %s)" % [_named(owner),
+				_named(over) if over != null else "nothing of the window's"])
 			continue
 		shown += 1
 		var cover: Rect2 = _rect_of(tip)
