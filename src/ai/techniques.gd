@@ -42,6 +42,10 @@ const WITHDRAWN: Dictionary = {
 	"two rounds pinned side by side": "the dish is 1.7 LDU down on the round brick's snapstud",
 	"lid or hatch raised on hinges": ("the hinge tops are folded into their bases and the lid "
 		+ "1 LDU into the hinge bricks"),
+	# Passed only while the shapes lost the vertices their groups share
+	# (tools/build_exact.py read_obj, 2026-10-15): verify.py moves its logs.
+	"log pile": ("its logs rest on the plates with nothing joining them, and BrickBench's "
+		+ "simulation moves them: verify.py refuses it, 1 piece unstable"),
 }
 
 
@@ -2123,6 +2127,92 @@ static func written() -> Array:
 					"by": "hinge[0]", "flip": true, "yaw": 200}},
 				{"part": "41769", "color": 4, "attach": {"to": "wing root.stud[0]", "by": "hole[4]",
 					"yaw": 90}},
+			],
+		},
+		{
+			"name": "jointed figure",
+			"group": "figures and joints",
+			"when": "a person or a humanoid built of bricks, larger than a minifigure: a statue, "
+				+ "a mascot, a giant, a robot, posed as the brief has them, an arm raised or "
+				+ "reaching, a fist to the chin, the head turned",
+			"why": "An armature to build the figure on, 13 plates to the shoulders, every limb on "
+				+ "a joint. It stands on square legs (3004) under hips (3020) and a torso of two "
+				+ "bricks; each arm is a chain of balls: a ball plate (14417) on the chest's end "
+				+ "studs, the upper arm a plate with a socket and a ball (14419), the forearm a "
+				+ "socket plate (14418), a round brick (3062b) the fist. Each is aimed by its "
+				+ "align, its -x the way it reaches: [-0.26, -0.96, 0.1] hangs the left arm at its "
+				+ "side, [0.5, 0.86, 0] raises the right one (its forearm [0.17, 0.98, 0]), and "
+				+ "[-0.35, 0, 0.94] with a yaw of 90 reaches the left one forward, level: a level "
+				+ "upper arm left unturned meets its shoulder plate. The "
+				+ "head is a round brick (3941) on a jumper's centre stud (87580), turned by its "
+				+ "yaw. Pose it by the aligns and dress it on its studs: curved slopes on the "
+				+ "chest, a dome or a dish on the head, eyes. Seated, its thighs lie forward on "
+				+ "the block it sits on and the torso stands on them.",
+			"bricks": [
+				{"part": "3004", "color": 1, "x": 0, "y": 0, "z": 0, "rot": 1, "name": "left shin"},
+				{"part": "3004", "color": 1, "x": 0, "y": 3, "z": 0, "rot": 1, "name": "left thigh"},
+				{"part": "3004", "color": 1, "x": 3, "y": 0, "z": 0, "rot": 1, "name": "right shin"},
+				{"part": "3004", "color": 1, "x": 3, "y": 3, "z": 0, "rot": 1, "name": "right thigh"},
+				{"part": "3020", "color": 1, "x": 0, "y": 6, "z": 0, "rot": 0, "name": "hips"},
+				{"part": "3001", "color": 15, "x": 0, "y": 7, "z": 0, "rot": 0, "name": "belly"},
+				{"part": "3001", "color": 15, "x": 0, "y": 10, "z": 0, "rot": 0, "name": "chest"},
+				{"part": "14417", "color": 72, "name": "left shoulder",
+					"attach": {"to": "chest.stud[1]", "by": "hole[0]", "yaw": 90}},
+				{"part": "14417", "color": 72, "name": "right shoulder",
+					"attach": {"to": "chest.stud[6]", "by": "hole[0]", "yaw": 270}},
+				{"part": "14419", "color": 72, "name": "left upper arm", "attach": {
+					"to": "left shoulder.ball[0]", "by": "ball[1]", "align": ["-x", [-0.26, -0.96, 0.1]]}},
+				{"part": "14419", "color": 72, "name": "right upper arm", "attach": {
+					"to": "right shoulder.ball[0]", "by": "ball[1]", "align": ["-x", [0.26, -0.96, 0.1]]}},
+				{"part": "14418", "color": 72, "name": "left forearm", "attach": {
+					"to": "left upper arm.ball[0]", "by": "ball[0]", "align": ["-x", [-0.1, -0.7, 0.7]]}},
+				{"part": "14418", "color": 72, "name": "right forearm", "attach": {
+					"to": "right upper arm.ball[0]", "by": "ball[0]", "align": ["-x", [0.1, -0.7, 0.7]]}},
+				{"part": "3062b", "color": 14, "name": "left fist",
+					"attach": {"to": "left forearm.open[0]", "by": "tube[0]"}},
+				{"part": "3062b", "color": 14, "name": "right fist",
+					"attach": {"to": "right forearm.open[0]", "by": "tube[0]"}},
+				{"part": "87580", "color": 15, "name": "neck",
+					"attach": {"to": "chest.stud[3]", "by": "hole[1]"}},
+				{"part": "3941", "color": 14, "name": "head",
+					"attach": {"to": "neck.open[0]", "by": "tube[0]", "yaw": 20}},
+			],
+		},
+		{
+			"name": "jointed animal",
+			"group": "figures and joints",
+			"when": "a four-legged creature built of bricks: a dog, a horse, a cat, a dinosaur, "
+				+ "a balloon animal, its head looking somewhere and its tail raised",
+			"why": "An armature: a body (3001) on four legs of 1 x 1 bricks, the neck a plate "
+				+ "with a ball on its end (22890) past the front, the head built on a socket "
+				+ "plate (14418) on that ball and aimed by its align (its -x out along -x and 20 "
+				+ "degrees up here; [-0.7, -0.7, 0] puts its nose down to graze), with eyes on "
+				+ "its studs, and the tail a clip plate (63868) on a bar plate (60478) past the "
+				+ "back, raised by its yaw (210; 150 drops it). Shape it on its studs: curved "
+				+ "slopes over the back, round bricks for a balloon's segments, ears on the head.",
+			"bricks": [
+				{"part": "3005", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "left foreleg"},
+				{"part": "3005", "color": 70, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3005", "color": 70, "x": 0, "y": 0, "z": 1, "rot": 0, "name": "right foreleg"},
+				{"part": "3005", "color": 70, "x": 0, "y": 3, "z": 1, "rot": 0},
+				{"part": "3005", "color": 70, "x": 3, "y": 0, "z": 0, "rot": 0, "name": "left hind leg"},
+				{"part": "3005", "color": 70, "x": 3, "y": 3, "z": 0, "rot": 0},
+				{"part": "3005", "color": 70, "x": 3, "y": 0, "z": 1, "rot": 0, "name": "right hind leg"},
+				{"part": "3005", "color": 70, "x": 3, "y": 3, "z": 1, "rot": 0},
+				{"part": "3001", "color": 70, "x": 0, "y": 6, "z": 0, "rot": 0, "name": "body"},
+				{"part": "22890", "color": 72, "name": "neck",
+					"attach": {"to": "body.stud[1]", "by": "hole[1]", "yaw": 180}},
+				{"part": "14418", "color": 72, "name": "jaw", "attach": {"to": "neck.ball[0]",
+					"by": "ball[0]", "align": ["-x", [-0.94, 0.34, 0]]}},
+				{"part": "3004", "color": 70, "name": "head",
+					"attach": {"to": "jaw.open[0]", "by": "hole[0]"}},
+				{"part": "6141", "color": 15, "attach": {"to": "head.stud[0]", "by": "tube[0]"}},
+				{"part": "6141", "color": 15, "attach": {"to": "head.stud[1]", "by": "tube[0]"}},
+				{"part": "60478", "color": 72, "name": "rump",
+					"attach": {"to": "body.stud[6]", "by": "hole[1]"}},
+				{"part": "63868", "color": 70, "name": "tail", "attach": {"to": "rump.bar[0]",
+					"by": "clip[0]", "flip": true, "yaw": 210}},
+				{"part": "3069b", "color": 70, "attach": {"to": "tail.stud[0]", "by": "hole[0]"}},
 			],
 		},
 		{

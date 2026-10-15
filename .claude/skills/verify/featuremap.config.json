@@ -889,6 +889,13 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "figures told of their joints",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant"
+    },
+    {
       "kind": "ui",
       "label": "build animation",
       "entry": "src/render/build_playback.gd",

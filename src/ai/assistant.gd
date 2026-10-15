@@ -315,6 +315,12 @@ var _turn_cap: int = MAX_TURNS
 ## What was asked for, so a pass can say what real sets of that kind are
 ## built from.
 var _brief: String = ""
+## What a session from outside has said its subject is, before any design
+## names it: the brief Claude Code was started with ([method heard]), and the
+## subject plan_scale, find_reference and how_real_sets_build_this were asked
+## about. check_design carries no name, so without this a figure checked
+## before its first submit was a subject of no kind, and told of towers.
+var _heard: String = ""
 ## What the person owns ("part/colour" -> how many, CollectionStore.on_hand),
 ## for a brief that asks to be built from their collection
 ## (Collection.wanted_in). Empty when nothing is known.
@@ -341,6 +347,9 @@ var _pending: Model = null
 ## baseplate. Set by whoever owns the scene; left empty, a snapshot
 ## would take the baseplate with it and put back a second one.
 var scenery: Dictionary = {}
+## What the app's floor is (ModelFloor.KINDS), set by whoever owns the scene:
+## on a bare floor what only the floor holds must balance (ExactCheck.tips).
+var floor_kind: Callable = Callable()
 
 ## What the world looked like before this instruction.
 ##
@@ -1464,6 +1473,8 @@ func _start(text: String) -> void:
 	_art_laid = 0
 	_art_name = ""
 	_brief = text
+	_joints_told = 0
+	_joint_parts_told = false
 	_spend = Brain.Spend.new()
 	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
@@ -3177,7 +3188,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"read_guide":
 			var section: String = str(args.get("section", ""))
 			progress.emit("reading the guide on %s" % section)
-			return read_guide(section)
+			return _for_the_subject(section, read_guide(section))
 		"find_techniques":
 			var query: String = str(args.get("query", ""))
 			progress.emit("looking up how real sets built %s" % query)
@@ -3192,14 +3203,17 @@ func _tool_answer(block: Dictionary) -> Variant:
 			return await _find_parts_like(query)
 		"plan_scale":
 			progress.emit("working out how big it should be")
+			heard(str(args.get("subject", "")))
 			return _plan_scale(args)
 		"find_reference":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up what a %s looks like" % subject)
+			heard(subject)
 			return await _find_reference(subject)
 		"how_real_sets_build_this":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
+			heard(subject)
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
@@ -5430,7 +5444,36 @@ func _search(query: String, limit: int) -> String:
 	var worked: String = _technique_for(query)
 	if not worked.is_empty():
 		lines.append(worked)
+	var jointed: String = _joint_parts_for(query)
+	if not jointed.is_empty():
+		lines.append(jointed)
 	return "\n".join(lines)
+
+
+## Words of a search that ask for a limb, a neck or a joint.
+const LIMB_WORDS: Array = ["arm", "arms", "leg", "legs", "limb", "limbs", "hand", "hands",
+	"foot", "feet", "paw", "paws", "tail", "wing", "wings", "neck", "shoulder", "hip",
+	"hips", "elbow", "knee", "knees", "joint", "joints", "pose", "posed", "flipper", "fin",
+	"fins", "torso"]
+## Whether this design's searches have been told of the joint parts yet.
+var _joint_parts_told: bool = false
+
+
+## The parts a limb goes on a joint by, said under a search for a limb, and
+## under a character's first search: no session of the attach round searched
+## for a limb or a joint, and every one built its limbs of bricks, stacked.
+func _joint_parts_for(query: String) -> String:
+	var asked: bool = not SubjectWords.first_named(query, LIMB_WORDS).is_empty()
+	if not asked and (_joint_parts_told or Style.character_of(_subject_of()).is_empty()):
+		return ""
+	_joint_parts_told = true
+	return ("For a limb, a head or a tail on a joint, at its pose's angle: a bar plate "
+		+ "60478 in a clip plate 63868 (\"limb on a clip\", \"tail on a bar\"); a ball plate "
+		+ "14417 or 22890 in a socket plate 14418 (\"ball shoulder\", \"head on a neck\"); "
+		+ "click hinge plates 44302a and 44301a (\"hinged wing\"); a hinge brick 3937 under "
+		+ "3938. Each goes on by its connectors (a part's attach), and place_technique with "
+		+ "the name lays it in one call; \"posed minifigure\", \"jointed figure\" and "
+		+ "\"jointed animal\" lay a whole one.")
 
 
 ## A worked construction for what a search asked about, said under its
@@ -5562,7 +5605,7 @@ func _style(model: Model) -> String:
 			continue
 		parts.append([placement.part, placement.color,
 			_transform(placement, mesh, model.section_for(placement)), mesh.bounds])
-	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var about: String = _subject_of(model)
 	# Its body laid by a shape: this design's, or the one on the baseplate a
 	# design checked by hand would replace.
 	var shaped: bool = _shaped_body
@@ -5572,6 +5615,109 @@ func _style(model: Model) -> String:
 			shaped = shaped or (raw is Dictionary
 				and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape")
 	return Style.advice(Style.measure(parts), Style.group_for(about), about, shaped)
+
+
+## What the subject is said to be: the brief, what a session from outside said
+## of it before naming a design ([member _heard]), and the design's own name
+## and description.
+func _subject_of(model: Model = null) -> String:
+	if model == null:
+		return "%s %s" % [_brief, _heard]
+	return "%s %s %s %s" % [_brief, _heard, model.name, model.description]
+
+
+## The subject a session was started on, or asked a tool about: kept for the
+## check to read the subject by (Style.character_of). [param fresh] starts a
+## new design's, as Claude Code started on a brief does.
+func heard(subject: String, fresh: bool = false) -> void:
+	var said: String = subject.strip_edges()
+	if fresh:
+		_heard = said
+		_joints_told = 0
+		_joint_parts_told = false
+		return
+	if said.is_empty() or _heard.to_lower().contains(said.to_lower()):
+		return
+	_heard = ("%s %s" % [_heard, said]).strip_edges().right(HEARD_MOST)
+
+
+## How much of what was heard is kept, in characters: a brief and a few subjects.
+const HEARD_MOST := 1200
+## From this many parts a design is a build, and a character's build is told of
+## its joints.
+const JOINTS_FROM := 6
+## Times the joints have been said in full this design; after that, in a line.
+var _joints_told: int = 0
+const JOINTS_IN_FULL := 2
+
+
+## Whether any part of [param model] is posed: put on another by its
+## connectors, a joint's part (a clip, a bar, a ball, a hinge: Style's "a"),
+## or in a section turned off the square or on a hinge.
+static func _posed(model: Model) -> bool:
+	for placement: Placement in model.placements:
+		if not placement.attach.is_empty() or placement.attached_to != null \
+				or Style.kinds_of(placement.part).contains("a"):
+			return true
+	for name: String in model.sections:
+		var section: Section = model.sections[name]
+		if section.hinge or not is_zero_approx(section.degrees) \
+				or not is_zero_approx(section.yaw) or not is_zero_approx(section.pitch) \
+				or not is_zero_approx(section.roll):
+			return true
+	return false
+
+
+## A figure, a creature or a character with nothing in it on a joint, said
+## with each joint's one call while how to build it is still being decided.
+## Every character session of the attach round (2026-10-15) decided at its
+## first submit or check, just after reading the shapes guide, and built a
+## statue of stacked bricks: the joints were a line of a guide one in eight
+## of them read, and the only figure line in those replies was the tail of a
+## hint about small ellipsoids. "" when it is not one, or is posed.
+func _on_joints_said(model: Model) -> String:
+	if model.placements.size() < JOINTS_FROM:
+		return ""
+	var kind: String = Style.character_of(_subject_of(model))
+	if kind.is_empty() or _posed(model):
+		return ""
+	_joints_told += 1
+	if _joints_told > JOINTS_IN_FULL:
+		return ("Still nothing in it is on a joint, so it stands as a statue of stacked "
+			+ "bricks: put its head, limbs and tail on joints — place_technique \"%s\", or "
+			% ("posed minifigure\", \"jointed figure" if kind == "figure"
+				else "head on a neck\", \"limb on a clip")
+			+ "a part's attach by its connectors (read_guide \"figures\").")
+	var lead: String = {
+		"figure": ("  posed minifigure  a person at minifigure scale, posed in one call: arms "
+			+ "swung by yaw (180 hangs at the side, 270 raised), legs bent on the hips, head "
+			+ "turned, a tool in a hand\n"
+			+ "  jointed figure  a person or a humanoid built of bricks, 13 plates tall: head "
+			+ "on a ball neck, arms on ball shoulders bent at clip elbows, legs on click-hinge "
+			+ "hips and knees, each joint's yaw the pose\n"),
+		"creature": ("  jointed animal  a four-legged creature built of bricks: legs on "
+			+ "click hinges, its head on a ball neck, its tail on a bar\n"),
+	}.get(kind, "")
+	return ("It is a figure, a creature or a character, and nothing in it is on a joint "
+		+ "yet: stacked square, it is a statue of bricks, which is how every one built here "
+		+ "was judged. A set builds one of sub-assemblies of shaped parts, each put on the "
+		+ "one before by its connectors at the angle its pose has. Each joint is one call, "
+		+ "place_technique with its name and an x, y and z, built on after by its studs or "
+		+ "posed again with an edit's yaw:\n" + lead
+		+ "  limb on a clip  an arm, a leg, a flipper at an angle: a bar plate (60478) in a "
+		+ "clip plate (63868), its yaw the angle\n"
+		+ "  ball shoulder  a shoulder or a hip that turns every way: 14417's ball in 14418's "
+		+ "socket, aimed by align\n"
+		+ "  head on a neck  a head looking up, down or aside: a ball plate (22890) under a "
+		+ "socket plate (14418), the head on its studs\n"
+		+ "  tail on a bar  a tail raised or drooping: a clip plate (63868) on a bar plate "
+		+ "(60478), its yaw raising it\n"
+		+ "  hinged wing  a wing, a fin or an ear standing out: click hinge plates 44302a and "
+		+ "44301a, yaw 200 lifts it\n"
+		+ "Said by hand, a part goes on one named before it: {\"part\": \"60478\", \"name\": "
+		+ "\"forearm\", \"attach\": {\"to\": \"elbow.clip[0]\", \"by\": \"bar[0]\", \"flip\": "
+		+ "true, \"yaw\": 210}}; attachment_points lists a part's connectors by name. Its "
+		+ "eyes and brows go on the same way, turned to their angle.")
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -11562,6 +11708,10 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		_note(issues, "pattern", str(said))
 	for said: Variant in _repeat_trouble:
 		_note(issues, "repeat", str(said))
+	# First, as how to build it is decided here: a character on joints.
+	var on_joints: String = _on_joints_said(model)
+	if not on_joints.is_empty():
+		advice.append(on_joints)
 	advice.append_array(_pattern_advice)
 	# A turn or a hinge that could not be read as asked is said, not
 	# quietly built some other way: a panel told to tip two ways on a
@@ -12232,7 +12382,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		## What the exact check found (ExactCheck), kind -> sentences: what
 		## review_model says before a design is handed over.
 		"exact": {"collision": issues.get("collision", []),
-			"not held": issues.get("not held", [])},
+			"not held": issues.get("not held", []),
+			"tips over": issues.get("tips over", [])},
 		## And what asking the exact shapes cost this check, ms.
 		"exact_ms": exact.spent_usec / 1000.0,
 		"exact_on": exact.spent_on,
@@ -12594,18 +12745,24 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 				grew = true
 	var root: PackedInt32Array = exact.pieces(extra, near)
 	var held: Dictionary = {}
+	## Pieces held by something other than the floor: what stood before, or
+	## what the lattice holds. The rest the floor alone holds, and on a bare
+	## floor only while they balance (ExactCheck.tips).
+	var held_otherwise: Dictionary = {}
 	for i: int in exact.items.size():
 		if not near.has(i):
 			continue
-		var anchor: bool = exact.on_ground(i)
+		var other: bool = false
 		if i >= count:
-			anchor = anchor or not _ground_only
+			other = not _ground_only
 		elif not _exact_subject(model, i):
-			anchor = anchor or not _ground_only
+			other = not _ground_only
 		elif exact.items[i] == null or _in_a_prism(model, i):
 			# Held as the lattice has it, which judges these.
-			anchor = anchor or (cells_of.has(i) and not floating.has(i))
-		if anchor:
+			other = cells_of.has(i) and not floating.has(i)
+		if other:
+			held_otherwise[root[i]] = true
+		if other or exact.on_ground(i):
 			held[root[i]] = true
 	var pieces: Dictionary = {}    ## root -> its subjects
 	for index: int in subjects:
@@ -12622,6 +12779,36 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		if exact.rests(pieces[key]):
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
+	# And what the floor alone holds, on a bare floor: it stands while it
+	# balances. On a baseplate its studs hold it, as they do in the hand.
+	if _ground_only or not _on_bare_floor(model):
+		return
+	var on_floor: Dictionary = {}    ## root -> its items
+	var mine: Dictionary = {}
+	for index: int in subjects:
+		mine[root[index]] = true
+	for i: int in exact.items.size():
+		if near.has(i) and held.has(root[i]) and not held_otherwise.has(root[i]) \
+				and mine.has(root[i]):
+			var members: Array = on_floor.get(root[i], [])
+			members.append(i)
+			on_floor[root[i]] = members
+	for key: Variant in on_floor:
+		var found: Dictionary = exact.tips(on_floor[key])
+		if not found.is_empty():
+			_note(issues, "tips over", exact.tips_said(found, on_floor[key], namer))
+
+
+## Whether [param model] stands on a bare floor, as a figure, a vehicle or a
+## statue on a shelf does and as BrickBench stands every build: the design says
+## so ("none" or "grid"), or the app's floor is one of those ([member
+## floor_kind]). On a baseplate its studs hold what stands on them; with no
+## floor known (a probe, a check of a piece) it is not asked.
+func _on_bare_floor(model: Model) -> bool:
+	var said: String = str(model.stands_on.get("kind", ""))
+	if said.is_empty() and floor_kind.is_valid():
+		said = str(floor_kind.call())
+	return said == ModelFloor.NONE or said == ModelFloor.GRID
 
 
 ## How many separate pieces the design is in.
@@ -16828,7 +17015,8 @@ shaft held in a clip (61252, 60897)
 ({"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 30}) seats it exactly at \
 any angle; show_technique "posed minifigure", "limb on a clip", "ball \
 shoulder", "head on a neck", "tail on a bar" and "hinged wing" are each one \
-written out.
+written out, and "jointed figure" and "jointed animal" a whole armature to \
+pose and build on; place_technique lays any of them in one call.
   find_techniques with the part's own words ("head", "arm", "wing", "leg", \
 "bird", "animal") finds the pieces real sets built; show_technique has "eye \
 with a highlight", "beak or snout", "ears or tufts", "talons" and "leaning \
@@ -17814,6 +18002,26 @@ func read_guide(section: String) -> String:
 	return text.substr(at[n], end - at[n]).strip_edges()
 
 
+## The guide's shapes section, led for a figure, a creature or a character by
+## what it is built of instead. Eight of the attach round's ten guide reads
+## were "shapes", every character session that read it submitted a shape on
+## its next call, and the figure line at its top was one sentence of 16,000
+## characters.
+func _for_the_subject(section: String, text: String) -> String:
+	if str(GUIDE_NAMES.get(section.strip_edges().to_lower(), "")) != "SAY THE SHAPE, DO NOT COUNT IT OUT":
+		return text
+	if Style.character_of(_subject_of()).is_empty():
+		return text
+	return ("This subject is a figure, a creature or a character, which is not a shape: "
+		+ "a shape or a fill of one is a statue of stacked bricks, and every one built here "
+		+ "was judged so. Build its head, body and limbs as sub-assemblies of shaped parts on "
+		+ "joints, each a place_technique call: \"posed minifigure\" or \"jointed figure\" "
+		+ "for a person, \"jointed animal\" for four legs, \"head on a neck\", \"limb on a "
+		+ "clip\", \"ball shoulder\", \"tail on a bar\", \"hinged wing\" for one joint each "
+		+ "(read_guide \"figures\"). The patterns below are for what it stands on, and for a "
+		+ "body that is a hull, a whale's.\n\n" + text)
+
+
 ## How a construction is actually made, in parts and coordinates.
 ##
 ## Being told to stagger a wall or turn a face sideways is not the same
@@ -18344,12 +18552,16 @@ func _plan_scale(args: Dictionary) -> String:
 		chosen = ("\n\nAt %s metres it is smaller than any scale reads, so "
 			% Placement._num(metres)
 			+ "it is built as a figure, not to a scale. A person among "
-			+ "minifigure-scale things is a minifigure (add_minifig); an animal "
-			+ "there is one moulded part (search_parts \"animal\"). On its own, "
-			+ "a figure or a creature is brick-built, about 6 to 16 studs tall in "
-			+ "its own proportions, from parts chosen for their shape: a round "
-			+ "brick or a dome for a head, round bricks and curved slopes for a "
-			+ "body, limbs on clips, bars and hinges (read_guide \"figures\").")
+			+ "minifigure-scale things is a minifigure, posed as the brief has them: "
+			+ "place_technique \"posed minifigure\" lays one in one call, its arms, "
+			+ "legs and head each on its joint, posed again by their yaw "
+			+ "(add_minifig stands one at rest); an animal there is one moulded part "
+			+ "(search_parts \"animal\"). On its own, a figure or a creature is "
+			+ "brick-built, about 6 to 16 studs tall in its own proportions, on a "
+			+ "jointed armature: place_technique \"jointed figure\" (a person) or "
+			+ "\"jointed animal\" (four legs) lays one, every limb on a joint, to pose "
+			+ "and to build its shaped parts on — a round brick or a dome for a head, "
+			+ "round bricks and curved slopes for a body (read_guide \"figures\").")
 	else:
 		chosen = ("\n\nNothing on that list reads well at %s metres. "
 			% Placement._num(metres)
@@ -18357,6 +18569,17 @@ func _plan_scale(args: Dictionary) -> String:
 			+ "train, a tower rather than the whole castle — or accept "
 			+ "that it will be an outline.")
 
+	# A figure or a creature at a scale too — a giant, a dragon, a mascot on a
+	# roof — is built on joints all the same. plan_scale's figure answer was for
+	# the small alone, by size, and never said a joint (2026-10-15).
+	if not chosen.contains("jointed armature") \
+			and not Style.character_of("%s %s" % [subject, _subject_of()]).is_empty():
+		chosen += ("\n\nA figure or a creature at any size is built on joints, not "
+			+ "stacked: its head on a neck, its limbs on clips, balls and hinges at the "
+			+ "pose's angle (place_technique \"jointed figure\", \"jointed animal\", "
+			+ "\"posed minifigure\" for a person at minifigure scale, or one joint each: "
+			+ "\"limb on a clip\", \"ball shoulder\", \"head on a neck\", \"tail on a bar\", "
+			+ "\"hinged wing\").")
 	# Not capitalize(), which title-cases every word and turns a double
 	# decker bus into A Double Decker Bus.
 	var named: String = subject.substr(0, 1).to_upper() + subject.substr(1)
@@ -18718,6 +18941,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		if not measured.is_empty():
 			said.append("Measured against real sets:\n"
 				+ "\n".join(PackedStringArray(measured)))
+		var stiff: String = _stiff_limbs_said(everything)
+		if not stiff.is_empty():
+			said.append(stiff)
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
@@ -18762,12 +18988,85 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		JSON.stringify(one.get("where", {}))]
 
 
+## What a design names a limb by, in its parts', sections' and assemblies' names.
+const LIMB_NAMES: Array = ["arm", "leg", "limb", "hand", "foot", "paw", "tail", "wing",
+	"neck", "flipper", "fin"]
+
+
+## A figure's or a creature's limbs stacked square on its body: each one named
+## as a limb (a part, a section or an assembly) with nothing in it on a joint,
+## or, with none named, a character with nothing on a joint at all. The attach
+## round's first review said "a hinge or a leg built rigid" among five faults
+## of any model, and pointed at a section of the guide no session read; the
+## balloon dog's tail was settled "built", of round bricks, under a review
+## that offered "tail on a bar". "" when it is not a character, or is posed.
+func _stiff_limbs_said(everything: Array[BrickWorld.Brick]) -> String:
+	var kind: String = Style.character_of(_subject_of())
+	if kind.is_empty() or everything.size() < JOINTS_FROM:
+		return ""
+	var units: Dictionary = {}     ## name -> Array of bricks
+	for one: Dictionary in _outside_assemblies:
+		var name: String = str(one.get("name", ""))
+		if not SubjectWords.first_named(name, LIMB_NAMES).is_empty():
+			units[name] = _bricks_inside(one.get("where", {}))
+	for brick: BrickWorld.Brick in everything:
+		for name: String in [str(_section_of.get(brick.id, "")), str(_given_names.get(brick.id, ""))]:
+			if not name.is_empty() and not SubjectWords.first_named(name, LIMB_NAMES).is_empty():
+				if not units.has(name):
+					units[name] = []
+				(units[name] as Array).append(brick)
+	var stiff := PackedStringArray()
+	for name: String in units:
+		var bricks: Array = units[name]
+		# A leg it stands on is standing, not stiff.
+		if bricks.any(func(b: Variant) -> bool: return _on_the_floor(b)):
+			continue
+		if not bricks.is_empty() and not _bricks_posed(bricks):
+			stiff.append("the %s (%d part%s)" % [name, bricks.size(),
+				"" if bricks.size() == 1 else "s"])
+	var how: String = ("Put each on a joint at the angle the pose has, and build it on "
+		+ "that: an arm or a leg on a ball (place_technique \"ball shoulder\") or a bar in a "
+		+ "clip (\"limb on a clip\"), a head on a ball neck (\"head on a neck\"), a tail on "
+		+ "a bar (\"tail on a bar\"), a wing on a click hinge (\"hinged wing\"); a part's "
+		+ "attach in edit_model puts what is built onto it by its connectors.")
+	if not stiff.is_empty():
+		return ("Stiff, stacked limbs: %s stand%s square on the body with nothing on a "
+			% [", ".join(stiff), "s" if stiff.size() == 1 else ""]
+			+ "joint, so they read as a statue's, never as reaching, sitting or "
+			+ "turning. " + how)
+	if _bricks_posed(everything):
+		return ""
+	return ("Nothing in it is on a joint: a figure's or a creature's head, limbs and tail "
+		+ "stacked square on its body stand stiff, as a statue of bricks does, and the "
+		+ "pose the brief has cannot be read. " + how)
+
+
+## Whether [param brick] stands on the floor: its lowest within a plate of it.
+func _on_the_floor(brick: BrickWorld.Brick) -> bool:
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	return mesh != null and mesh.lowest_at(brick.transform) <= PLATE
+
+
+## Whether any of [param bricks] is posed: a joint's part (Style's "a"), turned
+## off the square, or in a section on a hinge or turned.
+func _bricks_posed(bricks: Array) -> bool:
+	for raw: Variant in bricks:
+		var brick: BrickWorld.Brick = raw
+		if Style.kinds_of(brick.part_id).contains("a") or Style._angled(brick.transform.basis):
+			return true
+		var section: Variant = _sections.get(str(_section_of.get(brick.id, "")))
+		if section is Section and ((section as Section).hinge
+				or not is_zero_approx((section as Section).degrees)):
+			return true
+	return false
+
+
 ## What the exact check found in a whole design, said as faults to fix before
 ## it is handed over, or "" when it found nothing.
 static func _exact_faults_said(report: Dictionary) -> String:
 	var found: Dictionary = report.get("exact", {})
 	var lines := PackedStringArray()
-	for kind: String in ["collision", "not held"]:
+	for kind: String in ["collision", "not held", "tips over"]:
 		var said: Array = found.get(kind, [])
 		if said.is_empty():
 			continue
@@ -20508,16 +20807,18 @@ func _tools() -> Array:
 			"description": ("A section of how to design in this app, in full: "
 				+ "\"work\" (the process: silhouette, features, detail), \"rules\", "
 				+ "\"shapes\" (the patterns that lay a wall, a dome, a tower, a "
-				+ "body and a head with its face), \"subject\" (what each kind of "
-				+ "subject needs), \"angle\", \"pins\", \"colour\", \"creative\" "
-				+ "and more. Read \"shapes\" before saying a shape."),
+				+ "hull or a car body), \"figures\" (a figure, a creature or a "
+				+ "character: its head and limbs on joints), \"subject\" (what each "
+				+ "kind of subject needs), \"angle\", \"pins\", \"colour\", \"creative\" "
+				+ "and more. Read \"shapes\" before saying a shape, \"figures\" before "
+				+ "building a figure or a creature."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"section": {"type": "string", "description":
-						"work, rules, shapes, subject, real, colour, angle, coordinates, "
-						+ "sideways, pins, big, look, good, beautiful, creative, changing, "
-						+ "kind or art"},
+						"work, rules, shapes, figures, subject, real, colour, angle, "
+						+ "coordinates, sideways, pins, big, look, good, beautiful, creative, "
+						+ "changing, kind or art"},
 				},
 				"required": ["section"],
 				"additionalProperties": false,

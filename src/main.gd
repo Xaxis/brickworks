@@ -1431,6 +1431,11 @@ func design_with_claude_code(brief: String) -> bool:
 		add_child(_claude_code)
 	if _claude_code.busy():
 		return false
+	# What it was asked for, for the checks to read the subject by: a check
+	# carries no name, and a figure checked before its first submit was read
+	# as a subject of no kind.
+	if _assistant != null:
+		_assistant.heard(brief, true)
 	_claude_code.design(brief, _commands.port(), _commands.tool_names())
 	return true
 
@@ -2900,6 +2905,10 @@ func _build_ui() -> void:
 		_look_under_again())
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant.scenery = _store.scenery
+	# And what the model stands on, read when asked: on a bare floor what only
+	# the floor holds must balance, as BrickBench stands every build.
+	_assistant.floor_kind = func() -> String:
+		return _store.model_floor.kind if _store.model_floor != null else ""
 
 	_assistant.built.connect(func(_n: int) -> void:
 		# A design can be bigger than the ground it was given.
