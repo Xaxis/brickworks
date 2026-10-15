@@ -98,7 +98,13 @@ func setup(with_account: Account) -> void:
 			return
 		connector.connect_claude()
 		_claude_state.text = connector.connect_words())
-	_claude_box.add_child(_claude_connect)
+	# One row, side by side: stacked, the link's tooltip opened over
+	# Disconnect Claude below it and took the click meant for it.
+	var claude_row := HBoxContainer.new()
+	claude_row.add_theme_constant_override("separation", 14)
+	_claude_box.add_child(claude_row)
+	_claude_connect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	claude_row.add_child(_claude_connect)
 	_claude_disconnect = Button.new()
 	_claude_disconnect.text = "Disconnect Claude"
 	_claude_disconnect.focus_mode = Control.FOCUS_NONE
@@ -109,7 +115,7 @@ func setup(with_account: Account) -> void:
 		var ended: int = await connector.disconnect_claude()
 		if ended < 0:
 			_claude_state.text = "Could not reach Brickworks to disconnect. Try again.")
-	_claude_box.add_child(_claude_disconnect)
+	claude_row.add_child(_claude_disconnect)
 
 	_admin = Look.link("Accounts and connectors (admin)", 12)
 	_admin.uri = "/admin"

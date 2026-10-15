@@ -227,6 +227,7 @@ try {
   await claudeTab.waitForLoadState("domcontentloaded").catch(() => {});
   check(claudeTab.url() === LINK, `Connect Claude opens claude.ai's Add custom connector, filled in:\n          ${claudeTab.url()}`);
   await claudeTab.close();
+  await page.bringToFront();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   check(copied === `${site}/api/mcp`, `...with the address on the clipboard: ${copied}`);
   const waiting = await waitFor((s) => s.on && /Waiting for you/.test(s.status || ""));
@@ -287,6 +288,7 @@ try {
   check(connectorsTab?.url() === "https://claude.ai/customize/connectors",
     `...and Open in Claude, one click to Claude's connectors: ${connectorsTab?.url()}`);
   await connectorsTab?.close();
+  await page.bringToFront();
   const stillConnected = await waitFor((s) => (s.connected || []).includes("Claude"));
   check((stillConnected.connected || []).includes("Claude"), "...which leaves Claude connected");
   await shot("4_connected");
@@ -389,6 +391,7 @@ try {
   check(accountTab?.url() === "https://claude.ai/customize/connectors",
     `...and Open in Claude beside it, one click to Claude's connectors: ${accountTab?.url()}`);
   await accountTab?.close();
+  await page.bringToFront();
   await shot("9_account_connected");
   await click("account_disconnect_claude");
   // A minute: at a load of thirty the disconnect, the renewal before it and
@@ -416,6 +419,7 @@ try {
   check(listTab?.url() === "https://claude.ai/customize/connectors",
     `Connect Claude again, for an account that had Claude: Claude's connectors, not Add custom connector: ${listTab?.url()}`);
   await listTab?.close();
+  await page.bringToFront();
   await page.waitForTimeout(1000);
   await shot("10b_connect_again");
 
