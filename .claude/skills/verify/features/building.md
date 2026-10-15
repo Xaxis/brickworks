@@ -269,7 +269,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (when each job was first drawn and when it ended, in the page's clock), and
   Cancel as `brickworksControls.work_cancel`. Proves it: `progress_probe`
   (windowed, Orthanc and the car: the bar up in the frame pressed, before the
-  work; the timeline's longest frame against 200 ms; the same steps as
+  work; the timeline's longest frame against 200 ms; the sub-assembly
+  search's longest frame of its own, process to drawing, against 100 ms,
+  judged in software too (one frame of 161 ms on b79d427: `_find_assemblies`,
+  `_contract` and its loop walk `_cycles` are a slice at a time now); the same steps as
   `Instructions.plan`; Cancel and a second press stop it; Open's list says
   "Opening…" before Orthanc lands; delete all and undo say so first; Check
   stability and Everything connected through `Shell.run` on Orthanc, and
