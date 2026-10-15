@@ -577,7 +577,9 @@ godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd
 godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
 # a tooltip never takes a click meant for what is under it: stacked, in a
 # dialog, in a menu, and every panel's tooltips over what they cover
-# (-- --no-sweep for the stacks alone, a minute)
+# (-- --no-sweep for the stacks alone, a few minutes; the sweep is half an
+# hour in software and its panels may cover each other: it says what the
+# pointer was over where no tooltip came)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/tooltip_probe.gd
 # several bricks worked on at once, and taken back at once
