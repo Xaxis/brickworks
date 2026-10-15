@@ -388,9 +388,11 @@ func _the_designer_chooses() -> void:
 	await _frames(5)
 	var plate: BrickWorld.Brick = _world.get_brick(_floor.own_plates()[0]) \
 		if _floor.has_own_plate() else null
-	_check("a garden with floor baseplate gets a Bright Green 16 x 16 as part of it (%s; %s)" % [
+	# Eight studs by two, with a stud to spare all round: 16 x 8, in eights
+	# each way, and not rounded up to a square of empty field.
+	_check("a garden with floor baseplate gets a Bright Green 16 x 8 as part of it (%s; %s)" % [
 		plate.part_id if plate != null else "none", str(garden).substr(0, 60)],
-		plate != null and plate.part_id == "3867" and plate.color_code == 10
+		plate != null and plate.part_id == "3865" and plate.color_code == 10
 		and _store.scenery.is_empty())
 	_check("...counted with the garden (%d pieces)" % Inventory.pieces_in(_world, _library,
 		_store.scenery), Inventory.pieces_in(_world, _library, _store.scenery) == 3)

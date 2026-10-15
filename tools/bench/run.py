@@ -124,11 +124,12 @@ def _billing_free_env(**extra: str) -> dict[str, str]:
     return env
 
 
-def commit() -> str:
-    sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
+def commit(app: Path = ROOT) -> str:
+    """The app's commit, -dirty when its src has changes; "?" outside a checkout."""
+    sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=app,
                          capture_output=True, text=True).stdout.strip() or "?"
     dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "src"],
-                           cwd=ROOT, capture_output=True, text=True).stdout.strip()
+                           cwd=app, capture_output=True, text=True).stdout.strip()
     return sha + ("-dirty" if dirty else "")
 
 
@@ -195,9 +196,11 @@ def _stop_leftovers(port: int) -> list[int]:
 
 
 def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None,
-           extra: tuple[str, ...] = ()) -> dict:
+           extra: tuple[str, ...] = (), app: Path = ROOT) -> dict:
     """The real loop on one brief; `extra` goes to the app after the bench's own
-    arguments (tools/bench/brickbench.py keeps its runs to a list of parts)."""
+    arguments (tools/bench/brickbench.py keeps its runs to a list of parts).
+    `app` is the checkout whose app designs: one arm of a comparison can run
+    an export of an earlier commit beside this one."""
     done = run_dir / "design.json"
     if done.exists():
         result = json.loads(done.read_text())
@@ -218,14 +221,14 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         _write_json(done, result)
         return result
     port = _free_port()
-    sha = commit()      # the code the design runs on, not the code that judges it
+    sha = commit(app)   # the code the design runs on, not the code that judges it
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
     # The timeout is inside the slot: a queue for `heavy` on a busy
     # machine is not the design's time.
     command = [HEAVY, "xvfb-run", "-a", f"--server-args={SCREEN}",
-               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(ROOT),
+               "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
                "--log-file", str(run_dir / "godot_design.log"),
                "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
                # The subject's own scored designs are the answer under test:
@@ -233,7 +236,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
                f"--held-out={subject.id}", *extra]
     started = time.time()
     with log.open("w") as out:
-        status = subprocess.run(command, cwd=ROOT, env=_billing_free_env(),
+        status = subprocess.run(command, cwd=app, env=_billing_free_env(),
                                 stdout=out, stderr=subprocess.STDOUT).returncode
     seconds = time.time() - started
     text = log.read_text(errors="replace")
@@ -244,6 +247,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
         # The session's own clock, without the wait for a slot.
         "design_seconds": int(took.group(1)) if took else None,
         "commit": sha, "port": port, "model": ldr.exists() and ldr.stat().st_size > 0,
+        **({} if app == ROOT else {"app": str(app)}),
         "finished": finished[-1][:300] if finished else "",
         "moved": _tidy_user_dir(since, text, port, run_dir / "saves"),
         "stopped": _stop_leftovers(port),
@@ -535,19 +539,21 @@ ROUNDS: dict[str, str] = {
     "2026-10-13-surface": "surface", "2026-10-13-edges": "edges",
     "2026-10-13-edges-b": "edges", "2026-10-13-steps": "steps", "2026-10-14-sides": "sides",
     "2026-10-14-shapes": "shapes", "2026-10-14-shapes-trial": "shapes",
-    "2026-10-14-cabins": "cabins",
+    "2026-10-14-cabins": "cabins", "2026-10-14-figures": "figures",
 }
 # Each lever against the round it was read against in docs/DESIGN_SCORES.md.
 # The surface round branched from staging without d6's feature pass, so the
 # baseline is what it changed.
 LEVERS: tuple[tuple[str, str], ...] = (
     ("d6", "baseline"), ("d6b", "d6"), ("surface", "baseline"), ("edges", "surface"),
-    ("steps", "edges"), ("sides", "steps"), ("shapes", "sides"), ("cabins", "shapes"))
+    ("steps", "edges"), ("sides", "steps"), ("shapes", "sides"), ("cabins", "shapes"),
+    ("figures", "cabins"))
 # Designs of one brief made on the same code: what luck alone moves a design.
 TWINS: tuple[tuple[str, ...], ...] = (
     ("2026-10-12/1", "2026-10-12/2"),
     ("2026-10-14-shapes-trial/1", "2026-10-14-shapes-trial/2"),
-    ("2026-10-14-cabins/1", "2026-10-14-cabins/2"))
+    ("2026-10-14-cabins/1", "2026-10-14-cabins/2"),
+    ("2026-10-14-figures/1", "2026-10-14-figures/2"))
 
 
 @dataclass(frozen=True, slots=True)

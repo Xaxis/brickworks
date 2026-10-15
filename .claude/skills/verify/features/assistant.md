@@ -11,6 +11,18 @@ fixing what it got wrong.
   catalogue, the rules, and tools to search, place, read back the world and look at
   a render; it places bricks, is told what collides, floats or will not survive
   being lifted, and revises. Sections let it carry a sub-assembly at an angle.
+  A figure, a creature or a character goes another way from a hull: the guide's
+  FIGURES, CREATURES AND SMALL MODELS (read_guide "figures", "character",
+  "creature", "small"), which the MCP head's step 2 sends it to, builds it as
+  sub-assemblies of shaped parts on joints, never a shape pattern, keeps to the
+  brief's scope (nothing it does not name, the base it names) and makes a
+  minifigure-scale person a minifigure. With it: plan_scale answers a person- or
+  animal-sized subject as a figure; a small round body said as a shape is told of
+  round bricks, domes and dishes (`SMALL_ROUND`); the creative pass keeps to what
+  the brief names when it lists the scene; a design's baseplate is the least in
+  eights each way. Checked by `rules_probe` ("a small round body", "choosing a
+  scale"), `floor_probe` (the garden's 16 x 8) and `mcp_sync_probe` (the head
+  under 3,500).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
@@ -49,14 +61,22 @@ fixing what it got wrong.
   loop on the subscription, kept to BrickNet's 14,441 parts, exported as the
   `model.mpd` and `build.py` their `verify.py` rebuilds, checked by their
   `verify.py` and `check_submission.py`, and judged against BrickAgent's Opus 5.5
-  builds of the same prompts by our pairwise judge. `docs/BRICKBENCH.md`. Under
-  How to check it, "BrickBench".
+  builds of the same prompts by our pairwise judge. `docs/BRICKBENCH.md`. Also a
+  controlled comparison of arms on held-out prompts (`--start 21`, `--arm`,
+  `--runs`, `--app` an export of another commit, `--arms`, `compare`): every
+  design of every arm against each other and theirs, ELO per arm with prompts
+  resampled, head to head, and what each arm's builds are made of (stacked,
+  plain, shaped, tile, joints, size, baseplates). Under How to check it,
+  "BrickBench".
 - `keep a run to a list of parts`: `src/parts/parts_only.gd`, `--parts-only=FILE`
   (a part number a line, the first `#` line naming the list). search_parts and
   find_parts_like list only those; a design or edit with another is refused
   naming it ("not among this run's parts", swap it); add_minifig chooses among
   them; make_part, lay_flex and print_part are refused; any call that leaves one
-  off the list on the model says so. Without the flag nothing changes.
+  off the list on the model says so. A number LDraw has moved (3023, 4073) is
+  the part it moved to (3023b, 6141), so the generators' fills, shapes and rounds
+  are not refused, and the export writes the listed number. Without the flag
+  nothing changes.
 - `ask claude about the selection`: select parts, right-click one and choose
   **Ask Claude about this…** (top of the part's menu; also Edit, and Ctrl+K).
   The assistant panel opens with a chip, "About 46 selected parts", and the
@@ -2195,6 +2215,32 @@ godot --headless --path . --script src/dev/parts_only_probe.gd      # the allowl
 godot --headless --path . --script src/dev/parts_only_probe.gd -- --parts-only=bench/results/brickbench-<date>/bricknet_parts.txt
 python3 tools/minitest.py tests/test_brickbench.py                  # the export round-trips, the reads, the ELO
 ```
+
+A controlled comparison of two arms on held-out prompts (each arm the app of
+one checkout; an earlier commit's arm runs from `git archive` of it extracted
+into a scratch folder, with `assets/generated`, `vendor` and `node_modules`
+linked and `godot --headless --import` run there once):
+
+```sh
+D=2026-10-14-held
+python3 tools/bench/brickbench.py prompts --upstream $S/upstream --start 21 --date $D   # model-021..030
+python3 tools/bench/brickbench.py parts --upstream $S/upstream --date $D
+python3 tools/bench/brickbench.py fetch --date $D
+XDG_DATA_HOME=$S/xdg-full ~/.claude/claude-core/bin/heavy env -u ANTHROPIC_API_KEY \
+    python3 tools/bench/brickbench.py design --date $D --arm full --runs 2 --jobs 2 --app $S/base-app
+#   then the other arm the same way, --arm lean (--app this checkout, or its own export)
+python3 tools/bench/brickbench.py export --date $D --arm full --runs 2 --python $S/venv/bin/python
+BRICKNET_DATA=$S/bricknet_data ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py verify --date $D --arm full --runs 2 --upstream $S/upstream --python $S/venv/bin/python
+XDG_DATA_HOME=$S/xdg ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py views --date $D --arms full,lean --runs 2 --software --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/brickbench.py pairs --date $D --arms full,lean --runs 2 --jobs 3
+python3 tools/bench/brickbench.py compare --date $D --arms full,lean --runs 2   # compare.md
+```
+
+Its designs are under `arms/<arm>/<task>/run<n>/` (the design, `export.json`,
+`submission/`), its views under `views/<arm>-run<n>/`. Proves it when every
+design's log has the `parts only` line and its `design.json` the app's commit
+(an export's says `"app"` and commit `?`: name the commit in the write-up), and
+`compare.md` counts every verdict (each pair of designs, both orders).
 
 Everything lands in the main checkout's `bench/results/brickbench-<date>/`
 (git-ignored): `ours/<task>/` (run.py's design stage: `design.ldr`, the log,

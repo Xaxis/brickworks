@@ -13,6 +13,14 @@
     python3 tools/bench/brickbench.py pairs [--repeat 2]        our pairwise judge, both orders
     python3 tools/bench/brickbench.py report [--out FILE]       the tables docs/BRICKBENCH.md quotes
 
+A comparison of arms on held-out prompts, each arm the app of one checkout:
+
+    brickbench.py prompts --start 21 --date D                  model-021 to model-030
+    heavy brickbench.py design --date D --arm A --runs 2 [--app DIR]   two designs a prompt
+    brickbench.py export|verify --date D --arm A --runs 2
+    brickbench.py views|pairs --date D --arms A,B --runs 2     each design against every other and theirs
+    brickbench.py compare --date D --arms A,B --runs 2         ELO a arm, head to head, what they are made of
+
 BrickBench (Kulits et al., 2026; MIT code at https://github.com/kulits/BrickAgent)
 ranks AI LEGO® designers on 300 prompts. Its Model setting asks for at most 400
 pieces, from BrickNet's 14,441 parts only, and a submission is a folder a
@@ -62,10 +70,12 @@ import os
 import random
 import re
 import shutil
+import statistics
 import subprocess
 import sys
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -107,14 +117,12 @@ def batch_dir(date: str) -> Path:
 # -- the prompts and the parts -------------------------------------------
 
 
-def first_tasks(tasks_json: str, count: int = COUNT, skip: int = 0) -> list[dict]:
-    """`count` prompts of a setting after the first `skip`, in the file's order, each with its brief.
-
-    The first ten were the ones the designer was first measured on; `skip` 10
-    takes the next ten, held out from anything tuned on those."""
+def first_tasks(tasks_json: str, count: int = COUNT, start: int = 1) -> list[dict]:
+    """`count` prompts of a setting from the `start`-th, in the file's order, each with its
+    brief: the first ten by default, or a held-out ten (start 21) that nothing was tuned on."""
     tasks = json.loads(tasks_json)
     return [{"id": t["id"], "prompt": t["prompt"], "brief": brief_for(t["prompt"]),
-             "questions": len(t.get("questions", []))} for t in tasks[skip:skip + count]]
+             "questions": len(t.get("questions", []))} for t in tasks[start - 1:start - 1 + count]]
 
 
 def brief_for(prompt: str) -> str:
@@ -270,9 +278,13 @@ def build_source(task: str, prompt: str, parts: list[Part], note: str) -> str:
 
 
 def export_one(task: str, prompt: str, ldr: Path, out: Path, allowed: set[str],
-               note: str) -> dict:
-    """design.ldr as out/build.py, and what stands in the way of it being valid."""
-    parts = flatten(ldr.read_text(errors="replace"))
+               note: str, current: Callable[[str], str] = lambda stem: stem) -> dict:
+    """design.ldr as out/build.py, and what stands in the way of it being valid.
+
+    `current` gives a part's current number (style.Parts.canonical): a part
+    LDraw has moved, 3023 to 3023b, is written as the number BrickNet lists,
+    whose geometry the old one's stub draws."""
+    parts = [Part(current(p.stem), p.colour, p.rot, p.pos) for p in flatten(ldr.read_text(errors="replace"))]
     squared, refused, moved = [], [], 0.0
     for n, p in enumerate(parts):
         try:
@@ -433,15 +445,17 @@ def subject_for(task: dict) -> suite.Subject:
 
 def do_prompts(args: argparse.Namespace, batch: Path) -> int:
     upstream = _upstream(args)
-    tasks = first_tasks((upstream / "benchmark" / SETTING / "tasks.json").read_text(), COUNT, args.skip)
+    if args.skip and args.start == 1:
+        args.start = args.skip + 1
+    tasks = first_tasks((upstream / "benchmark" / SETTING / "tasks.json").read_text(), COUNT, args.start)
     batch.mkdir(parents=True, exist_ok=True)
     commit = subprocess.run(["git", "-C", str(upstream), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True).stdout.strip()
     bench._write_json(batch / "prompts.json", tasks)
+    chosen = ("the first ten, in file order" if args.start == 1
+              else f"ten from {tasks[0]['id'] if tasks else args.start}, in file order, held out")
     bench._write_json(batch / "upstream.json", {"repository": "https://github.com/kulits/BrickAgent",
-                                                 "commit": commit,
-                                                 "chosen": "the first ten, in file order" if not args.skip
-                                                 else f"ten in file order after the first {args.skip}, held out"})
+                                                 "commit": commit, "chosen": chosen})
     for t in tasks:
         print(f"{t['id']}  {t['prompt']}")
     return 0
@@ -463,53 +477,85 @@ def do_design(args: argparse.Namespace, batch: Path) -> int:
     if not parts.exists():
         raise SystemExit(f"no {parts}: run `parts` first")
     tasks = _tasks(batch, args.tasks)
+    app = Path(args.app).resolve() if args.app else bench.ROOT
+    if not (app / "project.godot").exists():
+        raise SystemExit(f"--app {app}: not a checkout of the app")
+    jobs = [(task, run_dir) for task in tasks for run_dir in _run_dirs(batch, args.arm, task["id"], args.runs)]
 
-    def one(task: dict) -> str:
-        run_dir = batch / "ours" / task["id"]
+    def one(job: tuple[dict, Path]) -> str:
+        task, run_dir = job
         run_dir.mkdir(parents=True, exist_ok=True)
+        named = f"{task['id']}" + (f" {args.arm} {run_dir.name}" if args.arm else "")
         try:
             made = bench.design(subject_for(task), run_dir, args.timeout, None,
-                                extra=(f"--parts-only={parts}",))
+                                extra=(f"--parts-only={parts}",), app=app)
         except SystemExit as stopped:
-            return f"{task['id']}: {stopped}"
+            return f"{named}: {stopped}"
         log = (run_dir / "design.log").read_text(errors="replace") if (run_dir / "design.log").exists() else ""
         took = "parts only" in log
-        return (f"{task['id']}: {'a model' if made.get('model') else 'NO MODEL'}, "
+        return (f"{named}: {'a model' if made.get('model') else 'NO MODEL'}, "
                 f"{made.get('design_seconds')} s, list {'taken' if took else 'NOT TAKEN'}")
 
+    # Each prompt's first design before any prompt's second: a batch stopped
+    # part way still has one design of every prompt.
+    jobs.sort(key=lambda job: (job[1].name, job[0]["id"]) if args.arm else (job[0]["id"], ""))
     with ThreadPoolExecutor(max_workers=max(1, min(2, args.jobs))) as workers:
-        for line in workers.map(one, tasks):
+        for line in workers.map(one, jobs):
             say(line)
     return 0
 
 
-def _note(batch: Path, task: str) -> str:
-    made = batch / "ours" / task / "design.json"
+def _run_dirs(batch: Path, arm: str, task: str, runs: int) -> list[Path]:
+    """Where a prompt's designs go: ours/<task> for the one design of the first
+    batch, or arms/<arm>/<task>/run<n> for each design of a comparison's arm."""
+    if not arm:
+        return [batch / "ours" / task]
+    return [batch / "arms" / arm / task / f"run{n}" for n in range(1, runs + 1)]
+
+
+def _side_dirs(batch: Path, arm: str, task: str, runs: int) -> list[tuple[str, Path]]:
+    """Each design of a prompt as (side, run folder): the side names it in views and pairs."""
+    if not arm:
+        return [(OURS, batch / "ours" / task)]
+    return [(f"{arm}-{d.name}", d) for d in _run_dirs(batch, arm, task, runs)]
+
+
+def _note(run_dir: Path) -> str:
+    made = run_dir / "design.json"
     commit = json.loads(made.read_text()).get("commit", "?") if made.exists() else "?"
     return (f"Brickworks' designer (https://brickworks.diy), commit {commit}, exported by "
             "tools/bench/brickbench.py: every part where\nthe design put it, each rotation "
             "made orthonormal for brickagent's Pose.")
 
 
+def _submission(batch: Path, run_dir: Path, task: str) -> Path:
+    """Where a design's build.py and model.mpd go: the first batch's submission
+    folder, or beside the design in a comparison's arm."""
+    return batch / "submission" / task if run_dir.parent.name == "ours" else run_dir / "submission"
+
+
 def do_export(args: argparse.Namespace, batch: Path) -> int:
     python = _python(args)
     allowed = read_allowed(batch / PARTS_FILE)
+    known = style.Parts()
     for task in _tasks(batch, args.tasks):
-        ldr = batch / "ours" / task["id"] / "design.ldr"
-        out = batch / "submission" / task["id"]
-        if not ldr.exists():
-            say(f"{task['id']}: no design")
-            continue
-        found = export_one(task["id"], task["prompt"], ldr, out, allowed, _note(batch, task["id"]))
-        # The model.mpd is the one the build writes, so verify.py finds them the same.
-        wrote = subprocess.run([python, "-I", str(out / "build.py")], cwd=out, capture_output=True,
-                               text=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
-        found["mpd"] = (out / "model.mpd").exists() and wrote.returncode == 0
-        found["mpd_error"] = wrote.stderr.strip()[-400:] if wrote.returncode else ""
-        bench._write_json(batch / "ours" / task["id"] / "export.json", found)
-        say(f"{task['id']}: {found['parts']} parts, off the list {found['off_list'] or 'none'}, "
-            f"rotations moved at most {found['rotation_moved']:.2g}, "
-            f"{'model.mpd written' if found['mpd'] else 'NO model.mpd: ' + found['mpd_error'][-160:]}")
+        for side, run_dir in _side_dirs(batch, args.arm, task["id"], args.runs):
+            named = task["id"] + ("" if side == OURS else f" {side}")
+            ldr = run_dir / "design.ldr"
+            out = _submission(batch, run_dir, task["id"])
+            if not ldr.exists():
+                say(f"{named}: no design")
+                continue
+            found = export_one(task["id"], task["prompt"], ldr, out, allowed, _note(run_dir), known.canonical)
+            # The model.mpd is the one the build writes, so verify.py finds them the same.
+            wrote = subprocess.run([python, "-I", str(out / "build.py")], cwd=out, capture_output=True,
+                                   text=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+            found["mpd"] = (out / "model.mpd").exists() and wrote.returncode == 0
+            found["mpd_error"] = wrote.stderr.strip()[-400:] if wrote.returncode else ""
+            bench._write_json(run_dir / "export.json", found)
+            say(f"{named}: {found['parts']} parts, off the list {found['off_list'] or 'none'}, "
+                f"rotations moved at most {found['rotation_moved']:.2g}, "
+                f"{'model.mpd written' if found['mpd'] else 'NO model.mpd: ' + found['mpd_error'][-160:]}")
     return 0
 
 
@@ -519,9 +565,13 @@ def do_verify(args: argparse.Namespace, batch: Path) -> int:
         raise SystemExit("set BRICKNET_DATA to where `python -m bricknet fetch-meshes` put the colliders")
     which = [w.strip() for w in args.which.split(",") if w.strip()]
     for task in _tasks(batch, args.tasks):
-        for side, folder in (("ours", batch / "submission" / task["id"]),
-                             ("theirs", batch / "theirs" / task["id"])):
-            if side not in which or not (folder / "build.py").exists():
+        mine = [(side, _submission(batch, run_dir, task["id"]))
+                for side, run_dir in _side_dirs(batch, args.arm, task["id"], args.runs)]
+        for side, folder in [*mine, ("theirs", batch / "theirs" / task["id"])]:
+            wanted = "theirs" if side == "theirs" else "ours"
+            if wanted not in which or not (folder / "build.py").exists():
+                continue
+            if (folder / "verification.json").exists() and args.arm:
                 continue
             ran = subprocess.run([bench.HEAVY, python, "-I", str(upstream / "scripts" / "verify.py"),
                                   str(folder), "--split", SETTING], capture_output=True, text=True,
@@ -596,11 +646,28 @@ def do_fetch(args: argparse.Namespace, batch: Path) -> int:
 
 
 def _model_of(batch: Path, side: str, task: str) -> Path:
-    return batch / ("submission" if side == OURS else "theirs") / task / "model.mpd"
+    if side in (OURS, THEIRS):
+        return batch / ("submission" if side == OURS else "theirs") / task / "model.mpd"
+    arm, run = side.rsplit("-", 1)
+    return batch / "arms" / arm / task / run / "submission" / "model.mpd"
 
 
 def views_of(batch: Path, side: str, task: str) -> tuple[Path, ...]:
     return tuple(batch / "views" / side / f"{task}_{v}.png" for v in VIEWS4)
+
+
+def sides_of(args: argparse.Namespace) -> list[str]:
+    """The builds of each prompt to draw and judge: ours and theirs, or each
+    design of each arm named in --arms, and theirs."""
+    arms = [a.strip() for a in args.arms.split(",") if a.strip()]
+    if not arms:
+        return [OURS, THEIRS]
+    return [f"{arm}-run{n}" for arm in arms for n in range(1, args.runs + 1)] + [THEIRS]
+
+
+def arm_of(side: str) -> str:
+    """A design's arm: brickworks or opus55 as they are, an arm's run without its number."""
+    return side if side in (OURS, THEIRS) else side.rsplit("-", 1)[0]
 
 
 def do_views(args: argparse.Namespace, batch: Path) -> int:
@@ -616,7 +683,7 @@ def do_views(args: argparse.Namespace, batch: Path) -> int:
                              software=args.software, views=VIEWS4)
         return f"{task['id']} {side}: {len(drawn)} of {len(VIEWS4)} views"
 
-    jobs = [(task, side) for task in _tasks(batch, args.tasks) for side in (OURS, THEIRS)]
+    jobs = [(task, side) for task in _tasks(batch, args.tasks) for side in sides_of(args)]
     with ThreadPoolExecutor(max_workers=max(1, min(2, args.jobs)) if args.software else 1) as workers:
         for line in workers.map(draw, jobs):
             say(line)
@@ -642,25 +709,30 @@ def _verification(batch: Path, side: str, task: str) -> dict:
 
 
 def do_pairs(args: argparse.Namespace, batch: Path) -> int:
+    """Every two builds of a prompt, both orders, `--repeat` times: ours against
+    theirs, or with --arms every design of every arm against each other and theirs."""
     asks = []
     for task in _tasks(batch, args.tasks):
         sides = {}
-        for side in (OURS, THEIRS):
+        for side in sides_of(args):
             views = views_of(batch, side, task["id"])
             report = _verification(batch, side, task["id"])
             if not all(v.exists() for v in views) or not report:
                 say(f"{task['id']} {side}: no views or no verification yet")
-                break
+                continue
             key = f"{side}/{task['id']}"
             sides[side] = (key, _shown(key, views, int(report.get("parts") or 0),
                                        verify_words(report), batch / "pairwise" / task["id"] / "designs"))
-        if len(sides) < 2:
+        if len(sides) < 2 or (not args.arms and len(sides) < len(sides_of(args))):
             continue
         subject = subject_for(task)
         where = batch / "pairwise" / task["id"]
+        shown = list(sides.values())
         for repeat in range(1, args.repeat + 1):
-            for a, b in ((sides[OURS], sides[THEIRS]), (sides[THEIRS], sides[OURS])):
-                asks.append((subject, where, [], a, b, repeat, None, args.judge_model))
+            for i, x in enumerate(shown):
+                for y in shown[i + 1:]:
+                    for a, b in ((x, y), (y, x)):
+                        asks.append((subject, where, [], a, b, repeat, None, args.judge_model))
     say(f"pairs: {len(asks)} ordered judgements")
     found = bench._ask_all(asks, args.jobs)
     say(f"pairs: {len(found)} verdicts")
@@ -756,16 +828,179 @@ def report(batch: Path) -> str:
     return "\n".join(out) + "\n"
 
 
+# -- a comparison of arms -------------------------------------------------------
+
+
+# A figure's parts, which the style measures leave out and a character is built of.
+FIGURE = re.compile(r"^(minifig|figure|animal)", re.I)
+# A brick or a plate with nothing to its shape but its outline, studs up: what a
+# statue is stacked from. A round brick or a round plate with a hole counts; a
+# curved slope, a wedge or a part with a clip, a bar or a side stud does not.
+STACKED = re.compile(r"^(brick|plate)\b(?!.*(slope|wedge|curved|hinge|bracket|technic|modified|side|clip|"
+                     r"bar|handle|pin|axle|ball|socket|door|window|lamp|light|wheel|ladder|rail|tooth|"
+                     r"grille|masonry|log|profile))", re.I)
+
+
+def vocabulary(model: Path, parts: "style.Parts") -> dict:
+    """What a build is made of and how big it is: the share of its building parts
+    stacked studs-up (STACKED), plain, shaped (a curve, a slope or at an angle), a
+    tile, a clip, bar, hinge or ball; its figure parts; its size; any baseplate."""
+    read = style.read(model.read_text(errors="replace"))
+    built, figures, stacked, plain, shaped, tile, joints, bases = 0, 0, 0, 0, 0, 0, 0, []
+    low, high = [math.inf] * 3, [-math.inf] * 3
+    for placed in read.placed:
+        info = parts.get(placed.part, read.embedded)
+        if info is None:
+            continue
+        if info.box is not None:
+            m = placed.matrix
+            rows = ((m.a, m.b, m.c, m.x), (m.d, m.e, m.f, m.y), (m.g, m.h, m.i, m.z))
+            for corner in [(x, y, z) for x in (info.box[0][0], info.box[1][0])
+                           for y in (info.box[0][1], info.box[1][1]) for z in (info.box[0][2], info.box[1][2])]:
+                at = [r[0] * corner[0] + r[1] * corner[1] + r[2] * corner[2] + r[3] for r in rows]
+                low = [min(a, b) for a, b in zip(low, at)]
+                high = [max(a, b) for a, b in zip(high, at)]
+        if FIGURE.match(info.category) or FIGURE.match(info.name):
+            figures += 1
+            continue
+        if info.category.lower() == "baseplate" or info.name.lower().startswith("baseplate"):
+            bases.append(info.name)
+        built += 1
+        kinds = style.kinds(info)
+        stacked += bool(STACKED.match(info.name)) and style.facing(placed.matrix) == "up"
+        plain += "plain" in kinds
+        shaped += bool(kinds & {"curve", "slope"}) or style.angled(placed.matrix)
+        tile += "tile" in kinds
+        joints += "angle_parts" in kinds
+
+    def share(n: int) -> float:
+        return round(n / built, 3) if built else 0.0
+
+    size = [round((h - lo) / unit, 1) if h > lo else 0.0 for lo, h, unit in zip(low, high, (20, 8, 20))]
+    return {"parts": built + figures, "figure_parts": figures, "stacked": share(stacked), "plain": share(plain),
+            "shaped": share(shaped), "tile": share(tile), "joints": share(joints),
+            "across": max(size[0], size[2]), "deep": min(size[0], size[2]), "tall_plates": size[1],
+            "baseplate": bases[0] if bases else ""}
+
+
+# The measures of `vocabulary` that are shares of a build's building parts.
+SHARES = ("stacked", "plain", "shaped", "tile", "joints")
+
+
+@dataclass(frozen=True, slots=True)
+class Field:
+    """Several arms on one dimension: ELO with 95% intervals, prompts resampled."""
+
+    dim: str
+    elo: dict[str, float]
+    low: dict[str, float]
+    high: dict[str, float]
+
+
+def field_of(verdicts: list[pairwise.Verdict], dim: str, arms: list[str], draws: int = pairwise.DRAWS,
+             seed: int = 0) -> Field:
+    """Bradley-Terry over arms, as BrickBench's elo.py fits systems: each verdict a
+    game between the two designs' arms (two designs of one arm are not a game),
+    half a virtual tie between every two, and the prompts resampled with all their
+    verdicts for the interval, so a prompt's designs and orders stay together."""
+    def fit(chosen: list[pairwise.Verdict]) -> dict[str, float]:
+        won: dict[tuple[str, str], float] = {}
+        for v in chosen:
+            winner = arm_of(system_of(v.winners[dim]))
+            loser = arm_of(system_of(v.second if v.winners[dim] == v.first else v.first))
+            if winner != loser:
+                won[(winner, loser)] = won.get((winner, loser), 0.0) + 1.0
+        return {k: pairwise.elo(s) for k, s in pairwise.fit(arms, won).items()}
+
+    point = fit(verdicts)
+    by_task: dict[str, list[pairwise.Verdict]] = {}
+    for v in verdicts:
+        by_task.setdefault(task_of(v.first), []).append(v)
+    tasks = sorted(by_task)
+    rng = random.Random(f"{seed}:{dim}")
+    sampled = [fit([v for _ in tasks for v in by_task[rng.choice(tasks)]]) for _ in range(draws)] if tasks else []
+    low = {k: pairwise._percentile([d[k] for d in sampled], 0.025) if sampled else point[k] for k in arms}
+    high = {k: pairwise._percentile([d[k] for d in sampled], 0.975) if sampled else point[k] for k in arms}
+    return Field(dim, point, low, high)
+
+
+def head_to_head(verdicts: list[pairwise.Verdict], dim: str, a: str, b: str) -> tuple[int, int, dict]:
+    """Of the verdicts between arm a's designs and arm b's: how many went to a, of
+    how many, and the prompts a won every time, split, or lost every time."""
+    mine = [v for v in verdicts if {arm_of(system_of(v.first)), arm_of(system_of(v.second))} == {a, b}]
+    won = sum(arm_of(system_of(v.winners[dim])) == a for v in mine)
+    tally = {"won": 0, "split": 0, "lost": 0}
+    for task in sorted({task_of(v.first) for v in mine}):
+        here = [v for v in mine if task_of(v.first) == task]
+        got = sum(arm_of(system_of(v.winners[dim])) == a for v in here)
+        tally["won" if got == len(here) else "lost" if got == 0 else "split"] += 1
+    return won, len(mine), tally
+
+
+def compare(batch: Path, arms: list[str], runs: int) -> str:
+    """The comparison's tables: each arm's ELO among the arms and theirs, every two
+    arms head to head, and what each arm's builds are made of."""
+    tasks = json.loads((batch / "prompts.json").read_text())
+    sides = [f"{arm}-run{n}" for arm in arms for n in range(1, runs + 1)]
+    systems = [*arms, THEIRS]
+    said = [v for v in _verdicts(batch)
+            if arm_of(system_of(v.first)) in systems and arm_of(system_of(v.second)) in systems]
+    out = [f"### {len(said)} verdicts over {len({task_of(v.first) for v in said})} prompts", "",
+           "Bradley-Terry over the arms (two designs of one arm are not a game), half a virtual tie "
+           "between every two, 95% intervals from resampling the prompts with all their verdicts. "
+           "Our judge, not BrickBench's.", "",
+           "| dimension | " + " | ".join(f"{s} ELO (95%)" for s in systems) + " |",
+           "|---|" + "---|" * len(systems)]
+    for dim in pairwise.DIMENSIONS:
+        found = field_of(said, dim, systems)
+        out.append(f"| {dim} | " + " | ".join(
+            f"{found.elo[s]:.0f} ({found.low[s]:.0f}-{found.high[s]:.0f})" for s in systems) + " |")
+    out += ["", "| pair | dimension | verdicts for the first | 95% | prompts won every time / split / lost |",
+            "|---|---|---|---|---|"]
+    for i, a in enumerate(systems):
+        for b in systems[i + 1:]:
+            for dim in ("overall", "technique", "likeness", "surface"):
+                won, of, tally = head_to_head(said, dim, a, b)
+                if not of:
+                    continue
+                lo, hi = pairwise.wilson(won, of)
+                out.append(f"| {a} vs {b} | {dim} | {pairwise.share(won, of)} | {100 * lo:.0f}-{100 * hi:.0f}% | "
+                           f"{tally['won']} / {tally['split']} / {tally['lost']} |")
+    known = style.Parts()
+    keys = ["parts", "figure_parts", "stacked", "plain", "shaped", "tile", "joints", "across", "tall_plates"]
+    out += ["", "What each arm's builds are made of, the median over its designs (stacked: building parts that "
+            "are a brick or a plate of any outline, studs up; shaped: a curve, a slope or at an angle; "
+            "joints: a clip, bar, hinge or ball; across in studs):", "",
+            "| arm | designs | valid (verify.py) | baseplates | " + " | ".join(keys) + " |",
+            "|---|---|---|---|" + "---|" * len(keys)]
+    for system in systems:
+        mine = [s for s in [*sides, THEIRS] if arm_of(s) == system]
+        rows, valid = [], 0
+        for task in tasks:
+            for side in mine:
+                model = _model_of(batch, side, task["id"])
+                if model.exists():
+                    rows.append(vocabulary(model, known))
+                    valid += bool(_verification(batch, side, task["id"]).get("valid"))
+        if not rows:
+            continue
+        medians = {k: statistics.median([r[k] for r in rows]) for k in keys}
+        out.append(f"| {system} | {len(rows)} | {valid} | {sum(bool(r['baseplate']) for r in rows)} | "
+                   + " | ".join(f"{100 * medians[k]:.0f}%" if k in SHARES else f"{medians[k]:g}"
+                                for k in keys) + " |")
+    return "\n".join(out) + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("what", choices=["prompts", "parts", "design", "export", "verify", "zip", "fetch",
-                                         "views", "pairs", "report"])
+                                         "views", "pairs", "report", "compare"])
     parser.add_argument("--date", default="", help="the batch: bench/results/brickbench-<date>")
     parser.add_argument("--upstream", default="", help="a clone of BrickAgent")
     parser.add_argument("--python", default="", help="a Python with brickagent and pybullet")
     parser.add_argument("--tasks", default="", help="task ids, comma-separated; all ten if not said")
     parser.add_argument("--skip", type=int, default=0,
-                        help="prompts: the ten after the first SKIP (10: model-011 to model-020)")
+                        help="prompts: the ten after the first SKIP (10: model-011 to model-020), as --start SKIP+1")
     parser.add_argument("--jobs", type=int, default=2, help="designs (at most 2) or judge calls at once")
     parser.add_argument("--timeout", type=int, default=2700, help="seconds a design may take")
     parser.add_argument("--which", default="ours,theirs", help="verify: ours, theirs or both")
@@ -773,14 +1008,20 @@ def main() -> int:
     parser.add_argument("--repeat", type=int, default=1, help="pairs: ask every pair this many times")
     parser.add_argument("--judge-model", default="opus")
     parser.add_argument("--out", type=Path, default=None, help="report: also write it here")
+    parser.add_argument("--start", type=int, default=1, help="prompts: the first prompt's place in the file")
+    parser.add_argument("--arm", default="", help="design, export, verify: one arm of a comparison")
+    parser.add_argument("--arms", default="", help="views, pairs, compare: the arms, comma-separated")
+    parser.add_argument("--runs", type=int, default=1, help="designs a prompt in each arm")
+    parser.add_argument("--app", default="", help="design: the checkout whose app designs (this one)")
     args = parser.parse_args()
     batch = batch_dir(args.date)
     stages = {"prompts": do_prompts, "parts": do_parts, "design": do_design, "export": do_export,
               "verify": do_verify, "zip": do_zip, "fetch": do_fetch, "views": do_views, "pairs": do_pairs}
     if args.what in stages:
         return stages[args.what](args, batch)
-    text = report(batch)
-    (batch / "report.md").write_text(text)
+    arms = [a.strip() for a in args.arms.split(",") if a.strip()]
+    text = compare(batch, arms, args.runs) if args.what == "compare" else report(batch)
+    (batch / ("compare.md" if args.what == "compare" else "report.md")).write_text(text)
     if args.out is not None:
         args.out.write_text(text)
     print(text)

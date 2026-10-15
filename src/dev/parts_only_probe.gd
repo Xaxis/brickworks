@@ -19,6 +19,8 @@ extends SceneTree
 ## 60602, the glass for window 1 x 2 x 3, which BrickNet leaves out.
 const ON := "3001"
 const OFF := "60602"
+## A number LDraw has moved: "~Moved to 3023b", which BrickNet lists.
+const MOVED := "3023"
 
 var _failures: int = 0
 
@@ -92,6 +94,16 @@ func _run() -> void:
 	_ok(not bool(bad["ok"]) and str(bad["feedback"]).contains("not among this run's parts")
 		and str(bad["feedback"]).contains(OFF) and str(bad["feedback"]).contains("swap"),
 		"a design with %s is refused, naming it and asking for a swap" % OFF)
+	# A number LDraw moved is the part it moved to: the generators lay 3023,
+	# BrickNet lists 3023b, and a fill of 1 x 2 plates is not refused for it.
+	PartsOnly.use(listed + PackedStringArray(["3023b"]), "the probe's list")
+	_ok(PartsOnly.allows(MOVED, library) and not PartsOnly.allows(MOVED),
+		"%s, moved to 3023b, is allowed by what it moved to" % MOVED)
+	var filled: Dictionary = _checked_pattern(assistant, {"pattern": "fill",
+		"at": {"x": 0, "y": 0, "z": 0}, "shape": "rectangle", "across": 1, "deep": 2, "color": 4})
+	_ok(not str(filled["feedback"]).contains("not among"),
+		"a fill laid in %s is not refused (%s)" % [MOVED, str(filled["summary"]).left(80)])
+	PartsOnly.use(listed, "the probe's list")
 	for tool: String in ["make_part", "lay_flex", "print_part"]:
 		_ok(not PartsOnly.tool_refusal(tool).is_empty(), "%s is refused" % tool)
 	_ok(PartsOnly.tool_refusal("edit_model").is_empty(), "edit_model is not")
@@ -149,6 +161,11 @@ func _checked(assistant: Assistant, parts: Array) -> Dictionary:
 		model.placements.append(Assistant.Placement.from_dict({
 			"part": parts[n], "color": 4, "x": n * 6, "y": 0, "z": 0}))
 	return assistant._check(model, true)
+
+
+## One pattern alone, checked as a design.
+func _checked_pattern(assistant: Assistant, pattern: Dictionary) -> Dictionary:
+	return assistant._check(assistant._read_model({"patterns": [pattern], "bricks": []}), true)
 
 
 func _finish(sentence: String) -> void:

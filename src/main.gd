@@ -3989,17 +3989,16 @@ func _on_floor_chosen(choice: Dictionary) -> void:
 	if chosen.is_plate():
 		if int(choice.get("colour", -1)) >= 0:
 			chosen.colour = int(choice["colour"])
-		# The least plate the model stands on with a stud to spare: one of
-		# the three sizes when it fits one, in eights otherwise.
+		# The least plate the model stands on with a stud to spare, in
+		# eights each way, as baseplates are cut (16 x 8, 24 x 16 and 32 x 16
+		# are single plates). Rounded up to a square, a scene 19 studs by 12
+		# stood on 32 x 32 and one 33 across on 48 x 48, which every view
+		# then showed as an empty field round a small model.
 		var box: AABB = _model_bounds()
 		var wide: int = int(ceil(box.size.x / BrickLattice.STUD)) + 2
 		var deep: int = int(ceil(box.size.z / BrickLattice.STUD)) + 2
-		var side: int = -1
-		for studs: int in ModelFloor.SIZES:
-			if side < 0 and studs >= maxi(wide, deep):
-				side = studs
-		chosen.across = side if side > 0 else wide
-		chosen.deep = side if side > 0 else deep
+		chosen.across = clampi(ceili(wide / 8.0) * 8, ModelFloor.LEAST, ModelFloor.MOST)
+		chosen.deep = clampi(ceili(deep / 8.0) * 8, ModelFloor.LEAST, ModelFloor.MOST)
 	var was_own: bool = _floor.has_own_plate()
 	var changed: bool = not chosen.same_as(_store.model_floor)
 	if changed:

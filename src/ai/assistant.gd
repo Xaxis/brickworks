@@ -2679,7 +2679,8 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 	if not missing.is_empty():
 		said.append("Real %s sets reach for these far more than other "
 			% " and ".join(kinds) + "sets do, and the %s has none of "
-			% name + "them yet:\n" + "\n".join(missing))
+			% name + "them yet — one where its shape is wanted, never "
+			+ "something the brief did not ask for:\n" + "\n".join(missing))
 	if not present.is_empty():
 		said.append("It already has %s." % ", ".join(present))
 	if not palette.is_empty():
@@ -10138,7 +10139,11 @@ add_minifig: small (a handful to thirty parts), joined to the model, where \
 the eye lands from the front or the corner. Never over what the subject is \
 known by, never changing its silhouette, never at the cost of its build: a \
 touch that hurts the likeness is not one. One hidden inside shows only \
-through a door left open, an open back or a window.
+through a door left open, an open back or a window. Where the brief says \
+what is in the scene — who is there, what they hold, what they stand on — \
+it is the scope: the touches go on those things (a printed part, a pose, \
+something that moves, a detail it names done better), and a figure, a \
+creature, a plant or a prop it did not name is clutter, not a story.
 3. Say in a line which you added and why it belongs to this subject.
 
 What it has now: {has}.
@@ -10641,6 +10646,18 @@ func _shell_hinge() -> Dictionary:
 const ROUND_PANELS_FROM := 12.0
 ## A loft, revolve or extruded profile this long, rounded, curves both ways.
 const TWO_WAYS_FROM := 10.0
+## A round body under ROUND_PANELS_FROM said as a shape: a core of bricks a
+## few studs across under a skin a part thick, which is a statue. The first
+## BrickBench designs said a penguin, a duck and a blob this way, and the
+## judge's word for every one was "blocky" against bodies of round bricks,
+## domes and dishes; four of our own owl's nine judgements call its body
+## stacked bricks.
+const SMALL_ROUND := ("The %s %s studs across is laid as bricks and plates, "
+	+ "and a round body that small is a few moulded parts in a set: a 4 x 4 or "
+	+ "2 x 2 round brick (87081, 3941), a dome (30367c) or a dish (3960, 4740), "
+	+ "round corner bricks (85080, 48092) round a core, curved slopes on side "
+	+ "studs. A figure's or a creature's head or body is built so, as a "
+	+ "sub-assembly, its limbs on joints (read_guide \"figures\").")
 
 
 static func _round_by_panels(patterns: Array) -> Array:
@@ -10667,6 +10684,10 @@ static func _round_by_panels(patterns: Array) -> Array:
 					+ "plates is a staircase however fine. " + panels
 					+ "An egg or a body lying on its side reads smooth as skins on side "
 					+ "studs, with the shape kept inside as its core.")
+				return said
+			if solid["kind"] in ["dome", "ellipsoid", "revolve"] and across < ROUND_PANELS_FROM:
+				said.append(SMALL_ROUND % [solid["kind"],
+					Placement._num(snappedf(across, 0.5))])
 				return said
 			if solid["kind"] in ["loft", "revolve", "extrude"] \
 					and bool(solid.get("round", false)) and across >= TWO_WAYS_FROM \
@@ -11084,7 +11105,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# A run kept to a list of parts (--parts-only, the BrickBench
 		# bench): one off it is refused wherever it stands, so the edit
 		# that would keep it is the one that swaps it.
-		if not PartsOnly.allows(placement.part):
+		if not PartsOnly.allows(placement.part, library):
 			_note(issues, "not among this run's parts", "%s: %s" % [
 				"#%d" % placement.id if placement.id != 0 else "brick %d" % index,
 				PartsOnly.swap_words(placement.part)])
@@ -16070,6 +16091,46 @@ panel wider than its share of the round at either end, the next strip's \
 over its edges, a lip over each seam. show_technique("hinged panels") is \
 one strip, built and checked.
 
+FIGURES, CREATURES AND SMALL MODELS
+A figure, a creature, a character, or anything a hand closes round, is not \
+a small hull. The shape, fill, round and shell patterns fill a volume with \
+bricks and skin it, which is how a set builds a hull, a car body, a \
+fuselage, a boiler or a building. A figure built that way is a statue of \
+stacked bricks, and the judge called every one built here that. A set \
+builds a character from tens of parts to a couple of hundred, each chosen \
+for the shape it makes, in sub-assemblies joined at angles.
+  The brief is the scope and the size. Build what it names (each figure, \
+what they hold, what they stand on) in its proportions (tiny, squat, \
+round, a head as big as its body), and nothing it does not name: an \
+unasked figure, creature, plant or fence is clutter, not a story. What it \
+stands on is what the brief says (a log, a stool, a small base), a stud \
+or two past its footprint; a figure alone stands on its feet.
+  Its size. A person among things at minifigure scale is a minifigure: \
+add_minifig, with real heads, helmets, armour and tools (a pilot, a \
+chef at the stove). A brick-built figure or creature is about 6 to 16 \
+studs tall, a cartoon's head a third of it or more.
+  Each part of it a sub-assembly of shaped parts:
+    a head   a 2 x 2 or 4 x 4 round brick (3941, 87081), a dome (30367c), a \
+dish (4740, 3960) for a face or a cap, a cone (3942c) for a hat; eyes \
+printed round tiles (98138p07, 14769p01) or 1 x 1 round plates; a beak, a \
+snout or a muzzle a curved or cheese slope on a jumper
+    a body   round bricks and round corner bricks (85080, 48092), curved \
+slopes (15068, 11477, 93606) on bricks with side studs (87087, 11211), a \
+dish for a belly, slopes falling for a robe
+    a limb   turned to its pose on a joint, never butted on: a section on \
+hinge "clip" (a bar in a clip: an arm, a wing, a tail, a lance), "click" \
+or "tilting" (read_guide "angle"); a ball in a socket (22890 in 14418) for \
+a shoulder or a hip
+    held     a bar is a handle: a sword, a staff, a mop or an axe's \
+shaft held in a clip (61252, 60897)
+  find_techniques with the part's own words ("head", "arm", "wing", "leg", \
+"bird", "animal") finds the pieces real sets built; show_technique has "eye \
+with a highlight", "beak or snout", "ears or tufts", "talons" and "leaning \
+on a hinge"; search_parts "minifig" with a word finds a figure's parts.
+  A pattern still fits the one big mass of a figure that is a hull (a \
+boiler, a tank's body, a whale 20 studs long) under its shaped head, limbs \
+and features.
+
 THE RULES YOUR DESIGN MUST SATISFY
 1. Nothing may overlap. Two parts cannot share space.
 2. Nothing may float. Every part needs the ground (y=0) or another part \
@@ -16093,12 +16154,13 @@ each feature the subject is known by, then the detail. In this order:
      is a tapering tower with a light on top, which is every lighthouse \
      and no lighthouse. A picture gives you this one.
   3. The silhouette. Decide the main masses and their sizes in studs, \
-     off that picture, and what each is: round in section, tapered, at \
-     a slant, smooth, moving, mechanical, organic. Say each as a shape \
-     (a body, a head, a hull, a cabin) and submit that first: its \
-     proportions are judged before anything is put on it. A head that \
-     looks at you is said with its "face" on its shape here, so the \
-     disc and the eyes are part of the silhouette. WHAT THE \
+     off that picture and the brief, and what each is: round in section, \
+     tapered, at a slant, smooth, moving, mechanical, organic. Say a \
+     hull, a car body, a fuselage or a building as a shape and submit \
+     that first: its proportions are judged before anything is put on \
+     it. A figure, a creature or a character is not a shape: it is \
+     sub-assemblies of shaped parts on joints (FIGURES, CREATURES AND \
+     SMALL MODELS, above), submitted the same way first. WHAT THE \
      SUBJECT NEEDS, below, says which call builds each; \
      how_real_sets_build_this, asked with the plainest word for the \
      kind (a rocket: space; a locomotive: train; a galleon: pirate; an \
@@ -16138,8 +16200,12 @@ Then lay it out layer by layer from the ground up.
 
 SAY THE SHAPE, DO NOT COUNT IT OUT
 Writing placements one at a time is the part of this you are worst at, \
-and most of a model is repetition. Three patterns do the counting, \
-alongside the bricks you write by hand:
+and most of a model is repetition. The patterns below are for masses — a \
+hull, a body, a building, a wall, a rock. A figure, a creature or a \
+character is not one: its head, body and limbs are a few shaped parts \
+each, on joints (read_guide "figures"), and said as a pattern it is a \
+statue of stacked bricks. Three patterns do the counting, alongside the \
+bricks you write by hand:
 
   repeat   the same bricks again, stepped each time. A colonnade, a row \
            of windows, a stack of courses.
@@ -16297,8 +16363,10 @@ alongside the bricks you write by hand:
            bricks with side studs; one half and its mirror, tied across \
            the middle. A hull is a loft with "keel" narrowing its lower \
            half and a box cut off its top for the deck; a fuselage a \
-           revolve along x; a bird's or a beast's body ellipsoids and a \
-           loft for its tail; "bands" colour it by height (a waterline, a \
+           revolve along x; a display animal's big body (an owl twenty \
+           studs tall) ellipsoids and a loft for its tail, its head and \
+           limbs shaped parts (read_guide "figures"); "bands" colour it \
+           by height (a waterline, a \
            belly), and a solid's own "color" a part of it (a canopy). The \
            car that was told every check to use wedge plates and curved \
            slopes and used none of them would have had both from this. \
@@ -16312,7 +16380,8 @@ alongside the bricks you write by hand:
            roof fall to the tail, and the reply says what it laid or why \
            none fits. A truck's cab climbs steeply over 2 studs, an \
            aircraft's cockpit where the nose climbs to the fuselage. \
-           A head's face is said on it: "face": {"facing": "+z", "x": 10, \
+           A big head's face (ten studs across or more) is said on it: \
+           "face": {"facing": "+z", "x": 10, \
            "y": 53, "z": 11, "across": 6, "color": 15, "rim": 84, "eyes": \
            0, "beak": 19} leaves a square of 6 out of the curved side \
            there, on the side-stud bricks behind it lays a plate to bring \
@@ -16569,7 +16638,10 @@ leave the baseplate bare and let the model stand on it.
 Choose what it stands on (submit_design's floor). A vehicle, a ship, a \
 figure or a creature has no plate in its box: floor "none". A scene, a \
 diorama or a building on its lot comes on a baseplate: floor "baseplate" \
-in the colour of its ground, and that plate is part of the build.
+in the colour of its ground, and that plate is part of the build. A figure \
+or two with what the brief stands them on is not a scene: floor "none", \
+and the base the brief names (a log, a stool, a stretch of floor, a small \
+base) built a stud or two past their footprint.
 
 WHAT MAKES A MODEL BEAUTIFUL
 Holding together and reading as the thing are the floor, not the goal. \
@@ -16657,8 +16729,11 @@ show_technique "smooth dome". A handle is a bar: \
 attachment_points lists it, and a quarter goes on its clips by axis and \
 joint at the clips' line. A dome or a ball of any other size up to 32 \
 across: one shell of hinged panels (read_guide "round").
-  A body that is not a box — a car's body, a hull, a fuselage, a \
-creature's body or head: the shape pattern, said as its solids (a loft \
+  A figure, a creature, a character — anything with a head, limbs and a \
+pose: sub-assemblies of shaped parts on joints, never one pattern \
+(read_guide "figures"); a minifigure where it is minifigure-sized.
+  A body that is not a box — a car's body, a hull, a fuselage, a big \
+display animal's body: the shape pattern, said as its solids (a loft \
 through sections, a profile extruded, a revolve, ellipsoids), which \
 lays its slopes, curved slopes, wedges and tiles for you, a round \
 section in round parts, and a side that curves up and down turned out \
@@ -16698,8 +16773,8 @@ real sets have them.
   Mechanical — legs, arms, a crane jib, a frame, struts: Technic beams \
 pinned to Technic bricks (a round's "technic" course pins beams on in \
 one line); grille tiles, round plates, levers and pipes for machinery.
-  Organic — rock, a creature, a tree: the rock pattern; curved slopes \
-and wedges for a body; hinged sections for wings and limbs.
+  Organic — rock, a tree: the rock pattern; curved slopes and wedges for \
+a body; hinged sections for wings and limbs.
   A face — an animal's, a figure's, a robot's, a vehicle's front: \
 features, each a part a designer chose, not a panel. Eyes are round \
 plates with a printed pupil and its highlight (show_technique "eye with \
@@ -16775,6 +16850,12 @@ printed parts for a great many real things), or a part used for what it \
 looks like.
   Never at the cost of what it is: a touch that covers what the subject \
 is known by, changes its silhouette or loosens its build is not one.
+  And never beside what was asked, where the brief says what is in the \
+scene — who is there, what they hold, what they stand on. Then the brief \
+is the scope: the touches go on those things (a printed part, a pose, \
+something that moves, the detail it names done better), and a figure, a \
+creature, a plant or a prop it did not name is clutter. A brief that names \
+only its subject (a castle, a ship) leaves room for a story.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -16915,26 +16996,27 @@ HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
 that exists; how_real_sets_build_this with the subject: real sets' parts, \
 and the faults the judge found in our own designs of it, to design out.
- 2. The silhouette: the main masses, sized in studs off the picture, each \
-said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
-"shapes") — and a head that looks at you with its "face" on its shape. \
+ 2. The silhouette: the main masses, sized in studs off the picture and \
+the brief. A hull, a car body, a fuselage or a building is a shape pattern \
+(read_guide "shapes"); a figure, a creature, a character or anything \
+small is sub-assemblies of shaped parts on joints (read_guide "figures"). \
 submit_design that first, with its assemblies and features — what the \
-subject is known by (an owl's eyes, beak, ear tufts; a car's wheel arches, \
-headlamps, grille), each with where it goes (x, y, z, facing).
+subject is known by (an owl's eyes; a car's wheel arches, grille), each \
+with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
  4. Each feature in turn: the app lays the best real set's piece where it \
-goes; settle_feature accepts it (adjusted if need be), asks for the next, \
-rejects it with a reason, or says you built it. Saving waits for all. A \
-feature is parts with depth, never a painted tile.
+goes; settle_feature accepts it, asks for the next, rejects it with a \
+reason, or says you built it. A feature is parts with depth, never a \
+painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
-studs, slopes staircases (plate steps too), rounds hard edges, skins flanks \
-and textures walls; settle each with settle_surface (accept, reject or keep).
+studs, slopes staircases, rounds hard edges, skins flanks and textures \
+walls; settle each with settle_surface (accept, reject or keep).
  7. Last, the creative pass: review_model {"creative": true} — three \
-touches proposed for this subject, the best one or two added. Then \
-save_model.
+touches, the best one or two added; where the brief lists the scene, on \
+what it names. Then save_model.
 
 THE RULES: nothing overlaps; nothing floats (every part on the ground or \
 on a part under it); the model is one connected thing — parts side by side \
@@ -16959,8 +17041,8 @@ SKETCH FIRST, when asked: submit_design with "sketch": true three times \
 from it.
 
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
-studs_out, prism, round, and shape with its face), "subject" (what each \
-kind of subject needs), "real", "colour", "angle", "round", \
+studs_out, prism, round, and shape with its face), "figures", "subject" \
+(what each kind of subject needs), "real", "colour", "angle", "round", \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (everything else the \
 person can do from the menus, as tools).
@@ -16969,11 +17051,17 @@ A call answered with a job number is still working in the app: call job \
 about every 10 s until it gives the answer."""
 
 
+## The section on figures and creatures, which the head sends a session to.
+const FIGURES := "FIGURES, CREATURES AND SMALL MODELS"
+
 ## Names a session may ask read_guide for, beside the headings' own words.
 const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK",
 	"rules": "THE RULES YOUR DESIGN MUST SATISFY", "shapes": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
+	"figures": FIGURES, "figure": FIGURES, "character": FIGURES, "characters": FIGURES,
+	"creature": FIGURES, "creatures": FIGURES, "animal": FIGURES, "small": FIGURES,
+	"vignette": FIGURES, "scope": FIGURES,
 	"cabin": "SAY THE SHAPE, DO NOT COUNT IT OUT", "canopy": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"screen": "SAY THE SHAPE, DO NOT COUNT IT OUT", "windscreen": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"coupling": "WHAT THE SUBJECT NEEDS", "couplings": "WHAT THE SUBJECT NEEDS",
@@ -17144,7 +17232,7 @@ func _find_parts_like(query: String) -> String:
 		var parts := PackedStringArray()
 		# Kept to a list (PartsOnly): only the family's parts on it.
 		var listed: Array = (family["parts"] as Array).filter(func(pair: Variant) -> bool:
-			return PartsOnly.allows(str((pair as Array)[0])))
+			return PartsOnly.allows(str((pair as Array)[0]), library))
 		if listed.is_empty():
 			continue
 		for pair: Variant in listed.slice(0, 6):
@@ -17403,6 +17491,20 @@ func _plan_scale(args: Dictionary) -> String:
 			+ "saucer — and a model built too small to read is the one "
 			+ "fault no amount of revising gets out of it, because "
 			+ "every detail you then want has nowhere to go.")
+	elif metres * float((SCALES[0] as Dictionary)["studs_per_metre"]) < TOO_SMALL:
+		# Smaller than a scale can show: a person, an animal, a chair. "Build
+		# a part of it, a locomotive rather than the train" is no answer for
+		# those, and nothing else said how big a figure is: the first
+		# BrickBench knights were stacked 37 to 62 plates tall.
+		chosen = ("\n\nAt %s metres it is smaller than any scale reads, so "
+			% Placement._num(metres)
+			+ "it is built as a figure, not to a scale. A person among "
+			+ "minifigure-scale things is a minifigure (add_minifig); an animal "
+			+ "there is one moulded part (search_parts \"animal\"). On its own, "
+			+ "a figure or a creature is brick-built, about 6 to 16 studs tall in "
+			+ "its own proportions, from parts chosen for their shape: a round "
+			+ "brick or a dome for a head, round bricks and curved slopes for a "
+			+ "body, limbs on clips, bars and hinges (read_guide \"figures\").")
 	else:
 		chosen = ("\n\nNothing on that list reads well at %s metres. "
 			% Placement._num(metres)
@@ -20177,7 +20279,10 @@ func _tools() -> Array:
 							"what it stands on. \"none\" for anything that is "
 							+ "picked up and played with or stood on a shelf — a "
 							+ "vehicle, a ship, a figure, a creature, a spacecraft: "
-							+ "a set like that has no plate in the box. "
+							+ "a set like that has no plate in the box; and a "
+							+ "figure or two with what the brief stands them on, "
+							+ "whose base is the one it names, built to their "
+							+ "footprint. "
 							+ "\"baseplate\" for a scene, a diorama, a building on "
 							+ "its lot, a landscape: a real baseplate, sized to it, "
 							+ "goes in the box as the first part of the build — "

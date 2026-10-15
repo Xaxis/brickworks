@@ -130,6 +130,96 @@ brick's edge; a leaning flower). The check refuses the last two since, and
 the app no longer seats a head that way. Nothing was judged on looks here: these are verify.py's verdicts,
 and no VQA or Elo was run.
 
+## A figure is not a hull: the stacking fix, held out (2026-10-14, `63ab5ca`)
+
+[BRICKBENCH.md](BRICKBENCH.md) has the whole of it, under "why ours were
+statues". Our BrickBench characters were stacked-brick statues on big plates.
+Four things made them so:
+- the instructions' head said every mass is a shape pattern;
+- the bench's part list refused the generators' own part numbers, so
+  sessions stacked bricks by hand;
+- nothing said how big a figure is;
+- the creative pass asked for a story, which meant an unasked figure.
+
+The fix sends a figure, a creature or anything small to a guide section of
+its own. It answers plan_scale for a person, keeps the creative pass to what
+the brief names, and sizes a baseplate to the scene in eights. A moved part
+number now reads as the part it moved to.
+
+**On ten held-out BrickBench prompts** (model-021 to model-030, small trains
+with faces and figures), there were two designs a prompt in each arm and 200
+pairwise verdicts:
+
+| | full (`fe032a8`) | lean (`63ab5ca`) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| overall ELO (95%) | 675 (597-731) | 735 (679-797) | 1590 (1588-1606) |
+| lean vs full, overall | | 47 of 80 (59%, 95% 48-69%) | |
+| likeness, surface | | 61%, 62% of 80 (each just clear of even) | |
+| against BrickAgent, overall | 0 of 40 | 0 of 40 | |
+| unasked figures, of 12 designs | 7 | 1 | |
+| stacked bricks and plates (median) | 60% | 59% | 38% |
+| valid (their verify.py) | 5 of 20 | 6 of 20 | 10 of 10 |
+
+The scope fix worked: the unasked figures and the big baseplates went. The
+judge leaned to the fix, on overall inside the noise and on likeness and
+surface just outside it. It cost creativity, which the judge had read off
+the unasked figures. The construction itself did not move on these
+vehicle-like prompts. Neither arm won a verdict against BrickAgent.
+
+**No regression on big subjects.** The car and the fire truck went through
+`run.py` on the fix (`c0d7257`), two designs each, as round
+`2026-10-14-figures`. Each was judged in pairs against every design of its
+subject from every round, `2026-10-14-cabins` among them: 302 verdicts, 272
+for the car's 17 designs and 30 for the fire truck's 6. `run.py rank` reads
+the round as the lever "figures" against "cabins".
+
+| subject | design | 1-10 mean | overall ELO (95%) | its cabins counterpart |
+|---|---|---|---|---|
+| speed_champions | figures/1 | 4.17 | 1017 (934-1100) | cabins/1 4.33, 1125 (1040-1214) |
+| speed_champions | figures/2 | 4.17 | 976 (885-1063) | cabins/2 4.17, 825 (718-926) |
+| fire_truck | figures/1 | 6.67 | 1011 (851-1154) | cabins/1 5.67, 631 (543-852) |
+| fire_truck | figures/2 | 6.67 | 1276 (1080-1437) | cabins/2 7.00, 1203 (996-1383) |
+
+| lever | subjects | dimension | ELO change | judge's 95% | with run-to-run 95% | 1-10 change |
+|---|---|---|---|---|---|---|
+| figures, against cabins | 2 | overall | +124 | (+0, +218) | (-246, +475) | +0.13 |
+| | | likeness | +118 | (-9, +231) | (-205, +404) | +0.25 |
+| | | technique | +27 | (-98, +130) | (-322, +340) | +0.00 |
+| | | surface | +55 | (-55, +156) | (-348, +476) | +0.00 |
+| | | colour | +369 | (+280, +421) | (+47, +616) | +0.50 |
+
+Head to head with the cabins round, overall: the car won 4 of 8 verdicts
+(95% 22-78%) and the fire truck 6 of 8 (41-93%), 10 of 16 together (39-82%).
+No dimension went down. Once the run-to-run spread is counted, every change
+but colour is inside the noise.
+
+The new guidance routes a hull to the shape patterns as before. Both fire
+trucks' creative passes still added a firefighter, because the brief names
+only the truck.
+
+**On ten held-out characters** (model-031 to model-040: robots, aliens,
+wizards, a demon, a bear), with one design an arm a prompt and 120 verdicts:
+
+| | full (`fe032a8`) | lean (`c0d7257`) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| overall ELO (95%) | 739 (577-812) | 856 (680-988) | 1405 (1293-1613) |
+| lean vs full, overall | | 26 of 40 (65%, 95% 50-78%) | |
+| lean vs full, likeness and technique | | 62% (47-76%), 60% (45-74%) | |
+| against BrickAgent, overall | 0 of 40 | 2 of 40 | |
+| stacked / shaped / tiles (median) | 66% / 28% / 12% | 53% / 36% / 21% | 38% / 62% / 16% |
+| across, studs; parts | 20; 202 | 14.5; 158 | 17; 203 |
+| valid (their verify.py) | 2 of 10 | 4 of 10 | 10 of 10 |
+
+On characters the fix did what it was for. Nine of ten sessions read the
+figures section, and the builds moved from stacked bricks toward shaped
+parts, smaller and on no baseplate. The judge preferred them. Lean took the
+first verdicts any of ours has taken from BrickAgent: 2 of 40.
+
+What is left is the size of the gap. Their builds are 62% shaped, with real
+joints; ours have none to speak of. The intervals here carry no run-to-run
+spread within an arm, and that spread was the larger part on the held-out
+ten.
+
 ## Judged in pairs: what each round really did (2026-10-14)
 
 The 1-10 judge's scores move by 0.7-1.0 between two designs of the same
