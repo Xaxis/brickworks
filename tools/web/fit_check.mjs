@@ -200,7 +200,17 @@ process.exit(misfits ? 1 : unstarted ? 2 : 0);
 // Every control asked for inside the page, and nothing but the view cube
 // over the model. True when both hold.
 async function fits(page, label, wanted, share, width, height) {
-  const where = await page.evaluate(() => window.brickworksControls || {});
+  // A control is published once it has stayed where it is drawn for a
+  // publish (Main._page_places), about a second after it appears: the key
+  // field read 1.5 s after the assistant was turned on at load 49 was "not
+  // shown" (2026-10-14). So wait, up to 10 s, for every one asked for, as
+  // a person waits for a panel to open; where they are is judged as before.
+  const read = () => page.evaluate(() => window.brickworksControls || {});
+  let where = await read();
+  for (let n = 0; n < 40 && wanted.some((name) => !where[name]); n++) {
+    await page.waitForTimeout(250);
+    where = await read();
+  }
   const outside = [];
   // Up, but signed out: the sign-in screen is all there is.
   if (where.signin_email && !where.save) outside.push("the sign-in screen is up (is .env sourced?)");
