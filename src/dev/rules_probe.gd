@@ -418,6 +418,42 @@ func _run() -> void:
 	var vague: String = assistant._plan_scale({"subject": "a lighthouse"})
 	_check_text("and without a length it asks for one", vague,
 		"longest_metres")
+	# A person or an animal is smaller than any scale reads: it is a figure,
+	# a minifigure among minifigure-scale things or brick-built in its own
+	# proportions, never "a part of it, a locomotive rather than the train".
+	var person: String = assistant._plan_scale({"subject": "a knight", "longest_metres": 1.8})
+	_check_text("a knight is told it is built as a figure", person, "built as a figure")
+	_check_text("...a minifigure among minifigure-scale things", person, "add_minifig")
+	_check_text("...or brick-built from shaped parts", person, "read_guide \"figures\"")
+	_check_text("...and not to build a part of it",
+		"" if person.contains("Build a part of it") else "no part of it", "no part of it")
+	var huge: String = assistant._plan_scale({"subject": "a continent", "longest_metres": 4000000.0})
+	_check_text("something far too big still builds a part of it", huge, "Build a part of it")
+
+	print("")
+	print("  a small round body said as a shape")
+	# A body under a dozen studs said as an ellipsoid is a statue of plates:
+	# the answer names the moulded parts a set uses and the figures section.
+	var small: Array = Assistant._round_by_panels([{"pattern": "shape", "solids": [
+		{"ellipsoid": {"centre": [5, 8, 4], "radii": [4, 8, 3.5]}}]}])
+	_check_text("an ellipsoid 8 studs across is told of round bricks, domes and dishes",
+		"\n".join(small), "round brick")
+	_check_text("...and sent to the figures section", "\n".join(small), "read_guide \"figures\"")
+	var big: Array = Assistant._round_by_panels([{"pattern": "shape", "solids": [
+		{"ellipsoid": {"centre": [10, 10, 10], "radii": [10, 10, 10]}}]}])
+	_check_text("one 20 across is still told of hinged panels, not of a figure",
+		"\n".join(big) if not "\n".join(big).contains("figures") else "", "hinged")
+	# The head sends a figure there, and the section is served whole.
+	_check_text("the instructions' head sends a figure to read_guide \"figures\"",
+		Assistant.GUIDE_HEAD, "read_guide \"figures\"")
+	var figures: String = assistant.read_guide("figures")
+	_check_text("read_guide \"figures\" serves its section", figures,
+		"FIGURES, CREATURES AND SMALL MODELS")
+	_check_text("...which builds a figure of shaped parts on joints", figures, "on a joint")
+	_check_text("...keeps to the brief's scope", figures, "nothing it does not name")
+	_check_text("...and says where a pattern still fits", figures, "still fits")
+	_check_text("read_guide \"character\" finds it too", assistant.read_guide("character"),
+		"FIGURES, CREATURES AND SMALL MODELS")
 
 	print("")
 	if _failures == 0:

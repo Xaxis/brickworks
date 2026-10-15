@@ -27,7 +27,9 @@ static func schema() -> Dictionary:
 		"name": "add_minifig",
 		"description": ("Stand a minifigure in the model, made from real "
 			+ "parts in their real places: who lives in it, guards it, "
-			+ "works in it. Add them once the model is built — submitting a "
+			+ "works in it — or the subject itself, where the brief asks for "
+			+ "a person at minifigure scale (a pilot, a knight on a horse). "
+			+ "Add them once what they stand on is built — submitting a "
 			+ "whole new design replaces them. Each slot takes a part number "
 			+ "or a few words matched against the names of the parts made "
 			+ "for it (\"wizard hat\", \"long beard\", \"robe\", \"staff\"); "
@@ -115,7 +117,7 @@ static func choose(library: PartLibrary, slot: String, wanted: String) -> String
 	# A run kept to a list of parts (PartsOnly) chooses among those alone.
 	var all: Array[PartLibrary.PartInfo] = []
 	for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
-		if PartsOnly.allows(info.id):
+		if PartsOnly.allows(info.id, library):
 			all.append(info)
 	for info: PartLibrary.PartInfo in all:
 		if info.id == asked:
@@ -164,7 +166,7 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 		figure.name = "Minifig"
 	# A part an odd body brings with it, or one named by number, may still be
 	# off a run's list of parts (PartsOnly).
-	var barred: PackedStringArray = PartsOnly.barred(figure.part_ids(library))
+	var barred: PackedStringArray = PartsOnly.barred(figure.part_ids(library), library)
 	if not barred.is_empty():
 		return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 			"text": "Not placed: %s. Name another for its slot." % PartsOnly.swap_words(
