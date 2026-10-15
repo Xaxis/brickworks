@@ -11926,14 +11926,19 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 			subjects.append(index)
 	if subjects.is_empty():
 		return
+	# The lattice's joins stand where the exact shapes cannot say: a part with
+	# none, and the prism pattern's turned walls, whose studs the lattice
+	# judges (_note_turned_studs) as it judges their meeting (_exact_collisions).
 	var extra: Array = []
 	for pair: Array in clutched_pairs:
-		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null:
+		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null \
+				or _in_a_prism(model, int(pair[0])) or _in_a_prism(model, int(pair[1])):
 			extra.append([int(pair[0]), int(pair[1])])
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
 			if int(index) < count and int(other) < count \
-					and (exact.items[int(index)] == null or exact.items[int(other)] == null):
+					and (exact.items[int(index)] == null or exact.items[int(other)] == null
+						or _in_a_prism(model, int(index)) or _in_a_prism(model, int(other))):
 				extra.append([int(index), int(other)])
 	# Only what is near this design's parts: anything else that stands is held
 	# already, so a piece of them is held exactly when it reaches the ground or
@@ -11959,7 +11964,8 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 			anchor = anchor or not _ground_only
 		elif not _exact_subject(model, i):
 			anchor = anchor or not _ground_only
-		elif exact.items[i] == null:
+		elif exact.items[i] == null or _in_a_prism(model, i):
+			# Held as the lattice has it, which judges these.
 			anchor = anchor or (cells_of.has(i) and not floating.has(i))
 		if anchor:
 			held[root[i]] = true
@@ -15156,12 +15162,18 @@ func _ready_to_check(model: Model) -> void:
 func _ensure_exact(model: Model) -> void:
 	if library == null:
 		return
-	var wanted: Dictionary = {}
+	# Asked once a part, not once a placement: in the browser a shape not yet
+	# fetched is looked for in the pack each time it is asked for, and the
+	# Falcon's 4,242 placements of 20 parts held the page for 8 seconds.
+	var parts: Dictionary = {}
 	for placement: Placement in model.placements:
-		if not Exact.known(library, placement.part):
-			Exact.shape_for(library, placement.part)
-			if not Exact.known(library, placement.part):
-				wanted[placement.part] = true
+		parts[placement.part] = true
+	var wanted: Dictionary = {}
+	for part_id: String in parts:
+		if not Exact.known(library, part_id):
+			Exact.shape_for(library, part_id)
+			if not Exact.known(library, part_id):
+				wanted[part_id] = true
 	if wanted.is_empty():
 		return
 	var deadline: int = Time.get_ticks_msec() + FETCH_WAIT_MS

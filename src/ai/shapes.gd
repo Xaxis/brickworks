@@ -527,6 +527,11 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 ## corners), and the session built the car by hand, studs up and boxy. The
 ## wheel unit is the one the d5b car proved holds; across, the body must be
 ## 6, 8, 10 or 12 studs, an axle of that width less two.
+##
+## Each wheel's cross hole faces in, onto the axle, and its clip, which
+## takes a hubcap, out: as 75893 stands them on axle pins. The other way
+## round the axle ended in the clip's ring, which is a bar's width: by the
+## parts' real shapes it joined neither wheel and ran a LDU into each.
 const WHEEL := "18976c01"
 const AXLES: Dictionary = {6: "3705", 8: "3706", 10: "3707", 12: "3737"}
 
@@ -558,9 +563,9 @@ static func _wheels(pattern: Dictionary, solids: Array, cuts: Array, trouble: Ar
 			trouble.append("a wheel at x=%s is not under the body (x %s to %s)" % [c,
 				box.position.x, box.end.x])
 			return []
-		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0, "z": z0, "rot": 0})
+		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0, "z": z0, "rot": 2})
 		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0,
-			"z": z0 + wide - 1.5, "rot": 2})
+			"z": z0 + wide - 1.5, "rot": 0})
 		for k: int in range(z0 + 2, z0 + wide - 2):
 			out.append({"part": "32064a", "color": 0, "x": c - 1.0, "y": 2, "z": k, "rot": 0})
 		out.append({"part": AXLES[wide], "color": 0, "x": c - 0.3, "y": 3, "z": z0 + 1,
@@ -1909,7 +1914,8 @@ class Plan extends RefCounted:
 				continue
 			var cap: int = highest + 1 - top
 			var dish: Array = DISHES[d]
-			if highest < 0 or cap > int(dish[1]) + 1 or not _cap_free(low, d, top, highest):
+			var riser: int = 1 if dish.size() > 4 else 0
+			if highest < 0 or cap > int(dish[1]) + riser + 1 or not _cap_free(low, d, top, highest):
 				continue
 			var cells: Array[Vector2i] = []
 			for i: int in d:
@@ -1923,12 +1929,17 @@ class Plan extends RefCounted:
 			for i: int in 2:
 				for k: int in 2:
 					centre.append(low + Vector2i(d / 2 - 1 + i, d / 2 - 1 + k))
-			round_made.append({"part": dish[0], "color": int(run[2]), "x": low.x, "y": top,
-				"z": low.y, "rot": 0, "_cells": cells, "_h": int(dish[1]),
-				"_studs": centre, "_base": cells, "_round": true})
+			if riser > 0:
+				round_made.append({"part": dish[4], "color": int(run[2]),
+					"x": low.x + d / 2 - 1, "y": top, "z": low.y + d / 2 - 1, "rot": 0,
+					"_cells": centre, "_h": 1, "_studs": centre, "_base": centre,
+					"_round": true})
+			round_made.append({"part": dish[0], "color": int(run[2]), "x": low.x,
+				"y": top + riser, "z": low.y, "rot": 0, "_cells": cells, "_h": int(dish[1]),
+				"_studs": centre, "_base": centre if riser > 0 else cells, "_round": true})
 			var middle: float = d / 2.0 - float(crown[3]) / 2.0
 			round_made.append({"part": crown[2], "color": int(run[2]), "x": low.x + middle,
-				"y": top + int(dish[1]), "z": low.y + middle, "rot": 0,
+				"y": top + riser + int(dish[1]), "z": low.y + middle, "rot": 0,
 				"_cells": centre, "_h": 1, "_studs": [] as Array[Vector2i],
 				"_base": centre, "_round": true, "_top": true})
 			capped[low + Vector2i(d / 2, d / 2)] = top
@@ -2089,8 +2100,10 @@ class Plan extends RefCounted:
 	## The dish that crowns a round of each diameter, how many plates of it
 	## there are, as the round pattern's dome nose lays them, and the round
 	## tile over the studs at its middle and how wide: a 4 x 4 dish has one
-	## stud, the others a 2 x 2.
-	const DISHES: Dictionary = {4: ["3960", 2, "98138", 1], 6: ["44375b", 2, "14769", 2],
+	## stud, the others a 2 x 2. The 4 x 4 stands on a 2 x 2 round's four
+	## studs, the fifth: a round plate's twelve run into its underside by the
+	## parts' real shapes, as they do in BrickBench's check.
+	const DISHES: Dictionary = {4: ["3960", 2, "98138", 1, "4032a"], 6: ["44375b", 2, "14769", 2],
 		8: ["3961", 3, "14769", 2]}
 
 	## The round tiles that finish a round's top, by diameter: one whole, or

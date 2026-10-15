@@ -221,6 +221,29 @@ func _figure() -> void:
 		"a figure with a fez and a sword, as add_minifig makes it: nothing said",
 		"a figure with a fez and a sword, as add_minifig makes it: said %s" % (
 			"; ".join(PackedStringArray(said)) if report.has("exact") else "no exact check at all"))
+	# In a breastplate (2587), its head seated clear of it by more than the
+	# 1 LDU verify.py tosses a coin over: model-010's one collision, a head the
+	# figure tool had stood exactly 1 LDU into the armour.
+	_store.open_text("0 base\n1 4 0 -8 0 1 0 0 0 1 0 0 0 1 3958.dat\n", "base.ldr")
+	stood = await FigureTool.add({"name": "Knight", "x": 0, "z": 0, "head": "3626cp01",
+		"neck": "2587"}, _library, _world, _builder)
+	if not bool(stood.get("ok", false)):
+		_say(false, "", "a figure in a breastplate: not placed (%s)" % stood.get("text", ""))
+		return
+	var items: Array = []
+	var at: Dictionary = {}     ## part -> its item's index
+	for brick: BrickWorld.Brick in _world.bricks():
+		var shape: Exact.Shape = Exact.shape_for(_library, brick.part_id)
+		at[brick.part_id] = items.size()
+		items.append(Exact.Item.new(shape, brick.transform) if shape != null else null)
+	if not (at.has("3626cp01") and at.has("2587") and at.has("973")):
+		_say(false, "", "a figure in a breastplate: its parts are %s" % str(at.keys()))
+		return
+	var meets: Dictionary = Exact.clash(items[at["3626cp01"]], items[at["2587"]], true)
+	var joined: bool = Exact.connected(items, at["3626cp01"], PackedInt32Array([at["973"], at["2587"]]))
+	_say(meets.is_empty() and joined,
+		"a figure in a breastplate: its head clear of it and joined to the torso",
+		"a figure in a breastplate: head and armour %s, joined %s" % [meets, joined])
 
 
 ## A section hung on the app's own tilting hinge, as a session writes it: the

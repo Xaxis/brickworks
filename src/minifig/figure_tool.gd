@@ -276,7 +276,7 @@ static func seated_exactly(library: PartLibrary, parts: Array[Dictionary]) -> Ar
 			continue
 		var clashing: bool = false
 		for j: int in items.size():
-			if j != i and items[j] != null and not Exact.clash(items[i], items[j]).is_empty():
+			if j != i and items[j] != null and not Exact.clash(items[i], items[j], true).is_empty():
 				clashing = true
 				break
 		if not clashing and Exact.connected(items, i, on):
@@ -287,7 +287,7 @@ static func seated_exactly(library: PartLibrary, parts: Array[Dictionary]) -> Ar
 			var there := Exact.Item.new(was.shape, was.at.translated(found["move"]))
 			var clear: bool = true
 			for j: int in items.size():
-				if j != i and items[j] != null and not Exact.clash(there, items[j]).is_empty():
+				if j != i and items[j] != null and not Exact.clash(there, items[j], true).is_empty():
 					clear = false
 					break
 			items[i] = there

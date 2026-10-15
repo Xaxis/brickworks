@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
+<!-- covers: lib:design loop, lib:a big check on a worker, lib:the check by real shapes, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
 
 ## Sub-features
 
@@ -11,6 +11,15 @@ fixing what it got wrong.
   catalogue, the rules, and tools to search, place, read back the world and look at
   a render; it places bricks, is told what collides, floats or will not survive
   being lifted, and revises. Sections let it carry a sub-assembly at an angle.
+- `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
+  called from `Assistant._check`, so every check, edit, submission, review and save
+  has it: each part BrickNet has is its convex colliders and connector labels
+  (`assets/generated/exact/<hash>.bwx`, `tools/build_exact.py`). More than 1 LDU of
+  overlap through any two pieces is a collision, named with its fix; a piece of the
+  design no connection holds is a fault unless it stands square (`rests`); a part
+  up to a plate off a stud, hole, hinge or bar is seated on it first (a nudge keeps
+  the LDU past the lattice cell). Without the `exact/` folder the check is the
+  lattice alone, as it was. Recipe under How to check it, "The check by real shapes".
 - `design from a brief, on a Claude plan`: `tools/claude_run.sh NAME [--brief
   "..."]` — the desktop app off-screen (Xvfb, on the GPU, a free port) running
   `--ask-claude-code`, then `tools/style.py` on the model. Off-screen because a
@@ -2110,6 +2119,28 @@ agreement (2026-10-14: 256 of 256 verdicts on 24 known pairs, both orders the
 same on 99%); and every `judged/*.json` lists in `looked_at` all six design
 pictures (456 of 456 on 2026-10-14). A call is about 22 s; four at once judge a
 subject of 12 designs (132 calls) in about 13 minutes.
+
+### The check by real shapes
+
+```sh
+godot --headless --path . --script src/dev/exact_probe.gd        # one case a pair kind BrickBench refused, and builds that are right
+godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535) and Orthanc (9,427): as standing, an edit, a whole design
+godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
+```
+
+Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
+without it `exact_probe` says SKIPPED. Proves it when: `exact_probe` ends "21
+passed, 0 failed" (on the code before it, fb64132, 4 passed and 17 failed: every
+pair kind came back "buildable"); `exact_dump` on the BrickBench builds lists
+verify.py's own pairs and pieces (2026-10-14: identical on all twenty);
+`exact_cost_probe` says an edit to Orthanc spends under 3 s in the exact check
+(138 ms on 2026-10-14, at a load of 40); and the connection audit over the sample
+(every 25th OMR file) keeps floating where it was and overlapping pairs no higher
+(2026-10-14: 6,678 floating either way; 7,511 overlapping pairs before).
+`clutch`, `joints`, `section`, `axle`, `techniques`, `patterns`, `rooms` and
+`creative` assert what the shapes say where the lattice forgave: a part 2-8 LDU off
+seated, a tilting hinge folded into its base refused as the hinge, a pin's collar at
+the hole's mouth, five worked constructions withdrawn (`Techniques.WITHDRAWN`).
 
 ### BrickBench: the designer on an outside ruler
 

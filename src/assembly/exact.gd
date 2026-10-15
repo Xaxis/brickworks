@@ -31,6 +31,14 @@ const VERSION := 1
 ## How far two parts may overlap, in LDU: BrickNet's TAU, which verify.py
 ## requires to be 1.
 const TAU := 1.0
+## How far a part this app moves is let overlap another once moved: a hair
+## under TAU. Two parts that meet by exactly 1 LDU are a coin's toss in
+## verify.py, whose own sum lands either side of its limit: 1.0000000000000024
+## for a minifigure head the figure tool had slid 2 LDU up its neck to clear an
+## armour breastplate (model-010 of 2026-10-14, refused), under it for two
+## parts of one of BrickAgent's builds (passed). The check judges at TAU, as
+## verify.py says; what the app places itself it places clear of the toss.
+const CLEAR := TAU - 0.01
 ## How near a stud must be to a hole to meet it, in LDU (BrickNet's _POS_THR),
 ## and how nearly the two must point the same way.
 const POS_THR := 3.0
@@ -252,6 +260,10 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		return _shapes[info.mesh_hash]
 	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		return null
+	# Already asked for: a look in the browser's pack for a file that is not
+	# there costs a couple of milliseconds, each time.
+	if library.is_exact_on_its_way(part_id):
+		return null
 	var path: String = file_for(library, part_id)
 	var shape: Shape = null
 	if FileAccess.file_exists(path):
@@ -362,12 +374,15 @@ static func _every(count: int) -> PackedInt32Array:
 
 
 ## How two placed parts collide, or {} when they do not: {depth, piece_a,
-## piece_b, axis}, the axis in the world from a towards b.
-static func clash(a: Item, b: Item) -> Dictionary:
+## piece_b, axis}, the axis in the world from a towards b. Overlapping by
+## more than TAU, or with [param placing] (a part the app is moving) by more
+## than [constant CLEAR].
+static func clash(a: Item, b: Item, placing: bool = false) -> Dictionary:
 	if a == null or b == null or not a.shape.has_pieces() or not b.shape.has_pieces():
 		return {}
 	var rel: Transform3D = a.at.affine_inverse() * b.at
 	var key: Array = _key(a.shape.id, b.shape.id, rel)
+	key.append(placing)
 	_verdicts_lock.lock()
 	var known_verdict: Variant = _verdicts.get(key)
 	_verdicts_lock.unlock()
@@ -375,7 +390,7 @@ static func clash(a: Item, b: Item) -> Dictionary:
 	if known_verdict != null:
 		verdict = known_verdict
 	else:
-		verdict = _clash_local(a.shape, b.shape, rel)
+		verdict = _clash_local(a.shape, b.shape, rel, CLEAR if placing else TAU)
 		_verdicts_lock.lock()
 		if _verdicts.size() >= MOST_VERDICTS:
 			_verdicts.clear()
@@ -401,7 +416,7 @@ static func _key(ida: int, idb: int, rel: Transform3D) -> Array:
 ## The first pair of pieces that overlap by more than TAU, with b placed at
 ## [param rel] in a's frame: [depth, piece of a, piece of b, axis in a's
 ## frame], or [] when none do.
-static func _clash_local(a: Shape, b: Shape, rel: Transform3D) -> Array:
+static func _clash_local(a: Shape, b: Shape, rel: Transform3D, allowed: float = TAU) -> Array:
 	var whole: Array = box_in(b.lo, b.hi, rel)
 	var b_lo: Vector3 = whole[0]
 	var b_hi: Vector3 = whole[1]
@@ -411,9 +426,9 @@ static func _clash_local(a: Shape, b: Shape, rel: Transform3D) -> Array:
 	var mine: Array[int] = []
 	for i: int in a.pieces.size():
 		var p: Piece = a.pieces[i]
-		if minf(p.hi.x, b_hi.x) - maxf(p.lo.x, b_lo.x) > TAU \
-				and minf(p.hi.y, b_hi.y) - maxf(p.lo.y, b_lo.y) > TAU \
-				and minf(p.hi.z, b_hi.z) - maxf(p.lo.z, b_lo.z) > TAU:
+		if minf(p.hi.x, b_hi.x) - maxf(p.lo.x, b_lo.x) > allowed \
+				and minf(p.hi.y, b_hi.y) - maxf(p.lo.y, b_lo.y) > allowed \
+				and minf(p.hi.z, b_hi.z) - maxf(p.lo.z, b_lo.z) > allowed:
 			mine.append(i)
 	if mine.is_empty():
 		return []
@@ -422,22 +437,22 @@ static func _clash_local(a: Shape, b: Shape, rel: Transform3D) -> Array:
 		var box: Array = box_in(q.lo, q.hi, rel)
 		var q_lo: Vector3 = box[0]
 		var q_hi: Vector3 = box[1]
-		if minf(a.hi.x, q_hi.x) - maxf(a.lo.x, q_lo.x) <= TAU \
-				or minf(a.hi.y, q_hi.y) - maxf(a.lo.y, q_lo.y) <= TAU \
-				or minf(a.hi.z, q_hi.z) - maxf(a.lo.z, q_lo.z) <= TAU:
+		if minf(a.hi.x, q_hi.x) - maxf(a.lo.x, q_lo.x) <= allowed \
+				or minf(a.hi.y, q_hi.y) - maxf(a.lo.y, q_lo.y) <= allowed \
+				or minf(a.hi.z, q_hi.z) - maxf(a.lo.z, q_lo.z) <= allowed:
 			continue
 		var moved := PackedVector3Array()
 		for i: int in mine:
 			var p: Piece = a.pieces[i]
-			if minf(p.hi.x, q_hi.x) - maxf(p.lo.x, q_lo.x) <= TAU \
-					or minf(p.hi.y, q_hi.y) - maxf(p.lo.y, q_lo.y) <= TAU \
-					or minf(p.hi.z, q_hi.z) - maxf(p.lo.z, q_lo.z) <= TAU:
+			if minf(p.hi.x, q_hi.x) - maxf(p.lo.x, q_lo.x) <= allowed \
+					or minf(p.hi.y, q_hi.y) - maxf(p.lo.y, q_lo.y) <= allowed \
+					or minf(p.hi.z, q_hi.z) - maxf(p.lo.z, q_lo.z) <= allowed:
 				continue
 			if moved.is_empty():
 				moved.resize(q.verts.size())
 				for v: int in q.verts.size():
 					moved[v] = rel * q.verts[v]
-			var found: Array = _overlap(p, q, moved, basis, rel.origin)
+			var found: Array = _overlap(p, q, moved, basis, rel.origin, allowed)
 			if not found.is_empty():
 				return [found[0], i, j, found[1]]
 	return []
@@ -448,7 +463,7 @@ static func _clash_local(a: Shape, b: Shape, rel: Transform3D) -> Array:
 ## moved] is q's vertices in p's frame, [param basis] and [param origin] q's
 ## frame in p's.
 static func _overlap(p: Piece, q: Piece, moved: PackedVector3Array, basis: Basis,
-		origin: Vector3) -> Array:
+		origin: Vector3, allowed: float = TAU) -> Array:
 	var best: float = INF
 	var best_axis := Vector3.ZERO
 	# p's face normals: p's own extent is known, q's is projected.
@@ -463,7 +478,7 @@ static func _overlap(p: Piece, q: Piece, moved: PackedVector3Array, basis: Basis
 			if d > high:
 				high = d
 		var o: float = minf(p.spans[2 * k + 1] - low, high - p.spans[2 * k])
-		if o <= TAU:
+		if o <= allowed:
 			return []
 		if o < best:
 			best = o
@@ -483,7 +498,7 @@ static func _overlap(p: Piece, q: Piece, moved: PackedVector3Array, basis: Basis
 			if d > high:
 				high = d
 		var o: float = minf(high - q_low, q_high - low)
-		if o <= TAU:
+		if o <= allowed:
 			return []
 		if o < best:
 			best = o
@@ -513,7 +528,7 @@ static func _overlap(p: Piece, q: Piece, moved: PackedVector3Array, basis: Basis
 				if d > high_q:
 					high_q = d
 			var o: float = minf(high_p - low_q, high_q - low_p)
-			if o <= TAU:
+			if o <= allowed:
 				return []
 			if o < best:
 				best = o
@@ -827,7 +842,7 @@ static func slide_clear(items: Array, i: int, among: PackedInt32Array, step: flo
 			var there := Item.new(item.shape, item.at.translated(move))
 			var clear: bool = true
 			for j: int in around:
-				if items[j] != null and not clash(there, items[j]).is_empty():
+				if items[j] != null and not clash(there, items[j], true).is_empty():
 					clear = false
 					break
 			if not clear:

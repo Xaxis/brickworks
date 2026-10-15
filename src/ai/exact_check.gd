@@ -237,20 +237,45 @@ func rests(members: Array) -> bool:
 			_touching(item, items[j], touching)
 	if touching.size() < 3 or mass <= 0.0:
 		return false
+	# Square to gravity: a part tilted off it, nothing joining it, rolls or
+	# slides off what it leans on (a flower at 35 degrees on a round plate,
+	# held-out model-017, fell in BrickBench's simulation).
+	for i: Variant in members:
+		var b: Basis = (items[int(i)] as Exact.Item).at.basis
+		if maxf(absf(b.x.normalized().y), maxf(absf(b.y.normalized().y),
+				absf(b.z.normalized().y))) < SQUARE:
+			return false
 	var centre: Vector3 = middle / mass
 	var under := PackedVector2Array()
-	var below: bool = false
 	for point: Vector3 in touching:
 		under.append(Vector2(point.x, point.z))
-		below = below or point.y < centre.y
-	return below and Geometry2D.is_point_in_polygon(Vector2(centre.x, centre.z),
-		Geometry2D.convex_hull(under))
+	if under.size() < 3:
+		return false
+	var hull: PackedVector2Array = Geometry2D.convex_hull(under)
+	var over := Vector2(centre.x, centre.z)
+	if not Geometry2D.is_point_in_polygon(over, hull):
+		return false
+	# And not on the edge of it, where the least push tips it.
+	for k: int in hull.size() - 1:
+		if Geometry2D.get_closest_point_to_segment(over, hull[k], hull[k + 1]).distance_to(over) < STEADY:
+			return false
+	return true
+
+
+## How square to gravity a resting part must stand: the cosine of the most
+## it may lean, 8 degrees.
+const SQUARE := 0.99
+## How far inside where it touches its centre of mass must be, in LDU.
+const STEADY := 1.0
 
 
 ## How near two parts' surfaces count as touching, LDU: a piece this far
 ## above what it would rest on drops onto it, which BrickBench's simulation
 ## lets pass as long as nothing moves more than 3 LDU.
 const TOUCH := 2.5
+## How far a corner may drop onto what holds it up, LDU: BrickBench's
+## simulation lets a piece settle by less than 3.
+const DROP := 3.0
 
 
 ## The points where items [param a] and [param b] touch, into [param out]:
@@ -266,14 +291,31 @@ static func _touching(a: Exact.Item, b: Exact.Item, out: PackedVector3Array) -> 
 			var hi: Vector3 = (box_a[1] as Vector3).min(box_b[1])
 			if hi.x - lo.x < -TOUCH or hi.y - lo.y < -TOUCH or hi.z - lo.z < -TOUCH:
 				continue
+			# Only where one is over the other: a corner of a that drops onto b,
+			# or one of b that a would drop onto. Beside it, or past its edge by
+			# less than TOUCH, holds nothing up: a steering wheel's centre right
+			# on a brick's edge was called standing over corners of its own
+			# 2 LDU past that edge (held-out model-011; it tipped off).
 			for v: Vector3 in pb.verts:
 				var w: Vector3 = b.at * v
-				if _outside(pa, to_a * w) <= TOUCH:
+				if _outside(pa, to_a * w) <= TOUCH and _lands(pa, to_a * w, to_a.basis * Vector3.UP):
 					out.append(w)
 			for v: Vector3 in pa.verts:
 				var w: Vector3 = a.at * v
-				if _outside(pb, to_b * w) <= TOUCH:
+				if _outside(pb, to_b * w) <= TOUCH and _lands(pb, to_b * w, to_b.basis * Vector3.DOWN):
 					out.append(w)
+
+
+## Whether point [param x] meets convex piece [param p] moving up to DROP
+## along [param way] (both in the piece's own frame).
+static func _lands(p: Exact.Piece, x: Vector3, way: Vector3) -> bool:
+	var step: float = 0.5
+	var d: float = 0.0
+	while d <= DROP + 0.001:
+		if _outside(p, x + way * d) <= 0.01:
+			return true
+		d += step
+	return false
 
 
 ## How far point [param x] (in the piece's own frame) is outside convex piece
@@ -282,9 +324,12 @@ static func _outside(p: Exact.Piece, x: Vector3) -> float:
 	if p.normals.is_empty():
 		var past: Vector3 = (p.lo - x).max(x - p.hi)
 		return maxf(past.x, maxf(past.y, past.z))
+	# Each normal is an axis the piece spans from low to high: past either end
+	# is outside it.
 	var worst: float = -INF
 	for k: int in p.normals.size():
-		worst = maxf(worst, p.normals[k].dot(x) - p.spans[2 * k + 1])
+		var d: float = p.normals[k].dot(x)
+		worst = maxf(worst, maxf(d - p.spans[2 * k + 1], p.spans[2 * k] - d))
 	return worst
 
 
@@ -543,8 +588,8 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 			for j: int in Exact._near(items, int(i), among, Exact.TAU):
 				if mine.has(j) or items[j] == null:
 					continue
-				if not Exact.clash(items[int(i)], items[j]).is_empty() \
-						and Exact.clash(was[int(i)], items[j]).is_empty():
+				if not Exact.clash(items[int(i)], items[j], true).is_empty() \
+						and Exact.clash(was[int(i)], items[j], true).is_empty():
 					good = false
 					break
 			if not good:
@@ -670,7 +715,7 @@ func _seat(movable: Array) -> Dictionary:
 		for j: int in others:
 			if items[j] == null:
 				continue
-			if not Exact.clash(there, items[j]).is_empty() and Exact.clash(was, items[j]).is_empty():
+			if not Exact.clash(there, items[j], true).is_empty() and Exact.clash(was, items[j], true).is_empty():
 				clear = false
 				break
 		items[i] = there

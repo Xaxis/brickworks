@@ -168,6 +168,14 @@
       "tests": []
     },
     {
+      "id": "cli:build the exact shapes",
+      "kind": "cli",
+      "entry": "tools/build_exact.py",
+      "reach": "python3 tools/minitest.py tests/test_build_exact.py; tools/build_exact.py --bricknet DIR --colliders DIR --only 3001 --out COPY",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
       "id": "cli:build the meshes",
       "kind": "cli",
       "entry": "tools/build_meshes.py",
@@ -1212,6 +1220,14 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:the check by real shapes",
+      "kind": "lib",
+      "entry": "src/ai/exact_check.gd",
+      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
+      "area": "assistant",
       "tests": []
     },
     {
