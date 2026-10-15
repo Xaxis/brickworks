@@ -2129,10 +2129,11 @@ python3 tools/bench/brickbench.py parts --upstream $S/upstream      # bricknet_p
 XDG_DATA_HOME=$S/xdg ~/.claude/claude-core/bin/heavy env -u ANTHROPIC_API_KEY \
     python3 tools/bench/brickbench.py design --jobs 2               # two at a time, 45 min each at most
 python3 tools/bench/brickbench.py export --python $S/venv/bin/python
-BRICKNET_DATA=$S/bricknet_data python3 tools/bench/brickbench.py verify --upstream $S/upstream --python $S/venv/bin/python
+BRICKNET_DATA=$S/bricknet_data ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py verify --upstream $S/upstream --python $S/venv/bin/python
 python3 tools/bench/brickbench.py zip --upstream $S/upstream        # submission.zip; NEVER submitted
 python3 tools/bench/brickbench.py fetch                             # their Opus 5.5 builds; never committed
 XDG_DATA_HOME=$S/xdg python3 tools/bench/brickbench.py views        # four views each, on the GPU
+XDG_DATA_HOME=$S/xdg ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py views --software --jobs 2   # or on lavapipe
 env -u ANTHROPIC_API_KEY python3 tools/bench/brickbench.py pairs --repeat 2 --jobs 3
 python3 tools/bench/brickbench.py report                            # the tables BRICKBENCH.md quotes
 godot --headless --path . --script src/dev/parts_only_probe.gd      # the allowlist, and nothing without it

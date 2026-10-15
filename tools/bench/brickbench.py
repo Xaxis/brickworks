@@ -598,16 +598,22 @@ def views_of(batch: Path, side: str, task: str) -> tuple[Path, ...]:
 
 
 def do_views(args: argparse.Namespace, batch: Path) -> int:
-    for task in _tasks(batch, args.tasks):
-        for side in (OURS, THEIRS):
-            model = _model_of(batch, side, task["id"])
-            if not model.exists():
-                say(f"{task['id']} {side}: no model.mpd")
-                continue
-            prefix = batch / "views" / side / task["id"]
-            drawn = bench.render(model, prefix, prefix.with_name(f"{task['id']}_render.log"),
-                                 software=args.software, views=VIEWS4)
-            say(f"{task['id']} {side}: {len(drawn)} of {len(VIEWS4)} views")
+    """Both sides of every prompt by one renderer: on the GPU one at a time, or
+    with --software on lavapipe, --jobs at once (at most two)."""
+    def draw(job: tuple[dict, str]) -> str:
+        task, side = job
+        model = _model_of(batch, side, task["id"])
+        if not model.exists():
+            return f"{task['id']} {side}: no model.mpd"
+        prefix = batch / "views" / side / task["id"]
+        drawn = bench.render(model, prefix, prefix.with_name(f"{task['id']}_render.log"),
+                             software=args.software, views=VIEWS4)
+        return f"{task['id']} {side}: {len(drawn)} of {len(VIEWS4)} views"
+
+    jobs = [(task, side) for task in _tasks(batch, args.tasks) for side in (OURS, THEIRS)]
+    with ThreadPoolExecutor(max_workers=max(1, min(2, args.jobs)) if args.software else 1) as workers:
+        for line in workers.map(draw, jobs):
+            say(line)
     return 0
 
 
