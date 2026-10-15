@@ -954,6 +954,10 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 ## 2026-10-15).
 static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 		world: BrickWorld, library: PartLibrary, job: Working.Job) -> void:
+	# Whether a sub-model is a figure asks the figures' index, which the
+	# first question builds: every part of the library looked at in one go.
+	if job != null:
+		await Minifig.index_paced(library, job)
 	var tops: Dictionary = {}
 	var inner: Dictionary = {}
 	for node: Node2 in nodes:
