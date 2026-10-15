@@ -94,6 +94,10 @@ func _run() -> void:
 	_ok(brief.contains("\"A frog pond as a LEGO display model\""), "...for this subject, by its brief")
 	_ok(brief.contains("joined to the model") and brief.contains("never changing its silhouette"),
 		"...small and joined, never at the likeness's cost")
+	# Where a brief lists its scene, an unasked figure or prop beside it is
+	# clutter: five of the first ten BrickBench designs added one.
+	_ok(brief.contains("it is the scope") and brief.contains("clutter, not a story"),
+		"...and kept to what the brief names when it lists the scene")
 	_ok(brief.contains("What it has now: no figure, no creature, no printed part, "
 		+ "nothing that hinges or turns."), "...with what the model has of touches already")
 	_ok(brief.contains("\"lid or hatch raised on hinges\"") and brief.contains("\"small creature\"")

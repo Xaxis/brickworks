@@ -12,6 +12,7 @@ the verdicts the right way round.
 
 from __future__ import annotations
 
+import argparse
 import ast
 import json
 import sys
@@ -22,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import style  # noqa: E402
 from bench import brickbench as bb  # noqa: E402
 from bench import pairwise  # noqa: E402
 
@@ -206,3 +208,77 @@ def test_the_two_systems_stand_the_right_way_round():
     assert ahead.low[bb.OURS] > 1000 > ahead.high[bb.THEIRS]
     level = bb.standing(_verdicts({f"model-{n:03d}": 1 for n in range(1, 11)}), "overall", draws=300)
     assert abs(level.elo[bb.OURS] - 1000) < 1e-6 and level.pairs["split"] == 10
+
+
+def test_a_held_out_ten_starts_where_it_is_told():
+    tasks = json.dumps([{"id": f"model-{n:03d}", "prompt": f"Prompt {n}.", "questions": []}
+                        for n in range(1, 41)])
+    chosen = bb.first_tasks(tasks, 10, start=21)
+    assert [t["id"] for t in chosen] == [f"model-{n:03d}" for n in range(21, 31)]
+    assert chosen[0]["brief"] == "Prompt 21. Use at most 400 pieces."
+
+
+def test_a_moved_part_is_written_as_the_number_bricknet_lists():
+    # The generators lay 3023, which LDraw moved to 3023b; their list has only 3023b.
+    moved = "0 FILE main.ldr\n1 4 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat\n"
+    with tempfile.TemporaryDirectory() as folder:
+        ldr = Path(folder) / "design.ldr"
+        ldr.write_text(moved)
+        found = bb.export_one("model-021", "A plate.", ldr, Path(folder) / "out", {"3023b"}, "a test",
+                              lambda stem: {"3023": "3023b"}.get(stem, stem))
+        built = _built((Path(folder) / "out" / "build.py").read_text())
+    assert found["off_list"] == [] and [what for what, *_ in built] == ["3023b"]
+
+
+def test_an_arms_designs_are_found_by_their_side():
+    batch = Path("/batch")
+    assert bb._model_of(batch, "lean-run2", "model-021") == \
+        batch / "arms" / "lean" / "model-021" / "run2" / "submission" / "model.mpd"
+    assert bb._model_of(batch, bb.THEIRS, "model-021") == batch / "theirs" / "model-021" / "model.mpd"
+    assert bb.arm_of("lean-run2") == "lean" and bb.arm_of(bb.THEIRS) == bb.THEIRS
+    args = argparse.Namespace(arms="full,lean", runs=2)
+    assert bb.sides_of(args) ==["full-run1", "full-run2", "lean-run1", "lean-run2", bb.THEIRS]
+
+
+def _game(first: str, second: str, winner: str, task: str) -> pairwise.Verdict:
+    a, b = f"{first}/{task}", f"{second}/{task}"
+    return pairwise.Verdict(a, b, {d: a if winner == first else b for d in pairwise.DIMENSIONS}, {})
+
+
+def test_arms_stand_by_their_designs_and_two_runs_of_one_arm_are_no_game():
+    said = []
+    for n in range(21, 31):
+        task = f"model-{n:03d}"
+        for run in ("run1", "run2"):
+            said.append(_game(f"lean-{run}", f"full-{run}", f"lean-{run}", task))   # lean beats full
+            said.append(_game(bb.THEIRS, f"lean-{run}", bb.THEIRS, task))           # theirs beats lean
+        said.append(_game("lean-run1", "lean-run2", "lean-run2", task))             # within an arm
+    field = bb.field_of(said, "overall", ["full", "lean", bb.THEIRS], draws=200)
+    assert field.elo[bb.THEIRS] > field.elo["lean"] > field.elo["full"]
+    assert field.low["lean"] > field.high["full"]
+    won, of, tally = bb.head_to_head(said, "overall", "lean", "full")
+    assert (won, of) == (20, 20) and tally == {"won": 10, "split": 0, "lost": 0}
+    won, of, _ = bb.head_to_head(said, "overall", "lean", bb.THEIRS)
+    assert (won, of) == (0, 20)
+
+
+def test_what_a_build_is_made_of():
+    # A 2 x 4 brick and a 1 x 2 plate stacked, a curved slope on them and a minifig head.
+    text = ("0 FILE main.ldr\n"
+            "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+            "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3023b.dat\n"
+            "1 4 0 -32 0 1 0 0 0 1 0 0 0 1 15068.dat\n"
+            "1 14 0 -56 0 1 0 0 0 1 0 0 0 1 3626c.dat\n")
+    parts = style.Parts.of({
+        "3001": style.PartInfo("Brick 2 x 4", "Brick", ((-40, -4, -20), (40, 24, 20))),
+        "3023b": style.PartInfo("Plate 1 x 2", "Plate", ((-20, -4, -10), (20, 8, 10))),
+        "15068": style.PartInfo("Slope Brick Curved 2 x 2 x 0.667", "Slope", ((-20, -4, -20), (20, 16, 20))),
+        "3626c": style.PartInfo("Minifig Head with Hollow Stud", "Minifig Head", ((-12, -4, -12), (12, 24, 12))),
+    })
+    with tempfile.TemporaryDirectory() as folder:
+        model = Path(folder) / "model.mpd"
+        model.write_text(text)
+        found = bb.vocabulary(model, parts)
+    assert found["parts"] == 4 and found["figure_parts"] == 1
+    assert found["stacked"] == round(2 / 3, 3) and found["shaped"] == round(1 / 3, 3)
+    assert found["across"] == 4.0 and found["baseplate"] == ""

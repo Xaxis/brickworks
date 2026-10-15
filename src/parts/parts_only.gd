@@ -40,9 +40,17 @@ static func active() -> bool:
 
 
 ## Whether [param part_id] may be used: always, without a list.
-static func allows(part_id: String) -> bool:
+##
+## A number LDraw has moved ("3023", "~Moved to 3023b") is the part it moved
+## to, read through [param library]: the app's own generators lay 3023 and
+## 4073, BrickNet lists 3023b and 6141, and refusing the old number refused
+## every shape, fill and round the generators made — three of the first ten
+## BrickBench designs abandoned the body generator over it and stacked bricks.
+static func allows(part_id: String, library: PartLibrary = null) -> bool:
 	_load()
-	return _allowed.is_empty() or _allowed.has(part_id.to_lower())
+	if _allowed.is_empty() or _allowed.has(part_id.to_lower()):
+		return true
+	return library != null and _allowed.has(library.resolve(part_id).to_lower())
 
 
 ## What the list is, as the designer is told it.
@@ -52,10 +60,10 @@ static func named() -> String:
 
 
 ## The parts of [param ids] that may not be used, each once.
-static func barred(ids: PackedStringArray) -> PackedStringArray:
+static func barred(ids: PackedStringArray, library: PartLibrary = null) -> PackedStringArray:
 	var out := PackedStringArray()
 	for part_id: String in ids:
-		if not allows(part_id) and not out.has(part_id):
+		if not allows(part_id, library) and not out.has(part_id):
 			out.append(part_id)
 	return out
 
@@ -108,7 +116,7 @@ static func on_model(world: BrickWorld, scenery: Dictionary,
 		return ""
 	var found: Dictionary = {}     ## part -> brick ids
 	for brick: BrickWorld.Brick in world.bricks():
-		if scenery.has(brick.id) or allows(brick.part_id):
+		if scenery.has(brick.id) or allows(brick.part_id, library):
 			continue
 		if not found.has(brick.part_id):
 			found[brick.part_id] = []
