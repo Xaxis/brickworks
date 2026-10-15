@@ -67,6 +67,9 @@ class Batch extends RefCounted:
 	var multimesh: MultiMesh
 	var brick_ids: PackedInt64Array = PackedInt64Array()
 	var dirty: bool = false
+	## Drawn from both sides (a surface whose winding LDraw does not
+	## certify); the rest are culled to their outside.
+	var two_sided: bool = false
 	## Triangles in one instance, read once when the batch is made.
 	var triangles: int = 0
 	## While the build animation plays (see [method begin_reveal]): how
@@ -472,20 +475,50 @@ func show_first(upto: int) -> void:
 
 ## Draw every brick with [param material] and in the colour
 ## [param colour_of] gives its number: a picture of which brick is which,
-## for the booklet to draw its outlines from. Nothing about the model
-## changes, and the next change to the world draws it as it was.
-func draw_as(material: ShaderMaterial, colour_of: Callable) -> void:
+## for the booklet to draw its outlines from. With [param two_sided], the
+## surfaces drawn from both sides take that one, so what the picture hides
+## is what the plastic hides (SeenParts). Nothing about the model changes,
+## and the next change to the world draws it as it was.
+func draw_as(material: ShaderMaterial, colour_of: Callable,
+		two_sided: ShaderMaterial = null) -> void:
 	if _rebuild_queued:
 		_flush()
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
-		batch.instance.material_override = material
+		batch.instance.material_override = two_sided if two_sided != null and batch.two_sided \
+			else material
 		var slot: int = 0
 		for brick_id: int in batch.brick_ids:
 			if _bricks[brick_id].hidden:
 				continue
 			batch.multimesh.set_instance_color(slot, colour_of.call(brick_id))
 			slot += 1
+
+
+## Give bricks other colours where they are drawn, without moving them in
+## their batches: brick id -> LDraw code. recolor_brick takes a brick out of
+## its batch and puts it at the end, which changes the order the batch is
+## drawn in, and where two faces lie in one plane the order decides which
+## shows. A picture before and after (SeenParts.pictures) wants only the
+## colours to change. Colours of another material class are left alone.
+func repaint_in_place(changes: Dictionary) -> void:
+	for brick_id: int in changes:
+		var brick: Brick = _bricks.get(brick_id)
+		if brick == null:
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var code: int = int(changes[brick_id])
+		var same_class: bool = true
+		for surface_index: int in part.surface_count():
+			if _material_class_for(part, surface_index, code) \
+					!= _material_class_for(part, surface_index, brick.color_code):
+				same_class = false
+		if not same_class:
+			continue
+		brick.color_code = code
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			_mark_dirty(key)
+	_flush()
 
 
 ## The instances that draw see-through plastic, glass and the like: what
@@ -668,6 +701,7 @@ func _create_batch(
 	batch.instance.name = key
 	var material_class: int = _material_class_for(part, surface_index, color_code)
 	var two_sided: bool = part.surface_two_sided[surface_index] == 1
+	batch.two_sided = two_sided
 	# A copy per batch, carrying the part's box, so the shader can draw
 	# the seam where this part meets the next: see plastic_body. Every
 	# surface of a part gets the whole part's box, which is what an edge

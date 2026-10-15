@@ -50,7 +50,7 @@ const MODE_WORDS: Dictionary = {
 
 ## The colours a group can be, in the order they are offered: as often as
 ## real sets use each where nobody sees it (docs/HIDDEN_COLOURS.md, 1,576
-## sets measured: Blue in 42, Yellow 33, Red 28, Green 20, Dark Turquoise
+## sets measured: Blue in 41, Yellow 33, Red 28, Green 20, Dark Turquoise
 ## and Bright Pink 7, Lime, Orange and Medium Azure 6), then the rest of
 ## the strong colours in production. Blue and yellow first suits colour
 ## blindness too: its commonest kind cannot tell red from green.
@@ -102,8 +102,9 @@ class Group extends RefCounted:
 class Plan extends RefCounted:
 	var mode: String = "sections"
 	var groups: Array[Group] = []
-	## Brick id -> the colour it would be.
+	## Brick id -> the colour it would be, and the group it is in.
 	var changes: Dictionary = {}
+	var group_of: Dictionary = {}
 	var parts: int = 0
 	## Hidden: seen from no side SeenParts drew.
 	var hidden: int = 0
@@ -281,6 +282,7 @@ static func plan(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
 		for brick_id: int in members:
 			if (bricks[brick_id] as BrickWorld.Brick).color_code != colour:
 				made.changes[brick_id] = colour
+				made.group_of[brick_id] = group
 		group.recoloured += members.size()
 	return made
 
@@ -590,7 +592,16 @@ static func made_in(library: PartLibrary, part_id: String, code: int) -> float:
 
 
 ## Carry it out, as one step of the history. Returns how many changed.
-static func apply(made: Plan, world: BrickWorld, builder: Builder) -> int:
+##
+## With [param assemblies], every copy of a sub-assembly it touched must
+## still match its fellows exactly, or Assemblies.after_edit would build
+## them again from it. A family's counterparts are found by one fit of
+## the copies; a symmetrical assembly fits another copy several ways, and
+## the fit after_edit's search finds first may not be that one. So it is
+## asked (Assemblies.unlike_copies), and any copies that would be rebuilt
+## have their parts put back as they were, kept "copies_differ".
+static func apply(made: Plan, world: BrickWorld, builder: Builder,
+		assemblies: Assemblies = null) -> int:
 	var steps: Array = []
 	for brick_id: int in made.changes:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -599,6 +610,36 @@ static func apply(made: Plan, world: BrickWorld, builder: Builder) -> int:
 			continue
 		steps.append({"undo": "recolor", "brick": brick_id, "color": brick.color_code})
 		world.recolor_brick(brick_id, code)
+	for _round: int in 4:
+		if assemblies == null or steps.is_empty():
+			break
+		var touched: Dictionary = {}
+		for step: Dictionary in steps:
+			var brick: BrickWorld.Brick = world.get_brick(int(step["brick"]))
+			if brick != null:
+				touched[Assemblies.path_of(brick)] = true
+		var unlike: Array = assemblies.unlike_copies(touched)
+		if unlike.is_empty():
+			break
+		var under: Dictionary = {}
+		for pair: Array in unlike:
+			for path: String in pair:
+				for one: String in [path] + Array(assemblies.copies_of(path)):
+					for brick_id: int in assemblies.ids_under(one):
+						under[brick_id] = true
+		var kept: Array = []
+		for step: Dictionary in steps:
+			var brick_id: int = int(step["brick"])
+			if not under.has(brick_id):
+				kept.append(step)
+				continue
+			world.recolor_brick(brick_id, int(step["color"]))
+			made.changes.erase(brick_id)
+			var group: Group = made.group_of.get(brick_id)
+			if group != null:
+				group.recoloured -= 1
+			_keep(made, "copies_differ", 1)
+		steps = kept
 	builder.record(steps, "coloured %d hidden parts %s" % [steps.size(),
 		MODE_WORDS.get(made.mode, made.mode)])
 	return steps.size()

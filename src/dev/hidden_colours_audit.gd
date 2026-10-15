@@ -2,7 +2,7 @@
 ## sees in the finished model, and what colour LEGO made those.
 ##
 ##   godot --path . --script src/dev/hidden_colours_audit.gd -- [--shard=K/N]
-##       [--out=FILE] [--views=48] [--most=1024] [--finest=1.0] [--on-table]
+##       [--out=FILE] [--views=48] [--samples=1] [--most=1024] [--finest=1.0] [--on-table]
 ##       [FILE.mpd ...]
 ##
 ## Needs a window: what is hidden is measured by SeenParts, from pictures.
@@ -37,6 +37,9 @@ var _seen: SeenParts
 var _views: int = 48
 var _most: int = 1024
 var _finest: float = 1.0
+## Pictures a side: one for the repository, where a part in a thousand
+## more or less does not move a share; the app draws SeenParts.SAMPLES.
+var _samples: int = 1
 ## Hidden as a display model hides it: seen from no side but underneath.
 var _on_table: bool = false
 
@@ -61,6 +64,8 @@ func _run() -> void:
 			out_path = argument.trim_prefix("--out=")
 		elif argument.begins_with("--views="):
 			_views = int(argument.trim_prefix("--views="))
+		elif argument.begins_with("--samples="):
+			_samples = int(argument.trim_prefix("--samples="))
 		elif argument.begins_with("--most="):
 			_most = int(argument.trim_prefix("--most="))
 		elif argument == "--on-table":
@@ -150,7 +155,7 @@ func _audit(path: String) -> Dictionary:
 		row["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 		row["error"] = "nothing placed"
 		return row
-	var result: SeenParts.Result = await _seen.measure(bricks, _views, _finest, _most)
+	var result: SeenParts.Result = await _seen.measure(bricks, _views, _finest, _most, _samples)
 	var hidden: Dictionary = result.hidden(_on_table)
 	row["on_table"] = _on_table
 	row["hidden_anywhere"] = result.hidden().size()

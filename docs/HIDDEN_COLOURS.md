@@ -95,51 +95,52 @@ blocks inside their edifices", [21061 review](https://www.newelementary.com/2024
 
 Every file of the LDraw model repository we have (vendor/omr, 1,576 files of
 1,470 sets) opened as File, Open opens it and measured by the same code the
-feature uses (`src/dev/hidden_colours_audit.gd`, four shards on the GPU, 134
-minutes of work), then added up by `tools/hidden_colours_audit.py`. Hidden here
-is "on a table": seen from no side but underneath, as a displayed model is
-looked at. A set's **accent colours** are the ones it uses mostly where nobody
-sees them: a vivid plain colour (CIE chroma 28 or more and lightness 33 or more,
-so browns, dark reds and greys are filler, not marks) with three or more hidden
+feature uses (`src/dev/hidden_colours_audit.gd`, four shards on the GPU, about
+40 minutes), then added up by `tools/hidden_colours_audit.py`. Hidden here is
+"on a table": seen from no side but from below, as a displayed model is looked
+at. A set's **accent colours** are the ones it uses mostly where nobody sees
+them: a vivid plain colour (CIE chroma 28 or more and lightness 33 or more, so
+browns, dark reds and greys are filler, not marks) with three or more hidden
 parts and at least two of every three of its parts hidden. The fan-made files
-follow the instructions part for part, colours included; the measure is from 48
-sides at up to 1,024 pixels, coarser than the app's 96 sides at 2,048, and the
-GPU (Forward+) and software (Compatibility) renderers agree within a part or two
-(10182: 258 and 256 hidden; 10276: 304 and 303).
+follow the instructions part for part, colours included. The repository is
+measured from 48 sides, one picture each, at up to 1,024 pixels, coarser than
+the app's 128 sides drawn twice at 2,048; the GPU (Forward+) and software
+(Compatibility) renderers agree within a part or two (10182: 258 and 256
+hidden; 10276: 304 and 303).
 
-1,576 sets of the LDraw model repository, 687,038 parts, each measured from 48 sides at up to 1,024 pixels (a pixel 1 LDU on a small set, about 3 on the largest). Hidden on a table, seen from no side but underneath: 58,430 (8.5%). Hidden from underneath too: 43,803 (6.4%).
+1,576 sets of the LDraw model repository, 687,038 parts, each measured from 48 sides at up to 1,024 pixels (a pixel 1 LDU on a small set, about 3 on the largest). Hidden on a table, seen from no side but underneath: 58,276 (8.5%). Hidden from underneath too: 43,668 (6.4%).
 
-Of the hidden parts, 3,560 (6.1%) are in a colour the set uses mostly inside, vivid and at least two thirds hidden (an **accent**). 1,283 (2.2%) are in a colour no seen part of the set has at all, 892 of those vivid. 69 sets (4.4%) have five or more accent parts.
+Of the hidden parts, 3,549 (6.1%) are in a colour the set uses mostly inside, vivid and at least two thirds hidden (an **accent**). 1,258 (2.2%) are in a colour no seen part of the set has at all, 869 of those vivid. 68 sets (4.3%) have five or more accent parts.
 
 ### By size and by year
 
 | | sets | hidden on a table | of hidden, accents | sets with 5+ accent parts |
 |---|---|---|---|---|
-| 0–199 parts | 865 | 2.6% | 3.8% | 3 (0.3%) |
-| 200–499 parts | 361 | 3.2% | 4.6% | 14 (3.9%) |
-| 500–999 parts | 179 | 4.6% | 5.2% | 15 (8.4%) |
-| 1,000–1,999 parts | 102 | 9.3% | 5.7% | 21 (20.6%) |
+| 0–199 parts | 865 | 2.6% | 3.6% | 2 (0.2%) |
+| 200–499 parts | 361 | 3.2% | 4.5% | 14 (3.9%) |
+| 500–999 parts | 179 | 4.5% | 5.3% | 15 (8.4%) |
+| 1,000–1,999 parts | 102 | 9.2% | 5.7% | 21 (20.6%) |
 | 2,000– parts | 69 | 14.7% | 6.7% | 16 (23.2%) |
 | 1950–1989, 500+ parts | 28 | 2.8% | 0.0% | 0 (0.0%) |
-| 1990–1999, 500+ parts | 38 | 5.3% | 2.5% | 1 (2.6%) |
+| 1990–1999, 500+ parts | 38 | 5.2% | 2.6% | 1 (2.6%) |
 | 2000–2004, 500+ parts | 19 | 8.0% | 16.3% | 5 (26.3%) |
-| 2005–2009, 500+ parts | 59 | 11.2% | 1.4% | 5 (8.5%) |
+| 2005–2009, 500+ parts | 59 | 11.1% | 1.4% | 5 (8.5%) |
 | 2010–2014, 500+ parts | 63 | 8.1% | 5.8% | 6 (9.5%) |
 | 2015–2019, 500+ parts | 96 | 10.4% | 5.4% | 18 (18.8%) |
-| 2020–2029, 500+ parts | 47 | 17.5% | 9.4% | 17 (36.2%) |
+| 2020–2029, 500+ parts | 47 | 17.6% | 9.4% | 17 (36.2%) |
 
 ### Which colours
 
 | colour | sets using it as an accent | accent parts | of all its parts, hidden | our rank |
 |---|---|---|---|---|
-| Blue | 42 | 1,507 | 15.5% | 1 |
+| Blue | 41 | 1,498 | 15.4% | 1 |
 | Yellow | 33 | 639 | 6.5% | 2 |
-| Red | 28 | 672 | 8.4% | 3 |
-| Green | 20 | 270 | 8.1% | 4 |
+| Red | 28 | 671 | 8.4% | 3 |
+| Green | 20 | 269 | 8.1% | 4 |
 | Dark Turquoise | 7 | 55 | 16.2% | 5 |
 | Bright Pink | 7 | 28 | 20.8% | 6 |
 | Lime | 6 | 48 | 5.6% | 7 |
-| Orange | 6 | 34 | 9.4% | 8 |
+| Orange | 6 | 34 | 9.7% | 8 |
 | Medium Azure | 6 | 43 | 18.4% | 9 |
 | Medium Nougat | 3 | 142 | 8.1% | – |
 | Bright Green | 2 | 7 | 3.1% | 10 |
@@ -151,20 +152,20 @@ Of the hidden parts, 3,560 (6.1%) are in a colour the set uses mostly inside, vi
 
 ### By section
 
-112 accent colours of four or more parts, in sets of two or more sub-models: the median keeps 73% of its parts in one sub-model, against 55% for the set's hidden parts as a whole; 41 (36.6%) keep nine tenths or more to one, and the median is in 2 sub-model(s).
+111 accent colours of four or more parts, in sets of two or more sub-models: the median keeps 74% of its parts in one sub-model, against 55% for the set's hidden parts as a whole; 41 (36.9%) keep nine tenths or more to one, and the median is in 2 sub-model(s).
 
 ### By stage of the build
 
-Where in the build (0 the first part, 1 the last) each of 121 accent colours' parts go: the middle half of them spans a median of 22% of the build, against 41% for all the set's hidden parts; 54 (44.6%) are packed into half the span or less.
+Where in the build (0 the first part, 1 the last) each of 119 accent colours' parts go: the middle half of them spans a median of 22% of the build, against 41% for all the set's hidden parts; 53 (44.5%) are packed into half the span or less.
 
 ### Left and right, front and back
 
-- left and right: 6,665 mirror pairs of hidden parts across the model's middle, 99.0% of them the same colour; 3 pairs in two different accent colours, and 1 set with two or more such pairs.
-- front and back: 2,313 mirror pairs of hidden parts across the model's middle, 98.7% of them the same colour; 11 pairs in two different accent colours, and 3 sets with two or more such pairs.
+- left and right: 6,646 mirror pairs of hidden parts across the model's middle, 99.0% of them the same colour; 3 pairs in two different accent colours, and 1 set with two or more such pairs.
+- front and back: 2,305 mirror pairs of hidden parts across the model's middle, 98.7% of them the same colour; 11 pairs in two different accent colours, and 3 sets with two or more such pairs.
 
 ### Our measure against where LEGO put its accents
 
-Of the 4,398 parts in the sets' accent colours, the measure calls 80.9% hidden on a table and 66.8% hidden from underneath too: of those hidden on a table, 17.4% can be seen from below once the model is picked up.
+Of the 4,393 parts in the sets' accent colours, the measure calls 80.8% hidden on a table and 66.7% hidden from underneath too: of those hidden on a table, 17.5% can be seen from below once the model is picked up.
 
 ### The sets the reviews name
 
@@ -173,15 +174,15 @@ Of the 4,398 parts in the sets' accent colours, the measure calls 80.9% hidden o
 | 10276-1 | 9,060 | 710 | Blue (40, 81.6%), Nougat (34, 70.8%), Medium Azure (16, 100.0%), Medium Nougat (12, 100.0%), Red (10, 83.3%), Yellow (9, 90.0%) |
 | 10294-1 | 9,168 | 3,582 | Blue (284, 84.8%), Yellow (220, 82.7%), Red (133, 78.7%), Green (30, 85.7%), Orange (8, 100.0%), Medium Nougat (8, 88.9%) |
 | 21309-1 | 1,845 | 663 | Red (70, 71.4%), Yellow (26, 83.9%), Green (14, 77.8%) |
-| 10283-1 | 2,348 | 678 | Red (37, 77.1%) |
-| 42083-1 | 3,570 | 707 | none |
-| 42115-1 | 3,708 | 588 | Bright Green (4, 100.0%) |
-| 42056-1 | 2,759 | 386 | none |
+| 10283-1 | 2,348 | 675 | Red (37, 77.1%) |
+| 42083-1 | 3,570 | 704 | none |
+| 42115-1 | 3,708 | 586 | Bright Green (4, 100.0%) |
+| 42056-1 | 2,759 | 384 | none |
 | 7191-1 | 1,306 | 86 | none |
 | 10179-1 | 5,260 | 813 | Blue (45, 84.9%) |
 | 21321-1 | 863 | 15 | none |
 | 10261-1 | 4,209 | 103 | none |
-| 10182-1 | 2,417 | 328 | none |
+| 10182-1 | 2,417 | 322 | none |
 
 ### What it says
 
@@ -189,7 +190,7 @@ Of the 4,398 parts in the sets' accent colours, the measure calls 80.9% hidden o
   marks its inside; a fifth of the sets over 1,000 parts do. Of the sets of 500
   parts and more, none before 1990, 3% in the 1990s, 19% in 2015–19 and 36% since
   2020. The early-2000s bump is a handful of big sets built round a blue core.
-- **Blue, yellow, red and green**, in that order, then a few modern brights (Dark
+- **Blue, yellow, red and green**, in that order (41, 33, 28 and 20 sets), then a few modern brights (Dark
   Turquoise, Bright Pink, Lime, Orange, Medium Azure in six or seven sets each).
   That is what the reviews name: the Colosseum's blue, red and yellow, the
   Titanic's five colours, the Saturn V's red, yellow and green all come out of the
@@ -203,10 +204,10 @@ Of the 4,398 parts in the sets' accent colours, the measure calls 80.9% hidden o
 - **By stage of the build more than by section.** An accent colour's parts are
   packed into a stretch of the build (the middle half of them span 22% of it,
   against 41% for hidden parts in general): a bag's worth. They keep to one
-  sub-model more than chance too (73% against 55%), but less strongly. So "by
+  sub-model more than chance too (74% against 55%), but less strongly. So "by
   build stage" is the closest to what LEGO does; "by section" is the natural
   choice for a model a designer built in named sections.
-- **Halves are almost never told apart by colour.** Of 6,665 mirror pairs of
+- **Halves are almost never told apart by colour.** Of 6,646 mirror pairs of
   hidden parts left and right, 99% are the same colour, and only 3 pairs (one set)
   are two different accents; front and back, 11 pairs in 3 sets. The Eiffel
   Tower and the DeLorean are the exceptions the reviews remember. Brickworks offers
@@ -223,17 +224,67 @@ Of the 4,398 parts in the sets' accent colours, the measure calls 80.9% hidden o
   underneath too", is stricter than LEGO; turned off, it measures as LEGO places.
 
 
+## On our models and real sets
+
+`src/dev/hidden_colours_pictures.gd` on the GPU, the final code: each model
+opened as File, Open opens it, measured (128 sides, twice each, up to 2,048
+pixels), planned, applied as the panel's Apply does, then drawn before and after
+from eight sides, three of which the measure never looks from (one of those from
+below, left out for a display model), and compared pixel for pixel. Before and
+after are drawn in one world with only the colours changed
+(`SeenParts.pictures`): two worlds built alike draw in their own order, and on
+the seams where two parts' faces lie flush that order decides which face shows;
+compared across two worlds, the Colosseum's base "differed" by 122 pixels with
+nothing about what is seen changed. Real sets are coloured as display models
+(seen from no side but below), our own as picked up.
+
+| model | grouped | parts | hidden | coloured | colours | outside, pixels that differ (8 or 7 sides) | copies rebuilt |
+|---|---|---|---|---|---|---|---|
+| 10276 Colosseum | by stage, on a table | 9,060 | 545 | 272 | Dark Turquoise (236), Bright Pink (14), Medium Blue (2), Orange (4), Medium Azure (3), Dark Pink (2), Lime (11) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 21309 Saturn V | by stage, on a table | 1,845 | 506 | 299 | Orange (72), Bright Pink (54), Medium Azure (29), Lime (80), Dark Turquoise (49), Dark Pink (15) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10294 Titanic | by stage, on a table | 9,168 | 2,917 | 1,959 | Orange (634), Medium Blue (319), Dark Pink (183), Coral (53), Magenta (83), Medium Azure (353), Bright Pink (267), Medium Lavender (67) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10182 Café Corner | by stage, on a table | 2,417 | 225 | 67 | Dark Turquoise (8), Bright Pink (11), Orange (18), Blue (20), Magenta (4), Dark Pink (6) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| Wizard's Tower (models/orthanc.ldr) | by section | 9,427 | 157 | 157 | Red (44), Bright Pink (37), Dark Turquoise (42), Lime (34) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
+| castle (models/castle.ldr) | by section | 2,438 | 25 | 25 | Dark Turquoise (13), Lime (1), Bright Pink (11) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10283 Space Shuttle Discovery | left and right, on a table | 2,348 | 499 | 320 | Lime (114), Green (206) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+
+Every model's outside is the same pixel for pixel from every side compared, and
+no copy of a sub-assembly was rebuilt (`Assemblies.unlike_copies` put back 16 to
+60 parts a set whose copies would otherwise no longer have matched). On the
+sets, LEGO's own accents are kept ("coded": the Colosseum's 36), and many hidden
+parts keep their colour because they were never made in their stage's colour
+("not made") or the catalogue does not know what they were made in. Each
+model's pictures are in `shots/hidden_colours/<file>/`: `sheet.png` has the
+outside above and the inside, cut open where most of the change is, below,
+before on the left. On a GPU a model takes 20 seconds (Café Corner) to two and a
+half minutes (the Colosseum).
+
+Two faults were found this way and fixed: the measure drew both sides of every
+face where the app's plastic culls back faces (it now culls as the plastic does),
+and a symmetrical sub-assembly's copies could fit one another a different way
+after colouring, so Saturn V had three copies rebuilt (now put back before the
+step is kept).
+
+`src/dev/hidden_colours_probe.gd` holds the rest in the suite: a closed box's
+three inner bricks found exactly, a gap and a clear window seen through, the
+castle through the panel's own Apply (outside the same from eight sides, one
+Undo), a real set refused without a yes, and the booklet's marks.
+
 ## How Brickworks does it
 
 Tools, Colour the hidden parts… (`src/ui/hidden_colours_panel.gd`), and
 `colour_hidden_parts` over MCP, which runs the same code.
 
 1. **Find the parts nobody sees, by measuring.** `SeenParts`
-   (`src/render/seen_parts.gd`) draws the model from 96 sides — the 26 of a cube and
-   70 more spread evenly over the sphere, underneath included — with no perspective,
+   (`src/render/seen_parts.gd`) draws the model from 128 sides — the 26 of a cube and
+   102 more spread evenly over the sphere, underneath included — each twice, half a
+   pixel apart, with no perspective, culled as the app's plastic is,
    every part a flat colour that is its own number (`seen_codes.gdshader`), at a pixel
    of 1 LDU or as fine as 2,048 pixels allow, and reads every number back. A part in
-   none of the pictures is hidden; nothing else is. See-through parts are left out of
+   none of the pictures is hidden; nothing else is. It is a sample: a part seen only
+   through a crack narrower than a pixel, from a side between those drawn, could be
+   missed, and the comparison above, from sides never drawn, found none on seven
+   models. See-through parts are left out of
    the pictures, so what is behind a window is seen. "Seen from underneath too" is on
    by default (a model is picked up); off, it measures as a display model is looked at.
 2. **Group them** by section (the booklet's sections: the assemblies a design named, a

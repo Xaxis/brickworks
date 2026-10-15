@@ -332,13 +332,23 @@ can occupy the same millimetre.
   its report.
 - `parts seen from outside` (`src/render/seen_parts.gd`, `seen_codes.gdshader`):
   which parts can be seen from outside a model, measured. The model is drawn from
-  96 sides (the cube's 26 and 70 on a Fibonacci spiral, underneath included), no
+  128 sides (the cube's 26 and 102 on a Fibonacci spiral, underneath included),
+  each twice half a pixel apart (`SAMPLES`), no
   perspective, every part a flat colour that is its own number (13,823 a picture,
   more pictures past that), a pixel of 1 LDU or as fine as 2,048 pixels allow
   (1,024 on the web). Each picture is read by sorting its pixels as integers and
   walking the distinct values by binary search, not pixel by pixel in GDScript.
-  See-through parts are not drawn, so what is behind glass is seen.
-  `Result.hidden(on_table)` leaves out the sides from below.
+  See-through parts are not drawn, so what is behind glass is seen. Each surface
+  is culled as the app's plastic culls it (`seen_codes.gdshader` back faces,
+  `seen_codes_two_sided.gdshader` for the surfaces `BrickWorld.Batch.two_sided`),
+  so what the pictures hide is what the app's own view hides. Each side is drawn
+  twice, half a pixel apart (`SAMPLES`). `Result.hidden(on_table)` leaves out the
+  sides looking up from more than six degrees below level (`TABLE_BELOW`).
+  `SeenParts.pictures` draws a before and an after in one world, only the colours
+  changed in place (`BrickWorld.repaint_in_place`): two worlds built alike draw in
+  their own order, and on seams where two parts' faces lie in one plane the order
+  decides which shows. Compared that way the Colosseum's base differed by 122
+  pixels with no part's visibility changed; in one world, 0.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
   `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
   `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
@@ -349,7 +359,10 @@ can occupy the same millimetre.
   Keeps see-through and other finishes, prints, figures, locked parts, unknown
   colours, parts already in a vivid colour nothing outside has, and copied
   sub-assemblies unless every copy's part is hidden (`Assemblies.counterparts`).
-  Shows the inside cut open before and after; Apply is one `Builder.record` step.
+  Shows the inside cut open before and after; Apply is one `Builder.record` step,
+  after `Assemblies.unlike_copies` says no copy would be rebuilt for it (a
+  symmetrical sub-assembly fits its fellows several ways, and Saturn V's three
+  were rebuilt until a family whose copies no longer matched was put back).
   The scheme is saved as `0 !BRICKWORKS HIDDEN_COLOURS {...}` (`ModelStore
   .hidden_scheme`), a set as `0 !BRICKWORKS FROM_SET` (`ModelStore.from_set`); the
   booklet's marks come from `HiddenColours.live_marks`. docs/HIDDEN_COLOURS.md.

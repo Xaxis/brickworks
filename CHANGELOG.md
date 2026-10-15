@@ -17,7 +17,7 @@ whole cycle.
 
 - The parts nobody sees, coloured the way big sets colour them. Tools,
   Colour the hidden parts… finds every part that cannot be seen from any of
-  96 sides of the finished model, and gives them a colour for each section,
+  128 sides of the finished model, and gives them a colour for each section,
   build stage or half, so you can tell where you are while you build, as the
   core of the LEGO® Eiffel Tower set is red one way and yellow the other.
   Each part only takes a colour it is made in, never one seen on the

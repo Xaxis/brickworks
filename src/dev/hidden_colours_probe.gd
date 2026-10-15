@@ -30,7 +30,7 @@ extends SceneTree
 
 const SHOTS := "res://shots/hidden_colours"
 ## Eight sides to compare from: the four round it and the top, which are
-## among the 96 measured, and three that are not.
+## among the 128 measured, and three that are not.
 const COMPARED: Array[Vector3] = [Vector3(0, 0, 1), Vector3(0, 0, -1), Vector3(-1, 0, 0),
 	Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0.37, 0.61, -0.7), Vector3(-0.83, 0.21, 0.52),
 	Vector3(0.2, -0.9, 0.39)]
@@ -79,8 +79,10 @@ func _run() -> void:
 	_store = _main.get("_store")
 	_library = _main.get("_library")
 	_panel = _main.get("_hidden_colours")
-	# 96 sides as the app measures, at 1,024 pixels rather than 2,048: the
-	# same code, four times fewer pixels, in the suite's time in software.
+	# The box and the gap at the app's own sampling; the castle and the set
+	# lighter (48 sides, one picture, 768 pixels), to finish in the suite's
+	# seven minutes in software. The same code; the app's full sampling on
+	# them is shots/hidden_colours/ (hidden_colours_pictures.gd, on a GPU).
 	_panel.most_pixels = 1024
 	var shell: Shell = _main.get("_shell")
 	_check("Tools has Colour the hidden parts", shell.can("hidden_colours"))
@@ -239,6 +241,9 @@ func _inner_at(y: float) -> int:
 
 func _castle() -> void:
 	print("\n  the castle, by section")
+	_panel.views = 48
+	_panel.samples = 1
+	_panel.most_pixels = 768
 	_store.open("res://models/castle.ldr")
 	_main.call("_lay_baseplate")
 	await _frames(20)
@@ -296,13 +301,18 @@ func _castle() -> void:
 		recolours and steps.size() == changed.size() and rebuilt == 0)
 	_valid(changed, measured)
 
-	var after: Array = HiddenColours.bricks_of(_world, _store.scenery)
+	# What Apply did, as the world has it now: drawn before and after in one
+	# world with only these colours changed (SeenParts.pictures).
+	var applied: Dictionary = {}
+	for id: int in changed:
+		applied[id] = (_world.get_brick(id) as BrickWorld.Brick).color_code
 	var frame: AABB = _panel._frame(bricks)
 	var differing: int = 0
 	var compared: int = 0
 	for way: Vector3 in COMPARED:
-		var was: Image = await _panel._seen.picture(bricks, way, frame, 700)
-		var now: Image = await _panel._seen.picture(after, way, frame, 700)
+		var pair: Array = await _panel._seen.pictures(bricks, applied, way, frame, 700)
+		var was: Image = pair[0]
+		var now: Image = pair[1]
 		if was == null or now == null:
 			continue
 		compared += 1
@@ -318,8 +328,10 @@ func _castle() -> void:
 	_check("the outside from %d sides, 3 never measured from, the same pixel for pixel (%d differ)"
 		% [compared, differing], compared == COMPARED.size() and differing == 0)
 	var cut: Array = HiddenColoursPanel.cut_through(bricks, made.changes, _library)
-	var inside_was: Image = await _panel._seen.picture(bricks, cut[1], frame, 700, true, cut[0])
-	var inside_now: Image = await _panel._seen.picture(after, cut[1], frame, 700, true, cut[0])
+	var inside: Array = await _panel._seen.pictures(bricks, applied, cut[1], frame, 700, true,
+		cut[0])
+	var inside_was: Image = inside[0]
+	var inside_now: Image = inside[1]
 	_check("...where cut open, the inside is not (%d pixels differ)" % _pixels_apart(inside_was,
 		inside_now), _pixels_apart(inside_was, inside_now) > 0)
 

@@ -464,7 +464,7 @@ func definitions() -> Array:
 			"description": ("Colour the parts nobody sees in the finished model, as big sets "
 				+ "are coloured inside so a builder can tell where they are, as Tools, Colour "
 				+ "the hidden parts… does. Hidden is measured, never guessed: the model drawn "
-				+ "from 96 sides, every part its own colour, and only parts seen from none of "
+				+ "from 128 sides, every part its own colour, and only parts seen from none of "
 				+ "them change. mode: sections (the booklet's: the assemblies a design named), "
 				+ "stages (the build cut into stages= stages, as bags are), left_right or "
 				+ "front_back (the halves of a symmetrical build told apart). Each group gets "

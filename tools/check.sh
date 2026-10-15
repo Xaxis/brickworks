@@ -296,7 +296,7 @@ run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
 run "pose and animate" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/pose_probe.gd
 # Tools, Colour the hidden parts…: the parts nobody sees, found by drawing
-# the model from 96 sides (a closed box's inside exactly, what is behind a
+# the model from 128 sides (a closed box's inside exactly, what is behind a
 # gap or a window seen), coloured on the castle through the panel's Apply,
 # the outside the same pixel for pixel from eight sides, one undo, and a
 # real set asked about first. Pictures in shots/hidden_colours/.

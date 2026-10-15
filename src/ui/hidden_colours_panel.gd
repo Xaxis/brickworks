@@ -2,7 +2,7 @@
 ## model, shown in the colours they would take, and given them in one step
 ## when the person says so.
 ##
-## It measures first (SeenParts: the model drawn from 96 sides, every part
+## It measures first (SeenParts: the model drawn from 128 sides, every part
 ## its own number), works out the colours for the grouping chosen
 ## (HiddenColours), and shows the inside twice, cut open through the
 ## middle: as it is, and coloured. Nothing changes until Apply, which is
@@ -39,8 +39,11 @@ var from_below: bool = true
 var plan: HiddenColours.Plan = null
 var before: Image = null
 var after: Image = null
-## The most pixels a measuring picture is across; -1 for SeenParts' own. A
-## probe in software draws at 1,024 to finish in the suite's time.
+## How it measures: sides, pictures a side and the most pixels across; -1
+## for SeenParts' own. A probe drawing in software asks for less, to finish
+## in the suite's time.
+var views: int = -1
+var samples: int = SeenParts.SAMPLES
 var most_pixels: int = -1
 
 var _seen: SeenParts
@@ -76,18 +79,19 @@ func _ready() -> void:
 
 ## What is hidden, measured once for the model as it is.
 func measured() -> SeenParts.Result:
-	var key: String = "%d:%d:%d" % [world.revision, world.brick_count(), scenery.size()]
+	var key: String = "%d:%d:%d:%d:%d:%d" % [world.revision, world.brick_count(), scenery.size(),
+		views, samples, most_pixels]
 	if _measured != null and key == _measured_key:
 		return _measured
 	var job: Working.Job = Working.begin("Looking at %s from every side…" % _named(), 0, true)
 	await job.shown()
 	var cancel: Callable = func() -> void: _seen.cancelled = true
 	job.cancel_wanted.connect(cancel)
-	var count: int = 64 if OS.has_feature("web") else SeenParts.VIEWS
+	var count: int = views if views > 0 else (64 if OS.has_feature("web") else SeenParts.VIEWS)
 	var heard: Callable = func(done: int, of: int) -> void: job.count(done, of)
 	_seen.progressed.connect(heard)
 	var result: SeenParts.Result = await _seen.measure(HiddenColours.bricks_of(world, scenery),
-		count, SeenParts.FINEST, most_pixels)
+		count, SeenParts.FINEST, most_pixels, samples)
 	_seen.progressed.disconnect(heard)
 	job.end()
 	if result.complete:
@@ -121,17 +125,9 @@ func work_out(how: String, stage_count: int = 0, below: bool = true) -> HiddenCo
 ## as [param made] would colour it. [before, after].
 func pictures(made: HiddenColours.Plan, most: int = PICTURE) -> Array:
 	var bricks: Array = HiddenColours.bricks_of(world, scenery)
-	var coloured: Array = []
-	for entry: Array in bricks:
-		var changed: Array = entry.duplicate()
-		if made.changes.has(int(entry[0])):
-			changed[2] = int(made.changes[int(entry[0])])
-		coloured.append(changed)
 	var frame: AABB = _frame(bricks)
 	var cut: Array = cut_through(bricks, made.changes, library)
-	var was: Image = await _seen.picture(bricks, cut[1], frame, most, true, cut[0])
-	var will: Image = await _seen.picture(coloured, cut[1], frame, most, true, cut[0])
-	return [was, will]
+	return await _seen.pictures(bricks, made.changes, cut[1], frame, most, true, cut[0])
 
 
 ## Where to cut a model open to see [param changed] (brick id -> anything):
@@ -188,7 +184,7 @@ func _frame(bricks: Array) -> AABB:
 
 ## Carry [param made] out, as one step, and keep its scheme with the model.
 func apply_plan(made: HiddenColours.Plan) -> int:
-	var changed: int = HiddenColours.apply(made, world, builder)
+	var changed: int = HiddenColours.apply(made, world, builder, assemblies)
 	if changed > 0:
 		store.hidden_scheme = made.scheme()
 		edited.call()

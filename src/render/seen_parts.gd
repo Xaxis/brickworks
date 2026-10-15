@@ -9,10 +9,18 @@
 ## in front of a part's middle) calls a brick behind a window hidden and a
 ## brick behind a gap between two others hidden too; the pictures do not.
 ##
+## Each surface is culled as the app's plastic culls it (one-sided unless
+## LDraw does not certify its winding), so what the pictures hide is what
+## the app's own view hides: drawn from both sides, a part was called hidden
+## behind a wall the app lets you see through from that side.
+##
 ## What it draws from: the 26 directions of a cube (its faces, edges and
 ## corners, the sides a person turns a model to) and as many more spread
 ## evenly over the sphere (a Fibonacci spiral), from below as well, because
-## a model is picked up. See-through plastic is not drawn, so what is
+## a model is picked up; each side twice, half a pixel apart. It is a
+## sample, and a part glimpsed only through a crack narrower than a pixel,
+## from a side between those drawn, can be missed: docs/HIDDEN_COLOURS.md
+## measures how often, against pictures from sides never drawn here. See-through plastic is not drawn, so what is
 ## behind glass is seen, and is itself counted as seen.
 ##
 ## The pictures are read without walking their pixels in GDScript: each is
@@ -26,8 +34,20 @@
 class_name SeenParts
 extends Node
 
-## How many sides to look from, the cube's 26 among them.
-const VIEWS := 96
+## How many sides to look from, the cube's 26 among them. A part seen only
+## through a crack, from a side between those drawn, is what a sample can
+## miss; more sides, each drawn twice (SAMPLES), make that less likely. On
+## seven models, eight sides drawn before and after (three never measured
+## from) show no pixel changed (docs/HIDDEN_COLOURS.md).
+const VIEWS := 128
+## Each side drawn this many times, the camera moved half a pixel along the
+## diagonal the second time: a sliver thinner than a pixel that falls
+## between the first picture's samples falls on the second's.
+const SAMPLES := 2
+## How far below level a side may look up and still be one a person sees a
+## model on a table from: six degrees. Looked at exactly level, a part's
+## bottom face is edge on and drawn as a line or not at all, by rounding.
+const TABLE_BELOW := -0.1
 ## The finest a pixel is, in LDU: under a plate's lip (4 LDU) and a
 ## stud's (6 across), so a gap a person can see into is a few pixels.
 const FINEST := 1.0
@@ -51,6 +71,10 @@ var _viewport: SubViewport
 var _camera: Camera3D
 var _token_rect: ColorRect
 var _material: ShaderMaterial
+## For the surfaces the plastic draws from both sides; [member _material]
+## culls the back faces as plastic.gdshader does, so a part seen through a
+## surface the app does not draw from behind is seen here too.
+var _material_two_sided: ShaderMaterial
 var _token: int = 0
 ## One measure or picture at a time: the panel and a session's call share
 ## the viewports, and two drawing into one read each other's pictures.
@@ -77,6 +101,8 @@ class Result extends RefCounted:
 	## See-through bricks: never in front of anything, seen by definition.
 	var see_through: Dictionary = {}
 	var views: int = 0
+	## Pictures a side (SeenParts.SAMPLES).
+	var samples: int = 1
 	## LDU a pixel, the finest and the coarsest picture's.
 	var finest: float = 0.0
 	var coarsest: float = 0.0
@@ -137,8 +163,11 @@ func _ready() -> void:
 	_viewport.add_child(_token_rect)
 	_material = ShaderMaterial.new()
 	_material.shader = preload("res://src/render/seen_codes.gdshader")
-	_material.set_shader_parameter("linearise",
-		RenderingServer.get_current_rendering_method() != "gl_compatibility")
+	_material_two_sided = ShaderMaterial.new()
+	_material_two_sided.shader = preload("res://src/render/seen_codes_two_sided.gdshader")
+	for material: ShaderMaterial in [_material, _material_two_sided]:
+		material.set_shader_parameter("linearise",
+			RenderingServer.get_current_rendering_method() != "gl_compatibility")
 
 
 ## The sides to look from: the cube's 26 first, then the rest of [param
@@ -182,7 +211,7 @@ static func basis_from(direction: Vector3) -> Basis:
 ## Which of [param bricks] can be seen: [[world id, part, colour,
 ## transform], ...]. A coroutine.
 func measure(bricks: Array, count: int = VIEWS, finest: float = FINEST,
-		most: int = -1) -> Result:
+		most: int = -1, samples: int = SAMPLES) -> Result:
 	await _wait_turn()
 	var result := Result.new()
 	var started: int = Time.get_ticks_msec()
@@ -221,7 +250,7 @@ func measure(bricks: Array, count: int = VIEWS, finest: float = FINEST,
 	for instance: MultiMeshInstance3D in stage.see_through_instances():
 		instance.visible = false
 	stage.draw_as(_material, func(number: int) -> Color:
-		return BookletStudio.code_colour(number))
+		return BookletStudio.code_colour(number), _material_two_sided)
 	await get_tree().process_frame
 
 	var sides: Array[Vector3] = directions(count)
@@ -237,30 +266,41 @@ func measure(bricks: Array, count: int = VIEWS, finest: float = FINEST,
 		var pixel: float = _aim(way, whole, finest, most)
 		result.finest = minf(result.finest, pixel)
 		result.coarsest = maxf(result.coarsest, pixel)
-		var shown: int = 0
-		var from_above: bool = way.y > -0.05
-		for pass_number: int in passes:
-			_material.set_shader_parameter("first", float(pass_number * SPAN))
-			var image: Image = await _drawn()
-			if image == null:
-				ok = false
+		var shown: Dictionary = {}
+		var on_table: bool = way.y > TABLE_BELOW
+		var aimed: Transform3D = _camera.transform
+		for sample: int in samples:
+			# The second picture half a pixel along the diagonal.
+			var shift: float = pixel * 0.5 * float(sample)
+			_camera.transform = Transform3D(aimed.basis, aimed.origin
+				+ (aimed.basis.x + aimed.basis.y) * shift)
+			for pass_number: int in passes:
+				_material.set_shader_parameter("first", float(pass_number * SPAN))
+				_material_two_sided.set_shader_parameter("first", float(pass_number * SPAN))
+				var image: Image = await _drawn()
+				if image == null:
+					ok = false
+					break
+				for value: int in _values(image):
+					var number: int = value + pass_number * SPAN
+					if by_number.has(number):
+						result.seen[by_number[number]] = true
+						if on_table:
+							result.seen_on_table[by_number[number]] = true
+						shown[number] = true
+			if not ok:
 				break
-			for value: int in _values(image):
-				var number: int = value + pass_number * SPAN
-				if by_number.has(number):
-					result.seen[by_number[number]] = true
-					if from_above:
-						result.seen_on_table[by_number[number]] = true
-					shown += 1
 		if not ok:
 			break
-		result.per_view.append(shown)
+		result.per_view.append(shown.size())
 		done += 1
 		progressed.emit(done, sides.size())
 	result.views = done
+	result.samples = samples
 	result.complete = ok and done == sides.size()
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_material.set_shader_parameter("first", 0.0)
+	_material_two_sided.set_shader_parameter("first", 0.0)
 	stage.queue_free()
 	result.seconds = float(Time.get_ticks_msec() - started) / 1000.0
 	_busy = false
@@ -406,6 +446,76 @@ func _lit_viewport() -> void:
 	_lit_token.size = Vector2(3, 3)
 	_lit_token.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lit.add_child(_lit_token)
+
+
+## [param bricks] as they are and with [param changes] (brick id -> colour),
+## from [param from], drawn in one world with only the colours changed in
+## between (BrickWorld.repaint_in_place): [before, after]. Two worlds built
+## alike still draw in their own order, and on the seams where two parts'
+## faces lie in one plane the order decides which shows; the Colosseum's
+## base differed by 122 pixels between two worlds of the same bricks.
+func pictures(bricks: Array, changes: Dictionary, from: Vector3, frame: AABB,
+		most: int = 900, cut: bool = false, plane: Plane = Plane()) -> Array:
+	_lit_viewport()
+	await _wait_turn()
+	var stage := BrickWorld.new()
+	stage.library = library
+	stage.keeps_history = false
+	# What the stage numbers each brick, which it may not place at all.
+	var number_of: Dictionary = {}
+	for entry: Array in bricks:
+		var number: int = stage.add_brick(str(entry[1]), int(entry[2]), entry[3])
+		if number != 0:
+			number_of[int(entry[0])] = number
+	_lit.add_child(stage)
+	if cut:
+		stage.set_cut(true, plane)
+	await get_tree().process_frame
+	_frame_lit(from, frame, most)
+	var was: Image = await _drawn(_lit, _lit_token)
+	var by_number: Dictionary = {}
+	for id: int in changes:
+		if number_of.has(id):
+			by_number[number_of[id]] = int(changes[id])
+	stage.repaint_in_place(by_number)
+	await get_tree().process_frame
+	var now: Image = await _drawn(_lit, _lit_token)
+	stage.queue_free()
+	_busy = false
+	var out: Array = []
+	for image: Image in [was, now]:
+		if image != null:
+			if image.get_format() != Image.FORMAT_RGBA8:
+				image.convert(Image.FORMAT_RGBA8)
+			image.fill_rect(Rect2i(0, 0, 8, 8), Color(0.93, 0.95, 0.97))
+		out.append(image)
+	return out
+
+
+## The lit camera along [param from], framed on [param frame], at most
+## [param most] pixels across.
+func _frame_lit(from: Vector3, frame: AABB, most: int) -> void:
+	var turn: Basis = basis_from(from)
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for n: int in 8:
+		var corner: Vector3 = frame.position + Vector3(
+			frame.size.x if n & 1 else 0.0,
+			frame.size.y if n & 2 else 0.0,
+			frame.size.z if n & 4 else 0.0)
+		var at := Vector2(corner.dot(turn.x), corner.dot(turn.y))
+		low = low.min(at)
+		high = high.max(at)
+	var span: Vector2 = high - low
+	var pixel: float = maxf(span.x, span.y) / float(most - 24)
+	var size := Vector2i(ceili(span.x / pixel) + 24, ceili(span.y / pixel) + 24)
+	_lit.size = size
+	var middle: Vector2 = (low + high) * 0.5
+	var reach: float = frame.size.length() + 100.0
+	_lit_camera.transform = Transform3D(turn, turn.x * middle.x + turn.y * middle.y
+		+ turn.z * (frame.get_center().dot(turn.z) + reach))
+	_lit_camera.size = float(size.y) * pixel
+	_lit_camera.far = reach * 2.0 + 100.0
 
 
 ## [param bricks] ([[id, part, colour, transform], ...]) as they look from

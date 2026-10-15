@@ -5,7 +5,7 @@
 ##       [--mode=sections] [--stages=0] [--on-table] FILE ...
 ##
 ## Needs a window. Each file is opened as File, Open opens it, measured
-## (SeenParts, 96 sides), planned (HiddenColours) and coloured, as the
+## (SeenParts, 128 sides), planned (HiddenColours) and coloured, as the
 ## panel's Apply does; then drawn from the front corner and cut open
 ## through the middle, before and after, into
 ## shots/hidden_colours/<file>/ (outside_before, outside_after,
@@ -107,7 +107,7 @@ func _one(path: String, mode: String, stages: int, on_table: bool) -> Dictionary
 		measured.hidden(on_table), mode, steps, assemblies, {}, stages)
 	made.views = measured.views
 	made.pixel = measured.coarsest
-	HiddenColours.apply(made, _world, _builder)
+	HiddenColours.apply(made, _world, _builder, assemblies)
 	var after: Array = HiddenColours.bricks_of(_world, _store.scenery)
 	var rebuilt: int = assemblies.copies_follow(_builder.touched_groups(_builder.last_step()))[1]
 
@@ -116,12 +116,19 @@ func _one(path: String, mode: String, stages: int, on_table: bool) -> Dictionary
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(into))
 	var frame: AABB = _frame(before)
 	var cut: Array = HiddenColoursPanel.cut_through(before, made.changes, _library)
-	var shots: Dictionary = {
-		"outside_before": await _seen.picture(before, CORNER, frame, 900),
-		"outside_after": await _seen.picture(after, CORNER, frame, 900),
-		"inside_before": await _seen.picture(before, cut[1], frame, 900, true, cut[0]),
-		"inside_after": await _seen.picture(after, cut[1], frame, 900, true, cut[0]),
-	}
+	# What was applied, as it stands in the world after (SeenParts.pictures
+	# draws before and after in one world, only the colours changed).
+	var applied: Dictionary = {}
+	var was_colour: Dictionary = {}
+	for entry: Array in before:
+		was_colour[int(entry[0])] = int(entry[2])
+	for entry: Array in after:
+		if int(entry[2]) != int(was_colour.get(int(entry[0]), -1)):
+			applied[int(entry[0])] = int(entry[2])
+	var outside: Array = await _seen.pictures(before, applied, CORNER, frame, 900)
+	var inside: Array = await _seen.pictures(before, applied, cut[1], frame, 900, true, cut[0])
+	var shots: Dictionary = {"outside_before": outside[0], "outside_after": outside[1],
+		"inside_before": inside[0], "inside_after": inside[1]}
 	for key: String in shots:
 		if shots[key] != null:
 			(shots[key] as Image).save_png(ProjectSettings.globalize_path(into.path_join(key + ".png")))
@@ -134,9 +141,17 @@ func _one(path: String, mode: String, stages: int, on_table: bool) -> Dictionary
 			Vector3(-0.83, 0.21, 0.52), Vector3(0.2, -0.9, 0.39)]:
 		if on_table and way.y < -0.05:
 			continue
-		var was: Image = await _seen.picture(before, way, frame, 800)
-		var now: Image = await _seen.picture(after, way, frame, 800)
-		differ.append(_apart(was, now))
+		var pair: Array = await _seen.pictures(before, applied, way, frame, 800)
+		var was: Image = pair[0]
+		var now: Image = pair[1]
+		var off: int = _apart(was, now)
+		differ.append(off)
+		# A side that differs, kept to look at.
+		if off != 0 and was != null and now != null:
+			was.save_png(ProjectSettings.globalize_path(into.path_join("differs_%d_before.png"
+				% differ.size())))
+			now.save_png(ProjectSettings.globalize_path(into.path_join("differs_%d_after.png"
+				% differ.size())))
 	var groups: Array = []
 	for group: HiddenColours.Group in made.groups:
 		if group.recoloured > 0:

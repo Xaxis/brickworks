@@ -551,6 +551,34 @@ func copies_follow(touched: Dictionary) -> Array:
 	return [steps, rebuilt]
 
 
+## The copies [method copies_follow] would build again for [param
+## touched], as [[path, other], ...], without building anything: what
+## HiddenColours asks before it keeps a change, so that no copy is rebuilt
+## for it. A pair counts when its fit is not exact (a symmetrical assembly
+## can fit another copy several ways, and the one the search finds first
+## decides).
+func unlike_copies(touched: Dictionary) -> Array:
+	var paths_touched: Dictionary = {}
+	for group: String in touched:
+		var path: String = ""
+		for segment: String in segments(group):
+			path = join(path, segment)
+			paths_touched[path] = true
+	var out: Array = []
+	for path: String in paths_touched:
+		var source: Array = content(path)
+		if source.is_empty():
+			continue
+		for other: String in copies_of(path):
+			var target: Array = content(other)
+			if target.is_empty():
+				continue
+			var fit: Dictionary = best_match(source, target)
+			if not bool(fit["exact"]) and int(fit["score"]) != 0:
+				out.append([path, other])
+	return out
+
+
 ## The parts of an assembly and everything inside it: part, colour, where,
 ## and the group below the assembly ("" for its own parts).
 func content(path: String) -> Array:
