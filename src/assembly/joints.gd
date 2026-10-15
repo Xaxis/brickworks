@@ -470,7 +470,66 @@ static func rounds(entries: Array) -> Dictionary:
 						shafts_of.get(pair[0], []), shafts_of.get(pair[1], []), bore))
 				_add_zones(held, shaft[0], bore[0], zones)
 				_add_zones(held, bore[0], shaft[0], zones)
+	_knuckles(shafts, held)
 	return held
+
+
+## A hinge's knuckles turn on one line: the older hinge plates (4275b with
+## three fingers, 4276b with two) draw each finger's end as a round, and a
+## finger of one lies between two of the other, along one line at one size.
+## No round is in a bore there, so the plate hinged up on another floated
+## (8849's, folded square, where the file has them exactly so). Held both
+## ways, and forgiving nothing: knuckles meet end to end.
+const KNUCKLE_WIDEST := 8.0
+## How far apart along the line two knuckles may end and still meet, LDU.
+const KNUCKLE_GAP := 1.0
+
+
+static func _knuckles(shafts: Array, held: Dictionary) -> void:
+	var ends: Dictionary = {}   ## bucket -> Array of shaft indices with an end in it
+	for n: int in shafts.size():
+		var row: Array = shafts[n]
+		if row[5] != "round" or float(row[4]) > KNUCKLE_WIDEST:
+			continue
+		for end: int in 2:
+			var point: Vector3 = (row[1] as Vector3) + (row[2] as Vector3) * (float(row[3]) * end)
+			var box: Vector3i = _bucket(point)
+			if not ends.has(box):
+				ends[box] = []
+			(ends[box] as Array).append(n)
+	for n: int in shafts.size():
+		var knuckle: Array = shafts[n]
+		if knuckle[5] != "round" or float(knuckle[4]) > KNUCKLE_WIDEST:
+			continue
+		var start: Vector3 = knuckle[1]
+		var way: Vector3 = knuckle[2]
+		var length: float = knuckle[3]
+		var before: Dictionary = {}   ## key -> true: a round of that part ending at this one's start
+		var after: Dictionary = {}
+		var seen: Dictionary = {}
+		for end: int in 2:
+			var home: Vector3i = _bucket(start + way * (length * end))
+			for dx: int in [-1, 0, 1]:
+				for dy: int in [-1, 0, 1]:
+					for dz: int in [-1, 0, 1]:
+						for m: int in ends.get(home + Vector3i(dx, dy, dz), []):
+							if seen.has(m):
+								continue
+							seen[m] = true
+							var other: Array = shafts[m]
+							if other[0] == knuckle[0] \
+									or absf(float(other[4]) - float(knuckle[4])) > 0.5 \
+									or not _coaxial(other, knuckle):
+								continue
+							var span: Vector2 = _span(other, start, way)
+							if absf(span.y) <= KNUCKLE_GAP and span.x < span.y:
+								before[other[0]] = true
+							if absf(span.x - length) <= KNUCKLE_GAP and span.y > span.x:
+								after[other[0]] = true
+		for key: Variant in before:
+			if after.has(key):
+				_add_zones(held, knuckle[0], key, [])
+				_add_zones(held, key, knuckle[0], [])
 
 
 ## One part's bores on a joint's axis that the other part's shafts reach

@@ -270,6 +270,231 @@ func _initialize() -> void:
 1 0 0 -22 70 0 0 1 0.866 0.5 0 -0.5 0.866 0 23443.dat
 """)
 
+	print("\nstood on the ground by its shape, not its box")
+	# A part turned off the grid hangs its box below itself wherever it does
+	# not fill the box. A model opened was stood on the lowest box, so a car
+	# whose wheels are drawn spun on their axles, as Technic sets draw them,
+	# stood on its tyres' boxes 8 to 12 LDU up and was called floating whole:
+	# 8281's sidecar, all 98 of its parts, and most of 8110's 4,026. A wheel
+	# with its tyre (3482c04) spun 16 degrees on a square axle through a
+	# Technic brick, drawn 5 LDU into the ground so that opening it must
+	# stand it up; then the lot tipped a degree two ways as the sidecar is
+	# drawn.
+	var wheel: Array = [["3700", 4, Vector3(0, -40, 0), Basis.IDENTITY],
+		["3705", 0, Vector3(0, -30, -30), Basis(Vector3(0, 0, 1), Vector3(0, 1, 0),
+			Vector3(-1, 0, 0))],
+		["3482c04", 0, Vector3(0, -30, -40), Basis(Vector3(0, 0, 1), deg_to_rad(16.26))]]
+	await _passes("a wheel spun 16 degrees on its axle stands on its tyre",
+		_carried_text(Basis.IDENTITY, wheel), true)
+	var sidecar := Basis(Vector3(1, 0.017, 0), Vector3(-0.017, 1, 0.017),
+		Vector3(0, -0.017, 1)).orthonormalized()
+	await _passes("and tipped a degree about two axes as 8281's sidecar is drawn",
+		_carried_text(sidecar, wheel), true)
+	# And with the wheel's geometry arriving after the model opened, as on the
+	# web for a part outside the pack: stood on the wheel's box until it is
+	# here, then down onto its tyre, to the height a desktop opens it at.
+	var text: String = "0 joints probe\n" + _carried_text(sidecar, wheel) + "\n"
+	_clear()
+	_store.open_text(text, "wheel")
+	var desktop: float = _height_of("3700")
+	_clear()
+	var root: String = _library._root
+	var late: String = _library.parts["3482c04"].mesh_hash
+	_library._mesh_cache.erase(late)
+	_library._root = "user://no-parts-here/"
+	_store.open_text(text, "wheel")
+	var waiting: int = _store.awaited.size()
+	var opened: float = _height_of("3700")
+	_library._root = root
+	_store.place_awaited("3482c04")
+	var settled: float = _height_of("3700")
+	_assistant._ground_only = true
+	var held: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_ok(waiting == 1 and opened > settled and is_equal_approx(settled, desktop)
+		and int(held.get("floating", []).size()) == 0,
+		("its wheel fetched after it opened: stood %.0f LDU up on the box, then %.0f, "
+			+ "as a desktop opens it (%.0f), and held (%s)") % [opened, settled, desktop,
+			held["summary"]])
+	_clear()
+	# And a model another tool drew up in the air comes down onto the ground:
+	# its origin is that tool's. 30285's dinosaur is drawn 21 LDU up, and
+	# stood there every part of it floated. One this app saved keeps its height.
+	var aloft: String = "1 4 0 -100 0 1 0 0 0 1 0 0 0 1 3001.dat\n" \
+		+ "1 1 0 -124 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+	_store.open_text("0 Drawn up in the air\n" + aloft, "aloft")
+	var landed: float = _height_of("3001")
+	_assistant._ground_only = true
+	var stood: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_clear()
+	_store.open_text("0 Drawn up in the air\n0 Author: Brickworks\n" + aloft, "kept")
+	var kept: float = _height_of("3001")
+	_clear()
+	_ok(is_equal_approx(landed, 24.0) and int(stood.get("floating", []).size()) == 0
+		and is_equal_approx(kept, 100.0),
+		("a model drawn 76 LDU up by another tool comes down onto the ground (%s), "
+			+ "held (%s); saved by this app it keeps its height (%s)") % [
+			landed - 24.0, stood["summary"], kept - 24.0])
+
+	# And a part read off a file stands on the ground within the cell the open
+	# stood the model up: its lowest point, rounded up to a whole cell, can be
+	# a cell up already. A round plate drawn half an LDU into the ground, a
+	# wheel beside it an LDU above: opened, the plate stands 1.5 up and the
+	# wheel 3, as 4549's train and 6482's car stood on their wheels.
+	_holds_standing("a wheel 3 LDU up beside a plate the open stood a cell up stands on the ground",
+		"""
+1 0 0 -7.5 0 1 0 0 0 1 0 0 0 1 4073.dat
+1 0 60 -36 0 1 0 0 0 1 0 0 0 1 3482c04.dat
+""", 2)
+
+	print("\nan older hinge's knuckles")
+	# 4275b's three fingers and 4276b's two draw each finger's end as a round
+	# on the line they turn on, a finger of one between two of the other, and
+	# no round in a bore: the plate hinged up on another was held by nothing.
+	# 8849's pair, folded square, on a 1 x 2 brick, the hinged half out in
+	# the air beside it.
+	_holds_standing("4276b hinged up square on 4275b, held by its knuckles", """
+1 7 0 8 0 1 0 0 0 1 0 0 0 1 3004.dat
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 4275b.dat
+1 4 26 -26 0 0 1 0 1 0 0 0 0 -1 4276b.dat
+""", 3)
+
+	print("\nchecked where it stands")
+	# A part nobody has moved is checked where the file has it, not where the
+	# reading can say it is. A figure's parts are read at the nearest square
+	# turn (10182's arch of skis, 7893's mechanical arms), and LSynth draws a
+	# hose's pieces sheared and stretched: 3,661 parts of real sets were
+	# checked off their place. A ski turned 44 degrees on a 6 x 6 plate, read
+	# square, and a 1 x 1 brick put down beside it, where the ski read square
+	# would be and the ski is not: refused, as overlapping the ski, though
+	# nothing is there; and put down on the ski itself, refused.
+	var ski_turn := Basis(Vector3.UP, deg_to_rad(44.0))
+	var ski: String = "0 A ski on a plate\n1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3958.dat\n" \
+		+ _carried_text(ski_turn, [["6120", 15, Vector3(0, -12, 0), Basis.IDENTITY]]) + "\n"
+	var beside: Dictionary = await _added_to(ski, "1 4 -30 -32 30 1 0 0 0 1 0 0 0 1 3005.dat")
+	var onto: Dictionary = await _added_to(ski, "1 4 -10 -32 -10 1 0 0 0 1 0 0 0 1 3005.dat")
+	_ok(bool(beside["ok"]) and not bool(onto["ok"]) and str(onto["summary"]).contains("overlap"),
+		"a brick put down beside a ski turned 44 degrees fits (%s), and on the ski is refused (%s)"
+			% [beside["summary"], onto["summary"]])
+	# Where it stands, a figure's arm is where the file swung it: 6022's
+	# archer has his bow arm swung about the torso's line and not its own, so
+	# its peg is 8 degrees off the socket's and no round pairs them. Read
+	# square, it had rested on the torso; checked where it stands, the arm,
+	# its hand and the bow hung in the air. What is pushed into what holds.
+	_holds_standing("6022's archer, his bow arm swung about the torso's line, holds his bow", """
+1 0 10 -32 1 1 0 0 0 1 0 0 0 1 3815.dat
+1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3817.dat
+1 4 10 -20 1 1 0 0 0 1 0 0 0 1 3816.dat
+1 4 10 -64 1 1 0 0 0 1 0 0 0 1 973p42.dat
+1 1 25.552 -55 1 0.985 0.17 0 -0.12 0.697 0.707 0.12 -0.697 0.707 3819.dat
+1 1 -5.552 -55 1 0.985 -0.17 0 0.17 0.985 0 0 0 1 3818.dat
+1 14 -13.688 -37.24 -8.884 0.985 -0.12 0.12 0.17 0.697 -0.697 0 0.707 0.707 3820.dat
+1 14 33.688 -49.431 -18.547 0.968 0.227 -0.11 -0.223 0.974 0.048 0.118 -0.022 0.993 3820.dat
+1 14 10 -92 1 0.986 0 -0.169 0 1 0 0.169 0 0.986 3626ap01.dat
+1 6 35.265 -47.365 -27.556 -0.062 0.192 -0.98 -0.22 0.955 0.201 0.974 0.227 -0.017 4499.dat
+""", 10)
+
+	print("\na retired number, where its stub puts the part it became")
+	# LDraw keeps a retired number as a stub that draws the new part; 68 of
+	# them turn or shift it. 3139, a tyre, draws 3139b a quarter turn round.
+	# Opened, the tyre was renamed 3139b where the stub stood, so it was
+	# drawn right and checked, read back and saved turned across its axle:
+	# 179 of the model repository's tyres. Needs a catalogue that says where
+	# each stub puts its part (tools/build_meshes.py moved_by).
+	var stub: PartLibrary.PartInfo = _library.parts.get("3139")
+	_clear()
+	_store.open_text("0 A retired tyre\n1 0 0 -30 0 1 0 0 0 1 0 0 0 1 3139.dat\n", "retired")
+	var opened_as: BrickWorld.Brick = _world.bricks()[0] if _world.brick_count() > 0 else null
+	# Where the file draws it, across: the open stands it on the ground, so
+	# only its height is the open's.
+	var drawn: AABB = stub.bounds if stub != null else AABB()
+	var renamed: AABB = AABB()
+	if opened_as != null and _library.parts.has(opened_as.part_id):
+		renamed = opened_as.transform * (_library.parts[opened_as.part_id] as PartLibrary.PartInfo).bounds
+		renamed.position.y = drawn.position.y
+	var saved: String = _store.to_text("retired")
+	_clear()
+	_store.open_text(saved, "retired again")
+	var again: BrickWorld.Brick = _world.bricks()[0] if _world.brick_count() > 0 else null
+	_ok(opened_as != null and opened_as.part_id == "3139b" and renamed.is_equal_approx(drawn)
+		and again != null and again.transform.is_equal_approx(opened_as.transform),
+		"3139 opens as 3139b standing as the stub draws it (%s, %s), and saves and reopens there"
+			% [renamed, drawn])
+	_clear()
+
+	print("\na part drawn from what its file carries")
+	# A file carries the parts it uses that LDraw has not got, and the
+	# subparts and primitives they are drawn from. Only the parts were read,
+	# and by their bare names, so 1,401 parts real sets' files carry could
+	# not be built: 10283's Technic pins, drawn from a friction rib the file
+	# carries as a primitive, and printed parts whose print is a subpart
+	# named s\... — and whatever stood on one floated. A plate drawn from a
+	# subpart under s\, drawn from a primitive, and a 2 x 2 brick on it.
+	await _passes("a plate drawn from a subpart and a primitive the file carries, a brick on it",
+		"""
+0 FILE fx-carried.ldr
+0 Carried parts
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 fx - plate.dat
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+0 FILE fx - plate.dat
+0 Plate 2 x 2 Drawn From What Its File Carries
+0 Name: fx - plate.dat
+0 !LDRAW_ORG Unofficial_Part
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\\fx - plates01.dat
+1 16 10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+0 NOFILE
+0 FILE s\\fx - plates01.dat
+0 ~Plate 2 x 2 Body
+0 Name: s\\fx - plates01.dat
+0 !LDRAW_ORG Unofficial_Subpart
+1 16 0 0 0 20 0 0 0 8 0 0 0 20 fx - cube.dat
+0 NOFILE
+0 FILE fx - cube.dat
+0 Cube
+0 Name: fx - cube.dat
+0 !LDRAW_ORG Unofficial_Primitive
+4 16 -1 0 -1 1 0 -1 1 0 1 -1 0 1
+4 16 -1 1 -1 -1 1 1 1 1 1 1 1 -1
+4 16 -1 0 -1 -1 1 -1 1 1 -1 1 0 -1
+4 16 -1 0 1 1 0 1 1 1 1 -1 1 1
+4 16 -1 0 -1 -1 0 1 -1 1 1 -1 1 -1
+4 16 1 0 -1 1 1 -1 1 1 1 1 0 1
+0 NOFILE
+""")
+
+	# And a hose LSynth drew: the file carries its pieces, named LS and a
+	# number. Read as parts of their own, a piece that touched only the next
+	# piece floated, and so did 1,100 pieces of real sets' hoses. Two pieces
+	# end to end, the first on a 1 x 1 brick, the second out in the air.
+	await _passes("an LSynth hose's pieces are one thing, held where one of them is", """
+0 FILE fx-hose.ldr
+0 A hose LSynth drew
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 0 0 -32 0 1 0 0 0 1 0 0 0 1 fx - ls60.dat
+1 0 20 -32 0 1 0 0 0 1 0 0 0 1 fx - ls60.dat
+0 NOFILE
+0 FILE fx - ls60.dat
+0 LS60
+0 Name: fx - ls60.dat
+0 !LDRAW_ORG Unofficial_Part
+1 16 0 2 0 10 0 0 0 2 0 0 0 5 box.dat
+0 NOFILE
+""")
+
+	# And the pieces LDraw draws one element in are one thing: a pneumatic
+	# tube's end (71533k01) and its segments (71533k03). A segment out to the
+	# side of an end standing on a 1 x 1 brick, touching only the end.
+	_holds_standing("a pneumatic tube's segment is one thing with its end", """
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 0 0 -44 0 1 0 0 0 1 0 0 0 1 71533k01.dat
+1 0 6 -42 0 0 4 0 -1 0 0 0 0 1 71533k03.dat
+""", 3)
+
 	print("")
 	if _failures == 0:
 		print("the joints real sets use pass, and the same parts apart do not")
@@ -363,7 +588,11 @@ func _design(ldraw: String, sections: bool = false) -> Assistant.Model:
 ## turned [param degrees] about the upright through the origin.
 static func _turned_text(degrees: float, parts: Array) -> String:
 	# LDraw's y points down, so a turn about it is the same matrix.
-	var turn := Basis(Vector3.UP, deg_to_rad(degrees))
+	return _carried_text(Basis(Vector3.UP, deg_to_rad(degrees)), parts)
+
+
+## The same, all carried by [param turn], in LDraw's own axes.
+static func _carried_text(turn: Basis, parts: Array) -> String:
 	var lines := PackedStringArray()
 	for one: Array in parts:
 		var at: Vector3 = turn * (one[2] as Vector3)
@@ -383,6 +612,8 @@ func _passes(said: String, ldraw: String, sections: bool = false) -> void:
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(bool(verdict["ok"]) and model.placements.size() >= 2,
 		"%s (%s)" % [said, verdict["summary"]])
+	if not bool(verdict["ok"]):
+		print("        " + str(verdict.get("feedback", "")).left(600).replace("\n", "\n        "))
 
 
 ## Read from a file with its sections, and passed in one piece: a part a
@@ -476,6 +707,45 @@ func _leaning(hinged: bool, degrees: float) -> Dictionary:
 	model.sections["lean"] = Assistant.Section.from_dict({"name": "lean",
 		"x": pivot.x, "y": pivot.y, "z": pivot.z, "axis": axis, "degrees": degrees})
 	return _assistant._check(model, true)
+
+
+## A file opened and checked as it stands, only the ground holding: all
+## [param parts] of it held.
+func _holds_standing(said: String, text: String, parts: int) -> void:
+	_clear()
+	_store.open_text("0 joints probe\n" + text.strip_edges() + "\n", "standing")
+	_assistant._ground_only = true
+	var verdict: Dictionary = _assistant._check(_assistant._model_from_world(), true)
+	_assistant._ground_only = false
+	_ok(_world.brick_count() == parts and (verdict.get("floating", []) as Array).is_empty(),
+		"%s (%d parts, %s)" % [said, _world.brick_count(), verdict["summary"]])
+	_clear()
+
+
+## A file opened, and the line [param added] checked as a brick an edit puts
+## down among what stands there: the check's verdict.
+func _added_to(text: String, added: String) -> Dictionary:
+	_clear()
+	_store.open_text(text + added + "\n", "added")
+	await process_frame
+	var model: Assistant.Model = _assistant._model_from_world()
+	var last: Assistant.Placement = model.placements[model.placements.size() - 1]
+	for placement: Assistant.Placement in model.placements:
+		if placement.part == added.get_slice(" ", 14).trim_suffix(".dat"):
+			last = placement
+	last.id = 0
+	last.moved = true
+	var verdict: Dictionary = _assistant._check(model, true)
+	_clear()
+	return verdict
+
+
+## Where the first brick of a part stands, its origin's height in LDU.
+func _height_of(part_id: String) -> float:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			return brick.transform.origin.y
+	return NAN
 
 
 func _clear() -> void:

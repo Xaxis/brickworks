@@ -155,7 +155,22 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is placed from the catalogue's bounds of every part, so it is the same lift
   whatever geometry has arrived; parts not yet fetched wait in `store.awaited`
   and are put down as they arrive (`place_awaited`, from `Main._on_part_fetched`),
-  never into a world cleared since. There were two ways: the app's own opened
+  never into a world cleared since. Except a part turned off the grid, whose
+  box hangs below it where it does not fill it (`Lbm.PartMesh.lowest_at`, read
+  off its cover): a car whose wheels are drawn spun on their axles stood on its
+  tyres' boxes 8 to 12 LDU up, and every part of 8281's sidecar floated. Where
+  such a part's geometry has not arrived (the web, outside the pack) the box
+  stands in, and once the last awaited part lands the model comes down to the
+  height a desktop opens it at (`ModelStore._settle`), before it is whole and
+  saved. And a file another tool wrote (its `Author` not Brickworks) comes down
+  by whole cells when it is drawn up in the air, since its origin is that
+  tool's: 30285's dinosaur is drawn 21 LDU up, and every part of it floated; one
+  this app saved keeps its height. `joints_probe` ("stood on the ground by its
+  shape") opens a wheel spun 16 degrees on its axle both ways and with its tyre
+  fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
+  A part a
+  file carries is built from its carried subparts and primitives as well (see
+  [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened
   the sample without lifting it, so on the web a first visit saved the car
   buried to its axles, a reload lifted it a brick, and New said it had changed;
   the store's lifted it and dropped parts still arriving. `project_probe` opens

@@ -187,6 +187,23 @@ whole cycle.
   dome 16 studs across is a worked construction (show_technique "smooth
   dome"), and a search for a dome says so.
 
+- A model opened from another tool stands on the ground by its parts'
+  shapes. A wheel drawn spun on its axle, a gear turned to mesh, stood the
+  whole model on the corner of its box, up to 12 LDU in the air, and the
+  check called every part floating; a model drawn up in the air comes down
+  onto the ground (one this app saved keeps its height). A part a file
+  carries is built from the subparts and primitives the file carries for
+  it, where 1,401 such parts in real sets' files could not be built, and
+  what stood on them floated. A part opened by a retired number is the new
+  part where the old one put it: 3139 tyres came in as 3139b turned across
+  their own axles, drawn right but checked and saved a quarter turn wrong.
+  A part nobody has moved is checked where it stands, a figure's part at
+  any angle among them, and a part pushed into another is held by it (a
+  figure's arm swung off its socket's line still holds the hand and what
+  it carries). A hose LSynth drew is one piece, as is a pneumatic tube
+  with its ends. The older
+  finger hinge plates (4275b, 4276b) hold by their fingers.
+
 - Part search finds a printed part by what is printed on it: "porsche
   print", "control panel print", "wood grain print", or "3623 print" for
   every print of the 1 x 3 plate; "sticker" finds parts with stickers on.
