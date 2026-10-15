@@ -10544,8 +10544,8 @@ const TWO_WAYS_FROM := 10.0
 ## few studs across under a skin a part thick, which is a statue. The first
 ## BrickBench designs said a penguin, a duck and a blob this way, and the
 ## judge's word for every one was "blocky" against bodies of round bricks,
-## domes and dishes; our own owl's body, laid so, was "plain stacked
-## bricks" in every round it was judged.
+## domes and dishes; four of our own owl's nine judgements call its body
+## stacked bricks.
 const SMALL_ROUND := ("The %s %s studs across is laid as bricks and plates, "
 	+ "and a round body that small is a few moulded parts in a set: a 4 x 4 or "
 	+ "2 x 2 round brick (87081, 3941), a dome (30367c) or a dish (3960, 4740), "
