@@ -271,6 +271,7 @@ func _saw(line: String) -> void:
 				summary = "finished" if ok else "stopped"
 			if event.get("usage") is Dictionary:
 				_whole = event["usage"]
+			_cost_usd = float(event.get("total_cost_usd", 0.0))
 			_running = false
 			finished.emit(ok, summary)
 
@@ -279,6 +280,14 @@ func _saw(line: String) -> void:
 ## has ended.
 var _usage: Dictionary = {}
 var _whole: Dictionary = {}
+## What Claude Code itself says the session would have cost at API prices,
+## once it has ended: nothing is billed on a subscription, but a benchmark
+## that reports dollars a build (BrickBench) is compared on this.
+var _cost_usd: float = 0.0
+
+
+func cost_usd() -> float:
+	return _cost_usd
 
 
 ## What the session has spent so far, in tokens: every reply's usage, once;
