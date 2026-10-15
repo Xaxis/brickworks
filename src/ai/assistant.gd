@@ -11933,7 +11933,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# hole on its line, a part sunk into the one under it. Said for each pair
 	# this design is in, with how to fix it; between bricks standing, kept for
 	# the audit of real sets as the lattice's overlaps are.
-	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing)
+	var colliding: Dictionary = {}
+	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing, colliding)
 
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
@@ -12241,6 +12242,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			"not held": issues.get("not held", [])},
 		## The parts of what is not held, as indices into the placements.
 		"unheld": unheld.keys(),
+		## The later part of each pair whose real shapes collide.
+		"colliding": colliding.keys(),
 		## And what asking the exact shapes cost this check, ms.
 		"exact_ms": exact.spent_usec / 1000.0,
 		"exact_on": exact.spent_on,
@@ -12489,7 +12492,7 @@ static func _into_cell(cell: int, per: float) -> float:
 ## are in mesh, not in each other.
 func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		overlapping: Dictionary, gave_way: Dictionary, collided: Array,
-		meshing: Dictionary = {}) -> void:
+		meshing: Dictionary = {}, colliding: Dictionary = {}) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -12540,6 +12543,10 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 			gave_way[dressed] = true
 			continue
 		_note(issues, "collision", exact.said(found, namer))
+		# By index too, the later of the two, for what mends a design
+		# (Brickify.mend) to take out as it does a part that overlaps.
+		if maxi(a, b) < count:
+			colliding[maxi(a, b)] = mini(a, b)
 
 
 ## The parts of this design no connection holds, by BrickNet's rules where

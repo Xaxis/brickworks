@@ -322,6 +322,13 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				plan.foot_held[cell] = true
 		plan.sides_smooth = bool(pattern.get("panels", true))
 		plan.wedges = bool(pattern.get("wedges", true))
+		# Columns laid plain, [x, z] from at as columns are counted: no slope,
+		# wedge or top tile there, studs showing.
+		if pattern.get("plain_at") is Dictionary:
+			plan.plain_at = pattern["plain_at"]
+			for key: Variant in plan.plain_at:
+				if columns.has(key):
+					plan.studded[key] = true
 		if pattern.get("prefer") is Callable:
 			plan.prefer = pattern["prefer"]
 		plan.sample = func(x: float, j: float, z: float) -> bool:
@@ -3266,6 +3273,25 @@ class Plan extends RefCounted:
 
 	## Cells whose top plate carries a slope, so is laid with studs, not tiled.
 	var studded: Dictionary = {}
+	## Columns laid plain, Vector2i -> true: no slope, wedge or top tile, its
+	## studs showing (Shapes.lay's "plain_at"). Brickify's parts thinner than a
+	## stud: an aircraft's wings, two plates thick, laid in tiles, wedges and
+	## slopes, came apart into loose bits, where plain they held.
+	var plain_at: Dictionary = {}
+
+	## [method _wedged] but for the columns laid plain, kept out of it and
+	## put back.
+	func _wedged_off(cells: Dictionary, j: int, height: int = 1) -> Array:
+		if plain_at.is_empty():
+			return _wedged(cells, j, height)
+		var aside: Dictionary = {}
+		for key: Variant in cells.keys():
+			if plain_at.has(key):
+				aside[key] = cells[key]
+				cells.erase(key)
+		var out: Array = _wedged(cells, j, height)
+		cells.merge(aside)
+		return out
 
 	## The slopes there are, as [kind, length in studs, height in plates, one
 	## wide, two wide, the height of the surface over the middle of each stud
@@ -3652,6 +3678,8 @@ class Plan extends RefCounted:
 		for a: int in int(pick.get("wide", 1)):
 			for b: int in int(pick["length"]):
 				var cell: Vector2i = (pick["cell"] as Vector2i) + perp * a + facing * b
+				if plain_at.has(cell):
+					return false
 				for n: int in int(pick["tall"]):
 					var key := Vector3i(cell.x, int(pick["y"]) + n, cell.y)
 					if taken.has(key) or claimed.has(key):
@@ -3985,7 +4013,7 @@ class Plan extends RefCounted:
 				# hull's bow in bricks was a staircase where its plates had
 				# wedges.
 				var claimed: Dictionary = bricks.duplicate()
-				for one: Dictionary in _wedged(bricks, j, 3):
+				for one: Dictionary in _wedged_off(bricks, j, 3):
 					made.append(one)
 				for key: Variant in claimed:
 					if not bricks.has(key):
@@ -3997,7 +4025,7 @@ class Plan extends RefCounted:
 				# body's rim was a staircase up every course.
 				var trial: Dictionary = bricks.duplicate()
 				var cut_before: Dictionary = cut_in.duplicate()
-				_wedged(trial, j + 1)
+				_wedged_off(trial, j + 1)
 				cut_in = cut_before
 				for key: Variant in bricks.keys():
 					if not trial.has(key):
@@ -4030,7 +4058,7 @@ class Plan extends RefCounted:
 					under[cell] = at(cell, j)
 				else:
 					plates[cell] = at(cell, j)
-			for one: Dictionary in _wedged(plates, j):
+			for one: Dictionary in _wedged_off(plates, j):
 				made.append(one)
 			for one: Dictionary in _layer(plates, j, Shapes.CORE_PLATES, -1):
 				made.append(_annotated(one, Shapes.CORE_PLATES, 1, true))
@@ -4173,6 +4201,7 @@ class Plan extends RefCounted:
 	func stitch() -> void:
 		var refused: Dictionary = {}
 		var first_refused: Dictionary = {}
+		var again: bool = true
 		for _round: int in 96:
 			var found: Array = pieces()
 			if found.size() <= 1:
@@ -4221,6 +4250,15 @@ class Plan extends RefCounted:
 							joined_one = true
 							break
 						refused[keys[n]] = true
+				# Once nothing more joins, what was refused is offered every way
+				# once more: joins since may have laid what it meets otherwise. A
+				# fox's haunch, refused before its legs were joined, was left out.
+				if not joined_one and rejoin and again \
+						and not (refused.is_empty() and first_refused.is_empty()):
+					again = false
+					refused.clear()
+					first_refused.clear()
+					continue
 				if not joined_one:
 					break
 				continue

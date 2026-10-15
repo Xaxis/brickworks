@@ -1252,8 +1252,23 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true, "keep_pieces": true,
+		"stitch_first": true, "keep_pieces": true, "plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
+
+
+## The columns a cell the measuring added stands in (a part thinner than a
+## stud, a join), laid plain: a wing two plates thick in tiles, wedges and
+## slopes came apart in loose bits that were taken out, where in plates
+## with their studs it held, as Surface plain lays it.
+static func _plain_columns(grid: Grid) -> Dictionary:
+	var out: Dictionary = {}
+	if grid.added.is_empty():
+		return out
+	var column: int = grid.tall * grid.deep
+	for i: int in grid.added.size():
+		if grid.added[i] != 0 and grid.state[i] == 1:
+			out[Vector2i(i / column, (i / grid.tall) % grid.deep)] = true
+	return out
 
 
 ## Every part Brickify may lay, to be loaded before a worker reads them: by
@@ -1337,19 +1352,38 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			grid.stand_colour)
 	var report: Dictionary = mend(model, checker)
 	var balance: Balance.Report = report.get("balance")
-	# Weighed, and it would tip after all: stood on a stand under what it
-	# stands on and its centre of mass, and checked again.
+	# Weighed, and it would tip after all, or all but (Balance's half a stud,
+	# as the grid was judged): stood on a stand under what it stands on and
+	# its centre of mass, and checked again.
 	if options.stand and stand.is_empty() and balance != null and not balance.empty \
-			and balance.margin < 0.0 and not model.placements.is_empty():
+			and balance.needs_help() and not model.placements.is_empty():
 		var under: Rect2i = _stand_under(model, checker, balance)
 		if under.has_area():
-			stand = lay_stand(model, under, "it would tip, its centre of mass %s studs past what it stands on"
-				% Balance.studs(-balance.margin), checker, options.smooth, grid.stand_colour)
-			var again: Dictionary = mend(model, checker)
-			again["mended"] = int(again["mended"]) + int(report["mended"])
-			again["tied"] = int(again["tied"]) + int(report["tied"])
-			again["left_out"] = (report["left_out"] as Array) + (again["left_out"] as Array)
-			report = again
+			var why: String = ("it would tip, its centre of mass %s studs past what it stands on"
+				% Balance.studs(-balance.margin)) if balance.margin < 0.0 else ("it would all but "
+				+ "tip, its centre of mass %s studs inside what it stands on" % Balance.studs(
+					balance.margin))
+			stand = lay_stand(model, under, why, checker, options.smooth, grid.stand_colour)
+			report = _again(mend(model, checker), report)
+			balance = report.get("balance")
+	# A stud joint past its working load, propped: a pillar under what it
+	# carries, down to whatever is under that or the ground, kept only if
+	# fewer joints are past their load. A figure's arm held out on one stud,
+	# a car's bumper hung under its body.
+	report["propped"] = 0
+	if balance != null and balance.over > 0:
+		var was: int = model.placements.size()
+		var props: int = _prop(model, checker, balance)
+		if props > 0:
+			var after: Dictionary = checker._check(model, true, true)
+			var weighed: Balance.Report = after.get("balance")
+			if weighed != null and weighed.over < balance.over \
+					and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
+					== bool(report.get("ok", false)):
+				report = _again(after, report)
+				report["propped"] = props
+			else:
+				model.placements.resize(was)
 	times["check"] = Time.get_ticks_msec() - t2
 	var lift: int = STAND_PLATES if not stand.is_empty() else 0
 	if not stand.is_empty():
@@ -1373,6 +1407,37 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	if suggest and float(report["coverage"]) < 0.75:
 		out["studs"] = _keeps_at(mesh, options, checker, progress)
 	return out
+
+
+## A later check's report carrying what an earlier mend did: the parts it took
+## out and put in, and what it said it left out.
+static func _again(later: Dictionary, earlier: Dictionary) -> Dictionary:
+	later["mended"] = int(later.get("mended", 0)) + int(earlier.get("mended", 0))
+	later["tied"] = int(later.get("tied", 0)) + int(earlier.get("tied", 0))
+	later["left_out"] = (earlier.get("left_out", []) as Array) + (later.get("left_out", []) as Array)
+	return later
+
+
+## Props under the parts beyond each stud joint past its working load,
+## worst first: the shortest pillar of 1 x 1s from under the part down onto
+## a stud of anything else, or the ground. How many parts went in.
+static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report) -> int:
+	var before: int = model.placements.size()
+	var room := Laid.new(model, checker)
+	var done: Dictionary = {}
+	for one: Balance.JointLoad in balance.joints.slice(0, 16):
+		if one.ratio <= 1.0:
+			break
+		var index: int = one.beyond - 1
+		if index < 0 or index >= before or done.has(index):
+			continue
+		done[index] = true
+		var rest: Dictionary = {}
+		for n: int in model.placements.size():
+			if n != index:
+				rest[n] = true
+		room.pillar([index], rest, true, 24)
+	return model.placements.size() - before
 
 
 ## Why nothing was laid, and the smallest size tried that lays it whole:
@@ -1721,6 +1786,10 @@ static func said(result: Dictionary) -> String:
 		if tied > 0:
 			named.append("%d part%s across the joints" % [tied, "" if tied == 1 else "s"])
 		out.append("joined, not dropped: %s" % ", ".join(named))
+	var propped: int = int(report.get("propped", 0))
+	if propped > 0:
+		out.append("%d part%s propping what was held out on too few studs" % [propped,
+			"" if propped == 1 else "s"])
 	if grid.thin > 0:
 		out.append("its parts thinner than a stud kept a stud thick")
 	var gone := PackedStringArray()
@@ -1752,25 +1821,40 @@ static func said(result: Dictionary) -> String:
 ## many parts came out), "tied" (how many went in to join) and "left_out"
 ## (each round's parts taken out: {"parts", "low", "high" in studs and plates,
 ## "why"}).
+##
+## In as few checks as it can, each of which on a big model is most of its
+## time: what collides goes in one round, two rounds of joins at most, and
+## then what is still apart and what floats go together. Twelve rounds of one
+## kind at a time took a temple scene's check from 6 s to 290.
 static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 	var report: Dictionary = checker._check(model, true, true)
 	var taken_out: int = 0
 	var tied: int = 0
 	var tying: int = 0
 	var left_out: Array = []
-	for _round: int in 12:
+	for _round: int in 8:
 		# A model with nothing in it comes back without a count of pieces.
 		if bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1:
 			break
+		# What runs into what: by the lattice, or by the parts' real shapes (the
+		# exact check), which the lattice let through — a curved slope's
+		# underside in the brick beside it. Taken out first, alone: what it
+		# leaves held is checked again.
 		var drop: Dictionary = {}
-		var why: String = ""
 		var kinds: Array = report.get("kinds", [])
 		if kinds.has("overlap") or kinds.has("unknown part") or kinds.has("not loaded"):
 			drop = _overlapping(model, checker)
-			why = "it ran into another part, or never arrived"
+		if kinds.has("collision"):
+			for index: Variant in report.get("colliding", []):
+				drop[int(index)] = true
+		if not drop.is_empty():
+			left_out.append(_parts_said(model, drop, checker,
+				"it ran into the part beside it, or never arrived"))
+			taken_out += _take_out(model, drop)
+			report = checker._check(model, true, true)
+			continue
 		var loose: int = _loose(report)
-		var apart: bool = loose > 1
-		if drop.is_empty() and apart and tying < 4:
+		if loose > 1 and tying < 2:
 			tying += 1
 			var was: int = model.placements.size()
 			var added: int = _tie(model, checker, report)
@@ -1783,28 +1867,42 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 					report = after
 					continue
 				model.placements.resize(was)
-				tying = 4
-		if drop.is_empty():
-			for index: Variant in report.get("floating", []) + report.get("unheld", []):
-				drop[int(index)] = true
-			why = "nothing could hold it up"
-		if drop.is_empty() and int(report.get("pieces", 0)) > 1:
-			drop = _apart(model, checker)
-			why = "nothing could join it to the rest"
-		if drop.is_empty():
+			tying = 2
+		# What nothing could join or hold, taken out together, and said.
+		var floating: Dictionary = {}
+		for index: Variant in report.get("floating", []) + report.get("unheld", []):
+			floating[int(index)] = true
+		var apart: Dictionary = _apart(model, checker) if int(report.get("pieces", 0)) > 1 else {}
+		for index: Variant in floating:
+			apart.erase(index)
+		if floating.is_empty() and apart.is_empty():
 			break
-		left_out.append(_parts_said(model, drop, checker, why))
-		var kept: Array[Assistant.Placement] = []
-		for index: int in model.placements.size():
-			if not drop.has(index):
-				kept.append(model.placements[index])
-		taken_out += model.placements.size() - kept.size()
-		model.placements = kept
+		# Never the body: when most of it is what nothing holds, it is kept and
+		# the check says so, rather than the model taken out for its crumbs.
+		if floating.size() * 2 > model.placements.size():
+			break
+		if not floating.is_empty():
+			left_out.append(_parts_said(model, floating, checker, "nothing could hold it up"))
+		if not apart.is_empty():
+			left_out.append(_parts_said(model, apart, checker, "nothing could join it to the rest"))
+		floating.merge(apart)
+		taken_out += _take_out(model, floating)
 		report = checker._check(model, true, true)
 	report["mended"] = taken_out
 	report["tied"] = tied
 	report["left_out"] = left_out
 	return report
+
+
+## The placements [param drop] names taken out of [param model]: how many.
+static func _take_out(model: Assistant.Model, drop: Dictionary) -> int:
+	var kept: Array[Assistant.Placement] = []
+	for index: int in model.placements.size():
+		if not drop.has(index):
+			kept.append(model.placements[index])
+	var gone: int = model.placements.size() - kept.size()
+	model.placements = kept
+	return gone
 
 
 ## How far a check is from one piece that holds: its pieces, and the parts
@@ -2020,8 +2118,16 @@ static func _tie(model: Assistant.Model, checker: Assistant, report: Dictionary)
 		else:
 			rest[int(index)] = true
 	if rest.is_empty():
+		# None of it held: a pillar down to the ground, or onto anything that
+		# is held (a stand it floats over).
 		groups = []
-		if room.pillar(pieces[0], {}, true, 24):
+		var held: Dictionary = {}
+		for index: int in before:
+			if not floating.has(index):
+				held[index] = true
+		for index: Variant in pieces[0]:
+			held.erase(int(index))
+		if room.pillar(pieces[0], held, true, 24):
 			for index: Variant in pieces[0]:
 				rest[int(index)] = true
 	groups.append_array(pieces.slice(1))

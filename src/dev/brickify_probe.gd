@@ -383,6 +383,11 @@ func _whole() -> void:
 		_check("its legs survive, each from its foot up, in parts: %s" % ", ".join(PackedStringArray(
 			legs.map(func(leg: Dictionary) -> String: return "%d%%" % roundi(100.0 * float(leg["held"]))))),
 			legs.size() == 4 and kept == 4)
+		var report: Dictionary = laid["report"]
+		var gone: Array = report.get("left_out", [])
+		_check("and the whole of it: %.1f%% of it in a part, %d piece%s left out %s" % [
+			100.0 * float(report.get("coverage", 0.0)), gone.size(), "" if gone.size() == 1 else "s",
+			gone], float(report.get("coverage", 0.0)) >= 0.97 and gone.is_empty())
 		_stands("the fox", model, laid)
 
 	var apart: MeshFile = BrickifySamples.floating()
