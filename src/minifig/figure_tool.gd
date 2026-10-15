@@ -112,7 +112,11 @@ static func choose(library: PartLibrary, slot: String, wanted: String) -> String
 	var asked: String = wanted.to_lower().strip_edges()
 	if asked.is_empty() or asked == "none" or asked == "nothing":
 		return "" if Minifig.OPTIONAL.has(slot) else "?"
-	var all: Array[PartLibrary.PartInfo] = Minifig.choices(library, slot)
+	# A run kept to a list of parts (PartsOnly) chooses among those alone.
+	var all: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+		if PartsOnly.allows(info.id):
+			all.append(info)
 	for info: PartLibrary.PartInfo in all:
 		if info.id == asked:
 			return info.id
@@ -158,6 +162,13 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	var unmatched: PackedStringArray = made[1]
 	if figure.name.is_empty():
 		figure.name = "Minifig"
+	# A part an odd body brings with it, or one named by number, may still be
+	# off a run's list of parts (PartsOnly).
+	var barred: PackedStringArray = PartsOnly.barred(figure.part_ids(library))
+	if not barred.is_empty():
+		return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
+			"text": "Not placed: %s. Name another for its slot." % PartsOnly.swap_words(
+				", ".join(barred))}
 	await _fetch(library, figure.part_ids(library))
 	for part_id: String in figure.part_ids(library):
 		if library.mesh_for(part_id) == null:

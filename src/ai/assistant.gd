@@ -3177,7 +3177,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			return _look_at_picture()
 		"make_part":
 			# A part LEGO has not made, made as a person makes one: see
-			# src/parts/part_tool.gd.
+			# src/parts/part_tool.gd. Not in a run kept to a list of parts.
+			if not PartsOnly.tool_refusal(name).is_empty():
+				return PartsOnly.tool_refusal(name)
 			progress.emit("making a part")
 			return await PartTool.run(args, library)
 		"add_minifig":
@@ -5163,15 +5165,25 @@ const PREFETCH_FOUND := 5
 
 
 func _search(query: String, limit: int) -> String:
-	var found: Array[PartLibrary.PartInfo] = library.search(query, maxi(1, limit))
+	# Kept to a list (PartsOnly), more are read so that as many are listed.
+	var limited: bool = PartsOnly.active()
+	var found: Array[PartLibrary.PartInfo] = library.search(query,
+		maxi(1, limit) * (4 if limited else 1))
 	var usable: Array[PartLibrary.PartInfo] = []
+	var barred: int = 0
 	for info: PartLibrary.PartInfo in found:
 		if info.is_redirect() or not info.reachable:
 			continue
-		usable.append(info)
+		if not PartsOnly.allows(info.id):
+			barred += 1
+			continue
+		if usable.size() < maxi(1, limit):
+			usable.append(info)
 
 	if usable.is_empty():
-		return "No parts match '%s'. Try fewer or plainer words." % query
+		return "No parts match '%s'%s. Try fewer or plainer words." % [query,
+			" among %s (%d that do are not on it)" % [PartsOnly.named(), barred]
+				if limited else ""]
 	# Built from their own collection: what they own first, and how much.
 	var from_collection: bool = not owned.is_empty() and Collection.wanted_in(_brief)
 	if from_collection:
@@ -5194,6 +5206,10 @@ func _search(query: String, limit: int) -> String:
 			told = _prints_named(info)
 	if not told.is_empty():
 		lines.append(told)
+	if barred > 0:
+		lines.append("Not listed: %d more that match, which this run may not use (it uses "
+			% barred + "only %s; a print or another part is refused too unless it is "
+			% PartsOnly.named() + "among them).")
 	var worked: String = _technique_for(query)
 	if not worked.is_empty():
 		lines.append(worked)
@@ -10947,6 +10963,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			if not trouble.is_empty():
 				_note(issues, "no such colour", "brick %d (%s): %s"
 					% [index, placement.part, trouble])
+		# A run kept to a list of parts (--parts-only, the BrickBench
+		# bench): one off it is refused wherever it stands, so the edit
+		# that would keep it is the one that swaps it.
+		if not PartsOnly.allows(placement.part):
+			_note(issues, "not among this run's parts", "%s: %s" % [
+				"#%d" % placement.id if placement.id != 0 else "brick %d" % index,
+				PartsOnly.swap_words(placement.part)])
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			# Two different failures wearing one message. A part that is
@@ -16648,10 +16671,19 @@ func _find_parts_like(query: String) -> String:
 	for raw: Variant in found:
 		var family: Dictionary = raw
 		var parts := PackedStringArray()
-		for pair: Variant in (family["parts"] as Array).slice(0, 6):
+		# Kept to a list (PartsOnly): only the family's parts on it.
+		var listed: Array = (family["parts"] as Array).filter(func(pair: Variant) -> bool:
+			return PartsOnly.allows(str((pair as Array)[0])))
+		if listed.is_empty():
+			continue
+		for pair: Variant in listed.slice(0, 6):
 			parts.append("%s %s" % [(pair as Array)[0], _part_called(str((pair as Array)[0]))])
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
+	if rows.is_empty():
+		return ("No family of parts among %s reads as \"%s\". " % [PartsOnly.named(), query]
+			+ "Try a plainer word for the look, or search_parts for one you can name."
+			+ printed)
 	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
 		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in."
 		+ printed)
@@ -16667,11 +16699,12 @@ func _find_parts_like(query: String) -> String:
 ## round tiles when the LEGO Group printed one on a 2 x 2 slope.
 func _printed_with(query: String) -> String:
 	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
-	if found.is_empty():
-		return ""
 	var named := PackedStringArray()
 	for info: PartLibrary.PartInfo in found:
-		named.append("%s %s" % [info.id, _part_called(info.id)])
+		if PartsOnly.allows(info.id):
+			named.append("%s %s" % [info.id, _part_called(info.id)])
+	if named.is_empty():
+		return ""
 	return ("\n\nPrinted with it: %s. search_parts \"%s print\" for more."
 		% ["; ".join(named), query])
 

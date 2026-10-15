@@ -389,6 +389,12 @@ func answer_rpc(request: Dictionary) -> Variant:
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
 		var content: Array = _as_content(called[0])
+		# A run kept to a list of parts (PartsOnly): whatever laid a part off
+		# it, the session hears of it after the call that left it there.
+		var barred: String = PartsOnly.on_model(assistant.world, assistant.scenery,
+			assistant.library)
+		if not barred.is_empty():
+			content.append({"type": "text", "text": barred})
 		# A newer build is live than this tab's (NewerBuild): Claude is told
 		# once, as the person is by the banner.
 		if not _told_newer and not NewerBuild.live().is_empty():

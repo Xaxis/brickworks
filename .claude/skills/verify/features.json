@@ -562,6 +562,14 @@
       "tests": []
     },
     {
+      "id": "cli:run the designer on BrickBench",
+      "kind": "cli",
+      "entry": "tools/bench/brickbench.py",
+      "reach": "python3 tools/minitest.py tests/test_brickbench.py; python3 tools/bench/brickbench.py report --date 2026-10-14   (the run: prompts, parts, design, export, verify, zip, fetch, views, pairs; the recipe is BrickBench in features/assistant.md; never submitted)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:say which build this is",
       "kind": "cli",
       "entry": "src/main.gd",
@@ -946,6 +954,14 @@
       "entry": "src/assembly/gear_ratios.gd",
       "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:keep a run to a list of parts",
+      "kind": "lib",
+      "entry": "src/parts/parts_only.gd",
+      "reach": "godot --headless --path . --script src/dev/parts_only_probe.gd   (and -- --parts-only=bench/results/brickbench-2026-10-14/bricknet_parts.txt)",
+      "area": "assistant",
       "tests": []
     },
     {

@@ -1207,6 +1207,11 @@ func _ask_claude_code(brief: String) -> void:
 		str(outcome[1]).substr(0, 600)])
 	print("  the session spent %s over %d replies" % [_tokens_said(session.spent()),
 		session.replies()])
+	# Each kind apart and Claude Code's own price for them, for a script to
+	# read (tools/bench/brickbench.py): nothing is billed on the subscription.
+	var spend: Brain.Spend = session.spent()
+	print("  tokens fresh=%d written=%d cached=%d out=%d api_usd=%.4f" % [spend.fresh,
+		spend.written, spend.cached, spend.made, session.cost_usd()])
 	_camera.frame(_built_bounds())
 	await get_tree().process_frame
 
