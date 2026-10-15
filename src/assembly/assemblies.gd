@@ -677,6 +677,38 @@ func _score(at: Transform3D, a: Array, by_part: Dictionary) -> Dictionary:
 	return {"score": score, "colours": colours}
 
 
+## Which part of the copy at [param to] each part of the copy at [param
+## from] is, brick id -> brick id, by how one lies on the other
+## ([method best_match]). Empty unless they match exactly, part for part
+## and colour for colour: what HiddenColours reads to keep copies alike.
+func counterparts(from: String, to: String) -> Dictionary:
+	var a: Array = content(from)
+	var b: Array = content(to)
+	var fit: Dictionary = best_match(a, b)
+	if not bool(fit["exact"]):
+		return {}
+	var at: Transform3D = fit["at"]
+	var by_part: Dictionary = {}
+	for item: Dictionary in b:
+		if not by_part.has(item["part"]):
+			by_part[item["part"]] = []
+		(by_part[item["part"]] as Array).append(item)
+	var out: Dictionary = {}
+	var used: Dictionary = {}
+	for item: Dictionary in a:
+		var laid: Dictionary = _mirrored(item) if bool(fit["mirrored"]) else item
+		var there: Transform3D = at * (laid["at"] as Transform3D)
+		for other: Dictionary in by_part.get(laid["part"], []):
+			if used.has(other["id"]) \
+					or (other["at"] as Transform3D).origin.distance_to(there.origin) > 0.6 \
+					or not _same_place(str(laid["part"]), there, other["at"]):
+				continue
+			out[int(item["id"])] = int(other["id"])
+			used[other["id"]] = true
+			break
+	return out if out.size() == a.size() else {}
+
+
 func _same_place(part: String, here: Transform3D, there: Transform3D) -> bool:
 	if here.basis.is_equal_approx(there.basis):
 		return true

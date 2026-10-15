@@ -135,6 +135,8 @@ var _render: RenderDialog
 var _pose: PosePanel
 ## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
 var _simulate: SimulatePanel
+## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
+var _hidden_colours: HiddenColoursPanel
 ## Its column, docked beside the model's: shown while it is open, so the
 ## model's column (and the lens centred on it) is what is left of the
 ## window. Over the model's left edge it covered half a gear train in a
@@ -511,6 +513,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_pose.controls_by_name())
 	if _simulate != null:
 		named.merge(_simulate.controls_by_name())
+	if _hidden_colours != null:
+		named.merge(_hidden_colours.controls_by_name())
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
@@ -2471,6 +2475,8 @@ func _build_ui() -> void:
 	_on_account_changed()
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
+	_chat.offers_hidden_colours = _offers_hidden_colours
+	_chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
 	_chat.designing.connect(func(brief: String) -> void:
 		_make_room(ModelStore.name_for(brief)))
 	# The design's own name, once it stands, over the one its brief gave the
@@ -2860,6 +2866,20 @@ func _build_ui() -> void:
 	_over_model.add_child(_pose)
 	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_pose.position = Vector2(12, 48)
+	# Tools, Colour the hidden parts…: the inside, cut open and coloured,
+	# over the model's left edge too (src/ui/hidden_colours_panel.gd).
+	_hidden_colours = HiddenColoursPanel.new()
+	_hidden_colours.world = _world
+	_hidden_colours.builder = _builder
+	_hidden_colours.library = _library
+	_hidden_colours.store = _store
+	_hidden_colours.assemblies = _shell.assemblies
+	_hidden_colours.scenery = _store.scenery
+	_hidden_colours.edited = _on_model_edited
+	_hidden_colours.say = func(line: String) -> void: _bar.say(line)
+	_over_model.add_child(_hidden_colours)
+	_hidden_colours.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_hidden_colours.position = Vector2(12, 48)
 	_pose.changed.connect(_on_model_edited)
 	# Tools, Simulate mechanism…: a gear train turned from its driver, in the
 	# same place over the model's left edge (src/ui/simulate_panel.gd). It
@@ -3068,6 +3088,9 @@ func _export_booklet(to: String = "", job: Working.Job = null) -> String:
 	var maker := BookletMaker.new()
 	maker.library = _library
 	maker.job = job
+	# The hidden parts' colours, shown where each group starts.
+	maker.marks = HiddenColours.live_marks(_store.hidden_scheme, _world, _library,
+		_store.scenery)
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
@@ -3668,7 +3691,26 @@ func open_pose() -> void:
 	_builder.hide_preview()
 	if _simulate.visible:
 		_simulate.close()
+	if _hidden_colours.visible:
+		_hidden_colours.close()
 	_pose.open()
+
+
+## Whether the model on the baseplate is one to offer hidden colours for:
+## big, and built in sections (HiddenColours.worth_offering).
+func _offers_hidden_colours() -> bool:
+	return SeenParts.possible() and HiddenColours.worth_offering(_world, _store.scenery)
+
+
+## Tools, Colour the hidden parts…, grouped [param how] (HiddenColours
+## .MODES), or as last chosen.
+func open_hidden_colours(how: String = "") -> void:
+	_builder.hide_preview()
+	if _pose.visible:
+		_pose.close()
+	if _simulate.visible:
+		_simulate.close()
+	await _hidden_colours.open(how)
 
 
 ## Tools, Simulate mechanism…: the Select tool in hand, so a click on an
@@ -3677,6 +3719,8 @@ func open_simulate() -> void:
 	_builder.hide_preview()
 	if _pose.visible:
 		_pose.close()
+	if _hidden_colours.visible:
+		_hidden_colours.close()
 	_verbs.set_mode("select")
 	await _simulate.open()
 

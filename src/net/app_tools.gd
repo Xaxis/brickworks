@@ -62,6 +62,7 @@ const COMMANDS: Dictionary = {
 	"sticker": "print_part", "printed_versions": "print_part",
 	"make_unique": "make_unique",
 	"simulate": "simulate_mechanism",
+	"hidden_colours": "colour_hidden_parts",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -164,6 +165,12 @@ version= one of the part's printed versions (versions= lists them), \
 sticker_part= a sticker LDraw has, stuck on a face.
  - make_unique: one copy of a sub-assembly cut loose from the others, so \
 changing it changes no other.
+ - colour_hidden_parts: the parts nobody sees in the finished model, \
+coloured by section, build stage or side as big sets are inside, so a \
+builder finds their place; measured from every side, so nothing seen \
+changes. It previews unless apply=true and agreed=true: offer it at the \
+end of a big model built in sections, and apply it only once the person \
+says yes.
  - gallery: what people built and shared at brickworks.diy/gallery, searched \
 (q, kind, size, technic, instructions, sort); open=<id> reads one as a \
 reference — its size, parts, credit, licence and picture. Read-only. Credit \
@@ -452,6 +459,30 @@ func definitions() -> Array:
 				"brick": {"type": "integer", "description": "a part in the copy, by its number"},
 			}},
 		},
+		{
+			"name": "colour_hidden_parts",
+			"description": ("Colour the parts nobody sees in the finished model, as big sets "
+				+ "are coloured inside so a builder can tell where they are, as Tools, Colour "
+				+ "the hidden parts… does. Hidden is measured, never guessed: the model drawn "
+				+ "from 96 sides, every part its own colour, and only parts seen from none of "
+				+ "them change. mode: sections (the booklet's: the assemblies a design named), "
+				+ "stages (the build cut into stages= stages, as bags are), left_right or "
+				+ "front_back (the halves of a symmetrical build told apart). Each group gets "
+				+ "one colour far from every colour seen, and each part only a colour it is "
+				+ "made in. Without apply it changes nothing and shows the inside cut open, "
+				+ "coloured. Offer it at the end of a big model built in sections, never by "
+				+ "default: apply=true with agreed=true only once the person has said yes; a "
+				+ "model from a real set also needs set_agreed=true. One step to undo; the "
+				+ "booklet shows each colour where its group starts."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"mode": {"type": "string", "enum": HiddenColours.MODES},
+				"stages": {"type": "integer", "description": "for stages: how many, 2 to 12; the model's size decides when omitted"},
+				"from_below": {"type": "boolean", "description": "true when omitted: a part seen from underneath keeps its colour. false for a display model never turned over"},
+				"apply": {"type": "boolean"},
+				"agreed": {"type": "boolean", "description": "the person said yes to this"},
+				"set_agreed": {"type": "boolean", "description": "the person said yes to recolouring a real set's own parts"},
+			}},
+		},
 		GalleryTool.definition(),
 	]
 
@@ -499,6 +530,11 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _print_part(input)
 		"make_unique":
 			return _make_unique(input)
+		"colour_hidden_parts":
+			var panel: HiddenColoursPanel = app.get("_hidden_colours")
+			if panel == null:
+				return "This app has no Colour the hidden parts."
+			return await panel.for_session(input, work)
 		"gallery":
 			if _gallery == null:
 				_gallery = GalleryTool.new()
@@ -530,7 +566,7 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 ## The tools that change the model.
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "undo",
-	"open_model", "brickify", "print_part", "make_unique"]
+	"open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the

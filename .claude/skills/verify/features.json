@@ -128,6 +128,14 @@
       "tests": []
     },
     {
+      "id": "cli:audit hidden colours in real sets",
+      "kind": "cli",
+      "entry": "tools/hidden_colours_audit.py",
+      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -1111,6 +1119,14 @@
       "tests": []
     },
     {
+      "id": "lib:parts seen from outside",
+      "kind": "lib",
+      "entry": "src/render/seen_parts.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (the closed box, the gap and the clear window)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:posing joints",
       "kind": "lib",
       "entry": "src/assembly/pose.gd",
@@ -1444,6 +1460,14 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:colour the hidden parts",
+      "kind": "ui",
+      "entry": "src/ui/hidden_colours_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (by hand: Tools, Colour the hidden parts\u2026; over MCP: colour_hidden_parts)",
+      "area": "geometry",
       "tests": []
     },
     {

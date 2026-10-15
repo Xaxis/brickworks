@@ -99,6 +99,10 @@ class Entry extends RefCounted:
 	## Framed on part of a model too big to show whole: the rest runs off
 	## the picture, faded.
 	var cropped: bool = false
+	## The hidden parts' colours that start on this step (BookletMaker
+	## .marks): [{label, name, rgb}], a chip each beside the number, or in
+	## the banner when the step starts the section it is the colour of.
+	var marks: Array = []
 
 	## Laid out: the panel on the page, the part of it the model is drawn
 	## in, and how big.
@@ -149,6 +153,8 @@ class Callout extends RefCounted:
 	var cell_scale: float = 0.0
 	## Drawn: a picture per cell (data URIs).
 	var images: PackedStringArray = PackedStringArray()
+	## The hidden colours it is built with: a chip in its corner each.
+	var marks: Array = []
 
 	func cell_view(index: int, px_per_mm: float) -> BookletStudio.View:
 		var cell: Rect2 = cells[index]
@@ -655,14 +661,24 @@ static func _page(page: Page, document: Document) -> String:
 				if page.times > 1:
 					var badge: Vector2 = page.frame.end - Vector2(18.0, 10.0)
 					out.append(_text(badge, 7.0, "%dx" % page.times, "n"))
+			var in_banner: Array = []
 			if not page.banner.is_empty():
 				var strip := Rect2(Vector2(MARGIN, MARGIN), Vector2(content().size.x, BANNER - 3.0))
 				out.append(_div(strip, "ban"))
-				out.append(_text(strip.position + Vector2(3.0, 2.0), 4.2,
-					_escape(page.banner.capitalize() if page.banner.begins_with("part ")
-						else page.banner), "n", "color:#fff"))
+				var said: String = page.banner.capitalize() if page.banner.begins_with("part ") \
+					else page.banner
+				out.append(_text(strip.position + Vector2(3.0, 2.0), 4.2, _escape(said), "n",
+					"color:#fff"))
+				# The section's hidden colour, where the section starts.
+				var starting: Array = page.entries[0].marks if not page.entries.is_empty() else []
+				for mark: Dictionary in starting:
+					if str(mark["label"]) == said:
+						in_banner.append(mark)
+						out.append(_text(Vector2(strip.end.x - 64.0, strip.position.y + 2.4), 3.0,
+							_mark_words(mark, false), "q mk",
+							"color:#fff;width:calc(61 * var(--mm));text-align:right"))
 			for entry: Entry in page.entries:
-				_entry(entry, document, out, svg)
+				_entry(entry, document, out, svg, in_banner)
 	# The foot: the page number at the outer corner, and how far through.
 	if page.kind != "cover":
 		var left: bool = page.number % 2 == 0
@@ -683,9 +699,16 @@ static func _page(page: Page, document: Document) -> String:
 
 
 static func _entry(entry: Entry, document: Document, out: PackedStringArray,
-		svg: PackedStringArray) -> void:
+		svg: PackedStringArray, in_banner: Array = []) -> void:
 	if not entry.image.is_empty():
 		_image(out, entry.image, entry.rect, "Step %d" % entry.number)
+	# A hidden colour starting here: under the number, one line a colour.
+	var line: float = entry.number_at.y + entry.number_size + 1.2
+	for mark: Dictionary in entry.marks:
+		if mark in in_banner:
+			continue
+		out.append(_text(Vector2(entry.number_at.x, line), 2.6, _mark_words(mark), "q mk"))
+		line += 3.4
 	if not entry.lots.is_empty():
 		out.append(_div(entry.parts_rect, "box"))
 		var y: float = entry.parts_rect.position.y + PAD
@@ -727,9 +750,23 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		if callout.times > 1:
 			out.append(_text(callout.box.end - Vector2(PAD + 7.0, PAD + QUANTITY + 0.6),
 				QUANTITY * 1.15, "%dx" % callout.times, "n"))
+		var corner: float = callout.box.end.y - PAD - 2.8
+		for mark: Dictionary in callout.marks:
+			out.append(_text(Vector2(callout.box.position.x + PAD, corner), 2.4,
+				_mark_words(mark), "q mk"))
+			corner -= 3.2
 		for arrow: Array in entry.arrows:
 			svg.append(_arrow(arrow[-2], arrow[-1], "#15191e", 0.45, 1.4,
 				arrow.slice(0, arrow.size() - 1)))
+
+
+## A hidden colour's chip and words: "■ Tower: Bright Green"; in its own
+## section's banner, "■ inside: Bright Green".
+static func _mark_words(mark: Dictionary, with_label: bool = true) -> String:
+	return "<i class=\"chip\" style=\"background:%s\"></i>%s: %s" % [
+		str(mark.get("rgb", "#888")),
+		_escape(str(mark.get("label", ""))) if with_label else "inside",
+		_escape(str(mark.get("name", "")))]
 
 
 static func _cover(page: Page, document: Document, out: PackedStringArray) -> void:

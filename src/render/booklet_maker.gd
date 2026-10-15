@@ -40,6 +40,10 @@ var document: Booklet.Document
 ## What the status bar shows while it works (Working), and Cancel. Null
 ## for the command line and the probes, which wait for it regardless.
 var job: Working.Job = null
+## The hidden parts' colours (HiddenColours.live_marks): colour code ->
+## {label, name, rgb}. Each is shown on the step where its first part goes
+## in, and on a callout that builds with it.
+var marks: Dictionary = {}
 
 var _studio: BookletStudio
 var _world: BrickWorld
@@ -358,6 +362,16 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 		entry.awkward = step.unsupported
 		entry.section = step.section
 		entry.set_meta("step", index)
+		# A section's hidden colour goes where the section starts: its
+		# banner (Booklet.lay_out puts one on the step that starts it).
+		if not marks.is_empty() and step.section != _section:
+			_section = step.section
+			var said: String = _section.capitalize() if _section.begins_with("part ") \
+				else _section
+			for mark: Dictionary in marks.values():
+				if str(mark["label"]) == said and not _marked.has(said):
+					_marked[said] = true
+					entry.marks.append(mark)
 		if step.unsupported:
 			entry.note = "Hold this in place: it rests on nothing until the next step."
 		if step.attaches():
@@ -367,11 +381,45 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			entry.lots = _lots_of(step.copies[0], lots, step.copies.size())
 			# An author's step puts on its own parts with the sub-assembly.
 			entry.lots.append_array(_lots_of(step.brick_ids, lots))
+			if not marks.is_empty():
+				var built: PackedInt64Array = step.brick_ids.duplicate()
+				for one: Instructions.Step in pending:
+					built.append_array(one.brick_ids)
+				entry.callout.marks = _marks_in(built, {})
+				entry.marks.append_array(_marks_in(built, _marked))
 			pending.clear()
 		else:
 			entry.lots = _lots_of(step.brick_ids, lots)
+			if not marks.is_empty():
+				entry.marks.append_array(_marks_in(step.brick_ids, _marked))
 		entries.append(entry)
 	return entries
+
+
+## The groups whose hidden colour has gone in by now, by label, and the
+## section the steps are in.
+var _marked: Dictionary = {}
+var _section: String = ""
+
+
+## The marks of the hidden colours [param ids] are in, each group once;
+## those in [param shown] already are left out, and the rest added to it.
+func _marks_in(ids: PackedInt64Array, shown: Dictionary) -> Array:
+	var out: Array = []
+	var here: Dictionary = {}
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null or not marks.has(brick.color_code):
+			continue
+		var mark: Dictionary = marks[brick.color_code]
+		var label: String = str(mark["label"])
+		if shown.has(label) or here.has(label):
+			continue
+		here[label] = true
+		out.append(mark)
+	for label: String in here:
+		shown[label] = true
+	return out
 
 
 ## A callout's own stage — the first copy, in the order its steps build

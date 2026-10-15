@@ -64,6 +64,15 @@ const SHARE_META := "0 !BRICKWORKS SHARE "
 ## so its page can say what it was remixed from (api/share.js).
 var remixed_from: String = ""
 const REMIX_META := "0 !BRICKWORKS REMIX "
+## The real set this model was opened from ("10182"), or empty: a file of
+## the LDraw model repository says so in its header, and a model saved
+## from one carries it on as a meta line. HiddenColours asks before it
+## recolours a set's parts.
+var from_set: String = ""
+const SET_META := "0 !BRICKWORKS FROM_SET "
+## The hidden parts' colours chosen for this model (HiddenColours.Plan
+## .scheme), for the booklet to show; empty when none were.
+var hidden_scheme: Dictionary = {}
 
 
 class Entry extends RefCounted:
@@ -381,6 +390,8 @@ func begin(name: String) -> void:
 	# replace that one at its link, nor say it was copied from one.
 	share_id = ""
 	remixed_from = ""
+	from_set = ""
+	hidden_scheme = {}
 	begun.emit(title)
 
 
@@ -725,6 +736,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	remixed_from = remix_in(text)
 	var said: ModelFloor = ModelFloor.read(text)
 	model_floor = said if said != null else ModelFloor.preferred()
+	from_set = set_in(text)
+	hidden_scheme = HiddenColours.read(text)
 	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
@@ -1011,7 +1024,35 @@ func to_text(title: String = "Model", with_steps: bool = false,
 		text = with_authored_steps(text)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
-	return model_floor.written_into(text) if model_floor != null else text
+	text = model_floor.written_into(text) if model_floor != null else text
+	text = HiddenColours.written_into(text, hidden_scheme)
+	return with_set(text, from_set)
+
+
+## [param text] with the set it came from on a line after its first.
+static func with_set(text: String, number: String) -> String:
+	if number.is_empty() or text.contains(SET_META):
+		return text
+	var cut: int = text.find("\n")
+	if cut < 0:
+		return text + "\n" + SET_META + number + "\n"
+	return text.substr(0, cut + 1) + SET_META + number + "\n" + text.substr(cut + 1)
+
+
+## The real set a model's text is, or empty: its own line, else the
+## LDraw model repository's header ("0 !LDRAW_ORG Model", "0 Name: 10182 -
+## Main Model.ldr"), read from the head of the file only.
+static func set_in(text: String) -> String:
+	var kept: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS FROM_SET ([0-9A-Za-z-]{1,20})\\s*$").search(text)
+	if kept != null:
+		return kept.get_string(1)
+	var head: String = text.left(4000)
+	if not RegEx.create_from_string("(?m)^0 !LDRAW_ORG (Unofficial_)?Model\\b").search(head):
+		return ""
+	var named: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 Name:\\s*([0-9]{3,7}(-[0-9]+)?)").search(head)
+	return named.get_string(1) if named != null else "set"
 
 
 ## [method to_text] with the build order, for a save or an export: on a big

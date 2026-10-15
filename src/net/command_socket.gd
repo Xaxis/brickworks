@@ -535,6 +535,8 @@ const HINTS := {
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],
 	"make_unique": ["Make a copy unique", "add"],
+	# Recolours parts nobody sees, after the person says yes; one step.
+	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],

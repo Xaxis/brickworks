@@ -91,7 +91,7 @@ const MENUS: Array = [
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "simulate", "reseat", "-", "connector", "settings"]],
+		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
 	["Help", ["keys", "tour", "-", "website", "about"]],
 ]
 
@@ -868,6 +868,12 @@ func _define() -> void:
 	_add("simulate", "Simulate mechanism…", 0, func() -> void: await app.call("open_simulate"),
 		something, "Turn a gear train from a crank or an axle: how fast each part goes, "
 			+ "each arm's period, what locks it, and whether it stays standing as it turns")
+	# src/ui/hidden_colours_panel.gd: the parts nobody sees, coloured by
+	# section, stage or side as big sets are, after a preview.
+	_add("hidden_colours", "Colour the hidden parts…", 0,
+		func() -> void: await app.call("open_hidden_colours"), something,
+		"Give the parts nobody sees in the finished model a colour for each section, stage "
+			+ "or side, as big sets do, so you can find your place while building")
 	_add("reseat", "Seat parts on their studs", 0, _reseat, something,
 		"Find parts a fraction of a stud off their studs, and offer to seat them")
 	_add("connector", "Claude connector…", 0, func() -> void:

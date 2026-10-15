@@ -488,6 +488,18 @@ func draw_as(material: ShaderMaterial, colour_of: Callable) -> void:
 			slot += 1
 
 
+## The instances that draw see-through plastic, glass and the like: what
+## SeenParts leaves out, because a part behind a window is seen.
+func see_through_instances() -> Array[MultiMeshInstance3D]:
+	if _rebuild_queued:
+		_flush()
+	var out: Array[MultiMeshInstance3D] = []
+	for key: String in _batches:
+		if key.get_slice(":", 2).to_int() == MaterialClass.TRANSPARENT:
+			out.append((_batches[key] as Batch).instance)
+	return out
+
+
 func brick_count() -> int:
 	return _bricks.size() - _ghosts.size()
 

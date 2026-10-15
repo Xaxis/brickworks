@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:audit connections in real sets, lib:gear ratio search -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:turned any way on hinges, lib:shells of hinged panels, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, cli:audit connections in real sets, lib:gear ratio search, ui:colour the hidden parts, lib:parts seen from outside, cli:audit hidden colours in real sets -->
 
 ## Sub-features
 
@@ -330,6 +330,34 @@ can occupy the same millimetre.
   held parts by, and every overlap between standing parts the check excuses
   counted by part (`Assistant._standing_overlaps`). `docs/CONNECTIONS.md` is
   its report.
+- `parts seen from outside` (`src/render/seen_parts.gd`, `seen_codes.gdshader`):
+  which parts can be seen from outside a model, measured. The model is drawn from
+  96 sides (the cube's 26 and 70 on a Fibonacci spiral, underneath included), no
+  perspective, every part a flat colour that is its own number (13,823 a picture,
+  more pictures past that), a pixel of 1 LDU or as fine as 2,048 pixels allow
+  (1,024 on the web). Each picture is read by sorting its pixels as integers and
+  walking the distinct values by binary search, not pixel by pixel in GDScript.
+  See-through parts are not drawn, so what is behind glass is seen.
+  `Result.hidden(on_table)` leaves out the sides from below.
+- `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
+  `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
+  `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
+  hidden parts by the booklet's sections, by build stage (about 300 parts a stage,
+  or as many as asked) or by half (left and right, front and back); one colour a
+  group, 22 CIE76 from every colour seen and 20 from the other groups', blue and
+  yellow first; each part only in a colour `PartInfo.colors` says it was made in.
+  Keeps see-through and other finishes, prints, figures, locked parts, unknown
+  colours, parts already in a vivid colour nothing outside has, and copied
+  sub-assemblies unless every copy's part is hidden (`Assemblies.counterparts`).
+  Shows the inside cut open before and after; Apply is one `Builder.record` step.
+  The scheme is saved as `0 !BRICKWORKS HIDDEN_COLOURS {...}` (`ModelStore
+  .hidden_scheme`), a set as `0 !BRICKWORKS FROM_SET` (`ModelStore.from_set`); the
+  booklet's marks come from `HiddenColours.live_marks`. docs/HIDDEN_COLOURS.md.
+- `audit hidden colours in real sets` (`src/dev/hidden_colours_audit.gd`,
+  `tools/hidden_colours_audit.py`): every set in vendor/omr opened as File, Open
+  does and measured from 48 sides at up to 1,024 pixels; one JSON line a set with
+  the colours seen and hidden, by sub-model, by place in the build, and mirror
+  pairs. The Python adds them up as Markdown for docs/HIDDEN_COLOURS.md.
 
 ## How to reach it
 
@@ -668,6 +696,26 @@ of 2x4s) and `3_swept.png` (a second, red ring past the front edge for "Arm
 at 90°"). Broken on purpose, it fails on: no Working line, no tint, the
 words gone with the message after 4 s, marks left after a change, no
 counterweight in the words, the marks never shown, and no poses swept.
+
+`hidden_colours_probe` (windowed, ~HC_TIME on llvmpipe) loads the real scene and
+checks: a closed box of walls has exactly its three inner bricks hidden; a gap in
+the wall and a clear window in it each show the middle one; a preview, and apply
+without `agreed`, change nothing; applied, only those three change, in one step,
+the scheme saved and read back and the booklet's chip in the colour's hex; on the
+castle through the panel's own Apply button, every part changed was hidden, every
+hidden part is coloured or kept for a counted reason, the step is recolours only
+and `copies_follow` finds nothing to rebuild, each colour is one the part was made
+in and none is seen outside, the outside drawn from eight sides (three never
+measured from, one from below) is the same pixel for pixel while the cut-open
+inside is not, and one Undo restores every colour; 10182 opened from vendor/omr
+knows it is the set, refuses `agreed` alone and takes `set_agreed`. It ends on
+"the hidden parts, and only those, take colours a person can find their place by".
+Pictures in `shots/hidden_colours/`. Broken on purpose, it fails on: a measure
+from fewer sides (the box's inner bricks or the gap), see-through parts drawn as
+occluders, a recolour of a seen part, apply without `agreed`.
+`src/dev/hidden_colours_pictures.gd -- FILE…` (windowed, not in the suite) draws
+before and after, outside and cut open, into `shots/hidden_colours/<file>/sheet.png`
+and compares eight sides pixel for pixel.
 
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
