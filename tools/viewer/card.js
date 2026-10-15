@@ -600,7 +600,9 @@ class View {
 
   frame() {
     this.framed = true;
-    const sphere = this.bounds.getBoundingSphere(new Sphere());
+    // The model, not the baseplate it stands on, which runs off the edges
+    // as it does in the app's own pictures.
+    const sphere = this.modelBounds.getBoundingSphere(new Sphere());
     const r = Math.max(sphere.radius, 20);
     // Whichever way the frame is narrower, so a tall frame shows it whole too.
     const up = (this.camera.fov * Math.PI) / 360;
@@ -1144,11 +1146,20 @@ function open(which, build) {
   if (panel === which) { close(); return false; }
   panel = which;
   press(which);
+  // What the last panel showed on the model goes with it.
+  looking = null;
+  if (view) { view.look = null; view.paint(); view.outline(card.picked ? [card.picked.index] : [], PICKED); }
   const el = $("panel");
   el.hidden = false;
   el.replaceChildren(build());
   measure();
   return true;
+}
+
+// Children put in, leaving out the ones not there: replaceChildren writes
+// a null in as the word "null".
+function put(el, ...children) {
+  el.replaceChildren(...children.filter((c) => c !== null && c !== undefined && c !== false));
 }
 
 function element(tag, props = {}, ...children) {
@@ -1228,7 +1239,7 @@ function showCheck(answer) {
       text: `The Brickworks check found ${problems.length} weak or strained joint${problems.length === 1 ? "" : "s"} (${ids}). Please make them hold.` }] })
       .catch((trouble) => card.errors.push(`message: ${trouble.message || trouble}`));
   } }, "Ask Claude to fix them") : null;
-  $("panel").replaceChildren(
+  put($("panel"),
     element("h2", {}, marked.size ? `${marked.size} part${marked.size === 1 ? "" : "s"} to look at` : "It holds together"),
     element("p", {}, String(answer.words || "")),
     marked.size ? element("div", { class: "legend" },
@@ -1266,7 +1277,7 @@ function showSteps() {
   stepOf = new Int32Array(data.n).fill(-1);
   steps.forEach((step, k) => { for (const id of step.ids || []) { const i = data.byId.get(Number(id)); if (i !== undefined) stepOf[i] = k; } });
   looking = () => {
-    view.look = (i) => (stepOf[i] > stepAt ? { hidden: true } : null);
+    view.look = (i) => (!(data.flags[i] & SCENERY) && stepOf[i] > stepAt ? { hidden: true } : null);
     view.paint();
     view.outline(card.picked ? [card.picked.index] : stepNew(), card.picked ? PICKED : NEW_IN_STEP);
   };
@@ -1292,7 +1303,7 @@ function showSteps() {
   const at = element("div", { class: "at" }, `Step ${step.number || stepAt + 1}`,
     element("small", {}, `${stepAt + 1} of ${steps.length}${about ? " · " + about : ""}`));
   card.step = { at: stepAt + 1, of: steps.length, number: step.number, shown: view.instances() };
-  $("panel").replaceChildren(element("div", { class: "stepper" }, prev, at, next),
+  put($("panel"), element("div", { class: "stepper" }, prev, at, next),
     chips.length ? element("div", { class: "lots" }, ...chips) : element("p", { class: "faint" }, "This step puts on what was built beside it."));
   const focusNext = $("panel").querySelector(document.activeElement && document.activeElement.textContent?.startsWith("‹") ? "button" : "button:last-of-type");
   if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#panel")) focusNext?.focus();
@@ -1336,8 +1347,8 @@ function showParts(all) {
   const download = xml ? element("button", { class: "tool", type: "button", onclick: () => wanted(xml) }, "BrickLink wanted list") : null;
   const more = !all && lots.length > 10 ? element("button", { class: "tool quiet", type: "button", onclick: () => showParts(true) }, `All ${lots.length} lots`) : null;
   const left = listed.bricklink && listed.bricklink.left_out ? element("p", { class: "faint" }, String(listed.bricklink.left_out)) : null;
-  $("panel").replaceChildren(
-    element("h2", {}, `${(listed.pieces || 0).toLocaleString()} pieces in ${lots.length} lots${listed.grams ? `, about ${Math.round(listed.grams)} g` : ""}`),
+  put($("panel"),
+    element("h2", {}, `${(listed.pieces || 0).toLocaleString()} piece${listed.pieces === 1 ? "" : "s"} in ${lots.length} lot${lots.length === 1 ? "" : "s"}${listed.grams ? `, about ${Math.round(listed.grams)} g` : ""}`),
     element("ul", { class: "rows" }, ...rows),
     element("div", { class: "actions" }, download, more), left);
   card.lots = lots.length;
