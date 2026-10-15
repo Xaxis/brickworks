@@ -37,6 +37,56 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "attach": {
+                "additionalProperties": false,
+                "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                "properties": {
+                  "align": {
+                    "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                    "type": "array"
+                  },
+                  "by": {
+                    "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                    "type": "string"
+                  },
+                  "flip": {
+                    "description": "an axle, bar or hinge joint the other way round, end for end",
+                    "type": "boolean"
+                  },
+                  "orient": {
+                    "additionalProperties": false,
+                    "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                    "properties": {
+                      "pitch": {
+                        "type": "number"
+                      },
+                      "roll": {
+                        "type": "number"
+                      },
+                      "yaw": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "slide": {
+                    "description": "LDU along an axle's, a bar's or a pin's line",
+                    "type": "number"
+                  },
+                  "to": {
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "type": "string"
+                  },
+                  "yaw": {
+                    "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "to"
+                ],
+                "type": "object"
+              },
               "axis": {
                 "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                 "enum": [
@@ -68,6 +118,10 @@
               "joint": {
                 "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                 "type": "integer"
+              },
+              "name": {
+                "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                "type": "string"
               },
               "part": {
                 "description": "part number, e.g. 3001",
@@ -108,11 +162,7 @@
             },
             "required": [
               "part",
-              "color",
-              "x",
-              "y",
-              "z",
-              "rot"
+              "color"
             ],
             "type": "object"
           },
@@ -170,6 +220,56 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "attach": {
+                      "additionalProperties": false,
+                      "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                      "properties": {
+                        "align": {
+                          "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                          "type": "array"
+                        },
+                        "by": {
+                          "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                          "type": "string"
+                        },
+                        "flip": {
+                          "description": "an axle, bar or hinge joint the other way round, end for end",
+                          "type": "boolean"
+                        },
+                        "orient": {
+                          "additionalProperties": false,
+                          "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                          "properties": {
+                            "pitch": {
+                              "type": "number"
+                            },
+                            "roll": {
+                              "type": "number"
+                            },
+                            "yaw": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "slide": {
+                          "description": "LDU along an axle's, a bar's or a pin's line",
+                          "type": "number"
+                        },
+                        "to": {
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "type": "string"
+                        },
+                        "yaw": {
+                          "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "to"
+                      ],
+                      "type": "object"
+                    },
                     "axis": {
                       "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                       "enum": [
@@ -201,6 +301,10 @@
                     "joint": {
                       "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                       "type": "integer"
+                    },
+                    "name": {
+                      "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                      "type": "string"
                     },
                     "part": {
                       "description": "part number, e.g. 3001",
@@ -241,11 +345,7 @@
                   },
                   "required": [
                     "part",
-                    "color",
-                    "x",
-                    "y",
-                    "z",
-                    "rot"
+                    "color"
                   ],
                   "type": "object"
                 },
@@ -709,7 +809,7 @@
       "readOnlyHint": true,
       "title": "Show a technique"
     },
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, dome and cone cap, smooth dome, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, fin root on a Technic pin, towball hitch, magnet coupling; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch, raked screen and falling roof; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, hanging lamp, bedside lamp, campfire; creative touches: small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, dome and cone cap, smooth dome, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; figures and joints: posed minifigure, limb on a clip, ball shoulder, head on a neck, tail on a bar, hinged wing; machines and joints: struts pinned to a Technic course, fin root on a Technic pin, towball hitch, magnet coupling; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch, raked screen and falling roof; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, hanging lamp, bedside lamp, campfire; creative touches: small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -799,12 +899,12 @@
       "readOnlyHint": false,
       "title": "Place a real set's piece"
     },
-    "description": "Lay one of find_techniques' pieces into the model as the LEGO Group built it: every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
+    "description": "Lay one of find_techniques' pieces into the model as the LEGO Group built it, or one of show_technique's by its name (a posed minifigure, a hinged wing: its joints put by their connectors): every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "id": {
-          "description": "the id find_techniques gave",
+          "description": "the id find_techniques gave, or the name of one of show_technique's: \"posed minifigure\", \"hinged wing\"",
           "type": "string"
         },
         "recolor": {
@@ -982,7 +1082,7 @@
       "readOnlyHint": true,
       "title": "Where a part attaches"
     },
-    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, and the bars (a handle is one) and clips a clip-on-bar joint is made of, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it.",
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, and the bars (a handle is one) and clips a clip-on-bar joint is made of, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it. And every connector by the address attach takes (\"#41.hinge[0]\", \"hinge[0]\"): its type and number, where it is and the way it points.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1015,6 +1115,13 @@
         },
         "joint": {
           "type": "integer"
+        },
+        "near": {
+          "description": "[x, y, z] in studs and plates: list the connectors nearest it first, every type",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
         },
         "part": {
           "type": "string"
@@ -1286,6 +1393,56 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "attach": {
+                "additionalProperties": false,
+                "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                "properties": {
+                  "align": {
+                    "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                    "type": "array"
+                  },
+                  "by": {
+                    "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                    "type": "string"
+                  },
+                  "flip": {
+                    "description": "an axle, bar or hinge joint the other way round, end for end",
+                    "type": "boolean"
+                  },
+                  "orient": {
+                    "additionalProperties": false,
+                    "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                    "properties": {
+                      "pitch": {
+                        "type": "number"
+                      },
+                      "roll": {
+                        "type": "number"
+                      },
+                      "yaw": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "slide": {
+                    "description": "LDU along an axle's, a bar's or a pin's line",
+                    "type": "number"
+                  },
+                  "to": {
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "type": "string"
+                  },
+                  "yaw": {
+                    "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "to"
+                ],
+                "type": "object"
+              },
               "axis": {
                 "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                 "enum": [
@@ -1317,6 +1474,10 @@
               "joint": {
                 "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                 "type": "integer"
+              },
+              "name": {
+                "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                "type": "string"
               },
               "part": {
                 "description": "part number, e.g. 3001",
@@ -1357,11 +1518,7 @@
             },
             "required": [
               "part",
-              "color",
-              "x",
-              "y",
-              "z",
-              "rot"
+              "color"
             ],
             "type": "object"
           },
@@ -1867,6 +2024,56 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "attach": {
+                "additionalProperties": false,
+                "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                "properties": {
+                  "align": {
+                    "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                    "type": "array"
+                  },
+                  "by": {
+                    "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                    "type": "string"
+                  },
+                  "flip": {
+                    "description": "an axle, bar or hinge joint the other way round, end for end",
+                    "type": "boolean"
+                  },
+                  "orient": {
+                    "additionalProperties": false,
+                    "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                    "properties": {
+                      "pitch": {
+                        "type": "number"
+                      },
+                      "roll": {
+                        "type": "number"
+                      },
+                      "yaw": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "slide": {
+                    "description": "LDU along an axle's, a bar's or a pin's line",
+                    "type": "number"
+                  },
+                  "to": {
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "type": "string"
+                  },
+                  "yaw": {
+                    "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "to"
+                ],
+                "type": "object"
+              },
               "axis": {
                 "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                 "enum": [
@@ -1898,6 +2105,10 @@
               "joint": {
                 "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                 "type": "integer"
+              },
+              "name": {
+                "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                "type": "string"
               },
               "part": {
                 "description": "part number, e.g. 3001",
@@ -1938,11 +2149,7 @@
             },
             "required": [
               "part",
-              "color",
-              "x",
-              "y",
-              "z",
-              "rot"
+              "color"
             ],
             "type": "object"
           },
@@ -2058,6 +2265,56 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "attach": {
+                      "additionalProperties": false,
+                      "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                      "properties": {
+                        "align": {
+                          "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                          "type": "array"
+                        },
+                        "by": {
+                          "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                          "type": "string"
+                        },
+                        "flip": {
+                          "description": "an axle, bar or hinge joint the other way round, end for end",
+                          "type": "boolean"
+                        },
+                        "orient": {
+                          "additionalProperties": false,
+                          "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                          "properties": {
+                            "pitch": {
+                              "type": "number"
+                            },
+                            "roll": {
+                              "type": "number"
+                            },
+                            "yaw": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "slide": {
+                          "description": "LDU along an axle's, a bar's or a pin's line",
+                          "type": "number"
+                        },
+                        "to": {
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "type": "string"
+                        },
+                        "yaw": {
+                          "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "to"
+                      ],
+                      "type": "object"
+                    },
                     "axis": {
                       "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                       "enum": [
@@ -2089,6 +2346,10 @@
                     "joint": {
                       "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                       "type": "integer"
+                    },
+                    "name": {
+                      "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                      "type": "string"
                     },
                     "part": {
                       "description": "part number, e.g. 3001",
@@ -2129,11 +2390,7 @@
                   },
                   "required": [
                     "part",
-                    "color",
-                    "x",
-                    "y",
-                    "z",
-                    "rot"
+                    "color"
                   ],
                   "type": "object"
                 },
@@ -3154,6 +3411,56 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "attach": {
+                "additionalProperties": false,
+                "description": "put it on another part connector to connector, instead of x, y, z, face and rot: the app works out the pose and seats it exactly, at any angle the joint turns to. How figures and small models are built: legs on hips, an arm on a shoulder, a hand on the arm, a wing on a hinge, a tail on a bar, a head on a neck. show_technique \"posed minifigure\" or \"limb on a clip\" is one written out; attachment_points lists a part's connectors.",
+                "properties": {
+                  "align": {
+                    "description": "[a direction of this part, one of the model's]: turn it about the joint until the first lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]], then yaw from there. On a ball it points that way whatever the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and 20 degrees down",
+                    "type": "array"
+                  },
+                  "by": {
+                    "description": "this part's own connector that goes there, as \"hinge[0]\"; leave out when only one fits",
+                    "type": "string"
+                  },
+                  "flip": {
+                    "description": "an axle, bar or hinge joint the other way round, end for end",
+                    "type": "boolean"
+                  },
+                  "orient": {
+                    "additionalProperties": false,
+                    "description": "this part's whole turn in the model, as a section's yaw, pitch and roll: a ball takes any; a hinge, clip or axle only one that keeps its line; a fixed joint none.",
+                    "properties": {
+                      "pitch": {
+                        "type": "number"
+                      },
+                      "roll": {
+                        "type": "number"
+                      },
+                      "yaw": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "slide": {
+                    "description": "LDU along an axle's, a bar's or a pin's line",
+                    "type": "number"
+                  },
+                  "to": {
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "type": "string"
+                  },
+                  "yaw": {
+                    "description": "degrees about the joint's axis: a hinge's or a clip's angle, an arm's swing, a turn on a stud or an axle",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "to"
+                ],
+                "type": "object"
+              },
               "axis": {
                 "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
                 "enum": [
@@ -3185,6 +3492,10 @@
               "joint": {
                 "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
                 "type": "integer"
+              },
+              "name": {
+                "description": "a name for this part, which a later part attaches to it by: \"torso\" in \"torso.hinge[0]\"",
+                "type": "string"
               },
               "part": {
                 "description": "part number, e.g. 3001",
@@ -3225,11 +3536,7 @@
             },
             "required": [
               "part",
-              "color",
-              "x",
-              "y",
-              "z",
-              "rot"
+              "color"
             ],
             "type": "object"
           },

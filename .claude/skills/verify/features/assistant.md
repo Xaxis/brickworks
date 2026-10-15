@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors -->
 
 ## Sub-features
 
@@ -32,6 +32,25 @@ fixing what it got wrong.
   up to a plate off a stud, hole, hinge or bar is seated on it first (a nudge keeps
   the LDU past the lattice cell). Without the `exact/` folder the check is the
   lattice alone, as it was. Recipe under How to check it, "The check by real shapes".
+- `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
+  `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
+  may say `"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`
+  instead of x, y, z: `to` is a part of the same call by its `name`, a part named
+  in an earlier call (`_given_names`, kept with the world), a section of one by its
+  name, or a brick standing (`"#41.stud[3]"`); connectors are BrickAgent's
+  addresses (a stud's, hole's or axle's subtype, else hinge, ball, fixed; numbered
+  within the type in BrickNet's order) off the exact shape, else the catalogue's.
+  The pose is BrickAgent's `placement()` (yaw about the joint, flip, slide,
+  seat, align, orient; on a ball, align points the part that way), a pin in its
+  socket slid to the least clear slide; it is written square in the target's
+  frame with a nudge, or as a section of one within the target's section. The
+  check holds a part by the joint it was put on where BrickNet's labels join them
+  (`_attach_joins`), and a leaning section by any such joint that is not a stud
+  (`_leans_on_exact_joint`). attachment_points lists every connector by address
+  (`near=` for those by a point); look_at_model shows names; show_technique has
+  "figures and joints" (posed minifigure, limb on a clip, ball shoulder, head on a
+  neck, tail on a bar, hinged wing) and place_technique lays one by name. Mirror
+  skips attached parts. Recipe under How to check it, "Placing by connectors".
 - `design from a brief, on a Claude plan`: `tools/claude_run.sh NAME [--brief
   "..."]` — the desktop app off-screen (Xvfb, on the GPU, a free port) running
   `--ask-claude-code`, then `tools/style.py` on the model. Off-screen because a
@@ -2185,6 +2204,32 @@ steering wheel on a brick's edge and model-017's leaning flower, both of which f
 in verify.py, are refused. In a browser (`tools/web/freeze_check.mjs`, the shapes
 fetched, not packed) check_design's own longest frame stays under 500 ms on the
 Falcon: 7,530 ms before the shapes were asked for once a part, 313 ms after.
+
+### Placing by connectors
+
+```sh
+godot --headless --path . --script src/dev/by_connector_probe.gd                 # each joint kind against BrickAgent's own poses
+godot --headless --path . --script src/dev/by_connector_probe.gd -- --out=DIR    # ...and each case as DIR/<case>.ldr
+godot --headless --path . --script src/dev/techniques_probe.gd                   # the six "figures and joints" build
+```
+
+Needs `assets/generated/exact/`; without it the probe says SKIPPED. Proves it when
+`by_connector_probe` ends "42 passed, 0 failed": a brick on a stud, a round plate on
+a side stud, a bar in a clip, a ball, a hinge, an axle and a twelve-part posed
+minifigure (legs, hips, torso, arms, hands, head on its neck, hat, an axe in a hand)
+each land within 0.001 LDU of where brickagent's `placement()` (b3df55e) puts them,
+joined by BrickNet's labels, clear by its colliders and passed by the check; the
+hinge folded the way it does not open is refused as the hinge, as BrickAgent's check
+refuses it; through submit_design and edit_model a part attaches to a part named in
+an earlier call and to a brick by number, a later edit passes with the posed arms
+standing, and read back every attached part is written where it stands; what cannot
+be done is refused saying why. On the code before it (7740d22) its pose cases fail:
+every part lands at 0, 0, 0. The `--out` files, exported by `brickbench.py`'s
+`export_one` and checked by BrickBench's own `verify.py`, are valid where the
+connector probe says so (scratch `verify_probe.py` in the 2026-10-15 run;
+docs/BRICKBENCH.md). The poses BrickAgent printed come from its own `attach` in the
+BrickBench venv, `python -I`, BRICKNET_DATA set; to make more, call
+`brickagent.Assembly.attach` the same way and print `parts(model)`.
 
 ### BrickBench: the designer on an outside ruler
 

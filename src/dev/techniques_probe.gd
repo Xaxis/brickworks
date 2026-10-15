@@ -97,7 +97,8 @@ func _run() -> void:
 			"z": -6, "rot": 0}]
 		for raw: Variant in technique["bricks"]:
 			var lifted: Dictionary = (raw as Dictionary).duplicate()
-			if str(lifted.get("section", "")).is_empty():
+			# A part put on another by its connectors goes where that one goes.
+			if str(lifted.get("section", "")).is_empty() and lifted.has("y"):
 				lifted["y"] = float(lifted["y"]) + 1.0
 			lifted_bricks.append(lifted)
 		var lifted_sections: Array = []
