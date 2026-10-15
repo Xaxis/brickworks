@@ -51,6 +51,13 @@ const NEAR := 80.0
 ## exactly as before.
 const REGION := 480.0
 
+## The fewest parts a model is cut into tiles of its plan at. A 92-part
+## spaceship wider than a tile was two tiles: "Part 1" a stand and a plate,
+## one step on a page of its own under a banner, and "Part 2" twice, when
+## the build went back to it. A set that size has no parts; the castle the
+## tiles were made for had 1,895.
+const TILED_FROM := 400
+
 ## The most parts a sub-model can have and still be built on the side.
 ## Past this it is a part of the model — a floor, a wing — built where it
 ## stands, a section rather than a callout.
@@ -205,7 +212,7 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	_find_hangers(nodes)
 	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
 	var built: Array[Node2] = _contract(nodes, assemblies)
-	var named: bool = _assign_regions(built, regions)
+	var named: bool = _assign_regions(built, regions, nodes.size())
 	var raw: Array = _sequence(built, named, _per_step(nodes.size()))
 	var steps: Array[Step] = _expand(raw, world)
 	# A node and its assembly point at each other, and two RefCounted
@@ -272,7 +279,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	await job.next()
 	var built: Array[Node2] = _contract(nodes, assemblies)
 	await job.next()
-	var named: bool = _assign_regions(built, regions)
+	var named: bool = _assign_regions(built, regions, nodes.size())
 	lap.call("contract")
 	await job.next()
 	if job.cancelled:
@@ -315,7 +322,7 @@ static func _per_step(count: int) -> int:
 ##
 ## Returns whether the regions have names a person gave them, which the
 ## booklet uses as they are, rather than tiles it numbers.
-static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> bool:
+static func _assign_regions(nodes: Array[Node2], given: Dictionary, parts: int) -> bool:
 	var names: Dictionary = {}
 	for node: Node2 in nodes:
 		if node.assembly != null:
@@ -338,6 +345,8 @@ static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> bool:
 
 	for node: Node2 in nodes:
 		node.region = ""
+	if parts < TILED_FROM:
+		return false
 	var bounds: AABB = nodes[0].box
 	for node: Node2 in nodes:
 		bounds = bounds.merge(node.box)
@@ -426,6 +435,7 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 	var by_id: Dictionary = {}
 	for node: Node2 in nodes:
 		by_id[node.id] = node
+	var sockets_of: Dictionary = {}   ## plug id -> the parts it goes into
 	for pair: Array in Joints.pairs(entries):
 		var plug: Node2 = by_id.get(pair[0])
 		var socket: Node2 = by_id.get(pair[1])
@@ -437,8 +447,31 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 		if socket.wheel > 0:
 			if not socket.needs.has(plug.id):
 				socket.needs.append(plug.id)
-		elif not plug.needs.has(socket.id):
-			plug.needs.append(socket.id)
+		else:
+			if not sockets_of.has(plug.id):
+				sockets_of[plug.id] = []
+			if not (sockets_of[plug.id] as Array).has(socket):
+				(sockets_of[plug.id] as Array).append(socket)
+	# A pin that joins two parts goes into one and the other goes on it,
+	# as a Technic booklet has it: into the lowest, and the others after.
+	# Waiting for every part it goes into put it in last, between two beams
+	# already there, where no picture can show it: 1,296 Technic parts the
+	# booklet's view could not see in 100 real sets, against 431 in their
+	# authors' steps (docs/INSTRUCTIONS.md).
+	for plug_id: int in sockets_of:
+		var plug: Node2 = by_id[plug_id]
+		var into: Array = sockets_of[plug_id]
+		into.sort_custom(func(a: Node2, b: Node2) -> bool:
+			if absf(a.box.position.y - b.box.position.y) > 0.5:
+				return a.box.position.y < b.box.position.y
+			return a.id < b.id)
+		var first: Node2 = into[0]
+		if not plug.needs.has(first.id):
+			plug.needs.append(first.id)
+		for at: int in range(1, into.size()):
+			var other: Node2 = into[at]
+			if not other.needs.has(plug.id) and not plug.needs.has(other.id):
+				other.needs.append(plug.id)
 	_wheels(nodes)
 
 
@@ -1421,6 +1454,7 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	_tidy_needs(nodes)
 	_find_hangers(nodes)
 	var lowest: Dictionary = AuthorSteps.lowest_under(world, skip)
+	var first: Dictionary = AuthorSteps.first_under(world, skip)
 	var stepped: Array[Node2] = []
 	var unstepped: Array[Node2] = []
 	var path_of: Dictionary = {}
@@ -1448,7 +1482,7 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 		var id: String = "%s|%d" % [section, step]
 		if not entries.has(id):
 			entries[id] = {"section": section, "step": step, "nodes": [], "callouts": [],
-				"key": AuthorSteps.key_of(world, section, step, lowest)}
+				"key": AuthorSteps.key_of(world, section, step, lowest, first)}
 		return entries[id]
 	for node: Node2 in stepped:
 		if not in_callout.has(node.id):
@@ -1471,15 +1505,16 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 		# Copies of one kind put on in one step are built once, "2x".
 		var kinds: Dictionary = {}
 		var made_list: Array = entry["callouts"]
+		# In the order the step places them, as the file lists them.
 		made_list.sort_custom(func(a: Assembly, b: Assembly) -> bool:
-			return a.key.naturalnocasecmp_to(b.key) < 0)
+			return int(first.get(_path_of_key(a.key), 0)) < int(first.get(_path_of_key(b.key), 0)))
 		for made: Assembly in made_list:
 			if not kinds.has(made.kind):
 				kinds[made.kind] = []
 			(kinds[made.kind] as Array).append(made)
 		for kind: String in kinds:
 			boxes += 1
-			last_attach = _authored_callout(kinds[kind], number, boxes, world, lowest,
+			last_attach = _authored_callout(kinds[kind], number, boxes, world, lowest, first,
 				path_of, step_of, out)
 			last_attach.authored_in = str(entry["section"])
 			last_attach.authored_step = int(entry["step"])
@@ -1535,7 +1570,7 @@ static func _path_of_key(key: String) -> String:
 ## author's steps of each, and the step that puts them all on, added to
 ## [param out]. Returns that last one.
 static func _authored_callout(copies: Array, number: int, box: int, world: BrickWorld,
-		lowest: Dictionary, path_of: Dictionary, step_of: Dictionary,
+		lowest: Dictionary, first_of: Dictionary, path_of: Dictionary, step_of: Dictionary,
 		out: Array[Step]) -> Step:
 	# Each copy's parts by their step within it, in order.
 	var plans: Array = []
@@ -1545,8 +1580,9 @@ static func _authored_callout(copies: Array, number: int, box: int, world: Brick
 		var keys: Array = []
 		for member: Node2 in made.members:
 			var full: Array = AuthorSteps.key_of(world, str(path_of[member.id]),
-				int(step_of[member.id]), lowest)
-			var inner: Array = full.slice(depth)
+				int(step_of[member.id]), lowest, first_of)
+			# Two numbers a level: the step it goes on in, and where.
+			var inner: Array = full.slice(2 * depth)
 			var id: String = str(inner)
 			if not by_key.has(id):
 				by_key[id] = []

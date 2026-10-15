@@ -54,6 +54,10 @@ func _initialize() -> void:
 ## not. What makes the kart bite is that its pins sit *lower* than the
 ## beams they enter — they go into the wheels — and the sequencer
 ## prefers whatever is lowest.
+##
+## And a pin that joins two parts goes into the first and the second goes
+## on it, as a Technic booklet has it: waiting for both put every such pin
+## in last, between two beams already there, where no picture can show it.
 func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 	world.clear()
 	var ldr: LdrModel = LdrModel.load_file("res://models/kart.ldr")
@@ -86,9 +90,9 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 
 	# A wheel is the exception, the other way round: it is pushed on to
 	# its axle, so the axle goes in first and the wheel after it.
-	var early: int = 0
 	var wheels_first: int = 0
 	var wheels: int = 0
+	var into: Dictionary = {}   ## pin -> the parts it joins
 	for pair: Array in joints:
 		var socket: BrickWorld.Brick = world.get_brick(pair[1])
 		var info: PartLibrary.PartInfo = library.parts.get(socket.part_id)
@@ -97,8 +101,26 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 			if int(order.get(pair[1], 0)) < int(order.get(pair[0], 0)):
 				wheels_first += 1
 			continue
-		if int(order.get(pair[0], 0)) < int(order.get(pair[1], 0)):
+		if not into.has(pair[0]):
+			into[pair[0]] = []
+		(into[pair[0]] as Array).append(pair[1])
+	# Each pin after the first part it goes into; a pin joining two parts
+	# before the other, which goes on it.
+	var early: int = 0
+	var joining: int = 0
+	var buried: int = 0
+	for pin: int in into:
+		var parts: Array = into[pin]
+		var at: Array = parts.map(func(id: int) -> int: return int(order.get(id, 0)))
+		if int(order.get(pin, 0)) < int(at.min()):
 			early += 1
+		var distinct: Dictionary = {}
+		for id: int in parts:
+			distinct[id] = true
+		if distinct.size() >= 2:
+			joining += 1
+			if int(order.get(pin, 0)) > int(at.max()):
+				buried += 1
 
 	print("\n  a Technic go-kart, %d parts in %d steps" % [
 		world.bricks().size(), steps.size()])
@@ -107,6 +129,8 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 		order.size(), world.bricks().size()],
 		order.size() == world.bricks().size())
 	_assert("no pin goes in before the hole exists (%d do)" % early, early == 0)
+	_assert("a pin joining two parts goes in before the second (%d of %d after both)"
+		% [buried, joining], joining > 0 and buried * 4 <= joining)
 	_assert("no wheel goes on before its axle (%d of %d do)" % [wheels_first, wheels],
 		wheels > 0 and wheels_first == 0)
 
@@ -161,9 +185,10 @@ func _wall(world: BrickWorld, library: PartLibrary) -> void:
 ## Two stacks far apart. A step must not reach across the gap: the point
 ## of grouping by distance is that a step stays somewhere you can see.
 func _two_towers(world: BrickWorld, library: PartLibrary) -> void:
+	# Tall enough to be cut into tiles of its plan (Instructions.TILED_FROM).
 	world.clear()
 	for tower: int in 2:
-		for level: int in 4:
+		for level: int in Instructions.TILED_FROM / 2:
 			world.add_brick("3001", 14, Transform3D(Basis.IDENTITY,
 				Vector3(tower * 600.0, level * 24.0, 0)))
 	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
@@ -197,6 +222,18 @@ func _two_towers(world: BrickWorld, library: PartLibrary) -> void:
 	_assert("...and each is a named part of the booklet (%s, %s)" % [
 		steps[0].section, steps[-1].section],
 		steps[0].section == "part 1" and steps[-1].section == "part 2")
+
+	# Eight bricks the same shape are not: a 92-part spaceship was "Part 1",
+	# one step on a page of its own, and "Part 2" twice.
+	world.clear()
+	for tower: int in 2:
+		for level: int in 4:
+			world.add_brick("3001", 14, Transform3D(Basis.IDENTITY,
+				Vector3(tower * 600.0, level * 24.0, 0)))
+	var small: Array[Instructions.Step] = Instructions.plan(world, library)
+	_assert("a small model as wide is not cut into parts (%s)" % ", ".join(
+		small.map(func(step: Instructions.Step) -> String: return step.section)),
+		small.all(func(step: Instructions.Step) -> bool: return step.section.is_empty()))
 
 
 ## A shed with two windows the same and a figure standing in it.

@@ -275,6 +275,19 @@ sub-models, and the booklet builds by them: the cruiser's builds its
 landing legs, hull, port pod, bridge tower and starboard pod, each
 entered once and named, in 117 steps where tiles took 171.
 
+*Scored against real sets' own steps, 2026-10-15* ([INSTRUCTIONS.md](INSTRUCTIONS.md)).
+On 100 sets of LDraw's model repository with their step lines taken away,
+the worked-out order agrees with the author's at Kendall tau 0.27, barely
+above sorting by height (0.23); most of the gap is which sub-model the
+author built first, which the shape does not say. The booklet's reading of
+an author's own steps agreed at only 0.75, because it went up a step of each
+sub-model in turn; it builds each whole now, 0.94 on a held-out sample.
+Technic pins now go into one part before the next goes on, and a small model
+is no longer cut into "Part 1" and "Part 2". One step in six of ours still
+leaves a part floating (one in five before), against one in thirty of the
+authors', because the planner reads support from bounding boxes: that is
+next.
+
 ## Beyond variety: beauty (2026-10-10)
 
 The owner had Claude build the Tower of Orthanc from claude.ai, through the

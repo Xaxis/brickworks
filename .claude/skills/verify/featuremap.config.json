@@ -1575,6 +1575,13 @@
       "area": "geometry"
     },
     {
+      "kind": "cli",
+      "label": "score the steps against real sets' authors",
+      "entry": "tools/steps_score.py",
+      "reach": "python3 tools/steps_score.py run --which tune --out build/steps_score/tune && python3 tools/steps_score.py report --out build/steps_score/tune   (minutes, under heavy; needs vendor/omr; godot --headless --path . --script src/dev/steps_score.gd -- --selftest checks the measures alone)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "the gallery over mcp",
       "entry": "src/net/gallery_tool.gd",
