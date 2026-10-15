@@ -61,10 +61,12 @@ real-set pieces laid) and a small picture. After a batch, run
 `python3 tools/design_memory.py build` (it reads the main checkout's
 `bench/results/`) and commit the index: it merges into what the index holds,
 and it is now the only copy of the creative, d5 and d5b rounds' critiques and
-pictures, read before their worktrees went. It holds 47 designs: the
+pictures, read before their worktrees went. It holds 65 designs: the
 baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2, the
-surface round's 4, the edges rounds' 5, the steps round's 4 and the sides
-round's 6 (its locomotive and ship the first of their subjects). What is missing is
+surface round's 4, the edges rounds' 5, the steps round's 4, the sides
+round's 6 (its locomotive and ship the first of their subjects), the shapes
+round's 6 (two of them trial cars) and the cabins round's 12 (two of each
+subject, its fire truck and aircraft the first of theirs). What is missing is
 the re-score's own replies: the baseline keeps its first judgement's scores
 and words, with the re-scored build taken from the table below, and the
 design5 batches' build, judged on the old check and never re-scored, is not
@@ -1053,3 +1055,150 @@ the locomotive's tender is not coupled.
 the judge names, and the session says them as a loft with a flat top. And
 the studs a joint leaves on a top, where a tile there had joined nothing,
 for the surface pass to tile.
+
+## 2026-10-14-cabins: commit 2c94d72, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fire_truck | 2 | 6.0 | 6.0 | 5.5 | 5.0 | 5.5 | 10.0 | **6.3** | 322 | 2, 2 |
+| passenger_aircraft | 2 | 5.0 | 4.5 | 4.0 | 4.0 | 4.0 | 5.5 | **4.5** | 419 | 3, 5 |
+| sailing_ship | 2 | 4.5 | 3.5 | 4.0 | 3.5 | 4.0 | 10.0 | **4.9** | 969 | 1, 1 |
+| speed_champions | 2 | 3.0 | 3.0 | 3.0 | 3.0 | 3.5 | 10.0 | **4.2** | 194 | 2, 1 |
+| starfighter | 2 | 6.0 | 5.0 | 5.0 | 5.5 | 4.5 | 10.0 | **6.0** | 443 | 2, 2 |
+| steam_locomotive | 2 | 6.0 | 5.0 | 5.5 | 5.0 | 4.5 | 9.0 | **5.8** | 388 | 1, 1 |
+| **suite mean** | 12 | **5.1** | **4.5** | **4.5** | **4.3** | **4.3** | **9.1** | **5.3** |  |  |
+
+Run to run, the same subject designed again on the same code (each cell is run 1 / run 2 ...):
+
+| subject | likeness | surface | colour | technique | creative | build | mean |
+|---|---|---|---|---|---|---|---|
+| fire_truck | 5 / 7 | 5 / 7 | 5 / 6 | 4 / 6 | 5 / 6 | 10 / 10 | 5.7 / 7.0 |
+| passenger_aircraft | 5 / 5 | 5 / 4 | 3 / 5 | 4 / 4 | 4 / 4 | 6 / 5 | 4.5 / 4.5 |
+| sailing_ship | 5 / 4 | 4 / 3 | 4 / 4 | 4 / 3 | 4 / 4 | 10 / 10 | 5.2 / 4.7 |
+| speed_champions | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 4 / 3 | 10 / 10 | 4.3 / 4.2 |
+| starfighter | 6 / 6 | 5 / 5 | 5 / 5 | 6 / 5 | 5 / 4 | 10 / 10 | 6.2 / 5.8 |
+| steam_locomotive | 6 / 6 | 5 / 5 | 6 / 5 | 5 / 5 | 5 / 4 | 8 / 10 | 5.8 / 5.8 |
+
+Mean spread between runs, per dimension: likeness 0.5, surface 0.7, colour 0.7, technique 0.7, creative 0.7, build 0.5; of a subject's mean score, 0.39 (standard deviation 0.30). A change to a subject's mean smaller than the spread is not yet a result.
+
+Weakest across the suite: **technique** (4.3), **creativity** (4.3), **surface** (4.5).
+
+**What the cabins round says: a cabin said by its profile is laid, a tender
+is coupled, and the car still gives up its body (0df6625, run on 2c94d72,
+merged with merge21).** The shapes round's judge had moved on to three faults.
+The car's cabin was "a boxy cabin with a flat roof and an upright windscreen":
+every car session said its cabin as a loft with a flat top, as the guide's own
+example did, and fitted a windscreen afterwards by hand, if at all. The
+locomotive's tender was coupled to nothing, two pieces, and the check said only
+that a piece stood against the model. And studs a shape's joint leaves in its
+top (a top tile that joined nothing, laid again as a plate) were left by the
+surface pass as "detail", fewer than four together.
+
+The change, for any vehicle and named by how it is built:
+- **"screen" on a loft, an extrude or a revolve.** Where its front climbs to
+  the roof, a windscreen (92583, 4176, 3823 or 57783, each read off its mesh)
+  is laid at that rake, standing on the plates at its foot, the roof two
+  plates over its top row on its studs, and the roof falls behind it in
+  curved slopes. The reply says what it laid, or why none fits. The guide's
+  car example is now a cabin said by its own profile with a screen, and a
+  raised solid that climbs steeply with no screen is told how to say one.
+- **Couplings.** A part on wheels of its own, end to end with the model and
+  coupled by nothing, is named in the check with the fix: a towball pair
+  (14417 and 14704, two studs apart on one grid), or train buffer beams with
+  sealed magnets (64422, as the Emerald Night couples its tender), which the
+  check now counts as magnets. A coupler hanging below its plate keeps the
+  shape's studs under it. Both are worked techniques.
+- **The surface pass** tiles a few open studs set beside tiles at their height.
+
+`cabins_probe` holds each as a fixture: four cabins (the guide's car, the
+shapes round's own loft with a screen, a truck's cab, an aircraft's round
+fuselage) each laid with a windscreen in glass, in one piece; the tender named
+with the fix, and coupled either way one piece; the guide car's six joints'
+studs all tiled. On the tree before, 21 of its checks fail.
+
+**Held out, on the subscription, two designs a subject** (likeness / surface
+/ colour / technique / creative / build):
+
+| subject | shapes | cabins, run 1 | cabins, run 2 |
+|---|---|---|---|
+| speed_champions | 4 / 4 / 4 / 3 / 4 / 10 (trials 4 and 3) | 3 / 3 / 3 / 3 / 4 / 10 | 3 / 3 / 3 / 3 / 3 / 10 |
+| steam_locomotive | 6 / 5 / 6 / 5 / 5 / 6 | 6 / 5 / 6 / 5 / 5 / 8 | 6 / 5 / 5 / 5 / 4 / 10 |
+| starfighter | 6 / 6 / 6 / 5 / 5 / 6 | 6 / 5 / 5 / 6 / 5 / 10 | 6 / 5 / 5 / 5 / 4 / 10 |
+| sailing_ship | 6 / 4 / 5 / 4 / 5 / 10 | 5 / 4 / 4 / 4 / 4 / 10 | 4 / 3 / 4 / 3 / 4 / 10 |
+| fire_truck (new) | | 5 / 5 / 5 / 4 / 5 / 10 | 7 / 7 / 6 / 6 / 6 / 10 |
+| passenger_aircraft (new) | | 5 / 5 / 3 / 4 / 4 / 6 | 5 / 4 / 5 / 4 / 4 / 5 |
+
+**Judged in pairs** (`run.py pairs` then `rank`, every design of the six
+subjects both ways round), overall ELO; each design's 95% interval, about
+±100 to ±250, is in `run.py rank`:
+
+| subject | shapes round | cabins round |
+|---|---|---|
+| speed_champions | 1255; trials 1370, 970 | 1191, 806 |
+| steam_locomotive | 663 (sides 897) | 1337, 1103 |
+| starfighter | 915 (sides 1048) | 1286, 1286 |
+| sailing_ship | 1167 (sides 920) | 1080, 833 |
+
+The lever, cabins against shapes, mean over the four subjects run in both:
+
+| dimension | ELO change | judge's 95% | with run-to-run 95% | 1-10 change |
+|---|---|---|---|---|
+| overall | +130 | +7, +187 | -153, +386 | -0.07 |
+| build | +202 | +89, +303 | -39, +438 | +2.08 |
+| surface | +83 | -60, +176 | -221, +362 | -0.62 |
+| technique | +69 | -31, +136 | -172, +286 | -0.08 |
+| likeness | +25 | -43, +107 | -221, +257 | -0.54 |
+
+The round's six pairs of designs on one code are six more measures of luck:
+the car's two are 385 ELO apart, the fire truck's and the aircraft's 382 (as
+far apart as two designs on one pair can be), the locomotive's 234. Pooled with the four before, one design sits 220 ELO from
+its code's mean (194 on four pairs).
+
+**On likeness, honestly.** The car is 3 in both runs, against 4 in the shapes
+round and 4 and 3 in its trials; in pairs its two designs fall either side of
+the shapes round's. What the judge names on it is still the cabin: "The cabin
+is a tall, square-sided block" (run 1), "a short box roof sits over the
+driver on open pillars, and there is no 911 fastback slope" (run 2). Both
+sessions said their cabin with a screen, as the guide's example does, and got
+the windscreen; both then gave the shaped body up and built the car by hand,
+keeping a 92583 at the rake under a box roof:
+- Run 1: "The generated body came out too blocky to read as a 911". Its
+  body's sides were turned out on side studs, and the shell kept 54% of its
+  plates, leaving side studs open along the cabin; the cabin's sides were solid
+  red, with no glass.
+- Run 2 cut a box out of the cabin for its driver. The screen reads the roof
+  off the middle studs, which the cut had lowered, and stood on the cut's
+  floor, at y 4: "the generator mangled the cabin with the cut".
+The locomotive and the starfighter rose in pairs (+674 and +371 on their
+best, both runs above the shapes round's), the ship fell inside the spread.
+Overall the round is +130 to the judge, which excludes 0, and -153 to +386
+with a design's luck in, which does not: a gain the judge sees, not a lever
+shown. On the 1-10 scale, -0.07.
+
+**What reached the designs, from each log:**
+- **Screens: said in 7 of 12 sessions** (both cars, both fire trucks, both
+  aircraft, the second starfighter's cockpit), and laid every time. The
+  starfighter kept its 57783 canopy; the second fire truck rebuilt its cab
+  round a 4176; both aircraft took the airliner nose parts instead. The cabin
+  hint was given to both ships, three times each, for a raised stern: a false
+  alarm, ignored.
+- **Couplings: both locomotives coupled.** Each was told once that its tender
+  rolled on its own wheels with nothing coupling it, with the fix. Run 1 read
+  "magnet coupling" and pinned a Technic drawbar; run 2 used the "towball
+  hitch". Both are one piece, where the sides and shapes rounds' were two
+  pieces each. Build 8 (an axle brick overloaded) and 10; in pairs, build is
+  the dimension that moved most, +202.
+- **The new subjects:** the second fire truck is the highest 1-10 mean any
+  bench design has had, 7.0, "at a glance ... a City ladder truck"; the
+  first, 5.7, "one flat-topped box ... no stepped-down crew cab". The
+  aircraft are 4.5 twice, faulted on short square wings and loose engines, and
+  in 3 and 5 pieces with overloaded joints.
+- **A joint's studs:** the judge still names open studs, on fields the
+  sessions kept or laid by hand (running boards, a sterncastle deck, wings);
+  from the pictures alone none can be told for a joint's few.
+
+**Next.** The car's cabin is still its fault, now for what comes after the
+windscreen: its sides glazed rather than solid, and not turned out on side
+studs a shell then leaves open; a seat for the driver, the screen reading the
+roof across the cabin's width so a cut does not lower it; and the cabin hint
+only where a shape stands on wheels or its solid is glass.
