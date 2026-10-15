@@ -368,7 +368,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
-		plan.rejoin = keep_pieces
+		plan.rejoin = bool(pattern.get("rejoin", keep_pieces))
 		plan.faces = faces
 		plan.mirror_of()
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
@@ -4172,6 +4172,7 @@ class Plan extends RefCounted:
 	## the body by hand.
 	func stitch() -> void:
 		var refused: Dictionary = {}
+		var first_refused: Dictionary = {}
 		for _round: int in 96:
 			var found: Array = pieces()
 			if found.size() <= 1:
@@ -4185,33 +4186,41 @@ class Plan extends RefCounted:
 			# left as many pieces on the way, and refused them it kept its feet
 			# alone. Its own check mends what is left.
 			if not bridges:
+				# With the rejoin to follow, a piece the first two ways have
+				# refused is not offered them again: each try at a joint maps the
+				# whole plan, and a round for every piece the rejoin joined was
+				# most of a forty-stud bunny's lay.
+				var keys: Array = []
 				for piece: Array in found.slice(1):
-					if _pair_across(piece, main):
+					keys.append(_piece_key(piece) if rejoin else "")
+				for n: int in keys.size():
+					if not first_refused.has(keys[n]) and _pair_across(found[n + 1], main):
 						joined_one = true
 						break
 				if not joined_one:
-					for piece: Array in found.slice(1):
-						if _unedge(piece, main):
+					for n: int in keys.size():
+						if not first_refused.has(keys[n]) and _unedge(found[n + 1], main):
 							joined_one = true
 							break
-				# Then, for a caller that keeps every piece (Brickify), every way a
-				# design's shape is joined, each kept only if it leaves fewer
-				# pieces: a teapot's handle, a column of 1 x 1 plates beside the
-				# body's bricks, was joined by none of the first two and left out.
-				# A piece no way joined is not tried again: tried every round, a
-				# forty-stud bunny's few loose bits took its lay from 5 s to 23.
 				if not joined_one and rejoin:
-					bridges = true
+					for key: Variant in keys:
+						first_refused[key] = true
+				# Then, for a caller that keeps every piece (Brickify), its plates
+				# and slopes about the joint laid again as plates crossing it, each
+				# way kept only if it leaves fewer pieces: a teapot's handle, a
+				# column of 1 x 1 plates beside the body's slopes, was joined by
+				# neither of the first two and left out. A piece no way joined is
+				# not tried again: tried every round, a forty-stud bunny's few
+				# loose bits took its lay from 5 s to 23.
+				if not joined_one and rejoin:
 					var before := Vector2i(found.size(), _bulk(found[0]))
-					for piece: Array in found.slice(1):
-						var key: String = _piece_key(piece)
-						if refused.has(key):
+					for n: int in keys.size():
+						if refused.has(keys[n]):
 							continue
-						if _join(piece, main, before):
+						if _join(found[n + 1], main, before, true):
 							joined_one = true
 							break
-						refused[key] = true
-					bridges = false
+						refused[keys[n]] = true
 				if not joined_one:
 					break
 				continue
@@ -4247,7 +4256,21 @@ class Plan extends RefCounted:
 	## (y), so a way that joins one piece and splits a smaller one off still
 	## counts, and nothing is undone and done again. [member made] as it was
 	## when no way does.
-	func _join(piece: Array, main: Dictionary, before: Vector2i) -> bool:
+	##
+	## [param regrid] for a sculpt's grid whose first ways are spent: only the
+	## plates laid again, one and two parts out, with the top's tiles, and then
+	## with the slopes at the joint. Each way tried is a piece count of the
+	## whole, and the full list on a forty-stud bunny's loose bits was most of
+	## its lay.
+	func _join(piece: Array, main: Dictionary, before: Vector2i, regrid: bool = false) -> bool:
+		if regrid:
+			return _first_that_joins([
+				func() -> bool: return _replate(piece, main, 1, 0),
+				func() -> bool: return _replate(piece, main, 2, 0),
+				func() -> bool: return _replate(piece, main, 1, 1),
+				# A teapot's handle met its body only at its curved slopes.
+				func() -> bool: return _replate(piece, main, 1, 3),
+				func() -> bool: return _replate(piece, main, 2, 3)], before)
 		var ways: Array[Callable] = [
 			func() -> bool: return _pair_across(piece, main),
 			func() -> bool: return _unedge(piece, main),
@@ -4267,12 +4290,13 @@ class Plan extends RefCounted:
 			# in wedge plates that all began at the same stud, plate over
 			# plate, and met the body in a joint nothing crossed.
 			func() -> bool: return bridges and _replate(piece, main, 2, 2),
-			func() -> bool: return bridges and _replate(piece, main, 3, 2),
-			# And for a sculpt's grid whose every piece is kept, the slopes at the
-			# joint laid again as plates: a teapot's handle met its body only at
-			# its curved slopes.
-			func() -> bool: return rejoin and _replate(piece, main, 1, 3),
-			func() -> bool: return rejoin and _replate(piece, main, 2, 3)]
+			func() -> bool: return bridges and _replate(piece, main, 3, 2)]
+		return _first_that_joins(ways, before)
+
+	## The first of [param ways] that leaves fewer pieces than [param before]
+	## (or as many and the largest bigger), kept; [member made] as it was when
+	## none does.
+	func _first_that_joins(ways: Array, before: Vector2i) -> bool:
 		var was: Array = made.duplicate()
 		for way: Callable in ways:
 			if bool(way.call()):

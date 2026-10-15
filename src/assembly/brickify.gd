@@ -1768,25 +1768,24 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 		if kinds.has("overlap") or kinds.has("unknown part") or kinds.has("not loaded"):
 			drop = _overlapping(model, checker)
 			why = "it ran into another part, or never arrived"
-		var apart: bool = int(report.get("pieces", 0)) > 1 \
-			or not (report.get("floating", []) as Array).is_empty()
+		var loose: int = _loose(report)
+		var apart: bool = loose > 1
 		if drop.is_empty() and apart and tying < 4:
 			tying += 1
 			var was: int = model.placements.size()
-			var loose: int = int(report.get("pieces", 0)) + (report.get("floating", []) as Array).size()
 			var added: int = _tie(model, checker, report)
 			if added > 0:
 				var after: Dictionary = checker._check(model, true, true)
 				# Kept only if it joined something: parts that join nothing are
 				# taken back, not left to be taken out as floating.
-				if int(after.get("pieces", 0)) + (after.get("floating", []) as Array).size() < loose:
+				if _loose(after) < loose:
 					tied += added
 					report = after
 					continue
 				model.placements.resize(was)
 				tying = 4
 		if drop.is_empty():
-			for index: Variant in report.get("floating", []):
+			for index: Variant in report.get("floating", []) + report.get("unheld", []):
 				drop[int(index)] = true
 			why = "nothing could hold it up"
 		if drop.is_empty() and int(report.get("pieces", 0)) > 1:
@@ -1806,6 +1805,14 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 	report["tied"] = tied
 	report["left_out"] = left_out
 	return report
+
+
+## How far a check is from one piece that holds: its pieces, and the parts
+## nothing holds up, by the lattice (floating) or by the parts' real shapes
+## (unheld). One when it is whole.
+static func _loose(report: Dictionary) -> int:
+	return maxi(1, int(report.get("pieces", 0))) + (report.get("floating", []) as Array).size() \
+		+ (report.get("unheld", []) as Array).size()
 
 
 ## The placements [param drop] says, as one: how many, their corners in
@@ -1999,7 +2006,7 @@ static func _tie(model: Assistant.Model, checker: Assistant, report: Dictionary)
 		return 0
 	pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
 	var floating: Dictionary = {}
-	for index: Variant in report.get("floating", []):
+	for index: Variant in report.get("floating", []) + report.get("unheld", []):
 		floating[int(index)] = true
 	var before: int = model.placements.size()
 	var room := Laid.new(model, checker)
