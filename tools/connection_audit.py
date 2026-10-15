@@ -203,7 +203,10 @@ STATUS: dict[str, str] = {
         "LDraw nor the file has (unofficial treads, tyres, panels).",
     "touches nothing held":
         "Left: nothing held within a cell of the cluster: parts hung on strings and chains "
-        "drawn as paths, held by a missing part, or placed apart in the file.",
+        "drawn as paths, held by a missing part, or placed apart in the file. And 75272's "
+        "TIE fighter, whose stand's columns (95347, which the file carries and is built now) "
+        "the file draws hanging down through the plate they stand on, leaving the fighter on "
+        "nothing.",
     "read off its place":
         "Fixed (joints4): a part turned two ways is read in a section turned so (agent "
         "angles), and what the reading still cannot say — a figure's parts, which it reads at "
@@ -219,7 +222,8 @@ STATUS: dict[str, str] = {
         "(4275b's three fingers, 4276b's two), whose fingers' ends are rounds on one line, a "
         "finger of one between two of the other (`Joints._knuckles`, joints4). Left: where "
         "LDraw draws the halves off one line (6682's, opened 30 degrees, 2.4 LDU apart), and "
-        "10240's X-wing, whose body touches its stand's column with no joint at the contact.",
+        "10240's X-wing, which rests on its stand: the stand's top tile meets the hinge plates "
+        "under the body with no connector at the contact.",
     "clip on bar or handle":
         "Fixed where the clip's eye is up to 1.5 LDU off the bar (`ROUND_OFF_AXIS`, was 1), "
         "as LDraw draws a clip turned to an odd angle. `attachment_points` lists bars and clips "
@@ -247,13 +251,25 @@ STATUS: dict[str, str] = {
     "turntable":
         "Left: Technic chain tread round a turntable (3873 on 18938), which is a chain.",
     "studs that do not clutch":
-        "Left: 2878, a train bogie, on its wheelset 70720c01 or its wheels 57878. Its bearings "
-        "are half cones, which nothing reads as a bore, and LDraw draws them 2.25 LDU below "
-        "the axle they hold, so no joint of one line pairs them; a rule loose enough to would "
-        "hold an axle beside any cone. The cars on 7 files' bogies float.",
+        "Fixed in part (joints4): a wheelset's axle ends are pushed into 2878's cups, which its "
+        "cover fills, and what is pushed into what holds (`Joints.pushed_in`), so 4558's and "
+        "10001's cars stand on their bogies, drawn 2.25 LDU off the cups. Left: 2878 on "
+        "10183's wheels 57878 and on 4533's wheelsets, whose ends the cover does not reach: "
+        "the cups are pointed half cones (2-4con0), which nothing reads as a bore.",
+    "magnet":
+        "Left: the magnet 2959 in its holder 2920, whose ring nothing reads as a bore (4558's "
+        "and 10001's trains, coupled by them).",
     "Technic, no pin or axle at the contact":
         "3895 on 6636 was 10283's stand: the shuttle's pins are parts the file carries, drawn "
-        "from a friction rib it carries as a primitive, and are built now (joints4).",
+        "from a friction rib it carries as a primitive, and are built now (joints4). Left: "
+        "42069's body on its treads, links the file carries and are built now, held by the "
+        "sprockets they wrap round, which no connector says.",
+    "minifig hand grip":
+        "Fixed (joints4): what is pushed into what holds (`Joints.pushed_in`), as it made a "
+        "figure one piece. A file swings an arm about the torso's line and not its own, so "
+        "the arm's peg is off its socket's line and no round pairs them; read square it "
+        "rested on the torso, and checked where it stands the arm, its hand and what the "
+        "hand held hung in the air.",
 }
 ## The kinds that are not a joint: no part on either side to blame.
 APART = ("stands a little off the ground in the file",
