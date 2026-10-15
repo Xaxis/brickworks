@@ -237,6 +237,10 @@ run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
 # shots/handbuild/.
 run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/handbuild_probe.gd
+# A tooltip never takes a click meant for what is under it: Account's Open
+# in Claude over Disconnect Claude took the click every time on the web.
+run "tooltips" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/tooltip_probe.gd
 # Sub-assemblies as a kit is built: made, taken whole, copied and mirrored
 # with the copies following an edit inside, nested, saved and read back.
 # In a window, the smallest a laptop's is: it builds by clicking, and the

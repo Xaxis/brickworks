@@ -2115,6 +2115,14 @@
       "tests": []
     },
     {
+      "id": "ui:tooltips let clicks through",
+      "kind": "ui",
+      "entry": "src/ui/tooltips.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/tooltip_probe.gd  (rest on a control until its tooltip shows, then click what it covers)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:tour",
       "kind": "ui",
       "entry": "src/ui/tour.gd",
