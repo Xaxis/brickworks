@@ -2142,18 +2142,29 @@ godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd 
 ```
 
 Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
-without it `exact_probe` says SKIPPED. Proves it when: `exact_probe` ends "21
-passed, 0 failed" (on the code before it, fb64132, 4 passed and 17 failed: every
-pair kind came back "buildable"); `exact_dump` on the BrickBench builds lists
+without it `exact_probe` says SKIPPED. Proves it when: `exact_probe` ends "22
+passed, 0 failed" (on the code before it, fb64132, 4 of its first 21 passed and 17
+failed: every pair kind came back "buildable"; the 22nd is model-010's head in a
+breastplate); `exact_dump` on the BrickBench builds lists
 verify.py's own pairs and pieces (2026-10-14: identical on all twenty);
 `exact_cost_probe` says an edit to Orthanc spends under 3 s in the exact check
-(138 ms on 2026-10-14, at a load of 40); and the connection audit over the sample
+(182 ms on 2026-10-14, at a load of 37; a whole new design of it 9.7 s, on a worker); and the connection audit over the sample
 (every 25th OMR file) keeps floating where it was and overlapping pairs no higher
-(2026-10-14: 6,678 floating either way; 7,511 overlapping pairs before).
+(2026-10-14: 7,511 overlapping pairs to 3,386 on the morning's code, 6,678 floating
+either way; on main 7970de9, 8,188 to 3,845, 1,698 floating either way; to compare,
+run it once with `assets/generated` pointed at a copy without `exact/`).
 `clutch`, `joints`, `section`, `axle`, `techniques`, `patterns`, `rooms` and
 `creative` assert what the shapes say where the lattice forgave: a part 2-8 LDU off
 seated, a tilting hinge folded into its base refused as the hinge, a pin's collar at
-the hole's mouth, five worked constructions withdrawn (`Techniques.WITHDRAWN`).
+the hole's mouth, five worked constructions withdrawn (`Techniques.WITHDRAWN`);
+and where real sets hold: a wheel drawn spun 16 degrees on its axle passes (turned
+on its axle, `ExactCheck.turned_on_axle`), the log pile's logs rest in their
+grooves. A part resting on nothing that joins it passes only square to gravity
+with its weight a LDU inside its support (`ExactCheck.rests`): held-out model-011's
+steering wheel on a brick's edge and model-017's leaning flower, both of which fell
+in verify.py, are refused. In a browser (`tools/web/freeze_check.mjs`, the shapes
+fetched, not packed) check_design's own longest frame stays under 500 ms on the
+Falcon: 7,530 ms before the shapes were asked for once a part, 313 ms after.
 
 ### BrickBench: the designer on an outside ruler
 
