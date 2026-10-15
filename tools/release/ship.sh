@@ -12,6 +12,7 @@ HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
 S=${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}; mkdir -p "$S"
 export BOX_HEAVY_PRIORITY=1
 cd "$W" || exit 1
+if [ -e "$(git rev-parse --git-dir)/merging" ]; then echo "SHIP: a merge in $W is still running its gates"; exit 1; fi
 SHA=$(git rev-parse --short HEAD)
 git -C $R merge-base --is-ancestor main HEAD || { echo "SHIP: $SHA does not contain main"; exit 1; }
 set -a; . $R/.env; set +a

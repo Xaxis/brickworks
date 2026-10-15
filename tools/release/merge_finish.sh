@@ -9,6 +9,9 @@ MSG=$2
 # Absolute, since the parse gate is handed it after the cd.
 W=$(cd "$1" && pwd) || exit 1
 cd "$W"
+# Held until the last gate is done: ship.sh refuses a worktree whose merge
+# is still checking, as m26 was shipped while its tool list was (2026-10-14).
+LOCK="$(git rev-parse --git-dir)/merging"; touch "$LOCK"; trap 'rm -f "$LOCK"' EXIT
 ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 if git diff --name-only --diff-filter=U | grep -q .; then echo "STILL CONFLICTED:"; git diff --name-only --diff-filter=U; exit 2; fi
 ~/.claude/claude-core/bin/featuremap generate --write >/dev/null 2>&1
