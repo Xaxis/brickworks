@@ -139,12 +139,18 @@ func _the_owners_pin() -> void:
 		var part: String = str(one[1]["part"])
 		var them: Array[BrickWorld.Brick] = _bricks_of(part)
 		var line: Array = _line_of(them[0]) if not them.is_empty() else [Vector3.INF, Vector3.ZERO]
-		_ok(not said.begins_with("Not applied") and them.size() == 1
-			and (line[0] as Vector3).distance_to(hole) < 1.01
+		# A pin two studs long goes half into a hole a stud deep, its collar at
+		# the hole's mouth: put by its middle at the hole's, it is slid along its
+		# line until it is, since by the parts' real shapes (ExactCheck) the
+		# collar is wider than the bore. An axle runs on through.
+		var off: Vector3 = (line[0] as Vector3) - hole
+		var at_mouth: bool = Vector2(off.x, off.y).length() < 1.01 \
+			and (absf(absf(off.z) - 10.0) < 1.01 if part == "2780" else absf(off.z) < 1.01)
+		_ok(not said.begins_with("Not applied") and them.size() == 1 and at_mouth
 			and absf((line[1] as Vector3).z) > 0.99,
-			"edit_model, %s at 81, 1.75, 80.5: in the hole, along z (%s; middle %s): %s"
-				% [one[0], "applied" if them.size() == 1 else "refused", line[0],
-					said.left(300)])
+			"edit_model, %s at 81, 1.75, 80.5: in the hole, along z%s (%s; middle %s): %s"
+				% [one[0], ", its collar at the mouth" if part == "2780" else "",
+					"applied" if them.size() == 1 else "refused", line[0], said.left(300)])
 
 	# And submit_design, the other way a design lands.
 	_clear()
@@ -504,15 +510,18 @@ func _the_orrery_steps() -> void:
 	if table.is_empty():
 		return
 	said = await _say("check_design", {"bricks": table})
-	_ok(said.contains("buildable") and not said.contains("overlap")
-		and not said.contains("floating"),
-		"a worm into a turntable seats and holds: %s" % said.left(500))
+	# The base stands three quarters of a stud off the plate's studs, so the
+	# worm 45 LDU behind its axis is on a stud's line: by the parts' real
+	# shapes (ExactCheck) the studs under it are in its solid, which the
+	# lattice let it rest on. Said as that, with the turntable named.
+	_ok(said.contains("collision") and said.contains("99009") and said.contains("stud"),
+		"a worm into a turntable whose base is off the plate's studs: named: %s" % said.left(500))
 	_ok(said.contains("a worm with a 28") or said.contains("a 28 with a worm"),
 		"...and meshes its 28 teeth: %s" % _from(said, "What turns"))
-	said = await _say("submit_design", {"name": "worm", "description": "a worm and a "
-		+ "turntable", "bricks": table})
+	# Built as it is, unchecked, for what the mechanism makes of it.
+	await _assistant._apply(_assistant._read_model({"name": "worm", "bricks": table}))
 	if _bricks_of("4716").is_empty() or _bricks_of("99010").is_empty():
-		_ok(false, "submit_design builds the worm and the turntable: %s" % said.left(300))
+		_ok(false, "the worm and the turntable are built: %s" % said.left(300))
 		return
 	# The base rests on the plate's studs, which holds it with the plate
 	# (Mechanism._rest_on_studs): only the plate is the ground here.

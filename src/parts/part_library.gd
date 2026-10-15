@@ -1019,6 +1019,53 @@ func _on_fetched(
 		fetched.emit(asked)
 
 
+## Ask for a part's exact shape (Exact, tools/build_exact.py) where this build
+## did not ship it: the web build's, fetched from beside the geometry as
+## <hash>.bwx. A part BrickNet does not have answers 404, which is kept as
+## "none" so it is not asked again. Listen for [signal exact_fetched].
+func request_exact(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	if info == null or info.mesh_hash.is_empty():
+		return false
+	if _fetching_exact.has(info.mesh_hash):
+		return true
+	if _fetch_host == null or not _fetch_host.is_inside_tree():
+		return false
+	if OS.has_feature("web") and remote_parts.is_empty():
+		return false
+	_fetching_exact[info.mesh_hash] = true
+	var request := HTTPRequest.new()
+	_fetch_host.add_child(request)
+	request.request_completed.connect(_on_fetched_exact.bind(request, info.mesh_hash, part_id))
+	if request.request(_remote_root() + info.mesh_hash + ".bwx") != OK:
+		_fetching_exact.erase(info.mesh_hash)
+		request.queue_free()
+		Exact.keep(info.mesh_hash, PackedByteArray())
+		return false
+	return true
+
+
+## Exact shapes being fetched: hash -> true.
+var _fetching_exact: Dictionary = {}
+
+## Emitted when a part's exact shape has been fetched or found not to exist.
+signal exact_fetched(part_id: String)
+
+
+## Whether a part's exact shape is still on its way.
+func is_exact_on_its_way(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and _fetching_exact.has(info.mesh_hash)
+
+
+func _on_fetched_exact(_result: int, code: int, _headers: PackedStringArray,
+		body: PackedByteArray, request: HTTPRequest, hash_name: String, part_id: String) -> void:
+	request.queue_free()
+	_fetching_exact.erase(hash_name)
+	Exact.keep(hash_name, body if code == 200 else PackedByteArray())
+	exact_fetched.emit(part_id)
+
+
 ## Drop cached geometry. The catalogue stays; only vertices go. A made
 ## part's stay too: there is nowhere to fetch one back from.
 func release_geometry() -> void:

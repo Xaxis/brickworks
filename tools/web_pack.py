@@ -243,6 +243,12 @@ def main() -> int:
         source = GENERATED / "parts" / f"{mesh}.lbm"
         if source.exists():
             shutil.copy2(source, out / "parts" / f"{mesh}.lbm")
+        # Its exact shape, for the build check (tools/build_exact.py): the
+        # same name under exact/, as Exact.file_for reads it.
+        exact = GENERATED / "exact" / f"{mesh}.bwx"
+        if exact.exists():
+            (out / "exact").mkdir(exist_ok=True)
+            shutil.copy2(exact, out / "exact" / f"{mesh}.bwx")
 
     # The catalogue keeps every part, so search still reaches the whole
     # library; a flag says which ones can actually be placed.
@@ -357,6 +363,8 @@ def _write_remote(
         if used + size > budget:
             break
         shutil.copy2(GENERATED / "parts" / f"{mesh}.lbm", remote / f"{mesh}.lbm")
+        if (GENERATED / "exact" / f"{mesh}.bwx").exists():
+            shutil.copy2(GENERATED / "exact" / f"{mesh}.bwx", remote / f"{mesh}.bwx")
         taken.add(mesh)
         used += size
 

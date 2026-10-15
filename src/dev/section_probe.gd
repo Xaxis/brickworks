@@ -582,7 +582,10 @@ func _hinged() -> void:
 		{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0, "section": "spire"},
 		{"part": "3062b", "color": 0, "x": 0, "y": 3, "z": 0, "section": "spire"},
 		{"part": "4589", "color": 0, "x": 0, "y": 6, "z": 0, "section": "spire"}]}
-	for case: Array in [["x", 15.0], ["x", -20.0], ["z", 25.0], ["z", -10.0]]:
+	# The tilting hinge opens one way about each line: by the parts' real
+	# shapes (ExactCheck) the other way folds its top into its base, which the
+	# lattice forgave as the joint.
+	for case: Array in [["x", 15.0], ["x", 20.0], ["z", -25.0], ["z", -10.0]]:
 		var args: Dictionary = spire.duplicate(true)
 		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0,
 			"axis": case[0], "degrees": case[1], "hinge": true}]
@@ -590,6 +593,14 @@ func _hinged() -> void:
 		var verdict: Dictionary = _assistant._check(model, true)
 		_check("a spire leaning %d degrees about %s on hinge: true holds: %s"
 			% [int(case[1]), case[0], verdict["summary"]], bool(verdict["ok"]))
+	for case: Array in [["x", -20.0], ["z", 25.0]]:
+		var args: Dictionary = spire.duplicate(true)
+		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0,
+			"axis": case[0], "degrees": case[1], "hinge": true}]
+		var verdict: Dictionary = _assistant._check(_assistant._read_model(args), true)
+		_check("...and %d degrees about %s, folded into its base, is refused as the hinge: %s"
+			% [int(case[1]), case[0], verdict["summary"]],
+			not bool(verdict["ok"]) and str(verdict["feedback"]).contains("hinge"))
 	# The halves are put in: the base standing where the section says, the
 	# top in the section.
 	var one: Dictionary = spire.duplicate(true)

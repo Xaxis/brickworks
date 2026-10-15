@@ -442,6 +442,20 @@ class Placement extends RefCounted:
 	## anything else sees it ([method Assistant._turned_parts]), since a part
 	## turned off the grid is checked as a section is.
 	var turn := Vector3.ZERO
+	## Where the brick it was read from really stands (a Transform3D), or
+	## null for a placement that is not in the world. The reading of a part
+	## turned two ways, or drawn off its box, is not quite where it is; the
+	## exact check (ExactCheck) judges what stands by where it stands.
+	var standing_at: Variant = null
+	## The part that stands there, which an edit may change.
+	var standing_part: String = ""
+
+	## Where the exact check takes this to be: where it stands while it is
+	## standing and unmoved, else [param built] (where it will be built).
+	func exact_at(built: Transform3D) -> Transform3D:
+		if id != 0 and not moved and standing_at is Transform3D and standing_part == part:
+			return standing_at
+		return built
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -3391,6 +3405,8 @@ func _model_from_world() -> Model:
 			kept_in.mine = mine.has(brick.id)
 			kept_in.group = brick.group
 			kept_in.unit = brick.unit
+			kept_in.standing_at = brick.transform
+			kept_in.standing_part = brick.part_id
 			model.placements.append(kept_in)
 			continue
 		var at: Vector3 = _to_studs(brick, info)
@@ -3420,6 +3436,8 @@ func _model_from_world() -> Model:
 		placement.mine = mine.has(brick.id)
 		placement.group = brick.group
 		placement.unit = brick.unit
+		placement.standing_at = brick.transform
+		placement.standing_part = brick.part_id
 		model.placements.append(placement)
 	return model
 
@@ -4303,7 +4321,7 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _holes_in(part, at, part_id)
+	var holes: String = _holes_in(part, at, part_id) + _exact_points_said(part_id, at)
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -4371,6 +4389,53 @@ func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> Str
 		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
 		+ "where its own middle goes, not its low corner. Slide it along by changing "
 		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
+
+
+## Where a part joins by BrickNet's connector labels (Exact), which is where
+## BrickBench's check and this one look for a connection: each kind with the
+## way it points and where, a few of each. "" without an exact shape.
+func _exact_points_said(part_id: String, at: Transform3D) -> String:
+	var shape: Exact.Shape = Exact.shape_for(library, part_id)
+	if shape == null or shape.kind.is_empty():
+		return ""
+	var groups: Dictionary = {}     ## "open pointing -x" -> [where...]
+	var order: Array = []
+	for k: int in shape.kind.size():
+		var frame: Transform3D = at * shape.frames[k]
+		var way: Vector3 = (-frame.basis.y).normalized()
+		var named: String = shape.named(k)
+		var key: String = "%s %s" % [named, _pointing(way, shape.kind[k] == Exact.AXLE
+			or shape.kind[k] == Exact.HINGE)]
+		if not groups.has(key):
+			groups[key] = []
+			order.append(key)
+		(groups[key] as Array).append(frame.origin)
+	var lines := PackedStringArray()
+	for key: String in order:
+		var where := PackedStringArray()
+		for point: Vector3 in (groups[key] as Array).slice(0, 4):
+			where.append("x=%s y=%s z=%s" % [Placement._num(snappedf(point.x / STUD, 0.01)),
+				Placement._num(snappedf(point.y / PLATE, 0.01)),
+				Placement._num(snappedf(point.z / STUD, 0.01))])
+		var more: int = (groups[key] as Array).size() - where.size()
+		lines.append("  %d %s at %s%s" % [(groups[key] as Array).size(), key, "; ".join(where),
+			" and %d more" % more if more > 0 else ""])
+		if lines.size() >= 8:
+			break
+	return ("\n\nIts connectors exactly, as BrickBench's check reads them (a stud meets a hole, "
+		+ "open or tube pointing the same way; a bar a clip; a hinge its other half), each at its "
+		+ "own point:\n" + "\n".join(lines) + "\nA part seats where its connector's point is "
+		+ "one of these; one that misses by up to a plate is moved onto it when checked.")
+
+
+## A direction said for a connector: up, down, +x... or "along x" for a line.
+static func _pointing(way: Vector3, line: bool) -> String:
+	for axis: Array in [[Vector3.UP, "up", "down", "up and down"],
+			[Vector3.RIGHT, "+x", "-x", "along x"], [Vector3.BACK, "+z", "-z", "along z"]]:
+		var d: float = way.dot(axis[0])
+		if absf(d) > 0.99:
+			return str(axis[3]) if line else "pointing " + str(axis[1] if d > 0.0 else axis[2])
+	return "at an angle"
 
 
 ## What each kind of joint does with an axle, as a session needs to hear it.
@@ -10776,6 +10841,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	for part_id: String in named:
 		Minifig.slot_for(library.parts.get(part_id))
 	_standing_now = _others_standing(alone)
+	_exact_now = _exact_shapes(model, alone)
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerThreadPool.add_task(func() -> void:
@@ -10787,6 +10853,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	library.end_reading(task)
 	_standing_held = false
 	_standing_now = []
+	_exact_now = {}
 	if report.is_empty():
 		# A worker that failed leaves nothing. Checked here instead: slow,
 		# but an answer.
@@ -10935,6 +11002,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var meshing: Dictionary = Joints.meshing(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
+	## The parts by their exact shapes, as BrickBench judges them (ExactCheck):
+	## each placement and each brick standing, numbered placements first.
+	var exact: ExactCheck = _exact_check_for(model, alone)
 
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
@@ -10947,7 +11017,14 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			lattice.occupy_boxes(key,
 				builder.boxes_for(part, brick.transform))
 			theirs[key] = brick.part_id
+			exact.stand(key, brick.part_id, brick.transform)
 			key -= 1
+
+	# A part of this design that misses a stud, a hole, a hinge or a bar by a
+	# few LDU goes onto it exactly, before anything is checked.
+	var seated: String = _seat_exactly(model, exact)
+	if not seated.is_empty():
+		advice.append(seated)
 
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
@@ -11044,6 +11121,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			continue
 
 		placed_at[index] = at
+		exact.place(index, placement.part, placement.exact_at(at))
 		# Boxes, worked out once. For a turned part the cover costs a
 		# separating-axis test on every candidate cell, and asking for it
 		# twice — once as boxes, once as cells — is what made a model with
@@ -11091,6 +11169,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
 				model.section_for(placement).placed(), true, meshing)
+			# Their exact shapes decide where both have one.
+			near = exact.drop_cleared(near, index)
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -11153,6 +11233,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# anywhere else still collide. See [method Joints.rounds].
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
+		# A cover is whole cells, and two parts it rounds into each other can
+		# be clear by their real shapes: where both have one, the shapes decide.
+		blockers = exact.drop_cleared(blockers, index)
 
 		_standing_overlaps(blockers, placement, index, model, collided)
 		blockers = _between_standing(blockers, placement, model)
@@ -11220,6 +11303,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# brick wall that one loop was twenty seconds of the check.
 		box_of[index] = BrickLattice.corners_in(packed)
 
+	# And what the lattice forgave or could not see: a side stud pushed into
+	# a brick, a hinge through its other half, an axle through a part with no
+	# hole on its line, a part sunk into the one under it. Said for each pair
+	# this design is in, with how to fix it; between bricks standing, kept for
+	# the audit of real sets as the lattice's overlaps are.
+	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing)
+
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
 	if not gave_way.is_empty():
@@ -11259,8 +11349,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 				holds[index] = {}
 			for other: Variant in held[index]:
 				(holds[index] as Dictionary)[other] = true
+	var clutched_pairs: Array = []
 	_check_support(model, cells_of, lattice, issues, crowded, holds,
-		loose, boxes_of, floating)
+		loose, boxes_of, floating, clutched_pairs)
 	for kind: String in loose:
 		var said: Array = loose[kind]
 		advice.append("%s\n%s" % [kind, "\n".join(
@@ -11284,6 +11375,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# makes easy to do by accident.
 	_check_sections_attached(model, cells_of, lattice, issues, crowded,
 		stuck, boxes_of, joined, rounds)
+
+	# Held by a connection, as BrickBench's stability check wants: a part of
+	# this design resting on another with nothing joining them falls when
+	# the model is picked up, and its simulation lets it fall. Not said again
+	# of a section already said to lean on nothing or to be adrift.
+	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
+		clutched_pairs, stuck)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -11492,6 +11590,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		## Pairs of standing bricks that overlap and were excused, [index,
 		## other], for an audit of real sets to count.
 		"standing_overlaps": collided,
+		## What the exact check found (ExactCheck), kind -> sentences: what
+		## review_model says before a design is handed over.
+		"exact": {"collision": issues.get("collision", []),
+			"not held": issues.get("not held", [])},
+		## And what asking the exact shapes cost this check, ms.
+		"exact_ms": exact.spent_usec / 1000.0,
+		"exact_on": exact.spent_on,
 	}
 	if weigh:
 		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, holds, alone)
@@ -11587,6 +11692,262 @@ static func _between_standing(blockers: PackedInt64Array, placement: Placement,
 		if other.id != 0 and not other.moved:
 			return PackedInt64Array()
 	return blockers
+
+
+# -- the exact check (ExactCheck) ------------------------------------------
+
+
+## Exact shapes, part id -> Exact.Shape, as [method _checked] found them
+## before its worker began: a worker reads, never loads.
+var _exact_now: Dictionary = {}
+## The whole model's parts this assistant or a session placed count as this
+## design's for the exact check, as well as what an edit adds or moves:
+## review_model judges a design built from outside that way.
+var _strict_mine: bool = false
+
+
+## The exact shapes a check of [param model] reads, with what stands beside
+## it: loaded here on the main thread, or as [method _checked] loaded them.
+func _exact_shapes(model: Model, alone: bool) -> Dictionary:
+	var ids: Dictionary = {}
+	for placement: Placement in model.placements:
+		ids[placement.part] = true
+	if not alone and world != null:
+		for brick: BrickWorld.Brick in _others_standing(alone):
+			ids[brick.part_id] = true
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		return Exact.shapes_for(library, ids.keys())
+	var out: Dictionary = {}
+	for part_id: Variant in ids:
+		if _exact_now.has(part_id):
+			out[part_id] = _exact_now[part_id]
+	return out
+
+
+func _exact_check_for(model: Model, alone: bool) -> ExactCheck:
+	return ExactCheck.new(_exact_shapes(model, alone), model.placements.size())
+
+
+## Whether placement [param index] is this design's to answer for: placed or
+## moved by it, or (reviewing a whole design) placed by it at all.
+func _exact_subject(model: Model, index: int) -> bool:
+	if index < 0 or index >= model.placements.size():
+		return false
+	var placement: Placement = model.placements[index]
+	return placement.id == 0 or placement.moved or (_strict_mine and placement.mine)
+
+
+## A part the exact check speaks of, by its item: a placement as the check
+## numbers bricks, or a brick standing beside the design.
+func _exact_name(model: Model, exact: ExactCheck, item: int) -> String:
+	if item >= 0 and item < model.placements.size():
+		var placement: Placement = model.placements[item]
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		var label: String = "#%d" % placement.id if placement.id != 0 and not placement.moved \
+			else "brick %d" % item
+		return "%s (%s %s at %s)" % [label, placement.part,
+			info.name.strip_edges().replace("  ", " ").to_lower() if info != null else "",
+			placement.where()]
+	if item >= 0 and item < exact.parts.size():
+		return "a %s already on the baseplate" % exact.parts[item]
+	return "a part"
+
+
+## Each part of this design that misses a connector by a few LDU and joins
+## nothing exactly, moved onto it (ExactCheck.seat): its placement changed
+## here, so what is checked and built is the seated one. Only a part square
+## on the grid and in no section, whose move is whole cells: anything else
+## cannot be said as a placement. Returns what was moved, said, or "".
+func _seat_exactly(model: Model, exact: ExactCheck) -> String:
+	if not exact.any() or library == null:
+		return ""
+	if not model.placements.any(func(p: Placement) -> bool:
+			return (p.id == 0 or p.moved) and p.section.is_empty()):
+		return ""
+	var movable: Array = []
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null or not placement.odd_face.is_empty() or not placement.odd_axis.is_empty():
+			continue
+		if not placement.section.is_empty() and not model.sections.has(placement.section):
+			continue
+		exact.place(index, placement.part, placement.exact_at(_transform(placement, part,
+			model.section_for(placement))))
+		# What this change puts down or moves: a review judges what stands, and
+		# says what to move rather than moving it.
+		if (placement.id == 0 or placement.moved) and placement.section.is_empty():
+			movable.append(index)
+	if movable.is_empty():
+		return ""
+	var moved: Dictionary = exact.seat(movable)
+	var said := PackedStringArray()
+	for index: int in moved:
+		var move: Vector3 = moved[index]
+		var cells: Vector3 = move / BrickLattice.CELL
+		if not cells.is_equal_approx(cells.round()):
+			# Not a whole cell: a placement cannot say it. Put back.
+			var placement: Placement = model.placements[index]
+			exact.place(index, placement.part, _transform(placement,
+				library.mesh_for(placement.part), model.section_for(placement)))
+			continue
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		var at: Transform3D = _transform(placement, part).translated(move)
+		var corner: Vector3i = _corner_cell(part, placement.part, at.basis)
+		var want: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.5) + corner
+		var was := Vector3(placement.x, placement.y, placement.z)
+		# The cell's own number of studs and plates, which a whole stud is
+		# written as; nudged into the cell only where the float would floor
+		# to the one before it.
+		placement.x = _into_cell(want.x, STUD)
+		placement.y = _into_cell(want.y, PLATE)
+		placement.z = _into_cell(want.z, STUD)
+		if not _transform(placement, part).origin.is_equal_approx(at.origin):
+			placement.x = was.x
+			placement.y = was.y
+			placement.z = was.z
+			exact.place(index, placement.part, _transform(placement, part))
+			continue
+		if said.size() < WORTH_SAYING:
+			said.append("brick %d (%s) %s" % [index, placement.part,
+				ExactCheck._direction(move)])
+		elif said.size() == WORTH_SAYING:
+			said.append("...")
+	if said.is_empty():
+		return ""
+	return ("Seated %d part%s exactly on the stud, hole, hinge or bar %s missed by a few LDU "
+		% [moved.size(), "" if moved.size() == 1 else "s", "it" if moved.size() == 1 else "each"]
+		+ "(the app does this on every check; nothing to change): %s." % ", ".join(said))
+
+
+## Lattice cell [param cell] as a placement's studs or plates ([param per] LDU
+## each): the number that reads back as that cell.
+static func _into_cell(cell: int, per: float) -> float:
+	var said: float = snappedf(float(cell) * BrickLattice.CELL / per, 0.0001)
+	if int(floor(said * per / BrickLattice.CELL)) != cell:
+		said += 0.00001
+	return said
+
+
+## The exact shapes' collisions that the lattice did not already refuse (see
+## [method _check]), noted as faults where this design is in the pair. Dressing
+## gives way, as it does to a lattice overlap; a pair of bricks standing goes
+## into [param collided] for the audit of real sets; gears in [param meshing]
+## are in mesh, not in each other.
+func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
+		overlapping: Dictionary, gave_way: Dictionary, collided: Array,
+		meshing: Dictionary = {}) -> void:
+	if not exact.any():
+		return
+	var count: int = model.placements.size()
+	# The pairs this design is in; every pair when only the ground holds (the
+	# audit of real sets, which counts what stands as well).
+	var subjects: Dictionary = {}
+	if not _ground_only:
+		for index: int in count:
+			if _exact_subject(model, index):
+				subjects[index] = true
+		if subjects.is_empty():
+			return
+	var already: Dictionary = {}
+	for pair: Variant in collided:
+		already[Vector2i(mini(int(pair[0]), int(pair[1])), maxi(int(pair[0]), int(pair[1])))] = true
+	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	for found: Dictionary in exact.collisions(subjects):
+		var a: int = found["a"]
+		var b: int = found["b"]
+		if _ground_only and (a >= count or b >= count):
+			continue
+		if overlapping.has(a) or overlapping.has(b):
+			continue
+		# Gears in mesh: their teeth interleave, which a convex piece a tooth
+		# cannot say unless each is turned to the other's gap, and real sets
+		# are drawn either way. Held by their axles, as the lattice has them.
+		if (meshing.get(a, {}) as Dictionary).has(b) or (meshing.get(b, {}) as Dictionary).has(a):
+			continue
+		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
+		if not mine:
+			if a < count and b < count and not already.has(Vector2i(a, b)):
+				collided.append([a, b])
+			continue
+		var dressed: int = -1
+		for i: int in [a, b]:
+			if i < count and model.placements[i].dressing:
+				dressed = i
+		if dressed >= 0:
+			gave_way[dressed] = true
+			continue
+		_note(issues, "collision", exact.said(found, namer))
+
+
+## The parts of this design no connection holds, by BrickNet's rules where
+## both parts have an exact shape and by this check's own where one has not:
+## a piece of them is held when it reaches the ground, a brick standing before
+## this design (unless only the ground holds: _ground_only), or a part with no
+## exact shape that this check holds. One fault a piece.
+func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
+		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
+		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {}) -> void:
+	if not exact.any():
+		return
+	var count: int = model.placements.size()
+	var subjects: Array[int] = []
+	for index: int in cells_of:
+		var section: String = model.placements[index].section
+		if _exact_subject(model, index) and exact.items[index] != null \
+				and not floating.has(index) and not crowded.has(section) \
+				and not stuck.has(section):
+			subjects.append(index)
+	if subjects.is_empty():
+		return
+	var extra: Array = []
+	for pair: Array in clutched_pairs:
+		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null:
+			extra.append([int(pair[0]), int(pair[1])])
+	for index: Variant in holds:
+		for other: Variant in holds[index]:
+			if int(index) < count and int(other) < count \
+					and (exact.items[int(index)] == null or exact.items[int(other)] == null):
+				extra.append([int(index), int(other)])
+	# Only what is near this design's parts: anything else that stands is held
+	# already, so a piece of them is held exactly when it reaches the ground or
+	# something beside them that stands. An edit to a 9,000 part model asks
+	# about its own few parts and their neighbours, not every stud in it.
+	var near: Dictionary = {}
+	for index: int in subjects:
+		near[index] = true
+	if not _ground_only and subjects.size() < exact.items.size():
+		for pair: Vector2i in exact.pairs_near(near.duplicate(), -(Exact.POS_THR + 1.0)):
+			near[pair.x] = true
+			near[pair.y] = true
+	else:
+		for i: int in exact.items.size():
+			near[i] = true
+	var root: PackedInt32Array = exact.pieces(extra, near)
+	var held: Dictionary = {}
+	for i: int in exact.items.size():
+		if not near.has(i):
+			continue
+		var anchor: bool = exact.on_ground(i)
+		if i >= count:
+			anchor = anchor or not _ground_only
+		elif not _exact_subject(model, i):
+			anchor = anchor or not _ground_only
+		elif exact.items[i] == null:
+			anchor = anchor or (cells_of.has(i) and not floating.has(i))
+		if anchor:
+			held[root[i]] = true
+	var pieces: Dictionary = {}    ## root -> its subjects
+	for index: int in subjects:
+		if held.has(root[index]):
+			continue
+		var members: Array = pieces.get(root[index], [])
+		members.append(index)
+		pieces[root[index]] = members
+	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	for key: Variant in pieces:
+		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
 
 
 ## How many separate pieces the design is in.
@@ -13865,7 +14226,8 @@ func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary, crowded: Dictionary = {},
 	joined: Dictionary = {}, loose: Dictionary = {},
-	boxes_of: Dictionary = {}, floating: Dictionary = {}
+	boxes_of: Dictionary = {}, floating: Dictionary = {},
+	clutched_pairs: Array = []
 ) -> void:
 	# Who holds whom. A part is held if a chain of these reaches the
 	# ground: resting on a part, a stud reaching into it or its own stud
@@ -13889,6 +14251,7 @@ func _check_support(
 		_gives(gives, into, owner)
 		clutched[owner] = true
 		clutched[into] = true
+		clutched_pairs.append([owner, into])
 		if not studs_in.has(into):
 			studs_in[into] = []
 		(studs_in[into] as Array).append(pair.slice(2))
@@ -14753,6 +15116,30 @@ func _ready_to_check(model: Model) -> void:
 	await _ensure_parts(model)
 	if _studs_where_stood_on(model) > 0:
 		await _ensure_parts(model)
+	await _ensure_exact(model)
+
+
+## Every exact shape a check of [param model] reads, to hand: on the desktop
+## read from disk as it is asked for; in the browser fetched from beside the
+## geometry, and waited for as the geometry is (a part BrickNet does not have
+## is answered at once, with none).
+func _ensure_exact(model: Model) -> void:
+	if library == null:
+		return
+	var wanted: Dictionary = {}
+	for placement: Placement in model.placements:
+		if not Exact.known(library, placement.part):
+			Exact.shape_for(library, placement.part)
+			if not Exact.known(library, placement.part):
+				wanted[placement.part] = true
+	if wanted.is_empty():
+		return
+	var deadline: int = Time.get_ticks_msec() + FETCH_WAIT_MS
+	while not wanted.is_empty() and Time.get_ticks_msec() < deadline:
+		await Engine.get_main_loop().process_frame
+		for part_id: String in wanted.keys():
+			if Exact.known(library, part_id) or not library.is_exact_on_its_way(part_id):
+				wanted.erase(part_id)
 
 
 ## A part standing on a tile grips nothing: a tile has no stud for it. The
@@ -17181,6 +17568,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_reviewed = {}
 		_outside_reviewing = {}
 		_detail_added = []
+		_exact_save_refusals = 0
 		_brief = "%s. %s" % [design.name, design.description]
 		# Submitted again with the same features keeps what was done for them.
 		if design.features != _outside_features:
@@ -17283,10 +17671,18 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
+		# Every part this design placed is judged, not only what an edit adds:
+		# a design is handed over from here, and BrickBench refuses a build for
+		# one collision or one loose part (ExactCheck).
+		_strict_mine = true
 		var report: Dictionary = await _checked(_model_from_world())
+		_strict_mine = false
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
 			report["summary"]])
+		var faults: String = _exact_faults_said(report)
+		if not faults.is_empty():
+			said.append(faults)
 		var measured: Array = report.get("advice", [])
 		if not measured.is_empty():
 			said.append("Measured against real sets:\n"
@@ -17335,6 +17731,26 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		JSON.stringify(one.get("where", {}))]
 
 
+## What the exact check found in a whole design, said as faults to fix before
+## it is handed over, or "" when it found nothing.
+static func _exact_faults_said(report: Dictionary) -> String:
+	var found: Dictionary = report.get("exact", {})
+	var lines := PackedStringArray()
+	for kind: String in ["collision", "not held"]:
+		var said: Array = found.get(kind, [])
+		if said.is_empty():
+			continue
+		lines.append("%s (%d):" % [kind, said.size()])
+		for n: int in mini(WORTH_SAYING, said.size()):
+			lines.append("  - " + str(said[n]))
+		if said.size() > WORTH_SAYING:
+			lines.append("  - ... and %d more like it" % (said.size() - WORTH_SAYING))
+	if lines.is_empty():
+		return ""
+	return ("Fix these first, with edit_model: a build with one of them is refused "
+		+ "by BrickBench's check, and in the hand it jams or falls apart.\n" + "\n".join(lines))
+
+
 ## The next assembly's close review, for a session that is saving with some
 ## not yet looked at closely; "" when every one has been. The sixteenth
 ## Orthanc's last act was to save, with two of its three assemblies never
@@ -17374,7 +17790,7 @@ func save_gate() -> Variant:
 		return ""
 	var left: Array[String] = _features_left()
 	if left.is_empty():
-		return ""
+		return await _exact_save_gate()
 	progress.emit("not saved: %d features not settled" % left.size())
 	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
 		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
@@ -17382,6 +17798,31 @@ func save_gate() -> Variant:
 		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
 		+ "it with a reason, or says you built it. Then save again. The %s:" % left[0],
 		await _review_feature(left[0]))
+
+
+## Times saving has been held back for what the exact check finds; after
+## MOST_EXACT_REFUSALS it saves and says so, rather than hold a session that
+## cannot fix a part for ever.
+var _exact_save_refusals: int = 0
+const MOST_EXACT_REFUSALS := 2
+
+
+## Saving a design built from outside waits, twice at most, until no part of
+## it collides by its real shape or rests with nothing holding it (ExactCheck):
+## the design is handed over when it is saved, and BrickBench refuses a build
+## for one of either. "" lets it save.
+func _exact_save_gate() -> String:
+	if _exact_save_refusals >= MOST_EXACT_REFUSALS or world == null or world.brick_count() == 0:
+		return ""
+	_strict_mine = true
+	var report: Dictionary = await _checked(_model_from_world())
+	_strict_mine = false
+	var faults: String = _exact_faults_said(report)
+	if faults.is_empty():
+		return ""
+	_exact_save_refusals += 1
+	progress.emit("not saved: parts collide or hang loose")
+	return "Not saved yet. %s\nThen save again." % faults
 
 
 ## [param said] and then [param then], or [param then] alone.

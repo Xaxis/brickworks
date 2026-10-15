@@ -15,10 +15,10 @@
 ## along a plain plate. Half a stud grips only on a jumper's stud, so it
 ## is asked of the studs under the part, not of the grid.
 ##
-## Both are advice rather than faults. A real design does stand parts on
-## smooth faces and trap them between walls, and the tube side of a
-## connection is not fully modelled in the library — so the thing this
-## probe guards hardest is that it stays quiet about the eight models
+## Since 2026-10-14 (ExactCheck) a part a few LDU off its studs is seated on
+## them as it is checked, and one resting on a smooth face with nothing
+## joining it is a fault, as BrickBench's check has it. The thing this
+## probe still guards hardest is that it stays quiet about the eight models
 ## that ship with the app, which are known good.
 extends SceneTree
 
@@ -85,6 +85,8 @@ func _stack(assistant: Assistant, lower: String, upper: String,
 		"said": said,
 		"smooth": said.contains("no stud anywhere to grip"),
 		"ok": bool(report.get("ok", false)),
+		## Where the upper one is after the check, which may have seated it.
+		"x": over.x,
 	}
 
 
@@ -94,25 +96,23 @@ func _check_offsets(assistant: Assistant) -> void:
 		var verdict: Dictionary = _stack(assistant, "3001", "3001", across, 3.0)
 		_ok(not verdict["off_grid"],
 			"%s studs across is a real position and is not questioned" % across)
-	for across: float in [0.1, 0.2, 0.3, 0.7, 0.9]:
-		var verdict: Dictionary = _stack(assistant, "3001", "3001", across, 3.0)
-		_ok(verdict["off_grid"],
-			"%s studs across is named: no stud reaches a tube there" % across)
-		# A fault, and with the place that grips. As advice it was passed
-		# over: two round plates on a tower of Orthanc stood a tenth of a
-		# stud off with the note beside them.
-		_ok(not verdict["ok"] and str(verdict["said"]).contains("at x=0, z=0 it sits on them"),
-			"...and it is refused, with where it would grip")
-		break   # the message is the same for all of them; one proves it
+	# Up to a plate (8 LDU) off its studs, a part is moved onto them as it is
+	# checked (ExactCheck.seat), as BrickAgent's attach puts a part by its
+	# connector: two round plates on a tower of Orthanc stood a tenth of a
+	# stud off with a note beside them, and BrickBench refused crystals 4 LDU
+	# off theirs.
+	for across: float in [0.1, 0.3, 0.7, 0.9]:
+		var seated: Dictionary = _stack(assistant, "3001", "3001", across, 3.0)
+		_ok(seated["ok"] and not seated["off_grid"] and str(seated["said"]).contains("Seated")
+				and is_equal_approx(float(seated["x"]), roundf(across)),
+			"%s studs across is seated on the whole stud nearest, %d: x %s" % [across,
+				roundf(across), seated["x"]])
+	# On the 2 LDU lattice that leaves one place off the studs and further than
+	# a plate from any: half a stud, refused with a jumper offered (below).
 	# A part with no stud or tube facing up or down has no grid to be off:
 	# the worked fireplace's horns (53451) sit in a brick's studs sideways.
 	var horn: Dictionary = _stack(assistant, "3001", "53451", 0.3, 3.0)
 	_ok(not horn["off_grid"], "a horn, with no stud grid of its own, is not judged by one")
-	# Snapped to the grid of the part below, the place offered for 0.3 off
-	# was 0.5 off: half a stud, on plain studs, which grips no better.
-	var near_half: Dictionary = _stack(assistant, "3001", "3001", 0.3, 3.0)
-	_ok(str(near_half["said"]).contains("at x=0, z=0 it sits on them"),
-		"0.3 studs across is offered the whole stud nearest, not the half")
 
 
 ## Half a stud off is right on a jumper and wrong on a plain plate, and the
@@ -178,7 +178,11 @@ func _check_smooth(assistant: Assistant) -> void:
 	print("\nstanding something on a face with nothing to grip it")
 	var tile: Dictionary = _stack(assistant, "3068b", "3003", 0.0, 1.0)
 	_ok(tile["smooth"], "a brick on a 2x2 tile is told the tile grips nothing")
-	_ok(tile["ok"], "...and it is advice, so the design still passes")
+	# A fault now, as BrickBench's check has it: nothing joins it, so it
+	# falls off when the model is lifted, and its simulation lets it fall.
+	_ok(not tile["ok"] and str(tile["said"]).contains("not held")
+			and str(tile["said"]).contains("rests on"),
+		"...and it is not held, so the design is refused until something joins it")
 
 	var brick: Dictionary = _stack(assistant, "3003", "3003", 0.0, 3.0)
 	_ok(not brick["smooth"], "a brick on a brick is not")
