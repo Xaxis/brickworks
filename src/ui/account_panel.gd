@@ -74,7 +74,7 @@ func setup(with_account: Account) -> void:
 
 	column.add_child(_line("Your account is your email address.", 12, 0.7))
 	# Where the models are, and on the web whether the browser agreed to
-	# keep them (StorageKeep): read again each time the panel opens.
+	# keep them (StorageKeep): read again while the panel is open (_process).
 	_kept = _line(StorageKeep.words(), 12, 0.7)
 	column.add_child(_kept)
 
@@ -149,6 +149,19 @@ func open() -> void:
 	visible = not visible
 	if visible and connector != null and account.signed_in():
 		connector.refresh_connections()
+
+
+## Where the models are kept, as the browser says it now, for as long as the
+## panel is open. It was read once as the panel opened, and the browser can
+## answer after that: Firefox asks the person, and the read is up to 400 ms
+## old (StorageKeep.state). Opened just as Chromium agreed, the panel said
+## the browser had not answered, and went on saying it (keep_flow, 2026-10-14).
+func _process(_delta: float) -> void:
+	if not visible or _kept == null:
+		return
+	var now: String = StorageKeep.words()
+	if _kept.text != now:
+		_kept.text = now
 
 
 ## Its controls, for the page to find.

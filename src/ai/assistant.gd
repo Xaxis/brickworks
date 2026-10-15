@@ -1269,6 +1269,8 @@ func _sketch_turn_over(tool_results: Array) -> bool:
 func _sketches_shown() -> void:
 	_sketch_round = false
 	_busy = false
+	# Held off the baseplate: nothing to undo. Choosing one begins the step.
+	_run_mark = {}
 	_messages.clear()
 	var spend: Brain.Spend = _spend
 	_spend = Brain.Spend.new()
@@ -1295,6 +1297,9 @@ func choose_sketch(number: int) -> String:
 	sketch_chosen.emit(number)
 	progress.emit("putting down sketch %d, %s" % [number, one.name])
 	var model: Model = one.model
+	# In the app, the sketch going down begins the design's one step.
+	if not outside:
+		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design")
 	await _ensure_parts(model)
 	await _apply(model, true, true)
 	if outside:
@@ -1345,7 +1350,23 @@ func cancel() -> void:
 			focus.step = {}
 	else:
 		_restore()
+	# What a cancelled run had changed and did not put back (an edit that
+	# landed) is Claude's step too.
+	_record_run()
 	finished.emit(false, "cancelled")
+
+
+## Where the model and its history stood as this request began, for its
+## change to be one step of the history as it ends (ClaudeStep); {} when no
+## request is running, or it is about a selection.
+var _run_mark: Dictionary = {}
+
+
+## This request's change, one undo step named as Claude's.
+func _record_run() -> void:
+	var mark: Dictionary = _run_mark
+	_run_mark = {}
+	ClaudeStep.record(builder, world, scenery, mark)
 
 
 func _start(text: String) -> void:
@@ -1389,6 +1410,11 @@ func _start(text: String) -> void:
 	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
+	# What this request changes is one undo step, Claude's, kept as it ends
+	# (ClaudeStep). About a selection, its edits gather into one already.
+	if not _scoped and _run_mark.is_empty():
+		_run_mark = ClaudeStep.mark(builder, world, scenery,
+			"Claude's design" if _messages.is_empty() else "Claude's change")
 	# References first, in the same message as the brief.
 	#
 	# A named real subject was designed entirely from memory of it. The
@@ -2936,6 +2962,7 @@ func _stop(ok: bool, summary: String) -> void:
 		world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_busy = false
+	_record_run()
 
 	# A failed design that started from a bare baseplate has nothing to
 	# restore to, so its last checked draft is still standing. Better
@@ -3177,7 +3204,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			return _look_at_picture()
 		"make_part":
 			# A part LEGO has not made, made as a person makes one: see
-			# src/parts/part_tool.gd.
+			# src/parts/part_tool.gd. Not in a run kept to a list of parts.
+			if not PartsOnly.tool_refusal(name).is_empty():
+				return PartsOnly.tool_refusal(name)
 			progress.emit("making a part")
 			return await PartTool.run(args, library)
 		"add_minifig":
@@ -5163,15 +5192,25 @@ const PREFETCH_FOUND := 5
 
 
 func _search(query: String, limit: int) -> String:
-	var found: Array[PartLibrary.PartInfo] = library.search(query, maxi(1, limit))
+	# Kept to a list (PartsOnly), more are read so that as many are listed.
+	var limited: bool = PartsOnly.active()
+	var found: Array[PartLibrary.PartInfo] = library.search(query,
+		maxi(1, limit) * (4 if limited else 1))
 	var usable: Array[PartLibrary.PartInfo] = []
+	var barred: int = 0
 	for info: PartLibrary.PartInfo in found:
 		if info.is_redirect() or not info.reachable:
 			continue
-		usable.append(info)
+		if not PartsOnly.allows(info.id):
+			barred += 1
+			continue
+		if usable.size() < maxi(1, limit):
+			usable.append(info)
 
 	if usable.is_empty():
-		return "No parts match '%s'. Try fewer or plainer words." % query
+		return "No parts match '%s'%s. Try fewer or plainer words." % [query,
+			" among %s (%d that do are not on it)" % [PartsOnly.named(), barred]
+				if limited else ""]
 	# Built from their own collection: what they own first, and how much.
 	var from_collection: bool = not owned.is_empty() and Collection.wanted_in(_brief)
 	if from_collection:
@@ -5194,6 +5233,10 @@ func _search(query: String, limit: int) -> String:
 			told = _prints_named(info)
 	if not told.is_empty():
 		lines.append(told)
+	if barred > 0:
+		lines.append("Not listed: %d more that match, which this run may not use (it uses "
+			% barred + "only %s; a print or another part is refused too unless it is "
+			% PartsOnly.named() + "among them).")
 	var worked: String = _technique_for(query)
 	if not worked.is_empty():
 		lines.append(worked)
@@ -10966,6 +11009,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			if not trouble.is_empty():
 				_note(issues, "no such colour", "brick %d (%s): %s"
 					% [index, placement.part, trouble])
+		# A run kept to a list of parts (--parts-only, the BrickBench
+		# bench): one off it is refused wherever it stands, so the edit
+		# that would keep it is the one that swaps it.
+		if not PartsOnly.allows(placement.part):
+			_note(issues, "not among this run's parts", "%s: %s" % [
+				"#%d" % placement.id if placement.id != 0 else "brick %d" % index,
+				PartsOnly.swap_words(placement.part)])
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			# Two different failures wearing one message. A part that is
@@ -11022,17 +11072,18 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# one brick on it came back "Not applied: the model would not
 		# hold together", listing thirteen wheels the edit never
 		# touched and could not have moved. A fault nobody can act on
-		# is not a fault.
-		var at: Transform3D = _transform(placement, part,
-			model.section_for(placement))
+		# is not a fault. Where it stands, for one nobody moved ([method
+		# _joined_at]).
+		var at: Transform3D = _joined_at(placement, part, model)
 		# In a section, y is measured from the section's pivot, not the
 		# ground, so it is where the brick ends up that says. A hinge top
 		# leaning on a tilting hinge was refused as below the ground at
-		# twenty-eight LDU above it.
+		# twenty-eight LDU above it. By its shape, not its box: a tyre spun
+		# on its axle hangs its box 8 LDU below its tread, and a wheel
+		# standing on its tread was refused as below the ground.
 		var under_ground: bool = placement.y < 0
 		if not placement.section.is_empty():
-			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
-			under_ground = info != null and (at * info.bounds).position.y < -1.0
+			under_ground = part.lowest_at(at) < -1.0
 		if under_ground and (placement.id == 0 or placement.moved):
 			_note(issues, "below ground",
 				"brick %d (%s) is at y=%d, below the ground" % [
@@ -11249,7 +11300,16 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var with_paths: Array = entries.map(func(entry: Array) -> Array:
 		var placement: Placement = model.placements[int(entry[0])]
 		return entry + [Assemblies.path_from(placement.group, placement.unit)])
-	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library)]:
+	# And what is pushed into what without a connector to pair: a carrot in
+	# a hand's grip, a spring in its hips, an arm's peg in its torso. It made
+	# a figure one piece and held none of it: an arm a file swings about the
+	# torso's line, not its own, has its peg 8 degrees off the socket's, and
+	# 6022's archer hung his bow arm in the air once the arm was checked where
+	# it stands (Joints.pushed_in).
+	var pushed: Dictionary = Joints.pushed_in(entries.filter(
+		func(entry: Array) -> bool: return cells_of.has(entry[0])),
+		_filled_by(cells_of, lattice))
+	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library), pushed]:
 		for index: Variant in held:
 			if not holds.has(index):
 				holds[index] = {}
@@ -13223,23 +13283,14 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 	for index: int in cells_of:
 		joined[index] = []
 	# And the joints, which support counts and this did not: a flag clipped
-	# to a lance was held up and yet a piece of its own.
+	# to a lance was held up and yet a piece of its own. With what is pushed
+	# into what (a carrot in a hand's grip, a cape round a neck), so a whole
+	# minifigure is one piece, as it is in the hand ([method _check]).
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
 			if joined.has(index) and joined.has(other):
 				joined[index].append(other)
 				joined[other].append(index)
-	# And what is pushed into what without a connector to pair: a carrot
-	# in a hand's grip, a spring in its hips, a cape round a neck. A whole
-	# minifigure is one piece, as it is in the hand. See
-	# [method Joints.pushed_in].
-	var pushed: Dictionary = Joints.pushed_in(_mating_entries(model).filter(
-		func(entry: Array) -> bool: return cells_of.has(entry[0])),
-		_filled_by(model, cells_of, lattice))
-	for index: Variant in pushed:
-		for other: Variant in pushed[index]:
-			if joined.has(index) and joined.has(other):
-				joined[index].append(other)
 	# What sits directly on each brick, asked as a slab across its top
 	# rather than cell by cell. A brick is nine thousand six hundred
 	# cells and each was a question for the lattice: free while a cell
@@ -13266,8 +13317,7 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part,
-			model.section_for(placement))
+		var at: Transform3D = _joined_at(placement, part, model)
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind != "stud" or connector.gender != "male":
 				continue
@@ -13298,33 +13348,15 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 
 
 ## What fills a cell, for [method Joints.pushed_in]: the placements whose
-## covers are in it, each where its joints are ([method _joined_at]).
-##
-## The checker's lattice has a figure's parts at the nearest square turn,
-## where a hand's grip and the sword in it are not where each other are,
-## so those few are covered again where they really stand and asked
-## there instead. Everything else is asked of the lattice as it is.
-func _filled_by(model: Model, cells_of: Dictionary, lattice: BrickLattice) -> Callable:
-	var real := BrickLattice.new()
-	real.keeps_columns = false
-	var moved: Dictionary = {}   ## lattice key -> true
-	for index: int in cells_of:
-		var placement: Placement = model.placements[index]
-		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null:
-			continue
-		var at: Transform3D = _joined_at(placement, part, model)
-		if at.is_equal_approx(_transform(placement, part, model.section_for(placement))):
-			continue
-		moved[index + 1] = true
-		real.occupy_boxes(index + 1, builder.boxes_for(part, at))
+## covers are in it, each where it is checked ([method _joined_at]), which
+## is where the checker's lattice has it. A figure's parts were in it at the
+## nearest square turn, where a hand's grip and the sword in it are not
+## where each other are, and were covered again here where they stand.
+func _filled_by(cells_of: Dictionary, lattice: BrickLattice) -> Callable:
 	return func(box: PackedInt32Array, key: Variant) -> Array:
 		var out: Array = []
-		for found: int in lattice.blockers_boxes(box, int(key) + 1, moved):
+		for found: int in lattice.blockers_boxes(box, int(key) + 1):
 			if found > 0 and cells_of.has(found - 1):
-				out.append(found - 1)
-		if not moved.is_empty():
-			for found: int in real.blockers_boxes(box, int(key) + 1):
 				out.append(found - 1)
 		return out
 
@@ -13354,8 +13386,7 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part,
-			model.section_for(placement))
+		var at: Transform3D = _joined_at(placement, part, model)
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind != "stud" or connector.gender != "male":
 				continue
@@ -13392,21 +13423,24 @@ func _mating_entries(model: Model) -> Array:
 	return entries
 
 
-## Where a placement's joints are: where the part is, for one read off the
-## world on no grid at all and not moved since.
+## Where a placement is checked, its cover, its studs and its joints: where
+## the part stands, for one read off the world and not moved since; where
+## its placement says, for one a design or an edit puts down or moves.
 ##
-## A minifigure's parts stand on no stud grid and are read back at the
-## nearest square turn ([method _adopted] leaves them as they were). A
-## hand is turned 45 degrees in its arm, so read back square its peg and
-## the arm's socket were never on one axis, and nothing joined a hand to
-## its arm, nor an arm to its torso. Whether the figure was one piece was
-## left to which cells the squared parts happened to share, which moves
-## with where the figure stands: Saruman alone was one piece, and on
-## top of Orthanc his raised right hand was a piece of its own. A brick in
-## a section is left to its section, which an edit may have moved.
+## The reading cannot always say where a part is. A minifigure's parts stand
+## on no stud grid and are read back at the nearest square turn ([method
+## _adopted] leaves them as they were): a hand turned 45 degrees in its arm,
+## read back square, had its peg off the arm's socket, and on top of Orthanc
+## Saruman's raised right hand was a piece of its own. And a part drawn
+## sheared or mirrored, as LDCad draws a flexible hose's segments, is no
+## turn at all. Checked where the reading put them, 3,661 parts of real sets
+## floated (docs/CONNECTIONS.md, "read off its place"): 7893's mechanical
+## arms on their clips, 9390's and 8841's hoses. A brick in a section is
+## where it stands too: an edit that moves a section marks what is in it
+## moved ([method _edit]), and a turn in the window forgets the section
+## ([method _forget_moved_sections]).
 func _joined_at(placement: Placement, part: Lbm.PartMesh, model: Model) -> Transform3D:
-	if placement.id != 0 and not placement.moved and placement.section.is_empty() \
-			and world != null:
+	if placement.id != 0 and not placement.moved and world != null:
 		var brick: BrickWorld.Brick = world.get_brick(placement.id)
 		if brick != null and brick.part_id == placement.part:
 			return brick.transform
@@ -14106,16 +14140,26 @@ static func _frame_of(model: Model, name: String, frames: Dictionary) -> Basis:
 ## to a whole cell, which a bucket's handle drawn 1.6 LDU under the
 ## baseplate made 2. So the trains of 10014 and 10020 stood an LDU up on
 ## their wheels, 10243's restaurant two on its baseplate, and the whole of
-## each was called floating. Square parts only: a turned part's box reaches
-## below its shape, and its cover, which keeps every cell it touches, does
-## not stop short of the ground.
+## each was called floating. By its shape, turned or not (Lbm.PartMesh.
+## lowest_at): a turned part's box reaches below it, and a tyre a file draws a
+## hair off the square was a turned part.
+##
+## Within two cells for a part read off the world that nothing has moved. The
+## open stands a model on its lowest point rounded up to a whole cell, so that
+## point is up to a cell above the ground, and a part a file stands within a
+## cell of the ground stands within two of it here: 4549's train and 6482's
+## car had their wheels 2.5 and 3 LDU up, beside a bogie and a figure's feet
+## the open stood a cell up. Read back at the nearest cell they were at 2;
+## checked where they stand, as they are now, they floated. A part a design
+## or an edit puts down stands on the ground within one cell, so nothing it
+## places hovers.
 func _on_the_ground(placement: Placement, model: Model) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(placement.part) if library != null else null
 	if part == null:
 		return false
-	var at: Transform3D = _transform(placement, part, model.section_for(placement))
-	return BrickLattice.is_square_to_grid(at.basis) \
-		and (at * part.bounds).position.y <= BrickLattice.CELL + 0.01
+	var cells: float = 1.0 if placement.id == 0 or placement.moved else 2.0
+	return part.lowest_at(_joined_at(placement, part, model)) \
+		<= cells * BrickLattice.CELL + 0.01
 
 
 static func _gives(gives: Dictionary, holder: int, held: int) -> void:
@@ -14685,17 +14729,25 @@ func _square_transform(placement: Placement,
 ## one that takes a moment longer.
 func _ensure_parts(model: Model) -> void:
 	var wanted: Dictionary = {}
+	# A retired number is placed as the part it became (BrickWorld._place),
+	# so that is the geometry wanted too.
+	var named: Array[String] = []
 	for placement: Placement in model.placements:
+		named.append(placement.part)
+		var real: String = library.resolve(placement.part)
+		if real != placement.part:
+			named.append(real)
+	for part_id: String in named:
 		# From disk first, where the build has it: only what is not there is
 		# fetched. Not resident meant fetched over HTTP even on the desktop,
 		# whose every part is on disk; the request failed, and the wait for it
 		# was the twenty seconds below. add_rooms, which asks for seventy
 		# parts at once, spent most of its time here, and the first Orthanc
 		# run to use it logged a column of "could not fetch".
-		if not library.is_resident(placement.part):
-			library.mesh_for(placement.part)
-		if not library.is_resident(placement.part):
-			wanted[placement.part] = true
+		if not library.is_resident(part_id):
+			library.mesh_for(part_id)
+		if not library.is_resident(part_id):
+			wanted[part_id] = true
 	if wanted.is_empty():
 		return
 
@@ -16667,10 +16719,19 @@ func _find_parts_like(query: String) -> String:
 	for raw: Variant in found:
 		var family: Dictionary = raw
 		var parts := PackedStringArray()
-		for pair: Variant in (family["parts"] as Array).slice(0, 6):
+		# Kept to a list (PartsOnly): only the family's parts on it.
+		var listed: Array = (family["parts"] as Array).filter(func(pair: Variant) -> bool:
+			return PartsOnly.allows(str((pair as Array)[0])))
+		if listed.is_empty():
+			continue
+		for pair: Variant in listed.slice(0, 6):
 			parts.append("%s %s" % [(pair as Array)[0], _part_called(str((pair as Array)[0]))])
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
+	if rows.is_empty():
+		return ("No family of parts among %s reads as \"%s\". " % [PartsOnly.named(), query]
+			+ "Try a plainer word for the look, or search_parts for one you can name."
+			+ printed)
 	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
 		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in."
 		+ printed)
@@ -16686,11 +16747,12 @@ func _find_parts_like(query: String) -> String:
 ## round tiles when the LEGO Group printed one on a 2 x 2 slope.
 func _printed_with(query: String) -> String:
 	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
-	if found.is_empty():
-		return ""
 	var named := PackedStringArray()
 	for info: PartLibrary.PartInfo in found:
-		named.append("%s %s" % [info.id, _part_called(info.id)])
+		if PartsOnly.allows(info.id):
+			named.append("%s %s" % [info.id, _part_called(info.id)])
+	if named.is_empty():
+		return ""
 	return ("\n\nPrinted with it: %s. search_parts \"%s print\" for more."
 		% ["; ".join(named), query])
 

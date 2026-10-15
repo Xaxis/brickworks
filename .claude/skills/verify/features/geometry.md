@@ -222,15 +222,17 @@ can occupy the same millimetre.
   meeting anywhere else still collide. A round joint holds both ways for
   support and pieces, as a pin does. Pins, panes and rounds are forgiven inside
   a section too, which nothing was before. Needs a catalogue built with the
-  rounds; see `pipeline.md`. Joints are matched where a part is: one read off
-  the world on no grid, outside any section and not moved by the edit (a
-  minifigure's part, read back at the nearest square turn), has its joints
-  read off its own transform (`Assistant._joined_at`). Read square, a hand
+  rounds; see `pipeline.md`. And an older hinge's knuckles: rounds of one size
+  on one line, a round of one part ending where two of another's begin and end
+  (`Joints._knuckles`: 4275b's fingers and 4276b's), held both ways and
+  forgiving nothing. Joints are matched where a part is: one read off the
+  world and not moved by the edit, in a section or not, is checked where it
+  stands, its cover and studs as well as its joints (`Assistant._joined_at`). Read square, a hand
   turned 45 degrees in its arm had its peg nowhere near the arm's socket, so
   no hand was joined to its arm and whether a figure was one piece depended
   on which cells the squared parts shared: run 5's Orthanc had Saruman's
   raised right hand as a piece of its own. `minifig_probe`'s "one piece, as
-  the design checker reads it" holds it. For pieces only (not support, not
+  the design checker reads it" holds it. For pieces and for support (not
   overlaps), `Joints.pushed_in` also joins what is pushed into what without
   two connectors to pair: a bore no wider than a pin hole (6 LDU) whose middle
   another part's cover fills (anything in a hand's grip, a clip's eye, an
@@ -377,8 +379,10 @@ python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if
 clip or a hinge (`Joints.held_otherwise`): a sticker is held by the face it
 lies on (`Stickers.lies_on`, the one it covers most); a flexible thing's
 pieces are one thing (`Flex.one_thing`: a kind the flex tool lays, or a part
-LDraw names a Segment, a Chain Link or a Chain Tread), held where any of it
-is; and magnets that touch hold each other. It builds each case in the real
+LDraw names a Segment, a Chain Link or a Chain Tread, or any piece LDraw draws
+one element in, a "~" part numbered NNNNkNN, with the element's other pieces,
+or a piece of a hose LSynth drew, named LS and a number; `Flex.strung`), held
+where any of it is; and magnets that touch hold each other. It builds each case in the real
 scene, the sticker put on with `print_part` and the string laid with
 `lay_flex` over MCP, and asks every place that counts: the design check
 (check_design, review_model, the bench's `candidate_probe`), an edit's check
@@ -408,7 +412,33 @@ axis, read from a file (10179's hinge at 53 degrees with a jumper and a bar on
 it, 6285's rail on three hinges, 75144's panel, 21307's hinge at 60): each in
 one piece, where read square they were refused in two. On a catalogue built
 before the rounds its first five lines fail, and every case that should pass
-fails with them.
+fails with them. "Stood on the ground by its shape": a wheel spun 16 degrees on
+its axle through a Technic brick, opened and checked as a design, then the lot
+tipped a degree about two axes as 8281's sidecar is drawn, and the wheel's
+geometry fetched after the model opened (the web) — each on its tyre, held; a
+turned part's box hangs below it, and on 3a39926 the model stood on the box,
+floating, and the late wheel never came down (`Lbm.PartMesh.lowest_at`,
+`ModelStore.lift_for` and `_settle`, the check's "below ground", Balance's
+`_through_floor`). And two bricks drawn 76 LDU up: from another tool they
+come down onto the ground and hold, saved by this app they keep their height.
+"A part drawn from what its file carries": a plate built
+from a subpart under `s\` and a primitive the file carries, a brick on it; and
+two pieces of a hose LSynth drew (named LS and a number), end to end, the first
+on a 1 x 1 brick, held as one thing (`Flex.strung`). "Checked where it stands": a
+ski (a figure's part, read at the nearest square turn) turned 44 degrees on a
+plate, and a 1 x 1 brick put down beside it where the ski read square would be:
+it fits, and put down on the ski it is refused (`Assistant._joined_at` for
+everything nobody has moved: its cover, its studs, its joints, whether it is on
+the ground). And 6022's archer, his bow arm swung about the torso's line and not
+its own, holds his bow: the arm's peg is pushed into the torso, which holds. "A retired number": 3139, whose stub
+draws 3139b a quarter turn round, opens as 3139b where the stub puts it and saves
+and reopens there (`PartLibrary.moved_by`, `BrickWorld._place`); it needs a
+catalogue with `moved_by` (`tools/build_meshes.py`, the 68 stubs that turn or
+shift what they forward to). "An older hinge's knuckles": 8849's 4276b hinged up
+square on a 4275b on a 1 x 2 brick, held by its fingers' rounds lying on one line
+between the other's (`Joints._knuckles`, in `Joints.rounds`, so a section leans
+on them too). And a pneumatic tube's segment (71533k03) out to the side of its
+end (71533k01), one thing with it. On 3a39926 the new lines fail.
 
 `clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
 2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2

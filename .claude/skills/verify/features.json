@@ -244,6 +244,14 @@
       ]
     },
     {
+      "id": "cli:design undo probe",
+      "kind": "cli",
+      "entry": "src/dev/design_undo_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -482,6 +490,14 @@
       "tests": []
     },
     {
+      "id": "cli:page places probe",
+      "kind": "cli",
+      "entry": "src/dev/page_places_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/page_places_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
@@ -559,6 +575,14 @@
       "entry": "tools/web/render_open_check.mjs",
       "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app: the Render dialog's first open, every frame timed)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:run the designer on BrickBench",
+      "kind": "cli",
+      "entry": "tools/bench/brickbench.py",
+      "reach": "python3 tools/minitest.py tests/test_brickbench.py; python3 tools/bench/brickbench.py report --date 2026-10-14   (the run: prompts, parts, design, export, verify, zip, fetch, views, pairs; the recipe is BrickBench in features/assistant.md; never submitted)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -689,6 +713,22 @@
       "kind": "cli",
       "entry": "tools/windows_check.py",
       "reach": "tools/windows_check.py   (two headless apps on ports 8851 and 8852, in a data folder of their own)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:typing probe",
+      "kind": "cli",
+      "entry": "src/dev/typing_probe.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/typing_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:unrestored probe",
+      "kind": "cli",
+      "entry": "src/dev/unrestored_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
       "area": "model-io",
       "tests": []
     },
@@ -853,6 +893,14 @@
       "tests": []
     },
     {
+      "id": "lib:claude's design is one undo step",
+      "kind": "lib",
+      "entry": "src/ai/claude_step.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:collection kept with the account",
       "kind": "lib",
       "entry": "src/collection/collection_store.gd",
@@ -946,6 +994,14 @@
       "entry": "src/assembly/gear_ratios.gd",
       "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:keep a run to a list of parts",
+      "kind": "lib",
+      "entry": "src/parts/parts_only.gd",
+      "reach": "godot --headless --path . --script src/dev/parts_only_probe.gd   (and -- --parts-only=bench/results/brickbench-2026-10-14/bricknet_parts.txt)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -2032,6 +2088,14 @@
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:working model that could not open",
+      "kind": "ui",
+      "entry": "src/ui/restore_notice.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd   (start-up with a working model none of whose parts are in the catalogue: kept in File, Open, said above the model)",
+      "area": "model-io",
       "tests": []
     },
     {

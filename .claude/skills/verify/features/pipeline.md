@@ -185,7 +185,8 @@ python3 tools/minitest.py tests/test_ldraw.py      # 65 passed, 38 skipped (103 
 geometry rather than quoting a wiki. Stud pitch 8 mm, brick 9.6 mm, plate a third
 of a brick, −Y up, studs pointing up, tubes pointing down and sitting between
 studs, no degenerate triangles, the official colours, a redirect still rendering
-its target, and a right-hand wing built from its left twin's body reflected
+its target, one that turns or shifts it saying where (`LDrawFile.moved_by`, the
+catalogue's `moved_by` for 68 stubs: 3139 a quarter turn, 2714 82 LDU), and a right-hand wing built from its left twin's body reflected
 (41769a, 41769b, 43722a, 3935) coming out of `meshfile` as that twin's exact
 reflection: the same signed volume, its x moment negated, every normal on the
 side its triangle faces.

@@ -96,6 +96,17 @@ technique and surface, the two weakest); and that likeness does not fall,
 which would say a session copied the nearest design's picture rather than
 designing past it. A subject moves only beyond the 0.5 run-to-run spread.
 
+## Against an outside ruler: BrickBench (2026-10-14)
+
+Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
+designer on BrickBench's Model setting: its first ten prompts through the real
+loop on the subscription, kept to BrickNet's parts, checked by BrickBench's own
+`verify.py` and judged in pairs against BrickAgent's Claude Opus 5.5 builds of
+the same prompts. **2 of 10 valid**, against 10 of 10 for theirs; our pairwise
+judge (ours, not BrickBench's) preferred their build in all 40 verdicts
+overall; $2.65 a build at API prices against their $5.90. The submission zip
+is built and checked, and not sent.
+
 ## Judged in pairs: what each round really did (2026-10-14)
 
 The 1-10 judge's scores move by 0.7-1.0 between two designs of the same

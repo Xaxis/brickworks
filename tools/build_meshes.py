@@ -86,6 +86,13 @@ class PartRecord:
     # 1,160 of these exist and none is tagged as an Alias, so they can
     # only be found by their title.
     moved_to: str = ""
+    # And where the stub puts that part, as an LDraw line's twelve numbers
+    # (x y z, then the matrix by rows), when it is not where the stub is:
+    # 68 stubs turn or shift it, 3139 a tyre a quarter turn, 2714 82 LDU
+    # along. Empty for the rest. A part opened by its old number is the new
+    # one placed there (BrickWorld.add_brick); placed where the stub was, a
+    # file's 3139 tyres stood turned across their own axles.
+    moved_by: list[float] = field(default_factory=list)
 
 
 _LIBRARY: Library | None = None
@@ -168,8 +175,13 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             recolourable=any(s.color == 16 for s in part.surfaces),
             unofficial="unofficial" in str(ldfile.path),
             moved_to=ldfile.moved_to,
+            moved_by=ldfile.moved_by,
         )
-        return (part_id, blob, asdict(record))
+        entry = asdict(record)
+        # Only the 68 stubs that move what they forward to carry it.
+        if not entry["moved_by"]:
+            del entry["moved_by"]
+        return (part_id, blob, entry)
 
     except Exception as exc:  # noqa: BLE001 — a worker must not take the build down
         return (part_id, None, {"error": f"{type(exc).__name__}: {exc}"})

@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe -->
 
 ## Sub-features
 
@@ -35,6 +35,19 @@ fixing what it got wrong.
   subject judged A or B per dimension, both orders, fitted as Bradley-Terry ELO
   with intervals, and each lever's change with the run-to-run spread in it.
   Under How to check it, "The pairwise judge".
+- `run the designer on BrickBench`: `tools/bench/brickbench.py`, the outside
+  ruler: the first ten prompts of BrickBench's Model setting through the real
+  loop on the subscription, kept to BrickNet's 14,441 parts, exported as the
+  `model.mpd` and `build.py` their `verify.py` rebuilds, checked by their
+  `verify.py` and `check_submission.py`, and judged against BrickAgent's Opus 5.5
+  builds of the same prompts by our pairwise judge. `docs/BRICKBENCH.md`. Under
+  How to check it, "BrickBench".
+- `keep a run to a list of parts`: `src/parts/parts_only.gd`, `--parts-only=FILE`
+  (a part number a line, the first `#` line naming the list). search_parts and
+  find_parts_like list only those; a design or edit with another is refused
+  naming it ("not among this run's parts", swap it); add_minifig chooses among
+  them; make_part, lay_flex and print_part are refused; any call that leaves one
+  off the list on the model says so. Without the flag nothing changes.
 - `ask claude about the selection`: select parts, right-click one and choose
   **Ask Claude about this…** (top of the part's menu; also Edit, and Ctrl+K).
   The assistant panel opens with a chip, "About 46 selected parts", and the
@@ -196,6 +209,18 @@ fixing what it got wrong.
   a name somebody typed or saved. It kept the car's name, and Save saved the
   tower as "Example Car for Demonstration of LDRAW Library". A design started
   on a bare, Untitled baseplate is named the same way. `example_name_probe`.
+- `claude's design is one undo step` (`src/ai/claude_step.gd`): each request in
+  the panel, a design or a change to it, is one step of the history, "Claude's
+  design (12 put down)" or "Claude's change (12 painted)", kept as its run ends
+  (Stopped too); a session from outside has one a call
+  (`CommandSocket._one_step`). The loop puts its work down without the builder,
+  so before 2026-10-14 a request in the panel made no step at all, and the
+  person's Undo took back their own last part. What the person does while it
+  runs keeps steps of its own: a part one of theirs names is left out of
+  Claude's. A run that fails and puts the model back makes none; about a
+  selection, its edits gather into one already. `design_undo_probe` runs the
+  real loop against a stand-in for the API on this machine and fails on 480b81a
+  (12 failures: Undo took the person's brick and left the wall).
 - `the floor a design stands on`: `submit_design` takes `floor` ("none",
   "baseplate", "grid") and `floor_colour` (a colour baseplates come in, by
   name); the guidance says a vehicle, a ship, a figure or a creature has no
@@ -1967,6 +1992,7 @@ godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
+godot --headless --path . --script src/dev/design_undo_probe.gd # each request in the panel is one undo step, Claude's; the person's own stay theirs
 godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
 godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow
@@ -2134,6 +2160,54 @@ agreement (2026-10-14: 256 of 256 verdicts on 24 known pairs, both orders the
 same on 99%); and every `judged/*.json` lists in `looked_at` all six design
 pictures (456 of 456 on 2026-10-14). A call is about 22 s; four at once judge a
 subject of 12 designs (132 calls) in about 13 minutes.
+
+### BrickBench: the designer on an outside ruler
+
+`tools/bench/brickbench.py` puts the designer on BrickBench's Model setting
+(https://github.com/kulits/BrickAgent, MIT), locally; `docs/BRICKBENCH.md` is
+the write-up. Their code and their builds are untrusted: keep them in a scratch
+folder, never in the repo, and run their Python with `-I`, paths as arguments.
+
+```sh
+S=<a scratch folder>
+git clone https://github.com/kulits/BrickAgent $S/upstream           # b3df55e on 2026-10-14
+uv venv -p 3.12 $S/venv && VIRTUAL_ENV=$S/venv uv pip install pybullet $S/upstream
+#   the colliders (1 GB): curl bricknet/__main__.py's COLLIDER_URL into $S/download/,
+#   then tarfile.extractall(..., filter="data") into $S/bricknet_data/cvx
+python3 tools/bench/brickbench.py prompts --upstream $S/upstream    # model-001..010, briefs
+python3 tools/bench/brickbench.py parts --upstream $S/upstream      # bricknet_parts.txt, 14,441
+XDG_DATA_HOME=$S/xdg ~/.claude/claude-core/bin/heavy env -u ANTHROPIC_API_KEY \
+    python3 tools/bench/brickbench.py design --jobs 2               # two at a time, 45 min each at most
+python3 tools/bench/brickbench.py export --python $S/venv/bin/python
+BRICKNET_DATA=$S/bricknet_data ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py verify --upstream $S/upstream --python $S/venv/bin/python
+python3 tools/bench/brickbench.py zip --upstream $S/upstream        # submission.zip; NEVER submitted
+python3 tools/bench/brickbench.py fetch                             # their Opus 5.5 builds; never committed
+XDG_DATA_HOME=$S/xdg python3 tools/bench/brickbench.py views        # four views each, on the GPU
+XDG_DATA_HOME=$S/xdg ~/.claude/claude-core/bin/heavy python3 tools/bench/brickbench.py views --software --jobs 2   # or on lavapipe
+env -u ANTHROPIC_API_KEY python3 tools/bench/brickbench.py pairs --repeat 2 --jobs 3
+python3 tools/bench/brickbench.py report                            # the tables BRICKBENCH.md quotes
+godot --headless --path . --script src/dev/parts_only_probe.gd      # the allowlist, and nothing without it
+godot --headless --path . --script src/dev/parts_only_probe.gd -- --parts-only=bench/results/brickbench-<date>/bricknet_parts.txt
+python3 tools/minitest.py tests/test_brickbench.py                  # the export round-trips, the reads, the ELO
+```
+
+Everything lands in the main checkout's `bench/results/brickbench-<date>/`
+(git-ignored): `ours/<task>/` (run.py's design stage: `design.ldr`, the log,
+`export.json`), `submission/<task>/` (`build.py`, `model.mpd`,
+`verification.json`), `theirs/<task>/` (the gallery's files and their
+`verification.json`), `views/`, `pairwise/<task>/judged/`, `submission.zip`,
+`check_submission.txt`, `report.md`. Each design's log says
+`parts only: 14441 parts (...)` once the flag took, and its last lines carry the
+tokens by kind and Claude Code's own API price for them
+(`tokens fresh=... api_usd=...`).
+
+Proves it when: `verify.py` passes the ten gallery builds it published as valid
+(it did, 2026-10-14), so a fault it names in ours is ours; every
+`verification.json` has `mpd_geometry_reproduced: true` (the model.mpd is the
+build's own); `check_submission.py` prints no `error:` line (it lists the 90
+prompts not attempted as missing, which is expected); the probe prints its
+`ok` lines with the flag and without; and `tests/test_brickbench.py` passes.
+Their VQA and ELO need Gemma 4 31B in about 62 GB of GPU memory: not run here.
 
 ## Gotchas
 
