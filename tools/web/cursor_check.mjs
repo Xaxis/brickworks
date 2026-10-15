@@ -34,7 +34,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor } from "./browser.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -92,15 +92,11 @@ async function run(scale) {
   }
   // The car that greets a first visit assembles itself; let it, then frame it.
   await page.waitForTimeout(15000);
-  const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
   const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
+  // Waited for up to 10 s, as a person waits for a panel: a control is told
+  // to the page only once it has stayed where it is drawn (Main._page_places).
   async function where(name) {
-    for (let n = 0; n < 8; n += 1) {
-      const found = (await controls())[name];
-      if (found) return found;
-      await page.waitForTimeout(500);
-    }
-    return null;
+    return (await controlsWith(page, [name]))[name] || null;
   }
   let view = await where("view");
   await page.mouse.move(view.x, view.y);
@@ -463,7 +459,9 @@ async function run(scale) {
     if (!ok) failures.push(`${scale}x text field`);
     seen.push({ name: "ui_text", what: "over the model's name", wanted: "text", ok, shows: css });
   }
-  const cube = (await controls()).cube_top || (await controls()).cube_front || (await where("cube_turn_right"));
+  const cubes = await controlsWith(page, ["cube_top", "cube_front", "cube_turn_right"], 10000,
+    { any: true });
+  const cube = cubes.cube_top || cubes.cube_front || cubes.cube_turn_right;
   if (cube) {
     await moveTo(cube);
     await expect("ui_cube", "over the view cube", "select", cube, null);
@@ -572,8 +570,11 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     let point = null;
     // On a laptop the columns take turns: open this one's first.
     await openColumnFor(page, keys[0]);
+    // Whichever is up, waited for: the column has only just opened, and its
+    // controls are told to the page a publish after they are drawn.
+    const shown = await controlsWith(page, keys, 10000, { any: true });
     for (const key of keys) {
-      point = await page.evaluate((k) => (window.brickworksControls || {})[k], key);
+      point = shown[key];
       if (point) break;
     }
     if (point) await scrolled(what, point, await wholeView(), false);
@@ -581,9 +582,27 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
   }
   const here = (await where("view")) || at;
   await overPart(here);
+  // Waited for, open and then gone, as a person waits for a panel: three
+  // seconds after the comma it was not always up yet on a loaded box, and
+  // the wheel went to the model; and one still fading out was in the
+  // picture after.
+  const panelUp = async (up) => {
+    for (let n = 0; n < 80; n += 1) {
+      if (Boolean((await page.evaluate(() => window.brickworksControls || {})).settings_done) === up) return true;
+      await page.waitForTimeout(250);
+    }
+    return false;
+  };
   await scrolled("over the controls panel", here, await wholeView(), false, {
-    open: async () => { await page.keyboard.press("Comma"); await page.waitForTimeout(3000 * slow); },
-    close: async () => { await page.keyboard.press("Escape"); },
+    open: async () => {
+      await page.keyboard.press("Comma");
+      if (!(await panelUp(true))) console.log("        (the controls panel did not come up in 20 s)");
+      await page.waitForTimeout(1000 * slow);
+    },
+    close: async () => {
+      await page.keyboard.press("Escape");
+      await panelUp(false);
+    },
   });
   await overPart(here);
   await scrolled("over the model, which it should move", here, await wholeView(), true);

@@ -147,6 +147,13 @@ def main() -> int:
     meshes = sorted(source.glob("*.lbm"))
     if not meshes:
         sys.exit(f"storage: no geometry in {source} (tools/build_meshes.py)")
+    # And each shape's exact colliders and connectors (tools/build_exact.py),
+    # which the web build fetches from beside its geometry as <hash>.bwx for
+    # the build check. Without them the browser checks by the lattice alone.
+    exact = sorted((ROOT / "assets" / "generated" / "exact").glob("*.bwx"))
+    if exact:
+        print(f"storage: {len(exact):,} exact shapes as well")
+    meshes += exact
 
     total_bytes = sum(mesh.stat().st_size for mesh in meshes)
     print(f"storage: {len(meshes):,} meshes, {total_bytes / 1e6:.0f} MB on disk")

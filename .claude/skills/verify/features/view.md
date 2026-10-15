@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe -->
 
 ## Sub-features
 
@@ -515,7 +515,9 @@ picture the assistant is shown.
   that a save made with History open writes the model as it stands, and that it
   leaves nothing behind.
 - `build steps`: the model split into steps a person could follow in order,
-  nothing placed before what holds it. A model wider than 24 studs is built a
+  nothing placed before what holds it. A model wider than 24 studs, of 400
+  parts or more (`TILED_FROM`; a smaller one was "Part 1", one step on a page
+  of its own), is built a
   region at a time (`Instructions.REGION`): one tile of its plan finished before
   the next, borrowing only the bricks a region is directly waiting on, and the
   booklet starts each on a new page under a banner ("Part 2", or its name).
@@ -540,13 +542,36 @@ picture the assistant is shown.
   link that would make a loop (`_cycles`, the parts on a loop, not those
   downstream of one) is undone and relinked to a part that does not wait for
   it. On Orthanc, parts placed touching nothing already placed went from 193 to
-  6 of 8,603, with no step forced. Wheels go on what holds them and tyres on
+  6 of 8,603, with no step forced. A pin that joins two parts goes into the
+  lowest and the others go on it (`_find_joints`): waiting for both put it in
+  last, buried between two beams. Wheels go on what holds them and tyres on
   their wheels (`_wheels`, by name: "Wheel …", "Tyre …"), whether or not the
   joint is known; a wheel holds nothing up, and goes in last within its
   region: the example car's booklet began with four wheels on the table. Steps take
   4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
   found through a two-stud grid and the order through a set of ready bricks:
   the 8,603-part Orthanc planned in 87 s and now in 5.
+- `score the steps against real sets' authors` (`tools/steps_score.py`,
+  `src/dev/steps_score.gd`; the write-up is `docs/INSTRUCTIONS.md`): files of
+  LDraw's model repository (vendor/omr) with their authors' `0 STEP` lines,
+  chosen the same every run (`sample`: by a hash of the set number, a quarter
+  from each of four sizes, themes taken in turn; `tune` and a disjoint `proof`
+  of 100 each). Each is opened as File, Open opens it and built six ways: the
+  author's steps (every sub-model built apart, as LDraw means them), the
+  author's as the booklet draws them, `Instructions.plan` on the model with its
+  steps taken away and its parts shuffled (with its sub-models, and without),
+  file order and bottom up by height. Each part's step goes to a JSON line;
+  `report` says Kendall's tau-b against the author, same-step pairs kept
+  together, step counts and sizes, the author's sub-assemblies built on the
+  side, and new things hidden from front and back, put in under a part already
+  there, or floating at their step, each with a 95% interval from resampling
+  the files; `compare BEFORE AFTER` pairs two runs file by file. "Held" is the
+  probe's own graph (`Stability.contacts` and the joints the build check
+  reads), not the planner's. Every run first checks the measures on models
+  with known answers (a stack built from the top floats twice; a plate in a
+  deep well is hidden) and scores nothing if one is wrong; the maths is pinned
+  by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
+  against the definition).
 - `the author's steps` (`src/assembly/author_steps.gd`, `AuthorSteps`): the
   steps a model's designer gave it in Studio, LDCad, LeoCAD or Bricksmith,
   kept and changed here. A file's `0 STEP` (and `0 ROTSTEP`) lines were read
@@ -556,6 +581,9 @@ picture the assistant is shown.
   none) and each sub-model copy the step it goes on in within the one that
   places it (`BrickWorld.unit_steps`, from `LdrModel.unit_steps`; a reference
   was always written first, so a window put on in step 9 came back in step 1).
+  Sub-models one step places are built whole, one after another, in the order
+  the file lists them (`AuthorSteps.key_of` with `first_under`): sorted by the
+  step alone, 10230's five buildings went up a course of each in turn.
   `ModelStore.to_text` writes them, the autosave too, and the
   `0 !BRICKWORKS AUTHORED_STEPS` line under the model's header. A file
   Brickworks wrote with its own worked-out steps (`0 Author: Brickworks` and no
@@ -876,6 +904,10 @@ godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet co
 #   covers the Technic ordering case via models/kart.ldr, a shed whose two
 #   windows are one sub-model placed twice (a "2x" callout) and a figure, and
 #   31009 Skaters House from vendor/omr when it is there
+godot --headless --path . --script src/dev/steps_score.gd -- --selftest  # the steps score's measures give known answers
+python3 tools/minitest.py tests/test_steps_score.py                # ...and its maths (tau-b, intervals, samples)
+python3 tools/steps_score.py run --which proof --out build/steps_score/proof   # ~10 min under heavy, then
+python3 tools/steps_score.py report --out build/steps_score/proof  # the table docs/INSTRUCTIONS.md quotes
 godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 # nothing drawn standing still, every change drawn (on Xvfb: it moves the pointer)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \

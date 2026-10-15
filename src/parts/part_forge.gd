@@ -17,9 +17,12 @@
 ## rounding halves to even, as Python's round() does. A Technic hole is
 ## as the pipeline has it too: its two faces merged into the one hole
 ## (connectivity._merge_half_holes) and its bore cleared through the cover
-## (the hole half of occupancy.fill_cavities), because the maker makes
-## Technic bricks. What is still not here is the axle family, which the
-## pipeline classifies from each primitive's own description.
+## (occupancy.holes and fill_cavities), because the maker makes Technic
+## bricks; and so are a drawn hole, a bar's room for a clip and a cover
+## past its box limit (occupancy.to_boxes, whose convex hull is found here
+## exactly rather than by Qhull). What is still not here is the axle
+## family, which the pipeline classifies from each primitive's own
+## description.
 ##
 ## Primitives come from res://assets/ldraw/, the few the maker draws with,
 ## shipped with the app (CC BY 4.0, credited in docs/ATTRIBUTION.md), and
@@ -68,7 +71,8 @@ class Result extends RefCounted:
 		for c: Array in connectors:
 			var row: Array = [c[0], c[1], [_r(c[2]), _r(c[3]), _r(c[4])],
 				[_r(c[5]), _r(c[6]), _r(c[7])]]
-			if c.size() > 8:
+			# A shaft's and a bore's length and radius, and not a hinge's.
+			if c.size() > 8 and (c[0] == "shaft" or c[0] == "bore"):
 				row.append_array([_r(c[8]), _r(c[9])])
 			joined.append(row)
 		joined.sort_custom(PartForge._before)
@@ -687,7 +691,23 @@ const CONNECTORS: Dictionary = {
 ## classifies from each primitive's own description and only Technic parts
 ## draw with. A second copy of that list would drift, and nothing the maker
 ## makes has one. A part embedded from elsewhere that uses them builds
-## without those connectors.
+## without those connectors. So connectivity._without_axle_edges has
+## nothing to drop here: the edge pieces it drops are axle-hole primitives.
+
+## connectivity._UNDRAWN: holes a file draws without a hole primitive, in
+## its own frame, [kind, position, axis]. 3648s02 is an eighth of the 24
+## tooth gear's centre axle hole.
+const UNDRAWN: Dictionary = {
+	"3648s02": [["axle_hole", [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
+}
+## connectivity._BALL_SPHERE and BALL_RADIUS: a whole sphere a Joint-8
+## ball's size drawn on its own, a towball, is a ball.
+const BALL_SPHERE := "8-8sphe"
+const BALL_RADIUS := 8.0
+## connectivity._PLAIN_HOLES: parts whose Technic holes are plain cylinders.
+const PLAIN_HOLES: Array[String] = ["3709b", "3738", "32001", "6542a", "6573", "4141",
+	"73071"]
+const PLAIN_HOLE_RADIUS := 6.0
 
 
 func _connectors(name: String) -> Array:
@@ -712,10 +732,57 @@ func _connectors(name: String) -> Array:
 			continue
 		seen[key] = true
 		unique.append(c)
+	var round_ones: Array = _rounds(name)
 	var merged: Array = _merge_half_holes(unique)
-	merged.append_array(_rounds(name))
+	merged.append_array(_plain_holes(_stem(name), round_ones, merged))
+	merged.append_array(round_ones)
 	merged.append_array(rounds_said)
 	return merged
+
+
+static func _stem(file: String) -> String:
+	var stem: String = file.get_file()
+	return stem.substr(0, stem.length() - 4) if stem.ends_with(".dat") else stem
+
+
+## connectivity._plain_holes: a pin hole at the middle of each whole bore
+## of a Technic hole's size, for a part in [constant PLAIN_HOLES], where it
+## has no hole on that line already.
+static func _plain_holes(stem: String, round_ones: Array, holes: Array) -> Array:
+	var out: Array = []
+	if not PLAIN_HOLES.has(stem):
+		return out
+	for bore: Array in round_ones:
+		if bore[0] != "bore" or absf(float(bore[9]) - PLAIN_HOLE_RADIUS) > 0.1 \
+				or float(bore[10]) < 0.99:
+			continue
+		var taken: bool = false
+		for h: Array in holes:
+			if HOLE_KINDS.has(str(h[0])) and _on_round(h, bore, 2.0):
+				taken = true
+				break
+		if taken:
+			continue
+		var half: float = float(bore[8]) * 0.5
+		out.append(["pin_hole", "neutral", float(bore[2]) + float(bore[5]) * half,
+			float(bore[3]) + float(bore[6]) * half, float(bore[4]) + float(bore[7]) * half,
+			bore[5], bore[6], bore[7]])
+	return out
+
+
+## connectivity._on_round: whether a connector lies on a round's line within
+## its length, give or take slack, and its axis runs along it.
+static func _on_round(c: Array, round_one: Array, slack: float) -> bool:
+	var axis := PackedFloat64Array([c[5], c[6], c[7]])
+	var way := PackedFloat64Array([round_one[5], round_one[6], round_one[7]])
+	if absf(absf(_dot(axis, way)) - 1.0) > 0.01:
+		return false
+	var gap := PackedFloat64Array([float(c[2]) - float(round_one[2]),
+		float(c[3]) - float(round_one[3]), float(c[4]) - float(round_one[4])])
+	var along: float = _dot(gap, way)
+	var across: PackedFloat64Array = _sub(gap, _scaled(way, along))
+	return _length(across) <= 0.1 and -slack <= along \
+		and along <= float(round_one[8]) + slack
 
 
 ## The connectors a part file states in `0 !BRICKWORKS CONNECTOR kind
@@ -857,6 +924,21 @@ const CONTINUES: Array[String] = ["stud", "tube", "ridge"]
 const ROUND_ARC := 0.5         ## connectivity.ROUND_ARC
 const ROUND_LENGTH := 1.0      ## connectivity.ROUND_LENGTH
 const ROUND_WIDEST := 63.75    ## connectivity.ROUND_WIDEST
+## connectivity._HINGES: a click hinge's finger or its half of a fork, by
+## primitive, [kind, y, z] of the line it turns on; HINGE_RADIUS and
+## HINGE_GAP as there.
+const HINGES: Dictionary = {
+	"clh1": ["finger", 0.0, -10.0], "clh2": ["finger", -7.0, 0.0],
+	"clh3": ["finger", 0.0, -10.0], "clh6": ["finger", 0.0, -10.0],
+	"clh6d": ["finger", 0.0, -10.0], "clh6u": ["finger", 0.0, -10.0],
+	"clh8": ["finger", 0.0, -7.0], "clh9": ["finger", -7.0, 0.0],
+	"clh12": ["finger", -7.0, 0.0], "clh13": ["finger", -7.0, 0.0],
+	"clh15": ["finger", 0.0, -10.0],
+	"clh4": ["fork", 0.0, 4.0], "clh5": ["fork", 0.0, 10.0], "clh7": ["fork", 0.0, 4.0],
+	"clh10": ["fork", 0.0, 4.0], "clh11": ["fork", 0.0, 4.0], "clh14": ["fork", 0.0, 10.0],
+}
+const HINGE_RADIUS := 6.0
+const HINGE_GAP := 3.0
 
 
 func _rounds(name: String) -> Array:
@@ -898,6 +980,10 @@ func _round_walk(name: String, transform: PackedFloat64Array, invert: bool,
 		var stem: String = file.get_file()
 		if stem.ends_with(".dat"):
 			stem = stem.substr(0, stem.length() - 4)
+		if HINGES.has(stem):
+			# A leaf: what it is drawn with is its teeth, not a round.
+			_hinge_piece(found, stem, child)
+			continue
 		var surface: RegExMatch = _surface.search(stem)
 		if surface != null:
 			if sure and (bool(keep[1]) if child_invert else bool(keep[0])):
@@ -949,6 +1035,18 @@ static func _add_piece(found: Array, at: PackedFloat64Array, inward: bool, arc: 
 		arc, continues])
 
 
+## connectivity._hinge_piece: a click hinge's finger, or its half of a
+## fork, as a length of round on the line it turns on.
+static func _hinge_piece(found: Array, stem: String, at: PackedFloat64Array) -> void:
+	var hinge: Array = HINGES[stem]
+	var low: float = -HINGE_GAP if hinge[0] == "finger" else 0.0
+	var start: PackedFloat64Array = _point(at, low, hinge[1], hinge[2])
+	var end: PackedFloat64Array = _point(at, HINGE_GAP, hinge[1], hinge[2])
+	if _length(_sub(end, start)) < 1e-6:
+		return
+	found.append([hinge[0], HINGE_RADIUS, start, end, 1.0, false])
+
+
 static func _dot(a: PackedFloat64Array, b: PackedFloat64Array) -> float:
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
@@ -990,7 +1088,7 @@ static func _merge_rounds(pieces: Array) -> Array:
 		if not placed:
 			lines.append([piece[0], piece[1], way, foot, [member]])
 
-	## [kind, radius, way, foot, low, high, continues only].
+	## [kind, radius, way, foot, low, high, continues only, arc].
 	var found: Array = []
 	for line: Array in lines:
 		var members: Array = line[4]
@@ -1028,7 +1126,7 @@ static func _merge_rounds(pieces: Array) -> Array:
 				radius += float((m[2] as Array)[1])
 				continues = continues and bool((m[2] as Array)[5])
 			found.append([line[0], radius / cluster.size(), line[2], line[3], low, high,
-				continues])
+				continues, minf(arc, 1.0)])
 
 	var out: Array = []
 	for f: Array in found:
@@ -1048,8 +1146,11 @@ static func _merge_rounds(pieces: Array) -> Array:
 			continue
 		var way: PackedFloat64Array = f[2]
 		var at: PackedFloat64Array = _add(f[3], _scaled(way, float(f[4])))
-		out.append([f[0], "male" if f[0] == "shaft" else "female", at[0], at[1], at[2],
-			way[0], way[1], way[2], float(f[5]) - float(f[4]), f[1]])
+		# How far round it goes rides along after the radius, for
+		# occupancy.holes; nothing written carries it.
+		out.append([f[0], "male" if f[0] == "shaft" or f[0] == "finger" else "female",
+			at[0], at[1], at[2], way[0], way[1], way[2], float(f[5]) - float(f[4]), f[1],
+			f[7]])
 	return out
 
 
@@ -1066,14 +1167,42 @@ func _find_connectors(name: String, transform: PackedFloat64Array, found: Array,
 		return
 	var inner: Dictionary = stack.duplicate()
 	inner[name] = true
+	for undrawn: Array in UNDRAWN.get(_stem(name), []):
+		var at: Array = undrawn[1]
+		var way: Array = undrawn[2]
+		var axis := PackedFloat64Array([
+			transform[0] * way[0] + transform[1] * way[1] + transform[2] * way[2],
+			transform[3] * way[0] + transform[4] * way[1] + transform[5] * way[2],
+			transform[6] * way[0] + transform[7] * way[1] + transform[8] * way[2]])
+		var inv: float = 1.0 / maxf(_length(axis), 1e-9)
+		var point: PackedFloat64Array = _point(transform, at[0], at[1], at[2])
+		found.append([undrawn[0], "neutral", point[0], point[1], point[2],
+			axis[0] * inv, axis[1] * inv, axis[2] * inv])
+	# Whether the reference is inside out, for a sphere: any meta line but
+	# an INVERTNEXT clears it, as connectivity._walk has it.
+	var inverted: bool = false
 	for command: Array in source.commands:
+		if int(command[0]) == 0:
+			inverted = false
+			if command[1] == "BFC":
+				for word: String in command[2]:
+					if word.to_upper() == "INVERTNEXT":
+						inverted = true
+			continue
 		if int(command[0]) != 1:
 			continue
+		var inward: bool = inverted
+		inverted = false
 		var file: String = command[3]
 		var stem: String = file.get_file()
 		if stem.ends_with(".dat"):
 			stem = stem.substr(0, stem.length() - 4)
 		var child: PackedFloat64Array = _compose(transform, command[2])
+		if stem == BALL_SPHERE:
+			var ball: Array = _ball(child, inward)
+			if not ball.is_empty():
+				found.append(ball)
+			continue
 		if CONNECTORS.has(stem):
 			var entry: Array = CONNECTORS[stem]
 			# transform_direction((0, -1, 0)), term for term: a*0 + b*-1 +
@@ -1091,6 +1220,24 @@ func _find_connectors(name: String, transform: PackedFloat64Array, found: Array,
 			found.append([entry[0], entry[1], at[0], at[1], at[2], ax, ay, az])
 			continue
 		_find_connectors(file, child, found, depth + 1, inner)
+
+
+## connectivity._ball: a ball where a whole sphere of a ball's size is drawn
+## facing out. One drawn inside out is a cavity, not a ball.
+static func _ball(at: PackedFloat64Array, inward: bool) -> Array:
+	if inward:
+		return []
+	var radii: Array[float] = [_length(PackedFloat64Array([at[0], at[3], at[6]])),
+		_length(PackedFloat64Array([at[1], at[4], at[7]])),
+		_length(PackedFloat64Array([at[2], at[5], at[8]]))]
+	if radii.max() - radii.min() > 0.1 or absf(radii[0] - BALL_RADIUS) > 0.5:
+		return []
+	var ax: float = at[0] * 0.0 + at[1] * -1.0 + at[2] * 0.0
+	var ay: float = at[3] * 0.0 + at[4] * -1.0 + at[5] * 0.0
+	var az: float = at[6] * 0.0 + at[7] * -1.0 + at[8] * 0.0
+	var inv: float = 1.0 / maxf(pow(ax * ax + ay * ay + az * az, 0.5), 1e-9)
+	var point: PackedFloat64Array = _point(at, 0.0, 0.0, 0.0)
+	return ["ball", "male", point[0], point[1], point[2], ax * inv, ay * inv, az * inv]
 
 
 # -- the mesh, as meshfile.build and write -----------------------------------
@@ -1297,6 +1444,17 @@ class Grid extends RefCounted:
 		return out
 
 
+## occupancy.TIE: how far a column's ray is moved off its cell's middle to
+## tell which side of a face the middle is on, LDU.
+const TIE := 1.3e-4
+
+
+## occupancy.voxelise. A ray up each column, and then, in the columns whose
+## middles are on an edge in plan, the ray moved a hair each way along x
+## and each way along z: what both moves along one of them agree on is
+## kept. On a face square to z the moves along x agree, on one square to x
+## the moves along z do, and on an upright face slanted in plan neither
+## does, so a cell there is inside neither part meeting on it.
 func _voxelise() -> Grid:
 	var grid := Grid.new()
 	var count: int = _tri_color.size()
@@ -1319,16 +1477,44 @@ func _voxelise() -> Grid:
 		int(ceil(hi[2] / CELL - 1e-9))) - origin
 	grid.origin = origin
 	grid.shape = Vector3i(maxi(1, extent.x), maxi(1, extent.y), maxi(1, extent.z))
-	grid.bits.resize(grid.shape.x * grid.shape.y * grid.shape.z)
+	var stabbed: Array = _stab(app, grid.origin, grid.shape, 0.0, 0.0, PackedByteArray())
+	grid.bits = stabbed[0]
+	var touchy: PackedByteArray = stabbed[1]
+	if not touchy.has(1):
+		return grid
+	var moved: Array[PackedByteArray] = []
+	for step: Array in [[TIE, 0.0], [-TIE, 0.0], [0.0, TIE], [0.0, -TIE]]:
+		moved.append(_stab(app, grid.origin, grid.shape, step[0], step[1], touchy)[0])
+	var s: Vector3i = grid.shape
+	for i: int in s.x:
+		for k: int in s.z:
+			if touchy[i * s.z + k] == 0:
+				continue
+			for j: int in s.y:
+				var n: int = (i * s.y + j) * s.z + k
+				var agreed: bool = (moved[0][n] == 1 and moved[1][n] == 1) \
+					or (moved[2][n] == 1 and moved[3][n] == 1)
+				grid.bits[n] = 1 if agreed else 0
+	return grid
+
+
+## occupancy._stab: [the cells inside by a ray up each column, dx and dz LDU
+## off its middle; the columns (x * sz + z) whose rays are within TIE of an
+## edge of a triangle in plan]. Given columns, only those are stabbed.
+static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx: float,
+		dz: float, columns: PackedByteArray) -> Array:
+	var every: bool = columns.is_empty()
 	var xs := PackedFloat64Array()
-	for i: int in grid.shape.x:
-		xs.append((float(i + origin.x) + 0.5) * CELL)
+	for i: int in shape.x:
+		xs.append((float(i + origin.x) + 0.5) * CELL + dx)
 	var zs := PackedFloat64Array()
-	for k: int in grid.shape.z:
-		zs.append((float(k + origin.z) + 0.5) * CELL)
+	for k: int in shape.z:
+		zs.append((float(k + origin.z) + 0.5) * CELL + dz)
+	var touchy := PackedByteArray()
+	touchy.resize(shape.x * shape.z)
 
 	var crossings: Dictionary = {}   ## column index -> Array of [y, direction]
-	for t: int in count:
+	for t: int in app.size() / 9:
 		var o: int = t * 9
 		var ax: float = app[o]
 		var ay: float = app[o + 1]
@@ -1347,35 +1533,51 @@ func _voxelise() -> Grid:
 		var z0: float = minf(az, minf(bz, cz))
 		var z1: float = maxf(az, maxf(bz, cz))
 		var i0: int = maxi(0, int(floor(x0 / CELL)) - origin.x)
-		var i1: int = mini(grid.shape.x - 1, int(ceil(x1 / CELL)) - origin.x)
+		var i1: int = mini(shape.x - 1, int(ceil(x1 / CELL)) - origin.x)
 		var k0: int = maxi(0, int(floor(z0 / CELL)) - origin.z)
-		var k1: int = mini(grid.shape.z - 1, int(ceil(z1 / CELL)) - origin.z)
+		var k1: int = mini(shape.z - 1, int(ceil(z1 / CELL)) - origin.z)
 		if i0 > i1 or k0 > k1:
 			continue
+		# How far each barycentric coordinate moves when the ray moves TIE,
+		# twice over: the opposite edge's length over the area. np.hypot
+		# there; its last bit could only matter to a ray an ulp from TIE.
+		var spread: float = maxf(absf(area2), 1e-300)
+		var e0: float = 2.0 * TIE * sqrt((bx - cx) * (bx - cx) + (bz - cz) * (bz - cz)) / spread
+		var e1: float = 2.0 * TIE * sqrt((cx - ax) * (cx - ax) + (cz - az) * (cz - az)) / spread
+		var e2: float = 2.0 * TIE * sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)) / spread
 		var direction: int = 1 if area2 > 0.0 else -1
 		for i: int in range(i0, i1 + 1):
 			var gx: float = xs[i]
 			for k: int in range(k0, k1 + 1):
+				if not every and columns[i * shape.z + k] == 0:
+					continue
 				var gz: float = zs[k]
 				var w0: float = ((bx - gx) * (cz - gz) - (bz - gz) * (cx - gx)) / area2
 				var w1: float = ((cx - gx) * (az - gz) - (cz - gz) * (ax - gx)) / area2
 				var w2: float = 1.0 - w0 - w1
+				if every and w0 >= -e0 and w1 >= -e1 and w2 >= -e2 \
+						and (absf(w0) <= e0 or absf(w1) <= e1 or absf(w2) <= e2):
+					touchy[i * shape.z + k] = 1
 				if w0 < 0.0 or w1 < 0.0 or w2 < 0.0:
 					continue
 				var y: float = w0 * ay + w1 * by + w2 * cy
-				var column: int = i * grid.shape.z + k
+				var column: int = i * shape.z + k
 				if not crossings.has(column):
 					crossings[column] = []
 				(crossings[column] as Array).append([y, direction])
 
+	# Up the column a face at a cell's middle counts on both sides: a part
+	# resting on another there is held by the cell under it.
+	var bits := PackedByteArray()
+	bits.resize(shape.x * shape.y * shape.z)
 	var y_base := PackedFloat64Array()
-	for j: int in grid.shape.y:
+	for j: int in shape.y:
 		y_base.append((float(j + origin.y) + 0.5) * CELL)
 	for column: int in crossings:
 		var hits: Array = crossings[column]
 		hits.sort_custom(PartForge._before)
-		var i: int = column / grid.shape.z
-		var k: int = column % grid.shape.z
+		var i: int = column / shape.z
+		var k: int = column % shape.z
 		var winding: int = 0
 		var previous: float = 0.0
 		var started: bool = false
@@ -1385,11 +1587,11 @@ func _voxelise() -> Grid:
 				var first: int = y_base.bsearch(previous, true)
 				var last: int = y_base.bsearch(height, false)
 				for j: int in range(first, last):
-					grid.put(i, j, k, 1)
+					bits[(i * shape.y + j) * shape.z + k] = 1
 			winding += int(hit[1])
 			previous = height
 			started = true
-	return grid
+	return [bits, touchy]
 
 
 func _remove_studs(grid: Grid, connectors: Array) -> Grid:
@@ -1450,50 +1652,147 @@ static func _trim(grid: Grid) -> Grid:
 	return out
 
 
-## Close each horizontal layer's enclosed voids: scipy's binary_fill_holes,
-## which fills whatever empty cells cannot reach the layer's edge through
-## empty cells, four ways. Then, where a connector says there is a hole,
-## clear its bore, as occupancy.fill_cavities does: a pin goes into a
-## Technic hole, so the hole cannot be cover.
+## occupancy.fill_cavities. Each horizontal layer's enclosed voids closed
+## ([method _fill_holes]), with the part's holes ([method _holes]) plugged
+## while it fills, so a hole through a wall into a cavity does not open the
+## cavity, and cleared after: a pin goes into a Technic hole, so the hole
+## cannot be cover. Then the fill is taken back from a column with no
+## plastic in it at any height, away from a stud's line (a ring plate's
+## middle), and from the room round a bar a clip goes on.
 func _fill_cavities(grid: Grid, connectors: Array = []) -> Grid:
 	if grid.count() == 0:
 		return grid
+	var s: Vector3i = grid.shape
+	var before: PackedByteArray = grid.bits
+	var found: Array = _holes(connectors)
+	var bores := PackedByteArray()
+	var plugged: PackedByteArray = before.duplicate()
+	if not found.is_empty():
+		bores = _bore(grid, found, false)
+		for n: int in plugged.size():
+			if bores[n] == 1:
+				plugged[n] = 1
 	var out: Grid = grid.copy()
-	for y: int in grid.shape.y:
-		var layer := PackedByteArray()
-		layer.resize(grid.shape.x * grid.shape.z)
-		for x: int in grid.shape.x:
-			for z: int in grid.shape.z:
-				layer[x * grid.shape.z + z] = grid.at(x, y, z)
-		var filled: PackedByteArray = _fill_holes(layer, grid.shape.x, grid.shape.z)
-		for x: int in grid.shape.x:
-			for z: int in grid.shape.z:
-				out.put(x, y, z, filled[x * grid.shape.z + z])
-	_clear_bores(out, connectors)
+	var layer := PackedByteArray()
+	layer.resize(s.x * s.z)
+	for y: int in s.y:
+		for x: int in s.x:
+			for z: int in s.z:
+				layer[x * s.z + z] = plugged[(x * s.y + y) * s.z + z]
+		var filled: PackedByteArray = _fill_holes(layer, s.x, s.z)
+		for x: int in s.x:
+			for z: int in s.z:
+				out.bits[(x * s.y + y) * s.z + z] = filled[x * s.z + z]
+
+	# A hole right through, top to bottom, is a closed ring in every layer
+	# too, but nothing is spoken for in it. Not on a stud's line, though: a
+	# stud below is held by the plastic just past its tip.
+	var near: PackedByteArray = _stud_lines(grid, connectors)
+	for x: int in s.x:
+		for z: int in s.z:
+			if near[x * s.z + z] == 1:
+				continue
+			var through: bool = true
+			for y: int in s.y:
+				if before[(x * s.y + y) * s.z + z] == 1:
+					through = false
+					break
+			if through:
+				for y: int in s.y:
+					out.bits[(x * s.y + y) * s.z + z] = 0
+
+	if not bores.is_empty():
+		for n: int in bores.size():
+			if bores[n] == 1:
+				out.bits[n] = 0
+
+	for room: Array in _clip_rooms(grid, _bars(connectors), before):
+		var lo: Vector3i = room[0]
+		var hi: Vector3i = room[1]
+		var cells: PackedByteArray = room[2]
+		var w: Vector3i = hi - lo
+		for x: int in range(lo.x, hi.x):
+			for y: int in range(lo.y, hi.y):
+				for z: int in range(lo.z, hi.z):
+					var n: int = (x * s.y + y) * s.z + z
+					if cells[((x - lo.x) * w.y + y - lo.y) * w.z + z - lo.z] == 1 \
+							and before[n] == 0:
+						out.bits[n] = 0
 	return out
 
 
-## occupancy.HOLE_RADIUS.
+## occupancy.HOLE_RADIUS and DRAWN_HOLE_FIT.
 const HOLE_RADIUS := 6.0
+const DRAWN_HOLE_FIT := 0.5
 
 
-## Take every cell within a hole's radius of its axis line out of the grid,
-## within the slab the hole can touch (all of the grid for a hole at an
-## angle to it), as the hole half of occupancy.fill_cavities does.
-static func _clear_bores(grid: Grid, connectors: Array) -> void:
-	for hole: Array in connectors:
-		if not HOLE_KINDS.has(str(hole[0])):
+## occupancy.holes: every hole a pin or an axle goes into, as [point, unit
+## axis, span] in the app's axes, span [from, to] along the axis or empty
+## for the whole line. A pin or axle hole primitive's, and a drawn bore of
+## a pin's radius, all the way round, across the stud axis and not filled
+## by the part's own shaft, along its own length.
+static func _holes(connectors: Array) -> Array:
+	var out: Array = []
+	var shafts: Array = connectors.filter(func(c: Array) -> bool: return c[0] == "shaft")
+	for c: Array in connectors:
+		var span: Array = []
+		if HOLE_KINDS.has(str(c[0])):
+			pass
+		elif c[0] == "bore" and absf(float(c[9]) - HOLE_RADIUS) <= DRAWN_HOLE_FIT \
+				and _arc(c) >= 1.0 - 1e-6 and absf(float(c[6])) < 0.99 \
+				and not shafts.any(func(shaft: Array) -> bool: return _fills(shaft, c)):
+			span = [0.0, float(c[8])]
+		else:
 			continue
 		# The connectors are in LDraw's axes and the grid in the app's.
-		var point: Array[float] = [float(hole[2]), -float(hole[3]), -float(hole[4])]
-		var axis: Array[float] = [float(hole[5]), -float(hole[6]), -float(hole[7])]
+		var axis := PackedFloat64Array([float(c[5]), -float(c[6]), -float(c[7])])
 		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
 		if length < 1e-9:
 			continue
-		axis = [axis[0] / length, axis[1] / length, axis[2] / length]
+		out.append([PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])]),
+			PackedFloat64Array([axis[0] / length, axis[1] / length, axis[2] / length]), span])
+	return out
+
+
+## A round's arc; a round a file states for itself has none.
+static func _arc(c: Array) -> float:
+	return float(c[10]) if c.size() > 10 else 0.0
+
+
+## occupancy._fills: whether a part's own shaft stands inside one of its
+## bores, as a hinge's pin does in its eye.
+static func _fills(shaft: Array, bore: Array) -> bool:
+	if float(shaft[9]) < float(bore[9]) - 1.0 or float(shaft[9]) > float(bore[9]) + DRAWN_HOLE_FIT:
+		return false
+	var way := PackedFloat64Array([shaft[5], shaft[6], shaft[7]])
+	var axis := PackedFloat64Array([bore[5], bore[6], bore[7]])
+	if absf(_dot(way, axis)) < 0.999:
+		return false
+	var gap := PackedFloat64Array([float(shaft[2]) - float(bore[2]),
+		float(shaft[3]) - float(bore[3]), float(shaft[4]) - float(bore[4])])
+	if _length(_sub(gap, _scaled(axis, _dot(gap, axis)))) > 1.0:
+		return false
+	var a: float = _dot(gap, axis)
+	var b: float = a + float(shaft[8]) * _dot(way, axis)
+	return minf(maxf(a, b), float(bore[8])) - maxf(minf(a, b), 0.0) > 1.0
+
+
+## occupancy._bore: the cells within a hole's radius of its axis, as a mask
+## of the grid, within the slab the hole can touch (all of the grid for a
+## hole at an angle to it); along a drawn hole's own length unless
+## whole_line.
+static func _bore(grid: Grid, found: Array, whole_line: bool) -> PackedByteArray:
+	var s: Vector3i = grid.shape
+	var bore := PackedByteArray()
+	bore.resize(s.x * s.y * s.z)
+	for hole: Array in found:
+		var point: PackedFloat64Array = hole[0]
+		var axis: PackedFloat64Array = hole[1]
+		var span: Array = hole[2]
+		var bounded: bool = not span.is_empty() and not whole_line
 		var square: bool = maxf(absf(axis[0]), maxf(absf(axis[1]), absf(axis[2]))) > 0.99
 		var lo := Vector3i.ZERO
-		var hi := Vector3i(grid.shape)
+		var hi := Vector3i(s)
 		var empty: bool = false
 		for n: int in 3:
 			if not square or absf(axis[n]) > 0.99:
@@ -1501,7 +1800,7 @@ static func _clear_bores(grid: Grid, connectors: Array) -> void:
 			var middle: float = point[n] / CELL - grid.origin[n]
 			var reach: float = HOLE_RADIUS / CELL + 1.0
 			lo[n] = maxi(0, int(floor(middle - reach)))
-			hi[n] = mini(grid.shape[n], int(ceil(middle + reach)) + 1)
+			hi[n] = mini(s[n], int(ceil(middle + reach)) + 1)
 			if lo[n] >= hi[n]:
 				empty = true
 		if empty:
@@ -1516,10 +1815,119 @@ static func _clear_bores(grid: Grid, connectors: Array) -> void:
 					var px: float = dx - along * axis[0]
 					var py: float = dy - along * axis[1]
 					var pz: float = dz - along * axis[2]
-					if px * px + py * py + pz * pz <= HOLE_RADIUS * HOLE_RADIUS:
-						grid.put(x, y, z, 0)
+					if px * px + py * py + pz * pz > HOLE_RADIUS * HOLE_RADIUS:
+						continue
+					if bounded and (along < float(span[0]) or along > float(span[1])):
+						continue
+					bore[(x * s.y + y) * s.z + z] = 1
+	return bore
 
 
+## occupancy.STUD_CLEAR: how far from a stud's or a tube's upright line a
+## through hole is kept filled, LDU.
+const STUD_CLEAR := 8.0
+
+
+## occupancy._stud_lines: the columns (x * sz + z) within STUD_CLEAR of an
+## upright stud, tube or ridge of the part's.
+static func _stud_lines(grid: Grid, connectors: Array) -> PackedByteArray:
+	var s: Vector3i = grid.shape
+	var near := PackedByteArray()
+	near.resize(s.x * s.z)
+	for c: Array in connectors:
+		if not (c[0] == "stud" or c[0] == "tube" or c[0] == "ridge") \
+				or absf(float(c[6])) < 0.99:
+			continue
+		for x: int in s.x:
+			var gx: float = (float(x + grid.origin.x) + 0.5) * CELL - float(c[2])
+			for z: int in s.z:
+				# The grid's z is LDraw's turned.
+				var gz: float = (float(z + grid.origin.z) + 0.5) * CELL + float(c[4])
+				if gx * gx + gz * gz <= STUD_CLEAR * STUD_CLEAR:
+					near[x * s.z + z] = 1
+	return near
+
+
+## occupancy.BAR_RADIUS, BAR_FIT and CLIP_REACH: a bar a clip goes on, and
+## how far from its axis the clip reaches, LDU.
+const BAR_RADIUS := 4.0
+const BAR_FIT := 0.5
+const CLIP_REACH := 8.0
+
+
+## occupancy.bars: every bar a clip could be put on, across the stud axis,
+## as [point, unit axis, length] in the app's axes.
+static func _bars(connectors: Array) -> Array:
+	var out: Array = []
+	for c: Array in connectors:
+		if c[0] != "shaft" or absf(float(c[9]) - BAR_RADIUS) > BAR_FIT \
+				or absf(float(c[6])) >= 0.99 or float(c[8]) <= 0.0:
+			continue
+		var axis := PackedFloat64Array([float(c[5]), -float(c[6]), -float(c[7])])
+		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
+		if length < 1e-9:
+			continue
+		out.append([PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])]),
+			PackedFloat64Array([axis[0] / length, axis[1] / length, axis[2] / length]),
+			float(c[8])])
+	return out
+
+
+## occupancy._clip_rooms: each bar with room round it for a clip, as [low
+## corner, high corner] of the window of the grid it is in and the cells
+## within CLIP_REACH of its axis, along it, there (x slowest). Room is no
+## plastic between the bar's own cells and CLIP_REACH: a minifigure hip's
+## pin inside its legs has none.
+static func _clip_rooms(grid: Grid, gripped: Array, plastic: PackedByteArray) -> Array:
+	var out: Array = []
+	var s: Vector3i = grid.shape
+	for bar: Array in gripped:
+		var point: PackedFloat64Array = bar[0]
+		var axis: PackedFloat64Array = bar[1]
+		var length: float = bar[2]
+		var lo := Vector3i.ZERO
+		var hi := Vector3i.ZERO
+		var empty: bool = false
+		for n: int in 3:
+			var far: float = point[n] + axis[n] * length
+			var low: float = (minf(point[n], far) - CLIP_REACH) / CELL - grid.origin[n]
+			var high: float = (maxf(point[n], far) + CLIP_REACH) / CELL - grid.origin[n]
+			lo[n] = maxi(0, int(floor(low)))
+			hi[n] = mini(s[n], int(ceil(high)) + 1)
+			if lo[n] >= hi[n]:
+				empty = true
+		if empty:
+			continue
+		var w: Vector3i = hi - lo
+		var room := PackedByteArray()
+		room.resize(w.x * w.y * w.z)
+		var held: bool = false
+		for x: int in range(lo.x, hi.x):
+			var dx: float = (float(x + grid.origin.x) + 0.5) * CELL - point[0]
+			for y: int in range(lo.y, hi.y):
+				var dy: float = (float(y + grid.origin.y) + 0.5) * CELL - point[1]
+				for z: int in range(lo.z, hi.z):
+					var dz: float = (float(z + grid.origin.z) + 0.5) * CELL - point[2]
+					var along: float = dx * axis[0] + dy * axis[1] + dz * axis[2]
+					var px: float = dx - along * axis[0]
+					var py: float = dy - along * axis[1]
+					var pz: float = dz - along * axis[2]
+					var off: float = px * px + py * py + pz * pz
+					if off > CLIP_REACH * CLIP_REACH or along < 0.0 or along > length:
+						continue
+					room[((x - lo.x) * w.y + y - lo.y) * w.z + z - lo.z] = 1
+					# The bar's own cells are those whose middles are in it, and
+					# the nearest middles outside it a cell's half diagonal on.
+					if off > (BAR_RADIUS + CELL * 0.5) * (BAR_RADIUS + CELL * 0.5) \
+							and plastic[(x * s.y + y) * s.z + z] == 1:
+						held = true
+		if not held:
+			out.append([lo, hi, room])
+	return out
+
+
+## scipy's binary_fill_holes on one layer: the empty cells that cannot reach
+## the layer's edge through empty cells, four ways, filled.
 static func _fill_holes(mask: PackedByteArray, sx: int, sz: int) -> PackedByteArray:
 	var outside := PackedByteArray()
 	outside.resize(sx * sz)
@@ -1551,19 +1959,121 @@ static func _fill_holes(mask: PackedByteArray, sx: int, sz: int) -> PackedByteAr
 	return out
 
 
-static func _to_boxes(grid: Grid) -> Array:
-	var boxes: Array = []
+## occupancy.to_boxes' numbers: how many times its cells a bounding box
+## may be before it is too much air to stand for the part (MOSTLY_AIR); the
+## grains, in cells, a cover past its limit is tried at, and the most boxes
+## it may take at one; how near a bar's or a hole's line, and how far along
+## a hole the connectors give no depth, a coarse cover stays exact, LDU; the
+## share of the hull a flat face must be to cut it; the boxes a hole and a
+## bar with room round it bring; and the most a carved bounding box takes.
+const MOSTLY_AIR := 3.0
+const COARSE_GRAINS: Array[int] = [1, 2, 3, 4, 6, 8]
+const COARSE_LIMIT := 768
+const JOINT_ROOM := 24.0
+const HOLE_LINE := 40.0
+const FLAT_FACE := 0.02
+const HOLE_BOXES := 16
+const BAR_BOXES := 24
+const CARVED_LIMIT := 2048
+
+
+## occupancy.to_boxes: the occupied cells as a few boxes, exact while they
+## fit MOST_BOXES, and HOLE_BOXES more for each hole and BAR_BOXES for each
+## bar with room for a clip. Past that a curve whose bounding box is mostly
+## air keeps its own cells; the rest are covered at coarser grains, exact
+## near a bar's or a hole's line and never past a big flat face of the hull;
+## and past those, by the bounding box with the holes and the bars' room
+## carved out of it.
+static func _to_boxes(grid: Grid, connectors: Array = []) -> Array:
 	if grid.count() == 0:
-		return boxes
-	var remaining: PackedByteArray = grid.bits.duplicate()
+		return []
 	var s: Vector3i = grid.shape
+	var size: int = s.x * s.y * s.z
+	var found: Array = _holes(connectors)
+	var gripped: Array = _bars(connectors)
+	var rooms: Array = _clip_rooms(grid, gripped, grid.bits)
+	var allowed: int = mini(MOST_BOXES + HOLE_BOXES * found.size()
+		+ BAR_BOXES * rooms.size(), CARVED_LIMIT)
+	var boxes: Variant = _greedy(grid.bits, s, grid.origin, allowed)
+	if boxes != null:
+		return boxes
+
+	var box: Array = _bounding_box(grid)
+	var bounds := PackedByteArray()
+	bounds.resize(size)
+	for x: int in range(box[0] - grid.origin.x, box[0] - grid.origin.x + box[3]):
+		for y: int in range(box[1] - grid.origin.y, box[1] - grid.origin.y + box[4]):
+			for z: int in range(box[2] - grid.origin.z, box[2] - grid.origin.z + box[5]):
+				bounds[(x * s.y + y) * s.z + z] = 1
+	if box[3] * box[4] * box[5] > MOSTLY_AIR * grid.count():
+		var exact: Variant = _greedy(grid.bits, s, grid.origin, CARVED_LIMIT)
+		if exact != null:
+			return exact
+	var whole: Array = [box]
+	var carved := PackedByteArray()
+	if not found.is_empty() or not rooms.is_empty():
+		carved = _bore(grid, found, true)
+		for room: Array in rooms:
+			var lo: Vector3i = room[0]
+			var hi: Vector3i = room[1]
+			var cells: PackedByteArray = room[2]
+			var w: Vector3i = hi - lo
+			for x: int in range(lo.x, hi.x):
+				for y: int in range(lo.y, hi.y):
+					for z: int in range(lo.z, hi.z):
+						if cells[((x - lo.x) * w.y + y - lo.y) * w.z + z - lo.z] == 1:
+							carved[(x * s.y + y) * s.z + z] = 1
+
+	var lines: Array = []
+	for bar: Array in gripped:
+		lines.append([bar[0], bar[1], 0.0, bar[2]])
+	for hole: Array in found:
+		var span: Array = hole[2]
+		lines.append([hole[0], hole[1], -HOLE_LINE if span.is_empty() else span[0],
+			HOLE_LINE if span.is_empty() else span[1]])
+	var near: PackedByteArray = _near_lines(grid, lines, JOINT_ROOM)
+	# Found only past a grain of one: there the blocks are the cells, which
+	# are inside any hull of them.
+	var hull := PackedByteArray()
+	for grain: int in COARSE_GRAINS:
+		if grain > 1 and hull.is_empty():
+			hull = _in_hull(grid)
+		var blocks: PackedByteArray = _blocky(grid.bits, s, grain)
+		var blocky := PackedByteArray()
+		blocky.resize(size)
+		for n: int in size:
+			var cell: bool = grid.bits[n] == 1
+			var keep: bool = cell if near[n] == 1 else (blocks[n] == 1 and bounds[n] == 1
+				and (grain == 1 or hull[n] == 1))
+			if keep and not cell and not carved.is_empty() and carved[n] == 1:
+				keep = false
+			blocky[n] = 1 if keep else 0
+		boxes = _greedy(blocky, s, grid.origin, COARSE_LIMIT)
+		if boxes != null:
+			return boxes
+
+	if carved.is_empty():
+		return whole
+	for n: int in size:
+		if carved[n] == 1 and grid.bits[n] == 0:
+			bounds[n] = 0
+	var cut: Variant = _greedy(bounds, s, grid.origin, CARVED_LIMIT)
+	return cut if cut != null and not (cut as Array).is_empty() else whole
+
+
+## occupancy._greedy: boxes over a grid's cells, each grown from the first
+## cell left uncovered along x, then z, then y while the slab stays solid;
+## null past limit of them.
+static func _greedy(bits: PackedByteArray, s: Vector3i, origin: Vector3i, limit: int) -> Variant:
+	var boxes: Array = []
+	var remaining: PackedByteArray = bits.duplicate()
 	var cursor: int = 0
 	while true:
 		cursor = remaining.find(1, cursor)
 		if cursor < 0:
 			break
-		if boxes.size() >= MOST_BOXES:
-			return [_bounding_box(grid)]
+		if boxes.size() >= limit:
+			return null
 		var x0: int = cursor / (s.y * s.z)
 		var y0: int = (cursor / s.z) % s.y
 		var z0: int = cursor % s.z
@@ -1573,29 +2083,32 @@ static func _to_boxes(grid: Grid) -> Array:
 		var grown: bool = true
 		while grown:
 			grown = false
-			if x1 < s.x and _solid(grid, x1, x1 + 1, y0, y1, z0, z1):
+			if x1 < s.x and _solid(bits, s, x1, x1 + 1, y0, y1, z0, z1):
 				x1 += 1
 				grown = true
-			if z1 < s.z and _solid(grid, x0, x1, y0, y1, z1, z1 + 1):
+			if z1 < s.z and _solid(bits, s, x0, x1, y0, y1, z1, z1 + 1):
 				z1 += 1
 				grown = true
-			if y1 < s.y and _solid(grid, x0, x1, y1, y1 + 1, z0, z1):
+			if y1 < s.y and _solid(bits, s, x0, x1, y1, y1 + 1, z0, z1):
 				y1 += 1
 				grown = true
 		for x: int in range(x0, x1):
 			for y: int in range(y0, y1):
+				var row: int = (x * s.y + y) * s.z
 				for z: int in range(z0, z1):
-					remaining[(x * s.y + y) * s.z + z] = 0
-		boxes.append([grid.origin.x + x0, grid.origin.y + y0, grid.origin.z + z0,
+					remaining[row + z] = 0
+		boxes.append([origin.x + x0, origin.y + y0, origin.z + z0,
 			x1 - x0, y1 - y0, z1 - z0])
 	return boxes
 
 
-static func _solid(grid: Grid, x0: int, x1: int, y0: int, y1: int, z0: int, z1: int) -> bool:
+static func _solid(bits: PackedByteArray, s: Vector3i, x0: int, x1: int, y0: int, y1: int,
+		z0: int, z1: int) -> bool:
 	for x: int in range(x0, x1):
 		for y: int in range(y0, y1):
+			var row: int = (x * s.y + y) * s.z
 			for z: int in range(z0, z1):
-				if grid.at(x, y, z) == 0:
+				if bits[row + z] == 0:
 					return false
 	return true
 
@@ -1611,6 +2124,422 @@ static func _bounding_box(grid: Grid) -> Array:
 					hi = Vector3i(maxi(hi.x, x), maxi(hi.y, y), maxi(hi.z, z))
 	return [grid.origin.x + lo.x, grid.origin.y + lo.y, grid.origin.z + lo.z,
 		hi.x - lo.x + 1, hi.y - lo.y + 1, hi.z - lo.z + 1]
+
+
+## occupancy._near_lines: the cells whose middles are within reach of any
+## of lines, each [point, unit axis, from, to] in LDU along it, app axes.
+## Only the box each line and its reach are in is looked at.
+static func _near_lines(grid: Grid, lines: Array, reach: float) -> PackedByteArray:
+	var s: Vector3i = grid.shape
+	var out := PackedByteArray()
+	out.resize(s.x * s.y * s.z)
+	for line: Array in lines:
+		var point: PackedFloat64Array = line[0]
+		var axis: PackedFloat64Array = line[1]
+		var low: float = line[2]
+		var high: float = line[3]
+		var lo := Vector3i.ZERO
+		var hi := Vector3i.ZERO
+		for n: int in 3:
+			var a: float = point[n] + axis[n] * low
+			var b: float = point[n] + axis[n] * high
+			lo[n] = maxi(0, int(floor((minf(a, b) - reach) / CELL)) - grid.origin[n] - 1)
+			hi[n] = mini(s[n], int(ceil((maxf(a, b) + reach) / CELL)) - grid.origin[n] + 1)
+		for x: int in range(lo.x, hi.x):
+			var dx: float = (float(x + grid.origin.x) + 0.5) * CELL - point[0]
+			for y: int in range(lo.y, hi.y):
+				var dy: float = (float(y + grid.origin.y) + 0.5) * CELL - point[1]
+				for z: int in range(lo.z, hi.z):
+					var dz: float = (float(z + grid.origin.z) + 0.5) * CELL - point[2]
+					var along: float = clampf(dx * axis[0] + dy * axis[1] + dz * axis[2],
+						low, high)
+					var px: float = dx - along * axis[0]
+					var py: float = dy - along * axis[1]
+					var pz: float = dz - along * axis[2]
+					if px * px + py * py + pz * pz <= reach * reach:
+						out[(x * s.y + y) * s.z + z] = 1
+	return out
+
+
+## occupancy._blocky: every block of grain cells a side, from the grid's
+## corner, that has a cell occupied, occupied whole.
+static func _blocky(bits: PackedByteArray, s: Vector3i, grain: int) -> PackedByteArray:
+	if grain == 1:
+		return bits
+	var out := PackedByteArray()
+	out.resize(bits.size())
+	for bx: int in range(0, s.x, grain):
+		for by: int in range(0, s.y, grain):
+			for bz: int in range(0, s.z, grain):
+				var ex: int = mini(bx + grain, s.x)
+				var ey: int = mini(by + grain, s.y)
+				var ez: int = mini(bz + grain, s.z)
+				var occupied: bool = false
+				for x: int in range(bx, ex):
+					for y: int in range(by, ey):
+						var row: int = (x * s.y + y) * s.z
+						for z: int in range(bz, ez):
+							if bits[row + z] == 1:
+								occupied = true
+								break
+						if occupied:
+							break
+					if occupied:
+						break
+				if not occupied:
+					continue
+				for x: int in range(bx, ex):
+					for y: int in range(by, ey):
+						var row: int = (x * s.y + y) * s.z
+						for z: int in range(bz, ez):
+							out[row + z] = 1
+	return out
+
+
+## occupancy._in_hull: the cells whose middles are inside the big flat faces
+## of the occupied cells' convex hull, and every occupied cell; all of them
+## where the cells are too few or too flat for a hull. scipy's ConvexHull
+## there; here the hull is found exactly, in whole cells ([method _hull]),
+## which gives the same planes, and so cuts the same cells.
+static func _in_hull(grid: Grid) -> PackedByteArray:
+	var s: Vector3i = grid.shape
+	var whole := PackedByteArray()
+	whole.resize(s.x * s.y * s.z)
+	whole.fill(1)
+	if grid.count() < 4:
+		return whole
+	var faces: Array = _hull(_hull_points(grid))
+	if faces.is_empty():
+		return whole
+	# The hull's triangles, gathered by the plane they nearly lie in: their
+	# unit normals to a tenth, as the pipeline keys them.
+	var areas: Dictionary = {}       ## key -> summed area
+	var planes: Dictionary = {}      ## key -> { plane in lowest terms -> it }
+	for face: Array in faces:
+		var nx: int = face[0]
+		var ny: int = face[1]
+		var nz: int = face[2]
+		var size: float = sqrt(float(nx * nx + ny * ny + nz * nz))
+		var key: Vector3i = Vector3i(_rint(nx / size * 10.0), _rint(ny / size * 10.0),
+			_rint(nz / size * 10.0))
+		areas[key] = float(areas.get(key, 0.0)) + 0.5 * size
+		var common: int = _gcd(_gcd(absi(nx), absi(ny)), absi(nz))
+		var plane: Array = [nx / common, ny / common, nz / common, int(face[3]) / common]
+		if not planes.has(key):
+			planes[key] = {}
+		(planes[key] as Dictionary)["%d %d %d %d" % plane] = plane
+	var total: float = 0.0
+	for key: Vector3i in areas:
+		total += float(areas[key])
+	var cuts: Array = []
+	for key: Vector3i in areas:
+		if float(areas[key]) < FLAT_FACE * total:
+			continue
+		cuts.append_array((planes[key] as Dictionary).values())
+	# Each row along z is inside every cut between two heights.
+	var inside: PackedByteArray = grid.bits.duplicate()
+	for x: int in s.x:
+		for y: int in s.y:
+			var low: int = 0
+			var high: int = s.z - 1
+			for plane: Array in cuts:
+				var nz: int = plane[2]
+				var rest: int = int(plane[3]) - int(plane[0]) * x - int(plane[1]) * y
+				if nz > 0:
+					high = mini(high, _floor_div(rest, nz))
+				elif nz < 0:
+					low = maxi(low, -_floor_div(rest, -nz))
+				elif rest < 0:
+					high = -1
+				if low > high:
+					break
+			for z: int in range(low, high + 1):
+				inside[(x * s.y + y) * s.z + z] = 1
+	return inside
+
+
+static func _gcd(a: int, b: int) -> int:
+	while b != 0:
+		var r: int = a % b
+		a = b
+		b = r
+	return a
+
+
+static func _floor_div(a: int, b: int) -> int:
+	var q: int = a / b
+	return q - 1 if a % b != 0 and a < 0 else q
+
+
+## The points the hull can have corners at, as x, y, z triples in whole
+## cells: a corner of the hull is a corner of every slice through it, so of
+## the outline of its x slice and of its z slice, each found from the ends
+## of the slice's rows.
+static func _hull_points(grid: Grid) -> PackedInt64Array:
+	var s: Vector3i = grid.shape
+	var corner := PackedByteArray()
+	corner.resize(s.x * s.y * s.z)
+	for x: int in s.x:
+		var ends := PackedInt64Array()
+		for y: int in s.y:
+			var row: int = (x * s.y + y) * s.z
+			var first: int = -1
+			var last: int = -1
+			for z: int in s.z:
+				if grid.bits[row + z] == 1:
+					if first < 0:
+						first = z
+					last = z
+			if first < 0:
+				continue
+			ends.append_array(PackedInt64Array([y, first]))
+			if last != first:
+				ends.append_array(PackedInt64Array([y, last]))
+		var outline: PackedInt64Array = _corners(ends)
+		for n: int in outline.size() / 2:
+			corner[(x * s.y + outline[n * 2]) * s.z + outline[n * 2 + 1]] = 1
+	var out := PackedInt64Array()
+	for z: int in s.z:
+		var ends := PackedInt64Array()
+		for x: int in s.x:
+			var first: int = -1
+			var last: int = -1
+			for y: int in s.y:
+				if grid.bits[(x * s.y + y) * s.z + z] == 1:
+					if first < 0:
+						first = y
+					last = y
+			if first < 0:
+				continue
+			ends.append_array(PackedInt64Array([x, first]))
+			if last != first:
+				ends.append_array(PackedInt64Array([x, last]))
+		var outline: PackedInt64Array = _corners(ends)
+		for n: int in outline.size() / 2:
+			var x: int = outline[n * 2]
+			var y: int = outline[n * 2 + 1]
+			if corner[(x * s.y + y) * s.z + z] == 1:
+				out.append_array(PackedInt64Array([x, y, z]))
+	return out
+
+
+## The corners of the outline round (u, v) points sorted by u then v:
+## Andrew's monotone chain, with points along an edge left out.
+static func _corners(points: PackedInt64Array) -> PackedInt64Array:
+	var count: int = points.size() / 2
+	if count <= 2:
+		return points
+	var lower: PackedInt64Array = _chain(points, range(count))
+	var upper: PackedInt64Array = _chain(points, range(count - 1, -1, -1))
+	# Each ends where the other starts.
+	lower.resize(lower.size() - 2)
+	upper.resize(upper.size() - 2)
+	lower.append_array(upper)
+	return lower
+
+
+## Half of the monotone chain: the points in order, each kept while the
+## chain turns left at it.
+static func _chain(points: PackedInt64Array, order: Array) -> PackedInt64Array:
+	var chain := PackedInt64Array()
+	for n: int in order:
+		var u: int = points[n * 2]
+		var v: int = points[n * 2 + 1]
+		while chain.size() >= 4:
+			var size: int = chain.size()
+			var au: int = chain[size - 4]
+			var av: int = chain[size - 3]
+			if (chain[size - 2] - au) * (v - av) - (chain[size - 1] - av) * (u - au) > 0:
+				break
+			chain.resize(size - 2)
+		chain.append(u)
+		chain.append(v)
+	return chain
+
+
+## A convex hull being built: its points, and its faces, each three point
+## indices counter-clockwise seen from outside, the face across each edge
+## (corner k to k + 1), the plane [nx, ny, nz, d] with n.p = d on it and
+## n.p > d outside, and the points still outside it.
+class Hull extends RefCounted:
+	var points := PackedInt64Array()
+	var corners := PackedInt32Array()
+	var across := PackedInt32Array()
+	var planes := PackedInt64Array()
+	var alive := PackedByteArray()
+	var outside: Array = []
+
+	func add(a: int, b: int, c: int) -> int:
+		var p: PackedInt64Array = points
+		var ux: int = p[b * 3] - p[a * 3]
+		var uy: int = p[b * 3 + 1] - p[a * 3 + 1]
+		var uz: int = p[b * 3 + 2] - p[a * 3 + 2]
+		var vx: int = p[c * 3] - p[a * 3]
+		var vy: int = p[c * 3 + 1] - p[a * 3 + 1]
+		var vz: int = p[c * 3 + 2] - p[a * 3 + 2]
+		var nx: int = uy * vz - uz * vy
+		var ny: int = uz * vx - ux * vz
+		var nz: int = ux * vy - uy * vx
+		corners.append_array(PackedInt32Array([a, b, c]))
+		across.append_array(PackedInt32Array([-1, -1, -1]))
+		planes.append_array(PackedInt64Array([nx, ny, nz,
+			nx * p[a * 3] + ny * p[a * 3 + 1] + nz * p[a * 3 + 2]]))
+		alive.append(1)
+		outside.append([])
+		return alive.size() - 1
+
+	## How far outside a face a point is, times the face's normal's length.
+	func height(face: int, point: int) -> int:
+		return planes[face * 4] * points[point * 3] + planes[face * 4 + 1] * points[point * 3 + 1] \
+			+ planes[face * 4 + 2] * points[point * 3 + 2] - planes[face * 4 + 3]
+
+
+## The convex hull of whole-cell points (x, y, z triples), as each face's
+## plane [nx, ny, nz, d] with n.p <= d for every point: Quickhull, in
+## integers, so a face is on the hull or not with no tolerance. Empty where
+## the points are flat, which is where Qhull gives up too.
+static func _hull(points: PackedInt64Array) -> Array:
+	var count: int = points.size() / 3
+	if count < 4:
+		return []
+	var hull := Hull.new()
+	hull.points = points
+	var p: PackedInt64Array = points
+	# The first tetrahedron: two points apart along an axis, the point
+	# furthest off the line through them, the point furthest off the plane.
+	var i0: int = -1
+	var i1: int = -1
+	for axis: int in 3:
+		var low: int = 0
+		var high: int = 0
+		for i: int in count:
+			if p[i * 3 + axis] < p[low * 3 + axis]:
+				low = i
+			if p[i * 3 + axis] > p[high * 3 + axis]:
+				high = i
+		if p[low * 3 + axis] != p[high * 3 + axis]:
+			i0 = low
+			i1 = high
+			break
+	if i0 < 0:
+		return []
+	var ux: int = p[i1 * 3] - p[i0 * 3]
+	var uy: int = p[i1 * 3 + 1] - p[i0 * 3 + 1]
+	var uz: int = p[i1 * 3 + 2] - p[i0 * 3 + 2]
+	var i2: int = -1
+	var best: int = 0
+	for i: int in count:
+		var vx: int = p[i * 3] - p[i0 * 3]
+		var vy: int = p[i * 3 + 1] - p[i0 * 3 + 1]
+		var vz: int = p[i * 3 + 2] - p[i0 * 3 + 2]
+		var cx: int = uy * vz - uz * vy
+		var cy: int = uz * vx - ux * vz
+		var cz: int = ux * vy - uy * vx
+		if cx * cx + cy * cy + cz * cz > best:
+			best = cx * cx + cy * cy + cz * cz
+			i2 = i
+	if i2 < 0:
+		return []
+	var first: int = hull.add(i0, i1, i2)
+	var i3: int = -1
+	best = 0
+	for i: int in count:
+		if absi(hull.height(first, i)) > best:
+			best = absi(hull.height(first, i))
+			i3 = i
+	if i3 < 0:
+		return []
+	if hull.height(first, i3) > 0:
+		var swap: int = i1
+		i1 = i2
+		i2 = swap
+	hull = Hull.new()
+	hull.points = points
+	var faces: Array[int] = [hull.add(i0, i1, i2), hull.add(i0, i3, i1),
+		hull.add(i1, i3, i2), hull.add(i0, i2, i3)]
+	var edges: Dictionary = {}
+	for f: int in faces:
+		for k: int in 3:
+			edges[Vector2i(hull.corners[f * 3 + k], hull.corners[f * 3 + (k + 1) % 3])] = f
+	for f: int in faces:
+		for k: int in 3:
+			hull.across[f * 3 + k] = edges[Vector2i(hull.corners[f * 3 + (k + 1) % 3],
+				hull.corners[f * 3 + k])]
+	for i: int in count:
+		if i == i0 or i == i1 or i == i2 or i == i3:
+			continue
+		for f: int in faces:
+			if hull.height(f, i) > 0:
+				(hull.outside[f] as Array).append(i)
+				break
+
+	var pending: Array[int] = []
+	pending.append_array(faces)
+	while not pending.is_empty():
+		var f: int = pending.pop_back()
+		var waiting: Array = hull.outside[f]
+		if hull.alive[f] == 0 or waiting.is_empty():
+			continue
+		var apex: int = waiting[0]
+		var top: int = hull.height(f, apex)
+		for i: int in waiting:
+			if hull.height(f, i) > top:
+				top = hull.height(f, i)
+				apex = i
+		# The faces the apex is outside of, found across their edges.
+		var seen: Dictionary = {f: true}
+		var visible: Array[int] = [f]
+		var at: int = 0
+		while at < visible.size():
+			var g: int = visible[at]
+			at += 1
+			for k: int in 3:
+				var next: int = hull.across[g * 3 + k]
+				if not seen.has(next) and hull.height(next, apex) > 0:
+					seen[next] = true
+					visible.append(next)
+		# A face from each edge round them to the apex.
+		var made: Array[int] = []
+		var starting: Dictionary = {}
+		var ending: Dictionary = {}
+		for g: int in visible:
+			for k: int in 3:
+				var next: int = hull.across[g * 3 + k]
+				if seen.has(next):
+					continue
+				var a: int = hull.corners[g * 3 + k]
+				var b: int = hull.corners[g * 3 + (k + 1) % 3]
+				var face: int = hull.add(a, b, apex)
+				hull.across[face * 3] = next
+				for j: int in 3:
+					if hull.corners[next * 3 + j] == b and hull.corners[next * 3 + (j + 1) % 3] == a:
+						hull.across[next * 3 + j] = face
+				starting[a] = face
+				ending[b] = face
+				made.append(face)
+		for face: int in made:
+			hull.across[face * 3 + 1] = starting[hull.corners[face * 3 + 1]]
+			hull.across[face * 3 + 2] = ending[hull.corners[face * 3]]
+		for g: int in visible:
+			hull.alive[g] = 0
+			for i: int in hull.outside[g]:
+				if i == apex:
+					continue
+				for face: int in made:
+					if hull.height(face, i) > 0:
+						(hull.outside[face] as Array).append(i)
+						break
+			hull.outside[g] = []
+		for face: int in made:
+			if not (hull.outside[face] as Array).is_empty():
+				pending.append(face)
+
+	var out: Array = []
+	for f: int in hull.alive.size():
+		if hull.alive[f] == 1:
+			out.append([hull.planes[f * 4], hull.planes[f * 4 + 1], hull.planes[f * 4 + 2],
+				hull.planes[f * 4 + 3]])
+	return out
 
 
 ## Where a stud from below can go: the lowest plate's footprint with its
@@ -1681,15 +2610,17 @@ static func _bottom_sockets(grid: Grid) -> Array:
 ## Build a part from its text. [param others] holds files it may reference
 ## that are neither bundled nor in the library: the rest of a model file.
 ## [param library] lets references resolve into vendor/ldraw where a
-## checkout has it.
+## checkout has it. [param cover]: a part whose collision cover and
+## underside this one is, for a print, which is that part to the triangle.
 static func build(text: String, id: String, others: Dictionary = {},
-		library: bool = true) -> Result:
+		library: bool = true, cover: Lbm.PartMesh = null) -> Result:
 	var forge := PartForge.new()
 	forge._use_library = library
-	return forge._build(text, id, others)
+	return forge._build(text, id, others, cover)
 
 
-func _build(text: String, id: String, others: Dictionary) -> Result:
+func _build(text: String, id: String, others: Dictionary,
+		cover: Lbm.PartMesh = null) -> Result:
 	var result := Result.new()
 	result.id = id
 	var key: String = normalise(id + ".dat")
@@ -1735,10 +2666,23 @@ func _build(text: String, id: String, others: Dictionary) -> Result:
 			row.append_array([c[8], c[9]])     # a round's length and radius
 		result.connectors.append(row)
 
-	var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found), found)
-	result.cells = solid.count()
-	result.boxes = _to_boxes(solid)
-	result.sockets = _bottom_sockets(solid)
+	if cover != null:
+		# The plain part's own, which the pipeline made from its primitives.
+		# Rebuilt from the connectors a print states, a bore's arc is not in
+		# them (nor in an .lbm), so a print of 3816c kept the bore its hip's
+		# pin goes in filled, three boxes and 109 cells off the legs it is.
+		for box: AABB in cover.boxes:
+			result.boxes.append([roundi(box.position.x), roundi(box.position.y),
+				roundi(box.position.z), roundi(box.size.x), roundi(box.size.y),
+				roundi(box.size.z)])
+			result.cells += roundi(box.size.x * box.size.y * box.size.z)
+		for socket: Vector2 in cover.sockets:
+			result.sockets.append([socket.x, socket.y])
+	else:
+		var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found), found)
+		result.cells = solid.count()
+		result.boxes = _to_boxes(solid, found)
+		result.sockets = _bottom_sockets(solid)
 
 	result.lbm = encode(surfaces, result.bounds_min, result.bounds_max,
 		result.connectors, result.boxes, result.sockets)

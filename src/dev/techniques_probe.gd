@@ -41,6 +41,15 @@ func _run() -> void:
 	get_root().add_child(assistant)
 	await process_frame
 
+	# Those withdrawn are out of the library, each with why: said, so a
+	# shrinking library is seen. Each must name a construction that is written.
+	for name: Variant in Techniques.WITHDRAWN:
+		var written: bool = Techniques.written().any(func(one: Variant) -> bool:
+			return str((one as Dictionary)["name"]) == str(name))
+		if not written:
+			_fail("withdrawn %s is not a construction written here" % name)
+		else:
+			print("  withdrawn: %s — %s" % [name, Techniques.WITHDRAWN[name]])
 	print("  every construction in the library")
 	for one: Variant in Techniques.all():
 		var technique: Dictionary = one
@@ -88,7 +97,8 @@ func _run() -> void:
 			"z": -6, "rot": 0}]
 		for raw: Variant in technique["bricks"]:
 			var lifted: Dictionary = (raw as Dictionary).duplicate()
-			if str(lifted.get("section", "")).is_empty():
+			# A part put on another by its connectors goes where that one goes.
+			if str(lifted.get("section", "")).is_empty() and lifted.has("y"):
 				lifted["y"] = float(lifted["y"]) + 1.0
 			lifted_bricks.append(lifted)
 		var lifted_sections: Array = []

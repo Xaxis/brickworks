@@ -808,8 +808,11 @@ static func pictures_named(text: String) -> PackedStringArray:
 ## Build a print's part file with its pictures on it: [PartForge]'s build,
 ## with each TEXMAP block's faces in a surface of their own given texture
 ## coordinates and the block's picture. [param pictures] is file name ->
-## PNG bytes. The result's problem says what is missing, if anything.
-static func build(text: String, id: String, pictures: Dictionary) -> PartForge.Result:
+## PNG bytes. The result's problem says what is missing, if anything. With
+## [param library], a print of a part it has is that part's collision cover
+## and underside exactly: only its pictures are new.
+static func build(text: String, id: String, pictures: Dictionary,
+		library: PartLibrary = null) -> PartForge.Result:
 	var blocks: Array = []        ## per block: {method, points, angle, picture}
 	var lines := PackedStringArray()
 	var block: int = -1
@@ -839,7 +842,10 @@ static func build(text: String, id: String, pictures: Dictionary) -> PartForge.R
 			lines.append(" ".join(words))
 		else:
 			lines.append(raw)
-	var built: PartForge.Result = PartForge.build("\n".join(lines), id)
+	var plain: Lbm.PartMesh = null
+	if library != null and is_print(text) and not base_in(text).is_empty():
+		plain = library.mesh_for(base_in(text))
+	var built: PartForge.Result = PartForge.build("\n".join(lines), id, {}, true, plain)
 	if not built.problem.is_empty() or built.mesh == null:
 		return built
 	var mesh: Lbm.PartMesh = built.mesh

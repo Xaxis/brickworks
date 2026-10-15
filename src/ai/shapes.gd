@@ -439,6 +439,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 					plan.kept.append("%s given back, %d%% of its plates held" % [str(facing),
 						roundi(100.0 * float(covered[facing]))])
 			shells = held
+			plan.under_shells(shells)
 		if surface != "none":
 			plan.surface(surface)
 		plan.lay()
@@ -627,6 +628,11 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 ## corners), and the session built the car by hand, studs up and boxy. The
 ## wheel unit is the one the d5b car proved holds; across, the body must be
 ## 6, 8, 10 or 12 studs, an axle of that width less two.
+##
+## Each wheel's cross hole faces in, onto the axle, and its clip, which
+## takes a hubcap, out: as 75893 stands them on axle pins. The other way
+## round the axle ended in the clip's ring, which is a bar's width: by the
+## parts' real shapes it joined neither wheel and ran a LDU into each.
 const WHEEL := "18976c01"
 const AXLES: Dictionary = {6: "3705", 8: "3706", 10: "3707", 12: "3737"}
 
@@ -658,9 +664,9 @@ static func _wheels(pattern: Dictionary, solids: Array, cuts: Array, trouble: Ar
 			trouble.append("a wheel at x=%s is not under the body (x %s to %s)" % [c,
 				box.position.x, box.end.x])
 			return []
-		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0, "z": z0, "rot": 0})
+		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0, "z": z0, "rot": 2})
 		out.append({"part": WHEEL, "color": rim, "x": c - 1.5, "y": 0,
-			"z": z0 + wide - 1.5, "rot": 2})
+			"z": z0 + wide - 1.5, "rot": 0})
 		for k: int in range(z0 + 2, z0 + wide - 2):
 			out.append({"part": "32064a", "color": 0, "x": c - 1.0, "y": 2, "z": k, "rot": 0})
 		out.append({"part": AXLES[wide], "color": 0, "x": c - 0.3, "y": 3, "z": z0 + 1,
@@ -1836,9 +1842,17 @@ class Plan extends RefCounted:
 				return false
 		return true
 
-	## The core's plates: every plate of the shape but a top tile.
+	## The core's plates: every plate of the shape but a top tile, and but a
+	## plate under a shell.
 	func body(cell: Vector2i, j: int) -> bool:
-		return at(cell, j) >= 0 and not is_top(cell, j)
+		return at(cell, j) >= 0 and not is_top(cell, j) and not under_shell(cell, j)
+
+	## Whether the core's plate [param j] of [param cell] is right under a
+	## plate a shell has taken: the shell's parts lie on their sides there,
+	## and stand their edge on its top, which a stud would run into. So it is
+	## a tile, smooth or not.
+	func under_shell(cell: Vector2i, j: int) -> bool:
+		return at(cell, j) >= 0 and shelled.has(Vector3i(cell.x, j + 1, cell.y))
 
 	## Studs where course [param k] is whole, in one colour.
 	func full(k: int) -> Dictionary:
@@ -2025,7 +2039,8 @@ class Plan extends RefCounted:
 				continue
 			var cap: int = highest + 1 - top
 			var dish: Array = DISHES[d]
-			if highest < 0 or cap > int(dish[1]) + 1 or not _cap_free(low, d, top, highest):
+			var riser: int = 1 if dish.size() > 4 else 0
+			if highest < 0 or cap > int(dish[1]) + riser + 1 or not _cap_free(low, d, top, highest):
 				continue
 			var cells: Array[Vector2i] = []
 			for i: int in d:
@@ -2039,12 +2054,17 @@ class Plan extends RefCounted:
 			for i: int in 2:
 				for k: int in 2:
 					centre.append(low + Vector2i(d / 2 - 1 + i, d / 2 - 1 + k))
-			round_made.append({"part": dish[0], "color": int(run[2]), "x": low.x, "y": top,
-				"z": low.y, "rot": 0, "_cells": cells, "_h": int(dish[1]),
-				"_studs": centre, "_base": cells, "_round": true})
+			if riser > 0:
+				round_made.append({"part": dish[4], "color": int(run[2]),
+					"x": low.x + d / 2 - 1, "y": top, "z": low.y + d / 2 - 1, "rot": 0,
+					"_cells": centre, "_h": 1, "_studs": centre, "_base": centre,
+					"_round": true})
+			round_made.append({"part": dish[0], "color": int(run[2]), "x": low.x,
+				"y": top + riser, "z": low.y, "rot": 0, "_cells": cells, "_h": int(dish[1]),
+				"_studs": centre, "_base": centre if riser > 0 else cells, "_round": true})
 			var middle: float = d / 2.0 - float(crown[3]) / 2.0
 			round_made.append({"part": crown[2], "color": int(run[2]), "x": low.x + middle,
-				"y": top + int(dish[1]), "z": low.y + middle, "rot": 0,
+				"y": top + riser + int(dish[1]), "z": low.y + middle, "rot": 0,
 				"_cells": centre, "_h": 1, "_studs": [] as Array[Vector2i],
 				"_base": centre, "_round": true, "_top": true})
 			capped[low + Vector2i(d / 2, d / 2)] = top
@@ -2205,8 +2225,10 @@ class Plan extends RefCounted:
 	## The dish that crowns a round of each diameter, how many plates of it
 	## there are, as the round pattern's dome nose lays them, and the round
 	## tile over the studs at its middle and how wide: a 4 x 4 dish has one
-	## stud, the others a 2 x 2.
-	const DISHES: Dictionary = {4: ["3960", 2, "98138", 1], 6: ["44375b", 2, "14769", 2],
+	## stud, the others a 2 x 2. The 4 x 4 stands on a 2 x 2 round's four
+	## studs, the fifth: a round plate's twelve run into its underside by the
+	## parts' real shapes, as they do in BrickBench's check.
+	const DISHES: Dictionary = {4: ["3960", 2, "98138", 1, "4032a"], 6: ["44375b", 2, "14769", 2],
 		8: ["3961", 3, "14769", 2]}
 
 	## The round tiles that finish a round's top, by diameter: one whole, or
@@ -2240,8 +2262,8 @@ class Plan extends RefCounted:
 			if across > d:
 				continue
 			var off: int = (d - across) / 2
-			_quarter_tiles(low + Vector2i(off, off), across, str(ring[1]), c, j,
-				_box(low + Vector2i(off + 1, off + 1), across - 2))
+			round_made.append_array(_quarter_tiles(low + Vector2i(off, off), across,
+				str(ring[1]), c, j, _box(low + Vector2i(off + 1, off + 1), across - 2)))
 		var middle: Array[Vector2i] = []
 		for one: Variant in _box(low + Vector2i(d / 2 - 1, d / 2 - 1), 2):
 			middle.append(one)
@@ -2262,9 +2284,10 @@ class Plan extends RefCounted:
 
 	## Four corner round tiles of [param part] over the box of [param d] at
 	## [param low], each turned to lean as a quarter of a round, studs in
-	## [param skip] left to another part.
+	## [param skip] left to another part. [param top]: what shows from above.
 	func _quarter_tiles(low: Vector2i, d: int, part: String, c: int, j: int,
-			skip: Dictionary) -> void:
+			skip: Dictionary, top: bool = true) -> Array:
+		var out: Array = []
 		var mesh: Lbm.PartMesh = library.mesh_for(part)
 		var half: int = d / 2
 		var corners: Array[Vector2i] = [Vector2i(0, 0), Vector2i(half, 0), Vector2i(half, half),
@@ -2289,9 +2312,105 @@ class Plan extends RefCounted:
 					var cell: Vector2i = low + corners[n] + Vector2i(i, k)
 					if not skip.has(cell):
 						mine.append(cell)
-			round_made.append({"part": part, "color": c, "x": low.x + corners[n].x, "y": j,
+			out.append({"part": part, "color": c, "x": low.x + corners[n].x, "y": j,
 				"z": low.y + corners[n].y, "rot": rot, "_cells": mine, "_h": 1,
-				"_studs": [] as Array[Vector2i], "_base": mine, "_round": true, "_top": true})
+				"_studs": [] as Array[Vector2i], "_base": mine, "_round": true, "_top": top})
+		return out
+
+	## A round part a shell's lowest edge stands on, finished smooth under it:
+	## its top plate laid as a set tiles the rim of a round it stands a panel
+	## on, in rings of corner round tiles as far in as the shells reach, and a
+	## round plate inside them, whose studs the core over it stands on. A cat
+	## head's flanks and face stood their edges on an 8 x 8 round plate's
+	## studs, 4 LDU into each by the parts' real shapes: the lattice takes
+	## every stud for one into a socket. Where no ring is narrow enough, or
+	## the part is not a round plate, the shells give the columns over its
+	## studs back to the core, which stands on them upright.
+	func under_shells(shells: Array) -> void:
+		var kept_: Array = []
+		var added: Array = []
+		for one: Dictionary in round_made:
+			var under: Array[Vector2i] = _studs_under_shell(one)
+			if under.is_empty():
+				kept_.append(one)
+				continue
+			var ringed: Array = _ringed(one)
+			if not ringed.is_empty():
+				added.append_array(ringed)
+				continue
+			kept_.append(one)
+			for cell: Vector2i in under:
+				for shell: Dictionary in shells:
+					var mine: Dictionary = shell["cells"]
+					for key: Variant in mine.keys():
+						if (key as Vector3i).x == cell.x and (key as Vector3i).z == cell.y:
+							mine.erase(key)
+							taken.erase(key)
+							shelled.erase(key)
+		round_made = kept_ + added
+
+	## The cells of a round part's studs that a shell's plate stands right
+	## over: its own studs, read off the part, where it is a whole round.
+	func _studs_under_shell(one: Dictionary) -> Array[Vector2i]:
+		var out: Array[Vector2i] = []
+		var studs: Array = one.get("_studs", [])
+		if studs.is_empty():
+			return out
+		var over: int = roundi(float(one["y"])) + int(one.get("_h", 1))
+		var cells: Array = studs
+		var read: Array = Patterns._studs_of(library, str(one["part"]))
+		if int(one.get("rot", 0)) == 0 and read.size() == 3 \
+				and studs.size() == int(read[0]) * int(read[1]):
+			var low := Vector2i(roundi(float(one["x"])), roundi(float(one["z"])))
+			cells = []
+			for at_: Variant in read[2]:
+				cells.append(low + (at_ as Vector2i))
+		for cell: Vector2i in cells:
+			if shelled.has(Vector3i(cell.x, over, cell.y)):
+				out.append(cell)
+		return out
+
+	## [param one], a round plate, as rings of corner round tiles and the
+	## round plate inside them, the widest with no shell over it; [] where
+	## there is none.
+	func _ringed(one: Dictionary) -> Array:
+		var cells: Array = one.get("_cells", [])
+		var d: int = roundi(sqrt(float(cells.size())))
+		if int(one.get("_h", 1)) != 1 or d * d != cells.size() or not Rounds.PARTS.has(d) \
+				or str((Rounds.PARTS[d] as Dictionary).get("plate", "")) != str(one["part"]):
+			return []
+		var rings: Dictionary = {}
+		for ring: Array in TILE_RINGS:
+			rings[int(ring[0])] = str(ring[1])
+		var low := Vector2i(roundi(float(one["x"])), roundi(float(one["z"])))
+		var j: int = roundi(float(one["y"]))
+		var c: int = int(one["color"])
+		for inner: int in range(d - 2, 1, -2):
+			if not Rounds.PARTS.has(inner) or not (Rounds.PARTS[inner] as Dictionary).has("plate"):
+				continue
+			var off: int = (d - inner) / 2
+			var clear: bool = true
+			for across: int in range(d, inner, -2):
+				clear = clear and rings.has(across)
+			# No shell over any stud the plate inside may have.
+			for at_: Variant in _box(low + Vector2i(off, off), inner):
+				clear = clear and not shelled.has(Vector3i((at_ as Vector2i).x, j + 1,
+					(at_ as Vector2i).y))
+			if not clear:
+				continue
+			var out: Array = []
+			for across: int in range(d, inner, -2):
+				var o: int = (d - across) / 2
+				out.append_array(_quarter_tiles(low + Vector2i(o, o), across, str(rings[across]),
+					c, j, _box(low + Vector2i(o + 1, o + 1), across - 2), false))
+			var middle: Array[Vector2i] = []
+			for at_: Variant in _box(low + Vector2i(off, off), inner):
+				middle.append(at_)
+			out.append({"part": str(Rounds.PARTS[inner]["plate"]), "color": c,
+				"x": low.x + off, "y": j, "z": low.y + off, "rot": 0, "_cells": middle,
+				"_h": 1, "_studs": middle, "_base": middle, "_round": true})
+			return out
+		return []
 
 	## Whether nothing of the box at [param low], [param d] studs across,
 	## from plate [param from] to [param to], is taken or another colour's.
@@ -2591,6 +2710,21 @@ class Plan extends RefCounted:
 						mine[key] = true
 					else:
 						outside.append(key)
+		# Not over a side-stud brick another shell laid: its studs stand up
+		# out of its top, and a plate on its side over one stands its edge on
+		# them. A cat head's front flank stood 4 LDU into the studs of its
+		# side flanks' 1 x 4s by the parts' real shapes, which the lattice,
+		# taking every stud for one into a socket, could not see. That column
+		# is the core's, laid upright on the studs.
+		var studs_up: Dictionary = {}    ## Vector2i column -> the plate they stand into
+		for one: Dictionary in anchors:
+			for cell: Vector2i in one["_cells"]:
+				studs_up[cell] = int(one["y"]) + int(one["_h"])
+		for key: Variant in mine.keys():
+			var column := Vector2i((key as Vector3i).x, (key as Vector3i).z)
+			if studs_up.has(column) and int(studs_up[column]) >= bottom \
+					and int(studs_up[column]) < top:
+				mine.erase(key)
 		for key: Variant in mine:
 			taken[key] = true
 			shelled[key] = true
@@ -2629,6 +2763,9 @@ class Plan extends RefCounted:
 					free = free and at(cell, jb + n) >= 0 \
 						and not taken.has(Vector3i(cell.x, jb + n, cell.y)) \
 						and not Shapes.is_glass(library, at(cell, jb + n))
+				# Nor with its own studs up into a shell laid before: the same
+				# edge on studs, from under it.
+				free = free and not shelled.has(Vector3i(cell.x, jb + 3, cell.y))
 				lanes.append([a, cell, at(cell, jb + 1)] if free else [])
 			# Runs of lanes side by side in one colour, each held by side-stud
 			# bricks as long as fit, laid the same from either end so a side
@@ -3882,12 +4019,15 @@ class Plan extends RefCounted:
 						covered[Vector3i(cell.x, j + n, cell.y)] = true
 			var plates: Dictionary = {}
 			var tops: Dictionary = {}
+			var under: Dictionary = {}
 			for key: Variant in columns:
 				var cell: Vector2i = key
 				if at(cell, j) < 0 or not _free(covered, cell, j):
 					continue
 				if is_top(cell, j):
 					tops[cell] = at(cell, j)
+				elif under_shell(cell, j):
+					under[cell] = at(cell, j)
 				else:
 					plates[cell] = at(cell, j)
 			for one: Dictionary in _wedged(plates, j):
@@ -3897,9 +4037,15 @@ class Plan extends RefCounted:
 			for one: Dictionary in _layer(tops, j, Shapes.TOPS, -1):
 				one["_top"] = true
 				made.append(_annotated(one, Shapes.TOPS, 1, false))
+			# Under a shell, tiles too, but no top's: a top colour is for what
+			# shows from above.
+			for one: Dictionary in _layer(under, j, Shapes.TOPS, -1):
+				made.append(_annotated(one, Shapes.TOPS, 1, false))
 			for key: Variant in plates:
 				covered[Vector3i((key as Vector2i).x, j, (key as Vector2i).y)] = true
 			for key: Variant in tops:
+				covered[Vector3i((key as Vector2i).x, j, (key as Vector2i).y)] = true
+			for key: Variant in under:
 				covered[Vector3i((key as Vector2i).x, j, (key as Vector2i).y)] = true
 		return made
 

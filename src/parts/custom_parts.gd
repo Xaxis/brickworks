@@ -101,7 +101,7 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
 			if pictures.has(name.to_lower()):
 				pictures[name] = pictures[name.to_lower()]
-		built = PartPrints.build(text, id, pictures)
+		built = PartPrints.build(text, id, pictures, library)
 	else:
 		built = PartForge.build(text, id, sources)
 	if not built.problem.is_empty():

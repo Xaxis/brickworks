@@ -2,6 +2,7 @@
 """Brickworks' designer on BrickBench's Model setting, run here and judged against BrickAgent.
 
     python3 tools/bench/brickbench.py prompts --upstream DIR    the ten prompts, the brief each is given
+                                              [--skip 10]       ...or the ten after them, held out
     python3 tools/bench/brickbench.py parts --upstream DIR      BrickNet's parts, as --parts-only reads them
     heavy python3 tools/bench/brickbench.py design [--tasks model-001,...] [--jobs 2]
     python3 tools/bench/brickbench.py export --python PY        model.mpd and build.py for each design
@@ -996,6 +997,8 @@ def main() -> int:
     parser.add_argument("--upstream", default="", help="a clone of BrickAgent")
     parser.add_argument("--python", default="", help="a Python with brickagent and pybullet")
     parser.add_argument("--tasks", default="", help="task ids, comma-separated; all ten if not said")
+    parser.add_argument("--skip", type=int, default=0,
+                        help="prompts: the ten after the first SKIP (10: model-011 to model-020); --start SKIP+1")
     parser.add_argument("--jobs", type=int, default=2, help="designs (at most 2) or judge calls at once")
     parser.add_argument("--timeout", type=int, default=2700, help="seconds a design may take")
     parser.add_argument("--which", default="ours,theirs", help="verify: ours, theirs or both")
@@ -1009,6 +1012,10 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=1, help="designs a prompt in each arm")
     parser.add_argument("--app", default="", help="design: the checkout whose app designs (this one)")
     args = parser.parse_args()
+    # Two ways of saying where the ten start, from two units merged together:
+    # --skip N is the ten after the first N, the same as --start N+1.
+    if args.skip and args.start == 1:
+        args.start = args.skip + 1
     batch = batch_dir(args.date)
     stages = {"prompts": do_prompts, "parts": do_parts, "design": do_design, "export": do_export,
               "verify": do_verify, "zip": do_zip, "fetch": do_fetch, "views": do_views, "pairs": do_pairs}

@@ -19,16 +19,21 @@
 //
 //   1. The relay alone: initialize says it serves resources and the
 //      extension; tools/list names the viewer on its tools, and the tool
-//      count is the app's 47 and the relay's two; resources/read gives the
-//      page, self-contained.
+//      count is the app's 47, the relay's two and the viewer's own five,
+//      for its page alone; resources/read gives the page, self-contained,
+//      declaring the one origin it fetches part geometry from.
 //   2. A real tab: a design built, looked over and looked at by a session
-//      that shows pages, and the same calls by one that does not, whose
-//      answers carry nothing more and whose words and pictures are the same.
-//   3. A host, as the spec says one behaves: the page in a sandboxed frame
-//      under the spec's default content policy, the handshake answered, the
-//      real answers sent as tool-input and tool-result. The picture is
-//      drawn, the parts count shown, the turntable turns, and nothing is
-//      refused by the policy.
+//      that shows pages (the model packed and the front corner in _meta;
+//      the whole turntable from viewer_scene), and the same calls by one
+//      that does not, whose answers carry nothing more and whose words and
+//      pictures are the same.
+//   3. A host, as the spec says one behaves, in a browser that cannot draw
+//      in 3D: the page in a sandboxed frame under the policy it declares,
+//      the handshake answered, the real answers sent as tool-input and
+//      tool-result, and the page's own tool calls answered by the relay.
+//      The page asks for the turntable and shows it, the parts count, it
+//      turns, and nothing is refused by the policy.
+//      tools/web/app_host_check.mjs is the 3D page, in the reference host.
 //
 // Before 2026-10-14 the relay served no resources and named nothing, so
 // every check from 1 on failed. Costs nothing: no model is called.
@@ -69,11 +74,16 @@ const withBypass = (address) => (bypass
 const EXTENSION = "io.modelcontextprotocol/ui";
 const MIME = "text/html;profile=mcp-app";
 const URI = "ui://brickworks/model.html";
-const SHOWN = ["submit_design", "look_at_model", "view_model", "edit_model"];
-// The spec's policy for a page that declares no domains (apps.mdx, "Content
-// Security Policy"), which is what this one declares.
-const DEFAULT_CSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-  + "img-src 'self' data:; media-src 'self' data:; connect-src 'none';";
+const SHOWN = ["submit_design", "look_at_model", "view_model", "edit_model", "open_model", "brickify"];
+const VIEWER_ONLY = ["viewer_scene", "viewer_check", "viewer_steps", "viewer_parts", "viewer_pick"];
+// The policy a host builds from what the page declares (apps.mdx, "CSP
+// Construction from Metadata").
+const policyOf = (csp = {}) => {
+  const resources = (csp.resourceDomains || []).join(" ");
+  return `default-src 'none'; script-src 'self' 'unsafe-inline' ${resources}; style-src 'self' 'unsafe-inline' ${resources}; `
+    + `connect-src 'self' ${(csp.connectDomains || []).join(" ")}; img-src 'self' data: ${resources}; `
+    + `font-src 'self' ${resources}; media-src 'self' data: ${resources}; frame-src 'none'; object-src 'none';`;
+};
 
 let failures = 0;
 const check = (ok, what) => {
@@ -182,9 +192,13 @@ try {
     `tools/list names the viewer (_meta.ui.resourceUri, and "ui/resourceUri") on ${named.join(", ") || "none"}`);
   const app = JSON.parse(readFileSync(new URL("../mcp_tools.json", import.meta.url), "utf8")).map((t) => t.name);
   const names = tools.map((t) => t.name);
-  check(app.length === 47 && names.length === app.length + 2 && app.every((n) => names.includes(n))
+  const onlyApp = tools.filter((t) => VIEWER_ONLY.includes(t.name));
+  check(app.length === 47 && names.length === app.length + 2 + VIEWER_ONLY.length && app.every((n) => names.includes(n))
       && names.includes("tabs") && names.includes("select_tab"),
-    `...and the tools are the app's ${app.length} and the relay's tabs and select_tab: ${names.length}`);
+    `...and the tools are the app's ${app.length}, the relay's tabs and select_tab, and the viewer's own: ${names.length}`);
+  check(onlyApp.length === VIEWER_ONLY.length && onlyApp.every((t) => JSON.stringify(t._meta.ui.visibility) === '["app"]'
+      && t._meta.ui.resourceUri === URI),
+    `...which are for its page alone (_meta.ui.visibility ["app"]): ${onlyApp.map((t) => t.name).join(", ")}`);
   const resources = ((await viewer.ask("resources/list")).result || {}).resources || [];
   check(resources.some((r) => r.uri === URI && r.mimeType === MIME), `resources/list: ${resources.map((r) => `${r.uri} ${r.mimeType}`).join("; ") || "none"}`);
   const read = await viewer.ask("resources/read", { uri: URI });
@@ -192,9 +206,11 @@ try {
   const html = String(page.text || "");
   check(page.uri === URI && page.mimeType === MIME && /^<!doctype html>/i.test(html),
     `resources/read gives the page: ${page.mimeType}, ${html.length} characters`);
-  check(html.length > 0 && !/<(link|iframe)\b|\bsrc=["']?https?:|@import|url\(\s*["']?https?:|fetch\(|XMLHttpRequest/i.test(html),
-    "...self-contained: no font, script, style, picture or connection from anywhere");
-  check(Boolean(((page._meta || {}).ui || {}).csp), `...and says so in _meta.ui.csp: ${JSON.stringify(((page._meta || {}).ui || {}).csp)}`);
+  check(html.length > 0 && !/<(link|iframe)\b|\bsrc=["']?https?:|@import|url\(\s*["']?https?:/i.test(html),
+    "...self-contained: no font, script, style or picture from anywhere, three.js and all inline");
+  const csp = ((page._meta || {}).ui || {}).csp || {};
+  check((csp.connectDomains || []).length === 1 && /^https:\/\/[^/]+$/.test(csp.connectDomains[0]) && !(csp.resourceDomains || []).length,
+    `...and it declares the one origin it fetches from, the parts' geometry: ${JSON.stringify(csp)}`);
   const missing = await viewer.ask("resources/read", { uri: "ui://brickworks/nothing.html" });
   check(Boolean(missing.error), `an address that is not the viewer's is refused: ${missing.error?.message}`);
   if (!html) throw new Error("no page to show: the rest has nothing to load");
@@ -249,26 +265,33 @@ try {
   check(!built.result?.isError && /Built\./.test(texts(built).join(" ")),
     `submit_design builds it, in ${Math.round((Date.now() - t0) / 1000)} s: "${texts(built).join(" ").replace(/\s+/g, " ").slice(0, 70)}"`);
   // The count the app itself states, which the viewer's must be.
-  let looked = await viewer.call("look_at_model");
+  const looked = await viewer.call("look_at_model");
   const stated = Number((/(\d+) parts are on the baseplate/.exec(texts(looked).join(" ")) || [])[1]);
   check(builtShown.parts === stated && stated >= design.bricks.length,
     `...its answer's _meta carries the parts count, ${builtShown.parts}, as look_at_model states it (${stated})`);
   const turntable = (builtShown.views || []);
   const webp = (views) => views.every((v) => v.mimeType === "image/webp" && v.data.length > 1000);
-  // As many views as the tab drew in its budget (12 s), the front first.
-  check(turntable.length >= 1 && turntable[0].from === "corner" && webp(turntable),
-    `...and as much of a turntable as the budget drew, the front first: ${turntable.map((v) => `${v.from} ${Math.round(v.data.length / 1024)}k`).join(", ")}`);
+  // The front corner, to show while the 3D comes; the rest of the turntable
+  // only for a page that cannot draw in 3D, which asks (viewer_scene).
+  check(turntable.length === 1 && turntable[0].from === "corner" && webp(turntable),
+    `...and the front corner: ${turntable.map((v) => `${v.from} ${Math.round(v.data.length / 1024)}k`).join(", ")}`);
+  check((builtShown.scene || {}).v === 1 && (builtShown.scene || {}).count >= stated && /^https:\/\//.test((builtShown.scene || {}).root),
+    `...and the model packed for the page to draw in 3D: ${(builtShown.scene || {}).count} bricks, geometry from ${(builtShown.scene || {}).root}`);
   check(kinds(built).split(",").every((k) => k === "text") && !built.result?.structuredContent,
     `...while its content is words alone, as before, and there is no structuredContent (${kinds(built)})`);
-  // A turntable cut short by the budget is finished by the calls after it.
-  for (let n = 0; n < 3 && ((shownOf(looked) || {}).views || []).length < 4; n++) {
-    looked = await viewer.call("look_at_model");
-  }
-  const whole = (shownOf(looked) || {}).views || [];
-  check((shownOf(looked) || {}).parts === stated && whole.length === 4 && webp(whole),
-    `look_at_model carries the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
-  const carried = whole.reduce((n, v) => n + v.data.length, 0);
+  const lookedShown = shownOf(looked) || {};
+  check(lookedShown.parts === stated && (lookedShown.scene || {}).of === (builtShown.scene || {}).of,
+    `look_at_model carries the count and the same model packed, of ${(lookedShown.scene || {}).of}`);
+  const carried = JSON.stringify(looked.result?._meta || {}).length;
   check(carried < 100000, `...in ${carried} characters, well inside the ~150,000 claude.ai keeps in a conversation`);
+  // The whole turntable, asked for as a page that cannot draw in 3D asks.
+  let asked = await viewer.call("viewer_scene", { views: true });
+  for (let n = 0; n < 3 && ((asked.result?.structuredContent || {}).views || []).length < 4; n++) {
+    asked = await viewer.call("viewer_scene", { views: true });
+  }
+  const whole = (asked.result?.structuredContent || {}).views || [];
+  check(whole.length === 4 && webp(whole) && (asked.result?.structuredContent || {}).parts === stated,
+    `viewer_scene, views: true, gives the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
   // A picture the tab cannot draw in 20 s comes back as letters, or as a
   // job, whoever asked: on a loaded machine, asked again.
   async function aPicture(conversation) {
@@ -299,10 +322,24 @@ try {
     `...and view_model's words and picture the same (${kinds(plainViewed)})`);
   await tab.screenshot({ path: `${out}/1_tab.png`, timeout: 120000 }).catch(() => {});
 
-  console.log("\n3. a host, as the spec says one behaves");
+  console.log("\n3. a host, as the spec says one behaves, in a browser that cannot draw in 3D");
   const host = await browser.newPage({ viewport: { width: 760, height: 900 } });
   const refused = [];
   host.on("console", (m) => { if (/Content Security Policy|Refused to/i.test(m.text())) refused.push(m.text().slice(0, 200)); });
+  // No WebGL in any frame of it: the page falls back to the turntable,
+  // which it asks the tab for (viewer_scene, views) through this host.
+  await host.addInitScript(() => {
+    const given = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (kind, ...rest) {
+      return /webgl/i.test(String(kind)) ? null : given.call(this, kind, ...rest);
+    };
+  });
+  const calledByPage = [];
+  await host.exposeFunction("relayCall", async (name, input) => {
+    calledByPage.push(name);
+    const answer = await viewer.call(name, input || {});
+    return answer.result || { isError: true, content: [{ type: "text", text: answer.error?.message || "no answer" }] };
+  });
   await host.setContent(`<!doctype html><html><head><style>
     body{margin:0;padding:24px;background:#262624;font:14px system-ui}
     body.light{background:#f5f4ed} iframe{display:block;width:100%;border:0;height:200px}
@@ -320,9 +357,12 @@ try {
         window.heard.push(m.method || "answer");
         if (m.method === "ui/initialize") {
           toPage({ jsonrpc: "2.0", id: m.id, result: { protocolVersion: "2026-01-26",
-            hostInfo: { name: "model-view-check", version: "1" }, hostCapabilities: {},
+            hostInfo: { name: "model-view-check", version: "1" }, hostCapabilities: { serverTools: {} },
             hostContext: { theme, displayMode: "inline", availableDisplayModes: ["inline"],
               toolInfo: { tool: { name: tool } } } } });
+        } else if (m.method === "tools/call") {
+          window.relayCall(m.params.name, m.params.arguments)
+            .then((r) => toPage({ jsonrpc: "2.0", id: m.id, result: r }));
         } else if (m.method === "ui/notifications/initialized") {
           toPage({ jsonrpc: "2.0", method: "ui/notifications/tool-input", params: { arguments: input } });
           toPage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: result });
@@ -343,10 +383,17 @@ try {
     await host.evaluate(() => { window.size = null; window.heard = []; });
     const started = await Promise.race([
       host.evaluate(([h, t, i, r, th, p]) => window.show(h, t, i, r, th, p),
-        [html, tool, input, answer.result, theme, DEFAULT_CSP]),
+        [html, tool, input, answer.result, theme, policyOf(csp)]),
       new Promise((done) => setTimeout(() => done(false), 20000)),
     ]);
     const frame = await inFrame();
+    // Until it is showing what it will show: a picture, and done asking.
+    for (let n = 0; n < 240; n++) {
+      await host.waitForTimeout(500);
+      const settled = await frame.evaluate(() => !window.brickworksCard.fetching
+        && document.getElementById("picture").naturalWidth > 0).catch(() => false);
+      if (settled) break;
+    }
     await host.waitForTimeout(800);
     const seen = await frame.evaluate(() => {
       const img = document.getElementById("picture");
@@ -372,11 +419,10 @@ try {
   const count = `${stated.toLocaleString()} parts`;
   check(one.seen.parts === count && one.seen.name === design.name,
     `...with its name and parts count: "${one.seen.name}", "${one.seen.parts}"`);
-  // One view is a picture with its side named; more are a turntable with a
-  // button each.
-  check(one.seen.views === (turntable.length > 1 ? turntable.length : 0)
-      && (turntable.length > 1 ? /^Front right$/ : /^From the front right$/).test(one.seen.where),
-    `...as ${turntable.length > 1 ? `a turntable of ${one.seen.views}` : "one view"}: "${one.seen.where}"`);
+  // The answer carries the front corner; a page that cannot draw in 3D
+  // asks the tab, through the host, for the whole turntable, a button each.
+  check(calledByPage.includes("viewer_scene") && one.seen.views === 4 && /^Front right$/.test(one.seen.where),
+    `...as the turntable it asked the tab for (${calledByPage.join(", ") || "nothing asked"}): ${one.seen.views} views, "${one.seen.where}"`);
   check(Boolean(one.sized && one.sized.height > 150), `...and tells the host its size: ${JSON.stringify(one.sized)}`);
   await host.screenshot({ path: `${out}/2_submit_dark.png` });
 
@@ -418,7 +464,7 @@ try {
       && /From the front/.test(two.seen.where),
     `view_model: its own picture, and the count: "${two.seen.where}", "${two.seen.parts}"`);
   await host.screenshot({ path: `${out}/5_view_model.png` });
-  check(refused.length === 0, `the spec's default policy refused nothing${refused.length ? `: ${refused[0]}` : ""}`);
+  check(refused.length === 0, `the policy built from what the page declares refused nothing${refused.length ? `: ${refused[0]}` : ""}`);
 } catch (trouble) {
   if (!trouble.asked) check(false, `stopped: ${trouble.message}`);
 } finally {
