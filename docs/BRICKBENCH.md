@@ -25,7 +25,11 @@ everywhere it appears.
 | Claude Opus 5.5 in BrickAgent, their Table 1 (Model setting, 100 prompts) | 1.00 | 0.952 | 1252 | $5.90 | |
 | the same system's builds of these ten, from their gallery, verify.py run here | **1.00** (10 of 10) | | | | |
 | **Brickworks, these ten** | **0.20** (2 of 10) | not run | not run | $2.65 at API prices, $0 billed | 10 min |
+| **Brickworks, these ten, the check as strict as verify.py** (`6bbe717`, evening) | **0.90** (9 of 10) | not run | not run | $0 billed | 7 min |
+| **Brickworks, ten held out** (model-011 to 020, the same) | **0.80** (8 of 10) | not run | not run | $0 billed | 12 min |
 
+- **Valid: 9 of 10 since the evening's check, 8 of 10 held out** ("the check
+  made as strict as BrickBench's", below). The morning's run, before it:
 - **Valid: 2 of 10.** Their verify.py passed model-001 and model-004 and
   failed the other eight: seven on collisions BrickNet's colliders see and our
   check forgives, one on pieces that fall. Their Opus 5.5 builds of the same
@@ -266,6 +270,250 @@ In order, each measurable by running this again.
 
 Then send the zip, which is the only way to learn our VQA and our ELO on
 their judge.
+
+## 2026-10-14, evening: the check made as strict as BrickBench's
+
+Lever 1 above, done. Our check now judges a part by BrickNet's own shapes,
+so a design it hands over is one `verify.py` passes.
+
+**What the check reads.** `tools/build_exact.py` converts BrickNet's convex
+colliders and connector labels (MIT, Kulits and Schmid; the colliders are
+decompositions of LDraw parts) into one small file a shape,
+`assets/generated/exact/<mesh hash>.bwx`, beside the part's geometry: 15,417
+shapes for the 14,583 BrickNet parts and their aliases, 884 MB, the median
+14 KB. Each holds the part's convex pieces (vertices, face normals and edge
+directions, worked out once by Qhull) and its connectors in BrickNet's own
+order. `src/assembly/exact.gd` reads them; nothing of BrickNet's is run.
+
+**What it judges** (`src/ai/exact_check.gd`, called from `Assistant._check`,
+so check_design, submit_design, edit_model, review_model and saving all have
+it):
+
+- **Collisions by the real shapes.** Two parts collide when some piece of
+  one and some piece of the other overlap by more than 1 LDU along every axis
+  that could part them (the face normals of both and the cross products of
+  their edges: the separating axis test, exact for convex pieces, where
+  verify.py asks Bullet's EPA for the same depth). Where both parts have a
+  shape this decides, not the lattice; the lattice still finds every pair
+  worth asking about and decides for parts without one. Each collision is
+  named with its fix: a side stud pushed into a brick, a stud in a part's
+  solid, a hinge folded into its base (the tilting hinge opens one way), an
+  axle through a part with no hole on its line, a part sunk into the one
+  under it, or a part a few LDU off a connector of the other with the move
+  that seats it. Gears in mesh are forgiven, as before: a convex piece a
+  tooth cannot interleave.
+- **Held, or standing.** A piece of the design that no BrickNet connection
+  joins to the ground or to what stood before is a fault unless it would
+  stand where it is, as verify.py's two seconds of gravity find it: clear of
+  everything, square to gravity (within 8 degrees), and its centre of mass a
+  LDU inside where it touches the parts under it, read off their convex
+  pieces: corners of each within 2.5 LDU of the other and over or under it,
+  as a drop that short passes verify.py's 3 LDU. A dish lying on a round
+  brick stands, and a log in the groove of two; a tile half off a round
+  plate's edge, a tile flat against a wall, a gem on a slope, a steering
+  wheel with its centre on a brick's edge and a flower leaning 35 degrees do
+  not.
+- **Seated exactly.** Before anything is judged, a part of the design whose
+  stud, hole, hinge or bar misses another's by up to a plate (8 LDU), and that
+  meets none exactly, is moved onto it, as BrickAgent's `attach` places a part
+  by its connector; a piece of the design built on its own and set down off
+  its base moves whole; a pin put by its middle into a hole slides until its
+  collar is at the mouth. The rest past the 2 LDU lattice cell is kept as a
+  nudge on the placement, so a round part's odd LDU is reachable.
+  `add_minifig` seats a fez on its head's stud (it is drawn 16 LDU above where
+  other headgear goes) and slides a sword along its grip until the guard is
+  out of the hand. What the app moves itself it leaves overlapping by less
+  than 0.99 LDU, not 1: two parts that meet by exactly 1 LDU are a rounding
+  error either side of verify.py's limit (1.0000000000000024 for a head in a
+  breastplate, refused; under it for two parts of BrickAgent's model-004,
+  passed). The check itself judges at 1, as verify.py says.
+- **Turned on its axle.** A part and the cross axle through its cross hole
+  that collide only because the two crosses are not lined up (a wheel drawn
+  spun on its axle, as Technic sets draw them) are clear when a turn about
+  the axle of up to 45 degrees clears them: in plastic the axle turns with
+  it. A hinge, a clip on a bar, or an axle through a ring it cannot pass is
+  not forgiven.
+- **Before it is handed over.** review_model judges every part the design
+  placed, not only the last edit's, and says what is left; saving waits, twice
+  at most, until nothing collides or falls. attachment_points lists a part's
+  connectors exactly where they say more than its studs.
+
+**One case a pair kind, from our own failing designs** (`src/dev/exact_probe.gd`):
+the two parts of each pair as the design placed them, out of our designs' own
+model files, read back as a session's model is and checked as review_model
+checks. On the code before this (`fb64132`) every case came back "buildable"
+and the probe failed 17 of 21; now all 22 pass (the 22nd, below, from the
+bench run after):
+
+| pair kind (verify.py's count) | case | now |
+|---|---|---|
+| side studs pushed into the neighbour (12) | 11211 by 3003, model-008 | named: "a side stud ... pushed into" |
+| hinge plates overlapping (11) | 3937 and 3938, model-008 | named as the hinge folded into its base |
+| horns threaded on axles (6) | 2142 on 4032a and 3704, model-002 | named: at one point, one inside the other |
+| minifig accessories and heads (4) | a fez on 3626cpbd; 3847 in 3820 | named, the fez "16 LDU up, on the other's open" stud |
+| round bricks sunk into a plate (4) | 3941 in 3035, model-006 | named: a stud in its solid |
+| tiles off side studs (3) | 3070b on 30414, model-010 | seated: it was 8 LDU off, a plate |
+| crystals and gems 4 LDU off (3) | 30385 on 18674, model-005; 30153 on 3039 | seated; the gem on the slope named |
+| a dome, leaves, a bat on plates (3) | 20952 on 6141, model-009 | named |
+| decorations resting without a connection | 98138 on 74611, model-007 | not held: past the round plate's edge |
+
+and four built right say nothing (bricks stacked, a fez on its head's stud, a
+round tile on the round plate's stud, tiles on side studs), nor does a figure
+add_minifig makes with a fez and a sword, nor one in a breastplate (2587,
+model-010's head: its head stands clear of it and joined to the torso), nor
+the app's own tilting hinge at 0, 30, 60 and 90 degrees.
+
+**It sees what verify.py sees.** On the twenty builds of the first run, ours
+and BrickAgent's, `src/dev/exact_dump.gd` finds verify.py's colliding pairs
+exactly (0, 7, 1, 0, 9, 9, 0, 14, 1, 5 in ours; none in theirs), the same part
+pairs, and BrickNet's connected pieces exactly (1, 2, 2, 1, 3, 7, 7, 1, 3, 6 in
+ours; 1, 1, 1, 1, 2, 1, 1, 2, 1, 4 in theirs), in 0.02 to 0.27 s a build.
+
+**The bench again.** The same ten prompts through the same loop as the first
+run, and the next ten of BrickBench's model split held out (model-011 to 020),
+designed on the subscription two at a time from a snapshot of `6bbe717`, each
+exported and judged by BrickAgent's own `verify.py`
+(`bench/results/brickbench-2026-10-14-exact`, `-heldout`):
+
+| | valid | colliding pairs | pieces that fell | parts, mean | design time, mean |
+|---|---|---|---|---|---|
+| ours, first run (this morning) | 2 of 10 | 46, in 7 builds | 1 build | 155 | 587 s |
+| ours, the same ten now | **9 of 10** | 1, in 1 build | none | 133 | 432 s |
+| ours, ten held out | **8 of 10** | none | 2 builds, one part each | 167 | 712 s |
+| BrickAgent's Opus 5.5 | 10 of 10 | none | none | 130 | |
+
+Each of the three that failed is one part:
+
+- model-010: a minifigure's head exactly 1 LDU into its breastplate (2587),
+  which verify.py's sum puts at 1.0000000000000024. The check, judging at 1
+  LDU as verify.py says, still passes that file; the app no longer makes it:
+  add_minifig stands the head 3 LDU up its neck, clear, and what the app
+  moves it leaves under 0.99.
+- model-011: a steering wheel (16091) resting on a brick with its centre on
+  the brick's edge, joined to nothing. It tipped off. Its corners 2 LDU past
+  the edge had been counted as what it stood on.
+- model-017: a flower (98262) leaning 35 degrees on a round plate, joined to
+  nothing. It slid off. A part leaning on what it rests on now falls.
+
+Checked as review_model checks, over the twenty designs' own model files
+(the merged code), the check refuses model-011 and model-017, each for that
+one part, and passes the other eighteen: it agrees with verify.py on 19 of 20,
+and the twentieth is the 1 LDU coin's toss.
+
+The designs are smaller than the first run's on the same prompts (133 parts
+against 155) and quicker (432 s against 587): a stricter check is met by
+building less, not by more turns.
+
+**Honest on real sets.** The connection audit (`src/dev/connection_audit.gd`)
+over every 25th file of the LDraw model repository, 64 files (29,693 parts as
+the morning's code reads them, 29,931 as main's does), checked as an edit
+checks what it leaves hanging, before and after:
+
+| code | parts | floating | overlapping pairs | files worse | time |
+|---|---|---|---|---|---|
+| the morning's (`fb64132`), lattice only | 29,693 | 6,678 | 7,511 | | 1,864 s |
+| with the exact check (`6bbe717`) | 29,693 | 6,678 | **3,386** | 1 (+2 pairs) | 1,925 s |
+| main as merged (`7970de9`, connections part 4), shapes left out | 29,931 | 1,698 | 8,188 | | 1,836 s |
+| the same with the exact check (this branch) | 29,931 | 1,698 | **3,845** | 1 (+3 pairs) | 1,842 s |
+
+What the audit counts as overlapping is every pair the check would refuse in
+a set that is built in plastic, so every one is a false positive. The lattice's
+covers made 7,511 and then 8,188 of them; the real shapes clear 53 to 55% of
+those, and judge the rest exactly. Of 64 files one is worse, 8825-1 (a Technic
+set: three pairs of gears and bushings their convex pieces put inside each
+other). Floating is unchanged: the held rule is for a design's own parts.
+BrickNet's own colliders, asked directly of the same 64 sets (24,861 parts
+they cover), put 1,135 parts in 797 overlapping pairs: a set modelled in LDraw
+is not clean by them either, which is why a fault is only ever a pair the
+design is in.
+
+**What it costs.** On a model as it stands the exact check adds little; as a
+whole new design it is most of the check, and a check of over 300 parts runs on
+a worker, so the app draws on (`src/dev/exact_cost_probe.gd`, on this machine at
+a load of 37 on 24 cores, the merged code):
+
+| model | checked | whole check | of it exact | seating | collisions | pieces |
+|---|---|---|---|---|---|---|
+| station.ldr, 535 parts | as it stands | 883 ms | 9 ms | | | |
+| | an edit, one brick added | 715 ms | 17 ms | 1 ms | 1 ms | |
+| | as a whole new design | 1,917 ms | 1,423 ms | 966 ms | 181 ms | 260 ms |
+| orthanc.ldr, 9,427 parts | as it stands | 14,198 ms | 153 ms | | | |
+| | an edit, one brick added | 12,545 ms | 182 ms | 13 ms | 9 ms | |
+| | as a whole new design | 32,062 ms | 9,669 ms | 8,016 ms | 345 ms | 1,179 ms |
+
+An edit to a 9,000 part model asks about its own parts and their neighbours,
+not every stud in it. Read back as a design of its own, Orthanc has 162
+collisions and 34 pieces held by nothing by its real shapes: its prism
+sections are not in the file, so its turned walls are judged as anything else
+is.
+
+**In the browser.** The web build reads a shape from the pack if it is there
+and otherwise fetches `<hash>.bwx` from beside the geometry, six at a time, as
+it fetches a part; `tools/web_pack.py` leaves them out of the pack unless
+`--with-exact` (19 MB more for everyone), and `tools/storage_parts.py` uploads
+them with the meshes. Until they are in storage the web build checks by the
+lattice alone, as before.
+
+The Falcon Heavy's calls in Chromium on SwiftShader (`tools/web/freeze_check.mjs
+--dir=build/web`, the shapes not packed, every mesh and shape served beside the
+app as storage would serve them). The first export held the page for 7,530 ms
+in check_design: the check asked for a shape once a placement, 4,242 times,
+each a look in the pack for a file that is not there (8 of the 8.2 seconds,
+timed in the page). Asked once a part, check_design's longest frame of its
+own is 313 ms, and 256 ms in a second run. The worker's check of the Falcon
+took 22 s in the page, 12 s of it the exact check, and the page drew on. Over
+the 500 ms budget left are the build's frames and the autosave's: 577 ms on
+submit_design and 681 ms on edit_model; the code before this, the same calls
+in the same hour, 672 ms on submit_design and 879 ms on review_model. (In the
+second run the check was still out when submit_design came, so the calls
+after it were answered busy and the first build was the last call's, 1,400 ms.)
+
+**What it changed elsewhere, and what is left.**
+
+- Five worked constructions collide as they were read off their sets and are
+  out of the library until they are read again (`Techniques.WITHDRAWN`, each
+  with why): face turned sideways, wall lantern, round body lying down, two
+  rounds pinned side by side, lid or hatch raised on hinges. The anvil stands
+  on a 2 x 2 jumper (9476 stands its dish on one stud, turned 45 degrees),
+  and add_rooms lights a stair with candles.
+- A rim's wedge plates and wings give way, as a tile on a side stud does,
+  where the real shape runs into a stud of the layer under it.
+- The prism pattern's turned walls meet inside each other by their real
+  shapes, and its square summit stands on them joined by nothing BrickNet
+  sees; both are judged by the lattice until the pattern lays its corners
+  another way.
+- Probes that asserted the lattice's leniency now say what the shapes say:
+  a hinge top folded 10 degrees into its base, a pin centred in a 1-stud hole
+  with its collar inside it, a turntable stood 15 LDU off the plate's studs,
+  side studs against a wall once its tiles give way.
+- Shapes' wheels faced the wrong way: the hub's cross hole out and its clip
+  ring in, where the axle ended in a ring a bar's width and joined neither
+  wheel. Turned, as 75893 stands them, the axle ends in both cross holes and
+  the clip, which takes a hubcap, faces out.
+- A 4 x 4 dish (3960) stands on a 2 x 2 round plate's four studs, a 2 x 2 dish
+  (4740) on a jumper: a round plate's ring of studs runs 2 and 3 LDU into
+  their undersides. The round pattern's dome and ogive noses and Shapes'
+  dish crowns lay them so.
+- dress_probe's wall had side studs where its ribs stand against it, 4 LDU
+  into each rib's brick; shapes_probe's held-out car had its wheels as the
+  pattern did.
+- **Left:** face_probe's cat head. Shapes' side-stud shells and a face's disc
+  stand their lowest edge on the studs of the round plate under them, 4 LDU
+  into each, 7 pairs; the check is right, and the pattern has to lay them
+  clear (a tile there, or the shell a plate up). rooms_probe's eight floors:
+  furniture add_rooms sets on a floor off its studs (a dresser's handle plate
+  and tile 0.4 stud over, a seat on a plate, a lamp's plate 0.2 stud over)
+  meets the floor's studs, 32 pairs, and three pieces rest joined to nothing;
+  two floors pass. add_rooms has to stand those on tiles or on the grid. Both
+  probes pass with the shapes left out.
+- **Left:** the two meshes the catalogue gained with connections part 4 have
+  no exact shape yet, nor do 32 of its 68 moved parts, so those are judged by
+  the lattice alone; `tools/build_exact.py --only` builds those BrickNet has.
+  `detail_probe`, `print_probe` and
+  `tests/test_elements.py::test_pipeline_json_is_what_the_pipeline_makes_now`
+  fail on main too; nothing here touches them.
+- The desktop release carries `assets/generated/` whole, so it grows by the
+  884 MB of shapes unless the export filters them.
 
 ## Repeat it
 

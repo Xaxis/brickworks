@@ -1410,11 +1410,14 @@ static func _same(one: Dictionary, two: Dictionary) -> bool:
 	return true
 
 
+## A wedge or wing of a rim is finish, as a tile on a side stud is: where its
+## real shape runs into a stud of the layer under it (ExactCheck), which the
+## lattice cannot see, it is the part left out and the outline steps there.
 static func _placement(named: String, shape: Array, corner: Vector2i,
 		y: float, colour: int) -> Dictionary:
 	var said: PackedStringArray = named.split(" ")
 	return {"part": said[0], "color": colour, "x": corner.x, "y": y,
-		"z": corner.y, "rot": said[1].to_int()}
+		"z": corner.y, "rot": said[1].to_int(), "dressing": true}
 
 
 ## A set of studs, laid in the largest parts that cover it — or, for a

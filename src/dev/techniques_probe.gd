@@ -41,6 +41,15 @@ func _run() -> void:
 	get_root().add_child(assistant)
 	await process_frame
 
+	# Those withdrawn are out of the library, each with why: said, so a
+	# shrinking library is seen. Each must name a construction that is written.
+	for name: Variant in Techniques.WITHDRAWN:
+		var written: bool = Techniques.written().any(func(one: Variant) -> bool:
+			return str((one as Dictionary)["name"]) == str(name))
+		if not written:
+			_fail("withdrawn %s is not a construction written here" % name)
+		else:
+			print("  withdrawn: %s — %s" % [name, Techniques.WITHDRAWN[name]])
 	print("  every construction in the library")
 	for one: Variant in Techniques.all():
 		var technique: Dictionary = one

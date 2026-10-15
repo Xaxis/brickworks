@@ -92,7 +92,7 @@ const KINDS: Dictionary = {
 		"items": ["palantir", "armchair", "bookcase", "candles",
 			"wall lantern", "chest"]},
 	"stair": {"floor": "flags", "tones": [72, 71], "column": "stone",
-		"items": ["wall lantern", "barrels", "crates"]},
+		"items": ["candles", "wall lantern", "barrels", "crates"]},
 }
 
 ## The words a design uses for a room, to the kind it is. Read as words of
@@ -283,6 +283,9 @@ static func _bricks_of(name: String) -> Array:
 	var def: Dictionary = FURNITURE.get(name, {})
 	if def.has("bricks"):
 		return def["bricks"]
+	# A withdrawn one is no piece at all, not the nearest name to it.
+	if Techniques.WITHDRAWN.has(str(def.get("technique", ""))):
+		return []
 	var technique: Dictionary = Techniques.named(str(def.get("technique", "")))
 	return technique.get("bricks", [])
 
@@ -1534,7 +1537,12 @@ func _furnish(k: int) -> void:
 	var level: Dictionary = _floors[k]
 	var kind: Dictionary = KINDS[level["room"]]
 	var rng: RandomNumberGenerator = level["rng"]
-	var wanted: Array = (kind["items"] as Array).duplicate()
+	# Not a piece whose worked construction is withdrawn: it does not build
+	# by the parts' real shapes (Techniques.WITHDRAWN).
+	var wanted: Array = (kind["items"] as Array).filter(func(name: Variant) -> bool:
+		return not _bricks_of(str(name)).is_empty())
+	if wanted.is_empty():
+		return
 	# The signature stays first; the rest come in an order of the seed's.
 	var rest: Array = wanted.slice(1)
 	_shuffle(rest, rng)

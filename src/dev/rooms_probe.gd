@@ -202,6 +202,10 @@ func _run() -> void:
 func _each_piece() -> void:
 	var rooms := Rooms.new(_assistant)
 	for name: String in Rooms.FURNITURE:
+		# A piece whose worked construction is withdrawn is laid in no room.
+		if Techniques.WITHDRAWN.has(str((Rooms.FURNITURE[name] as Dictionary).get("technique", ""))):
+			print("  withdrawn: %s, laid in no room" % name)
+			continue
 		var bad: PackedStringArray = []
 		var rng := RandomNumberGenerator.new()
 		for turns: int in 4:

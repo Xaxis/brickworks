@@ -294,6 +294,13 @@
       "area": "pipeline"
     },
     {
+      "kind": "cli",
+      "label": "build the exact shapes",
+      "entry": "tools/build_exact.py",
+      "reach": "python3 tools/minitest.py tests/test_build_exact.py; tools/build_exact.py --bricknet DIR --colliders DIR --only 3001 --out COPY",
+      "area": "pipeline"
+    },
+    {
       "kind": "lib",
       "label": "command socket",
       "entry": "src/net/command_socket.gd",
@@ -865,6 +872,13 @@
       "label": "a big check on a worker",
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "the check by real shapes",
+      "entry": "src/ai/exact_check.gd",
+      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
       "area": "assistant"
     },
     {

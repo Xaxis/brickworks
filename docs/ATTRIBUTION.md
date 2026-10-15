@@ -34,6 +34,27 @@ All part geometry derives from the LDraw Parts Library.
   header names the maker as its author, and LDraw's own `u` and `t`
   numbers are assigned by the Parts Library admin, so it uses none.
 
+## BrickNet's connector labels and colliders
+
+The build check reads each part's exact shape and connectors from
+`assets/generated/exact/<hash>.bwx` (`src/assembly/exact.gd`), which
+`tools/build_exact.py` converts from two things BrickNet publishes:
+
+- its connector labels (`labels.json.xz`, `part_names.json`,
+  `part_aliases.json.xz`), part of the `bricknet` Python package, MIT:
+  "Copyright (c) 2026 Peter Kulits", whose notice and permission must go
+  with any copy (https://github.com/kulits/BrickNet);
+- its convex colliders, the per-part `.cvx.obj` files `python -m bricknet
+  fetch-meshes` downloads, which are decompositions of LDraw parts and so
+  derive from the LDraw Parts Library (CC BY, above) as our meshes do.
+
+Neither is committed: like the meshes, the converted files are built into
+`assets/generated/` and shipped in builds. Required notice, beside the
+LDraw one:
+
+  > Part colliders and connector labels from BrickNet (Kulits and Schmid,
+  > 2026), MIT License, Copyright (c) 2026 Peter Kulits.
+
 ## LDraw Official Model Repository
 
 Some of the worked constructions the assistant can look up

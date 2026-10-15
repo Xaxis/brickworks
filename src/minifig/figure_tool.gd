@@ -182,7 +182,7 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	var along_x: bool = posmod(rotation, 2) == 0
 	var centre := Vector3((x + (1.0 if along_x else 0.5)) * STUD, 0.0,
 		(z + (0.5 if along_x else 1.0)) * STUD)
-	var parts: Array[Dictionary] = figure.assemble(library)
+	var parts: Array[Dictionary] = seated_exactly(library, figure.assemble(library))
 	# On top of whatever is highest there, unless a height is given: a
 	# figure in a room or on a balcony has a roof over it, and the top of
 	# the roof is the highest surface under its feet.
@@ -235,6 +235,75 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	if not unmatched.is_empty():
 		said += " Nothing matched %s, so those are plain." % ", ".join(unmatched)
 	return {"ok": true, "ids": ids, "box": box, "text": said}
+
+
+## What each slot's part sits on, by its connectors: a hat on the head's stud,
+## a visor on the hat, a sword's bar in a hand's clip, a head on the neck.
+const SITS_ON: Dictionary = {"headwear": ["head"], "hat_extra": ["headwear"],
+	"accessory": ["hands"], "accessory_left": ["hands"], "head": ["torso", "neck"]}
+## How far a part may be moved onto its seat, in LDU: a fez is drawn 16 above
+## where the classic head's headgear goes.
+const SEAT_REACH := 24.0
+
+
+## The figure's parts with each one that runs into another moved onto the
+## connector of the part it sits on, where one of those is near: BrickNet's
+## colliders and connectors (Exact), which BrickBench's check judges a figure
+## by. The standard joints are clean by them; a fez (drawn 16 LDU above where
+## other headgear goes) and a sword held off its bar were not, and the check
+## refused the figures this made (docs/BRICKBENCH.md). Only moved, never
+## turned; one that cannot be seated stays where it was and the check says so.
+static func seated_exactly(library: PartLibrary, parts: Array[Dictionary]) -> Array[Dictionary]:
+	var ids: Array = []
+	for item: Dictionary in parts:
+		ids.append(str(item["part"]))
+	var shapes: Dictionary = Exact.shapes_for(library, ids)
+	if shapes.is_empty():
+		return parts
+	var items: Array = []
+	for item: Dictionary in parts:
+		var shape: Exact.Shape = shapes.get(str(item["part"]))
+		items.append(Exact.Item.new(shape, item["at"]) if shape != null else null)
+	for i: int in parts.size():
+		var slot: String = str(parts[i]["slot"])
+		if not SITS_ON.has(slot) or items[i] == null:
+			continue
+		var on := PackedInt32Array()
+		for j: int in parts.size():
+			if j != i and (SITS_ON[slot] as Array).has(str(parts[j]["slot"])) and items[j] != null:
+				on.append(j)
+		if on.is_empty():
+			continue
+		var clashing: bool = false
+		for j: int in items.size():
+			if j != i and items[j] != null and not Exact.clash(items[i], items[j], true).is_empty():
+				clashing = true
+				break
+		if not clashing and Exact.connected(items, i, on):
+			continue
+		var found: Dictionary = Exact.seat_move(items, i, SEAT_REACH, 0.05, on)
+		if not found.is_empty():
+			var was: Exact.Item = items[i]
+			var there := Exact.Item.new(was.shape, was.at.translated(found["move"]))
+			var clear: bool = true
+			for j: int in items.size():
+				if j != i and items[j] != null and not Exact.clash(there, items[j], true).is_empty():
+					clear = false
+					break
+			items[i] = there
+			if clear and Exact.connected(items, i, on):
+				parts[i]["at"] = there.at
+				continue
+			items[i] = was
+		# Held by its bar or its axle and still through what holds it: slid
+		# along that line until it is clear, as a sword slides in a hand.
+		if Exact.connected(items, i, on):
+			var slide: Variant = Exact.slide_clear(items, i, on)
+			if slide is Vector3:
+				items[i] = Exact.Item.new((items[i] as Exact.Item).shape,
+					(items[i] as Exact.Item).at.translated(slide))
+				parts[i]["at"] = (items[i] as Exact.Item).at
+	return parts
 
 
 ## Quarter turns that face a figure one of the four ways. A figure is

@@ -174,6 +174,10 @@ def main() -> int:
     parser.add_argument("--remote-budget", type=float, default=120.0,
                         help="megabytes of extra geometry to publish for "
                              "fetching on demand")
+    parser.add_argument("--with-exact", action="store_true",
+                        help="carry each packed part's exact shape (exact/<hash>.bwx, "
+                             "tools/build_exact.py) in the pack too: 19 MB more for "
+                             "everyone, where without it a check fetches the few it reads")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
 
@@ -243,6 +247,14 @@ def main() -> int:
         source = GENERATED / "parts" / f"{mesh}.lbm"
         if source.exists():
             shutil.copy2(source, out / "parts" / f"{mesh}.lbm")
+        # Its exact shape, for the build check (tools/build_exact.py): the
+        # same name under exact/, as Exact.file_for reads it. Only asked for:
+        # everyone waits for the pack, and only a check reads these, which
+        # fetches them from beside the geometry (PartLibrary.request_exact).
+        exact = GENERATED / "exact" / f"{mesh}.bwx"
+        if args.with_exact and exact.exists():
+            (out / "exact").mkdir(exist_ok=True)
+            shutil.copy2(exact, out / "exact" / f"{mesh}.bwx")
 
     # The catalogue keeps every part, so search still reaches the whole
     # library; a flag says which ones can actually be placed.
@@ -357,6 +369,8 @@ def _write_remote(
         if used + size > budget:
             break
         shutil.copy2(GENERATED / "parts" / f"{mesh}.lbm", remote / f"{mesh}.lbm")
+        if (GENERATED / "exact" / f"{mesh}.bwx").exists():
+            shutil.copy2(GENERATED / "exact" / f"{mesh}.bwx", remote / f"{mesh}.bwx")
         taken.add(mesh)
         used += size
 

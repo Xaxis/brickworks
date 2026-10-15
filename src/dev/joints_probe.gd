@@ -173,11 +173,19 @@ func _initialize() -> void:
 	# turns, by less than a cover can show, and 3938 tipped ten degrees
 	# shared 99 cells with 3937 outside the pin. Turned on round into its
 	# own base, it is a collision and still refused.
-	for degrees: float in [10.0, -10.0, 45.0]:
+	for degrees: float in [10.0, 45.0]:
 		var hinged: Dictionary = await _leaning(true, degrees)
 		_ok(bool(hinged["ok"]),
 			"a hinge top turned %d degrees on its hinge brick holds: %s"
 			% [int(degrees), hinged["summary"]])
+	# The other way the top folds into its base: by the parts' real shapes
+	# (ExactCheck, BrickNet's colliders) ten degrees that way puts it more
+	# than an LDU into the base, which the lattice forgave as the joint.
+	var folded: Dictionary = await _leaning(true, -10.0)
+	_ok(not bool(folded["ok"]) and str(folded["feedback"]).contains("hinge")
+			and str(folded["summary"]).contains("collision"),
+		"a hinge top turned -10 degrees, into its base, is refused as the hinge: %s"
+			% folded["summary"])
 	var over: Dictionary = await _leaning(true, 180.0)
 	_ok(not bool(over["ok"]) and str(over["summary"]).contains("overlap"),
 		"turned on round into its own base, refused: %s" % over["summary"])
