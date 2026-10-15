@@ -143,8 +143,15 @@ const FURNITURE: Dictionary = {
 		"tones": {70: [70, 28, 19]}},
 	"sofa": {"technique": "sofa", "front": "+z", "wall": true,
 		"tones": {320: [320, 378, 19, 72]}},
+	# Its feet are its front posts and two headlight bricks on their sides,
+	# all along its foot, which take no stud: on the ground the ground held
+	# it, and on a floor it tipped back off them. Two plates under its
+	# frame's middle give it a footing there, hidden under the bed.
 	"four-poster bed": {"technique": "four-poster bed", "front": "+x",
-		"wall": true, "tones": {191: [191, 320, 272, 378, 1]}},
+		"wall": true, "tones": {191: [191, 320, 272, 378, 1]}, "footing": [
+		{"part": "3021", "color": 70, "x": 2.5, "y": 0, "z": 1, "rot": 0},
+		{"part": "3021", "color": 70, "x": 2.5, "y": 1, "z": 1, "rot": 0},
+	]},
 	"bed": {"technique": "bed", "front": "+z", "wall": true,
 		"tones": {320: [320, 272, 288, 1]}},
 	"log pile": {"technique": "log pile", "front": "-x", "wall": true},
@@ -202,7 +209,11 @@ const FURNITURE: Dictionary = {
 		{"part": "3062b", "color": 0, "x": 3, "y": 5, "z": 0, "rot": 0},
 		{"part": "4589", "color": 297, "x": 0, "y": 8, "z": 0, "rot": 0},
 		{"part": "4589", "color": 297, "x": 3, "y": 8, "z": 0, "rot": 0},
-		{"part": "4079", "color": 320, "x": 1, "y": 2, "z": 0, "rot": 0},
+		# Its back hangs a quarter stud behind its base, so its corner is that
+		# far behind the plate's. At the plate's corner its base was a quarter
+		# stud off the studs: against a wall the check could not move it onto
+		# them, and it stood 2 LDU into two of them by its real shape.
+		{"part": "4079", "color": 320, "x": 1, "y": 2, "z": -0.25, "rot": 0},
 	]},
 }
 
@@ -287,7 +298,8 @@ static func _bricks_of(name: String) -> Array:
 	if Techniques.WITHDRAWN.has(str(def.get("technique", ""))):
 		return []
 	var technique: Dictionary = Techniques.named(str(def.get("technique", "")))
-	return technique.get("bricks", [])
+	# A footing a piece stands on away from the ground, after its own parts.
+	return (technique.get("bricks", []) as Array) + (def.get("footing", []) as Array)
 
 
 ## The kind of room a design means by what it said, or "" for none.
@@ -689,6 +701,40 @@ func _fits(bricks: Array) -> bool:
 				or not _mine.blockers_boxes(packed).is_empty():
 			return false
 	return true
+
+
+## Whether a stud of floor k's top layer at [param at], on plate [param y],
+## would run into a piece of furniture standing over it, by the parts' real
+## shapes (Exact): a part there that is off the grid, on its side, or whose
+## underside is solid takes no stud.
+func _stud_meets_furniture(k: int, at: Vector2i, y: int) -> bool:
+	var plate: Exact.Item = _exact_item({"part": "3024", "color": 0, "x": at.x, "y": y,
+		"z": at.y, "rot": 0})
+	if plate == null:
+		return false
+	for item: Dictionary in _items:
+		if int(item["floor"]) != k or item["role"] != "furniture" or item.has("gone") \
+				or not (item["cells"] as Array).has(at):
+			continue
+		for index: int in item["bricks"]:
+			var brick: Dictionary = _laid[index]
+			if brick.is_empty() or float(brick["y"]) > y + 2.0:
+				continue
+			var theirs: Exact.Item = _exact_item(brick)
+			if theirs != null and not Exact.clash(plate, theirs).is_empty():
+				return true
+	return false
+
+
+## A brick as the exact check holds it: its real shape where it is, or null
+## where the part has none.
+func _exact_item(brick: Dictionary) -> Exact.Item:
+	var shape: Exact.Shape = Exact.shape_for(_library, str(brick["part"]))
+	var mesh: Lbm.PartMesh = _library.mesh_for(str(brick["part"]))
+	if shape == null or mesh == null or not shape.has_pieces():
+		return null
+	return Exact.Item.new(shape, _assistant._transform(Assistant.Placement.from_dict(brick),
+		mesh))
 
 
 ## Lay an item's bricks, which [method _fits] has passed. Returns its number.
@@ -1185,6 +1231,15 @@ func _lay_tiles(k: int) -> void:
 		if k + 1 < _floors.size():
 			for at: Vector2i in _floors[k + 1]["columns"]:
 				under[at] = true
+		# A tile, not a stud, under a part of a piece that does not take the
+		# stud by its real shape: a dresser's door rail plates, a log pile on
+		# its side, a four-poster's headlight bricks on theirs. The floor's
+		# studs ran 4 LDU into each, 24 of them on rooms_probe's eight floors,
+		# and the pieces stood joined to nothing; where a part does take them,
+		# they hold it.
+		for at: Variant in under.keys():
+			if _stud_meets_furniture(k, at, y):
+				under.erase(at)
 	var carpet: Dictionary = _carpet(k)
 	var style: String = kind["floor"]
 	# The plates under a floor are strips from strip_x, and this layer is

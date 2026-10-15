@@ -6244,7 +6244,9 @@ func _read_model(args: Dictionary) -> Model:
 			for brick: Dictionary in _studs_out(raw, trouble):
 				model.placements.append(Placement.from_dict(brick))
 		for n: int in prisms.size():
-			for brick: Dictionary in _prism(prisms[n], model, n, trouble):
+			var laid: Array = _prism(prisms[n], model, n, trouble)
+			_smooth_under_turned(laid, model)
+			for brick: Dictionary in laid:
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 		_pattern_advice.append_array(_round_by_panels(plain))
@@ -7379,6 +7381,19 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		treads.append([float(edge) + 1.0, 0.0])
 		cuts.append({"extrude": {"along": "z", "from": -2, "width": 4, "under": treads,
 			"profile": [[head + 1, tall_ + 1], [edge + 1, tall_ + 1]]}})
+	var raised: Dictionary = pattern.duplicate(true)
+	raised.erase("plinth")
+	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
+	raised["_raised"] = true
+	var tower: Array = _prism(raised, model, index, trouble)
+	# Tiled, not studded, under a face turned off the grid: its sockets do
+	# not meet the studs, which stand against its walls and tubes (the
+	# read-back tower's 45 degree faces on 46 of them, dress_probe). It rests
+	# there, held by the courses over it, and the square faces grip.
+	var turned_on: Dictionary = _studs_turned_parts_miss(tower, model, y0 + tall_)
+	under = under.filter(func(cell: Array) -> bool:
+		return not turned_on.has(Vector2i(floori(cx + float(cell[0]) + 0.5),
+			floori(cz + float(cell[1]) + 0.5))))
 	# Square terraces in bricks, as they were measured: their steps are not
 	# a curve to turn on its side, and the courses over the hollow are tied
 	# by the tower's foot.
@@ -7388,11 +7403,6 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		"studs_at": under, "solids": solids, "cuts": cuts}, trouble, library)
 	if not trouble.is_empty():
 		return []
-	var raised: Dictionary = pattern.duplicate(true)
-	raised.erase("plinth")
-	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
-	raised["_raised"] = true
-	var tower: Array = _prism(raised, model, index, trouble)
 	for n: int in crags.size():
 		var crag: Array = crags[n]
 		made.append_array(Patterns._rock({"at": {"x": cx + float(crag[0]), "y": y0 + tall_,
@@ -7404,6 +7414,128 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		(", %d crags of rock rising against it" % crags.size()) if not crags.is_empty() else "",
 		Placement._num(y0 + tall_)])
 	return made + tower
+
+
+## The studs, as whole studs in the world's plan, at plate [param top] that a
+## part of [param made] turned off the grid about the upright stands its foot
+## on and does not take in a socket: every stud under it, but for one that
+## lands in a socket of its (a turned part grips by one stud, a jumper's or a
+## round plate's). A stud there stands against its walls and tubes, which the
+## lattice, taking every stud for one in a socket, lets through and plastic
+## does not (_note_turned_studs).
+func _studs_turned_parts_miss(made: Array, model: Model, top: float,
+		feet: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	if feet.is_empty():
+		feet = _turned_feet(made, model)
+	for one: Array in feet.get(roundi(top * 4.0), []):
+		var foot: PackedVector2Array = one[0]
+		var takes: Array = one[1]
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for p: Vector2 in foot:
+			low = low.min(p)
+			high = high.max(p)
+		for x: int in range(floori(low.x) - 1, ceili(high.x) + 1):
+			for z: int in range(floori(low.y) - 1, ceili(high.y) + 1):
+				# The stud's own round, as a square a little inside it.
+				var stud := PackedVector2Array([Vector2(x + 0.25, z + 0.25),
+					Vector2(x + 0.75, z + 0.25), Vector2(x + 0.75, z + 0.75),
+					Vector2(x + 0.25, z + 0.75)])
+				if not _convex_meet(stud, foot):
+					continue
+				var middle := Vector2(x + 0.5, z + 0.5)
+				var held: bool = false
+				for take: Vector2 in takes:
+					held = held or middle.distance_to(take) <= TURNED_GRIP
+				if not held:
+					out[Vector2i(x, z)] = true
+	return out
+
+
+## The feet of the parts of [param made] turned off the grid about the
+## upright, by the quarter plate they stand at: [the foot's outline in plan,
+## where it takes a stud], each in studs.
+func _turned_feet(made: Array, model: Model) -> Dictionary:
+	var out: Dictionary = {}
+	for one: Dictionary in made:
+		var name: String = str(one.get("section", ""))
+		var section: Section = model.sections.get(name) if not name.is_empty() else null
+		if section == null or section.square():
+			continue
+		var placement: Placement = Placement.from_dict(one)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = _transform(placement, mesh, section)
+		if (at.basis * Vector3.UP).dot(Vector3.UP) < 0.9999:
+			continue
+		var box: AABB = mesh.bounds
+		var foot := PackedVector2Array()
+		for corner: Vector2 in [Vector2(box.position.x, box.position.z),
+				Vector2(box.end.x, box.position.z), Vector2(box.end.x, box.end.z),
+				Vector2(box.position.x, box.end.z)]:
+			var p: Vector3 = at * Vector3(corner.x, box.position.y, corner.y)
+			foot.append(Vector2(p.x, p.z) / STUD)
+		var takes: Array = []
+		var under: Array = _underside_of(mesh)
+		for local: Vector2 in (under[0] as Array) + (under[1] as Array):
+			var p: Vector3 = at * Vector3(local.x, 0.0, local.y)
+			takes.append(Vector2(p.x, p.z) / STUD)
+		var level: int = roundi((at * box.position).y / PLATE * 4.0)
+		if not out.has(level):
+			out[level] = []
+		(out[level] as Array).append([foot, takes])
+	return out
+
+
+## The plate a tile of the same size is, for a ledge or a floor that a part
+## turned off the grid stands on.
+const PLATE_TILE: Dictionary = {"3024": "3070b", "3023": "3069b", "3023b": "3069b",
+	"3623": "63864", "3710": "2431", "3666": "6636", "3460": "4162", "3022": "3068b",
+	"3021": "26603", "3020": "87079", "3795": "69729"}
+
+
+## Every plate of [param made] laid square (in no section) that a part turned
+## off the grid stands on off its sockets, laid as the tile of its size: a
+## storey stood its 45 degree faces on its ledge's studs, and a horn on the
+## summit's. The plate under a square face keeps its studs, and holds it.
+func _smooth_under_turned(made: Array, model: Model) -> void:
+	var tops: Dictionary = {}    ## plate -> the plates there, by index into made
+	for n: int in made.size():
+		var one: Dictionary = made[n]
+		if not str(one.get("section", "")).is_empty() or not PLATE_TILE.has(str(one["part"])) \
+				or str(one.get("face", "up")) != "up":
+			continue
+		var top: float = float(one["y"]) + 1.0
+		if not tops.has(top):
+			tops[top] = []
+		(tops[top] as Array).append(n)
+	var feet: Dictionary = _turned_feet(made, model)
+	if feet.is_empty():
+		return
+	for top: Variant in tops:
+		if not feet.has(roundi(float(top) * 4.0)):
+			continue
+		var missed: Dictionary = _studs_turned_parts_miss(made, model, float(top), feet)
+		if missed.is_empty():
+			continue
+		for n: int in tops[top]:
+			var one: Dictionary = made[n]
+			var placement: Placement = Placement.from_dict(one)
+			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+			if info == null:
+				continue
+			var size: Vector2i = info.footprint_studs()
+			if posmod(placement.rot, 2) == 1:
+				size = Vector2i(size.y, size.x)
+			var on: bool = false
+			for dx: int in size.x:
+				for dz: int in size.y:
+					on = on or missed.has(Vector2i(floori(placement.x + dx + 0.5),
+						floori(placement.z + dz + 0.5)))
+			if on:
+				one["part"] = PLATE_TILE[placement.part]
 
 
 ## The crags a plinth's top terrace holds, each [x, z, studs across] from its
@@ -14457,11 +14589,12 @@ const TURNED_GRIP := 0.1
 ## one's studs is the same plastic, but the prism pattern's cluster ties its
 ## piers' walls, each at its own angle, with a summit of square plates laid
 ## across their tops, and every Orthanc built with it would be refused. The
-## same pattern stands its turned walls on square studs too — a storey on
-## the ledge below, a horn on the summit, a tower on its plinth — and 23 of
-## patterns_probe's towers were refused for it: its own sections ("prism
-## ...") are let through until their footings are built another way (on
-## tiles or jumpers), which is that pattern's to do.
+## same pattern stood its turned walls on square studs too — a storey on the
+## ledge below, a tower on its plinth — and 23 of patterns_probe's towers were
+## refused for it, so its own sections were let through, and a tower saved and
+## opened again, its sections read anew, was refused for 128. It lays tiles
+## under them now (_smooth_under_turned, and the plinth's studs), and its
+## sections are judged as any other.
 func _note_turned_studs(model: Model, studs: Array, issues: Dictionary) -> void:
 	var frames: Dictionary = {}     ## section -> its basis in the world
 	var off: Dictionary = {}        ## Vector2i(owner, into) -> [count, degrees]
@@ -14473,7 +14606,7 @@ func _note_turned_studs(model: Model, studs: Array, issues: Dictionary) -> void:
 		var below: Placement = model.placements[owner]
 		var above: Placement = model.placements[into]
 		if below.section == above.section or not _underside_known(above.part) \
-				or above.section.begins_with("prism ") or _swivels(above.part):
+				or _swivels(above.part):
 			continue
 		var turned: Basis = _frame_of(model, above.section, frames)
 		var between: Basis = turned.inverse() * _frame_of(model, below.section, frames)
@@ -15272,6 +15405,7 @@ func _studs_where_stood_on(model: Model) -> int:
 	# About a selection, a tile of the model round it is not this change's.
 	var scoped: bool = _keeps_to_focus()
 	var changed: int = 0
+	var over: BrickLattice = null    ## every part whose foot is at a tile's top
 	for n: int in tiles:
 		var tile: Placement = model.placements[n]
 		var mesh: Lbm.PartMesh = library.mesh_for(tile.part)
@@ -15289,6 +15423,15 @@ func _studs_where_stood_on(model: Model) -> int:
 				studs.append(Vector2i(sx, sz))
 		if standing.standing_on(studs, box[4], n + 1).is_empty():
 			continue
+		# Nor where the plate's studs would run into another part over it that
+		# takes none there: one off the grid, on its side, or solid under. A
+		# rooms floor tiled under an armchair's arms and a dresser's door rail
+		# plates came back as plates whose studs stood 4 LDU into them, by the
+		# parts' real shapes, because a turntable beside them took studs.
+		if over == null:
+			over = _feet_at(model, tops)
+		if _studs_would_meet(model, over, n, str(TILE_PLATES[tile.part]), box):
+			continue
 		# A part changed is another brick to the edit (Assistant._apply_edit):
 		# the tile comes off and the plate goes on, in this one change.
 		tile.part = str(TILE_PLATES[tile.part])
@@ -15297,6 +15440,57 @@ func _studs_where_stood_on(model: Model) -> int:
 		progress.emit("laid %d tile%s again as plates, under what stands on %s"
 			% [changed, "" if changed == 1 else "s", "it" if changed == 1 else "them"])
 	return changed
+
+
+## Every part of [param model] whose foot is at one of [param tops] (in
+## plates), whatever its face or section, in a lattice of its own.
+func _feet_at(model: Model, tops: Dictionary) -> BrickLattice:
+	var out := BrickLattice.new()
+	out.keeps_columns = false
+	var per: int = roundi(PLATE / BrickLattice.CELL)
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var boxes: PackedInt32Array = builder.boxes_for(mesh,
+			_transform(placement, mesh, model.section_for(placement)))
+		if boxes.is_empty():
+			continue
+		var low: int = BrickLattice._bound_of(boxes)[1]
+		if posmod(low, per) == 0 and tops.has(low / per):
+			out.occupy_boxes(n + 1, boxes)
+	return out
+
+
+## Whether [param plate], laid where tile [param n] of [param model] is (its
+## lattice bound [param box]), would stand a stud in a part over it by the
+## parts' real shapes (Exact): a part there that takes no stud.
+func _studs_would_meet(model: Model, over: BrickLattice, n: int, plate: String,
+		box: PackedInt32Array) -> bool:
+	var tile: Placement = model.placements[n]
+	var laid: Placement = Placement.from_dict({"part": plate, "x": tile.x, "y": tile.y,
+		"z": tile.z, "rot": tile.rot})
+	var mesh: Lbm.PartMesh = library.mesh_for(plate)
+	var shape: Exact.Shape = Exact.shape_for(library, plate)
+	if mesh == null or shape == null or not shape.has_pieces():
+		return false
+	var mine := Exact.Item.new(shape, _transform(laid, mesh))
+	var reach: int = ceili(6.0 / BrickLattice.CELL)    ## a stud and a hair
+	for key: int in over.blockers_boxes(PackedInt32Array([box[0], box[4], box[2], box[3],
+			box[4] + reach, box[5]]), n + 1):
+		if key <= 0 or key - 1 == n:
+			continue
+		var other: Placement = model.placements[key - 1]
+		var theirs: Exact.Shape = Exact.shape_for(library, other.part)
+		var other_mesh: Lbm.PartMesh = library.mesh_for(other.part)
+		if theirs == null or other_mesh == null or not theirs.has_pieces():
+			continue
+		var item := Exact.Item.new(theirs, other.exact_at(_transform(other, other_mesh,
+			model.section_for(other))))
+		if not Exact.clash(mine, item).is_empty():
+			return true
+	return false
 
 
 ## Studs up, square to the grid on whole studs and plates, in no section.

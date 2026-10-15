@@ -1364,7 +1364,9 @@ fixing what it got wrong.
   it: a top's tiles tie the plates under them, and split, a rooms floor's
   tile left a 1 x 1 plate held by nothing (`rooms_probe` failed). Only
   parts this change adds or moves count, so an edit never re-lays the
-  person's own tiles. `standing_probe`: a ring shape, a round column,
+  person's own tiles; and not where the plate's studs would run into another
+  part over the tile by their real shapes (`_studs_would_meet`): a rooms floor
+  is tiled under a dresser's door rail plates and an armchair's arms. `standing_probe`: a ring shape, a round column,
   plates one thick, each on a box's tiled top and on a revolve's rings of
   tiles, gripped by the studs under them (a stud of the lower part reaching
   into the upper, read off the connectors), the top round them still
