@@ -289,7 +289,8 @@ static func _stack(stack: Array, centre: Vector2, y: float, base: int, colour: i
 			state["below"] = "course"
 		if entry.has("nose"):
 			known = true
-			y = _nose(made, centre, y, d, str(entry["nose"]).to_lower(), tone, trouble)
+			y = _nose(made, centre, y, d, str(entry["nose"]).to_lower(), tone, trouble,
+				str(state["below"]))
 			ended = true
 		elif entry.has("plates") or entry.has("length"):
 			known = true
@@ -697,10 +698,15 @@ static func _named(basis: Basis) -> Array:
 ## The top of a round: a cone, an ogive (a dome and then a cone, as a
 ## fairing narrows), a dome, a flat round tile, or a point.
 static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
-		colour: int, trouble: Array) -> float:
+		colour: int, trouble: Array, below: String = "") -> float:
 	var low: Vector2 = _corner(centre, d)
 	var two: Vector2 = centre - Vector2(1, 1)
 	var one: Vector2 = centre - Vector2(0.5, 0.5)
+	# A 4 x 4 dish stands on a 2 x 2 round's four studs; two halves have none
+	# in the middle, so their round plate goes first.
+	if d == 4 and below == "halves" and shape in ["ogive", "dome"]:
+		made.append(_part(str(PARTS[4]["plate"]), colour, low, y))
+		y += 1.0
 	match shape:
 		"cone", "point":
 			match d:
@@ -735,9 +741,12 @@ static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
 					made.append(_part("3942c", colour, low, y))
 					y += 6.0
 				4:
-					made.append(_part("3960", colour, low, y))
-					made.append(_part("3942c", colour, two, y + 2.0))
-					y += 8.0
+					# The dish on a 2 x 2 round's four studs, as sets stand it:
+					# a 4 x 4 one's under it run into the dish's underside.
+					made.append(_part("4032a", colour, two, y))
+					made.append(_part("3960", colour, low, y + 1.0))
+					made.append(_part("3942c", colour, two, y + 3.0))
+					y += 9.0
 				6:
 					made.append(_part("44375b", colour, low, y))
 					made.append(_part("3942c", colour, two, y + 2.0))
@@ -747,6 +756,16 @@ static func _nose(made: Array, centre: Vector2, y: float, d: int, shape: String,
 					made.append(_part("3942c", colour, two, y + 3.0))
 					y += 9.0
 		"dome":
+			# The 2 and 4 wide dishes stand on a stud or four in their middle,
+			# their rims clear of the round's other studs, which run into their
+			# undersides (by the parts' real shapes, 3 and 2 LDU): the 2 x 2
+			# on a jumper's one stud, the 4 x 4 on a 2 x 2 round's four.
+			if d == 2:
+				made.append(_part("87580", colour, low, y))
+				y += 1.0
+			elif d == 4:
+				made.append(_part("4032a", colour, two, y))
+				y += 1.0
 			var dish: Dictionary = {1: "6141", 2: "4740", 4: "3960", 6: "44375b", 8: "3961"}
 			made.append(_part(str(dish[d]), colour, low, y))
 			y += {1: 1.0, 2: 1.0, 4: 2.0, 6: 2.0, 8: 3.0}[d]

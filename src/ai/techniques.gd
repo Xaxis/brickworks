@@ -23,7 +23,30 @@ extends RefCounted
 
 
 ## Everything in the library; show_technique lists it by [constant GROUPS].
+## Not those in [constant WITHDRAWN].
 static func all() -> Array:
+	return written().filter(func(one: Variant) -> bool:
+		return not WITHDRAWN.has(str((one as Dictionary)["name"])))
+
+
+## Constructions written here that do not build as written by the parts'
+## real shapes (ExactCheck, BrickNet's colliders), with what is wrong:
+## each was read off its set into placements that put its parts into each
+## other, which the lattice forgave. Out of the library, so a design is never
+## handed one the check refuses, until each is read again from its set.
+const WITHDRAWN: Dictionary = {
+	"face turned sideways": "the 2 x 2 tile's face lies on the brick's studs, 4 LDU into them",
+	"wall lantern": ("the tap stands 8 LDU over the round plate, where 5766 has it 40: "
+		+ "the plate's stud is in its spout"),
+	"round body lying down": "the cylinder halves' side studs are 1.7 LDU into the dish",
+	"two rounds pinned side by side": "the dish is 1.7 LDU down on the round brick's snapstud",
+	"lid or hatch raised on hinges": ("the hinge tops are folded into their bases and the lid "
+		+ "1 LDU into the hinge bricks"),
+}
+
+
+## Everything written here, withdrawn or not: what the probe reads.
+static func written() -> Array:
 	return [
 		{
 			"name": "staggered wall",
@@ -1078,15 +1101,21 @@ static func all() -> Array:
 			"name": "anvil",
 			"group": "furniture and interiors",
 			"when": "a forge, a smithy, a dwarf or an orc's workshop",
-			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As the LEGO Group built it in 9476 The Orc Forge: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As the LEGO Group built it in 9476 The Orc Forge, where the dish stands on one stud turned 45 degrees; here on a 2 x 2 jumper so any floor takes it square: 8 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			# The set stands the dish on one stud, turned 45 degrees off the
+			# studs round it; square on a floor, its solid underside is on
+			# four studs, 3 LDU into them by its real shape (ExactCheck). So
+			# here it stands on a 2 x 2 jumper's one stud (87580), which any
+			# floor takes square.
 			"bricks": [
-				{"part": "4740", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
-				{"part": "47905", "color": 0, "x": 0.5, "y": 2, "z": 1.5, "rot": 0},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 2.5, "z": 2.5, "rot": 0, "face": "+z"},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 2.5, "z": 1.1, "rot": 0, "face": "-z"},
-				{"part": "54200", "color": 0, "x": 0.5, "y": 2.5, "z": 0.3, "rot": 2, "face": "-z"},
-				{"part": "54200", "color": 0, "x": 0.5, "y": 2.5, "z": 2.9, "rot": 0, "face": "+z"},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 1, "z": 1.5, "rot": 0},
+				{"part": "87580", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
+				{"part": "4740", "color": 0, "x": 0, "y": 1, "z": 1, "rot": 0},
+				{"part": "47905", "color": 0, "x": 0.5, "y": 3, "z": 1.5, "rot": 0},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 3.5, "z": 2.5, "rot": 0, "face": "+z"},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 3.5, "z": 1.1, "rot": 0, "face": "-z"},
+				{"part": "54200", "color": 0, "x": 0.5, "y": 3.5, "z": 0.3, "rot": 2, "face": "-z"},
+				{"part": "54200", "color": 0, "x": 0.5, "y": 3.5, "z": 2.9, "rot": 0, "face": "+z"},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 2, "z": 1.5, "rot": 0},
 			],
 		},
 		{

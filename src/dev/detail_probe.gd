@@ -185,9 +185,15 @@ func _run() -> void:
 		"a rich enough assembly is still sent back when the whole model "
 			+ "has too few one-off pieces")
 	await _reply(assistant, [{"type": "text", "text": "Done."}])
-	# A fresh design, so its creative pass (creative_probe) comes last.
+	# The surface pass has a turn of its own after the assemblies
+	# (surface_probe): the keep's and the wall's tops are open studs.
 	_ok(ended.is_empty() and _text_of(assistant._messages.back()).begins_with(
-		"The creative pass"), "with the wall done, the creative pass comes last")
+		"The surface pass"), "with the wall done, the surface pass comes next")
+	await _reply(assistant, [_tool("settle_surface", {"finding": "all", "verdict": "keep",
+		"reason": "the keep's top is a floor"})])
+	# A fresh design, so its creative pass (creative_probe) comes last.
+	_ok(ended.is_empty() and _text_of(assistant._messages.back()).contains(
+		"The creative pass: the last"), "...and the creative pass last")
 	await _reply(assistant, [{"type": "text", "text": "Nothing to add."}])
 	_ok(not ended.is_empty() and bool(ended[0][0]), "and the run ends well")
 

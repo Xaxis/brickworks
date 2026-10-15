@@ -196,6 +196,28 @@ What is left is the size of the gap. Their builds are 62% shaped, with real
 joints; ours have none to speak of. The intervals here carry no run-to-run
 spread within an arm, and that spread was the larger part on the held-out
 ten.
+### The check made as strict as BrickBench's (2026-10-14, evening)
+
+The build check now judges each part by BrickNet's own convex colliders and
+connector labels: more than 1 LDU of overlap is a collision named with its
+fix, a piece that nothing holds and that would not stand is a fault, and a
+part a few LDU off a connector is seated on it first
+([BRICKBENCH.md](BRICKBENCH.md), "the check made as strict as BrickBench's").
+The same ten prompts through the same loop, and ten held out, each checked by
+BrickBench's own `verify.py`:
+
+| | valid by verify.py | parts, mean | design time, mean |
+|---|---|---|---|
+| the ten, first run (this morning) | 2 of 10 | 155 | 587 s |
+| the same ten, the strict check (`6bbe717`) | **9 of 10** | 133 | 432 s |
+| ten held out (model-011 to 020) | **8 of 10** | 167 | 712 s |
+| BrickAgent's Opus 5.5, the ten | 10 of 10 | 130 | |
+
+The three that failed were a part each (a head exactly 1 LDU into a
+breastplate, which verify.py's rounding refuses; a steering wheel on a
+brick's edge; a leaning flower). The check refuses the last two since, and
+the app no longer seats a head that way. Nothing was judged on looks here: these are verify.py's verdicts,
+and no VQA or Elo was run.
 
 ## Judged in pairs: what each round really did (2026-10-14)
 
