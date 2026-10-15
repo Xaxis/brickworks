@@ -1161,6 +1161,14 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 		var section: String = ""
 		var unsupported: bool = false
 		while picked.size() < per_step:
+			# And between the parts of a step: each is looked for among
+			# every part ready, and on Orthanc in a browser one step of them
+			# was a 273 ms slice of the Timeline's (progress_check).
+			if job != null and not picked.is_empty() and job.due():
+				job.count(placed)
+				await job.next()
+				if job.cancelled:
+					return
 			var first: Node2 = picked[0] if not picked.is_empty() else null
 			var chosen: Array = _next(ready, remaining, last_at, have_last,
 				first, current)

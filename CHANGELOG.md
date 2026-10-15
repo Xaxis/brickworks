@@ -261,7 +261,9 @@ whole cycle.
   time they are opened, as the other slow commands do, and so do Versions,
   the cut-away, Make a sub-assembly, Copy and Settings on a big model.
 - Stopping the Timeline on a big model while it lays the parts out in steps
-  ended in a script error.
+  ended in a script error, and laying them out held the window for a step's
+  worth of looking at a time, a quarter of a second on Orthanc in a browser;
+  it gives the window back between the parts of a step now.
 - A part turned round the upright to an angle that is not a quarter turn
   was accepted standing on several studs, which in plastic meet its tubes
   and walls and grip nothing. The check now says so, and accepts it on the
