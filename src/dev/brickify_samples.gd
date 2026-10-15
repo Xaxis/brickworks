@@ -200,6 +200,51 @@ static func _ellipsoid(out: MeshFile, centre: Vector3, radii: Vector3, segments:
 				_smooth_triangle(out, [a, c, d], [na, nc, nd], colour, centre)
 
 
+## A body and a piece apart from it: a box, and a cube over it a stud clear
+## of its top and nothing between, Y up. Joined, the cube is still there;
+## dropped, as Brickify once dropped every piece but the largest, it is not.
+## [member MeshFile.name] "floating"; the cube is the last 12 triangles.
+static func floating() -> MeshFile:
+	var out := MeshFile.new()
+	out.name = "floating"
+	out.coloured = true
+	_box(out, AABB(Vector3(0, 0, 0), Vector3(12, 6, 8)), Color(0.15, 0.35, 0.75))
+	_box(out, AABB(Vector3(4.5, 7.2, 2.5), Vector3(3, 3, 3)), Color(0.85, 0.2, 0.15))
+	return out
+
+
+## A post with a block out past one side of it, which tips: a 2 x 2 post six
+## tall and on it a block eight long reaching six past the post's edge, Y up.
+## A set stands such a thing on a stand. [member MeshFile.name] "overhang".
+static func overhang() -> MeshFile:
+	var out := MeshFile.new()
+	out.name = "overhang"
+	_box(out, AABB(Vector3(0, 0, 0), Vector3(2, 6, 2)), Color.WHITE)
+	_box(out, AABB(Vector3(0, 6, -1), Vector3(9, 2.4, 4)), Color.WHITE)
+	return out
+
+
+## A closed box, its faces flat and wound to face out.
+static func _box(out: MeshFile, box: AABB, colour: Color) -> void:
+	var centre: Vector3 = box.get_center()
+	var h: Vector3 = box.size / 2.0
+	for axis: int in 3:
+		for sign: float in [-1.0, 1.0]:
+			var corners: Array[Vector3] = []
+			for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+				var p := Vector3.ZERO
+				p[axis] = sign * h[axis]
+				p[(axis + 1) % 3] = corner.x * h[(axis + 1) % 3]
+				p[(axis + 2) % 3] = corner.y * h[(axis + 2) % 3]
+				corners.append(centre + p)
+			var normal := Vector3.ZERO
+			normal[axis] = sign
+			for t: Array in [[0, 1, 2], [0, 2, 3]]:
+				_triangle(out, corners[t[0]], corners[t[1]], corners[t[2]], colour, centre)
+				for _n: int in 3:
+					out.normals.append(normal)
+
+
 static func _smooth_triangle(out: MeshFile, corners: Array, normals: Array, colour: Color,
 		centre: Vector3) -> void:
 	var a: Vector3 = corners[0]

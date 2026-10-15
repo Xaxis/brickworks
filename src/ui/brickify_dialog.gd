@@ -56,6 +56,7 @@ var _scale: SpinBox
 var _up: OptionButton
 var _detail: Label
 var _hollow: CheckBox
+var _stand: CheckBox
 var _surface: OptionButton
 var _colours: OptionButton
 var _one: OptionButton
@@ -141,6 +142,8 @@ func choose(asked: Dictionary) -> String:
 		set_studs(studs)
 	if asked.has("hollow"):
 		_hollow.button_pressed = bool(asked["hollow"])
+	if asked.has("stand"):
+		_stand.button_pressed = bool(asked["stand"])
 	if asked.has("smooth"):
 		_surface.select(0 if bool(asked["smooth"]) else 1)
 	if asked.has("colour"):
@@ -314,6 +317,14 @@ func _build() -> void:
 	_hollow.add_theme_font_size_override("font_size", 12)
 	column.add_child(_hollow)
 
+	_stand = CheckBox.new()
+	_stand.text = "A stand where it needs one"
+	_stand.button_pressed = true
+	_stand.tooltip_text = ("A base of plates under a model that would tip, or stands on legs or "
+		+ "wheels much thinner than itself, as a set gives a figure or an aircraft")
+	_stand.add_theme_font_size_override("font_size", 12)
+	column.add_child(_stand)
+
 	var surface_row := _row(column, "Surface")
 	_surface = OptionButton.new()
 	_surface.add_item("Smooth: slopes, curves, tiles and SNOT")
@@ -399,7 +410,7 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"brickify_studs": _studs.get_line_edit(), "brickify_go": _go,
-		"brickify_hollow": _hollow, "brickify_cancel": _cancel}
+		"brickify_hollow": _hollow, "brickify_stand": _stand, "brickify_cancel": _cancel}
 
 
 ## The fence behind the last turn of the preview drawn (GpuFence).
@@ -428,6 +439,7 @@ func options() -> Brickify.Options:
 	out.studs = int(_studs.value)
 	out.up = Brickify.UPS[maxi(0, _up.selected)]
 	out.hollow = _hollow.button_pressed
+	out.stand = _stand.button_pressed
 	out.smooth = _surface.selected == 0
 	out.colours = ["model", "one", "limit"][maxi(0, _colours.selected)]
 	out.colour = _one.get_item_id(maxi(0, _one.selected)) if _one.item_count > 0 else 71
@@ -605,7 +617,13 @@ func brickify(job: Working.Job = null) -> void:
 		_busy = false
 		_set_enabled(true)
 		job.end()
+		# Never nothing, unsaid: why, and the size that lays it whole, set
+		# ready for the next press.
 		_status.text = str(result.get("error", "it could not be laid"))
+		var keeps: int = int(result.get("studs", 0))
+		if keeps > 0:
+			set_studs(keeps)
+			_status.text += ". The size is set to %d studs: press Brickify to lay it." % keeps
 		return
 	_status.text = "putting %s parts down…" % Brickify._comma(
 		(result["model"] as Assistant.Model).placements.size())
@@ -625,8 +643,8 @@ func brickify(job: Working.Job = null) -> void:
 
 
 func _set_enabled(on: bool) -> void:
-	for control: Control in [_size, _studs, _scale, _up, _hollow, _surface, _colours, _one,
-			_limit, _go]:
+	for control: Control in [_size, _studs, _scale, _up, _hollow, _stand, _surface, _colours,
+			_one, _limit, _go]:
 		if control is BaseButton:
 			(control as BaseButton).disabled = not on
 		elif control is Range:
@@ -662,7 +680,7 @@ func _fetch_parts() -> PackedStringArray:
 	var out := PackedStringArray()
 	if library == null:
 		return out
-	for id: String in Brickify.parts_needed():
+	for id: String in Brickify.parts_needed(library):
 		if not library.is_resident(id):
 			library.mesh_for(id)
 		if not library.is_resident(id) and library.parts.has(id):
@@ -706,7 +724,7 @@ func _warm(job: Working.Job = null) -> void:
 					await job.next()
 				if not str(id).is_empty():
 					Shapes.part(library, str(id), table == Shapes.Plan.INVERTED)
-	for id: String in Brickify.parts_needed():
+	for id: String in Brickify.parts_needed(library):
 		Minifig.slot_for(library.parts.get(id))
 
 
@@ -781,17 +799,14 @@ func _clear_spot(grid: Brickify.Grid) -> Vector2i:
 func _summary(result: Dictionary, name: String, ms: int,
 		missing: PackedStringArray = PackedStringArray()) -> String:
 	var model: Assistant.Model = result["model"]
-	var report: Dictionary = result["report"]
 	var colours: Dictionary = {}
 	for placement: Assistant.Placement in model.placements:
 		colours[placement.color] = true
-	var words: String = "brickified %s: %s parts in %d colour%s" % [name,
+	# Weighed before it says buildable, and saying what holds it, whether it
+	# needed a stand, and what went (Brickify.said).
+	var words: String = "brickified %s: %s parts in %d colour%s, %s" % [name,
 		Brickify._comma(model.placements.size()), colours.size(),
-		"" if colours.size() == 1 else "s"]
-	if bool(report["ok"]) and int(report["pieces"]) <= 1:
-		words += ", buildable in one piece"
-	else:
-		words += " — %s" % str(report["summary"])
+		"" if colours.size() == 1 else "s", Brickify.said(result)]
 	if not missing.is_empty():
 		words += " — laid without %s, which never arrived" % ", ".join(missing)
 	return "%s, in %.1f s" % [words, ms / 1000.0]

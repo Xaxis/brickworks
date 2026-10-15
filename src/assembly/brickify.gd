@@ -41,6 +41,38 @@ const SAMPLE_STUDS := 0.35
 ## How flat a facet has to be to take straight slopes: its corners' normals
 ## within this of its own.
 const FLAT_DEGREES := 4.0
+## What joining a piece apart costs, per step of the way: a stud across or a
+## plate up or down through empty air, or along the model's own surface,
+## where it is thinner than a stud. A path costing more than [method
+## _join_reach] allows is not a join but a new part of the model.
+const JOIN_STUD := 5
+const JOIN_PLATE := 2
+const SURFACE_STUD := 2
+const SURFACE_PLATE := 1
+## A stand: plates crossing each other's joints, in a colour sets give
+## their stands, under a model that stands only on feet no bigger than
+## this (a fox's legs a stud or two thick, an aircraft's wheels), or would
+## tip, or stands in pieces nothing else joins. By its feet and not by its
+## share of its plan: a sphere stands on a twelfth of its plan, and stands.
+const STAND_PLATES := 2
+const STAND_COLOUR := 0
+const THIN_FOOT := 3
+## A 1 x 2 plate, a 1 x 1 plate and a 1 x 1 brick: what a join is made of,
+## by the numbers LDraw gives them today.
+const JOIN_PLATE_PART := "3023b"
+const ONE_PLATE := "3024"
+const ONE_BRICK := "3005"
+## The plates and tiles a stand is laid in: [studs along, part, rot] for a
+## strip two studs wide running along x (rot as Shapes.CORE_PLATES has it),
+## and along z; one stud wide; tiles on top.
+const STAND_ALONG_X: Array = [[8, "3034", 0], [6, "3795", 0], [4, "3020", 0], [3, "3021", 0],
+	[2, "3022", 0], [1, "3023b", 1]]
+const STAND_ALONG_Z: Array = [[8, "3034", 1], [6, "3795", 1], [4, "3020", 1], [3, "3021", 1],
+	[2, "3022", 0], [1, "3023b", 0]]
+const STAND_ONE_X: Array = [[6, "3666", 0], [4, "3710", 0], [3, "3623", 0], [2, "3023b", 0],
+	[1, "3024", 0]]
+const STAND_ONE_Z: Array = [[6, "3666", 1], [4, "3710", 1], [3, "3623", 1], [2, "3023b", 1],
+	[1, "3024", 0]]
 
 
 ## What the person chose.
@@ -58,6 +90,9 @@ class Options extends RefCounted:
 	var colour: int = 71
 	var limit: int = 4
 	var palette: PackedInt32Array = PackedInt32Array(PALETTE)
+	## A stand under it where it needs one (see [constant THIN_FOOT]);
+	## off, it is laid as it stands, and said if it would tip.
+	var stand: bool = true
 
 
 ## What a worker says it is doing, for the dialog to show.
@@ -99,6 +134,29 @@ class Grid extends RefCounted:
 	var hollowed: int = 0
 	## How much of the surface each colour covers, code -> share.
 	var shares: Dictionary = {}
+	## Each cell the measuring added: 1 where the surface passes through a
+	## part of it thinner than a stud or a plate (a leg, a spout, a wing), 2
+	## to join a piece apart to the rest. Solid wherever Shapes samples it.
+	var added := PackedByteArray()
+	var thin: int = 0
+	## Each piece apart that was joined: {"cells": its size, "path": cells
+	## added, "to": "the rest" or "the ground", "way": "pillar" or "bridge"}.
+	var joins: Array = []
+	## What the measuring left out, each {"cells", "low", "high" (Vector3i,
+	## studs, plates, studs), "why"}: never silently.
+	var left_out: Array = []
+	## The stand it is to be laid on, studs (x, z, across, deep), or empty;
+	## why it needs one, and its colour.
+	var stand := Rect2i()
+	var stand_why: String = ""
+	var stand_colour: int = STAND_COLOUR
+	## What it stands on as measured: studs on the ground, studs of its plan,
+	## pieces standing apart on the ground, and the centre of its mass's
+	## margin inside what it stands on, studs (negative: it would tip).
+	var on_ground: int = 0
+	var plan_studs: int = 0
+	var standing_apart: int = 0
+	var margin: float = 0.0
 
 	func index(x: int, j: int, z: int) -> int:
 		return (x * deep + z) * tall + j
@@ -120,8 +178,18 @@ class Grid extends RefCounted:
 			return -1
 		return colour[i] if state[i] == 1 else dominant
 
-	## Whether [param p] is inside the surface, to a third of a stud.
+	## Whether [param p] is inside the surface, to a third of a stud. A cell
+	## added for a thin part or a join is solid all through: its surface is
+	## thinner than the samples, and a wedge cut to them would take it away.
 	func inside(p: Vector3) -> bool:
+		if not added.is_empty():
+			var x: int = floori(p.x)
+			var j: int = floori(p.y)
+			var z: int = floori(p.z)
+			if x >= 0 and z >= 0 and j >= 0 and x < across and z < deep and j < tall:
+				var i: int = index(x, j, z)
+				if added[i] != 0 and state[i] == 1:
+					return true
 		var fx: int = floori(p.x * FINE)
 		var fz: int = floori(p.z * FINE)
 		if fx < 0 or fz < 0 or fx >= across * FINE or fz >= deep * FINE:
@@ -297,14 +365,578 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> 
 						face = int(hit.z)
 				if face >= 0:
 					grid.flat_top[x * grid.deep + z] = flat[face]
-	_one_piece(grid)
+	var touched: PackedByteArray = _touched(grid, points, count)
+	_thin(grid, touched)
+	_join(grid, touched, studs)
 	if options.hollow:
 		_hollow(grid)
 	for i: int in total:
 		if grid.state[i] == 1:
 			grid.cells += 1
 	_colour(grid, mesh, points, outward, options, library)
+	grid.stand_colour = _stand_colour(grid, options, library)
+	_stance(grid, options)
 	return grid
+
+
+## The stand's colour: the one colour asked for, the darkest of the colours
+## it is cut to, or black, as sets' stands are.
+static func _stand_colour(grid: Grid, options: Options, library: PartLibrary) -> int:
+	if options.colours == "one":
+		return options.colour
+	if options.colours == "limit" and library != null and not grid.shares.is_empty():
+		var darkest: int = grid.dominant
+		var least: float = INF
+		for code: Variant in grid.shares:
+			var known: PartLibrary.BrickColor = library.color(int(code))
+			if known != null and known.rgb.get_luminance() < least:
+				least = known.rgb.get_luminance()
+				darkest = int(code)
+		return darkest
+	return STAND_COLOUR
+
+
+# -- what is thinner than a stud ----------------------------------------------
+
+
+## Every cell the surface passes through, whether or not it holds the
+## middle of the cell: a triangle against each cell its box reaches, by
+## separating axes (Akenine-Möller). A triangle inside one cell, which is
+## most of a scan's, is that cell's without a test.
+static func _touched(grid: Grid, points: PackedVector3Array, count: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(grid.state.size())
+	var top_x: int = grid.across - 1
+	var top_j: int = grid.tall - 1
+	var top_z: int = grid.deep - 1
+	for t: int in count:
+		var a: Vector3 = points[3 * t]
+		var b: Vector3 = points[3 * t + 1]
+		var c: Vector3 = points[3 * t + 2]
+		var low: Vector3 = a.min(b).min(c)
+		var high: Vector3 = a.max(b).max(c)
+		var x0: int = clampi(floori(low.x), 0, top_x)
+		var x1: int = clampi(floori(high.x), 0, top_x)
+		var j0: int = clampi(floori(low.y), 0, top_j)
+		var j1: int = clampi(floori(high.y), 0, top_j)
+		var z0: int = clampi(floori(low.z), 0, top_z)
+		var z1: int = clampi(floori(high.z), 0, top_z)
+		if x0 == x1 and j0 == j1 and z0 == z1:
+			out[grid.index(x0, j0, z0)] = 1
+			continue
+		for x: int in range(x0, x1 + 1):
+			for z: int in range(z0, z1 + 1):
+				for j: int in range(j0, j1 + 1):
+					var i: int = grid.index(x, j, z)
+					if out[i] == 0 and _crosses(a, b, c, Vector3(x + 0.5, j + 0.5, z + 0.5)):
+						out[i] = 1
+	return out
+
+
+## Whether the triangle a b c meets the unit cell round [param centre].
+static func _crosses(a: Vector3, b: Vector3, c: Vector3, centre: Vector3) -> bool:
+	var v0: Vector3 = a - centre
+	var v1: Vector3 = b - centre
+	var v2: Vector3 = c - centre
+	if minf(v0.x, minf(v1.x, v2.x)) > 0.5 or maxf(v0.x, maxf(v1.x, v2.x)) < -0.5 \
+			or minf(v0.y, minf(v1.y, v2.y)) > 0.5 or maxf(v0.y, maxf(v1.y, v2.y)) < -0.5 \
+			or minf(v0.z, minf(v1.z, v2.z)) > 0.5 or maxf(v0.z, maxf(v1.z, v2.z)) < -0.5:
+		return false
+	var e0: Vector3 = v1 - v0
+	var e1: Vector3 = v2 - v1
+	var e2: Vector3 = v0 - v2
+	var n: Vector3 = e0.cross(e1)
+	if absf(n.dot(v0)) > 0.5 * (absf(n.x) + absf(n.y) + absf(n.z)):
+		return false
+	for e: Vector3 in [e0, e1, e2]:
+		if _parted(Vector3(0.0, -e.z, e.y), v0, v1, v2) \
+				or _parted(Vector3(e.z, 0.0, -e.x), v0, v1, v2) \
+				or _parted(Vector3(-e.y, e.x, 0.0), v0, v1, v2):
+			return false
+	return true
+
+
+## Whether [param axis] separates the triangle from the unit cell round 0.
+static func _parted(axis: Vector3, v0: Vector3, v1: Vector3, v2: Vector3) -> bool:
+	var p0: float = axis.dot(v0)
+	var p1: float = axis.dot(v1)
+	var p2: float = axis.dot(v2)
+	var r: float = 0.5 * (absf(axis.x) + absf(axis.y) + absf(axis.z))
+	return minf(p0, minf(p1, p2)) > r or maxf(p0, maxf(p1, p2)) < -r
+
+
+## The cells a part of the model thinner than a stud or a plate passes
+## through, kept: measured only where the middle of a cell is inside, a
+## fox's legs never reached the grid, its body floated and the mend took
+## every part out. A cell the surface passes through counts where nothing
+## measured is beside it, above it, below it or on a diagonal, so a thick
+## body comes out no fatter; then the cells it passes through between such
+## a part and the body, so the two meet; and a part one plate thick is made
+## two, so its plates can cross each other's joints.
+static func _thin(grid: Grid, touched: PackedByteArray) -> void:
+	var total: int = grid.state.size()
+	grid.added.resize(total)
+	var tall: int = grid.tall
+	var column: int = grid.tall * grid.deep
+	var candidates := PackedInt32Array()
+	for i: int in total:
+		if touched[i] == 1 and grid.state[i] == 0:
+			candidates.append(i)
+	if candidates.is_empty():
+		return
+	var thin := PackedInt32Array()
+	for i: int in candidates:
+		var x: int = i / column
+		var z: int = (i / tall) % grid.deep
+		var j: int = i % tall
+		var near: bool = false
+		for dx: int in range(maxi(x - 1, 0), mini(x + 2, grid.across)):
+			for dz: int in range(maxi(z - 1, 0), mini(z + 2, grid.deep)):
+				var base: int = (dx * grid.deep + dz) * tall
+				for dj: int in range(maxi(j - 1, 0), mini(j + 2, tall)):
+					if grid.state[base + dj] == 1:
+						near = true
+						break
+				if near:
+					break
+			if near:
+				break
+		if not near:
+			thin.append(i)
+	for i: int in thin:
+		grid.added[i] = 1
+	if thin.is_empty():
+		return
+	# Where a thin part meets the body: the cells it passes through there.
+	var seams := PackedInt32Array()
+	for i: int in candidates:
+		if grid.added[i] != 0:
+			continue
+		for n: int in _faces(grid, i):
+			if grid.added[n] == 1:
+				seams.append(i)
+				break
+	for i: int in seams:
+		grid.added[i] = 1
+	for i: int in thin + seams:
+		grid.state[i] = 1
+	# One plate thick, two: plates side by side in one layer hold nothing.
+	var thicker := PackedInt32Array()
+	for i: int in thin:
+		var j: int = i % tall
+		var above: bool = j + 1 < tall and grid.state[i + 1] == 1
+		var below: bool = j > 0 and grid.state[i - 1] == 1
+		if above or below:
+			continue
+		if j > 0 and grid.state[i - 1] == 0:
+			thicker.append(i - 1)
+		elif j + 1 < tall and grid.state[i + 1] == 0:
+			thicker.append(i + 1)
+	for i: int in thicker:
+		grid.state[i] = 1
+		grid.added[i] = 1
+	grid.thin = thin.size() + seams.size() + thicker.size()
+
+
+## The cells beside [param i], above and below it, inside the grid.
+static func _faces(grid: Grid, i: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var tall: int = grid.tall
+	var column: int = grid.tall * grid.deep
+	var x: int = i / column
+	var z: int = (i / tall) % grid.deep
+	var j: int = i % tall
+	if j > 0:
+		out.append(i - 1)
+	if j + 1 < tall:
+		out.append(i + 1)
+	if z > 0:
+		out.append(i - tall)
+	if z + 1 < grid.deep:
+		out.append(i + tall)
+	if x > 0:
+		out.append(i - column)
+	if x + 1 < grid.across:
+		out.append(i + column)
+	return out
+
+
+# -- pieces apart -------------------------------------------------------------
+
+
+## The model's pieces, each its cells, largest first: cells joined face to
+## face.
+static func _pieces(grid: Grid) -> Array:
+	var total: int = grid.state.size()
+	var seen := PackedByteArray()
+	seen.resize(total)
+	var out: Array = []
+	for start: int in total:
+		if grid.state[start] != 1 or seen[start] == 1:
+			continue
+		var piece := PackedInt32Array([start])
+		seen[start] = 1
+		var n: int = 0
+		while n < piece.size():
+			for next: int in _faces(grid, piece[n]):
+				if grid.state[next] == 1 and seen[next] == 0:
+					seen[next] = 1
+					piece.append(next)
+			n += 1
+		out.append(piece)
+	out.sort_custom(func(a: PackedInt32Array, b: PackedInt32Array) -> bool:
+		return a.size() > b.size())
+	return out
+
+
+## How far a piece apart may be joined from, in the join's costs: four
+## studs across empty air at 24 studs, eight at 48.
+static func _join_reach(studs: int) -> int:
+	return JOIN_STUD * maxi(4, studs / 6)
+
+
+## Join, don't drop. Each piece apart from the largest is joined to the
+## rest by the cheapest way there: along the model's own surface where it
+## is thinner than a stud, else straight through the air, a plate up or
+## down costing less than a stud across, so a join is a pillar more than a
+## bridge. The largest piece, if it stands on nothing, is stood on the
+## ground or on a piece that is. A piece too far to join that stands on the
+## ground is kept, for a stand to join; any other is left out, and said.
+## Taking every piece but the largest out (as this once did) laid nothing at
+## all for a fox whose body floated over legs it had not measured.
+static func _join(grid: Grid, touched: PackedByteArray, studs: int) -> void:
+	if grid.added.is_empty():
+		grid.added.resize(grid.state.size())
+	var pieces: Array = _pieces(grid)
+	if pieces.is_empty():
+		return
+	var cells: int = 0
+	for piece: PackedInt32Array in pieces:
+		cells += piece.size()
+	# A speck: a few cells of a scan's dust, which a stand would not be
+	# built for.
+	var speck: int = maxi(4, cells / 400)
+	var main: PackedInt32Array = pieces[0]
+	var kept := PackedInt32Array(main)
+	var grounded: Array = []
+	for n: int in range(1, pieces.size()):
+		var piece: PackedInt32Array = pieces[n]
+		if piece.size() >= speck and _on_ground(grid, piece):
+			grounded.append(n)
+			kept.append_array(piece)
+	# The largest piece, standing on nothing: a pillar to the ground, or to
+	# a piece that stands on it.
+	if not _on_ground(grid, main):
+		var reach: Dictionary = _reach(grid, touched, main, -1, 1 << 20)
+		var dist: PackedInt32Array = reach["dist"]
+		var best: int = -1
+		for x: int in grid.across:
+			for z: int in grid.deep:
+				var i: int = grid.index(x, 0, z)
+				if dist[i] >= 0 and (best < 0 or dist[i] < dist[best]):
+					best = i
+		for n: int in grounded:
+			for i: int in (pieces[n] as PackedInt32Array):
+				if dist[i] >= 0 and (best < 0 or dist[i] < dist[best]):
+					best = i
+		if best >= 0:
+			var path: PackedInt32Array = _trace(grid, reach, best)
+			path.append_array(_widened(grid, path))
+			grid.joins.append({"cells": main.size(), "path": path.size(),
+				"to": "the ground", "way": "pillar"})
+			kept.append_array(path)
+	var rest: Array = []
+	for n: int in range(1, pieces.size()):
+		if not grounded.has(n):
+			rest.append(n)
+	if rest.is_empty():
+		return
+	var limit: int = _join_reach(studs)
+	var reach: Dictionary = _reach(grid, touched, kept, JOIN_STUD * 2, limit)
+	var dist: PackedInt32Array = reach["dist"]
+	for n: int in rest:
+		var piece: PackedInt32Array = pieces[n]
+		# From the cell beside it the way there is cheapest, and of those the
+		# one nearest its middle: from the first found, a pillar stood under a
+		# corner of a cube and carried it on one stud's edge.
+		var middle := Vector2.ZERO
+		for i: int in piece:
+			middle += Vector2(i / (grid.tall * grid.deep), (i / grid.tall) % grid.deep)
+		middle /= float(piece.size())
+		var best: int = -1
+		var off: float = INF
+		for i: int in piece:
+			for next: int in _faces(grid, i):
+				if grid.state[next] == 1 or dist[next] < 0:
+					continue
+				var here: float = Vector2(next / (grid.tall * grid.deep),
+					(next / grid.tall) % grid.deep).distance_to(middle)
+				if best < 0 or dist[next] < dist[best] or (dist[next] == dist[best] and here < off):
+					best = next
+					off = here
+		if best >= 0:
+			var path: PackedInt32Array = _trace(grid, reach, best)
+			var way: String = _way(path)
+			var to_ground: bool = bool(reach.get("grounded", false))
+			if to_ground and piece.size() < speck:
+				# A speck joined only by a pillar of its own to the floor is dust.
+				for i: int in path:
+					grid.state[i] = 0
+					grid.added[i] = 0
+			else:
+				if piece.size() >= speck:
+					path.append_array(_widened(grid, path))
+				grid.joins.append({"cells": piece.size(), "path": path.size(),
+					"to": "the ground" if to_ground else "the rest", "way": way})
+				continue
+		for i: int in piece:
+			grid.state[i] = 2
+		grid.dropped += piece.size()
+		grid.left_out.append(_described(grid, piece,
+			"a speck apart from the rest" if piece.size() < speck
+			else "a piece apart from the rest, too far from it to join"))
+
+
+## Whether a piece has a cell on the ground.
+static func _on_ground(grid: Grid, piece: PackedInt32Array) -> bool:
+	for i: int in piece:
+		if i % grid.tall == 0:
+			return true
+	return false
+
+
+## The cheapest way from [param sources] to every cell, as far as [param
+## limit]: {"dist" (-1 not reached), "from"}. Through the model's cells
+## free, along its surface cheaply, through the air dearly; from the ground
+## too, at [param ground] more, when it is not -1 (a piece may stand on its
+## own pillar). By buckets, the costs being small whole numbers.
+static func _reach(grid: Grid, touched: PackedByteArray, sources: PackedInt32Array,
+		ground: int, limit: int) -> Dictionary:
+	var total: int = grid.state.size()
+	var dist := PackedInt32Array()
+	dist.resize(total)
+	dist.fill(-1)
+	var from := PackedInt32Array()
+	from.resize(total)
+	from.fill(-1)
+	# Arrays, not packed ones: a packed array in a dictionary is copied on
+	# every append.
+	var buckets: Dictionary = {}    ## distance -> Array of cells
+	for i: int in sources:
+		dist[i] = 0
+		from[i] = i
+	buckets[0] = Array(sources)
+	if ground >= 0:
+		for x: int in grid.across:
+			for z: int in grid.deep:
+				var i: int = grid.index(x, 0, z)
+				var d: int = ground + _cost(grid, touched, i, true)
+				if d <= limit and (dist[i] < 0 or d < dist[i]):
+					dist[i] = d
+					from[i] = -2
+					if not buckets.has(d):
+						buckets[d] = []
+					(buckets[d] as Array).append(i)
+	var d: int = 0
+	while d <= limit and not buckets.is_empty():
+		if not buckets.has(d):
+			d += 1
+			continue
+		var here: Array = buckets[d]
+		var n: int = 0
+		while n < here.size():
+			var i: int = here[n]
+			n += 1
+			if dist[i] != d:
+				continue
+			for next: int in _faces(grid, i):
+				var nd: int = d + _cost(grid, touched, next, absi(next - i) == 1)
+				if nd > limit or (dist[next] >= 0 and nd >= dist[next]):
+					continue
+				dist[next] = nd
+				from[next] = i
+				# A free step, into the model, lands in this same bucket and is
+				# read before it is done.
+				if not buckets.has(nd):
+					buckets[nd] = []
+				(buckets[nd] as Array).append(next)
+		buckets.erase(d)
+		d += 1
+	return {"dist": dist, "from": from}
+
+
+## What a step into cell [param i] costs: nothing into the model, little
+## along its surface, more through the air; a plate up or down is less
+## than a stud across.
+static func _cost(grid: Grid, touched: PackedByteArray, i: int, upright: bool) -> int:
+	if grid.state[i] == 1:
+		return 0
+	if touched[i] == 1:
+		return SURFACE_PLATE if upright else SURFACE_STUD
+	return JOIN_PLATE if upright else JOIN_STUD
+
+
+## The way back from [param start] to where [param reach] began, its cells
+## made the model's: the cells added. Says in reach["grounded"] whether it
+## began on the ground.
+static func _trace(grid: Grid, reach: Dictionary, start: int) -> PackedInt32Array:
+	var from: PackedInt32Array = reach["from"]
+	var path := PackedInt32Array()
+	var at: int = start
+	reach["grounded"] = false
+	for _step: int in grid.state.size():
+		if grid.state[at] != 1:
+			grid.state[at] = 1
+			grid.added[at] = 2
+			path.append(at)
+		var back: int = from[at]
+		if back == -2:
+			reach["grounded"] = true
+			break
+		if back < 0 or back == at:
+			break
+		at = back
+	return path
+
+
+## A path two studs square, not one: the cells beside each of its cells on
+## one side and the next, made the model's, for a join to be 2 x 2 bricks and
+## plates, four studs to a joint, and not a column of 1 x 1s that a cube on
+## it bends over. The cells added.
+static func _widened(grid: Grid, path: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var column: int = grid.tall * grid.deep
+	for i: int in path:
+		var x: int = i / column
+		var z: int = (i / grid.tall) % grid.deep
+		var dx: int = column if x + 1 < grid.across else -column
+		var dz: int = grid.tall if z + 1 < grid.deep else -grid.tall
+		for next: int in [i + dx, i + dz, i + dx + dz]:
+			if next >= 0 and next < grid.state.size() and grid.state[next] == 0:
+				grid.state[next] = 1
+				grid.added[next] = 2
+				out.append(next)
+	return out
+
+
+## Whether a path is more up and down than across.
+static func _way(path: PackedInt32Array) -> String:
+	var upright: int = 0
+	for n: int in range(1, path.size()):
+		if absi(path[n] - path[n - 1]) == 1:
+			upright += 1
+	return "pillar" if upright * 2 >= path.size() - 1 else "bridge"
+
+
+## A piece said by where it is: its cells, its corners in studs and plates,
+## and why.
+static func _described(grid: Grid, piece: PackedInt32Array, why: String) -> Dictionary:
+	var low := Vector3i(1 << 20, 1 << 20, 1 << 20)
+	var high := -low
+	var column: int = grid.tall * grid.deep
+	for i: int in piece:
+		var at := Vector3i(i / column, i % grid.tall, (i / grid.tall) % grid.deep)
+		low = low.min(at)
+		high = high.max(at)
+	return {"cells": piece.size(), "low": low, "high": high, "why": why}
+
+
+# -- what it stands on --------------------------------------------------------
+
+
+## The most studs any one foot stands on: the cells on the ground in pieces
+## side by side.
+static func _widest_foot(feet: Dictionary) -> int:
+	var seen: Dictionary = {}
+	var widest: int = 0
+	for key: Variant in feet:
+		if seen.has(key):
+			continue
+		var count: int = 0
+		var stack: Array = [key]
+		seen[key] = true
+		while not stack.is_empty():
+			var here: Vector2i = stack.pop_back()
+			count += 1
+			for step: Vector2i in Shapes.OUT:
+				var next: Vector2i = here + step
+				if feet.has(next) and not seen.has(next):
+					seen[next] = true
+					stack.append(next)
+		widest = maxi(widest, count)
+	return widest
+
+
+## Whether it stands as measured, and the stand it is laid on if not: on
+## feet none bigger than [constant THIN_FOOT] studs (a fox's legs, an
+## aircraft's wheels); with its centre of mass within half a stud of the
+## edge of what it stands on, or past it; or in pieces on the ground that
+## nothing else joins. A stand covers what it stands on and its centre of
+## mass a stud and a half round, and a stud more, inside its own bounds.
+## Balance weighs it once laid.
+static func _stance(grid: Grid, options: Options) -> void:
+	var feet: Dictionary = {}       ## Vector2i -> true
+	var mass := Vector2.ZERO
+	var count: int = 0
+	var plan: int = 0
+	for x: int in grid.across:
+		for z: int in grid.deep:
+			var base: int = grid.index(x, 0, z)
+			var any: bool = false
+			for j: int in grid.tall:
+				if grid.state[base + j] == 1:
+					any = true
+					mass += Vector2(x + 0.5, z + 0.5)
+					count += 1
+			if any:
+				plan += 1
+			if grid.state[base] == 1:
+				feet[Vector2i(x, z)] = true
+	grid.on_ground = feet.size()
+	grid.plan_studs = plan
+	if count == 0:
+		return
+	mass /= float(count)
+	var corners := PackedVector2Array()
+	for key: Variant in feet:
+		var cell: Vector2i = key
+		corners.append_array([Vector2(cell), Vector2(cell.x + 1, cell.y),
+			Vector2(cell.x + 1, cell.y + 1), Vector2(cell.x, cell.y + 1)])
+	var hull: PackedVector2Array = Geometry2D.convex_hull(corners)
+	if hull.size() > 1 and hull[0].is_equal_approx(hull[hull.size() - 1]):
+		hull.resize(hull.size() - 1)
+	grid.margin = float(Balance.margin_in(hull, mass)["margin"]) if hull.size() >= 3 else -1.0
+	var ground_pieces: int = 0
+	for piece: PackedInt32Array in _pieces(grid):
+		if _on_ground(grid, piece):
+			ground_pieces += 1
+	grid.standing_apart = ground_pieces
+	if not options.stand or feet.is_empty():
+		return
+	var why: String = ""
+	if ground_pieces > 1:
+		why = "it stands in %d pieces that only the ground would join" % ground_pieces
+	elif grid.margin < 0.0:
+		why = "it would tip, its centre of mass %s studs past what it stands on" % Balance.studs(
+			-grid.margin)
+	elif grid.margin < Balance.SPARE:
+		why = "it would all but tip, its centre of mass %s studs inside what it stands on" \
+			% Balance.studs(grid.margin)
+	elif _widest_foot(feet) <= THIN_FOOT:
+		why = "it stands on %d stud%s, on feet none bigger than %d" % [grid.on_ground,
+			"" if grid.on_ground == 1 else "s", THIN_FOOT]
+	if why.is_empty():
+		return
+	var low := Vector2i(floori(mass.x - 1.5), floori(mass.y - 1.5))
+	var high := Vector2i(ceili(mass.x + 1.5), ceili(mass.y + 1.5))
+	for key: Variant in feet:
+		var foot: Vector2i = key
+		low = low.min(foot)
+		high = high.max(foot + Vector2i.ONE)
+	low = (low - Vector2i.ONE).max(Vector2i.ZERO)
+	high = (high + Vector2i.ONE).min(Vector2i(grid.across, grid.deep))
+	grid.stand = Rect2i(low, high - low)
+	grid.stand_why = why
 
 
 ## Where a column is inside, from the faces a ray up it crosses: in at a
@@ -372,49 +1004,6 @@ static func _flat_faces(mesh: MeshFile) -> PackedByteArray:
 				break
 		out[t] = 1 if flat else 0
 	return out
-
-
-## Only the largest piece: a speck of dust in a scan, or a part of a sculpt
-## not touching the rest, would be bricks held by nothing.
-static func _one_piece(grid: Grid) -> void:
-	var total: int = grid.state.size()
-	var seen := PackedByteArray()
-	seen.resize(total)
-	var best := PackedInt32Array()
-	var others: Array = []
-	var steps: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
-		Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
-	for x: int in grid.across:
-		for z: int in grid.deep:
-			for j: int in grid.tall:
-				var start: int = grid.index(x, j, z)
-				if grid.state[start] != 1 or seen[start] == 1:
-					continue
-				var piece := PackedInt32Array([start])
-				var stack: Array[Vector3i] = [Vector3i(x, j, z)]
-				seen[start] = 1
-				while not stack.is_empty():
-					var here: Vector3i = stack.pop_back()
-					for step: Vector3i in steps:
-						var next: Vector3i = here + step
-						if next.x < 0 or next.y < 0 or next.z < 0 or next.x >= grid.across \
-								or next.y >= grid.tall or next.z >= grid.deep:
-							continue
-						var i: int = grid.index(next.x, next.y, next.z)
-						if grid.state[i] == 1 and seen[i] == 0:
-							seen[i] = 1
-							piece.append(i)
-							stack.append(next)
-				if piece.size() > best.size():
-					if not best.is_empty():
-						others.append(best)
-					best = piece
-				else:
-					others.append(piece)
-	for piece: PackedInt32Array in others:
-		for i: int in piece:
-			grid.state[i] = 2
-		grid.dropped += piece.size()
 
 
 ## Hollowed: every cell further in than the walls left out. Worked out as
@@ -648,7 +1237,9 @@ static func _nearest(key: int, lab: Array[Vector3], known: Dictionary,
 
 
 ## The shape Shapes lays: the grid as its solid, the hollow as a cut kept
-## clear, and the surface as asked.
+## clear, and the surface as asked. Its pieces kept, every one: what Shapes
+## cannot join, [method mend] joins, and only what nothing joins is taken
+## out, and said.
 static func pattern(grid: Grid, options: Options) -> Dictionary:
 	var size: Array = [grid.across, grid.tall, grid.deep]
 	var cuts: Array = []
@@ -661,12 +1252,14 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true,
+		"stitch_first": true, "keep_pieces": true,
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 
 
-## Every part Shapes may lay, to be loaded before a worker reads them.
-static func parts_needed() -> PackedStringArray:
+## Every part Brickify may lay, to be loaded before a worker reads them: by
+## the numbers Shapes knows them by, and with [param library], the numbers
+## LDraw gives them today, which is what goes down.
+static func parts_needed(library: PartLibrary = null) -> PackedStringArray:
 	var out: Dictionary = {}
 	for table: Array in [Shapes.CORE_BRICKS, Shapes.CORE_PLATES, Shapes.TOPS]:
 		for entry: Array in table:
@@ -679,17 +1272,31 @@ static func parts_needed() -> PackedStringArray:
 	for id: Variant in Shapes.ROUND_PLATES + Shapes.EDGE_PLATES + Patterns.WEDGES \
 			+ Shapes.ROUND_BRICKS + Shapes.EDGE_BRICKS:
 		out[str(id)] = true
-	for id: String in ["30414", "11211", "87087"]:
+	for id: String in ["30414", "11211", "87087", JOIN_PLATE_PART, ONE_PLATE, ONE_BRICK]:
 		out[id] = true
 	for id: Variant in Assistant.PANELS.values():
 		out[str(id)] = true
+	for table: Array in [STAND_ALONG_X, STAND_ONE_X]:
+		for entry: Array in table:
+			out[str(entry[1])] = true
+	if library != null:
+		for id: Variant in out.keys():
+			out[library.resolve(str(id))] = true
 	return PackedStringArray(out.keys())
 
 
-## Measure, lay and check: {"model", "report", "grid", "trouble", "ms"}, or
-## {"error"}. Every part in [method parts_needed] must already be loaded.
+## Measure, lay, stand, check and weigh: {"model", "report", "grid",
+## "trouble", "ms"}, or {"error", "studs"} (a size that keeps it, or 0).
+## Every part in [method parts_needed] must already be loaded.
+##
+## The report is the last check's, with what was done to it: "mended"
+## (parts taken out), "tied" (parts added to join pieces), "joined" (the
+## measuring's joins), "left_out" (each piece taken out, where and why),
+## "lost" (the model's own cells no part fills, in regions), "stand" (the
+## stand it was given and why, or empty), "balance" (Balance.Report) and
+## "coverage".
 static func build(mesh: MeshFile, options: Options, checker: Assistant,
-		progress: Progress = null) -> Dictionary:
+		progress: Progress = null, suggest: bool = true) -> Dictionary:
 	var library: PartLibrary = checker.library
 	var times: Dictionary = {}
 	var t0: int = Time.get_ticks_msec()
@@ -698,7 +1305,8 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	var grid: Grid = voxelise(mesh, options, library)
 	times["measure"] = Time.get_ticks_msec() - t0
 	if grid.cells == 0:
-		return {"error": "at that size nothing of it is a stud wide — make it bigger"}
+		return _cannot(mesh, options, checker, progress, suggest,
+			"at %d studs there is nothing of it to lay" % options.studs)
 	if progress != null:
 		progress.say("laying %s studs of it in bricks" % _comma(grid.cells))
 	var t1: int = Time.get_ticks_msec()
@@ -718,30 +1326,267 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 		model.placements.append(Assistant.Placement.from_dict(one))
 	times["lay"] = Time.get_ticks_msec() - t1
 	if model.placements.is_empty():
-		return {"error": "it could not be laid: %s" % "; ".join(PackedStringArray(trouble))
-			if not trouble.is_empty() else "it came to no bricks"}
+		return _cannot(mesh, options, checker, progress, suggest, "at %d studs it came to no bricks%s"
+			% [options.studs, ": " + "; ".join(PackedStringArray(trouble)) if not trouble.is_empty() else ""])
 	if progress != null:
 		progress.say("checking %s parts hold together" % _comma(model.placements.size()))
 	var t2: int = Time.get_ticks_msec()
+	var stand: Dictionary = {}
+	if grid.stand.has_area():
+		stand = lay_stand(model, grid.stand, grid.stand_why, checker, options.smooth,
+			grid.stand_colour)
 	var report: Dictionary = mend(model, checker)
+	var balance: Balance.Report = report.get("balance")
+	# Weighed, and it would tip after all: stood on a stand under what it
+	# stands on and its centre of mass, and checked again.
+	if options.stand and stand.is_empty() and balance != null and not balance.empty \
+			and balance.margin < 0.0 and not model.placements.is_empty():
+		var under: Rect2i = _stand_under(model, checker, balance)
+		if under.has_area():
+			stand = lay_stand(model, under, "it would tip, its centre of mass %s studs past what it stands on"
+				% Balance.studs(-balance.margin), checker, options.smooth, grid.stand_colour)
+			var again: Dictionary = mend(model, checker)
+			again["mended"] = int(again["mended"]) + int(report["mended"])
+			again["tied"] = int(again["tied"]) + int(report["tied"])
+			again["left_out"] = (report["left_out"] as Array) + (again["left_out"] as Array)
+			report = again
 	times["check"] = Time.get_ticks_msec() - t2
-	report["coverage"] = coverage(grid, model, checker)
-	return {"model": model, "report": report, "grid": grid, "trouble": trouble, "ms": times}
-
-
-## How much of the model the parts fill: its studs and plates inside a part,
-## over all of them. A model can pass the check having lost an ear.
-static func coverage(grid: Grid, model: Assistant.Model, checker: Assistant) -> float:
-	if grid.cells == 0:
-		return 0.0
-	var covered := PackedByteArray()
-	covered.resize(grid.state.size())
+	var lift: int = STAND_PLATES if not stand.is_empty() else 0
+	if not stand.is_empty():
+		stand["lift"] = lift
+	report["stand"] = stand
+	report["joined"] = grid.joins
+	report["thin"] = grid.thin
+	report["left_out"] = grid.left_out + (report["left_out"] as Array)
+	var covered: PackedByteArray = _covered(grid, model, checker, lift)
 	var count: int = 0
+	for one: int in covered:
+		count += one
+	report["coverage"] = float(count) / float(maxi(grid.cells, 1))
+	report["lost"] = _lost(grid, covered)
+	if model.placements.is_empty():
+		return _cannot(mesh, options, checker, progress, suggest,
+			"at %d studs nothing of it held together" % options.studs)
+	var out: Dictionary = {"model": model, "report": report, "grid": grid, "trouble": trouble,
+		"ms": times}
+	# What it lost is said; and where most of it went, a size that keeps it.
+	if suggest and float(report["coverage"]) < 0.75:
+		out["studs"] = _keeps_at(mesh, options, checker, progress)
+	return out
+
+
+## Why nothing was laid, and the smallest size tried that lays it whole:
+## {"error", "studs"}.
+static func _cannot(mesh: MeshFile, options: Options, checker: Assistant, progress: Progress,
+		suggest: bool, why: String) -> Dictionary:
+	var studs: int = _keeps_at(mesh, options, checker, progress) if suggest else 0
+	var words: String = why
+	if studs > 0:
+		words += " — at %d studs it is laid whole" % studs
+	elif suggest:
+		words += " — nor at any size up to %d studs" % MOST_STUDS
+	return {"error": words, "studs": studs}
+
+
+## The smallest size above the one asked that lays the model whole (at
+## least 95% of it in a part, nothing left out), by half again each try; 0
+## for none up to [constant MOST_STUDS].
+static func _keeps_at(mesh: MeshFile, options: Options, checker: Assistant,
+		progress: Progress) -> int:
+	var studs: int = options.studs
+	while studs < MOST_STUDS:
+		studs = mini(MOST_STUDS, maxi(studs + 4, ceili(studs * 1.5)))
+		if progress != null:
+			progress.say("trying it at %d studs" % studs)
+		var tried := Options.new()
+		tried.studs = studs
+		tried.up = options.up
+		tried.hollow = options.hollow
+		tried.smooth = options.smooth
+		tried.colours = options.colours
+		tried.colour = options.colour
+		tried.limit = options.limit
+		tried.palette = options.palette
+		tried.stand = options.stand
+		var result: Dictionary = build(mesh, tried, checker, null, false)
+		if result.has("model"):
+			var report: Dictionary = result["report"]
+			if float(report["coverage"]) >= 0.95 and (report["left_out"] as Array).is_empty():
+				return studs
+	return 0
+
+
+# -- the stand ------------------------------------------------------------------
+
+
+## Under the model as laid: what it stands on and its centre of mass (as
+## Balance found it) a stud and a half round, a stud more all round, inside
+## its own plan.
+static func _stand_under(model: Assistant.Model, checker: Assistant,
+		balance: Balance.Report) -> Rect2i:
+	var low := Vector2i(1 << 20, 1 << 20)
+	var high := -low
+	var plan_low := low
+	var plan_high := high
 	for placement: Assistant.Placement in model.placements:
 		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
 		if part == null:
 			continue
 		var box: AABB = checker._transform(placement, part) * part.bounds
+		var a := Vector2i(roundi(box.position.x / 20.0), roundi(box.position.z / 20.0))
+		var b := Vector2i(roundi(box.end.x / 20.0), roundi(box.end.z / 20.0))
+		plan_low = plan_low.min(a)
+		plan_high = plan_high.max(b)
+		if box.position.y < 4.0:
+			low = low.min(a)
+			high = high.max(b)
+	if high.x <= low.x:
+		return Rect2i()
+	var centre := Vector2(balance.rest_centre.x, balance.rest_centre.z) / 20.0
+	low = low.min(Vector2i(floori(centre.x - 1.5), floori(centre.y - 1.5))) - Vector2i.ONE
+	high = high.max(Vector2i(ceili(centre.x + 1.5), ceili(centre.y + 1.5))) + Vector2i.ONE
+	low = low.max(plan_low)
+	high = high.min(plan_high)
+	return Rect2i(low, high - low)
+
+
+## A stand of [param rect] under the model, as a set gives a figure or an
+## aircraft one: the model lifted onto it, two plates whose joints cross
+## (strips two studs wide along x under strips along z, each strip's joints
+## where the strips of the other layer run over them), and tiles over what
+## the model does not stand on. {"rect", "why", "parts" (how many),
+## "placements" (the stand's own, which a mend may renumber but not
+## replace)}.
+static func lay_stand(model: Assistant.Model, rect: Rect2i, why: String, checker: Assistant,
+		tiles: bool = true, colour: int = STAND_COLOUR) -> Dictionary:
+	for placement: Assistant.Placement in model.placements:
+		placement.y += STAND_PLATES
+	var first: int = model.placements.size()
+	var add := func(part: String, x: int, y: int, z: int, rot: int) -> void:
+		model.placements.append(Assistant.Placement.from_dict({"part": part,
+			"color": colour, "x": x, "y": y, "z": z, "rot": rot}))
+	# The lower layer: strips along x, two studs deep, their joints at even
+	# studs from the corner, each strip starting long or short in turn.
+	for k: int in range(0, rect.size.y, 2):
+		var wide: int = mini(2, rect.size.y - k)
+		var runs: Array = _runs(rect.size.x, 8 if (k / 2) % 2 == 0 else 4, 8 if wide == 2 else 6)
+		var x: int = 0
+		for length: int in runs:
+			var entry: Array = _strip_part(length, wide, true)
+			add.call(str(entry[1]), rect.position.x + x, 0, rect.position.y + k, int(entry[2]))
+			x += length
+	# The upper layer: strips along z, the first a stud wide so their sides
+	# fall where the lower strips run on, their joints at odd studs, so every
+	# joint of each layer has a strip of the other over or under it.
+	var strips: Array = [[0, mini(1, rect.size.x)]]
+	for a: int in range(1, rect.size.x, 2):
+		strips.append([a, mini(2, rect.size.x - a)])
+	for n: int in strips.size():
+		var a: int = strips[n][0]
+		var wide: int = strips[n][1]
+		var runs: Array = _runs(rect.size.y, 3 if n % 2 == 0 else 1, 8 if wide == 2 else 6)
+		var z: int = 0
+		for length: int in runs:
+			var entry: Array = _strip_part(length, wide, false)
+			add.call(str(entry[1]), rect.position.x + a, 1, rect.position.y + z, int(entry[2]))
+			z += length
+	if tiles:
+		_tile_stand(model, rect, first, checker, colour)
+	return {"rect": rect, "why": why, "parts": model.placements.size() - first,
+		"placements": model.placements.slice(first)}
+
+
+## A strip [param length] long cut into plates: [param first] studs, then
+## as long as plates come ([param longest]), five and seven as an even
+## length and a 1. So every joint is an even number of studs on from the
+## first one: the first's length says whether those are even or odd.
+static func _runs(length: int, first: int, longest: int) -> Array:
+	var out: Array = []
+	var left: int = length
+	var start: int = mini(first, left)
+	if start > 0:
+		out.append(start)
+		left -= start
+	while left > 0:
+		var next: int = mini(longest, left)
+		if next == 7 or next == 5:
+			next -= 1
+		out.append(next)
+		left -= next
+	return out
+
+
+## The plate for [param length] studs of a strip [param wide] studs (1 or
+## 2), along x or along z: [length, part, rot].
+static func _strip_part(length: int, wide: int, along_x: bool) -> Array:
+	var table: Array = (STAND_ALONG_X if along_x else STAND_ALONG_Z) if wide == 2 \
+		else (STAND_ONE_X if along_x else STAND_ONE_Z)
+	for entry: Array in table:
+		if int(entry[0]) == length:
+			return entry
+	return table[table.size() - 1]
+
+
+## Tiles over the stand's top where the model does not stand on it, so it
+## reads as a stand and not as a baseplate.
+static func _tile_stand(model: Assistant.Model, rect: Rect2i, first: int,
+		checker: Assistant, colour: int) -> void:
+	var taken: Dictionary = {}      ## Vector2i -> true: the model stands there
+	for index: int in first:
+		var placement: Assistant.Placement = model.placements[index]
+		if placement.y > STAND_PLATES + 3:
+			continue
+		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var box: AABB = checker._transform(placement, part) * part.bounds
+		if box.position.y > (STAND_PLATES + 1) * 8.0 - 1.0:
+			continue
+		for x: int in range(floori(box.position.x / 20.0 + 0.01), ceili(box.end.x / 20.0 - 0.01)):
+			for z: int in range(floori(box.position.z / 20.0 + 0.01), ceili(box.end.z / 20.0 - 0.01)):
+				taken[Vector2i(x, z)] = true
+	var free: Dictionary = {}
+	for x: int in range(rect.position.x, rect.end.x):
+		for z: int in range(rect.position.y, rect.end.y):
+			if not taken.has(Vector2i(x, z)):
+				free[Vector2i(x, z)] = true
+	for z: int in range(rect.position.y, rect.end.y):
+		for x: int in range(rect.position.x, rect.end.x):
+			var corner := Vector2i(x, z)
+			if not free.has(corner):
+				continue
+			for entry: Array in Shapes.TOPS:
+				var w: int = int(entry[0])
+				var d: int = int(entry[1])
+				var fits: bool = true
+				for a: int in w:
+					for b: int in d:
+						fits = fits and free.has(corner + Vector2i(a, b))
+				if not fits:
+					continue
+				for a: int in w:
+					for b: int in d:
+						free.erase(corner + Vector2i(a, b))
+				model.placements.append(Assistant.Placement.from_dict({"part": str(entry[2]),
+					"color": colour, "x": x, "y": STAND_PLATES, "z": z, "rot": int(entry[3])}))
+				break
+
+
+# -- what it fills, and what it lost ------------------------------------------
+
+
+## Each cell of the model a part fills, its studs and plates inside a part
+## (1), as laid [param lift] plates up.
+static func _covered(grid: Grid, model: Assistant.Model, checker: Assistant,
+		lift: int = 0) -> PackedByteArray:
+	var covered := PackedByteArray()
+	covered.resize(grid.state.size())
+	for placement: Assistant.Placement in model.placements:
+		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var box: AABB = checker._transform(placement, part) * part.bounds
+		box.position.y -= lift * 8.0
 		for x: int in range(maxi(0, roundi(box.position.x / 20.0)),
 				mini(grid.across, roundi(box.end.x / 20.0))):
 			for z: int in range(maxi(0, roundi(box.position.z / 20.0)),
@@ -752,42 +1597,435 @@ static func coverage(grid: Grid, model: Assistant.Model, checker: Assistant) -> 
 					if centre < box.position.y or centre > box.end.y - 3.9:
 						continue
 					var i: int = grid.index(x, j, z)
-					if grid.state[i] == 1 and covered[i] == 0:
+					if grid.state[i] == 1:
 						covered[i] = 1
-						count += 1
+	return covered
+
+
+## How much of the model the parts fill: its studs and plates inside a part,
+## over all of them. A model can pass the check having lost an ear.
+static func coverage(grid: Grid, model: Assistant.Model, checker: Assistant,
+		lift: int = 0) -> float:
+	if grid.cells == 0:
+		return 0.0
+	var count: int = 0
+	for one: int in _covered(grid, model, checker, lift):
+		count += one
 	return float(count) / float(grid.cells)
 
 
-## Checked as check_design checks a design, and mended until it passes in
-## one piece: a part overlapping one before it, a part nothing holds, and a
-## piece apart from the rest, each taken out and the whole checked again.
-## The report of the last check, with "mended": how many parts came out.
+## The model's cells no part fills, in regions face to face, each big enough
+## to be a feature (a spout, an ear: a hundredth of the model or six cells)
+## said where it is: {"share", "regions": [{"cells", "low", "high", "why"}]}.
+## Coverage alone said 98% for a teapot that had lost its spout and handle.
+static func _lost(grid: Grid, covered: PackedByteArray) -> Dictionary:
+	var total: int = grid.state.size()
+	var seen := PackedByteArray()
+	seen.resize(total)
+	var uncovered: int = 0
+	var regions: Array = []
+	var least: int = maxi(6, grid.cells / 100)
+	for start: int in total:
+		if grid.state[start] != 1 or covered[start] == 1 or seen[start] == 1:
+			continue
+		var region := PackedInt32Array([start])
+		seen[start] = 1
+		var n: int = 0
+		while n < region.size():
+			for next: int in _faces(grid, region[n]):
+				if grid.state[next] == 1 and covered[next] == 0 and seen[next] == 0:
+					seen[next] = 1
+					region.append(next)
+			n += 1
+		uncovered += region.size()
+		if region.size() >= least:
+			regions.append(_described(grid, region, "no part fills it"))
+	regions.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["cells"]) > int(b["cells"]))
+	return {"share": float(uncovered) / float(maxi(grid.cells, 1)), "regions": regions}
+
+
+## Where a piece or region is on the model, in words a person can find it
+## by: "at its top left, toward the front".
+static func where_on(grid: Grid, low: Vector3i, high: Vector3i) -> String:
+	var middle := Vector3(low + high) / 2.0 + Vector3(0.5, 0.5, 0.5)
+	var words: PackedStringArray = []
+	var up: float = middle.y / float(maxi(grid.tall, 1))
+	words.append("top" if up > 0.67 else ("bottom" if up < 0.33 else "middle"))
+	var side: float = middle.x / float(maxi(grid.across, 1))
+	if side < 0.33:
+		words.append("left")
+	elif side > 0.67:
+		words.append("right")
+	var along: float = middle.z / float(maxi(grid.deep, 1))
+	var toward: String = ""
+	if along < 0.33:
+		toward = ", toward the back"
+	elif along > 0.67:
+		toward = ", toward the front"
+	return "at its %s%s" % [" ".join(words), toward]
+
+
+# -- saying what it came to -----------------------------------------------------
+
+
+## What a Brickify came to, in words, for the panel's status line and a
+## session's answer: whether it is one piece and stands (weighed, not
+## assumed), on what, what was joined, and what was left out, where and
+## why. "buildable" only when it is one piece, passes the check, stands and
+## no stud joint is past its working load.
+static func said(result: Dictionary) -> String:
+	var report: Dictionary = result["report"]
+	var grid: Grid = result["grid"]
+	var out := PackedStringArray()
+	var one_piece: bool = bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1
+	var balance: Balance.Report = report.get("balance")
+	var weighed: bool = balance != null and not balance.empty
+	var stands: bool = weighed and balance.stands()
+	var over: int = balance.over if weighed else 0
+	if one_piece and stands and over == 0:
+		out.append("buildable in one piece")
+	elif one_piece:
+		out.append("in one piece")
+	else:
+		out.append("not buildable as laid (%s)" % str(report.get("summary", "")))
+	var stand: Dictionary = report.get("stand", {})
+	var on: String
+	if not stand.is_empty():
+		var rect: Rect2i = stand["rect"]
+		on = "on a stand %d × %d studs, added because %s" % [rect.size.x, rect.size.y,
+			str(stand["why"])]
+	else:
+		on = "on %d stud%s of its own" % [grid.on_ground, "" if grid.on_ground == 1 else "s"]
+	if weighed:
+		if balance.margin >= 0.0:
+			out.append("it stands %s, %s studs inside its %s edge" % [on,
+				Balance.studs(balance.margin), balance.edge])
+		else:
+			out.append("it would tip %s, %s studs past its %s edge" % [on,
+				Balance.studs(-balance.margin), balance.edge])
+		if over > 0:
+			out.append("%d stud joint%s past %s working load" % [over, "" if over == 1 else "s",
+				"its" if over == 1 else "their"])
+	var joins: Array = report.get("joined", [])
+	var tied: int = int(report.get("tied", 0))
+	if not joins.is_empty() or tied > 0:
+		var ways: Dictionary = {}
+		for one: Dictionary in joins:
+			var way: String = "a pillar to the ground" if str(one["to"]) == "the ground" \
+				else ("a pillar" if str(one["way"]) == "pillar" else "a bridge")
+			ways[way] = int(ways.get(way, 0)) + 1
+		var named := PackedStringArray()
+		for way: String in ways:
+			named.append(way if int(ways[way]) == 1 else "%d × %s" % [ways[way], way])
+		if tied > 0:
+			named.append("%d part%s across the joints" % [tied, "" if tied == 1 else "s"])
+		out.append("joined, not dropped: %s" % ", ".join(named))
+	if grid.thin > 0:
+		out.append("its parts thinner than a stud kept a stud thick")
+	var gone := PackedStringArray()
+	for one: Dictionary in report.get("left_out", []):
+		var what: String = ("%d part%s" % [one["parts"], "" if int(one["parts"]) == 1 else "s"]) \
+			if one.has("parts") else ("%d studs and plates" % int(one["cells"]))
+		gone.append("%s %s (%s)" % [what, where_on(grid, one["low"], one["high"]), one["why"]])
+	var lost: Dictionary = report.get("lost", {})
+	for one: Dictionary in (lost.get("regions", []) as Array).slice(0, 3):
+		gone.append("%d studs and plates %s that no part fills" % [int(one["cells"]),
+			where_on(grid, one["low"], one["high"])])
+	if gone.is_empty():
+		out.append("nothing of it left out")
+	else:
+		out.append("left out: %s" % "; ".join(gone.slice(0, 4)))
+	if int(result.get("studs", 0)) > 0:
+		out.append("at %d studs it is laid whole" % int(result["studs"]))
+	return "; ".join(out)
+
+
+# -- checking and mending -------------------------------------------------------
+
+
+## Checked and weighed as check_design checks a design, and mended until it
+## passes in one piece. Join, don't drop: a piece apart, or parts nothing
+## holds, are first joined to the rest by the least that reaches (_tie), and
+## only what nothing joins is taken out, and said. A part overlapping one
+## before it is taken out. The report of the last check, with "mended" (how
+## many parts came out), "tied" (how many went in to join) and "left_out"
+## (each round's parts taken out: {"parts", "low", "high" in studs and plates,
+## "why"}).
 static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
-	var report: Dictionary = checker._check(model, true)
+	var report: Dictionary = checker._check(model, true, true)
 	var taken_out: int = 0
-	for _round: int in 8:
+	var tied: int = 0
+	var tying: int = 0
+	var left_out: Array = []
+	for _round: int in 12:
 		# A model with nothing in it comes back without a count of pieces.
 		if bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1:
 			break
 		var drop: Dictionary = {}
-		for index: Variant in report.get("floating", []):
-			drop[int(index)] = true
+		var why: String = ""
 		var kinds: Array = report.get("kinds", [])
 		if kinds.has("overlap") or kinds.has("unknown part") or kinds.has("not loaded"):
-			drop.merge(_overlapping(model, checker))
+			drop = _overlapping(model, checker)
+			why = "it ran into another part, or never arrived"
+		var apart: bool = int(report.get("pieces", 0)) > 1 \
+			or not (report.get("floating", []) as Array).is_empty()
+		if drop.is_empty() and apart and tying < 4:
+			tying += 1
+			var was: int = model.placements.size()
+			var loose: int = int(report.get("pieces", 0)) + (report.get("floating", []) as Array).size()
+			var added: int = _tie(model, checker, report)
+			if added > 0:
+				var after: Dictionary = checker._check(model, true, true)
+				# Kept only if it joined something: parts that join nothing are
+				# taken back, not left to be taken out as floating.
+				if int(after.get("pieces", 0)) + (after.get("floating", []) as Array).size() < loose:
+					tied += added
+					report = after
+					continue
+				model.placements.resize(was)
+				tying = 4
+		if drop.is_empty():
+			for index: Variant in report.get("floating", []):
+				drop[int(index)] = true
+			why = "nothing could hold it up"
 		if drop.is_empty() and int(report.get("pieces", 0)) > 1:
 			drop = _apart(model, checker)
+			why = "nothing could join it to the rest"
 		if drop.is_empty():
 			break
+		left_out.append(_parts_said(model, drop, checker, why))
 		var kept: Array[Assistant.Placement] = []
 		for index: int in model.placements.size():
 			if not drop.has(index):
 				kept.append(model.placements[index])
 		taken_out += model.placements.size() - kept.size()
 		model.placements = kept
-		report = checker._check(model, true)
+		report = checker._check(model, true, true)
 	report["mended"] = taken_out
+	report["tied"] = tied
+	report["left_out"] = left_out
 	return report
+
+
+## The placements [param drop] says, as one: how many, their corners in
+## studs and plates, and why they went.
+static func _parts_said(model: Assistant.Model, drop: Dictionary, checker: Assistant,
+		why: String) -> Dictionary:
+	var low := Vector3i(1 << 20, 1 << 20, 1 << 20)
+	var high := -low
+	for index: Variant in drop:
+		var placement: Assistant.Placement = model.placements[int(index)]
+		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+		var at := Vector3i(roundi(placement.x), roundi(placement.y), roundi(placement.z))
+		low = low.min(at)
+		high = high.max(at)
+		if part != null:
+			var box: AABB = checker._transform(placement, part) * part.bounds
+			high = high.max(Vector3i(roundi(box.end.x / 20.0) - 1, roundi(box.end.y / 8.0) - 1,
+				roundi(box.end.z / 20.0) - 1))
+	return {"parts": drop.size(), "low": low, "high": high, "why": why}
+
+
+## What stands where in a laid model, on the stud and plate grid: each
+## cell's part, each part's lowest plate, and the studs standing up into each
+## cell, with the lattice the check uses to say whether a part fits. What
+## [method _tie] joins pieces with.
+class Laid extends RefCounted:
+	var model: Assistant.Model
+	var checker: Assistant
+	var lattice := BrickLattice.new()
+	var owner: Dictionary = {}       ## Vector3i(x, plate, z) -> index
+	var studs: Dictionary = {}       ## Vector3i -> index whose stud reaches up into it
+	var low_of: Dictionary = {}      ## index -> its lowest plate
+	var cells_of: Dictionary = {}    ## index -> Array[Vector3i]
+
+	func _init(laid: Assistant.Model, check: Assistant) -> void:
+		model = laid
+		checker = check
+		lattice.keeps_columns = false
+		for index: int in model.placements.size():
+			take(index)
+
+	func take(index: int) -> void:
+		var placement: Assistant.Placement = model.placements[index]
+		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+		if part == null:
+			return
+		var at: Transform3D = checker._transform(placement, part)
+		lattice.occupy_boxes(index + 1, checker.builder.boxes_for(part, at))
+		var box: AABB = at * part.bounds
+		var j0: int = roundi(box.position.y / 8.0)
+		var j1: int = maxi(j0 + 1, ceili((box.end.y - 4.5) / 8.0))
+		var cells: Array[Vector3i] = []
+		for x: int in range(roundi(box.position.x / 20.0), maxi(roundi(box.end.x / 20.0),
+				roundi(box.position.x / 20.0) + 1)):
+			for z: int in range(roundi(box.position.z / 20.0), maxi(roundi(box.end.z / 20.0),
+					roundi(box.position.z / 20.0) + 1)):
+				for j: int in range(j0, j1):
+					var cell := Vector3i(x, j, z)
+					owner[cell] = index
+					cells.append(cell)
+		cells_of[index] = cells
+		low_of[index] = j0
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != "stud" or connector.gender != "male" \
+					or (at.basis * connector.axis).normalized().dot(Vector3.UP) < 0.9:
+				continue
+			var tip: Vector3 = at * (connector.position + connector.axis.normalized() * 5.0)
+			studs[Vector3i(floori(tip.x / 20.0), floori(tip.y / 8.0), floori(tip.z / 20.0))] = index
+
+	## Whether a part fits there, and if it does, in: the index it went in at,
+	## or -1.
+	func put(part_id: String, colour: int, x: int, y: int, z: int, rot: int) -> int:
+		if y < 0:
+			return -1
+		var part: Lbm.PartMesh = checker.library.mesh_for(part_id)
+		if part == null:
+			return -1
+		var placement := Assistant.Placement.from_dict({"part": part_id, "color": colour,
+			"x": x, "y": y, "z": z, "rot": rot})
+		var boxes: PackedInt32Array = checker.builder.boxes_for(part,
+			checker._transform(placement, part))
+		if lattice.collides_boxes(boxes):
+			return -1
+		model.placements.append(placement)
+		take(model.placements.size() - 1)
+		return model.placements.size() - 1
+
+	func open_at(cell: Vector3i) -> bool:
+		return cell.y >= 0 and not owner.has(cell)
+
+	## Whether a stud rising into [param cell] from the plate under it goes
+	## into part [param index], by the part's real cover and not its box: an
+	## inverted slope's box reaches out over air its underside never does, and
+	## a plate under it there joined nothing and stood alone.
+	func takes(cell: Vector3i, index: int) -> bool:
+		var tip := Vector3(cell.x * 20.0 + 10.0, cell.y * 8.0 + 5.0, cell.z * 20.0 + 10.0)
+		return lattice.brick_at(BrickLattice.to_cell(tip)) == index + 1
+
+	## A 1 x 2 plate under the joint where a part of [param piece] and one of
+	## [param rest] stand side by side on the same plate, its studs in both;
+	## or over it, on a stud of each. Whether one went in.
+	func across(piece: Array, rest: Dictionary) -> bool:
+		for over: bool in [false, true]:
+			for index: Variant in piece:
+				var colour: int = model.placements[int(index)].color
+				for cell: Vector3i in cells_of.get(int(index), []):
+					for step: Vector2i in Shapes.OUT:
+						var next := Vector3i(cell.x + step.x, cell.y, cell.z + step.y)
+						var at := Vector3i(mini(cell.x, next.x), 0, mini(cell.z, next.z))
+						var rot: int = 0 if step.x != 0 else 1
+						if not over:
+							var below := Vector3i(cell.x, cell.y - 1, cell.z)
+							var other: int = int(owner.get(next, -1))
+							if cell.y != int(low_of[int(index)]) or not rest.has(other) \
+									or not open_at(below) or not open_at(next - Vector3i(0, 1, 0)) \
+									or not takes(cell, int(index)) or not takes(next, other):
+								continue
+							if put(JOIN_PLATE_PART, colour, at.x, cell.y - 1, at.z, rot) >= 0:
+								return true
+						else:
+							var up := Vector3i(cell.x, cell.y + 1, cell.z)
+							var beside := Vector3i(next.x, next.y + 1, next.z)
+							if int(studs.get(up, -1)) != int(index) \
+									or not rest.has(int(studs.get(beside, -1))) \
+									or not open_at(up) or not open_at(beside):
+								continue
+							if put(JOIN_PLATE_PART, colour, at.x, cell.y + 1, at.z, rot) >= 0:
+								return true
+		return false
+
+	## A pillar of 1 x 1 bricks and plates from under [param piece] down onto
+	## a stud of [param rest], or onto the ground when [param ground]; or up
+	## from a stud of the piece to the underside of the rest. The shortest
+	## there is, no taller than [param most] plates. Whether one went in.
+	func pillar(piece: Array, rest: Dictionary, ground: bool, most: int) -> bool:
+		var best: Array = []             ## [x, from plate, plates, colour]
+		for index: Variant in piece:
+			var colour: int = model.placements[int(index)].color
+			for cell: Vector3i in cells_of.get(int(index), []):
+				# Down, from its underside.
+				if cell.y == int(low_of[int(index)]) and open_at(cell - Vector3i(0, 1, 0)) \
+						and takes(cell, int(index)):
+					var j: int = cell.y - 1
+					while j >= 0 and open_at(Vector3i(cell.x, j, cell.z)):
+						j -= 1
+					var lands: bool = j < 0 and ground
+					if j >= 0:
+						lands = rest.has(int(studs.get(Vector3i(cell.x, j + 1, cell.z), -1)))
+					var plates: int = cell.y - 1 - j
+					if lands and plates <= most and (best.is_empty() or plates < int(best[2])):
+						best = [cell.x, j + 1, plates, colour, cell.z]
+				# Up, from a stud of its top.
+				var up := Vector3i(cell.x, cell.y + 1, cell.z)
+				if int(studs.get(up, -1)) == int(index) and open_at(up):
+					var j: int = up.y
+					while j - up.y <= most and open_at(Vector3i(cell.x, j, cell.z)):
+						j += 1
+					var other: int = int(owner.get(Vector3i(cell.x, j, cell.z), -1))
+					var plates: int = j - up.y
+					if rest.has(other) and plates <= most and takes(Vector3i(cell.x, j, cell.z), other) \
+							and (best.is_empty() or plates < int(best[2])):
+						best = [cell.x, up.y, plates, colour, cell.z]
+		if best.is_empty():
+			return false
+		var y: int = int(best[1])
+		var left: int = int(best[2])
+		var made: Array = []
+		while left > 0:
+			var tall: int = 3 if left >= 3 else 1
+			var at: int = put(ONE_BRICK if tall == 3 else ONE_PLATE, int(best[3]), int(best[0]), y,
+				int(best[4]), 0)
+			if at < 0:
+				# Taken back: a pillar part way is a part held by nothing.
+				for n: int in made:
+					model.placements.remove_at(n)
+				return false
+			made.push_front(at)
+			y += tall
+			left -= tall
+		return true
+
+
+## Pieces apart joined to the largest, and parts nothing holds up joined to
+## what is held: each by the least that reaches, a 1 x 2 plate across a
+## joint where the two stand side by side, else the shortest pillar of 1 x 1s
+## from one onto the other's studs. A largest piece none of which is held is
+## stood on the ground. One join a piece a round. How many parts went in.
+static func _tie(model: Assistant.Model, checker: Assistant, report: Dictionary) -> int:
+	var pieces: Array = (report.get("each_piece", []) as Array).duplicate()
+	if pieces.is_empty():
+		return 0
+	pieces.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
+	var floating: Dictionary = {}
+	for index: Variant in report.get("floating", []):
+		floating[int(index)] = true
+	var before: int = model.placements.size()
+	var room := Laid.new(model, checker)
+	# What is held of the largest piece; each part of it nothing holds up
+	# (resting under an overhang it does not clutch) is a piece to join too.
+	var rest: Dictionary = {}
+	var groups: Array = []
+	for index: Variant in pieces[0]:
+		if floating.has(int(index)):
+			groups.append([int(index)])
+		else:
+			rest[int(index)] = true
+	if rest.is_empty():
+		groups = []
+		if room.pillar(pieces[0], {}, true, 24):
+			for index: Variant in pieces[0]:
+				rest[int(index)] = true
+	groups.append_array(pieces.slice(1))
+	for piece: Array in groups:
+		var made: int = model.placements.size()
+		if room.across(piece, rest) or room.pillar(piece, rest, false, 12):
+			for index: Variant in piece:
+				rest[int(index)] = true
+			for index: int in range(made, model.placements.size()):
+				rest[index] = true
+	return model.placements.size() - before
 
 
 ## The placements that run into one before them, or whose part is not here.
