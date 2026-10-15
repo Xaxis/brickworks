@@ -1776,6 +1776,48 @@
       "entry": "src/parts/parts_only.gd",
       "reach": "godot --headless --path . --script src/dev/parts_only_probe.gd   (and -- --parts-only=bench/results/brickbench-2026-10-14/bricknet_parts.txt)",
       "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "working model that could not open",
+      "entry": "src/ui/restore_notice.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd   (start-up with a working model none of whose parts are in the catalogue: kept in File, Open, said above the model)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "unrestored probe",
+      "entry": "src/dev/unrestored_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "claude's design is one undo step",
+      "entry": "src/ai/claude_step.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "design undo probe",
+      "entry": "src/dev/design_undo_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "typing probe",
+      "entry": "src/dev/typing_probe.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/typing_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "page places probe",
+      "entry": "src/dev/page_places_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/page_places_probe.gd",
+      "area": "web"
     }
   ]
 }

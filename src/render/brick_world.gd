@@ -254,7 +254,7 @@ func add_brick(part_id: String, color_code: int, at: Transform3D) -> int:
 	var brick_id: int = _place(part_id, color_code, at)
 	if brick_id != 0:
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
-			"colour": color_code, "at": at})
+			"colour": color_code, "at": _bricks[brick_id].transform})
 	return brick_id
 
 
@@ -278,10 +278,6 @@ func _place(part_id: String, color_code: int, at: Transform3D) -> int:
 	if library == null:
 		push_error("brick world: no part library set")
 		return 0
-	var part: Lbm.PartMesh = library.mesh_for(part_id)
-	if part == null:
-		return 0
-
 	# Whatever the number means today.
 	#
 	# Here rather than at each caller, because every placement comes
@@ -290,13 +286,28 @@ func _place(part_id: String, color_code: int, at: Transform3D) -> int:
 	# reference to the part that replaced it, so the model looks right
 	# and is wrong underneath: the parts list offers "~Moved to 3023b"
 	# where a name should be, and so does the booklet.
+	#
+	# And the new part goes where the stub puts it, which for 68 stubs is
+	# turned or shifted (PartLibrary.moved_by), and is drawn as itself. Put
+	# where the stub stood, a file's 3139 tyres were 3139b turned across
+	# their own axles: drawn right, by the stub's geometry, and checked,
+	# read back and saved a quarter turn wrong.
 	var real: String = library.resolve(part_id)
-	var brick := Brick.new(_next_id, real, color_code, at)
+	var by: Transform3D = library.moved_by(part_id)
+	var drawn_as: String = real
+	var part: Lbm.PartMesh = library.mesh_for(real)
+	if part == null and real != part_id and by == Transform3D.IDENTITY:
+		# The stub's geometry is the new part's, where it is to hand first.
+		drawn_as = part_id
+		part = library.mesh_for(part_id)
+	if part == null:
+		return 0
+	var brick := Brick.new(_next_id, real, color_code, at * by)
 	_next_id += 1
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
-	var info: PartLibrary.PartInfo = library.parts[part_id]
+	var info: PartLibrary.PartInfo = library.parts[drawn_as]
 	for surface_index: int in part.surface_count():
 		var key: String = _batch_key(info.mesh_hash, surface_index, part, color_code)
 		var batch: Batch = _batches.get(key)
@@ -523,7 +534,8 @@ func copy_for_reading() -> BrickWorld:
 func add_unseen(part_id: String, color_code: int, at: Transform3D) -> int:
 	if library == null or not library.parts.has(part_id):
 		return 0
-	var brick := Brick.new(_next_id, library.resolve(part_id), color_code, at)
+	var brick := Brick.new(_next_id, library.resolve(part_id), color_code,
+		at * library.moved_by(part_id))
 	_bricks[brick.id] = brick
 	_next_id += 1
 	return brick.id

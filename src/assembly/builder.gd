@@ -2426,6 +2426,13 @@ func history_depth() -> int:
 	return _history.size()
 
 
+## The steps to undo and to redo as they stand, the same dictionaries the
+## history holds: a step in one of these and not in another is somebody's
+## doing in between (ClaudeStep).
+func steps_now() -> Array:
+	return [_history.duplicate(), _redo.duplicate()]
+
+
 ## What each step undo would take back said in words, the most recent
 ## first, at most ``most`` of them: "placed Brick 2 x 4", "moved 12 parts".
 func history_words(most: int = 25) -> PackedStringArray:

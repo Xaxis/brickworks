@@ -194,11 +194,70 @@ func write_now() -> String:
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
 
-## Restore the working model from the last session, if there is one.
+## Restore the working model from the last session, if there is one. How
+## many of its parts come back: put down now, or on their way (on the web,
+## parts not fetched yet go down as they arrive, and nothing may be opened
+## over them meanwhile). 0 when there is none, or none of it can be had.
+##
+## Main opens the sample car when this is 0, and the car's autosave wrote
+## over the working model a few seconds later: one none of whose parts were
+## in this build's catalogue went for good, and nothing said so. So a model
+## with parts that cannot be opened is kept first, as it was, among the
+## person's models ([method _keep_unopened]).
 func restore() -> int:
-	if not FileAccess.file_exists(autosave()):
+	unrestored = ""
+	var path: String = autosave()
+	if not FileAccess.file_exists(path):
 		return 0
-	return open(autosave())
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return 0
+	var result: Dictionary = open_text(text, path.get_file())
+	# What is awaited is this model's only when it opened: one that did not
+	# leaves the last model's there.
+	var opened: bool = str(result["error"]).is_empty()
+	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
+	if back == 0 and count_in(text) > 0:
+		_keep_unopened(text, str(result["error"]))
+	return back
+
+
+## What the person is told when the working model could not be opened at
+## start-up and was kept ([method restore]), or "".
+var unrestored: String = ""
+## The working model could not be opened at start-up, and was kept: Main
+## says so above the model, in [param words].
+signal not_restored(words: String)
+
+
+## Keep [param text], the working model that could not be opened, where the
+## person finds their models (File › Open, and Download my models on the
+## web), under its name and "- could not open"; or nowhere new when it is
+## saved as it is already. A later build that has its parts opens it. When it
+## cannot be written anywhere, this tab keeps no working model, so the file
+## is not written over either.
+func _keep_unopened(text: String, why: String) -> void:
+	var name: String = title_in(text, "")
+	if name.is_empty():
+		name = "Working model"
+	var kept: String = name
+	var same: String = saved_path(name)
+	if not FileAccess.file_exists(same) \
+			or _brick_lines(FileAccess.get_file_as_string(same)) != _brick_lines(text):
+		kept = unused_name("%s - could not open" % name)
+		if not NewerBuild.may_write(saved_path(kept)) or not _store(saved_path(kept), text):
+			keeps = false
+			unrestored = ("Your last model, “%s”, could not be opened: %s. It could not be "
+				+ "copied anywhere, so it is left as it was and this %s keeps nothing "
+				+ "until it is reloaded.") % [name, why, "tab" if OS.has_feature("web") else "window"]
+			push_warning("could not keep the working model that did not open: " + why)
+			not_restored.emit(unrestored)
+			return
+	# As File › Open lists it: by its file's name.
+	unrestored = ("Your last model, “%s”, could not be opened: %s. It is kept as it was, "
+		+ "as “%s” in File › Open.") % [name, why, saved_path(kept).get_file().get_basename()]
+	push_warning("the working model did not open (%s); kept as %s" % [why, saved_path(kept)])
+	not_restored.emit(unrestored)
 
 
 func save_as(name: String) -> bool:
@@ -578,6 +637,13 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		placement.part_id = studio_part(placement.part_id)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
+		# A retired number as the part it became, where its stub puts it
+		# (PartLibrary.moved_by), before the lift is worked out from it and
+		# before it waits for geometry by the right name.
+		var real: String = library.resolve(placement.part_id)
+		if real != placement.part_id:
+			placement.transform = placement.transform * library.moved_by(placement.part_id)
+			placement.part_id = real
 	if flattened.is_empty():
 		return {"placed": 0, "missing": 0, "waiting": 0,
 			"error": "there are no parts in that file"}
@@ -620,8 +686,9 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
-	# Stood on the ground before anything is placed, from every part in it.
-	var up: Vector3 = lift_for(known)
+	# Stood on the ground before anything is placed, from every part in it;
+	# and brought down onto it, when another tool drew it up in the air.
+	var up: Vector3 = lift_for(known, model.author.strip_edges() != "Brickworks")
 	var placed: int = 0
 	for item: Variant in known:
 		var placement: LdrModel.Placement = item
@@ -724,8 +791,48 @@ func place_awaited(part_id: String) -> int:
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still
+	if awaited.is_empty():
+		_settle()
 	whole = awaited.is_empty() and _missing_at_open == 0
 	return landed
+
+
+## How far the model was lifted when it opened, and whether that was worked
+## out without the geometry of a turned part that could be the lowest: on
+## the web, where a part outside the pack is fetched after the model opens.
+var _lifted_by: float = 0.0
+var _lift_unsure: bool = false
+var _lowers: bool = false
+
+
+## Once every part has arrived, the model down to where it stands by its
+## parts' shapes, if the lift it opened with stood it on a turned part's box
+## instead. The same height as a desktop, which has every part's geometry,
+## stands it at; done before the model is whole, so it is the height saved.
+func _settle() -> void:
+	if not _lift_unsure:
+		return
+	_lift_unsure = false
+	# The model's, not the baseplate laid under it.
+	var standing: Array = []
+	var model: Array[BrickWorld.Brick] = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			standing.append([brick.part_id, brick.transform])
+			model.append(brick)
+	var now: float = lowest_of(standing)
+	if now == INF or _lift_unsure:
+		_lift_unsure = false
+		return
+	var by: float = _lift_from(now - _lifted_by, _lowers) - _lifted_by
+	if absf(by) < 0.001:
+		return
+	_lifted_by += by
+	for brick: BrickWorld.Brick in model:
+		var to: Transform3D = brick.transform.translated(Vector3(0.0, by, 0.0))
+		builder.lattice.release(brick.id)
+		world.move_brick(brick.id, to)
+		builder.register(brick.id, brick.part_id, to)
 
 
 ## How far [param placements] must come up to stand on the ground: zero
@@ -741,25 +848,81 @@ func place_awaited(part_id: String) -> int:
 ## From the catalogue's bounds of every part, so the answer is the same
 ## whatever geometry has arrived yet. It was measured on the bricks
 ## already placed, and on the web which those are depends on the network.
-func lift_for(placements: Array) -> Vector3:
-	var lowest: float = INF
+## Except a part turned off the grid, whose box hangs below it wherever it
+## does not fill the box (Lbm.PartMesh.lowest_at): a model on its wheels,
+## drawn spun on their axles, stood on their boxes 12 LDU up. That is
+## measured by the part's geometry, and where that has not arrived yet the
+## box stands in until it has (_settle).
+##
+## With [param lower] a model drawn up in the air comes down onto the ground
+## as well: a file another tool wrote, whose origin is that tool's. One this
+## app saved keeps the height it was saved at, as it always has.
+func lift_for(placements: Array, lower: bool = false) -> Vector3:
+	var pairs: Array = []
 	for item: Variant in placements:
 		var placement: LdrModel.Placement = item
-		var info: PartLibrary.PartInfo = library.parts.get(placement.part_id)
+		pairs.append([placement.part_id, placement.transform])
+	_lift_unsure = false
+	_lowers = lower
+	_lifted_by = _lift_from(lowest_of(pairs), lower)
+	return Vector3(0.0, _lifted_by, 0.0)
+
+
+## How far up a model whose lowest point is [param lowest] comes: to the
+## next whole cell, so what stood on the lattice still does. And with
+## [param lower], down by whole cells when it is drawn up in the air: a file
+## from another tool has its origin wherever that tool put it, and 30285's
+## dinosaur, drawn 21 LDU above the ground and stood there held by nothing,
+## was called floating in every part. Within a cell of the ground it stays.
+static func _lift_from(lowest: float, lower: bool = false) -> float:
+	if lowest == INF:
+		return 0.0
+	if lowest < -0.001:
+		return ceilf(-lowest / BrickLattice.CELL - 0.001) * BrickLattice.CELL
+	if lower and lowest >= BrickLattice.CELL - 0.001:
+		return -floorf((lowest + 0.001) / BrickLattice.CELL) * BrickLattice.CELL
+	return 0.0
+
+
+## The lowest point of these parts, [part id, Transform3D] each, in LDU. By
+## the catalogue's boxes, lowest first, and by its geometry for a turned
+## part whose box reaches lower than anything found so far: a box is never
+## above the part in it, so a part whose box does not reach that low cannot
+## be lower, and only the few parts at the bottom are measured. A turned
+## part whose geometry is not to hand is taken at its box, and the lift is
+## then unsure ([member _lift_unsure]).
+func lowest_of(pairs: Array) -> float:
+	var rows: Array = []   ## [how low the box reaches, part id, transform, exact]
+	for pair: Array in pairs:
+		var info: PartLibrary.PartInfo = library.parts.get(str(pair[0]))
 		if info == null:
 			continue
-		var box: AABB = placement.transform * info.bounds
+		var at: Transform3D = pair[1]
+		var box: AABB = at * info.bounds
 		# A baseplate stands with its top on the ground, as the one laid
 		# under every model does, not its underside: a model saved with its
 		# own plate came back four LDU higher than it went, every part on
 		# the plate off the lattice the ground is laid on.
-		if info.category == "Baseplate" and FloorLayer.is_upright(placement.transform):
-			lowest = minf(lowest, box.end.y - FloorLayer.STUD_HIGH)
+		if info.category == "Baseplate" and FloorLayer.is_upright(at):
+			rows.append([box.end.y - FloorLayer.STUD_HIGH, "", at, true])
 		else:
-			lowest = minf(lowest, box.position.y)
-	if lowest == INF or lowest >= -0.001:
-		return Vector3.ZERO
-	return Vector3(0.0, ceilf(-lowest / BrickLattice.CELL - 0.001) * BrickLattice.CELL, 0.0)
+			rows.append([box.position.y, str(pair[0]), at,
+				BrickLattice.is_square_to_grid(at.basis.orthonormalized())])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var lowest: float = INF
+	for row: Array in rows:
+		if float(row[0]) >= lowest:
+			break
+		if bool(row[3]):
+			lowest = float(row[0])
+			continue
+		var mesh: Lbm.PartMesh = library.mesh_for(str(row[1]))
+		if mesh == null:
+			_lift_unsure = true
+			lowest = float(row[0])
+			continue
+		lowest = minf(lowest, mesh.lowest_at(row[2]))
+	return lowest
 
 
 ## Whether the model on screen is the whole of what was opened.
@@ -1019,6 +1182,12 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	return _store(path, text)
+
+
+## [param text] written to [param path] as it is, the page told; in the
+## person's models, kept as a version too.
+func _store(path: String, text: String) -> bool:
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])

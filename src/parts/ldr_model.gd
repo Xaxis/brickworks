@@ -81,6 +81,16 @@ var main: SubModel = null
 ## header says it is one. Kept out of [member submodels], so a part is
 ## placed as a part and never inlined as though it were an assembly.
 var embedded_parts: Dictionary = {}
+## Every file the document carries that a part may be drawn from: its parts,
+## and the subparts and primitives they use, which are not parts themselves
+## (an `Unofficial_Primitive`, an `Unofficial_Subpart` under s\). By the name
+## a reference gives, folder and all, lowercase, "/" for "\" (PartForge.
+## normalise), and by its bare file name. Read as parts only, 1,401 parts
+## that real sets' files carry could not be built — 10283's Technic pins,
+## drawn from a friction rib the file carries as a primitive, and every
+## printed part whose print is a subpart named "s\..." — and what stood on
+## them floated.
+var embedded_sources: Dictionary = {}
 ## Files the document carries as `0 !DATA <name>` sections (MPD spec rev.
 ## 2): base64 in `0 !:` lines, ended by the next FILE, NOFILE or !DATA.
 ## The pictures of a print drawn in the app, which its part's TEXMAP lines
@@ -246,10 +256,17 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
-		if file_name == model.main.name.to_lower() or not _is_part(file_name, lines):
+		if file_name == model.main.name.to_lower():
 			continue
+		var body: String = "\n".join(lines).strip_edges() + "\n"
 		var key: String = file_name if file_name.ends_with(".dat") else file_name + ".dat"
-		model.embedded_parts[key.get_file()] = "\n".join(lines).strip_edges() + "\n"
+		if declares_library_file(lines):
+			var named: String = key.replace("\\", "/")
+			model.embedded_sources[named] = body
+			model.embedded_sources[named.get_file()] = body
+		if not _is_part(file_name, lines):
+			continue
+		model.embedded_parts[key.get_file()] = body
 		model.submodels.erase(_key(file_name))
 	return model
 
@@ -276,6 +293,17 @@ static func declares_part(lines: PackedStringArray) -> bool:
 		var line: String = raw.strip_edges()
 		if line.begins_with("0 !LDRAW_ORG") and line.to_lower().contains("part"):
 			return true
+	return false
+
+
+## Whether a FILE section is one of a library's files, which a part may be
+## drawn from: a part, a subpart, a primitive or a shortcut, as its header
+## says. Not a model or a sub-model, whatever it is called.
+static func declares_library_file(lines: PackedStringArray) -> bool:
+	for raw: String in lines.slice(0, 16):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 !LDRAW_ORG"):
+			return not line.to_lower().contains("model")
 	return false
 
 

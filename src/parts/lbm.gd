@@ -97,6 +97,38 @@ class PartMesh extends RefCounted:
 	func surface_count() -> int:
 		return surfaces.size()
 
+	## How low this part reaches placed at [param at], in LDU: where it
+	## stands on the ground. Square to the grid its box says so exactly.
+	## Turned, the box's corner hangs below the part wherever the part does
+	## not fill it: a tyre spun 16 degrees on its axle reaches 12 LDU lower
+	## by its box than it does, so a model opened stood that far up on it
+	## and every part of it was called floating (8281's sidecar, a Technic
+	## model whose wheels are drawn turned). So a turned part is read by its
+	## cover, whose boxes follow its shape to within a cell, and never lower
+	## than its box.
+	func lowest_at(at: Transform3D) -> float:
+		var by_box: float = (at * bounds).position.y
+		if boxes.is_empty() or _square(at.basis):
+			return by_box
+		# The y each box's lowest corner reaches: the box's own low corner
+		# along the row that makes y, less whatever its sides add downward.
+		var row := Vector3(at.basis.x.y, at.basis.y.y, at.basis.z.y)
+		var low: float = INF
+		for box: AABB in boxes:
+			var reach: float = row.dot(box.position)
+			for k: int in 3:
+				reach += minf(0.0, row[k] * box.size[k])
+			low = minf(low, reach)
+		return maxf(at.origin.y + low * cell_ldu, by_box)
+
+	## Whether every axis of a basis lies along one of the lattice's.
+	static func _square(basis: Basis) -> bool:
+		for k: int in 3:
+			var column: Vector3 = basis[k].normalized()
+			if maxf(absf(column.x), maxf(absf(column.y), absf(column.z))) < 0.9999:
+				return false
+		return true
+
 
 ## Read a part from disk. Returns null and pushes an error if the file is
 ## missing or malformed, because a bad part must not take the app down.
