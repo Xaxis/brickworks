@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -69,7 +69,20 @@ plan with Claude as the client.
   “House”." and, when there are others, "2 other tabs are open; tabs lists
   them." A target no tab has, or a session's tab that has closed, is refused
   saying so with the open tabs listed, nothing done anywhere; told once, the
-  session's next call goes to the tab used most recently, named. The relay
+  session's next call goes to the tab used most recently, named.
+  **`open a tab by link`** (2026-10-15, `src/boot/shell.html` `claimTab`):
+  `/app?tab=<id>`, which Open in Brickworks in the model in Claude opens. Kept
+  in this browser and not open, the page takes that session up (its model
+  comes back); open in another tab of this browser, the page starts no engine,
+  says "Your model is open in another Brickworks tab in this browser", and
+  that tab is asked over `BroadcastChannel("brickworks-tabs")` to come forward
+  (`window.focus()` where allowed; its title says "● Your model is here" for
+  six seconds); kept nowhere here (another computer), the link opens
+  Brickworks as `/app` does. Prove it in a browser: open `/app`, read
+  `window.brickworksTab`, open `/app?tab=<it>` in a second page of the same
+  context — that page has `window.brickworksElsewhere` set and no engine, and
+  the first page's title flips; close the first, reload the second, and it
+  takes the same id. The relay
   tables are in `supabase/relay.sql` (applied 2026-10-13). `src/dev/tabs_probe.gd`
   proves it (below). With no `t` and no good token: 401 and a
   `WWW-Authenticate` naming the protected resource metadata. Claude

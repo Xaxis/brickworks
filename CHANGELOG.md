@@ -15,6 +15,19 @@ whole cycle.
 
 ### Added
 
+- The model in Claude, in 3D. Where Claude shows Brickworks beside its
+  calls (claude.ai and the Claude apps), the card is the real model now,
+  in the parts' own shapes and colours, not four pictures of it: drag to
+  turn it, zoom, and click a part to pick it. Claude is told which brick
+  you picked, and it is selected in your Brickworks tab, so "make this
+  blue" means that one. Check tints the joints that would give way,
+  Instructions steps through the booklet's steps, Parts lists the pieces
+  with a BrickLink wanted list, full screen gives it the window, and Open
+  in Brickworks goes to your tab. Opening a model or brickifying a 3D file
+  shows the card too. It asks your tab for the model itself, so it shows
+  the model whatever Claude's app hands it, and where a browser cannot
+  draw in 3D it is the turntable of pictures it was.
+
 - Models that cannot vanish. Every save is kept as a version, the last 20
   of each model: File, Versions… opens any of them again. File, Export,
   All my models downloads every saved model in one .zip. In a browser,
