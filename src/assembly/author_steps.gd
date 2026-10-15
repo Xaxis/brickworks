@@ -41,6 +41,21 @@ static func lowest_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary
 	return out
 
 
+## The first part under each sub-model's path, at any depth, by id: where
+## the file places it among the copies its step places, since a model is
+## read in the order its file lists it.
+static func first_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
+		var path: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			path = Assemblies.join(path, segment)
+			out[path] = mini(int(out.get(path, brick.id)), brick.id)
+	return out
+
+
 ## The step the copy at [param path] goes on in, within its parent: as
 ## set, else as its parts suggest, else -1, none.
 static func unit_step(world: BrickWorld, path: String, lowest: Dictionary) -> int:
@@ -50,16 +65,20 @@ static func unit_step(world: BrickWorld, path: String, lowest: Dictionary) -> in
 
 
 ## Where a step comes in the whole build, to sort by: at each level the
-## step the copy is put on in, then the step itself. Within one step of a
-## section, the sub-models it puts on come before its own parts (even,
-## then odd), since they are built first and then put on.
+## step the copy is put on in and where that step places it ([param first],
+## first_under), then the step itself. Within one step of a section, the
+## sub-models it puts on come before its own parts (even, then odd), since
+## they are built first and then put on; and each is built whole before the
+## next. With the step alone, five buildings one step places went up a step
+## of each in turn: the first course of every one, then the second.
 static func key_of(world: BrickWorld, section: String, step: int,
-		lowest: Dictionary) -> Array:
+		lowest: Dictionary, first: Dictionary = {}) -> Array:
 	var key: Array = []
 	var path: String = ""
 	for segment: String in Assemblies.segments(section):
 		path = Assemblies.join(path, segment)
 		key.append(2 * maxi(unit_step(world, path, lowest), 0))
+		key.append(int(first.get(path, 0)))
 	key.append(2 * step + 1)
 	return key
 

@@ -639,6 +639,14 @@
       ]
     },
     {
+      "id": "cli:score the steps against real sets' authors",
+      "kind": "cli",
+      "entry": "tools/steps_score.py",
+      "reach": "python3 tools/steps_score.py run --which tune --out build/steps_score/tune && python3 tools/steps_score.py report --out build/steps_score/tune   (minutes, under heavy; needs vendor/omr; godot --headless --path . --script src/dev/steps_score.gd -- --selftest checks the measures alone)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:see inside in a browser",
       "kind": "cli",
       "entry": "tools/web/see_inside_flow.mjs",
