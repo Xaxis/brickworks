@@ -518,6 +518,9 @@ func refusal(tool: String, input: Dictionary) -> String:
 			+ "person's own models.")
 	if assistant != null and assistant.is_busy() and tool in CHANGES:
 		return "The app's own designer is building right now; wait for it to finish."
+	# A run kept to a list of parts: a tool that makes parts of its own is not.
+	if not PartsOnly.tool_refusal(tool).is_empty():
+		return PartsOnly.tool_refusal(tool)
 	# As clear_model: a request about the selected parts changes those alone.
 	if assistant != null and assistant.asked_about_selection() and tool in CHANGES:
 		return ("Not now — the person asked about the parts they selected, and this would "
