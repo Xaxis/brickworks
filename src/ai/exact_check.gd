@@ -100,6 +100,42 @@ func _shaped(i: int) -> bool:
 		and (items[i] as Exact.Item).shape.has_pieces()
 
 
+## Whether items [param i] and [param j], which collide, are a part and the
+## axle it is turned on: joined by an axle along one line, and clear once one
+## turns about that line by up to 45 degrees. A Technic set draws its wheels
+## spun on their axles (8281's sidecar, 16 degrees): the cross of the axle
+## and of the hub no longer line up, and their real shapes meet, but in
+## plastic the axle turns with the wheel. A wheel that runs into a ring the
+## axle cannot pass is not cleared by any turn.
+func turned_on_axle(i: int, j: int) -> bool:
+	if not _shaped(i) or not _shaped(j):
+		return false
+	var a: Exact.Item = items[i]
+	var b: Exact.Item = items[j]
+	for edge: Array in Exact.connections(items, PackedInt32Array([i, j])):
+		if int(edge[0]) != i and int(edge[2]) != i:
+			continue
+		var mine: int = int(edge[1]) if int(edge[0]) == i else int(edge[3])
+		var theirs: int = int(edge[3]) if int(edge[0]) == i else int(edge[1])
+		# A cross axle in a cross hole only: they turn together. A hinge or a
+		# clip on a bar turned is a different pose, and one folded into its
+		# base stays refused.
+		var subs: Array = [a.shape.sub[mine], b.shape.sub[theirs]]
+		if a.shape.kind[mine] != Exact.AXLE or not (subs.has(Exact.S_AXLE) and subs.has(Exact.S_CROSS)):
+			continue
+		var frame: Transform3D = a.at * a.shape.frames[mine]
+		var axis: Vector3 = (-frame.basis.y).normalized()
+		var point: Vector3 = frame.origin
+		for degrees: int in range(1, 46):
+			for sign: float in [1.0, -1.0]:
+				var turn := Transform3D(Basis(axis, deg_to_rad(degrees * sign)), Vector3.ZERO)
+				var about: Transform3D = Transform3D(Basis.IDENTITY, point) * turn \
+					* Transform3D(Basis.IDENTITY, -point)
+				if Exact.clash(a, Exact.Item.new(b.shape, about * b.at)).is_empty():
+					return true
+	return false
+
+
 ## How two items meet: {} when their exact shapes are clear, the collision
 ## otherwise, null when either has no shape to ask.
 func between(i: int, j: int) -> Variant:
@@ -273,13 +309,13 @@ const STEADY := 1.0
 ## above what it would rest on drops onto it, which BrickBench's simulation
 ## lets pass as long as nothing moves more than 3 LDU.
 const TOUCH := 2.5
-## How far a corner may drop onto what holds it up, LDU: BrickBench's
-## simulation lets a piece settle by less than 3.
-const DROP := 3.0
 
 
 ## The points where items [param a] and [param b] touch, into [param out]:
-## each corner of a piece of one within TOUCH of a piece of the other.
+## each corner of a piece of one within TOUCH of a piece of the other and
+## over or under it. Past its edge holds nothing up: a steering wheel with
+## its centre right on a brick's edge was called standing on corners of its
+## own 2 LDU past that edge (held-out model-011; it tipped off).
 static func _touching(a: Exact.Item, b: Exact.Item, out: PackedVector3Array) -> void:
 	var to_a: Transform3D = a.at.affine_inverse()
 	var to_b: Transform3D = b.at.affine_inverse()
@@ -291,31 +327,21 @@ static func _touching(a: Exact.Item, b: Exact.Item, out: PackedVector3Array) -> 
 			var hi: Vector3 = (box_a[1] as Vector3).min(box_b[1])
 			if hi.x - lo.x < -TOUCH or hi.y - lo.y < -TOUCH or hi.z - lo.z < -TOUCH:
 				continue
-			# Only where one is over the other: a corner of a that drops onto b,
-			# or one of b that a would drop onto. Beside it, or past its edge by
-			# less than TOUCH, holds nothing up: a steering wheel's centre right
-			# on a brick's edge was called standing over corners of its own
-			# 2 LDU past that edge (held-out model-011; it tipped off).
 			for v: Vector3 in pb.verts:
 				var w: Vector3 = b.at * v
-				if _outside(pa, to_a * w) <= TOUCH and _lands(pa, to_a * w, to_a.basis * Vector3.UP):
+				if _over(box_a, w) and _outside(pa, to_a * w) <= TOUCH:
 					out.append(w)
 			for v: Vector3 in pa.verts:
 				var w: Vector3 = a.at * v
-				if _outside(pb, to_b * w) <= TOUCH and _lands(pb, to_b * w, to_b.basis * Vector3.DOWN):
+				if _over(box_b, w) and _outside(pb, to_b * w) <= TOUCH:
 					out.append(w)
 
 
-## Whether point [param x] meets convex piece [param p] moving up to DROP
-## along [param way] (both in the piece's own frame).
-static func _lands(p: Exact.Piece, x: Vector3, way: Vector3) -> bool:
-	var step: float = 0.5
-	var d: float = 0.0
-	while d <= DROP + 0.001:
-		if _outside(p, x + way * d) <= 0.01:
-			return true
-		d += step
-	return false
+## Whether point [param w] is over or under the box [lo, hi], seen from above.
+static func _over(box: Array, w: Vector3) -> bool:
+	var lo: Vector3 = box[0]
+	var hi: Vector3 = box[1]
+	return w.x >= lo.x - 0.01 and w.x <= hi.x + 0.01 and w.z >= lo.z - 0.01 and w.z <= hi.z + 0.01
 
 
 ## How far point [param x] (in the piece's own frame) is outside convex piece

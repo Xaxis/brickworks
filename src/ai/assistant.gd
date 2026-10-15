@@ -11928,6 +11928,9 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		# until the pattern lays its corners another way.
 		if _in_a_prism(model, a) or _in_a_prism(model, b):
 			continue
+		# A wheel drawn spun on its axle: in plastic the axle turns with it.
+		if exact.turned_on_axle(a, b):
+			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
 			if a < count and b < count and not already.has(Vector2i(a, b)):
@@ -11991,6 +11994,16 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 	else:
 		for i: int in exact.items.size():
 			near[i] = true
+	# And what the lattice joins them to that has no shape to be near by: a
+	# brick on a plate a file draws from parts it carries (joints_probe).
+	var grew: bool = true
+	while grew:
+		grew = false
+		for pair: Array in extra:
+			if near.has(pair[0]) != near.has(pair[1]):
+				near[pair[0]] = true
+				near[pair[1]] = true
+				grew = true
 	var root: PackedInt32Array = exact.pieces(extra, near)
 	var held: Dictionary = {}
 	for i: int in exact.items.size():

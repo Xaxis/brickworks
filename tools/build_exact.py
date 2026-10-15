@@ -349,8 +349,11 @@ def main() -> int:
     wanted = set(args.only) if args.only else None
     # A direct match before an alias: two ids sharing one mesh take the one
     # BrickNet names itself.
-    entries = sorted(catalogue["parts"], key=lambda e: source_of(e["id"]) is None
-                     or source_of(e["id"])[1] is not None)
+    def aliased(entry: dict) -> bool:
+        source = source_of(entry["id"])
+        return source is None or source[1] is not None
+
+    entries = sorted(catalogue["parts"], key=aliased)
     for entry in entries:
         if wanted is not None and entry["id"] not in wanted:
             continue

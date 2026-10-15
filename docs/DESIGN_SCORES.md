@@ -107,6 +107,18 @@ judge (ours, not BrickBench's) preferred their build in all 40 verdicts
 overall; $2.65 a build at API prices against their $5.90. The submission zip
 is built and checked, and not sent.
 
+### The check made as strict as BrickBench's (2026-10-14, evening)
+
+The build check now judges each part by BrickNet's own convex colliders and
+connector labels: more than 1 LDU of overlap is a collision named with its
+fix, a piece that nothing holds and that would not stand is a fault, and a
+part a few LDU off a connector is seated on it first
+([BRICKBENCH.md](BRICKBENCH.md), "the check made as strict as BrickBench's").
+The same ten prompts through the same loop, and ten held out, each checked by
+BrickBench's own `verify.py`:
+
+{{SCORES}}
+
 ## Judged in pairs: what each round really did (2026-10-14)
 
 The 1-10 judge's scores move by 0.7-1.0 between two designs of the same
