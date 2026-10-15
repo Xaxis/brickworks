@@ -1269,6 +1269,8 @@ func _sketch_turn_over(tool_results: Array) -> bool:
 func _sketches_shown() -> void:
 	_sketch_round = false
 	_busy = false
+	# Held off the baseplate: nothing to undo. Choosing one begins the step.
+	_run_mark = {}
 	_messages.clear()
 	var spend: Brain.Spend = _spend
 	_spend = Brain.Spend.new()
@@ -1295,6 +1297,9 @@ func choose_sketch(number: int) -> String:
 	sketch_chosen.emit(number)
 	progress.emit("putting down sketch %d, %s" % [number, one.name])
 	var model: Model = one.model
+	# In the app, the sketch going down begins the design's one step.
+	if not outside:
+		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design")
 	await _ensure_parts(model)
 	await _apply(model, true, true)
 	if outside:
@@ -1345,7 +1350,23 @@ func cancel() -> void:
 			focus.step = {}
 	else:
 		_restore()
+	# What a cancelled run had changed and did not put back (an edit that
+	# landed) is Claude's step too.
+	_record_run()
 	finished.emit(false, "cancelled")
+
+
+## Where the model and its history stood as this request began, for its
+## change to be one step of the history as it ends (ClaudeStep); {} when no
+## request is running, or it is about a selection.
+var _run_mark: Dictionary = {}
+
+
+## This request's change, one undo step named as Claude's.
+func _record_run() -> void:
+	var mark: Dictionary = _run_mark
+	_run_mark = {}
+	ClaudeStep.record(builder, world, scenery, mark)
 
 
 func _start(text: String) -> void:
@@ -1389,6 +1410,11 @@ func _start(text: String) -> void:
 	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
+	# What this request changes is one undo step, Claude's, kept as it ends
+	# (ClaudeStep). About a selection, its edits gather into one already.
+	if not _scoped and _run_mark.is_empty():
+		_run_mark = ClaudeStep.mark(builder, world, scenery,
+			"Claude's design" if _messages.is_empty() else "Claude's change")
 	# References first, in the same message as the brief.
 	#
 	# A named real subject was designed entirely from memory of it. The
@@ -2936,6 +2962,7 @@ func _stop(ok: bool, summary: String) -> void:
 		world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_busy = false
+	_record_run()
 
 	# A failed design that started from a bare baseplate has nothing to
 	# restore to, so its last checked draft is still standing. Better

@@ -12,8 +12,9 @@
 ## assistant's brief, the properties' numbers, the minifigure's name and
 ## any added later: Enter (where a field has nothing else to do with it),
 ## Tab, Escape and a press anywhere outside the field end the typing.
-## Escape also puts back what the field said when the typing began, in a
-## field marked for it (``revert_on_escape``), which the model's name is.
+## Escape also puts back what the field said when the typing began, or what
+## Enter last kept, in a field marked for it (``revert_on_escape``), which
+## the model's name is.
 class_name FocusGuard
 extends Node
 
@@ -30,10 +31,26 @@ func _on_focus(control: Control) -> void:
 	if field == null:
 		return
 	_before[field.get_instance_id()] = field.text
+	# Enter keeps what was typed, at once.
+	if not field.text_submitted.is_connected(_kept.bind(field)):
+		field.text_submitted.connect(_kept.bind(field))
 	# Enter ends a one-line field's typing, after the field has done what
 	# Enter does there (renamed, searched, moved a part).
 	if not field.text_submitted.is_connected(_submitted.bind(field)):
 		field.text_submitted.connect(_submitted.bind(field), CONNECT_DEFERRED)
+
+
+## What Enter kept is what an Escape after it puts back.
+##
+## The engine hands over every key that came since the last frame at the
+## start of the next, in order, and the field lets go after Enter only at the
+## end of that frame. A busy tab's frame is longer than half a second, so a
+## name typed, Enter, and Escape a moment later to give the keys back came in
+## one frame: the Escape found the field still typing and put back the name
+## the typing began with. The name was typed and entered, and then lost (a
+## release check's rename, tools/web/tabs_flow.mjs, at a load of 40 to 60).
+func _kept(text: String, field: LineEdit) -> void:
+	_before[field.get_instance_id()] = text
 
 
 func _submitted(_text: String, field: LineEdit) -> void:

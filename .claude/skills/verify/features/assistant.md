@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe -->
 
 ## Sub-features
 
@@ -209,6 +209,18 @@ fixing what it got wrong.
   a name somebody typed or saved. It kept the car's name, and Save saved the
   tower as "Example Car for Demonstration of LDRAW Library". A design started
   on a bare, Untitled baseplate is named the same way. `example_name_probe`.
+- `claude's design is one undo step` (`src/ai/claude_step.gd`): each request in
+  the panel, a design or a change to it, is one step of the history, "Claude's
+  design (12 put down)" or "Claude's change (12 painted)", kept as its run ends
+  (Stopped too); a session from outside has one a call
+  (`CommandSocket._one_step`). The loop puts its work down without the builder,
+  so before 2026-10-14 a request in the panel made no step at all, and the
+  person's Undo took back their own last part. What the person does while it
+  runs keeps steps of its own: a part one of theirs names is left out of
+  Claude's. A run that fails and puts the model back makes none; about a
+  selection, its edits gather into one already. `design_undo_probe` runs the
+  real loop against a stand-in for the API on this machine and fails on 480b81a
+  (12 failures: Undo took the person's brick and left the wall).
 - `the floor a design stands on`: `submit_design` takes `floor` ("none",
   "baseplate", "grid") and `floor_colour` (a colour baseplates come in, by
   name); the guidance says a vehicle, a ship, a figure or a creature has no
@@ -1943,6 +1955,7 @@ godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
+godot --headless --path . --script src/dev/design_undo_probe.gd # each request in the panel is one undo step, Claude's; the person's own stay theirs
 godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
 godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow

@@ -244,6 +244,14 @@
       ]
     },
     {
+      "id": "cli:design undo probe",
+      "kind": "cli",
+      "entry": "src/dev/design_undo_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -482,6 +490,14 @@
       "tests": []
     },
     {
+      "id": "cli:page places probe",
+      "kind": "cli",
+      "entry": "src/dev/page_places_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/page_places_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
@@ -701,6 +717,22 @@
       "tests": []
     },
     {
+      "id": "cli:typing probe",
+      "kind": "cli",
+      "entry": "src/dev/typing_probe.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/typing_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:unrestored probe",
+      "kind": "cli",
+      "entry": "src/dev/unrestored_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:update probe",
       "kind": "cli",
       "entry": "src/dev/update_probe.gd",
@@ -858,6 +890,14 @@
       "entry": "src/parts/part_editor.gd",
       "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:claude's design is one undo step",
+      "kind": "lib",
+      "entry": "src/ai/claude_step.gd",
+      "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -2048,6 +2088,14 @@
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:working model that could not open",
+      "kind": "ui",
+      "entry": "src/ui/restore_notice.gd",
+      "reach": "godot --headless --path . --script src/dev/unrestored_probe.gd   (start-up with a working model none of whose parts are in the catalogue: kept in File, Open, said above the model)",
+      "area": "model-io",
       "tests": []
     },
     {
