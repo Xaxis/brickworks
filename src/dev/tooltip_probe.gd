@@ -247,7 +247,7 @@ func _panel(name: String, panel: Node) -> void:
 			covering += 1
 			_found.append([name, _named(owner), _named(meant)])
 			var reached: bool = await _caught_press(meant, spot)
-			_check("%s: %s's tooltip over %s, a click on it through the tooltip reaches it, over it"
+			_check("%s: %s's tooltip over %s, a click on it through the tooltip reaches it"
 				% [name, _named(owner), _named(meant)], reached)
 			break
 	print("  %s: %d controls with a tooltip rested on, %d tooltips shown, %d over something that takes a click"
@@ -343,17 +343,18 @@ func _takes_clicks(control: Control) -> bool:
 
 
 ## A press and a release at [param spot] in one go, caught at
-## [param meant] and kept from doing anything: whether it got there with
-## the pointer over it, as the window saw it. A button only takes a press
-## while the pointer is over it, and a pointer on a tooltip is over the
-## tooltip: the press reached Disconnect Claude, which did nothing with it.
+## [param meant] and kept from doing anything: whether it got there, and a
+## button with the pointer over it, as the window saw it. A button only takes
+## a press while the pointer is over it, and a pointer on a tooltip is over
+## the tooltip: the press reached Disconnect Claude, which did nothing with
+## it. A text field or a list takes the press either way.
 func _caught_press(meant: Control, spot: Vector2) -> bool:
 	_caught = null
 	var catch := func(event: InputEvent) -> void:
 		if event is InputEventMouseButton:
 			var over: Control = meant.get_viewport().gui_get_hovered_control()
-			if (event as InputEventMouseButton).pressed and over != null \
-					and (over == meant or meant.is_ancestor_of(over)):
+			var hovered: bool = over != null and (over == meant or meant.is_ancestor_of(over))
+			if (event as InputEventMouseButton).pressed and (hovered or not (meant is BaseButton)):
 				_caught = meant
 			meant.accept_event()
 	meant.gui_input.connect(catch)
