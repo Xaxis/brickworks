@@ -402,7 +402,12 @@ const SLOW_FROM: Dictionary = {
 	"make_unique": 2000,
 	"step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
 	"step_later": 300, "step_merge": 300, "step_delete": 300,
-	"turn_left": 300, "turn_right": 300, "collection_build": 0, "collection_need": 1000,
+	"turn_left": 300, "turn_right": 300, "collection_build": 0,
+	# What do I need? reads the collection and lays its list out whatever the
+	# model's size, and the minifigure builder fills its picker every time it
+	# opens: on the example car on a loaded machine, 385 ms and 415 ms, and
+	# unsaid the first time (command_probe).
+	"collection_need": 0, "minifig": 0,
 	# Everything connected walks the model from the part: 464 ms on the
 	# 536-part station, unsaid on a device that had not timed it before.
 	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
@@ -410,6 +415,16 @@ const SLOW_FROM: Dictionary = {
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
 	"new": 2000,
+	# And the rest command_probe found holding a frame a fifth of a second or
+	# more on Orthanc unsaid (2026-10-15, under load): its versions asked
+	# whether the model is saved as it is (450 ms), the cut-away along an axis
+	# (599), a sub-assembly made or the same sub-model selected of all of it
+	# (620, 295), a copy of all of it (289), the controls panel over it (343,
+	# and 247 by its keys), Print on a part (228), the tour (212) and its
+	# picture (250).
+	"versions": 2000, "cut": 3000, "cut_x": 3000, "cut_y": 3000, "cut_z": 3000,
+	"make_submodel": 2000, "select_submodel": 2000, "copy": 2000, "settings": 3000,
+	"keys": 3000, "print_part": 3000, "tour": 3000, "export_picture": 3000,
 }
 
 ## What the bar says for the commands that can take a while.
@@ -438,6 +453,10 @@ const DOING: Dictionary = {
 	"make_unique": "Making the copy unique…",
 	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
 	"collection": "Opening My collection…", "collection_need": "Working out what you need…",
+	"minifig": "Opening the minifigure builder…", "versions": "Opening the versions…",
+	"cut_x": "Cutting away…", "cut_y": "Cutting away…", "cut_z": "Cutting away…",
+	"settings": "Opening Settings…", "keys": "Opening the keys and controls…",
+	"print_part": "Opening Print on a part…", "tour": "Starting the tour…",
 	"collection_build": "Working out what you can build…",
 	"fit": "Fitting the view…", "fit_model": "Fitting the model…",
 	"turn_left": "Turning the model…", "turn_right": "Turning the model…",

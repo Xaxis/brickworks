@@ -284,7 +284,12 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	var raw: Array = []
 	await _sequence_into(raw, built, named, _per_step(nodes.size()), job)
 	lap.call("sequence")
-	var steps: Array[Step] = [] if job.cancelled else _expand(raw, world)
+	# Typed apart from the literal: as one expression an empty [] is an untyped
+	# Array, and a Timeline stopped part way on Orthanc stopped on a script
+	# error here instead (command_probe, 2026-10-15).
+	var steps: Array[Step] = []
+	if not job.cancelled:
+		steps = _expand(raw, world)
 	lap.call("expand")
 	for made: Assembly in assemblies:
 		made.node = null
