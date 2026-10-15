@@ -952,6 +952,11 @@ func _ready() -> void:
 	# Parts made here before, built again from their LDraw files, so they
 	# are in the bin and so a model that uses them reopens.
 	CustomParts.load_all(_library)
+	# Which parts are a figure's, sorted a slice at a time once the window
+	# is up: the first question about a figure built it in one frame, the
+	# autosave's after Brickify among them.
+	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+		Minifig.index_paced(_library))
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)

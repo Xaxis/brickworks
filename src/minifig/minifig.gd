@@ -1285,18 +1285,22 @@ static func _indexed_for(library: PartLibrary) -> bool:
 
 
 ## The library's figure parts by slot, by plain name and by short name, into
-## [param sorted]; a slice at a time with a [param job]. Every part of the
+## [param sorted]; a slice at a time with a [param pace]. Every part of the
 ## library is looked at: in one go it was most of the 200 ms the first figure
-## asked about cost on the desktop, inside the Timeline's sub-assembly search
-## on Orthanc (2026-10-15).
-static func _sort_into(sorted: Array, library: PartLibrary, job: Working.Job) -> void:
+## asked about cost on the desktop, and the first was asked inside the
+## Timeline's sub-assembly search on Orthanc, or by the autosave after
+## Brickify (2026-10-15).
+static func _sort_into(sorted: Array, library: PartLibrary, pace: FramePace) -> void:
 	var slot_of: Dictionary = {}
 	var by_name: Dictionary = {}
 	var names: Dictionary = {}
-	for id: String in library.parts:
-		if job != null and job.due():
-			await job.next()
-		var info: PartLibrary.PartInfo = library.parts[id]
+	# The names first: the library may gain a part while this waits.
+	for id: String in library.parts.keys():
+		if pace != null and pace.due():
+			await pace.next()
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info == null:
+			continue
 		if not _real(info):
 			continue
 		var slot: String = slot_for(info)
@@ -1308,13 +1312,18 @@ static func _sort_into(sorted: Array, library: PartLibrary, job: Working.Job) ->
 	sorted.assign([slot_of, by_name, names])
 
 
-## [method _index] for work that goes on over frames: its long part a slice
-## at a time with [param job].
-static func index_paced(library: PartLibrary, job: Working.Job) -> void:
+## [method _index] over frames, its long part a slice at a time: the app
+## warms it a moment after it starts (Main._ready), and the Timeline waits on
+## it before asking which sub-models are figures.
+static func index_paced(library: PartLibrary) -> void:
 	if library == null or _indexed_for(library):
 		return
+	var made: int = library.custom.size()
 	var sorted: Array = []
-	await _sort_into(sorted, library, job)
+	await _sort_into(sorted, library, FramePace.new())
+	# A part made meanwhile is not in it: sorted again, at once.
+	if library.custom.size() != made:
+		sorted = []
 	_index(library, sorted)
 
 

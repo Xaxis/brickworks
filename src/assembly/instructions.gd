@@ -957,7 +957,7 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 	# Whether a sub-model is a figure asks the figures' index, which the
 	# first question builds: every part of the library looked at in one go.
 	if job != null:
-		await Minifig.index_paced(library, job)
+		await Minifig.index_paced(library)
 	var tops: Dictionary = {}
 	var inner: Dictionary = {}
 	for node: Node2 in nodes:
