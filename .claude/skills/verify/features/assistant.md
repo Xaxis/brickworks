@@ -1218,7 +1218,7 @@ fixing what it got wrong.
   screen fits is said with the numbers that fit. A shape that says no screen
   and whose raised solid climbs three plates within three studs is told how
   (`_screen_hints`). The guide's car example is a cabin said by its own
-  profile with `"screen": true` and a band of glass. A vehicle's part on its
+  profile with `"screen": true` (its cabin glazed, below). A vehicle's part on its
   own wheels, end to end with the model within `COUPLE_GAP` studs, its feet
   level and its side in line, coupled by nothing (`_uncoupled`, before the
   named-item rule: a named tender is still uncoupled) is said with where it
@@ -1243,6 +1243,43 @@ fixing what it got wrong.
   is read or laid, nothing is said, the tender is not named, the towball pair
   stands on tiles and the magnet beams are two pieces, neither technique
   exists, and four of the car's six groups of studs are left as detail.
+  A cabin's glass, its roof and its side studs (2026-10-14, the glass round,
+  after both cabins-round cars laid their windscreen and built the car again
+  by hand: "too blocky", its cabin solid red with side studs open along it;
+  and a seat cut into the cabin that the screen read its roof off). On a shape
+  with `"wheels"`, `Plan._glaze` lays the cabin behind the windscreen's top row
+  in the screen's glass: every plate of the screen's own solid where no other
+  solid is (the body keeps its colour), from the screen's foot to two plates
+  under the roof, back as far as two plates of roof are over it and no further
+  than the screen is wide; where the roof falls the glass falls with it, three
+  plates under it for the curved slope there. Said
+  in the screen's line ("Behind it the cabin is glazed ..."). A fuselage's
+  cockpit (no wheels) is not glazed. In glass a layer is laid only in parts
+  LEGO made in it (`Plan._made_in`, through `_tile` and `_across`), a 1 x 2 or
+  1 x 4 brick as its glass brick (`Shapes.GLASS_SWAP`: 3065, 3066); no wedge,
+  side panel or side-stud brick is laid in glass, and a side shell leaves the
+  glass in its box, and what stands on it in its lane, to the core (`"glass"`
+  on the shell; no shell part reaches in). The screen reads the
+  roof across the solid's whole width (`"span"`) and off the solid as said,
+  before any cut (`"roof_of"`), so a seat cut leaves it where it was. A shell's
+  side-stud brick none of whose studs carries anything is a plain brick of
+  its length; one holding something elsewhere takes a 1 x 1 tile on each open
+  stud (`Plan._close_side_studs`). The "say a screen" hint (`_screen_hints`)
+  fires only on a shape with wheels or of a solid said in glass. A model whose
+  body a shape laid is told `Style.SHAPED_KEEP` (keep it, work on what shows)
+  instead of "the shape pattern, for a body ..." (`_shaped_body`, or the last
+  submit's patterns), and the "rounded across as well as along it" note is
+  not said once the shape turned its flanks out (`Shapes.turned`). The guide's
+  car example has no glass band; its cabin is glazed. `cabin_glass_probe`: the
+  cabins round's two cars (one with its seat cut) and the second fire truck,
+  as their sessions said them, each glazed down both sides in parts made in
+  trans-black, said, one piece; a fuselage's cockpit not; none of those
+  bodies, nor the shapes round's loft car, has an open side stud; the cut car's
+  92583 stands where the uncut car's does, leaning back; a ship's raised
+  stern is not told to say a screen, a canopy in glass and a car on wheels
+  are; the first car and the truck are told to keep the body, not to say one,
+  and the first car is not told it steps in plates. On the tree before
+  (1a8079a) 19 of its checks fail.
   Found by the held-out car, told every check to use wedge plates and curved
   slopes and using none. `shapes_probe`: each surface part's fall is read off
   its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without

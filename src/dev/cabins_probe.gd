@@ -136,7 +136,7 @@ func _cabins(out_dir: String) -> void:
 		screens[id] = true
 	var said_screen: Dictionary = BENCH_CAR.duplicate(true)
 	(((said_screen["solids"] as Array)[1] as Dictionary)["loft"] as Dictionary)["screen"] = true
-	for one: Array in [["the guide's car", GUIDE_CAR, 3], ["the bench car's own cabin, its loft "
+	for one: Array in [["the guide's car", GUIDE_CAR, 2], ["the bench car's own cabin, its loft "
 			+ "said with a screen", said_screen, 0], ["a truck's cab, its front steep", TRUCK_CAB, 0],
 			["an aircraft's cockpit, where its nose climbs", FUSELAGE, 0]]:
 		print("")
@@ -153,9 +153,12 @@ func _cabins(out_dir: String) -> void:
 			if screens.has(placement.part):
 				glass.append(placement)
 				front = minf(front, placement.x)
+		# The roof's own, face up: a curved slope a side shell turned out at the
+		# body's foot was counted with them, and went when the glass round kept
+		# shells off the cabin's glass.
 		for placement: Assistant.Placement in model.placements:
 			if Style.kinds_of(placement.part).contains("c") and placement.x > front + 3.0 \
-					and placement.y >= 8.0:
+					and placement.y >= 8.0 and placement.face == "up":
 				curved_behind += 1
 		var advice: String = "\n".join(PackedStringArray(verdict.get("advice", [])))
 		_check("laid without trouble: %s" % str(assistant._pattern_trouble),
