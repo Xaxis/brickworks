@@ -515,6 +515,43 @@ after it were answered busy and the first build was the last call's, 1,400 ms.)
 - The desktop release carries `assets/generated/` whole, so it grows by the
   884 MB of shapes unless the export filters them.
 
+**Then the generators lay what the check passes**, with the check as strict as
+above:
+
+- Shapes' shells: a round run's top plate under a shell is laid as a ring of
+  corner round tiles with a round plate inside it, which the core stands on
+  (the cat head's 8 x 8 round plate became four 27507s round an 11213); a
+  shell gives back the column over another shell's side-stud brick, and a
+  side-stud brick is not laid with its studs up into a shell; a core plate
+  right under a shell is a tile. face_probe's four heads pass, faces and all.
+- add_rooms: a floor's stud under a part of a piece that does not take it by
+  its real shape is a tile, so a dresser, a log pile and a bed on a laid floor
+  rest on tiles where they took no stud; the throne's seat stands its base on
+  its plate's studs, its back a quarter stud behind (it was the base that was
+  a quarter stud off); the four-poster bed has a footing of two plates under
+  its frame, as on the ground only the ground held it. A tile something stands
+  on is laid again as a plate only where the plate's studs meet nothing over
+  it (`_studs_where_stood_on`). rooms_probe's eight floors pass.
+- The prism pattern: under a face turned off the grid, the plinth is tiled
+  and a ledge's or the summit's plates are the tiles of their size
+  (`_smooth_under_turned`), so its sections are judged as any other: the
+  exemption for "prism ..." in `_note_turned_studs` is gone. The tower
+  dress_probe saves and opens again had 128 turned studs; it has none.
+- `models/orthanc.ldr`: the 35 bricks of its plinth's top course under its
+  core's 45 degree faces are each two plates of their size with tiles over the
+  studs the faces stood on, and the 14 summit plates under its horns' turned
+  side-stud bricks are tiles: 9,427 parts to 9,541, 45 turned studs to none,
+  one piece, and it stands up (8,002 g) with no weak joint.
+- detail_probe expects the surface pass between the assemblies and the
+  creative pass, which came in after it was written.
+- The app's own part builder (`PartForge`) is the pipeline's occupancy again:
+  it had stood still since 10-11 while `tools/ldraw/occupancy.py` gained
+  drawn holes and their spans, the ray tie-break, through holes, clip rooms
+  round bars and the coarse, hull-bound covers, and `pipeline.json` is
+  written again from the pipeline. A print takes its plain part's cover, which
+  its stated connectors cannot rebuild (a bore's arc is in neither them nor an
+  .lbm), so 3816c and 3817c printed are their legs to the cell.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
