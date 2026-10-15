@@ -266,6 +266,12 @@ func _lay(name: String, pattern: Dictionary, out_dir: String) -> Dictionary:
 	for brick: BrickWorld.Brick in world.bricks():
 		ids.append(brick.id)
 	for point: OpenPoints.Point in OpenPoints.read(assistant).points_of(ids):
+		# A wheel's hub faces out on every car, open by design; since the
+		# wheels were turned the right way round (exact) it counted here.
+		# The side studs this is about are the body's and the cabin's.
+		var info: PartLibrary.PartInfo = _library.parts.get(point.part)
+		if info != null and info.category in ["Wheel", "Tyre"]:
+			continue
 		if point.kind == "stud" and absf(point.way.y) < 0.3 and point.by == 0:
 			(out["open"] as Array).append("%s at %s" % [point.part, OpenPoints.where_of(point)])
 	var verdict: Dictionary = assistant._check(assistant._model_from_world(), true)
