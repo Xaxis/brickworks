@@ -1213,3 +1213,142 @@ windscreen: its sides glazed rather than solid, and not turned out on side
 studs a shell then leaves open; a seat for the driver, the screen reading the
 roof across the cabin's width so a cut does not lower it; and the cabin hint
 only where a shape stands on wheels or its solid is glass.
+
+## 2026-10-14-glass: commit 810cd27, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 2 | 4.5 | 3.5 | 4.0 | 3.5 | 5.0 | 10.0 | **5.1** | 809 | 1, 1 |
+| fire_truck | 2 | 5.5 | 5.5 | 5.5 | 5.0 | 4.5 | 10.0 | **6.0** | 343 | 2, 2 |
+| mobile_crane | 2 | 4.0 | 2.5 | 3.0 | 3.5 | 4.0 | 10.0 | **4.5** | 552 | 1, 1 |
+| passenger_aircraft | 2 | 5.0 | 4.5 | 4.0 | 4.0 | 3.5 | 4.0 | **4.2** | 612 | 2, 2 |
+| speed_champions | 2 | 3.5 | 3.5 | 3.0 | 3.0 | 3.5 | 10.0 | **4.4** | 226 | 2, 2 |
+| steam_locomotive | 2 | 6.0 | 5.5 | 6.0 | 5.0 | 4.5 | 10.0 | **6.2** | 317 | 1, 1 |
+| **suite mean** | 12 | **4.8** | **4.2** | **4.2** | **4.0** | **4.2** | **9.0** | **5.1** |  |  |
+
+Run to run, the same subject designed again on the same code (each cell is run 1 / run 2 ...):
+
+| subject | likeness | surface | colour | technique | creative | build | mean |
+|---|---|---|---|---|---|---|---|
+| barn_owl | 5 / 4 | 4 / 3 | 4 / 4 | 4 / 3 | 5 / 5 | 10 / 10 | 5.3 / 4.8 |
+| fire_truck | 6 / 5 | 6 / 5 | 6 / 5 | 5 / 5 | 5 / 4 | 10 / 10 | 6.3 / 5.7 |
+| mobile_crane | 4 / 4 | 3 / 2 | 3 / 3 | 4 / 3 | 4 / 4 | 10 / 10 | 4.7 / 4.3 |
+| passenger_aircraft | 5 / 5 | 5 / 4 | 4 / 4 | 4 / 4 | 4 / 3 | 4 / 4 | 4.3 / 4.0 |
+| speed_champions | 3 / 4 | 3 / 4 | 3 / 3 | 3 / 3 | 4 / 3 | 10 / 10 | 4.3 / 4.5 |
+| steam_locomotive | 6 / 6 | 5 / 6 | 6 / 6 | 5 / 5 | 4 / 5 | 10 / 10 | 6.0 / 6.3 |
+
+Mean spread between runs, per dimension: likeness 0.5, surface 1.0, colour 0.2, technique 0.3, creative 0.7, build 0.0; of a subject's mean score, 0.39 (standard deviation 0.21). A change to a subject's mean smaller than the spread is not yet a result.
+
+Weakest across the suite: **technique** (4.0), **surface** (4.2), **creativity** (4.2).
+
+**What the glass round says: a session now keeps the body the shape laid,
+and the car's likeness has not moved (981b310, run on 810cd27).** The
+cabins round's two cars, both fire trucks and one aircraft laid a shaped
+body and then built the model again by hand. Read from their transcripts,
+what each saw first:
+- **The picture.** The first car's cabin was a solid red block behind its
+  windscreen, with side studs standing open along it where its shell kept
+  54% of its plates; the session said "too blocky to read as a 911". Both
+  fire trucks saw a cab with no windows: "a solid lump with no crew cab
+  interior", "the silhouette works but looks blocky".
+- **A fault.** The second car liked its first body ("silhouette reads as a
+  911 fastback"), cut a seat into the cabin, and the windscreen read the
+  roof off the cut's floor: it stood at y 4 leaning forward. "The generator
+  mangled the cabin with the cut."
+- **The check's words.** Every shaped car was told it was "built more
+  squarely than real vehicles sets ... how a model that holds together comes
+  to look like a pile of bricks", its rounded extrude "steps in plates
+  however fine", and, as "one call", the shape pattern it had just used.
+  The plain share counts the shape's hidden core.
+- The first aircraft swapped its fuselage for the real City airliner nose and
+  belly: an expert's choice, not a fault. The second ship found its hull's
+  top too round to build a deck on; that is not this round's.
+
+The change, for any shape (`cabin_glass_probe`, 19 of whose checks fail on
+1a8079a):
+- **A cabin on wheels is glazed.** Behind the windscreen's top row, every
+  plate of the screen's own solid from its foot to two plates under the roof
+  is laid in its glass, as far back as the roof is over it and no further
+  than the screen is wide, falling with a fastback. In glass a layer takes
+  only parts LEGO made in it (a 1 x 2 or 1 x 4 brick as its glass brick,
+  3065 and 3066), as Speed Champions' 76897 glazes its own cabin. A
+  fuselage's cockpit, with no wheels, is not.
+- **No side stud left open.** A side shell leaves glass to the core, and the
+  roof standing on it; a side-stud brick none of whose studs holds anything
+  is a plain brick of its length, and an open stud on one that holds
+  something takes a tile.
+- **The roof across the cabin.** The screen reads its roof across the
+  solid's whole width, off the solid as said, so a seat cut leaves it where
+  it was.
+- **The hint** to say a screen fires only on a shape with wheels or of a
+  solid said in glass, not on a ship's raised stern.
+- **The words.** A shaped body is told to keep it ("its core is plain bricks
+  inside, which these shares count, so work on what shows"), not to say one;
+  and is told its rounded body steps in plates only where the shape did not
+  turn its flanks out.
+
+**What reached the designs, from each session:**
+- **The body kept.** Of the five sessions on the car, the fire truck and the
+  aircraft that laid a shaped body, none built it again by hand (the
+  cabins round: five of six). Both cars refined theirs in place, 4 and 2
+  submits all of the shape, then features, a seat, the surface pass; both
+  fire trucks built their lockers, ladder and lamps on it. The first aircraft
+  kept its shaped fuselage and built its wings by hand from wing plates; the
+  second never laid one. Held out: both owls kept theirs; the first crane
+  built its chassis by hand because "the wheel generator is choking on
+  closely paired axles", the second kept its body.
+- **Glass laid** in both cars, both fire trucks and both cranes, said in the
+  reply each time. The hint fired once, on the second crane, on wheels.
+- **The judge's words.** The car's cabin is no longer the fault it names. Run
+  1: "a long, low, flat-sided red wedge ... stray blocks sticking up from
+  the roof"; run 2: "the curved fastback roof sloping down ... gives a faint
+  911 hint", faulted on slab sides, no flared arches and no whale tail. The
+  fire trucks read "a sloped glass cab with a blue light bar".
+
+**Judged in pairs** (`run.py pairs` then `rank`), overall ELO, each with its
+95% interval in `run.py rank`:
+
+| subject | cabins round | glass round |
+|---|---|---|
+| speed_champions | 1139, 813 | 1257, 957 |
+| fire_truck | 1203, 631 | 1074, 806 |
+| passenger_aircraft | 1187, 1011 | 1097, 705 |
+| steam_locomotive | 1369, 1068 | 1068, 1068 |
+| barn_owl (held out; best before d6 1353) | | 1240, 912 |
+| mobile_crane (held out; the baseline 716) | | 1284, 1000 |
+
+The lever, glass against cabins, mean over the four subjects run in both:
+
+| dimension | ELO change | judge's 95% | with run-to-run 95% | 1-10 change |
+|---|---|---|---|---|
+| overall | -49 | -116, +29 | -280, +198 | -0.04 |
+| likeness | +11 | -74, +120 | -231, +265 | +0.00 |
+| technique | +75 | -1, +156 | -160, +301 | +0.00 |
+| surface | +50 | -62, +155 | -272, +367 | +0.12 |
+| build | -89 | -168, -20 | -309, +127 | -0.12 |
+
+On the car alone, the two designs are 118 and 144 above the cabins round's,
+and on likeness 226 and 229 (1324 and 1035 against 1098 and 806): the
+dimension this was for, one subject, two designs, each inside a design's luck
+(one design sits 226 ELO from its code's mean, pooled over the thirteen pairs of
+twins now). Against the baseline on the three subjects run in both (the car,
+the owl and the crane), +302 (+157, +337; with luck, -34, +569).
+
+**On it, honestly.** The cause is fixed, in what the sessions do: the body is
+kept and refined, every time on the vehicles. It is a null to the judge:
+-49 overall, +11 on likeness, both intervals across 0. The locomotive (no
+shaped body either round) fell 151 and the aircraft 198, which is the
+luck of four designs; the car rose. The car is still likeness 3 and 4: what
+the judge names now is the body the session said, long and flat, its flank
+stepped where the shape kept no shell (the first car's body turned none out,
+0% sideways), and the roof over the windscreen's top row a plate or two
+above where the fastback's curved slopes begin.
+
+The parts catalogue changed under the round (main 7970de9, connections part
+4, 68 entries): the last designs read the new one.
+
+**Next.** The car's body itself: its flanks skinned where the shell gives
+back (a car three and a half plates of body falls under `SHELL_KEEPS`); the
+roof over the screen's top row flush with the fastback; a multi-axle chassis
+the wheel generator can lay (the crane's); and a fuselage's own open side
+studs (12 on the probe's revolve, on main as well).
