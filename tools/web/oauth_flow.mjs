@@ -277,8 +277,18 @@ try {
   const connected = await waitFor((s) => (s.connected || []).includes("Claude") && /^Connected/.test(s.status || ""));
   check((connected.connected || []).includes("Claude") && /^Connected to Claude/.test(connected.status || ""),
     `the panel says so by itself: "${connected.status}"`);
-  check(!(await where("connect_claude", 2)) && Boolean(await where("claude_disconnect", 4)),
-    "...Connect Claude gives way to Disconnect");
+  check(Boolean(await where("claude_disconnect", 4)), "...with Disconnect offered");
+  // Connected, one click still reaches the connector in Claude, for its tools
+  // and their permissions: the owner had no way there but Disconnect.
+  const openInClaude = context.waitForEvent("page", { timeout: 30000 });
+  await click("connect_claude");
+  const connectorsTab = await openInClaude.catch(() => null);
+  await connectorsTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(connectorsTab?.url() === "https://claude.ai/customize/connectors",
+    `...and Open in Claude, one click to Claude's connectors: ${connectorsTab?.url()}`);
+  await connectorsTab?.close();
+  const stillConnected = await waitFor((s) => (s.connected || []).includes("Claude"));
+  check((stillConnected.connected || []).includes("Claude"), "...which leaves Claude connected");
   await shot("4_connected");
 
   console.log("\nclaude.ai connects again (reconnected in Claude, or another of its apps)");
@@ -372,6 +382,13 @@ try {
   await click("account");
   await page.waitForTimeout(2500);
   check(Boolean(await where("account_disconnect_claude", 20)), "Account shows Claude connected, with Disconnect Claude");
+  const fromAccount = context.waitForEvent("page", { timeout: 30000 });
+  await click("account_connect_claude");
+  const accountTab = await fromAccount.catch(() => null);
+  await accountTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(accountTab?.url() === "https://claude.ai/customize/connectors",
+    `...and Open in Claude beside it, one click to Claude's connectors: ${accountTab?.url()}`);
+  await accountTab?.close();
   await shot("9_account_connected");
   await click("account_disconnect_claude");
   // A minute: at a load of thirty the disconnect, the renewal before it and

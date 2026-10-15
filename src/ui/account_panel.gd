@@ -93,6 +93,9 @@ func setup(with_account: Account) -> void:
 	_claude_connect = Look.link("Connect Claude", 12)
 	_claude_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
 	_claude_connect.pressed.connect(func() -> void:
+		if connector.connected():
+			connector.open_in_claude()
+			return
 		connector.connect_claude()
 		_claude_state.text = connector.connect_words())
 	_claude_box.add_child(_claude_connect)
@@ -224,9 +227,12 @@ func _show_claude() -> void:
 	else:
 		_claude_state.text = "Connected — Claude can build in your open Brickworks tabs.\n" \
 			+ "\n".join(lines)
-	_claude_connect.visible = lines.is_empty()
+	# Always one click to Claude: Connect while it is not connected, and
+	# while it is, Open in Claude for the connector's tools and permissions.
+	_claude_connect.text = "Connect Claude" if lines.is_empty() else "Open in Claude"
 	_claude_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if connector.had_claude else "Opens claude.ai with Brickworks filled in")
+		if connector.had_claude or not lines.is_empty()
+		else "Opens claude.ai with Brickworks filled in")
 	_claude_disconnect.visible = not lines.is_empty()
 
 

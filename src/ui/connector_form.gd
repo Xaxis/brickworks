@@ -109,6 +109,9 @@ func setup(with: ClaudeConnector) -> void:
 	_connect.focus_mode = Control.FOCUS_NONE
 	_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
 	_connect.pressed.connect(func() -> void:
+		if connector.connected():
+			connector.open_in_claude()
+			return
 		connector.connect_claude()
 		_guide.visible = true
 		_code_box.visible = false
@@ -411,14 +414,14 @@ func _show() -> void:
 		_fallback.text = ("No new tab? In Claude, open Customize, Connectors, "
 			+ "Add custom connector, and paste this (it is copied):")
 	_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if connector.had_claude else "Opens claude.ai with Brickworks filled in")
+		if connector.had_claude or linked else "Opens claude.ai with Brickworks filled in")
 	_shared.text = connector.shared_address()
 	_command.text = connector.claude_code_command()
 	for one: Node in _desktop_box.find_children("*", "LineEdit", true, false):
 		(one as LineEdit).text = connector.shared_address()
 	_intro.visible = not linked and not on and not connector.used()
-	_connect.visible = not linked
-	_connect.text = "Connect Claude again" if connector.waiting_for_claude() else "Connect Claude"
+	_connect.text = ("Open in Claude" if linked
+		else "Connect Claude again" if connector.waiting_for_claude() else "Connect Claude")
 	_here.visible = linked or on or connector.used() or _private_box.visible
 	_in_view.visible = on
 	_disconnect.visible = linked

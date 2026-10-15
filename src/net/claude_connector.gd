@@ -282,6 +282,16 @@ func connect_claude() -> void:
 		OS.shell_open(last_opened)
 
 
+## Connected: one click to the Brickworks connector in Claude, for its
+## tools and their permissions. With Claude connected there was no way back
+## to it from here but Disconnect, which sets up a new connector and its
+## permissions anew (2026-10-15).
+func open_in_claude() -> void:
+	last_opened = CONNECTORS
+	if open_links:
+		OS.shell_open(CONNECTORS)
+
+
 ## Where Connect Claude has sent the person and what to do there, in a
 ## sentence: adding Brickworks the first time, connecting the one they have
 ## after that. Claude's own names for it (claude.com/docs/connectors/
