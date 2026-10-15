@@ -20,7 +20,7 @@
 // was fetched (then nothing waited and the pictures prove nothing), or if no
 // fetch was answered. Whether the waiting looks right is for a person: look at
 // the pictures.
-import { launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 
@@ -86,7 +86,11 @@ const where = (name) => page.evaluate((k) => (window.brickworksControls || {})[k
 
 // The bin's grid sits under its "Make a part…" button: the button is at the
 // top right of the panel and the grid fills the middle of it.
-const make = await where("make part");
+// Waited for: the bin is laid out again as the model's parts land, and a
+// control is told to the page only once it has stayed where it is drawn
+// (Main._page_places).
+const make = (await controlsWith(page, ["make part"]))["make part"];
+if (!make) throw new Error("the parts bin's Make a part button is not showing");
 const grid = { x: make.x - 100, y: make.y + 330 };
 await shot("web_bin_open");
 // Flung down in bursts until the scroll reaches parts the build did not pack:
