@@ -641,6 +641,9 @@ static func _buckets_along(row: Array) -> Array[Vector3i]:
 static func overlap_within(mine: PackedInt32Array, theirs: PackedInt32Array,
 		zones: Array, to_world: Transform3D, slack: float,
 		own: Array = []) -> bool:
+	var meeting: Array = _where_they_meet(mine, theirs)
+	mine = meeting[0]
+	theirs = meeting[1]
 	var frames: Array[Transform3D] = []
 	for cover: Array in own:
 		frames.append((cover[0] as Transform3D).affine_inverse())
@@ -666,6 +669,36 @@ static func overlap_within(mine: PackedInt32Array, theirs: PackedInt32Array,
 			j += 6
 		i += 6
 	return any
+
+
+## Of two covers, the boxes of each that meet where the two covers' bounds
+## do, in their order: [mine, theirs]. Two boxes share cells only there, so
+## asked pair by pair of these the cells two covers share come out the same,
+## in the same order, and two turned covers of hundreds of boxes each are
+## not every pair of them.
+static func _where_they_meet(mine: PackedInt32Array, theirs: PackedInt32Array) -> Array:
+	if mine.size() * theirs.size() <= 36 * 16:
+		return [mine, theirs]
+	var a: PackedInt32Array = BrickLattice._bound_of(mine)
+	var b: PackedInt32Array = BrickLattice._bound_of(theirs)
+	var region := PackedInt32Array([maxi(a[0], b[0]), maxi(a[1], b[1]), maxi(a[2], b[2]),
+		mini(a[3], b[3]), mini(a[4], b[4]), mini(a[5], b[5])])
+	if region[0] >= region[3] or region[1] >= region[4] or region[2] >= region[5]:
+		return [PackedInt32Array(), PackedInt32Array()]
+	return [_meeting(mine, region), _meeting(theirs, region)]
+
+
+## The boxes that share a cell with [param region].
+static func _meeting(packed: PackedInt32Array, region: PackedInt32Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var n: int = 0
+	while n < packed.size():
+		if maxi(packed[n], region[0]) < mini(packed[n + 3], region[3]) \
+				and maxi(packed[n + 1], region[1]) < mini(packed[n + 4], region[4]) \
+				and maxi(packed[n + 2], region[2]) < mini(packed[n + 5], region[5]):
+			out.append_array(packed.slice(n, n + 6))
+		n += 6
+	return out
 
 
 ## Whether a point is in a cell either cover leaves empty, or in one with
@@ -728,6 +761,9 @@ static func past_the_teeth(mine: PackedInt32Array, theirs: PackedInt32Array, rou
 		to_world: Transform3D) -> bool:
 	if rounds.is_empty():
 		return false
+	var meeting: Array = _where_they_meet(mine, theirs)
+	mine = meeting[0]
+	theirs = meeting[1]
 	var any: bool = false
 	var i: int = 0
 	while i < mine.size():

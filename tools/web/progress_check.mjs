@@ -49,7 +49,7 @@
 // work of its own over --budget ms (250) in one go, or when the bar is still
 // up at the end.
 // --report-only prints the table and passes, for a build from before.
-import { launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -412,7 +412,9 @@ try {
     await measure(page, "render", press(page, "tool_render"),
       async () => /Render draws/.test(String((await page.evaluate(() => window.brickworksRender || {})).status || "")),
       async (_s, c) => Boolean(c.render_picture), 240);
-    const close = (await h.controls()).render_close;
+    // Waited for, after the timing: a control is told to the page only once
+    // it has stayed where it is drawn (Main._page_places).
+    const close = (await controlsWith(page, ["render_close"])).render_close;
     if (close) await page.mouse.click(close.x, close.y);
     else await page.keyboard.press("Escape");
     await h.quiet(3000, 60000);
@@ -589,7 +591,8 @@ try {
       const button = await h.where("new");
       await page.mouse.click(button.x, button.y);
       await page.waitForTimeout(4000);
-      const answer = (await h.controls()).new_save;
+      // The question's button waited for, before the press that is timed.
+      const answer = (await controlsWith(page, ["new_save"])).new_save;
       if (answer && ((await h.state()).bricks || 0) > 9000) {
         await measure(page, "save_new", async () => { await page.mouse.click(answer.x, answer.y); },
           async (s) => (s.bricks || 0) < 100 && idle(s), async (s) => said(/sav/i)(s), 600);

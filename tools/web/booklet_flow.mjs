@@ -16,7 +16,7 @@
 // arrives in it, a picture in it does not decode, it has no step pages
 // or no parts list, or a script error reaches either console. Leaves
 // OUT/app.png, OUT/page-N.png and OUT/booklet.pdf.
-import { launch } from "./browser.mjs";
+import { controlsWith, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -68,6 +68,10 @@ try {
   await page.screenshot({ path: path.join(out, "app.png") });
   check("the toolbar has Instructions", Boolean(at));
 
+  // Where it is now, waited for: the toolbar is laid out again as the car's
+  // parts land, and a control is told to the page only once it has stayed
+  // where it is drawn (Main._page_places).
+  at = (await controlsWith(page, ["instructions"])).instructions || at;
   const opened = context.waitForEvent("page", { timeout: 30000 });
   await page.mouse.click(at.x, at.y);
   let tab = null;

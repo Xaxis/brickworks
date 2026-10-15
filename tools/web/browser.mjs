@@ -73,6 +73,30 @@ export async function launch(options = {}) {
   return browser;
 }
 
+/// Where the app's controls are (window.brickworksControls), once every one
+/// of [names] is there, as a person waits for a panel to open: polled every
+/// 250 ms for up to [ms]. A control is told to the page only once it has
+/// stayed where it is drawn for a publish (Main._page_places, every 500 ms),
+/// so about a second after it appears, longer under load; a flow that read
+/// the map once right after showing a control could miss it (fit_check,
+/// 2026-10-14). Returns whatever the map holds at the deadline, so the
+/// caller judges a missing control as strictly as before. With
+/// `{ any: true }`, once any one of them is there: whichever of two panels
+/// is up (the assistant's brief, or its key form before there is a key).
+export async function controlsWith(page, names, ms = 10000, { any = false } = {}) {
+  const wanted = [].concat(names || []);
+  const read = () => page.evaluate(() => window.brickworksControls || {});
+  const until = Date.now() + ms;
+  const missing = (where) => (any ? !wanted.some((name) => where[name])
+    : wanted.some((name) => !where[name]));
+  let where = await read();
+  while (missing(where) && Date.now() < until) {
+    await page.waitForTimeout(250);
+    where = await read();
+  }
+  return where;
+}
+
 // The assistant's controls, which live in the right-hand column.
 const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
 
