@@ -123,7 +123,16 @@ connectors and collision the library's own parts have.
   `embedded_parts`, never into sub-models — by header, not name, because
   older files call sub-models `door.dat`;
   `ModelStore.open_text` and main's `_open` build them before placing, so a
-  file opens on a machine that never made the part. A file cannot redefine a
+  file opens on a machine that never made the part. Each is built from
+  everything the file carries for it, its subparts and primitives too
+  (`LdrModel.embedded_sources`: any section whose `!LDRAW_ORG` is not a model,
+  keyed by the name a reference gives, `s\` and all, and by its bare name).
+  Read as parts only and by bare name, 1,401 parts real sets' files carry could
+  not be built (10283's pins, drawn from a friction rib carried as a
+  primitive; prints whose subpart is named `s\…`), and what stood on them
+  floated. `joints_probe` ("a part drawn from what its file carries") builds a
+  plate from a carried subpart and primitive and stands a brick on it; on
+  3a39926 the plate is not built. A file cannot redefine a
   LEGO part: an embedded `3001.dat` is ignored. The same shape under another
   name is another part (`bw-b2x7x3-2`). The parts list says "(custom
   element)" and gives no element number. A print drawn in the figure builder

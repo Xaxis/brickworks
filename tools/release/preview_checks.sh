@@ -39,6 +39,7 @@ declare -A CMD=(
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
+  [focus]="tools/web/focus_check.mjs --url=$P/app $B --out=$S/${TAG}_focus"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
@@ -51,7 +52,9 @@ run() {
   # A name not in the map ran bare node, which exits 0 at once: technic
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
-  timeout 2700 "$H" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
+  # The limit is on the check, inside heavy: around heavy it counted the wait
+  # for a slot, and at load 50 tabs and keep ran out queued, never run.
+  "$H" timeout 2700 node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
   local code=$?
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
 }

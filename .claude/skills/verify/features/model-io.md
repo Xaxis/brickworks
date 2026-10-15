@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe -->
 
 ## Sub-features
 
@@ -17,6 +17,16 @@ Whether what you built is still there tomorrow, and still means the same thing.
   head of the model, in the autosave, saves, LDraw and Studio exports and the
   text a shared link carries, and is read back on open; a file without it gets
   the floor new models start on. `floor_probe` round-trips each.
+- `working model that could not open` (`ModelStore.restore`,
+  `src/ui/restore_notice.gd`): at start-up a working model none of whose parts
+  can be had (not in this build's catalogue, or not LDraw) is kept as it was,
+  among the saved models as "<its name> - could not open", or nowhere new when
+  it is saved as it is already; the window says so above the model, with where
+  it is, until "Got it". The sample car then opens. Before 2026-10-14 the car's
+  autosave went over it a few seconds later and nothing was said. A model
+  whose parts are on their way (on the web, not fetched yet) counts as
+  restored, so the car is not opened over it. `unrestored_probe` plays the
+  start-up as Main does and fails on 480b81a (8 failures).
 - `ldr read and write`: real LDraw `.ldr`. Written files open in other LDraw
   tools, and files from them open here. A file's own build steps (`0 STEP`,
   `0 ROTSTEP`, a sub-model's steps of its own and the step each copy of it is
@@ -155,7 +165,22 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is placed from the catalogue's bounds of every part, so it is the same lift
   whatever geometry has arrived; parts not yet fetched wait in `store.awaited`
   and are put down as they arrive (`place_awaited`, from `Main._on_part_fetched`),
-  never into a world cleared since. There were two ways: the app's own opened
+  never into a world cleared since. Except a part turned off the grid, whose
+  box hangs below it where it does not fill it (`Lbm.PartMesh.lowest_at`, read
+  off its cover): a car whose wheels are drawn spun on their axles stood on its
+  tyres' boxes 8 to 12 LDU up, and every part of 8281's sidecar floated. Where
+  such a part's geometry has not arrived (the web, outside the pack) the box
+  stands in, and once the last awaited part lands the model comes down to the
+  height a desktop opens it at (`ModelStore._settle`), before it is whole and
+  saved. And a file another tool wrote (its `Author` not Brickworks) comes down
+  by whole cells when it is drawn up in the air, since its origin is that
+  tool's: 30285's dinosaur is drawn 21 LDU up, and every part of it floated; one
+  this app saved keeps its height. `joints_probe` ("stood on the ground by its
+  shape") opens a wheel spun 16 degrees on its axle both ways and with its tyre
+  fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
+  A part a
+  file carries is built from its carried subparts and primitives as well (see
+  [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened
   the sample without lifting it, so on the web a first visit saved the car
   buried to its axles, a reload lifted it a brick, and New said it had changed;
   the store's lifted it and dropped parts still arriving. `project_probe` opens
@@ -410,15 +435,19 @@ tools/windows_check.py      # two windows of the desktop app, a model each
 # versions, the browser asked to keep the models, the one warning, over MCP too
 godot --headless --path . --script src/dev/versions_probe.gd
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
+godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
 # the page's half in real Chromium, persist() played refused and granted
 BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep
 ```
 
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
-open again, and the browser is asked to keep them"; `empty_save_probe` when it
+open again, and the browser is asked to keep them" (Account follows the
+browser's answer while it is open: it was read once as the panel opened, up to
+400 ms old, and keep_flow's granted half read the unanswered words); `empty_save_probe` when it
 ends "no save of no parts goes over a model with parts unless the person
 emptied it" (on main both its empty checks fail: the autosave and Save wrote
-the empty model); `keep_flow` when it ends "the browser is asked to keep the
+the empty model); `unrestored_probe` when it ends "a working model that cannot
+be opened is kept, and said to be"; `keep_flow` when it ends "the browser is asked to keep the
 models, a refusal is warned of once, and every save is kept to open again".
 On production before 2026-10-14 the flow fails at the first save (never asked).
 

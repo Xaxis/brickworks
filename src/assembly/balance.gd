@@ -308,7 +308,8 @@ var _parts: Array[String] = []
 var _mass := PackedFloat64Array()
 var _middle: Array[Vector3] = []
 var _rest: Array[Transform3D] = []
-var _bounds: Array[AABB] = []
+## Each part's geometry, for how low a pose takes it (Lbm.PartMesh.lowest_at).
+var _meshes: Array[Lbm.PartMesh] = []
 ## The sub-model each is in (Assemblies.path_of), for what holds it otherwise.
 var _paths: Array[String] = []
 var _index_of: Dictionary = {}
@@ -413,7 +414,7 @@ func _read(bricks: Array) -> void:
 	_mass = PackedFloat64Array()
 	_middle.clear()
 	_rest.clear()
-	_bounds.clear()
+	_meshes.clear()
 	_paths.clear()
 	_index_of.clear()
 	for item: Variant in bricks:
@@ -432,7 +433,7 @@ func _read(bricks: Array) -> void:
 		# a part's origin on top of its body.
 		_middle.append(part.bounds.get_center())
 		_rest.append(brick.transform)
-		_bounds.append(part.bounds)
+		_meshes.append(part)
 		_paths.append(Assemblies.path_of(brick))
 
 
@@ -653,7 +654,9 @@ func _through_floor(placed: Dictionary) -> bool:
 		var at: Transform3D = placed[id]
 		if at.is_equal_approx(_rest[n]):
 			continue
-		if (at * _bounds[n]).abs().position.y < _floor_y - BrickLattice.PLATE * 0.5:
+		# By its shape: a turned part's box hangs below it, and a wheel swung
+		# round on its axle went through the floor by its box.
+		if _meshes[n].lowest_at(at) < _floor_y - BrickLattice.PLATE * 0.5:
 			return true
 	return false
 

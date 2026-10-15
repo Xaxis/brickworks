@@ -192,7 +192,10 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
 		if id.begins_with("bl_") and plain != null and not plain.custom:
 			continue
+		# Everything it may be drawn from: the other parts, and the subparts
+		# and primitives the file carries for them (LdrModel.embedded_sources).
 		var carried: Dictionary = model.embedded_parts.duplicate()
+		carried.merge(model.embedded_sources)
 		carried.merge(model.embedded_data)
 		var result: Dictionary = add(library, text, id,
 			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried)

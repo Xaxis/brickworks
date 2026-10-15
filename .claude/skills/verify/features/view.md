@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe -->
 
 ## Sub-features
 
@@ -155,7 +155,15 @@ picture the assistant is shown.
   controls." `handbuild_probe` ends a field each way and presses a view key;
   `tools/web/focus_check.mjs --url=…` does the same in a browser and reads the
   picture, so it fails on a build from before (9 failures on 2026-10-11's
-  live site) and passes after.
+  live site) and passes after. What Enter kept is what a later Escape puts
+  back: a busy tab hands every key since its last frame over in one, so a name
+  typed, Enter and Escape half a second later came together, and the Escape put
+  the old name back (tabs_flow's rename at a load of 40 to 60, 2026-10-14).
+  `typing_probe` (`xvfb-run -a godot --path . --resolution 1400x900 --script
+  src/dev/typing_probe.gd`) sends the keys before one frame, and
+  `focus_check`'s last case sends them in one task of the page; both fail on
+  480b81a (the live site reverted the name 3 times in 3, and kept it without
+  the Escape).
 - `status line`: bricks, whether it stands and what it weighs, of the model and
   not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
   the count and the weight): it said 62 bricks and 149 g over the 61-brick

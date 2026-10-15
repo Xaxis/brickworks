@@ -9,7 +9,8 @@
 // Enter, a click on the model, Tab, Escape — and after each asks the model
 // to move by its keys: three taps of an arrow turn the view and 1 looks
 // from the front. Each must move the picture. Escape must also put the
-// name back as it was.
+// name back as it was, and not a name typed and entered before it, even
+// when both come in one frame.
 //
 // The picture is read, not the app's word for it, so the same check runs
 // against a build from before the fix and fails there.
@@ -119,6 +120,37 @@ for (const [how, end] of endings) {
     const titleAfter = await page.title();
     check(`Escape puts the name back ("${titleAfter}")`, titleAfter === titleBefore);
   }
+}
+
+// A busy tab hands the app every key since its last frame in one: a name
+// typed, Enter, and Escape a moment later to give the keys back came
+// together, and the Escape put the old name back (tabs_flow's rename at a
+// load of 40 to 60, 2026-10-14). Sent here in one task of the page, so the
+// app has them in one frame however fast this machine is.
+{
+  const field = await controlAt("model_name");
+  await page.mouse.click(field.x, field.y);
+  await page.waitForTimeout(1500);
+  const name = "Focus check busy";
+  await page.evaluate((typed) => {
+    const canvas = document.querySelector("canvas");
+    const send = (type, key, code, extra) => canvas.dispatchEvent(
+      new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true, ...extra }));
+    const press = (key, code, extra = {}) => { send("keydown", key, code, extra); send("keyup", key, code, extra); };
+    press("a", "KeyA", { ctrlKey: true });
+    for (const c of typed) {
+      press(c, c === " " ? "Space" : `Key${c.toUpperCase()}`, { shiftKey: c !== c.toLowerCase() });
+    }
+    press("Enter", "Enter");
+    press("Escape", "Escape");
+  }, name);
+  let title = "";
+  for (let n = 0; n < 40 && title !== `${name} — Brickworks`; n += 1) {
+    await page.waitForTimeout(500);
+    title = await page.title();
+  }
+  check(`a name typed, Enter and Escape in one busy frame keep the name ("${title}")`,
+    title === `${name} — Brickworks`);
 }
 
 await browser.close();

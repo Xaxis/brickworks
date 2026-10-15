@@ -539,17 +539,19 @@ ROUNDS: dict[str, str] = {
     "2026-10-13-surface": "surface", "2026-10-13-edges": "edges",
     "2026-10-13-edges-b": "edges", "2026-10-13-steps": "steps", "2026-10-14-sides": "sides",
     "2026-10-14-shapes": "shapes", "2026-10-14-shapes-trial": "shapes",
+    "2026-10-14-cabins": "cabins",
 }
 # Each lever against the round it was read against in docs/DESIGN_SCORES.md.
 # The surface round branched from staging without d6's feature pass, so the
 # baseline is what it changed.
 LEVERS: tuple[tuple[str, str], ...] = (
     ("d6", "baseline"), ("d6b", "d6"), ("surface", "baseline"), ("edges", "surface"),
-    ("steps", "edges"), ("sides", "steps"), ("shapes", "sides"))
+    ("steps", "edges"), ("sides", "steps"), ("shapes", "sides"), ("cabins", "shapes"))
 # Designs of one brief made on the same code: what luck alone moves a design.
 TWINS: tuple[tuple[str, ...], ...] = (
     ("2026-10-12/1", "2026-10-12/2"),
-    ("2026-10-14-shapes-trial/1", "2026-10-14-shapes-trial/2"))
+    ("2026-10-14-shapes-trial/1", "2026-10-14-shapes-trial/2"),
+    ("2026-10-14-cabins/1", "2026-10-14-cabins/2"))
 
 
 @dataclass(frozen=True, slots=True)
