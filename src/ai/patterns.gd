@@ -297,6 +297,7 @@ static func _expanded(raw_patterns: Array, already: Array, trouble: Array,
 		library: PartLibrary, footings: Array, feet: Dictionary, others: Array) -> Array:
 	var made: Array = []
 	Shapes.said = []
+	Shapes.turned = 0
 	_shape_spans = []
 	var n: int = -1
 	for raw: Variant in raw_patterns:

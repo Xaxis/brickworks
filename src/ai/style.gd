@@ -256,7 +256,10 @@ static func _cell(point: Vector3) -> Vector3i:
 ## What to tell a design, or "": the measures on the tails of real sets
 ## of its kind, each with the median and the edge it is past. [param about]
 ## is what it is of, so a tower is told of the call shaped like a tower.
-static func advice(found: Dictionary, group: String, about: String = "") -> String:
+## [param shaped]: its body was laid by the shape pattern, so it is told to
+## keep that body, not to say one.
+static func advice(found: Dictionary, group: String, about: String = "",
+		shaped: bool = false) -> String:
 	if int(found.get("parts", 0)) < LEAST or group.is_empty():
 		return ""
 	var band: Dictionary = (norms().get("groups", {}) as Dictionary).get(group, {})
@@ -303,7 +306,7 @@ static func advice(found: Dictionary, group: String, about: String = "") -> Stri
 	# told "a prism with piers, for a tower like this one" — its description
 	# named the launch tower — and "restyle_model", which dresses a plain
 	# wall in round tiles: polka dots on a rocket.
-	var calls: PackedStringArray = calls_for(traits, found, band, about)
+	var calls: PackedStringArray = calls_for(traits, found, band, about, shaped)
 	var who: String = "real sets since 2010" if group == "since_2010" else (
 		"real %s sets%s" % [group.replace("_since_2010", ""),
 			" since 2010" if group.ends_with("_since_2010") else ""])
@@ -372,12 +375,25 @@ static func traits_of(about: String) -> Dictionary:
 	return found
 
 
+## What a body the shape pattern laid is told under these shares.
+const SHAPED_KEEP := ("the body the shape laid, kept: its core is plain bricks inside, "
+	+ "which these shares count, so work on what shows — the features, edit_model on its "
+	+ "outside, the surface pass, or the shape said again with its numbers changed — "
+	+ "rather than building the body again by hand")
+
+
 ## The calls to name, for what the subject is and what the measures said.
 ## Each is one call, named, because designs take up a technique when it is
 ## one call they are told of.
 static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
-		about: String) -> PackedStringArray:
+		about: String, shaped: bool = false) -> PackedStringArray:
 	var calls := PackedStringArray()
+	# A body the shape pattern laid is not told to say one. Told to under these
+	# same shares — its hidden core is plain bricks — both cars of the cabins
+	# round judged their shaped body a pile of bricks and built the car again
+	# by hand: likeness 3, both.
+	if shaped and (traits.has("vehicle") or traits.has("living")):
+		calls.append(SHAPED_KEEP)
 	var low_snot: bool = found.has("snot") and band.has("snot") \
 		and float(found["snot"]) < float((band["snot"] as Array)[0])
 	var plain: bool = found.has("plain") and band.has("plain") \
@@ -391,15 +407,16 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 			+ "along x; a round of square bricks is the commonest way a model "
 			+ "here has looked like a pile of them")
 	if traits.has("vehicle"):
-		calls.append("the shape pattern, for a body that is not a box — a car's, a "
-			+ "hull, a fuselage — said as its solids (a side profile extruded, a "
-			+ "loft through sections, a revolve), which lays its slopes, curved "
-			+ "slopes, wedge plates and tiles for you. On wheels, it stands on "
-			+ "something: the chassis plates and the wheel units first, as bricks, "
-			+ "then the shape with its at.y on the chassis's top, and a box cut "
-			+ "round each wheel's whole box (a round cut leaves the tyre's corners "
-			+ "in the body, and the check refuses the overlap) — a shape raised "
-			+ "over nothing floats")
+		if not shaped:
+			calls.append("the shape pattern, for a body that is not a box — a car's, a "
+				+ "hull, a fuselage — said as its solids (a side profile extruded, a "
+				+ "loft through sections, a revolve), which lays its slopes, curved "
+				+ "slopes, wedge plates and tiles for you. On wheels, it stands on "
+				+ "something: the chassis plates and the wheel units first, as bricks, "
+				+ "then the shape with its at.y on the chassis's top, and a box cut "
+				+ "round each wheel's whole box (a round cut leaves the tyre's corners "
+				+ "in the body, and the check refuses the overlap) — a shape raised "
+				+ "over nothing floats")
 		calls.append("for a vehicle: wedge plates where an edge runs at a slant "
 			+ "(show_technique \"smooth diagonal\"), curved slopes over a bonnet, a "
 			+ "hull or a cab roof, studs_out for a smooth side panel, a section "
@@ -407,9 +424,10 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 			+ "opens, and its face as lamps and a grille (show_technique "
 			+ "\"headlamps and grille\")")
 	if traits.has("living"):
-		calls.append("the shape pattern, for a creature's body and head — "
-			+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
-			+ "and wedges fitted to its surface")
+		if not shaped:
+			calls.append("the shape pattern, for a creature's body and head — "
+				+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
+				+ "and wedges fitted to its surface")
 		calls.append("for a living thing: curved slopes and wedges for a body, "
 			+ "sections on hinges for wings, ears and limbs, the rock pattern for "
 			+ "anything rough, and nothing square that is not; its face in "

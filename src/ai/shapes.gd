@@ -111,6 +111,13 @@ const SCREENS: Array = ["92583", "4176", "3823", "57783"]
 ## Glass, where a screen names no colour: trans-black, as a set's windscreen
 ## is; trans-clear where the part was never made in it.
 const GLASS: Array = [40, 47]
+## A brick laid in glass is the glass brick of its size: a set's trans
+## bricks have no tubes under them, and LEGO never made the tubed 1 x 2 and
+## 1 x 4 in trans-black.
+const GLASS_SWAP: Dictionary = {"3004": "3065", "3010": "3066"}
+
+## Which colours are glass, by code, read once.
+static var _glassy: Dictionary = {}
 
 ## What each surface part is, read once off its own mesh: "w" studs across
 ## its fall, "d" along it, "h" plates tall, and "turn", the quarter turns
@@ -127,6 +134,39 @@ static var last: Dictionary = {}
 ## part they could not join, a shape standing on nothing. Read into the
 ## check's advice, so the reason and the fix come with the shape.
 static var said: Array = []
+## How many parts the shapes laid since then turned out on their sides (side
+## shells): a body whose curved flanks are already skinned is not told to
+## skin them.
+static var turned: int = 0
+
+
+## Whether [param colour] is glass: a transparent colour.
+static func is_glass(library: PartLibrary, colour: int) -> bool:
+	if colour < 0 or library == null:
+		return false
+	if not _glassy.has(colour):
+		var found: PartLibrary.BrickColor = library.colors.get(colour)
+		_glassy[colour] = found != null and found.is_transparent()
+	return bool(_glassy[colour])
+
+
+## [param part] as it is laid in the glass [param colour]: itself, or its
+## glass brick (GLASS_SWAP) where LEGO made that and not it.
+static func in_glass(library: PartLibrary, part: String, colour: int) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part) if library != null else null
+	if info == null or not info.never_made_in(colour):
+		return part
+	var swap: String = str(GLASS_SWAP.get(part, ""))
+	var other: PartLibrary.PartInfo = library.parts.get(swap) if not swap.is_empty() else null
+	return swap if other != null and not other.never_made_in(colour) else part
+
+
+## Whether [param part] can be laid in [param colour] as LEGO made it: in
+## it, or as its glass brick.
+static func made_in_glass(library: PartLibrary, part: String, colour: int) -> bool:
+	var laid: String = in_glass(library, part, colour)
+	var info: PartLibrary.PartInfo = library.parts.get(laid) if library != null else null
+	return info == null or not info.never_made_in(colour)
 
 
 ## Every brick of a shape, or a reason in [param trouble].
@@ -323,6 +363,33 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			var asked: Dictionary = one.duplicate()
 			asked["origin"] = origin
 			asked["y0"] = y0
+			# A cabin on wheels is glazed behind its screen (Plan._glaze): a car's,
+			# a truck's, a bus's. A fuselage's cockpit or a fighter's canopy is not:
+			# its roof runs on to the tail, and the glass would run with it.
+			asked["glaze"] = not wheels.is_empty()
+			# The cabin is where its solid is and no other is: its glass stops at
+			# the body it stands on.
+			var own_solid: Dictionary = one["solid"]
+			# Its top at a stud, as said and before any cut: where its roof is.
+			var roofs: Dictionary = {}
+			asked["roof_of"] = func(cell: Vector2i) -> int:
+				if not roofs.has(cell):
+					roofs[cell] = -1
+					for j: int in range(tall - 1, -1, -1):
+						var p := Vector3(cell.x + 0.5, y0 + j + 0.5, cell.y + 0.5)
+						if (own_solid["box"] as AABB).grow(0.001).has_point(p) and _inside(own_solid, p):
+							roofs[cell] = j + 1
+							break
+				return int(roofs[cell])
+			asked["own"] = func(x: float, j: float, z: float) -> bool:
+				var p := Vector3(x, y0 + j, z)
+				if not (own_solid["box"] as AABB).grow(0.001).has_point(p) or not _inside(own_solid, p):
+					return false
+				for other: Dictionary in solids:
+					if not is_same(other, own_solid) and other["kind"] != GRID \
+							and (other["box"] as AABB).grow(0.001).has_point(p) and _inside(other, p):
+						return false
+				return true
 			plan.screen(asked)
 		var shells: Array = []
 		if sideways:
@@ -397,8 +464,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			+ "on was laid otherwise. Give the front a plate or two more under its foot, "
 			+ "or say the shape with \"sideways\": false.")
 	last["screens"] = plan.screens_kept()
+	# Only where a screen can be meant: a shape on wheels, or a solid said in
+	# glass. A ship's raised stern was told three times it might be a cabin.
 	if screens.is_empty():
-		said.append_array(_screen_hints(solids, y0))
+		said.append_array(_screen_hints(solids, y0, wheels.is_empty(), library, colour))
 	var pieces: Array = plan.pieces()
 	# A part or three at a tip that no way of joining could hold are left
 	# off, and said: a fighter's nose ended in a stud-long row of plates, a
@@ -481,6 +550,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		made = made + laid
 	last["shells"] = shells.size()
 	last["sideways"] = turned_out
+	turned += turned_out
 	last["shells_kept"] = plan.kept
 	last["faces"] = plan.faces_laid
 	# A face that found no curved side with side studs to sit on is said,
@@ -497,6 +567,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	for one: Dictionary in made:
 		if top_colour >= 0 and bool(one.get("_top", false)):
 			one["color"] = top_colour
+		# A brick in glass as LEGO made it in glass: its glass brick, which
+		# Plan._made_in chose it for.
+		if is_glass(library, int(one["color"])):
+			one["part"] = in_glass(library, str(one["part"]), int(one["color"]))
 		var out := {"part": one["part"], "color": one["color"],
 			"x": float(one["x"]) + origin.x, "y": float(one["y"]) + y0 + origin.y,
 			"z": float(one["z"]) + origin.z, "rot": int(one["rot"])}
@@ -666,8 +740,13 @@ static func _screens_asked(solids: Array, trouble: Array) -> Array:
 		var parts: Array = SCREENS
 		if given.has("part"):
 			parts = [str(given["part"])]
+		# Its studs across, for the roof to be read over all of them: read off
+		# the middle two, a seat cut there lowered the roof to the cut's floor.
+		var box: AABB = solid["box"]
+		var span := Vector2(box.position.z, box.end.z) if along == "x" \
+			else Vector2(box.position.x, box.end.x)
 		out.append({"along": along, "from": stretch.x, "to": stretch.y,
-			"centre": _middle_across(solid, along),
+			"centre": _middle_across(solid, along), "span": span, "solid": solid,
 			"colour": int(given.get("color", given.get("colour", -1))), "parts": parts})
 	return out
 
@@ -749,10 +828,17 @@ static func _climb(line: Array, stretch: Vector2) -> Vector2:
 
 ## What a shape that says no screen is told, once: a solid raised off the
 ## ground whose top rises steeply to a roof, laid in slopes of its own
-## colour, is how every session said a cabin. Said with the fix.
-static func _screen_hints(solids: Array, y0: int) -> Array:
+## colour, is how every session said a cabin. Said with the fix. Off wheels
+## ([param glass_only]) only of a solid said in glass, a canopy: both ships of
+## the cabins round were told it of a raised stern, three times each.
+static func _screen_hints(solids: Array, y0: int, glass_only: bool = false,
+		library: PartLibrary = null, colour: int = -1) -> Array:
 	for solid: Dictionary in solids:
 		if not str(solid["kind"]) in ["loft", "extrude"]:
+			continue
+		var glass: bool = is_glass(library, int(solid["color"]) if int(solid.get("color", -1)) >= 0
+			else colour)
+		if glass_only and not glass:
 			continue
 		var spec: Dictionary = solid["spec"]
 		var along: String = str(spec.get("along", "x")).to_lower()
@@ -769,8 +855,8 @@ static func _screen_hints(solids: Array, y0: int) -> Array:
 				low = minf(low, one.y)
 				high = maxf(high, one.y)
 		# A cabin stands on a body: its foot well off the ground. A body's own
-		# nose rising from its bumper is not one.
-		if low < y0 + 6:
+		# nose rising from its bumper is not one. A solid said in glass is.
+		if low < y0 + 6 and not glass:
 			continue
 		return [("A solid's top rises %d plates over %d studs at %s %s-%s, to %s, and is laid "
 			% [roundi(high - low), roundi(stretch.y - stretch.x) - 1, along, _num(stretch.x),
@@ -2370,7 +2456,10 @@ class Plan extends RefCounted:
 				# read their cores alike, and the first side's own side studs
 				# stand in the second's core.
 				occupied[Vector3i(lt.x, lt.y, j)] = true
-				if taken.has(Vector3i(cell.x, j, cell.y)) or shelled.has(Vector3i(cell.x, j, cell.y)):
+				# Glass is never skinned: a cabin's side windows turned out on
+				# side studs were red plates over open studs.
+				if taken.has(Vector3i(cell.x, j, cell.y)) or shelled.has(Vector3i(cell.x, j, cell.y)) \
+						or Shapes.is_glass(library, at(cell, j)):
 					continue
 				var here := Vector2i(lt.x, j)
 				reach[here] = maxi(int(reach.get(here, -(1 << 30))), lt.y + 1)
@@ -2446,11 +2535,26 @@ class Plan extends RefCounted:
 		# reached into one beside the shell and overlapped it.
 		var mine: Dictionary = {}
 		var outside: Array[Vector3i] = []
+		# Glass in the box stays the core's, and what stands on it in its lane
+		# (a cabin's roof over its windows): no part of the shell reaches in.
+		# Taken over the glass, a car's roof edge was laid by the shell, held by
+		# no side stud, and pruned, and the glass under it stood open.
+		var glass: Dictionary = {}
+		var glass_from: Dictionary = {}    ## lane -> its lowest plate of glass
+		for a: int in range(low.x, high.x + 1):
+			for j: int in range(bottom, top):
+				for t: int in range(face, most):
+					var p: Vector2 = _point(a + 0.5, t + 0.5, facing, along)
+					if Shapes.is_glass(library, at(Vector2i(floori(p.x), floori(p.y)), j)):
+						glass_from[a] = mini(int(glass_from.get(a, j)), j)
 		for a: int in range(low.x, high.x + 1):
 			for j: int in range(bottom, top):
 				for t: int in range(face, most):
 					var p: Vector2 = _point(a + 0.5, t + 0.5, facing, along)
 					var key := Vector3i(floori(p.x), j, floori(p.y))
+					if glass_from.has(a) and j >= int(glass_from[a]):
+						glass[key] = true
+						continue
 					if shelled.has(key) or taken.has(key):
 						continue
 					if at(Vector2i(key.x, key.z), j) >= 0:
@@ -2464,7 +2568,7 @@ class Plan extends RefCounted:
 			taken[key] = true
 		var shell := {"facing": facing, "along": along, "a0": low.x, "a1": high.x + 1,
 			"face": face, "top": top, "rows": rows, "held": {}, "cells": mine,
-			"outside": outside}
+			"outside": outside, "glass": glass}
 		# Its side studs: every second row, in the core's outer wall behind
 		# each lane the shell's first row of plates covers there.
 		if _anchor_turn(facing) < 0:
@@ -2493,7 +2597,8 @@ class Plan extends RefCounted:
 				var free: bool = true
 				for n: int in 3:
 					free = free and at(cell, jb + n) >= 0 \
-						and not taken.has(Vector3i(cell.x, jb + n, cell.y))
+						and not taken.has(Vector3i(cell.x, jb + n, cell.y)) \
+						and not Shapes.is_glass(library, at(cell, jb + n))
 				lanes.append([a, cell, at(cell, jb + 1)] if free else [])
 			# Runs of lanes side by side in one colour, each held by side-stud
 			# bricks as long as fit, laid the same from either end so a side
@@ -2703,6 +2808,20 @@ class Plan extends RefCounted:
 			sub.surface(kind)
 			sub.lay()
 		var laid: int = sub.made.size()
+		# None reaching into the glass beside it: an inverted slope hung from
+		# a fuselage's flank reached into its canopy's glass bricks.
+		var glass: Dictionary = shell.get("glass", {})
+		if not glass.is_empty():
+			sub.made = sub.made.filter(func(one: Dictionary) -> bool:
+				for cell: Vector2i in one.get("_cells", []):
+					for v: int in int(one.get("_h", 1)):
+						var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5,
+							cell.y + 0.5)
+						var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
+						for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+							if glass.has(Vector3i(floori(p.x), j_, floori(p.z))):
+								return false
+				return true)
 		# Pruned to what a side stud holds, and not stitched: a piece of a
 		# shell on a stud of its own is held, and a stitch lays parts again
 		# that no stud may reach.
@@ -2723,6 +2842,7 @@ class Plan extends RefCounted:
 		shell["covered"] = float(covered.size()) / float(maxi(1, mine.size()))
 		if trial:
 			return []
+		_close_side_studs(facing, sub, held_here, masked, local_colour)
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
 			sub.made.size(), laid, sub.held.size(), roundi(100.0 * float(shell["covered"]))])
@@ -2749,6 +2869,52 @@ class Plan extends RefCounted:
 			placed["_shell"] = true
 			out.append(placed)
 		return out
+
+	## Plain bricks by length, for a side-stud brick none of whose studs a
+	## shell kept anything on.
+	const PLAIN_RUNS: Dictionary = {1: "3005", 2: "3004", 3: "3622", 4: "3010"}
+
+	## No side stud left open by a shell [param sub] facing [param facing]: a
+	## side-stud brick none of whose studs carries anything of it is a plain
+	## brick of its length, the same cover in the core's wall; and a stud of
+	## one that holds something elsewhere along it takes a 1 x 1 tile on its
+	## face. The shell keeps only what a side stud holds, and the cabins
+	## round's first car kept 54% of its plates: the studs it let go of stood
+	## open along its cabin, and its session called the body too blocky.
+	func _close_side_studs(facing: Vector2i, sub: Plan, held_here: Dictionary,
+			masked: Dictionary, local_colour: Callable) -> void:
+		var used: Dictionary = {}
+		for one: Dictionary in sub.made:
+			if roundi(float(one["y"])) != 0:
+				continue
+			for cell: Vector2i in one.get("_cells", []):
+				used[cell] = true
+		for cell: Variant in masked:
+			used[cell] = true
+		for one: Dictionary in made:
+			if not one.has("_holds") or (one["_holds"] as Array)[0] != facing:
+				continue
+			var holds: Array = (one["_holds"] as Array)[1]
+			var open: Array[Vector2i] = []
+			for held: Vector2i in holds:
+				if not used.has(held):
+					open.append(held)
+			if open.is_empty():
+				continue
+			if open.size() < holds.size():
+				for held: Vector2i in open:
+					var colour: int = int(local_colour.call(held.x + 0.5, 0.5, held.y + 0.5))
+					sub.made.append({"part": "3070b", "color": colour if colour >= 0
+						else int(one["color"]), "x": held.x, "y": 0, "z": held.y, "rot": 0,
+						"_cells": [held], "_h": 1})
+				continue
+			var cells: Array = one["_cells"]
+			one["part"] = PLAIN_RUNS.get(cells.size(), one["part"])
+			one["rot"] = 0 if cells.size() == 1 \
+				or (cells[0] as Vector2i).x != (cells[-1] as Vector2i).x else 1
+			one.erase("_holds")
+			for held: Vector2i in holds:
+				held_here.erase(held)
 
 	## A face laid onto a shell the way a set lays one onto a head: the
 	## square it sits in is taken out of the shell, a square plate (or two)
@@ -2998,11 +3164,26 @@ class Plan extends RefCounted:
 			mids.append(roundi(centre))
 		else:
 			mids.append(floori(centre))
+		# The roof is read across the solid's whole width, its highest stud at
+		# each step along: read off the middle two, a seat cut there for the
+		# driver lowered the roof to the cut's floor, and the windscreen stood
+		# on it, four plates up, leaning forward.
+		var across: Array[int] = mids.duplicate()
+		var span: Vector2 = spec.get("span", Vector2.ZERO)
+		for u: int in range(floori(span.x + 0.01), ceili(span.y - 0.01)):
+			if not across.has(u):
+				across.append(u)
 		var heights: Dictionary = tops()
+		# And off the solid as it was said, before any cut: a seat cut through
+		# the roof leaves the windscreen standing where the roof was said.
+		var roof_of: Callable = spec.get("roof_of", Callable())
+		var top_of := func(cell: Vector2i) -> int:
+			var here: int = int(heights.get(cell, -1))
+			return maxi(here, int(roof_of.call(cell))) if roof_of.is_valid() else here
 		var top_at := func(a: int) -> int:
 			var best: int = -1
-			for u: int in mids:
-				best = maxi(best, int(heights.get(cell_at.call(a, u), -1)))
+			for u: int in across:
+				best = maxi(best, int(top_of.call(cell_at.call(a, u))))
 			return best
 		var a0: int = floori(float(spec["from"]) + 0.01)
 		var a1: int = ceili(float(spec["to"]) - 0.01)
@@ -3063,7 +3244,7 @@ class Plan extends RefCounted:
 				# its top either side of the middle.
 				var wide: int = 0
 				for u: int in range(start - 2, start + w + 2):
-					wide += 1 if int(heights.get(cell_at.call(a_hi, u), -1)) >= t - 3 else 0
+					wide += 1 if int(top_of.call(cell_at.call(a_hi, u))) >= t - 3 else 0
 				# Nearest the solid's own rake, the roof's full height, as wide as
 				# the roof: a four-wide screen in a six-wide cabin stands between
 				# pillars, a six-wide one is the cabin's whole front.
@@ -3101,10 +3282,12 @@ class Plan extends RefCounted:
 			glass = int(one)
 			if info == null or not info.never_made_in(glass):
 				break
-		# The roof's colour, from the top of the shape over the screen's top row.
+		# The roof's colour, from the top of the shape over the screen's top row:
+		# the middle's, or where the roof is across it.
 		var roof: int = -1
-		for u: int in mids:
-			roof = maxi(roof, at(cell_at.call(a_hi, u), int(best["t"]) - 1))
+		for u: int in across:
+			if roof < 0:
+				roof = at(cell_at.call(a_hi, u), int(best["t"]) - 1)
 		var cells: Array[Vector2i] = []
 		for b: int in d:
 			for i: int in w:
@@ -3149,6 +3332,10 @@ class Plan extends RefCounted:
 			low = Vector2i(mini(low.x, one.x), mini(low.y, one.y))
 		var rot: int = posmod(Shapes.OUT.find(facing) + int(s["turn"]), 4)
 		var foot_at: int = a_hi + fall * (d - 1)
+		var glazed: Vector2i = Vector2i.ZERO
+		if bool(spec.get("glaze", false)):
+			glazed = _glaze(across, cell_at, a_hi, fall, base, h, w, glass,
+				spec.get("own", Callable()))
 		# Said only if it is still there once the shape is joined and pruned
 		# (Shapes.lay): a windscreen said and not laid is worse than none said.
 		var laid: String = (("The screen at %s is a windscreen, %s (%s), %d studs across, "
@@ -3157,11 +3344,67 @@ class Plan extends RefCounted:
 			% [spec["along"], name_of.call(foot_at), Shapes._num(base + y0 + origin.y), h]
 			+ "%d studs to its top row at %s %s, the roof on its top studs two plates over it."
 			% [d, spec["along"], name_of.call(a_hi)])
+		if glazed.x > 0:
+			laid += (" Behind it the cabin is glazed in the same glass, %d studs along under "
+				% glazed.x) + ("the roof and %d plates up from its foot, as a set's side " % glazed.y) \
+				+ "windows are; cut a seat into it for a driver and the glass stays its walls."
 		made.append({"part": id, "color": glass, "x": low.x, "y": base, "z": low.y,
 			"rot": rot, "_cells": cells, "_h": h, "_studs": studs, "_base": grips,
 			"_screen": true, "_said": laid, "_where": where})
 		screens_laid += 1
 		screens_where.append(where)
+
+	## The cabin behind a windscreen glazed, as a set glazes one: from the
+	## screen's foot up to the roof, a step at a time back from its top row
+	## for as long as two plates of roof are over the glass, and no further
+	## back than the screen is wide ([param most] studs), every plate
+	## there of the cabin's own solid (where no other solid is: the body it
+	## stands on keeps its colour) laid in the screen's glass. Where the roof
+	## falls behind, the glass falls with it, three plates under it, a fastback's
+	## quarter window. Speed Champions' 76897 glazes its cabin so, a 2 x 6
+	## block of trans-black bricks under the roof behind a 92583.
+	##
+	## Why. Both cars of the cabins round laid their windscreen and judged
+	## the rest of the cabin, solid red, "too blocky" — "a tall, square-sided
+	## block", said the judge — and built the car again by hand; a fire truck
+	## called its cab "a solid lump". [studs along, plates up], or ZERO.
+	func _glaze(across_: Array[int], cell_at: Callable, a_hi: int, fall: int, base: int,
+			h: int, most: int, glass: int, own: Callable) -> Vector2i:
+		var heights: Dictionary = tops()
+		var along: int = 0
+		var up: int = 0
+		var a: int = a_hi - fall
+		while along < most:
+			var here: int = 0
+			for u: int in across_:
+				var cell: Vector2i = cell_at.call(a, u)
+				if not columns.has(cell) or screened.has(cell) or not heights.has(cell):
+					continue
+				var column: PackedInt32Array = columns[cell]
+				# Under the roof two plates of it, a plate and its tile; where the
+				# roof falls, three, the height of the curved slope laid there.
+				var top: int = int(heights[cell])
+				var high: int = mini(base + h, top - (2 if top >= base + h + 2 else 3))
+				var count: int = 0
+				for j: int in range(base, high):
+					if column[j] < 0 or taken.has(Vector3i(cell.x, j, cell.y)):
+						continue
+					if own.is_valid() and not bool(own.call(cell.x + 0.5, j + 0.5, cell.y + 0.5)):
+						continue
+					column[j] = glass
+					count += 1
+				# Two plates at least, or it is a sliver of glass in a slope: the
+				# column is a copy, and left as it was.
+				if count < 2:
+					continue
+				columns[cell] = column
+				up = maxi(up, count)
+				here += 1
+			if here == 0:
+				break
+			along += 1
+			a -= fall
+		return Vector2i(along, up)
 
 	## Surface parts wherever the top falls away from one stud to the next,
 	## and wherever the foot rises: for each run of studs going down, the
@@ -4230,7 +4473,7 @@ class Plan extends RefCounted:
 			cells[cell] = true
 		var y: int = int(round(float(one["y"])))
 		var colour: int = int(one["color"])
-		for tile: Variant in tiles:
+		for tile: Variant in _made_in(tiles, colour):
 			var entry: Array = tile
 			var wide: int = entry[0]
 			var deep: int = entry[1]
@@ -4329,6 +4572,9 @@ class Plan extends RefCounted:
 		var spots: Array = edge.keys()
 		spots.sort()
 		for c: Variant in by_colour:
+			# Glass is laid square: no wedge or round part was made in it.
+			if Shapes.is_glass(library, int(c)):
+				continue
 			var wanted: Dictionary = by_colour[c]
 			for round_pass: bool in [true, false]:
 				var tried: Array = []
@@ -4523,9 +4769,29 @@ class Plan extends RefCounted:
 				return [name, low]
 		return []
 
+	## The parts of [param given] a layer in [param colour] may be laid in: all
+	## of them, but in glass only those LEGO made in it, or whose glass brick
+	## it made (Shapes.GLASS_SWAP, swapped as the shape is placed). A 2 x 4
+	## plate in trans-black was never moulded.
+	func _made_in(given: Array, colour: int) -> Array:
+		if not Shapes.is_glass(library, colour):
+			return given
+		var out: Array = []
+		var single: bool = false
+		for entry: Variant in given:
+			if Shapes.made_in_glass(library, str((entry as Array)[2]), colour):
+				out.append(entry)
+				single = single or (int((entry as Array)[0]) == 1 and int((entry as Array)[1]) == 1)
+		# A stud at a time at the least, or the shape loses studs.
+		if not single:
+			for entry: Variant in given:
+				if int((entry as Array)[0]) == 1 and int((entry as Array)[1]) == 1:
+					out.append(entry)
+		return out
+
 	## One layer of the core: by colour, a strip across the middle tying the
 	## two halves, one half laid and the other its mirror.
-	func _layer(cells: Dictionary, j: int, tiles: Array, course: int) -> Array:
+	func _layer(cells: Dictionary, j: int, given: Array, course: int) -> Array:
 		var out: Array = []
 		var by_colour: Dictionary = {}
 		for key: Variant in cells:
@@ -4538,8 +4804,9 @@ class Plan extends RefCounted:
 		# outside row of a bird's body came out as strips along it, every
 		# layer, tied to nothing inside and reported floating.
 		if course < 0:
-			tiles = _alternate(tiles, j)
+			given = _alternate(given, j)
 		for c: Variant in by_colour:
+			var tiles: Array = _made_in(given, int(c))
 			var wanted: Dictionary = _ordered(by_colour[c], j)
 			var laid: Dictionary = {}
 			if axis.is_empty():
@@ -4646,6 +4913,8 @@ class Plan extends RefCounted:
 	## body, tied to nothing.
 	func _tile(wanted: Dictionary, j: int, colour: int, tiles: Array, laid: Dictionary,
 			course: int) -> Array:
+		# In glass, the parts made in it, whichever way here was reached.
+		tiles = _made_in(tiles, colour)
 		if course >= 0:
 			return Patterns._tile(wanted, j, colour, tiles, {}, laid, course)
 		var made_here: Array = []
@@ -4709,7 +4978,8 @@ class Plan extends RefCounted:
 		var facing_of: Dictionary = {}
 		for key: Variant in bricks:
 			var cell: Vector2i = key
-			if not above.has(cell) or bricks[cell] != at(cell, j + 3):
+			if not above.has(cell) or bricks[cell] != at(cell, j + 3) \
+					or Shapes.is_glass(library, int(bricks[cell])):
 				continue
 			var found := Vector2i.ZERO
 			var count: int = 0

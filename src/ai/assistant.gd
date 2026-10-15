@@ -5330,7 +5330,15 @@ func _style(model: Model) -> String:
 		parts.append([placement.part, placement.color,
 			_transform(placement, mesh, model.section_for(placement)), mesh.bounds])
 	var about: String = "%s %s %s" % [_brief, model.name, model.description]
-	return Style.advice(Style.measure(parts), Style.group_for(about), about)
+	# Its body laid by a shape: this design's, or the one on the baseplate a
+	# design checked by hand would replace.
+	var shaped: bool = _shaped_body
+	var submitted: Variant = _last_submitted.get("patterns", [])
+	if submitted is Array:
+		for raw: Variant in submitted:
+			shaped = shaped or (raw is Dictionary
+				and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape")
+	return Style.advice(Style.measure(parts), Style.group_for(about), about, shaped)
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -6082,6 +6090,10 @@ func _read_model(args: Dictionary) -> Model:
 	# expanded after the bricks because mirror reflects what is there.
 	var patterns: Array = args.get("patterns", [])
 	_pattern_advice = []
+	_shaped_body = false
+	for raw: Variant in patterns:
+		_shaped_body = _shaped_body or (raw is Dictionary
+			and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape")
 	if not patterns.is_empty():
 		var trouble: Array = []
 		# A face of studs turned out needs the parts' own geometry to know
@@ -10239,6 +10251,9 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 var _pattern_trouble: Array = []
 ## And what the patterns did that was not asked, said as advice.
 var _pattern_advice: Array = []
+## Whether the last design read laid its body with the shape pattern: it is
+## then told to keep that body (Style.SHAPED_KEEP), not to say one.
+var _shaped_body: bool = false
 
 ## And with the last set of repeats. Kept apart from the patterns so the
 ## summary can name which of the two went wrong: a model told only that
@@ -10546,9 +10561,13 @@ static func _round_by_panels(patterns: Array) -> Array:
 					+ "An egg or a body lying on its side reads smooth as skins on side "
 					+ "studs, with the shape kept inside as its core.")
 				return said
+			# Not where the shape skinned its flanks itself (Shapes.turned): told
+			# its body "steps in plates however fine" over the side shells the
+			# shape had laid, a car's session called it blocky and built the car
+			# again by hand.
 			if solid["kind"] in ["loft", "revolve", "extrude"] \
 					and bool(solid.get("round", false)) and across >= TWO_WAYS_FROM \
-					and minf(box.size.x, box.size.z) >= 4.0:
+					and minf(box.size.x, box.size.z) >= 4.0 and Shapes.turned == 0:
 				said.append(("The %s %s studs long is rounded across as well as along it, "
 					% [solid["kind"], Placement._num(snappedf(across, 0.5))])
 					+ "and a body that curves two ways at once steps in plates however "
@@ -15772,9 +15791,8 @@ alongside the bricks you write by hand:
 
            A body that is not a box is one object too, said as the \
            solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
-           "z": 0}, "color": 4, "bands": [{"from": 12, "to": 15, "color": \
-           40}], "solids": [{"extrude": {"along": "x", "width": 8, "round": \
-           1.5, "profile": [[0, 7], [3, 9], [8, 10], [20, 10], [21, 9]], \
+           "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
+           "width": 8, "round": 1.5, "profile": [[0, 7], [3, 9], [8, 10], [20, 10], [21, 9]], \
            "under": [[0, 2], [21, 2]]}}, {"extrude": {"along": "x", "from": \
            1, "width": 6, "round": 1, "profile": [[8, 10], [11, 18], [13, \
            18], [20, 11]], "screen": true}}], "wheels": [4, 16]} is a Speed \
@@ -15784,8 +15802,9 @@ alongside the bricks you write by hand:
            the front climbing from the bonnet to the roof as glass — \
            "screen" lays a windscreen at that rake, standing on the \
            bonnet's plates, the roof on its top studs — and the roof \
-           falling from there to the tail in curved slopes, a fastback, a \
-           band of glass round it for its side windows; and at x 4 and 16 \
+           falling from there to the tail in curved slopes, a fastback, the \
+           cabin behind the windscreen glazed in its glass for the side \
+           windows; and at x 4 and 16 \
            an axle each — wheels and tyres, a Technic axle through Technic \
            bricks, the body cut clear of each wheel's box and standing on \
            the bricks, and a chassis of plates under them from nose to \
