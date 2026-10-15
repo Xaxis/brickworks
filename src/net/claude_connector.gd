@@ -793,7 +793,12 @@ func _answer(token: String, work: Dictionary) -> void:
 	if not _used:
 		_used = true
 		_save()
-	called.emit(tool, arguments)
+	# The card in Claude asking for the model, the check or the steps
+	# (ViewerTools) is the person looking, not Claude building: the panel
+	# does not say Claude is at work for it.
+	var looking: bool = ViewerTools.handles(tool)
+	if not looking:
+		called.emit(tool, arguments)
 	# A notification — the relay saying Claude reached it, or one of the
 	# protocol's own — wants no answer, and the relay has already let it go.
 	if request.get("id") == null:
@@ -816,6 +821,8 @@ func _answer(token: String, work: Dictionary) -> void:
 		carried["_meta"] = meta
 	await _ask(_reply, "%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
 		int(work.get("id", 0))], JSON.stringify(answer))
+	if looking:
+		return
 	var result: Dictionary = (answer as Dictionary).get("result", {}) as Dictionary
 	var said := PackedStringArray()
 	for block: Variant in result.get("content", []) as Array:

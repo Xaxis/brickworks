@@ -104,6 +104,14 @@
       "tests": []
     },
     {
+      "id": "cli:app host check",
+      "kind": "cli",
+      "entry": "tools/web/app_host_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<basic-host dir> --out=shots/app_host [--sizes]   (with .env sourced; a throwaway account, deleted at the end)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:apply sql to the live project",
       "kind": "cli",
       "entry": "tools/apply_sql.mjs",
@@ -174,6 +182,16 @@
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
       "area": "pipeline",
       "tests": []
+    },
+    {
+      "id": "cli:build the viewer",
+      "kind": "cli",
+      "entry": "tools/viewer/build.mjs",
+      "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
+      "area": "mcp",
+      "tests": [
+        "tests/test_brickbench.py"
+      ]
     },
     {
       "id": "cli:check a release on three systems",
@@ -757,6 +775,22 @@
       "tests": []
     },
     {
+      "id": "cli:viewer readers check",
+      "kind": "cli",
+      "entry": "tools/viewer/scene_check.mjs",
+      "reach": "node tools/viewer/scene_check.mjs [--scene=FILE]   (the card's .lbm and scene readers on the app's own files)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:viewer tools probe",
+      "kind": "cli",
+      "entry": "src/dev/viewer_tools_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (-- --sizes packs 400 and 4,000 parts of Orthanc and times it)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
@@ -1271,11 +1305,27 @@
       "tests": []
     },
     {
+      "id": "lib:the model packed for the viewer",
+      "kind": "lib",
+      "entry": "src/net/model_scene.gd",
+      "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd, then node tools/viewer/scene_check.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene.json   (the card unpacks the tab's bytes into the tab's bricks)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
       "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:the viewer's own tools",
+      "kind": "lib",
+      "entry": "src/net/viewer_tools.gd",
+      "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (viewer_scene, viewer_check, viewer_steps, viewer_parts, viewer_pick, called as the relay calls them, each read back off the model)",
+      "area": "mcp",
       "tests": []
     },
     {
@@ -1697,6 +1747,14 @@
       "tests": []
     },
     {
+      "id": "ui:open a tab by link",
+      "kind": "ui",
+      "entry": "src/boot/shell.html",
+      "reach": "https://brickworks.diy/app?tab=<id>   (that tab's model when it is kept in this browser and not open; open in another tab here, the page starts nothing and that tab's title says it is the one)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:open an ldd model",
       "kind": "ui",
       "entry": "src/parts/ldd_lxf.gd",
@@ -2030,6 +2088,14 @@
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the model in Claude in 3D",
+      "kind": "ui",
+      "entry": "tools/viewer/card.js",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
+      "area": "mcp",
       "tests": []
     },
     {
