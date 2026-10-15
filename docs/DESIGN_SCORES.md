@@ -107,6 +107,29 @@ judge (ours, not BrickBench's) preferred their build in all 40 verdicts
 overall; $2.65 a build at API prices against their $5.90. The submission zip
 is built and checked, and not sent.
 
+### The check made as strict as BrickBench's (2026-10-14, evening)
+
+The build check now judges each part by BrickNet's own convex colliders and
+connector labels: more than 1 LDU of overlap is a collision named with its
+fix, a piece that nothing holds and that would not stand is a fault, and a
+part a few LDU off a connector is seated on it first
+([BRICKBENCH.md](BRICKBENCH.md), "the check made as strict as BrickBench's").
+The same ten prompts through the same loop, and ten held out, each checked by
+BrickBench's own `verify.py`:
+
+| | valid by verify.py | parts, mean | design time, mean |
+|---|---|---|---|
+| the ten, first run (this morning) | 2 of 10 | 155 | 587 s |
+| the same ten, the strict check (`6bbe717`) | **9 of 10** | 133 | 432 s |
+| ten held out (model-011 to 020) | **8 of 10** | 167 | 712 s |
+| BrickAgent's Opus 5.5, the ten | 10 of 10 | 130 | |
+
+The three that failed were a part each (a head exactly 1 LDU into a
+breastplate, which verify.py's rounding refuses; a steering wheel on a
+brick's edge; a leaning flower). The check refuses the last two since, and
+the app no longer seats a head that way. Nothing was judged on looks here: these are verify.py's verdicts,
+and no VQA or Elo was run.
+
 ## A figure is not a hull: the stacking fix, held out (2026-10-14, `63ab5ca`)
 
 [BRICKBENCH.md](BRICKBENCH.md) has the whole of it, under "why ours were
@@ -218,6 +241,61 @@ breastplate, which verify.py's rounding refuses; a steering wheel on a
 brick's edge; a leaning flower). The check refuses the last two since, and
 the app no longer seats a head that way. Nothing was judged on looks here: these are verify.py's verdicts,
 and no VQA or Elo was run.
+
+## Parts put on by their connectors (2026-10-15, `f64620b`)
+
+[BRICKBENCH.md](BRICKBENCH.md) has the whole of it, under "parts put on each
+other by their connectors". A placement can now say `"attach": {"to":
+"torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`: the app puts the part where
+BrickAgent's own placement arithmetic puts it, on BrickNet's connector
+labels, seated so the exact check passes it. A probe puts a brick on a stud,
+a plate on a side stud, a bar in a clip, a ball, a hinge, an axle and a
+twelve-part posed minifigure each within 0.001 LDU of BrickAgent's pose, and
+BrickBench's verify.py passes all seven.
+
+**On ten held-out BrickBench prompts** (model-041 to model-050: a puzzle
+cube, a potato toy, a balloon dog, a toilet with a head, a paperclip with
+eyes, a hugging armchair, a dumpster on fire, a lava lamp, a seated statue,
+a pinball machine), two designs a prompt in each arm and 200 pairwise
+verdicts:
+
+| | lean and exact (`7740d22`) | attach (`f64620b`) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| overall ELO (95%) | 811 (622-903) | 860 (670-948) | 1329 (1197-1600) |
+| attach vs lean, overall | | 46 of 80 (58%, 95% 47-68%) | |
+| attach vs lean, likeness | | 48 of 80 (60%, 95% 49-70%) | |
+| against BrickAgent, overall | 2 of 40 | 2 of 40 | |
+| valid (their verify.py) | 16 of 20 | 17 of 20 | 10 of 10 |
+| shaped, median | 35% | 39% | 44% |
+| parts off the square, pooled | 9.8% | 12.6% | 26.2% |
+| joints, pooled | 0.6% | 0.8% | 1.2% |
+| sessions that attached anything | | 7 of 20 (211 of 2,867 parts sent) | |
+
+The sessions took attach up for what a corner cannot say: flames turned on
+round bricks' hollow studs, eyelashes aimed out of side studs, eyebrows
+turned 15 degrees on jumpers. Where they did, the judge preferred it (the
+dumpster 8 of 8 verdicts, the armchair 7 of 8). No session posed a figure on
+its joints or asked for the new figure techniques: the statue and the
+balloon dog were stacks in both arms. Overall the gain is inside the noise.
+
+**No regression on big subjects.** The car and the fire truck went through
+`run.py` on `9e147ef`, two designs each, as round `2026-10-15-attach`, judged
+in pairs against every design of their subject (380 verdicts for the car's 20
+designs, 56 for the fire truck's 8). Every session put a few parts by their
+connectors.
+
+| subject | design | 1-10 mean | overall ELO (95%) | its figures counterpart |
+|---|---|---|---|---|
+| speed_champions | 2026-10-15-attach/1 | 4.17 | 872 (793-950) | figures/1 4.17, 997 (921-1073) |
+| speed_champions | 2026-10-15-attach/2 | 4.33 | 1162 (1079-1251) | figures/2 4.17, 979 (900-1057) |
+| fire_truck | 2026-10-15-attach/1 | 6.00 | 965 (815-1096) | figures/1 6.67, 965 (847-1082) |
+| fire_truck | 2026-10-15-attach/2 | 6.33 | 1251 (1140-1344) | figures/2 6.67, 1198 (1048-1333) |
+
+Head to head with the figures round, overall: the car won 5 of 8 verdicts
+(95% 31-86%) and the fire truck 5 of 8 (31-86%); with the cabins round, 4 of
+8 and 5 of 8. Against the baseline round, `run.py rank` reads the car -45
+ELO (judge's 95% -121 to +44; with the run-to-run spread -503 to +466). The
+car's two designs are 290 ELO apart: no regression, and no gain shown.
 
 ## Judged in pairs: what each round really did (2026-10-14)
 

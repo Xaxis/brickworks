@@ -420,7 +420,14 @@ static func _mirror(pattern: Dictionary, already: Array,
 	for raw: Variant in source:
 		if typeof(raw) != TYPE_DICTIONARY:
 			continue
+		# A part put on another by its connectors has no corner to reflect:
+		# reflected, it would be put on the same connector again. Each side's
+		# own is attached to that side.
+		if (raw as Dictionary).has("attach"):
+			continue
 		var brick: Dictionary = (raw as Dictionary).duplicate()
+		# Its name is the original's, which a part attaches to.
+		brick.erase("name")
 		# Reflected about the line, and the part's own width taken off.
 		#
 		# A placement names its low corner, so the mirror of a corner is

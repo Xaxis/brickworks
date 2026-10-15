@@ -882,6 +882,13 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "placing a part by its connectors",
+      "entry": "src/assembly/attach.gd",
+      "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
+      "area": "assistant"
+    },
+    {
       "kind": "ui",
       "label": "build animation",
       "entry": "src/render/build_playback.gd",

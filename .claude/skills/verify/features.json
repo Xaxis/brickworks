@@ -1119,6 +1119,14 @@
       "tests": []
     },
     {
+      "id": "lib:placing a part by its connectors",
+      "kind": "lib",
+      "entry": "src/assembly/attach.gd",
+      "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:posing joints",
       "kind": "lib",
       "entry": "src/assembly/pose.gd",
