@@ -29,6 +29,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   idle drew 4 frames for 7 moves, against 16 alone. An unknown name fails,
   where it used to run bare node and "pass". The script runs from a copy
   of itself, so editing it mid-battery cannot break the run.
+- The merge scripts hold a lock (`.git/worktrees/<name>/merging`) until their
+  last gate is done, and `ship.sh` refuses a worktree that has one. m26 was
+  shipped as soon as its merge commit appeared, while the tool-list check
+  was still running (2026-10-14).
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
