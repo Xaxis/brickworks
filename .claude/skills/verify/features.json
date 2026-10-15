@@ -176,6 +176,14 @@
       "tests": []
     },
     {
+      "id": "cli:build the exact shapes",
+      "kind": "cli",
+      "entry": "tools/build_exact.py",
+      "reach": "python3 tools/minitest.py tests/test_build_exact.py; tools/build_exact.py --bricknet DIR --colliders DIR --only 3001 --out COPY",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
       "id": "cli:build the meshes",
       "kind": "cli",
       "entry": "tools/build_meshes.py",
@@ -434,6 +442,14 @@
       "tests": []
     },
     {
+      "id": "cli:measure brickify against outside models",
+      "kind": "cli",
+      "entry": "tools/bench/brickify_bench.py",
+      "reach": "python3 tools/bench/brickify_bench.py report OUT   (the run: prepare, godot --headless --script src/dev/brickify_bench.gd -- JOBS OUT, outside, measure, pictures; the recipe is in features/brickify.md; docs/BRICKIFY.md is the write-up)",
+      "area": "brickify",
+      "tests": []
+    },
+    {
       "id": "cli:measure how a model is built",
       "kind": "cli",
       "entry": "tools/style.py",
@@ -621,6 +637,14 @@
         "tests/test_bench.py",
         "tests/test_elements.py"
       ]
+    },
+    {
+      "id": "cli:score the steps against real sets' authors",
+      "kind": "cli",
+      "entry": "tools/steps_score.py",
+      "reach": "python3 tools/steps_score.py run --which tune --out build/steps_score/tune && python3 tools/steps_score.py report --out build/steps_score/tune   (minutes, under heavy; needs vendor/omr; godot --headless --path . --script src/dev/steps_score.gd -- --selftest checks the measures alone)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "cli:see inside in a browser",
@@ -1153,6 +1177,14 @@
       "tests": []
     },
     {
+      "id": "lib:placing a part by its connectors",
+      "kind": "lib",
+      "entry": "src/assembly/attach.gd",
+      "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:posing joints",
       "kind": "lib",
       "entry": "src/assembly/pose.gd",
@@ -1294,6 +1326,14 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:the check by real shapes",
+      "kind": "lib",
+      "entry": "src/ai/exact_check.gd",
+      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
+      "area": "assistant",
       "tests": []
     },
     {

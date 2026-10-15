@@ -437,10 +437,15 @@ func _holds_up() -> void:
 		for placement: Assistant.Placement in both.placements:
 			if placement.dressing:
 				left += 1
-		_check("a wall where a face's %d tiles go, %s: %s, %d tiles left"
+		# And with the tiles gone, the face's side studs stand against the
+		# wall's bricks, which by their real shapes (ExactCheck) is the studs
+		# pushed into them: the fault BrickBench refused 12 pairs for. Said as
+		# that, so the wall moves a stud out or the face turns in.
+		_check("a wall where a face's %d tiles go, %s: %s, %d tiles left, and the side studs named"
 			% [tiles, "built first" if wall_first else "built after",
 				str(verdict["summary"]), left],
-			bool(verdict["ok"]) and tiles > 0 and left < tiles)
+			tiles > 0 and left < tiles and not bool(verdict["ok"])
+				and str(verdict["feedback"]).contains("side stud"))
 		_check("...and it says what was left out",
 			str(verdict["feedback"]).contains("left out"))
 

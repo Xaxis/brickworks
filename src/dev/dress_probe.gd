@@ -208,7 +208,9 @@ func _sprinkled() -> void:
 	var bricks: Array = []
 	for course: int in 12:
 		for x: int in 16:
-			var side: bool = posmod(x * 5 + course * 3, 7) == 0
+			# None behind the two ribs stood against the wall below: a side stud
+			# there runs 4 LDU into the rib's brick, by the parts' real shapes.
+			var side: bool = posmod(x * 5 + course * 3, 7) == 0 and x != 3 and x != 11
 			bricks.append({"part": "87087" if side else "3005", "color": 0, "x": x,
 				"y": 3 * course, "z": 10, "rot": 0})
 	if not await _stand(bricks, "A black wall with side studs"):

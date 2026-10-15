@@ -86,10 +86,10 @@ can occupy the same millimetre.
   holds as before. A part turning on its own shaft or bore (a turntable's
   top) is held by that (`Assistant._swivels`); `techniques_probe`'s corner
   on a turntable stood on a floor was refused without it. Only the turned
-  part's underside is asked, and the prism
-  pattern's own sections ("prism ...") are let through: its storeys, horns
-  and plinths stand turned walls on square studs, and `patterns_probe` had
-  23 of its towers refused for it.
+  part's underside is asked. The prism pattern's sections are judged as any
+  other: it lays tiles under its turned walls on its plinth and ledges, and
+  under its horns on its summit (`Assistant._smooth_under_turned`), and
+  `dress_probe` opens a saved tower again and finds none off its studs.
   The quarter turns are exact (`Section.exact`) and frames lose their float
   dust (`Section.dusted`): a skin on side studs read a ten-millionth of a
   stud off was rasterised a cell away and called adrift.

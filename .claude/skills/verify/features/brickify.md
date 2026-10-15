@@ -2,7 +2,7 @@
 
 A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO at the size the person picks, the way a builder would lay it, and placed as a sub-assembly.
 
-<!-- covers: ui:brickify a 3d model, lib:brickify, lib:3d model files -->
+<!-- covers: ui:brickify a 3d model, lib:brickify, lib:3d model files, cli:measure brickify against outside models -->
 
 ## Sub-features
 
@@ -113,6 +113,33 @@ missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
 the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
 the desktop.
+
+## Measuring it against outside models
+
+`docs/BRICKIFY.md` is the write-up and has the full recipe ("Repeat it").
+`src/dev/brickify_bench.gd` lays each model of a jobs file three ways (smooth,
+plain, and a greedy stack of whole bricks over the same measured grid), checks
+and weighs each, and writes the parts' geometry and the model's into OUT;
+`tools/bench/brickify_bench.py` prepares the models (PLY to OBJ, a picked
+picture for a bare OBJ), runs legolization (GPL, its own venv, never imported)
+at the same scale, and measures likeness (silhouette IoU from 14 views,
+Chamfer, Hausdorff95, normal error), colour (CIEDE2000 and the palette's
+floor), bond (seams bridged, weak points, 1x1s) and parts in a colour no
+element comes in. The models are third-party data kept in a scratch folder,
+never in the repository.
+
+```sh
+python3 tools/minitest.py tests/test_trademarks.py     # (static) the doc's words
+S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare --models $S/models --into $S/prepared
+XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
+python3 tools/bench/brickify_bench.py report $S/run
+#   2026-10-15 on 7a55e86, 14 models at 24 and 48 studs: smooth laid 24 of 28,
+#   whole (lost95 at most a stud) 13 of 28; the fox, the Kenney figure and the
+#   Bell X-1 came out with no parts at 24 studs (legs and gear thinner than a
+#   stud never reach the grid, the body floats, and the mend takes out every
+#   floating part). legolization (outside) at 24: 9 of 14 in 30 minutes each.
+```
 
 ## Gotchas
 

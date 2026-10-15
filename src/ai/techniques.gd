@@ -23,7 +23,30 @@ extends RefCounted
 
 
 ## Everything in the library; show_technique lists it by [constant GROUPS].
+## Not those in [constant WITHDRAWN].
 static func all() -> Array:
+	return written().filter(func(one: Variant) -> bool:
+		return not WITHDRAWN.has(str((one as Dictionary)["name"])))
+
+
+## Constructions written here that do not build as written by the parts'
+## real shapes (ExactCheck, BrickNet's colliders), with what is wrong:
+## each was read off its set into placements that put its parts into each
+## other, which the lattice forgave. Out of the library, so a design is never
+## handed one the check refuses, until each is read again from its set.
+const WITHDRAWN: Dictionary = {
+	"face turned sideways": "the 2 x 2 tile's face lies on the brick's studs, 4 LDU into them",
+	"wall lantern": ("the tap stands 8 LDU over the round plate, where 5766 has it 40: "
+		+ "the plate's stud is in its spout"),
+	"round body lying down": "the cylinder halves' side studs are 1.7 LDU into the dish",
+	"two rounds pinned side by side": "the dish is 1.7 LDU down on the round brick's snapstud",
+	"lid or hatch raised on hinges": ("the hinge tops are folded into their bases and the lid "
+		+ "1 LDU into the hinge bricks"),
+}
+
+
+## Everything written here, withdrawn or not: what the probe reads.
+static func written() -> Array:
 	return [
 		{
 			"name": "staggered wall",
@@ -1078,15 +1101,21 @@ static func all() -> Array:
 			"name": "anvil",
 			"group": "furniture and interiors",
 			"when": "a forge, a smithy, a dwarf or an orc's workshop",
-			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As the LEGO Group built it in 9476 The Orc Forge: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As the LEGO Group built it in 9476 The Orc Forge, where the dish stands on one stud turned 45 degrees; here on a 2 x 2 jumper so any floor takes it square: 8 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			# The set stands the dish on one stud, turned 45 degrees off the
+			# studs round it; square on a floor, its solid underside is on
+			# four studs, 3 LDU into them by its real shape (ExactCheck). So
+			# here it stands on a 2 x 2 jumper's one stud (87580), which any
+			# floor takes square.
 			"bricks": [
-				{"part": "4740", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
-				{"part": "47905", "color": 0, "x": 0.5, "y": 2, "z": 1.5, "rot": 0},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 2.5, "z": 2.5, "rot": 0, "face": "+z"},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 2.5, "z": 1.1, "rot": 0, "face": "-z"},
-				{"part": "54200", "color": 0, "x": 0.5, "y": 2.5, "z": 0.3, "rot": 2, "face": "-z"},
-				{"part": "54200", "color": 0, "x": 0.5, "y": 2.5, "z": 2.9, "rot": 0, "face": "+z"},
-				{"part": "6141", "color": 0, "x": 0.5, "y": 1, "z": 1.5, "rot": 0},
+				{"part": "87580", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
+				{"part": "4740", "color": 0, "x": 0, "y": 1, "z": 1, "rot": 0},
+				{"part": "47905", "color": 0, "x": 0.5, "y": 3, "z": 1.5, "rot": 0},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 3.5, "z": 2.5, "rot": 0, "face": "+z"},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 3.5, "z": 1.1, "rot": 0, "face": "-z"},
+				{"part": "54200", "color": 0, "x": 0.5, "y": 3.5, "z": 0.3, "rot": 2, "face": "-z"},
+				{"part": "54200", "color": 0, "x": 0.5, "y": 3.5, "z": 2.9, "rot": 0, "face": "+z"},
+				{"part": "6141", "color": 0, "x": 0.5, "y": 2, "z": 1.5, "rot": 0},
 			],
 		},
 		{
@@ -1948,6 +1977,155 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "posed minifigure",
+			"group": "figures and joints",
+			"when": "a person at minifigure scale posed as the brief has them: an arm "
+				+ "raised or reaching, a head turned, a tool held out",
+			"why": "A minifigure is its joints, and each part attaches to the one before "
+				+ "by them, so nothing but the plate it stands on has coordinates: a leg "
+				+ "by the hole under its foot onto a stud, the hips on that leg's hinge, "
+				+ "the other leg on the hips' other hinge, the torso on the hips' fixed "
+				+ "joint, an arm on each shoulder hinge, a hand on each wrist, the head on "
+				+ "the neck's pin, hair or a hat on the head's open stud, a tool's bar in a "
+				+ "hand's clip. It faces +z. An arm's yaw runs from straight up: 180 hangs "
+				+ "it at the side, the right arm (3818) reaches forward at 225 and up at "
+				+ "270, the left (3819) at 135 and 90; the head turns by its own yaw. "
+				+ "add_minifig stands one at rest; this one holds an axe out and looks "
+				+ "aside. A collision said of a hand and the tool is the pose: swing the "
+				+ "arm further.",
+			"bricks": [
+				{"part": "3023b", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "stand"},
+				{"part": "3816c", "color": 1, "name": "right leg",
+					"attach": {"to": "stand.stud[0]", "by": "hole[2]"}},
+				{"part": "3815b", "color": 1, "name": "hips",
+					"attach": {"to": "right leg.hinge[0]", "by": "hinge[0]"}},
+				{"part": "3817c", "color": 1, "name": "left leg",
+					"attach": {"to": "hips.hinge[1]", "by": "hinge[0]"}},
+				{"part": "973", "color": 15, "name": "torso",
+					"attach": {"to": "hips.fixed[1]", "by": "fixed[0]"}},
+				{"part": "3818", "color": 15, "name": "right arm",
+					"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}},
+				{"part": "3820", "color": 14, "name": "right hand",
+					"attach": {"to": "right arm.hinge[1]", "by": "hinge[0]"}},
+				{"part": "3819", "color": 15, "name": "left arm",
+					"attach": {"to": "torso.hinge[1]", "by": "hinge[0]", "yaw": 160}},
+				{"part": "3820", "color": 14, "name": "left hand",
+					"attach": {"to": "left arm.hinge[1]", "by": "hinge[0]"}},
+				{"part": "3626b", "color": 14, "name": "head",
+					"attach": {"to": "torso.pin[0]", "by": "socket[0]", "yaw": 20}},
+				{"part": "3901", "color": 70, "attach": {"to": "head.open[0]", "by": "tube[0]"}},
+				{"part": "95330", "color": 71,
+					"attach": {"to": "right hand.clip[0]", "by": "bar[0]"}},
+			],
+		},
+		{
+			"name": "limb on a clip",
+			"group": "figures and joints",
+			"when": "an arm, a leg, a flipper or a fin standing out of a brick-built body "
+				+ "at an angle",
+			"why": "A plate with a clip on its end (63868) on the body, its clip past "
+				+ "the edge, and the limb a plate with a bar on its end (60478) in that "
+				+ "clip: it turns about the bar to any angle and holds there. flip turns "
+				+ "it end for end so it reaches away from the clip; its yaw is the angle: "
+				+ "180 level, 210 30 degrees up, 150 30 degrees down. Build on its studs as "
+				+ "on any plate: a tooth plate (15070) for a claw, a tile, a curved slope.",
+			"bricks": [
+				{"part": "3003", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "body"},
+				{"part": "63868", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0, "name": "shoulder"},
+				{"part": "60478", "color": 4, "name": "arm", "attach": {"to": "shoulder.clip[0]",
+					"by": "bar[0]", "flip": true, "yaw": 210}},
+				{"part": "15070", "color": 15, "attach": {"to": "arm.stud[0]", "by": "hole[0]"}},
+			],
+		},
+		{
+			"name": "ball shoulder",
+			"group": "figures and joints",
+			"when": "a shoulder or a hip that turns every way: a robot's arm, a creature's "
+				+ "leg, a mech's gun",
+			"why": "A plate with a ball on its side (14417) on the body, put on two of "
+				+ "its studs by its holes so the ball stands past the back, and the limb a "
+				+ "plate with a socket on its end (14418) on the ball. A ball takes any "
+				+ "turn, so the limb is aimed: align points its own -x (from the socket "
+				+ "along the plate) the way it should reach, here out along +z and 20 "
+				+ "degrees down, and a yaw would turn it about that line. A round brick "
+				+ "on its far stud is the fist.",
+			"bricks": [
+				{"part": "3003", "color": 1, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "body"},
+				{"part": "14417", "color": 72, "name": "shoulder", "attach": {"to": "body.stud[0]",
+					"by": "hole[0]"}},
+				{"part": "14418", "color": 72, "name": "arm", "attach": {"to": "shoulder.ball[0]",
+					"by": "ball[0]", "align": ["-x", [0, -0.34, 0.94]]}},
+				{"part": "3062b", "color": 1, "attach": {"to": "arm.open[0]", "by": "tube[0]"}},
+			],
+		},
+		{
+			"name": "head on a neck",
+			"group": "figures and joints",
+			"when": "a creature's or a robot's head that looks up, down or aside: a "
+				+ "dinosaur, a dragon, a dog, a bird",
+			"why": "A plate with a ball on its end (22890) on the body is the neck, put "
+				+ "on two of its studs by its holes and turned so the ball stands past the "
+				+ "front; the head is built on a plate with a socket on its end (14418) on "
+				+ "that ball, "
+				+ "aimed with align: its -x out along -x and 20 degrees up here. The head "
+				+ "is any bricks on the socket plate's studs, with eyes on its top. Turned "
+				+ "on a ball, the head reads as looking somewhere, which a head stacked "
+				+ "square on the body never does.",
+			"bricks": [
+				{"part": "3003", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "body"},
+				{"part": "22890", "color": 72, "name": "neck", "attach": {"to": "body.stud[1]",
+					"by": "hole[1]", "yaw": 180}},
+				{"part": "14418", "color": 72, "name": "jaw", "attach": {"to": "neck.ball[0]",
+					"by": "ball[0]", "align": ["-x", [-0.94, 0.34, 0]]}},
+				{"part": "3004", "color": 2, "name": "head", "attach": {"to": "jaw.open[0]",
+					"by": "hole[0]"}},
+				{"part": "6141", "color": 15, "attach": {"to": "head.stud[0]", "by": "tube[0]"}},
+				{"part": "6141", "color": 15, "attach": {"to": "head.stud[1]", "by": "tube[0]"}},
+			],
+		},
+		{
+			"name": "tail on a bar",
+			"group": "figures and joints",
+			"when": "a tail, a train of feathers or a fin behind a creature, raised or "
+				+ "drooping",
+			"why": "A plate with a bar on its end (60478) on the body's rump, put on two "
+				+ "of its studs by its holes and turned so the bar stands past the back, "
+				+ "and the tail a plate with a clip on its end (63868) clipped onto it: the "
+				+ "tail turns about the bar to any angle. flip sends it on away from the "
+				+ "body; its yaw raises it (210, 30 degrees up) or drops it (150). A tile "
+				+ "over its studs, or a curved slope, shapes it; another clip and bar on "
+				+ "its tip bends it again.",
+			"bricks": [
+				{"part": "3003", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "body"},
+				{"part": "60478", "color": 70, "name": "rump", "attach": {"to": "body.stud[1]",
+					"by": "hole[1]", "yaw": 180}},
+				{"part": "63868", "color": 70, "name": "tail", "attach": {"to": "rump.bar[0]",
+					"by": "clip[0]", "flip": true, "yaw": 210}},
+				{"part": "3069b", "color": 70, "attach": {"to": "tail.stud[0]", "by": "hole[0]"}},
+			],
+		},
+		{
+			"name": "hinged wing",
+			"group": "figures and joints",
+			"when": "a bird's, a dragon's or a bat's wing, a fin or a door that opens at "
+				+ "an angle and stays there",
+			"why": "Click hinge plates: one with two fingers on its end (44302a) on the "
+				+ "body, its fingers past the side, and one with a single finger (44301a) "
+				+ "on them, flipped to reach away. The hinge clicks to its angle and holds "
+				+ "there: its yaw, 180 flat, 200 raised 20 degrees. The wing is a wedge "
+				+ "plate (41769, or 41770 for "
+				+ "the other side) on the hinge plate's studs, laid along the span with "
+				+ "its own yaw; the other wing is the same on the other side.",
+			"bricks": [
+				{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "body"},
+				{"part": "44302a", "color": 72, "x": 2, "y": 3, "z": 0, "rot": 0, "name": "hinge"},
+				{"part": "44301a", "color": 72, "name": "wing root", "attach": {"to": "hinge.hinge[0]",
+					"by": "hinge[0]", "flip": true, "yaw": 200}},
+				{"part": "41769", "color": 4, "attach": {"to": "wing root.stud[0]", "by": "hole[4]",
+					"yaw": 90}},
+			],
+		},
+		{
 			"name": "talons",
 			"group": "faces and features",
 			"when": "a bird's feet, a dragon's or a beast's claws, a raptor's grip "
@@ -2231,7 +2409,7 @@ static func names() -> PackedStringArray:
 ## that only passed by being built wrong would have taught it wrong.
 const GROUPS: Array[String] = ["basics", "walls and stone",
 	"towers and columns", "round bodies", "faces and features",
-	"machines and joints", "angles",
+	"figures and joints", "machines and joints", "angles",
 	"roofs and spires", "windows and doors", "rock and ground", "plants",
 	"furniture and interiors", "lights", "creative touches"]
 

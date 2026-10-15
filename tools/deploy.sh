@@ -232,6 +232,8 @@ echo "deploy: $(ls -1 .vercel/output/static/sets | wc -l | tr -d ' ') set invent
 if [ -d assets/web/remote ]; then
   mkdir -p .vercel/output/static/parts
   cp assets/web/remote/*.lbm .vercel/output/static/parts/ 2>/dev/null || true
+  # And their exact shapes for the build check, fetched from beside them.
+  cp assets/web/remote/*.bwx .vercel/output/static/parts/ 2>/dev/null || true
   count=$(ls -1 .vercel/output/static/parts 2>/dev/null | wc -l | tr -d ' ')
   echo "deploy: $count parts served on demand"
 fi
@@ -350,7 +352,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
-    { "src": "/parts/(.*[.]lbm)", "headers": {
+    { "src": "/parts/(.*[.](lbm|bwx))", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",
       "headers": {
