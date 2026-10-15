@@ -15,6 +15,19 @@ whole cycle.
 
 ### Added
 
+- The model in Claude, in 3D. Where Claude shows Brickworks beside its
+  calls (claude.ai and the Claude apps), the card is the real model now,
+  in the parts' own shapes and colours, not four pictures of it: drag to
+  turn it, zoom, and click a part to pick it. Claude is told which brick
+  you picked, and it is selected in your Brickworks tab, so "make this
+  blue" means that one. Check tints the joints that would give way,
+  Instructions steps through the booklet's steps, Parts lists the pieces
+  with a BrickLink wanted list, full screen gives it the window, and Open
+  in Brickworks goes to your tab. Opening a model or brickifying a 3D file
+  shows the card too. It asks your tab for the model itself, so it shows
+  the model whatever Claude's app hands it, and where a browser cannot
+  draw in 3D it is the turntable of pictures it was.
+
 - Models that cannot vanish. Every save is kept as a version, the last 20
   of each model: File, Versions… opens any of them again. File, Export,
   All my models downloads every saved model in one .zip. In a browser,
@@ -241,6 +254,29 @@ whole cycle.
 
 ### Fixed
 
+- Checking a big Technic model is quick again. Since parts are checked where
+  they stand, a turned part's collision cover is hundreds of boxes, and a part
+  a file carries can be tens of thousands (the drum of the 42112 concrete
+  mixer, turned on its truck); every question of what touches what asked
+  every box of one against every box of the other, and checking that set
+  took 17 minutes. Only where two covers meet is asked now, by the rows of
+  cells they cover: the same answers, and 42112 opens and checks in under a
+  minute, 75144 in 23 s from 12 minutes.
+- A big model no longer stutters twice a second with the model tree folded
+  away: the tree was worked out whether or not it was showing, 30 to 40 ms
+  of every half second on Orthanc and at every change to it, Brick Art's
+  laying out and the Timeline's first step among them.
+- In a browser drawing in software, the parts bin draws a screenful of its
+  pictures in one frame of the model rather than four, so after a big model
+  opens the screen is held for its pictures half as long; the page is told
+  each hold, for the checks.
+- The minifigure builder and What do I need? say they are working the first
+  time they are opened, as the other slow commands do, and so do Versions,
+  the cut-away, Make a sub-assembly, Copy and Settings on a big model.
+- Stopping the Timeline on a big model while it lays the parts out in steps
+  ended in a script error, and laying them out held the window for a step's
+  worth of looking at a time, a quarter of a second on Orthanc in a browser;
+  it gives the window back between the parts of a step now.
 - A part turned round the upright to an angle that is not a quarter turn
   was accepted standing on several studs, which in plastic meet its tubes
   and walls and grip nothing. The check now says so, and accepts it on the

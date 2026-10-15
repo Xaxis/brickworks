@@ -12111,8 +12111,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 
 	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
 	var pieces: int = each_piece.size()
+	# What touches what, asked only of a model with a part of the design's
+	# in it: of one that is all the person's own nothing is asked, and for a
+	# real set in a thousand pieces each piece's every part was asked what it
+	# stands beside.
 	var apart: Dictionary = _standing_apart(model, each_piece, floating,
-		_touching(each_piece, lattice, boxes_of), _outside(each_piece, box_of), box_of)
+		func() -> Dictionary: return _touching(each_piece, lattice, boxes_of),
+		func() -> Dictionary: return _outside(each_piece, box_of), box_of)
 	for piece: Array in apart["loose"]:
 		_note(issues, "loose", _loose_said(model, piece))
 
@@ -13879,13 +13884,18 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 			lo = Vector2i(mini(lo.x, a.x), mini(lo.y, a.z))
 			hi = Vector2i(maxi(hi.x, b.x), maxi(hi.y, b.z))
 		plans.append([lo, hi])
+	# The plan of all the others, for each: the least and the next least of
+	# every low edge, the most and the next most of every high one, so the
+	# others' are the first unless it is this piece's own. Piece by piece
+	# against every other piece, a real set's thousand pieces were a million
+	# reads.
+	var least: Array = [_two_most(plans, 0, 0, -1), _two_most(plans, 0, 1, -1)]
+	var most: Array = [_two_most(plans, 1, 0, 1), _two_most(plans, 1, 1, 1)]
 	for n: int in pieces.size():
-		var lo := Vector2i(1 << 30, 1 << 30)
-		var hi := -lo
-		for m: int in pieces.size():
-			if m != n:
-				lo = Vector2i(mini(lo.x, (plans[m][0] as Vector2i).x), mini(lo.y, (plans[m][0] as Vector2i).y))
-				hi = Vector2i(maxi(hi.x, (plans[m][1] as Vector2i).x), maxi(hi.y, (plans[m][1] as Vector2i).y))
+		var lo := Vector2i(int(least[0][1] if int(least[0][0]) == n else least[0][2]) * -1,
+			int(least[1][1] if int(least[1][0]) == n else least[1][2]) * -1)
+		var hi := Vector2i(int(most[0][1] if int(most[0][0]) == n else most[0][2]),
+			int(most[1][1] if int(most[1][0]) == n else most[1][2]))
 		var mine_lo: Vector2i = plans[n][0]
 		var mine_hi: Vector2i = plans[n][1]
 		var apart: bool = mine_lo.x > hi.x + NEAR[0] or mine_hi.x < lo.x - NEAR[0] \
@@ -13893,6 +13903,24 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 		if apart:
 			out[n] = true
 	return out
+
+
+## Of every plan's corner [param corner] (0 low, 1 high), axis [param axis]
+## of it, times [param facing]: [which plan has the most, the most of the
+## others (the next most), the most]. -(1 << 30) for an axis no other has.
+static func _two_most(plans: Array, corner: int, axis: int, facing: int) -> Array:
+	var best: int = -(1 << 30)
+	var at: int = -1
+	var next: int = -(1 << 30)
+	for n: int in plans.size():
+		var value: int = (plans[n][corner] as Vector2i)[axis] * facing
+		if at < 0 or value > best:
+			next = best if at >= 0 else next
+			best = value
+			at = n
+		elif value > next:
+			next = value
+	return [at, next, best]
 
 
 ## Which pieces standing apart from the model (touching nothing of it) are
@@ -13910,8 +13938,11 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 ## holds none of the model's own, or a whole figure. Anything else is
 ## loose, and fails. The model is the largest piece with a part of the
 ## design's in it; a piece of the person's own is theirs to leave.
+##
+## [param touching_of] and [param outside_of] hand over [method _touching]'s
+## and [method _outside]'s answers, worked out only when they are wanted.
 func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
-		touching: Dictionary = {}, outside: Dictionary = {},
+		touching_of: Callable = Callable(), outside_of: Callable = Callable(),
 		box_of: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"loose": [], "unjoined": [], "items": PackedStringArray(),
 		"against": 0, "named": 0, "figures": 0, "uncoupled": []}
@@ -13931,6 +13962,8 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		# All the person's own: said, as it always was, and theirs to leave.
 		out["against"] = pieces.size() - 1
 		return out
+	var touching: Dictionary = touching_of.call() if touching_of.is_valid() else {}
+	var outside: Dictionary = outside_of.call() if outside_of.is_valid() else {}
 	var main_names: Dictionary = {}
 	for index: int in pieces[main]:
 		main_names[_assembly_of(model, model.placements[index])] = true
@@ -14766,6 +14799,22 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 	# (Joints). Turning about the upright is not leaning, and a quarter
 	# turn is studs on their side. Judged from the design, not from what
 	# was placed: a leaning brick that also overlapped was never placed.
+	# Each section's placements, and whether a design or an edit put any of
+	# them down or moved it, read once. Asked section by section of every
+	# placement, a real set read into a thousand sections was millions of
+	# reads before anything was checked.
+	var members: Dictionary = {}   ## section -> its placements' indices, in order
+	var laid: Dictionary = {}      ## section -> true, when one is new or moved
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		if not members.has(placement.section):
+			members[placement.section] = []
+		(members[placement.section] as Array).append(index)
+		if placement.id == 0 or placement.moved:
+			laid[placement.section] = true
+	var adopted: Dictionary = {}
+	for one: Section in _adoptions.values():
+		adopted[one.name] = true
 	for group: String in model.sections:
 		var section: Section = model.sections[group]
 		# Square to what it is built on, or turned only about the upright,
@@ -14773,17 +14822,15 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		# one leans with it and is held to it by studs, square.
 		if not section.leans():
 			continue
-		if not model.placements.any(func(p: Placement) -> bool: return p.section == group):
+		if not members.has(group):
 			continue
 		# A section found for a file's tipped parts ([method _adopted]) that
 		# nothing has added to or moved is what was standing, as an overlap
 		# among standing bricks is: not this design's to answer for. Poe's
 		# X-wing (75102) read so has two whose joint the checker does not see.
-		if _adoptions.values().any(func(one: Section) -> bool: return one.name == group) \
-				and not model.placements.any(func(p: Placement) -> bool:
-					return p.section == group and (p.id == 0 or p.moved)):
+		if adopted.has(group) and not laid.has(group):
 			continue
-		if _turns_on_a_joint(model, group, joined, rounds):
+		if _turns_on_a_joint(model, group, joined, rounds, members[group]):
 			continue
 		# Or on one BrickNet's labels join, where both parts have an exact
 		# shape: an arm put on its shoulder by its connectors, standing since.
@@ -14809,6 +14856,13 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				+ "connectors (attach: {\"to\": \"base.hinge[0]\", \"by\": \"hinge[0]\", "
 				+ "\"yaw\": 30}), which seats it at that angle exactly. (3830/3831 and "
 				+ "2429/2430 swivel flat, like a door; they do not lean.)")
+	## Section -> its placements standing, in the order they were placed.
+	var standing: Dictionary = {}
+	for index: int in boxes_of:
+		var group: String = model.placements[index].section
+		if not standing.has(group):
+			standing[group] = []
+		(standing[group] as Array).append(index)
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
@@ -14828,9 +14882,13 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		# nine thousand six hundred cells for a 2x4, a quarter of a
 		# million questions for one brick — which was affordable only
 		# while a cell was a dictionary key.
-		for index: int in boxes_of:
-			if model.placements[index].section != group:
-				continue
+		# Its own bricks are not asked about: touching them is not touching
+		# anything outside it, and a turned brick against forty of its own
+		# was the cost of the question.
+		var own: Dictionary = {}
+		for index: int in standing.get(group, []):
+			own[index + 1] = true
+		for index: int in standing.get(group, []):
 			var packed: PackedInt32Array = boxes_of[index]
 			var grown := PackedInt32Array()
 			grown.resize(packed.size())
@@ -14842,7 +14900,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				grown[n + 3] = packed[n + 3] + 1
 				grown[n + 4] = packed[n + 4] + 1
 				grown[n + 5] = packed[n + 5] + 1
-			for who: int in lattice.blockers_boxes(grown):
+			for who: int in lattice.blockers_boxes(grown, 0, own):
 				if who < 0 or (who > 0
 						and model.placements[who - 1].section != group):
 					touches = true
@@ -14922,9 +14980,14 @@ static func _leans_on_exact_joint(model: Model, group: String, exact: ExactCheck
 
 ## Whether any brick in [param group] is pinned, clipped, hinged or
 ## balled to a brick outside it.
+## [param members] are the group's placements' indices, when the caller has
+## them.
 static func _turns_on_a_joint(model: Model, group: String, joined: Dictionary,
-		rounds: Dictionary) -> bool:
-	for index: int in model.placements.size():
+		rounds: Dictionary, members: Array = []) -> bool:
+	var indices: Array = members
+	if indices.is_empty():
+		indices = range(model.placements.size())
+	for index: int in indices:
 		if model.placements[index].section != group:
 			continue
 		for mates: Dictionary in [joined.get(index, {}), rounds.get(index, {})]:

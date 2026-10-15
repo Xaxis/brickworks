@@ -38,8 +38,13 @@ const SIZE := 96
 ## viewport, camera and holder. One shared viewport drew one a frame, since
 ## two started at once both wrote to it and both read back the second's
 ## picture: half the bin showed the wrong part. A preview is a 96-pixel
-## square; the frame it is drawn in is the whole window.
-const STAGES := 8
+## square; the frame it is drawn in is the whole window, and in a browser
+## drawing in software that frame is the whole model too, and the drawing
+## is held until it is drawn (GpuFence): over Orthanc, 13 to 14 s a frame on
+## a loaded machine, and eight at a time the first screenful of the bin held
+## the drawing 37 s (2026-10-15, its fences timed in Chromium). A screenful
+## is about thirty, so it is drawn in one frame.
+const STAGES := 32
 ## Beyond this many cached textures the least recently used are dropped.
 ## A page holds about 40; this is enough for a good deal of scrollback.
 const CACHE_LIMIT := 600
