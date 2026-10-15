@@ -394,8 +394,36 @@ func _fit() -> void:
 ## The window's size while something is outlined, and next to nothing while
 ## nothing is: three targets the size of a 2x window are 60 MB of a graphics
 ## card's memory, a browser's included, for each of the two outlines.
+##
+## Not at once, once they have the window's size: each new size is three new
+## render targets, and a browser waits for the card to finish everything
+## asked of it before it makes one. Drawing in software that was a second a
+## time, and the pointer going from a part onto Brickify's button let go of
+## the hover's targets in the frame it pressed, so the bar saying it had
+## begun was drawn 1.8 s after the press (progress_check, 2026-10-15). They
+## go small once nothing has been outlined for SHRINK_AFTER_MS.
 func _size_targets() -> void:
-	var wanted: Vector2i = _pixels if visible else Vector2i(2, 2)
+	if visible:
+		_resize(_pixels)
+		return
+	_emptied_at = Time.get_ticks_msec()
+	if _mask.size != _pixels or not is_inside_tree():
+		_resize(Vector2i(2, 2))
+		return
+	get_tree().create_timer(SHRINK_AFTER_MS / 1000.0).timeout.connect(
+		_shrink_if_still_empty.bind(_emptied_at))
+
+
+const SHRINK_AFTER_MS := 4000
+var _emptied_at: int = 0
+
+
+func _shrink_if_still_empty(emptied_at: int) -> void:
+	if not visible and _emptied_at == emptied_at:
+		_resize(Vector2i(2, 2))
+
+
+func _resize(wanted: Vector2i) -> void:
 	if _mask.size != wanted:
 		for view: SubViewport in [_mask, _rows, _line]:
 			view.size = wanted

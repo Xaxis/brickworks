@@ -485,14 +485,16 @@ func _live(brick_id: int) -> int:
 func takes(brick_id: int) -> PackedInt64Array:
 	if brick_id == 0 or locked.has(brick_id):
 		return PackedInt64Array()
-	# A figure is one thing to whoever points at it. Picking out its
-	# arm alone and moving it would leave the arm floating beside the
-	# figure, which is not an edit anybody means.
-	var members: PackedInt64Array = figure_of(brick_id)
-	# A sub-assembly is one thing to whoever points at it too, at the level
+	# A sub-assembly is one thing to whoever points at it, at the level
 	# being edited; and nothing outside the one being edited is.
 	if unit_of.is_valid():
 		return unit_of.call(brick_id)
+	# A figure is one thing too. Picking out its arm alone and moving it
+	# would leave the arm floating beside the figure, which is not an edit
+	# anybody means. Asked only here, where it is used: asked first and
+	# thrown away, it was the hover's 180 ms over a panel of Brick Art,
+	# 170 parts asked whether they were a figure (2026-10-15).
+	var members: PackedInt64Array = figure_of(brick_id)
 	return members if members.size() > 1 else PackedInt64Array([brick_id])
 
 
