@@ -289,6 +289,31 @@ static func source_for(points: Array, target: Point, type: String, index: Varian
 		target.type, ", ".join(names), "..." if fits.size() > 6 else ""]}
 
 
+## The pairs of connectors that do mate, said as attach takes them: each of
+## [param theirs] (the target's, named [param ref]) with each of [param mine]
+## (the new part's) that fits it, the nearest [param near] (the target's
+## connector asked for, or null) first, a few at most. A session that asked
+## for a bar in a round brick's hollow stud ("open") is told the same spot is
+## its clip, which a bar goes in. "" when none mate.
+static func mates_said(theirs: Array, mine: Array, ref: String, near: Point = null) -> String:
+	var found: Array = []      ## [distance, words]
+	for t: Point in theirs:
+		for s: Point in mine:
+			if not compatible(t, s):
+				continue
+			var off: float = 0.0 if near == null else t.frame.origin.distance_to(near.frame.origin)
+			found.append([off, "\"to\": \"%s.%s\", \"by\": \"%s\"" % [ref, t.address(), s.address()]])
+			break
+	if found.is_empty():
+		return ""
+	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var said := PackedStringArray()
+	for row: Array in found.slice(0, 3):
+		said.append(str(row[1]) + (" (the same spot)" if near != null and float(row[0]) < 1.0
+			else ""))
+	return "; what does mate: " + "; ".join(said)
+
+
 ## A part's connectors in a line: "8 stud, 8 hole, 3 tube".
 static func listing(points: Array) -> String:
 	var counts: Dictionary = {}

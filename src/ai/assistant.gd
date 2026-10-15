@@ -3914,6 +3914,17 @@ static func _shorthand_used(args: Dictionary) -> String:
 	var sections: int = (args.get("sections", []) as Array).size()
 	if sections > 0:
 		said.append("%d section%s" % [sections, "" if sections == 1 else "s"])
+	# And how many were put by their connectors, so a run's log says whether
+	# a session reached for joints at all.
+	var attached: int = 0
+	for key: String in ["bricks", "add"]:
+		if not (args.get(key) is Array):
+			continue
+		for raw: Variant in args[key]:
+			if raw is Dictionary and (raw as Dictionary).has("attach"):
+				attached += 1
+	if attached > 0:
+		said.append("%d attached" % attached)
 	return "" if said.is_empty() else ", " + ", ".join(said)
 
 
@@ -11107,8 +11118,8 @@ func _attach_one(model: Model, placement: Placement, named: Dictionary,
 	var type: String = where["type"]
 	var many: int = Attach.count_of(theirs, type)
 	if many == 0:
-		return "attaches to %s, and %s has no %s: it has %s" % [to_said, target.part, type,
-			Attach.listing(theirs)]
+		return "attaches to %s, and %s has no %s: it has %s%s" % [to_said, target.part, type,
+			Attach.listing(theirs), Attach.mates_said(theirs, mine, ref)]
 	if where["index"] == null and many > 1:
 		return ("attaches to %s, and %s has %d of those: say which, %s[0] to %s[%d] "
 			% [to_said, target.part, many, type, type, many - 1]
@@ -11132,7 +11143,10 @@ func _attach_one(model: Model, placement: Placement, named: Dictionary,
 		by_index = by_where["index"]
 	var source: Dictionary = Attach.source_for(mine, a, by_type, by_index)
 	if source.has("error"):
-		return "goes on %s, but %s %s" % [to_said, placement.part, source["error"]]
+		# What does mate, unless it is only which of several fitting ones.
+		return "goes on %s, but %s %s%s" % [to_said, placement.part, source["error"],
+			"" if str(source["error"]).contains("say which")
+				else Attach.mates_said(theirs, mine, ref, a)]
 	var b: Attach.Point = source["point"]
 
 	var options: Dictionary = {}

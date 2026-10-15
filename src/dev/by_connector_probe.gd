@@ -408,9 +408,15 @@ func _refusals() -> void:
 			"attach": {"to": "base.stud[0]", "by": "hole[0]", "orient": {"pitch": 30}}},
 			"only a ball"],
 		["a part with no place at all", {"part": "3003", "color": 1}, "neither where"],
+		# A bench session asked for a flame's bar in a round brick's hollow stud
+		# ("open"), which takes a stud's kind; the same spot is the brick's clip.
+		["a bar asked into a hollow stud, told of the clip there", {"part": "18395",
+			"color": 4, "attach": {"to": "base.open[0]", "by": "bar[0]"}},
+			"\"to\": \"base.clip[0]\", \"by\": \"bar[0]\" (the same spot)", "3062b"],
 	]:
 		var model: Assistant.Model = _assistant._read_model({"bricks": [
-			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "name": "base"},
+			{"part": str(case[3]) if case.size() > 3 else "3001", "color": 4, "x": 0, "y": 0,
+				"z": 0, "rot": 0, "name": "base"},
 			case[1]]})
 		var report: Dictionary = _assistant._check(model, true)
 		var feedback: String = str(report.get("feedback", ""))
