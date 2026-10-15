@@ -248,6 +248,11 @@ func _sizes() -> void:
 		var packed: Dictionary = ModelScene.packed(_world, _library, _assistant.scenery)
 		var ms: float = (Time.get_ticks_usec() - t0) / 1000.0
 		var text: String = JSON.stringify(packed)
+		# For tools/viewer/first_paint.mjs: the card drawing this, in a browser.
+		var kept_file := FileAccess.open(OS.get_user_data_dir().path_join(
+			"viewer_tools_probe/scene_%d.json" % wanted), FileAccess.WRITE)
+		kept_file.store_string(JSON.stringify({"scene": packed}))
+		kept_file.close()
 		print("  %5d parts, %3d shapes: %6d characters packed (%d of them the bricks), in %.0f ms" % [
 			int(packed["count"]), (packed["meshes"] as Array).size(), text.length(),
 			str(packed["bricks"]).length(), ms])

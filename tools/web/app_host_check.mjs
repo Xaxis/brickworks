@@ -2,7 +2,7 @@
 //
 //   set -a; . ./.env; set +a
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app \
-//     --host=<basic-host dir> --out=shots/app_host [--sizes] [--port=18680]
+//     --host=<basic-host dir> --out=shots/app_host [--port=18680]
 //
 // The host is the MCP Apps reference host, ext-apps' examples/basic-host
 // (github.com/modelcontextprotocol/ext-apps), built in a directory of its
@@ -30,7 +30,7 @@
 // when dragged, Check calls through and tints, the instructions step, a
 // part clicked is told to the host as model context and selected in the
 // tab, full screen is asked for and given, the parts list and its BrickLink
-// list, Open in Brickworks. --sizes measures a 400- and a 4,000-part model.
+// list, Open in Brickworks. tools/viewer/first_paint.mjs times it at 400 and 4,000 parts.
 //
 // Before 2026-10-15 the page drew four pictures and asked for nothing:
 // against main every check from "the page draws the model in 3D" on fails.
@@ -398,7 +398,8 @@ try {
   check(Boolean(point), "a point on the stage over a part");
   if (point) {
     await page.mouse.click(box.x + point.x, box.y + point.y);
-    await sleep(1500);
+    // The page selects it in the tab first, then tells Claude, saying whether it did.
+    for (let n = 0; n < 40 && !(await cardOf(frame)).told.some((t) => /picked brick #/.test(t)); n++) await sleep(500);
     now = await cardOf(frame);
     const told = now.told[now.told.length - 1] || "";
     check(now.picked && /picked brick #\d+/.test(told),
@@ -436,15 +437,20 @@ try {
   await frame.locator("button[aria-label='Next step']").click();
   await sleep(800);
   const second = (await cardOf(frame)).step;
-  await frame.locator("button[aria-label='Next step']").click();
-  await sleep(800);
+  // A third step where there is one; at the last, Next is disabled.
+  if (await frame.locator("button[aria-label='Next step']").isEnabled()) {
+    await frame.locator("button[aria-label='Next step']").click();
+    await sleep(800);
+  }
   const third = (await cardOf(frame)).step;
+  check(second && second.at === second.of ? await frame.locator("button[aria-label='Next step']").isDisabled() : true,
+    `...and at the last step, Next is not offered (${second ? `${second.at} of ${second.of}` : "?"})`);
   check(now.called !== undefined && first && second && third && first.at === 1 && second.at === 2 && third.at === Math.min(3, first.of)
       && first.shown < second.shown && second.shown <= third.shown && third.shown <= stated,
     `the instructions step: step ${first && first.number} shows ${first && first.shown} parts, then ${second && second.shown}, then ${third && third.shown}, of ${first && first.of} steps`);
   await frame.locator("button[aria-label='Previous step']").click();
   await sleep(600);
-  check((await cardOf(frame)).step.at === 2, "...and back");
+  check((await cardOf(frame)).step.at === third.at - 1, `...and back, to step ${third.at - 1}`);
   await page.screenshot({ path: `${out}/5_steps.png` });
 
   // The parts list, and the wanted list for BrickLink.
@@ -542,36 +548,6 @@ try {
   check(refused.length === 0, `the content policy refused nothing${refused.length ? `: ${refused[0]}` : ""}`);
   await page.screenshot({ path: `${out}/9_passes.png` });
 
-  if (args.sizes) {
-    console.log("\n4. sizes and first paint, at 400 and 4,000 parts");
-    const sizes = [];
-    const { unpack } = await import("../viewer/scene.js");
-    for (const wanted of [400, 4000]) {
-      // Orthanc, cut to its first [wanted] parts by number: the numbers
-      // read off the model as the card reads them.
-      const opened = await claude.call("open_model", { name: "orthanc", discard_changes: true });
-      const whole = await unpack((await claude.call("viewer_scene")).result.structuredContent.scene);
-      const ids = [...whole.ids].filter((id, k) => !(whole.flags[k] & 1)).sort((a, b) => a - b);
-      const cut = await claude.call("edit_model", { remove: ids.slice(wanted) });
-      const have = Number((/(\d+) parts are on the baseplate/.exec(texts(await claude.call("look_at_model")).join(" ")) || [])[1]);
-      for (const cold of [true, false]) {
-        frame = await callFromHost(2, "look_at_model");
-        now = await ready(frame, 600);
-        const answer = passing.seen.filter((s) => s.method === "tools/call" && s.name === "look_at_model").pop();
-        const sceneChars = answer && answer.answer && answer.answer.result && answer.answer.result._meta
-          ? JSON.stringify(answer.answer.result._meta["brickworks/view"]?.scene || {}).length : 0;
-        const row = { parts: have, cold, answerChars: answer ? answer.chars : 0, sceneChars, shapes: now.geometry.files,
-          geometryKB: Math.round(now.geometry.bytes / 1024),
-          firstMs: now.timings.first3d - now.timings.result, completeMs: now.timings.complete3d - now.timings.result,
-          drawn: now.shown, opened: texts(opened).join(" ").slice(0, 60), cut: texts(cut).join(" ").slice(0, 80) };
-        sizes.push(row);
-        console.log(`  ${have} parts${cold ? "" : " (geometry cached)"}: the answer ${row.answerChars} characters, the model in it ${sceneChars}; `
-          + `${row.shapes} shapes, ${row.geometryKB} KB of geometry; first 3D frame ${row.firstMs} ms, every part drawn ${row.completeMs} ms`);
-      }
-    }
-    writeFileSync(`${out}/sizes.json`, JSON.stringify(sizes, null, 2));
-    check(sizes.every((s) => s.drawn === s.parts && s.answerChars < 150000), "every size drawn whole, each answer inside claude.ai's 150,000 characters");
-  }
 } catch (trouble) {
   check(false, `stopped: ${trouble.stack || trouble.message}`);
 } finally {

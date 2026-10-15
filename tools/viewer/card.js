@@ -925,6 +925,7 @@ async function three(s) {
     bar.firstElementChild.style.width = Math.round(share * 100) + "%";
     if (share >= 0.25 && !$("stage").classList.contains("three")) $("stage").classList.add("three");
   });
+  mark("loaded");
   $("stage").classList.add("three");
   bar.hidden = true;
   card.state = "ready";

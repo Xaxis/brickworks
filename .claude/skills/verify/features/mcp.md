@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -283,7 +283,8 @@ node tools/web/model_view_check.mjs --url=http://127.0.0.1:8797/app --relay-only
 godot --headless --path . --script src/dev/viewer_tools_probe.gd            # the viewer's own tools, on the real scene
 node tools/viewer/scene_check.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene.json   # the card reads what the tab packed
 node tools/viewer/build.mjs --deps=DIR --check                               # the committed page is the build of tools/viewer/
-BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=DIR/basic-host --out=shots/app_host [--sizes]   # in the MCP Apps reference host
+BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=DIR/basic-host --out=shots/app_host   # in the MCP Apps reference host
+node tools/viewer/first_paint.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene_400.json --scene=.../scene_4000.json   # sizes and first paint, after viewer_tools_probe -- --sizes
 ```
 
 The reference host is ext-apps' `examples/basic-host`, used as it is, in a

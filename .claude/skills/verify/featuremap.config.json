@@ -1774,7 +1774,7 @@
       "kind": "cli",
       "label": "viewer tools probe",
       "entry": "src/dev/viewer_tools_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (-- --sizes packs 400 and 4,000 parts of Orthanc and times it)",
+      "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (-- --sizes packs 400 and 4,000 parts of Orthanc, times it, and writes scene_400.json and scene_4000.json for tools/viewer/first_paint.mjs)",
       "area": "mcp"
     },
     {
@@ -1782,6 +1782,13 @@
       "label": "build the viewer",
       "entry": "tools/viewer/build.mjs",
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "viewer first paint",
+      "entry": "tools/viewer/first_paint.mjs",
+      "reach": "node tools/viewer/first_paint.mjs --scene=<user data>/viewer_tools_probe/scene_400.json --scene=<...>/scene_4000.json   (after viewer_tools_probe -- --sizes: the built page draws each, geometry fetched from storage, cold and warm, timed)",
       "area": "mcp"
     },
     {
@@ -1795,7 +1802,7 @@
       "kind": "cli",
       "label": "app host check",
       "entry": "tools/web/app_host_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<basic-host dir> --out=shots/app_host [--sizes]   (with .env sourced; a throwaway account, deleted at the end)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<basic-host dir> --out=shots/app_host (with .env sourced; a throwaway account, deleted at the end)",
       "area": "mcp"
     },
     {
