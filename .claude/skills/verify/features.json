@@ -442,6 +442,14 @@
       "tests": []
     },
     {
+      "id": "cli:measure brickify against outside models",
+      "kind": "cli",
+      "entry": "tools/bench/brickify_bench.py",
+      "reach": "python3 tools/bench/brickify_bench.py report OUT   (the run: prepare, godot --headless --script src/dev/brickify_bench.gd -- JOBS OUT, outside, measure, pictures; the recipe is in features/brickify.md; docs/BRICKIFY.md is the write-up)",
+      "area": "brickify",
+      "tests": []
+    },
+    {
       "id": "cli:measure how a model is built",
       "kind": "cli",
       "entry": "tools/style.py",

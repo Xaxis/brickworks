@@ -1888,6 +1888,13 @@
       "entry": "src/boot/shell.html",
       "reach": "https://brickworks.diy/app?tab=<id>   (that tab's model when it is kept in this browser and not open; open in another tab here, the page starts nothing and that tab's title says it is the one)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "measure brickify against outside models",
+      "entry": "tools/bench/brickify_bench.py",
+      "reach": "python3 tools/bench/brickify_bench.py report OUT   (the run: prepare, godot --headless --script src/dev/brickify_bench.gd -- JOBS OUT, outside, measure, pictures; the recipe is in features/brickify.md; docs/BRICKIFY.md is the write-up)",
+      "area": "brickify"
     }
   ]
 }
