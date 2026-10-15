@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:export for linux, cli:export for windows, cli:export for macos -->
+<!-- covers: cli:build the meshes, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -35,6 +35,21 @@ The Python side: LDraw in, mesh cache and catalogue out.
   is a fetch away at run time.
 - `upload parts to storage`: puts the rest in the Supabase bucket under
   content-hash names, cached for a year, so a name's bytes can never change.
+  The exact shapes (`exact/<hash>.bwx`) go up beside the meshes: the web build
+  fetches one for each part a check reads, and without them checks there by
+  the lattice alone.
+- `build the exact shapes`: `tools/build_exact.py --bricknet DIR --colliders DIR`
+  writes `assets/generated/exact/<mesh hash>.bwx` for every part BrickNet has
+  (15,417 shapes, 884 MB, about 15 minutes on 8 jobs): its convex colliders with
+  their hulls' normals and edges, and its connector labels, in the app's frame.
+  DIR is the `bricknet` package's `_data/v1` (MIT) and the folder of
+  `<stem>.cvx.obj` its `python -m bricknet fetch-meshes` downloads; both are
+  read as data, never run, and never committed. Needs numpy and scipy (a venv).
+  The shared catalogue is not written: `--out` a copy of `assets/generated`
+  (symlinks to the shared files and an `exact/` of its own) and merge that
+  folder in. Proves it when `tests/test_build_exact.py` passes (a box's three
+  axes and no face diagonal, a flat piece's axes, the app's frame, an alias's
+  matrix) and `src/dev/exact_probe.gd` passes on the result.
 
 - `export for linux` / `windows` / `macos`: the raw exports.
   `tools/export.sh desktop` makes all three. Each carries the whole part

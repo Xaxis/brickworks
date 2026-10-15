@@ -16,7 +16,13 @@
 // arrives in it, a picture in it does not decode, it has no step pages
 // or no parts list, or a script error reaches either console. Leaves
 // OUT/app.png, OUT/page-N.png and OUT/booklet.pdf.
-import { launch } from "./browser.mjs";
+//
+// --model=FILE opens that model first (Open… > From a file, as
+// steps_flow.mjs does) and makes its booklet instead of the car's; a
+// model with no steps of its own gets the planner's. --pages=1,4,9 or
+// --pages=all photographs those pages, as a reader turns them; the first
+// three and the last by default.
+import { controlsWith, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -34,9 +40,13 @@ const first = bypass
 const out = args.out || "shots/booklet_web";
 mkdirSync(out, { recursive: true });
 
+const model = args.model ? path.resolve(args.model) : "";
+
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
+page.choosers = [];
+page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
 const listen = (p, who) => {
   p.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
@@ -54,6 +64,29 @@ const check = (what, ok) => {
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`);
   if (!ok) failed += 1;
 };
+// Open… > From a file, answered with a file: tried again when a press
+// brought no picker, as steps_flow.mjs does.
+async function open(file) {
+  const at = await page.evaluate(() => (window.brickworksControls || {}).open);
+  if (!at) throw new Error("the app never showed Open");
+  for (let n = 0; n < 3; n++) {
+    page.choosers.length = 0;
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(4000 + 4000 * n);
+    await page.mouse.click(at.x + 40, at.y + 22);
+    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
+      await page.waitForTimeout(500);
+    }
+    const picker = page.choosers.shift();
+    if (picker) {
+      await picker.setFiles(file);
+      return;
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(3000);
+  }
+  throw new Error("no file picker came up");
+}
 
 try {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
@@ -65,9 +98,27 @@ try {
   }
   // The example car's parts arrive over the network after the button does.
   await page.waitForTimeout(Number(args.load || 20000));
+  if (model) {
+    await open(model);
+    // Its parts arrive over the network too: settled when the count holds.
+    let last = -1;
+    let parts = 0;
+    for (let n = 0; n < 240; n++) {
+      await page.waitForTimeout(2000);
+      parts = await page.evaluate(() => (window.brickworksState || {}).bricks || 0);
+      if (parts > 0 && parts === last && n > 5) break;
+      last = parts;
+    }
+    check(`${path.basename(model)} opens (${parts} parts)`, parts > 0);
+    at = await page.evaluate(() => (window.brickworksControls || {}).instructions);
+  }
   await page.screenshot({ path: path.join(out, "app.png") });
   check("the toolbar has Instructions", Boolean(at));
 
+  // Where it is now, waited for: the toolbar is laid out again as the car's
+  // parts land, and a control is told to the page only once it has stayed
+  // where it is drawn (Main._page_places).
+  at = (await controlsWith(page, ["instructions"])).instructions || at;
   const opened = context.waitForEvent("page", { timeout: 30000 });
   await page.mouse.click(at.x, at.y);
   let tab = null;
@@ -116,7 +167,10 @@ try {
       check(`Print prints (${printed})`, printed === 1);
       await tab.setViewportSize({ width: 1060, height: 800 });
       await tab.addStyleTag({ content: ".bar { display: none !important; }" });
-      for (const n of [1, 2, 3, pages]) {
+      const wanted = args.pages === "all"
+        ? [...Array(pages).keys()].map((n) => n + 1)
+        : args.pages ? String(args.pages).split(",").map(Number) : [1, 2, 3, pages];
+      for (const n of wanted) {
         const section = tab.locator(`section.page >> nth=${n - 1}`);
         if ((await section.count()) > 0) {
           await section.screenshot({ path: path.join(out, `page-${n}.png`) });

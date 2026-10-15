@@ -95,6 +95,8 @@ static func finished() -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var until: int = Time.get_ticks_msec() + LONGEST_MS
 	_listen(tree)
+	if _holding == 0:
+		_held_from = Time.get_ticks_msec()
 	_holding += 1
 	RenderingServer.render_loop_enabled = _answering()
 	while Time.get_ticks_msec() < until:
@@ -104,6 +106,20 @@ static func finished() -> void:
 	_holding -= 1
 	if _holding == 0:
 		RenderingServer.render_loop_enabled = true
+		_tell_page(Time.get_ticks_msec() - _held_from)
+
+
+## When the drawing was last held, by the first of the waits holding it.
+static var _held_from: int = 0
+
+
+## Each time the drawing was held, on the page, as [when it began, how long]
+## in the engine's ms (window.brickworksHolds, the last 200): a browser check
+## cannot tell a frame held from a frame nothing asked for.
+static func _tell_page(ms: int) -> void:
+	JavaScriptBridge.eval(("(function (w) { var h = w.brickworksHolds || (w.brickworksHolds = []);"
+		+ " h.push([%d, %d]); if (h.length > 200) h.splice(0, h.length - 200); })(window)")
+		% [_held_from, ms], true)
 
 
 ## Once: every input the window gets, and a look each frame at whether the

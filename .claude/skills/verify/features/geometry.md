@@ -20,6 +20,19 @@ can occupy the same millimetre.
   ever drops cells the part is not in (a flipper on a plate read as in it).
   Turned covers stay rounded out all round: tipped sections find what they
   lean on by them (`section_probe` fails if they are cut back too).
+  A turned cover is a box a row of cells, hundreds of them (42112's mixer
+  drum, a part its file carries, is 23,309), so what two covers meet is not
+  asked pair by pair (`_overlaps_pairwise`, kept as the reference): past a few
+  dozen pairs only the boxes where the two bounds meet are taken
+  (`_overlaps_within`), and a brick of more than `ROWS_FROM` boxes is laid out
+  by the rows of cells (y, z) it covers when it is put in (`_rows`), so a box
+  asks only the rows it covers (`blockers_boxes`, `collides_boxes`,
+  `brick_at`); a stretched cover (a file's turns written to five places) is
+  worked out once per part and basis and shifted, as a turned one is
+  (`Builder.boxes_for`). Same answers, to the box: `turned_probe` checks them
+  against every pair. 42112's audit was 998 s at 7970de9 and is 51 s (some 13
+  of them the check, the rest opening it), 75144's 729 s and 23, 42066's 287 s
+  and 30, at load 40.
 - `sideways building`: a part can be held by a stud that does not point up —
   `face` (up/down/±x/±z) × `rot` (quarter turns) gives 24 orientations, and the
   occupied cells are recomputed for each. A placement names its cover's corner,
@@ -73,10 +86,10 @@ can occupy the same millimetre.
   holds as before. A part turning on its own shaft or bore (a turntable's
   top) is held by that (`Assistant._swivels`); `techniques_probe`'s corner
   on a turntable stood on a floor was refused without it. Only the turned
-  part's underside is asked, and the prism
-  pattern's own sections ("prism ...") are let through: its storeys, horns
-  and plinths stand turned walls on square studs, and `patterns_probe` had
-  23 of its towers refused for it.
+  part's underside is asked. The prism pattern's sections are judged as any
+  other: it lays tiles under its turned walls on its plinth and ledges, and
+  under its horns on its summit (`Assistant._smooth_under_turned`), and
+  `dress_probe` opens a saved tower again and finds none off its studs.
   The quarter turns are exact (`Section.exact`) and frames lose their float
   dust (`Section.dusted`): a skin on side studs read a ten-millionth of a
   stud off was rasterised a cell away and called adrift.
@@ -329,7 +342,14 @@ can occupy the same millimetre.
   the ground holding; each floating cluster put down to the joint it touches
   held parts by, and every overlap between standing parts the check excuses
   counted by part (`Assistant._standing_overlaps`). `docs/CONNECTIONS.md` is
-  its report.
+  its report. A change to how fast it checks must leave every row the same
+  but its two timings: run the audit over a sample (42112, 75144, 42066,
+  42110, 31084 and a few small sets) before and after, `--out` apart, and
+  compare the lines with `"seconds"` and `"check_seconds"` taken out
+  (`check_seconds` counts the open too). The check of a part with a cover of
+  thousands of boxes is what grows: a section's touch asked of every box of
+  every part of it, and what sits on each part, pair by pair, were 16 of
+  42112's 17 minutes.
 - `parts seen from outside` (`src/render/seen_parts.gd`, `seen_codes.gdshader`):
   which parts can be seen from outside a model, measured. The model is drawn from
   128 sides (the cube's 26 and 102 on a Fibonacci spiral, underneath included),

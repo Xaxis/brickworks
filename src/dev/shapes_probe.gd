@@ -535,18 +535,21 @@ const OWL_BODY: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}
 	{"ellipsoid": {"centre": [10, 54, 7.5], "radii": [4.5, 11, 4]}, "color": 84},
 	{"ellipsoid": {"centre": [10, 53, 9.5], "radii": [3.8, 9, 2.2]}, "color": 15}]}
 
-## The held-out car's axles and wheels and its body, as its run (car_d3) said them.
+## The held-out car's axles and wheels and its body, as its run (car_d3) said them,
+## but for its wheels: turned so each cross hole faces in, on an axle 6 that ends
+## in them. As the run had them, an axle 8 ran through both wheels' clip rings,
+## 2 LDU into each by the parts' real shapes (Shapes.WHEEL).
 const CAR_AXLES: Array = [
 	{"part": "3700", "color": 0, "x": 3, "y": 2, "z": 2, "rot": 0},
 	{"part": "3700", "color": 0, "x": 3, "y": 2, "z": 5, "rot": 0},
-	{"part": "3707", "color": 0, "x": 3.7, "y": 3, "z": 0, "rot": 1},
-	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 0, "rot": 0},
-	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 6.5, "rot": 2},
+	{"part": "3706", "color": 0, "x": 3.7, "y": 3, "z": 1, "rot": 1},
+	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 0, "rot": 2},
+	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 6.5, "rot": 0},
 	{"part": "3700", "color": 0, "x": 15, "y": 2, "z": 2, "rot": 0},
 	{"part": "3700", "color": 0, "x": 15, "y": 2, "z": 5, "rot": 0},
-	{"part": "3707", "color": 0, "x": 15.7, "y": 3, "z": 0, "rot": 1},
-	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 0, "rot": 0},
-	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 6.5, "rot": 2}]
+	{"part": "3706", "color": 0, "x": 15.7, "y": 3, "z": 1, "rot": 1},
+	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 0, "rot": 2},
+	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 6.5, "rot": 0}]
 const CAR_BODY: Dictionary = {"pattern": "shape", "color": 321, "solids": [
 	{"extrude": {"along": "x", "from": 0, "width": 8, "round": 0.5,
 		"profile": [[0, 7], [1, 9], [6, 10], [18, 10.5], [20, 10]], "under": [[0, 5], [20, 5]]},

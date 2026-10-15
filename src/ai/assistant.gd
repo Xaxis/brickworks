@@ -118,6 +118,13 @@ var references: Array = []
 var _section_of: Dictionary = {}
 var _local_of: Dictionary = {}
 var _sections: Dictionary = {}
+## Brick id -> the name a design gave it, which a later edit attaches to it
+## by (Placement.name).
+var _given_names: Dictionary = {}
+## Brick id -> [x, y, z, face, rot, nudge] of a brick in no section seated
+## past its lattice cell, as it was written: read back as it was while it
+## still stands where that puts it.
+var _nudged: Dictionary = {}
 ## Sections found for bricks that came without one (see [method _adopted]),
 ## by what they share, and the world generation they were found in.
 var _adoptions: Dictionary = {}
@@ -442,6 +449,38 @@ class Placement extends RefCounted:
 	## anything else sees it ([method Assistant._turned_parts]), since a part
 	## turned off the grid is checked as a section is.
 	var turn := Vector3.ZERO
+	## Where the brick it was read from really stands (a Transform3D), or
+	## null for a placement that is not in the world. The reading of a part
+	## turned two ways, or drawn off its box, is not quite where it is; the
+	## exact check (ExactCheck) judges what stands by where it stands.
+	var standing_at: Variant = null
+	## The part that stands there, which an edit may change.
+	var standing_part: String = ""
+	## LDU past the 2 LDU lattice cell x, y and z put it in, for a part seated
+	## on a connector the cells cannot say (ExactCheck.seat): a round part's
+	## stud an LDU off the cell its corner falls in.
+	var nudge := Vector3.ZERO
+	## What a later part of the same design or edit attaches to it by: "torso"
+	## in "torso.hinge[0]". Empty for none.
+	var name: String = ""
+	## Put on another part by their connectors, as BrickAgent's attach puts
+	## one ({to, by, yaw, align, orient, flip, slide, seat}), until the app has
+	## worked out where that is ([method Assistant._attach_parts]); then empty,
+	## and x, y, z, face, rot, nudge and section say it.
+	var attach: Dictionary = {}
+	## The part it was attached to, and by which two connectors, said: what
+	## the check holds it by where the lattice cannot see the joint.
+	var attached_to: Placement = null
+	var attached_by: String = ""
+	## Why an attach could not be done as asked, for the check to say.
+	var odd_attach: String = ""
+
+	## Where the exact check takes this to be: where it stands while it is
+	## standing and unmoved, else [param built] (where it will be built).
+	func exact_at(built: Transform3D) -> Transform3D:
+		if id != 0 and not moved and standing_at is Transform3D and standing_part == part:
+			return standing_at
+		return built
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -470,6 +509,23 @@ class Placement extends RefCounted:
 		p.dressing = bool(raw.get("dressing", false))
 		p.turn = Vector3(float(raw.get("yaw", 0)), float(raw.get("pitch", 0)),
 			float(raw.get("roll", 0)))
+		p.name = str(raw.get("name", "")).strip_edges()
+		var joint: Variant = raw.get("attach")
+		if joint is Dictionary and not (joint as Dictionary).is_empty():
+			p.attach = (joint as Dictionary).duplicate(true)
+			# The joint's angle, said on the part instead of its attach: the
+			# only angle a part on a joint has is the joint's.
+			if not p.attach.has("yaw") and not p.attach.has("orient") \
+					and not is_zero_approx(p.turn.x):
+				p.attach["yaw"] = p.turn.x
+			if p.turn.y != 0.0 or p.turn.z != 0.0:
+				p.odd_attach = ("is attached and also given a pitch or roll of its own; a part "
+					+ "on a joint turns as the joint does: give the attach a yaw (about its "
+					+ "axis), an align or, on a ball, an orient")
+			p.turn = Vector3.ZERO
+		elif joint != null and not (joint is Dictionary):
+			p.odd_attach = ("has attach %s, which is not an object like {\"to\": "
+				% JSON.stringify(joint) + "\"torso.hinge[0]\", \"by\": \"hinge[0]\", \"yaw\": 30}")
 		return p
 
 	## This brick again, in another section. A copy is a new brick, so
@@ -490,6 +546,8 @@ class Placement extends RefCounted:
 		p.odd_axis = odd_axis
 		p.section = into
 		p.dressing = dressing
+		# Where it sits past its cell, as a part seated by its connector does.
+		p.nudge = nudge
 		return p
 
 	func where() -> String:
@@ -1690,7 +1748,8 @@ func _begin_sketch() -> void:
 func _sketch_one(placement: Placement,
 		sections: Dictionary = {}) -> void:
 	var part: Lbm.PartMesh = library.mesh_for(placement.part)
-	if part == null:
+	# One said by its connectors has no place until the whole is read.
+	if part == null or not placement.attach.is_empty():
 		return
 	var at: Transform3D = _transform(placement, part,
 		sections.get(placement.section))
@@ -3419,6 +3478,8 @@ func _model_from_world() -> Model:
 			kept_in.mine = mine.has(brick.id)
 			kept_in.group = brick.group
 			kept_in.unit = brick.unit
+			kept_in.standing_at = brick.transform
+			kept_in.standing_part = brick.part_id
 			model.placements.append(kept_in)
 			continue
 		var at: Vector3 = _to_studs(brick, info)
@@ -3444,10 +3505,35 @@ func _model_from_world() -> Model:
 			placement.z = float(kept[2])
 			placement.face = str(kept[3])
 			placement.rot = int(kept[4])
+			if kept.size() > 5 and kept[5] is Vector3:
+				placement.nudge = kept[5]
+		elif _nudged.has(brick.id):
+			# Seated past its cell (a leg on its hips, by their connectors): read
+			# as it was written while it still stands there, so a later edit that
+			# moves it moves it from its joint and not from the cell under it.
+			var kept: Array = _nudged[brick.id]
+			var was := Placement.from_dict({"part": brick.part_id, "x": kept[0], "y": kept[1],
+				"z": kept[2], "face": kept[3], "rot": kept[4]})
+			was.nudge = kept[5]
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if mesh != null and _square_transform(was, mesh).origin.distance_to(
+					brick.transform.origin) < 0.01 and _square_transform(was, mesh).basis \
+					.is_equal_approx(brick.transform.basis):
+				placement.x = was.x
+				placement.y = was.y
+				placement.z = was.z
+				placement.face = was.face
+				placement.rot = was.rot
+				placement.nudge = was.nudge
+			else:
+				_nudged.erase(brick.id)
+		placement.name = str(_given_names.get(brick.id, ""))
 		placement.id = brick.id
 		placement.mine = mine.has(brick.id)
 		placement.group = brick.group
 		placement.unit = brick.unit
+		placement.standing_at = brick.transform
+		placement.standing_part = brick.part_id
 		model.placements.append(placement)
 	return model
 
@@ -3471,9 +3557,11 @@ func _forget_moved_sections() -> void:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
-		var said: Transform3D = section.placed() * _square_transform(Placement.from_dict({
-			"part": brick.part_id, "x": kept[0], "y": kept[1], "z": kept[2],
-			"face": kept[3], "rot": kept[4]}), mesh)
+		var was := Placement.from_dict({"part": brick.part_id, "x": kept[0], "y": kept[1],
+			"z": kept[2], "face": kept[3], "rot": kept[4]})
+		if kept.size() > 5 and kept[5] is Vector3:
+			was.nudge = kept[5]
+		var said: Transform3D = section.placed() * _square_transform(was, mesh)
 		var basis: Basis = brick.transform.basis.orthonormalized()
 		var same: bool = said.origin.distance_to(brick.transform.origin) < 1.0
 		for k: int in 3:
@@ -3779,8 +3867,9 @@ func _edit(args: Dictionary) -> Model:
 		_touched += 1
 
 	for raw: Variant in args.get("add", []):
-		model.placements.append(Placement.from_dict(raw))
+		model.placements.append(_said_placement(raw))
 		_touched += 1
+	_attach_parts(model)
 	_turned_parts(model)
 
 	# After the adds, so one call can declare a section, fill it and
@@ -3825,6 +3914,17 @@ static func _shorthand_used(args: Dictionary) -> String:
 	var sections: int = (args.get("sections", []) as Array).size()
 	if sections > 0:
 		said.append("%d section%s" % [sections, "" if sections == 1 else "s"])
+	# And how many were put by their connectors, so a run's log says whether
+	# a session reached for joints at all.
+	var attached: int = 0
+	for key: String in ["bricks", "add"]:
+		if not (args.get(key) is Array):
+			continue
+		for raw: Variant in args[key]:
+			if raw is Dictionary and (raw as Dictionary).has("attach"):
+				attached += 1
+	if attached > 0:
+		said.append("%d attached" % attached)
 	return "" if said.is_empty() else ", " + ", ".join(said)
 
 
@@ -4268,6 +4368,8 @@ func _attachment_points(args: Dictionary) -> String:
 	var at: Transform3D
 	var part_id: String
 	var label: String
+	## What attach names its connectors by: "#41." for a brick standing.
+	var prefix: String = ""
 
 	if args.has("brick"):
 		var brick_id: int = int(args["brick"])
@@ -4281,6 +4383,7 @@ func _attachment_points(args: Dictionary) -> String:
 		at = brick.transform
 		part_id = brick.part_id
 		label = "brick %d (%s)" % [brick_id, part_id]
+		prefix = "#%d." % brick_id
 	else:
 		part_id = str(args.get("part", ""))
 		if not library.parts.has(part_id):
@@ -4331,7 +4434,8 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _holes_in(part, at, part_id)
+	var holes: String = _holes_in(part, at, part_id) + _connectors_said(part_id, at, prefix,
+		args.get("near"))
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -4399,6 +4503,76 @@ func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> Str
 		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
 		+ "where its own middle goes, not its low corner. Slide it along by changing "
 		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
+
+
+## Every connector of a part by the address attach takes ([param prefix] and
+## "hinge[0]"), with where it is in studs and plates for [param at] and the
+## way it points: BrickNet's labels from its exact shape, which is where
+## BrickBench's check and this one look for a connection, else the
+## catalogue's. A type with many is said by its first few unless [param near]
+## ([x, y, z] in studs and plates) asks for those nearest a point. "" for a
+## part with none.
+func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
+		near: Variant = null) -> String:
+	var points: Array = Attach.points_of(library, part_id)
+	if points.is_empty():
+		return ""
+	var where: Variant = null
+	if near is Array and (near as Array).size() == 3:
+		where = Vector3(float(near[0]) * STUD, float(near[1]) * PLATE, float(near[2]) * STUD)
+	var rows: Array = []      ## [distance, type, line]
+	for point: Attach.Point in points:
+		var frame: Transform3D = at * point.frame
+		var way: Vector3 = (-frame.basis.y).normalized()
+		var line: bool = point.kind == Exact.AXLE or point.kind == Exact.HINGE
+		var spot: Vector3 = frame.origin
+		rows.append([spot.distance_to(where) if where != null else 0.0, point.type,
+			"  %s%s %s at x=%s y=%s z=%s, %s" % [prefix, point.address(), point.said(),
+				Placement._num(snappedf(spot.x / STUD, 0.01)),
+				Placement._num(snappedf(spot.y / PLATE, 0.01)),
+				Placement._num(snappedf(spot.z / STUD, 0.01)),
+				_pointing(way, line).replace("pointing ", "points ")]])
+	var lines := PackedStringArray()
+	if where != null:
+		rows.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		for row: Array in rows.slice(0, MOST_CONNECTORS):
+			lines.append(str(row[2]))
+	else:
+		var shown: Dictionary = {}
+		var hidden: Dictionary = {}
+		for row: Array in rows:
+			var type: String = row[1]
+			if int(shown.get(type, 0)) < EACH_TYPE:
+				shown[type] = int(shown.get(type, 0)) + 1
+				lines.append(str(row[2]))
+			else:
+				hidden[type] = int(hidden.get(type, 0)) + 1
+		for type: String in hidden:
+			lines.append("  ...and %d more %s, %s%s[%d] on: near=[x, y, z] lists those by a point"
+				% [hidden[type], type, prefix, type, int(shown[type])])
+	var source: String = ("as BrickBench's check reads them" if (points[0] as Attach.Point).exact
+		else "from the catalogue (BrickNet has no shape for it)")
+	return ("\n\nConnectors, %s, by the address attach takes:\n" % source
+		+ "\n".join(lines) + "\nTo put a part on one: {\"part\": ..., \"attach\": {\"to\": \"%s%s\", "
+			% [prefix if not prefix.is_empty() else "<its name>.", (points[0] as Attach.Point).address()]
+		+ "\"by\": \"<that part's own connector>\", \"yaw\": <degrees about the joint>}}. A stud "
+		+ "takes a hole, tube or open stud; a clip or a hollow stud a bar; a pin a socket; an "
+		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on).")
+
+
+## How many connectors attachment_points lists of a type, and near a point.
+const EACH_TYPE := 6
+const MOST_CONNECTORS := 16
+
+
+## A direction said for a connector: up, down, +x... or "along x" for a line.
+static func _pointing(way: Vector3, line: bool) -> String:
+	for axis: Array in [[Vector3.UP, "up", "down", "up and down"],
+			[Vector3.RIGHT, "+x", "-x", "along x"], [Vector3.BACK, "+z", "-z", "along z"]]:
+		var d: float = way.dot(axis[0])
+		if absf(d) > 0.99:
+			return str(axis[3]) if line else "pointing " + str(axis[1] if d > 0.0 else axis[2])
+	return "at an angle"
 
 
 ## What each kind of joint does with an axle, as a session needs to hear it.
@@ -4954,13 +5128,26 @@ static func _box_from(raw: Variant) -> AABB:
 ## baseplate.
 func _remember_section(brick_id: int, placement: Placement,
 		model: Model) -> void:
+	# And its name, for a later edit to attach to it by ("torso.hinge[0]").
+	if placement.name.is_empty():
+		_given_names.erase(brick_id)
+	else:
+		_given_names[brick_id] = placement.name
 	if placement.section.is_empty():
 		_section_of.erase(brick_id)
 		_local_of.erase(brick_id)
+		if placement.nudge == Vector3.ZERO:
+			_nudged.erase(brick_id)
+		else:
+			_nudged[brick_id] = [placement.x, placement.y, placement.z, placement.face,
+				placement.rot, placement.nudge]
 		return
+	_nudged.erase(brick_id)
 	_section_of[brick_id] = placement.section
+	# With what it sits past its cell: a part attached by its connector sits
+	# exactly on it, which the cell alone does not say.
 	_local_of[brick_id] = [placement.x, placement.y, placement.z,
-		placement.face, placement.rot]
+		placement.face, placement.rot, placement.nudge]
 	var section: Section = model.sections.get(placement.section)
 	# And every section it is built in, and the one a hinge's frame is the
 	# base of, which may have no bricks of their own: a chain of hinged
@@ -5049,12 +5236,14 @@ func _describe_world(args: Dictionary = {}) -> String:
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
 			var face: String = BrickLattice.face_of(brick.transform.basis)
-			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s%s" % [
+			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s%s%s" % [
 				brick.id, brick.part_id, brick.color_code,
 				Placement._num(at.x), Placement._num(at.y),
 				Placement._num(at.z), face,
 				BrickLattice.turns_about(brick.transform.basis, face),
 				_on_line_said(brick),
+				# The name a later part attaches to it by ("torso.hinge[0]").
+				"   '%s'" % _given_names[brick.id] if _given_names.has(brick.id) else "",
 				"" if mine.has(brick.id) else "   (placed by hand)"])
 
 	var lines := PackedStringArray()
@@ -6127,7 +6316,8 @@ func _read_model(args: Dictionary) -> Model:
 			_lay_hinge(model, section)
 	var written: Array = args.get("bricks", [])
 	for raw: Variant in written:
-		model.placements.append(Placement.from_dict(raw))
+		model.placements.append(_said_placement(raw))
+	_attach_parts(model)
 	_turned_parts(model)
 
 	# And the shapes it described rather than counted out. Patterns are
@@ -6178,7 +6368,9 @@ func _read_model(args: Dictionary) -> Model:
 			for brick: Dictionary in _studs_out(raw, trouble):
 				model.placements.append(Placement.from_dict(brick))
 		for n: int in prisms.size():
-			for brick: Dictionary in _prism(prisms[n], model, n, trouble):
+			var laid: Array = _prism(prisms[n], model, n, trouble)
+			_smooth_under_turned(laid, model)
+			for brick: Dictionary in laid:
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 		_pattern_advice.append_array(_round_by_panels(plain))
@@ -7313,6 +7505,19 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		treads.append([float(edge) + 1.0, 0.0])
 		cuts.append({"extrude": {"along": "z", "from": -2, "width": 4, "under": treads,
 			"profile": [[head + 1, tall_ + 1], [edge + 1, tall_ + 1]]}})
+	var raised: Dictionary = pattern.duplicate(true)
+	raised.erase("plinth")
+	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
+	raised["_raised"] = true
+	var tower: Array = _prism(raised, model, index, trouble)
+	# Tiled, not studded, under a face turned off the grid: its sockets do
+	# not meet the studs, which stand against its walls and tubes (the
+	# read-back tower's 45 degree faces on 46 of them, dress_probe). It rests
+	# there, held by the courses over it, and the square faces grip.
+	var turned_on: Dictionary = _studs_turned_parts_miss(tower, model, y0 + tall_)
+	under = under.filter(func(cell: Array) -> bool:
+		return not turned_on.has(Vector2i(floori(cx + float(cell[0]) + 0.5),
+			floori(cz + float(cell[1]) + 0.5))))
 	# Square terraces in bricks, as they were measured: their steps are not
 	# a curve to turn on its side, and the courses over the hollow are tied
 	# by the tower's foot.
@@ -7322,11 +7527,6 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		"studs_at": under, "solids": solids, "cuts": cuts}, trouble, library)
 	if not trouble.is_empty():
 		return []
-	var raised: Dictionary = pattern.duplicate(true)
-	raised.erase("plinth")
-	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
-	raised["_raised"] = true
-	var tower: Array = _prism(raised, model, index, trouble)
 	for n: int in crags.size():
 		var crag: Array = crags[n]
 		made.append_array(Patterns._rock({"at": {"x": cx + float(crag[0]), "y": y0 + tall_,
@@ -7338,6 +7538,128 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		(", %d crags of rock rising against it" % crags.size()) if not crags.is_empty() else "",
 		Placement._num(y0 + tall_)])
 	return made + tower
+
+
+## The studs, as whole studs in the world's plan, at plate [param top] that a
+## part of [param made] turned off the grid about the upright stands its foot
+## on and does not take in a socket: every stud under it, but for one that
+## lands in a socket of its (a turned part grips by one stud, a jumper's or a
+## round plate's). A stud there stands against its walls and tubes, which the
+## lattice, taking every stud for one in a socket, lets through and plastic
+## does not (_note_turned_studs).
+func _studs_turned_parts_miss(made: Array, model: Model, top: float,
+		feet: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	if feet.is_empty():
+		feet = _turned_feet(made, model)
+	for one: Array in feet.get(roundi(top * 4.0), []):
+		var foot: PackedVector2Array = one[0]
+		var takes: Array = one[1]
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for p: Vector2 in foot:
+			low = low.min(p)
+			high = high.max(p)
+		for x: int in range(floori(low.x) - 1, ceili(high.x) + 1):
+			for z: int in range(floori(low.y) - 1, ceili(high.y) + 1):
+				# The stud's own round, as a square a little inside it.
+				var stud := PackedVector2Array([Vector2(x + 0.25, z + 0.25),
+					Vector2(x + 0.75, z + 0.25), Vector2(x + 0.75, z + 0.75),
+					Vector2(x + 0.25, z + 0.75)])
+				if not _convex_meet(stud, foot):
+					continue
+				var middle := Vector2(x + 0.5, z + 0.5)
+				var held: bool = false
+				for take: Vector2 in takes:
+					held = held or middle.distance_to(take) <= TURNED_GRIP
+				if not held:
+					out[Vector2i(x, z)] = true
+	return out
+
+
+## The feet of the parts of [param made] turned off the grid about the
+## upright, by the quarter plate they stand at: [the foot's outline in plan,
+## where it takes a stud], each in studs.
+func _turned_feet(made: Array, model: Model) -> Dictionary:
+	var out: Dictionary = {}
+	for one: Dictionary in made:
+		var name: String = str(one.get("section", ""))
+		var section: Section = model.sections.get(name) if not name.is_empty() else null
+		if section == null or section.square():
+			continue
+		var placement: Placement = Placement.from_dict(one)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = _transform(placement, mesh, section)
+		if (at.basis * Vector3.UP).dot(Vector3.UP) < 0.9999:
+			continue
+		var box: AABB = mesh.bounds
+		var foot := PackedVector2Array()
+		for corner: Vector2 in [Vector2(box.position.x, box.position.z),
+				Vector2(box.end.x, box.position.z), Vector2(box.end.x, box.end.z),
+				Vector2(box.position.x, box.end.z)]:
+			var p: Vector3 = at * Vector3(corner.x, box.position.y, corner.y)
+			foot.append(Vector2(p.x, p.z) / STUD)
+		var takes: Array = []
+		var under: Array = _underside_of(mesh)
+		for local: Vector2 in (under[0] as Array) + (under[1] as Array):
+			var p: Vector3 = at * Vector3(local.x, 0.0, local.y)
+			takes.append(Vector2(p.x, p.z) / STUD)
+		var level: int = roundi((at * box.position).y / PLATE * 4.0)
+		if not out.has(level):
+			out[level] = []
+		(out[level] as Array).append([foot, takes])
+	return out
+
+
+## The plate a tile of the same size is, for a ledge or a floor that a part
+## turned off the grid stands on.
+const PLATE_TILE: Dictionary = {"3024": "3070b", "3023": "3069b", "3023b": "3069b",
+	"3623": "63864", "3710": "2431", "3666": "6636", "3460": "4162", "3022": "3068b",
+	"3021": "26603", "3020": "87079", "3795": "69729"}
+
+
+## Every plate of [param made] laid square (in no section) that a part turned
+## off the grid stands on off its sockets, laid as the tile of its size: a
+## storey stood its 45 degree faces on its ledge's studs, and a horn on the
+## summit's. The plate under a square face keeps its studs, and holds it.
+func _smooth_under_turned(made: Array, model: Model) -> void:
+	var tops: Dictionary = {}    ## plate -> the plates there, by index into made
+	for n: int in made.size():
+		var one: Dictionary = made[n]
+		if not str(one.get("section", "")).is_empty() or not PLATE_TILE.has(str(one["part"])) \
+				or str(one.get("face", "up")) != "up":
+			continue
+		var top: float = float(one["y"]) + 1.0
+		if not tops.has(top):
+			tops[top] = []
+		(tops[top] as Array).append(n)
+	var feet: Dictionary = _turned_feet(made, model)
+	if feet.is_empty():
+		return
+	for top: Variant in tops:
+		if not feet.has(roundi(float(top) * 4.0)):
+			continue
+		var missed: Dictionary = _studs_turned_parts_miss(made, model, float(top), feet)
+		if missed.is_empty():
+			continue
+		for n: int in tops[top]:
+			var one: Dictionary = made[n]
+			var placement: Placement = Placement.from_dict(one)
+			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+			if info == null:
+				continue
+			var size: Vector2i = info.footprint_studs()
+			if posmod(placement.rot, 2) == 1:
+				size = Vector2i(size.y, size.x)
+			var on: bool = false
+			for dx: int in size.x:
+				for dz: int in size.y:
+					on = on or missed.has(Vector2i(floori(placement.x + dx + 0.5),
+						floori(placement.z + dz + 0.5)))
+			if on:
+				one["part"] = PLATE_TILE[placement.part]
 
 
 ## The crags a plinth's top terrace holds, each [x, z, studs across] from its
@@ -10805,6 +11127,295 @@ static func _turned_parts(model: Model) -> void:
 	model.link_sections()
 
 
+## A part as a design or an edit says it. Said by neither its corner nor its
+## connectors, it is said so: with x, y and z no longer required (a part on a
+## joint has none of its own), one left out would otherwise stand at 0, 0, 0.
+func _said_placement(raw: Variant) -> Placement:
+	var placement := Placement.from_dict(raw if raw is Dictionary else {})
+	if raw is Dictionary and not (raw as Dictionary).has("attach") \
+			and not ((raw as Dictionary).has("x") or (raw as Dictionary).has("y")
+				or (raw as Dictionary).has("z")):
+		placement.odd_attach = ("says neither where it goes (x, y, z, its low corner) nor what "
+			+ "it attaches to (attach: {\"to\": \"torso.hinge[0]\", \"by\": \"hinge[0]\"})")
+	return placement
+
+
+## Every placement said by its connectors (attach), put where BrickAgent's
+## attach puts it (Attach.pose) and written as a placement: in the frame of
+## the part it goes on, square to it where it is (a tile on a side stud, a leg
+## on its hips) with what lies past the lattice cell as a nudge, and otherwise
+## as a section of one, turned as the joint turns it (an arm swung on its
+## shoulder) within the section the part it goes on is in, so that it goes
+## where that goes. In order: a part attaches to one put before it, by the
+## name that one was given ("torso.hinge[0]"), or to a brick standing by its
+## number ("#41.stud[3]"). One whose parts have not arrived yet (the web
+## build fetches them) waits for [method _ready_to_check].
+##
+## Placed by their corners, a session's arms, tails and wings were the joint
+## arithmetic it gets wrong, so it built none: 0% clips, bars, balls and
+## hinges in our BrickBench characters against BrickAgent's 4%.
+func _attach_parts(model: Model) -> void:
+	var waiting: bool = false
+	for placement: Placement in model.placements:
+		if not placement.attach.is_empty() and placement.odd_attach.is_empty():
+			waiting = true
+	if not waiting or library == null:
+		return
+	var named: Dictionary = {}       ## name in lower case -> its placement
+	var twice: Dictionary = {}       ## names given to two parts
+	var by_id: Dictionary = {}
+	for placement: Placement in model.placements:
+		if placement.id != 0:
+			by_id[placement.id] = placement
+		if placement.name.is_empty():
+			continue
+		var key: String = placement.name.to_lower()
+		if named.has(key) and named[key] != placement:
+			twice[key] = true
+		elif not named.has(key):
+			named[key] = placement
+	model.link_sections()
+	for placement: Placement in model.placements:
+		if placement.attach.is_empty() or not placement.odd_attach.is_empty():
+			continue
+		var said: String = _attach_one(model, placement, named, twice, by_id)
+		if said == ATTACH_WAITS:
+			continue
+		placement.attach = {}
+		if not said.is_empty():
+			placement.odd_attach = said
+	model.link_sections()
+
+
+## What [method _attach_one] says of a part whose geometry has not arrived.
+const ATTACH_WAITS := "waits"
+
+
+## One placement's attach worked out: "" when done, [constant ATTACH_WAITS]
+## to wait for its parts, else why it cannot be done as said.
+func _attach_one(model: Model, placement: Placement, named: Dictionary,
+		twice: Dictionary, by_id: Dictionary) -> String:
+	var raw: Dictionary = placement.attach
+	var to_said: String = str(raw.get("to", "")).strip_edges()
+	if to_said.is_empty():
+		return ("has an attach with no to: say the part and its connector, as "
+			+ "\"torso.hinge[0]\" (a part of this design by its name) or \"#41.stud[3]\" "
+			+ "(a brick standing, by its number)")
+	var split := RegEx.create_from_string(
+		"^(.+?)\\s*\\.\\s*([A-Za-z]+\\s*(?:\\[\\s*-?\\d+\\s*\\]|-?\\d+)?)$")
+	var found: RegExMatch = split.search(to_said)
+	if found == null:
+		return ("attaches to \"%s\", which is not a part and a connector, as \"torso.hinge[0]\""
+			% to_said)
+	var ref: String = found.get_string(1).strip_edges()
+	var where: Dictionary = Attach.parse_address(found.get_string(2))
+	if where.has("error"):
+		return "attaches to %s: %s" % [to_said, where["error"]]
+	var target: Placement = null
+	var number: String = ref.trim_prefix("#").strip_edges()
+	if ref.begins_with("#") or number.is_valid_int():
+		target = by_id.get(int(number))
+		if target == null:
+			return ("attaches to %s, but no brick numbered %s stands (look_at_model numbers them)"
+				% [to_said, number])
+	else:
+		var key: String = ref.to_lower()
+		if twice.has(key):
+			return "attaches to '%s', and two parts are named that; give each its own name" % ref
+		target = named.get(key)
+		if target == null:
+			# A part attached earlier, by the section of one it was written as.
+			var inside: Array = model.placements.filter(func(p: Placement) -> bool:
+				return p.section.to_lower() == key)
+			if inside.size() == 1:
+				target = inside[0]
+		if target == null:
+			return ("attaches to '%s', and no part is named that. Name the part it goes on "
+				% ref + "(\"name\": \"%s\") where it is placed, before this one, or say a " % ref
+				+ "brick standing by its number, as \"#41.%s\"" % found.get_string(2))
+	if target == placement:
+		return "attaches to itself"
+	if not target.attach.is_empty():
+		if target.odd_attach.is_empty() and model.placements.find(target) \
+				< model.placements.find(placement):
+			return ATTACH_WAITS
+		return ("attaches to '%s', which is attached after it: put '%s' first" % [ref, ref]
+			if target.odd_attach.is_empty() else "attaches to '%s', which could not be put "
+			% ref + "where it was said itself")
+	if not target.odd_attach.is_empty() or not target.odd_face.is_empty() \
+			or not target.odd_axis.is_empty():
+		return "attaches to '%s', which could not be put where it was said itself" % ref
+	if not target.section.is_empty() and not model.sections.has(target.section):
+		return ("attaches to '%s', which is in section '%s', and there is no such section"
+			% [ref, target.section])
+	for part_id: String in [target.part, placement.part]:
+		if not library.parts.has(part_id):
+			return "no part '%s' exists" % part_id
+	_on_its_line(target)
+	var target_mesh: Lbm.PartMesh = library.mesh_for(target.part)
+	var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+	if target_mesh == null or mesh == null:
+		return ATTACH_WAITS
+	for part_id: String in [target.part, placement.part]:
+		if not Exact.known(library, part_id):
+			Exact.shape_for(library, part_id)
+			if not Exact.known(library, part_id):
+				return ATTACH_WAITS
+	var parent: Section = model.section_for(target)
+	var target_at: Transform3D = target.exact_at(_transform(target, target_mesh, parent))
+
+	var theirs: Array = Attach.points_of(library, target.part)
+	var mine: Array = Attach.points_of(library, placement.part)
+	var type: String = where["type"]
+	var many: int = Attach.count_of(theirs, type)
+	if many == 0:
+		return "attaches to %s, and %s has no %s: it has %s%s" % [to_said, target.part, type,
+			Attach.listing(theirs), Attach.mates_said(theirs, mine, ref)]
+	if where["index"] == null and many > 1:
+		return ("attaches to %s, and %s has %d of those: say which, %s[0] to %s[%d] "
+			% [to_said, target.part, many, type, type, many - 1]
+			+ "(attachment_points lists each with where it is)")
+	var a: Attach.Point = Attach.pick(theirs, type, int(where["index"]) if where["index"] != null else 0)
+	if a == null:
+		return "attaches to %s, and %s has %d %s, %s[0] to %s[%d]" % [to_said, target.part, many,
+			type, type, type, many - 1]
+
+	var by_type: String = ""
+	var by_index: Variant = null
+	var by_said: Variant = raw.get("by")
+	if by_said is Array and not (by_said as Array).is_empty():
+		by_type = str(by_said[0]).strip_edges().to_lower()
+		by_index = int(by_said[1]) if (by_said as Array).size() > 1 else null
+	elif by_said != null and not str(by_said).strip_edges().is_empty():
+		var by_where: Dictionary = Attach.parse_address(str(by_said))
+		if by_where.has("error"):
+			return "attaches by %s: %s" % [str(by_said), by_where["error"]]
+		by_type = by_where["type"]
+		by_index = by_where["index"]
+	var source: Dictionary = Attach.source_for(mine, a, by_type, by_index)
+	if source.has("error"):
+		# What does mate, unless it is only which of several fitting ones.
+		return "goes on %s, but %s %s%s" % [to_said, placement.part, source["error"],
+			"" if str(source["error"]).contains("say which")
+				else Attach.mates_said(theirs, mine, ref, a)]
+	var b: Attach.Point = source["point"]
+
+	var options: Dictionary = {}
+	for key: String in ["yaw", "slide"]:
+		if raw.has(key):
+			options[key] = float(raw[key])
+	if raw.has("flip"):
+		options["flip"] = bool(raw["flip"])
+	if raw.has("seat"):
+		options["seat"] = str(raw["seat"])
+	if raw.has("align"):
+		var pair: Variant = raw["align"]
+		var u: Variant = Attach.direction(pair[0]) if pair is Array and (pair as Array).size() == 2 \
+			else null
+		var v: Variant = Attach.direction(pair[1]) if u != null else null
+		if u == null or v == null:
+			return ("has align %s: it takes two directions, the part's own and the model's, as "
+				% JSON.stringify(pair) + "[\"+z\", \"up\"] or [[0, 0, 1], [0, 1, 0]]")
+		options["align"] = [u, v]
+	if raw.has("orient"):
+		var orient: Variant = _orient_of(raw["orient"])
+		if orient == null:
+			return ("has orient %s: give the part's own turn in the model as {\"yaw\": 150, "
+				% JSON.stringify(raw["orient"]) + "\"pitch\": 0, \"roll\": 0}, or \"same\" for "
+				+ "the model's own axes")
+		options["orient"] = orient
+	if Attach.pinned(a, b) and not raw.has("slide") and not raw.has("seat"):
+		options["slide"] = Attach.seat_slide(Exact.shape_for(library, target.part), target_at,
+			Exact.shape_for(library, placement.part), a, b, options)
+	var posed: Dictionary = Attach.pose(target_at, a, b, options)
+	if posed.has("error"):
+		return "on %s, by its %s: %s" % [to_said, b.address(), posed["error"]]
+	var said: String = _written_at(model, placement, mesh, posed["at"], parent, ref)
+	if not said.is_empty():
+		return said
+	placement.attached_to = target
+	placement.attached_by = "%s on %s's %s" % [b.address(), ref, a.address()]
+	return ""
+
+
+## An orientation said for orient: {yaw, pitch, roll} as a section's, [yaw,
+## pitch, roll], or "same" for the model's own axes; null when not one.
+static func _orient_of(said: Variant) -> Variant:
+	if said is Dictionary:
+		var turn: Dictionary = said
+		return Section.turned(float(turn.get("yaw", 0.0)), float(turn.get("pitch", 0.0)),
+			float(turn.get("roll", 0.0)))
+	if said is Array and (said as Array).size() == 3:
+		return Section.turned(float(said[0]), float(said[1]), float(said[2]))
+	if said is String and ["same", "id", "identity", "as is", "none"].has(
+			str(said).strip_edges().to_lower()):
+		return Basis.IDENTITY
+	return null
+
+
+## [param placement] written where [param at] (the world) puts it: square to
+## the frame of [param parent] (the section the part it goes on is in, null
+## for the model's own), in that frame with a nudge for what lies past its
+## cell; else a section of one within [param parent], named for the part or
+## for what it is on. "" when written, else why not.
+func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Transform3D,
+		parent: Section, on: String) -> String:
+	var local: Transform3D = at if parent == null else parent.placed().affine_inverse() * at
+	if BrickLattice.is_square_to_grid(local.basis):
+		var basis: Basis = BrickLattice.snap_basis(local.basis)
+		placement.section = parent.name if parent != null else ""
+		placement.face = BrickLattice.face_of(basis)
+		placement.rot = BrickLattice.turns_about(basis, placement.face)
+		var corner: Vector3i = _corner_cell(mesh, placement.part,
+			BrickLattice.basis_for(placement.face, placement.rot))
+		var cell: Vector3i = BrickLattice.to_cell(local.origin + Vector3.ONE * 0.001)
+		placement.x = _into_cell(cell.x + corner.x, STUD)
+		placement.y = _into_cell(cell.y + corner.y, PLATE)
+		placement.z = _into_cell(cell.z + corner.z, STUD)
+		placement.nudge = Vector3.ZERO
+		placement.nudge = local.origin - _square_transform(placement, mesh).origin
+		if placement.nudge.length() < 0.0005:
+			placement.nudge = Vector3.ZERO
+		if _square_transform(placement, mesh).origin.distance_to(local.origin) > 0.01:
+			return "could not be written where its connector puts it (%s)" % str(local.origin)
+		return ""
+	var corner_ldu: Vector3 = BrickLattice.to_ldu(_corner_cell(mesh, placement.part,
+		Basis.IDENTITY))
+	var own: Transform3D = local * Transform3D(Basis.IDENTITY, corner_ldu)
+	var angles: Vector3 = Section.angles_of(own.basis)
+	var section := Section.new()
+	var base: String = placement.name if not placement.name.is_empty() \
+		else "%s on %s" % [placement.part, on]
+	section.name = base
+	var n: int = 1
+	while model.sections.has(section.name):
+		n += 1
+		section.name = "%s %d" % [base, n]
+	section.x = own.origin.x / STUD
+	section.y = own.origin.y / PLATE
+	section.z = own.origin.z / STUD
+	section.yaw = angles.x
+	section.pitch = angles.y
+	section.roll = angles.z
+	section.within = parent.name if parent != null else ""
+	model.sections[section.name] = section
+	model.link_sections()
+	placement.section = section.name
+	placement.x = 0.0
+	placement.y = 0.0
+	placement.z = 0.0
+	placement.face = "up"
+	placement.rot = 0
+	placement.nudge = Vector3.ZERO
+	var built: Transform3D = _transform(placement, mesh, section)
+	var off: float = built.origin.distance_to(at.origin)
+	for k: int in 3:
+		off = maxf(off, (built.basis[k] - at.basis[k]).length() * 30.0)
+	if off > 0.05:
+		return "could not be written where its connector puts it, %s LDU off" % str(snappedf(off, 0.01))
+	return ""
+
+
 # -- validation ----------------------------------------------------------
 
 
@@ -10843,6 +11454,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	for part_id: String in named:
 		Minifig.slot_for(library.parts.get(part_id))
 	_standing_now = _others_standing(alone)
+	_exact_now = _exact_shapes(model, alone)
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerThreadPool.add_task(func() -> void:
@@ -10854,6 +11466,7 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	library.end_reading(task)
 	_standing_held = false
 	_standing_now = []
+	_exact_now = {}
 	if report.is_empty():
 		# A worker that failed leaves nothing. Checked here instead: slow,
 		# but an answer.
@@ -11002,6 +11615,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var meshing: Dictionary = Joints.meshing(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
+	## The parts by their exact shapes, as BrickBench judges them (ExactCheck):
+	## each placement and each brick standing, numbered placements first.
+	var exact: ExactCheck = _exact_check_for(model, alone)
 
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
@@ -11014,7 +11630,14 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			lattice.occupy_boxes(key,
 				builder.boxes_for(part, brick.transform))
 			theirs[key] = brick.part_id
+			exact.stand(key, brick.part_id, brick.transform)
 			key -= 1
+
+	# A part of this design that misses a stud, a hole, a hinge or a bar by a
+	# few LDU goes onto it exactly, before anything is checked.
+	var seated: String = _seat_exactly(model, exact)
+	if not seated.is_empty():
+		advice.append(seated)
 
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
@@ -11074,6 +11697,17 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			_note(issues, "no such joint", "brick %d (%s) %s." % [index,
 				placement.part, placement.odd_axis])
 			continue
+		# Said by its connectors and not put there: said, and not built
+		# somewhere else instead.
+		if not placement.odd_attach.is_empty():
+			_note(issues, "attach", "brick %d (%s%s) %s." % [index, placement.part,
+				" '%s'" % placement.name if not placement.name.is_empty() else "",
+				placement.odd_attach])
+			continue
+		if not placement.attach.is_empty():
+			_note(issues, "not loaded", "brick %d (%s) is attached by parts whose geometry "
+				% [index, placement.part] + "has not arrived yet; keep it and try again")
+			continue
 		if not placement.odd_face.is_empty():
 			_note(issues, "no such face",
 				"brick %d (%s) asks for face '%s'. The six are up, "
@@ -11112,6 +11746,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			continue
 
 		placed_at[index] = at
+		exact.place(index, placement.part, placement.exact_at(at))
 		# Boxes, worked out once. For a turned part the cover costs a
 		# separating-axis test on every candidate cell, and asking for it
 		# twice — once as boxes, once as cells — is what made a model with
@@ -11159,6 +11794,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
 				model.section_for(placement).placed(), true, meshing)
+			# Their exact shapes decide where both have one.
+			near = exact.drop_cleared(near, index)
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -11221,6 +11858,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# anywhere else still collide. See [method Joints.rounds].
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
+		# A cover is whole cells, and two parts it rounds into each other can
+		# be clear by their real shapes: where both have one, the shapes decide.
+		blockers = exact.drop_cleared(blockers, index)
 
 		_standing_overlaps(blockers, placement, index, model, collided)
 		blockers = _between_standing(blockers, placement, model)
@@ -11288,6 +11928,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# brick wall that one loop was twenty seconds of the check.
 		box_of[index] = BrickLattice.corners_in(packed)
 
+	# And what the lattice forgave or could not see: a side stud pushed into
+	# a brick, a hinge through its other half, an axle through a part with no
+	# hole on its line, a part sunk into the one under it. Said for each pair
+	# this design is in, with how to fix it; between bricks standing, kept for
+	# the audit of real sets as the lattice's overlaps are.
+	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing)
+
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
 	if not gave_way.is_empty():
@@ -11313,6 +11960,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	## kind -> Array of sentences, said as advice once the faults are in.
 	var loose: Dictionary = {}
 	var floating: Dictionary = {}
+	# A part put on another by their connectors holds by that joint, as a
+	# pin does, where BrickNet's labels still join the two: an arm on its
+	# shoulder at any angle, a ball in its socket, a clip on a bar, which the
+	# lattice's cells cannot see.
+	_attach_joins(model, exact, placed_at, joined)
 	# A round joint holds both ways, as a pin does: a flag clipped to a
 	# lance hangs from the lance, and a turntable's top is held by its base.
 	var holds: Dictionary = joined.duplicate(true)
@@ -11336,8 +11988,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 				holds[index] = {}
 			for other: Variant in held[index]:
 				(holds[index] as Dictionary)[other] = true
+	var clutched_pairs: Array = []
 	_check_support(model, cells_of, lattice, issues, crowded, holds,
-		loose, boxes_of, floating)
+		loose, boxes_of, floating, clutched_pairs)
 	for kind: String in loose:
 		var said: Array = loose[kind]
 		advice.append("%s\n%s" % [kind, "\n".join(
@@ -11360,7 +12013,14 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# when the model is picked up, which is the one thing a section
 	# makes easy to do by accident.
 	_check_sections_attached(model, cells_of, lattice, issues, crowded,
-		stuck, boxes_of, joined, rounds)
+		stuck, boxes_of, joined, rounds, exact)
+
+	# Held by a connection, as BrickBench's stability check wants: a part of
+	# this design resting on another with nothing joining them falls when
+	# the model is picked up, and its simulation lets it fall. Not said again
+	# of a section already said to lean on nothing or to be adrift.
+	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
+		clutched_pairs, stuck)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -11451,8 +12111,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 
 	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
 	var pieces: int = each_piece.size()
+	# What touches what, asked only of a model with a part of the design's
+	# in it: of one that is all the person's own nothing is asked, and for a
+	# real set in a thousand pieces each piece's every part was asked what it
+	# stands beside.
 	var apart: Dictionary = _standing_apart(model, each_piece, floating,
-		_touching(each_piece, lattice, boxes_of), _outside(each_piece, box_of), box_of)
+		func() -> Dictionary: return _touching(each_piece, lattice, boxes_of),
+		func() -> Dictionary: return _outside(each_piece, box_of), box_of)
 	for piece: Array in apart["loose"]:
 		_note(issues, "loose", _loose_said(model, piece))
 
@@ -11569,6 +12234,13 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		## Pairs of standing bricks that overlap and were excused, [index,
 		## other], for an audit of real sets to count.
 		"standing_overlaps": collided,
+		## What the exact check found (ExactCheck), kind -> sentences: what
+		## review_model says before a design is handed over.
+		"exact": {"collision": issues.get("collision", []),
+			"not held": issues.get("not held", [])},
+		## And what asking the exact shapes cost this check, ms.
+		"exact_ms": exact.spent_usec / 1000.0,
+		"exact_on": exact.spent_on,
 	}
 	if weigh:
 		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, holds, alone)
@@ -11666,6 +12338,297 @@ static func _between_standing(blockers: PackedInt64Array, placement: Placement,
 	return blockers
 
 
+# -- the exact check (ExactCheck) ------------------------------------------
+
+
+## Exact shapes, part id -> Exact.Shape, as [method _checked] found them
+## before its worker began: a worker reads, never loads.
+var _exact_now: Dictionary = {}
+## The whole model's parts this assistant or a session placed count as this
+## design's for the exact check, as well as what an edit adds or moves:
+## review_model judges a design built from outside that way.
+var _strict_mine: bool = false
+
+
+## The exact shapes a check of [param model] reads, with what stands beside
+## it: loaded here on the main thread, or as [method _checked] loaded them.
+func _exact_shapes(model: Model, alone: bool) -> Dictionary:
+	var ids: Dictionary = {}
+	for placement: Placement in model.placements:
+		ids[placement.part] = true
+	if not alone and world != null:
+		for brick: BrickWorld.Brick in _others_standing(alone):
+			ids[brick.part_id] = true
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		return Exact.shapes_for(library, ids.keys())
+	var out: Dictionary = {}
+	for part_id: Variant in ids:
+		if _exact_now.has(part_id):
+			out[part_id] = _exact_now[part_id]
+	return out
+
+
+func _exact_check_for(model: Model, alone: bool) -> ExactCheck:
+	return ExactCheck.new(_exact_shapes(model, alone), model.placements.size())
+
+
+## Whether placement [param index] is this design's to answer for: placed or
+## moved by it, or (reviewing a whole design) placed by it at all.
+func _exact_subject(model: Model, index: int) -> bool:
+	if index < 0 or index >= model.placements.size():
+		return false
+	var placement: Placement = model.placements[index]
+	return placement.id == 0 or placement.moved or (_strict_mine and placement.mine)
+
+
+## A part the exact check speaks of, by its item: a placement as the check
+## numbers bricks, or a brick standing beside the design.
+func _exact_name(model: Model, exact: ExactCheck, item: int) -> String:
+	if item >= 0 and item < model.placements.size():
+		var placement: Placement = model.placements[item]
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		var label: String = "#%d" % placement.id if placement.id != 0 and not placement.moved \
+			else "brick %d" % item
+		return "%s (%s %s at %s)" % [label, placement.part,
+			info.name.strip_edges().replace("  ", " ").to_lower() if info != null else "",
+			placement.where()]
+	if item >= 0 and item < exact.parts.size():
+		return "a %s already on the baseplate" % exact.parts[item]
+	return "a part"
+
+
+## Each part of this design that misses a connector by a few LDU and joins
+## nothing exactly, moved onto it (ExactCheck.seat): its placement changed
+## here, so what is checked and built is the seated one. Only a part square
+## on the grid and in no section, whose move is whole cells: anything else
+## cannot be said as a placement. Returns what was moved, said, or "".
+func _seat_exactly(model: Model, exact: ExactCheck) -> String:
+	if not exact.any() or library == null:
+		return ""
+	if not model.placements.any(func(p: Placement) -> bool:
+			return (p.id == 0 or p.moved) and p.section.is_empty()):
+		return ""
+	var movable: Array = []
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null or not placement.odd_face.is_empty() or not placement.odd_axis.is_empty():
+			continue
+		if not placement.section.is_empty() and not model.sections.has(placement.section):
+			continue
+		exact.place(index, placement.part, placement.exact_at(_transform(placement, part,
+			model.section_for(placement))))
+		# What this change puts down or moves: a review judges what stands, and
+		# says what to move rather than moving it.
+		if (placement.id == 0 or placement.moved) and placement.section.is_empty():
+			movable.append(index)
+	if movable.is_empty():
+		return ""
+	var moved: Dictionary = exact.seat(movable)
+	var said := PackedStringArray()
+	for index: int in moved:
+		var move: Vector3 = moved[index]
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		var at: Transform3D = _transform(placement, part).translated(move)
+		var corner: Vector3i = _corner_cell(part, placement.part, at.basis)
+		# The cell the seated origin is in, written as its own number of studs
+		# and plates, and the rest of the way as a nudge: whole cells for a
+		# move of whole cells, an LDU over for a round part's odd stud.
+		var cell: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.001)
+		var was := [placement.x, placement.y, placement.z, placement.nudge]
+		placement.x = _into_cell(cell.x + corner.x, STUD)
+		placement.y = _into_cell(cell.y + corner.y, PLATE)
+		placement.z = _into_cell(cell.z + corner.z, STUD)
+		placement.nudge = Vector3.ZERO
+		placement.nudge = at.origin - _transform(placement, part).origin
+		if placement.nudge.length() < 0.001:
+			placement.nudge = Vector3.ZERO
+		if not _transform(placement, part).origin.is_equal_approx(at.origin):
+			placement.x = was[0]
+			placement.y = was[1]
+			placement.z = was[2]
+			placement.nudge = was[3]
+			exact.place(index, placement.part, _transform(placement, part))
+			continue
+		if said.size() < WORTH_SAYING:
+			said.append("brick %d (%s) %s" % [index, placement.part,
+				ExactCheck._direction(move)])
+		elif said.size() == WORTH_SAYING:
+			said.append("...")
+	if said.is_empty():
+		return ""
+	return ("Seated %d part%s exactly on the stud, hole, hinge or bar %s missed by a few LDU "
+		% [moved.size(), "" if moved.size() == 1 else "s", "it" if moved.size() == 1 else "each"]
+		+ "(the app does this on every check; nothing to change): %s." % ", ".join(said))
+
+
+## Whether item [param i] is a placement in one of the prism pattern's own
+## sections.
+static func _in_a_prism(model: Model, i: int) -> bool:
+	return i >= 0 and i < model.placements.size() \
+		and model.placements[i].section.begins_with("prism ")
+
+
+## Lattice cell [param cell] as a placement's studs or plates ([param per] LDU
+## each): the number that reads back as that cell.
+static func _into_cell(cell: int, per: float) -> float:
+	var said: float = snappedf(float(cell) * BrickLattice.CELL / per, 0.0001)
+	if int(floor(said * per / BrickLattice.CELL)) != cell:
+		said += 0.00001
+	return said
+
+
+## The exact shapes' collisions that the lattice did not already refuse (see
+## [method _check]), noted as faults where this design is in the pair. Dressing
+## gives way, as it does to a lattice overlap; a pair of bricks standing goes
+## into [param collided] for the audit of real sets; gears in [param meshing]
+## are in mesh, not in each other.
+func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
+		overlapping: Dictionary, gave_way: Dictionary, collided: Array,
+		meshing: Dictionary = {}) -> void:
+	if not exact.any():
+		return
+	var count: int = model.placements.size()
+	# The pairs this design is in; every pair when only the ground holds (the
+	# audit of real sets, which counts what stands as well).
+	var subjects: Dictionary = {}
+	if not _ground_only:
+		for index: int in count:
+			if _exact_subject(model, index):
+				subjects[index] = true
+		if subjects.is_empty():
+			return
+	var already: Dictionary = {}
+	for pair: Variant in collided:
+		already[Vector2i(mini(int(pair[0]), int(pair[1])), maxi(int(pair[0]), int(pair[1])))] = true
+	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	for found: Dictionary in exact.collisions(subjects):
+		var a: int = found["a"]
+		var b: int = found["b"]
+		if _ground_only and (a >= count or b >= count):
+			continue
+		if overlapping.has(a) or overlapping.has(b):
+			continue
+		# Gears in mesh: their teeth interleave, which a convex piece a tooth
+		# cannot say unless each is turned to the other's gap, and real sets
+		# are drawn either way. Held by their axles, as the lattice has them.
+		if (meshing.get(a, {}) as Dictionary).has(b) or (meshing.get(b, {}) as Dictionary).has(a):
+			continue
+		# The prism pattern's own turned walls, which meet each other and their
+		# square summit inside each other by their real shapes: judged by the
+		# lattice, as the turned studs under them are (_note_turned_studs),
+		# until the pattern lays its corners another way.
+		if _in_a_prism(model, a) or _in_a_prism(model, b):
+			continue
+		# A wheel drawn spun on its axle: in plastic the axle turns with it.
+		if exact.turned_on_axle(a, b):
+			continue
+		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
+		if not mine:
+			if a < count and b < count and not already.has(Vector2i(a, b)):
+				collided.append([a, b])
+			continue
+		var dressed: int = -1
+		for i: int in [a, b]:
+			if i < count and model.placements[i].dressing:
+				dressed = i
+		if dressed >= 0:
+			gave_way[dressed] = true
+			continue
+		_note(issues, "collision", exact.said(found, namer))
+
+
+## The parts of this design no connection holds, by BrickNet's rules where
+## both parts have an exact shape and by this check's own where one has not:
+## a piece of them is held when it reaches the ground, a brick standing before
+## this design (unless only the ground holds: _ground_only), or a part with no
+## exact shape that this check holds. One fault a piece.
+func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
+		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
+		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {}) -> void:
+	if not exact.any():
+		return
+	var count: int = model.placements.size()
+	var subjects: Array[int] = []
+	for index: int in cells_of:
+		var section: String = model.placements[index].section
+		if _exact_subject(model, index) and exact.items[index] != null \
+				and not floating.has(index) and not crowded.has(section) \
+				and not stuck.has(section) and not section.begins_with("prism "):
+			subjects.append(index)
+	if subjects.is_empty():
+		return
+	# The lattice's joins stand where the exact shapes cannot say: a part with
+	# none, and the prism pattern's turned walls, whose studs the lattice
+	# judges (_note_turned_studs) as it judges their meeting (_exact_collisions).
+	var extra: Array = []
+	for pair: Array in clutched_pairs:
+		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null \
+				or _in_a_prism(model, int(pair[0])) or _in_a_prism(model, int(pair[1])):
+			extra.append([int(pair[0]), int(pair[1])])
+	for index: Variant in holds:
+		for other: Variant in holds[index]:
+			if int(index) < count and int(other) < count \
+					and (exact.items[int(index)] == null or exact.items[int(other)] == null
+						or _in_a_prism(model, int(index)) or _in_a_prism(model, int(other))):
+				extra.append([int(index), int(other)])
+	# Only what is near this design's parts: anything else that stands is held
+	# already, so a piece of them is held exactly when it reaches the ground or
+	# something beside them that stands. An edit to a 9,000 part model asks
+	# about its own few parts and their neighbours, not every stud in it.
+	var near: Dictionary = {}
+	for index: int in subjects:
+		near[index] = true
+	if not _ground_only and subjects.size() < exact.items.size():
+		for pair: Vector2i in exact.pairs_near(near.duplicate(), -(Exact.POS_THR + 1.0)):
+			near[pair.x] = true
+			near[pair.y] = true
+	else:
+		for i: int in exact.items.size():
+			near[i] = true
+	# And what the lattice joins them to that has no shape to be near by: a
+	# brick on a plate a file draws from parts it carries (joints_probe).
+	var grew: bool = true
+	while grew:
+		grew = false
+		for pair: Array in extra:
+			if near.has(pair[0]) != near.has(pair[1]):
+				near[pair[0]] = true
+				near[pair[1]] = true
+				grew = true
+	var root: PackedInt32Array = exact.pieces(extra, near)
+	var held: Dictionary = {}
+	for i: int in exact.items.size():
+		if not near.has(i):
+			continue
+		var anchor: bool = exact.on_ground(i)
+		if i >= count:
+			anchor = anchor or not _ground_only
+		elif not _exact_subject(model, i):
+			anchor = anchor or not _ground_only
+		elif exact.items[i] == null or _in_a_prism(model, i):
+			# Held as the lattice has it, which judges these.
+			anchor = anchor or (cells_of.has(i) and not floating.has(i))
+		if anchor:
+			held[root[i]] = true
+	var pieces: Dictionary = {}    ## root -> its subjects
+	for index: int in subjects:
+		if held.has(root[index]):
+			continue
+		var members: Array = pieces.get(root[index], [])
+		members.append(index)
+		pieces[root[index]] = members
+	var namer: Callable = func(item: int) -> String: return _exact_name(model, exact, item)
+	for key: Variant in pieces:
+		# Standing square on what is under it, clear of everything, it stays
+		# where it is when the model stands, as BrickBench's simulation finds
+		# it; that it comes away in the hand the loose advice says.
+		if exact.rests(pieces[key]):
+			continue
+		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
+
+
 ## How many separate pieces the design is in.
 ##
 ## Two bricks are in the same piece when one occupies a cell directly
@@ -11711,9 +12674,9 @@ func _without_dressing(model: Model, gave_way: Dictionary,
 	model.placements = kept
 	var report: Dictionary = _check(model, alone, weigh)
 	var left: int = gave_way.size()
-	var said: String = ("%d dressing tile%s on side studs would have "
+	var said: String = ("%d finishing part%s (a tile on a side stud, a rim's wedge) would "
 		% [left, "" if left == 1 else "s"]
-		+ "overlapped a brick and %s left out; the faces keep the rest."
+		+ "have run into another part and %s left out; the rest keeps its finish."
 		% ("was" if left == 1 else "were"))
 	report["feedback"] = "%s\n%s" % [report["feedback"], said]
 	(report["advice"] as Array).append(said)
@@ -12921,13 +13884,18 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 			lo = Vector2i(mini(lo.x, a.x), mini(lo.y, a.z))
 			hi = Vector2i(maxi(hi.x, b.x), maxi(hi.y, b.z))
 		plans.append([lo, hi])
+	# The plan of all the others, for each: the least and the next least of
+	# every low edge, the most and the next most of every high one, so the
+	# others' are the first unless it is this piece's own. Piece by piece
+	# against every other piece, a real set's thousand pieces were a million
+	# reads.
+	var least: Array = [_two_most(plans, 0, 0, -1), _two_most(plans, 0, 1, -1)]
+	var most: Array = [_two_most(plans, 1, 0, 1), _two_most(plans, 1, 1, 1)]
 	for n: int in pieces.size():
-		var lo := Vector2i(1 << 30, 1 << 30)
-		var hi := -lo
-		for m: int in pieces.size():
-			if m != n:
-				lo = Vector2i(mini(lo.x, (plans[m][0] as Vector2i).x), mini(lo.y, (plans[m][0] as Vector2i).y))
-				hi = Vector2i(maxi(hi.x, (plans[m][1] as Vector2i).x), maxi(hi.y, (plans[m][1] as Vector2i).y))
+		var lo := Vector2i(int(least[0][1] if int(least[0][0]) == n else least[0][2]) * -1,
+			int(least[1][1] if int(least[1][0]) == n else least[1][2]) * -1)
+		var hi := Vector2i(int(most[0][1] if int(most[0][0]) == n else most[0][2]),
+			int(most[1][1] if int(most[1][0]) == n else most[1][2]))
 		var mine_lo: Vector2i = plans[n][0]
 		var mine_hi: Vector2i = plans[n][1]
 		var apart: bool = mine_lo.x > hi.x + NEAR[0] or mine_hi.x < lo.x - NEAR[0] \
@@ -12935,6 +13903,24 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 		if apart:
 			out[n] = true
 	return out
+
+
+## Of every plan's corner [param corner] (0 low, 1 high), axis [param axis]
+## of it, times [param facing]: [which plan has the most, the most of the
+## others (the next most), the most]. -(1 << 30) for an axis no other has.
+static func _two_most(plans: Array, corner: int, axis: int, facing: int) -> Array:
+	var best: int = -(1 << 30)
+	var at: int = -1
+	var next: int = -(1 << 30)
+	for n: int in plans.size():
+		var value: int = (plans[n][corner] as Vector2i)[axis] * facing
+		if at < 0 or value > best:
+			next = best if at >= 0 else next
+			best = value
+			at = n
+		elif value > next:
+			next = value
+	return [at, next, best]
 
 
 ## Which pieces standing apart from the model (touching nothing of it) are
@@ -12952,8 +13938,11 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 ## holds none of the model's own, or a whole figure. Anything else is
 ## loose, and fails. The model is the largest piece with a part of the
 ## design's in it; a piece of the person's own is theirs to leave.
+##
+## [param touching_of] and [param outside_of] hand over [method _touching]'s
+## and [method _outside]'s answers, worked out only when they are wanted.
 func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
-		touching: Dictionary = {}, outside: Dictionary = {},
+		touching_of: Callable = Callable(), outside_of: Callable = Callable(),
 		box_of: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"loose": [], "unjoined": [], "items": PackedStringArray(),
 		"against": 0, "named": 0, "figures": 0, "uncoupled": []}
@@ -12973,6 +13962,8 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		# All the person's own: said, as it always was, and theirs to leave.
 		out["against"] = pieces.size() - 1
 		return out
+	var touching: Dictionary = touching_of.call() if touching_of.is_valid() else {}
+	var outside: Dictionary = outside_of.call() if outside_of.is_valid() else {}
 	var main_names: Dictionary = {}
 	for index: int in pieces[main]:
 		main_names[_assembly_of(model, model.placements[index])] = true
@@ -13797,7 +14788,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice, issues: Dictionary,
 		crowded: Dictionary = {}, stuck: Dictionary = {},
 		boxes_of: Dictionary = {}, joined: Dictionary = {},
-		rounds: Dictionary = {}) -> void:
+		rounds: Dictionary = {}, exact: ExactCheck = null) -> void:
 	# A section that leans has to lean on something that turns.
 	#
 	# Touching was enough, so a horn tip tipped eight degrees out sat on
@@ -13808,6 +14799,22 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 	# (Joints). Turning about the upright is not leaning, and a quarter
 	# turn is studs on their side. Judged from the design, not from what
 	# was placed: a leaning brick that also overlapped was never placed.
+	# Each section's placements, and whether a design or an edit put any of
+	# them down or moved it, read once. Asked section by section of every
+	# placement, a real set read into a thousand sections was millions of
+	# reads before anything was checked.
+	var members: Dictionary = {}   ## section -> its placements' indices, in order
+	var laid: Dictionary = {}      ## section -> true, when one is new or moved
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		if not members.has(placement.section):
+			members[placement.section] = []
+		(members[placement.section] as Array).append(index)
+		if placement.id == 0 or placement.moved:
+			laid[placement.section] = true
+	var adopted: Dictionary = {}
+	for one: Section in _adoptions.values():
+		adopted[one.name] = true
 	for group: String in model.sections:
 		var section: Section = model.sections[group]
 		# Square to what it is built on, or turned only about the upright,
@@ -13815,17 +14822,19 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		# one leans with it and is held to it by studs, square.
 		if not section.leans():
 			continue
-		if not model.placements.any(func(p: Placement) -> bool: return p.section == group):
+		if not members.has(group):
 			continue
 		# A section found for a file's tipped parts ([method _adopted]) that
 		# nothing has added to or moved is what was standing, as an overlap
 		# among standing bricks is: not this design's to answer for. Poe's
 		# X-wing (75102) read so has two whose joint the checker does not see.
-		if _adoptions.values().any(func(one: Section) -> bool: return one.name == group) \
-				and not model.placements.any(func(p: Placement) -> bool:
-					return p.section == group and (p.id == 0 or p.moved)):
+		if adopted.has(group) and not laid.has(group):
 			continue
-		if _turns_on_a_joint(model, group, joined, rounds):
+		if _turns_on_a_joint(model, group, joined, rounds, members[group]):
+			continue
+		# Or on one BrickNet's labels join, where both parts have an exact
+		# shape: an arm put on its shoulder by its connectors, standing since.
+		if exact != null and _leans_on_exact_joint(model, group, exact):
 			continue
 		stuck[group] = true
 		_note(issues, "leaning on nothing",
@@ -13843,8 +14852,17 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				+ "lays both halves and turns it about their line for "
 				+ "you (%s); show_technique(\"leaning on a hinge\") is one " % (
 					Hinges.offered(library) if library != null else Hinges.listing())
-				+ "written out. (3830/3831 and 2429/2430 swivel flat, "
-				+ "like a door; they do not lean.)")
+				+ "written out. Or put the leaning part on the joint by its "
+				+ "connectors (attach: {\"to\": \"base.hinge[0]\", \"by\": \"hinge[0]\", "
+				+ "\"yaw\": 30}), which seats it at that angle exactly. (3830/3831 and "
+				+ "2429/2430 swivel flat, like a door; they do not lean.)")
+	## Section -> its placements standing, in the order they were placed.
+	var standing: Dictionary = {}
+	for index: int in boxes_of:
+		var group: String = model.placements[index].section
+		if not standing.has(group):
+			standing[group] = []
+		(standing[group] as Array).append(index)
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
@@ -13864,9 +14882,13 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		# nine thousand six hundred cells for a 2x4, a quarter of a
 		# million questions for one brick — which was affordable only
 		# while a cell was a dictionary key.
-		for index: int in boxes_of:
-			if model.placements[index].section != group:
-				continue
+		# Its own bricks are not asked about: touching them is not touching
+		# anything outside it, and a turned brick against forty of its own
+		# was the cost of the question.
+		var own: Dictionary = {}
+		for index: int in standing.get(group, []):
+			own[index + 1] = true
+		for index: int in standing.get(group, []):
 			var packed: PackedInt32Array = boxes_of[index]
 			var grown := PackedInt32Array()
 			grown.resize(packed.size())
@@ -13878,7 +14900,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				grown[n + 3] = packed[n + 3] + 1
 				grown[n + 4] = packed[n + 4] + 1
 				grown[n + 5] = packed[n + 5] + 1
-			for who: int in lattice.blockers_boxes(grown):
+			for who: int in lattice.blockers_boxes(grown, 0, own):
 				if who < 0 or (who > 0
 						and model.placements[who - 1].section != group):
 					touches = true
@@ -13897,11 +14919,75 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 					+ "needs nothing underneath it.")
 
 
+## Each part of [param model] attached by its connectors (Placement.attached_to)
+## joined to the part it is on, into [param joined] both ways, as a pin is:
+## where both have exact shapes, only while BrickNet's labels still join them
+## (the part it is on moved since, it is not); where either has none, as
+## worked out, since the lattice cannot say otherwise.
+func _attach_joins(model: Model, exact: ExactCheck, placed_at: Dictionary,
+		joined: Dictionary) -> void:
+	if not model.placements.any(func(p: Placement) -> bool: return p.attached_to != null):
+		return
+	var index_of: Dictionary = {}
+	for i: int in model.placements.size():
+		index_of[model.placements[i]] = i
+	for i: int in model.placements.size():
+		var placement: Placement = model.placements[i]
+		if placement.attached_to == null or not placed_at.has(i):
+			continue
+		var j: int = int(index_of.get(placement.attached_to, -1))
+		if j < 0 or not placed_at.has(j):
+			continue
+		var shaped: bool = i < exact.items.size() and j < exact.items.size() \
+			and exact.items[i] != null and exact.items[j] != null
+		if shaped and Exact.connections(exact.items,
+				PackedInt32Array([mini(i, j), maxi(i, j)])).is_empty():
+			continue
+		for pair: Array in [[i, j], [j, i]]:
+			if not joined.has(pair[0]):
+				joined[pair[0]] = {}
+			(joined[pair[0]] as Dictionary)[pair[1]] = true
+
+
+## Whether a part of [param group] is joined to one outside it by a joint that
+## turns, by BrickNet's labels on their exact shapes: a hinge, a ball, a fixed
+## joint, a pin, an axle or a bar in a clip. Not a stud: a part at a slant on
+## studs grips none of them, whatever 3 LDU of slack BrickNet allows.
+static func _leans_on_exact_joint(model: Model, group: String, exact: ExactCheck) -> bool:
+	var count: int = mini(model.placements.size(), exact.items.size())
+	var mine: Dictionary = {}
+	for i: int in count:
+		if model.placements[i].section == group and exact.items[i] != null:
+			mine[i] = true
+	if mine.is_empty():
+		return false
+	var these: Dictionary = mine.duplicate()
+	for i: Variant in mine:
+		for j: int in Exact._near(exact.items, int(i), PackedInt32Array(), Exact.POS_THR, true):
+			these[j] = true
+	var only := PackedInt32Array()
+	for i: Variant in these:
+		only.append(int(i))
+	only.sort()
+	for edge: Array in Exact.connections(exact.items, only):
+		if mine.has(int(edge[0])) == mine.has(int(edge[2])):
+			continue
+		var kind: int = (exact.items[int(edge[0])] as Exact.Item).shape.kind[int(edge[1])]
+		if kind != Exact.STUD and kind != Exact.HOLE:
+			return true
+	return false
+
+
 ## Whether any brick in [param group] is pinned, clipped, hinged or
 ## balled to a brick outside it.
+## [param members] are the group's placements' indices, when the caller has
+## them.
 static func _turns_on_a_joint(model: Model, group: String, joined: Dictionary,
-		rounds: Dictionary) -> bool:
-	for index: int in model.placements.size():
+		rounds: Dictionary, members: Array = []) -> bool:
+	var indices: Array = members
+	if indices.is_empty():
+		indices = range(model.placements.size())
+	for index: int in indices:
 		if model.placements[index].section != group:
 			continue
 		for mates: Dictionary in [joined.get(index, {}), rounds.get(index, {})]:
@@ -13916,7 +15002,8 @@ func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary, crowded: Dictionary = {},
 	joined: Dictionary = {}, loose: Dictionary = {},
-	boxes_of: Dictionary = {}, floating: Dictionary = {}
+	boxes_of: Dictionary = {}, floating: Dictionary = {},
+	clutched_pairs: Array = []
 ) -> void:
 	# Who holds whom. A part is held if a chain of these reaches the
 	# ground: resting on a part, a stud reaching into it or its own stud
@@ -13940,6 +15027,7 @@ func _check_support(
 		_gives(gives, into, owner)
 		clutched[owner] = true
 		clutched[into] = true
+		clutched_pairs.append([owner, into])
 		if not studs_in.has(into):
 			studs_in[into] = []
 		(studs_in[into] as Array).append(pair.slice(2))
@@ -14085,11 +15173,12 @@ const TURNED_GRIP := 0.1
 ## one's studs is the same plastic, but the prism pattern's cluster ties its
 ## piers' walls, each at its own angle, with a summit of square plates laid
 ## across their tops, and every Orthanc built with it would be refused. The
-## same pattern stands its turned walls on square studs too — a storey on
-## the ledge below, a horn on the summit, a tower on its plinth — and 23 of
-## patterns_probe's towers were refused for it: its own sections ("prism
-## ...") are let through until their footings are built another way (on
-## tiles or jumpers), which is that pattern's to do.
+## same pattern stood its turned walls on square studs too — a storey on the
+## ledge below, a tower on its plinth — and 23 of patterns_probe's towers were
+## refused for it, so its own sections were let through, and a tower saved and
+## opened again, its sections read anew, was refused for 128. It lays tiles
+## under them now (_smooth_under_turned, and the plinth's studs), and its
+## sections are judged as any other.
 func _note_turned_studs(model: Model, studs: Array, issues: Dictionary) -> void:
 	var frames: Dictionary = {}     ## section -> its basis in the world
 	var off: Dictionary = {}        ## Vector2i(owner, into) -> [count, degrees]
@@ -14101,7 +15190,7 @@ func _note_turned_studs(model: Model, studs: Array, issues: Dictionary) -> void:
 		var below: Placement = model.placements[owner]
 		var above: Placement = model.placements[into]
 		if below.section == above.section or not _underside_known(above.part) \
-				or above.section.begins_with("prism ") or _swivels(above.part):
+				or _swivels(above.part):
 			continue
 		var turned: Basis = _frame_of(model, above.section, frames)
 		var between: Basis = turned.inverse() * _frame_of(model, below.section, frames)
@@ -14738,7 +15827,7 @@ func _square_transform(placement: Placement,
 	var corner: Vector3i = _corner_cell(part, placement.part, basis)
 	var want := BrickLattice.to_cell(Vector3(
 		placement.x * STUD, placement.y * PLATE, placement.z * STUD))
-	return Transform3D(basis, BrickLattice.to_ldu(want - corner))
+	return Transform3D(basis, BrickLattice.to_ldu(want - corner) + placement.nudge)
 
 
 # -- applying ------------------------------------------------------------
@@ -14822,6 +15911,39 @@ func _ready_to_check(model: Model) -> void:
 	await _ensure_parts(model)
 	if _studs_where_stood_on(model) > 0:
 		await _ensure_parts(model)
+	await _ensure_exact(model)
+	# A part said by its connectors whose geometry had not arrived when it was
+	# read (the web build fetches it): put where they say, now that it has.
+	_attach_parts(model)
+
+
+## Every exact shape a check of [param model] reads, to hand: on the desktop
+## read from disk as it is asked for; in the browser fetched from beside the
+## geometry, and waited for as the geometry is (a part BrickNet does not have
+## is answered at once, with none).
+func _ensure_exact(model: Model) -> void:
+	if library == null:
+		return
+	# Asked once a part, not once a placement: in the browser a shape not yet
+	# fetched is looked for in the pack each time it is asked for, and the
+	# Falcon's 4,242 placements of 20 parts held the page for 8 seconds.
+	var parts: Dictionary = {}
+	for placement: Placement in model.placements:
+		parts[placement.part] = true
+	var wanted: Dictionary = {}
+	for part_id: String in parts:
+		if not Exact.known(library, part_id):
+			Exact.shape_for(library, part_id)
+			if not Exact.known(library, part_id):
+				wanted[part_id] = true
+	if wanted.is_empty():
+		return
+	var deadline: int = Time.get_ticks_msec() + FETCH_WAIT_MS
+	while not wanted.is_empty() and Time.get_ticks_msec() < deadline:
+		await Engine.get_main_loop().process_frame
+		for part_id: String in wanted.keys():
+			if Exact.known(library, part_id) or not library.is_exact_on_its_way(part_id):
+				wanted.erase(part_id)
 
 
 ## A part standing on a tile grips nothing: a tile has no stud for it. The
@@ -14857,7 +15979,7 @@ func _studs_where_stood_on(model: Model) -> int:
 	standing.keeps_columns = false
 	for n: int in model.placements.size():
 		var placement: Placement = model.placements[n]
-		if (placement.id != 0 and not placement.moved) \
+		if (placement.id != 0 and not placement.moved) or not placement.attach.is_empty() \
 				or placement.face != "up" or not placement.section.is_empty() \
 				or not is_equal_approx(placement.y, roundf(placement.y)) \
 				or not tops.has(roundi(placement.y)):
@@ -14870,6 +15992,7 @@ func _studs_where_stood_on(model: Model) -> int:
 	# About a selection, a tile of the model round it is not this change's.
 	var scoped: bool = _keeps_to_focus()
 	var changed: int = 0
+	var over: BrickLattice = null    ## every part whose foot is at a tile's top
 	for n: int in tiles:
 		var tile: Placement = model.placements[n]
 		var mesh: Lbm.PartMesh = library.mesh_for(tile.part)
@@ -14887,6 +16010,15 @@ func _studs_where_stood_on(model: Model) -> int:
 				studs.append(Vector2i(sx, sz))
 		if standing.standing_on(studs, box[4], n + 1).is_empty():
 			continue
+		# Nor where the plate's studs would run into another part over it that
+		# takes none there: one off the grid, on its side, or solid under. A
+		# rooms floor tiled under an armchair's arms and a dresser's door rail
+		# plates came back as plates whose studs stood 4 LDU into them, by the
+		# parts' real shapes, because a turntable beside them took studs.
+		if over == null:
+			over = _feet_at(model, tops)
+		if _studs_would_meet(model, over, n, str(TILE_PLATES[tile.part]), box):
+			continue
 		# A part changed is another brick to the edit (Assistant._apply_edit):
 		# the tile comes off and the plate goes on, in this one change.
 		tile.part = str(TILE_PLATES[tile.part])
@@ -14895,6 +16027,57 @@ func _studs_where_stood_on(model: Model) -> int:
 		progress.emit("laid %d tile%s again as plates, under what stands on %s"
 			% [changed, "" if changed == 1 else "s", "it" if changed == 1 else "them"])
 	return changed
+
+
+## Every part of [param model] whose foot is at one of [param tops] (in
+## plates), whatever its face or section, in a lattice of its own.
+func _feet_at(model: Model, tops: Dictionary) -> BrickLattice:
+	var out := BrickLattice.new()
+	out.keeps_columns = false
+	var per: int = roundi(PLATE / BrickLattice.CELL)
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var boxes: PackedInt32Array = builder.boxes_for(mesh,
+			_transform(placement, mesh, model.section_for(placement)))
+		if boxes.is_empty():
+			continue
+		var low: int = BrickLattice._bound_of(boxes)[1]
+		if posmod(low, per) == 0 and tops.has(low / per):
+			out.occupy_boxes(n + 1, boxes)
+	return out
+
+
+## Whether [param plate], laid where tile [param n] of [param model] is (its
+## lattice bound [param box]), would stand a stud in a part over it by the
+## parts' real shapes (Exact): a part there that takes no stud.
+func _studs_would_meet(model: Model, over: BrickLattice, n: int, plate: String,
+		box: PackedInt32Array) -> bool:
+	var tile: Placement = model.placements[n]
+	var laid: Placement = Placement.from_dict({"part": plate, "x": tile.x, "y": tile.y,
+		"z": tile.z, "rot": tile.rot})
+	var mesh: Lbm.PartMesh = library.mesh_for(plate)
+	var shape: Exact.Shape = Exact.shape_for(library, plate)
+	if mesh == null or shape == null or not shape.has_pieces():
+		return false
+	var mine := Exact.Item.new(shape, _transform(laid, mesh))
+	var reach: int = ceili(6.0 / BrickLattice.CELL)    ## a stud and a hair
+	for key: int in over.blockers_boxes(PackedInt32Array([box[0], box[4], box[2], box[3],
+			box[4] + reach, box[5]]), n + 1):
+		if key <= 0 or key - 1 == n:
+			continue
+		var other: Placement = model.placements[key - 1]
+		var theirs: Exact.Shape = Exact.shape_for(library, other.part)
+		var other_mesh: Lbm.PartMesh = library.mesh_for(other.part)
+		if theirs == null or other_mesh == null or not theirs.has_pieces():
+			continue
+		var item := Exact.Item.new(theirs, other.exact_at(_transform(other, other_mesh,
+			model.section_for(other))))
+		if not Exact.clash(mine, item).is_empty():
+			return true
+	return false
 
 
 ## Studs up, square to the grid on whole studs and plates, in no section.
@@ -15195,6 +16378,8 @@ func forget_built() -> void:
 	_section_of.clear()
 	_local_of.clear()
 	_sections.clear()
+	_given_names.clear()
+	_nudged.clear()
 	# A selection names bricks by number too.
 	unfocus()
 
@@ -15205,6 +16390,8 @@ func clear_built() -> void:
 		world.remove_brick(brick_id)
 		_section_of.erase(brick_id)
 		_local_of.erase(brick_id)
+		_given_names.erase(brick_id)
+		_nudged.erase(brick_id)
 	_placed_ids = PackedInt64Array()
 	_sketched_ids = PackedInt64Array()
 
@@ -15700,6 +16887,11 @@ or "tilting" (read_guide "angle"); a ball in a socket (22890 in 14418) for \
 a shoulder or a hip
     held     a bar is a handle: a sword, a staff, a mop or an axe's \
 shaft held in a clip (61252, 60897)
+  Put each joint by its connectors, not its corner: a part's attach \
+({"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 30}) seats it exactly at \
+any angle; show_technique "posed minifigure", "limb on a clip", "ball \
+shoulder", "head on a neck", "tail on a bar" and "hinged wing" are each one \
+written out.
   find_techniques with the part's own words ("head", "arm", "wing", "leg", \
 "bird", "animal") finds the pieces real sets built; show_technique has "eye \
 with a highlight", "beak or snout", "ears or tufts", "talons" and "leaning \
@@ -16576,7 +17768,7 @@ and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture and \
 the brief. A hull, a car body, a fuselage or a building is a shape pattern \
 (read_guide "shapes"); a figure, a creature, a character or anything \
-small is sub-assemblies of shaped parts on joints (read_guide "figures"). \
+small is sub-assemblies of shaped parts on joints (attach; read_guide "figures"). \
 submit_design that first, with its assemblies and features — what the \
 subject is known by (an owl's eyes; a car's wheel arches, grille), each \
 with where it goes (x, y, z, facing).
@@ -16711,8 +17903,18 @@ func _show_technique(wanted: String) -> String:
 	for raw: Variant in technique.get("repeat_section", []):
 		var order: Dictionary = raw
 		rows.append("  repeat_section %s" % JSON.stringify(order))
+	var attached: bool = false
 	for raw: Variant in technique["bricks"]:
 		var brick: Dictionary = raw
+		# One put on another by its connectors is said as it is written, to
+		# copy: it has no corner of its own.
+		if brick.has("attach"):
+			attached = true
+			rows.append("  " + JSON.stringify(brick))
+			continue
+		if brick.has("name"):
+			rows.append("  " + JSON.stringify(brick))
+			continue
 		var face: String = str(brick.get("face", "up"))
 		var inside: String = str(brick.get("section", ""))
 		# A part put by its line: x, y and z are where that joint's middle
@@ -16734,6 +17936,12 @@ func _show_technique(wanted: String) -> String:
 	if not (technique.get("sections", []) as Array).is_empty():
 		move += (" of the section and of the bricks outside it; the bricks "
 			+ "in the section are in its own coordinates and move with it")
+	if attached:
+		move += (" of the parts that have them; each part with attach goes on the one it "
+			+ "names, by those connectors, wherever that is, so it follows. Copy them as "
+			+ "written, in order, each name once in a design; change a yaw or an align "
+			+ "to pose it, or attach to your own part (a brick standing is \"#41.stud[3]\"; "
+			+ "attachment_points lists every connector)")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
 		% [str(technique["name"]).capitalize(), technique["when"],
 			technique["why"], "\n".join(rows)]
@@ -16901,7 +18109,13 @@ func _place_technique(args: Dictionary) -> Variant:
 	await RealSnippets.ensure(self)
 	var entry: Dictionary = RealSnippets.entry(id)
 	if entry.is_empty():
-		return ("No piece has the id \"%s\". Use one find_techniques gave." % id
+		# Or one of show_technique's worked constructions, by its name: a posed
+		# minifigure laid in one call, its joints put by their connectors.
+		var worked: Dictionary = Techniques.named(id) if not id.strip_edges().is_empty() else {}
+		if not worked.is_empty():
+			return await _place_worked(worked, args)
+		return ("No piece has the id \"%s\", and no worked technique is called that. Use "
+			% id + "an id find_techniques gave or a name show_technique lists."
 			if RealSnippets.available()
 			else "This build has no index of real sets' sub-assemblies.")
 	if not bool(entry.get("square", true)):
@@ -16928,6 +18142,123 @@ func _place_technique(args: Dictionary) -> Variant:
 	var head: String = ("%s \"%s\", %s: %d parts, as laid:\n%s\n"
 		% [id, entry["name"], RealSnippets.credit(entry), bricks.size(),
 			"\n".join(rows)])
+	if said is Array:
+		return [{"type": "text", "text": head}] + (said as Array)
+	return "%s\n%s" % [head, str(said)]
+
+
+## One of show_technique's worked constructions laid into the model by edit_model:
+## turned a number of quarter turns about the upright, its parts with a corner
+## moved so their lowest is at x, y, z, and each part said by its connectors
+## put on the one it names wherever that went, its align and orient turned
+## with it. Its names are made the model's own ("torso 2" where a torso
+## stands), so a second figure attaches to its own parts. One built in
+## sections is copied from show_technique instead.
+func _place_worked(technique: Dictionary, args: Dictionary) -> Variant:
+	if not (technique.get("sections", []) as Array).is_empty() \
+			or not (technique.get("repeat_section", []) as Array).is_empty():
+		return ("\"%s\" is built in sections, which place_technique does not lay: copy it "
+			% technique["name"] + "from show_technique, adding to its sections' and bricks' "
+			+ "x, y and z.")
+	var turns: int = posmod(int(args.get("turn", 0)), 4)
+	var turn := Basis(Vector3.UP, turns * PI * 0.5)
+	var at := Vector3(float(args.get("x", 0.0)), float(args.get("y", 0.0)),
+		float(args.get("z", 0.0)))
+	var recolor: Dictionary = {}
+	var asked: Variant = args.get("recolor", {})
+	if asked is Dictionary:
+		for key: Variant in asked:
+			recolor[int(str(key))] = int((asked as Dictionary)[key])
+	var taken: Dictionary = {}
+	for value: Variant in _given_names.values():
+		taken[str(value).to_lower()] = true
+	var renamed: Dictionary = {}
+	for raw: Variant in technique["bricks"]:
+		var name: String = str((raw as Dictionary).get("name", ""))
+		if name.is_empty():
+			continue
+		var free: String = name
+		var n: int = 1
+		while taken.has(free.to_lower()):
+			n += 1
+			free = "%s %d" % [name, n]
+		taken[free.to_lower()] = true
+		renamed[name.to_lower()] = free
+	var wanted := Model.new()
+	for raw: Variant in technique["bricks"]:
+		var as_placed := Placement.new()
+		as_placed.part = str((raw as Dictionary)["part"])
+		wanted.placements.append(as_placed)
+	await _ensure_parts(wanted)
+	# The parts with corners, turned about the origin, then moved together.
+	var low := Vector3(INF, INF, INF)
+	var turned: Dictionary = {}       ## index -> [transform, corner]
+	for n: int in (technique["bricks"] as Array).size():
+		var brick: Dictionary = technique["bricks"][n]
+		if brick.has("attach"):
+			continue
+		var placement := Placement.from_dict(brick)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			return "Part %s of \"%s\" could not be loaded to place." % [placement.part,
+				technique["name"]]
+		var placed_at: Transform3D = Transform3D(turn, Vector3.ZERO) * _transform(placement, mesh)
+		var corners: Array = _corners_in_studs(BrickWorld.Brick.new(0, placement.part,
+			placement.color, placed_at))
+		if corners.is_empty():
+			return "Part %s of \"%s\" could not be placed." % [placement.part, technique["name"]]
+		low = low.min(corners[0])
+		turned[n] = [placed_at, corners[0]]
+	if low == Vector3(INF, INF, INF):
+		low = Vector3.ZERO
+	var shift := Vector3(at.x - roundf(low.x), at.y - floorf(low.y + 0.01), at.z - roundf(low.z))
+	var split := RegEx.create_from_string(
+		"^(.+?)(\\s*\\.\\s*[A-Za-z]+\\s*(?:\\[\\s*-?\\d+\\s*\\]|-?\\d+)?)$")
+	var bricks: Array = []
+	for n: int in (technique["bricks"] as Array).size():
+		var brick: Dictionary = (technique["bricks"][n] as Dictionary).duplicate(true)
+		brick["color"] = int(recolor.get(int(brick.get("color", DEFAULT_COLOUR)),
+			brick.get("color", DEFAULT_COLOUR)))
+		if brick.has("name"):
+			brick["name"] = renamed.get(str(brick["name"]).to_lower(), brick["name"])
+		if brick.has("attach"):
+			var joint: Dictionary = brick["attach"]
+			var found: RegExMatch = split.search(str(joint.get("to", "")))
+			if found != null and renamed.has(found.get_string(1).strip_edges().to_lower()):
+				joint["to"] = str(renamed[found.get_string(1).strip_edges().to_lower()]) \
+					+ found.get_string(2)
+			if joint.get("align") is Array and (joint["align"] as Array).size() == 2:
+				var v: Variant = Attach.direction(joint["align"][1])
+				if v != null:
+					var way: Vector3 = turn * (v as Vector3)
+					joint["align"] = [joint["align"][0], [snappedf(way.x, 0.0001),
+						snappedf(way.y, 0.0001), snappedf(way.z, 0.0001)]]
+			if joint.get("orient") is Dictionary:
+				(joint["orient"] as Dictionary)["yaw"] = float((joint["orient"] as Dictionary).get(
+					"yaw", 0.0)) + 90.0 * turns
+			bricks.append(brick)
+			continue
+		var row: Array = turned[n]
+		var basis: Basis = (row[0] as Transform3D).basis
+		var face: String = BrickLattice.face_of(basis)
+		var corner: Vector3 = (row[1] as Vector3) + shift
+		brick["x"] = snappedf(corner.x, 0.01)
+		brick["y"] = snappedf(corner.y, 0.01)
+		brick["z"] = snappedf(corner.z, 0.01)
+		brick["rot"] = BrickLattice.turns_about(basis, face)
+		brick.erase("face")
+		if face != "up":
+			brick["face"] = face
+		bricks.append(brick)
+	_laying_whole = true
+	var said: Variant = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
+	_laying_whole = false
+	var rows := PackedStringArray()
+	for raw: Variant in bricks:
+		rows.append(JSON.stringify(raw))
+	var head: String = ("\"%s\": %d parts, as laid; each with attach goes where it names "
+		% [technique["name"], bricks.size()] + "and follows it, and its names are the model's "
+		+ "now, for a later edit to attach to:\n%s\n" % "\n".join(rows))
 	if said is Array:
 		return [{"type": "text", "text": head}] + (said as Array)
 	return "%s\n%s" % [head, str(said)]
@@ -17331,6 +18662,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_reviewed = {}
 		_outside_reviewing = {}
 		_detail_added = []
+		_exact_save_refusals = 0
 		_brief = "%s. %s" % [design.name, design.description]
 		# Submitted again with the same features keeps what was done for them.
 		if design.features != _outside_features:
@@ -17445,10 +18777,18 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
+		# Every part this design placed is judged, not only what an edit adds:
+		# a design is handed over from here, and BrickBench refuses a build for
+		# one collision or one loose part (ExactCheck).
+		_strict_mine = true
 		var report: Dictionary = await _checked(_model_from_world())
+		_strict_mine = false
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
 			report["summary"]])
+		var faults: String = _exact_faults_said(report)
+		if not faults.is_empty():
+			said.append(faults)
 		var measured: Array = report.get("advice", [])
 		if not measured.is_empty():
 			said.append("Measured against real sets:\n"
@@ -17497,6 +18837,26 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		JSON.stringify(one.get("where", {}))]
 
 
+## What the exact check found in a whole design, said as faults to fix before
+## it is handed over, or "" when it found nothing.
+static func _exact_faults_said(report: Dictionary) -> String:
+	var found: Dictionary = report.get("exact", {})
+	var lines := PackedStringArray()
+	for kind: String in ["collision", "not held"]:
+		var said: Array = found.get(kind, [])
+		if said.is_empty():
+			continue
+		lines.append("%s (%d):" % [kind, said.size()])
+		for n: int in mini(WORTH_SAYING, said.size()):
+			lines.append("  - " + str(said[n]))
+		if said.size() > WORTH_SAYING:
+			lines.append("  - ... and %d more like it" % (said.size() - WORTH_SAYING))
+	if lines.is_empty():
+		return ""
+	return ("Fix these first, with edit_model: a build with one of them is refused "
+		+ "by BrickBench's check, and in the hand it jams or falls apart.\n" + "\n".join(lines))
+
+
 ## The next assembly's close review, for a session that is saving with some
 ## not yet looked at closely; "" when every one has been. The sixteenth
 ## Orthanc's last act was to save, with two of its three assemblies never
@@ -17536,7 +18896,7 @@ func save_gate() -> Variant:
 		return ""
 	var left: Array[String] = _features_left()
 	if left.is_empty():
-		return ""
+		return await _exact_save_gate()
 	progress.emit("not saved: %d features not settled" % left.size())
 	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
 		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
@@ -17544,6 +18904,31 @@ func save_gate() -> Variant:
 		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
 		+ "it with a reason, or says you built it. Then save again. The %s:" % left[0],
 		await _review_feature(left[0]))
+
+
+## Times saving has been held back for what the exact check finds; after
+## MOST_EXACT_REFUSALS it saves and says so, rather than hold a session that
+## cannot fix a part for ever.
+var _exact_save_refusals: int = 0
+const MOST_EXACT_REFUSALS := 2
+
+
+## Saving a design built from outside waits, twice at most, until no part of
+## it collides by its real shape or rests with nothing holding it (ExactCheck):
+## the design is handed over when it is saved, and BrickBench refuses a build
+## for one of either. "" lets it save.
+func _exact_save_gate() -> String:
+	if _exact_save_refusals >= MOST_EXACT_REFUSALS or world == null or world.brick_count() == 0:
+		return ""
+	_strict_mine = true
+	var report: Dictionary = await _checked(_model_from_world())
+	_strict_mine = false
+	var faults: String = _exact_faults_said(report)
+	if faults.is_empty():
+		return ""
+	_exact_save_refusals += 1
+	progress.emit("not saved: parts collide or hang loose")
+	return "Not saved yet. %s\nThen save again." % faults
 
 
 ## [param said] and then [param then], or [param then] alone.
@@ -18671,8 +20056,52 @@ func _tools() -> Array:
 			"pitch": {"type": "number", "description": "and then lift its +z end, "
 				+ "degrees. A part that leans must turn on a joint."},
 			"roll": {"type": "number", "description": "and then lift its +x side, degrees"},
+			"name": {"type": "string", "description": "a name for this part, which "
+				+ "a later part attaches to it by: \"torso\" in \"torso.hinge[0]\""},
+			"attach": {
+				"type": "object",
+				"description": "put it on another part connector to connector, "
+					+ "instead of x, y, z, face and rot: the app works out the pose and "
+					+ "seats it exactly, at any angle the joint turns to. How figures "
+					+ "and small models are built: legs on hips, an arm on a shoulder, a "
+					+ "hand on the arm, a wing on a hinge, a tail on a bar, a head on a "
+					+ "neck. show_technique \"posed minifigure\" or \"limb on a clip\" is "
+					+ "one written out; attachment_points lists a part's connectors.",
+				"properties": {
+					"to": {"type": "string", "description": "the part it goes on and "
+						+ "that part's connector: \"torso.hinge[0]\" (a part named so "
+						+ "before this one) or \"#41.stud[3]\" (a brick standing, by its "
+						+ "number). Types: stud, open, hole, tube, post, axle, cross, pin, "
+						+ "socket, bar, clip, hinge, ball, fixed; numbered from 0 in each "
+						+ "type, as attachment_points lists them"},
+					"by": {"type": "string", "description": "this part's own connector "
+						+ "that goes there, as \"hinge[0]\"; leave out when only one fits"},
+					"yaw": {"type": "number", "description": "degrees about the joint's "
+						+ "axis: a hinge's or a clip's angle, an arm's swing, a turn on a "
+						+ "stud or an axle"},
+					"align": {"type": "array", "description": "[a direction of this part, "
+						+ "one of the model's]: turn it about the joint until the first "
+						+ "lies along the second, as [\"+z\", \"up\"] or [[0, 0, 1], [0, 1, "
+						+ "0]], then yaw from there. On a ball it points that way whatever "
+						+ "the ball's axis: [\"-x\", [0.94, -0.34, 0]] is out along x and "
+						+ "20 degrees down"},
+					"orient": {"type": "object", "description": "this part's whole turn "
+						+ "in the model, as a section's yaw, pitch and roll: a ball takes "
+						+ "any; a hinge, clip or axle only one that keeps its line; a fixed "
+						+ "joint none.",
+						"properties": {"yaw": {"type": "number"}, "pitch": {"type": "number"},
+							"roll": {"type": "number"}},
+						"additionalProperties": false},
+					"flip": {"type": "boolean", "description": "an axle, bar or hinge "
+						+ "joint the other way round, end for end"},
+					"slide": {"type": "number", "description": "LDU along an axle's, a "
+						+ "bar's or a pin's line"},
+				},
+				"required": ["to"],
+				"additionalProperties": false,
+			},
 		},
-		"required": ["part", "color", "x", "y", "z", "rot"],
+		"required": ["part", "color"],
 		"additionalProperties": false,
 	}
 
@@ -19242,7 +20671,9 @@ func _tools() -> Array:
 		{
 			"name": "place_technique",
 			"description": ("Lay one of find_techniques' pieces into the "
-				+ "model as the LEGO Group built it: every part where the set has it, "
+				+ "model as the LEGO Group built it, or one of show_technique's by its "
+				+ "name (a posed minifigure, a hinged wing: its joints put by their "
+				+ "connectors): every part where the set has it, "
 				+ "turned a number of quarter turns about the upright and "
 				+ "moved so its low corner is at x, y, z, in your colours "
 				+ "if you say which of its colours become which. Parts "
@@ -19254,7 +20685,8 @@ func _tools() -> Array:
 				"type": "object",
 				"properties": {
 					"id": {"type": "string", "description":
-						"the id find_techniques gave"},
+						"the id find_techniques gave, or the name of one of "
+						+ "show_technique's: \"posed minifigure\", \"hinged wing\""},
 					"x": {"type": "number", "description":
 						"studs across, to its low corner"},
 					"y": {"type": "number", "description":
@@ -19413,12 +20845,17 @@ func _tools() -> Array:
 				+ "slope falls, where an arch is open. Ask before using "
 				+ "one of those for the first time — a wedge put on "
 				+ "backwards looks exactly like a wedge until you look "
-				+ "at it."),
+				+ "at it. And every connector by the address attach takes "
+				+ "(\"#41.hinge[0]\", \"hinge[0]\"): its type and number, "
+				+ "where it is and the way it points."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"brick": {"type": "integer", "description":
 						"the number look_at_model printed"},
+					"near": {"type": "array", "items": {"type": "number"},
+						"description": "[x, y, z] in studs and plates: list the "
+							+ "connectors nearest it first, every type"},
 					"part": {"type": "string"},
 					"x": {"type": "number"},
 					"y": {"type": "number"},

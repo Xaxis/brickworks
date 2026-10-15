@@ -23,7 +23,7 @@
 // --floor=none (or grid) first puts the model on that floor, by View >
 // Floor and the menu's keys: with no baseplate the ground catches the
 // model's shadow, and that must cost nothing standing still either.
-import { launch } from "./browser.mjs";
+import { controlsWith, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -185,7 +185,10 @@ if (args.floor) {
   const want = args.floor.toUpperCase();
   let on = false;
   for (let tries = 0; tries < 3 && !on; tries++) {
-    const menu = await page.evaluate(() => (window.brickworksControls || {}).menu_view);
+    // Waited for, before anything is timed: a control is told to the page
+    // only once it has stayed where it is drawn (Main._page_places).
+    const menu = (await controlsWith(page, ["menu_view"])).menu_view;
+    if (!menu) break;
     await page.mouse.click(menu.x, menu.y);
     await page.waitForTimeout(2000 + 2000 * tries);
     await page.keyboard.type("Floor", { delay: 110 });

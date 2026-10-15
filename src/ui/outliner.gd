@@ -123,6 +123,8 @@ func set_open(open: bool) -> void:
 		_arrow.queue_redraw()
 	ShellPrefs.put("outliner_open", open)
 	toggled.emit(open)
+	# Folded, the tree was not kept up to date.
+	_refresh(true)
 
 
 func _process(_delta: float) -> void:
@@ -134,8 +136,19 @@ func _process(_delta: float) -> void:
 
 
 ## The tree drawn again when its shape, names, counts or toggles changed.
+##
+## Folded away, as it starts, or off the screen, only the count on its
+## header is said, and the tree is worked out when it is opened. It was
+## worked out twice a second and at every change to the world whether it
+## was open or not: on Orthanc 30 to 40 ms each time on a desktop and a
+## browser's frame of a few hundred, the Timeline's first step among them.
 func _refresh(now: bool) -> void:
 	if _tree == null or _renaming:
+		return
+	if not _open or not is_visible_in_tree():
+		var total: int = maxi(0, shell.world.brick_count() - assemblies.scenery.size())
+		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
+		_shown = ""
 		return
 	var root: Assemblies.Item = assemblies.tree()
 	var state: String = _state_of(root) + "|" + assemblies.entered

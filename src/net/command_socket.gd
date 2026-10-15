@@ -383,6 +383,11 @@ func answer_rpc(request: Dictionary) -> Variant:
 		if name.is_empty() or assistant == null:
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": "no tool named"}]})
+		# The viewer's own, from the card in Claude (ViewerTools): read at
+		# once, whoever has the app, and none of the app's tools.
+		if ViewerTools.handles(name):
+			return _result(sent_id, await _viewer().answer(name, input,
+				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
 		var called: Array = await _call(name, input)
 		if not bool(called[1]):
@@ -415,18 +420,30 @@ func answer_rpc(request: Dictionary) -> Variant:
 
 
 var _views := ModelViews.new()
+var _viewer_tools: ViewerTools = null
 
 
 ## What the viewer is shown of the model after [param name]'s call: {} when
 ## the call became a job (the model is still being built) or the app is
-## another call's, rather than wait for it.
-func _shown(name: String) -> Dictionary:
+## another call's, rather than wait for it. [param whole]: the turntable,
+## for a viewer that cannot draw in 3D.
+func _shown(name: String, whole: bool = false) -> Dictionary:
 	if assistant == null or jobs.running() != null or _in_hand > 0:
 		return {}
 	_in_hand += 1
-	var shown: Dictionary = await _views.of(assistant, name)
+	var shown: Dictionary = await _views.of(assistant, name, whole)
 	_hand_back()
 	return shown
+
+
+func _viewer() -> ViewerTools:
+	if _viewer_tools == null:
+		_viewer_tools = ViewerTools.new()
+		_viewer_tools.pictures = func() -> Dictionary: return await _shown("look_at_model", true)
+	_viewer_tools.assistant = assistant
+	_viewer_tools.app = app
+	_viewer_tools.scenes = _views.scene
+	return _viewer_tools
 
 
 var _told_newer: bool = false

@@ -117,7 +117,8 @@ else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
     tests/test_release.py tests/test_minifig.py tests/test_elements.py \
     tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py \
-    tests/test_snippets.py tests/test_trademarks.py tests/test_gears.py)
+    tests/test_snippets.py tests/test_trademarks.py tests/test_gears.py \
+    tests/test_steps_score.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -142,7 +143,7 @@ echo "── godot probes ──"
 # with nothing failing — a tool list four tools stale, a menu command no
 # session can reach (mcp_sync); and the window's commands as tools, each
 # read back off the model (app_tools).
-for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch mechanism axle variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style turned detail chat sketch project example_name minifig print sticker mould brickify; do
+for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector flex clutch mechanism axle variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style turned detail chat sketch project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 

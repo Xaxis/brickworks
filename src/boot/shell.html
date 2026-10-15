@@ -841,13 +841,34 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	}
 	// Which tab this is: one at a time across the browser's tabs, so two
 	// opened together never take the same one.
+	//
+	// ?tab=<id> is a link to one tab's model: Open in Brickworks, from the
+	// model Claude shows beside a call (api/_viewer.js). Kept in this
+	// browser and not open, this page takes it up; open in another tab
+	// here, this page starts nothing and says so, and that tab is asked to
+	// come forward; kept on another computer, the link opens Brickworks as
+	// any other does.
 	function claimTab() {
 		async function choose() {
 			let id = null;
+			const wanted = query.get("tab");
+			let stored = null;
+			if (wanted && TAB_SHAPE.test(wanted)) {
+				stored = await storedSessions();
+				// This page reloaded: the one it replaces may let go a moment late.
+				let own = null;
+				try { own = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+				if (stored.has(wanted)) {
+					if (await hold(wanted, own === wanted ? 3000 : 0)) {
+						try { sessionStorage.setItem(TAB_KEY, wanted); } catch (e) {}
+						return { id: wanted, legacy: false };
+					}
+					return { id: null, elsewhere: wanted };
+				}
+			}
 			try { id = sessionStorage.getItem(TAB_KEY); } catch (e) {}
 			if (id && !TAB_SHAPE.test(id)) id = null;
 			if (id && !(await hold(id, 3000))) id = null;
-			let stored = null;
 			if (!id) {
 				stored = await storedSessions();
 				const newest = Array.from(stored.entries()).sort(function (a, b) { return b[1] - a[1]; });
@@ -879,13 +900,45 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		return navigator.locks.request("brickworks-claim", choose);
 	}
 
+	// The tab a link asked for is open in another tab of this browser: say
+	// so here, start nothing, and ask that tab to come forward.
+	function elsewhere(id) {
+		running = false;
+		try { new BroadcastChannel("brickworks-tabs").postMessage({ show: id }); } catch (e) {}
+		document.title = "Brickworks: your model is in another tab";
+		say("Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.");
+		window.brickworksElsewhere = id;
+	}
+	// And that tab, asked: it comes forward where the browser lets it, and
+	// its title says which it is for a few seconds either way.
+	function hereWhenAsked(id) {
+		try {
+			new BroadcastChannel("brickworks-tabs").onmessage = function (event) {
+				if (!event.data || event.data.show !== id) return;
+				try { window.focus(); } catch (e) {}
+				const was = document.title;
+				let flips = 0;
+				const flip = setInterval(function () {
+					flips += 1;
+					document.title = flips % 2 ? "● Your model is here" : was;
+					if (flips >= 10) { clearInterval(flip); document.title = was; }
+				}, 600);
+			};
+		} catch (e) {}
+	}
+
 	const engine = new Engine(GODOT_CONFIG);
 	claimTab().catch(function (trouble) {
 		console.error("could not choose this tab's session", trouble);
 		return { id: freshId(), legacy: false };
 	}).then(function (tab) {
+		if (tab.elsewhere) {
+			elsewhere(tab.elsewhere);
+			return new Promise(function () {});
+		}
 		window.brickworksTab = tab.id;
 		window.brickworksTabLegacy = tab.legacy;
+		hereWhenAsked(tab.id);
 		return engine.startGame({
 			onProgress: function (current, total) {
 				if (total > 0) {

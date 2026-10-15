@@ -27,7 +27,7 @@
 // toolbar, a panel and a "Sign out" that the app no longer had. A picture
 // that can only be retaken by hand is retaken when someone notices.
 import { readFileSync } from "node:fs";
-import { launch } from "./browser.mjs";
+import { controlsWith, launch } from "./browser.mjs";
 
 const args = {};
 for (const a of process.argv.slice(2)) {
@@ -64,7 +64,9 @@ async function take(shot) {
   await page.waitForTimeout(Number(shot.settle || 30000));
 
   const pause = Number(shot.pause || 4000);
-  const where = (name) => page.evaluate((n) => (window.brickworksControls || {})[n], name);
+  // Each control waited for, as a person waits for a menu or a panel: one
+  // is told to the page only once it has stayed where it is drawn.
+  const where = async (name) => (await controlsWith(page, [name]))[name];
   async function press(name) {
     const at = await where(name);
     if (!at) throw new Error(`the app is not showing "${name}"`);

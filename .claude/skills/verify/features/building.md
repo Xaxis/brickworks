@@ -275,7 +275,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   known to be slow — the least of its last and its average cost over
   `SAY_FIRST_MS` (150), or `Shell.SLOW_FROM` before it has ever run — has
   the bar up with its own words (`Shell.DOING`: "Saving…", "Mirroring…")
-  and drawn before it runs, the frame after. A command that goes on after
+  and drawn before it runs, the frame after. `SLOW_FROM` was swept on
+  Orthanc with `command_probe --judge` (2026-10-15): every command holding a
+  frame a fifth of a second or more there unsaid is in it (Versions, the
+  cut-away by axis, Make a sub-assembly, Same sub-model, Copy, Settings and
+  Keys, Print on a part, the tour, the picture), and the minifigure builder
+  and What do I need? from nothing, since they cost the same on the car (415
+  and 385 ms). A command that goes on after
   it returns (a coroutine) is awaited to its end (`Working._Going`, called
   without await so only what it does before its first await counts as
   inside it), its cost timed to that end, and when it goes on more than two
