@@ -346,7 +346,18 @@ are not are the plane's clip plates: the flow saw the ghost where the file
 has them and clicked, and they went down a stud forward and 2 LDU up, the
 click having struck the front face of the plate they stand on, at its edge.
 `handbuild_probe`, aiming at the middle of that plate, puts both exactly.
-The flow now waits to see the ghost there twice before it clicks.
+The flow now waits to see the ghost there twice before it clicks; that did
+not change it.
+
+**The whole plane**, 40 minutes of building (`buildux-2026-10-16/whole`):
+35 of its 52 parts tried, 16 put down, 11 exact, and the 8 steps they make
+kept as the file has them. The clip plates went a stud forward again, and
+the 1 x 6 plate of step 4 then had no room where the file has it; nearly all
+of the 19 gaps after are parts standing on a part that is not there. Why a
+click in the browser puts a clip plate other than where its ghost was seen,
+when the desktop does not, was not found in the time: it is the next thing
+to find, and the plane cannot be built whole through the interface until it
+is. 8643-1 was not built whole.
 
 Actions a part rose, 15.5 to 17.4 and 14.9 to 15.6, for three reasons that
 are each a part done right that was done wrong or not at all before: the
