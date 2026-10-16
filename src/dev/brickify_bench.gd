@@ -174,6 +174,7 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 			info["mended"] = int(report.get("mended", 0))
 			info["coverage"] = float(report.get("coverage", 0.0))
 			info["tied"] = int(report.get("tied", 0))
+			info["recoloured"] = int(report.get("recoloured", 0))
 			info["thin"] = grid.thin
 			info["joined"] = (report.get("joined", []) as Array).size()
 			info["left_out"] = (report.get("left_out", []) as Array).size()

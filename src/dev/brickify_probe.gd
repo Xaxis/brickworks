@@ -282,6 +282,10 @@ func _run() -> void:
 	_whole()
 
 	print("")
+	print("  colour that reads right")
+	_colours_right(animal)
+
+	print("")
 	print("  forty studs")
 	options = Brickify.Options.new()
 	options.studs = 40
@@ -356,6 +360,39 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		_builder.lattice.clear()
 		_checker.forget_built()
 	return result
+
+
+## Colour matched as an eye judges it, and every part in a colour it is made
+## in: a dark grey went to Reddish Brown by Oklab's straight line, so Spot's
+## black patches came out brown, and 1.7% of parts were in a colour no
+## element of theirs comes in.
+func _colours_right(animal: Dictionary) -> void:
+	var sharma: float = Brickify.de2000(Vector3(50.0, 2.6772, -79.7751), Vector3(50.0, 0.0, -82.7485))
+	_check("CIEDE2000 as Sharma, Wu and Dalal's test data has it: %.4f (2.0425)" % sharma,
+		absf(sharma - 2.0425) < 0.0002)
+	var lab: Array[Vector3] = []
+	for code: int in Brickify.PALETTE:
+		lab.append(HiddenColours.lab(_library.color(code).rgb))
+	var names: PackedStringArray = []
+	var chromatic: PackedStringArray = []
+	for grey: int in [2, 4, 6, 8, 10, 12, 16, 20, 24, 28, 31]:
+		var at: int = Brickify._nearest((grey << 10) | (grey << 5) | grey, lab, {}, [])
+		var found: PartLibrary.BrickColor = _library.color(Brickify.PALETTE[at])
+		names.append("%d: %s" % [roundi(grey * 255.0 / 31.0), found.name])
+		if HiddenColours.chroma(found.rgb) >= 20.0:
+			chromatic.append(found.name)
+	_check("greys stay grey, from black to white: %s" % ", ".join(names), chromatic.is_empty()
+		and names[3].ends_with("Black"))
+	if animal.is_empty():
+		return
+	var model: Assistant.Model = animal["model"]
+	var none: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		if _library.element_for(_library.resolve(placement.part), placement.color).is_empty():
+			none["%s in %s" % [placement.part, _library.color(placement.color).name]] = true
+	_check("every part of the bunny in its own colours has an element number (%d parts, %d recoloured): %s"
+		% [model.placements.size(), int((animal["report"] as Dictionary).get("recoloured", 0)),
+			none.keys()], none.is_empty())
 
 
 ## Keeping the whole model, generally: a fox whose legs are thinner than a

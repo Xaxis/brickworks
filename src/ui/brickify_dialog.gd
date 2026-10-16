@@ -731,6 +731,9 @@ func _warm(job: Working.Job = null) -> void:
 					Shapes.part(library, str(id), table == Shapes.Plan.INVERTED)
 	for id: String in Brickify.parts_needed(library):
 		Minifig.slot_for(library.parts.get(id))
+	# The element list, read on first asking: here, not on the worker, which
+	# asks it which colours each part is made in (Brickify.made_colours).
+	library.element_for(Brickify.ONE_BRICK, Brickify.STAND_COLOUR)
 
 
 ## Into the world as one sub-assembly, beside what is there already, as one
