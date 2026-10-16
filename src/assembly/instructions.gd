@@ -168,6 +168,79 @@ class Node2 extends RefCounted:
 	var assembly: Assembly = null
 	## A wheel rim (1) or a tyre (2): see [method _find_joints].
 	var wheel: int = 0
+	## What holds it without its resting on it: a stud from the side. See
+	## [method _supports_of].
+	var held_by: PackedInt64Array = PackedInt64Array()
+	## A stud of its own, or of another, holds it to something.
+	var studded: bool = false
+	## It rests on studs, or on a part turned over on its studs: what it
+	## rests on is read off those, not off its box.
+	var seated: bool = false
+	## What rests on its studs.
+	var carries: PackedInt64Array = PackedInt64Array()
+	## What its box sits on, for a part not seated on studs.
+	var boxed: PackedInt64Array = PackedInt64Array()
+	## The parts it is pressed up under, by its own studs, with nothing
+	## beneath it: it goes in in the same step as the last of them. See
+	## [method _pressed_up].
+	var under: PackedInt64Array = PackedInt64Array()
+	## Needs guessed for a part nothing holds by what its box touches, or
+	## by height ([method _find_hangers]): given up before a sub-assembly is
+	## ([method _contract]).
+	var weak: PackedInt64Array = PackedInt64Array()
+
+
+## What fills a point, by the parts' own collision covers: the cover the
+## build check's lattice holds, read in each part's own frame. The booklet's
+## callers hold a world of bricks and no lattice, and building one is most of
+## what a check costs; a stud's tip is one point, and the few parts whose
+## boxes hold it are asked whether their covers do.
+class Covers extends RefCounted:
+	const BUCKET := 40.0
+	var _bucket: Dictionary = {}        ## Vector3i -> Array of slots
+	var _keys: Array = []
+	var _inverse: Array[Transform3D] = []
+	var _boxes: Array = []              ## slot -> Array[AABB], the part's own LDU
+	var _bounds: Array[AABB] = []
+
+	func add(key: Variant, at: Transform3D, part: Lbm.PartMesh) -> void:
+		var slot: int = _keys.size()
+		_keys.append(key)
+		_inverse.append(at.affine_inverse())
+		var own: Array[AABB] = []
+		if part.boxes.is_empty():
+			own.append(part.bounds)
+		else:
+			for box: AABB in part.boxes:
+				own.append(AABB(box.position * part.cell_ldu, box.size * part.cell_ldu))
+		_boxes.append(own)
+		# A cover is whole cells, and reaches up to a cell past the part.
+		var world: AABB = (at * part.bounds).grow(part.cell_ldu)
+		_bounds.append(world)
+		for x: int in range(floori(world.position.x / BUCKET), floori(world.end.x / BUCKET) + 1):
+			for y: int in range(floori(world.position.y / BUCKET), floori(world.end.y / BUCKET) + 1):
+				for z: int in range(floori(world.position.z / BUCKET),
+						floori(world.end.z / BUCKET) + 1):
+					var bucket := Vector3i(x, y, z)
+					if not _bucket.has(bucket):
+						_bucket[bucket] = []
+					(_bucket[bucket] as Array).append(slot)
+
+	## The key of the part whose cover holds [param point], other than
+	## [param not_key]'s, or null.
+	func at(point: Vector3, not_key: Variant) -> Variant:
+		var near: Variant = _bucket.get(Vector3i(floori(point.x / BUCKET),
+			floori(point.y / BUCKET), floori(point.z / BUCKET)))
+		if near == null:
+			return null
+		for slot: int in near:
+			if _keys[slot] == not_key or not _bounds[slot].has_point(point):
+				continue
+			var local: Vector3 = _inverse[slot] * point
+			for box: AABB in _boxes[slot]:
+				if box.has_point(local):
+					return _keys[slot]
+		return null
 
 
 ## A part of the model built on the side and put on whole.
@@ -179,6 +252,9 @@ class Assembly extends RefCounted:
 	var kind: String = ""
 	var members: Array[Node2] = []
 	var figure: bool = false
+	## A flexible thing drawn in pieces, put in as the one part it is, in a
+	## step of the main build and not on the side: [method _find_bundles].
+	var whole: bool = false
 	## The node standing for it in the main build.
 	var node: Node2 = null
 
@@ -206,11 +282,12 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
 		return []
-	_find_supports(nodes)
+	_find_supports(nodes, world, library)
 	_find_joints(nodes, world, library)
 	_tidy_needs(nodes)
 	_find_hangers(nodes)
 	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
+	_find_bundles(nodes, world, library, assemblies)
 	var built: Array[Node2] = _contract(nodes, assemblies)
 	var named: bool = _assign_regions(built, regions, nodes.size())
 	var raw: Array = _sequence(built, named, _per_step(nodes.size()))
@@ -254,7 +331,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	var count: String = Working.comma(nodes.size())
 	job.say("Finding what %s parts rest on…" % count)
 	job.count(0, nodes.size())
-	await _supports_of(nodes, job)
+	await _supports_of(nodes, world, library, job)
 	lap.call("supports")
 	if job.cancelled:
 		return []
@@ -275,6 +352,8 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 		return []
 	job.say("Finding what is built on the side…")
 	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
+	await job.next()
+	_find_bundles(nodes, world, library, assemblies)
 	lap.call("assemblies")
 	await job.next()
 	var built: Array[Node2] = _contract(nodes, assemblies)
@@ -335,6 +414,12 @@ static func _assign_regions(nodes: Array[Node2], given: Dictionary, parts: int) 
 			if not given.is_empty():
 				node.region = _most_common(node.assembly.members.map(
 					func(member: Node2) -> String: return str(given.get(member.id, ""))))
+			elif node.assembly.members.size() > ASSEMBLY_MOST:
+				# A section built on the side is still a section: built when
+				# the build comes to it, as it was where it stands, and not as
+				# soon as it could go on.
+				node.region = _most_common(node.assembly.members.map(
+					func(member: Node2) -> String: return member.group))
 		elif not given.is_empty():
 			node.region = str(given.get(node.id, ""))
 		else:
@@ -552,10 +637,16 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 	# left the rest free — Orthanc put them at step 36, a hundred and fifty
 	# studs up in the air.
 	var held: Dictionary = {}
+	var index_of: Dictionary = {}
 	for index: int in nodes.size():
+		index_of[nodes[index].id] = index
 		if not hanging.has(index):
 			held[index] = true
 	var waiting: Dictionary = hanging.duplicate()
+	# By what holds it, where something does: a tile on a side stud hangs from
+	# the brick the stud is in, not from every part its box touches. By touch
+	# only once nothing that holds it is held, wave on wave.
+	var by_touch: bool = false
 	for _wave: int in 64:
 		var now_held: Array[int] = []
 		for index: int in waiting:
@@ -564,6 +655,16 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 				if job.cancelled:
 					return
 			var node: Node2 = nodes[index]
+			for other_id: int in node.held_by:
+				var at: int = index_of.get(other_id, -1)
+				if at >= 0 and held.has(at) and not nodes[at].needs.has(node.id) \
+						and not node.needs.has(other_id):
+					node.needs.append(other_id)
+			if not node.needs.is_empty():
+				now_held.append(index)
+				continue
+			if not node.held_by.is_empty() and not by_touch:
+				continue
 			var box: AABB = node.box.grow(1.0)
 			var lowest: int = floori(box.position.y / LAYER)
 			var highest: int = floori(box.end.y / LAYER)
@@ -584,10 +685,15 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 					if box.intersects(nodes[other_index].box) \
 							and not nodes[other_index].needs.has(node.id):
 						node.needs.append(nodes[other_index].id)
+						node.weak.append(nodes[other_index].id)
 			if not node.needs.is_empty():
 				now_held.append(index)
 		if now_held.is_empty():
-			break
+			if by_touch:
+				break
+			by_touch = true
+			continue
+		by_touch = false
 		for index: int in now_held:
 			held[index] = true
 			waiting.erase(index)
@@ -614,6 +720,7 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 				under = other_index
 		if under >= 0:
 			node.needs.append(nodes[under].id)
+			node.weak.append(nodes[under].id)
 	for node: Node2 in nodes:
 		node.after = node.needs.duplicate()
 	# Only a part on a loop gives up what it hangs from, not every part
@@ -668,6 +775,7 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 				under = other_index
 		if under >= 0:
 			node.needs.append(nodes[under].id)
+			node.weak.append(nodes[under].id)
 			node.after = node.needs.duplicate()
 			if not dependents.has(nodes[under].id):
 				dependents[nodes[under].id] = []
@@ -815,7 +923,139 @@ static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		nodes.append(node)
 
 
-## Who rests on whom.
+## Who rests on whom, and what holds what.
+##
+## By the studs, as the build check reads them (Joints.studs_in): a stud
+## reaching up into a part is under it, so the part needs the stud's
+## owner; one reaching down is on a part turned over on top of it, which
+## needs what it is on. Its direction settles which of the two rests on the
+## other, where their covers, read as touching, said each rested on each.
+## Read against the parts' own covers (Covers), since the booklet's callers
+## hold no lattice.
+##
+## Boxes were what this read before, and a slope's box, an L-shaped
+## plate's, a bracket's are not the part: in 100 real sets a part was put
+## in under one already there for 19.4% of things, and the planner's boxes
+## had missed what it rested on for three in four of them; and a step left
+## one floating in 19.1% of steps, most of them resting on parts whose
+## boxes touched and whose shapes did not (docs/INSTRUCTIONS.md).
+##
+## A stud from the side holds a part without its resting on anything:
+## [member Node2.held_by], which [method _find_hangers] hangs it from before
+## what its box touches. A part no stud seats (a figure's, a Technic beam's,
+## a tile on a side stud) rests on what its box sits on, as before
+## ([method _boxes_under]). Clips, hinges and balls (Joints.rounds, balls)
+## were read too and changed nothing measured but the planning time, which
+## they took from 2.5 s to 4.1 s on fifteen files.
+static func _find_supports(nodes: Array[Node2], world: BrickWorld,
+		library: PartLibrary) -> void:
+	_supports_of(nodes, world, library, null)
+
+
+## How far up a stud must point to say which part is on which: 45 degrees.
+const UPRIGHT := 0.7
+## Parts whose studs are read between two looks at the clock, paced.
+const SLICE := 100
+
+
+## [method _find_supports], a slice at a time with a [param job].
+static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
+		job: Working.Job) -> void:
+	var by_id: Dictionary = {}
+	var entries: Array = []
+	var covers := Covers.new()
+	for node: Node2 in nodes:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
+		by_id[node.id] = node
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		var part: Lbm.PartMesh = library.mesh_for(node.part_id)
+		if brick == null or part == null:
+			continue
+		entries.append([node.id, brick.transform, part])
+		covers.add(node.id, brick.transform, part)
+	for start: int in range(0, entries.size(), SLICE):
+		if job != null and job.due():
+			job.count(start)
+			await job.next()
+			if job.cancelled:
+				return
+		for stud: Array in Joints.studs_in(entries.slice(start, start + SLICE), covers.at):
+			var owner: Node2 = by_id[stud[0]]
+			var into: Node2 = by_id[stud[1]]
+			owner.studded = true
+			into.studded = true
+			var way: float = (stud[3] as Vector3).y
+			if way > UPRIGHT:
+				_seat(into, owner)
+			elif way < -UPRIGHT:
+				_seat(owner, into)
+			else:
+				_hold(owner, into)
+	await _boxes_under(nodes, job)
+	for node: Node2 in nodes:
+		for need: int in node.boxed:
+			if not node.needs.has(need):
+				node.needs.append(need)
+		# And a part on a side stud waits for what holds it, not only for
+		# what its box sits on: Vernie's tiles went on before the bricks whose
+		# side studs hold them, on nothing.
+		if node.seated or node.boxed.is_empty():
+			continue
+		for other_id: int in node.held_by:
+			var other: Node2 = by_id[other_id]
+			if other.seated and not node.needs.has(other_id) and not other.needs.has(node.id):
+				node.needs.append(other_id)
+	_pressed_up(nodes, by_id)
+
+
+## [param top] rests on [param bottom]'s studs.
+static func _seat(top: Node2, bottom: Node2) -> void:
+	top.seated = true
+	if not top.needs.has(bottom.id):
+		top.needs.append(bottom.id)
+	if not bottom.carries.has(top.id):
+		bottom.carries.append(top.id)
+
+
+## A plate pressed up under parts by its own studs, with nothing beneath
+## it: a 1 x 3 under a sign, a 2 x 2 under a lantern. Read by its studs
+## alone, what it carries needs it, so it went in first, on nothing. It goes
+## in once what it is pressed under is there, and in the same step as the
+## last of them ([method _sequence_into]): put in after them it is put in
+## under them, and before them it floats.
+##
+## Only under a part that rests on something else as well; a part that
+## rests on nothing but the plate is held up by it.
+static func _pressed_up(nodes: Array[Node2], by_id: Dictionary) -> void:
+	var floor_y: float = INF
+	for node: Node2 in nodes:
+		floor_y = minf(floor_y, node.box.position.y)
+	for node: Node2 in nodes:
+		if node.seated or not node.needs.is_empty() or node.carries.is_empty() \
+				or node.wheel > 0 or node.box.position.y <= floor_y + 2.0:
+			continue
+		for over_id: int in node.carries:
+			var over: Node2 = by_id[over_id]
+			if over.needs.size() < 2 or not over.needs.has(node.id):
+				continue
+			over.needs.remove_at(over.needs.find(node.id))
+			node.needs.append(over.id)
+			node.under.append(over.id)
+
+
+## [param one] and [param other] hold each other without either resting on
+## the other.
+static func _hold(one: Node2, other: Node2) -> void:
+	if not one.held_by.has(other.id):
+		one.held_by.append(other.id)
+	if not other.held_by.has(one.id):
+		other.held_by.append(one.id)
+
+
+## What a part no stud joins rests on: what its box sits on.
 ##
 ## A brick needs another when it sits directly on top of it and their
 ## footprints overlap. "Directly" has to have some slack in it: a stud is
@@ -826,12 +1066,7 @@ static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLi
 ## the plan with it, not with every brick in the model: all against all
 ## was 74 million comparisons on an 8,600-part tower, and a minute and a
 ## half before its timeline could open.
-static func _find_supports(nodes: Array[Node2]) -> void:
-	_supports_of(nodes, null)
-
-
-## [method _find_supports], a slice at a time with a [param job].
-static func _supports_of(nodes: Array[Node2], job: Working.Job) -> void:
+static func _boxes_under(nodes: Array[Node2], job: Working.Job) -> void:
 	# +Y is up here. LDraw has −Y up, but the conversion to engine space
 	# negated Y and Z, so by the time a brick reaches this its underside
 	# is box.position.y and its top is box.end.y.
@@ -873,6 +1108,8 @@ static func _supports_of(nodes: Array[Node2], job: Working.Job) -> void:
 			if job.cancelled:
 				return
 		var node: Node2 = nodes[index]
+		if node.seated:
+			continue
 		var lowest: int = floori((node.box.position.y - SLACK) / LAYER)
 		var highest: int = floori((node.box.position.y + SLACK) / LAYER)
 		var seen: Dictionary = {}
@@ -892,7 +1129,7 @@ static func _supports_of(nodes: Array[Node2], job: Working.Job) -> void:
 				var sits_on: bool = (other.box.end.y >= node.box.position.y - SLACK
 					and other.box.end.y <= node.box.position.y + SLACK)
 				if sits_on and _overlaps_flat(node.box, other.box):
-					node.needs.append(other.id)
+					node.boxed.append(other.id)
 
 
 static func _cells(box: AABB, size: float) -> Array[Vector2i]:
@@ -949,7 +1186,7 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 	for top: String in tops:
 		var members: Array = tops[top]
 		var figure: bool = _is_figure(members, world, library)
-		if figure or _holds_together(members, nodes.size()):
+		if figure or _holds_together(members, nodes.size(), _turned(members, world)):
 			found.append(_assembly(top, members, figure, world))
 			continue
 		for sub: String in inner:
@@ -957,9 +1194,64 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 				continue
 			var parts: Array = inner[sub]
 			var sub_figure: bool = _is_figure(parts, world, library)
-			if sub_figure or _holds_together(parts, nodes.size()):
+			if sub_figure or _holds_together(parts, nodes.size(), _turned(parts, world)):
 				found.append(_assembly(sub, parts, sub_figure, world))
 	return found
+
+
+## A flexible thing drawn in pieces (a hose LDraw draws a segment at a
+## time, a string, a chain) is one part in a builder's hand: it goes in in
+## one step, once what its pieces need is there. Built a piece at a time
+## from its free end, 6891's hose was 52 things floating, in 28 of its 83
+## steps. Its pieces are those the build check holds as one thing
+## (Flex.one_thing), outside the assemblies already found.
+static func _find_bundles(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
+		assemblies: Array[Assembly]) -> void:
+	var taken: Dictionary = {}
+	for made: Assembly in assemblies:
+		for member: Node2 in made.members:
+			taken[member.id] = true
+	var entries: Array = []
+	var by_id: Dictionary = {}
+	for node: Node2 in nodes:
+		by_id[node.id] = node
+		if taken.has(node.id):
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		var part: Lbm.PartMesh = library.mesh_for(node.part_id)
+		if brick != null and part != null:
+			entries.append([node.id, brick.transform, part, node.part_id,
+				Assemblies.path_of(brick)])
+	var parent: Dictionary = {}
+	var root_of := func(id: int) -> int:
+		var at: int = id
+		while parent.has(at) and int(parent[at]) != at:
+			at = parent[at]
+		return at
+	for pair: Array in Flex.one_thing(entries, library):
+		var one: int = root_of.call(int(pair[0]))
+		var other: int = root_of.call(int(pair[1]))
+		parent[one] = one
+		if one != other:
+			parent[other] = one
+	var groups: Dictionary = {}
+	for id: int in parent:
+		var root: int = root_of.call(id)
+		if not groups.has(root):
+			groups[root] = []
+		(groups[root] as Array).append(by_id[id])
+	for root: int in groups:
+		var members: Array = groups[root]
+		if members.size() < 2:
+			continue
+		var made := Assembly.new()
+		made.whole = true
+		made.key = "flexible:%d" % root
+		made.name = "flexible"
+		made.kind = made.key
+		for member: Node2 in members:
+			made.members.append(member)
+		assemblies.append(made)
 
 
 static func _is_figure(members: Array, world: BrickWorld,
@@ -978,10 +1270,21 @@ static func _is_figure(members: Array, world: BrickWorld,
 ## on something when it is done. Two plates lying on the table are not a
 ## sub-assembly, they are the start of the model: a callout is for
 ## something built away from the model and then attached to it.
-static func _holds_together(members: Array, total: int) -> bool:
-	if members.size() < 2 or members.size() > ASSEMBLY_MOST:
+##
+## A sub-model put on at an angle ([param turned]) is built on the side
+## whatever its size, up to half the model: square, in the hand, and then
+## put on turned, as its author built it. Built where it stands, its parts
+## went in at an angle against parts already there: on the five biggest
+## files of the sample the planner was tuned on, 19 in 20 of the things put
+## in under a part already there were turned parts of a sub-model too big
+## to be a callout, and their authors put in none (docs/INSTRUCTIONS.md).
+static func _holds_together(members: Array, total: int, turned: bool = false) -> bool:
+	if members.size() < 2:
 		return false
-	if members.size() * 10 > total * 3:
+	if turned:
+		if members.size() * 2 > total:
+			return false
+	elif members.size() > ASSEMBLY_MOST or members.size() * 10 > total * 3:
 		return false
 	var own: Dictionary = {}
 	for node: Node2 in members:
@@ -992,19 +1295,40 @@ static func _holds_together(members: Array, total: int) -> bool:
 		return false
 	# One piece: every part touches another, by their boxes grown by a
 	# hair. Supports alone would split a window from the glass clipped
-	# into its side.
+	# into its side. Each against those in the squares of the plan its box
+	# is in: a turned section of a thousand parts, all against all, was a
+	# million comparisons.
+	const CELL := 40.0
+	var grid: Dictionary = {}
+	for index: int in members.size():
+		for cell: Vector2i in _cells((members[index] as Node2).box.grow(1.0), CELL):
+			if not grid.has(cell):
+				grid[cell] = []
+			(grid[cell] as Array).append(index)
 	var reached: Dictionary = {0: true}
 	var frontier: Array[int] = [0]
 	while not frontier.is_empty():
 		var at: int = frontier.pop_back()
 		var box: AABB = (members[at] as Node2).box.grow(1.0)
-		for other: int in members.size():
-			if reached.has(other):
-				continue
-			if box.intersects((members[other] as Node2).box):
-				reached[other] = true
-				frontier.append(other)
+		for cell: Vector2i in _cells(box, CELL):
+			for other: int in grid[cell]:
+				if reached.has(other):
+					continue
+				if box.intersects((members[other] as Node2).box):
+					reached[other] = true
+					frontier.append(other)
 	return reached.size() == members.size()
+
+
+## Whether most of [param members] stand off the square: a sub-model put
+## on at an angle.
+static func _turned(members: Array, world: BrickWorld) -> bool:
+	var off: int = 0
+	for node: Node2 in members:
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		if brick != null and not BrickLattice.is_square_to_grid(brick.transform.basis):
+			off += 1
+	return off * 2 > members.size()
 
 
 static func _assembly(key: String, members: Array, figure: bool,
@@ -1047,8 +1371,17 @@ static func _name_of(key: String) -> String:
 ## on one of its parts needs the whole of it. If that makes a loop — a
 ## brick of the wall sitting between two of the assembly's own parts —
 ## it cannot be built on the side after all, and is built in place.
+##
+## But a loop closed by a guess is the guess's fault: what a part nothing
+## holds was hung from because its box touched it, and then what a part
+## with no studs was read to rest on by its box. Those are given up on the
+## loop first, and only then the smallest assembly on it, one at a time: a
+## hose drawn through a figure's hand, a track touching a bogie, cost a
+## 664-part trailer, a locomotive and the figures riding them their
+## callouts, all of them.
 static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array[Node2]:
-	for _attempt: int in 6:
+	var eased: int = 0
+	for _attempt: int in 24:
 		var member_of: Dictionary = {}
 		for index: int in assemblies.size():
 			var made: Assembly = assemblies[index]
@@ -1074,18 +1407,46 @@ static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array
 			built.append(made.node)
 
 		var looped: Dictionary = _cycles(built)
-		var kept: Array[Assembly] = []
+		var caught: Array[Assembly] = []
 		for made: Assembly in assemblies:
-			if not looped.has(made.node.id):
-				kept.append(made)
-		if kept.size() == assemblies.size():
+			if looped.has(made.node.id):
+				caught.append(made)
+		if caught.is_empty():
 			return built
-		assemblies.assign(kept)
+		if eased < 2:
+			eased += 1
+			_ease(looped, nodes, member_of, eased == 2)
+			continue
+		caught.sort_custom(func(a: Assembly, b: Assembly) -> bool:
+			return a.members.size() < b.members.size())
+		assemblies.erase(caught[0])
 	# Nothing settled: build everything in place.
 	assemblies.clear()
 	for node: Node2 in nodes:
 		node.after = node.needs.duplicate()
 	return nodes.duplicate()
+
+
+## Give up the guessed needs on a loop: between two parts both on it, or in
+## an assembly on it. With [param boxes], what a part with no studs rests
+## on by its box as well.
+static func _ease(looped: Dictionary, nodes: Array[Node2], member_of: Dictionary,
+		boxes: bool) -> void:
+	var on_loop := func(id: int) -> bool:
+		var made: Assembly = member_of.get(id)
+		return looped.has(made.node.id if made != null else id)
+	for node: Node2 in nodes:
+		if (node.weak.is_empty() and (not boxes or node.boxed.is_empty())) \
+				or not on_loop.call(node.id):
+			continue
+		var kept := PackedInt64Array()
+		for need: int in node.needs:
+			if (node.weak.has(need) or (boxes and node.boxed.has(need))) \
+					and on_loop.call(need) and (member_of.get(need) == null
+						or member_of.get(need) != member_of.get(node.id)):
+				continue
+			kept.append(need)
+		node.needs = kept
 
 
 static func _mapped(needs: PackedInt64Array, member_of: Dictionary,
@@ -1224,13 +1585,21 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 			if forced and not picked.is_empty():
 				break
 
-			remaining.erase(node.id)
-			ready.erase(node.id)
-			for dependent: int in dependents.get(node.id, []):
-				waiting[dependent] = int(waiting[dependent]) - 1
-				if int(waiting[dependent]) == 0 and remaining.has(dependent):
-					ready[dependent] = by_id[dependent]
-			picked.append(node)
+			# And a plate pressed up under it, now that the last thing it is
+			# under is there: in this step, so it is neither on nothing before
+			# them nor put in under them after.
+			var placing: Array[Node2] = [node]
+			while not placing.is_empty():
+				var here: Node2 = placing.pop_back()
+				remaining.erase(here.id)
+				ready.erase(here.id)
+				picked.append(here)
+				for dependent: int in dependents.get(here.id, []):
+					waiting[dependent] = int(waiting[dependent]) - 1
+					if int(waiting[dependent]) == 0 and remaining.has(dependent):
+						ready[dependent] = by_id[dependent]
+						if (by_id[dependent] as Node2).under.has(here.id):
+							placing.append(by_id[dependent])
 			unsupported = unsupported or forced
 			last_at = node.box.get_center()
 			have_last = true
@@ -1274,12 +1643,12 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 		current: String = "") -> Array:
 	var same_step: bool = first != null
 	var kind: String = (first.assembly.kind
-		if same_step and first.assembly != null else "")
+		if same_step and first.assembly != null and not first.assembly.whole else "")
 	var fits := func(node: Node2) -> bool:
 		if not same_step:
 			return true
 		if kind.is_empty():
-			return node.assembly == null
+			return node.assembly == null or node.assembly.whole
 		return node.assembly != null and node.assembly.kind == kind
 
 	var here: Node2 = _best(ready, last_at, have_last, same_step and kind.is_empty(),
@@ -1362,19 +1731,26 @@ static func _expand(raw: Array, world: BrickWorld) -> Array[Step]:
 		number += 1
 		var picked: Array = entry["nodes"]
 		var first: Node2 = picked[0]
-		if first.assembly == null:
+		if first.assembly == null or first.assembly.whole:
 			var step := Step.new()
 			step.number = number
 			step.section = str(entry["section"])
 			step.unsupported = bool(entry["unsupported"])
 			for node: Node2 in picked:
-				_add(step, node)
+				if node.assembly != null:
+					for member: Node2 in node.assembly.members:
+						_add(step, member)
+				else:
+					_add(step, node)
 			out.append(step)
 			continue
 
 		callouts += 1
 		var made: Assembly = first.assembly
-		var per: int = 99 if made.figure else CALLOUT_PER_STEP
+		# A section built on the side, past a callout's size, has framed
+		# pages of its own, and steps of a page's size.
+		var per: int = 99 if made.figure else (CALLOUT_PER_STEP
+			if made.members.size() <= ASSEMBLY_MOST else _per_step(made.members.size()))
 		var plans: Array = []
 		for node: Node2 in picked:
 			plans.append(_on_the_side(node.assembly, per))
@@ -1462,7 +1838,7 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
 		return []
-	_find_supports(nodes)
+	_find_supports(nodes, world, library)
 	_find_joints(nodes, world, library)
 	_tidy_needs(nodes)
 	_find_hangers(nodes)

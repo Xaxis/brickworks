@@ -524,12 +524,32 @@ picture the assistant is shown.
   On a 1,895-part castle the jump between consecutive steps went from a median
   of 12.5 studs (90th 38) to 6.2 (90th 12). `--booklet=PATH` with `--model=`
   writes the booklet and quits — about three minutes for that castle on the GPU.
+  What rests on what is read off the studs (`Instructions._supports_of`): a
+  stud reaching up into a part is under it, one reaching down is on a part
+  turned over on top of it. The rule is the build check's (`Joints.studs_in`,
+  which `Assistant._studs_reaching_in` calls too): the check asks its lattice
+  what is past a stud's tip, the booklet asks the parts' own covers
+  (`Instructions.Covers`, a point against each candidate's boxes in its own
+  frame), and `instructions_probe` holds the two to the same stud pairs on the
+  station. A stud from the side holds a part without its resting
+  (`Node2.held_by`), and a part no stud seats rests on what its box sits on,
+  as before. A
+  plate pressed up under parts by its own studs with nothing beneath it goes in
+  in the step of the last of them (`_pressed_up`, `Node2.under`), even past the
+  step's size.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
   the model) and one piece — a top-level one, or one nested a level inside a
   big one (`LdrModel.Placement.unit` keeps "House#1/Window#3", and the brick
-  carries it as `Brick.unit`). Each stands in the main build as one node; its
+  carries it as `Brick.unit`) — or one put on at an angle (most of its parts
+  off the square, `_turned`) of any size up to half the model, built square in
+  the hand with steps of a page's size and kept in the order the build would
+  have reached it as a section (its region). A loop that would cost one its
+  callout gives up the needs guessed from touching boxes first, then those
+  read off a box, and only then the smallest assembly on it (`_contract`,
+  `_ease`). A flexible thing drawn in pieces outside a callout goes in as one
+  part (`_find_bundles`, `Assembly.whole`). Each stands in the main build as one node; its
   own steps (`Step.in_callout()`, up to `CALLOUT_PER_STEP`, a figure in one)
   come just before the step that puts it on (`Step.attaches()`, no bricks of
   its own, `copies` holding each copy). Copies of one kind (same name, parts
@@ -664,7 +684,12 @@ picture the assistant is shown.
   (`Minifig.frame_of`); the finished model front and back; then the parts by
   colour with counts and element numbers. A model too big to read whole (not
   fitting a page at 4 mm a stud) is framed on the part being built, the rest
-  fading out at the picture's edges (`BookletStudio.fade`). New parts are not
+  fading out at the picture's edges (`BookletStudio.fade`). A section that
+  touches nothing built before it (a second vehicle, by the parts' boxes) is
+  drawn on a stage of its own for its steps, as a callout is, and framed on
+  itself (`BookletMaker._find_apart`, `_where`), for 7636's harvester, which
+  began as an axle plate drawn in the air over the hay bales (its pages after
+  the change not yet looked at). New parts are not
   highlighted: modern booklets keep colours true and rely on the parts box and
   the ink line (the ink shader can ring them, `mark_new`, off). Pictures are
   5 px a millimetre, 4.2 past 300 steps and 3.6 past 1,000 (Orthanc's 1,405

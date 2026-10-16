@@ -296,6 +296,43 @@ static func _add(held: Dictionary, one: Variant, other: Variant) -> void:
 	(held[one] as Dictionary)[other] = true
 
 
+## How far past a stud's foot, along the way it points, what it is in is
+## looked for, in LDU. A stud stands 4 LDU proud of the surface it rises
+## from, so this is just past its tip: in the part being held, not on the
+## boundary between the two.
+const STUD_REACH := 5.0
+
+
+## Every stud that reaches into another part, as [whose stud, which part it
+## reaches into, where the stud stands, which way it points]. Clutch holds
+## both parts, and the way the stud points says which sits on which: a stud
+## pointing up into a part is under it.
+##
+## [param entries] as [method pairs] takes them. [param filled] answers
+## what is at a point, other than the stud's own part: filled.call(point,
+## key) -> the key of the part there, or null. The checker asks its
+## lattice; the booklet, which holds none, asks the parts' own covers
+## (Instructions.Covers). One rule, so the two cannot drift apart over the
+## studs as they once did.
+static func studs_in(entries: Array, filled: Callable) -> Array:
+	var out: Array = []
+	for entry: Array in entries:
+		var part: Lbm.PartMesh = entry[2]
+		if part == null:
+			continue
+		var at: Transform3D = entry[1]
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			var tip: Vector3 = at * (connector.position
+				+ connector.axis.normalized() * STUD_REACH)
+			var into: Variant = filled.call(tip, entry[0])
+			if into != null:
+				out.append([entry[0], into, at * connector.position,
+					(at.basis * connector.axis).normalized()])
+	return out
+
+
 ## Whether a plug at one place, pointing one way, is inside a socket.
 static func lines_up(plug_at: Vector3, plug_way: Vector3,
 		socket_at: Vector3, socket_way: Vector3) -> bool:
