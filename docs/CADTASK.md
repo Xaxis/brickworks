@@ -295,7 +295,7 @@ waiting for a core.
 
 The parts that did not arrive were not this branch's doing: 42082-1 opened
 in a fresh page on main's export and this branch's side by side, each read
-the same 2,015 parts at once and had 2,373 four minutes on, in both
+the same 2,015 parts at once and had 2,441 and 2,436 six minutes on
 (`flows/arrival-*.log`), the rest fetched one by one from the parts server
 on a loaded box. On main's run the 15 minutes of a part swept in hand, which
 the branch's rerun of 42082-1 left out, gave them time to come.
