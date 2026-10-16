@@ -224,6 +224,15 @@ async function show(result) {
     || (typeof input.name === "string" && input.name.trim()) || "Your model";
   $("name").textContent = named;
   card.tab = typeof meta["brickworks/tab"] === "string" ? meta["brickworks/tab"] : "";
+  // The call ran past the time a call is waited for and became a job: the
+  // model is still being worked on, so this card follows the job and shows
+  // its answer, which is the call's own, once it ends (once only).
+  const job = meta["brickworks/job"];
+  if (job && typeof job === "object" && Number.isInteger(job.id) && !meta["brickworks/view"]
+      && card.followed !== job.id && card.job !== job.id) {
+    await followed(job.id, r);
+    return;
+  }
   counted(Number.isInteger(given.parts) && given.parts >= 0 ? given.parts : null);
   let found = (Array.isArray(given.views) ? given.views : []).filter(picture)
     .map((v) => ({ side: SIDES[v.from] || "", src: source(v) }));
@@ -242,6 +251,45 @@ async function show(result) {
     // a frame that cannot draw in 3D, the turntable is asked for instead.
     await fetched(r);
   }
+  tools();
+}
+
+// A call that became a job (src/net/tool_jobs.gd), followed to its end as a
+// session follows it, with the job tool, through the host: each call waits
+// up to 10 s for the work to end. Its answer once done is the call's own,
+// picture and model and all, and is shown as that. A host that will not
+// let the card call it, or a tab that does not say, and the model is shown
+// as it stands once the tab is no longer working on it.
+const JOB_TIMES = 120;
+async function followed(id, r) {
+  card.job = id;
+  say(`${DOING[tool] || "Working…"} It is taking a while; this shows it when your Brickworks tab is done.`, true);
+  for (let n = 0; n < JOB_TIMES; n++) {
+    let answer = null;
+    try {
+      answer = await ask("tools/call", { name: "job", arguments: { id, ...(card.tab ? { target: card.tab } : {}) } }, 60000);
+    } catch (trouble) {
+      card.errors.push(`job: ${trouble.message || trouble}`);
+      break;
+    }
+    const meta = answer && typeof answer === "object" && answer._meta && typeof answer._meta === "object" ? answer._meta : {};
+    const said = meta["brickworks/job"];
+    if (!said || typeof said !== "object" || answer.isError) break;
+    if (said.done) {
+      card.followed = id;
+      const asked = said.input && typeof said.input === "object" ? said.input : {};
+      if (typeof asked.from === "string" && input.from === undefined) input = { ...input, from: asked.from };
+      return show(answer);
+    }
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  for (let n = 0; n < JOB_TIMES; n++) {
+    const now = await viewer("scene", {}).catch(() => null);
+    if (!now || !now.working) break;
+    await new Promise((done) => setTimeout(done, 5000));
+  }
+  card.followed = id;
+  await fetched(r);
   tools();
 }
 

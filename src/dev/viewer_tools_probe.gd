@@ -213,6 +213,8 @@ func _run() -> void:
 	_check("not asked, it carries nothing more, and its words are the same",
 		not plain.has("_meta") and _text(plain) == _text(asked))
 
+	await _as_jobs(wanted)
+
 	var unknown: Dictionary = await _call("viewer_nothing", {})
 	_check("a name that is not the viewer's goes to the app as before: %s" % _text(unknown).left(60),
 		not unknown.has("structuredContent"))
@@ -220,6 +222,108 @@ func _run() -> void:
 	if "--sizes" in OS.get_cmdline_user_args():
 		await _sizes()
 	_done()
+
+
+## A call that runs past the time a call is waited for becomes a job
+## (ToolJobs), and the job's answer once it is done is the call's own: the
+## same words block for block, the same picture, and for a client that shows
+## pages the same _meta, the model packed and its count. Forced here with an
+## inline limit of 0, as --jobs-after=0 forces it in the app, on the same
+## model asked inline first. Before 2026-10-16 the job's answer had no
+## _meta, so the card in Claude never had the model of a call that took
+## long, and a session that showed pages looked at a big model blind.
+func _as_jobs(parts: int) -> void:
+	print("── a call that became a job answers, once done, as it would have at once ──")
+	var tools: Array[String] = ["view_model", "look_at_model"]
+	var asked_inline: Dictionary = {}
+	for tool: String in tools:
+		asked_inline[tool] = await _rpc("tools/call", {"name": tool, "arguments": {"from": "front"},
+			"_meta": {ModelViews.ASKED: true}})
+	var plain_inline: Dictionary = await _call("view_model", {"from": "front"})
+	var was: float = _socket.jobs.after_s
+	_socket.jobs.after_s = 0.0
+	for tool: String in tools:
+		var inline: Dictionary = asked_inline[tool]
+		var started: Dictionary = await _rpc("tools/call", {"name": tool, "arguments": {"from": "front"},
+			"_meta": {ModelViews.ASKED: true}})
+		var id: int = _job_of(started)
+		var said: Dictionary = (started.get("_meta", {}) as Dictionary).get(CommandSocket.JOB_KEY, {})
+		if id == 0:
+			# A call that never waits on anything ends before it could become
+			# one, whatever the limit: answered at once, as it was.
+			_check("%s with no time to wait answered at once, as before: %s" % [tool,
+				_text(started).left(50)], _text(started) == _text(inline))
+			continue
+		_check("%s with no time to wait is a job (%d), its _meta saying which: %s" % [
+			tool, id, JSON.stringify(said)], int(said.get("id", 0)) == id
+				and str(said.get("tool", "")) == tool
+				and str((said.get("input", {}) as Dictionary).get("from", "")) == "front"
+				and not (started.get("_meta", {}) as Dictionary).has(ModelViews.KEY))
+		var done: Dictionary = await _job_done(id, true)
+		var blocks: Array = (done.get("content", []) as Array).duplicate()
+		var first: String = str((blocks.pop_front() as Dictionary).get("text", "")) if not blocks.is_empty() else ""
+		_check("...polled, one call gives it once it is done: %s" % first, first.begins_with(
+			"Job %d (%s) is done" % [id, tool]))
+		_check("...the call's own answer, block for block: %s" % _kinds(blocks),
+			JSON.stringify(_shape(blocks)) == JSON.stringify(_shape(inline.get("content", []))))
+		var meta: Dictionary = done.get("_meta", {}) as Dictionary
+		var shown: Dictionary = meta.get(ModelViews.KEY, {}) as Dictionary
+		var shown_inline: Dictionary = (inline.get("_meta", {}) as Dictionary).get(ModelViews.KEY, {})
+		_check("...and its _meta carries the model packed and the count, as at once (%d parts, %d views; at once %d, %d)" % [
+			int(shown.get("parts", -1)), (shown.get("views", []) as Array).size(),
+			int(shown_inline.get("parts", -1)), (shown_inline.get("views", []) as Array).size()],
+			int(shown.get("parts", -1)) == parts and int(shown.get("parts", -1)) == int(shown_inline.get("parts", -2))
+				and (shown.get("scene", {}) as Dictionary).get("of", "") == ModelScene.of(_world)
+				and (shown.get("views", []) as Array).size() == (shown_inline.get("views", []) as Array).size())
+		_check("...and says the job is done", bool((meta.get(CommandSocket.JOB_KEY, {}) as Dictionary).get("done", false)))
+		if tool != "view_model":
+			continue
+		# A client that does not show pages: the job's answer is its words and
+		# picture, and nothing more.
+		var plain: Dictionary = await _call("view_model", {"from": "front"})
+		var plain_id: int = _job_of(plain)
+		var plain_done: Dictionary = await _job_done(plain_id, false) if plain_id > 0 else plain
+		var plain_blocks: Array = (plain_done.get("content", []) as Array).duplicate()
+		if plain_id > 0:
+			plain_blocks.pop_front()
+		_check("...and a client that does not show pages is given the same words and picture, and no _meta: %s" % _kinds(plain_blocks),
+			plain_id > 0 and not plain_done.has("_meta") and not plain.has("_meta")
+				and JSON.stringify(_shape(plain_blocks)) == JSON.stringify(_shape(plain_inline.get("content", []))))
+	_socket.jobs.after_s = was
+
+
+## The job's answer once it is done, polled as a session polls it.
+func _job_done(id: int, asked: bool) -> Dictionary:
+	var params: Dictionary = {"name": "job", "arguments": {"id": id}}
+	if asked:
+		params["_meta"] = {ModelViews.ASKED: true}
+	for _n: int in 60:
+		var polled: Dictionary = await _rpc("tools/call", params)
+		if not _text(polled).contains(" is still going"):
+			return polled
+	return {}
+
+
+static func _job_of(result: Dictionary) -> int:
+	var found: RegExMatch = RegEx.create_from_string("^Started job (\\d+)").search(_text(result))
+	return int(found.get_string(1)) if found != null else 0
+
+
+## Each block's kind and what it says: words as they are, a picture by its
+## type and whether it has any data (drawn twice, it need not be the same
+## bytes).
+static func _shape(blocks: Array) -> Array:
+	var out: Array = []
+	for block: Dictionary in blocks:
+		if str(block.get("type", "")) == "image":
+			out.append(["image", str(block.get("mimeType", "")), str(block.get("data", "")).length() > 1000])
+		else:
+			out.append(["text", str(block.get("text", ""))])
+	return out
+
+
+static func _kinds(blocks: Array) -> String:
+	return ",".join(blocks.map(func(b: Dictionary) -> String: return str(b.get("type", ""))))
 
 
 ## The model packed at 400 and 4,000 parts, of a real model: how big, and

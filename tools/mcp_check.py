@@ -7,6 +7,12 @@
                                     ...in a window, and also render a
                                     turntable of Orthanc as a job and
                                     cancel a second one (drive_jobs)
+    tools/mcp_check.py --port=8787 --window
+                                    ...in a window, where view_model must
+                                    answer with a picture; against an app
+                                    started --jobs-after=0 every call is a
+                                    job, followed to its answer, so the
+                                    picture comes through job
 
 src/dev/mcp_probe.gd covers the app's half: the socket, the tools, a
 design landing on the baseplate. This covers the half that probe cannot
@@ -60,8 +66,18 @@ class Relay:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, bufsize=1)
         self._id = 0
+        # Whether a call that became a job is followed to its end, as a
+        # session follows it, and that answer given as the call's.
+        self.follow = False
 
     def call(self, method: str, params: dict | None = None) -> dict:
+        answer = self._call(method, params)
+        if self.follow and method == "tools/call" and (params or {}).get("name") != "job" \
+                and isinstance(answer.get("result"), dict):
+            answer = dict(answer, result=followed(self, answer["result"]))
+        return answer
+
+    def _call(self, method: str, params: dict | None = None) -> dict:
         self._id += 1
         message = {"jsonrpc": "2.0", "id": self._id, "method": method}
         if params is not None:
@@ -165,7 +181,10 @@ def followed(relay: "Relay", result: dict) -> dict:
     return result
 
 
-def drive(relay: Relay) -> None:
+def drive(relay: Relay, window: bool = False) -> None:
+    # Every call as a session makes it: one that became a job (any call, in
+    # an app started --jobs-after=0) is followed to its answer.
+    relay.follow = True
     hello = relay.call("initialize", {
         "protocolVersion": "2025-06-18",
         "capabilities": {},
@@ -268,6 +287,11 @@ def drive(relay: Relay) -> None:
         if block.get("type") == "image":
             check("  a picture carries data and mimeType",
                   bool(block.get("data")) and bool(block.get("mimeType")))
+    if window:
+        check("  in a window it is a picture, %d characters of PNG"
+              % sum(len(b.get("data", "")) for b in blocks if b.get("type") == "image"),
+              any(b.get("type") == "image" and b.get("mimeType") == "image/png"
+                  and len(b.get("data", "")) > 1000 for b in blocks))
 
     # By name, into the app's own models: the answer says where that is.
     saved = relay.call("tools/call", {
@@ -365,6 +389,8 @@ def drive_jobs(relay: Relay) -> None:
     stopped by it. Needs an app in a window, which renders; started with
     --mcp=PORT and driven with --port=PORT --jobs.
     """
+    relay.follow = False
+
     def call(name: str, arguments: dict) -> tuple[str, float]:
         began = time.time()
         result = relay.call("tools/call", {"name": name, "arguments": arguments})
@@ -480,10 +506,13 @@ def simulate(relay: Relay, say: Callable[[str, dict], str], models: Path) -> Non
               said.startswith("No part or sub-assembly"))
         if drawn:
             # A recording is a job, as a render is: answered at once, then
-            # polled with job until it gives the answer.
+            # polled with job until it gives the answer. Its own answer, not
+            # followed: what it says at once is what is checked.
             began = time.time()
+            relay.follow = False
             said = text_of(relay.call("tools/call", {"name": "simulate_mechanism", "arguments": {
                 "record": True, "frames": 8}}).get("result", {}))
+            relay.follow = True
             took = time.time() - began
             started = re.match(r"Started job (\d+)", said)
             check("record=true is a job, answered in %.1f s: %s" % (took, said[:60]),
@@ -557,12 +586,15 @@ def main(argv: list[str]) -> int:
     port = PORT
     mine = True
     jobs = False
+    window = False
     for argument in argv[1:]:
         if argument.startswith("--port="):
             port = int(argument.split("=", 1)[1])
             mine = False
         elif argument == "--jobs":
             jobs = True
+        elif argument == "--window":
+            window = True
         else:
             print("mcp_check: unknown option %s" % argument, file=sys.stderr)
             return 2
@@ -578,7 +610,7 @@ def main(argv: list[str]) -> int:
             return 2
         print("── the relay ──")
         relay = Relay(port)
-        drive(relay)
+        drive(relay, window)
         if jobs:
             print("── long work as jobs, on Orthanc ──")
             drive_jobs(relay)

@@ -130,7 +130,7 @@ import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
 import {
-  ASK_VIEWS, EXTENSION, VIEWER_ONLY, VIEWER_TOOLS, asRead, isViewerOnly, partRead, sessionFor, sessionShows,
+  ASK_VIEWS, EXTENSION, VIEWER_ONLY, asRead, asksViews, isViewerOnly, partRead, sessionFor, sessionShows,
   showsApps, viewerAsked, viewerListed, viewerPart, viewerRead, withPartsRoot, withViewer,
 } from "./_viewer.js";
 
@@ -654,8 +654,9 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     const target = typeof args.target === "string" ? args.target.trim().toLowerCase() : "";
     delete args.target;
     message = { ...message, params: { ...message.params, arguments: args } };
-    // A client that shows the viewer: the tab adds what it shows.
-    if (VIEWER_TOOLS.includes(name) && (where.shows || showsApps(message))) {
+    // A client that shows the viewer: the tab adds what it shows, to the
+    // answer of a call that became a job too once it has ended (job).
+    if (asksViews(name) && (where.shows || showsApps(message))) {
       const meta = message.params._meta && typeof message.params._meta === "object" ? message.params._meta : {};
       message.params._meta = { ...meta, [ASK_VIEWS]: true };
     }
