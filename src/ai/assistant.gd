@@ -5635,6 +5635,7 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_heard = said
 		_joints_told = 0
 		_joint_parts_told = false
+		_joints_refused = false
 		return
 	if said.is_empty() or _heard.to_lower().contains(said.to_lower()):
 		return
@@ -5684,9 +5685,11 @@ func _on_joints_said(model: Model) -> String:
 	_joints_told += 1
 	if _joints_told > JOINTS_IN_FULL:
 		return ("Still nothing in it is on a joint, so it stands as a statue of stacked "
-			+ "bricks: put its head, limbs and tail on joints — place_technique \"%s\", or "
-			% ("posed minifigure\", \"jointed figure" if kind == "figure"
-				else "head on a neck\", \"limb on a clip")
+			+ "bricks: put its head, limbs and tail on joints — %splace_technique \"%s\", or "
+			% ["the figure pattern (\"kind\": \"%s\"), " % ("person" if kind == "figure"
+				else "animal") if kind != "face" else "",
+				"posed minifigure\", \"jointed figure" if kind == "figure"
+				else "head on a neck\", \"limb on a clip"]
 			+ "a part's attach by its connectors (read_guide \"figures\").")
 	var lead: String = {
 		"figure": ("  posed minifigure  a person at minifigure scale, posed in one call: arms "
@@ -5698,9 +5701,12 @@ func _on_joints_said(model: Model) -> String:
 		"creature": ("  jointed animal  a four-legged creature built of bricks: legs on "
 			+ "click hinges, its head on a ball neck, its tail on a bar\n"),
 	}.get(kind, "")
+	var call: String = _figure_call(model, kind)
 	return ("It is a figure, a creature or a character, and nothing in it is on a joint "
 		+ "yet: stacked square, it is a statue of bricks, which is how every one built here "
-		+ "was judged. A set builds one of sub-assemblies of shaped parts, each put on the "
+		+ "was judged. %s" % ("Lay its body on joints in one entry of patterns, sized to "
+			+ "this design, and build on it: %s. " % call if not call.is_empty() else "")
+		+ "A set builds one of sub-assemblies of shaped parts, each put on the "
 		+ "one before by its connectors at the angle its pose has. Each joint is one call, "
 		+ "place_technique with its name and an x, y and z, built on after by its studs or "
 		+ "posed again with an edit's yaw:\n" + lead
@@ -5718,6 +5724,81 @@ func _on_joints_said(model: Model) -> String:
 		+ "\"forearm\", \"attach\": {\"to\": \"elbow.clip[0]\", \"by\": \"bar[0]\", \"flip\": "
 		+ "true, \"yaw\": 210}}; attachment_points lists a part's connectors by name. Its "
 		+ "eyes and brows go on the same way, turned to their angle.")
+
+
+## The figure pattern that lays [param design]'s character on joints, written
+## out for the box and the colour the design has: what a session is handed to
+## copy. "" for a design that is not a figure or a creature.
+func _figure_call(design: Model, kind: String) -> String:
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	var colours: Dictionary = {}
+	for placement: Placement in design.placements:
+		if not placement.section.is_empty() or not placement.attach.is_empty():
+			continue
+		var at := Vector3(placement.x, placement.y, placement.z)
+		low = Vector3(minf(low.x, at.x), minf(low.y, at.y), minf(low.z, at.z))
+		high = Vector3(maxf(high.x, at.x), maxf(high.y, at.y), maxf(high.z, at.z))
+		colours[placement.color] = int(colours.get(placement.color, 0)) + 1
+	if low.x == INF:
+		low = Vector3.ZERO
+		high = Vector3(6, 30, 4)
+	var colour: int = 1
+	var most: int = -1
+	for code: Variant in colours:
+		if int(colours[code]) > most:
+			most = int(colours[code])
+			colour = int(code)
+	var middle := Vector3((low.x + high.x) * 0.5, low.y, (low.z + high.z) * 0.5)
+	if kind == "creature":
+		var length: int = clampi(roundi(high.x - low.x), 4, 12)
+		return ("{\"pattern\": \"figure\", \"kind\": \"animal\", \"at\": {\"x\": %d, \"y\": %d, "
+			% [roundi(low.x), roundi(low.y)] + "\"z\": %d}, \"length\": %d, \"color\": %d, "
+			% [roundi(middle.z) - 2, length, colour]
+			+ "\"pose\": {\"head\": \"up\", \"tail\": \"raised\"}}")
+	if kind != "figure":
+		return ""
+	var tall: int = clampi(roundi(high.y - low.y + 3.0), 20, 60)
+	return ("{\"pattern\": \"figure\", \"kind\": \"person\", \"at\": {\"x\": %d, \"y\": %d, "
+		% [roundi(middle.x) - (3 if tall >= 34 else 2), roundi(low.y)]
+		+ "\"z\": %d}, \"height\": %d, \"color\": %d, \"colors\": {\"skin\": 78, \"legs\": %d}, "
+		% [roundi(middle.z) - 1, tall, colour, colour]
+		+ "\"pose\": {\"right arm\": \"down\", \"left arm\": \"raised\", \"head\": 20}}")
+
+
+## Whether a character's unjointed first submission has been sent back.
+var _joints_refused: bool = false
+
+
+## A figure or a creature submitted with nothing on a joint is sent back once,
+## with the one entry that lays it on joints. Told of the joints in every
+## reply, two of eight character sessions posed a limb (docs/BRICKBENCH.md,
+## "figures on joints"): a submission that is built is a choice made, and the
+## advice under it came after. Sent back, the choice is still open. Once:
+## submitted again as it was, it is built. "" to go on and check it.
+func _unjointed_refusal(design: Model) -> String:
+	if _joints_refused or design.placements.size() < JOINTS_FROM or _posed(design):
+		return ""
+	var kind: String = Style.character_of(_subject_of(design))
+	var call: String = _figure_call(design, kind)
+	if call.is_empty():
+		return ""
+	_joints_refused = true
+	var what: String = "figure" if kind == "figure" else "creature"
+	return ("Not applied, this once: it is a %s and nothing in it is on a joint, so it " % what
+		+ "would stand as a statue of stacked bricks, as every one built here was judged. "
+		+ "A set builds its limbs, head and tail on joints. Lay the %s in one entry of " % what
+		+ "patterns, sized and coloured to this design, and build on it:\n  %s\n" % call
+		+ ("It lays feet, legs, hips, a torso, arms on ball shoulders posed by words (down, "
+			+ "bent, forward, raised, out), hands, and a head turning on a "
+			+ "jumper's stud, with hair; \"seated\": true sits it on a block of its own; "
+			+ "\"kind\": \"head\" is a head on a neck alone. " if kind == "figure"
+			else "It lays four legs, a body, the head on a ball neck (up, down, forward, left, "
+			+ "right) with eyes, and the tail on a bar (raised, level, down). ")
+		+ "Each part is named (\"head\", \"chest\", \"left hand\", \"tail\"): your own bricks "
+		+ "attach to them, a hat {\"part\": ..., \"attach\": {\"to\": \"hair.stud[0]\"}}, or stand "
+		+ "on their studs. Keep the rest of the design (a plinth, props), leave out the body "
+		+ "it replaces. Submitted again with nothing on a joint, it is built as it is.")
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -6452,6 +6533,7 @@ func _read_model(args: Dictionary) -> Model:
 	var shell_trouble: Array = []
 	var shell_said: Array = []
 	args = _with_shells(args, shell_trouble, shell_said)
+	args = _with_figures(args, shell_trouble, shell_said)
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
@@ -11022,6 +11104,39 @@ func _with_shells(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
 		bricks.append_array(laid["bricks"])
 		said.append(str(laid["said"]))
 	out["sections"] = sections
+	out["bricks"] = bricks
+	return out
+
+
+## The characters a design says ({"pattern": "figure"}), laid into it as the
+## named, jointed bricks they are (FigurePattern), ahead of the design's own
+## bricks so those can attach to them by name, a hat to "hair.stud[0]". A
+## second figure's parts are named after it ("dog head"), or "figure 2 head".
+func _with_figures(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	var figures: Array = patterns.filter(func(raw: Variant) -> bool:
+		return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+			== "figure")
+	if figures.is_empty():
+		return args
+	var out: Dictionary = args.duplicate()
+	out["patterns"] = patterns.filter(func(raw: Variant) -> bool: return not figures.has(raw))
+	var bricks: Array = []
+	for n: int in figures.size():
+		var raw: Dictionary = figures[n]
+		var named: String = str(raw.get("name", "")).strip_edges()
+		var prefix: String = ""
+		if not named.is_empty():
+			prefix = named + " "
+		elif n > 0:
+			prefix = "figure %d " % (n + 1)
+		var laid: Dictionary = FigurePattern.lay(raw, trouble, prefix)
+		if laid.is_empty():
+			continue
+		bricks.append_array(laid["bricks"])
+		said.append(str(laid["said"]))
+	if args.get("bricks") is Array:
+		bricks.append_array(args["bricks"])
 	out["bricks"] = bricks
 	return out
 
@@ -17050,6 +17165,18 @@ fuselage, a boiler or a building. A figure built that way is a statue of \
 stacked bricks, and the judge called every one built here that. A set \
 builds a character from tens of parts to a couple of hundred, each chosen \
 for the shape it makes, in sub-assemblies joined at angles.
+  Start it as the figure pattern, one entry of submit_design's patterns: \
+{"pattern": "figure", "kind": "person", "at": {"x": 4, "y": 0, "z": 4}, \
+"height": 36, "color": 1, "colors": {"skin": 78, "legs": 72, "hair": 70}, \
+"pose": {"right arm": "down", "left arm": "raised", "head": 20}} lays a \
+person feet to crown with its arms on ball shoulders, posed by words (down, \
+bent, forward, raised, out; "seated": true on a seat of \
+its own), and its head turning on a jumper's stud; "kind": "animal" with a \
+"length" in studs four legs, a body, the head on a ball neck and the tail \
+on a bar; "kind": "head" a head on a neck. Every part is named ("head", \
+"chest", "left hand", "tail"): attach your own to them (a hat on \
+"hair.stud[0]", a sword in "right hand"), or pose one again with an edit's \
+align or yaw. Then dress it: a face, clothes, a hat, what it holds.
   The brief is the scope and the size. Build what it names (each figure, \
 what they hold, what they stand on) in its proportions (tiny, squat, \
 round, a head as big as its body), and nothing it does not name: an \
@@ -17956,7 +18083,7 @@ and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture and \
 the brief. A hull, a car body, a fuselage or a building is a shape pattern \
 (read_guide "shapes"); a figure, a creature, a character or anything \
-small is sub-assemblies of shaped parts on joints (attach; read_guide "figures"). \
+small is shaped parts on joints (the figure pattern, attach; read_guide "figures"). \
 submit_design that first, with its assemblies and features — what the \
 subject is known by (an owl's eyes; a car's wheel arches, grille), each \
 with where it goes (x, y, z, facing).
@@ -18077,12 +18204,15 @@ func _for_the_subject(section: String, text: String) -> String:
 		return text
 	return ("This subject is a figure, a creature or a character, which is not a shape: "
 		+ "a shape or a fill of one is a statue of stacked bricks, and every one built here "
-		+ "was judged so. Build its head, body and limbs as sub-assemblies of shaped parts on "
-		+ "joints, each a place_technique call: \"posed minifigure\" or \"jointed figure\" "
-		+ "for a person, \"jointed animal\" for four legs, \"head on a neck\", \"limb on a "
-		+ "clip\", \"ball shoulder\", \"tail on a bar\", \"hinged wing\" for one joint each "
-		+ "(read_guide \"figures\"). The patterns below are for what it stands on, and for a "
-		+ "body that is a hull, a whale's.\n\n" + text)
+		+ "was judged so. Its pattern is the figure pattern, which lays it on joints in one "
+		+ "entry: {\"pattern\": \"figure\", \"kind\": \"person\" (or \"animal\", \"head\"), "
+		+ "\"at\": {\"x\", \"y\", \"z\"}, \"height\": plates (an animal's \"length\": studs), "
+		+ "\"color\", \"colors\": {\"skin\", \"legs\", \"hair\"}, \"pose\": {\"right arm\": "
+		+ "\"down\", \"left arm\": \"raised\", \"head\": 20, \"seated\": true}}, every part "
+		+ "named for your own to attach to (read_guide \"figures\"). Single joints are "
+		+ "place_technique calls: \"head on a neck\", \"limb on a clip\", \"ball shoulder\", "
+		+ "\"tail on a bar\", \"hinged wing\". The patterns below are for what it stands on, "
+		+ "and for a body that is a hull, a whale's.\n\n" + text)
 
 
 ## How a construction is actually made, in parts and coordinates.
@@ -18872,6 +19002,9 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return answer
 	var design: Model = _pending
 	_pending = null
+	var unjointed: String = _unjointed_refusal(design)
+	if not unjointed.is_empty():
+		return unjointed
 	await _ready_to_check(design)
 	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
@@ -20410,7 +20543,7 @@ func _tools() -> Array:
 		"properties": {
 			"pattern": {"type": "string",
 				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
-					"round", "shape", "shell"],
+					"round", "shape", "shell", "figure"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -20461,7 +20594,12 @@ func _tools() -> Array:
 					+ "lapping the one above, under a dish; a ball hangs the "
 					+ "same strips under the ring on a stand. Its bands are "
 					+ "sections (\"shell 3.2\": strip 3, band 2) an edit "
-					+ "can turn or repaint."},
+					+ "can turn or repaint. figure: a character in one object, "
+					+ "built as a set builds one — a person, a four-legged animal "
+					+ "or a head on a neck, every limb, the head and the tail on "
+					+ "a working joint (ball shoulders, a turning or ball neck, a "
+					+ "tail on a bar), posed by words, sized and coloured as said, "
+					+ "its parts named to build on and pose again."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -20475,8 +20613,10 @@ func _tools() -> Array:
 				+ "where the footprint's low corner sits, as {x, y, z} (a "
 				+ "round lying along x or z: the low end of it, on the ground). "
 				+ "shell: the middle of where it stands, {x, y, z}."},
-			"kind": {"type": "string", "enum": ["dome", "ball"], "description":
-				"shell: a dome on its ring, or a ball on a stand"},
+			"kind": {"type": "string", "enum": ["dome", "ball", "person", "animal", "head"],
+				"description": "shell: a dome on its ring, or a ball on a stand. figure: "
+				+ "a person (a statue, a mascot, a robot), an animal on four legs, or a "
+				+ "head on a neck"},
 			"frame_color": {"type": "integer", "description":
 				"shell: its ring, hinges and column (72 unless said)"},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
@@ -20554,11 +20694,26 @@ func _tools() -> Array:
 				+ "ball 24 to 32)"},
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":
-				"fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71)"},
+				"fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71); "
+				+ "figure: its clothes or its body"},
 			"height": {"type": "number", "description":
-				"rock: how tall, in plates"},
+				"rock: how tall, in plates. figure: a person's, feet to crown, 20 to 60 "
+				+ "plates (34 and over at the larger size); a head's neck"},
 			"length": {"type": "number", "description":
-				"studs_out: studs along the face"},
+				"studs_out: studs along the face. figure: an animal's, nose to tail, 4 "
+				+ "to 12 studs (7 and over at the larger size)"},
+			"colors": {"type": "object", "description":
+				"figure: colours by what they are, LDraw codes: skin, torso, legs, "
+				+ "feet, hair, arms, head, seat (a person); body, legs, head, tail, eyes "
+				+ "(an animal)"},
+			"pose": {"type": "object", "description":
+				"figure: {\"right arm\" and \"left arm\": down, bent, forward, raised, "
+				+ "out, or [[out, up, forward] of the upper arm, the "
+				+ "same of the forearm]; \"seated\": true sits a person on a seat of its "
+				+ "own; \"head\": degrees it turns (an animal's: up, down, forward, left, "
+				+ "right); \"tail\": raised, level, down}"},
+			"name": {"type": "string", "description":
+				"figure, shell: what its parts' names begin with, for a second one"},
 			"courses": {"type": "number", "description":
 				"studs_out: how many rows, each four plates tall; prism: "
 				+ "how many courses of bricks, three plates each (with piers, left "

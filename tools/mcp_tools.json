@@ -352,8 +352,12 @@
                 "type": "array"
               },
               "color": {
-                "description": "fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71)",
+                "description": "fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71); figure: its clothes or its body",
                 "type": "integer"
+              },
+              "colors": {
+                "description": "figure: colours by what they are, LDraw codes: skin, torso, legs, feet, hair, arms, head, seat (a person); body, legs, head, tail, eyes (an animal)",
+                "type": "object"
               },
               "courses": {
                 "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each (with piers, left out for a display model's proportions, 3.3 times as tall as wide)",
@@ -435,14 +439,17 @@
                 "type": "integer"
               },
               "height": {
-                "description": "rock: how tall, in plates",
+                "description": "rock: how tall, in plates. figure: a person's, feet to crown, 20 to 60 plates (34 and over at the larger size); a head's neck",
                 "type": "number"
               },
               "kind": {
-                "description": "shell: a dome on its ring, or a ball on a stand",
+                "description": "shell: a dome on its ring, or a ball on a stand. figure: a person (a statue, a mascot, a robot), an animal on four legs, or a head on a neck",
                 "enum": [
                   "dome",
-                  "ball"
+                  "ball",
+                  "person",
+                  "animal",
+                  "head"
                 ],
                 "type": "string"
               },
@@ -451,7 +458,7 @@
                 "type": "number"
               },
               "length": {
-                "description": "studs_out: studs along the face",
+                "description": "studs_out: studs along the face. figure: an animal's, nose to tail, 4 to 12 studs (7 and over at the larger size)",
                 "type": "number"
               },
               "loft": {
@@ -470,6 +477,10 @@
                 "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time — a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
+              "name": {
+                "description": "figure, shell: what its parts' names begin with, for a second one",
+                "type": "string"
+              },
               "open": {
                 "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back, the piers there left closed",
                 "type": "integer"
@@ -479,7 +490,7 @@
                 "type": "boolean"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there. shell: a dome or a ball bigger than a dish, in one object — twelve strips of flat panels on clip hinges round a ring, each band's panels sized to its round, the strips taking turns low and high so the high ones lap the low ones' edges, tapered with wedge plates, each band lapping the one above, under a dish; a ball hangs the same strips under the ring on a stand. Its bands are sections (\"shell 3.2\": strip 3, band 2) an edit can turn or repaint.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there. shell: a dome or a ball bigger than a dish, in one object — twelve strips of flat panels on clip hinges round a ring, each band's panels sized to its round, the strips taking turns low and high so the high ones lap the low ones' edges, tapered with wedge plates, each band lapping the one above, under a dish; a ball hangs the same strips under the ring on a stand. Its bands are sections (\"shell 3.2\": strip 3, band 2) an edit can turn or repaint. figure: a character in one object, built as a set builds one — a person, a four-legged animal or a head on a neck, every limb, the head and the tail on a working joint (ball shoulders, a turning or ball neck, a tail on a bar), posed by words, sized and coloured as said, its parts named to build on and pose again.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -489,7 +500,8 @@
                   "prism",
                   "round",
                   "shape",
-                  "shell"
+                  "shell",
+                  "figure"
                 ],
                 "type": "string"
               },
@@ -553,6 +565,10 @@
                     "type": "integer"
                   }
                 },
+                "type": "object"
+              },
+              "pose": {
+                "description": "figure: {\"right arm\" and \"left arm\": down, bent, forward, raised, out, or [[out, up, forward] of the upper arm, the same of the forearm]; \"seated\": true sits a person on a seat of its own; \"head\": degrees it turns (an animal's: up, down, forward, left, right); \"tail\": raised, level, down}",
                 "type": "object"
               },
               "radius": {
@@ -2397,8 +2413,12 @@
                 "type": "array"
               },
               "color": {
-                "description": "fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71)",
+                "description": "fill, rock, shell: the colour (rock: 72 if not said; shell: its panels, 71); figure: its clothes or its body",
                 "type": "integer"
+              },
+              "colors": {
+                "description": "figure: colours by what they are, LDraw codes: skin, torso, legs, feet, hair, arms, head, seat (a person); body, legs, head, tail, eyes (an animal)",
+                "type": "object"
               },
               "courses": {
                 "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each (with piers, left out for a display model's proportions, 3.3 times as tall as wide)",
@@ -2480,14 +2500,17 @@
                 "type": "integer"
               },
               "height": {
-                "description": "rock: how tall, in plates",
+                "description": "rock: how tall, in plates. figure: a person's, feet to crown, 20 to 60 plates (34 and over at the larger size); a head's neck",
                 "type": "number"
               },
               "kind": {
-                "description": "shell: a dome on its ring, or a ball on a stand",
+                "description": "shell: a dome on its ring, or a ball on a stand. figure: a person (a statue, a mascot, a robot), an animal on four legs, or a head on a neck",
                 "enum": [
                   "dome",
-                  "ball"
+                  "ball",
+                  "person",
+                  "animal",
+                  "head"
                 ],
                 "type": "string"
               },
@@ -2496,7 +2519,7 @@
                 "type": "number"
               },
               "length": {
-                "description": "studs_out: studs along the face",
+                "description": "studs_out: studs along the face. figure: an animal's, nose to tail, 4 to 12 studs (7 and over at the larger size)",
                 "type": "number"
               },
               "loft": {
@@ -2515,6 +2538,10 @@
                 "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time — a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
+              "name": {
+                "description": "figure, shell: what its parts' names begin with, for a second one",
+                "type": "string"
+              },
               "open": {
                 "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back, the piers there left closed",
                 "type": "integer"
@@ -2524,7 +2551,7 @@
                 "type": "boolean"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there. shell: a dome or a ball bigger than a dish, in one object — twelve strips of flat panels on clip hinges round a ring, each band's panels sized to its round, the strips taking turns low and high so the high ones lap the low ones' edges, tapered with wedge plates, each band lapping the one above, under a dish; a ball hangs the same strips under the ring on a stand. Its bands are sections (\"shell 3.2\": strip 3, band 2) an edit can turn or repaint.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there. shell: a dome or a ball bigger than a dish, in one object — twelve strips of flat panels on clip hinges round a ring, each band's panels sized to its round, the strips taking turns low and high so the high ones lap the low ones' edges, tapered with wedge plates, each band lapping the one above, under a dish; a ball hangs the same strips under the ring on a stand. Its bands are sections (\"shell 3.2\": strip 3, band 2) an edit can turn or repaint. figure: a character in one object, built as a set builds one — a person, a four-legged animal or a head on a neck, every limb, the head and the tail on a working joint (ball shoulders, a turning or ball neck, a tail on a bar), posed by words, sized and coloured as said, its parts named to build on and pose again.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -2534,7 +2561,8 @@
                   "prism",
                   "round",
                   "shape",
-                  "shell"
+                  "shell",
+                  "figure"
                 ],
                 "type": "string"
               },
@@ -2598,6 +2626,10 @@
                     "type": "integer"
                   }
                 },
+                "type": "object"
+              },
+              "pose": {
+                "description": "figure: {\"right arm\" and \"left arm\": down, bent, forward, raised, out, or [[out, up, forward] of the upper arm, the same of the forearm]; \"seated\": true sits a person on a seat of its own; \"head\": degrees it turns (an animal's: up, down, forward, left, right); \"tail\": raised, level, down}",
                 "type": "object"
               },
               "radius": {
