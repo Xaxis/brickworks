@@ -63,7 +63,7 @@ const SIZES: Dictionary = {
 	1: {"leg": "3004", "leg_rot": 1, "leg_w": 1, "legs_at": [0, 3], "hips": "3020",
 		"torso": "3001", "wide": 4, "left_stud": 1, "right_stud": 6, "neck_stud": 3,
 		"foot": "3623", "foot_rot": 1},
-	2: {"leg": "3003", "leg_rot": 0, "leg_w": 2, "legs_at": [1, 3], "hips": "3795",
+	2: {"leg": "3003", "leg_rot": 0, "leg_w": 2, "legs_at": [0, 4], "hips": "3795",
 		"torso": "2456", "wide": 6, "left_stud": 1, "right_stud": 10, "neck_stud": 5,
 		"foot": "3021", "foot_rot": 1},
 }
@@ -183,12 +183,15 @@ static func _person(pattern: Dictionary, origin: Vector3, main: int, colours: Di
 	var seat_said: String = ""
 	if seated:
 		# A seat on a plate of its own; shins and feet stand in front of it as
-		# tall as it is; the thighs are two layers of plates lying forward from
-		# the seat's back over the knees, and the torso stands on their back.
+		# tall as it is; each thigh is two layers of plates lying forward from
+		# the seat's back over its knee, apart as the legs are, and the torso
+		# stands on the hips across their back. One slab of plates for both
+		# read as a table with a person behind it.
 		var shin_n: int = maxi(2, ceili(leg_n * 0.55))
 		var seat_c: int = _colour(colours, ["seat", "block", "rock"], 72)
 		var deep: int = 4 if size == 1 else 6
-		var plate_part: String = "3020" if size == 1 else "3795"
+		var thigh: String = "3666" if size == 1 else "3034"     # 1x6, 2x8: the seat and the knee
+		var over: String = "3710" if size == 1 else "3795"      # 1x4, 2x6: in front of the hips
 		bricks.append(_at({"part": "3031" if size == 1 else "3958", "color": seat_c,
 			"x": 0, "y": 0, "z": 0, "rot": 0, "name": "%sseat" % n}, origin))
 		for i: int in shin_n:
@@ -212,13 +215,13 @@ static func _person(pattern: Dictionary, origin: Vector3, main: int, colours: Di
 			for i: int in shin_n:
 				bricks.append(_at({"part": s["leg"], "color": legs_c, "x": lx, "y": 1 + 3 * i,
 					"z": deep, "rot": s["leg_rot"]}, origin))
-		for row: int in deep / 2 + 1:
-			bricks.append(_at({"part": plate_part, "color": legs_c, "x": 0, "y": top,
-				"z": row * 2, "rot": 0, "name": "%slap" % n if row == deep / 2 else ""}, origin))
-		for row: int in deep / 2:
-			bricks.append(_at({"part": plate_part, "color": legs_c, "x": 0, "y": top + 1,
-				"z": row * 2 + 2, "rot": 0, "name": "%sknees" % n if row == deep / 2 - 1 else ""},
-				origin))
+		for leg: int in 2:
+			var lx: int = int(s["legs_at"][leg])
+			var side: String = ["right", "left"][leg]
+			bricks.append(_at({"part": thigh, "color": legs_c, "x": lx, "y": top, "z": 0,
+				"rot": 1, "name": "%s%s thigh" % [n, side]}, origin))
+			bricks.append(_at({"part": over, "color": legs_c, "x": lx, "y": top + 1, "z": 2,
+				"rot": 1, "name": "%s%s knee" % [n, side]}, origin))
 		y = top + 1.0
 		seat_said = ", seated on a block of %d courses (its \"seat\"), thighs forward on it" % shin_n
 	else:

@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints -->
 
 ## Sub-features
 
@@ -53,6 +53,19 @@ fixing what it got wrong.
   limb stands stiff and stacked (`_stiff_limbs_said`); the living things' advice no
   longer tells a creature to lay its body as a shape. Recipe under How to check
   it, "Figures on joints".
+- `characters laid on joints`: `src/ai/figure_pattern.gd` (`FigurePattern`), read
+  by `Assistant._with_figures` ahead of a design's own bricks. One entry of
+  submit_design's or check_design's patterns, `{"pattern": "figure", "kind":
+  "person" | "animal" | "head", "at", "height" | "length", "color", "colors",
+  "pose"}`, lays a person (arms on ball shoulders posed by words, a head on a
+  jumper's stud, seated on a block of its own if said), a four-legged animal (head
+  on a ball neck, tail on a bar) or a head on a neck, as named bricks with
+  attaches, the larger size from 34 plates or 7 studs. A figure or creature
+  submitted with nothing on a joint is sent back once (`_unjointed_refusal`) with
+  that entry written out for its box and colour (`_figure_call`); the subject is
+  read as for the joints' advice, and a fresh brief (`heard`) or a model cleared or
+  opened (`forget_built`) forgets the last design's name. Recipe under How to
+  check it, "Characters laid on joints".
 - `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
   `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
   may say `"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`
@@ -2318,11 +2331,40 @@ armature, a dragon at a scale its joints, a lighthouse nothing; search_parts
 names 63868, 60478, 14418 and 44301a under "robot arm" and a balloon dog's first
 search, not its second nor a lighthouse's; read_guide "shapes" is led for the
 statue and unchanged for the lighthouse, and its description names "figures";
-the review of the stacked statue names its left and right arms stiff, of the
-posed one nothing. On merge29 (5c4708e) it does not load (no `Style.character_of`),
+submit_design sends the stacked statue back once, with the figure pattern written
+out for it, and builds it when it comes again as it was; the review of the stacked
+statue names its left and right arms stiff, of the posed one nothing. On merge29 (5c4708e) it does not load (no `Style.character_of`),
 and no reply in that arm's 28 bench sessions told of joints. The techniques probe
 builds both armatures by the check, and BrickBench's verify.py passes them
 exported, with the figure's right arm raised too (2026-10-15).
+
+### Characters laid on joints (the figure pattern)
+
+```sh
+godot --headless --path . --script src/dev/armature_probe.gd                 # each kind laid, each joint turned, held, and the refusal
+godot --headless --path . --script src/dev/armature_probe.gd -- --out=DIR    # ...and each kind as DIR/<kind>.ldr, for verify.py
+```
+
+Needs `assets/generated/exact/`; without it the probe says SKIPPED. Proves it when it
+ends "0 failed": `{"pattern": "figure"}` lays a person (30 and 42 plates, and seated),
+an animal (6 and 8 studs) and a head on a neck, every part said by its connectors on
+them, named to build on, joined to what it went on by BrickNet's labels, clear of
+every other by 1 LDU and passed by the check on a bare floor; each arm pose word
+(down, bent, forward, raised, out) at both sizes is joined and passed, its hand where
+the word says against the shoulder and its upper arm turned on its ball; the head
+turns on its jumper by the degrees said, an animal's head nods and looks aside on its
+ball neck and its tail swings 60 degrees on its bar, the part it is on unmoved;
+submitted, a later edit leaves every posed part where it stood, and an arm raised and
+a head turned again by an edit (parts off, put on again by the names standing) stand
+where that pose puts them; a statue stacked square is sent back once with a person's
+entry that builds as it is, built when it comes again, and not sent back a second
+time; a balloon dog is sent back with an animal's; a fire engine with a firefighter,
+a Porsche at minifigure scale and a lighthouse never are; and with no brief (the
+connector), a lighthouse checked after a statue was built and the model cleared is
+told nothing of joints. Before a fresh brief or a cleared model forgot the last
+design's name (armature, 2026-10-16), the balloon dog was handed a person's entry and
+the three vehicles and the tower were sent back: the statue's name, kept as the brief,
+made each of them a figure.
 
 ### BrickBench: the designer on an outside ruler
 

@@ -321,6 +321,8 @@ var _brief: String = ""
 ## about. check_design carries no name, so without this a figure checked
 ## before its first submit was a subject of no kind, and told of towers.
 var _heard: String = ""
+## The brief a session was started on, which outlives a clear_model inside it.
+var _heard_fresh: String = ""
 ## What the person owns ("part/colour" -> how many, CollectionStore.on_hand),
 ## for a brief that asks to be built from their collection
 ## (Collection.wanted_in). Empty when nothing is known.
@@ -5633,6 +5635,11 @@ func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
 		_heard = said
+		_heard_fresh = said
+		# What the last design from outside was called is not this one's
+		# subject: a lighthouse after a statue was read as a figure.
+		if not _busy:
+			_brief = ""
 		_joints_told = 0
 		_joint_parts_told = false
 		_joints_refused = false
@@ -5730,31 +5737,36 @@ func _on_joints_said(model: Model) -> String:
 ## out for the box and the colour the design has: what a session is handed to
 ## copy. "" for a design that is not a figure or a creature.
 func _figure_call(design: Model, kind: String) -> String:
-	var low := Vector3(INF, INF, INF)
-	var high := Vector3(-INF, -INF, -INF)
+	var plain: Array = design.placements.filter(func(p: Placement) -> bool:
+		return p.section.is_empty() and p.attach.is_empty())
 	var colours: Dictionary = {}
-	for placement: Placement in design.placements:
-		if not placement.section.is_empty() or not placement.attach.is_empty():
-			continue
-		var at := Vector3(placement.x, placement.y, placement.z)
-		low = Vector3(minf(low.x, at.x), minf(low.y, at.y), minf(low.z, at.z))
-		high = Vector3(maxf(high.x, at.x), maxf(high.y, at.y), maxf(high.z, at.z))
+	for placement: Placement in plain:
 		colours[placement.color] = int(colours.get(placement.color, 0)) + 1
-	if low.x == INF:
-		low = Vector3.ZERO
-		high = Vector3(6, 30, 4)
 	var colour: int = 1
 	var most: int = -1
 	for code: Variant in colours:
 		if int(colours[code]) > most:
 			most = int(colours[code])
 			colour = int(code)
+	# The body is the box of its colour, so the entry stands on the plinth or
+	# the block the design keeps rather than in it.
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	for placement: Placement in plain:
+		if placement.color != colour:
+			continue
+		var at := Vector3(placement.x, placement.y, placement.z)
+		low = Vector3(minf(low.x, at.x), minf(low.y, at.y), minf(low.z, at.z))
+		high = Vector3(maxf(high.x, at.x), maxf(high.y, at.y), maxf(high.z, at.z))
+	if low.x == INF:
+		low = Vector3.ZERO
+		high = Vector3(6, 30, 4)
 	var middle := Vector3((low.x + high.x) * 0.5, low.y, (low.z + high.z) * 0.5)
 	if kind == "creature":
 		var length: int = clampi(roundi(high.x - low.x), 4, 12)
 		return ("{\"pattern\": \"figure\", \"kind\": \"animal\", \"at\": {\"x\": %d, \"y\": %d, "
 			% [roundi(low.x), roundi(low.y)] + "\"z\": %d}, \"length\": %d, \"color\": %d, "
-			% [roundi(middle.z) - 2, length, colour]
+			% [roundi(middle.z) - (1 if length < FigurePattern.LARGE_ANIMAL else 2), length, colour]
 			+ "\"pose\": {\"head\": \"up\", \"tail\": \"raised\"}}")
 	if kind != "figure":
 		return ""
@@ -16703,6 +16715,12 @@ func forget_built() -> void:
 	_nudged.clear()
 	# A selection names bricks by number too.
 	unfocus()
+	# And what it was of: a model cleared or opened from outside starts a new
+	# subject, or the statue built before it makes the lighthouse after it a
+	# figure. The brief a session was started on stays.
+	if not _busy:
+		_brief = ""
+		_heard = _heard_fresh
 
 
 func clear_built() -> void:

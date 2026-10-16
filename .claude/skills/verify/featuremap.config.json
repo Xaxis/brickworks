@@ -1937,6 +1937,13 @@
       "entry": "src/ai/style.gd",
       "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
       "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "characters laid on joints",
+      "entry": "src/ai/figure_pattern.gd",
+      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
+      "area": "assistant"
     }
   ]
 }
