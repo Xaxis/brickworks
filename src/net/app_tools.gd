@@ -390,7 +390,9 @@ func definitions() -> Array:
 				+ ".gltf's .bin come from beside it). pick=true opens the window's file "
 				+ "dialog for the person to choose one on their computer, and says so; once "
 				+ "they have, brickify with neither lays what the panel shows. Laying is a "
-				+ "job: the answer is a job number, and job gives the result."),
+				+ "job: the answer is a job number, and job gives the result: whether it is "
+				+ "one piece and stands (weighed), on what, any stand it was given, what was "
+				+ "joined, and anything left out, where and why."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf or .glb"},
 				"pick": {"type": "boolean", "description": "open the file dialog for the person"},
@@ -399,6 +401,7 @@ func definitions() -> Array:
 				"up": {"type": "string", "enum": Array(Brickify.UPS),
 					"description": "which of the file's axes is up; a printer's STL is +Z"},
 				"hollow": {"type": "boolean"},
+				"stand": {"type": "boolean", "description": "a stand under it where it would tip or stands on legs or wheels much thinner than itself; true when omitted"},
 				"smooth": {"type": "boolean", "description": "slopes, curves, tiles and studs sideways; true when omitted"},
 				"colours": {"type": "string", "enum": ["model", "one", "limit"],
 					"description": "its own, all colour=, or its own cut to the limit= it uses most"},

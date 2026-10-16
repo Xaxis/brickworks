@@ -266,6 +266,15 @@ whole cycle.
 
 ### Fixed
 
+- Brickify keeps the whole model. A leg, a spout or a wing thinner than a
+  stud is laid a stud thick instead of never reaching the bricks, so a fox,
+  a figure and an aircraft no longer come out with nothing. A piece apart is
+  joined to the rest by a pillar or a plate across the joint, not dropped;
+  what nothing can join is said, where and why. A model that would tip, or
+  stands on legs or wheels a few studs wide, is laid on a stand, and the
+  panel weighs it before it says "buildable". If a size lays nothing, the
+  panel says the smallest that keeps it. Plates go down as 3023b, the number
+  LDraw gives the commonest plate today, so parts lists find its element.
 - Checking a big Technic model is quick again. Since parts are checked where
   they stand, a turned part's collision cover is hundreds of boxes, and a part
   a file carries can be tens of thousands (the drum of the 42112 concrete

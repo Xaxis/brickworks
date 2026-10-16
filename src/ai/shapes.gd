@@ -140,6 +140,21 @@ static var said: Array = []
 static var turned: int = 0
 
 
+## The number LDraw gives [param id] today: 3023 says "~Moved to 3023b", and
+## a parts list or a booklet given 3023 has no element number for the
+## commonest plate there is. Read from the catalogue's stubs, so a part
+## LDraw moves later is laid by its new number too. Only where the stub
+## moves it nowhere (its moved_by the identity, as for all but 68 of the
+## 1,161): a part a stub turns would want its placement turned with it.
+static func current(library: PartLibrary, id: String) -> String:
+	if library == null:
+		return id
+	var now: String = library.resolve(id)
+	if now == id or library.moved_by(id) != Transform3D.IDENTITY:
+		return id
+	return now
+
+
 ## Whether [param colour] is glass: a transparent colour.
 static func is_glass(library: PartLibrary, colour: int) -> bool:
 	if colour < 0 or library == null:
@@ -196,6 +211,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		if raw is Dictionary:
 			bands.append(raw)
 	var smooth: bool = str(pattern.get("top", "smooth")).to_lower() != "studs"
+	# Every piece kept, for the caller to join or say (Brickify's mend).
+	var keep_pieces: bool = bool(pattern.get("keep_pieces", false))
 	var surface: String = str(pattern.get("surface", "auto")).to_lower()
 	if surface == "auto":
 		surface = "straight"
@@ -305,6 +322,13 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				plan.foot_held[cell] = true
 		plan.sides_smooth = bool(pattern.get("panels", true))
 		plan.wedges = bool(pattern.get("wedges", true))
+		# Columns laid plain, [x, z] from at as columns are counted: no slope,
+		# wedge or top tile there, studs showing.
+		if pattern.get("plain_at") is Dictionary:
+			plan.plain_at = pattern["plain_at"]
+			for key: Variant in plan.plain_at:
+				if columns.has(key):
+					plan.studded[key] = true
 		if pattern.get("prefer") is Callable:
 			plan.prefer = pattern["prefer"]
 		plan.sample = func(x: float, j: float, z: float) -> bool:
@@ -351,6 +375,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
+		plan.rejoin = bool(pattern.get("rejoin", keep_pieces))
 		plan.faces = faces
 		plan.mirror_of()
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
@@ -428,12 +453,19 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		# A model standing on legs is pieces at its foot that meet the body above
 		# only side by side: pruned first from the foot, a bunny on its feet kept
 		# its feet and lost the rest. Joined first, then pruned.
-		if bool(pattern.get("stitch_first", false)):
+		var stitched: bool = bool(pattern.get("stitch_first", false))
+		if stitched:
 			plan.stitch()
-		plan.prune()
+		# Pruned here, a teapot's spout and handle went without a word, and
+		# its coverage still read 98%.
+		if not keep_pieces:
+			plan.prune()
 		for one: Dictionary in fixed:
 			plan.made.append(one.duplicate(true))
-		plan.stitch()
+		# Stitched again only where something changed since: with every piece
+		# kept and nothing fixed added, it was the first stitch twice over.
+		if not (stitched and keep_pieces and fixed.is_empty()):
+			plan.stitch()
 		return [plan, shells]
 	var built: Array = build.call(bool(pattern.get("sideways", not gridded)))
 	var plan: Plan = built[0]
@@ -474,7 +506,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# off, and said: a fighter's nose ended in a stud-long row of plates, a
 	# stud wide, held by nothing, and the whole design was refused for it.
 	var left_off: Array = []
-	if pieces.size() > 1:
+	if pieces.size() > 1 and not keep_pieces:
 		var gone: Dictionary = {}
 		for piece: Array in pieces.slice(1):
 			if piece.size() > 3:
@@ -572,7 +604,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		# Plan._made_in chose it for.
 		if is_glass(library, int(one["color"])):
 			one["part"] = in_glass(library, str(one["part"]), int(one["color"]))
-		var out := {"part": one["part"], "color": one["color"],
+		var out := {"part": current(library, str(one["part"])), "color": one["color"],
 			"x": float(one["x"]) + origin.x, "y": float(one["y"]) + y0 + origin.y,
 			"z": float(one["z"]) + origin.z, "rot": int(one["rot"])}
 		if one.has("panel"):
@@ -581,7 +613,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			out["face"] = one["face"]
 		placed.append(out)
 	for one: Dictionary in wheels:
-		var out: Dictionary = {"part": one["part"], "color": one["color"], "rot": one["rot"]}
+		var out: Dictionary = {"part": current(library, str(one["part"])), "color": one["color"],
+			"rot": one["rot"]}
 		out["x"] = float(one["x"]) + origin.x
 		out["y"] = float(one["y"]) + origin.y
 		out["z"] = float(one["z"]) + origin.z
@@ -1773,6 +1806,10 @@ class Plan extends RefCounted:
 	## plates (lay). A sculpt's grid keeps its bricks: Brickify's own lay
 	## measures what it is, and a hollow sculpt lost 3% of itself.
 	var bridges: bool = true
+	## Whether a grid's pieces are joined in every way a design's are, once
+	## its own first ways are spent (stitch): for a caller that keeps every
+	## piece, so what is not joined here is joined or said there.
+	var rejoin: bool = false
 	## A curved side laid on its side (lay_shell): its outside is the flank
 	## a person sees, and where it curves a curved slope fits as well as a
 	## cheese slope, the curved one.
@@ -3236,6 +3273,25 @@ class Plan extends RefCounted:
 
 	## Cells whose top plate carries a slope, so is laid with studs, not tiled.
 	var studded: Dictionary = {}
+	## Columns laid plain, Vector2i -> true: no slope, wedge or top tile, its
+	## studs showing (Shapes.lay's "plain_at"). Brickify's parts thinner than a
+	## stud: an aircraft's wings, two plates thick, laid in tiles, wedges and
+	## slopes, came apart into loose bits, where plain they held.
+	var plain_at: Dictionary = {}
+
+	## [method _wedged] but for the columns laid plain, kept out of it and
+	## put back.
+	func _wedged_off(cells: Dictionary, j: int, height: int = 1) -> Array:
+		if plain_at.is_empty():
+			return _wedged(cells, j, height)
+		var aside: Dictionary = {}
+		for key: Variant in cells.keys():
+			if plain_at.has(key):
+				aside[key] = cells[key]
+				cells.erase(key)
+		var out: Array = _wedged(cells, j, height)
+		cells.merge(aside)
+		return out
 
 	## The slopes there are, as [kind, length in studs, height in plates, one
 	## wide, two wide, the height of the surface over the middle of each stud
@@ -3622,6 +3678,8 @@ class Plan extends RefCounted:
 		for a: int in int(pick.get("wide", 1)):
 			for b: int in int(pick["length"]):
 				var cell: Vector2i = (pick["cell"] as Vector2i) + perp * a + facing * b
+				if plain_at.has(cell):
+					return false
 				for n: int in int(pick["tall"]):
 					var key := Vector3i(cell.x, int(pick["y"]) + n, cell.y)
 					if taken.has(key) or claimed.has(key):
@@ -3955,7 +4013,7 @@ class Plan extends RefCounted:
 				# hull's bow in bricks was a staircase where its plates had
 				# wedges.
 				var claimed: Dictionary = bricks.duplicate()
-				for one: Dictionary in _wedged(bricks, j, 3):
+				for one: Dictionary in _wedged_off(bricks, j, 3):
 					made.append(one)
 				for key: Variant in claimed:
 					if not bricks.has(key):
@@ -3967,7 +4025,7 @@ class Plan extends RefCounted:
 				# body's rim was a staircase up every course.
 				var trial: Dictionary = bricks.duplicate()
 				var cut_before: Dictionary = cut_in.duplicate()
-				_wedged(trial, j + 1)
+				_wedged_off(trial, j + 1)
 				cut_in = cut_before
 				for key: Variant in bricks.keys():
 					if not trial.has(key):
@@ -4000,7 +4058,7 @@ class Plan extends RefCounted:
 					under[cell] = at(cell, j)
 				else:
 					plates[cell] = at(cell, j)
-			for one: Dictionary in _wedged(plates, j):
+			for one: Dictionary in _wedged_off(plates, j):
 				made.append(one)
 			for one: Dictionary in _layer(plates, j, Shapes.CORE_PLATES, -1):
 				made.append(_annotated(one, Shapes.CORE_PLATES, 1, true))
@@ -4141,6 +4199,9 @@ class Plan extends RefCounted:
 	## 96 times over: its nose and its tail came back loose, and the run built
 	## the body by hand.
 	func stitch() -> void:
+		var refused: Dictionary = {}
+		var first_refused: Dictionary = {}
+		var again: bool = true
 		for _round: int in 96:
 			var found: Array = pieces()
 			if found.size() <= 1:
@@ -4154,15 +4215,50 @@ class Plan extends RefCounted:
 			# left as many pieces on the way, and refused them it kept its feet
 			# alone. Its own check mends what is left.
 			if not bridges:
+				# With the rejoin to follow, a piece the first two ways have
+				# refused is not offered them again: each try at a joint maps the
+				# whole plan, and a round for every piece the rejoin joined was
+				# most of a forty-stud bunny's lay.
+				var keys: Array = []
 				for piece: Array in found.slice(1):
-					if _pair_across(piece, main):
+					keys.append(_piece_key(piece) if rejoin else "")
+				for n: int in keys.size():
+					if not first_refused.has(keys[n]) and _pair_across(found[n + 1], main):
 						joined_one = true
 						break
 				if not joined_one:
-					for piece: Array in found.slice(1):
-						if _unedge(piece, main):
+					for n: int in keys.size():
+						if not first_refused.has(keys[n]) and _unedge(found[n + 1], main):
 							joined_one = true
 							break
+				if not joined_one and rejoin:
+					for key: Variant in keys:
+						first_refused[key] = true
+				# Then, for a caller that keeps every piece (Brickify), its plates
+				# and slopes about the joint laid again as plates crossing it, each
+				# way kept only if it leaves fewer pieces: a teapot's handle, a
+				# column of 1 x 1 plates beside the body's slopes, was joined by
+				# neither of the first two and left out. A piece no way joined is
+				# not tried again: tried every round, a forty-stud bunny's few
+				# loose bits took its lay from 5 s to 23.
+				if not joined_one and rejoin:
+					var before := Vector2i(found.size(), _bulk(found[0]))
+					for n: int in keys.size():
+						if refused.has(keys[n]):
+							continue
+						if _join(found[n + 1], main, before, true):
+							joined_one = true
+							break
+						refused[keys[n]] = true
+				# Once nothing more joins, what was refused is offered every way
+				# once more: joins since may have laid what it meets otherwise. A
+				# fox's haunch, refused before its legs were joined, was left out.
+				if not joined_one and rejoin and again \
+						and not (refused.is_empty() and first_refused.is_empty()):
+					again = false
+					refused.clear()
+					first_refused.clear()
+					continue
 				if not joined_one:
 					break
 				continue
@@ -4173,6 +4269,17 @@ class Plan extends RefCounted:
 					break
 			if not joined_one:
 				break
+
+	## A piece by where its parts are, so the same piece is known again in
+	## the next round's pieces.
+	func _piece_key(piece: Array) -> String:
+		var parts := PackedStringArray()
+		for n: int in piece:
+			var one: Dictionary = made[n]
+			parts.append("%s@%s,%s,%s" % [one.get("part", ""), one.get("x", 0), one.get("y", 0),
+				one.get("z", 0)])
+		parts.sort()
+		return "|".join(parts)
 
 	## How much of the shape a piece holds, in plates.
 	func _bulk(piece: Array) -> int:
@@ -4187,7 +4294,21 @@ class Plan extends RefCounted:
 	## (y), so a way that joins one piece and splits a smaller one off still
 	## counts, and nothing is undone and done again. [member made] as it was
 	## when no way does.
-	func _join(piece: Array, main: Dictionary, before: Vector2i) -> bool:
+	##
+	## [param regrid] for a sculpt's grid whose first ways are spent: only the
+	## plates laid again, one and two parts out, with the top's tiles, and then
+	## with the slopes at the joint. Each way tried is a piece count of the
+	## whole, and the full list on a forty-stud bunny's loose bits was most of
+	## its lay.
+	func _join(piece: Array, main: Dictionary, before: Vector2i, regrid: bool = false) -> bool:
+		if regrid:
+			return _first_that_joins([
+				func() -> bool: return _replate(piece, main, 1, 0),
+				func() -> bool: return _replate(piece, main, 2, 0),
+				func() -> bool: return _replate(piece, main, 1, 1),
+				# A teapot's handle met its body only at its curved slopes.
+				func() -> bool: return _replate(piece, main, 1, 3),
+				func() -> bool: return _replate(piece, main, 2, 3)], before)
 		var ways: Array[Callable] = [
 			func() -> bool: return _pair_across(piece, main),
 			func() -> bool: return _unedge(piece, main),
@@ -4208,6 +4329,12 @@ class Plan extends RefCounted:
 			# plate, and met the body in a joint nothing crossed.
 			func() -> bool: return bridges and _replate(piece, main, 2, 2),
 			func() -> bool: return bridges and _replate(piece, main, 3, 2)]
+		return _first_that_joins(ways, before)
+
+	## The first of [param ways] that leaves fewer pieces than [param before]
+	## (or as many and the largest bigger), kept; [member made] as it was when
+	## none does.
+	func _first_that_joins(ways: Array, before: Vector2i) -> bool:
 		var was: Array = made.duplicate()
 		for way: Callable in ways:
 			if bool(way.call()):
@@ -4356,6 +4483,12 @@ class Plan extends RefCounted:
 		if kinds >= 2 and bool(one.get("_edge", false)) and not bool(one.get("_fixed", false)) \
 				and not (one["_cells"] as Array).is_empty():
 			return int(one["_h"]) in [1, 3]
+		# And at kinds 3, the slopes too, plate by plate over what each
+		# covered: a sculpt's handle met its body only at slopes, which nothing
+		# laid again, and was left out. Studs show there, where it joins.
+		if kinds >= 3 and bool(one.get("_slope", false)) and not bool(one.get("_fixed", false)) \
+				and not (one.get("_cells", []) as Array).is_empty():
+			return true
 		var tops: bool = kinds >= 1
 		if one.has("panel") or one.has("_holds") or not _plain(one):
 			return false

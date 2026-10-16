@@ -20,8 +20,23 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   grid — a ray up every third of a stud, inside where more faces have been gone
   in by than come out of (two shells pushed into each other are one solid;
   faces wound the wrong way are read the other way; a scan left open
-  underneath is closed from the ground, never up into the sky), the largest
-  piece kept,
+  underneath is closed from the ground, never up into the sky); then what is
+  thinner than a stud or a plate (`_thin`): a cell the surface passes through
+  (`_touched`, triangle against cell by separating axes) counts where nothing
+  measured is in the 26 round it, the cells it passes through between such a
+  part and the body join them, and a part one plate thick is made two, so a
+  fox's legs, a spout or a wing claim their cells at the size chosen and a
+  thick body comes out no fatter. Then join, don't drop (`_join`): each piece
+  apart is joined to the rest by the cheapest way (`_reach`: through the
+  model free, along its thin surface cheaply, through air a plate up or down
+  2 and a stud across 5), a floating largest piece is stood on the ground by
+  a pillar, a piece on the ground too far to join is kept for a stand, and
+  only dust (a speck reachable only by its own pillar) or a piece too far is
+  left out, in `grid.left_out` with where and why. Then whether it stands
+  (`_stance`): on feet none bigger than three studs (`THIN_FOOT`), within
+  half a stud of tipping, or in pieces only the ground joins, it is given a stand
+  (`grid.stand`, under its feet and centre of mass); `options.stand` false
+  lays none. Then
   hollowed in whole courses behind walls two studs and three plates thick if
   asked — its surface colour sampled every 0.35 stud and matched to a current
   solid LEGO colour in Oklab (`Brickify.PALETTE`; not the mosaic's, whose
@@ -34,19 +49,44 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
-  panels on a flat side. Then `Assistant._check` as check_design runs it, and
-  mended (`Brickify.mend`): a part overlapping, one nothing holds, a piece
-  apart, each taken out and checked again, until it passes in one piece.
-  `report["coverage"]` says how much of the model the parts fill.
+  panels on a flat side; every piece kept (`keep_pieces`: no prune, nothing
+  left off unsaid) and, once the grid's own stitch is spent, the plates and
+  then the slopes about each joint laid again as plates crossing it
+  (`rejoin`, each way kept only if it leaves fewer pieces); the columns of
+  thin cells laid plain (`plain_at`: no slope, wedge or top tile); and every
+  number laid the one LDraw gives the part today
+  (`Shapes.current`, from the catalogue's stubs: 3023 is laid as 3023b). A stand
+  is laid under it (`Brickify.lay_stand`: the model lifted two plates, strips
+  along x under strips along z with their joints crossing, tiles where the
+  model does not stand, black). Then `Assistant._check` as check_design runs
+  it, weighed by Balance, and mended (`Brickify.mend`, in few checks): what
+  collides (the lattice, or the exact check's `colliding`) out in one round;
+  then join (`_tie`, a 1 x 2 plate under or over a joint, or the shortest
+  pillar of 1 x 1s onto anything held, each stud checked against the part's
+  real cover; a round that joins nothing taken back), at most two rounds;
+  then what is still apart, floating or unheld (the exact check's `unheld`)
+  taken out together and said, never the body. Weighed again: given a stand
+  after all if it would tip or all but (`needs_help`), and a joint past its
+  working load propped (`_prop`) if that leaves fewer.
+  The report: `coverage`, `lost` (regions of the model no part fills, a
+  hundredth of it or more, each said where it is), `left_out`, `joined`,
+  `tied`, `propped`, `stand`, `balance`. `Brickify.said` puts it in words for the panel
+  and the session: "buildable" only when it is one piece, passes, stands and
+  no stud joint is past its load, with what it stands on, any stand and why,
+  what was joined and what was left out. Nothing laid at a size is an error
+  with the smallest size, half again a try, that lays it whole (`_keeps_at`).
 - `brickify a 3d model` (`src/ui/brickify_dialog.gd`, `src/ui/mesh_file_picker.gd`):
   Ctrl-I (plain I is x-ray), Build > Brickify a 3D model…, or File > Import > 3D model to brickify. The
   file chooser (several files at once in a browser, for an `.mtl` or a `.bin`),
   then a panel: the model turning, its triangles, size in studs along its
   longest side or its scale in mm a unit (each moves the other), which way is
   up (STL defaults to Z), what it comes to in studs, bricks and centimetres,
-  Hollow, Surface (smooth, or plain bricks and plates), Colour (its own, one, or
-  its own cut to at most N). Brickify works on a worker (the web's page keeps
-  drawing), and the result goes down beside what is built — in the middle of an
+  Hollow, A stand where it needs one (on by default), Surface (smooth, or plain
+  bricks and plates), Colour (its own, one, or its own cut to at most N; a stand
+  is black, or the one colour, or the darkest kept). Brickify works on a worker
+  (the web's page keeps drawing); the status line is `Brickify.said` (one piece
+  and standing, weighed, on what, joined, left out). Nothing laid sets the size
+  to the smallest that lays it whole and says so. The result goes down beside what is built — in the middle of an
   empty baseplate — as one sub-assembly named after the file, one undo, and
   selected. The example car, untouched, is taken off first, and the model is
   then a new one called after the file ("bunny"), as it is on a bare, Untitled
@@ -96,6 +136,18 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   With edge parts measured against the shape (same day, load 50-70): 42 ok,
 #   sphere 1,496 parts in 3.5 s, forty-stud bunny 2,011 in 7.5 s (lay 6.0):
 #   the edge search is most of the lay now.
+#   Then the whole model (fails on main 4138091, 7 FAIL): the fox
+#   (tests/fixtures/brickify/fox.obj, CC0 model, CC BY 4.0 conversion; its legs
+#   a third of a stud across) laid at 24 studs with each of its four legs there
+#   from the foot up, 97% of it in a part and nothing left out, one piece and
+#   standing (Balance); a body with a cube floating over it (BrickifySamples
+#   .floating) with a part at the cube's middle, one piece; a post with a block
+#   past its edge (BrickifySamples.overhang) given a stand and standing on it;
+#   every number laid in the probe's builds the one LDraw gives the part today
+#   (no 3023), and none of the 86 Brickify may lay a stub that turns it.
+#   2026-10-15 after main 4138091 (its exact check costs every check more), at a
+#   load of 30 to 50: all ok, forty-stud bunny 2,249 parts in 12.9 s (measure
+#   0.8, lay 7.7, check 4.5; main 12.0 s).
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part, all selected, the
@@ -112,7 +164,10 @@ chooser with the bunny, types 30 into the size, presses Brickify, and reads
 missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
 the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
-the desktop.
+the desktop. With `--model=tests/fixtures/brickify/fox.obj --studs=24 --least=60
+--says=stand` it lays the fox, whose legs are thinner than a stud, and its line
+must say it stands on a stand. Both are in `tools/release/preview_checks.sh`
+as `brickify` and `brickify_fox`.
 
 ## Measuring it against outside models
 
@@ -134,6 +189,8 @@ S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare -
 XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
+#   2026-10-15 after unit 1 (docs/BRICKIFY.md section 5), on main 4138091: smooth
+#   laid 28 of 28, whole 25 of 28, one piece 28, none tips (8 on a stand).
 #   2026-10-15 on 7a55e86, 14 models at 24 and 48 studs: smooth laid 24 of 28,
 #   whole (lost95 at most a stud) 13 of 28; the fox, the Kenney figure and the
 #   Bell X-1 came out with no parts at 24 studs (legs and gear thinner than a
