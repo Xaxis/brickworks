@@ -277,7 +277,10 @@ func _page_assemblies() -> Array:
 	if _shell == null:
 		return [{}, {}]
 	var now: Array = [_world.revision, _store.scenery.size(), _builder.history_depth()]
-	var step: Dictionary = _builder.last_step()
+	# The newest step by itself, not by what it holds: an undo and a redo
+	# leave as many steps, the newest another. No history is no step (an
+	# empty one is made afresh at every asking, and is never the same).
+	var step: Variant = _builder.last_step() if _builder.history_depth() > 0 else null
 	if _page_tree.is_empty() or _page_tree[0] != now or not is_same(_page_tree[1], step):
 		_page_tree = [now, step, _shell.assemblies.parts_by_path(),
 			_shell.assemblies.own_bounds()]

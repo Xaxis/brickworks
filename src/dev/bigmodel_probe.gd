@@ -146,6 +146,11 @@ func _one(name: String, text: String) -> Dictionary:
 	row["open_settled_ms"] = (Time.get_ticks_usec() - began) / 1000.0
 	_said("open", row["open_settled_ms"])
 	_profiled(row, "open")
+	# What the web build tells the page twice a second of the sub-assemblies,
+	# kept while nothing changes: worked out each time, it walked the model
+	# three times a telling (asked twice here, it is the same answer).
+	var told: Array = _main.call("_page_assemblies")
+	row["page_kept"] = is_same(told[0], (_main.call("_page_assemblies") as Array)[0])
 	var view: Rect2 = (_main.call("model_cover") as Dictionary)["view"]
 	var middle: Vector2 = view.get_center()
 
@@ -427,6 +432,8 @@ func _judge(small: Dictionary, big: Dictionary) -> void:
 	_check("after moving everything, undoing it and redoing it, the lattice holds every part "
 		+ "where it stands", bool(small.get("lattice_true", false))
 		and bool(big.get("lattice_true", false)))
+	_check("what the page is told of the sub-assemblies is kept while nothing changes",
+		bool(small["page_kept"]) and bool(big["page_kept"]))
 	# Not with the model: a frame of the orbit, and a step of the timeline.
 	_ratio("an orbit frame", small["orbit"]["median_ms"], big["orbit"]["median_ms"], FLAT)
 	# A right press is a click until it has moved a few pixels (a menu, on a
