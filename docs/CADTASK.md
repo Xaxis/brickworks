@@ -137,10 +137,16 @@ the rope, so two readings of one file were called moved. The morning's
 Written as `.io` the same, the text in a zip. The strict columns of the table
 above (the app's own model against the file) are what they were, 5 of 54: the
 model on the baseplate is still stood on the ground and holds a retired
-number as the part it became, by design; neither reaches the file now. Not
-yet measured: a browser's round trip (the web build cannot build the parts a
-file carries, so they are kept unshown rather than drawn), and edits on the
-54 (the fidelity probe edits a file drawn for it, and saves four real sets
+number as the part it became, by design; neither reaches the file now.
+
+In a browser (a local export of the branch, SwiftShader), 42082-1 opened
+through Open… > From a file says "167 not shown, kept in the file (42082 -
+18575 ×22, 42082 - 27940 ×30, …)" (its 166 carried parts and the rope) while
+its parts arrive, and File, Export, LDraw model downloads the file again line
+for line: 5,479 part lines of 5,479, no line different but the app's own.
+`io_flow` passes there too: bay_2025.io in, its Part Designer part kept and
+named, out as .io counting 6 parts, in again. Not measured: edits on the 54
+(the fidelity probe edits a file drawn for it, and saves four real sets
 whole).
 
 **Where the twelve minutes went.** Everything before the sub-models' frames
