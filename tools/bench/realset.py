@@ -2,8 +2,10 @@
 """A blind test against real LEGO® sets: our designer and the set's, given the same brief.
 
     python3 tools/bench/realset.py sample [--which tune|proof] [--show]
-    python3 tools/bench/realset.py run --which tune --arm m32 [--checkout DIR] [--subjects N,N]
-                                       [--jobs 2] [--date D] [--timeout S] [--software]
+    gpu python3 tools/bench/realset.py run --which tune --arm m32 [--checkout DIR]
+                                       [--subjects N,N] [--jobs 2] [--date D] [--timeout S]
+                                       [--software] [--audit-later]
+    heavy python3 tools/bench/realset.py audit --which tune --arm m32 [--date D]
     python3 tools/bench/realset.py calibrate [--which tune] [--jobs 2] [--software]
     python3 tools/bench/realset.py report --which proof --arm m32 [--date D]
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2] [--jobs 2]
@@ -32,10 +34,17 @@ tuned on, judged blind.
   own pieces out of the real-set index (src/ai/real_snippets.gd) as well as
   out of design memory, and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
-  subscription. Each of `--jobs` workers takes its share of the subjects in
-  one `heavy` job, so it queues for the machine once. `--checkout` runs
-  another checkout's app as the arm; the renderer, the check and the judge
-  are always this one's.
+  subscription, the app on the GPU's lease as every windowed run is. Each
+  of `--jobs` workers takes its share of the subjects; run under one `gpu`,
+  every worker's designs and pictures share that one lease. The workers
+  wait for no CPU slot: in software (the app drew too slowly to show the
+  session its model) at load 50 a worker waited 30 minutes for one. Only
+  the build check's reading of a model is CPU work, under `heavy`, and
+  `--audit-later` leaves it to `audit`, one heavy job after the run, so a
+  run holding the GPU never waits on the CPU queue. `--software` draws on
+  lavapipe and runs each worker as one `heavy` job instead. `--checkout`
+  runs another checkout's app as the arm; the renderer, the check and the
+  judge are always this one's.
 - **The comparison** draws the design and the set with the same renderer
   and cameras, copies both under names that say nothing (bench/results/
   blind/), and asks the pairwise judge, both orders, which is better on
@@ -705,9 +714,11 @@ def both_orders(brief_text: str, number: str, x: tuple[str, tuple[judge.Picture,
 # -- the set's side -------------------------------------------------------------
 
 
-def set_side(c: Candidate, parts: style.Parts, software: bool, measure: bool = True) -> dict:
+def set_side(c: Candidate, parts: style.Parts, software: bool, measure: bool = True,
+             later: bool = False) -> dict:
     """The set's footprint, pictures, measures and check, made once for every arm.
-    Calibration needs only its pictures (`measure` False: nothing under heavy)."""
+    Calibration needs only its pictures (`measure` False: nothing under heavy);
+    `later` measures it now and leaves the check's reading to `audit`."""
     where = SETS_DIR / c.number
     where.mkdir(parents=True, exist_ok=True)
     done = where / "set.json"
@@ -720,7 +731,10 @@ def set_side(c: Candidate, parts: style.Parts, software: bool, measure: bool = T
         bench._write_json(done, record)
     views = bench.render(source, where / "set", where / "set_render.log", software)
     record["views"] = [str(v) for v in views]
-    if measure and ("measures" not in record or "floating" not in record["measures"]):
+    if measure and later and "measures" not in record:
+        record["measures"] = measures(text, parts)
+    elif measure and not later and ("measures" not in record
+                                    or "floating" not in record["measures"]):
         rows = audit([source], where / "audit.jsonl", where / "audit_godot.log")
         record["measures"] = _with_floating(measures(text, parts), rows.get(source.name))
     bench._write_json(done, record)
@@ -746,7 +760,7 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
     record_path = out / "record.json"
     if record_path.exists() and not args.rejudge:
         return json.loads(record_path.read_text())
-    the_set = set_side(c, parts, args.software)
+    the_set = set_side(c, parts, args.software, later=args.audit_later)
     plan = (int(the_set["plan"][0]), int(the_set["plan"][1]))
     subject = subject_of(c, plan)
     bench._write_json(out / "brief.json", {"number": c.number, "brief": subject.brief,
@@ -775,7 +789,8 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
         bench.say(f"{c.number}: missing pictures; see {out}/views_render.log and "
                   f"{SETS_DIR / c.number}/set_render.log")
         return {}
-    rows = audit([design], out / "audit.jsonl", out / "audit_godot.log")
+    rows = {} if args.audit_later else audit([design], out / "audit.jsonl",
+                                             out / "audit_godot.log")
     record["measures"] = _with_floating(measures(design.read_text(errors="replace"), parts),
                                         rows.get(design.name))
     if args.no_judge:
@@ -838,18 +853,21 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
-    """A worker's subjects end to end, one after another, as one `heavy` job: each design,
-    check and drawing in software takes the slot it holds (heavy runs a job inside a slot
-    at once), so a worker queues for the machine once, and --jobs is the slots held."""
+    """A worker's subjects end to end, one after another. On the GPU its designs and
+    pictures take the lease (the run's own, under one `gpu`) and it holds no CPU slot;
+    in software it is one `heavy` job, each design, check and drawing taking the slot it
+    holds, so it queues for the machine once and --jobs is the slots held."""
     out = arm_dir(args.date, args.arm)
     for c in share:
         (out / c.number).mkdir(parents=True, exist_ok=True)
-    command = [bench.HEAVY, sys.executable, str(Path(__file__).resolve()), "one",
+    command = [*([bench.HEAVY] if args.software else []), sys.executable,
+               str(Path(__file__).resolve()), "one",
                "--which", args.which, "--arm", args.arm, "--date", args.date,
                "--judge-model", args.judge_model,
                "--subjects", ",".join(c.number for c in share),
                "--checkout", str(args.checkout), "--timeout", str(args.timeout),
                *(["--software"] if args.software else []),
+               *(["--audit-later"] if args.audit_later else []),
                *(["--dry-run"] if args.dry_run else []),
                *(["--no-judge"] if args.no_judge else []),
                *(["--rejudge"] if args.rejudge else [])]
@@ -874,6 +892,44 @@ def _wanted(which: str, subjects: str) -> list[Candidate]:
     if missing:
         raise SystemExit(f"not in the {which} half: {', '.join(missing)}")
     return [by[n] for n in named]
+
+
+def audit_later(args: argparse.Namespace) -> int:
+    """The build check's reading of every recorded design of an arm, and of each set,
+    that a run left for later (--audit-later): run under one `heavy`, each model's
+    check takes the slot it holds. The records' measures gain their floating parts."""
+    parts = style.Parts()
+    done = 0
+    for c in _wanted(args.which, args.subjects):
+        where = SETS_DIR / c.number / "set.json"
+        if where.exists():
+            record = json.loads(where.read_text())
+            if "floating" not in record.get("measures", {}):
+                source = FILES / c.file
+                rows = audit([source], SETS_DIR / c.number / "audit.jsonl",
+                             SETS_DIR / c.number / "audit_godot.log")
+                record["measures"] = _with_floating(
+                    measures(source.read_text(errors="replace"), parts), rows.get(source.name))
+                bench._write_json(where, record)
+        out = arm_dir(args.date, args.arm) / c.number
+        path = out / "record.json"
+        if not path.exists():
+            continue
+        record = json.loads(path.read_text())
+        theirs = json.loads(where.read_text()).get("measures", {}) if where.exists() else {}
+        record["set"]["measures"] = theirs or record["set"].get("measures", {})
+        design = out / "design.ldr"
+        if design.exists() and "floating" not in record.get("measures", {}):
+            rows = audit([design], out / "audit.jsonl", out / "audit_godot.log")
+            record["measures"] = _with_floating(
+                measures(design.read_text(errors="replace"), parts), rows.get(design.name))
+        bench._write_json(path, record)
+        done += 1
+    bench.say(f"audit: {done} records read again")
+    text = report_arm(args.which, args.date, args.arm)
+    (arm_dir(args.date, args.arm) / f"report-{args.which}.md").write_text(text)
+    print(text)
+    return 0
 
 
 # -- calibration ----------------------------------------------------------------
@@ -1140,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
     one_.add_argument("--which", choices=HALVES, default="tune")
     one_.add_argument("--show", action="store_true",
                       help="names and briefs (never for proof while building the tool)")
-    for name in ("run", "one", "calibrate", "report", "compare"):
+    for name in ("run", "one", "calibrate", "report", "compare", "audit"):
         p = sub.add_parser(name)
         p.add_argument("--which", choices=HALVES, default="tune")
         p.add_argument("--date", default=f"{datetime.date.today():%Y-%m-%d}")
@@ -1151,7 +1207,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
         p.add_argument("--dry-run", action="store_true",
                        help="a canned design and canned replies: nothing designed or asked")
-        if name in ("run", "one", "report"):
+        if name in ("run", "one", "report", "audit"):
             p.add_argument("--arm", required=True, help="this arm's name: m32, a branch's")
         if name in ("run", "one"):
             p.add_argument("--checkout", type=Path, default=ROOT,
@@ -1162,6 +1218,9 @@ def main(argv: list[str] | None = None) -> int:
                            help="read recorded subjects through again (a verdict asked is kept)")
             p.add_argument("--share", default="",
                            help="K/N: only every Nth subject of the half from the Kth")
+            p.add_argument("--audit-later", action="store_true",
+                           help="leave the build check's reading to `audit`, so no worker "
+                           "holding the GPU waits for a CPU slot")
         if name == "compare":
             p.add_argument("--arms", required=True)
             p.add_argument("--dates", default="", help="each arm's date, when they differ")
@@ -1173,6 +1232,8 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)
+    if args.what == "audit":
+        return audit_later(args)
     if args.what == "report":
         text = report_arm(args.which, args.date, args.arm)
         (arm_dir(args.date, args.arm) / f"report-{args.which}.md").write_text(text)

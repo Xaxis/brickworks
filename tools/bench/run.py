@@ -18,8 +18,8 @@ them queues for its own.)
 
 A run is, per subject and one at a time:
 
-  design   the real loop on the subscription: the app off-screen (Xvfb, in
-           software, under `heavy`) with --ask-claude-code, the brief as
+  design   the real loop on the subscription: the app off-screen (Xvfb, on
+           the GPU, under `gpu`) with --ask-claude-code, the brief as
            the person would type it, Claude Code driving it over MCP on its
            own port. ANTHROPIC_API_KEY is taken out of its environment, so
            nothing is billed. Its saves are moved out of the app's user
@@ -225,9 +225,12 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
-    # The timeout is inside the slot: a queue for `heavy` on a busy
+    # On the GPU's lease, as every windowed run is: in software the app drew
+    # so slowly at load 50 that the session was told "no picture in time"
+    # and shown the letters. Inside a lease (a batch run under one `gpu`)
+    # it runs at once. The timeout is inside the lease: a queue on a busy
     # machine is not the design's time.
-    command = [HEAVY, "xvfb-run", "-a", f"--server-args={SCREEN}",
+    command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
                "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
                "--log-file", str(run_dir / "godot_design.log"),
                "--", f"--mcp={port}", f"--ask-claude-code={subject.brief}", f"--out={ldr}",
@@ -236,7 +239,7 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
                f"--held-out={subject.id}", *extra]
     started = time.time()
     with log.open("w") as out:
-        status = subprocess.run(command, cwd=app, env=_billing_free_env(),
+        status = subprocess.run(command, cwd=app, env=_billing_free_env(MESA_VK_WSI_DEBUG="sw"),
                                 stdout=out, stderr=subprocess.STDOUT).returncode
     seconds = time.time() - started
     text = log.read_text(errors="replace")

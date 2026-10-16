@@ -1781,7 +1781,7 @@
       "kind": "cli",
       "label": "test designs against real sets",
       "entry": "tools/bench/realset.py",
-      "reach": "python3 tools/minitest.py tests/test_realset.py; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | run --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
       "area": "assistant"
     },
     {
@@ -1985,6 +1985,13 @@
       "label": "characters laid on joints",
       "entry": "src/ai/figure_pattern.gd",
       "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "any design sent back square once",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  (a design on a brief with nothing on a joint or off the square sent back once with the hinged section, the clip-and-bar detail, the pivot on a pin and the sideways face; built when it comes again)",
       "area": "assistant"
     }
   ]
