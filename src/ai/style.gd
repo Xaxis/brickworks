@@ -340,7 +340,7 @@ const TRAITS: Dictionary = {
 		"spaceship", "starship", "shuttle", "rocket", "rover", "digger",
 		"excavator", "bulldozer", "vehicle", "porsche", "ferrari", "lamborghini",
 		"coupe", "roadster", "supercar", "hatchback", "sedan", "saloon",
-		"speed champions", "formula 1", "f1"],
+		"speed champions", "formula 1", "f1", "fire engine"],
 	"living": ["animal", "dragon", "owl", "bird", "eagle", "parrot", "cat",
 		"dog", "horse", "dinosaur", "creature", "monster", "fish", "whale",
 		"shark", "insect", "butterfly", "bear", "lion", "elephant", "bust",
@@ -352,7 +352,8 @@ const TRAITS: Dictionary = {
 		"hedgehog", "dolphin", "otter", "camel", "hippo", "rhino"],
 	# A person or a character of one: built of sub-assemblies on joints, as a
 	# creature is (Style.character_of).
-	"figure": ["minifigure", "minifig", "figure", "figurine", "character",
+	# Not "minifigure": a car "at minifigure scale" is a car.
+	"figure": ["figure", "figurine", "character",
 		"statue", "person", "people", "man", "men", "woman", "women", "boy",
 		"girl", "child", "kid", "baby", "human", "humanoid", "knight", "wizard",
 		"witch", "king", "queen", "prince", "princess", "pirate", "soldier",
@@ -413,6 +414,16 @@ const FACE_WORDS: Array = ["eyes", "eyebrows", "eyelashes", "eyelids", "moustach
 static func character_of(about: String) -> String:
 	var heads: String = RegEx.create_from_string("\\b(?:\\w+-)+(\\w+)\\b").sub(
 		about.to_lower(), "$1", true)
+	# A vehicle named before any person is the subject, its driver or crew its
+	# crew: the bench's fire engine "with a firefighter" and its Porsche "at
+	# minifigure scale" were told, in every check, that they were figures with
+	# nothing on a joint. People named first are the subject, at a bus stop or
+	# at the wheel.
+	var said: PackedStringArray = SubjectWords.of(heads)
+	var vehicle: int = _first_at(said, TRAITS["vehicle"])
+	var person: int = _first_at(said, TRAITS["figure"])
+	if vehicle >= 0 and (person < 0 or vehicle < person):
+		return ""
 	if not SubjectWords.first_named(heads, TRAITS["figure"]).is_empty():
 		return "figure"
 	var creatures: Array = (TRAITS["living"] as Array).filter(func(word: Variant) -> bool:
@@ -422,6 +433,31 @@ static func character_of(about: String) -> String:
 	if not SubjectWords.first_named(heads, FACE_WORDS).is_empty():
 		return "face"
 	return ""
+
+
+## Where in [param said] (a brief's words) a word or phrase of [param
+## vocabulary] first comes, as SubjectWords names it; -1 for nowhere.
+static func _first_at(said: PackedStringArray, vocabulary: Array) -> int:
+	var best: int = -1
+	for raw: Variant in vocabulary:
+		var want: PackedStringArray = SubjectWords.of(str(raw))
+		if want.is_empty():
+			continue
+		for start: int in said.size() - want.size() + 1:
+			if best >= 0 and start >= best:
+				break
+			var all: bool = true
+			if want.size() == 1:
+				all = not SubjectWords.kind_of_word(said[start], {want[0]: true}).is_empty()
+			else:
+				for k: int in want.size():
+					if not SubjectWords.forms(said[start + k]).has(want[k]):
+						all = false
+						break
+			if all:
+				best = start
+				break
+	return best
 
 
 ## What a body the shape pattern laid is told under these shares.

@@ -297,6 +297,46 @@ Head to head with the figures round, overall: the car won 5 of 8 verdicts
 ELO (judge's 95% -121 to +44; with the run-to-run spread -503 to +466). The
 car's two designs are 290 ELO apart: no regression, and no gain shown.
 
+## Figures told of their joints (2026-10-15, `6506514`)
+
+[BRICKBENCH.md](BRICKBENCH.md) has the whole of it, under "figures on joints,
+told where they decide". Every character session of the attach round chose how
+to build at its first submit or check and was told of towers there. Now a
+figure, a creature or a thing with a face is told each joint's one call in that
+reply, in plan_scale, search_parts, the shapes guide and the review, with two
+armatures to lay whole. The exact check's three verify.py gaps are closed: a
+piece only the floor holds must settle on a bare floor, and the shapes are read
+with the vertices their collider groups share.
+
+**On ten held-out BrickBench prompts and the four characters again**, two designs
+a prompt in each arm, 280 pairwise verdicts:
+
+| | merge29 (`5c4708e`) | joints (`6506514`) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| overall ELO (95%) | 809 (725-867) | 883 (811-949) | 1308 (1248-1406) |
+| joints vs merge29, overall | | 67 of 112 (60%, 95% 51-68%) | |
+| ...where it is told: characters, people scenes | | 22 of 32 (69%), 33 of 48 (69%) | |
+| ...where it is not: four buildings | | 12 of 32 (38%, 23-55%) | |
+| against BrickAgent, overall | 2 of 56 | 5 of 56 | |
+| valid (their verify.py) | 26 of 28 | 27 of 28 | 14 of 14 |
+| characters with a limb posed on a joint | 0 of 8 | 2 of 8 | |
+
+**The car and the fire truck: a regression read, from a misfire.** Through
+`run.py` on the merged tree before the last fix, round `2026-10-15-joints`:
+
+| subject | design | 1-10 mean | overall ELO (95%) |
+|---|---|---|---|
+| speed_champions | 2026-10-15-joints/1 | 4.50 | 1245 (1163-1327) |
+| speed_champions | 2026-10-15-joints/2 | 4.33 | 830 (740-918) |
+| fire_truck | 2026-10-15-joints/1 | 5.67 | 1085 (957-1204) |
+| fire_truck | 2026-10-15-joints/2 | 5.50 | 649 (564-777) |
+
+`run.py rank` reads joints against attach at -126 overall (judge's 95% -199 to
+-45; with the run-to-run spread -473 to +246). All four sessions were told they
+were figures with nothing on a joint, in every check: "at minifigure scale" and
+"with a firefighter" read as people. A vehicle now hears none of it; the two
+subjects were not run again on the fixed code.
+
 ## Judged in pairs: what each round really did (2026-10-14)
 
 The 1-10 judge's scores move by 0.7-1.0 between two designs of the same

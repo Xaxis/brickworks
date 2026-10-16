@@ -39,7 +39,8 @@ fixing what it got wrong.
 - `figures told of their joints`: `Style.character_of` (src/ai/style.gd) reads a
   subject as a figure (people's words and he or she), a creature (the living
   things that are not plants) or a thing with a face (eyes, brows, a grin), a
-  hyphenated word by its last part; the subject is the brief, what a session from
+  hyphenated word by its last part, and never a vehicle (its crew is its
+  crew); the subject is the brief, what a session from
   outside was started on or asked plan_scale, find_reference and
   how_real_sets_build_this about (`Assistant.heard`), and the design's name. For
   one: check_design's and submit_design's reply, while nothing in it is posed
@@ -2306,7 +2307,8 @@ godot --headless --path . --script src/dev/techniques_probe.gd       # "jointed 
 Proves it when `figure_joints_probe` ends "0 failed": the subject is read by its
 words (a statue, a balloon-dog, a toilet's human head, a chair with eyes, he and
 she; not a whale-tail spoiler, a dollhouse, a clock face, a crane's arm, a toy
-car); check_design on a statue stacked square leads its advice with each joint's
+car, nor the bench's Porsche "at minifigure scale" and fire engine "with a
+firefighter", which were told in every check before vehicles were left out); check_design on a statue stacked square leads its advice with each joint's
 call and an attach written out, twice in full and then a line, and says nothing
 of joints once an arm is on a clip, nor for a lighthouse; with no brief, the
 subject plan_scale was asked about is read; a dragon's advice names "jointed

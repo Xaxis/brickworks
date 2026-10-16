@@ -68,7 +68,12 @@ func _run() -> void:
 			["a lighthouse on a rock", ""], ["a bonsai tree in a pot", ""],
 			["a clock face on a tower", ""], ["a computer and a desk", ""],
 			["a dollhouse with three rooms", ""], ["the mouth of a cave in a cliff face", ""],
-			["a crane with a long arm", ""], ["a toy car", ""]]:
+			["a crane with a long arm", ""], ["a toy car", ""],
+			# The bench's own vehicles, told they were figures before.
+			["A 1975 Porsche 911 Turbo as a LEGO Speed Champions set: 8 studs wide, "
+				+ "minifigure scale", ""],
+			["A fire engine with an extending ladder at minifigure scale, with a firefighter", ""],
+			["a minifigure chef at a stove", "figure"]]:
 		var kind: String = Style.character_of(str(pair[0]))
 		_ok(kind == str(pair[1]), "\"%s\" is %s" % [pair[0],
 			"a %s" % kind if not kind.is_empty() else "no character"])
