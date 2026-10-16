@@ -391,11 +391,40 @@ func _fit() -> void:
 		_draw_again()
 
 
-## The window's size while something is outlined, and next to nothing while
+## The window's size while something is outlined, and none at all while
 ## nothing is: three targets the size of a 2x window are 60 MB of a graphics
 ## card's memory, a browser's included, for each of the two outlines.
+##
+## Let go of by telling the RenderingServer a size of nothing, which frees
+## them and makes none. A SubViewport is 2 × 2 at the least: three new
+## targets, and a browser waits for the card to finish everything asked of
+## it before it makes one. Drawing in software that was a second a time:
+## the pointer going from a part onto Brickify's button let go of the
+## hover's targets in the frame it pressed, and the bar saying it had begun
+## was drawn 1.8 s after the press (progress_check, 2026-10-15). Let go of
+## a few seconds later instead, that was a frame drawn for nothing, and on
+## Orthanc in software it held the next press 2.7 to 10.8 s.
 func _size_targets() -> void:
-	var wanted: Vector2i = _pixels if visible else Vector2i(2, 2)
-	if _mask.size != wanted:
-		for view: SubViewport in [_mask, _rows, _line]:
+	_resize(_pixels if visible else Vector2i.ZERO)
+
+
+## The size the targets have: none, or the window's.
+var _made: Vector2i = Vector2i(-1, -1)
+
+
+## Counted as the card's time, as ModelShot's render target is
+## (Main._watch_own_frames): each new target asks the card whether it is
+## complete, which in a browser waits for everything queued. Brickify's
+## last frame, its 557 parts selected, waited 2.4 s here in software.
+func _resize(wanted: Vector2i) -> void:
+	if _made == wanted:
+		return
+	_made = wanted
+	var asked: int = Time.get_ticks_usec()
+	for view: SubViewport in [_mask, _rows, _line]:
+		# The node keeps the window's size throughout; only the server's
+		# targets come and go.
+		if wanted != Vector2i.ZERO:
 			view.size = wanted
+		RenderingServer.viewport_set_size(view.get_viewport_rid(), wanted.x, wanted.y)
+	ModelShot.gpu_wait_us += Time.get_ticks_usec() - asked

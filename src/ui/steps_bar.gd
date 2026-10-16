@@ -296,12 +296,17 @@ func start(world: BrickWorld, library: PartLibrary,
 	await job.shown()
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
 		world, library, scenery, {}, job, _mode == AUTHORS)
+	if not job.cancelled and not steps.is_empty():
+		job.say("Showing the first step…")
+		job.count(0, 0)
+		# In a frame of its own: the last of the laying out and the first
+		# step shown were one frame, 263 ms of a browser's on Orthanc, over
+		# the 250 the progress check allows (2026-10-15).
+		await job.next()
 	_job = null
 	if job.cancelled or steps.is_empty():
 		job.end()
 		return false
-	job.say("Showing the first step…")
-	job.count(0, 0)
 	_steps = steps
 	visible = true
 	_reorder()

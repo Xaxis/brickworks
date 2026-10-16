@@ -935,6 +935,7 @@ func _ready() -> void:
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	IdleDraw.for_the_app()
+	Tooltips.let_clicks_through(get_window())
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -955,6 +956,11 @@ func _ready() -> void:
 	# Parts made here before, built again from their LDraw files, so they
 	# are in the bin and so a model that uses them reopens.
 	CustomParts.load_all(_library)
+	# Which parts are a figure's, sorted a slice at a time once the window
+	# is up: the first question about a figure built it in one frame, the
+	# autosave's after Brickify among them.
+	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+		Minifig.index_paced(_library))
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
@@ -1989,6 +1995,11 @@ func _looking_key(key: InputEventKey) -> bool:
 ## round what is already selected, which has its own line.
 func _select_hover() -> void:
 	if _hover_outline == null or _verbs == null:
+		return
+	# While parts go down with the drawing held, what is under the pointer
+	# as drawn has not changed, and every slice changed the lattice, so the
+	# pointer resting on the model asked it again each frame of the work.
+	if _world.is_drawing_held():
 		return
 	var under: int = 0
 	if _verbs.mode == "select" and not _verbs.shows_ghost() and not _verbs.is_view_tool() \
@@ -3239,9 +3250,20 @@ func _build_art(options: MosaicArt.Options) -> void:
 		job.end()
 		_bar.say("nothing to lay out")
 		return
-	# On the web most of these parts are fetched rather than shipped.
+	# On the web most of these parts are fetched rather than shipped. Those
+	# shipped are read a kind at a time first, the frame given back between:
+	# read in one go they and the first parts put down were one frame of
+	# 377 ms in a browser (progress_check, 2026-10-15).
 	job.say("Fetching the parts…")
+	var kinds: Dictionary = {}
+	for placement: Assistant.Placement in art.placements:
+		kinds[placement.part] = true
+	for part_id: String in kinds:
+		if job.due():
+			await job.next()
+		_library.mesh_for(part_id)
 	await _assistant._ensure_parts(art.model())
+	await job.next()
 
 	_world.clear()
 	_builder.lattice.clear()
@@ -3252,6 +3274,8 @@ func _build_art(options: MosaicArt.Options) -> void:
 	await MosaicArt.put_down_paced(art, _world, _builder, _assistant, job)
 	job.say("Checking it holds together…")
 	job.count(0, 0)
+	# Looked at and checked in a frame of its own, not the last slice's.
+	await job.next()
 	await _art_laid(art)
 	job.end()
 
@@ -3291,6 +3315,9 @@ func _art_laid(art: MosaicArt.Art) -> void:
 		"pieces": 0, "ok": false}
 	_bar.say("%s parts on %d × %d panels — checking it holds together…" % [
 		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y])
+	# Looked at, then checked, a frame each: together they were one of
+	# 171 ms on the desktop.
+	await get_tree().process_frame
 	var report: Dictionary = await _assistant._checked(art.model(), true)
 	_art_said["pieces"] = int(report.get("pieces", 0))
 	_art_said["ok"] = bool(report.get("ok", false))

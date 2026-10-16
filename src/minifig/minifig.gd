@@ -1236,12 +1236,16 @@ static var _index_made: int = -1           ## how many made parts the library ha
 
 
 ## Sort every real minifigure part of a library into its slot, once.
-static func _index(library: PartLibrary) -> void:
+## [param sorted] is [method _sort_into]'s, when it has been done already.
+static func _index(library: PartLibrary, sorted: Array = []) -> void:
 	# Again when parts have been made since: a print drawn a moment ago is
 	# offered in its slot.
-	if library == null or (_index_of == library.get_instance_id()
-			and _index_made == library.custom.size()):
+	if library == null or _indexed_for(library):
 		return
+	var found: Array = sorted
+	if found.is_empty():
+		found = []
+		_sort_into(found, library, null)
 	_index_made = library.custom.size()
 	_slot_of.clear()
 	_by_name.clear()
@@ -1250,16 +1254,9 @@ static func _index(library: PartLibrary) -> void:
 	_partners.clear()
 	_family_pairs.clear()
 	_paired.clear()
-	for id: String in library.parts:
-		var info: PartLibrary.PartInfo = library.parts[id]
-		if not _real(info):
-			continue
-		var slot: String = slot_for(info)
-		if slot.is_empty():
-			continue
-		_slot_of[id] = slot
-		_by_name[_plain(info.name)] = id
-		_names[id] = _short_name(info.name)
+	_slot_of.merge(found[0])
+	_by_name.merge(found[1])
+	_names.merge(found[2])
 	_index_of = library.get_instance_id()
 	_indexed = weakref(library)
 	# The pairs, by name — "Minifig Leg Right with ..." and "Minifig Leg
@@ -1281,6 +1278,53 @@ static func _index(library: PartLibrary) -> void:
 		var other: String = partner(library, id)
 		if not other.is_empty():
 			_paired[other] = true
+
+
+static func _indexed_for(library: PartLibrary) -> bool:
+	return _index_of == library.get_instance_id() and _index_made == library.custom.size()
+
+
+## The library's figure parts by slot, by plain name and by short name, into
+## [param sorted]; a slice at a time with a [param pace]. Every part of the
+## library is looked at: in one go it was most of the 200 ms the first figure
+## asked about cost on the desktop, and the first was asked inside the
+## Timeline's sub-assembly search on Orthanc, or by the autosave after
+## Brickify (2026-10-15).
+static func _sort_into(sorted: Array, library: PartLibrary, pace: FramePace) -> void:
+	var slot_of: Dictionary = {}
+	var by_name: Dictionary = {}
+	var names: Dictionary = {}
+	# The names first: the library may gain a part while this waits.
+	for id: String in library.parts.keys():
+		if pace != null and pace.due():
+			await pace.next()
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info == null:
+			continue
+		if not _real(info):
+			continue
+		var slot: String = slot_for(info)
+		if slot.is_empty():
+			continue
+		slot_of[id] = slot
+		by_name[_plain(info.name)] = id
+		names[id] = _short_name(info.name)
+	sorted.assign([slot_of, by_name, names])
+
+
+## [method _index] over frames, its long part a slice at a time: the app
+## warms it a moment after it starts (Main._ready), and the Timeline waits on
+## it before asking which sub-models are figures.
+static func index_paced(library: PartLibrary) -> void:
+	if library == null or _indexed_for(library):
+		return
+	var made: int = library.custom.size()
+	var sorted: Array = []
+	await _sort_into(sorted, library, FramePace.new())
+	# A part made meanwhile is not in it: sorted again, at once.
+	if library.custom.size() != made:
+		sorted = []
+	_index(library, sorted)
 
 
 static func _named_pair(library: PartLibrary, id: String) -> String:

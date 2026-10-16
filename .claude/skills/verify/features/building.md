@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
 
 ## Sub-features
 
@@ -48,8 +48,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   never in a picture, render or booklet, which draw the world in viewports of
   their own. `outline_probe` asks the picture: one brick, a chain alone and on
   its gears, Gandalf and Saruman on Orthanc, all 9,429 of Orthanc (a frame within
-  twice the bare one, nothing drawn standing still), a guard cut through and in
-  x-ray, and the hover — what selecting changed must lie round the parts, not
+  twice the bare one, nothing drawn standing still; then nothing selected, the
+  window-sized targets let go of at once and no frame drawn for it after), a
+  guard cut through and in x-ray, and the hover — what selecting changed must lie round the parts, not
   over them, and go all the way round. Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
   picture at 1x and 2x, and its frames standing still; before the picture it
@@ -201,6 +202,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   asked for with `brickworksAskLayout`). From a build that publishes only
   centres it works the model's rectangle out from the rails and the toolbar,
   so it fails on a build with floating panels.
+- `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
+  2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
+  tooltip is a window of its own embedded in the app's, and a pointer on it is
+  over it, not over the button below, which then ignores the press; a plain one
+  closes when the pointer enters it, but only at the end of the frame, so a move
+  and a click in one frame (Playwright's, or a quick hand on the web) found it
+  there, and a press on one over a dialog or a menu took the window's focus, which
+  closes a menu. Account's Open in Claude over Disconnect Claude was the case found
+  (oauth_flow). Every press, and a pointer moving onto one, now closes it before
+  the window routes the event (`Window.window_input`, which comes first). Proves
+  it: `tooltip_probe` (windowed, the real scene): a link with a tooltip stacked
+  over a button, the button clicked through the tooltip moved-then-clicked and in
+  one go, the same in a dialog and a menu, then every panel a person opens (the
+  window, Properties, the assistant, Account, Settings, Render) rested on control
+  by control, a click through each tooltip that covers something clickable caught
+  at that control with the pointer over it, and the menus' rows that cover the row
+  under them said. Fails on b79d427: the click in one go pressed nothing.
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
@@ -252,7 +270,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (when each job was first drawn and when it ended, in the page's clock), and
   Cancel as `brickworksControls.work_cancel`. Proves it: `progress_probe`
   (windowed, Orthanc and the car: the bar up in the frame pressed, before the
-  work; the timeline's longest frame against 200 ms; the same steps as
+  work; the timeline's longest frame against 200 ms; the sub-assembly
+  search's longest frame of its own, process to drawing, against 100 ms,
+  judged in software too (one frame of 161 ms on b79d427: `_find_assemblies`,
+  `_contract` and its loop walk `_cycles` are a slice at a time now); the same steps as
   `Instructions.plan`; Cancel and a second press stop it; Open's list says
   "Opening…" before Orthanc lands; delete all and undo say so first; Check
   stability and Everything connected through `Shell.run` on Orthanc, and
@@ -555,10 +576,18 @@ Runtime:
 godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd
 # what a dragged box catches, which needs a camera with a viewport to project into
 godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
+# a tooltip never takes a click meant for what is under it: stacked, in a
+# dialog, in a menu, and every panel's tooltips over what they cover
+# (-- --no-sweep for the stacks alone, a few minutes; the sweep is half an
+# hour in software and its panels may cover each other: it says what the
+# pointer was over where no tooltip came)
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/tooltip_probe.gd
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
 # the selection's outline round its silhouette, never over it, for one brick,
-# a chain and Orthanc, through the cut and x-ray, and the hover's; at 1x and
+# a chain and Orthanc, through the cut and x-ray, and the hover's; its targets
+# let go of at once when nothing is outlined, with no frame drawn; at 1x and
 # at 2x (2800x1800 is the app at twice the pixels). Pictures in shots/outline/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/outline_probe.gd

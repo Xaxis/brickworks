@@ -15856,12 +15856,16 @@ func _ensure_parts(model: Model) -> void:
 	var wanted: Dictionary = {}
 	# A retired number is placed as the part it became (BrickWorld._place),
 	# so that is the geometry wanted too.
-	var named: Array[String] = []
+	# Each part once: asked per placement, Brick Art's 1,327 tiles of a few
+	# kinds were a frame of 178 ms in a browser (progress_check, 2026-10-15).
+	var named: Dictionary = {}
 	for placement: Placement in model.placements:
-		named.append(placement.part)
+		if named.has(placement.part):
+			continue
+		named[placement.part] = true
 		var real: String = library.resolve(placement.part)
 		if real != placement.part:
-			named.append(real)
+			named[real] = true
 	for part_id: String in named:
 		# From disk first, where the build has it: only what is not there is
 		# fetched. Not resident meant fetched over HTTP even on the desktop,

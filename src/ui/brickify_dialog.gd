@@ -18,6 +18,8 @@ extends PanelContainer
 ## Stud pitch and plate height in millimetres.
 const STUD_MM := 8.0
 const PLATE_MM := 3.2
+## Parts put down between asking whether the frame's slice is spent.
+const PUT_AT_ONCE := 8
 
 var library: PartLibrary
 var world: BrickWorld
@@ -633,6 +635,9 @@ func brickify(job: Working.Job = null) -> void:
 		(result["model"] as Assistant.Model).placements.size()))
 	_put_job = job
 	var ids: PackedInt64Array = await _put_down(result, mesh.name)
+	# What follows it down (the camera, the model told it changed) in a frame
+	# of its own, as the selection it ends with is.
+	await job.next()
 	_put_job = null
 	job.end()
 	_busy = false
@@ -731,14 +736,22 @@ func _warm(job: Working.Job = null) -> void:
 ## Into the world as one sub-assembly, beside what is there already, as one
 ## step to undo, and selected. A slice at a time, so a few thousand parts do
 ## not hold the page.
+##
+## A few parts at a time, the slice asked about after each few. It was asked
+## before each part, with the parts put down only once it was spent; asking
+## took no time, so it never was, and the whole bunny went down at the end in
+## one frame, two seconds of a browser's (progress_check, 2026-10-15).
 func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	placing.emit(name)
 	var model: Assistant.Model = result["model"]
 	var grid: Brickify.Grid = result["grid"]
 	var path: String = (assemblies.unused_name(name) if assemblies != null else name) + "#1"
 	var corner: Vector2i = _clear_spot(grid)
+	var pace := FramePace.new()
 	var adds: Array = []
 	for placement: Assistant.Placement in model.placements:
+		if pace.due():
+			await pace.next()
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
@@ -748,18 +761,19 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 			"at": _checker._transform(placement, part), "path": path})
 	world.hold_drawing()
 	var steps: Array = []
-	var pace := FramePace.new()
-	var from: int = 0
 	if _put_job != null:
 		_put_job.count(0, adds.size())
-	for n: int in adds.size():
-		if pace.due() and _put_job != null:
-			_put_job.count(n)
-		if pace.due() or n == adds.size() - 1:
-			steps.append_array(builder.swap_bricks(PackedInt64Array(), adds.slice(from, n + 1)))
-			from = n + 1
-			if n < adds.size() - 1:
-				await pace.next()
+	var from: int = 0
+	while from < adds.size():
+		var upto: int = mini(from + PUT_AT_ONCE, adds.size())
+		steps.append_array(builder.swap_bricks(PackedInt64Array(), adds.slice(from, upto)))
+		from = upto
+		if from < adds.size() and pace.due():
+			if _put_job != null:
+				_put_job.count(from)
+			await pace.next()
+	# Drawn, undone as one and selected in a frame after the last of them.
+	await pace.next()
 	world.release_drawing()
 	var ids := PackedInt64Array()
 	for step: Dictionary in steps:
