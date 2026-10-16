@@ -117,7 +117,7 @@ func _run() -> void:
 		view = _main.get("_share_view")
 		if view != null and view.state in ["ready", "failed", "gone"]:
 			break
-	await _settle()
+	await _steps_worked_out()
 	_ok(view != null and view.state == "ready", "the shared model opened (%s)" % (
 		view.state if view != null else "no viewer"))
 	if view == null or view.state != "ready":
@@ -144,8 +144,9 @@ func _run() -> void:
 		"the made part and the printed tile are in it, built from the file")
 	_ok(library.parts.has(str(made["tile"])) and library.custom.has(str(made["tile"])),
 		"the print joined this visit's library")
-	_ok(DirAccess.get_files_at(PARTS_DIR).is_empty(), "...and nothing was kept on disk (%s)"
-		% [DirAccess.get_files_at(PARTS_DIR)])
+	var kept_parts: PackedStringArray = DirAccess.get_files_at(PARTS_DIR) \
+		if DirAccess.dir_exists_absolute(PARTS_DIR) else PackedStringArray()
+	_ok(kept_parts.is_empty(), "...and nothing was kept on disk (%s)" % [kept_parts])
 	_ok(view.model_name == "Probe House" and view.author == "Probe Builder" and view.parts == count,
 		"the bar names it, who made it and its part count (%s, %s, %d)" % [
 			view.model_name, view.author, view.parts])
@@ -324,7 +325,7 @@ func _open_viewer(text: String, count: int) -> ShareView:
 		view = _main.get("_share_view")
 		if view != null and view.state in ["ready", "failed", "gone"]:
 			break
-	await _settle()
+	await _steps_worked_out()
 	return view if view != null and view.state == "ready" else null
 
 
@@ -795,6 +796,23 @@ func _a_visible_brick(world: BrickWorld, store: ModelStore, library: PartLibrary
 		if rect.grow(-40).has_point(at) and verbs.brick_at(at) == brick.id:
 			return brick
 	return null
+
+
+## The viewer is up as soon as its model is, and works the steps out
+## after it, a slice at a time with the status bar saying so (Main.
+## _view_shared): the timeline, and a page kept for the link, come when
+## that is done. Twenty frames were the wait once, and on a machine at a
+## load of forty a 73-part house takes longer than that, so the timeline
+## was read before it was up (2026-10-16). Waited for by what the bar
+## says, bounded, and the time it took printed.
+func _steps_worked_out() -> void:
+	var steps: StepsBar = _main.get("_steps") if _main != null else null
+	var since: int = Time.get_ticks_msec()
+	while steps != null and steps.is_starting() and Time.get_ticks_msec() - since < 120000:
+		await process_frame
+	print("     (its steps were worked out %.1f s after the model was up)"
+		% ((Time.get_ticks_msec() - since) / 1000.0))
+	await _settle()
 
 
 func _settle() -> void:
