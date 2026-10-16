@@ -38,6 +38,12 @@ const PALETTE: Array[int] = [15, 71, 72, 0, 4, 320, 5, 29, 353, 26, 25, 484, 191
 	19, 28, 84, 92, 78, 70, 308]
 ## A colour sample every this many studs along a triangle's longest side.
 const SAMPLE_STUDS := 0.35
+## A surface with more of the model than this in front of it, studs, is one
+## the build hides (a mouth's inside, a second skin), and colours nothing.
+const HIDDEN_STUDS := 1.5
+## And one with the model's own inside this far in front of it is buried in
+## another part of it, and colours nothing.
+const BURIED_STUDS := 0.25
 ## How flat a facet has to be to take straight slopes: its corners' normals
 ## within this of its own.
 const FLAT_DEGREES := 4.0
@@ -157,6 +163,8 @@ class Grid extends RefCounted:
 	var plan_studs: int = 0
 	var standing_apart: int = 0
 	var margin: float = 0.0
+	## What measuring took, ms, step by step.
+	var ms: Dictionary = {}
 
 	func index(x: int, j: int, z: int) -> int:
 		return (x * deep + z) * tall + j
@@ -190,6 +198,11 @@ class Grid extends RefCounted:
 				var i: int = index(x, j, z)
 				if added[i] != 0 and state[i] == 1:
 					return true
+		return within(p)
+
+	## Whether [param p] is inside the model's own surface, to a third of a
+	## stud across and exactly up: where its rays went in and not yet out.
+	func within(p: Vector3) -> bool:
 		var fx: int = floori(p.x * FINE)
 		var fz: int = floori(p.z * FINE)
 		if fx < 0 or fz < 0 or fx >= across * FINE or fz >= deep * FINE:
@@ -264,6 +277,7 @@ static func _turned_bounds(mesh: MeshFile, turn: Basis) -> AABB:
 ## The model in studs and plates: which cells it fills, the colour of each,
 ## and whether its top is a curve or a facet.
 static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> Grid:
+	var start: int = Time.get_ticks_msec()
 	var grid := Grid.new()
 	var turn: Basis = turn_for(options.up)
 	var count: int = mesh.triangle_count()
@@ -365,17 +379,28 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> 
 						face = int(hit.z)
 				if face >= 0:
 					grid.flat_top[x * grid.deep + z] = flat[face]
+	var clock: int = Time.get_ticks_msec()
+	grid.ms["spans"] = clock - start
 	var touched: PackedByteArray = _touched(grid, points, count)
+	grid.ms["touched"] = Time.get_ticks_msec() - clock
+	clock = Time.get_ticks_msec()
 	_thin(grid, touched)
+	grid.ms["thin"] = Time.get_ticks_msec() - clock
+	clock = Time.get_ticks_msec()
 	_join(grid, touched, studs)
+	grid.ms["join"] = Time.get_ticks_msec() - clock
 	if options.hollow:
 		_hollow(grid)
 	for i: int in total:
 		if grid.state[i] == 1:
 			grid.cells += 1
+	clock = Time.get_ticks_msec()
 	_colour(grid, mesh, points, outward, options, library)
+	grid.ms["colour"] = Time.get_ticks_msec() - clock
+	clock = Time.get_ticks_msec()
 	grid.stand_colour = _stand_colour(grid, options, library)
 	_stance(grid, options)
+	grid.ms["stance"] = Time.get_ticks_msec() - clock
 	return grid
 
 
@@ -1089,7 +1114,7 @@ static func _colour(grid: Grid, mesh: MeshFile, points: PackedVector3Array,
 	var lab: Array[Vector3] = []
 	for code: int in palette:
 		var known: PartLibrary.BrickColor = library.color(code) if library != null else null
-		lab.append(Mosaic._oklab(known.rgb if known != null else Color.MAGENTA))
+		lab.append(HiddenColours.lab(known.rgb if known != null else Color.MAGENTA))
 	# Every sample: the cell it colours, its colour to a 32nd, how much
 	# surface it stands for.
 	var cells := PackedInt32Array()
@@ -1114,9 +1139,7 @@ static func _colour(grid: Grid, mesh: MeshFile, points: PackedVector3Array,
 					var u: float = (i + (2.0 if second == 1 else 1.0) / 3.0) / n
 					var v: float = (k + (2.0 if second == 1 else 1.0) / 3.0) / n
 					var on: Vector3 = a + ab * u + ac * v
-					var cell: int = _cell_of(grid, on - normal * 0.3)
-					if cell < 0:
-						cell = _cell_of(grid, on)
+					var cell: int = _shown_at(grid, on, normal)
 					if cell < 0:
 						continue
 					var c: Color = mesh.colour_at(t, Vector3(1.0 - u - v, u, v))
@@ -1200,6 +1223,46 @@ static func _one_colour(grid: Grid, one: int) -> void:
 	grid.shares = {one: 1.0}
 
 
+## The cell whose face shows the surface at [param on] (studs all three
+## ways), which faces [param faces]: going out from just inside it, the last
+## of the model's cells before the air; or, where the grid stops short of the
+## surface, the first going in. A cell is coloured by what can be seen of it,
+## as ObjToSchematic's smart averaging colours a block by its visible faces
+## only: a sample stepped a fixed way in landed in a cell under the one that
+## shows, and the one that shows took its colour from its neighbours. -1 for
+## a surface the build hides: more of the model than [constant HIDDEN_STUDS]
+## in front of it.
+static func _shown_at(grid: Grid, on: Vector3, faces: Vector3) -> int:
+	# Buried in another part of the model: a figure's head under its hair,
+	# whose skin coloured the hair's cells. A quarter of a stud out, past the
+	# third of a stud the surface is measured to, it is still inside, and a
+	# quarter in too. Inside ahead and not behind, it is a face wound the
+	# other way round from the rest, and faces the other way.
+	var ahead: Vector3 = on + faces * BURIED_STUDS
+	var behind: Vector3 = on - faces * BURIED_STUDS
+	var normal: Vector3 = faces
+	if grid.within(Vector3(ahead.x, ahead.y * PLATES, ahead.z)):
+		if grid.within(Vector3(behind.x, behind.y * PLATES, behind.z)):
+			return -1
+		normal = -faces
+	var cell: int = _cell_of(grid, on - normal * 0.3)
+	if cell < 0:
+		cell = _cell_of(grid, on)
+	if cell < 0:
+		for k: int in range(1, 5):
+			cell = _cell_of(grid, on - normal * (0.3 + 0.25 * k))
+			if cell >= 0:
+				return cell
+		return -1
+	var from: Vector3 = on - normal * 0.3
+	for k: int in range(1, ceili(HIDDEN_STUDS / 0.25) + 1):
+		var next: int = _cell_of(grid, from + normal * (0.25 * k))
+		if next < 0:
+			return cell
+		cell = next
+	return -1
+
+
 ## The model's cell holding [param p] (studs all three ways), or -1.
 static func _cell_of(grid: Grid, p: Vector3) -> int:
 	var x: int = floori(p.x)
@@ -1212,25 +1275,130 @@ static func _cell_of(grid: Grid, p: Vector3) -> int:
 
 
 ## The palette colour nearest a sampled one, among [param among] (indices)
-## or all of them; remembered by its key.
+## or all of them, as an eye judges (CIEDE2000); remembered by its key.
+## Oklab's straight line sent a dark grey to Reddish Brown before Black, and
+## Spot's black patches came out brown. The few nearest in a straight line
+## in L*a*b* are weighed, which CIEDE2000 never puts more than twice as far.
 static func _nearest(key: int, lab: Array[Vector3], known: Dictionary,
 		among: Array) -> int:
 	if known.has(key):
 		return known[key]
 	var c := Color(float((key >> 10) & 31) / 31.0, float((key >> 5) & 31) / 31.0,
 		float(key & 31) / 31.0)
-	var here: Vector3 = Mosaic._oklab(c)
+	var here: Vector3 = HiddenColours.lab(c)
+	var straight := PackedFloat32Array()
+	straight.resize(lab.size())
+	var least: float = INF
+	for n: int in lab.size():
+		if not among.is_empty() and not among.has(n):
+			straight[n] = INF
+			continue
+		straight[n] = here.distance_to(lab[n])
+		least = minf(least, straight[n])
 	var best: int = -1
 	var gap: float = INF
 	for n: int in lab.size():
-		if not among.is_empty() and not among.has(n):
+		if straight[n] > 2.0 * least + 2.0:
 			continue
-		var d: float = here.distance_squared_to(lab[n])
+		var d: float = de2000(here, lab[n])
 		if d < gap:
 			gap = d
 			best = n
 	known[key] = best
 	return best
+
+
+## How different two colours look, CIEDE2000 (Sharma, Wu and Dalal's
+## formulation), from CIE L*a*b*: the measure the bench scores colour by.
+static func de2000(one: Vector3, two: Vector3) -> float:
+	const POW25_7 := 6103515625.0
+	var c1: float = sqrt(one.y * one.y + one.z * one.z)
+	var c2: float = sqrt(two.y * two.y + two.z * two.z)
+	var cm: float = pow((c1 + c2) / 2.0, 7.0)
+	var g: float = 0.5 * (1.0 - sqrt(cm / (cm + POW25_7)))
+	var a1: float = (1.0 + g) * one.y
+	var a2: float = (1.0 + g) * two.y
+	var c1p: float = sqrt(a1 * a1 + one.z * one.z)
+	var c2p: float = sqrt(a2 * a2 + two.z * two.z)
+	var h1: float = fposmod(rad_to_deg(atan2(one.z, a1)), 360.0)
+	var h2: float = fposmod(rad_to_deg(atan2(two.z, a2)), 360.0)
+	var both: bool = c1p * c2p != 0.0
+	var dh: float = 0.0
+	if both:
+		dh = h2 - h1
+		if dh > 180.0:
+			dh -= 360.0
+		elif dh < -180.0:
+			dh += 360.0
+	var dl: float = two.x - one.x
+	var dc: float = c2p - c1p
+	var dhh: float = 2.0 * sqrt(c1p * c2p) * sin(deg_to_rad(dh) / 2.0)
+	var lm: float = (one.x + two.x) / 2.0
+	var cpm: float = (c1p + c2p) / 2.0
+	var hm: float = h1 + h2
+	if both:
+		if absf(h1 - h2) <= 180.0:
+			hm = (h1 + h2) / 2.0
+		elif h1 + h2 < 360.0:
+			hm = (h1 + h2 + 360.0) / 2.0
+		else:
+			hm = (h1 + h2 - 360.0) / 2.0
+	var t: float = 1.0 - 0.17 * cos(deg_to_rad(hm - 30.0)) + 0.24 * cos(deg_to_rad(2.0 * hm)) \
+		+ 0.32 * cos(deg_to_rad(3.0 * hm + 6.0)) - 0.20 * cos(deg_to_rad(4.0 * hm - 63.0))
+	var theta: float = 30.0 * exp(-pow((hm - 275.0) / 25.0, 2.0))
+	var cp7: float = pow(cpm, 7.0)
+	var rc: float = 2.0 * sqrt(cp7 / (cp7 + POW25_7))
+	var l50: float = (lm - 50.0) * (lm - 50.0)
+	var x: float = dl / (1.0 + 0.015 * l50 / sqrt(20.0 + l50))
+	var y: float = dc / (1.0 + 0.045 * cpm)
+	var z: float = dhh / (1.0 + 0.015 * cpm * t)
+	return sqrt(maxf(0.0, x * x + y * y + z * z - sin(deg_to_rad(2.0 * theta)) * rc * y * z))
+
+
+## Every part in a colour the LEGO Group makes it in, by Rebrickable's elements: one
+## whose colour no element of it comes in is laid in the nearest that does,
+## as an eye judges, among the palette (or, cut to a few colours, among
+## those). 1.3% of smooth's parts were in a colour no one can buy them in.
+## One colour asked for is kept as asked. How many parts changed colour.
+static func made_colours(model: Assistant.Model, options: Options, library: PartLibrary) -> int:
+	if library == null or options.colours == "one":
+		return 0
+	var among: Array[int] = []
+	if options.colours == "limit":
+		for placement: Assistant.Placement in model.placements:
+			if not among.has(placement.color):
+				among.append(placement.color)
+	else:
+		for code: int in options.palette:
+			among.append(code)
+	var labs: Dictionary = {}
+	for code: int in among:
+		var known: PartLibrary.BrickColor = library.color(code)
+		if known != null:
+			labs[code] = HiddenColours.lab(known.rgb)
+	var chosen: Dictionary = {}     ## "part/colour" -> colour
+	var changed: int = 0
+	for placement: Assistant.Placement in model.placements:
+		var key: String = "%s/%d" % [placement.part, placement.color]
+		if not chosen.has(key):
+			var id: String = library.resolve(placement.part)
+			var best: int = placement.color
+			var own: PartLibrary.BrickColor = library.color(placement.color)
+			if own != null and library.element_for(id, placement.color).is_empty():
+				var here: Vector3 = HiddenColours.lab(own.rgb)
+				var gap: float = INF
+				for code: Variant in labs:
+					if library.element_for(id, int(code)).is_empty():
+						continue
+					var d: float = de2000(here, labs[code])
+					if d < gap:
+						gap = d
+						best = int(code)
+			chosen[key] = best
+		if int(chosen[key]) != placement.color:
+			placement.color = int(chosen[key])
+			changed += 1
+	return changed
 
 
 # -- laying -------------------------------------------------------------------
@@ -1252,7 +1420,8 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true, "keep_pieces": true, "plain_at": _plain_columns(grid),
+		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "sold_in": options.palette,
+		"plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 
 
@@ -1319,6 +1488,8 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 		progress.say("measuring the model")
 	var grid: Grid = voxelise(mesh, options, library)
 	times["measure"] = Time.get_ticks_msec() - t0
+	for step: Variant in grid.ms:
+		times["measure." + str(step)] = grid.ms[step]
 	if grid.cells == 0:
 		return _cannot(mesh, options, checker, progress, suggest,
 			"at %d studs there is nothing of it to lay" % options.studs)
@@ -1339,7 +1510,15 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			if not tile.is_empty():
 				model.placements.append(Assistant.Placement.from_dict(tile))
 		model.placements.append(Assistant.Placement.from_dict(one))
+	# In colours the parts are made in before it is checked, so what the check
+	# says of colours is said of these; and once more at the end, for the
+	# joins and props it adds.
+	var recoloured: int = made_colours(model, options, library)
 	times["lay"] = Time.get_ticks_msec() - t1
+	for step: Variant in (Shapes.last.get("ms", {}) as Dictionary):
+		times["lay." + str(step)] = Shapes.last["ms"][step]
+	for step: Variant in (Shapes.last.get("stitch", {}) as Dictionary):
+		times["lay.stitch." + str(step)] = Shapes.last["stitch"][step]
 	if model.placements.is_empty():
 		return _cannot(mesh, options, checker, progress, suggest, "at %d studs it came to no bricks%s"
 			% [options.studs, ": " + "; ".join(PackedStringArray(trouble)) if not trouble.is_empty() else ""])
@@ -1350,7 +1529,10 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	if grid.stand.has_area():
 		stand = lay_stand(model, grid.stand, grid.stand_why, checker, options.smooth,
 			grid.stand_colour)
+	times["check.stand"] = Time.get_ticks_msec() - t2
+	var t3: int = Time.get_ticks_msec()
 	var report: Dictionary = mend(model, checker)
+	times["check.mend"] = Time.get_ticks_msec() - t3
 	var balance: Balance.Report = report.get("balance")
 	# Weighed, and it would tip after all, or all but (Balance's half a stud,
 	# as the grid was judged): stood on a stand under what it stands on and
@@ -1371,6 +1553,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# fewer joints are past their load. A figure's arm held out on one stud,
 	# a car's bumper hung under its body.
 	report["propped"] = 0
+	var t4: int = Time.get_ticks_msec()
 	if balance != null and balance.over > 0:
 		var was: int = model.placements.size()
 		var props: int = _prop(model, checker, balance)
@@ -1384,7 +1567,11 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 				report["propped"] = props
 			else:
 				model.placements.resize(was)
+	times["check.props"] = Time.get_ticks_msec() - t4
+	times["check.checks"] = int(report.get("checks", 0))
+	times["check.checks_ms"] = int(report.get("checks_ms", 0))
 	times["check"] = Time.get_ticks_msec() - t2
+	report["recoloured"] = recoloured + made_colours(model, options, library)
 	var lift: int = STAND_PLATES if not stand.is_empty() else 0
 	if not stand.is_empty():
 		stand["lift"] = lift
@@ -1413,6 +1600,8 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 ## out and put in, and what it said it left out.
 static func _again(later: Dictionary, earlier: Dictionary) -> Dictionary:
 	later["mended"] = int(later.get("mended", 0)) + int(earlier.get("mended", 0))
+	later["checks"] = int(later.get("checks", 0)) + int(earlier.get("checks", 0))
+	later["checks_ms"] = int(later.get("checks_ms", 0)) + int(earlier.get("checks_ms", 0))
 	later["tied"] = int(later.get("tied", 0)) + int(earlier.get("tied", 0))
 	later["left_out"] = (earlier.get("left_out", []) as Array) + (later.get("left_out", []) as Array)
 	return later
@@ -1827,7 +2016,8 @@ static func said(result: Dictionary) -> String:
 ## then what is still apart and what floats go together. Twelve rounds of one
 ## kind at a time took a temple scene's check from 6 s to 290.
 static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
-	var report: Dictionary = checker._check(model, true, true)
+	var clock: Dictionary = {"checks": 0, "checks_ms": 0}
+	var report: Dictionary = _timed(model, checker, clock)
 	var taken_out: int = 0
 	var tied: int = 0
 	var tying: int = 0
@@ -1851,7 +2041,7 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 			left_out.append(_parts_said(model, drop, checker,
 				"it ran into the part beside it, or never arrived"))
 			taken_out += _take_out(model, drop)
-			report = checker._check(model, true, true)
+			report = _timed(model, checker, clock)
 			continue
 		var loose: int = _loose(report)
 		if loose > 1 and tying < 2:
@@ -1859,7 +2049,7 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 			var was: int = model.placements.size()
 			var added: int = _tie(model, checker, report)
 			if added > 0:
-				var after: Dictionary = checker._check(model, true, true)
+				var after: Dictionary = _timed(model, checker, clock)
 				# Kept only if it joined something: parts that join nothing are
 				# taken back, not left to be taken out as floating.
 				if _loose(after) < loose:
@@ -1887,10 +2077,27 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 			left_out.append(_parts_said(model, apart, checker, "nothing could join it to the rest"))
 		floating.merge(apart)
 		taken_out += _take_out(model, floating)
-		report = checker._check(model, true, true)
+		report = _timed(model, checker, clock)
+	# Weighed already if it passed whole; what ends the mend otherwise is
+	# weighed now, for the line to say whether it stands.
+	if not report.has("balance") and not model.placements.is_empty():
+		report = _timed(model, checker, clock, true)
 	report["mended"] = taken_out
 	report["tied"] = tied
 	report["left_out"] = left_out
+	report["checks"] = clock["checks"]
+	report["checks_ms"] = clock["checks_ms"]
+	return report
+
+
+## The check, counted and timed into [param clock]; weighed only when it
+## passes in one piece, which is when the mend stops, or [param weigh].
+static func _timed(model: Assistant.Model, checker: Assistant, clock: Dictionary,
+		weigh: bool = false) -> Dictionary:
+	var t: int = Time.get_ticks_msec()
+	var report: Dictionary = checker._check(model, true, weigh, true)
+	clock["checks"] = int(clock["checks"]) + 1
+	clock["checks_ms"] = int(clock["checks_ms"]) + Time.get_ticks_msec() - t
 	return report
 
 

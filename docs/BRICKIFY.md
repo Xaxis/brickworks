@@ -80,7 +80,10 @@ studs, against a greedy stack of standard bricks and legolization:
 1. **Keep the whole model**: join or support what it now drops; never place
    nothing. *Done 2026-10-15, section 5: whole in 25 of 28 from 13.*
 2. **Colour that reads right**: a hue-keeping match, faces voted by what is
-   seen, only colours the part is made in.
+   seen, only colours the part is made in. *2026-10-16, section 6: 1.28 times
+   the floor at 48 studs from 1.54, every part with an element number; a
+   figure's hair top, smooth against plain at 48, wholeness (24 of 28) and
+   time not there yet.*
 3. **Bond like a builder**: fewer, longer parts and staggered seams in the
    hidden core.
 4. **Fit the surface by distance**, with the slope angles it lacks.
@@ -1010,6 +1013,219 @@ a stand" where it was given one).
 - **The colour of a cell** and the smooth surface's look are unit 2's; this
   unit did not touch them, and ΔE2000 is unchanged.
 
+## 6. Unit 2: colour that reads right (2026-10-16)
+
+Unit 2 of the plan, and the time unit 1 cost. Brickify matched each sampled
+colour to the palette by Oklab's straight line, which sends a 25% grey to
+Reddish Brown before Black. It gave a cell the colour of samples stepped a
+fixed way into the model, so the cell that shows often took its colour from
+the cells round it or from a surface nobody sees. It gave a slope the colour
+of the stud above it. 1.3% of smooth's parts on `main` today are in a colour
+no element of theirs comes in. Branch `worktree-agent-a9905a5be6483ab5d`,
+from `main` at `2789cd0`.
+
+**In short.** On the 10 bench models with colours of their own, ΔE2000 at 48
+studs is 1.28 times the palette's floor, from 1.54 (9.5 against 11.4; floor
+7.4), and at 24 studs 1.54 times, from 2.00. Spot's black patches are black:
+none of its neutral surface is laid in a strong colour, from 40%. The
+figure's hair is black, not Dark Blue, but 8% of its neutral surface is still
+laid in a colour, from 72% (18% at 24 studs, from 70%). Every part of all 56
+runs has an element number, from 98.7% of smooth's. Two targets are missed.
+Smooth is still a little worse than plain at 48 studs (9.5 against 9.0; it
+was 11.4 against 10.6), though level at 24 (11.5 against 11.6). And the
+forty-stud bunny is slower, not faster: 17.7 s against `main`'s 15.8 in the
+same batch. One more run is not whole than on `main`: 24 of 28, from 25.
+
+**What changed** ([brickify.gd](../src/assembly/brickify.gd),
+[shapes.gd](../src/ai/shapes.gd)):
+
+1. **Matched as an eye judges** (`Brickify.de2000`, `_nearest`). Each
+   sampled colour goes to the palette colour nearest by CIEDE2000, the
+   measure the bench scores by, weighed among the few nearest in a straight
+   line in L\*a\*b\*. A 25% grey goes to Black (11.0 away), not Reddish
+   Brown (17.7); a 38% grey to Dark Bluish Grey.
+2. **A cell coloured by what shows of it** (`_shown_at`): ObjToSchematic's
+   "smart averaging", by visible faces only [o2s]. A sample votes for the
+   cell whose face shows it: out from just inside the surface along its
+   normal, the last of the model's cells before the air, or, where the grid
+   stops short of the surface, the first going in. A surface buried in
+   another part of the model (inside it a quarter of a stud ahead and behind:
+   a figure's head under its hair) or with more than a stud and a half of the
+   model in front of it (a truck's inside) votes for nothing. A face wound
+   the wrong way round is read the other way.
+3. **A slope in the colour of the surface it stands for** (`Plan._shown`,
+   Brickify's grids only): the top plate of each stud it covers, the colour
+   most of them are, a tie to the stud above. A design's shapes keep the
+   colour above, as before.
+4. **Every part in a colour the LEGO Group sells it in.** A slope sold in none of the
+   palette's colours is not laid (`sold_in`): the inverted 2 x 2 slope laid
+   under overhangs, 3660a, has no element at all. Any other part with no
+   element in its colour is laid in the nearest colour, by CIEDE2000, that it
+   has one in (`made_colours`, after laying and again after the mend). One
+   colour asked for is kept as asked.
+5. **Measured where the time goes** ([brickify_phases.gd](../src/dev/brickify_phases.gd)),
+   and two cuts. The stitch maps the plan once a round, not once for each
+   piece it tries, and the mend weighs a check (Balance) only once it passes
+   in one piece (`weigh_whole` in `Assistant._check`): on the 48-stud scans
+   weighing was 0.6 to 4.5 s of each of their three checks.
+6. **The bench** measures what the plan asks: the share of the model's
+   neutral surface (CIELAB chroma under 5) laid in a strong colour (chroma 20
+   or more: Reddish Brown is 37, Dark Blue 27, Black 9). Each run records its
+   phases, and `pictures --before RUN` draws each arm before and after.
+
+**Tried and taken out.** Pairing every piece the stitch could in one round
+halved the 48-stud scans' pairing, but changed which joins were made: the
+probe's hollow sphere came out with more parts than the solid one (1,682
+against 1,624). Filtering every plate, brick and edge part by the colours it
+is sold in as Shapes lays it, and swapping 3660a for the mould the LEGO Group sells,
+3660b, ran only together with that pairing and were taken out with it,
+unmeasured alone.
+
+### The bench again
+
+The same 14 models at 24 and 48 studs, smooth and plain; `main` laid in its
+own checkout at a load of 45 to 60, the branch in two processes at once at a
+load of 10 to 45, so the seconds are not a fair ratio; the bunny below is.
+The greedy stack was not laid again.
+
+| Run | Arm | Studs | Laid | Whole | One piece, check passes | And stands, no joint past its load | On a stand | Parts | Seconds (mean) | Seconds (most) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| main | smooth | 24 | 14/14 | 12/14 | 14/14 | 13/14 | 5 | 11,933 | 12.0 | 39 |
+| after | smooth | 24 | 14/14 | 11/14 | 14/14 | 11/14 | 5 | 12,241 | 9.6 | 25 |
+| main | smooth | 48 | 14/14 | 13/14 | 14/14 | 9/14 | 2 | 58,145 | 73.8 | 374 |
+| after | smooth | 48 | 14/14 | 13/14 | 14/14 | 9/14 | 2 | 57,947 | 59.0 | 241 |
+| main | plain | 24 | 14/14 | 14/14 | 14/14 | 9/14 | 4 | 10,056 | 8.2 | 30 |
+| after | plain | 24 | 14/14 | 13/14 | 14/14 | 9/14 | 5 | 10,377 | 7.2 | 25 |
+| main | plain | 48 | 14/14 | 13/14 | 14/14 | 9/14 | 2 | 48,390 | 54.8 | 248 |
+| after | plain | 48 | 14/14 | 12/14 | 14/14 | 9/14 | 4 | 47,505 | 40.3 | 205 |
+
+**Colour**, mean CIEDE2000 over the 10 models with colours of their own
+(avocado, Bob, the figure, the fox, the milk truck, the tholos, both
+Smithsonian models, Spot, the toy car), against the palette's floor (7.4).
+Per model, the ratio to the floor at 48 studs went from a median of 1.39
+(1.09 to 2.97) to 1.21 (0.93 to 2.33); at 24, from 1.81 (1.30 to 3.30) to
+1.39 (1.18 to 2.89).
+
+| Studs | Arm | ΔE2000 main | ΔE2000 after | Times the floor, main | Times the floor, after |
+|---|---|---|---|---|---|
+| 24 | smooth | 14.9 | 11.5 | 2.00 | 1.54 |
+| 24 | plain | 14.0 | 11.6 | 1.89 | 1.56 |
+| 48 | smooth | 11.4 | 9.5 | 1.54 | 1.28 |
+| 48 | plain | 10.6 | 9.0 | 1.43 | 1.21 |
+
+**Each coloured model, smooth**: ΔE2000, and the share of its neutral surface
+laid in a strong colour (how much of it is neutral in brackets).
+
+| Model | Studs | ΔE2000 main → after | Floor | Neutral laid in a colour, main → after |
+|---|---|---|---|---|
+| avocado | 24 | 18.2 → 11.2 | 8.2 | (none neutral) |
+| avocado | 48 | 9.0 → 9.6 | 8.2 | (none neutral) |
+| Bob | 24 | 12.7 → 11.0 | 3.8 | (under 1% neutral) |
+| Bob | 48 | 11.4 → 8.9 | 3.8 | (under 1% neutral) |
+| figure | 24 | 15.9 → 14.5 | 12.3 | 70% → 18% (of 21%) |
+| figure | 48 | 14.3 → 11.5 | 12.3 | 72% → 8.0% (of 21%) |
+| fox | 24 | 7.7 → 6.7 | 4.6 | 21% → 17% (of 17%) |
+| fox | 48 | 6.0 → 5.9 | 4.6 | 8.7% → 8.0% (of 17%) |
+| milk truck | 24 | 25.8 → 11.0 | 7.8 | 23% → 4.3% (of 80%) |
+| milk truck | 48 | 12.3 → 7.9 | 7.8 | 20% → 2.0% (of 80%) |
+| tholos | 24 | 16.8 → 13.6 | 10.9 | 37% → 24% (of 16%) |
+| tholos | 48 | 17.8 → 12.2 | 10.9 | 37% → 16% (of 16%) |
+| Hayes bust | 24 | 11.5 → 10.8 | 5.9 | (under 1% neutral) |
+| Hayes bust | 48 | 7.4 → 7.4 | 5.9 | (under 1% neutral) |
+| Bell X-1 | 24 | 10.2 → 9.6 | 7.0 | 80% → 52% (of 6%) |
+| Bell X-1 | 48 | 10.3 → 9.6 | 7.0 | 79% → 46% (of 6%) |
+| Spot | 24 | 11.6 → 9.9 | 8.1 | 33% → 0.0% (of 22%) |
+| Spot | 48 | 10.2 → 9.0 | 8.1 | 40% → 0.0% (of 22%) |
+| toy car | 24 | 18.3 → 16.3 | 5.7 | 48% → 38% (of 26%) |
+| toy car | 48 | 15.7 → 13.1 | 5.7 | 34% → 19% (of 26%) |
+
+**Parts with an element number**: smooth 934 of 70,078 without one on `main`
+(1.3%), none of 70,188 after; plain 110 of 58,446 (0.19%), none of 57,882.
+**Parts**: at 24 studs smooth uses 2.6% more (avocado 23%, fox 28%, milk truck
+15% more: more colours told apart), at 48 0.3% fewer.
+
+**Where the time goes**, the forty-stud bunny (the probe's) laid three times
+by `main` and by the branch in one job, side by side (medians, seconds):
+
+| | Total | Measure (colour) | Lay (core, stitch) | Check (checks) |
+|---|---|---|---|---|
+| main | 15.8 (15.6 to 18.0) | 0.9 | 10.0 | 5.3 (1) |
+| branch | 17.7 (17.7 to 18.0) | 1.1 (0.8) | 8.0 (3.5, 4.2) | 8.3 (2) |
+
+The lay is 2 s faster: the stitch's 35 rounds now map the plan once each.
+Of the stitch, the rejoin (21 tries, each a piece count of the whole plan) is
+2.2 s and finding the pieces each round 0.9. The check is 3 s slower: the
+branch lays the bunny differently (2,069 parts against 2,249), and its mend
+takes 3 parts out and checks again where `main`'s passes at once. On the 48-stud scans the stitch
+runs out of its 96 rounds on `main` and on the branch alike.
+
+**What the numbers say.**
+1. **The colours read as the model's.** Spot's patches are black where they
+   were Reddish Brown; the figure's hair black where it was Dark Blue; the
+   milk truck's white side white, with its logo, where it was black. The
+   colour target, 1.3 times the floor at 48 studs, is met: 1.28.
+2. **A slope's colour helps, but smooth is not yet level with plain at 48
+   studs**: 9.5 against 9.0 (0.5 apart, from 0.8). At 24 they are level.
+3. **Neutral stays neutral on Spot, not yet on the figure**: 8% of its
+   neutral surface at 48 studs and 18% at 24 is laid in a colour; in the
+   pictures, the top of its hair is in the skin's Dark Orange.
+4. **Every part is one the LEGO Group sells in that colour.** The cost shows on the
+   uncoloured models: a part not sold in Light Bluish Grey (on `main` the
+   commonest was the 3 x 3 brick without corner, 30505, 132 of them) is laid
+   in the nearest colour it is sold in, Dark Bluish Grey, so the grey Stanford
+   bunny has a few dark corners.
+5. **Finer colour costs a little wholeness.** A thin part in more colours
+   than one is laid in more parts that hold each other less: the Bell X-1 at
+   48 studs lost its undercarriage (53 parts nothing could hold up, lost95
+   10.4 studs) and stands on a stand; the tholos at 24 lost 72 parts (2.1).
+   The tholos at 48 is now whole (from 2.43). Smooth whole: 24 of 28, from
+   25; plain 25, from 27.
+6. **Time is not back.** The lay is faster and the scans' seconds are lower,
+   but the same-batch measure of the bunny is 12% slower, all of it the
+   second check.
+
+Spot at 48 studs (Keenan Crane, CC0):
+
+![Spot at 48 studs: the model, then Brickify smooth before and after](brickify/unit2-spot-48.jpg)
+
+The Kenney figure at 48 studs (CC0): the hair black, its top still the
+skin's colour.
+
+![The figure at 48 studs: the model, then smooth before and after](brickify/unit2-character-48.jpg)
+
+The milk truck at 24 studs (Cesium, CC-BY 4.0): its white side was black.
+
+![The milk truck at 24 studs: the model, then smooth before and after](brickify/unit2-milk-truck-24.jpg)
+
+The Bell X-1 at 48 studs (Smithsonian, CC0): its undercarriage is gone.
+
+![The Bell X-1 at 48 studs: the model, then smooth before and after](brickify/unit2-smithsonian-2-48.jpg)
+
+### Proof
+
+- `brickify_probe` (headless): all 57 checks pass, with a new section,
+  colour that reads right: CIEDE2000 against Sharma, Wu and Dalal's test
+  pair (2.0425); the greys from black to white matched to Black, Dark Bluish
+  Grey, Light Bluish Grey and White and nothing else; every part of the
+  28-stud bunny with an element number. The hollow sphere is 1,599 parts
+  against the solid's 1,606.
+- `brickify_ui_probe` (in a window, on the GPU), `shapes_probe`,
+  `exact_probe` (29 passed) and `patterns_probe`: all pass.
+- `tools/web/brickify_flow.mjs` needs a preview, and was not run.
+
+### What is left
+
+- **The figure's hair top**, laid in the skin's colour, and the neutral
+  surfaces of the Bell X-1 and the toy car still laid in a colour.
+- **Wholeness with finer colour**: lay a thin part in one colour, or let a
+  plate reach across a colour edge where that holds the part, before the
+  mend takes it out (the X-1 at 48, the tholos at 24).
+- **Smooth level with plain**: the tiles and wedges still show the colour of
+  their cell, not of the face they show.
+- **Time**: the bunny's second check, and the rejoin's piece counts (each
+  try counts the whole plan's pieces).
+- **Dithering on flat panels** was not tried.
+
 ## Repeat it
 
 The models are not in the repository (two are Stanford's, for research use
@@ -1035,10 +1251,18 @@ XDG_DATA_HOME=$W/.scratch-data heavy godot --headless --path $W --script src/dev
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/run --into $S/pictures
 python3 tools/bench/brickify_bench.py report $S/run
+# a change measured (unit 2): main laid in its own checkout ($S/main) and the branch in another,
+# each half of the models a process ("sizes" and "arms" per model in the jobs file), then
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --into $S/pictures \
+    --arms smooth --before $S/main
+# where the time goes, main's beside the branch's in one heavy job (only the ratio means anything):
+XDG_DATA_HOME=$W/.scratch-data heavy godot --headless --path $W --script src/dev/brickify_phases.gd -- 3
 ```
 
-The run behind this file used the app at `7a55e86` (main), on 2026-10-15,
-the box shared with other jobs at a load of 20 to 60 on 24 threads.
+The run behind sections 3 and 4 used the app at `7a55e86` (main), on
+2026-10-15, the box shared with other jobs at a load of 20 to 60 on 24
+threads; section 6's, `2789cd0` and the branch on 2026-10-16, at a load of
+10 to 60.
 
 ## Each model, every arm
 

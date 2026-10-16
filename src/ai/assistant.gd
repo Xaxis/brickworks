@@ -11793,7 +11793,11 @@ func _others_standing(alone: bool) -> Array:
 ##
 ## ``weigh`` asks as well whether it would stand, and puts the answer in
 ## "balance" (Balance.Report): check_design's, which a session reads.
-func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
+## ``weigh_whole`` asks it only of a model that passes in one piece: what a
+## mend checks again and again until it does, a second of weighing each on
+## a forty-stud scan, wants only the last.
+func _check(model: Model, alone: bool = false, weigh: bool = false,
+		weigh_whole: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
 	# Nothing here asks where a brick would come to rest, which is the
 	# only thing the column index is for, and keeping it is a third of
@@ -12526,7 +12530,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		"exact_ms": exact.spent_usec / 1000.0,
 		"exact_on": exact.spent_on,
 	}
-	if weigh:
+	if weigh or (weigh_whole and ok and pieces <= 1):
 		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, holds, alone)
 	return checked
 

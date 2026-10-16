@@ -38,28 +38,47 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   (`grid.stand`, under its feet and centre of mass); `options.stand` false
   lays none. Then
   hollowed in whole courses behind walls two studs and three plates thick if
-  asked — its surface colour sampled every 0.35 stud and matched to a current
-  solid LEGO colour in Oklab (`Brickify.PALETTE`; not the mosaic's, whose
-  trans-red took a red cube), and each stud's top marked a flat facet or a
-  curve. Then laid by the assistant's own brickifier (`Shapes.lay`, solid kind
-  `grid`): big bricks inside, slopes and curved slopes fitted where it falls
-  away (straight on a facet, curved on a curve: surface `mixed`), inverted ones
+  asked — its surface colour sampled every 0.35 stud, each sample voting for
+  the cell whose face shows it (`_shown_at`: out along the surface's normal,
+  the last of the model's cells before the air; a surface with more than 1.5
+  studs of the model in front of it, `HIDDEN_STUDS`, or buried in another
+  part of it, the model's inside a quarter stud before and behind it
+  (`BURIED_STUDS`, `Grid.within`: a figure's head under its hair), votes for
+  nothing, and a face wound the wrong way is read the other way), and
+  matched to a current solid LEGO colour by CIEDE2000 (`Brickify.de2000`,
+  `_nearest`; Oklab sent a 25% grey to Reddish Brown) among `Brickify.PALETTE`
+  (not the mosaic's, whose trans-red took a red cube), and each stud's top
+  marked a flat facet or a curve. Then laid by the assistant's own brickifier
+  (`Shapes.lay`, solid kind `grid`): big bricks inside, slopes and curved
+  slopes fitted where it falls away (straight on a facet, curved on a curve:
+  surface `mixed`), each in the colour of the surface it stands for
+  (`colour_shown`, `Plan._shown`: the top plate of the studs it covers, not
+  the stud above it; a design's shape keeps the stud above), inverted ones
   under an overhang, corner rounds and wedges where an edge runs off the square
   (the same edge parts as a design's shape; an edge part at a joint between
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
   panels on a flat side; every piece kept (`keep_pieces`: no prune, nothing
-  left off unsaid) and, once the grid's own stitch is spent, the plates and
+  left off unsaid) and, once the grid's own stitch is spent (the plan mapped
+  once a round for it, not once a piece tried), the plates and
   then the slopes about each joint laid again as plates crossing it
   (`rejoin`, each way kept only if it leaves fewer pieces); the columns of
   thin cells laid plain (`plain_at`: no slope, wedge or top tile); and every
   number laid the one LDraw gives the part today
-  (`Shapes.current`, from the catalogue's stubs: 3023 is laid as 3023b). A stand
+  (`Shapes.current`, from the catalogue's stubs: 3023 is laid as 3023b), in a
+  colour it is made in: no slope sold in none of the palette's colours
+  (`sold_in`, `Plan._sold`, by Rebrickable's elements: the inverted 2 x 2
+  3660a has no element at all, so it is never laid), and any part with no
+  element in its colour laid in the nearest colour by CIEDE2000 it has one
+  in (`Brickify.made_colours`, after laying and again after the mend; one
+  colour asked for is kept). A stand
   is laid under it (`Brickify.lay_stand`: the model lifted two plates, strips
   along x under strips along z with their joints crossing, tiles where the
   model does not stand, black). Then `Assistant._check` as check_design runs
-  it, weighed by Balance, and mended (`Brickify.mend`, in few checks): what
+  it, weighed by Balance once it passes in one piece (`weigh_whole`; a check
+  that fails is not weighed, and a mend that ends failing weighs its last),
+  and mended (`Brickify.mend`, in few checks): what
   collides (the lattice, or the exact check's `colliding`) out in one round;
   then join (`_tie`, a 1 x 2 plate under or over a joint, or the shortest
   pillar of 1 x 1s onto anything held, each stud checked against the part's
@@ -148,6 +167,21 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   2026-10-15 after main 4138091 (its exact check costs every check more), at a
 #   load of 30 to 50: all ok, forty-stud bunny 2,249 parts in 12.9 s (measure
 #   0.8, lay 7.7, check 4.5; main 12.0 s).
+#   Then colour that reads right (unit 2): CIEDE2000 against Sharma, Wu and
+#   Dalal's test pair (2.0425); greys from black to white matched to Black, Dark
+#   Bluish Grey, Light Bluish Grey and White, never a colour (Oklab sent a 25%
+#   grey to Reddish Brown); every part of the 28-stud bunny in its own colours
+#   has an element number (PartLibrary.element_for, by today's number).
+#   2026-10-16 on the unit 2 branch, at a load of 10 to 60: 57 ok; hollow sphere
+#   1,599 parts against the solid's 1,606; forty-stud bunny 2,069 parts in 17.2 s
+#   (measure 1.2, lay 7.6, check 8.4: its mend takes 3 parts out and checks
+#   twice, where main's passes at once). Main beside it in one job (brickify_phases): 15.8 s, the
+#   branch 17.7 s; the lay 2.0 s faster, the second check 3 s slower.
+godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
+#   where the time goes: the forty-stud bunny laid three times, and any model
+#   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
+#   what one check costs alone and weighed. Run main's beside the branch's in
+#   one heavy job: on a shared box only the ratio means anything.
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part, all selected, the
@@ -179,9 +213,12 @@ and weighs each, and writes the parts' geometry and the model's into OUT;
 picture for a bare OBJ), runs legolization (GPL, its own venv, never imported)
 at the same scale, and measures likeness (silhouette IoU from 14 views,
 Chamfer, Hausdorff95, normal error), colour (CIEDE2000 and the palette's
-floor), bond (seams bridged, weak points, 1x1s) and parts in a colour no
-element comes in. The models are third-party data kept in a scratch folder,
-never in the repository.
+floor, and the share of the model's neutral surface, CIELAB chroma under 5,
+laid in a strong colour, chroma 20 or more), bond (seams bridged, weak points,
+1x1s) and parts in a colour no element comes in; each run's JSON has its
+phases (`ms`). `pictures --before RUN0` draws each arm as RUN0 laid it beside
+as RUN laid it (`--arms smooth` for one). The models are third-party data kept
+in a scratch folder, never in the repository.
 
 ```sh
 python3 tools/minitest.py tests/test_trademarks.py     # (static) the doc's words
@@ -189,6 +226,11 @@ S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare -
 XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
+#   2026-10-16 after unit 2 (docs/BRICKIFY.md section 6), against 2789cd0: ΔE2000
+#   on the 10 coloured models 1.28 times the floor at 48 studs (from 1.54), 1.54 at
+#   24 (from 2.00); Spot's neutral surface laid in a colour 0% (from 40%), the
+#   figure's 8% (from 72%); no part without an element (from 1.3%); smooth whole
+#   24 of 28 (from 25), plain 25 (from 27).
 #   2026-10-15 after unit 1 (docs/BRICKIFY.md section 5), on main 4138091: smooth
 #   laid 28 of 28, whole 25 of 28, one piece 28, none tips (8 on a stand).
 #   2026-10-15 on 7a55e86, 14 models at 24 and 48 studs: smooth laid 24 of 28,
@@ -209,6 +251,16 @@ python3 tools/bench/brickify_bench.py report $S/run
   every plate was six of a forty-stud sphere's eight seconds; `near_edges` tries
   only corners whose cut side lands on a stud the edge cuts across, and lays
   exactly the same parts (checked part for part on two spheres).
+- **The stitch joins one piece a round.** Pairing every piece it could in one
+  round halved the 48-stud scans' pairing time, but it changed which joins
+  were made: the hollow sphere came out with more parts than the solid one
+  (1,682 against 1,624) and the forty-stud bunny no faster. Taken out; the
+  plan is mapped once a round instead, which by construction lays the same
+  parts.
+- **Colour is matched as the bench scores it.** By Oklab's straight line a
+  25% grey is nearer Reddish Brown than Black, so a cow's black patches came
+  out brown; CIEDE2000 (`Brickify.de2000`) keeps greys grey. A surface buried
+  in another part of the model (a head under hair) colours nothing.
 - **The interior is one colour.** Two cells in from the surface take its colour;
   further in, the colour most of the model is, so the hidden core is a few large
   bricks rather than a patchwork.
