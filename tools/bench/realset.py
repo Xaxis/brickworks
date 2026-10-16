@@ -999,7 +999,9 @@ def report_arm(which: str, date: str, arm: str) -> str:
     every = sum(len(r.get("verdicts", [])) for r in found) * len(DIMS)
     out += ["", f"The two orders named the same model in {pairwise.share(same, len(orders) * len(DIMS))}"
             f" of dimensions; the model shown first won {pairwise.share(first, every)}."]
-    out += ["", "| set | subject | kind | set parts | ours | minutes | " + " | ".join(DIMS) + " |",
+    out += ["", "Each subject: building parts (figures left out, as tools/style.py counts), the "
+            "design's minutes, and the verdicts our design won of those asked.", "",
+            "| set | subject | kind | set's parts | ours | minutes | " + " | ".join(DIMS) + " |",
             "|" + "---|" * (6 + len(DIMS))]
     for r in found:
         ours = r.get("keys", {}).get("ours")
@@ -1007,7 +1009,8 @@ def report_arm(which: str, date: str, arm: str) -> str:
         cells = [f"{sum(v['winners'][d] == ours for v in r.get('verdicts', []))}/"
                  f"{len(r.get('verdicts', []))}" for d in DIMS]
         mins = made.get("design_seconds") or made.get("seconds") or 0
-        out.append(f"| {r['number']} | {r['name']} | {r.get('kind') or ''} | {r['set']['parts']} | "
+        theirs = r["set"].get("measures", {}).get("parts", r["set"]["parts"])
+        out.append(f"| {r['number']} | {r['name']} | {r.get('kind') or ''} | {theirs} | "
                    f"{r.get('measures', {}).get('parts', 0)} | {mins / 60:.0f} | "
                    + " | ".join(cells) + " |")
     out += ["", "What they are made of, the median over subjects: ours, the set's, and the "
