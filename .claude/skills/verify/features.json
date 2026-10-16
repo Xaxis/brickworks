@@ -152,6 +152,14 @@
       "tests": []
     },
     {
+      "id": "cli:build a real set by hand in a browser",
+      "kind": "cli",
+      "entry": "tools/web/cad_task_flow.mjs",
+      "reach": "python3 tools/bench/cadtask.py build   (serve.py on its own port, .env loaded, heavy; or node tools/web/cad_task_flow.mjs --url=http://127.0.0.1:<port>/ --out=DIR --sets=5762-1_Plane.mpd --most=8; then python3 tools/bench/cadtask_klm.py DIR/build.json --merge)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:build browser flow",
       "kind": "cli",
       "entry": "tools/web/build_flow.mjs",
@@ -208,6 +216,30 @@
       "tests": [
         "tests/test_brickbench.py"
       ]
+    },
+    {
+      "id": "cli:cad task frames",
+      "kind": "cli",
+      "entry": "src/dev/cadtask_frames.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/cadtask_frames.gd -- --frames-out=FILE.json MODEL.mpd ...   (python3 tools/bench/cadtask.py frames --platform desktop)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:cad task frames in a browser",
+      "kind": "cli",
+      "entry": "tools/web/cad_frames.mjs",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:cad task test",
+      "kind": "cli",
+      "entry": "tools/bench/cadtask.py",
+      "reach": "python3 tools/bench/cadtask.py all   (run bare: it puts each run under heavy; real sets' files round-tripped, frames timed, three sets built in a browser, REPORT.md in bench/results/cadtask-<date>/ of the main checkout; docs/CADTASK.md)",
+      "area": "model-io",
+      "tests": []
     },
     {
       "id": "cli:check a release on three systems",
@@ -617,6 +649,14 @@
       "entry": "tools/web/render_open_check.mjs",
       "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app: the Render dialog's first open, every frame timed)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:round trip probe",
+      "kind": "cli",
+      "entry": "src/dev/roundtrip_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/roundtrip_probe.gd -- --out=FILE.jsonl vendor/omr/files/7223-1_Car.mpd tests/fixtures/studio/bay_2025.io   (python3 tools/bench/cadtask.py roundtrip runs it on the sample and judges it)",
+      "area": "model-io",
       "tests": []
     },
     {

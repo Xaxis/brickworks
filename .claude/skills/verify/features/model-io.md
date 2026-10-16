@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe -->
 
 ## Sub-features
 
@@ -394,6 +394,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   with Download my models (the .zip) and This one for Studio (.io).
   `brickworksState.storage` carries all of it for a browser check.
 
+- `cad task test` (`tools/bench/cadtask.py`, 2026-10-16; the write-up is
+  `docs/CADTASK.md`): is building here as faithful and as fast as in Studio.
+  `roundtrip` takes 48 real sets' files (vendor/omr, eight from each of six
+  sizes in hash order, one a set) and every `.io` and `.lxf` the repository
+  carries through `round trip probe`, then compares every part's number,
+  colour, place to the LDU and turn, its sub-model (by membership, not name)
+  and its step path (each copy's step, then its own; empty steps and
+  renumbering do not count). Strict, up to the lift `open_text` gives a model
+  drawn off the ground, and up to renumbering, where a retired number's stub
+  (`0 ~Moved to`) is read from `vendor/ldraw` and composed with the part's
+  place. `frames` and `build` are in [view](view.md) and [building](building.md).
+  `report` writes `REPORT.md` into `bench/results/cadtask-<date>/` of the main
+  checkout. The sampler and the comparison are pinned by
+  `tests/test_cadtask.py`. Baseline 2026-10-16: 5 of 54 exact, 44 the same
+  shapes; every save writes `0 Author: Brickworks` and drops `!LICENSE`.
+- `round trip probe` (`src/dev/roundtrip_probe.gd`): each path read by
+  `ModelFilePicker.take`, opened by `open_text`, written by `to_text(title,
+  true)` and by `StudioIo.pack` around it, and each written file opened again;
+  one JSON line a file with every part as "id colour x y z a..i|steps|unit|group"
+  at each stage, the file's meta lines counted, and the open and save times.
+  Judges nothing. Appends, so a run that dies keeps what it measured.
+
 ## How to reach it
 
 ```sh
@@ -436,6 +458,8 @@ tools/windows_check.py      # two windows of the desktop app, a model each
 godot --headless --path . --script src/dev/versions_probe.gd
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
 godot --headless --path . --script src/dev/unrestored_probe.gd   # a working model that cannot open is kept, and said
+# real sets' files round-tripped, judged, REPORT.md (run bare: it uses heavy itself; ~20 min)
+python3 tools/bench/cadtask.py roundtrip && python3 tools/minitest.py tests/test_cadtask.py
 # the page's half in real Chromium, persist() played refused and granted
 BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/keep
 ```

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser -->
 
 ## Sub-features
 
@@ -572,6 +572,19 @@ picture the assistant is shown.
   deep well is hidden) and scores nothing if one is wrong; the maths is pinned
   by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
   against the definition).
+- `cad task frames` and `cad task frames in a browser`
+  (`src/dev/cadtask_frames.gd`, `tools/web/cad_frames.mjs`; run by
+  `tools/bench/cadtask.py frames`, written up in `docs/CADTASK.md`): the frames
+  a builder feels at 100, 1,000 and 5,000 parts (the first real set's file in
+  hash order within 10% of each: 4883-1, 75969-1, 42082-1). Desktop, windowed
+  under xvfb-run with vsync off: the file opened as File, Open does, then a
+  right-drag orbit, a 2 x 4 swept over the model in hand, 100 parts selected,
+  Delete and Ctrl-Z, Ctrl-A, and B with Right five times; each frame timed
+  between one frame and the next. Browser, on SwiftShader: the same by the
+  page's own events (Ctrl-A for the selection), every engine frame timed by a
+  wrapped requestAnimationFrame with its WebGL time apart. Budgets 16.7 ms and
+  33 ms. Judges nothing: the numbers are this box's under load, and a suite
+  check would compare ratios, never these.
 - `the author's steps` (`src/assembly/author_steps.gd`, `AuthorSteps`): the
   steps a model's designer gave it in Studio, LDCad, LeoCAD or Bricksmith,
   kept and changed here. A file's `0 STEP` (and `0 ROTSTEP`) lines were read
@@ -908,6 +921,10 @@ godot --headless --path . --script src/dev/steps_score.gd -- --selftest  # the s
 python3 tools/minitest.py tests/test_steps_score.py                # ...and its maths (tau-b, intervals, samples)
 python3 tools/steps_score.py run --which proof --out build/steps_score/proof   # ~10 min under heavy, then
 python3 tools/steps_score.py report --out build/steps_score/proof  # the table docs/INSTRUCTIONS.md quotes
+# the frames a builder feels at 100, 1,000 and 5,000 parts, desktop and browser
+# (run bare: heavy, xvfb-run, serve.py and .env are its own business; the
+# browser half needs build/web exported from this checkout)
+python3 tools/bench/cadtask.py frames && python3 tools/bench/cadtask.py report
 godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 # nothing drawn standing still, every change drawn (on Xvfb: it moves the pointer)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \

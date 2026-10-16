@@ -1925,6 +1925,41 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "cad task test",
+      "entry": "tools/bench/cadtask.py",
+      "reach": "python3 tools/bench/cadtask.py all   (run bare: it puts each run under heavy; real sets' files round-tripped, frames timed, three sets built in a browser, REPORT.md in bench/results/cadtask-<date>/ of the main checkout; docs/CADTASK.md)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "round trip probe",
+      "entry": "src/dev/roundtrip_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/roundtrip_probe.gd -- --out=FILE.jsonl vendor/omr/files/7223-1_Car.mpd tests/fixtures/studio/bay_2025.io   (python3 tools/bench/cadtask.py roundtrip runs it on the sample and judges it)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "cad task frames",
+      "entry": "src/dev/cadtask_frames.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/cadtask_frames.gd -- --frames-out=FILE.json MODEL.mpd ...   (python3 tools/bench/cadtask.py frames --platform desktop)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "build a real set by hand in a browser",
+      "entry": "tools/web/cad_task_flow.mjs",
+      "reach": "python3 tools/bench/cadtask.py build   (serve.py on its own port, .env loaded, heavy; or node tools/web/cad_task_flow.mjs --url=http://127.0.0.1:<port>/ --out=DIR --sets=5762-1_Plane.mpd --most=8; then python3 tools/bench/cadtask_klm.py DIR/build.json --merge)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "cad task frames in a browser",
+      "entry": "tools/web/cad_frames.mjs",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "tooltips let clicks through",
       "entry": "src/ui/tooltips.gd",
