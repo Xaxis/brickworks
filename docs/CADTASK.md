@@ -407,9 +407,11 @@ Nothing here was fixed in this unit; each is a unit of its own.
     moved; 4 of 44 files have their author's steps changed.
     *Since:* a file kept is the same model opened again. Written whole, 3315-1
     keeps its parts (its sub-model titled "33009" went out as `33009.ldr` and
-    came back as the part 33009). Written whole, a few parts of the biggest
-    (6 of 4,139 in 42082-1, 8 of 7,908 in 42043-1) come back 0.1 LDU off, from
-    the four places a written number keeps through a sub-model's frame.
+    came back as the part 33009). Written whole, every part comes back, a few
+    of the biggest models' (6 of 4,139 in 42082-1, 8 of 7,908 in 42043-1)
+    within rounding of where they were: a place is written to four decimals
+    through its sub-model's frame, and the probe, printing tenths, finds them
+    either side of one.
 12. **Right stops stepping the timeline once a part has been taken from the
     bin by a click** (in a browser; the desktop probe takes its part without
     a click, and Right worked there). Next worked every time it was tried.

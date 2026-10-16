@@ -330,11 +330,9 @@ func _repository(path: String) -> void:
 			gone += 1
 	_expect(again.size() == model.size(),
 		"written whole, it opens with every part: %d of %d" % [again.size(), model.size()])
-	# A copy of a sub-model written whole is placed by how it lies on its
-	# first copy (Assemblies.file_frames), and a few parts of a few copies
-	# come back elsewhere (42043-1 moved 58 that way before 2026-10-16).
-	# Said, not failed: what the whole-model writer still gets wrong, which a
-	# file kept as it was does not go through.
+	# A part written whole goes through its sub-model's frame, to four
+	# decimals, and a few come back either side of a tenth from where they
+	# were (6 of 4,139 in 42082-1). Said, not failed, unless it is many.
 	print("  note %d of %d parts not where they were, written whole" % [gone, model.size()])
 	_expect(gone * 20 < model.size(), "...nearly all where they were (%d not)" % gone)
 	_expect(_store.unshown == unshown, "and what it could not show still there: %s"
