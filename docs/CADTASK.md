@@ -17,18 +17,19 @@ so the two are like for like, and then measured.
 
 | question | measured here | Studio |
 |---|---|---|
-| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. the repository's five .io and one LDD file: 5 of 6 exact | not measured |
+| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact | not measured |
 | ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44) | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone is over 33 ms in every act from 925 parts | not measured |
-| A set built from its steps, actions a part | 16.3 (first 8 parts of the plane; modelled 12.6) | modelled 14.1 |
+| A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
+| ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
 | ...seconds a part | modelled 8.3 to 9.2, or 9.8 to 11.4 with the steps marked | modelled 10.1 to 10.6, or 10.3 to 11.3 |
-| ...what cannot be built through the interface | both clip plates of the plane's step 4; parts off the 24 turns; a part whose number does not come first in the search | not measured |
+| ...what cannot be built through the interface | both clip plates of the plane's step 4; 6157, whose number does not bring it first in the search; the old greys, by their swatch; parts off the 24 turns | not measured |
 
 **The answer to "why this and not Studio" is not yet "it is as faithful".**
 A Studio builder's file does not come back as they wrote it, and building a
 set from its booklet has no way to say where a step ends. By the model the
-hand is faster here; the measured run took nearly a third more actions than its
-model, all of it aiming.
+hand is faster here; the measured runs took a quarter to over a half more
+actions than their model, most of it aiming.
 
 ## 1. Files opened, saved and opened again
 
@@ -200,40 +201,48 @@ the interface cannot get to its place in a few tries is a gap, and nothing
 is put there. The model is exported by File, Export and compared with the
 file part by part.
 
-**Measured.** The first 8 parts of the plane, on a page of its own (the
-three sets side by side on one browser read one page's ghost while another
-held the machine, and put the plane's first part 560 LDU from where it was
-recorded; the flow now builds them one after another):
+**Measured.** The first 8 parts of two of the sets, one set after another
+(`build/build.json`; the third was not reached in the time):
 
-| | tried | put down | exact (place and turn) | actions | actions a part | seconds a part, this box |
-|---|---|---|---|---|---|---|
-| 5762-1 Plane, first 8 parts | 8 | 6 | 6 of 6 in place and turn; 5 in the file's colour (one 71 for 7, the swatch finder's mistake, since fixed) | 130 | 16.3 | 56 |
+| set | tried | put down | exact (number, colour, place, turn) | actions | actions a part | modelled, Brickworks | modelled, Studio | seconds a part, this box |
+|---|---|---|---|---|---|---|---|---|
+| 5762-1 Plane | 8 | 6 | 5; one in red for old light grey (7) | 124 | 15.5 | 12.6 | 14.1 | 41 |
+| 8643-1 | 8 | 2 | 0; both in brown (370) for old dark grey (8) | 119 | 14.9 | 9.5 | 11.8 | 31 |
 
-The actions: 49 pointer moves, 25 clicks, 26 keys and 30 characters typed;
-22 of the pointer moves were corrections, the ghost not yet where the file
-has the part. The model of the same 8 parts says 12.6 actions a part; the
-run took 16.3, the difference all in pointing (30 more pointer moves) and
-clicks (12 more). Its motor time by the model's operator times is 9.3 s a
-part against the model's 11.4 (the model also counts thinking, M, which a
-script does not do), and the wall clock 56 s a part, most of it waiting for
-software drawing. The side-by-side picture
-(`build/trial-0828/5762-1_Plane_side_by_side.png`) shows the six plates of
-the plane's first steps in the file's places and colours beside the whole
-plane opened from its file.
+Every part put down is in its place and turn, to the LDU, up to the one
+shift a baseplate gives. The wrong colours are the swatch finder not finding
+the old greys, which show only after All in the palette; a person meets the
+same palette. The plane's actions: 49 pointer moves, 25 clicks, 20 keys, 30
+characters typed; 7 searches, 4 colour picks, 7 turns; 22 of the pointer
+moves were corrections, the ghost not yet where the file has the part. Against
+the model of the same 8 parts the run took 30 more pointer moves and 12 more
+clicks, and 13 fewer keys. Its
+motor time by the model's operator times is 9.1 s a part against the model's
+11.4 (the model also counts thinking, which a script does not do); the wall
+clock, 41 s a part, is mostly software drawing.
 
-The two parts not put down are the finding: both 1 x 1 clip plates (4081b)
-of step 4, where the ghost would not stand at the file's place in 6 or 7
-aims (it stood 10 LDU too high and 10 to 20 LDU aside, and came no
-nearer). Of the actions, 7 were searches, 4 colour picks and 7 turns.
+What could not be built through the interface, in the order met:
 
-A run one set after another (the plane, then 8643-1) met the fault the
-side-by-side run had: the plane's first plate was not where the flow had
-recorded it, so the next seven parts, each meant to stand on it, found only
-the baseplate (the ghost 8 LDU low) and were given up. The likely cause is the
-page's report of the ghost lagging the pointer on a loaded box; it was not
-proven. The flow now reads the first part's place back from the app's own
-LDraw export before it aims anything else. That run is the one to quote next;
-it had not finished when this was written.
+- the plane's two 1 x 1 clip plates (4081b, step 4): the ghost stood 10 LDU
+  too high and 10 to 20 LDU aside after 7 aims each, and came no nearer;
+- 8643-1's four 6157s (step 1): "6157" typed in the search puts 3816cpc44
+  first, and the flow takes the first tile, as a person reading the top of
+  the list does;
+- 8643-1's 32028 and 3795 (step 2), which stand on what was not built: the
+  ghost found only the plate below.
+
+The pictures beside the files: `build/5762-1_Plane_side_by_side.png` shows
+the plane's first plates in the file's places and shape beside the whole
+plane, the bottom plate red where the file has grey;
+`build/8643-1_Combination-with-8644_side_by_side.png` shows two plates in
+place, brown where the file has dark grey. Each pair was looked at.
+
+Two runs before this one failed and are kept apart (`build/sidebyside-0918`,
+`build/badanchor-1033`): the flow recorded the first part where the page's
+report of the ghost said it stood, and on this box that report was 540 to
+560 LDU from where the part went (the run above logs both), so every later
+part aimed at nothing. The flow now reads the first part's place back from the
+app's own LDraw export.
 
 **Studio, modelled.** The keystroke-level model (Card, Moran and Newell:
 K 0.28 s, P 1.1 s, B 0.1 s, H 0.4 s, M 1.35 s) of the same part list in each
@@ -289,7 +298,8 @@ Nothing here was fixed in this unit; each is a unit of its own.
    (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
 6. **Colours are found by look in a palette of 320**: the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black
-   look the same. Studio's colour menu filters as you type
+   look the same. The flow put 3 of its 8 parts in the wrong colour for want
+   of them. Studio's colour menu filters as you type
    ([5459441964695]).
 7. **Saving drops the author's name and licence** from every file, and with
    them `!HISTORY`, `!THEME`, `!CATEGORY`, `BFC` and other tools' meta lines.
