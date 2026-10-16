@@ -607,11 +607,29 @@ BUILD_MOST = 10
 BUILD_MINUTES = 10
 
 
+def web_parts_offered(catalogue: Path = ROOT / "assets" / "web" / "catalogue.json") -> tuple[int, int]:
+    """How many of the catalogue's parts the last web export lets a person
+    take, and how many there are (0, 0 with no export)."""
+    try:
+        parts = json.loads(catalogue.read_text())["parts"]
+    except (OSError, ValueError, KeyError):
+        return 0, 0
+    return sum(1 for p in parts if p.get("reachable", True)), len(parts)
+
+
 def run_build(out: Path, timeout: int = 7200, most: int = BUILD_MOST,
               minutes: int = BUILD_MINUTES, only: str = "") -> Path:
     """The three small sets built by hand in a browser (tools/web/
     cad_task_flow.mjs), one after another, into [out]/build; then both apps'
     keystroke-level models merged in (tools/bench/cadtask_klm.py)."""
+    offered, known = web_parts_offered()
+    if offered < known:
+        # The first run's "6157" listed a minifigure leg first: its export,
+        # made in a worktree with no PARTS_URL, offered 15,571 of 29,587
+        # parts (tools/web_pack.py), and the bin hid the rest. The hosted
+        # build offers every part; a build measured here must too.
+        raise SystemExit(f"the web export offers {offered:,} of {known:,} parts: export it with "
+                         "PARTS_URL set (tools/web_pack.py), as the hosted build is")
     info, subs = survey_sets()
     sets = choose_builds(info, subs)
     if only:
@@ -820,15 +838,19 @@ def build_section(summary: dict, whole: dict) -> list[str]:
              f"Measured {summary.get('measured', '')}. Studio is modelled, not measured: a "
              "keystroke-level model (Card, Moran and Newell) from Studio's help pages, and "
              "Brickworks is modelled the same way.", "",
-             "| set | parts | tried | put down | exact | actions | actions a part | "
-             "seconds a part here |", "|---|---|---|---|---|---|---|---|"]
+             "| set | parts | tried | put down | exact | steps kept | actions | actions a part | "
+             "seconds a part here | Right on the timeline after a tile |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     for s in summary.get("sets", []):
         if s.get("error"):
-            lines.append(f"| {s['set']} | | | | | failed: {s['error'][:80]} | | |")
+            lines.append(f"| {s['set']} | | | | | | failed: {s['error'][:80]} | | | |")
             continue
+        kept = s.get("steps_kept") or {}
+        steps = f"{kept.get('kept')} of {kept.get('file_steps')}" if kept else "—"
+        right = {True: "steps", False: "does not step"}.get(s.get("right_steps_timeline"), "—")
         lines.append(f"| {s['set']} | {s.get('parts_in_file')} | {s.get('tried')} | "
-                     f"{s.get('placed')} | {s.get('exact')} | {s.get('actions')} | "
-                     f"{s.get('actions_per_part')} | {s.get('seconds_per_part')} |")
+                     f"{s.get('placed')} | {s.get('exact')} | {steps} | {s.get('actions')} | "
+                     f"{s.get('actions_per_part')} | {s.get('seconds_per_part')} | {right} |")
     klm = summary.get("klm", {})
     if klm.get("sets"):
         lines += ["", "Modelled, the parts tried, seconds a part (the same part list in both):",
