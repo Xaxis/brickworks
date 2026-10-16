@@ -148,15 +148,19 @@ parts not yet taken, and records the engine's own process time apart from
 the drawing; neither change has run yet.
 
 In a browser, the 95th percentile and the worst frame, in ms (an engine
-frame that draws nothing costs a millisecond, so the median says nothing):
+frame that draws nothing costs a millisecond, so the median says nothing;
+one number where they are the same). Select, delete, undo and the step are
+from a second run that waited for each to finish, which the first run's
+three-second window did not at 5,025 parts:
 
 | act | 92 parts | 925 parts | 5,025 parts |
 |---|---|---|---|
 | orbit | 1,067 / 1,452 | 4,155 / 5,648 | 13,951 / 20,496 |
 | a part in hand, swept | 2,388 / 3,807 | 3,200 / 4,132 | 12,631 / 105,813 |
-| select all | 14 / 980 | 9,268 | over 3,017 (no frame finished) |
-| delete all | 5 / 302 | 2,884 | 36,203 |
-| undo | 5 / 125 | 2,895 | over 3,010 (no frame finished) |
+| select all | 6 / 98 | 5,376 | 64,947 |
+| delete all | 187 | 5,133 | 8,371 |
+| undo | 1,579 | 4,527 | not ended in 15 min |
+| a step of the timeline (Next) | 1,034 | 1,112 | not reached |
 | open, until it settles | 4.5 s | 22 s | 32 s |
 | timeline (B) opens | 0.5 s | 4.3 s | 75 s |
 
@@ -166,13 +170,16 @@ The app's own work in its worst frame (the frame less its time in WebGL):
 |---|---|---|---|
 | orbit | 42 | 158 | 2,664 |
 | a part in hand, swept | 108 | 355 | 1,130 |
-| select all | 43 | 90 | — |
-| delete all | 29 | 203 | 132 |
-| undo | 104 | 39 | — |
+| select all | 54 | 269 | 688 |
+| delete all | 23 | 258 | 684 |
+| undo | 123 | 523 | — |
+| a step of the timeline (Next) | 90 | 69 | — |
 | open | 193 | 2,459 | 6,528 |
 
-Over 33 ms in every act from 925 parts up, and in the orbit, the sweep, the
-select and the undo at 92. Two things the browser run found besides:
+Over 33 ms in every act from 925 parts up, and in every act but Delete at
+92. At 5,025 parts one frame of select all took 65 s, and the run's wait for
+the undo after Delete had not ended 15 minutes later, when it was stopped for
+time; its steps were not reached. Two things the browser runs found besides:
 
 - **42082-1 opens in a browser with 3,973 of its 5,025 parts** (4,139 on
   the desktop). The browser says the 1,052 it leaves out are not in the
@@ -180,12 +187,15 @@ select and the undo at 92. Two things the browser run found besides:
   18575.dat`, 115 such sections), and the web build has no LDraw library to
   build a carried part from. Why the desktop leaves 886 out was not looked
   at.
-- **Right does not step the timeline in the browser.** After B, five presses
-  of Right left it on step 1 of 15 (and of 240, and of 363). The status
-  bar's list of keys gives the timeline Home, End and space only; Main steps
-  it on Right when it is up, but in the browser it did not move. So the
-  browser's step change was not measured; `cad_frames.mjs` now clicks Next,
-  as the desktop run does.
+- **Right did not step the timeline once a part had been taken from the
+  bin.** In the first browser run, after the brick swept over the model was
+  taken by a click on its tile, five presses of Right after B left the
+  timeline on step 1 of 15 (and of 240, and of 363), while B, Ctrl-A and
+  Delete all worked. In the second run, with no tile clicked, one press of
+  Right stepped it (the 92-part model). The likely reason is that the clicked tile keeps the
+  keyboard focus and Godot moves focus with the arrow keys; it was not
+  proven. The status bar's list of keys gives the timeline Home, End and
+  space, not Right. Steps are now measured by a click on Next.
 
 ## 3. Building a real set from its steps
 
@@ -313,8 +323,9 @@ Nothing here was fixed in this unit; each is a unit of its own.
 11. **Opening the app's own save again is not always the same model**:
     3315-1 comes back 28 LDU higher with 5 parts gone; 42043-1 with 58 parts
     moved; 4 of 44 files have their author's steps changed.
-12. **Right does not step the timeline in a browser**; on the desktop it
-    does, and so does Next.
+12. **Right stops stepping the timeline once a part has been taken from the
+    bin by a click** (in a browser; the desktop probe takes its part without
+    a click, and Right worked there). Next worked every time it was tried.
 13. **Retired part numbers are written as the part they became** (5,623
     parts in 45 of 48 files): the same shape in the same place, another line.
 
@@ -327,6 +338,12 @@ python3 tools/bench/cadtask.py sample      # the files each part uses, the same 
 python3 tools/bench/cadtask.py all         # all three, then REPORT.md
 python3 tools/bench/cadtask.py roundtrip   # or one: roundtrip, frames, build, report
 ```
+
+`frames --platform web --only step,undo` measures those acts again and keeps
+the rest; `build --only 5762-1 --most 8 --minutes 8` builds one set's first
+parts. On this box, at load 40, the round trip took 20 minutes, the frames an
+hour (the 5,025-part model most of it) and two sets' first 8 parts 15
+minutes, each after a wait of 10 to 30 minutes for a slot.
 
 Run it bare: it puts each Godot run and browser under `heavy` itself. It writes
 to `bench/results/cadtask-<date>/` in the main checkout (git-ignored):
