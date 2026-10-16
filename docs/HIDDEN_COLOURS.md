@@ -265,6 +265,10 @@ and a symmetrical sub-assembly's copies could fit one another a different way
 after colouring, so Saturn V had three copies rebuilt (now put back before the
 step is kept).
 
+The sampling is not idle caution. Measured from 48 sides, one picture each, the
+castle's outside differed by 7 pixels from one of the sides never measured from:
+a part seen through a crack at that angle. From 128 sides drawn twice, by none.
+
 `src/dev/hidden_colours_probe.gd` holds the rest in the suite: a closed box's
 three inner bricks found exactly, a gap and a clear window seen through, the
 castle through the panel's own Apply (outside the same from eight sides, one

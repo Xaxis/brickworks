@@ -730,7 +730,8 @@ at 90°"). Broken on purpose, it fails on: no Working line, no tint, the
 words gone with the message after 4 s, marks left after a change, no
 counterweight in the words, the marks never shown, and no poses swept.
 
-`hidden_colours_probe` (windowed, ~HC_TIME on llvmpipe) loads the real scene and
+`hidden_colours_probe` (windowed; 727 s in software at load 45, 2026-10-15, so it can
+pass `PROBE_SECONDS` on a busy box) loads the real scene, its own 3D view off, and
 checks: a closed box of walls has exactly its three inner bricks hidden; a gap in
 the wall and a clear window in it each show the middle one; a preview, and apply
 without `agreed`, change nothing; applied, only those three change, in one step,

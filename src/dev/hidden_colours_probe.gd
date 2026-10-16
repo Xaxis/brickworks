@@ -79,11 +79,14 @@ func _run() -> void:
 	_store = _main.get("_store")
 	_library = _main.get("_library")
 	_panel = _main.get("_hidden_colours")
-	# The box and the gap at the app's own sampling; the castle and the set
-	# lighter (48 sides, one picture, 768 pixels), to finish in the suite's
-	# seven minutes in software. The same code; the app's full sampling on
+	# The box and the castle at the app's own sides and pictures; the gap and
+	# the set, where no picture is compared, lighter (48 sides, one each). The same code; the app's full sampling on
 	# them is shots/hidden_colours/ (hidden_colours_pictures.gd, on a GPU).
 	_panel.most_pixels = 1024
+	# The measure and its pictures draw in viewports of their own; the
+	# window's own 3D view, the whole model again every frame in software,
+	# is not drawn while this runs.
+	root.disable_3d = true
 	var shell: Shell = _main.get("_shell")
 	_check("Tools has Colour the hidden parts", shell.can("hidden_colours"))
 
@@ -95,6 +98,9 @@ func _run() -> void:
 	print("")
 	print("%d failed" % _failures if _failures else
 		"the hidden parts, and only those, take colours a person can find their place by")
+	# The window's 3D on again before it closes, so it frees what it holds.
+	root.disable_3d = false
+	await _frames(5)
 	quit(1 if _failures else 0)
 
 
@@ -210,6 +216,8 @@ func _the_box() -> void:
 
 func _a_gap() -> void:
 	print("\n  a gap in the wall, then a clear window in it")
+	_panel.views = 48
+	_panel.samples = 1
 	# The front wall's second course a 1 x 2 each side of a 2-stud gap.
 	await _open(_box("1 71 -40 %d 50 1 0 0 0 1 0 0 0 1 3004.dat\n"
 		+ "1 71 40 %d 50 1 0 0 0 1 0 0 0 1 3004.dat"), "gap.ldr")
@@ -241,8 +249,10 @@ func _inner_at(y: float) -> int:
 
 func _castle() -> void:
 	print("\n  the castle, by section")
-	_panel.views = 48
-	_panel.samples = 1
+	# The app's own sides and pictures: at 48 sides one of the three sides
+	# never measured from showed 7 pixels of a part seen through a crack.
+	_panel.views = -1
+	_panel.samples = SeenParts.SAMPLES
 	_panel.most_pixels = 768
 	_store.open("res://models/castle.ldr")
 	_main.call("_lay_baseplate")
@@ -346,6 +356,8 @@ func _castle() -> void:
 
 func _a_real_set() -> void:
 	print("\n  a real set, as its designers coloured it")
+	_panel.views = 48
+	_panel.samples = 1
 	_store.open("res://vendor/omr/files/10182-1.mpd")
 	_main.call("_lay_baseplate")
 	await _frames(20)
