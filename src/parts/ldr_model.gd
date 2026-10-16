@@ -572,9 +572,14 @@ func _inline(
 ## element, which no other tool has — as file name -> LDraw text. They go
 ## at the end as sections of their own, which makes even a model with no
 ## groups a multi-part document.
+## [param parts] are the part numbers a reader knows (PartLibrary.parts): no
+## sub-model is given a file name that is one, since a reference to it would
+## be read as that part. 3315-1's container, a sub-model titled "33009", went
+## out as 33009.ldr and came back as the library's 33009, its five parts gone and
+## the model 20 LDU higher.
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
-	frames: Dictionary = {}, embedded: Dictionary = {}
+	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {}
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
@@ -588,7 +593,8 @@ static func write_ldr(
 	var file_of: Dictionary = {}
 	for group: String in groups:
 		var file: String = group.to_snake_case() + ".ldr"
-		while file == main_file or file_of.values().has(file):
+		while file == main_file or file_of.values().has(file) \
+				or parts.has(file.get_basename()):
 			file = file.get_basename() + "_.ldr"
 		file_of[group] = file
 	var loose: Array = placements.filter(func(p: Placement) -> bool:
@@ -644,7 +650,8 @@ static func write_ldr(
 ## goes in its section's first step.
 static func write_tree(
 	placements: Array, title: String, author_name: String,
-	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {}
+	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
+	parts: Dictionary = {}
 ) -> String:
 	var ordered: Array = instances.keys()
 	ordered.sort_custom(func(a: String, b: String) -> bool:
@@ -664,7 +671,8 @@ static func write_tree(
 	var file_of: Dictionary = {}
 	for def: String in defs:
 		var file: String = def.to_snake_case() + ".ldr"
-		while file == main_file or file_of.values().has(file):
+		while file == main_file or file_of.values().has(file) \
+				or parts.has(file.get_basename()):
 			file = file.get_basename() + "_.ldr"
 		file_of[def] = file
 	var children: Dictionary = {}    ## parent path -> Array of paths

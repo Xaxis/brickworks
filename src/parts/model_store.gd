@@ -1203,9 +1203,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		entry["frame"] = back * (entry["frame"] as Transform3D)
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
+	var known: Dictionary = library.parts if library != null else {}
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps) if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded)
+		unit_steps, known) if not instances.is_empty() \
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,

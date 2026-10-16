@@ -189,20 +189,22 @@ def match(before: list[Part], after: list[Part], place: float = TO_THE_LDU,
     lost: list[Part] = []
     for part in before:
         x, y, z = _cell(part, shift)
+        # The nearest that fits, not the first: in a rope of identical pieces
+        # under an LDU apart a piece took its neighbour's place, and so on down
+        # the rope until the last found nothing, so two readings of the same
+        # file were called moved (42043-1: 58 moved, 4 turned, 3 lost).
         found = None
+        best = math.inf
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 for dz in (-1, 0, 1):
                     for other in near.get((part.id, part.colour, x + dx, y + dy, z + dz), []):
                         if part.near(other, place, shift) and part.turned_as(other):
-                            found = other
-                            break
-                    if found:
-                        break
-                if found:
-                    break
-            if found:
-                break
+                            d = (abs(part.at[0] - other.at[0]) + abs(part.at[1] - shift - other.at[1])
+                                 + abs(part.at[2] - other.at[2]))
+                            if d < best:
+                                best = d
+                                found = other
         if found is None:
             lost.append(part)
         else:

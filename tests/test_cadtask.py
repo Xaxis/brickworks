@@ -177,6 +177,14 @@ def _row(lift: float, reopened: list[str], metas_after: dict, file_parts=None,
     }
 
 
+def test_a_rope_of_identical_pieces_read_twice_is_the_same():
+    """Pieces under an LDU apart, each within the reach of its
+    neighbour's place: each pairs with its own, not the first that fits."""
+    rope = [line("ls60", 0, 0.0, -0.9 * n, 0.0) for n in range(12)]
+    got = cadtask.compare(rope, list(reversed(rope)), steps=False)
+    assert got["exact"] and got["why"] == {}
+
+
 def test_the_file_itself_exact_when_it_says_what_it_said():
     """A saved file read as the original was: the numbers as written (3023,
     not 3023b), the file's coordinates (not lifted), its meta lines and its

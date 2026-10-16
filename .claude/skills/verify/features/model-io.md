@@ -67,7 +67,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   parts, a skin of `4-4cyli` and `axlehol8` primitives) is never dropped: it
   stays in the file and is saved back, and File, Open says how many and which,
   a flexible part once by its sub-model ("… not shown, kept in the file
-  (42082 - ldclqropeseg (flexible), …)"), not 886 times by its primitive.
+  (ropeLQ-1 (flexible))"), not 886 times by its primitive.
   42082-1's 1,052 missing in a browser were the 166 parts it carries and one
   rope of 886 pieces; its 886 on the desktop, the rope. `fidelity_probe`
   checks both, and the cad task test counts a part lost on open only when it
@@ -447,12 +447,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   checkout. The sampler and the comparison are pinned by
   `tests/test_cadtask.py`. Baseline 2026-10-16: 5 of 54 exact, 44 the same
   shapes; every save writes `0 Author: Brickworks` and drops `!LICENSE`.
+  It also judges the saved file itself (`exact_file`: the file read as the
+  original was, numbers as written, the file's coordinates, steps,
+  sub-models, every meta line and the author, and the app's model the same
+  opened again), counts a part lost on open only when it is neither shown nor
+  kept (`open_lost`, `unshown_kept`), and pairs each part with the nearest
+  that fits (the first that fits called a rope read twice moved). The same
+  day, after `someone else's file kept`: 54 of 54 exact (0 before), 0 parts
+  lost on open (4,715 before, now kept), 42043-1 saved in 0.35 s (695 s).
 - `round trip probe` (`src/dev/roundtrip_probe.gd`): each path read by
   `ModelFilePicker.take`, opened by `open_text`, written by `to_text(title,
   true)` and by `StudioIo.pack` around it, and each written file opened again;
   one JSON line a file with every part as "id colour x y z a..i|steps|unit|group"
-  at each stage, the file's meta lines counted, and the open and save times.
-  Judges nothing. Appends, so a run that dies keeps what it measured.
+  at each stage, the file's meta lines counted, and the open and save times;
+  whether the store kept the file (`kept`), what it could not show
+  (`unshown`), and how many lines the saved LDraw has that the file had not
+  and the other way (`lines_differ`). Judges nothing. Appends, so a run that
+  dies keeps what it measured.
 
 ## How to reach it
 
