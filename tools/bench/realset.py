@@ -962,8 +962,11 @@ def win_rate(values: list[float]) -> tuple[float, float, float]:
     """The mean share and its 95% Wilson interval over subjects."""
     if not values:
         return (float("nan"), 0.0, 1.0)
-    low, high = pairwise.wilson(sum(values), len(values))
-    return (sum(values) / len(values), low, high)
+    n, z = len(values), 1.96
+    p = sum(values) / n         # pairwise.wilson's formula, for a share that need not be whole
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return (p, max(0.0, centre - half), min(1.0, centre + half))
 
 
 def _median(values: list[float]) -> float | None:
@@ -1021,9 +1024,10 @@ def report_arm(which: str, date: str, arm: str) -> str:
         theirs = [r["set"]["measures"].get(key) for r in found if r.get("measures")]
         gaps = [a - b for a, b in zip(ours, theirs) if a is not None and b is not None]
         share = key in SHARE_MEASURES
+        gap = _median(gaps)
         out.append(f"| {key} | {_cell(_median(ours), share)} | {_cell(_median(theirs), share)} | "
-                   + (f"{'+' if _median(gaps) >= 0 else ''}{_cell(_median(gaps), share)}"
-                      if gaps else "") + " |")
+                   + (f"{'+' if gap >= 0 else ''}{_cell(gap, share)}" if gap is not None else "")
+                   + " |")
     held = [r["number"] for r in found if r.get("design", {}).get("model")
             and not r.get("held_out_said")]
     if held:

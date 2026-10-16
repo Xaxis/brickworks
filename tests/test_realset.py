@@ -51,8 +51,8 @@ def test_kinds_rounds_touched_are_left_out_whatever_the_set_is_called():
 
 
 def test_a_theme_that_is_one_kind_is_left_out_whole():
-    assert "train" in realset.excluded("Emerald Night", "Train")
-    assert "spaceship" in realset.excluded("Galaxy Explorer", "Space")
+    assert "train" in (realset.excluded("Emerald Night", "Train") or "")
+    assert "spaceship" in (realset.excluded("Galaxy Explorer", "Space") or "")
     assert realset.excluded("Anything", "Castle > Lion Knights") is not None
 
 
