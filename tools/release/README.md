@@ -33,6 +33,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   last gate is done, and `ship.sh` refuses a worktree that has one. m26 was
   shipped as soon as its merge commit appeared, while the tool-list check
   was still running (2026-10-14).
+- `ship.sh` fails closed: every check named must report `exit=0`, and a
+  battery that wrote no results holds the release. It used to look only for
+  a failed line, so when the checks could not even start (a relative
+  worktree path) m31 went on to deploy production unchecked (2026-10-15).
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
