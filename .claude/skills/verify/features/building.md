@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
 
 ## Sub-features
 
@@ -552,6 +552,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the booklet and a shared link count a laid hose, tube, flexible axle or
   string as the one part sold (`Flex.items_in`, `Flex.real_part`, see
   [model-io](model-io.md)); a chain or a tread as its links.
+- `build a real set by hand in a browser` (`tools/web/cad_task_flow.mjs`,
+  `tools/bench/cadtask_klm.py`, 2026-10-16; run by `tools/bench/cadtask.py
+  build`, written up in `docs/CADTASK.md`): three small real sets (20 to 80
+  parts, the author's steps, no sub-models, hash order: 5762-1, 8643-1,
+  8841-1) built one after another from their steps with only what a person
+  has: the parts search and its first tile, a colour swatch found on screen
+  by its look, R/T to the file's turn, the pointer moved until the ghost
+  (`brickworksState.ghost`) stands where the file has the part, a click.
+  Every input is counted by kind; a part the UI cannot get to its place in a
+  few tries is a gap, with why, and nothing is put there. The model is then
+  exported by File, Export, LDraw and compared part by part with the file,
+  up to the one shift a baseplate gives; the set's own file is opened beside
+  it for a side-by-side picture. `cadtask_klm.py --merge` adds a
+  keystroke-level model of the same parts in Brickworks and in Studio
+  (modelled, not measured; Studio's sequence from its help pages, every
+  assumption listed) and how the measured run differs from its own model.
+  `tests/test_cadtask_klm.py` pins the model. A `stop` file in `--out` ends
+  the building early. On this box a part takes about a minute.
 
 ## How to reach it
 
