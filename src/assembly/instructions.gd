@@ -356,7 +356,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	await job.next()
 	if job.cancelled:
 		return []
-	_find_bundles(nodes, world, library, assemblies)
+	await _find_bundles_into(nodes, world, library, assemblies, job)
 	lap.call("assemblies")
 	await job.next()
 	if job.cancelled:
@@ -1254,6 +1254,14 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 ## (Flex.one_thing), outside the assemblies already found.
 static func _find_bundles(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
 		assemblies: Array[Assembly]) -> void:
+	_find_bundles_into(nodes, world, library, assemblies, null)
+
+
+## [method _find_bundles], a slice at a time with a [param job]. It was the
+## one part of the sub-assembly search read in one go, and on Orthanc that
+## search's longest frame was 120 ms of its own (progress_probe, 2026-10-16).
+static func _find_bundles_into(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
+		assemblies: Array[Assembly], job: Working.Job) -> void:
 	var taken: Dictionary = {}
 	for made: Assembly in assemblies:
 		for member: Node2 in made.members:
@@ -1261,6 +1269,10 @@ static func _find_bundles(nodes: Array[Node2], world: BrickWorld, library: PartL
 	var entries: Array = []
 	var by_id: Dictionary = {}
 	for node: Node2 in nodes:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
 		by_id[node.id] = node
 		if taken.has(node.id):
 			continue

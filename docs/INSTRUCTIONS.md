@@ -13,11 +13,11 @@ keeps it so.
 This page measures how close those worked-out steps come to the steps people
 chose for real sets, says what the measure showed, and what changed.
 
-**In short** (2026-10-15, two samples of 100 sets):
+**In short** (2026-10-16, two samples of 100 sets):
 
 - **Order.** Our worked-out order agrees with the author's at Kendall tau
-  0.27 to 0.29 on the two samples, before this work and after it alike,
-  barely above sorting by height (0.23, 0.25). A graph transformer trained on LEGO® build orders reached 0.44
+  0.28 on tune and 0.31 on the held-out sample, where it was 0.27 to 0.29
+  before this work, barely above sorting by height (0.23, 0.25). A graph transformer trained on LEGO® build orders reached 0.44
   [gt-asp]. Nearly all of the gap is which sub-model the author builds first:
   built in the author's order of sub-models, ours would score 0.86, and no
   rule from the model's shape gets past 0.26. The shape does not say it.
@@ -27,16 +27,21 @@ chose for real sets, says what the measure showed, and what changed.
   (paired change +0.22, 95% interval +0.16 to +0.29, better in 61 files and
   worse in 2), and steps with a floating part 15.0% to 11.4%.
 - **Every step buildable.** One step in five of ours left a part floating,
-  against one in thirty of the authors', because the planner reads what
-  rests on what from bounding boxes. Technic pins now go into one part
-  before the next goes on: on the held-out sample, steps with a floating
-  thing 20.9% to 17.9% (paired -3.0, -4.8 to -1.3) and steps with a hidden
-  new thing 21.5% to 19.6% (-1.9, -3.7 to -0.3). The app's own build check
-  moves the same way, within its noise. Reading the parts' shapes instead
-  was tried: fourteen times the planning time for a small gain, so it is the
-  next unit, not this one.
+  against one in thirty of the authors', because the planner read what
+  rests on what from bounding boxes. It now reads the studs, by the build
+  check's own rule. On the held-out sample, against the code before it:
+  things put in under one already there 19.6% to 11.3% (paired -8.4, -13.4
+  to -4.8), steps with a hidden new thing 19.2% to 13.8% (-5.4, -8.6 to
+  -2.7), and steps with a floating thing 18.1% to 14.9% (-3.2, -5.2 to
+  -1.4). The authors': 0.8%, 6.7% and 3.4%. Order agreement did not suffer
+  (0.27 to 0.31, +0.03, -0.01 to +0.08), and the 100 files plan in 19.2 s
+  where they took 16.0 s. The aim was 8% for floating and for put in under.
+  A model turned on its stand, the Technic sets and vehicles built before
+  their wheels stood in the way (What is left).
 - **Pages.** A small model is no longer cut into "Part 1" and "Part 2": 918
-  Space Transport's booklet lost a one-step page and a repeated banner.
+  Space Transport's booklet lost a one-step page and a repeated banner. A
+  section that touches nothing built before it is drawn on its own: 7636's
+  harvester no longer begins in the air above the hay bales.
 
 ## The measure
 
@@ -230,11 +235,56 @@ same part on the same layer, and from twice as far (one-part steps 39.4% to
 37.6%, nothing else moved); a part hanging under another put in with it (no
 change); covers (above).
 
+Then what rests on what, 2026-10-16:
+
+4. **By the studs, not the boxes** (`Instructions._supports_of`,
+   `Joints.studs_in`, `Instructions.Covers`). A stud reaching up into a
+   part means that part sits on the stud's owner; reaching down, the part
+   is turned over on top of it. The stud's direction says which of two
+   parts rests on the other, where covers read as touching said each rested
+   on each. The rule is the build check's, moved into `Joints.studs_in`:
+   the check asks its lattice what is past a stud's tip, and the booklet,
+   which holds no lattice, asks the few parts whose boxes hold the tip
+   whether their covers do, each in its own frame. `instructions_probe`
+   holds the two to the same 816 stud pairs on the station. A part no stud
+   seats (a figure's, a Technic beam, a tile on a side stud) rests on what
+   its box sits on, as before.
+5. **A plate pressed up under parts goes in with them** (`_pressed_up`).
+   A 1 x 3 under a sign, a 2 x 2 under a lantern: read by its studs alone,
+   what it carries needs it, so it went in first, on nothing. It goes in in
+   the step of the last part it is under.
+6. **A part on a side stud waits for what holds it** (`Node2.held_by`),
+   not only for what its box sits on. Vernie's tiles went on before the
+   bricks whose side studs hold them.
+7. **A sub-model put on at an angle is built on the side** (`_turned`), of
+   any size up to half the model: square, in the hand, with steps of a
+   page's size, then put on turned. On the five biggest tune files, 19 in
+   20 of the things put in under were turned parts of a sub-model too big
+   to be a callout, and their authors put in none.
+8. **A loop gives up a guess before a callout** (`_contract`, `_ease`).
+   Needs guessed from touching boxes go first, then those read off a box,
+   and only then the smallest sub-assembly on the loop. A hose drawn
+   through a figure's hand had cost a 664-part trailer, a locomotive and
+   the figures riding them their callouts.
+9. **A flexible thing goes in as one** (`_find_bundles`). 6891's hose,
+   drawn a segment at a time, was 52 things floating, in 28 of its 83 steps.
+10. **A section that touches nothing built before it is drawn on its own**
+    (`BookletMaker._find_apart`), framed on itself as a booklet draws a
+    second vehicle, until the build moves on. What it touches is read off
+    the parts' boxes.
+
+Tried and not kept: reading clips, hinges and balls as well (`Joints.rounds`,
+`balls`). They changed nothing measured but the planning time, 2.5 s to
+4.1 s on fifteen files.
+
 ## After
+
+### The author's steps and Technic pins (2026-10-15)
 
 **Proof**, the sample nothing was tuned on: 100 files, 52,435 parts. Before
 is the code at 7a55e86, after is this change; the interval is after's, and
-`compare` gives the paired change file by file (in "In short").
+`compare` gives the paired change file by file: steps with a floating thing
+-3.0 (-4.8 to -1.3), steps with a hidden new thing -1.9 (-3.7 to -0.3).
 
 | Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
 |---|---:|---:|---:|---:|---:|
@@ -262,6 +312,57 @@ is the code at 7a55e86, after is this change; the interval is after's, and
 | parts the build check calls floating at sampled steps | 6.0% | – | 12.8% → **11.9% (6.3–18.7)** | 18.7% → **17.2% (10.2–25.0)** | – |
 | steps in all | 9,633 | 9,794 → 9,992 | 14,306 → 13,579 | 12,730 → 11,804 | 6,710 |
 
+### What rests on what, by the studs (2026-10-16)
+
+**Proof**, 100 files, 52,435 parts. Before is main at 2789cd0, whose plans
+are file for file those of main when this work began; after is this change
+on it. Both ran on this machine the same morning; the interval is after's.
+The paired change, file by file
+(`compare`): things put in under -8.4 (-13.4 to -4.8), steps with a hidden
+new thing -5.4 (-8.6 to -2.7), steps with a floating thing -3.2 (-5.2 to
+-1.4), tau +0.03 (-0.01 to +0.08), better in 54 files and worse in 46.
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.94 → **0.93 (0.89–0.96)** | 0.27 → **0.31 (0.24–0.37)** | 0.26 → **0.28 (0.22–0.34)** | 0.25 |
+| author's same-step pairs kept together | 100.0% | 95.6% → **94.8% (86.6–98.6)** | 10.9% → **12.0% (8.8–18.0)** | 8.9% → **18.6% (8.7–37.0)** | 9.1% |
+| steps for each of the author's | 1.00 | 1.00 → **1.00 (1.00–1.03)** | 1.14 → **1.10 (1.02–1.26)** | 0.96 → **0.93 (0.85–1.07)** | 0.77 |
+| author's sub-assemblies built on the side | 97.9% | 64.7% → **62.0% (51.7–72.3)** | 39.5% → **54.1% (42.3–66.2)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.7% | 9.3% → **8.7% (6.9–10.5)** | 19.2% → **13.8% (11.1–16.4)** | 23.5% → **22.0% (18.9–25.0)** | 21.0% |
+| things put in under one already there | 0.8% | 13.1% → **8.1% (5.4–11.2)** | 19.6% → **11.3% (6.0–17.6)** | 22.0% → **20.3% (13.2–28.1)** | 26.1% |
+| steps with a floating thing | 3.4% | 11.4% → **9.6% (6.7–12.8)** | 18.1% → **14.9% (11.2–18.9)** | 21.9% → **20.8% (16.5–25.2)** | 25.9% |
+| parts the build check calls floating at sampled steps | 3.1% | – | 20.5% → **21.3% (12.2–31.7)** | 25.6% → **26.0% (15.9–38.3)** | – |
+| steps in all | 11,890 | 12,230 → 12,274 | 13,090 → 14,561 | 12,098 → 11,740 | 7,350 |
+
+More of the authors' sub-assemblies are built on the side (39.5% to 54.1%),
+from sub-models put on at an angle, and there are more steps (13,090 to
+14,561). The booklet's reading of the authors' own steps gains too, since it
+reads support and finds sub-assemblies the same way: things put in under
+13.1% to 8.1% (-5.0, -8.1 to -2.4).
+
+**Tune**, 100 files, 48,037 parts, against the code of the section above:
+things put in under -11.6 (-17.2 to -7.1), steps with a hidden new thing
+-6.2 (-8.8 to -3.4), steps with a floating thing -4.2 (-6.4 to -1.8), tau
+-0.01 (-0.05 to +0.03). Same-step pairs kept together jump on one file:
+9391's crane string, drawn in 681 pieces its author puts on in one step, now
+goes in as one flexible thing.
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.92 → **0.91 (0.87–0.95)** | 0.29 → **0.28 (0.21–0.34)** | 0.22 → **0.22 (0.16–0.28)** | 0.23 |
+| author's same-step pairs kept together | 100.0% | 92.5% → **93.1% (82.0–98.6)** | 6.1% → **31.2% (6.1–62.3)** | 3.8% → **64.7% (26.3–82.7)** | 4.1% |
+| steps for each of the author's | 1.00 | 1.02 → **1.02 (1.00–1.04)** | 1.25 → **1.29 (1.08–1.54)** | 1.13 → **1.15 (0.88–1.29)** | 0.83 |
+| author's sub-assemblies built on the side | 97.4% | 64.7% → **62.2% (55.8–69.2)** | 40.1% → **57.1% (50.7–64.0)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.0% | 8.3% → **8.0% (6.6–9.8)** | 19.9% → **13.7% (11.9–15.6)** | 25.4% → **21.4% (18.6–23.9)** | 23.0% |
+| things put in under one already there | 1.2% | 11.7% → **7.7% (5.7–10.1)** | 19.4% → **7.9% (5.8–10.2)** | 23.2% → **17.4% (13.8–21.7)** | 26.1% |
+| steps with a floating thing | 2.9% | 11.8% → **10.0% (7.3–12.9)** | 16.9% → **12.8% (9.7–15.7)** | 20.8% → **20.0% (16.1–23.8)** | 29.4% |
+| parts the build check calls floating at sampled steps | 6.0% | – | 11.9% → **11.3% (5.6–19.9)** | 17.2% → **13.8% (7.7–21.7)** | – |
+| steps in all | 9,633 | 9,992 → 9,983 | 13,579 → 13,450 | 11,804 → 9,656 | 6,710 |
+
+Planning took 19.2 s over the 100 proof files, against 16.0 s on main
+(1.2 times), the slowest file 2.0 s (76161, 2,396 parts); on tune 20.6 s
+against 18.2 s. The 1,454-part Rebel Snowspeeder plans in 0.58 s, against 0.59 s.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the
@@ -280,19 +381,47 @@ After: one build, four steps to the first page, 25 steps where there were 29.
 
 ![918 after, page 2](instructions/918-after-page2.webp)
 
-Still reading badly, and left: 7636 Combine Harvester builds its sections in
-place, so the harvester's first axle plate is drawn in the air above the hay
-bales and the farmer of the sections before it, and a 2 x 2 round plate on
-the ground far from both is a step of its own. A real booklet draws a new
-vehicle on its own. Framing a section on itself when it touches nothing built
-before it is the booklet's next fix, with lifting the size limit on what is
-built on the side.
-
-![7636 after, page 4](instructions/7636-after-page4.webp)
-
 Callouts read as before: a figure built in its own box with an arrow to its
 seat (918 step 5), and a long sub-assembly on framed pages of its own (6059
 Knight's Stronghold's cart).
+
+Then, reading the studs (2026-10-16), two more proof models, made the same
+way on the desktop with main at 2789cd0 and with this change.
+
+7636 Combine Harvester (372 parts), before: the harvester's first axle plate
+is drawn in the air above the hay bales and the farmer of the sections before
+it. Three of the 2 x 2 round plates its base stands on are steps of their
+own, on the ground, and the base goes down at one end, then the other, then
+across the middle.
+
+![7636 before, page 4](instructions/7636-before-page4.webp)
+![7636 before, page 7](instructions/7636-before-page7.webp)
+
+After: the harvester begins on a stage of its own. One round plate is still
+a step of its own; the next goes in in the step of the plate pressed onto
+it, and the base grows from one end. 101 steps where there were 109.
+
+![7636 after, page 4](instructions/7636-after-page4.webp)
+![7636 after, page 5](instructions/7636-after-page5.webp)
+
+Each of its first 40 pages can be built as drawn. What still reads badly:
+the axle plate of step 3 hangs in the air beside the base until step 18
+joins them. By the measure 75 of its 100 steps float a thing (61% before),
+because the harvester stands on its wheels, which go on last, and the
+measure holds only the model's first parts, the hay bales, to the table.
+
+6718 Raindance Ridge (80 parts), before: the warrior is built in place, a
+torso and two legs in step 12 and the hips that join them a step later, in
+between.
+
+![6718 before, page 8](instructions/6718-before-page8.webp)
+
+After: he is a callout, built whole and put on, and so are the rider and the
+horse. 17 steps where there were 28. By the measure, on its shuffled copy,
+steps with a floating thing 25.0% to 0.0% and things put in under 24.7% to
+8.3%.
+
+![6718 after, page 7](instructions/6718-after-page7.webp)
 
 ## What is left
 
@@ -302,20 +431,38 @@ Knight's Stronghold's cart).
   person's own model lists them in the order they made them. Following it
   would be reading, not planning, and on these files it reads the answer, so
   it was not done here; it is the obvious next step for files that carry it.
-- **Every step buildable.** One step in six still floats something by the
-  probe's graph, against one in thirty for authors, and the app's build check
-  calls 12% to 21% of the parts our sampled steps add floating, against 3% to
-  6% of the authors'. The cause is the bounding-box supports above.
-- **Sub-assemblies.** Ours builds on the side only sub-models of at most 60
-  parts and under 30% of the model (`ASSEMBLY_MOST`), 40% of the authors'.
+- **Every step buildable.** On the held-out sample one step in seven still
+  floats something by the probe's graph (14.9%), against one in thirty for
+  authors, and 11.3% of things go in under one already there, against 0.8%.
+  Both miss the 8% this work aimed at. Three things stand in the way:
+  - **A model turned on its stand.** 76161's Batwing stands on its edge.
+    Built in the world's frame, 1,692 of its 2,396 things go in under one
+    already there, 29% of all such things in the sample; without it the
+    sample is at 8.4%. Its author builds it flat and stands it up. A turned
+    sub-model is built on the side up to half the model, and here the whole
+    model is turned.
+  - **Technic.** The 7 Technic files float a thing in 31.5% of steps (38.3%
+    before), the other 93 in 13.2% (15.8%). Their parts are held by pins and
+    axles, and this work read the studs.
+  - **A vehicle that is not built first.** The measure holds only the model's
+    first parts to the table. A body built before its wheels, which go on
+    last as a set's do, floats until they do: 7636's harvester is 75 of its
+    100 steps.
+
+  The app's build check calls 21% of the parts our sampled steps add
+  floating, as before (20.5% to 21.3%, within its noise), against 3% of the
+  authors'.
+- **Sub-assemblies.** Ours builds on the side sub-models of at most 60
+  parts and under 30% of the model (`ASSEMBLY_MOST`), and a sub-model put on
+  at an angle up to half the model: 54% of the authors' (from 40%).
   The rest are built in place as sections. Authors build a floor of a modular
   building apart and stack it; the booklet can show a long callout on pages
   of its own, so lifting the limit for a sub-model that holds together and
   goes on whole is open.
 - **The author's steps as the booklet draws them** still build a big
-  sub-model where it stands, before what it stands on (about 12% of steps
-  float something, against 3% for the author's own build), because only small
-  sub-models become callouts.
+  sub-model where it stands, before what it stands on (9.6% of steps float
+  something on the held-out sample, from 11.4%, against 3.4% for the author's
+  own build), because only small sub-models become callouts.
 
 ## Sources
 

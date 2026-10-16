@@ -273,7 +273,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   work; the timeline's longest frame against 200 ms; the sub-assembly
   search's longest frame of its own, process to drawing, against 100 ms,
   judged in software too (one frame of 161 ms on b79d427: `_find_assemblies`,
-  `_contract` and its loop walk `_cycles` are a slice at a time now); the same steps as
+  `_contract` and its loop walk `_cycles` are a slice at a time now, and the
+  flexible things' search `_find_bundles` too, 120 ms to 58 ms windowed on
+  2026-10-16); the same steps as
   `Instructions.plan`; Cancel and a second press stop it; Open's list says
   "Opening…" before Orthanc lands; delete all and undo say so first; Check
   stability and Everything connected through `Shell.run` on Orthanc, and

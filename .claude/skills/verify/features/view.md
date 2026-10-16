@@ -536,7 +536,11 @@ picture the assistant is shown.
   as before. A
   plate pressed up under parts by its own studs with nothing beneath it goes in
   in the step of the last of them (`_pressed_up`, `Node2.under`), even past the
-  step's size.
+  step's size. On the held-out steps-score sample (2026-10-16, against main at
+  2789cd0): things put in under one already there 19.6% to 11.3%, steps with a
+  floating thing 18.1% to 14.9%, steps with a hidden new thing 19.2% to 13.8%,
+  tau 0.27 to 0.31; planning the 100 files 16.0 s to 19.2 s, the 1,454-part
+  Rebel Snowspeeder 0.58 s.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
@@ -688,8 +692,12 @@ picture the assistant is shown.
   touches nothing built before it (a second vehicle, by the parts' boxes) is
   drawn on a stage of its own for its steps, as a callout is, and framed on
   itself (`BookletMaker._find_apart`, `_where`), for 7636's harvester, which
-  began as an axle plate drawn in the air over the hay bales (its pages after
-  the change not yet looked at). New parts are not
+  began as an axle plate drawn in the air over the hay bales. Read page by
+  page on the desktop (2026-10-16, `--model=… --booklet=…` on Xvfb, then
+  `tools/web/booklet_print.mjs`): 7636's first 40 pages each buildable, the
+  harvester's first steps on a stage of their own, its axle plate still in
+  the air beside the base until step 18 joins them; docs/INSTRUCTIONS.md has
+  the pages. New parts are not
   highlighted: modern booklets keep colours true and rely on the parts box and
   the ink line (the ink shader can ring them, `mark_new`, off). Pictures are
   5 px a millimetre, 4.2 past 300 steps and 3.6 past 1,000 (Orthanc's 1,405
@@ -971,7 +979,9 @@ godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the rend
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
-#   figure, the turn sign behind a wall, the timeline's numbers = the booklet's,
+#   figure, the turn sign behind a wall (plates against its back), plates a hand's
+#   width away drawn on a stage of their own from the front (_find_apart),
+#   the timeline's numbers = the booklet's,
 #   and the app's own toolbar: Instructions after Timeline, pressed, writes
 #   the booklet to Downloads (BookletMaker.open_when_written off, no browser);
 #   the gatehouse (tests/fixtures/steps/gatehouse.mpd) in its author's steps:
@@ -997,7 +1007,11 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only
 node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/steps_web
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
-# the tab it opens, checks the booklet in it and prints it to booklet.pdf
+# the tab it opens, checks the booklet in it and prints it to booklet.pdf.
+# Serve with --parts assets/generated/parts --delay 0 so parts come from this
+# checkout. 2026-10-16, SwiftShader at load ~50: the car's booklet in 259 s;
+# --model=7636 stalled the page past Playwright's 30 s screenshot once opened,
+# on main's export and the branch's alike, so a big model is for the preview.
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
