@@ -298,6 +298,190 @@ func rests(members: Array) -> bool:
 	return true
 
 
+## Whether a piece of [param members] that only the floor holds stands on a
+## bare floor, as BrickBench's simulation stands it: one rigid body on a plane
+## through its lowest point, which fails a build when any of it moves more than
+## 3 LDU in two seconds. So it is let settle, as a body does: from the points
+## it touches the floor by it tips about the edge of them its centre of mass is
+## past (or rolls, its centre over a line) until another point comes down, and
+## again, until its centre is over where it touches. It stands when that moved
+## its furthest point less than [constant BUDGET]. {} when it stands; else
+## {"moved": LDU, "past": LDU its centre was past where it first touched,
+## "line": true when that was a line or a point it rolls on, "way": the way it
+## tips, "feet": the items it first touched the floor by, "high": its height}.
+## Held-out model-042's potato (2026-10-15) stood on its shoes with its centre
+## 16 LDU behind their heels, and model-047's trash can lay on its side on one
+## line of its facets: our check held both by the floor, and verify.py's
+## simulation tipped the one and rolled the other. A ball plate (22890) lying on
+## its ball, 4 LDU under its plate, tilts onto its far edge and stands, as
+## verify.py passes it.
+func tips(members: Array) -> Dictionary:
+	var mass: float = 0.0
+	var middle := Vector3.ZERO
+	var floor_at: float = INF
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item != null and item.shape.has_pieces():
+			floor_at = minf(floor_at, item.lo.y)
+	if floor_at == INF:
+		return {}
+	# What can catch it within the budget: no point higher than the budget over
+	# the floor comes down to it before the piece has moved further than that.
+	var low := PackedVector3Array()
+	var owner := PackedInt32Array()
+	var far := PackedVector3Array()     ## each item's box corners: how far it moves
+	var lowest: float = INF
+	var highest: float = -INF
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null or not item.shape.has_pieces():
+			continue
+		highest = maxf(highest, item.hi.y)
+		for corner: int in 8:
+			far.append(Vector3(item.hi.x if corner & 1 else item.lo.x,
+				item.hi.y if corner & 2 else item.lo.y, item.hi.z if corner & 4 else item.lo.z))
+		var near_floor: bool = item.lo.y <= floor_at + BUDGET + 1.0
+		for p: Exact.Piece in item.shape.pieces:
+			var size: Vector3 = p.hi - p.lo
+			var weight: float = maxf(size.x * size.y * size.z, 0.001)
+			mass += weight
+			middle += (item.at * ((p.lo + p.hi) * 0.5)) * weight
+			if near_floor:
+				for v: Vector3 in p.verts:
+					var w: Vector3 = item.at * v
+					low.append(w)
+					owner.append(int(i))
+					lowest = minf(lowest, w.y)
+	if mass <= 0.0 or low.is_empty():
+		return {}
+	var centre: Vector3 = middle / mass
+	var keep := PackedVector3Array()
+	var kept_owner := PackedInt32Array()
+	for k: int in low.size():
+		if low[k].y <= lowest + BUDGET + 1.0:
+			keep.append(low[k])
+			kept_owner.append(owner[k])
+	low = keep
+	var first: Dictionary = {}
+	var moved: float = 0.0
+	for step: int in MOST_TIPS:
+		var bottom: float = INF
+		for w: Vector3 in low:
+			bottom = minf(bottom, w.y)
+		var touching := PackedVector2Array()
+		var feet: Dictionary = {}
+		for k: int in low.size():
+			if low[k].y <= bottom + RESTS_WITHIN:
+				touching.append(Vector2(low[k].x, low[k].z))
+				feet[kept_owner[k]] = true
+		var over := Vector2(centre.x, centre.z)
+		var pivot: Dictionary = _pivot(touching, over)
+		if step == 0:
+			first = {"past": float(pivot.get("past", 0.0)), "line": bool(pivot.get("line", false)),
+				"way": pivot.get("way", Vector2.ZERO), "feet": feet.keys()}
+		if pivot.is_empty():
+			break
+		# The least turn about the pivot that brings another point to the floor.
+		var axis_at := Vector3((pivot["at"] as Vector2).x, bottom, (pivot["at"] as Vector2).y)
+		var turn: float = INF
+		var turned_way: Vector2 = pivot["way"]
+		for way: Vector2 in pivot["ways"]:
+			var t := Vector3(way.x, 0.0, way.y)
+			var angle: float = INF
+			for w: Vector3 in low:
+				var s: float = (w - axis_at).dot(t)
+				var h: float = w.y - bottom
+				if s > 0.01 and h > RESTS_WITHIN:
+					angle = minf(angle, atan2(h, s))
+			if angle < turn:
+				turn = angle
+				turned_way = way
+		if turn == INF:
+			moved = INF
+			break
+		var t3 := Vector3(turned_way.x, 0.0, turned_way.y)
+		var u: Vector3 = Vector3.UP.cross(t3).normalized()
+		var spin := Basis(u, turn)
+		var reach: float = 0.0
+		for w: Vector3 in far:
+			var off: Vector3 = w - axis_at
+			reach = maxf(reach, (off - u * off.dot(u)).length())
+		moved += 2.0 * reach * sin(turn * 0.5)
+		if moved > BUDGET:
+			break
+		for k: int in low.size():
+			low[k] = axis_at + spin * (low[k] - axis_at)
+		for k: int in far.size():
+			far[k] = axis_at + spin * (far[k] - axis_at)
+		centre = axis_at + spin * (centre - axis_at)
+	if moved <= BUDGET:
+		return {}
+	first["moved"] = moved
+	first["high"] = highest - floor_at
+	return first
+
+
+## Where a body standing on [param touching] (its points on the floor, seen
+## from above) with its centre of mass over [param over] tips: {} when the
+## centre is inside them; else {"at": a point on the edge it turns about, "way":
+## the way it falls, "ways": the ways to try (both, for a centre over a line it
+## rolls off either side of), "past": how far the centre is past them, "line":
+## whether they are a line or a point}.
+static func _pivot(touching: PackedVector2Array, over: Vector2) -> Dictionary:
+	var hull: PackedVector2Array = Geometry2D.convex_hull(touching) if touching.size() >= 3 \
+		else touching
+	var area: float = 0.0
+	for k: int in maxi(hull.size() - 1, 0):
+		area += hull[k].cross(hull[k + 1])
+	var flat: bool = hull.size() < 4 or absf(area) * 0.5 < 1.0
+	if not flat and Geometry2D.is_point_in_polygon(over, hull):
+		var gap: float = INF
+		for k: int in hull.size() - 1:
+			gap = minf(gap, Geometry2D.get_closest_point_to_segment(over, hull[k], hull[k + 1]).distance_to(over))
+		if gap >= CENTRE_INSIDE:
+			return {}
+	# The nearest point of where it touches, and the way out over it.
+	var nearest: Vector2 = hull[0] if not hull.is_empty() else over
+	var gap: float = INF
+	var ends: int = maxi(hull.size() - 1, 1) if hull.size() > 1 else 1
+	for k: int in ends:
+		var a: Vector2 = hull[k]
+		var b: Vector2 = hull[mini(k + 1, hull.size() - 1)]
+		var on: Vector2 = Geometry2D.get_closest_point_to_segment(over, a, b)
+		if on.distance_to(over) < gap:
+			gap = on.distance_to(over)
+			nearest = on
+	if gap >= 0.05:
+		var way: Vector2 = (over - nearest).normalized()
+		if not flat and Geometry2D.is_point_in_polygon(over, hull):
+			way = -way
+		return {"at": nearest, "way": way, "ways": [way], "past": gap, "line": flat}
+	# Its centre right over a line or a point: it rolls off whichever side
+	# turns it least.
+	var along := Vector2.RIGHT
+	var longest: float = 0.01
+	for p: Vector2 in touching:
+		if p.distance_to(touching[0]) > longest:
+			longest = p.distance_to(touching[0])
+			along = (p - touching[0]).normalized()
+	var across := Vector2(-along.y, along.x)
+	return {"at": nearest, "way": across, "ways": [across, -across, along, -along],
+		"past": 0.0, "line": true}
+
+
+## How far a piece may move as it settles on a bare floor, LDU: BrickBench
+## fails a build for 3 in two seconds, and a body that settles also rocks.
+const BUDGET := 2.5
+## What of a piece this near its lowest point touches the floor, LDU: parts
+## placed here stand exactly level, and a round part on its side touches by one
+## line of its facets.
+const RESTS_WITHIN := 0.05
+## How far inside where it touches its centre must be to stand, LDU.
+const CENTRE_INSIDE := 0.25
+## How many times a piece is let tip before it is called fallen.
+const MOST_TIPS := 12
+
+
 ## How square to gravity a resting part must stand: the cosine of the most
 ## it may lean, 8 degrees.
 const SQUARE := 0.99
@@ -672,6 +856,44 @@ func unheld_said(members: Array, name: Callable) -> String:
 		+ "leans on a slope or a side, or it runs into something), so it falls — BrickBench's "
 		+ "check lets it fall. Put it on a stud or in a clip, or under something that "
 		+ "clutches it; attachment_points lists where a part joins.")
+
+
+## A piece that tips or rolls on a bare floor ([method tips]), said: what it
+## stands on, how far its weight is from standing, and what to do.
+func tips_said(found: Dictionary, members: Array, name: Callable) -> String:
+	var feet: Array = found.get("feet", [])
+	var on: String = ", ".join(PackedStringArray(feet.slice(0, 3).map(
+		func(i: Variant) -> String: return str(name.call(int(i))))))
+	if feet.size() > 3:
+		on += " and %d more" % (feet.size() - 3)
+	var who: String = "The piece of %d part%s" % [members.size(), "" if members.size() == 1 else "s"]
+	var moved: float = float(found.get("moved", INF))
+	var settles: String = ("nothing of it comes down to catch it" if moved == INF
+		else "it moves %s LDU before it comes to rest" % _n(snappedf(moved, 0.1)))
+	if bool(found.get("line", false)) and float(found.get("past", 0.0)) < 0.05:
+		return ("%s on the floor by %s touches it along a line or at a point with its weight "
+			% [who, on] + "over that, so on a bare floor it rolls: %s, past the 3 LDU " % settles
+			+ "BrickBench's simulation allows. Lay it on something flat (a plate under it, a "
+			+ "round part's flat end down), join it to what stands beside it, or stand the "
+			+ "model on a baseplate.")
+	var way: Vector2 = found.get("way", Vector2.ZERO)
+	return ("%s standing on %s tips over: its centre of mass is %s LDU past the edge of what "
+		% [who, on, _n(snappedf(float(found.get("past", 0.0)), 0.1))]
+		+ "it stands on, so it tips %s and %s, past the 3 LDU BrickBench's simulation " % [
+			_tip_way(way), settles]
+		+ "allows. Widen its footing under its weight (a plate under the feet reaching %s), "
+		% _tip_way(way) + "move weight back over its feet, or stand it on a base or a "
+		+ "baseplate that is part of the build.")
+
+
+## A way across the floor said in words: "towards +z", "towards -x and +z".
+static func _tip_way(way: Vector2) -> String:
+	var said := PackedStringArray()
+	if absf(way.x) >= 0.38:
+		said.append("+x" if way.x > 0.0 else "-x")
+	if absf(way.y) >= 0.38:
+		said.append("+z" if way.y > 0.0 else "-z")
+	return "towards " + " and ".join(said) if not said.is_empty() else "over its edge"
 
 
 # -- seating --------------------------------------------------------------

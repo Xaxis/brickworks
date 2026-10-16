@@ -1930,6 +1930,13 @@
       "entry": "src/ui/tooltips.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/tooltip_probe.gd  (rest on a control until its tooltip shows, then click what it covers)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "figures told of their joints",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant"
     }
   ]
 }

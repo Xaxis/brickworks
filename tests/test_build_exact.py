@@ -120,8 +120,10 @@ def test_an_alias_takes_its_parts_shape_moved_by_its_matrix():
         rows = [{"src": "1000a", "dst": "1000",
                  "final_matrix_3x4": [20, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, -1]}]
         (data / "part_aliases.json.xz").write_bytes(lzma.compress(json.dumps({"rows": rows}).encode()))
+        # The box's six faces: a piece is the vertices its faces use.
         (cvx / "1000.cvx.obj").write_text("# aabb\no p\n" + "".join(
-            f"v {x} {y} {z}\n" for x, y, z in BOX) + "f 1 2 3\n")
+            f"v {x} {y} {z}\n" for x, y, z in BOX)
+            + "f 1 2 4 3\nf 5 7 8 6\nf 1 5 6 2\nf 3 4 8 7\nf 1 3 7 5\nf 2 6 8 4\n")
         be._init(str(data), str(cvx))
         assert be.convert(("1000", "plain", str(out)))[1] == "written"
         assert be.convert(("1000a", "moved", str(out)))[1] == "written"
@@ -133,6 +135,25 @@ def test_an_alias_takes_its_parts_shape_moved_by_its_matrix():
         assert moved["lo"] == pytest.approx((10, -8, -20)) and moved["hi"] == pytest.approx((30, 0, 20))
         # The half turn about y turns the frame's x round, in either frame.
         assert moved["connectors"][0]["x"] == pytest.approx((-1, 0, 0))
+
+
+def test_a_piece_is_the_vertices_its_faces_use_shared_or_not():
+    # As BrickNet writes its colliders: a second piece's faces use two vertices
+    # written under the first, which its own v lines do not repeat. Read by its
+    # own lines it was a flat triangle (3033's piece 783, model-047 of
+    # 2026-10-15); read as BrickBench reads it, the four corners of a tetrahedron.
+    text = ("# shared\no first\nv 0 0 0\nv 10 0 0\nv 0 10 0\nf 1 2 3\n"
+            "o second\nv 0 0 10\nf 1 2 4\nf -1 3 2\n"
+            "o lines only\nv 50 0 0\nv 60 0 0\n")
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "shared.cvx.obj"
+        path.write_text(text)
+        pieces = be.read_obj(path)
+    assert len(pieces) == 3
+    assert sorted(pieces[0]) == [(0, 0, 0), (0, 10, 0), (10, 0, 0)]
+    assert sorted(pieces[1]) == [(0, 0, 0), (0, 0, 10), (0, 10, 0), (10, 0, 0)]
+    # A group with no faces is its own lines, as it was.
+    assert sorted(pieces[2]) == [(50, 0, 0), (60, 0, 0)]
 
 
 def test_a_file_that_is_not_one_is_refused():

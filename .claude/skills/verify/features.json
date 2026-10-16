@@ -1039,6 +1039,14 @@
       "tests": []
     },
     {
+      "id": "lib:figures told of their joints",
+      "kind": "lib",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:find a reference picture",
       "kind": "lib",
       "entry": "src/ai/reference_finder.gd",

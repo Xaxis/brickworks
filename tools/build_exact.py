@@ -109,17 +109,39 @@ def matmul(a: list[list[float]], b: list[list[float]]) -> list[list[float]]:
 
 
 def read_obj(path: Path) -> list[list[tuple[float, float, float]]]:
-    """The convex pieces of a collider: one vertex list each `o` group."""
-    pieces: list[list[tuple[float, float, float]]] = []
+    """The convex pieces of a collider: each `o` group's vertices, as its faces use them.
+
+    As BrickBench reads them (brickagent.physics._mesh): the file's vertices are
+    one list, and a group's faces may use any of them. BrickNet's files share
+    them, so a group's own `v` lines are only the vertices new to it: of 3033's
+    785 groups 679 use one written under another, and read by its own lines its
+    piece 783, a tilted slab 4.6 LDU thick, was a flat quad 0.7 LDU deep, so a
+    flame 1.27 LDU into the 6 x 10 plate (model-047, 2026-10-15) was clear. A group
+    with no faces is its own lines, as it was."""
+    vertices: list[tuple[float, float, float]] = []
+    own: list[list[int]] = []
+    used: list[list[int]] = []
     for line in path.read_text().splitlines():
         if line.startswith("o "):
-            pieces.append([])
+            own.append([])
+            used.append([])
         elif line.startswith("v "):
             x, y, z = (float(v) for v in line.split()[1:4])
-            if not pieces:
-                pieces.append([])
-            pieces[-1].append((x, y, z))
-    return [p for p in pieces if p]
+            vertices.append((x, y, z))
+            if not own:
+                own.append([])
+                used.append([])
+            own[-1].append(len(vertices) - 1)
+        elif line.startswith("f ") and used:
+            for field in line.split()[1:]:
+                k = int(field.split("/")[0])
+                used[-1].append(k - 1 if k > 0 else len(vertices) + k)
+    pieces = []
+    for mine, faces in zip(own, used):
+        chosen = sorted(set(faces)) if faces else mine
+        if chosen:
+            pieces.append([vertices[i] for i in chosen])
+    return pieces
 
 
 def _add(axes: list, d, either_way: bool) -> None:
