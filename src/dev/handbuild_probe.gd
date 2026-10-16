@@ -1362,7 +1362,7 @@ func _studio_file() -> void:
 			bar._status.text.begins_with("opened 6 parts") and not bar._status.text.contains("left out"))
 	else:
 		_check("...and the part only Studio has is named in the status bar: \"%s\"" % bar._status.text,
-			bar._status.text.contains("1 not in the library, left out (m1a2b3c4_2025408_163200)"))
+			bar._status.text.contains("1 not shown, kept in the file (m1a2b3c4_2025408_163200)"))
 
 
 ## A model with its author's steps, opened, and its steps changed the ways

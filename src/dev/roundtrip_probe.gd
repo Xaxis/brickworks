@@ -125,6 +125,7 @@ func _one(path: String) -> Dictionary:
 	var io_read: Dictionary = StudioIo.read(packed)
 	var outs: Dictionary = {}
 	outs["ldr"] = _again(ldr, name, save_ms, "")
+	outs["ldr"]["lines_differ"] = _lines_differ(text, ldr)
 	outs["io"] = _again(str(io_read["text"]), name, save_ms, str(io_read["error"]),
 		packed.size())
 	row["out"] = outs
@@ -147,8 +148,28 @@ func _again(text: String, name: String, save_ms: int, error: String, size: int =
 	return again
 
 
+## How many lines one text has that the other has not, each way, as
+## {"added", "removed"}: how near byte for byte a save kept the file.
+static func _lines_differ(before: String, after: String) -> Dictionary:
+	var counts: Dictionary = {}
+	for line: String in before.split("\n"):
+		counts[line.rstrip("\r")] = int(counts.get(line.rstrip("\r"), 0)) + 1
+	var added: int = 0
+	for line: String in after.split("\n"):
+		var key: String = line.rstrip("\r")
+		if int(counts.get(key, 0)) > 0:
+			counts[key] = int(counts[key]) - 1
+		else:
+			added += 1
+	var removed: int = 0
+	for key: String in counts:
+		removed += int(counts[key])
+	return {"added": added, "removed": removed}
+
+
 func _opened(opened: Dictionary, began: int) -> Dictionary:
 	return {"placed": int(opened.get("placed", 0)), "missing_ids": opened.get("missing_ids", {}),
+		"kept": _store._live_source() != null, "unshown": opened.get("unshown", {}),
 		"waiting": int(opened.get("waiting", 0)), "awaited": _store.awaited.size(),
 		"lifted_by": _store._lifted_by, "error": str(opened.get("error", "")),
 		"title": _store.title, "ms": Time.get_ticks_msec() - began}

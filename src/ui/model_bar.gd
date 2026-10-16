@@ -430,11 +430,15 @@ func _import() -> void:
 			if int(result["missing"]) > 0:
 				# Named, as an LDD model's are: a Studio model can use a part
 				# Studio made, which nothing else has.
-				var missing: Dictionary = result.get("missing_ids", {})
+				# Kept in the file when it is someone else's (SourceFile): a
+				# save writes them back. A flexible part is named once, by
+				# the sub-model it is, not by the pieces it is drawn with.
+				var missing: Dictionary = result.get("unshown", result.get("missing_ids", {}))
 				var count: int = 0
 				for id: String in missing:
 					count += int(missing[id])
-				note += " — %d not in the library, left out (%s)" % [count,
+				note += (" — %d not shown, kept in the file (%s)" if bool(result.get("kept"))
+					else " — %d not in the library, left out (%s)") % [count,
 					ModelStore.named_counts(missing)]
 			if int(result.get("waiting", 0)) > 0:
 				note += " — %d are still arriving, open it again in a moment" \

@@ -50,6 +50,10 @@ class Placement extends RefCounted:
 	var mirrored: bool = false
 	var local: Transform3D = Transform3D.IDENTITY
 	var frame: Transform3D = Transform3D.IDENTITY
+	## The line of the file it was read from, counted from 0, or -1 for one
+	## not read from a file: what a save writes back in place when nothing
+	## about the part changed (SourceFile).
+	var line: int = -1
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -106,11 +110,23 @@ var marked_authored: bool = false
 ## placed in, within the sub-model that places it, by its unit path
 ## (Placement.unit) — "House#1/Window#3" -> 2.
 var unit_steps: Dictionary = {}
+## And where each copy stands in the file's own coordinates, and which
+## sub-model it is a copy of (its key in [member submodels]): what a save
+## needs to write a part of that copy back into its sub-model.
+var unit_frames: Dictionary = {}
+var unit_sections: Dictionary = {}
+## And the colour each copy hands its parts of colour 16.
+var unit_colours: Dictionary = {}
 
 ## The line Brickworks writes into a model whose steps are somebody's own,
 ## so they are kept when it is opened again. Other LDraw readers skip a
 ## "0 !" meta command they do not know.
 const AUTHORED_META := "0 !BRICKWORKS AUTHORED_STEPS"
+## And the line it writes into someone else's model it wrote whole, whose
+## steps it worked out: their author's name is kept, and these steps are
+## still no one's ([member marked_worked]).
+const WORKED_META := "0 !BRICKWORKS WORKED_STEPS"
+var marked_worked: bool = false
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -119,7 +135,8 @@ const AUTHORED_META := "0 !BRICKWORKS AUTHORED_STEPS"
 ## a build, and those are no one's steps: kept, a model saved yesterday
 ## would have a new tower's hundred parts in its last step tomorrow.
 func steps_are_authored() -> bool:
-	return stepped and (marked_authored or author.strip_edges() != "Brickworks")
+	return stepped and not marked_worked \
+		and (marked_authored or author.strip_edges() != "Brickworks")
 
 
 static func load_file(path: String) -> LdrModel:
@@ -154,7 +171,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var data_name: String = ""
 	var data := PackedStringArray()
 
+	var index: int = -1
 	for raw: String in text.split("\n"):
+		index += 1
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
 			if line.begins_with("0 !:"):
@@ -217,6 +236,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == AUTHORED_META.get_slice(" ", 2):
 				model.marked_authored = true
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == WORKED_META.get_slice(" ", 2):
+				model.marked_worked = true
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -248,8 +270,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if part_id.ends_with(".dat") or part_id.ends_with(".ldr"):
 			part_id = part_id.substr(0, part_id.length() - 4)
 
-		current.placements.append(
-			Placement.new(part_id, color, to_transform(numbers), step))
+		var read := Placement.new(part_id, color, to_transform(numbers), step)
+		read.line = index
+		current.placements.append(read)
 
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
@@ -430,6 +453,9 @@ func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	_names = _assembly_names()
 	unit_steps.clear()
+	unit_frames.clear()
+	unit_sections.clear()
+	unit_colours.clear()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
 			{})
@@ -502,6 +528,9 @@ func _inline(
 			var copy: String = "%s#%d" % [kind, int(copies[kind])]
 			inside = copy if unit.is_empty() else "%s/%s" % [unit, copy]
 			unit_steps[inside] = placement.step
+			unit_frames[inside] = at * placement.transform
+			unit_sections[inside] = _key(nested.name)
+			unit_colours[inside] = placement.color_code if placement.color_code != 16 else color
 			_inline(
 				nested,
 				at * placement.transform,
@@ -517,6 +546,7 @@ func _inline(
 			placement.part_id, resolved, at * placement.transform, placement.step)
 		placed.group = group
 		placed.unit = unit
+		placed.line = placement.line
 		if at.basis.determinant() < 0.0:
 			placed.mirrored = true
 			placed.local = placement.transform
