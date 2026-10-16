@@ -295,8 +295,11 @@ func _round_trip_text(source: String, name: String) -> void:
 	# The steps are in the file and nowhere else: the app works the build
 	# order out again when it writes one, so the file is where they have
 	# to survive.
+	# In Studio's line ends, which a file from Studio has already (and keeps,
+	# SourceFile): the same text but for those.
 	_check("the .io carries the model's LDraw exactly, its %d steps and %d sub-models with it (%s)"
-		% [before.count("0 STEP"), before.count("0 FILE") - 1, _said(read)], carried == before)
+		% [before.count("0 STEP"), before.count("0 FILE") - 1, _said(read)],
+		carried == before.replace("\r\n", "\n"))
 	var in_steps: Array = _steps_of(carried)
 	_check("...and reads back as the same parts in the same steps (%d parts, last step %d)"
 		% [in_steps.size(), int(in_steps.back().get_slice(" ", 0)) if not in_steps.is_empty()
@@ -389,8 +392,10 @@ func _authored_round_trip(source: String, name: String, shown: String) -> void:
 	var kept: Dictionary = _file_steps(saved)
 	_check("saved, every sub-model's steps are the author's (%s)" % _shown_steps(kept),
 		kept == expected and not kept.is_empty())
+	# Said by a line of the app's, or by the author's own name kept (a file
+	# that is someone else's is kept as it was: SourceFile).
 	_check("...and the file says they are, so they are kept again",
-		saved.contains(LdrModel.AUTHORED_META))
+		LdrModel.parse(saved, name).steps_are_authored())
 	_check("the autosave keeps them too", _file_steps(_store.to_text(name)) == expected)
 	var carried: String = str(StudioIo.read(StudioIo.pack(saved, PackedByteArray(),
 		ModelStore.count_in(saved)))["text"]).replace("\r\n", "\n")

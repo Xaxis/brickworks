@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe -->
 
 ## Sub-features
 
@@ -34,6 +34,44 @@ Whether what you built is still there tomorrow, and still means the same thing.
   since all open through `open_text`: see "the author's steps" in
   [view](view.md). They were read and dropped, and saving wrote Brickworks's
   own order over them.
+- `someone else's file kept` (`src/parts/source_file.gd`, `SourceFile`;
+  `ModelStore._source_text`, 2026-10-16): a file whose `0 Author:` is not
+  Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)
+  is kept when it opens, and every save of it (Save, the autosave, Export,
+  `.io`, a share link, `save_model` over MCP: all `ModelStore._text_into`) is
+  that file again with only what changed. Each part on the baseplate is paired
+  with the line it was read from by what it is (number, colour, place in the
+  file's coordinates, sub-model copy), never by id, so undo, a move by picking
+  up and an edit over MCP pair alike. A part as it was keeps its line byte for
+  byte; moved, turned, recoloured or swapped, its line is rewritten in place,
+  in its sub-model's frame, under the number the file used when it is the same
+  part (`30028` stays `30028`, placed where its stub puts `30028b`); taken
+  away, its line goes; added, a line at the end of its step in its sub-model.
+  Lines the app does not read (author, `!LICENSE`, `!HISTORY`, `BFC`, LDCad's
+  `!LDCAD` blocks, comments, the parts a file carries) are never touched. The
+  lift that stands a model on the ground is the view's: taken off again on
+  every save, so the file keeps its coordinates (whole-model saves too).
+  What cannot be one line is written whole (`write` returns null): a copy of
+  a sub-model changed apart from its other copies, an assembly made or
+  renamed, steps given to a model that had none, a copy put in another step.
+  Then the author's header lines are kept in place of `0 Author: Brickworks`
+  (`SourceFile.header`, and `0 !BRICKWORKS WORKED_STEPS` when the steps are
+  the app's), and what the app could not show is carried in
+  (`SourceFile.carried_into`). Saved under another name, the name goes in a
+  `0 !BRICKWORKS TITLE` line, the author's first line untouched. The app's own
+  lines (floor, share, set) are the only lines added. A file Brickworks wrote
+  (`0 Author: Brickworks`) is written whole, as before.
+- `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
+  a part of the file the library has not got (on the web, a part the file
+  carries, which needs the LDraw library to build; on both, LDCad's flexible
+  parts, a skin of `4-4cyli` and `axlehol8` primitives) is never dropped: it
+  stays in the file and is saved back, and File, Open says how many and which,
+  a flexible part once by its sub-model ("… not shown, kept in the file
+  (ropeLQ-1 (flexible))"), not 886 times by its primitive.
+  42082-1's 1,052 missing in a browser were the 166 parts it carries and one
+  rope of 886 pieces; its 886 on the desktop, the rope. `fidelity_probe`
+  checks both, and the cad task test counts a part lost on open only when it
+  is neither shown nor kept.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
   tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
   read from — goes out as an `.mpd` with one sub-model per group, titled as the
@@ -409,12 +447,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   checkout. The sampler and the comparison are pinned by
   `tests/test_cadtask.py`. Baseline 2026-10-16: 5 of 54 exact, 44 the same
   shapes; every save writes `0 Author: Brickworks` and drops `!LICENSE`.
+  It also judges the saved file itself (`exact_file`: the file read as the
+  original was, numbers as written, the file's coordinates, steps,
+  sub-models, every meta line and the author, and the app's model the same
+  opened again), counts a part lost on open only when it is neither shown nor
+  kept (`open_lost`, `unshown_kept`), and pairs each part with the nearest
+  that fits (the first that fits called a rope read twice moved). The same
+  day, after `someone else's file kept`: 54 of 54 exact (0 before), 0 parts
+  lost on open (4,715 before, now kept), 42043-1 saved in 0.35 s (695 s).
 - `round trip probe` (`src/dev/roundtrip_probe.gd`): each path read by
   `ModelFilePicker.take`, opened by `open_text`, written by `to_text(title,
   true)` and by `StudioIo.pack` around it, and each written file opened again;
   one JSON line a file with every part as "id colour x y z a..i|steps|unit|group"
-  at each stage, the file's meta lines counted, and the open and save times.
-  Judges nothing. Appends, so a run that dies keeps what it measured.
+  at each stage, the file's meta lines counted, and the open and save times;
+  whether the store kept the file (`kept`), what it could not show
+  (`unshown`), and how many lines the saved LDraw has that the file had not
+  and the other way (`lines_differ`). Judges nothing. Appends, so a run that
+  dies keeps what it measured.
 
 ## How to reach it
 
@@ -443,6 +492,7 @@ godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, write, round trip, refusals
+godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
 godot --headless --path . --script src/dev/mesh_export_probe.gd -- --orthanc   # ...and the castle and Orthanc, every format, timed (~6 min)
 node tools/web/model3d_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: the car's GLB from the menu, downloaded and read

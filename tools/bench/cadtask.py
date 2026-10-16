@@ -189,20 +189,22 @@ def match(before: list[Part], after: list[Part], place: float = TO_THE_LDU,
     lost: list[Part] = []
     for part in before:
         x, y, z = _cell(part, shift)
+        # The nearest that fits, not the first: in a rope of identical pieces
+        # under an LDU apart a piece took its neighbour's place, and so on down
+        # the rope until the last found nothing, so two readings of the same
+        # file were called moved (42043-1: 58 moved, 4 turned, 3 lost).
         found = None
+        best = math.inf
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 for dz in (-1, 0, 1):
                     for other in near.get((part.id, part.colour, x + dx, y + dy, z + dz), []):
                         if part.near(other, place, shift) and part.turned_as(other):
-                            found = other
-                            break
-                    if found:
-                        break
-                if found:
-                    break
-            if found:
-                break
+                            d = (abs(part.at[0] - other.at[0]) + abs(part.at[1] - shift - other.at[1])
+                                 + abs(part.at[2] - other.at[2]))
+                            if d < best:
+                                best = d
+                                found = other
         if found is None:
             lost.append(part)
         else:
@@ -367,6 +369,14 @@ def judge_file(row: dict) -> dict:
     out["open_ms"] = opened.get("ms")
     out["save_ms"] = next((w.get("save_ms") for w in row.get("out", {}).values()), None)
     out["open"] = compare(truth["parts"], row["opened"], lift, authored)
+    # Lost on open: a part of the file neither on the baseplate nor kept in
+    # the model to be saved back (a part the app cannot show, said when it
+    # opens, is kept when the file is someone else's: SourceFile).
+    kept = bool(opened.get("kept"))
+    shown = [line for line in truth["parts"]
+             if not (kept and Part(line).id in out["missing"])]
+    out["unshown_kept"] = len(truth["parts"]) - len(shown)
+    out["open_lost"] = compare(shown, row["opened"], lift, authored)["why"].get("lost", 0)
     out["formats"] = {}
     for fmt, written in row.get("out", {}).items():
         if written.get("error"):
@@ -378,7 +388,15 @@ def judge_file(row: dict) -> dict:
         before = Counter(truth.get("metas", {}))
         after = Counter(written["file"].get("metas", {}))
         metas_lost = {k: v - after.get(k, 0) for k, v in before.items() if v > after.get(k, 0)}
+        # The saved file read as the original was, by the reader every
+        # format ends in: the numbers as written, the places in the file's
+        # coordinates, the steps, the sub-models, and every meta line.
+        on_file = compare(truth["parts"], written["file"]["parts"], 0.0, authored)
+        metas_kept = not metas_lost and written["file"].get("author") == truth.get("author")
         out["formats"][fmt] = {
+            "file": on_file, "metas_kept": metas_kept,
+            "exact_file": on_file["exact"] and metas_kept and own["parts_exact"],
+            "lines_differ": written.get("lines_differ"),
             "strict": strict, "up_to_lift": lifted, "app": own,
             "bytes": written.get("bytes"), "save_ms": written.get("save_ms"),
             "metas_lost": metas_lost,
@@ -418,6 +436,13 @@ def summarise(judged: list[dict]) -> dict:
         n = len(rows)
         out["formats"][fmt] = {
             "files": n,
+            "exact_file": sum(1 for j in rows if j["formats"][fmt].get("exact_file")),
+            "file_parts_exact": sum(1 for j in rows
+                                    if j["formats"][fmt].get("file", {}).get("exact")),
+            "metas_kept": sum(1 for j in rows if j["formats"][fmt].get("metas_kept")),
+            "open_lost_parts": sum(j.get("open_lost", 0) for j in rows),
+            "open_lost_files": sum(1 for j in rows if j.get("open_lost", 0)),
+            "unshown_kept": sum(j.get("unshown_kept", 0) for j in rows),
             "exact": sum(1 for j in rows if j["formats"][fmt]["strict"]["exact"]),
             "exact_up_to_lift": sum(1 for j in rows if j["formats"][fmt]["up_to_lift"]["exact"]),
             "same_shapes_up_to_lift": sum(
@@ -709,6 +734,22 @@ def report(out: Path) -> Path:
                 f"{_pct(f['parts_back'], f['parts'])} | "
                 f"{_pct(f['steps_kept'], f['authored_files'])} | "
                 f"{_pct(f['app_stable'], f['files'])} |")
+        if any("exact_file" in f for f in summary["formats"].values()):
+            lines += ["", "The file itself: the saved file read as the original was (numbers "
+                      "as written, the file's coordinates, steps, sub-models), its meta lines "
+                      "all there and its author's name, and the app's model the same when it "
+                      "is opened again. Lost on open: a part of the file neither shown nor "
+                      "kept to be saved back.", "",
+                      "| written as | files | exact | parts exact | meta lines kept | "
+                      "lost on open, parts (files) | not shown, kept |",
+                      "|---|---|---|---|---|---|---|"]
+            for fmt, f in summary["formats"].items():
+                lines.append(
+                    f"| {'LDraw (.ldr/.mpd)' if fmt == 'ldr' else 'Studio (.io)'} | "
+                    f"{f['files']} | {_pct(f['exact_file'], f['files'])} | "
+                    f"{_pct(f['file_parts_exact'], f['files'])} | "
+                    f"{_pct(f['metas_kept'], f['files'])} | "
+                    f"{f['open_lost_parts']} ({f['open_lost_files']}) | {f['unshown_kept']} |")
         first = next(iter(summary["formats"].values()), None)
         for fmt, f in summary["formats"].items():
             lines += ["", f"Written as {fmt}, by what was opened: " + "; ".join(

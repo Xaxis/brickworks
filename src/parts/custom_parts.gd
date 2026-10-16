@@ -201,9 +201,40 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried)
 		if str(result["problem"]).is_empty():
 			added.append(id)
+			drawn_from[id] = needs(text, model.embedded_sources)
 		else:
 			problems.append("%s: %s" % [id, result["problem"]])
 	return {"added": added, "problems": problems}
+
+
+## The subparts and primitives a part a model file carried is drawn from,
+## that the file carried with it: part id -> {name as the part refers to
+## it -> its text}. Written back with the part (sources_for), or a file
+## saved here carried 3315's parts without what they are drawn from, and
+## they were gone when it was opened again (docs/CADTASK.md, 2026-10-16).
+static var drawn_from: Dictionary = {}
+
+
+## The files of [param carried] (LdrModel.embedded_sources) that [param
+## text] refers to, and those they refer to, by the name as referred to.
+static func needs(text: String, carried: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var todo: Array = [text]
+	while not todo.is_empty():
+		for raw: String in str(todo.pop_back()).split("\n"):
+			var words: PackedStringArray = LdrModel._fields(raw.strip_edges())
+			if words.size() < 15 or words[0] != "1":
+				continue
+			var named: String = " ".join(words.slice(14))
+			var key: String = named.replace("\\", "/").to_lower()
+			if out.has(named):
+				continue
+			var found: Variant = carried.get(key, carried.get(key.get_file(), null))
+			if found == null:
+				continue
+			out[named] = str(found)
+			todo.append(str(found))
+	return out
 
 
 ## The sources of the custom parts among [param part_ids], by file name,
@@ -215,6 +246,9 @@ static func sources_for(library: PartLibrary, part_ids: Array) -> Dictionary:
 		var text: String = library.custom_source(str(part_id))
 		if not text.is_empty():
 			out[str(part_id) + ".dat"] = text
+			var needed: Dictionary = drawn_from.get(str(part_id), {})
+			for named: String in needed:
+				out[named] = needed[named]
 			# And a print's pictures, which go in as !DATA sections.
 			var mesh: Lbm.PartMesh = library.mesh_for(str(part_id))
 			if mesh != null:

@@ -17,8 +17,8 @@ so the two are like for like, and then measured.
 
 | question | measured here | Studio |
 |---|---|---|
-| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact | not measured |
-| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44) | not measured |
+| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact. *Since (the same day): 48 of 48, and the six 6 of 6, the saved file the author's own but for one line of the app's* | not measured |
+| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said* | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone is over 33 ms in every act from 925 parts | not measured |
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
@@ -98,6 +98,88 @@ The 718 s is 42043-1 (7,909 parts, sub-models five deep): twelve minutes to
 write its LDraw. In the app a save is worked out a slice at a time, so the
 window stays alive, but the save takes that long. Where the time goes was not
 measured.
+
+### Since: a file comes back as it went in (the fidelity unit, the same day)
+
+**What changed.** A file another tool wrote (its `0 Author:` not Brickworks)
+is now kept when it opens (`SourceFile`), and every save of it is that file
+again with only what changed: a part as it was keeps its line byte for byte;
+a part moved, turned, recoloured, swapped, taken away or added is written as
+such, in place, in its sub-model's frame, under the number the file used. The
+lift that stands a model on the ground is the view's and is taken off again
+on every save. A file Brickworks wrote is written whole, as before (the 12
+shipped models save byte for byte as they did). What one line cannot say (a
+copy of a sub-model changed apart from its other copies, an assembly made) is
+written whole, under the author's name and licence, with what the app could
+not show carried in. The judge now reads the saved file itself as the
+original was read: numbers as written, the file's coordinates, steps,
+sub-models, every meta line and the author.
+
+**Measured.** The same 54 files, the same probe, before (`f77fded`) and
+after, judged alike (`bench/results/fidelity-2026-10-16/`). The judge pairs
+each part with the nearest that fits, not the first: in a rope of identical
+pieces under an LDU apart a piece took its neighbour's place, and so on down
+the rope, so two readings of one file were called moved. The morning's
+"42043-1 moves 58 parts and turns 4" and 42123-1's 16 were that, not the app.
+
+| | before | after |
+|---|---|---|
+| exact: the saved file read as the original was (numbers as written, the file's coordinates, steps, sub-models), every meta line and the author kept, and the app's model the same opened again | 0 of 54 | **54 of 54** (the 48 real sets' files: 48 of 48) |
+| ...the parts alone | 5 of 54 | 54 of 54 |
+| ...the meta lines and the author | 0 of 54 | 54 of 54 |
+| author's steps kept | 41 of 44 | 44 of 44 |
+| the app's model the same when the saved file opens | 53 of 54 | 54 of 54 |
+| parts lost on open: neither shown nor kept | 4,715 in 7 files | **0**; the 4,715 are kept, saved back and said |
+| lines the saved file has that the original has not | every line rewritten | 1 a file, `0 !BRICKWORKS FLOOR …`; none taken away |
+| saving 42043-1 (7,909 parts) | 695 s | **0.35 s** |
+| the slowest save of the 54 | 695 s | 0.36 s (10283-1) |
+
+Written as `.io` the same, the text in a zip. The strict columns of the table
+above (the app's own model against the file) are what they were, 5 of 54: the
+model on the baseplate is still stood on the ground and holds a retired
+number as the part it became, by design; neither reaches the file now.
+
+In a browser (a local export of the branch, SwiftShader), 42082-1 opened
+through Open… > From a file says "167 not shown, kept in the file (42082 -
+18575 ×22, 42082 - 27940 ×30, …)" (its 166 carried parts and the rope) while
+its parts arrive, and File, Export, LDraw model downloads the file again line
+for line: 5,479 part lines of 5,479, no line different but the app's own.
+`io_flow` passes there too: bay_2025.io in, its Part Designer part kept and
+named, out as .io counting 6 parts, in again. Not measured: edits on the 54
+(the fidelity probe edits a file drawn for it, and saves four real sets
+whole).
+
+**Where the twelve minutes went.** Everything before the sub-models' frames
+took half a second of 42043-1's save (the steps 127 ms, the parts in order
+102 ms, the figures 272 ms); `Assemblies.file_frames` ran on past seven and a
+half minutes before the profile was stopped. For each of 103 copies it read
+every part of the model twice (`content`, a pass over 7,909 parts a call) and
+scored up to 400 ways the copy might lie on the first copy of its kind, each
+way scoring every part, though only an exact fit is used. It now reads every
+copy's parts in one pass, refuses a copy whose parts and colours differ from
+its first copy's at once, and gives a way up at its first part that lands on
+nothing (`exact_match`). Saved untouched, 42043-1 is now its own file again
+in 0.35 s; written whole (an assembly made), 2.6 to 2.8 s.
+
+**Why the parts were lost.** 42082-1's 1,052 parts left out in a browser are
+two things: the 166 parts the file carries (`0 FILE 42082 - 18575.dat`), which
+the web build cannot build for want of the LDraw library, and one rope that
+LDCad drew as 886 pieces of `4-4cyli` skin. The desktop builds the carried
+parts, so its 886 are the rope alone. Neither is a part the app could draw,
+and neither is dropped now: both stay in the file and are saved back, and
+File, Open says so, the rope once by its sub-model ("ropeLQ-1 (flexible)"),
+not 886 times by its piece. 3315-1 came back 28 LDU higher with 5 parts gone
+because its hollow book, a shortcut the file carries (`3315 - 33009.dat`) and
+the app reads as a sub-model titled "33009", was written out as `33009.ldr`;
+opened again, a reference to 33009 is the library's part 33009, so the five parts
+inside it (466a to 466d) became one part from the library, and the model,
+its lowest point now 20 LDU lower, was lifted 28 LDU where it had been
+lifted 8. A sub-model is now never
+given a file name that is a part number (`33009_.ldr`). The same save also
+left out the subparts and primitives the file's parts are drawn from (10 of
+its 21 carried files): the same session still had them built, a new one would
+not have. A carried part is now written with what it is drawn from
+(`CustomParts.drawn_from`). And a file kept is not rewritten at all.
 
 ## 2. The frames a builder feels
 
@@ -306,6 +388,8 @@ Nothing here was fixed in this unit; each is a unit of its own.
 5. **A file's own parts are left out**: 42082-1 opens with 3,973 of its
    5,025 parts in a browser, the 1,052 left out being parts the file carries
    (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
+   *Since:* none is dropped. What the app cannot draw stays in the file and is
+   saved back, and File, Open names it.
 6. **Colours are found by look in a palette of 320**: the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black
    look the same. The flow put 3 of its 8 parts in the wrong colour for want
@@ -314,20 +398,32 @@ Nothing here was fixed in this unit; each is a unit of its own.
 7. **Saving drops the author's name and licence** from every file, and with
    them `!HISTORY`, `!THEME`, `!CATEGORY`, `BFC` and other tools' meta lines.
    For files under an attribution licence that is the credit itself.
+   *Since:* a file another tool wrote is saved as it was, every line kept.
 8. **LDCad's flexible parts are lost** on open: hoses, strings and bands
    drawn as a skin of primitives. 225 of the repository's 1,576 files use them.
+   *Since:* kept in the file and named once each; still not drawn.
 9. **Opening moves the model onto the ground** (36 of 48 files), so a saved
    file has every coordinate changed, and a diff of the file says nothing.
+   *Since:* the lift is the view's, and the file keeps its coordinates.
 10. **Big files save slowly**: 42043-1 (7,909 parts) took 12 minutes to
     write its LDraw; the next slowest 14 s.
+    *Since:* 0.35 s kept as it was, 2.8 s written whole.
 11. **Opening the app's own save again is not always the same model**:
     3315-1 comes back 28 LDU higher with 5 parts gone; 42043-1 with 58 parts
     moved; 4 of 44 files have their author's steps changed.
+    *Since:* a file kept is the same model opened again. Written whole, 3315-1
+    keeps its parts (its sub-model titled "33009" went out as `33009.ldr` and
+    came back as the part 33009). Written whole, every part comes back, a few
+    of the biggest models' (6 of 4,139 in 42082-1, 8 of 7,908 in 42043-1)
+    within rounding of where they were: a place is written to four decimals
+    through its sub-model's frame, and the probe, printing tenths, finds them
+    either side of one.
 12. **Right stops stepping the timeline once a part has been taken from the
     bin by a click** (in a browser; the desktop probe takes its part without
     a click, and Right worked there). Next worked every time it was tried.
 13. **Retired part numbers are written as the part they became** (5,623
     parts in 45 of 48 files): the same shape in the same place, another line.
+    *Since:* written back under the file's own number.
 
 [5459441964695]: https://studiohelp.bricklink.com/hc/en-us/articles/5459441964695
 

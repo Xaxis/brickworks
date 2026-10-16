@@ -161,22 +161,68 @@ def test_submodels_by_membership_not_by_name():
     assert cadtask.compare(before, flat)["submodels_kept"] is False
 
 
-def _row(lift: float, reopened: list[str], metas_after: dict) -> dict:
+def _row(lift: float, reopened: list[str], metas_after: dict, file_parts=None,
+         author: str = "Brickworks", missing: dict | None = None, kept: bool = False,
+         opened=None) -> dict:
     truth = [line("3001", 4, 0, 0, 0), line("3023", 15, 0, -24, 0, steps="1")]
     return {
         "file": "x.mpd", "in": "mpd",
         "truth": {"parts": truth, "authored": True, "author": "A. Builder",
                   "metas": {"!LICENSE": 1, "STEP": 2, "Author:": 1}},
-        "open": {"lifted_by": lift, "missing_ids": {}},
-        "opened": reopened,
+        "open": {"lifted_by": lift, "missing_ids": missing or {}, "kept": kept},
+        "opened": reopened if opened is None else opened,
         "out": {"ldr": {"bytes": 10, "save_ms": 1, "reopened": reopened,
-                        "file": {"author": "Brickworks", "metas": metas_after}}},
+                        "file": {"author": author, "metas": metas_after,
+                                 "parts": reopened if file_parts is None else file_parts}}},
     }
+
+
+def test_a_rope_of_identical_pieces_read_twice_is_the_same():
+    """Pieces under an LDU apart, each within the reach of its
+    neighbour's place: each pairs with its own, not the first that fits."""
+    rope = [line("ls60", 0, 0.0, -0.9 * n, 0.0) for n in range(12)]
+    got = cadtask.compare(rope, list(reversed(rope)), steps=False)
+    assert got["exact"] and got["why"] == {}
+
+
+def test_the_file_itself_exact_when_it_says_what_it_said():
+    """A saved file read as the original was: the numbers as written (3023,
+    not 3023b), the file's coordinates (not lifted), its meta lines and its
+    author; the app's model the same when it opens again."""
+    truth = [line("3001", 4, 0, 0, 0), line("3023", 15, 0, -24, 0, steps="1")]
+    lifted = [line("3001", 4, 0, -8, 0), line("3023b", 15, 0, -32, 0, steps="1")]
+    kept = cadtask.judge_file(_row(8.0, lifted, {"!LICENSE": 1, "STEP": 2, "Author:": 1},
+                                   file_parts=truth, author="A. Builder"))
+    ldr = kept["formats"]["ldr"]
+    assert ldr["file"]["exact"] and ldr["metas_kept"] and ldr["exact_file"]
+    # The same parts, but the licence gone: not exact.
+    lost = cadtask.judge_file(_row(8.0, lifted, {"STEP": 2, "Author:": 1},
+                                   file_parts=truth, author="A. Builder"))
+    assert lost["formats"]["ldr"]["file"]["exact"] and not lost["formats"]["ldr"]["exact_file"]
+    # Written as the part it became: not the file's number.
+    renumbered = cadtask.judge_file(_row(8.0, lifted, {"!LICENSE": 1, "STEP": 2, "Author:": 1},
+                                         file_parts=[truth[0], line("3023b", 15, 0, -24, 0,
+                                                                    steps="1")],
+                                         author="A. Builder"))
+    assert not renumbered["formats"]["ldr"]["exact_file"]
+    summary = cadtask.summarise([kept, lost, renumbered])["formats"]["ldr"]
+    assert summary["exact_file"] == 1 and summary["file_parts_exact"] == 2
+    assert summary["metas_kept"] == 2
+
+
+def test_a_part_not_shown_is_lost_on_open_unless_kept():
+    shown = [line("3001", 4, 0, -8, 0)]
+    told = cadtask.judge_file(_row(8.0, shown, {}, missing={"3023": 1}, kept=True))
+    assert told["open_lost"] == 0 and told["unshown_kept"] == 1
+    dropped = cadtask.judge_file(_row(8.0, shown, {}, missing={"3023": 1}, kept=False))
+    assert dropped["open_lost"] == 1 and dropped["unshown_kept"] == 0
+    assert cadtask.summarise([told, dropped])["formats"]["ldr"]["open_lost_parts"] == 1
 
 
 def test_judge_and_summarise_count_formats_and_losses():
     lifted = [line("3001", 4, 0, -8, 0), line("3023b", 15, 0, -32, 0, steps="1")]
-    judged = [cadtask.judge_file(_row(8.0, lifted, {"STEP": 2, "Author:": 1})),
+    judged = [cadtask.judge_file(_row(8.0, lifted, {"STEP": 2, "Author:": 1},
+                                      file_parts=lifted)),
               cadtask.judge_file({"file": "bad.mpd", "in": "mpd", "error": "could not read"})]
     one = judged[0]["formats"]["ldr"]
     assert one["strict"]["exact"] is False
