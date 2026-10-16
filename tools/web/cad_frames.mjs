@@ -133,18 +133,43 @@ function stats(frames) {
 async function since(from) {
   return page.evaluate((a) => window.cadFrames.frames.filter(([t0]) => t0 >= a), from);
 }
+// The app's scripts in the frames from [engineFrom] (the engine's own clock,
+// window.brickworksState.now) on: its frames whose own work, process_frame to
+// drawing, was over 50 ms (Main._slow_frames), the worst of them in ms, and
+// how many. Apart from the frame less its WebGL, which also holds the
+// engine's own drawing work on the processor and, on a loaded box, the time
+// the page waited for a core.
+async function scripts(engineFrom) {
+  await page.waitForTimeout(600);
+  const s = await state();
+  const slow = (s.slow || []).filter(([at]) => at >= engineFrom);
+  // Every frame over 8 ms of its own work, where the build keeps them.
+  const busy = (s.busy || []).filter(([at]) => at >= engineFrom);
+  const most = Math.max(slow.reduce((m, [, ms]) => Math.max(m, ms), 0),
+    busy.reduce((m, [, ms]) => Math.max(m, ms), 0));
+  return { scripts_max_ms: most, scripts_busy: busy.length, scripts_slow: slow.length,
+    scripts_kept: Array.isArray(s.busy), told_most_ms: s.told_most_ms || 0 };
+}
+async function engineNow() {
+  const s = await state();
+  // The state is written twice a second: its clock, and the time since.
+  return (s.now || 0) - 600;
+}
 async function act(name, doing, settle = 1500) {
+  const engineFrom = await engineNow();
   const from = await now();
   await doing();
   await page.waitForTimeout(settle);
   const row = stats(await since(from));
   row.ms = Math.round((await now()) - from);
+  Object.assign(row, await scripts(engineFrom));
   console.log(`  ${name}: ${JSON.stringify(row)}`);
   return row;
 }
 // An act that is done when the page's state says so ([done]), however long
 // its frames take, and the frames from the press to then and a second on.
 async function actUntil(name, doing, done, seconds = 300) {
+  const engineFrom = await engineNow();
   const from = await now();
   await doing();
   const s = await until(done, seconds);
@@ -152,6 +177,7 @@ async function actUntil(name, doing, done, seconds = 300) {
   const row = stats(await since(from));
   row.ms = Math.round((await now()) - from);
   row.done = done(s);
+  Object.assign(row, await scripts(engineFrom));
   console.log(`  ${name}: ${JSON.stringify(row)}`);
   return row;
 }
@@ -231,6 +257,19 @@ for (const model of models) {
     row.select_all.selected = (await state()).selected;
     await quiet(2000, 60000);
   }
+  // Everything selected nudged a stud (D), then Ctrl-Z and Ctrl-Shift-Z: the
+  // move's frames in a window of their own, its undo and redo until the
+  // status bar says they were done.
+  if (wanted("move") && (await state()).selected > 0) {
+    row.move = await act("move", () => page.keyboard.press("d"), 4000);
+    await quiet(2000, 120000);
+    row.undo_move = await actUntil("undo_move", () => page.keyboard.press("Control+z"),
+      (x) => /^undid/.test(String(x.said || "")), 300);
+    await quiet(2000, 120000);
+    row.redo_move = await actUntil("redo_move", () => page.keyboard.press("Control+Shift+z"),
+      (x) => /^redid/.test(String(x.said || "")), 300);
+    await quiet(2000, 60000);
+  }
   if (wanted("delete")) {
     row.delete = await actUntil("delete", () => page.keyboard.press("Delete"),
       (x) => (x.bricks || 0) < all);
@@ -268,6 +307,8 @@ for (const model of models) {
     row.step = { frames: steps.reduce((a, r) => a + r.frames, 0),
       median_ms: drawnTimes.slice().sort((a, b) => a - b)[2], p95_ms: Math.max(...drawnTimes),
       max_ms: Math.max(...drawnTimes), own_max_ms: Math.max(...steps.map((r) => r.own_max_ms)),
+      scripts_max_ms: Math.max(...steps.map((r) => r.scripts_max_ms)),
+      own_median_ms: steps.map((r) => r.own_max_ms).sort((a, b) => a - b)[2],
       each: steps, at: ((await state()).timeline || {}).at };
   }
   await page.screenshot({ path: `${out}/web_${basename(model, ".mpd")}.png` }).catch(() => {});

@@ -9,7 +9,12 @@ can occupy the same millimetre.
 
 - `occupancy lattice`: every part is a set of 2 LDU cells, **stored as the boxes
   those cells came from**. `BrickLattice` keeps six ints per box, a coarse
-  two-stud bucket index, and an exact box-overlap test. An ordinary brick is one
+  two-stud bucket index, and an exact box-overlap test. A part is in every
+  bucket its bound reaches (`_into_buckets`), not found box by box: whoever
+  reads a bucket tests the boxes, and a Technic part's hundreds of boxes made
+  putting in and letting go most of a millisecond. A ray is marched only
+  through the box round everything ever put in (`_extent`), so a line from the
+  eye no longer walks the air cell by cell, up to 20,000 of them on a miss. An ordinary brick is one
   box; a Technic beam is 36. A stud is 20 LDU
   across (10 cells), a plate 8 LDU tall (4 cells), a brick three plates. A
   placement names its lowest-leftmost-backmost cell, across and deep of the

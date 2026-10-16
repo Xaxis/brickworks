@@ -92,6 +92,10 @@ var cut: Plane = Plane():
 ## tell it still holds (EditVerbs.brick_at). Hiding by hand clears that
 ## answer itself (EditVerbs.apply_hidden).
 var revision: int = 0
+## Round every box ever put in since the last clear, in cells, low corner
+## and high (exclusive): where a ray can meet anything at all. Not made
+## smaller as bricks go, so it may be roomier than what stands.
+var _extent: PackedInt32Array = PackedInt32Array()
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -738,36 +742,160 @@ func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
 	revision += 1
 	_boxes[brick_id] = packed
 	_bounds[brick_id] = _bound_of(packed)
+	_reach_round(_bounds[brick_id])
 	var rows: Array = _rows_of(packed, _bounds[brick_id]) \
 		if packed.size() > ROWS_FROM * 6 else []
 	if rows.is_empty():
 		_rows.erase(brick_id)
 	else:
 		_rows[brick_id] = rows
-	var seen: Dictionary = {}
-	var n: int = 0
-	while n < packed.size():
-		var lo_x: int = packed[n]
-		var lo_y: int = packed[n + 1]
-		var lo_z: int = packed[n + 2]
-		var hi_x: int = packed[n + 3]
-		var hi_y: int = packed[n + 4]
-		var hi_z: int = packed[n + 5]
-		n += 6
-		for bx: int in range(_floor_div(lo_x, BUCKET), _floor_div(hi_x - 1, BUCKET) + 1):
-			for by: int in range(_floor_div(lo_y, BUCKET), _floor_div(hi_y - 1, BUCKET) + 1):
-				for bz: int in range(_floor_div(lo_z, BUCKET), _floor_div(hi_z - 1, BUCKET) + 1):
-					seen[Vector3i(bx, by, bz)] = true
-	var flat: Dictionary = {}
-	for key: Vector3i in seen:
-		var here: PackedInt64Array = _bucket.get(key, PackedInt64Array())
-		here.append(brick_id)
-		_bucket[key] = here
-		flat[Vector2i(key.x, key.z)] = true
-	for key: Vector2i in flat:
-		var column: PackedInt64Array = _column_bucket.get(key, PackedInt64Array())
-		column.append(brick_id)
-		_column_bucket[key] = column
+	_into_buckets(brick_id, _bounds[brick_id])
+
+
+## A brick's cover as the lattice holds it, [its boxes, their bound, its
+## rows], to be put back by [method occupy_moved] once it has been let go
+## of: what a move of a selection takes out before it asks where the
+## selection may go.
+func cover_of(brick_id: int) -> Array:
+	return [_boxes.get(brick_id, PackedInt32Array()), _bounds.get(brick_id, PackedInt32Array()),
+		_rows.get(brick_id, [])]
+
+
+## Put a brick in by a cover it had ([method cover_of]), moved [param by]
+## whole cells: a part moved without turning covers the same cells, moved.
+## Its boxes are moved, and its bound and rows (laid out relative to their
+## low corner) carried over, rather than worked out again from the part:
+## for a Technic part, a cover of hundreds of boxes, that was most of a
+## millisecond, and a move of a selection of thousands of them, its undo
+## and its redo did it for each part.
+func occupy_moved(brick_id: int, cover: Array, by: Vector3i) -> void:
+	var packed: PackedInt32Array = cover[0]
+	if by != Vector3i.ZERO:
+		packed = moved_by(packed, by)
+	revision += 1
+	_boxes[brick_id] = packed
+	var bound: PackedInt32Array = cover[1]
+	if bound.size() < 6:
+		bound = _bound_of(packed)
+	elif by != Vector3i.ZERO:
+		bound = moved_by(bound, by)
+	_bounds[brick_id] = bound
+	_reach_round(bound)
+	var rows: Array = cover[2]
+	if rows.is_empty():
+		_rows.erase(brick_id)
+	else:
+		_rows[brick_id] = [int(rows[0]) + by.y, int(rows[1]) + by.z, rows[2], rows[3], rows[4],
+			rows[5], rows[6]]
+	_into_buckets(brick_id, bound)
+
+
+## Move a brick that is in by whole cells, as [method occupy_moved] puts
+## one in: its boxes moved, its bound and rows carried over, and only the
+## buckets it leaves and the ones it comes into changed. A stud's move
+## leaves most of a part's buckets as they were, and an undo of a move of
+## thousands of parts let go of every one and took it again.
+func shift(brick_id: int, by: Vector3i) -> void:
+	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
+	var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+	if packed.is_empty() or bound.size() < 6:
+		var cover: Array = cover_of(brick_id)
+		release(brick_id)
+		occupy_moved(brick_id, cover, by)
+		return
+	if by == Vector3i.ZERO:
+		return
+	revision += 1
+	var moved: PackedInt32Array = moved_by(bound, by)
+	_rebucket(brick_id, bound, moved)
+	_boxes[brick_id] = moved_by(packed, by)
+	_bounds[brick_id] = moved
+	_reach_round(moved)
+	var rows: Array = _rows.get(brick_id, [])
+	if not rows.is_empty():
+		_rows[brick_id] = [int(rows[0]) + by.y, int(rows[1]) + by.z, rows[2], rows[3], rows[4],
+			rows[5], rows[6]]
+
+
+## [param brick_id] out of the buckets and columns bound [param was] reaches
+## and [param now] does not, and into those [param now] reaches and [param
+## was] did not.
+func _rebucket(brick_id: int, was: PackedInt32Array, now: PackedInt32Array) -> void:
+	var a: Array = _bucket_span(was)
+	var b: Array = _bucket_span(now)
+	for side: int in 2:
+		var from: Array = a if side == 0 else b
+		var other: Array = b if side == 0 else a
+		for bx: int in range(from[0], from[3] + 1):
+			var x_in: bool = bx >= other[0] and bx <= other[3]
+			for bz: int in range(from[2], from[5] + 1):
+				var z_in: bool = x_in and bz >= other[2] and bz <= other[5]
+				for by: int in range(from[1], from[4] + 1):
+					if z_in and by >= other[1] and by <= other[4]:
+						continue
+					var key := Vector3i(bx, by, bz)
+					if side == 0:
+						_take_out(_bucket, key, brick_id)
+					else:
+						var here: PackedInt64Array = _bucket.get(key, PackedInt64Array())
+						_bucket.erase(key)
+						here.append(brick_id)
+						_bucket[key] = here
+				if z_in:
+					continue
+				var flat := Vector2i(bx, bz)
+				if side == 0:
+					_take_out(_column_bucket, flat, brick_id)
+				else:
+					var column: PackedInt64Array = _column_bucket.get(flat, PackedInt64Array())
+					_column_bucket.erase(flat)
+					column.append(brick_id)
+					_column_bucket[flat] = column
+
+
+## The buckets a bound reaches, low and high on each axis, both inclusive.
+static func _bucket_span(bound: PackedInt32Array) -> Array:
+	return [_floor_div(bound[0], BUCKET), _floor_div(bound[1], BUCKET),
+		_floor_div(bound[2], BUCKET), _floor_div(bound[3] - 1, BUCKET),
+		_floor_div(bound[4] - 1, BUCKET), _floor_div(bound[5] - 1, BUCKET)]
+
+
+## [param brick_id] into every bucket its bound reaches, and every column.
+##
+## By the bound, not box by box: a bucket holds every brick that might have
+## a box in it, and whoever reads one tests the boxes. Found box by box, a
+## Technic part's cover of hundreds of boxes was hundreds of bucket keys
+## worked out and merged, at every put in and every let go: on a 4,139-part
+## set (305,648 boxes) two and a half seconds for the lot.
+func _into_buckets(brick_id: int, bound: PackedInt32Array) -> void:
+	if bound.size() < 6:
+		return
+	for bx: int in range(_floor_div(bound[0], BUCKET), _floor_div(bound[3] - 1, BUCKET) + 1):
+		for bz: int in range(_floor_div(bound[2], BUCKET), _floor_div(bound[5] - 1, BUCKET) + 1):
+			for by: int in range(_floor_div(bound[1], BUCKET), _floor_div(bound[4] - 1, BUCKET) + 1):
+				var key := Vector3i(bx, by, bz)
+				var here: PackedInt64Array = _bucket.get(key, PackedInt64Array())
+				# Out of the dictionary while it grows, so it grows in place
+				# rather than being copied whole first (_take_out).
+				_bucket.erase(key)
+				here.append(brick_id)
+				_bucket[key] = here
+			var flat := Vector2i(bx, bz)
+			var column: PackedInt64Array = _column_bucket.get(flat, PackedInt64Array())
+			_column_bucket.erase(flat)
+			column.append(brick_id)
+			_column_bucket[flat] = column
+
+
+## [param brick_id] out of every bucket and column its bound reaches.
+func _out_of_buckets(brick_id: int, bound: PackedInt32Array) -> void:
+	if bound.size() < 6:
+		return
+	for bx: int in range(_floor_div(bound[0], BUCKET), _floor_div(bound[3] - 1, BUCKET) + 1):
+		for bz: int in range(_floor_div(bound[2], BUCKET), _floor_div(bound[5] - 1, BUCKET) + 1):
+			for by: int in range(_floor_div(bound[1], BUCKET), _floor_div(bound[4] - 1, BUCKET) + 1):
+				_take_out(_bucket, Vector3i(bx, by, bz), brick_id)
+			_take_out(_column_bucket, Vector2i(bx, bz), brick_id)
 
 
 ## Which bricks these boxes would run into.
@@ -781,7 +909,7 @@ func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 	var found: Dictionary = {}
 	var mine: PackedInt32Array = _bound_of(packed)
 	var plain: bool = _plain(packed)
-	for other: int in _near(packed):
+	for other: int in _near(mine):
 		if other == ignore or skip.has(other):
 			continue
 		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
@@ -807,7 +935,9 @@ func near_bounds(packed: PackedInt32Array, ignore: int = 0) -> PackedInt64Array:
 func collides_boxes(packed: PackedInt32Array, ignore: int = 0) -> bool:
 	var mine: PackedInt32Array = _bound_of(packed)
 	var plain: bool = _plain(packed)
-	for other: int in _near(packed):
+	# The buckets of the bound: a bucket holds whatever might reach into it
+	# (_into_buckets), and the boxes are what is tested.
+	for other: int in _near(mine):
 		if other == ignore:
 			continue
 		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
@@ -1104,23 +1234,7 @@ func release(brick_id: int) -> void:
 		_boxes.erase(brick_id)
 		_bounds.erase(brick_id)
 		return
-	var seen: Dictionary = {}
-	var n: int = 0
-	while n < packed.size():
-		for bx: int in range(_floor_div(packed[n], BUCKET),
-				_floor_div(packed[n + 3] - 1, BUCKET) + 1):
-			for by: int in range(_floor_div(packed[n + 1], BUCKET),
-					_floor_div(packed[n + 4] - 1, BUCKET) + 1):
-				for bz: int in range(_floor_div(packed[n + 2], BUCKET),
-						_floor_div(packed[n + 5] - 1, BUCKET) + 1):
-					seen[Vector3i(bx, by, bz)] = true
-		n += 6
-	var flat: Dictionary = {}
-	for key: Vector3i in seen:
-		_take_out(_bucket, key, brick_id)
-		flat[Vector2i(key.x, key.z)] = true
-	for key: Vector2i in flat:
-		_take_out(_column_bucket, key, brick_id)
+	_out_of_buckets(brick_id, _bounds.get(brick_id, _bound_of(packed)))
 	_boxes.erase(brick_id)
 	_bounds.erase(brick_id)
 
@@ -1135,13 +1249,16 @@ static func _take_out(buckets: Dictionary, key: Variant, brick_id: int) -> void:
 	if here == null:
 		return
 	var list: PackedInt64Array = here
+	here = null
+	# Out of the dictionary while it changes, so it changes in place: held
+	# by the dictionary too, the list was copied whole before each remove,
+	# and a part let go of copied every bucket and column it was in.
+	buckets.erase(key)
 	var at: int = list.find(brick_id)
 	while at >= 0:
 		list.remove_at(at)
 		at = list.find(brick_id, at)
-	if list.is_empty():
-		buckets.erase(key)
-	else:
+	if not list.is_empty():
 		buckets[key] = list
 
 
@@ -1223,6 +1340,7 @@ func clear() -> void:
 	_column_bucket.clear()
 	_bounds.clear()
 	_rows.clear()
+	_extent = PackedInt32Array()
 	unseen.clear()
 	see_through.clear()
 	ahead = {}
@@ -1240,7 +1358,20 @@ func copy_for_reading() -> BrickLattice:
 	copy._bucket = _bucket.duplicate()
 	copy._bounds = _bounds.duplicate()
 	copy._rows = _rows.duplicate()
+	copy._extent = _extent
 	return copy
+
+
+## [member _extent] grown round a box, low corner and high.
+func _reach_round(bound: PackedInt32Array) -> void:
+	if bound.size() < 6:
+		return
+	if _extent.is_empty():
+		_extent = bound.duplicate()
+		return
+	for axis: int in 3:
+		_extent[axis] = mini(_extent[axis], bound[axis])
+		_extent[axis + 3] = maxi(_extent[axis + 3], bound[axis + 3])
 
 
 ## The height a part would rest at in this column: one cell above the
@@ -1468,7 +1599,47 @@ func raycast(origin: Vector3, direction: Vector3, max_distance: float = 20000.0)
 	var dir: Vector3 = direction.normalized()
 	if dir.length_squared() < 0.5:
 		return hit
+	# Only the stretch of the line through what was ever filled can meet
+	# anything: marched from a cell before it, and given up past it. From
+	# the eye, the march went cell by cell through the air to the model,
+	# and through the air beyond it to its 20,000th cell on a line that
+	# missed, every frame the view moved under a still pointer.
+	if _extent.is_empty():
+		return hit
+	var room := AABB(Vector3(_extent[0], _extent[1], _extent[2]) * CELL,
+		Vector3(_extent[3] - _extent[0], _extent[4] - _extent[1],
+			_extent[5] - _extent[2]) * CELL).grow(CELL * 2.0)
+	var span: Vector2 = _through(room, origin, dir)
+	if span.x > span.y or span.y < 0.0 or span.x > max_distance:
+		return hit
+	var skipped: float = maxf(span.x - CELL * 2.0, 0.0)
+	max_distance = minf(max_distance, span.y + CELL * 2.0) - skipped
+	var met: Hit = _march(origin + dir * skipped, dir, max_distance)
+	met.distance += skipped
+	return met
 
+
+## Where a line from [param origin] along [param dir] enters and leaves
+## [param box]: (in, out) along it, in out of order when it misses.
+static func _through(box: AABB, origin: Vector3, dir: Vector3) -> Vector2:
+	var near: float = -INF
+	var far: float = INF
+	for axis: int in 3:
+		var lo: float = box.position[axis]
+		var hi: float = box.end[axis]
+		if absf(dir[axis]) < 1e-9:
+			if origin[axis] < lo or origin[axis] > hi:
+				return Vector2(1.0, 0.0)
+			continue
+		var a: float = (lo - origin[axis]) / dir[axis]
+		var b: float = (hi - origin[axis]) / dir[axis]
+		near = maxf(near, minf(a, b))
+		far = minf(far, maxf(a, b))
+	return Vector2(near, far)
+
+
+func _march(origin: Vector3, dir: Vector3, max_distance: float) -> Hit:
+	var hit := Hit.new()
 	var cell: Vector3i = to_cell(origin)
 	var step := Vector3i(
 		1 if dir.x > 0.0 else -1,

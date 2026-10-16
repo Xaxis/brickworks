@@ -144,6 +144,14 @@
       "tests": []
     },
     {
+      "id": "cli:big models stay fast",
+      "kind": "cli",
+      "entry": "src/dev/bigmodel_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",

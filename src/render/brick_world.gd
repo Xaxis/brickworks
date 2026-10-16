@@ -799,6 +799,10 @@ func _flush() -> void:
 
 
 func _rebuild(batch: Batch, key: String) -> void:
+	# Written as usual, a batch laid out for a reveal would draw the wrong
+	# bricks at the next count: whatever writes it ends the reveal first.
+	if not batch.ranks.is_empty():
+		_stop_reveal()
 	var count: int = batch.brick_ids.size()
 	_fresh_slots(batch, count)
 	if count == 0:
@@ -937,6 +941,9 @@ var _reveal_rank: Dictionary = {}
 var _reveal_order: PackedInt64Array = PackedInt64Array()
 ## The batches holding bricks still to come.
 var _revealing: Array[Batch] = []
+## The order the timeline is showing by ([method reveal_upto]), by the key
+## it gave it; -1 for none, or for the build animation's.
+var _reveal_key: int = -1
 
 
 func is_revealing() -> bool:
@@ -951,6 +958,7 @@ func begin_reveal(order: PackedInt64Array) -> void:
 	# whole, so one waiting to be rebuilt is not rebuilt first as well: the
 	# rest are, at the end.
 	show_only({})
+	_reveal_key = -1
 	_reveal_order = PackedInt64Array()
 	for brick_id: int in order:
 		var brick: Brick = get_brick(brick_id)
@@ -960,6 +968,61 @@ func begin_reveal(order: PackedInt64Array) -> void:
 		_reveal_order.append(brick_id)
 		brick.hidden = true
 	if _reveal_order.is_empty():
+		if not _dirty.is_empty():
+			_flush()
+		return
+	_write_revealing()
+
+
+## The timeline's way of showing a model a step at a time: the first
+## [param count] bricks of [param order] on show and the rest of it hidden,
+## everything else as it was; [param key] names the order, a new one each
+## time it is worked out. The first time for an order every batch is written
+## in that order, as [method begin_reveal] writes it; after that a step,
+## forwards or back, is a count raised or lowered in each batch holding
+## bricks of the order, and nothing is written again. It was show_only,
+## every brick asked whether it was on show and every batch that held one
+## that changed written again whole: a step of a 5,025-part set was most of
+## a tenth of a second here, more in a browser.
+##
+## False, with nothing changed, under a cut or x-ray, which the writing in
+## order does not draw: the caller shows the step by [method show_only].
+## Anything that changes a batch of the order ends it ([signal
+## reveal_ended]), everything on show, and the caller shows the step again.
+func reveal_upto(order: PackedInt64Array, count: int, key: int) -> bool:
+	if _cut_on or not _xray.is_empty():
+		return false
+	if key != _reveal_key or _reveal_order.is_empty():
+		show_only({})
+		# Ranked by the place in the order, gaps and all, so a count of the
+		# order is a count of each batch's ranks.
+		_reveal_order = order
+		for n: int in order.size():
+			var brick: Brick = get_brick(order[n])
+			if brick == null or _reveal_rank.has(order[n]):
+				continue
+			_reveal_rank[order[n]] = n
+			brick.hidden = true
+		_write_revealing()
+		_reveal_key = key
+	for batch: Batch in _revealing:
+		var upto: int = batch.ranks.bsearch(count)
+		if upto == batch.revealed:
+			continue
+		for n: int in range(mini(upto, batch.revealed), maxi(upto, batch.revealed)):
+			var brick: Brick = _bricks.get(_reveal_order[batch.ranks[n]])
+			if brick != null:
+				brick.hidden = n >= upto
+		batch.revealed = upto
+		batch.multimesh.visible_instance_count = batch.shown + upto
+	return true
+
+
+## Every batch holding bricks of [member _reveal_order] written in its
+## order, those not of it first, and only those on show drawn.
+func _write_revealing() -> void:
+	if _reveal_rank.is_empty():
+		_reveal_order = PackedInt64Array()
 		if not _dirty.is_empty():
 			_flush()
 		return
@@ -1031,6 +1094,7 @@ func _touching_brick(brick_id: int) -> void:
 
 
 func _stop_reveal() -> void:
+	_reveal_key = -1
 	if _reveal_order.is_empty():
 		return
 	for batch: Batch in _revealing:

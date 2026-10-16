@@ -92,6 +92,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
+  On a big model an undo or redo is the parts' own work and nothing more: a
+  part moved by whole cells (a nudge, its undo and redo) has its lattice cover
+  moved (`BrickLattice.shift`, `occupy_moved`), not worked out again from the
+  part, and a part taken off carries its cover in the step for the undo that
+  puts it back; the step an undo or redo leaves newest is `Builder.settled`,
+  so `Assemblies.after_edit` does not match every sub-model copy again.
+  42082-1 (4,139 parts here): Ctrl-A, D, Ctrl-Z took 2.8 s and Ctrl-Shift-Z
+  6.8 s headless, now 0.5 s each; the move 12.6 s, now 1.4 s (`bigmodel`
+  probe; docs/CADTASK.md). A part shifted by whole cells leaves only the
+  buckets it no longer reaches and joins only the new ones
+  (`BrickLattice._rebucket`); the probe checks every part's cover against its
+  part's own after the moves.
 - `the ghost`: the part about to go down is drawn in its own colour, shaded,
   translucent; refused, it is red and striped (`src/render/ghost.gdshader`). It
   was 55% green, so a green brick's ghost and the colour about to be placed
@@ -477,7 +489,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   another copy of the same definition (`Wing#2`), and after any edit the other
   copies are built again from the edited one, mirrored where they were
   mirrored, in the same undo step (`Assemblies.after_edit`, matched by
-  `best_match`). Make unique cuts a copy loose (a session's `make_unique`,
+  `best_match`). An assembly every part of which the edit moved alike (all of
+  it nudged or turned) is the shape it was, and its copies are left alone; an
+  undo or redo brings its copies' steps with it and builds none again. The
+  pass reads the model once (`Assemblies._begin_pass`), not once an assembly. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,

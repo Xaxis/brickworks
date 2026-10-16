@@ -307,6 +307,7 @@ func undo() -> bool:
 	var back: Dictionary = _apply(step)
 	back["words"] = words
 	_redo.append(back)
+	settled = _history.back() if not _history.is_empty() else {}
 	# What an undo took away is no longer selected: an outline round
 	# nothing, and a Delete that finds nothing to delete.
 	_living_selection()
@@ -321,8 +322,16 @@ func redo() -> bool:
 	if step.has("words"):
 		again["words"] = step["words"]
 	_history.append(again)
+	settled = again
 	_living_selection()
 	return true
+
+
+## The newest step of the history when an undo or a redo left it newest:
+## what followed from it when it was made (the other copies of an
+## assembly, Assemblies.after_edit) is in it already, so there is nothing
+## to follow up. Anything newer is not it.
+var settled: Dictionary = {}
 
 
 ## How many parts the next undo (or with [param again], redo) changes: a
@@ -364,6 +373,13 @@ func _apply(step: Dictionary) -> Dictionary:
 			return step
 		var previous: Transform3D = was.transform
 		var to: Transform3D = step["transform"]
+		# Moved without turning by whole cells, as a nudge and its undo are:
+		# its cover moved, not worked out again from the part.
+		var cells: Variant = _cells_moved(previous, to)
+		if cells != null and not lattice.boxes_of(moving).is_empty():
+			world.move_brick(moving, to)
+			lattice.shift(moving, cells)
+			return {"undo": "move", "brick": moving, "transform": previous}
 		lattice.release(moving)
 		world.move_brick(moving, to)
 		lattice.occupy_boxes(moving,
@@ -442,6 +458,7 @@ func _apply(step: Dictionary) -> Dictionary:
 			"color": brick.color_code,
 			"transform": brick.transform,
 			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
+			"cover": lattice.cover_of(brick_id),
 		}
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -454,8 +471,14 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.get_brick(new_id).group = str(step.get("group", ""))
 		world.get_brick(new_id).unit = str(step.get("unit", ""))
 		world.get_brick(new_id).step = int(step.get("step", -1))
-		lattice.occupy_boxes(new_id,
-			boxes_for(library.mesh_for(part_id), at))
+		# Put back where it was taken off: the cover it had then, kept with
+		# the step, rather than worked out again from the part.
+		var cover: Variant = step.get("cover")
+		if cover is Array and not ((cover as Array)[0] as PackedInt32Array).is_empty():
+			lattice.occupy_moved(new_id, cover, Vector3i.ZERO)
+		else:
+			lattice.occupy_boxes(new_id,
+				boxes_for(library.mesh_for(part_id), at))
 		# The brick that comes back is a new id. Steps further back that
 		# name the one that went — a paint before a swap, a move before a
 		# removal — are read through this, or undoing past it did nothing.
@@ -637,7 +660,8 @@ func remove_selection() -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
+			"cover": lattice.cover_of(brick_id)})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)
@@ -659,7 +683,7 @@ func move_selection(by: Vector3i) -> int:
 		return 0
 	var shift: Vector3 = BrickLattice.to_ldu(by)
 	return _reposition(func(at: Transform3D) -> Transform3D:
-		return Transform3D(at.basis, at.origin + shift))
+		return Transform3D(at.basis, at.origin + shift), "", by)
 
 
 ## Turn the selection a quarter at a time about the stud nearest its
@@ -802,6 +826,22 @@ func _turn_state(ids: PackedInt64Array) -> String:
 	return "|".join(parts)
 
 
+## How many whole cells [param to] is from [param from] when it is the same
+## turn moved by whole cells, so the part covers the same cells moved
+## (BrickLattice.shift); null for anything else.
+static func _cells_moved(from: Transform3D, to: Transform3D) -> Variant:
+	if from.basis != to.basis:
+		return null
+	var by: Vector3 = (to.origin - from.origin) / BrickLattice.CELL
+	var cells := Vector3i(roundi(by.x), roundi(by.y), roundi(by.z))
+	var off: Vector3 = (by - Vector3(cells)).abs()
+	if maxf(off.x, maxf(off.y, off.z)) > 0.001:
+		return null
+	if BrickLattice.to_cell(to.origin) != BrickLattice.to_cell(from.origin) + cells:
+		return null
+	return cells
+
+
 ## A transform with the arithmetic's dust taken off: a turned basis put
 ## back on the axes it was on, and a position to the thousandth of an LDU
 ## LDraw writes. Turned a right angle four times, it drifts otherwise.
@@ -814,16 +854,20 @@ static func _tidy(at: Transform3D, square: bool) -> Transform3D:
 
 ## Put every selected brick where ``to`` says, as one step, or none of
 ## them if any would go through another brick or the floor.
-func _reposition(to: Callable, words: String = "") -> int:
+func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
 
 	# Out of the lattice first, so the selection does not collide with
-	# where it used to be.
+	# where it used to be. A move by whole cells keeps each cover, to put
+	# back moved (BrickLattice.occupy_moved).
 	var was: Dictionary = {}
+	var covers: Dictionary = {}
 	for brick_id: int in alive:
 		was[brick_id] = world.get_brick(brick_id).transform
+		if by_cells != null:
+			covers[brick_id] = lattice.cover_of(brick_id)
 		lattice.release(brick_id)
 
 	var landing: Dictionary = {}
@@ -831,8 +875,11 @@ func _reposition(to: Callable, words: String = "") -> int:
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to_here: Transform3D = to.call(brick.transform)
-		var packed: PackedInt32Array = boxes_for(
-			library.mesh_for(brick.part_id), to_here)
+		var shifted: bool = by_cells != null \
+			and not (covers[brick_id][0] as PackedInt32Array).is_empty() \
+			and _cells_moved(brick.transform, to_here) == by_cells
+		var packed: PackedInt32Array = BrickLattice.moved_by(covers[brick_id][0], by_cells) \
+			if shifted else boxes_for(library.mesh_for(brick.part_id), to_here)
 		# Through the floor if any box starts below it. The low corner
 		# is every sixth int, so the test is the box's bottom rather
 		# than every cell inside it.
@@ -845,13 +892,16 @@ func _reposition(to: Callable, words: String = "") -> int:
 		if blocked or lattice.collides_boxes(packed):
 			blocked = true
 			break
-		landing[brick_id] = {"at": to_here, "boxes": packed}
+		landing[brick_id] = {"at": to_here, "boxes": packed, "shifted": shifted}
 
 	if blocked:
 		for brick_id: int in alive:
-			lattice.occupy_boxes(brick_id, boxes_for(
-				library.mesh_for(world.get_brick(brick_id).part_id),
-				was[brick_id]))
+			if covers.has(brick_id) and not (covers[brick_id][0] as PackedInt32Array).is_empty():
+				lattice.occupy_moved(brick_id, covers[brick_id], Vector3i.ZERO)
+			else:
+				lattice.occupy_boxes(brick_id, boxes_for(
+					library.mesh_for(world.get_brick(brick_id).part_id),
+					was[brick_id]))
 		return 0
 
 	var steps: Array = []
@@ -859,7 +909,10 @@ func _reposition(to: Callable, words: String = "") -> int:
 		steps.append({"undo": "move", "brick": brick_id,
 			"transform": was[brick_id]})
 		world.move_brick(brick_id, landing[brick_id]["at"])
-		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
+		if bool(landing[brick_id]["shifted"]):
+			lattice.occupy_moved(brick_id, covers[brick_id], by_cells)
+		else:
+			lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
 	var step: Dictionary = {"undo": "group", "steps": steps}
 	if not words.is_empty():
 		step["words"] = words
@@ -1401,7 +1454,8 @@ func lift_selection() -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
+			"cover": lattice.cover_of(brick_id)})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)

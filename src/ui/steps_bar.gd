@@ -60,6 +60,10 @@ var _world: BrickWorld
 var _scenery: Dictionary = {}
 ## Every brick, in the order being shown.
 var _order: Array[int] = []
+## [member _order] as reveal_upto hands it out, and its key.
+var _order_packed := PackedInt64Array()
+var _order_key: int = 0
+var _reshowing: bool = false
 ## For the build order: where each step ends, as a count of bricks.
 var _step_ends: Array[int] = []
 ## Bricks on screen, from 0 (an empty baseplate) to all of them.
@@ -90,6 +94,13 @@ var _ghost_set: Dictionary = {}
 
 ## Which bricks should be on screen. Empty means the whole model.
 signal reveal(brick_ids: Dictionary)
+## In the orders that are a list of the bricks (the build order, as made,
+## the author's steps): the first [param count] of [param order] on screen
+## and the rest of it not, everything else as it is; [param key] is new
+## each time the order is worked out (Main shows it by
+## BrickWorld.reveal_upto, a count a batch). [signal reveal] says the
+## history's and the end's.
+signal reveal_upto(order: PackedInt64Array, count: int, key: int)
 ## Someone wants the booklet as a file. The bar does not write it: the
 ## pictures come from the main viewport, which the bar is sitting on.
 signal export_wanted()
@@ -283,6 +294,8 @@ func start(world: BrickWorld, library: PartLibrary,
 	_library = library
 	_world = world
 	_scenery = scenery
+	if not world.reveal_ended.is_connected(_on_reveal_ended):
+		world.reveal_ended.connect(_on_reveal_ended)
 	# A model with its author's steps opens in them; one without has none
 	# to show.
 	_authored = AuthorSteps.any(world, scenery)
@@ -491,6 +504,8 @@ func _reorder() -> void:
 			for brick_id: int in step.brick_ids:
 				_order.append(brick_id)
 			_step_ends.append(_order.size())
+	_order_packed = PackedInt64Array(_order)
+	_order_key += 1
 	_slider.max_value = _length()
 
 
@@ -655,13 +670,6 @@ func _show(count: int) -> void:
 	_shown = clampi(count, 0, _order.size())
 	_slider.set_value_no_signal(_shown)
 
-	# Everything up to here. Recomputed rather than kept, so going
-	# backwards is the same code path as forwards and cannot drift out of
-	# step with it.
-	var showing: Dictionary = _scenery.duplicate()
-	for n: int in _shown:
-		showing[_order[n]] = true
-
 	var of: String = "%d of %d bricks" % [_shown, _order.size()]
 	if _mode == 1 or _step_ends.is_empty():
 		_caption.text = of
@@ -690,7 +698,25 @@ func _show(count: int) -> void:
 				# to anyone following it with real bricks in their hands.
 				_pieces.text += "  (hold this one in place)"
 	_pieces.tooltip_text = _pieces.text
-	reveal.emit(showing)
+	# Everything up to here, as a count of the order: going backwards is the
+	# same path as forwards. It was every brick up to here gathered again,
+	# and every brick in the model asked whether it was among them.
+	reveal_upto.emit(_order_packed, _shown, _order_key)
+
+
+## The world stopped showing the order a count at a time: something changed
+## a batch of it, or a cut or x-ray went on. Shown again as it was, once
+## whatever changed it has finished.
+func _on_reveal_ended() -> void:
+	if visible and _mode != 2 and not _order.is_empty() and not _reshowing:
+		_reshowing = true
+		_reshow.call_deferred()
+
+
+func _reshow() -> void:
+	_reshowing = false
+	if visible and _mode != 2 and not _order.is_empty():
+		_show(_shown)
 
 
 ## The history up to the [param count]th change: what was standing then,

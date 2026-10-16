@@ -40,6 +40,15 @@ signal changed()
 ## The last history step after_edit looked at, so it looks once.
 var _seen: Dictionary = {}
 var _syncing: bool = false
+## The bricks under every path (path -> Array of bricks, in the world's
+## order), while a pass over many assemblies at once holds it
+## ([method _begin_pass]): one walk of the model in place of one an
+## assembly asked about. Moving all of a 5,025-part set with 160 copies of
+## sub-models walked the model twice for each, and then again for each of
+## its copies (2026-10-16). Dropped when the pass changes the model.
+var _under: Dictionary = {}
+var _passing: int = 0
+var _indexed: bool = false
 
 
 # -- paths --------------------------------------------------------------------
@@ -168,6 +177,11 @@ static func _sort(node: Item) -> void:
 
 ## Every assembly's path, outermost first.
 func paths() -> PackedStringArray:
+	if _passing > 0:
+		_index()
+		var listed := PackedStringArray(_under.keys())
+		listed.sort()
+		return listed
 	var found: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		var path: String = ""
@@ -217,6 +231,9 @@ func bricks_under(path: String) -> Array:
 	var out: Array = []
 	if path.is_empty():
 		return out
+	if _passing > 0:
+		_index()
+		return (_under.get(path, []) as Array).duplicate()
 	for brick: BrickWorld.Brick in world.bricks():
 		if not scenery.has(brick.id) and within(path_of(brick), path):
 			out.append(brick)
@@ -502,10 +519,15 @@ func after_edit() -> int:
 	if _syncing:
 		return 0
 	var step: Dictionary = builder.last_step()
-	if step.is_empty() or is_same(step, _seen):
+	# An undo or a redo changed the model by a step whose copies already
+	# followed it, inside it (Builder.settled): nothing to build again. Asked
+	# again, the undo of a move of everything matched every copy of every
+	# sub-model against the others once more, and the step left newest by
+	# an undo had its copies built again into it, long after it was made.
+	if step.is_empty() or is_same(step, _seen) or is_same(step, builder.settled):
 		return 0
 	_seen = step
-	var followed: Array = copies_follow(builder.touched_groups(step))
+	var followed: Array = copies_follow(builder.touched_groups(step), _moved_by(step))
 	var steps: Array = followed[0]
 	if not steps.is_empty():
 		builder.extend_last(steps)
@@ -519,7 +541,12 @@ func after_edit() -> int:
 ## change that caused them, so one undo takes back both. Claude's change
 ## to a selection gathers into a step of its own (Assistant.focus), which
 ## after_edit, looking once at the newest step, would not see again.
-func copies_follow(touched: Dictionary) -> Array:
+## [param moved]: brick id -> how a step moved it ([method _moved_by]). An
+## assembly all of whose parts moved alike is the same shape as before, and
+## is left as it is: moving everything matched every copy of every
+## sub-model against the others, and on a 4,139-part set that was most of
+## a second whenever the copies were alike, and seconds when some were not.
+func copies_follow(touched: Dictionary, moved: Dictionary = {}) -> Array:
 	var paths_touched: Dictionary = {}
 	for group: String in touched:
 		var path: String = ""
@@ -534,7 +561,10 @@ func copies_follow(touched: Dictionary) -> Array:
 	var steps: Array = []
 	var rebuilt: int = 0
 	_syncing = true
+	_begin_pass()
 	for path: String in order:
+		if not moved.is_empty() and _moved_alike(path, moved):
+			continue
 		var source: Array = content(path)
 		if source.is_empty():
 			continue
@@ -546,7 +576,10 @@ func copies_follow(touched: Dictionary) -> Array:
 			if bool(fit["exact"]) or int(fit["score"]) == 0:
 				continue
 			steps.append_array(realize(path, other, fit["at"], bool(fit["mirrored"])))
+			# The model changed: read again at the next question.
+			_indexed = false
 			rebuilt += 1
+	_end_pass()
 	_syncing = false
 	return [steps, rebuilt]
 
@@ -565,6 +598,7 @@ func unlike_copies(touched: Dictionary) -> Array:
 			path = join(path, segment)
 			paths_touched[path] = true
 	var out: Array = []
+	_begin_pass()
 	for path: String in paths_touched:
 		var source: Array = content(path)
 		if source.is_empty():
@@ -576,7 +610,89 @@ func unlike_copies(touched: Dictionary) -> Array:
 			var fit: Dictionary = best_match(source, target)
 			if not bool(fit["exact"]) and int(fit["score"]) != 0:
 				out.append([path, other])
+	_end_pass()
 	return out
+
+
+## How a history step moved each brick it moved and changed nothing else
+## of: brick id -> where it is now against where it was (now times was's
+## inverse). A brick the step names twice, or changes otherwise, is not in it.
+func _moved_by(step: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var spoiled: Dictionary = {}
+	_gather_moves(step, out, spoiled)
+	for brick_id: int in spoiled:
+		out.erase(brick_id)
+	return out
+
+
+func _gather_moves(step: Dictionary, out: Dictionary, spoiled: Dictionary) -> void:
+	if step.get("undo", "") == "group":
+		for inner: Variant in step.get("steps", []):
+			_gather_moves(inner, out, spoiled)
+		return
+	if not step.has("brick"):
+		return
+	var brick_id: int = builder._live(int(step["brick"]))
+	if step.get("undo", "") != "move" or out.has(brick_id):
+		spoiled[brick_id] = true
+		return
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		spoiled[brick_id] = true
+		return
+	out[brick_id] = brick.transform * (step["transform"] as Transform3D).affine_inverse()
+
+
+## Whether every part of the assembly at [param path] moved, and all the same
+## way: then it is the shape it was.
+func _moved_alike(path: String, moved: Dictionary) -> bool:
+	var first: Variant = null
+	for brick: BrickWorld.Brick in bricks_under(path):
+		var how: Variant = moved.get(brick.id)
+		if how == null:
+			return false
+		if first == null:
+			first = how
+		elif not (how as Transform3D).is_equal_approx(first as Transform3D):
+			return false
+	return first != null
+
+
+## A pass over many assemblies begins: [method bricks_under] and
+## [method paths] answer from one walk of the model, made at the first
+## question, until [method _end_pass]. Nested passes share it.
+func _begin_pass() -> void:
+	if _passing == 0:
+		_indexed = false
+	_passing += 1
+
+
+func _end_pass() -> void:
+	_passing = maxi(0, _passing - 1)
+	if _passing == 0:
+		_under.clear()
+		_indexed = false
+
+
+## The bricks under every path, as [method bricks_under] finds them one
+## path at a time: each brick under its own path and every path above it.
+func _index() -> void:
+	if _indexed:
+		return
+	_indexed = true
+	_under.clear()
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var path: String = ""
+		for segment: String in segments(path_of(brick)):
+			path = join(path, segment)
+			var listed: Variant = _under.get(path)
+			if listed == null:
+				listed = []
+				_under[path] = listed
+			(listed as Array).append(brick)
 
 
 ## The parts of an assembly and everything inside it: part, colour, where,
@@ -624,6 +740,10 @@ func best_match(a: Array, b: Array) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
 		"exact": false}
 	for mirrored: bool in [false, true]:
+		# Laid exactly as it is, a mirrored fit could only tie, and a tie
+		# does not replace it.
+		if mirrored and bool(best["exact"]):
+			break
 		var from: Array = a.map(func(item: Dictionary) -> Dictionary:
 			return _mirrored(item)) if mirrored else a
 		var found: Dictionary = _rigid_match(from, b)
@@ -669,8 +789,13 @@ func _rigid_match(a: Array, b: Array) -> Dictionary:
 						and bool(scored["colours"]) and not bool(best["colours"])):
 					best = scored
 					best["at"] = at
+				# Every part laid, in its colour: nothing can lay more, and a
+				# tie never replaces it, so the rest of the search would end
+				# with this one. It went on through every anchor's every
+				# mate, 400 tries, for each of a model's copies.
 				if int(best["score"]) == a.size() and bool(best["colours"]):
-					break
+					best["exact"] = a.size() == b.size()
+					return best
 			if tried > 400:
 				break
 	best["exact"] = int(best["score"]) == a.size() and a.size() == b.size() \

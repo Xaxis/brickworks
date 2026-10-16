@@ -266,13 +266,34 @@ func _ghost_on_page() -> Variant:
 	return [roundi(place.x), roundi(place.y), roundi(place.z)]
 
 
+## The sub-assemblies as the page is told of them twice a second: [their
+## own parts by path (Assemblies.parts_by_path), the box round each one's
+## own parts (Assemblies.own_bounds)], worked out again only when the model
+## or its history moved on. Worked out at every telling, they walked every
+## part of the model three times twice a second, in a browser, whatever
+## the model was doing: on a set of thousands of parts, frames of an
+## orbit and of a step of the timeline.
+func _page_assemblies() -> Array:
+	if _shell == null:
+		return [{}, {}]
+	var now: Array = [_world.revision, _store.scenery.size(), _builder.history_depth()]
+	var step: Dictionary = _builder.last_step()
+	if _page_tree.is_empty() or _page_tree[0] != now or not is_same(_page_tree[1], step):
+		_page_tree = [now, step, _shell.assemblies.parts_by_path(),
+			_shell.assemblies.own_bounds()]
+	return [_page_tree[2], _page_tree[3]]
+
+
+var _page_tree: Array = []
+
+
 ## Each sub-assembly's own parts, where they are on the page: path ->
 ## {x, y} in CSS pixels, the top middle of their bounds.
 func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	var out: Dictionary = {}
 	if _shell == null or _camera == null:
 		return out
-	var boxes: Dictionary = _shell.assemblies.own_bounds()
+	var boxes: Dictionary = _page_assemblies()[1]
 	for path: String in boxes:
 		var box: AABB = boxes[path]
 		var top := Vector3(box.get_center().x, box.end.y, box.get_center().z)
@@ -289,7 +310,7 @@ func _assembly_heights() -> Dictionary:
 	var out: Dictionary = {}
 	if _shell == null:
 		return out
-	var boxes: Dictionary = _shell.assemblies.own_bounds()
+	var boxes: Dictionary = _page_assemblies()[1]
 	for path: String in boxes:
 		var box: AABB = boxes[path]
 		out[path] = [box.position.y, box.end.y]
@@ -301,7 +322,12 @@ func _assembly_heights() -> Dictionary:
 ## clip's middle (JointSnap.End.middle). At most 160, in front of the view.
 func _joint_places(to_window: Transform2D, per_css: float) -> Array:
 	var out: Array = []
-	if _builder == null or _camera == null:
+	# Only with a part in hand, which is when one is put onto them
+	# (tools/web/technic_flow.mjs reads them so). Every connector of every
+	# part is worked out again after any change to the model, and on a
+	# Technic set of thousands of parts that was at every telling after
+	# each edit, a part in hand or not.
+	if _builder == null or _camera == null or _verbs == null or not _verbs.shows_ghost():
 		return out
 	for site: JointSnap.End in _builder.joint_sites():
 		if out.size() >= 160:
@@ -395,12 +421,13 @@ func _tell_page() -> void:
 		"triangles": _drawn[1],
 		"now": Time.get_ticks_msec(),
 		"slow": _slow_frames,
+		"busy": _busy_frames,
 		"told_ms": roundi(_told_page_us / 1000.0),
 		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),
 		# The sub-assemblies, path -> their own parts, and the one being
 		# edited: what tools/web/assembly_flow.mjs reads the tree by.
-		"tree": _shell.assemblies.parts_by_path() if _shell != null else {},
+		"tree": _page_assemblies()[0],
 		"editing": _shell.assemblies.entered if _shell != null else "",
 		# ...and where on the page each one's own parts are, since opening
 		# a model frames the view on it afresh.
@@ -1662,6 +1689,67 @@ func _enter_view() -> void:
 		_hovered_from = Vector2(-1, -1))
 
 
+## The timeline's bricks on screen, as a set: the history's, and the end's
+## ({}, the whole model as it was, hidden parts hidden).
+func _steps_revealed(ids: Dictionary) -> void:
+	# What the timeline has not put on yet is passed through by the
+	# pointer, as it is by the eye: a click on the step showing took
+	# the invisible part above it, and moving that a step moved the
+	# wrong one.
+	var ahead: Dictionary = {}
+	if not ids.is_empty():
+		for brick: BrickWorld.Brick in _world.bricks():
+			if not ids.has(brick.id):
+				ahead[brick.id] = true
+	_ahead_key = -1
+	_builder.lattice.ahead = ahead
+	if ids.is_empty() and _verbs != null:
+		_verbs.apply_hidden()
+	else:
+		_world.show_only(ids)
+
+
+## The timeline's bricks on screen as a count of its order (StepsBar.
+## reveal_upto): a count raised or lowered in each batch, and the parts
+## not yet put on, which the pointer passes through, changed by the step's
+## own parts rather than gathered again from the whole model.
+func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void:
+	_hovered_from = Vector2(-1, -1)
+	if not _world.reveal_upto(order, count, key):
+		# Under a cut or x-ray, which the world draws only from a set.
+		var showing: Dictionary = _store.scenery.duplicate()
+		for n: int in count:
+			showing[order[n]] = true
+		_steps_revealed(showing)
+		return
+	if key != _ahead_key:
+		_ahead_key = key
+		_ahead = {}
+		for n: int in range(count, order.size()):
+			_ahead[order[n]] = true
+	else:
+		for n: int in range(mini(count, _ahead_count), maxi(count, _ahead_count)):
+			if n >= count:
+				_ahead[order[n]] = true
+			else:
+				_ahead.erase(order[n])
+	_ahead_count = count
+	_builder.lattice.ahead = _ahead
+	# What the world's rebuild said before, when a step was a rebuild: a
+	# selection's outline round what is on show, and what is under a still
+	# pointer.
+	if not _builder.selection.is_empty():
+		_outline.show_selection(_builder.selection)
+	_look_under_again()
+
+
+## The parts the timeline has not put on yet, kept from step to step: the
+## order's key they are for, and the count they start at.
+var _ahead: Dictionary = {}
+var _ahead_key: int = -1
+var _ahead_count: int = 0
+
+
 ## Fetch the shared model and open it, read-only.
 func _view_shared() -> void:
 	_share_view.loading()
@@ -2373,21 +2461,8 @@ func _build_ui() -> void:
 	_steps = StepsBar.new()
 	# The end of the timeline shows the model again as it was, which is
 	# with whatever was hidden by hand still hidden.
-	_steps.reveal.connect(func(ids: Dictionary) -> void:
-		# What the timeline has not put on yet is passed through by the
-		# pointer, as it is by the eye: a click on the step showing took
-		# the invisible part above it, and moving that a step moved the
-		# wrong one.
-		var ahead: Dictionary = {}
-		if not ids.is_empty():
-			for brick: BrickWorld.Brick in _world.bricks():
-				if not ids.has(brick.id):
-					ahead[brick.id] = true
-		_builder.lattice.ahead = ahead
-		if ids.is_empty() and _verbs != null:
-			_verbs.apply_hidden()
-		else:
-			_world.show_only(ids))
+	_steps.reveal.connect(_steps_revealed)
+	_steps.reveal_upto.connect(_steps_revealed_upto)
 	_steps.export_wanted.connect(_booklet_wanted)
 	_steps.edit_wanted.connect(func(op: String) -> void: _shell.edit_steps(op))
 	# A part put down while the timeline shows the author's steps goes in
@@ -4313,6 +4388,13 @@ var _slow_frames: Array = []
 var _doing: String = ""
 const SLOW_FRAME_MS := 50.0
 const SLOW_FRAMES := 200
+## And every frame whose own work took over BUSY_FRAME_MS, as [when in
+## ticks, ms of work], the latest BUSY_FRAMES: half a frame at sixty, so a
+## browser check can hold an act to a sixtieth of a second
+## (tools/web/cad_frames.mjs), which the slow frames' 50 ms cannot.
+var _busy_frames: Array = []
+const BUSY_FRAME_MS := 8.0
+const BUSY_FRAMES := 400
 
 
 func _watch_own_frames() -> void:
@@ -4329,6 +4411,10 @@ func _watch_own_frames() -> void:
 		var spent: float = spent_us / 1000.0
 		var waited: float = ModelShot.gpu_wait_us / 1000.0
 		ModelShot.gpu_wait_us = 0
+		if spent - waited > BUSY_FRAME_MS:
+			_busy_frames.append([Time.get_ticks_msec(), snappedf(spent - waited, 0.1)])
+			if _busy_frames.size() > BUSY_FRAMES:
+				_busy_frames = _busy_frames.slice(-BUSY_FRAMES)
 		if spent > SLOW_FRAME_MS:
 			# What the status bar says it is busy with, if anything: the
 			# slow frames of a timeline or a booklet say which part of it.
@@ -5218,7 +5304,11 @@ func _cursor_state() -> Cursors.Situation:
 	now.aimed = _builder.has_preview()
 	now.can_place = _builder.can_place()
 	now.loading = _library.is_on_its_way(_builder.held_part)
-	if not now.in_hand:
+	# Only where it decides the pointer (Cursors.choose): asked every frame
+	# of a turn of the view, a line through the model under the pointer,
+	# which a held view or the view's last move puts aside anyway.
+	if not now.in_hand and not now.dragging() and now.tool.is_empty() \
+			and now.moment.is_empty() and not now.playing and not now.painting:
 		now.over_part = _brick_under_pointer() != 0
 	return now
 

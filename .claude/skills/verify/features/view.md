@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast -->
 
 ## Sub-features
 
@@ -515,7 +515,13 @@ picture the assistant is shown.
   that a save made with History open writes the model as it stands, and that it
   leaves nothing behind.
 - `build steps`: the model split into steps a person could follow in order,
-  nothing placed before what holds it. A model wider than 24 studs, of 400
+  nothing placed before what holds it. On the timeline (B) a step, forwards or
+  back, is a count raised or lowered in each batch (`StepsBar.reveal_upto`,
+  `BrickWorld.reveal_upto`): the batches are written once in the order, and a
+  step writes nothing again; under a cut or x-ray it falls back to
+  `show_only`. An edit to a batch of the order ends it (`reveal_ended`) and the
+  bar shows its step again. A step of 42082-1 was 50 to 58 ms headless, now
+  the frame's own ~7 ms (`bigmodel` probe). A model wider than 24 studs, of 400
   parts or more (`TILED_FROM`; a smaller one was "Part 1", one step on a page
   of its own), is built a
   region at a time (`Instructions.REGION`): one tile of its plan finished before
@@ -608,7 +614,33 @@ picture the assistant is shown.
   page's own events (Ctrl-A for the selection), every engine frame timed by a
   wrapped requestAnimationFrame with its WebGL time apart. Budgets 16.7 ms and
   33 ms. Judges nothing: the numbers are this box's under load, and a suite
-  check would compare ratios, never these.
+  check would compare ratios, never these. The browser rows also carry the
+  app's scripts apart from the engine (`scripts_max_ms`: the worst frame the
+  page's `window.brickworksState.busy` and `.slow` list, frames whose own
+  work, process to drawing, was over 8 and 50 ms; Main._watch_own_frames).
+- `big models stay fast` (`src/dev/bigmodel_probe.gd`, in `tools/check.sh`):
+  headless, so what is timed is the app's own work. Bare, it makes two models
+  of 1,000 and 5,000 parts (towers of four bricks in eight colours, fifty to a
+  sub-model, author's steps of ten), opens each as File, Open does, and makes
+  a right-drag orbit, Ctrl-A, D, Ctrl-Z, Ctrl-Shift-Z, Delete and Ctrl-Z, B and
+  Next, each by its key or click; the select, the move, its undo and redo and
+  the Delete twice, the quicker kept. It holds ratios, never times: an orbit
+  frame and a step of the timeline (and ten steps alone) no more than 3x from
+  1,000 to 5,000 parts, select all, the move, undo, redo, Delete and its undo
+  no more than 9x (linear is 5, quadratic 25), and the model asked what is
+  under the pointer at most 3 times in a 30-frame turn (the press). Main at
+  63cab62 fails it: the move 10.7x, its redo 12.4x and Delete's undo 14.6x
+  (sub-model copies matched again at every edit), and 30 asks a turn. Pass:
+  exit 0 and `bigmodel: every act grows no faster than the model`. With
+  `-- --profile PATH...` it opens real sets' files instead, judges nothing,
+  and prints where each act's time went: every handler of the builder's,
+  world's, timeline's and store's signals timed one by one, every node's
+  `_process` in the orbit, and the pieces of an edit and an undo
+  (`assemblies.copies_follow`, the lattice's let go, collide and put in, the
+  world's flush) timed alone. Not `--out=`: Main reads that as "export the
+  model and quit" (cadtask_frames hit the same). Results for 2026-10-16 are
+  in `bench/results/bigmodels-2026-10-16/` of the main checkout and
+  `docs/CADTASK.md`.
 - `the author's steps` (`src/assembly/author_steps.gd`, `AuthorSteps`): the
   steps a model's designer gave it in Studio, LDCad, LeoCAD or Bricksmith,
   kept and changed here. A file's `0 STEP` (and `0 ROTSTEP`) lines were read

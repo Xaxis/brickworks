@@ -1979,6 +1979,13 @@
       "entry": "tools/web/cad_frames.mjs",
       "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "big models stay fast",
+      "entry": "src/dev/bigmodel_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes",
+      "area": "view"
     }
   ]
 }
