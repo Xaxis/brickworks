@@ -492,7 +492,7 @@ def band(parts: int) -> tuple[int, int]:
 def brief(c: Candidate, plan: tuple[int, int]) -> str:
     """What the designer is asked: the subject in plain words, its style and its scale."""
     low, high = band(c.parts)
-    scale = (f"about {plan[0]} x {plan[1]} studs in plan" if plan[0] else "")
+    scale = (f"fitting in about {plan[0]} x {plan[1]} studs" if plan[0] else "")
     return (f"{clean_name(c.name)}, in the style of LEGO® {theme_words(c.theme)} sets: "
             + (f"{scale}, " if scale else "") + f"{low} to {high} pieces.")
 
