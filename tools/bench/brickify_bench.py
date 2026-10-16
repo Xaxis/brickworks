@@ -59,6 +59,11 @@ ARMS = ("smooth", "plain", "greedy", "outside")
 VIEWS_RES = 320
 HALF_STUD = 10.0  # LDU
 STUD = 20.0
+# A neutral of the model's (a grey, a black, a white: CIELAB chroma under this) laid in a colour
+# of chroma this or more has turned chromatic: a dark grey laid Reddish Brown (36.8), black
+# hair laid Dark Blue (27.4). Black itself (9.0) and the sand colours (15 to 16) do not count.
+NEUTRAL_CHROMA = 5.0
+CHROMATIC = 20.0
 
 
 # -- prepare and jobs -----------------------------------------------------------
@@ -704,6 +709,12 @@ def measure_one(model_dir: Path, size_dir: Path, lib: Library, palette_lab, pale
             de00 = ciede2000(srgb_to_lab(src_rgb), srgb_to_lab(mine))
             row["de_ok"] = float(de_ok.mean())
             row["de2000"] = float(de00.mean())
+            # The model's neutral surface laid in a strong colour, of all its neutral surface.
+            neutral = np.hypot(*srgb_to_lab(src_rgb)[:, 1:].T) < NEUTRAL_CHROMA
+            row["neutral_share"] = float(neutral.mean())
+            if neutral.any():
+                row["neutral_chromatic"] = float((np.hypot(*srgb_to_lab(mine[neutral])[:, 1:].T)
+                                                  >= CHROMATIC).mean())
         row.update(bond(arm, lib))
         out[arm_name] = row
     if coloured:
@@ -793,6 +804,9 @@ def do_pictures(args: argparse.Namespace) -> int:
     into.mkdir(parents=True, exist_ok=True)
     lib = Library(out, load_colours())
     only = set(args.only.split(",")) if args.only else None
+    arms = [a for a in ARMS if not args.arms or a in args.arms.split(",")]
+    before = Path(args.before) if args.before else None
+    before_lib = Library(before, load_colours()) if before else None
     d = np.array([-0.62, -0.42, -0.66])
     d /= np.linalg.norm(d)
     light = np.array([0.35, -0.8, -0.45])
@@ -822,24 +836,33 @@ def do_pictures(args: argparse.Namespace) -> int:
                     return np.tile(np.array([0.82, 0.82, 0.82]), (len(tri), 1))
                 return looks[1][looks[0].query(loc)[1]]
             panels = [("model", render(caster(src), src_colour, centre, radius, res, d, light))]
-            for arm_name in ARMS:
-                path = size_dir / f"{arm_name}.json"
-                if not path.exists():
-                    continue
+
+            def arm_panel(path, parts, said, src=src, flat=flat, centre=centre, radius=radius):
                 arm = json.loads(path.read_text())
                 if not arm.get("placed"):
                     # Nothing laid is a result too: an empty panel, said.
-                    panels.append((f"{arm_name}: nothing laid", np.full((res, res, 3), 255, dtype=np.uint8)))
-                    continue
-                tris, cols = build_mesh(arm, lib, stand=True)
+                    return (f"{said}: nothing laid", np.full((res, res, 3), 255, dtype=np.uint8))
+                tris, cols = build_mesh(arm, parts, stand=True)
                 if arm.get("align"):
                     sc = caster(src)
                     seen = np.concatenate([loc[hit] for hit, loc, _ in
                                            (cast(sc, centre, radius, v, 160) for v in view_dirs())])
                     tris = aligned(tris, seen, flat, centre, radius)
                 on_stand = " on a stand" if stand_of(arm)[0] else ""
-                panels.append((f"{arm_name}: {len(arm['placed']):,} parts{on_stand}",
-                               render(caster(tris), lambda tri, _l, cols=cols: cols[tri], centre, radius, res, d, light)))
+                return (f"{said}: {len(arm['placed']):,} parts{on_stand}",
+                        render(caster(tris), lambda tri, _l, cols=cols: cols[tri], centre, radius, res, d, light))
+            for arm_name in arms:
+                path = size_dir / f"{arm_name}.json"
+                if not path.exists():
+                    continue
+                if before is not None:
+                    # The same model and size laid before, beside each arm as it is now.
+                    then = before / model_dir.name / size_dir.name / f"{arm_name}.json"
+                    if then.exists():
+                        panels.append(arm_panel(then, before_lib, f"before, {arm_name}"))
+                    panels.append(arm_panel(path, lib, f"after, {arm_name}"))
+                else:
+                    panels.append(arm_panel(path, lib, arm_name))
             label = 26
             font = ImageFont.load_default(size=16)
             sheet = Image.new("RGB", (res * len(panels), res + label), 0xFFFFFF)
@@ -1053,8 +1076,9 @@ def do_report(args: argparse.Namespace) -> int:
         lines += [""] + header + rows4
     lines += ["", "### Each model", "",
               _line(["Model", "Studs", "Arm", "Parts", "Coverage", "Shaped", "IoU", "Chamfer", "Lost95", "Added95",
-                     "Normal (°)", "ΔE2000", "Check", "Pieces", "Stands", "Seams bridged", "Seconds"]),
-              "|" + "---|" * 17]
+                     "Normal (°)", "ΔE2000", "Neutral laid chromatic", "No element", "Check", "Pieces",
+                     "Stands", "Seams bridged", "Seconds"]),
+              "|" + "---|" * 19]
     for m in models:
         for s in sizes:
             for a in arms:
@@ -1068,7 +1092,8 @@ def do_report(args: argparse.Namespace) -> int:
                     f"{r['shaped_share']:.0%}", _fmt(r.get("m_iou"), ".3f"), _fmt(r.get("m_chamfer_studs"), ".2f"),
                     _fmt(r.get("m_lost95_studs"), ".2f"), _fmt(r.get("m_added95_studs"), ".2f"),
                     _fmt(r.get("m_normal_deg"), ".1f"),
-                    _fmt(r.get("m_de2000"), ".1f"), check, str(r["pieces"]),
+                    _fmt(r.get("m_de2000"), ".1f"), _fmt(r.get("m_neutral_chromatic"), ".1%"),
+                    f"{r['no_element_parts'] / max(1, r['parts']):.1%}", check, str(r["pieces"]),
                     ("on a stand" if r.get("on_stand") else "yes") if r.get("stands") else "no",
                     _fmt(r.get("m_seam_share"), ".0%"),
                     f"{r['seconds']:.1f}"]))
@@ -1119,6 +1144,8 @@ def main() -> int:
     p.add_argument("--only", default="")
     p.add_argument("--res", type=int, default=300)
     p.add_argument("--quality", type=int, default=80)
+    p.add_argument("--arms", default="", help="only these arms")
+    p.add_argument("--before", default="", help="an earlier run of the same models: each arm before, then after")
     p = sub.add_parser("report")
     p.add_argument("out")
     p.add_argument("--write", default="")

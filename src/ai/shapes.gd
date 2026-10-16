@@ -376,10 +376,15 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
 		plan.rejoin = bool(pattern.get("rejoin", keep_pieces))
+		plan.colour_shown = bool(pattern.get("colour_shown", false))
+		plan.sold_in = PackedInt32Array(pattern.get("sold_in", []))
 		plan.faces = faces
 		plan.mirror_of()
-		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
+		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall,
+			"ms": {}}
+		var clock: int = Time.get_ticks_msec()
 		plan.round_runs()
+		last["ms"]["rounds"] = Time.get_ticks_msec() - clock
 		last["rounds"] = plan.round_made.size()
 		last["round_runs"] = plan.round_said
 		# Before the sides are turned out and the surface is sloped: the plates
@@ -447,15 +452,21 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 						roundi(100.0 * float(covered[facing]))])
 			shells = held
 			plan.under_shells(shells)
+		clock = Time.get_ticks_msec()
 		if surface != "none":
 			plan.surface(surface)
+		last["ms"]["surface"] = Time.get_ticks_msec() - clock
+		clock = Time.get_ticks_msec()
 		plan.lay()
+		last["ms"]["core"] = Time.get_ticks_msec() - clock
+		clock = Time.get_ticks_msec()
 		# A model standing on legs is pieces at its foot that meet the body above
 		# only side by side: pruned first from the foot, a bunny on its feet kept
 		# its feet and lost the rest. Joined first, then pruned.
 		var stitched: bool = bool(pattern.get("stitch_first", false))
 		if stitched:
 			plan.stitch()
+		last["ms"]["stitch"] = Time.get_ticks_msec() - clock
 		# Pruned here, a teapot's spout and handle went without a word, and
 		# its coverage still read 98%.
 		if not keep_pieces:
@@ -1810,6 +1821,16 @@ class Plan extends RefCounted:
 	## its own first ways are spent (stitch): for a caller that keeps every
 	## piece, so what is not joined here is joined or said there.
 	var rejoin: bool = false
+	## A slope in the colour of the surface it stands for (_shown), not the
+	## stud above it: for a sculpt's grid, whose colours are its surface's.
+	## A design's bands keep the colour above, as they always have.
+	var colour_shown: bool = false
+	## With colours here, a slope the LEGO Group sells in none of them (by Rebrickable's
+	## elements) is not laid: the inverted 2 x 2 slope Brickify laid under
+	## overhangs, 3660a, has no element in any colour, so no colour of it can
+	## be bought.
+	var sold_in := PackedInt32Array()
+	var _sold_somewhere: Dictionary = {}
 	## A curved side laid on its side (lay_shell): its outside is the flank
 	## a person sees, and where it curves a curved slope fits as well as a
 	## cheese slope, the curved one.
@@ -3643,7 +3664,7 @@ class Plan extends RefCounted:
 			if entry[0] == pick["kind"] and int(entry[1]) == int(pick["length"]) \
 					and int(entry[2]) == int(pick["tall"]):
 				var id: String = str(entry[2 + wide])
-				if id.is_empty():
+				if id.is_empty() or not _sold(id):
 					return ""
 				var shape: Dictionary = Shapes.part(library, id, bool(pick["under"]))
 				if shape.is_empty() or int(shape["w"]) != wide \
@@ -3801,6 +3822,8 @@ class Plan extends RefCounted:
 								"under": under, "score": score, "inner": inner}
 			if best.is_empty():
 				continue
+			if colour_shown:
+				best["colour"] = _shown(best)
 			for n: int in int(best["length"]):
 				used[cell + (best["facing"] as Vector2i) * n] = true
 			var profile_of: Array = []
@@ -3812,6 +3835,38 @@ class Plan extends RefCounted:
 				var over: float = float(profile_of[n]) if n < profile_of.size() else 0.0
 				height[cell + (best["facing"] as Vector2i) * n] = int(best["y"]) + roundi(over)
 			picks.append(best)
+
+	## The colour a slope shows: the shape's own where the surface it stands
+	## for is, the top plate of each stud it covers (the lowest, under an
+	## overhang), the colour most of them are; a tie goes to the stud above.
+	## Coloured by the stud above it, a sculpt's patches ran down its flanks
+	## in the colour over them, and smooth matched a model's colours worse
+	## than plain bricks did (CIEDE2000 10.1 against 8.8 at 48 studs).
+	func _shown(pick: Dictionary) -> int:
+		var votes: Dictionary = {}
+		var facing: Vector2i = pick["facing"]
+		var y: int = pick["y"]
+		var high: int = mini(y + int(pick["tall"]), tall)
+		for n: int in int(pick["length"]):
+			var cell: Vector2i = (pick["cell"] as Vector2i) + facing * n
+			var c: int = -1
+			if bool(pick["under"]):
+				for j: int in range(maxi(y, 0), tall):
+					c = at(cell, j)
+					if c >= 0:
+						break
+			else:
+				for j: int in range(high - 1, -1, -1):
+					c = at(cell, j)
+					if c >= 0:
+						break
+			if c >= 0:
+				votes[c] = int(votes.get(c, 0)) + 1
+		var best: int = int(pick["colour"])
+		for c: Variant in votes:
+			if int(votes[c]) > int(votes.get(best, 0)):
+				best = int(c)
+		return best
 
 	## Whether the two studs falling from [param inner] (its top at
 	## [param top]) along [param out] from [param cell] are topped in its
@@ -4202,8 +4257,14 @@ class Plan extends RefCounted:
 		var refused: Dictionary = {}
 		var first_refused: Dictionary = {}
 		var again: bool = true
+		var clock: Dictionary = {"rounds": 0, "pieces": 0, "pair": 0, "unedge": 0, "rejoin": 0,
+			"rejoin_tries": 0}
+		Shapes.last["stitch"] = clock
 		for _round: int in 96:
+			clock["rounds"] = int(clock["rounds"]) + 1
+			var t: int = Time.get_ticks_msec()
 			var found: Array = pieces()
+			clock["pieces"] = int(clock["pieces"]) + Time.get_ticks_msec() - t
 			if found.size() <= 1:
 				break
 			var main: Dictionary = {}
@@ -4222,15 +4283,23 @@ class Plan extends RefCounted:
 				var keys: Array = []
 				for piece: Array in found.slice(1):
 					keys.append(_piece_key(piece) if rejoin else "")
+				t = Time.get_ticks_msec()
+				# The rest's plain parts mapped once a round, not once a piece
+				# tried: nothing changes until one joins, and then the round ends.
+				var plain: Dictionary = _plain_cells(main)
 				for n: int in keys.size():
-					if not first_refused.has(keys[n]) and _pair_across(found[n + 1], main):
+					if not first_refused.has(keys[n]) and _pair_across(found[n + 1], main, plain):
 						joined_one = true
 						break
+				clock["pair"] = int(clock["pair"]) + Time.get_ticks_msec() - t
+				t = Time.get_ticks_msec()
 				if not joined_one:
+					var edges: Dictionary = _edge_cells()
 					for n: int in keys.size():
-						if not first_refused.has(keys[n]) and _unedge(found[n + 1], main):
+						if not first_refused.has(keys[n]) and _unedge(found[n + 1], main, edges):
 							joined_one = true
 							break
+				clock["unedge"] = int(clock["unedge"]) + Time.get_ticks_msec() - t
 				if not joined_one and rejoin:
 					for key: Variant in keys:
 						first_refused[key] = true
@@ -4241,15 +4310,18 @@ class Plan extends RefCounted:
 				# neither of the first two and left out. A piece no way joined is
 				# not tried again: tried every round, a forty-stud bunny's few
 				# loose bits took its lay from 5 s to 23.
+				t = Time.get_ticks_msec()
 				if not joined_one and rejoin:
 					var before := Vector2i(found.size(), _bulk(found[0]))
 					for n: int in keys.size():
 						if refused.has(keys[n]):
 							continue
+						clock["rejoin_tries"] = int(clock["rejoin_tries"]) + 1
 						if _join(found[n + 1], main, before, true):
 							joined_one = true
 							break
 						refused[keys[n]] = true
+				clock["rejoin"] = int(clock["rejoin"]) + Time.get_ticks_msec() - t
 				# Once nothing more joins, what was refused is offered every way
 				# once more: joins since may have laid what it meets otherwise. A
 				# fox's haunch, refused before its legs were joined, was left out.
@@ -4347,8 +4419,8 @@ class Plan extends RefCounted:
 	## A plate or brick of [param piece] and one of the rest side by side, laid
 	## again as parts one of which reaches across, and the same at the mirror.
 	## Whether it was.
-	func _pair_across(piece: Array, main: Dictionary) -> bool:
-		var pair: Array = _pair(piece, main)
+	func _pair_across(piece: Array, main: Dictionary, cells: Dictionary = {}) -> bool:
+		var pair: Array = _pair(piece, main, cells)
 		if pair.is_empty():
 			return false
 		var twin: Array = _mirror_pair(pair)
@@ -4523,18 +4595,25 @@ class Plan extends RefCounted:
 				return m
 		return -1
 
-	## An edge part where [param piece] meets the rest, side by side at the
-	## same height, laid again as the plates or bricks of its studs, and its
-	## mirror with it, so the two can be stitched by plain parts. A wedge or a
-	## round part at the joint left a twenty-stud bunny's feet apart from it.
-	## Whether one was.
-	func _unedge(piece: Array, main: Dictionary) -> bool:
-		var by_cell: Dictionary = {}    ## Vector3i(x, y, z) -> index, its cells
+	## Every plate the plan's parts stand in, Vector3i(x, y, z) -> index: by
+	## the studs each covers in part, where it says.
+	func _edge_cells() -> Dictionary:
+		var by_cell: Dictionary = {}
 		for n: int in made.size():
 			var one: Dictionary = made[n]
 			for cell: Vector2i in one.get("_covers", one.get("_cells", [])):
 				for h: int in int(one.get("_h", 1)):
 					by_cell[Vector3i(cell.x, int(round(float(one["y"]))) + h, cell.y)] = n
+		return by_cell
+
+	## An edge part where [param piece] meets the rest, side by side at the
+	## same height, laid again as the plates or bricks of its studs, and its
+	## mirror with it, so the two can be stitched by plain parts. A wedge or a
+	## round part at the joint left a twenty-stud bunny's feet apart from it.
+	## Whether one was. [param cells] is [method _edge_cells], mapped once for
+	## every piece tried while nothing changes.
+	func _unedge(piece: Array, main: Dictionary, cells: Dictionary = {}) -> bool:
+		var by_cell: Dictionary = cells if not cells.is_empty() else _edge_cells()
 		var mine: Dictionary = {}
 		for n: int in piece:
 			mine[n] = true
@@ -4656,10 +4735,9 @@ class Plan extends RefCounted:
 			return true
 		return false
 
-	## A part of [param piece] and one of the rest side by side: the same
-	## height, colour and kind (studded plates or bricks), touching along an
-	## edge. [] when there is none.
-	func _pair(piece: Array, main: Dictionary) -> Array:
+	## The plain parts of [param main] by the plates they stand in, at their
+	## foot: Vector3i(x, y, z) -> index.
+	func _plain_cells(main: Dictionary) -> Dictionary:
 		var by_cell: Dictionary = {}
 		for n: Variant in main:
 			var one: Dictionary = made[n]
@@ -4667,6 +4745,14 @@ class Plan extends RefCounted:
 				continue
 			for cell: Vector2i in one["_cells"]:
 				by_cell[Vector3i(cell.x, int(round(float(one["y"]))), cell.y)] = n
+		return by_cell
+
+	## A part of [param piece] and one of the rest side by side: the same
+	## height, colour and kind (studded plates or bricks), touching along an
+	## edge. [] when there is none. [param cells] is [method _plain_cells],
+	## mapped once for every piece tried.
+	func _pair(piece: Array, main: Dictionary, cells: Dictionary = {}) -> Array:
+		var by_cell: Dictionary = cells if not cells.is_empty() else _plain_cells(main)
 		for n: int in piece:
 			var one: Dictionary = made[n]
 			if not _plain(one):
@@ -5067,6 +5153,22 @@ class Plan extends RefCounted:
 				if int((entry as Array)[0]) == 1 and int((entry as Array)[1]) == 1:
 					out.append(entry)
 		return out
+
+	## Whether the LEGO Group sells [param part] in any of [member sold_in], by
+	## Rebrickable's elements, under the number LDraw gives the part today;
+	## true when none are asked.
+	func _sold(part: String) -> bool:
+		if sold_in.is_empty() or library == null:
+			return true
+		if not _sold_somewhere.has(part):
+			var now: String = Shapes.current(library, part)
+			var found: bool = false
+			for code: int in sold_in:
+				if not library.element_for(now, code).is_empty():
+					found = true
+					break
+			_sold_somewhere[part] = found
+		return bool(_sold_somewhere[part])
 
 	## One layer of the core: by colour, a strip across the middle tying the
 	## two halves, one half laid and the other its mirror.
