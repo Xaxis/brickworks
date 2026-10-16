@@ -1015,6 +1015,14 @@
       "tests": []
     },
     {
+      "id": "lib:characters laid on joints",
+      "kind": "lib",
+      "entry": "src/ai/figure_pattern.gd",
+      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:claude's design is one undo step",
       "kind": "lib",
       "entry": "src/ai/claude_step.gd",

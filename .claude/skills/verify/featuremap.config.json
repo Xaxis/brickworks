@@ -1979,6 +1979,13 @@
       "entry": "tools/web/cad_frames.mjs",
       "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "characters laid on joints",
+      "entry": "src/ai/figure_pattern.gd",
+      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
+      "area": "assistant"
     }
   ]
 }

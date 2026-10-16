@@ -20,6 +20,8 @@
 ##   - plan_scale for a figure lays out the posed minifigure and the armatures,
 ##     and for a creature at a scale says it is built on joints all the same;
 ##   - search_parts names the joint parts for a limb, and once for a character;
+##   - submit_design sends one back once, with the figure pattern written out
+##     for it, and builds it when it comes again as it was;
 ##   - the review says which limb stands stiff and stacked;
 ##   - read_guide "shapes" is led, for a character, by what it is built of.
 extends SceneTree
@@ -165,10 +167,14 @@ func _run() -> void:
 
 	print("\nthe review")
 	_assistant.heard("A dark-brown statue of a man sits hunched forward on a rough block.", true)
-	var laid: String = _text(await _assistant.use_tool("submit_design", {"name": "Thinker",
-		"description": "a seated statue of a man", "floor": "none", "bricks": stacked}))
-	_ok(laid.contains("Built") or not laid.begins_with("Not applied"),
-		"the stacked statue is submitted: %s" % laid.left(120))
+	var statue_design: Dictionary = {"name": "Thinker", "description": "a seated statue of a man",
+		"floor": "none", "bricks": stacked}
+	var sent_back: String = _text(await _assistant.use_tool("submit_design", statue_design))
+	_ok(sent_back.begins_with("Not applied, this once") and sent_back.contains("\"pattern\": \"figure\""),
+		"the stacked statue is sent back once, with the figure pattern: %s" % sent_back.left(120))
+	var laid: String = _text(await _assistant.use_tool("submit_design", statue_design))
+	_ok(not laid.begins_with("Not applied"),
+		"submitted again as it was, it is built: %s" % laid.left(120))
 	var reviewed: String = _text(await _assistant.review(""))
 	_ok(reviewed.contains("Stiff, stacked limbs") and reviewed.contains("left arm")
 		and reviewed.contains("right arm"),

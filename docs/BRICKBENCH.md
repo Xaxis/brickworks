@@ -1559,6 +1559,81 @@ two subjects were not run again on the fixed code.
   they need `tools/build_exact.py` again (a built copy is in the round's scratch,
   `figjoints-a261/gen2/exact`).
 
+## 2026-10-16: characters laid on joints in one entry
+
+The last round's open question was why told characters still stacked: two of
+eight posed a limb. This round tests the two answers it proposed, together:
+**a body pattern that lays on an armature** (`{"pattern": "figure"}`: a person,
+a four-legged animal or a head on a neck, every limb, the head and the tail on a
+working joint, posed by words, its parts named to build on), and **a
+first-submit refusal**: a figure or creature submitted with nothing on a joint
+is sent back once, with that entry written out for its box and colour, and built
+as it is when it comes again. `src/dev/armature_probe.gd` proves both (82
+checks): each kind joined by BrickNet's labels and passed by the check, each
+joint turned by its pose and held through edits, the refusal once and never for
+a vehicle with its crew or a tower.
+
+The probe found one fault, and it was live: an outside design's name stayed as
+the brief, so after a statue was built every later design in that app was read
+as a figure (a fire engine, a Porsche and a lighthouse were told so, and would
+have been sent back). A fresh brief or a cleared model now forgets it.
+
+**The comparison.** m32 (main at `2789cd0`) against armature (`baf29eb`; its
+first two designs ran on the same code uncommitted, `23da079-dirty`), one
+design a prompt each, on the four characters of the last two rounds (model-042,
+043, 044, 049) and two held out, used by no run before: model-078, a fat
+rabbit, and model-080, an armoured boy. Same recipe as before (two at a time on
+the subscription, BrickNet's parts only, four views each, our judge both orders
+twice): 72 verdicts (`bench/results/brickbench-2026-10-16-armature`,
+`compare.md`). BrickBench is one outside check here, not the target; the real-set
+blind test (`tools/bench/realset.py`) is to judge the same designs next.
+
+| head to head, overall | verdicts for armature | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| armature vs m32, all 6 | 12 of 24 (50%) | 31-69% | 3 / 0 / 3 |
+| ...surface | 21 of 24 (88%) | 69-96% | 5 / 1 / 0 |
+| ...the held-out two (078, 080) | 4 of 8 | | 1 / 0 / 1 |
+| armature vs BrickAgent | 0 of 24 | 0-14% | 0 / 0 / 6 |
+| m32 vs BrickAgent | 1 of 24 | 1-20% | 0 / 1 / 5 |
+
+| arm | valid (verify.py) | parts (median) | stacked | shaped | joints | sent back once | laid the figure pattern | the pattern, an attach or a joint's part |
+|---|---|---|---|---|---|---|---|---|
+| m32 | 6 of 6 | 292 | 43% | 26% | 0% | | | 4 of 6 |
+| armature | 6 of 6 | 188 | 55% | 44% | 1% | 5 of 6 | 3 of 6 | 5 of 6 |
+| BrickAgent | 6 of 6 | 216 | 50% | 36% | 0% | | | |
+
+**A tie.** Each prompt went one way every time, so this is six designs against
+six, not a measured gain: armature won the balloon dog, the toilet with a head
+and the armoured boy; m32 won the potato, the seated statue and the rabbit. The
+judge preferred armature's surfaces almost every time and its buildability ELO
+is higher (1039 against 942), on two thirds the parts. Likeness, the overall
+verdict, is level. Both still lose nearly every verdict to BrickAgent.
+
+**Uptake.** The refusal reached five of six (the potato had attached parts, so it
+was posed). Three of the five laid the pattern (the toilet's head, the statue,
+the boy); the balloon dog and the rabbit built their own way when they came
+again, the rabbit's arms on ball joints by attach. m32's sessions found joints
+without being sent back in half the characters (a ball neck, a tail on a bar,
+ball shoulders), so the gap the refusal closes is smaller on this code than on
+merge29's.
+
+**What the views show** (`bench/results/armature-2026-10-16/views*`). The
+pattern's people and animals read as built figures, not statues, and every joint
+turns. Seen front and corner, the large person's legs stood together as one
+pillar and a seated person's lap was one studded slab that read as a table: both
+fixed before the bench (legs apart; a thigh each). Still wrong and not small:
+heads have no face (a session must dress one);
+an animal's eyes sit on top of its head, not its front; "to chin" and "on knee"
+are said as bent and forward, which do not reach the chin or the knee; and the
+grey joint plates show on a coloured back.
+
+**What is left.** The statue lost with the pattern laid four times: the pattern
+gives the pose, and a hunched, chin-on-fist statue needs the torso leaning and
+the arms reaching, which its words cannot say yet. Faces and torso lean are
+the next things a session should not have to build by hand. Two designs a prompt,
+and more held-out characters, would say whether the surface gain carries to the
+overall verdict.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -1587,6 +1662,12 @@ The figures-on-joints round (2026-10-15) is the same with `prompts --start 51`,
 the four characters' rows copied from the attach round's `prompts.json`, `--arm
 merge29` and `--arm joints` (each `--app` an archive of its commit), and
 `compare --arms merge29,joints`.
+
+The armature round (2026-10-16) wrote its `prompts.json` by hand: the four
+characters' rows copied from the joints round's, and model-078 and model-080 by
+`first_tasks(tasks_json, 1, start)`; then `--arm m32` (`--app` a detached
+worktree at main) and `--arm armature` (`--app` the branch's worktree), `--runs 1`,
+views on the GPU, `pairs --repeat 2`, `compare --arms m32,armature --runs 1`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the
