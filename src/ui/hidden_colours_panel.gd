@@ -342,7 +342,7 @@ func _build() -> void:
 	_stages.min_value = 0
 	_stages.max_value = HiddenColours.MOST_STAGES
 	_stages.value = 0
-	_stages.tooltip_text = "How many stages to colour: 0 lets the model's size decide"
+	_stages.tooltip_text = "How many stages to colour: 0 for two, as most sets that colour their insides use one or two"
 	_stages.value_changed.connect(func(value: float) -> void:
 		stages = int(value)
 		refresh())

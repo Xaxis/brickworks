@@ -672,7 +672,7 @@ static func _page(page: Page, document: Document) -> String:
 				# The section's hidden colour, where the section starts.
 				var starting: Array = page.entries[0].marks if not page.entries.is_empty() else []
 				for mark: Dictionary in starting:
-					if str(mark["label"]) == said:
+					if said in (mark.get("sections", [str(mark["label"])]) as Array):
 						in_banner.append(mark)
 						out.append(_text(Vector2(strip.end.x - 64.0, strip.position.y + 2.4), 3.0,
 							_mark_words(mark, false), "q mk",

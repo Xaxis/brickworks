@@ -20,14 +20,19 @@
 ##                 build stage (the booklet's steps cut into stages, as bags
 ##                 are), or by side (left and right, or front and back: the
 ##                 two halves of a symmetrical build told apart)
-##   which colours one a group, high in contrast with every colour that is
-##                 seen (CIE76 distance [constant APART]) and with the other
-##                 groups', blue and yellow first so the first two can be told
-##                 apart by everybody; for each part only a colour the
-##                 catalogue says it was made in, preferring one still in
-##                 sets (PartInfo.colors_recent). A part not made in its
-##                 group's colour, nor in one near enough to stand for it,
-##                 keeps its own.
+##   which colours few and strong, as real sets have them: LEGO's own order
+##                 (blue, yellow, red, green, then the modern brights, pinks
+##                 only when those are out), one a group, a group too small
+##                 to matter joined to its neighbour ([constant SMALLEST]),
+##                 two stages unless asked for more ([constant COLOURS]). A
+##                 colour is out when it, with the colours near it, is a real
+##                 share of the outside ([constant OUTSIDE_SHARE]): LEGO puts
+##                 blue inside a model with a few blue parts showing, not
+##                 inside a blue one. For each part only a colour the catalogue
+##                 says it was made in, and never the colour of a seen part it
+##                 touches, which would read as more of that part. A part
+##                 that cannot take its group's colour, nor one near enough to
+##                 stand for it, keeps its own.
 ##   what is kept  see-through, chrome, rubber and the like; printed and
 ##                 stickered parts; minifigures; locked parts; parts whose
 ##                 colours nobody knows; a hidden part already in a bright
@@ -50,17 +55,38 @@ const MODE_WORDS: Dictionary = {
 
 ## The colours a group can be, in the order they are offered: as often as
 ## real sets use each where nobody sees it (docs/HIDDEN_COLOURS.md, 1,576
-## sets measured: Blue in 41, Yellow 33, Red 28, Green 20, Dark Turquoise
-## and Bright Pink 7, Lime, Orange and Medium Azure 6), then the rest of
-## the strong colours in production. Blue and yellow first suits colour
-## blindness too: its commonest kind cannot tell red from green.
-const ACCENTS: Array[int] = [1, 14, 4, 2, 3, 29, 27, 25, 322, 10, 73, 321, 191, 5, 26, 30,
+## sets measured: Blue in 41, Yellow 33, Red 28, Green 20), then the modern
+## brights (Dark Turquoise 7, Lime, Orange and Medium Azure 6, Bright Green
+## 2), then the pinks, lavender and coral, which LEGO keeps for when the
+## rest are out. Blue and yellow first suits colour blindness too: its
+## commonest kind cannot tell red from green.
+const ACCENTS: Array[int] = [1, 14, 4, 2, 3, 27, 25, 322, 10, 73, 321, 191, 29, 5, 26, 30,
 	353, 212, 15, 19]
-## How far, in CIE76 units, a group's colour must be from every colour seen
-## on the outside, so a part in it reads as a mark and not as more of the
-## model: Blue against Dark Blue is 26, Red against Dark Red 31, Lime
-## against Bright Green 30, Light Bluish Grey against Dark Bluish Grey 25.
+## A group takes the first colour of [constant ACCENTS] that at least this
+## share as many of its parts can take as the colour most of them can: the
+## order wins unless a colour further down reaches far more of them.
+const GOOD_ENOUGH := 0.6
+## How far, in CIE76 units, a colour on the outside must be from a group's
+## for it not to count against it: Blue against Dark Blue is 26, Red against
+## Dark Red 31, Lime against Bright Green 30.
 const APART := 22.0
+## The share of the outside's parts, in a colour and those within APART of
+## it, that rules the colour out for the inside. Of LEGO's 130 inside colours
+## in the 68 sets that mark their insides, 82 are seen outside too, at a
+## median 0.15% of the outside's parts and at most 3.1%; 127 are under 2%.
+const OUTSIDE_SHARE := 0.02
+## Colours, when the person does not say: the stages a build is cut into.
+## LEGO's 68 marked sets use 1.9 on average (37 one, 17 two, 7 three, 4
+## four, three sets more).
+const COLOURS := 2
+## A group with less than this share of the parts being coloured joins its
+## neighbour in the build rather than take a colour of its own: three in four
+## of LEGO's smallest inside colours, in sets with more than one, have more
+## than 9% of the set's inside-coloured parts (median 20%).
+const SMALLEST := 0.1
+## And more groups than this, left to the model to say, are joined until
+## there are no more: 62 of the 68 marked sets use four colours or fewer.
+const MOST_COLOURS := 4
 ## And from every other group's.
 const GROUPS_APART := 20.0
 ## How near another colour may be to a group's own and stand in for it, on
@@ -73,11 +99,8 @@ const NEAR := 24.0
 ## Brown (37, 24), Dark Red (52, 24) and Tan (27) are filler, not marks.
 const CODED_CHROMA := 28.0
 const CODED_LIGHTNESS := 33.0
-## The most stages a build is cut into, and how many parts make a stage
-## when the person does not say: a large set's numbered bag holds a few
-## hundred.
+## The most stages a build is cut into when the person asks.
 const MOST_STAGES := 12
-const PARTS_A_STAGE := 300
 
 const META := "0 !BRICKWORKS HIDDEN_COLOURS "
 
@@ -96,6 +119,14 @@ class Group extends RefCounted:
 	## Its place in the build: stages are numbered in order, so two stages
 	## next to each other never share a colour when colours run out.
 	var order: int = 0
+	## The sections or stages it stands for once small ones are joined to
+	## it, as the booklet names them; and a stage group's first and last
+	## stage and steps.
+	var names: PackedStringArray = PackedStringArray()
+	var stage_from: int = 0
+	var stage_to: int = 0
+	var step_from: int = 0
+	var step_to: int = 0
 
 
 ## What would be done: worked out, shown, then applied or not.
@@ -126,7 +157,7 @@ class Plan extends RefCounted:
 		for group: Group in groups:
 			if group.recoloured > 0:
 				out.append({"label": group.label, "colour": group.colour,
-					"also": Array(group.also)})
+					"also": Array(group.also), "sections": Array(group.names)})
 		return {"mode": mode, "groups": out}
 
 	## In words: what it would do and what it keeps.
@@ -169,6 +200,7 @@ const REASONS: Dictionary = {
 	"copies_kept": "with a copy kept for a reason of its own",
 	"copies_differ": "in copies of a sub-assembly that differ from one another",
 	"middle": "across the middle",
+	"beside_seen": "touching a seen part of their group's colour",
 	"no_colour": "in a group no colour was left for",
 }
 
@@ -199,14 +231,21 @@ static func plan(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
 	made.parts = bricks.size()
 	made.hidden = hidden.size()
 
-	# What is seen: the colours a mark must stand out from.
+	# What is seen: how many parts of each colour, which a mark must stand
+	# out from, and where each part in an accent colour is, which a part
+	# taking that colour must not touch.
 	var outside: Dictionary = {}
+	var seen_at: Dictionary = {}
 	for brick_id: int in bricks:
 		if not hidden.has(brick_id):
-			var colour: PartLibrary.BrickColor = library.color(
-				(bricks[brick_id] as BrickWorld.Brick).color_code)
-			if not colour.is_transparent():
-				outside[library.plain_code(colour.code)] = true
+			var brick: BrickWorld.Brick = bricks[brick_id]
+			var colour: PartLibrary.BrickColor = library.color(brick.color_code)
+			if colour.is_transparent():
+				continue
+			var plain: int = library.plain_code(colour.code)
+			outside[plain] = int(outside.get(plain, 0)) + 1
+			if plain in ACCENTS:
+				_file_box(seen_at, plain, _box_of(library, brick))
 	made.outside = PackedInt32Array(outside.keys())
 
 	# Which hidden parts may take a colour at all, and why not the rest.
@@ -267,7 +306,18 @@ static func plan(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
 		choices.append([key, members])
 		(by_key[key] as Group).hidden += members.size()
 
-	_choose_colours(made, library, outside, choices, bricks)
+	_join_small(made, choices, by_key, stages > 0)
+	var boxes: Dictionary = {}
+	var touch: Callable = func(members: Array, code: int) -> bool:
+		if not seen_at.has(code):
+			return false
+		for brick_id: int in members:
+			if not boxes.has(brick_id):
+				boxes[brick_id] = _box_of(library, bricks[brick_id])
+			if _touches(seen_at, code, boxes[brick_id]):
+				return true
+		return false
+	_choose_colours(made, library, outside, choices, bricks, touch)
 
 	for choice: Array in choices:
 		var group: Group = by_key[choice[0]]
@@ -275,7 +325,10 @@ static func plan(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
 		if group.colour < 0:
 			_keep(made, "no_colour", members.size())
 			continue
-		var colour: int = _colour_for(library, members, bricks, group)
+		var colour: int = _colour_for(library, members, bricks, group, touch)
+		if colour == -2:
+			_keep(made, "beside_seen", members.size())
+			continue
 		if colour < 0:
 			_keep(made, "not_made", members.size())
 			continue
@@ -426,9 +479,7 @@ static func _group_each(made: Plan, world: BrickWorld, library: PartLibrary,
 						int(order[key]))
 			else:
 				var total: int = maxi(1, counted)
-				var count: int = stages if stages > 0 \
-					else clampi(roundi(float(bricks.size()) / PARTS_A_STAGE), 2, 8)
-				count = clampi(count, 1, MOST_STAGES)
+				var count: int = clampi(stages if stages > 0 else COLOURS, 1, MOST_STAGES)
 				var first_step: Dictionary = {}
 				var last_step: Dictionary = {}
 				for step: Instructions.Step in steps:
@@ -443,6 +494,11 @@ static func _group_each(made: Plan, world: BrickWorld, library: PartLibrary,
 				for stage: int in count:
 					add.call("stage %d" % (stage + 1), "Stage %d (steps %d–%d)" % [stage + 1,
 						int(first_step.get(stage, 0)), int(last_step.get(stage, 0))], stage)
+					var made_group: Group = groups["stage %d" % (stage + 1)]
+					made_group.stage_from = stage + 1
+					made_group.stage_to = stage + 1
+					made_group.step_from = int(first_step.get(stage, 0))
+					made_group.step_to = int(last_step.get(stage, 0))
 		_:
 			# The two halves: across x (left and right, as the model is
 			# seen from the front, which faces +z) or across z.
@@ -473,34 +529,136 @@ static func _group_each(made: Plan, world: BrickWorld, library: PartLibrary,
 	var listed: Array = groups.values()
 	listed.sort_custom(func(a: Group, b: Group) -> bool: return a.order < b.order)
 	for group: Group in listed:
+		group.names = PackedStringArray([group.label])
 		made.groups.append(group)
 	return out
 
 
-## A colour for each group: the one most of its hidden parts were made
-## in, of those far enough from everything seen and from the groups
-## already given one; the largest group chooses first.
+## Few, strong colours: a group with under [constant SMALLEST] of the parts
+## being coloured joins its neighbour in the build, the smallest first, and
+## while more than [constant MOST_COLOURS] remain and the person did not ask
+## for how many ([param asked]), the smallest joins its neighbour too. The
+## choices that named a group joined name the one it joined.
+static func _join_small(made: Plan, choices: Array, by_key: Dictionary, asked: bool) -> void:
+	var live: Array = made.groups.filter(func(g: Group) -> bool: return g.hidden > 0)
+	var total: int = 0
+	for group: Group in live:
+		total += group.hidden
+	var into: Dictionary = {}
+	while live.size() > 1:
+		var smallest: Group = live[0]
+		for group: Group in live:
+			if group.hidden < smallest.hidden:
+				smallest = group
+		var too_small: bool = float(smallest.hidden) < SMALLEST * float(total)
+		if not too_small and (asked or live.size() <= MOST_COLOURS):
+			break
+		# Its neighbour in the build: the one before, else the one after,
+		# the smaller of the two when it has both.
+		var at: int = live.find(smallest)
+		var before: Group = live[at - 1] if at > 0 else null
+		var after: Group = live[at + 1] if at + 1 < live.size() else null
+		var neighbour: Group = before if after == null or (before != null
+			and before.hidden <= after.hidden) else after
+		neighbour.hidden += smallest.hidden
+		neighbour.names.append_array(smallest.names)
+		neighbour.stage_from = mini(neighbour.stage_from, smallest.stage_from)
+		neighbour.stage_to = maxi(neighbour.stage_to, smallest.stage_to)
+		neighbour.step_from = mini(neighbour.step_from, smallest.step_from)
+		neighbour.step_to = maxi(neighbour.step_to, smallest.step_to)
+		smallest.hidden = 0
+		into[smallest.key] = neighbour.key
+		live.erase(smallest)
+	if into.is_empty():
+		return
+	for choice: Array in choices:
+		var key: String = choice[0]
+		while into.has(key):
+			key = into[key]
+		choice[0] = key
+	for group: Group in made.groups:
+		if group.names.size() < 2:
+			continue
+		if made.mode == "stages":
+			group.label = "Stages %d–%d (steps %d–%d)" % [group.stage_from, group.stage_to,
+				group.step_from, group.step_to]
+		else:
+			var sorted: PackedStringArray = group.names.duplicate()
+			group.label = ", ".join(sorted.slice(0, sorted.size() - 1)) + " and " \
+				+ sorted[sorted.size() - 1]
+
+
+## A brick's box in the world.
+static func _box_of(library: PartLibrary, brick: BrickWorld.Brick) -> AABB:
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	return brick.transform * part.bounds if part != null \
+		else AABB(brick.transform.origin, Vector3.ZERO)
+
+
+## Boxes of seen parts by colour, in cells of [constant TOUCH_CELL] LDU.
+const TOUCH_CELL := 80.0
+## How near a seen part may be and still touch: a hair, so parts standing
+## side by side or on each other's studs touch and parts a gap apart do not.
+const TOUCH_GAP := 1.0
+
+
+static func _file_box(seen_at: Dictionary, code: int, box: AABB) -> void:
+	if not seen_at.has(code):
+		seen_at[code] = {}
+	var cells: Dictionary = seen_at[code]
+	var low := Vector3i((box.position / TOUCH_CELL).floor())
+	var high := Vector3i((box.end / TOUCH_CELL).floor())
+	for x: int in range(low.x, high.x + 1):
+		for y: int in range(low.y, high.y + 1):
+			for z: int in range(low.z, high.z + 1):
+				var cell := Vector3i(x, y, z)
+				if not cells.has(cell):
+					cells[cell] = []
+				(cells[cell] as Array).append(box)
+
+
+## Whether [param box] touches a seen part of colour [param code].
+static func _touches(seen_at: Dictionary, code: int, box: AABB) -> bool:
+	var cells: Dictionary = seen_at.get(code, {})
+	if cells.is_empty():
+		return false
+	var grown: AABB = box.grow(TOUCH_GAP)
+	var low := Vector3i((grown.position / TOUCH_CELL).floor())
+	var high := Vector3i((grown.end / TOUCH_CELL).floor())
+	for x: int in range(low.x, high.x + 1):
+		for y: int in range(low.y, high.y + 1):
+			for z: int in range(low.z, high.z + 1):
+				for other: AABB in cells.get(Vector3i(x, y, z), []):
+					if grown.intersects(other):
+						return true
+	return false
+
+
+## A colour for each group, the largest group first: of the colours not
+## out ([method _out]) and far enough from the groups given one already,
+## the first in LEGO's order ([constant ACCENTS]) that reaches at least
+## [constant GOOD_ENOUGH] as many of the group's parts as the colour that
+## reaches most. A part is reached when it was made in the colour and
+## touches no seen part of it ([param touch]).
 static func _choose_colours(made: Plan, library: PartLibrary, outside: Dictionary,
-		choices: Array, bricks: Dictionary) -> void:
+		choices: Array, bricks: Dictionary, touch: Callable) -> void:
+	var seen_total: int = 0
+	for code: int in outside:
+		seen_total += int(outside[code])
 	var offered: Array[int] = []
 	for code: int in ACCENTS:
 		var colour: PartLibrary.BrickColor = library.colors.get(code)
 		if colour == null or not library.is_current(code):
 			continue
-		var far: bool = true
-		for seen: int in outside:
-			if delta_e(colour.rgb, library.color(seen).rgb) < APART:
-				far = false
-				break
-		if far:
+		if not _out(library, code, outside, seen_total):
 			offered.append(code)
-	# Parts by group, for what each colour would cover.
-	var parts_of: Dictionary = {}
+	# Families by group, for what each colour would reach.
+	var families_of: Dictionary = {}
 	for choice: Array in choices:
 		var key: String = choice[0]
-		if not parts_of.has(key):
-			parts_of[key] = []
-		(parts_of[key] as Array).append_array(choice[1])
+		if not families_of.has(key):
+			families_of[key] = []
+		(families_of[key] as Array).append(choice[1])
 	var order: Array = made.groups.duplicate()
 	order.sort_custom(func(a: Group, b: Group) -> bool:
 		if a.hidden != b.hidden:
@@ -510,11 +668,11 @@ static func _choose_colours(made: Plan, library: PartLibrary, outside: Dictionar
 	for group: Group in order:
 		if group.hidden == 0:
 			continue
-		var best: int = -1
-		var best_score: float = -1.0
+		var chosen: int = -1
 		for pass_number: int in 2:
-			for index: int in offered.size():
-				var code: int = offered[index]
+			var reach: Dictionary = {}
+			var most: int = 0
+			for code: int in offered:
 				var clash: bool = false
 				for other: Group in taken:
 					if pass_number == 0:
@@ -527,22 +685,24 @@ static func _choose_colours(made: Plan, library: PartLibrary, outside: Dictionar
 						clash = true
 				if clash:
 					continue
-				var covered: float = 0.0
-				for brick_id: int in parts_of.get(group.key, []):
-					covered += made_in(library, (bricks[brick_id] as BrickWorld.Brick).part_id, code)
-				# Earlier in the list breaks a tie, and is worth a little.
-				var score: float = covered * (1.0 + 0.02 * float(offered.size() - index))
-				if score > best_score:
-					best_score = score
-					best = code
-			if best >= 0:
+				var reached: int = 0
+				for members: Array in families_of.get(group.key, []):
+					if _takes(library, members, bricks, code) and not touch.call(members, code):
+						reached += members.size()
+				reach[code] = reached
+				most = maxi(most, reached)
+			if most > 0:
+				for code: int in offered:
+					if reach.has(code) and float(reach[code]) >= GOOD_ENOUGH * float(most):
+						chosen = code
+						break
 				break
-		if best < 0:
+		if chosen < 0:
 			continue
-		group.colour = best
+		group.colour = chosen
 		taken.append(group)
 	# What may stand in for each: near its own colour, nearer it than any
-	# other group's, and far from the outside too.
+	# other group's, and not out either.
 	for group: Group in made.groups:
 		if group.colour < 0:
 			continue
@@ -562,20 +722,43 @@ static func _choose_colours(made: Plan, library: PartLibrary, outside: Dictionar
 				group.also.append(code)
 
 
+## Whether [param code] is out for the inside: it, with the colours seen
+## within [constant APART] of it, is [constant OUTSIDE_SHARE] or more of the
+## outside's parts.
+static func _out(library: PartLibrary, code: int, outside: Dictionary, seen_total: int) -> bool:
+	if seen_total <= 0:
+		return false
+	var rgb: Color = library.color(code).rgb
+	var near: int = 0
+	for seen: int in outside:
+		if seen == code or delta_e(rgb, library.color(seen).rgb) < APART:
+			near += int(outside[seen])
+	return float(near) >= OUTSIDE_SHARE * float(seen_total)
+
+
+## Whether every part of a family was made in [param code].
+static func _takes(library: PartLibrary, members: Array, bricks: Dictionary, code: int) -> bool:
+	for brick_id: int in members:
+		if made_in(library, (bricks[brick_id] as BrickWorld.Brick).part_id, code) <= 0.0:
+			return false
+	return true
+
+
 ## The colour a family of parts takes in its group: the group's own when
-## every one of them was made in it, else the first stand-in they all were;
-## -1 for none. Still-made colours are preferred within each.
+## every one of them was made in it and none touches a seen part in it,
+## else the first stand-in that holds for; -1 when none was made in any,
+## -2 when one was but touches a seen part in it.
 static func _colour_for(library: PartLibrary, members: Array, bricks: Dictionary,
-		group: Group) -> int:
+		group: Group, touch: Callable) -> int:
+	var beside: bool = false
 	for code: int in [group.colour] + Array(group.also):
-		var all: bool = true
-		for brick_id: int in members:
-			if made_in(library, (bricks[brick_id] as BrickWorld.Brick).part_id, code) <= 0.0:
-				all = false
-				break
-		if all:
-			return code
-	return -1
+		if not _takes(library, members, bricks, code):
+			continue
+		if touch.call(members, code):
+			beside = true
+			continue
+		return code
+	return -2 if beside else -1
 
 
 ## How surely [param part_id] was made in [param code]: 1 when it is in
@@ -719,8 +902,13 @@ static func read(text: String) -> Dictionary:
 		for code: Variant in group.get("also", []):
 			if code is float or code is int:
 				also.append(int(code))
+		var sections: Array = []
+		for name: Variant in group.get("sections", []):
+			sections.append(str(name))
+		if sections.is_empty():
+			sections.append(str(group.get("label", "")))
 		groups.append({"label": str(group.get("label", "")), "colour": int(colour),
-			"also": also})
+			"also": also, "sections": sections})
 	return {"mode": mode, "groups": groups} if not groups.is_empty() else {}
 
 
@@ -740,7 +928,8 @@ static func live_marks(scheme: Dictionary, world: BrickWorld, library: PartLibra
 			if in_use.has(code):
 				out[code] = {"label": str(group["label"]), "colour": main,
 					"name": colour_name(library, main),
-					"rgb": "#" + library.color(main).rgb.to_html(false)}
+					"rgb": "#" + library.color(main).rgb.to_html(false),
+					"sections": group.get("sections", [str(group["label"])])}
 	return out
 
 

@@ -16,7 +16,9 @@
 ##                   of them sides it was never measured from, the same pixel
 ##                   for pixel
 ##   valid colours   each part changed is in a colour the catalogue says that
-##                   part was made in, none of them seen on the outside
+##                   part was made in; each colour, with those near it, under
+##                   2% of the parts seen (as LEGO's own are); and no part
+##                   changed touches a seen part in its colour
 ##   one undo        Undo once and every part is its own colour again; copies
 ##                   of sub-assemblies were not rebuilt
 ##   asked first     a preview changes nothing, nor does apply without the
@@ -54,6 +56,16 @@ func _check(what: String, ok: bool) -> void:
 		_failures += 1
 
 
+## Seconds since the last lap, said: where the probe's time goes.
+var _clock: int = Time.get_ticks_msec()
+
+
+func _lap(what: String) -> void:
+	var now: int = Time.get_ticks_msec()
+	print("    (%s: %.0f s)" % [what, float(now - _clock) / 1000.0])
+	_clock = now
+
+
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
@@ -68,9 +80,17 @@ func _run() -> void:
 		quit(1)
 		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOTS))
+	# The measure and its pictures draw in viewports of their own; the
+	# window's own 3D view is not drawn while this runs. Drawn, its model in
+	# software, the scene's first 120 frames took 519 of the probe's 697 s.
+	root.disable_3d = true
+	_lap("the engine and the probe")
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
-	await _frames(120)
+	_lap("the scene made")
+	for _n: int in 4:
+		await _frames(30)
+		_lap("30 frames")
 	var playback: BuildPlayback = _main.get("_playback")
 	if playback != null:
 		playback.stop()
@@ -83,17 +103,18 @@ func _run() -> void:
 	# the set, where no picture is compared, lighter (48 sides, one each). The same code; the app's full sampling on
 	# them is shots/hidden_colours/ (hidden_colours_pictures.gd, on a GPU).
 	_panel.most_pixels = 1024
-	# The measure and its pictures draw in viewports of their own; the
-	# window's own 3D view, the whole model again every frame in software,
-	# is not drawn while this runs.
-	root.disable_3d = true
 	var shell: Shell = _main.get("_shell")
 	_check("Tools has Colour the hidden parts", shell.can("hidden_colours"))
 
+	_lap("the app up")
 	await _the_box()
+	_lap("the box")
 	await _a_gap()
+	_lap("the gap and the window")
 	await _castle()
+	_lap("the castle")
 	await _a_real_set()
+	_lap("the set")
 
 	print("")
 	print("%d failed" % _failures if _failures else
@@ -185,6 +206,7 @@ func _the_box() -> void:
 			return (_world.get_brick(id) as BrickWorld.Brick).color_code != 0)
 		and HiddenColours.read(text) == _store.hidden_scheme
 		and not _store.hidden_scheme.is_empty())
+	_lap("  the box measured, coloured, saved and opened")
 	# The booklet: the section's colour where it starts.
 	var path: String = ProjectSettings.globalize_path(SHOTS.path_join("box_booklet.html"))
 	BookletMaker.open_when_written = false
@@ -268,6 +290,7 @@ func _castle() -> void:
 		await _frames(5)
 	await _frames(5)
 	var made: HiddenColours.Plan = _panel.plan
+	_lap("  the castle measured, planned and its inside drawn in the panel")
 	var measured: SeenParts.Result = await _panel.measured()
 	var hidden: Dictionary = measured.hidden()
 	_check("the panel shows the plan and the inside twice: %s" % _tail(made.summary(_library)
@@ -337,6 +360,7 @@ func _castle() -> void:
 			print("    %d pixels differ from %s" % [off, way])
 	_check("the outside from %d sides, 3 never measured from, the same pixel for pixel (%d differ)"
 		% [compared, differing], compared == COMPARED.size() and differing == 0)
+	_lap("  the castle's outside drawn from eight sides")
 	var cut: Array = HiddenColoursPanel.cut_through(bricks, made.changes, _library)
 	var inside: Array = await _panel._seen.pictures(bricks, applied, cut[1], frame, 700, true,
 		cut[0])
@@ -358,11 +382,11 @@ func _a_real_set() -> void:
 	print("\n  a real set, as its designers coloured it")
 	_panel.views = 48
 	_panel.samples = 1
-	_store.open("res://vendor/omr/files/10182-1.mpd")
+	_store.open("res://vendor/omr/files/75317-1.mpd")
 	_main.call("_lay_baseplate")
 	await _frames(20)
 	_check("opened from the LDraw model repository, it knows the set (%s)" % _store.from_set,
-		_store.from_set == "10182")
+		_store.from_set == "75317")
 	var colours: Dictionary = _colours()
 	var said: Variant = await _panel.for_session({"mode": "stages", "apply": true,
 		"agreed": true, "from_below": false})
@@ -373,8 +397,8 @@ func _a_real_set() -> void:
 	var changed: Array = _changed(colours)
 	_check("...and with a yes to that, its hidden parts take the stages' colours (%d)"
 		% changed.size(), not changed.is_empty())
-	var text: String = _store.to_text("Cafe", true)
-	_check("...saved, it still says it is the set", ModelStore.set_in(text) == "10182")
+	var text: String = _store.to_text("Mandalorian", true)
+	_check("...saved, it still says it is the set", ModelStore.set_in(text) == "75317")
 	await (_main.get("_verbs") as EditVerbs).press("undo")
 	await _frames(5)
 
@@ -406,13 +430,24 @@ func _changed(before: Dictionary) -> Array:
 
 ## Each changed part is in a colour its part was made in, and none of those
 ## colours is seen on the outside.
+## Each changed part is in a colour its part was made in; each colour, with
+## those near it, is under HiddenColours.OUTSIDE_SHARE of the parts seen;
+## and no changed part touches a seen part in its colour.
 func _valid(changed: Array, measured: SeenParts.Result) -> void:
 	var outside: Dictionary = {}
+	var seen_total: int = 0
+	var seen_boxes: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
-		if not _store.scenery.has(brick.id) and measured.seen.has(brick.id):
-			outside[_library.plain_code(brick.color_code)] = true
+		if _store.scenery.has(brick.id) or not measured.seen.has(brick.id):
+			continue
+		if _library.color(brick.color_code).is_transparent():
+			continue
+		var plain: int = _library.plain_code(brick.color_code)
+		outside[plain] = int(outside.get(plain, 0)) + 1
+		seen_total += 1
+		seen_boxes.append([plain, HiddenColours._box_of(_library, brick)])
 	var wrong := PackedStringArray()
-	var seen_colour := PackedStringArray()
+	var touching := PackedStringArray()
 	var used: Dictionary = {}
 	for id: int in changed:
 		var brick: BrickWorld.Brick = _world.get_brick(id)
@@ -420,13 +455,29 @@ func _valid(changed: Array, measured: SeenParts.Result) -> void:
 		used[brick.color_code] = true
 		if info == null or not info.colors.has(brick.color_code):
 			wrong.append("%s in %d" % [brick.part_id, brick.color_code])
-		if outside.has(brick.color_code):
-			seen_colour.append(str(brick.color_code))
+		var box: AABB = HiddenColours._box_of(_library, brick).grow(HiddenColours.TOUCH_GAP)
+		for seen: Array in seen_boxes:
+			if int(seen[0]) == brick.color_code and box.intersects(seen[1]):
+				touching.append("#%d" % id)
+				break
 	_check("...each in a colour its part was made in (%s)%s" % [", ".join(
 		used.keys().map(func(c: int) -> String: return HiddenColours.colour_name(_library, c))),
 		"" if wrong.is_empty() else ": not " + ", ".join(wrong)], wrong.is_empty())
-	_check("...and none of those colours is seen outside%s" % ("" if seen_colour.is_empty()
-		else ": " + ", ".join(seen_colour)), seen_colour.is_empty())
+	var shares := PackedStringArray()
+	var over: bool = false
+	for code: int in used:
+		var near: int = 0
+		for seen: int in outside:
+			if seen == code or HiddenColours.delta_e(_library.color(code).rgb,
+					_library.color(seen).rgb) < HiddenColours.APART:
+				near += int(outside[seen])
+		var share: float = float(near) / maxf(1.0, float(seen_total))
+		shares.append("%s %.2f%%" % [HiddenColours.colour_name(_library, code), 100.0 * share])
+		over = over or share >= HiddenColours.OUTSIDE_SHARE
+	_check("...each colour, with those near it, under %d%% of the parts seen (%s)" % [
+		roundi(100.0 * HiddenColours.OUTSIDE_SHARE), ", ".join(shares)], not over)
+	_check("...and no part changed touches a seen part in its colour%s" % (""
+		if touching.is_empty() else ": " + ", ".join(touching)), touching.is_empty())
 
 
 static func _pixels_apart(a: Image, b: Image) -> int:

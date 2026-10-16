@@ -1431,7 +1431,7 @@
       "kind": "cli",
       "label": "audit hidden colours in real sets",
       "entry": "tools/hidden_colours_audit.py",
-      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr)",
+      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr). Our palette against LEGO's: src/dev/hidden_colours_lego.gd -- --out=FILE SETS… then python3 tools/hidden_colours_audit.py --lego FILE",
       "area": "geometry"
     },
     {
