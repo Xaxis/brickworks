@@ -289,11 +289,15 @@ func _run() -> void:
 		"since": "2026-10-11T09:00:00+00:00", "last_used": null}])
 	# Read at once: this tab's relay is a port nothing listens on, and its
 	# "could not reach" would take the line a moment later.
+	# One click to the connector stays while connected (a30aee2): Open in
+	# Claude, beside Disconnect, never Disconnect alone.
 	_check(offer._status.text == "Connected to Claude — it builds in this tab."
-			and not offer._connect.visible and not offer._guide.visible
+			and offer._connect.visible and offer._connect.text == "Open in Claude"
+			and not offer._guide.visible
 			and offer._disconnect.visible and offer._here.visible
 			and offer._here.button_pressed,
-		"connected: says so, folds the steps away, offers Disconnect: %s" % offer._status.text)
+		"connected: says so, folds the steps away, Open in Claude beside Disconnect: %s — %s"
+			% [offer._status.text, offer._connect.text])
 	_check(offer.is_on(), "...and counts as the way in use")
 
 	offer._code_link.pressed.emit()
@@ -331,8 +335,10 @@ func _run() -> void:
 	_check(account_panel._claude_state.text.contains("Claude, connected")
 			and account_panel._claude_state.text.contains("Claude Code, connected")
 			and account_panel._claude_disconnect.visible
-			and not account_panel._claude_connect.visible,
-		"connected: which apps, and Disconnect Claude")
+			and account_panel._claude_connect.visible
+			and account_panel._claude_connect.text == "Open in Claude",
+		"connected: which apps, Open in Claude and Disconnect Claude: %s"
+			% account_panel._claude_connect.text)
 	connector._set_connections([])
 	_check(account_panel._claude_state.text.begins_with("Not connected")
 			and account_panel._claude_connect.visible
