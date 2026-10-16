@@ -97,9 +97,10 @@ geometry in front of them.
   it; Build and the controls list say so) shows, from every colour there is,
   those that answer (`PartsBin.colours_named`: the number exactly, LDraw's or
   LEGO's name exactly, a name beginning so, every word in a name, numbers
-  beginning so; gray is grey; the most used first), and Enter takes the first
-  into hand as a click on its swatch does, the field emptied and the keys
-  given back. The old greys (7 Light Grey, 8 Dark Grey), all over older sets,
+  beginning so; gray is grey; the most used first), the line over them naming
+  the first ("Light Grey (7) first of 3"), so a name is typed only until it
+  is the one; Enter takes it into hand as a click on its swatch does, the
+  field emptied and the keys given back. The old greys (7 Light Grey, 8 Dark Grey), all over older sets,
   are not in the short palette and look like the bluish greys beside them
   under All: the CAD task test put 3 parts of 8 in the wrong colour for want
   of them. `handbuild_probe -- only=build_from_a_booklet` types "light grey",

@@ -1930,12 +1930,22 @@ func _socket_phase(part: Lbm.PartMesh, basis: Basis, footprint: Vector2i) -> Var
 		phase = Vector2(snappedf(phase.x, 0.5), snappedf(phase.y, 0.5))
 		if phase.distance_to(by_box) < 0.5:
 			return null
+		# Only a socket on the half-stud grid of the origin says where the
+		# studs go: a wedge plate's (51739) are not, and taken at their word
+		# put it 2 LDU off the studs.
+		if not _on_half_stud(phase.x) or not _on_half_stud(phase.y):
+			continue
 		counts[phase] = int(counts.get(phase, 0)) + 1
 	var best: Variant = null
 	for phase: Vector2 in counts:
 		if best == null or int(counts[phase]) > int(counts[best]):
 			best = phase
 	return best
+
+
+static func _on_half_stud(phase: float) -> bool:
+	return is_zero_approx(phase) or is_equal_approx(phase, BrickLattice.STUD * 0.5) \
+		or is_equal_approx(phase, BrickLattice.STUD)
 
 
 ## How far the part reaches below its plate, where it sits on the studs of

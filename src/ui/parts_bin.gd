@@ -95,6 +95,8 @@ var _palette_scroll: ScrollContainer
 var _all_colours: Button
 ## A colour by its name or number: the palette shows what matches.
 var _colour_find: LineEdit
+## The colour Enter would take there, or -1 (brickworksState.colour_first).
+var _found_first: int = -1
 var _colour_note: Label
 var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
@@ -392,6 +394,7 @@ func _build_swatches() -> void:
 	_swatches.clear()
 	var everything: bool = _all_colours.button_pressed
 	var asked: String = _colour_find.text.strip_edges() if _colour_find != null else ""
+	_found_first = -1
 	if not asked.is_empty():
 		_build_found(asked)
 		return
@@ -448,9 +451,11 @@ func _build_found(asked: String) -> void:
 	var title := Label.new()
 	title.add_theme_font_size_override("font_size", 11)
 	title.modulate = Color(1, 1, 1, 0.7)
+	# The first by name, so a person types only until it is the one wanted.
 	title.text = "No colour is called that" if found.is_empty() \
-		else "%s: Enter takes the first" % ("1 colour" if found.size() == 1
-			else "%d colours" % found.size())
+		else "%s (%d) first of %d: Enter takes it" % [found[0].name, found[0].code,
+			found.size()]
+	_found_first = -1 if found.is_empty() else found[0].code
 	_palette.add_child(title)
 	if not found.is_empty():
 		_palette.add_child(_flow_of(found))
@@ -551,6 +556,11 @@ func first_found(most: int = 6) -> PackedStringArray:
 	for n: int in mini(most, _results.size()):
 		out.append(_results[n].id)
 	return out
+
+
+## The colour Enter in the colour's name would take, or -1.
+func colour_first() -> int:
+	return _found_first
 
 
 ## Shift-C: the colour's name, to be typed.

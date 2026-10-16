@@ -377,6 +377,8 @@ func _tell_page() -> void:
 		"colour": _builder.held_color,
 		# ...and the parts the bin lists first, as its tiles read.
 		"found": _bin.first_found() if _bin != null else [],
+		# ...and the colour Enter in the colour's name would take.
+		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),
 		# The parts the model is made of, by number: a printed version swapped
 		# in (tools/web/decor_flow.mjs) is one the canvas cannot name.

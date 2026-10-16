@@ -1545,6 +1545,8 @@ func _build_from_a_booklet() -> void:
 		var field: LineEdit = bin._colour_find
 		_check("Shift-C puts the keys in the colour's name", field.has_focus())
 		await _type(str(asked[0]))
+		_check("...\"%s\" names %d first over the palette (%d)" % [asked[0], asked[1],
+			bin.colour_first()], bin.colour_first() == int(asked[1]))
 		await _key(KEY_ENTER)
 		_check("\"%s\" and Enter: %d in hand (%d), the field let go" % [asked[0], asked[1],
 			_builder.held_color], _builder.held_color == int(asked[1]) and not field.has_focus()
@@ -1577,6 +1579,12 @@ func _build_from_a_booklet() -> void:
 	for want: Array in [[-10, -24, -50, 0, 0, 1, 0, 1, 0, -1, 0, 0],
 			[10, -24, -50, 0, 0, -1, 0, 1, 0, 1, 0, 0]]:
 		var at: Transform3D = _ldr(want)
+		# Studs up first: an earlier section may have left the hand tipped
+		# over (T), as a person may.
+		for _n: int in 6:
+			if _builder.held_face == "up":
+				break
+			await _key(KEY_T)
 		for _n: int in 4:
 			if BrickLattice.basis_for(_builder.held_face, _builder.held_rotation) \
 					.is_equal_approx(at.basis):
@@ -1588,8 +1596,11 @@ func _build_from_a_booklet() -> void:
 		await _move(under + Vector2(0, 1))
 		await _move(under)
 		var ghost: Variant = _builder.ghost_place()
-		_check("the clip plate's ghost stands where the plane has it (%s, wanted %s, %s)"
-			% [str(ghost), str(at.origin), "may go" if _builder.can_place() else "red"],
+		var over: BrickWorld.Brick = _world.get_brick(_builder.hovered_brick())
+		_check("the clip plate's ghost stands where the plane has it (%s, wanted %s, %s; over %s, snap %s, %s)"
+			% [str(ghost), str(at.origin), "may go" if _builder.can_place() else "red",
+				over.part_id if over != null else "nothing", _builder.snap_across,
+				_store.model_floor.to_meta()],
 			ghost != null and (ghost as Vector3).is_equal_approx(at.origin) and _builder.can_place())
 		await _click(under)
 		var made: int = 0
@@ -1601,6 +1612,7 @@ func _build_from_a_booklet() -> void:
 		_check("...a click puts it there, turned as the file has it, light grey (%s)"
 			% str(put.origin), made != 0 and put.origin.is_equal_approx(at.origin)
 			and put.basis.is_equal_approx(at.basis) and _world.get_brick(made).color_code == 7)
+	_phases_as_the_sets_have_them()
 	await _key(KEY_E)
 	_check("E again: the clips are step 2, the plates still step 1 (%s, %s)"
 		% [str(clips.map(_step)), str(plates.map(_step))],
@@ -1648,6 +1660,52 @@ func _build_from_a_booklet() -> void:
 	await _key(KEY_ESCAPE)
 	_main.call("clear_model")
 	await _frames(4)
+
+
+## Where across the stud grid each upright part of the CAD task's three sets
+## goes, by the rule the ghost uses, against where its file has it: the
+## sockets' rule (Builder._socket_phase) must agree wherever the box's did,
+## and more. A first version took a wedge plate's off-grid sockets at their
+## word and put 51739 2 LDU off its studs (the build flow, 2026-10-16).
+func _phases_as_the_sets_have_them() -> void:
+	var by_box: int = 0
+	var by_rule: int = 0
+	var parts: int = 0
+	var worse := PackedStringArray()
+	for name: String in ["5762-1_Plane.mpd", "8643-1_Combination-with-8644.mpd",
+			"8841-1_Balance.mpd"]:
+		var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/" + name)
+		for line: String in text.split("\n"):
+			var w: PackedStringArray = line.strip_edges().split(" ", false)
+			if w.size() < 15 or w[0] != "1":
+				continue
+			var id: String = " ".join(w.slice(14)).to_lower().trim_suffix(".dat")
+			var mesh: Lbm.PartMesh = _library.mesh_for(_library.resolve(id))
+			if mesh == null:
+				continue
+			var at: Transform3D = _ldr(Array(w.slice(2, 14)).map(func(v: String) -> float:
+				return v.to_float())) * _library.moved_by(id)
+			if absf((at.basis * Vector3.UP).y) < 0.99 \
+					or not BrickLattice.is_square_to_grid(at.basis):
+				continue
+			parts += 1
+			var box: AABB = _builder._rotated_bounds(mesh, at.basis)
+			var footprint := Vector2i(int(round(box.size.x / 20.0)), int(round(box.size.z / 20.0)))
+			var boxed: Vector3 = BrickLattice.snap_to_studs(at.origin, footprint)
+			var phase: Variant = _builder._socket_phase(mesh, at.basis, footprint)
+			var ruled: Vector3 = boxed if phase == null else Vector3(
+				round((at.origin.x - (phase as Vector2).x) / 20.0) * 20.0 + (phase as Vector2).x,
+				at.origin.y,
+				round((at.origin.z - (phase as Vector2).y) / 20.0) * 20.0 + (phase as Vector2).y)
+			var box_ok: bool = absf(boxed.x - at.origin.x) < 0.6 and absf(boxed.z - at.origin.z) < 0.6
+			var rule_ok: bool = absf(ruled.x - at.origin.x) < 0.6 and absf(ruled.z - at.origin.z) < 0.6
+			by_box += 1 if box_ok else 0
+			by_rule += 1 if rule_ok else 0
+			if box_ok and not rule_ok:
+				worse.append(id)
+	_check("across the stud grid as the three sets' files have them: %d of %d upright parts by "
+		% [by_rule, parts] + "the sockets' rule, %d by the box alone; worse for none (%s)"
+		% [by_box, ", ".join(worse)], parts > 100 and worse.is_empty() and by_rule > by_box)
 
 
 ## A part by its number, as a person takes one: a click in the search, the
