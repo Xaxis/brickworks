@@ -72,6 +72,7 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_world = world
 	measured.clear()
+	_apart.clear()
 	# In the author's steps, when the model has them.
 	var steps: Array[Instructions.Step] = []
 	if job != null:
@@ -104,6 +105,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		for brick_id: int in step.brick_ids:
 			order.append(_entry_of(brick_id))
 	_main = _studio.stage(order)
+	_order = order
 	await get_tree().process_frame
 
 	document = Booklet.Document.new()
@@ -121,6 +123,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		return _forget_all()
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
+	_find_apart(entries)
 	document.steps = entries.size()
 	await _choose_views(entries)
 	_lap("views chosen")
@@ -491,7 +494,7 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 			_say("Choosing how each step is seen…", entries.size(), count - 1)
 		if _stopped():
 			return
-		var span: Array = _ranks[int(entry.get_meta("step"))]
+		var span: Array = _where(entry)
 		var here: float = await _seen(span, facing)
 		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
 			else BookletStudio.FRONT
@@ -514,18 +517,88 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	_studio.supersample = keep
 
 
-func _seen(span: Array, from: Vector3) -> float:
-	var boxes: Array = []
-	for rank: int in range(1, int(span[1]) + 1):
-		boxes.append(_main.boxes[rank - 1])
+## How much of a step's new parts [param from] shows: [param where] as
+## [method _where] gives it.
+func _seen(where: Array, from: Vector3) -> float:
+	var stage: BookletStudio.Stage = where[0]
+	var boxes: Array = stage.boxes.slice(0, int(where[2]))
 	var extent: Rect2 = BookletStudio.extent(boxes, from)
 	var size := Vector2i(360, 270)
 	var scale: float = minf(size.x * 0.9 / maxf(extent.size.x, 1.0),
 		size.y * 0.9 / maxf(extent.size.y, 1.0))
 	var view := BookletStudio.View.new(from, extent.get_center(), scale)
-	var shot: BookletStudio.Shot = await _studio.shoot(_main, int(span[1]),
-		int(span[0]), view, size, true)
+	var shot: BookletStudio.Shot = await _studio.shoot(stage, int(where[2]),
+		int(where[1]), view, size, true)
 	return shot.seen
+
+
+## The stage a step is drawn on and its new parts' ranks there: [stage,
+## from, upto]. The model's, or a section's own ([method _find_apart]).
+func _where(entry: Booklet.Entry) -> Array:
+	var span: Array = _ranks[int(entry.get_meta("step"))]
+	if _apart.has(entry):
+		var before: int = int(_apart[entry][1])
+		return [_apart[entry][0], int(span[0]) - before, int(span[1]) - before]
+	return [_main, int(span[0]), int(span[1])]
+
+
+## The model's bricks in the order they go in, as the main stage has them.
+var _order: Array = []
+## Steps drawn on a stage of their own: entry -> [stage, the ranks before it].
+var _apart: Dictionary = {}
+
+
+## A section that touches nothing built before it is a new thing, and its
+## steps are drawn on their own, as a real booklet draws a second vehicle,
+## until the build moves on: 7636 Combine Harvester's harvester began as an
+## axle plate drawn in the air over the hay bales and the farmer built
+## before it (docs/INSTRUCTIONS.md). What it touches is read off the parts'
+## boxes, grown by a hair.
+func _find_apart(entries: Array[Booklet.Entry]) -> void:
+	var at: int = 0
+	while at < entries.size():
+		var first: Booklet.Entry = entries[at]
+		var end: int = at
+		while end + 1 < entries.size() and entries[end + 1].section == first.section:
+			end += 1
+		var from: int = int(_ranks[int(first.get_meta("step"))][0])
+		var upto: int = int(_ranks[int(entries[end].get_meta("step"))][1])
+		if not first.section.is_empty() and from > 1 and upto >= from \
+				and not _touches(from, upto):
+			var stage: BookletStudio.Stage = _studio.stage(_order.slice(from - 1, upto))
+			_stages.append(stage)
+			for n: int in range(at, end + 1):
+				_apart[entries[n]] = [stage, from - 1]
+		at = end + 1
+
+
+## Whether the bricks ranked [param from] to [param upto] touch any ranked
+## before them.
+func _touches(from: int, upto: int) -> bool:
+	const CELL := 40.0
+	var grid: Dictionary = {}
+	for rank: int in range(1, from):
+		var box: AABB = (_main.boxes[rank - 1] as AABB).grow(1.0)
+		for cell: Vector3i in _cells_of(box, CELL):
+			if not grid.has(cell):
+				grid[cell] = []
+			(grid[cell] as Array).append(box)
+	for rank: int in range(from, upto + 1):
+		var box: AABB = _main.boxes[rank - 1]
+		for cell: Vector3i in _cells_of(box, CELL):
+			for other: AABB in grid.get(cell, []):
+				if other.intersects(box):
+					return true
+	return false
+
+
+static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for x: int in range(floori(box.position.x / size), floori(box.end.x / size) + 1):
+		for y: int in range(floori(box.position.y / size), floori(box.end.y / size) + 1):
+			for z: int in range(floori(box.position.z / size), floori(box.end.z / size) + 1):
+				out.append(Vector3i(x, y, z))
+	return out
 
 
 ## What each step's picture must show: the model as it stands, unless the
@@ -551,18 +624,23 @@ func _subjects(entries: Array[Booklet.Entry]) -> void:
 			(placed[key] as Array).append(_main.boxes[rank - 1])
 		entry.subject = BookletStudio.extent(placed[key], entry.from)
 		entry.cropped = not fits
+		if _apart.has(entry):
+			var where: Array = _where(entry)
+			entry.subject = BookletStudio.extent(
+				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
+			entry.cropped = false
 
 
 # -- pictures ------------------------------------------------------------------
 
 
 func _draw(entry: Booklet.Entry) -> void:
-	var span: Array = _ranks[int(entry.get_meta("step"))]
+	var where: Array = _where(entry)
 	var size: Vector2i = entry.pixels(px_per_mm)
 	var view: BookletStudio.View = entry.view(px_per_mm)
 	_studio.fade = (5.0 * px_per_mm) if entry.cropped else 0.0
-	var shot: BookletStudio.Shot = await _studio.shoot(_main, int(span[1]),
-		int(span[0]), view, size)
+	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
+		int(where[1]), view, size)
 	_studio.fade = 0.0
 	entry.image = _data_uri(shot.image, PAGE_COLOUR)
 	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)

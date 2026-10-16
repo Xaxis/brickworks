@@ -34,6 +34,9 @@ func _initialize() -> void:
 	_a_published_model(world, library)
 	_wheels_go_on_last(world, library)
 	_floating_detail(world, library)
+	_studs_read_alike(world, library)
+	_pressed_up(world, library)
+	_turned_section(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -409,6 +412,100 @@ func _floating_detail(world: BrickWorld, library: PartLibrary) -> void:
 		before += step.brick_ids.size()
 	print("\n  a detail floating beside a stack of six")
 	_assert("it goes in once the stack has reached it (after %d of 6)" % before, before >= 5)
+
+
+## The booklet reads what rests on what by the studs, as the build check
+## does (Joints.studs_in): the check against its lattice, the booklet
+## against the parts' own covers (Instructions.Covers). On the station the
+## app ships, the two find the same studs in the same parts.
+func _studs_read_alike(world: BrickWorld, library: PartLibrary) -> void:
+	var ldr: LdrModel = LdrModel.load_file("res://models/station.ldr")
+	if ldr == null:
+		_assert("models/station.ldr can be read", false)
+		return
+	_load(world, library, ldr)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	var lattice := BrickLattice.new()
+	var covers := Instructions.Covers.new()
+	var entries: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		entries.append([brick.id, brick.transform, mesh])
+		lattice.occupy_boxes(brick.id, builder.boxes_for(mesh, brick.transform))
+		covers.add(brick.id, brick.transform, mesh)
+	builder.free()
+	var by_lattice: Dictionary = {}
+	for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
+			var found: int = lattice.brick_at(BrickLattice.to_cell(tip))
+			return found if found != 0 and found != int(key) else null):
+		by_lattice["%d|%d" % [stud[0], stud[1]]] = true
+	var by_covers: Dictionary = {}
+	for stud: Array in Joints.studs_in(entries, covers.at):
+		by_covers["%d|%d" % [stud[0], stud[1]]] = true
+	var both: int = 0
+	for key: String in by_covers:
+		if by_lattice.has(key):
+			both += 1
+	print("\n  the station's studs, by the check's lattice and by the booklet's covers")
+	_assert("the same pairs (%d by the lattice, %d by the covers, %d in both)"
+		% [by_lattice.size(), by_covers.size(), both],
+		by_lattice.size() > 100 and both * 100 >= by_lattice.size() * 98
+			and both * 100 >= by_covers.size() * 98)
+
+
+## A plate pressed up under a bridge by its own studs, nothing under it,
+## goes in in the step that lays the bridge: before it, it rests on
+## nothing; after it, it is put in under it. Under one end of a 2 x 16, it
+## is further from the bridge's middle than a step reaches (NEAR), and went
+## in the step after.
+func _pressed_up(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	for x: float in [-140.0, 140.0]:
+		world.add_brick("3003", 4, Transform3D(Basis.IDENTITY, Vector3(x, 0.0, 0.0)))
+	var bridge: int = world.add_brick("4282", 1, Transform3D(Basis.IDENTITY,
+		Vector3(0.0, 8.0, 0.0)))
+	var under: int = world.add_brick("3023", 14, Transform3D(Basis.IDENTITY,
+		Vector3(100.0, 0.0, 0.0)))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	var step_of: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			step_of[brick_id] = step.index
+	print("\n  a plate pressed up under a bridge")
+	_assert("it goes in with the bridge (steps %d and %d)" % [int(step_of.get(under, -1)),
+		int(step_of.get(bridge, -1))], step_of.get(under, -1) == step_of.get(bridge, -2))
+
+
+## A section the file puts on at an angle, too big for a callout by size, is
+## built on the side, square, and put on whole, as its author built it:
+## where it stands its parts went in at an angle against parts already
+## there.
+func _turned_section(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	# A 6 x 6 plate on the ground beside a stack, and the section on it.
+	world.add_brick("3958", 7, Transform3D(Basis.IDENTITY, Vector3(0.0, -16.0, 0.0)))
+	for level: int in 80:
+		world.add_brick("3001", 4, Transform3D(Basis.IDENTITY,
+			Vector3(400.0, level * 24.0, 0.0)))
+	var turn := Transform3D(Basis(Vector3.UP, deg_to_rad(30.0)), Vector3(0.0, 8.0, 0.0))
+	var section: Array[int] = []
+	for level: int in 35:
+		for column: int in 2:
+			var id: int = world.add_brick("3001", 1, turn * Transform3D(Basis.IDENTITY,
+				Vector3(0.0, level * 24.0, column * 40.0 - 20.0)))
+			world.get_brick(id).unit = "turret#1"
+			world.get_brick(id).group = "turret"
+			section.append(id)
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a turned section", steps, world, library)
+	var put_on: Array = steps.filter(func(step: Instructions.Step) -> bool:
+		return step.attaches() and step.copies.size() == 1 \
+			and step.copies[0].size() == section.size())
+	print("\n  a section of 70 put on at 30 degrees")
+	_assert("it is built on the side and put on whole (%d steps put it on)" % put_on.size(),
+		put_on.size() == 1)
 
 
 func _load(world: BrickWorld, library: PartLibrary, ldr: LdrModel) -> void:

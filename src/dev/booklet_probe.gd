@@ -19,6 +19,7 @@
 ##   is a sub-assembly built in a callout, "2x" for two, with an arrow to
 ##   each copy? a figure in its own callout?
 ##   when a step's parts are behind the model, is it turned round?
+##   is a section that touches nothing built before drawn on its own?
 ##   does the timeline number its steps as the booklet does?
 ##   does a model with its author's steps get a booklet in those steps?
 ##   does every page fit its sheet (Booklet.PAGE inside A4 and Letter)?
@@ -52,6 +53,7 @@ func _run() -> void:
 	await _shed()
 	await _house()
 	await _turned()
+	await _apart()
 	await _authored()
 	await _the_button()
 
@@ -164,8 +166,54 @@ func _house() -> void:
 
 
 ## A tall wall at the front, built first, and then plates on the floor
-## behind it: from the front they cannot be seen at all.
+## against its back: from the front they cannot be seen at all.
 func _turned() -> void:
+	var world: BrickWorld = _wall_and_yard(20.0)
+	var made: Array = await _make(world, "turned")
+	var maker: BookletMaker = made[0]
+	var html: String = made[1]
+	print("\n  plates behind a wall")
+	# The step that puts the plates in, wherever the plan has it: against the
+	# wall they can go in once it stands a course or two high.
+	var behind: Booklet.Entry = _entries(maker)[-1]
+	for entry: Booklet.Entry in _entries(maker):
+		if entry.lots.any(func(lot: Booklet.Lot) -> bool: return lot.part_id == "3020"):
+			behind = entry
+	_assert("the step behind the wall is drawn from the back, with the turn sign (step %d of %d)"
+		% [behind.number, _entries(maker).size()],
+		behind.turned and behind.from == BookletStudio.BACK
+		and html.count("rx=\"1.6\" fill=\"#fff\"") >= 1)
+	var note: Dictionary = _note_for(maker, "step %d" % behind.number)
+	_assert("...where its plates are in sight (%s)" % str(note.get("new", Rect2())),
+		(note.get("new", Rect2()) as Rect2).size.x > 10.0)
+
+
+## The same plates a hand's width behind the wall, touching nothing built
+## before them: a new thing, drawn on a stage of its own as a booklet draws a
+## second vehicle (BookletMaker._find_apart), so seen from the front with no
+## wall in the way. Drawn on the model, 7636's harvester began in the air
+## over the hay bales.
+func _apart() -> void:
+	var world: BrickWorld = _wall_and_yard(-60.0)
+	var made: Array = await _make(world, "apart")
+	var maker: BookletMaker = made[0]
+	print("\n  plates apart from a wall")
+	var behind: Booklet.Entry = _entries(maker)[-1]
+	_assert("the step that touches nothing built before is drawn on its own",
+		maker._apart.has(behind))
+	_assert("...from the front, not turned", not behind.turned
+		and behind.from == BookletStudio.FRONT)
+	var note: Dictionary = _note_for(maker, "step %d" % behind.number)
+	_assert("...with its plates in sight (%s)" % str(note.get("new", Rect2())),
+		(note.get("new", Rect2()) as Rect2).size.x > 10.0)
+	var first: Booklet.Entry = _entries(maker)[0]
+	_assert("...and the wall's own steps on the model", not maker._apart.has(first))
+
+
+## Eight courses of wall at z 40 to 80, built first, then two plates on the
+## floor whose middle is at [param yard_z]: 20 sets them against the wall's
+## back, -60 a hand's width away.
+func _wall_and_yard(yard_z: float) -> BrickWorld:
 	var world := BrickWorld.new()
 	world.library = _library
 	root.add_child(world)
@@ -177,19 +225,9 @@ func _turned() -> void:
 			world.get_brick(id).group = "wall"
 	for x: float in [-40.0, 40.0]:
 		var id: int = world.add_brick("3020", 2, Transform3D(Basis.IDENTITY,
-			Vector3(x, 0.0, -60.0)))
+			Vector3(x, 0.0, yard_z)))
 		world.get_brick(id).group = "yard"
-	var made: Array = await _make(world, "turned")
-	var maker: BookletMaker = made[0]
-	var html: String = made[1]
-	print("\n  plates behind a wall")
-	var behind: Booklet.Entry = _entries(maker)[-1]
-	_assert("the step behind the wall is drawn from the back, with the turn sign",
-		behind.turned and behind.from == BookletStudio.BACK
-		and html.count("rx=\"1.6\" fill=\"#fff\"") >= 1)
-	var note: Dictionary = _note_for(maker, "step %d" % behind.number)
-	_assert("...where its plates are in sight (%s)" % str(note.get("new", Rect2())),
-		(note.get("new", Rect2()) as Rect2).size.x > 10.0)
+	return world
 
 
 ## The app's own toolbar: Instructions sits after Timeline, and pressing

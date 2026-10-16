@@ -14594,26 +14594,18 @@ func _filled_by(cells_of: Dictionary, lattice: BrickLattice) -> Callable:
 ## plates — a 1x3 under a sign, a 2x2 under a lantern.
 func _studs_reaching_in(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice) -> Array:
-	var held: Array = []      ## [the stud's part, the part it reaches into]
+	var entries: Array = []
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _joined_at(placement, part, model)
-		for connector: Lbm.Connector in part.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			# A little past the tip, so the sample lands in the part
-			# being held rather than on the boundary between them.
-			var tip: Vector3 = at * (connector.position
-				+ connector.axis.normalized() * 5.0)
-			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
-			# brick_at returns index + 1, since zero means empty.
-			if reached != 0 and reached - 1 != index:
-				held.append([index, reached - 1, at * connector.position,
-					(at.basis * connector.axis).normalized()])
-	return held
+		entries.append([index, _joined_at(placement, part, model), part])
+	# The rule is Joints', which the booklet reads support by too.
+	return Joints.studs_in(entries, func(tip: Vector3, index: Variant) -> Variant:
+		# brick_at returns index + 1, since zero means empty.
+		var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
+		return reached - 1 if reached != 0 and reached - 1 != int(index) else null)
 
 
 ## Each placement as [Joints] wants it, to ask which are held by something
