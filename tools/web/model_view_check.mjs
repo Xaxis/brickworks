@@ -193,7 +193,10 @@ try {
   const app = JSON.parse(readFileSync(new URL("../mcp_tools.json", import.meta.url), "utf8")).map((t) => t.name);
   const names = tools.map((t) => t.name);
   const onlyApp = tools.filter((t) => VIEWER_ONLY.includes(t.name));
-  check(app.length === 47 && names.length === app.length + 2 + VIEWER_ONLY.length && app.every((n) => names.includes(n))
+  // The app's own count comes from tools/mcp_tools.json, which mcp_sync
+  // holds to what the app serves; a number written here went stale when a
+  // tool was added (47 → 48, colour_hidden_parts).
+  check(app.length > 0 && names.length === app.length + 2 + VIEWER_ONLY.length && app.every((n) => names.includes(n))
       && names.includes("tabs") && names.includes("select_tab"),
     `...and the tools are the app's ${app.length}, the relay's tabs and select_tab, and the viewer's own: ${names.length}`);
   check(onlyApp.length === VIEWER_ONLY.length && onlyApp.every((t) => JSON.stringify(t._meta.ui.visibility) === '["app"]'
