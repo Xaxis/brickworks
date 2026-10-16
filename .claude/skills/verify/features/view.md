@@ -163,7 +163,13 @@ picture the assistant is shown.
   src/dev/typing_probe.gd`) sends the keys before one frame, and
   `focus_check`'s last case sends them in one task of the page; both fail on
   480b81a (the live site reverted the name 3 times in 3, and kept it without
-  the Escape).
+  the Escape). Nothing in the parts bin but its search takes the keys
+  (2026-10-16): a part's tile, a category, Make a part, Print and Stickers
+  were buttons that kept the focus once clicked, and Right on the timeline
+  then walked the focus round the bin instead of stepping (the CAD task
+  test's browser run). `handbuild_probe -- only=build_from_a_booklet` takes a
+  part by its tile and presses Right and Left on the timeline;
+  `focus_check` does it in a browser, reading the timeline's place.
 - `status line`: bricks, whether it stands and what it weighs, of the model and
   not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
   the count and the weight): it said 62 bricks and 149 g over the 61-brick
@@ -485,7 +491,8 @@ picture the assistant is shown.
   the same camera that took the picture. A render says what was built and not
   where it is, so a number read off the image is the number to write in a
   placement.
-- `the timeline`: `StepsBar` (`src/ui/steps_bar.gd`), opened by B, the toolbar's
+- `the timeline`: `StepsBar` (`src/ui/steps_bar.gd`), opened by B (Left and Right
+  step it, listed in the controls since 2026-10-16), the toolbar's
   Timeline or a design's Build steps. Opening it works the steps out a slice
   at a time (`StepsBar.start` is a coroutine, `Instructions.plan_paced`) with
   the status bar saying which part of it and how far, and Cancel; Timeline
@@ -675,7 +682,17 @@ picture the assistant is shown.
   **New step from selection** (`Shift-N`: after the step the timeline is on,
   everything later one on — how a step is split or put in), **Step
   earlier/later** (reorder), **Merge with the next step**, **Delete the step**
-  (its parts join the step before; none is taken off). Each is one undo
+  (its parts join the step before; none is taken off). **Next step** (`E`,
+  Edit, Build steps and the Build menu, 2026-10-16): the parts put down since
+  the last step make a step after it, and the next part starts another, as
+  Studio's step button does (`AuthorSteps.close_step`): a builder following a
+  booklet, or writing one, ends each step as they build it, where before
+  every step was its parts shift-clicked and Shift-N after. In a model with
+  no steps the parts so far are step 1; with nothing put down since, it says
+  so and makes no empty step ("step 2 is done: the next part starts step
+  3"). `handbuild_probe -- only=build_from_a_booklet` presses it twice over
+  the plane's first parts, undoes and redoes it, and opens the timeline on
+  the steps it made. Each edit is one undo
   (`restep`/`unitstep` in `Builder._apply`, `AuthorSteps.squash`: an undo
   group is applied in the order kept, so a part renumbered after a move came
   back to its middle step). The first edit of a model with no steps copies the

@@ -162,7 +162,7 @@ for (let attempt = 0; attempt < 3; attempt++) {
 }
 ok((await state()).bricks === 5, `bay_2025.io opened through Open… > From a file: ${(await state()).bricks} parts`);
 ok(Boolean(note) && /opened 5 parts/.test(note.said)
-  && /1 not in the library, left out \(m1a2b3c4_2025408_163200\)/.test(note.said),
+  && /1 not shown, kept in the file \(m1a2b3c4_2025408_163200\)/.test(note.said),
   `and the status bar names the part only Studio has: "${note ? note.said : ""}"`);
 await page.waitForTimeout(6000);
 await shot("1_bay.png");
@@ -191,7 +191,9 @@ print(json.dumps({"names": z.namelist(), "parts": sum(1 for l in ldr.splitlines(
 ok(download && /\.io$/.test(download.suggestedFilename())
   && JSON.stringify(members.names) === JSON.stringify(["model.ldr", ".info", "errorPartList.err", "thumbnail.png"]),
   `a zip Python's zipfile tests clean, holding ${JSON.stringify(members.names || members.error)}`);
-ok(members.info && members.info.total_parts === 5 && members.crlf && members.thumbnail === "89504e470d0a1a0a",
+// Six: the five shown and the one only Studio has, kept in the file
+// (SourceFile) where it was left out before 2026-10-16.
+ok(members.info && members.info.total_parts === 6 && members.crlf && members.thumbnail === "89504e470d0a1a0a",
   `its model.ldr in Studio's line ends, .info counting ${members.info ? members.info.total_parts : "?"} parts, `
   + `and a PNG thumbnail drawn in the browser (${members.thumbnail ? "PNG" : "none"})`);
 

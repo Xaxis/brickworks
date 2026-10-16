@@ -695,6 +695,58 @@ func _index() -> void:
 			(listed as Array).append(brick)
 
 
+## [method content] of every assembly at once, path -> its content: one
+## pass over the model, where asking each path apart is one pass a path.
+func contents_by_path() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var own: String = path_of(brick)
+		var path: String = ""
+		for segment: String in segments(own):
+			path = join(path, segment)
+			if not out.has(path):
+				out[path] = []
+			(out[path] as Array).append({"part": brick.part_id, "color": brick.color_code,
+				"at": brick.transform, "rest": own.substr(path.length()).trim_prefix("/"),
+				"id": brick.id, "step": brick.step})
+	return out
+
+
+## Whether ``a`` lies exactly on ``b``, as [method best_match] says it, but
+## asking only that: the same parts in the same colours first, and each way
+## of laying one on the other given up at its first part that lands on
+## nothing. {"at", "mirrored", "exact"}.
+func exact_match(a: Array, b: Array) -> Dictionary:
+	var none: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
+		"exact": false}
+	if a.is_empty() or a.size() != b.size():
+		return none
+	var tally: Dictionary = {}
+	for item: Dictionary in a:
+		var key: String = "%s|%d" % [item["part"], int(item["color"])]
+		tally[key] = int(tally.get(key, 0)) + 1
+	for item: Dictionary in b:
+		var key: String = "%s|%d" % [item["part"], int(item["color"])]
+		if int(tally.get(key, 0)) <= 0:
+			# A part reflected may be its other hand: only a mirror can match.
+			return _exact_mirrored(a, b)
+		tally[key] = int(tally[key]) - 1
+	var found: Dictionary = _rigid_match(a, b, true)
+	if bool(found["exact"]):
+		found["mirrored"] = false
+		return found
+	return _exact_mirrored(a, b)
+
+
+func _exact_mirrored(a: Array, b: Array) -> Dictionary:
+	var from: Array = a.map(func(item: Dictionary) -> Dictionary: return _mirrored(item))
+	var found: Dictionary = _rigid_match(from, b, true)
+	found["mirrored"] = true
+	return found
+
+
 ## The parts of an assembly and everything inside it: part, colour, where,
 ## and the group below the assembly ("" for its own parts).
 func content(path: String) -> Array:
@@ -754,7 +806,7 @@ func best_match(a: Array, b: Array) -> Dictionary:
 	return best
 
 
-func _rigid_match(a: Array, b: Array) -> Dictionary:
+func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "score": 0, "exact": false,
 		"colours": false}
 	if a.is_empty() or b.is_empty():
@@ -782,7 +834,7 @@ func _rigid_match(a: Array, b: Array) -> Dictionary:
 				var at: Transform3D = (mate["at"] as Transform3D) * spin \
 					* (anchor["at"] as Transform3D).affine_inverse()
 				at = Transform3D(at.basis.orthonormalized(), at.origin)
-				var scored: Dictionary = _score(at, a, by_part)
+				var scored: Dictionary = _score(at, a, by_part, exact_only)
 				tried += 1
 				if int(scored["score"]) > int(best["score"]) or (
 						int(scored["score"]) == int(best["score"])
@@ -805,7 +857,8 @@ func _rigid_match(a: Array, b: Array) -> Dictionary:
 
 ## How many of a's parts, laid by ``at``, land on a part of b: the same
 ## part, at the same place, filling the same cells.
-func _score(at: Transform3D, a: Array, by_part: Dictionary) -> Dictionary:
+func _score(at: Transform3D, a: Array, by_part: Dictionary,
+		exact_only: bool = false) -> Dictionary:
 	var score: int = 0
 	var colours: bool = true
 	var used: Dictionary = {}
@@ -822,6 +875,9 @@ func _score(at: Transform3D, a: Array, by_part: Dictionary) -> Dictionary:
 			hit = other
 			break
 		if hit.is_empty():
+			# Asked only whether it lies exactly: it does not.
+			if exact_only:
+				return {"score": score, "colours": false}
 			continue
 		used[hit["id"]] = true
 		score += 1
@@ -894,11 +950,18 @@ static func in_file_order(found: Array) -> Array:
 ## how it lies on that one — mirrored, by a reflecting matrix. A copy that
 ## no longer lies exactly on the first is written as a definition of its
 ## own rather than lose what makes it different.
+##
+## Each copy's content read in one pass over the model, and each copy only
+## asked whether it lies exactly on the first ([method exact_match]): saving
+## 42043-1 (7,909 parts, sub-models five deep) took 718 s, nearly all of it
+## here, scanning every part for each copy and scoring up to 400 ways one
+## copy might lie on another that could not lie on it at all.
 func file_frames(figures: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	var masters: Dictionary = {}
 	var taken: Dictionary = {}
 	var ordered: Array = in_file_order(Array(paths()))
+	var contents: Dictionary = contents_by_path()
 	for path: String in ordered:
 		taken[definition(leaf(path))] = true
 	for path: String in ordered:
@@ -908,7 +971,7 @@ func file_frames(figures: Dictionary = {}) -> Dictionary:
 			out[path] = {"frame": _figure_frame(figures, path), "def": def}
 			continue
 		var master: String = masters[def]
-		var fit: Dictionary = best_match(content(master), content(path))
+		var fit: Dictionary = exact_match(contents.get(master, []), contents.get(path, []))
 		if bool(fit["exact"]):
 			var reflect: Transform3D = LdrModel.REFLECT_X if bool(fit["mirrored"]) \
 				else Transform3D.IDENTITY

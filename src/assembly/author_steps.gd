@@ -399,6 +399,28 @@ static func new_step(world: BrickWorld, ids: Array, level: String,
 	return squash(undo)
 
 
+## The parts put down in [param section] since its last step, made a step
+## of their own after it: Edit, Next step (E). A builder following a booklet,
+## or writing one, ends each step as Studio's step button does and goes on
+## to the next; the parts with no step yet are the ones put down since, and
+## in a model with no steps every part so far is the first. A copy of a
+## sub-model put on since goes in with them. Returns the undo, empty when
+## nothing was put down since the last step.
+static func close_step(world: BrickWorld, section: String, skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	var last: int = -1
+	for item: Dictionary in items_of(world, section, skip):
+		last = maxi(last, int(item["step"]))
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step < 0 and not skip.has(brick.id) and Assemblies.path_of(brick) == section:
+			_put(world, {"brick": brick.id, "step": -1}, last + 1, undo)
+	var lowest: Dictionary = lowest_under(world, skip)
+	for path: String in paths_in(world, skip):
+		if Assemblies.parent_of(path) == section and unit_step(world, path, lowest) < 0:
+			_put(world, {"unit": path, "step": -1}, last + 1, undo)
+	return squash(undo)
+
+
 ## Every copy of the sub-model [param section] is, itself included: a
 ## change to the steps of one window is a change to the window.
 static func _copies(world: BrickWorld, section: String, skip: Dictionary) -> Array:

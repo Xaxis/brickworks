@@ -13,7 +13,9 @@
 // when both come in one frame.
 //
 // The picture is read, not the app's word for it, so the same check runs
-// against a build from before the fix and fails there.
+// against a build from before the fix and fails there. Last, a part taken by
+// a click on its tile, and Right on the timeline (B): a clicked tile kept
+// the keys until 2026-10-16.
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
@@ -151,6 +153,54 @@ for (const [how, end] of endings) {
   }
   check(`a name typed, Enter and Escape in one busy frame keep the name ("${title}")`,
     title === `${name} — Brickworks`);
+}
+
+// A part taken by a click on its tile in the bin: the tile kept the keys,
+// and Right on the timeline walked the focus round the bin instead (the CAD
+// task test, 2026-10-16). The timeline's place is read, as a person reads
+// its caption; then the arrows must still turn the view, the picture read.
+{
+  const search = await controlAt("part search");
+  await page.mouse.click(search.x, search.y);
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type("3001", { delay: 30 });
+  await page.waitForTimeout(2500);
+  const tile = await controlAt("first part");
+  await page.mouse.click(tile.x, tile.y);
+  await page.waitForTimeout(1500);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+  const at = async () => ((await page.evaluate(() => window.brickworksState || {})).timeline || {}).at;
+  await page.keyboard.press("b");
+  let open = null;
+  for (let n = 0; n < 120 && !Array.isArray(open); n += 1) {
+    await page.waitForTimeout(500);
+    open = await at();
+  }
+  await page.keyboard.press("Home");
+  await page.waitForTimeout(1200);
+  const home = await at();
+  await page.keyboard.press("ArrowRight");
+  let after = home;
+  for (let n = 0; n < 20 && JSON.stringify(after) === JSON.stringify(home); n += 1) {
+    await page.waitForTimeout(500);
+    after = await at();
+  }
+  check(`after a tile is clicked, Right steps the timeline (${JSON.stringify(home)} to ${JSON.stringify(after)})`,
+    Array.isArray(home) && Array.isArray(after) && after[0] > home[0]);
+  await page.keyboard.press("b");
+  await page.waitForTimeout(1500);
+  await page.keyboard.press("Digit0");
+  await page.waitForTimeout(1500);
+  const still = await frameOf();
+  for (let tap = 0; tap < 3; tap += 1) {
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(150);
+  }
+  await page.waitForTimeout(1500);
+  const moved = differ(still, await frameOf());
+  check(`...and with the timeline closed the arrows turn the view (moved ${moved.toFixed(1)})`,
+    moved > 1.5);
 }
 
 await browser.close();

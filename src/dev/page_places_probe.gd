@@ -47,14 +47,15 @@ func _run() -> void:
 		% [unsorted.round(), drawn.round()], unsorted.round() != drawn.round())
 	var told: Variant = first.get("storage_download_all")
 	_check("...and the page is told no place it is not drawn at: told %s" % str(told),
-		told == null or told == drawn_at)
+		told == null or _at(told) == drawn_at)
 	var second: Dictionary = main.call("_page_places", main.call("_page_controls"), to_window, 1.0)
 	told = second.get("storage_download_all")
 	_check("laid out, the page is told no other place: told %s" % str(told),
-		told == null or told == drawn_at)
+		told == null or _at(told) == drawn_at)
 	var third: Dictionary = main.call("_page_places", main.call("_page_controls"), to_window, 1.0)
 	_check("...and once it has stayed there, it is told where it is drawn: %s"
-		% str(third.get("storage_download_all")), third.get("storage_download_all") == drawn_at)
+		% str(third.get("storage_download_all")), third.get("storage_download_all") != null
+		and _at(third["storage_download_all"]) == drawn_at)
 
 	print("\nput away, it is gone at once")
 	offer.visible = false
@@ -83,3 +84,10 @@ func _check(what: String, ok: bool) -> void:
 		return
 	_failures += 1
 	print("  FAIL  %s" % what)
+
+
+## Where a control is told to be, its middle: the page is told its size
+## too (w, h), which the place does not depend on.
+static func _at(told: Variant) -> Dictionary:
+	var place: Dictionary = told
+	return {"x": place.get("x"), "y": place.get("y")}

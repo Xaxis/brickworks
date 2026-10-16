@@ -1986,6 +1986,20 @@
       "entry": "src/dev/bigmodel_probe.gd",
       "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "characters laid on joints",
+      "entry": "src/ai/figure_pattern.gd",
+      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "fidelity probe",
+      "entry": "src/dev/fidelity_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; FILEs saved untouched and compared line for line)",
+      "area": "model-io"
     }
   ]
 }

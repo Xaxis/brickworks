@@ -435,6 +435,9 @@ func begin(name: String) -> void:
 	remixed_from = ""
 	from_set = ""
 	hidden_scheme = {}
+	# Nobody's file: written whole, where it stands.
+	_source = null
+	_opened_in = -1
 	begun.emit(title)
 
 
@@ -641,6 +644,9 @@ static func _title_of(model: LdrModel, file_name: String) -> String:
 ## and so the bar, the share link and the booklet, called it Wizard's
 ## Tower. An MPD names its first section, then the title.
 static func title_in(text: String, file_name: String) -> String:
+	var named: String = title_meta_in(text.left(4096))
+	if not named.is_empty():
+		return named
 	for line: String in text.left(4096).split("\n", false):
 		var said: String = line.strip_edges()
 		if said.is_empty():
@@ -684,12 +690,14 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	var authored: bool = model.steps_are_authored()
 	# A mirrored copy's parts: each put where its reflection is, in its
 	# other hand where it has one.
+	var mirrored_lines: Dictionary = {}
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
 		if not authored:
 			placement.step = -1
 		placement.part_id = studio_part(placement.part_id)
 		if placement.mirrored:
+			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
 			Assemblies.unmirror(placement, library)
 		# A retired number as the part it became, where its stub puts it
 		# (PartLibrary.moved_by), before the lift is worked out from it and
@@ -731,11 +739,26 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 			"error": "none of the %d parts in that file are in the library (%s)"
 				% [missing.size(), named_counts(missing)]}
 
+	# Someone else's file is kept, so a save writes back what nobody changed
+	# as it was (SourceFile); the app's own are written whole, as always.
+	# Made before the model is stood on the ground: the file's coordinates.
+	var source: SourceFile = SourceFile.make(text, model, known, mirrored_lines, authored,
+		flattened.filter(func(p: LdrModel.Placement) -> bool:
+			return not library.parts.has(p.part_id))) \
+		if model.author.strip_edges() != "Brickworks" else null
+
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_source = source
+	_opened_in = world.generation()
+	# What the file holds that is not on the baseplate: kept in it, and said.
+	unshown = missing.duplicate()
+	if source != null and not missing.is_empty():
+		unshown = source.unshown(flattened.filter(func(p: LdrModel.Placement) -> bool:
+			return not library.parts.has(p.part_id)))
 
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
@@ -775,6 +798,11 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	# A model from a file: nobody emptied the baseplate.
 	emptied = false
 	title = _title_of(model, name)
+	if source != null:
+		source.own_title = title
+		var named: String = title_meta_in(text)
+		if not named.is_empty():
+			title = named
 	share_id = share_in(text)
 	remixed_from = remix_in(text)
 	var said: ModelFloor = ModelFloor.read(text)
@@ -784,7 +812,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
-		"waiting": waiting.size(), "missing_ids": missing, "error": ""}
+		"waiting": waiting.size(), "missing_ids": missing, "error": "",
+		"unshown": unshown, "kept": source != null}
 
 
 ## Part numbers and how many of each, as a person reads them: "3626cpr9
@@ -809,6 +838,86 @@ func studio_part(part_id: String) -> String:
 			and library.parts.has(part_id.substr(3)):
 		return part_id.substr(3)
 	return part_id
+
+
+## The file the model on the baseplate was opened from, when it is someone
+## else's (SourceFile): a save writes it back with only what changed. Null
+## for a model made here or saved by Brickworks, which is written whole.
+## Only while the world is the one it was opened into ([member _opened_in]).
+var _source: SourceFile = null
+var _opened_in: int = -1
+## Parts the file holds that are not on the baseplate, by number, how many
+## of each: not in the library, or a flexible part's skin. Kept in the file
+## when it is someone else's, and said when it opens.
+var unshown: Dictionary = {}
+const TITLE_META := "0 !BRICKWORKS TITLE "
+
+
+## The source the model on the baseplate is still the model of, or null.
+func _live_source() -> SourceFile:
+	if _source == null or world == null or world.generation() != _opened_in:
+		return null
+	return _source
+
+
+## How far the model on the baseplate was moved to stand on the ground when
+## it opened: taken off again when it is written, so the file keeps its
+## coordinates. Zero for a model made here.
+func _lift_now() -> Vector3:
+	if world == null or world.generation() != _opened_in:
+		return Vector3.ZERO
+	return Vector3(0.0, _lifted_by, 0.0)
+
+
+## The source file with the model on the baseplate written into it, or null
+## when there is none or the change cannot be written into it as it is.
+func _source_text(title_now: String) -> Variant:
+	var source: SourceFile = _live_source()
+	if source == null:
+		return null
+	var bricks: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			bricks.append(brick)
+	var waiting: Dictionary = {}
+	if world.generation() == _awaited_in:
+		for placement: LdrModel.Placement in awaited:
+			waiting["%d|%s" % [placement.line, placement.unit]] = true
+	var written: Variant = source.write(bricks, _lift_now(), waiting, library,
+		world.unit_steps if source.authored else {})
+	if written == null:
+		return null
+	var text: String = _without_app_lines(str(written))
+	if title_now != source.own_title and not title_now.is_empty():
+		text = _after_first_line(text, TITLE_META + title_now)
+	return text
+
+
+## [param text] without the lines this app writes again on every save.
+static func _without_app_lines(text: String) -> String:
+	if not text.contains("0 !BRICKWORKS "):
+		return text
+	var kept := PackedStringArray()
+	for line: String in text.split("\n"):
+		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
+				or line.begins_with(TITLE_META):
+			continue
+		kept.append(line)
+	return "\n".join(kept)
+
+
+static func _after_first_line(text: String, line: String) -> String:
+	var cut: int = text.find("\n")
+	if cut < 0:
+		return text + "\n" + line + "\n"
+	return text.substr(0, cut + 1) + line + "\n" + text.substr(cut + 1)
+
+
+## The name a save of someone else's file gave its model, or "".
+static func title_meta_in(text: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS TITLE (.+?)\\s*$").search(text)
+	return found.get_string(1) if found != null else ""
 
 
 ## Placements whose geometry is on its way, put down as each part arrives.
@@ -1019,6 +1128,14 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	## path -> the step it goes on in.
 	var step_of: Dictionary = {}
 	var unit_steps: Dictionary = {}
+	# Someone else's file: written back as it was, with what changed.
+	var from_source: Variant = _source_text(title)
+	if from_source != null:
+		var kept: String = str(from_source)
+		kept = model_floor.written_into(kept) if model_floor != null else kept
+		kept = HiddenColours.written_into(kept, hidden_scheme)
+		made.append(kept if set_in(kept) == from_set else with_set(kept, from_set))
+		return
 	var authored: bool = AuthorSteps.any(world, scenery)
 	if not worked.is_empty() and not authored:
 		step_of = worked["bricks"]
@@ -1030,6 +1147,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		step_of = numbers["bricks"]
 		unit_steps = numbers["units"]
 
+	# In the file's coordinates, not where the model was stood for the view.
+	var back := Transform3D(Basis.IDENTITY, -_lift_now())
 	var placements: Array = []
 	for item: Variant in world.bricks():
 		if pace != null and pace.due():
@@ -1038,7 +1157,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if world.get_brick(brick.id) != brick or scenery.has(brick.id):
 			continue
 		var placement := LdrModel.Placement.new(
-			brick.part_id, brick.color_code, brick.transform,
+			brick.part_id, brick.color_code, back * brick.transform,
 			int(step_of.get(brick.id, 0)))
 		placement.group = brick.group
 		placement.unit = Assemblies.path_of(brick)
@@ -1074,19 +1193,62 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	tree.builder = builder
 	tree.library = library
 	tree.scenery = scenery
-	var instances: Dictionary = tree.file_frames(figure_frames())
+	var figures: Dictionary = figure_frames()
+	var instances: Dictionary = tree.file_frames(figures)
 	if pace != null and pace.due():
 		await pace.next()
+	# Every frame moved with the parts, so each part is where it was in it.
+	for path: Variant in instances:
+		var entry: Dictionary = instances[path]
+		entry["frame"] = back * (entry["frame"] as Transform3D)
+	for group: Variant in figures:
+		figures[group] = back * (figures[group] as Transform3D)
+	var known: Dictionary = library.parts if library != null else {}
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps) if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
+		unit_steps, known) if not instances.is_empty() \
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known)
 	if authored:
 		text = with_authored_steps(text)
+	# Someone else's model written whole: still theirs, under their terms,
+	# its steps still no one's when Brickworks worked them out.
+	if _live_source() != null:
+		text = _with_header(text, _live_source().header(), authored)
+		# And what it holds that is not on the baseplate, kept.
+		var waiting: Array = []
+		if world.generation() == _awaited_in:
+			for placement: LdrModel.Placement in awaited:
+				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
+					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
+					placement.step)
+				held.unit = placement.unit
+				held.line = placement.line
+				waiting.append(held)
+		text = _live_source().carried_into(text, waiting)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
 	made.append(with_set(text, from_set))
+
+
+## [param text], written whole, under [param header] (SourceFile.header)
+## in place of its own author line.
+static func _with_header(text: String, header: PackedStringArray, authored: bool) -> String:
+	if header.is_empty():
+		return text
+	var at: int = text.find("\n0 Author: Brickworks\n")
+	if at < 0:
+		return text
+	var lines: PackedStringArray = header.duplicate()
+	if not authored:
+		lines.append(LdrModel.WORKED_META)
+	var rest: String = text.substr(at + "\n0 Author: Brickworks\n".length())
+	# Each sub-model under the author's name too: the model is still theirs.
+	for line: String in header:
+		if line.begins_with("0 Author:"):
+			rest = rest.replace("\n0 Author: Brickworks\n", "\n" + line + "\n")
+			break
+	return text.substr(0, at + 1) + "\n".join(lines) + "\n" + rest
 
 
 ## [param text] with the set it came from on a line after its first.
@@ -1143,7 +1305,8 @@ const PACED_FROM := 300
 ## Whether this model's build order is worked out a slice at a time.
 func paces() -> bool:
 	return not AuthorSteps.any(world, scenery) and world.library != null \
-		and world.brick_count() - scenery.size() >= PACED_FROM
+		and world.brick_count() - scenery.size() >= PACED_FROM \
+		and _source_text(title) == null
 
 
 ## The model's text with its build order, for an export or a share: on a

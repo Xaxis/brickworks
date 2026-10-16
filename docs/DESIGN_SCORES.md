@@ -205,6 +205,38 @@ round on), or it can lay the answer. The report names any design whose log
 lacks the hold-out line. Results are in `bench/results/realset-2026-10-16-m32/`
 (report-proof.md, report-tune.md) and `realset-sets/calibration-tune.md`.
 
+### The first arm judged by it: figures on an armature (2026-10-16, `2ad2323`)
+
+The armature unit lays a person, an animal or a head on working joints and
+sends an unjointed character back once. Its arm ran the same proof half, one
+design a subject, on m33's code with the armature merged.
+
+| dimension | m32 preferred to the set | armature preferred to the set | m32 minus armature, paired (95%) | armature preferred to m32, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% | 30% | 0 (-20, +20) | 65% (35-86) |
+| surface | 20% | 40% | -20 (-45, 0) | 80% (49-94) |
+| colour | 15% | 30% | -15 (-30, -5) | 70% (40-89) |
+| technique | 5% | 15% | -10 (-35, +10) | 75% (44-92) |
+| creativity | 25% | 45% | -20 (-45, +5) | 65% (35-86) |
+| overall | 20% | 25% | -5 (-35, +25) | 75% (44-92) |
+
+- **Shipped on this.** Every dimension leans to the armature, both ways of
+  judging it; colour's gap to the sets closed by a margin that leaves out
+  zero; no dimension leans to m32. Ten subjects are few: no overall interval
+  leaves out a tie. BrickBench, the outside check, called it a tie overall
+  (12 of 24) and gave it surface 21 of 24 (docs/BRICKBENCH.md).
+- **Characters.** Against its set the bee won every verdict but creativity.
+  Steve & Creeper won surface, colour and creativity both ways and split
+  likeness and overall. Jack and Sally won one creativity verdict and lost
+  the rest, as m32's did.
+- **The gap that stays** is the same as m32's: shapes per 100 parts 16
+  against the sets' 28, SNOT 4% against 25%, joints 0% against 3%.
+- One design's log (Container Yard) has no hold-out line: that session never
+  searched the real-set index.
+
+Results: `bench/results/realset-2026-10-16-armature/` and
+`realset-2026-10-16-m32-vs-armature/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

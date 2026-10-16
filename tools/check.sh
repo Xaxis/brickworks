@@ -150,7 +150,7 @@ echo "── godot probes ──"
 # with nothing failing — a tool list four tools stale, a menu command no
 # session can reach (mcp_sync); and the window's commands as tools, each
 # read back off the model (app_tools).
-for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector flex clutch mechanism axle variety repeat usage kinds rules angled section scale bigmodel edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style turned detail chat sketch project example_name minifig print sticker mould brickify; do
+for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store versions empty_save instructions playback responsive search inventory mosaic world_view controls snot technic joints exact by_connector flex clutch mechanism axle variety repeat usage kinds rules angled section scale bigmodel edit selection scanner attach import lxf io mesh_export select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds pieces mcp claude_code techniques patterns face features creative rooms style figure_joints armature turned detail chat sketch project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -183,6 +183,16 @@ if ! timeout 5 xdpyinfo >/dev/null 2>&1; then
     echo "        no display and no xvfb-run — these will fail"
   fi
 fi
+# And on the GPU, under the box's lease. The godot wrapper draws in
+# software unless the run holds it, so once the lease came in every window
+# here drew on llvmpipe inside a CPU slot: at load 50, fifteen of them timed
+# out with the box's GPU idle all day (2026-10-16). A lease is a window's
+# own, two at a time across the box; `gpu` waits for one.
+lease=()
+if [ -x "$HOME/.claude/claude-core/bin/gpu" ]; then
+  lease=("$HOME/.claude/claude-core/bin/gpu")
+fi
+screen=("${lease[@]}" "${screen[@]}")
 
 run "colour" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/colour_probe.gd
@@ -227,7 +237,7 @@ run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
 run "centred on the model" "${screen[@]}" godot --path . --resolution 1280x720 \
   --script src/dev/centring_probe.gd
 if command -v xvfb-run >/dev/null 2>&1; then
-  run "centred, at 2x" env MESA_VK_WSI_DEBUG=sw xvfb-run -a \
+  run "centred, at 2x" "${lease[@]}" env MESA_VK_WSI_DEBUG=sw xvfb-run -a \
     --server-args="-screen 0 2600x1500x24" godot --path . --resolution 2560x1440 \
     --script src/dev/centring_probe.gd -- --ratio=2
 fi
@@ -337,7 +347,7 @@ run "sign-in screen" "${screen[@]}" godot --path . --resolution 1400x900 \
 # the hand of whoever is sitting at it.
 cursor_screen=("${screen[@]}")
 if command -v xvfb-run >/dev/null 2>&1; then
-  cursor_screen=(env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
+  cursor_screen=("${lease[@]}" env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
 fi
 run "cursors" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/cursor_probe.gd

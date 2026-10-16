@@ -28,7 +28,9 @@ func _initialize() -> void:
 		print("  %-20s -> %s" % [query, ", ".join(names)])
 
 	print("")
-	quit(_rankings(library))
+	var failed: int = _rankings(library)
+	failed += _numbers(library)
+	quit(1 if failed > 0 else 0)
 
 
 ## What a bare family name should lead with.
@@ -96,3 +98,47 @@ static func _rankings(library: PartLibrary) -> int:
 	print("%d family(s) ranked badly" % failures if failures
 		else "every family name leads with something plain and small")
 	return 1 if failures else 0
+
+
+## A part number typed brings that part first: a builder working from a
+## parts list types numbers all day. "6157" listed a minifigure leg first,
+## whose shop number 761579 has it in its keywords (the CAD task test,
+## 2026-10-16). A retired or obsolete number may bring the part it became
+## (3023 as 3023b, 61409 as 61409b), a letter on, never another number that
+## merely begins the same.
+## Every number the CAD task's three sets use is asked, so a new keyword or
+## a ranking change that buries one fails here.
+static func _numbers(library: PartLibrary) -> int:
+	var sets: Array[String] = ["5762-1_Plane.mpd", "8643-1_Combination-with-8644.mpd",
+		"8841-1_Balance.mpd"]
+	var numbers: Dictionary = {"6157": true, "3001": true, "3023": true, "4081b": true}
+	for name: String in sets:
+		var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/" + name)
+		for line: String in text.split("\n"):
+			var words: PackedStringArray = line.strip_edges().split(" ", false)
+			if words.size() >= 15 and words[0] == "1":
+				var id: String = " ".join(words.slice(14)).to_lower().trim_suffix(".dat")
+				if not id.ends_with(".ldr") and not id.ends_with(".mpd"):
+					numbers[id] = true
+	var failures: int = 0
+	var asked: int = 0
+	for number: String in numbers:
+		if not library.parts.has(number):
+			continue
+		asked += 1
+		var found: Array[PartLibrary.PartInfo] = library.search(number, 3)
+		var top: String = found[0].id if not found.is_empty() else "nothing"
+		var meant: String = library.resolve(number)
+		# Retired, or kept as an obsolete stub ("~Slope Brick 18 ... (Obsolete)",
+		# 61409): the part it became, a letter on, is what is meant.
+		var gone: bool = library.parts[number].is_redirect() \
+			or library.parts[number].name.begins_with("~")
+		var ok: bool = top == number or top == meant or (top.begins_with(number)
+			and not top.substr(number.length(), 1).is_valid_int() and gone)
+		if not ok:
+			failures += 1
+			print("  FAIL %-10s leads with %s" % [number, top])
+	print("  %s %d part numbers typed, each leads with its own part%s" % [
+		"ok  " if failures == 0 else "FAIL", asked,
+		"" if failures == 0 else " but %d" % failures])
+	return failures

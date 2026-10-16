@@ -140,6 +140,11 @@ connectors and collision the library's own parts have.
   beside its `.dat` (`<id>-<area>.png`), built with it by `PartPrints.build`,
   and written into a model as MPD `0 !DATA` sections after the FILE sections,
   which `LdrModel` reads into `embedded_data` and `take_from` hands back.
+  A part a file carried is written back with the subparts and primitives it
+  is drawn from that the file carried (`CustomParts.drawn_from`, `needs`):
+  written with its own text only, 3315-1 saved whole came back with 5 of its
+  parts unbuilt and the model 28 LDU higher (docs/CADTASK.md, 2026-10-16).
+  `fidelity_probe` saves 3315-1 whole and opens it as the same model.
 - `build custom parts` (`tools/build_custom.py`): the Python pipeline for just
   the given parts — `.dat` files, or the parts embedded in an `.mpd` — in
   seconds rather than the full build's ninety minutes. `--out DIR` writes

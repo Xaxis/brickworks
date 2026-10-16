@@ -17,8 +17,8 @@ so the two are like for like, and then measured.
 
 | question | measured here | Studio |
 |---|---|---|
-| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact | not measured |
-| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44) | not measured |
+| A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact. *Since (the same day): 48 of 48, and the six 6 of 6, the saved file the author's own but for one line of the app's* | not measured |
+| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said* | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts) | not measured |
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
@@ -98,6 +98,88 @@ The 718 s is 42043-1 (7,909 parts, sub-models five deep): twelve minutes to
 write its LDraw. In the app a save is worked out a slice at a time, so the
 window stays alive, but the save takes that long. Where the time goes was not
 measured.
+
+### Since: a file comes back as it went in (the fidelity unit, the same day)
+
+**What changed.** A file another tool wrote (its `0 Author:` not Brickworks)
+is now kept when it opens (`SourceFile`), and every save of it is that file
+again with only what changed: a part as it was keeps its line byte for byte;
+a part moved, turned, recoloured, swapped, taken away or added is written as
+such, in place, in its sub-model's frame, under the number the file used. The
+lift that stands a model on the ground is the view's and is taken off again
+on every save. A file Brickworks wrote is written whole, as before (the 12
+shipped models save byte for byte as they did). What one line cannot say (a
+copy of a sub-model changed apart from its other copies, an assembly made) is
+written whole, under the author's name and licence, with what the app could
+not show carried in. The judge now reads the saved file itself as the
+original was read: numbers as written, the file's coordinates, steps,
+sub-models, every meta line and the author.
+
+**Measured.** The same 54 files, the same probe, before (`f77fded`) and
+after, judged alike (`bench/results/fidelity-2026-10-16/`). The judge pairs
+each part with the nearest that fits, not the first: in a rope of identical
+pieces under an LDU apart a piece took its neighbour's place, and so on down
+the rope, so two readings of one file were called moved. The morning's
+"42043-1 moves 58 parts and turns 4" and 42123-1's 16 were that, not the app.
+
+| | before | after |
+|---|---|---|
+| exact: the saved file read as the original was (numbers as written, the file's coordinates, steps, sub-models), every meta line and the author kept, and the app's model the same opened again | 0 of 54 | **54 of 54** (the 48 real sets' files: 48 of 48) |
+| ...the parts alone | 5 of 54 | 54 of 54 |
+| ...the meta lines and the author | 0 of 54 | 54 of 54 |
+| author's steps kept | 41 of 44 | 44 of 44 |
+| the app's model the same when the saved file opens | 53 of 54 | 54 of 54 |
+| parts lost on open: neither shown nor kept | 4,715 in 7 files | **0**; the 4,715 are kept, saved back and said |
+| lines the saved file has that the original has not | every line rewritten | 1 a file, `0 !BRICKWORKS FLOOR …`; none taken away |
+| saving 42043-1 (7,909 parts) | 695 s | **0.35 s** |
+| the slowest save of the 54 | 695 s | 0.36 s (10283-1) |
+
+Written as `.io` the same, the text in a zip. The strict columns of the table
+above (the app's own model against the file) are what they were, 5 of 54: the
+model on the baseplate is still stood on the ground and holds a retired
+number as the part it became, by design; neither reaches the file now.
+
+In a browser (a local export of the branch, SwiftShader), 42082-1 opened
+through Open… > From a file says "167 not shown, kept in the file (42082 -
+18575 ×22, 42082 - 27940 ×30, …)" (its 166 carried parts and the rope) while
+its parts arrive, and File, Export, LDraw model downloads the file again line
+for line: 5,479 part lines of 5,479, no line different but the app's own.
+`io_flow` passes there too: bay_2025.io in, its Part Designer part kept and
+named, out as .io counting 6 parts, in again. Not measured: edits on the 54
+(the fidelity probe edits a file drawn for it, and saves four real sets
+whole).
+
+**Where the twelve minutes went.** Everything before the sub-models' frames
+took half a second of 42043-1's save (the steps 127 ms, the parts in order
+102 ms, the figures 272 ms); `Assemblies.file_frames` ran on past seven and a
+half minutes before the profile was stopped. For each of 103 copies it read
+every part of the model twice (`content`, a pass over 7,909 parts a call) and
+scored up to 400 ways the copy might lie on the first copy of its kind, each
+way scoring every part, though only an exact fit is used. It now reads every
+copy's parts in one pass, refuses a copy whose parts and colours differ from
+its first copy's at once, and gives a way up at its first part that lands on
+nothing (`exact_match`). Saved untouched, 42043-1 is now its own file again
+in 0.35 s; written whole (an assembly made), 2.6 to 2.8 s.
+
+**Why the parts were lost.** 42082-1's 1,052 parts left out in a browser are
+two things: the 166 parts the file carries (`0 FILE 42082 - 18575.dat`), which
+the web build cannot build for want of the LDraw library, and one rope that
+LDCad drew as 886 pieces of `4-4cyli` skin. The desktop builds the carried
+parts, so its 886 are the rope alone. Neither is a part the app could draw,
+and neither is dropped now: both stay in the file and are saved back, and
+File, Open says so, the rope once by its sub-model ("ropeLQ-1 (flexible)"),
+not 886 times by its piece. 3315-1 came back 28 LDU higher with 5 parts gone
+because its hollow book, a shortcut the file carries (`3315 - 33009.dat`) and
+the app reads as a sub-model titled "33009", was written out as `33009.ldr`;
+opened again, a reference to 33009 is the library's part 33009, so the five parts
+inside it (466a to 466d) became one part from the library, and the model,
+its lowest point now 20 LDU lower, was lifted 28 LDU where it had been
+lifted 8. A sub-model is now never
+given a file name that is a part number (`33009_.ldr`). The same save also
+left out the subparts and primitives the file's parts are drawn from (10 of
+its 21 carried files): the same session still had them built, a new one would
+not have. A carried part is now written with what it is drawn from
+(`CustomParts.drawn_from`). And a file kept is not rewritten at all.
 
 ## 2. The frames a builder feels
 
@@ -423,18 +505,123 @@ not modelled, so Studio's turns may be fewer than modelled.
 [5411673129879]: https://studiohelp.bricklink.com/hc/en-us/articles/5411673129879
 [5626973531287]: https://studiohelp.bricklink.com/hc/en-us/articles/5626973531287
 
+## 4. Building from a booklet, the gaps closed (2026-10-16, later)
+
+The five gaps a builder feels most while building from a booklet (1, 2, 4,
+6 and 12 below), each at its cause, in Studio's idiom, each with a key.
+
+- **Next step, `E`** (Build and Edit, Build steps). The parts put down since
+  the last step make a step, and the next part starts another
+  (`AuthorSteps.close_step`), as Studio's step button is modelled. In a
+  model with no steps the parts so far are step 1; pressed with nothing put
+  down since, it says so and makes no empty step. One undo, the person's.
+  By the model it costs a step what Studio's E does (a thought and a key),
+  where before each step was its parts shift-clicked and Shift-N after.
+- **A part number typed lists that part first.** It always did, here and
+  on brickworks.diy: the first run's web export was made in a worktree with
+  no `PARTS_URL`, so `tools/web_pack.py` offered only the 15,571 parts with
+  the smallest meshes of 29,587, and the bin hid 6157 and 39767; "6157" then led with a
+  minifigure leg whose shop number, 761579, has it in its keywords. The
+  measurement was wrong, not the search. Now `cadtask.py build` refuses an
+  export that does not offer every part, as the hosted build does, and the
+  bin says so when a number typed names a part its build cannot place
+  ("6157 is not in this build of the app"). `search_probe` asks every number
+  the three sets use (64): each leads with its own part.
+- **Clip plates and parts that hang past their plate go where the set has
+  them.** The ghost snapped a part across the stud grid by its box's size,
+  and a 4081b's box is 20 x 38 with its clip, so it stood half a stud aside;
+  and it was dropped onto the bottom of its box, the clip's, 2 LDU below its
+  plate, so it stood up. Now a part's sockets say where the studs go when
+  its box disagrees (`Builder._socket_phase`), and it sits on its plate where
+  that leaves room (`Builder._hangs_below`). Every plain part, whose box and
+  sockets agree, goes where it went. Parts off the 24 turns were not met in
+  the two sets built (8841-1's four 4262s are), and are not fixed here.
+- **A colour by its name or number, `Shift-C`.** A field beside Colour
+  shows, from all 320, the colours that answer ("light grey", "dark gray",
+  "71"), the best first and named over them, and Enter takes it into hand, as Studio's colour
+  menu filters as you type. The old greys are not in the short palette and
+  look like the bluish greys beside them under All. Half the first run's
+  wrong colours were the flow's own: it looked for swatches by LDConfig's
+  values, and the app draws `colors.json`'s (7 is #9BA19D in one and
+  138,146,141 in the other), so it took a brown for 8. The flow now looks by
+  what is drawn, takes a swatch only when it is plainly that colour, reads
+  the colour in hand back, and types the name otherwise.
+- **Right steps the timeline after a part was taken by its tile.** The
+  bin's tiles, categories and buttons took the keyboard focus when clicked,
+  and Godot moves the focus with the arrows: Right walked round the bin.
+  Nothing in the bin but its search takes the keys now.
+
+**Measured again**, the same first 8 parts of the same two sets, the same
+flow with E once a step and colours taken as above, on an export that offers
+every part (`bench/results/buildux-2026-10-16/run8b`, this box at load 50 to
+70, SwiftShader):
+
+| set | put down | exact (number, colour, place, turn) | steps kept | actions a part | of them typed | motor seconds a part | Right after a tile |
+|---|---|---|---|---|---|---|---|
+| 5762-1 Plane, before | 6 of 8 | 5 | — | 15.5 | 3.8 | 9.1 | did not step |
+| 5762-1 Plane, after | **8 of 8** | **6** | 4 of 4 | 17.4 | 5.5 | 8.8 | steps |
+| 8643-1, before | 2 of 8 | 0 | — | 14.9 | 4.1 | 8.1 | — |
+| 8643-1, after | **8 of 8** | **8** | 2 of 2 | 15.6 | 5.8 | 7.6 | steps |
+
+Every part was put down, 14 of 16 exactly where, in the colour and the turn
+the file has; before, 8 of 16 were put down and 5 were exact. The two that
+are not are the plane's clip plates: the flow saw the ghost where the file
+has them and clicked, and they went down a stud forward and 2 LDU up, the
+click having struck the front face of the plate they stand on, at its edge.
+`handbuild_probe`, aiming at the middle of that plate, puts both exactly.
+The flow now waits to see the ghost there twice before it clicks; that did
+not change it.
+
+**The whole plane**, 40 minutes of building (`buildux-2026-10-16/whole`):
+35 of its 52 parts tried, 16 put down, 11 exact, and the 8 steps they make
+kept as the file has them. The clip plates went a stud forward again, and
+the 1 x 6 plate of step 4 then had no room where the file has it; nearly all
+of the 19 gaps after are parts standing on a part that is not there. Why a
+click in the browser puts a clip plate other than where its ghost was seen,
+when the desktop does not, was not found in the time: it is the next thing
+to find, and the plane cannot be built whole through the interface until it
+is. 8643-1 was not built whole.
+
+Actions a part rose, 15.5 to 17.4 and 14.9 to 15.6, for three reasons that
+are each a part done right that was done wrong or not at all before: the
+parts that could not be put down before cost actions and are now put down;
+an old grey is now its name typed (`Shift-C`, 7 to 9 letters, Enter) where
+it was a click on the wrong swatch; and a step is now marked (one key). The
+flow also clicked a look-alike swatch first 4 times before typing the name.
+Pointing fell (49 to 41 and 41 to 34 pointer moves), and the motor time a
+part, the measured actions at the model's operator times, fell 9.1 to 8.8 s
+and 8.1 to 7.6 s. The wall clock here (42 and 63 s a part) is this box at
+load 50 to 70, not the app.
+
+**Modelled** (the keystroke-level model, `tools/bench/cadtask_klm.py`, now
+with E for a step and an old grey's name typed in full), seconds a part:
+
+| set | Brickworks, steps marked: before | after | Studio, steps marked |
+|---|---|---|---|
+| 5762-1 Plane, whole (52 parts) | 11.35 | **10.24** | 11.27 |
+| 8643-1, whole (61) | 9.97 | **8.86** | 10.54 |
+| 8841-1 Balance, whole (59) | 9.83 | **8.81** | 10.25 |
+
+With the author's steps marked, building here is now modelled 9 to 16%
+faster a part than in Studio, where it was 1% slower on the plane. Without
+steps it is about 4% slower than before (9.58, 8.56 and 8.67 s), the old
+greys' names typed in full, which is the most a person types: the line over
+the palette names the first match, and the flow typed 7 to 9 letters.
+
 ## The gaps, by how much a builder would feel them
 
-Nothing here was fixed in the unit that measured them; each is a unit of
-its own. Item 3 has had its (section 2, "Big models, after").
+Nothing here was fixed in the unit that found them; 1, 2, 4 (the clip
+plates), 6 and 12 were fixed after (section 4), and 3 had its own (section 2,
+"Big models, after").
 
-1. **No "next step" while building.** A builder following a booklet, or
+1. **No "next step" while building.** *Fixed: `E` (section 4).* A builder following a booklet, or
    writing one, puts each step's parts in its own step. Here every step is
    its parts shift-clicked and Edit, New step from selection, after. Studio
    has a Create step button (E) and puts new parts in the current step. On
    the 21-step plane this turns Brickworks from 14% faster a part to 1%
    slower, by the model.
-2. **A part number typed in the search does not always come first.** "6157"
+2. **A part number typed in the search does not always come first.**
+   *Not so: the export measured offered only half the parts (section 4).* "6157"
    puts 3816cpc44 first; the flow had to give up on that part. A builder
    working from a parts list types numbers all day.
 3. **Every interaction in a browser was over budget from 925 parts up, by the
@@ -445,13 +632,17 @@ its own. Item 3 has had its (section 2, "Big models, after").
    with its undo and redo, Delete and its undo and a step no longer walk
    the model where they should not; a part swept in hand still does.
 4. **Some parts cannot be put where the set has them through the
-   interface**: both 1 x 1 clip plates of the plane's step 4 (the ghost stood
+   interface** (*the clip plates fixed, section 4; turns off the 24 not*): both 1 x 1 clip plates of the plane's step 4 (the ghost stood
    10 LDU off and came no nearer), and parts at angles off the 24 turns or at
    places that are not whole LDU (8841-1 has 4 and 14 of them).
 5. **A file's own parts are left out**: 42082-1 opens with 3,973 of its
    5,025 parts in a browser, the 1,052 left out being parts the file carries
    (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
+   *Since:* none is dropped. What the app cannot draw stays in the file and is
+   saved back, and File, Open names it.
 6. **Colours are found by look in a palette of 320**: the old greys (7 and
+6. **Colours are found by look in a palette of 320** (*fixed: `Shift-C`,
+   a colour by its name or number, section 4*): the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black
    look the same. The flow put 3 of its 8 parts in the wrong colour for want
    of them. Studio's colour menu filters as you type
@@ -459,20 +650,32 @@ its own. Item 3 has had its (section 2, "Big models, after").
 7. **Saving drops the author's name and licence** from every file, and with
    them `!HISTORY`, `!THEME`, `!CATEGORY`, `BFC` and other tools' meta lines.
    For files under an attribution licence that is the credit itself.
+   *Since:* a file another tool wrote is saved as it was, every line kept.
 8. **LDCad's flexible parts are lost** on open: hoses, strings and bands
    drawn as a skin of primitives. 225 of the repository's 1,576 files use them.
+   *Since:* kept in the file and named once each; still not drawn.
 9. **Opening moves the model onto the ground** (36 of 48 files), so a saved
    file has every coordinate changed, and a diff of the file says nothing.
+   *Since:* the lift is the view's, and the file keeps its coordinates.
 10. **Big files save slowly**: 42043-1 (7,909 parts) took 12 minutes to
     write its LDraw; the next slowest 14 s.
+    *Since:* 0.35 s kept as it was, 2.8 s written whole.
 11. **Opening the app's own save again is not always the same model**:
     3315-1 comes back 28 LDU higher with 5 parts gone; 42043-1 with 58 parts
     moved; 4 of 44 files have their author's steps changed.
+    *Since:* a file kept is the same model opened again. Written whole, 3315-1
+    keeps its parts (its sub-model titled "33009" went out as `33009.ldr` and
+    came back as the part 33009). Written whole, every part comes back, a few
+    of the biggest models' (6 of 4,139 in 42082-1, 8 of 7,908 in 42043-1)
+    within rounding of where they were: a place is written to four decimals
+    through its sub-model's frame, and the probe, printing tenths, finds them
+    either side of one.
 12. **Right stops stepping the timeline once a part has been taken from the
-    bin by a click** (in a browser; the desktop probe takes its part without
+    bin by a click** (*fixed: the tile kept the keys, section 4*) (in a browser; the desktop probe takes its part without
     a click, and Right worked there). Next worked every time it was tried.
 13. **Retired part numbers are written as the part they became** (5,623
     parts in 45 of 48 files): the same shape in the same place, another line.
+    *Since:* written back under the file's own number.
 
 [5459441964695]: https://studiohelp.bricklink.com/hc/en-us/articles/5459441964695
 
@@ -489,6 +692,13 @@ the rest; `build --only 5762-1 --most 8 --minutes 8` builds one set's first
 parts. On this box, at load 40, the round trip took 20 minutes, the frames an
 hour (the 5,025-part model most of it) and two sets' first 8 parts 15
 minutes, each after a wait of 10 to 30 minutes for a slot.
+
+`build` measures the worktree's own web export (`tools/export.sh web`), and
+refuses one that does not offer every part, as the hosted build does: a
+worktree has no `.env`, so give the export `PARTS_URL` (any value; only that
+it is set decides, `tools/web_pack.py`) and `serve.py --parts` serves every
+part. Give a Godot run its own `XDG_DATA_HOME` with `godot/export_templates`
+linked in, or the export fails on "configuration errors".
 
 Run it bare: it puts each Godot run and browser under `heavy` itself. The
 desktop frames mean something only on the graphics card: inside a `gpu`

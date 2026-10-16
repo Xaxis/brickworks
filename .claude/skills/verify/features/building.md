@@ -538,6 +538,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `technic_hand_probe`. In a browser: `tools/web/technic_flow.mjs`, which
   aims each part at the connector where the page says it is
   (`brickworksState.joints`, with `on_joint` and `can_place`).
+- `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
+  2026-10-16): a part whose box is not its plate — a clip plate's clip, a
+  bracket's arm, anything that hangs past or below where it stands — goes
+  across the stud grid where its sockets say, not where its box's size says,
+  and down onto its plate where that leaves room, not onto the bottom of what
+  hangs below. 5762-1's two 4081b clip plates stood half a stud aside and 2
+  to 10 LDU up, and could not be put where the set has them by hand.
+  Plain parts, whose box and sockets agree, are placed as before, and only
+  sockets on the half-stud grid count: a wedge plate's (51739) and 6157's are
+  not, and taken at their word put those 2 to 16 LDU off their studs in the
+  build flow's run. `handbuild_probe -- only=build_from_a_booklet` aims both
+  clips by the pointer and checks place and turn exactly, and checks every
+  upright part of the CAD task's three sets against where its file has it
+  across the grid: 97 of 140 by the sockets' rule, 87 by the box alone,
+  worse for none.
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it
@@ -575,8 +590,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   parts, the author's steps, no sub-models, hash order: 5762-1, 8643-1,
   8841-1) built one after another from their steps with only what a person
   has: the parts search and its first tile, a colour swatch found on screen
-  by its look, R/T to the file's turn, the pointer moved until the ghost
-  (`brickworksState.ghost`) stands where the file has the part, a click.
+  by its look (the app's palette, `assets/generated/colors.json`, not
+  LDConfig's, whose old greys are other values: the run of 2026-10-16 found a
+  brown for 8 by them) and taken only when plainly that colour, the note under
+  the palette read back (`brickworksState.colour`), else its name typed
+  (`Shift-C`, the name until the line over the palette names it first,
+  `brickworksState.colour_first`, Enter), R/T to the file's turn, the pointer moved
+  until the ghost (`brickworksState.ghost`) stands where the file has the
+  part, a click, and `E` once a step's parts are down. At the end, Right on
+  the timeline after a tile was clicked (`focus`), and whether each of the
+  file's steps came out one step of the model's (`compared.steps`).
   Every input is counted by kind; a part the UI cannot get to its place in a
   few tries is a gap, with why, and nothing is put there. The model is then
   exported by File, Export, LDraw and compared part by part with the file,
