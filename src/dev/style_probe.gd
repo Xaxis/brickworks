@@ -107,7 +107,9 @@ func _run() -> void:
 		"a car is told of wedge plates and a hinged section")
 	var owl: String = await _advice_for(library,
 		"res://src/dev/fixtures/orthanc_square.ldr", "a barn owl on a branch")
-	_check(owl.contains("living thing") and not owl.contains("restyle_model"),
+	# A creature: its body's curves and its limbs and wings on joints.
+	_check(owl.contains("curved slopes") and owl.contains("hinged wing")
+			and not owl.contains("restyle_model"),
 		"an owl is told of curves and hinged wings")
 	var traits: Dictionary = Style.traits_of("A steam locomotive and its tender")
 	_check(traits.has("round") and traits.has("vehicle"),

@@ -1923,6 +1923,13 @@
       "entry": "tools/steps_score.py",
       "reach": "python3 tools/steps_score.py run --which tune --out build/steps_score/tune && python3 tools/steps_score.py report --out build/steps_score/tune   (minutes, under heavy; needs vendor/omr; godot --headless --path . --script src/dev/steps_score.gd -- --selftest checks the measures alone)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "figures told of their joints",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant"
     }
   ]
 }

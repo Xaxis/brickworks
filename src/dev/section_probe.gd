@@ -468,10 +468,14 @@ func _run() -> void:
 		_check("a four-brick pylon at %d degrees is not called floating: %s"
 			% [int(angle), held["summary"]],
 			not str(held["feedback"]).contains("floating"))
-		# And up to eighty nothing else is wrong with it: not adrift, not
+		# And up to seventy nothing else is wrong with it: not adrift, not
 		# run into the hull. It leans on no joint, which is the one thing
-		# said, and the thing a hinge would answer.
-		if int(angle) < 90:
+		# said, and the thing a hinge would answer. At eighty a stud of the
+		# hull's brick is 1.3 LDU into the pylon's side by BrickNet's own
+		# colliders (1.275, Bullet and an exact separating axis alike), which
+		# the shapes built before 2026-10-15, short of the vertices their
+		# pieces share, read as clear.
+		if int(angle) < 80:
 			_check("  ...and leaning on nothing is all that is wrong at %d"
 				% int(angle),
 				str(held["summary"]) == "1 problem (leaning on nothing 1)")

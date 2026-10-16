@@ -72,6 +72,44 @@ const CASES: Array = [
 		["1 4 240 -8 -140 1 0 0 0 1 0 0 0 1 74611.dat",
 		"1 0 170 -16 -190 1 0 0 0 1 0 0 0 1 98138.dat"],
 		{"not held": ["98138"]}],
+	# The attach round's three (2026-10-15), each confirmed in BrickBench's own
+	# simulation: the potato's shoes and legs as model-042 (run 2) stood them,
+	# its body over their heels, which our check held by the floor and which
+	# tips (its hat, a dish on a round plate, moved only because the body under
+	# it did: CLEAN has the dish); and model-047's trash can lying on its side,
+	# on one line of its facets, which rolls.
+	["a body over its shoes' heels, which tips (model-042's potato, attach run 2)",
+		["1 1 160 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
+		"1 1 240 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
+		"1 1 160 -24 -260 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -24 -260 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -48 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -48 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -72 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -72 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -80 -220 0 0 -1 0 1 0 1 0 0 3020.dat",
+		"1 1 240 -80 -220 0 0 -1 0 1 0 1 0 0 3020.dat",
+		"1 70 200 -88 -180 1 0 0 0 1 0 0 0 1 3958.dat",
+		"1 70 200 -112 -200 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -112 -160 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -136 -180 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -160 -200 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -160 -160 1 0 0 0 1 0 0 0 1 3001.dat"],
+		{"tips over": "past the edge"}],
+	# And model-047's flame 1.27 LDU into the tipped lid it pushes open (run 2),
+	# which our shapes, read by each collider group's own vertex lines and not
+	# the vertices its faces use, had as clear (tools/build_exact.py read_obj).
+	["a flame against the tipped lid it pushes open (18395 and 3033, model-047, attach run 2)",
+		["1 191 130 -139 -50 -1 0 0 0 1 0 0 0 -1 18395.dat",
+		"1 288 100 -225.2003 -27.9966 1 0 0 0 -0.173648193563432 0.984807750209226 0 -0.984807750209226 -0.173648193563432 3033.dat"],
+		{"collision": ["18395", "3033"], "words": "LDU"}],
+	["a trash can lying on its side, which rolls (model-047, attach run 1)",
+		["1 71 280 -20 -76 1 0 0 0 0 -1 0 1 0 14769.dat",
+		"1 71 280 -20 -52 1 0 0 0 0 -1 0 1 0 4032a.dat",
+		"1 71 280 -20 -60 1 0 0 0 0 -1 0 1 0 4032a.dat",
+		"1 72 280 -20 -68 1 0 0 0 0 -1 0 1 0 4032a.dat",
+		"1 71 280 -20 -44 1 0 0 0 0 -1 0 1 0 3941.dat"],
+		{"tips over": "past the 3 LDU"}],
 ]
 
 ## Built right, these must say nothing: [name, lines].
@@ -90,6 +128,28 @@ const CLEAN: Array = [
 		["1 2 100 -24 -150 1 0 0 0 1 0 0 0 1 11211.dat",
 		"1 4 90 -14 -168 1 0 0 0 0 -1 0 1 0 3070b.dat",
 		"1 4 110 -14 -168 1 0 0 0 0 -1 0 1 0 3070b.dat"]],
+	# Both stand in BrickBench's simulation (0.06 and 0.03 LDU in two seconds).
+	["a dish on a round plate on a round brick, as the potato's hat (model-042)",
+		["1 0 0 -24 0 1 0 0 0 1 0 0 0 1 87081.dat",
+		"1 0 0 -32 0 1 0 0 0 1 0 0 0 1 4032a.dat",
+		"1 0 0 -48 0 1 0 0 0 1 0 0 0 1 3960.dat"]],
+	["the potato's shoes and legs with its body over its feet",
+		["1 1 160 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
+		"1 1 240 -24 -280 1 0 0 0 1 0 0 0 1 15068.dat",
+		"1 1 160 -24 -260 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -24 -260 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -48 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -48 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -72 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 240 -72 -220 0 0 -1 0 1 0 1 0 0 3001.dat",
+		"1 1 160 -80 -220 0 0 -1 0 1 0 1 0 0 3020.dat",
+		"1 1 240 -80 -220 0 0 -1 0 1 0 1 0 0 3020.dat",
+		"1 70 200 -88 -240 1 0 0 0 1 0 0 0 1 3958.dat",
+		"1 70 200 -112 -260 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -112 -220 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -136 -240 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -160 -260 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 70 200 -160 -220 1 0 0 0 1 0 0 0 1 3001.dat"]],
 ]
 
 
@@ -128,6 +188,8 @@ func _run() -> void:
 		quit(0)
 		return
 
+	# On a bare floor, as BrickBench stands every build (ExactCheck.tips).
+	_assistant.floor_kind = func() -> String: return ModelFloor.NONE
 	for case: Array in CASES:
 		# A seat is for what a design puts down: those parts come as new ones.
 		var report: Dictionary = _checked(case[1], (case[2] as Dictionary).has("seated"))
@@ -191,6 +253,22 @@ func _expect(name: String, report: Dictionary, wanted: Dictionary) -> void:
 				hit = str(sentence)
 		_say(not hit.is_empty(), "%s: said not held: %s" % [name, hit],
 			"%s: not said to be unheld (summary: %s)" % [name, report.get("summary", "")])
+	if wanted.has("tips over"):
+		var said: Array = found.get("tips over", [])
+		var hit: String = ""
+		for sentence: Variant in said:
+			if str(sentence).contains(str(wanted["tips over"])):
+				hit = str(sentence)
+		_say(not hit.is_empty(), "%s: said it tips: %s" % [name, hit],
+			"%s: not said to tip with \"%s\" (said: %s; summary: %s)" % [name,
+				wanted["tips over"], said, report.get("summary", "")])
+		# And on a baseplate, whose studs hold it, nothing of the kind.
+		_assistant.floor_kind = func() -> String: return ModelFloor.BASEPLATE
+		var plated: Dictionary = _assistant._check(report["model"], true)
+		_assistant.floor_kind = func() -> String: return ModelFloor.NONE
+		var still: Array = (plated.get("exact", {}) as Dictionary).get("tips over", [])
+		_say(still.is_empty(), "%s: on a baseplate, not said to tip" % name,
+			"%s: on a baseplate, still said to tip: %s" % [name, still])
 	if wanted.has("seated"):
 		var advice: String = "\n".join(PackedStringArray(report.get("advice", [])))
 		var part: String = str((wanted["seated"] as Array)[0])
@@ -250,6 +328,9 @@ func _figure() -> void:
 ## two halves the app lays are clean by BrickNet's shapes at any angle it
 ## opens to, and folded the way it does not open, named as the hinge it is.
 func _hinge() -> void:
+	# Asked of the joint, on a baseplate: a flap opened past its brick's edge,
+	# stood alone on a bare floor, tips, as it would in the hand.
+	_assistant.floor_kind = func() -> String: return ModelFloor.BASEPLATE
 	var folded: Assistant.Model = _assistant._read_model({"bricks": [
 		{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0},
 		{"part": "3023", "color": 0, "x": 0, "y": 0, "z": 0, "section": "flap"}],
