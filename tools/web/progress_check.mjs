@@ -565,8 +565,13 @@ try {
     }
     if (wanted("stability")) {
       await fromMenu(page, "menu_tools", ["Check"]);
+      // The joints' line ("it stands up", "2 weak joints") gives way to the
+      // balance's ("Stands, 3 studs inside…", "Tips over, …") once it is
+      // weighed, so either is the end; the old pattern knew only the first
+      // and read every check as never finishing (2026-10-16).
       await measure(page, "stability", () => page.keyboard.press("Enter"),
-      async (s) => idle(s) && said(/stands up|weak joint/)(s), async (s) => said(/stands|weak/)(s), 300);
+      async (s) => idle(s) && said(/stands up|weak joint|stands, |tips over, /i)(s),
+      async (s) => said(/stands|weak|tips over/i)(s), 300);
       await page.keyboard.press("Escape");
       await h.quiet(3000, 120000);
     }
