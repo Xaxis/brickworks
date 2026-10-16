@@ -33,8 +33,10 @@ whole cycle.
   128 sides of the finished model, and gives them a colour for each section,
   build stage or half, so you can tell where you are while you build, as the
   core of the LEGO® Eiffel Tower set is red one way and yellow the other.
-  Each part only takes a colour it is made in, never one seen on the
-  outside; it shows the inside cut open first, it is one step to undo, and
+  A few strong colours, in the order real sets use them (blue, yellow, red,
+  green), each part only in a colour it is made in, never one the outside
+  is made of or one a seen part beside it has; it shows the inside cut open
+  first, it is one step to undo, and
   a real set's own colours are never changed without a yes. The booklet says
   each colour where its group starts. Claude offers it at the end of a big
   model built in sections, and `colour_hidden_parts` does it over MCP.

@@ -476,7 +476,7 @@ func definitions() -> Array:
 				+ "booklet shows each colour where its group starts."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"mode": {"type": "string", "enum": HiddenColours.MODES},
-				"stages": {"type": "integer", "description": "for stages: how many, 2 to 12; the model's size decides when omitted"},
+				"stages": {"type": "integer", "description": "for stages: how many, 2 to 12; two when omitted, as most real sets use one or two"},
 				"from_below": {"type": "boolean", "description": "true when omitted: a part seen from underneath keeps its colour. false for a display model never turned over"},
 				"apply": {"type": "boolean"},
 				"agreed": {"type": "boolean", "description": "the person said yes to this"},

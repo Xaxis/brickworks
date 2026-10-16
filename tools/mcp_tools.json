@@ -4709,7 +4709,7 @@
           "type": "boolean"
         },
         "stages": {
-          "description": "for stages: how many, 2 to 12; the model's size decides when omitted",
+          "description": "for stages: how many, 2 to 12; two when omitted, as most real sets use one or two",
           "type": "integer"
         }
       },
