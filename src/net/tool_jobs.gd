@@ -115,6 +115,12 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if not drawn or not bool(input.get("render", true)):
 				return {}
 			return {"words": "Rendering %s's animation…" % model, "cancel": true}
+		"colour_hidden_parts":
+			# Ninety-six pictures of the whole model, and on a big one the
+			# booklet's steps worked out: past the minutes a session waits.
+			if not built or not drawn:
+				return {}
+			return {"words": "Finding the hidden parts of %s…" % model, "cancel": false}
 		"simulate_mechanism":
 			# Reading and weighing it is a moment; a recording is a render of
 			# every frame, 79-88 s for 24 on this box under load.

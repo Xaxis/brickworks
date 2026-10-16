@@ -51,8 +51,10 @@ asking for an API key.
   list; My collection, What do I need, What can I build), `render_model`
   (File, Render), `export_model` (File, Export, and Instructions),
   `brickify` (Build, Brickify a 3D model…; File, Import, 3D model),
-  `print_part` (Build, Print on a part… and Put a sticker on…) and
-  `make_unique` (Edit, Make this copy unique). Each
+  `print_part` (Build, Print on a part… and Put a sticker on…),
+  `make_unique` (Edit, Make this copy unique) and `colour_hidden_parts`
+  (Tools, Colour the hidden parts…; `HiddenColoursPanel.for_session`, which
+  previews unless `apply` and `agreed`, see [geometry](geometry.md)). Each
   is a thin wrapper over the code the command runs — `Shell.change_steps`,
   `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
   `RenderDialog.render_for`,

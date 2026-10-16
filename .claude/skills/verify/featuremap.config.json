@@ -294,13 +294,6 @@
       "area": "pipeline"
     },
     {
-      "kind": "cli",
-      "label": "build the exact shapes",
-      "entry": "tools/build_exact.py",
-      "reach": "python3 tools/minitest.py tests/test_build_exact.py; tools/build_exact.py --bricknet DIR --colliders DIR --only 3001 --out COPY",
-      "area": "pipeline"
-    },
-    {
       "kind": "lib",
       "label": "command socket",
       "entry": "src/net/command_socket.gd",
@@ -875,20 +868,6 @@
       "area": "assistant"
     },
     {
-      "kind": "lib",
-      "label": "the check by real shapes",
-      "entry": "src/ai/exact_check.gd",
-      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
-      "area": "assistant"
-    },
-    {
-      "kind": "lib",
-      "label": "placing a part by its connectors",
-      "entry": "src/assembly/attach.gd",
-      "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
-      "area": "assistant"
-    },
-    {
       "kind": "ui",
       "label": "build animation",
       "entry": "src/render/build_playback.gd",
@@ -1435,6 +1414,27 @@
       "area": "geometry"
     },
     {
+      "kind": "ui",
+      "label": "colour the hidden parts",
+      "entry": "src/ui/hidden_colours_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (by hand: Tools, Colour the hidden parts…; over MCP: colour_hidden_parts)",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
+      "label": "parts seen from outside",
+      "entry": "src/render/seen_parts.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (the closed box, the gap and the clear window)",
+      "area": "geometry"
+    },
+    {
+      "kind": "cli",
+      "label": "audit hidden colours in real sets",
+      "entry": "tools/hidden_colours_audit.py",
+      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr)",
+      "area": "geometry"
+    },
+    {
       "kind": "lib",
       "label": "the surface pass",
       "entry": "src/ai/surface_pass.gd",
@@ -1825,6 +1825,27 @@
       "entry": "src/dev/page_places_probe.gd",
       "reach": "godot --headless --path . --script src/dev/page_places_probe.gd",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "build the exact shapes",
+      "entry": "tools/build_exact.py",
+      "reach": "python3 tools/minitest.py tests/test_build_exact.py; tools/build_exact.py --bricknet DIR --colliders DIR --only 3001 --out COPY",
+      "area": "pipeline"
+    },
+    {
+      "kind": "lib",
+      "label": "the check by real shapes",
+      "entry": "src/ai/exact_check.gd",
+      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "placing a part by its connectors",
+      "entry": "src/assembly/attach.gd",
+      "reach": "godot --headless --path . --script src/dev/by_connector_probe.gd  (-- --out=DIR writes each case for verify.py)",
+      "area": "assistant"
     },
     {
       "kind": "ui",

@@ -551,6 +551,34 @@ func copies_follow(touched: Dictionary) -> Array:
 	return [steps, rebuilt]
 
 
+## The copies [method copies_follow] would build again for [param
+## touched], as [[path, other], ...], without building anything: what
+## HiddenColours asks before it keeps a change, so that no copy is rebuilt
+## for it. A pair counts when its fit is not exact (a symmetrical assembly
+## can fit another copy several ways, and the one the search finds first
+## decides).
+func unlike_copies(touched: Dictionary) -> Array:
+	var paths_touched: Dictionary = {}
+	for group: String in touched:
+		var path: String = ""
+		for segment: String in segments(group):
+			path = join(path, segment)
+			paths_touched[path] = true
+	var out: Array = []
+	for path: String in paths_touched:
+		var source: Array = content(path)
+		if source.is_empty():
+			continue
+		for other: String in copies_of(path):
+			var target: Array = content(other)
+			if target.is_empty():
+				continue
+			var fit: Dictionary = best_match(source, target)
+			if not bool(fit["exact"]) and int(fit["score"]) != 0:
+				out.append([path, other])
+	return out
+
+
 ## The parts of an assembly and everything inside it: part, colour, where,
 ## and the group below the assembly ("" for its own parts).
 func content(path: String) -> Array:
@@ -675,6 +703,38 @@ func _score(at: Transform3D, a: Array, by_part: Dictionary) -> Dictionary:
 		if int(hit["color"]) != int(item["color"]):
 			colours = false
 	return {"score": score, "colours": colours}
+
+
+## Which part of the copy at [param to] each part of the copy at [param
+## from] is, brick id -> brick id, by how one lies on the other
+## ([method best_match]). Empty unless they match exactly, part for part
+## and colour for colour: what HiddenColours reads to keep copies alike.
+func counterparts(from: String, to: String) -> Dictionary:
+	var a: Array = content(from)
+	var b: Array = content(to)
+	var fit: Dictionary = best_match(a, b)
+	if not bool(fit["exact"]):
+		return {}
+	var at: Transform3D = fit["at"]
+	var by_part: Dictionary = {}
+	for item: Dictionary in b:
+		if not by_part.has(item["part"]):
+			by_part[item["part"]] = []
+		(by_part[item["part"]] as Array).append(item)
+	var out: Dictionary = {}
+	var used: Dictionary = {}
+	for item: Dictionary in a:
+		var laid: Dictionary = _mirrored(item) if bool(fit["mirrored"]) else item
+		var there: Transform3D = at * (laid["at"] as Transform3D)
+		for other: Dictionary in by_part.get(laid["part"], []):
+			if used.has(other["id"]) \
+					or (other["at"] as Transform3D).origin.distance_to(there.origin) > 0.6 \
+					or not _same_place(str(laid["part"]), there, other["at"]):
+				continue
+			out[int(item["id"])] = int(other["id"])
+			used[other["id"]] = true
+			break
+	return out if out.size() == a.size() else {}
 
 
 func _same_place(part: String, here: Transform3D, there: Transform3D) -> bool:

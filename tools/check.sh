@@ -296,6 +296,13 @@ run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
 # the WebP and the MP4 kept. Pictures in shots/pose/.
 run "pose and animate" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/pose_probe.gd
+# Tools, Colour the hidden parts…: the parts nobody sees, found by drawing
+# the model from 128 sides (a closed box's inside exactly, what is behind a
+# gap or a window seen), coloured on the castle through the panel's Apply,
+# the outside the same pixel for pixel from eight sides, one undo, and a
+# real set asked about first. Pictures in shots/hidden_colours/.
+run "hidden colours" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/hidden_colours_probe.gd
 # The window's commands as MCP tools again, with a window this time: a
 # render comes back with its picture, and the picture and the booklet are
 # written where Export writes (the probe's own folder, not Downloads).

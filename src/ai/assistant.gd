@@ -18741,7 +18741,19 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 		" (%s)" % ", ".join(design.features) if not design.features.is_empty()
 			else " (you listed none: name what the subject is known by — eyes, beak, ears, "
 				+ "wheel arches, grille, windows, roof — and give each its turn)"))
+	# Big and in sections, as a set with bags is: what big sets do inside,
+	# offered at the very end, never done unasked (HiddenColours).
+	if design.placements.size() >= HiddenColours.OFFER_PARTS \
+			and design.assemblies.size() >= HiddenColours.OFFER_SECTIONS:
+		said.append(OFFER_HIDDEN_COLOURS)
 	return "\n\n".join(said)
+
+
+const OFFER_HIDDEN_COLOURS := """  6. At the very end, for a model this big in \
+sections: offer the person colour_hidden_parts — the parts nobody sees once \
+it is finished, a colour for each section, as big sets are coloured inside, \
+so they can find their place while building it. Only an offer: show them \
+the preview, and apply it only once they say yes."""
 
 
 ## The review this app's own designer gives a model, for a session doing

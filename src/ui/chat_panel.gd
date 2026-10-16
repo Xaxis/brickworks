@@ -63,6 +63,13 @@ var _bill: String = ""
 ## model, one button away at the moment someone has one.
 signal steps_wanted
 signal parts_list_wanted
+## The offer on the card of a big model built in sections: its hidden parts
+## coloured by section, as big sets are inside. Only offered: pressing it
+## opens the preview (HiddenColoursPanel), and nothing changes until the
+## person applies it there.
+signal hidden_colours_wanted
+## Whether the model just built is one to offer that for: Main's.
+var offers_hidden_colours: Callable = func() -> bool: return false
 
 ## A design is about to start from nothing, rather than revise one.
 ## Emitted before the assistant is asked, so whatever owns the baseplate
@@ -1187,6 +1194,15 @@ func _close_run(how: String, summary: String, built: bool = false,
 			button.pressed.connect(func() -> void: wanted.emit())
 			row.add_child(button)
 		_run_stop.get_parent().add_child(row)
+		if offers_hidden_colours.call():
+			var offer := Button.new()
+			offer.text = "Colour the hidden parts by section…"
+			offer.tooltip_text = ("As big sets do: the parts nobody sees once it is finished, "
+				+ "a colour for each section, so you can find your place while building. "
+				+ "A preview first; nothing changes until you say so.")
+			offer.focus_mode = Control.FOCUS_NONE
+			offer.pressed.connect(func() -> void: hidden_colours_wanted.emit())
+			_run_stop.get_parent().add_child(offer)
 	_run = null
 
 
