@@ -78,7 +78,7 @@ studs, against a greedy stack of standard bricks and legolization:
 
 **The plan**, ranked (section 4):
 1. **Keep the whole model**: join or support what it now drops; never place
-   nothing.
+   nothing. *Done 2026-10-15, section 5: whole in 25 of 28 from 13.*
 2. **Colour that reads right**: a hue-keeping match, faces voted by what is
    seen, only colours the part is made in.
 3. **Bond like a builder**: fewer, longer parts and staggered seams in the
@@ -758,6 +758,257 @@ in `brickify_probe`.
 | 7 Buy, own | — | — | — | partial builds stand | **price, shortfall** | one press to buy |
 | 8 Modes | — | — | — | per mode | plastic | sculptures to 128 studs |
 | 9 Files | — | — | colour of bare OBJs | — | — | **any file opens** |
+
+## 5. Unit 1, done: Brickify keeps the whole model (2026-10-15)
+
+Unit 1 of the plan, and a bug. Brickify laid nothing for the fox, the
+Kenney figure and the Bell X-1 at 24 studs, kept the whole model in 13 of 28
+runs, called a model buildable without weighing it, and laid the commonest
+plate as 3023, a number LDraw has moved to 3023b. Branch
+`worktree-agent-af9a21f60d09d744a`, with `main` at `4138091` merged.
+
+**In short.** On the same 14 models it now lays all 28 runs (from 24), keeps
+25 of them whole (from 13), and all 28 are in one piece with the check
+passing (from 24). None tips (4 of the 24 laid did), 8 of them standing on
+a stand they were given, each said with its reason; 22 stand with no stud
+joint past its working load (from 19), and 6 still have one or more (from 2:
+the joins and the parts now laid carry weight on few studs). What it leaves
+out it says: how much, where, and why.
+The target was 26 of 28 whole; it falls one short (below, and "What is
+left"). It is slower: 12 s on average at 24 studs and 72 s at 48, against
+6.7 and 47 on `main` today.
+
+**What changed** ([brickify.gd](../src/assembly/brickify.gd),
+[shapes.gd](../src/ai/shapes.gd), [the panel](../src/ui/brickify_dialog.gd)):
+
+1. **Thin parts measured conservatively** (`_touched`, `_thin`). A cell was the
+   model's only where the middle of its stud was inside, so a leg a third of
+   a stud across never reached the grid. Now every cell the surface passes
+   through is found as well (each triangle against each cell its box
+   reaches, by separating axes), and one counts where nothing measured is
+   among the 26 cells round it: a part thinner than a stud or a plate, at the
+   size chosen. The cells it passes through between such a part and the body
+   join the two, and a part one plate thick is made two, so its plates cross
+   each other's joints. A thick body comes out no fatter: its own surface
+   cells always have a measured cell beside them. The columns of thin parts
+   are laid plain (`plain_at`: no slope, wedge or top tile there): a wing two
+   plates thick in tiles, wedges and slopes came apart into bits nothing held.
+2. **Join, don't drop.** On the grid (`_join`), each piece apart is joined to
+   the rest by the cheapest way, along the model's own thin surface first,
+   else through the air, a plate up or down costing less than a stud across,
+   so a join is a pillar more than a bridge; it starts beside the piece's
+   middle and is two studs square. A largest piece standing on nothing is
+   stood on the ground. In the plan, Shapes no longer prunes Brickify's pieces
+   (`keep_pieces`: that prune was where the teapot's spout went), and once its
+   own first ways are spent it lays the plates, then the slopes, about each
+   joint again as plates crossing it (`rejoin`), each way kept only if it
+   leaves fewer pieces. Once laid and
+   checked, what is still apart or held by nothing (floating to the lattice,
+   or not held by the parts' real shapes, which main's exact check now
+   reports by index) is joined by the least that reaches (`_tie`): a 1 x 2
+   plate under or over a joint where two parts stand side by side, or the
+   shortest pillar of 1 x 1s onto anything held, each stud checked against
+   the part's real cover. A round of joins that joins nothing is taken back.
+   Only dust, a piece too far to join, or what nothing joins is taken out,
+   and never the body; each is said: how much, where on the model, and why.
+   What no part fills, a hundredth of the model or more, is said too.
+3. **Never nothing.** A size that lays nothing says why and gives the
+   smallest size that lays it whole (half again a try, to 64 studs), and the
+   panel sets the size to it.
+4. **A stand** (`_stance`, `lay_stand`). A model that stands only on feet of
+   three studs or fewer (a fox's legs, an aircraft's wheels), comes within
+   half a stud of tipping, or stands in pieces only the ground would join is
+   laid on a stand under its feet and its centre of mass, a stud and a half
+   round and a stud more: two plates whose joints cross (strips along x under
+   strips along z), tiled where the model does not stand, black, or the one
+   colour asked for, or the darkest of the colours it is cut to. Weighed with
+   Balance once laid; if it would tip after all, or all but, it gets one
+   then. A sphere on its twelve studs does not: feet decide, not a share of
+   the plan. A stud joint past its working load is propped by a pillar under
+   what it carries, kept only if fewer are past their load. A Stand choice
+   on the panel (and `stand=` on the tool) turns stands off.
+5. **Weighed before "buildable"** (`Brickify.said`). The panel's line and the
+   tool's answer say whether it is one piece, whether it stands (Balance,
+   its margin and edge), on what (its own studs, or the stand and why), what
+   was joined and propped, and what was left out, where and why.
+   "Buildable" only when it is one piece, passes the check, stands, and no
+   stud joint is past its working load.
+6. **Today's numbers** (`Shapes.current`). Shapes lays each part by the number
+   LDraw gives it now, read from the catalogue's stubs: 3023 goes down as
+   3023b, and so would a part LDraw moves later. Only stubs that move a part
+   nowhere are followed (all but 68 of 1,161); the probe checks that none of
+   the 86 parts Brickify may lay is one of the 68.
+7. **Fewer checks.** Each check on a big model is seconds, more since the
+   exact check; the mend takes what collides out in one round, joins in at
+   most two, and takes what is still loose out in one more.
+
+### The bench again
+
+The research's bench, measuring what it measured: the same 14 models,
+prepared the same way, at 24 and 48 studs, smooth, plain and the greedy
+stack, measured by `brickify_bench.py` (legolization was not run again).
+There are two befores. The research's own run on `7a55e86`. And `main` at
+`4138091`, whose check now also asks every part's real shape (the exact
+check), so every check costs more; that one is the fair before for time.
+The box was shared with other jobs at a load of 30 to 55 on 24 threads
+throughout, so read times as upper bounds.
+
+The bench changed in three ways, all so it measures the model and not its
+base: a stand's parts are left out of likeness, bond and the count of shaped
+tops; the model is lowered by the stand's two plates so it lines up with the
+model it came from (`stand_of`, `build_mesh`); and the pictures draw the
+stand. Parts and time count the stand. The greedy stack is laid over the new
+measuring's grid, so it now has the thin parts too. `report` adds a column
+for runs standing on a stand.
+
+**Smooth, the panel's default: laid, whole, one piece, standing.**
+
+| Run | Studs | Laid | Whole | One piece, check passes | And stands, no joint past its load | On a stand | Seconds (mean) | Seconds (most) |
+|---|---|---|---|---|---|---|---|---|
+| research | 24 | 11/14 | 4/14 | 11/14 | 8/14 | 0 | 4.0 | 8 |
+| main | 24 | 11/14 | 4/14 | 10/14 | 7/14 | 0 | 6.7 | 13 |
+| after | 24 | 14/14 | 12/14 | 14/14 | 13/14 | 5 | 12.1 | 27 |
+| research | 48 | 13/14 | 9/14 | 13/14 | 11/14 | 0 | 32.1 | 159 |
+| main | 48 | 13/14 | 9/14 | 13/14 | 11/14 | 0 | 47.1 | 210 |
+| after | 48 | 14/14 | 13/14 | 14/14 | 9/14 | 2 | 71.6 | 298 |
+
+**Plain, Surface set to plain bricks and plates.**
+
+| Run | Studs | Laid | Whole | One piece, check passes | And stands, no joint past its load | On a stand | Seconds (mean) | Seconds (most) |
+|---|---|---|---|---|---|---|---|---|
+| research | 24 | 11/14 | 7/14 | 11/14 | 6/14 | 0 | 2.3 | 6 |
+| main | 24 | 11/14 | 7/14 | 11/14 | 6/14 | 0 | 3.6 | 10 |
+| after | 24 | 14/14 | 14/14 | 14/14 | 9/14 | 4 | 8.0 | 26 |
+| research | 48 | 13/14 | 9/14 | 13/14 | 11/14 | 0 | 23.1 | 127 |
+| main | 48 | 13/14 | 9/14 | 13/14 | 11/14 | 0 | 32.1 | 170 |
+| after | 48 | 14/14 | 13/14 | 14/14 | 9/14 | 2 | 54.9 | 205 |
+
+**The layout, smooth, on the models whole in every run**, so likeness and
+cost are of the same models. Parts count the stand where one was given.
+
+At 24 studs, the 4 models whole in every run: avocado, bob, milk-truck, spot.
+
+| Run | Parts | 1x1 share | Seams bridged | Weak points | Tops shaped | IoU | Chamfer | Lost95 | Added95 | Normal (°) | ΔE2000 | Seconds |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| research | 878 | 41% | 37% | 23.7% | 99% | 0.916 | 0.23 | 0.60 | 0.52 | 35.5 | 17.4 | 4.7 |
+| main | 878 | 41% | 37% | 23.7% | 99% | 0.916 | 0.23 | 0.60 | 0.52 | 35.5 | 17.4 | 6.9 |
+| after | 972 | 41% | 37% | 24.1% | 98% | 0.925 | 0.21 | 0.46 | 0.52 | 35.3 | 17.1 | 8.9 |
+
+At 48 studs, the 9 models whole in every run: armadillo, avocado, benchy, bob, milk-truck, smithsonian-1, spot, stanford-bunny, utah-teapot.
+
+| Run | Parts | 1x1 share | Seams bridged | Weak points | Tops shaped | IoU | Chamfer | Lost95 | Added95 | Normal (°) | ΔE2000 | Seconds |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| research | 4,330 | 38% | 42% | 23.5% | 99% | 0.950 | 0.23 | 0.46 | 0.56 | 37.8 | 10.1 | 23.7 |
+| main | 4,311 | 38% | 42% | 23.6% | 99% | 0.949 | 0.23 | 0.46 | 0.56 | 37.8 | 10.1 | 37.9 |
+| after | 4,359 | 39% | 42% | 24.3% | 99% | 0.950 | 0.23 | 0.44 | 0.56 | 37.8 | 10.1 | 55.1 |
+
+**Each model, smooth**: parts, lost95 in studs (whole is at most 1), and
+whether it stands (by Balance with no stud joint past its working load; "on
+a stand" where it was given one).
+
+| Model | Studs | research: parts, lost95, stands | main: parts, lost95, stands | after: parts, lost95, stands |
+|---|---|---|---|---|
+| armadillo | 24 | 493, 4.04, tips | 493, 4.04, tips | 603, 1.26, stands |
+| armadillo | 48 | 2,686, 0.50, stands | 2,684, 0.50, stands | 2,740, 0.46, stands |
+| avocado | 24 | 829, 0.73, tips | 827, 0.73, tips | 855, 0.73, on a stand |
+| avocado | 48 | 4,514, 0.40, tips | 4,511, 0.40, tips | 4,561, 0.40, on a stand |
+| benchy | 24 | 467, 1.13, stands | 465, 1.13, stands | 555, 0.63, stands |
+| benchy | 48 | 2,782, 0.43, stands | 2,775, 0.42, stands | 2,833, 0.42, stands |
+| bob | 24 | 910, 0.42, stands | 910, 0.42, stands | 1,062, 0.31, stands |
+| bob | 48 | 4,029, 0.35, stands | 4,029, 0.35, stands | 4,151, 0.35, stands |
+| character | 24 | nothing laid | nothing laid | 627, 0.46, stands |
+| character | 48 | nothing laid | nothing laid | 2,869, 0.58, 3 joints over |
+| fox | 24 | nothing laid | nothing laid | 224, 0.50, on a stand |
+| fox | 48 | 2, 31.63, stands | 2, 31.63, stands | 967, 0.39, 2 joints over |
+| milk-truck | 24 | 768, 0.91, 2 joints over | 768, 0.91, 2 joints over | 889, 0.45, on a stand |
+| milk-truck | 48 | 4,261, 0.56, 2 joints over | 4,261, 0.56, 2 joints over | 4,314, 0.56, 2 joints over |
+| objaverse | 24 | 970, 6.48, stands | 970, 6.48, stands | 2,213, 0.75, 16 joints over |
+| objaverse | 48 | 4,962, 13.92, stands | 4,960, 13.92, stands | 10,986, 2.43, 57 joints over |
+| smithsonian-1 | 24 | 407, 11.29, stands | 407, 11.29, stands | 1,218, 0.60, stands |
+| smithsonian-1 | 48 | 7,713, 0.40, stands | 7,707, 0.40, stands | 7,782, 0.39, stands |
+| smithsonian-2 | 24 | nothing laid | nothing laid | 171, 1.08, on a stand |
+| smithsonian-2 | 48 | 405, 13.34, stands | 405, 13.34, stands | 650, 0.85, stands |
+| spot | 24 | 1,005, 0.35, stands | 1,005, 0.35, stands | 1,081, 0.34, on a stand |
+| spot | 48 | 4,787, 0.39, stands | 4,787, 0.39, stands | 4,956, 0.39, on a stand |
+| stanford-bunny | 24 | 985, 1.59, stands | 985, 1.59, stands | 1,011, 0.91, stands |
+| stanford-bunny | 48 | 4,887, 0.39, stands | 4,864, 0.39, stands | 4,902, 0.39, stands |
+| toy-car | 24 | 444, 4.95, stands | 444, 4.95, not one piece | 756, 0.50, stands |
+| toy-car | 48 | 2,745, 4.13, stands | 2,742, 4.13, stands | 3,437, 0.90, 3 joints over |
+| utah-teapot | 24 | 607, 1.20, stands | 597, 1.20, stands | 668, 0.33, stands |
+| utah-teapot | 48 | 3,310, 0.70, stands | 3,178, 0.70, stands | 2,996, 0.65, stands |
+
+**What the numbers say.**
+1. **Nothing is laid as nothing.** The fox, the figure and the X-1 are laid
+   at both sizes. The fox at 24 studs keeps all four legs and stands on a
+   4 × 12 stand, because its legs reached the ground as two pieces. The fox
+   at 48 is 967 parts, where it was 2.
+2. **Whole in 25 of 28, from 13.** The Hayes bust at 24 studs went from
+   lost95 11.3 to 0.60, the toy car from 4.95 and 4.13 to 0.50 and 0.90,
+   the teapot (spout and handle) from 1.20 to 0.33, the tholos at 24 from
+   6.48 to 0.75. Plain is whole in 27 of 28.
+3. **Every build is one piece and passes the check, and every one stands.**
+   Eight were given a stand: the avocado at both sizes and the X-1 at 24
+   would tip; the fox at 48, Spot at both sizes and the milk truck at 24
+   stand on feet of three studs or fewer; the fox at 24 stood in two pieces.
+   Six still have a stud joint past its working load: 2 to 3 on the figure,
+   the fox and the toy car at 48, the milk truck's 2 at 48 as before, and 16
+   and 57 on the tholos, whose columns and trees are now laid.
+4. **Nothing else got worse on the models whole before.** IoU, Chamfer,
+   normal error, colour, seams bridged and the share of 1x1s are equal or a
+   little better; lost95 is lower. Parts rise by 1% at 48 studs and 11% at 24,
+   mostly stands. Weak points rise by under a point.
+5. **Time is the cost.** On those same models, 8.9 s against 6.9 at 24
+   studs and 55 s against 38 at 48. Across all 28 runs it is 12.1 s and 72 s
+   on average, 27 s and 298 s at most, against `main`'s 6.7 and 47, 13 and
+   210. Joining in the plan and the mend's extra checks are most of it, and
+   the models laid now (the tholos keeps its temple: 10,986 parts at 48 where
+   it laid 4,960) are bigger.
+
+### Proof
+
+- `brickify_probe` (headless), new section "the whole model", written
+  against what `main` has too so it runs there. The fox at 24 studs
+  (`tests/fixtures/brickify/fox.obj`: a CC0 model, CC BY 4.0 conversion,
+  credited in the file) is laid with each of its four legs there from the
+  foot up, with 97% of it in a part and nothing left out, one piece, standing.
+  A body with a cube floating a stud and a half over it
+  (`BrickifySamples.floating`) has a part at the cube's middle. A post with
+  a block past its edge (`BrickifySamples.overhang`) is given a stand and
+  stands on it. Every number laid in the probe's builds is the one LDraw
+  gives the part today, and none of the 86 parts Brickify may lay has a stub
+  that turns it. **On `main` `4138091` it fails 7 checks** (the fox lays
+  nothing, the cube is dropped, the post tips with no stand, 3023 is laid).
+  On the branch it passes; the forty-stud bunny takes 12.9 s.
+- `brickify_ui_probe` (windowed): the panel's line weighs now: "buildable in
+  one piece; it stands on a stand 12 × 9 studs, added because it would tip,
+  its centre of mass 1.4 studs past what it stands on …". `shapes`,
+  `patterns`, `cabins`, `exact`, `app_tools`, `example_name` and `mcp_sync`
+  pass (the tool's schema has `stand` now).
+- In a browser on a preview (`https://brickworks-fkmqo20xu-xaxis-projects.vercel.app`),
+  `tools/release/preview_checks.sh` runs `brickify` (the bunny) and the new
+  `brickify_fox` (the fox at 24 studs, whose line must say it stands on a
+  stand). Both pass. The fox read "263 parts in 9 colours, buildable in one
+  piece; it stands on a stand 4 × 12 studs … nothing of it left out".
+
+### What is left
+
+- **Three runs not whole.** The armadillo at 24 (lost95 1.26) and the X-1 at
+  24 (1.08): small surface parts on thin parts (cheese slopes on wedges,
+  1x1 plates, tiles) that nothing holds, taken out and said. Plain keeps both
+  whole. An experiment that lays the columns about such loose parts again
+  plain made the armadillo whole (0.53) but left the X-1's wing seams worse
+  until it was made to keep only the lay that keeps more; it was not benched
+  at full size and is not in this branch. The tholos at 48 (2.43): a scene of
+  columns and trees, 782 parts taken out, and not whole in plain either.
+- **Joints past their load** on six runs. Props are tried and kept only when
+  they help; on these they rarely did. Bracing such joints belongs with unit
+  3 (bond).
+- **A hollow model's floor**: the hollow sphere's bottom cap is a piece that
+  nothing joins (on `main` too, silently); now it is said.
+- **Time**, above. Faster joining in the plan, by keeping the pieces between
+  rounds, is the next lever.
+- **The colour of a cell** and the smooth surface's look are unit 2's; this
+  unit did not touch them, and ΔE2000 is unchanged.
 
 ## Repeat it
 
