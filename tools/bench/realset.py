@@ -832,7 +832,7 @@ def run(args: argparse.Namespace) -> int:
     done = sum(1 for c in wanted if (out / c.number / "record.json").exists())
     bench.say(f"realset {args.which}: {done} of {len(wanted)} recorded")
     text = report_arm(args.which, args.date, args.arm)
-    (out / "report.md").write_text(text)
+    (out / f"report-{args.which}.md").write_text(text)
     print(text)
     return 0
 
@@ -1072,7 +1072,7 @@ def compare(args: argparse.Namespace) -> int:
         results = list(workers.map(judged, tasks))
     text = compare_report(arms, dates, results, args.which)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "report.md").write_text(text)
+    (out / f"report-{args.which}.md").write_text(text)
     print(text)
     return 0
 
@@ -1175,7 +1175,7 @@ def main(argv: list[str] | None = None) -> int:
         return calibrate_half(args)
     if args.what == "report":
         text = report_arm(args.which, args.date, args.arm)
-        (arm_dir(args.date, args.arm) / "report.md").write_text(text)
+        (arm_dir(args.date, args.arm) / f"report-{args.which}.md").write_text(text)
         print(text)
         return 0
     return compare(args)

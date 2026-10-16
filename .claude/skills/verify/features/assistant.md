@@ -2276,7 +2276,11 @@ Proves it when: `calibrate` names the set on every dimension of every verdict;
 the dry run writes a record with two verdicts and a report; a real design's log
 says `real sets: holding out <set>` once it searched the index; every
 `judged/*.json` lists all six pictures in `looked_at`; and the report's two
-orders agree on most dimensions with the model shown first winning near half.
+orders agree on most dimensions with the model shown first winning near half
+(2026-10-16: 120 of 120 calibration verdicts named the set; m32's proof half,
+24 of 24 verdicts with all six pictures, orders agreeing on 82%, the first
+shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
+workers after the `heavy` queue).
 
 ### The check by real shapes
 
