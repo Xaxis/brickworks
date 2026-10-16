@@ -29,11 +29,24 @@ if [ -e "$(git rev-parse --git-dir)/merging" ]; then echo "SHIP: a merge in $W i
 SHA=$(git rev-parse --short HEAD)
 git -C $R merge-base --is-ancestor main HEAD || { echo "SHIP: $SHA does not contain main"; exit 1; }
 set -a; . $R/.env; set +a
-~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
-timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh > $S/${TAG}_preview.log 2>&1
-URL=$(grep -oE "deploy done https://[^ ]+" $S/${TAG}_preview.log | cut -d' ' -f3)
-[ -n "$URL" ] || { echo "SHIP: preview deploy failed"; tail -3 $S/${TAG}_preview.log; exit 1; }
-echo "SHIP: preview $URL"
+# SHIP_REUSE=1: the preview this TAG already made, if it was made from this
+# very commit. A timing check that failed under load held a release twice
+# on 2026-10-16, and the only way on was a fresh deploy and every check
+# again. Reused, the checks named are run again on the same build, and
+# all of them must pass, as ever.
+URL=""
+if [ -n "${SHIP_REUSE:-}" ] && [ "$(cat $S/${TAG}_preview.sha 2>/dev/null)" = "$SHA" ]; then
+  URL=$(grep -oE "deploy done https://[^ ]+" $S/${TAG}_preview.log | cut -d' ' -f3)
+  [ -n "$URL" ] && echo "SHIP: reusing preview $URL, made from $SHA"
+fi
+if [ -z "$URL" ]; then
+  ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
+  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh > $S/${TAG}_preview.log 2>&1
+  URL=$(grep -oE "deploy done https://[^ ]+" $S/${TAG}_preview.log | cut -d' ' -f3)
+  [ -n "$URL" ] || { echo "SHIP: preview deploy failed"; tail -3 $S/${TAG}_preview.log; exit 1; }
+  echo "$SHA" > $S/${TAG}_preview.sha
+  echo "SHIP: preview $URL"
+fi
 rm -f $S/${TAG}_pv.out
 "$HERE/preview_checks.sh" "$URL" "$W" ${TAG}_pv "$@" || { echo "SHIP: held, the checks did not run"; exit 1; }
 cut -c1-160 $S/${TAG}_pv.out

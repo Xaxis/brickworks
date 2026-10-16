@@ -37,6 +37,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   battery that wrote no results holds the release. It used to look only for
   a failed line, so when the checks could not even start (a relative
   worktree path) m31 went on to deploy production unchecked (2026-10-15).
+- `SHIP_REUSE=1 ship.sh <worktree> <tag> <check…>` reuses the preview that
+  tag made, only if it was made from the same commit (`<tag>_preview.sha`),
+  and runs the named checks on it again; each must still pass. A timing
+  check failed at load 75-95 and held m33 twice on 2026-10-16; the only way
+  on was a fresh deploy and every check again. Rerun the one that failed,
+  alone, when the load allows, then promote with it.
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
