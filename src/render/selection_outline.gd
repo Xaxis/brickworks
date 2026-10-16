@@ -391,36 +391,25 @@ func _fit() -> void:
 		_draw_again()
 
 
-## The window's size while something is outlined, and next to nothing while
+## The window's size while something is outlined, and none at all while
 ## nothing is: three targets the size of a 2x window are 60 MB of a graphics
 ## card's memory, a browser's included, for each of the two outlines.
 ##
-## Not at once, once they have the window's size: each new size is three new
-## render targets, and a browser waits for the card to finish everything
-## asked of it before it makes one. Drawing in software that was a second a
-## time, and the pointer going from a part onto Brickify's button let go of
-## the hover's targets in the frame it pressed, so the bar saying it had
-## begun was drawn 1.8 s after the press (progress_check, 2026-10-15). They
-## go small once nothing has been outlined for SHRINK_AFTER_MS.
+## Let go of by telling the RenderingServer a size of nothing, which frees
+## them and makes none. A SubViewport is 2 × 2 at the least: three new
+## targets, and a browser waits for the card to finish everything asked of
+## it before it makes one. Drawing in software that was a second a time:
+## the pointer going from a part onto Brickify's button let go of the
+## hover's targets in the frame it pressed, and the bar saying it had begun
+## was drawn 1.8 s after the press (progress_check, 2026-10-15). Let go of
+## a few seconds later instead, that was a frame drawn for nothing, and on
+## Orthanc in software it held the next press 2.7 to 10.8 s.
 func _size_targets() -> void:
-	if visible:
-		_resize(_pixels)
-		return
-	_emptied_at = Time.get_ticks_msec()
-	if _mask.size != _pixels or not is_inside_tree():
-		_resize(Vector2i(2, 2))
-		return
-	get_tree().create_timer(SHRINK_AFTER_MS / 1000.0).timeout.connect(
-		_shrink_if_still_empty.bind(_emptied_at))
+	_resize(_pixels if visible else Vector2i.ZERO)
 
 
-const SHRINK_AFTER_MS := 4000
-var _emptied_at: int = 0
-
-
-func _shrink_if_still_empty(emptied_at: int) -> void:
-	if not visible and _emptied_at == emptied_at:
-		_resize(Vector2i(2, 2))
+## The size the targets have: none, or the window's.
+var _made: Vector2i = Vector2i(-1, -1)
 
 
 ## Counted as the card's time, as ModelShot's render target is
@@ -428,9 +417,14 @@ func _shrink_if_still_empty(emptied_at: int) -> void:
 ## complete, which in a browser waits for everything queued. Brickify's
 ## last frame, its 557 parts selected, waited 2.4 s here in software.
 func _resize(wanted: Vector2i) -> void:
-	if _mask.size == wanted:
+	if _made == wanted:
 		return
+	_made = wanted
 	var asked: int = Time.get_ticks_usec()
 	for view: SubViewport in [_mask, _rows, _line]:
-		view.size = wanted
+		# The node keeps the window's size throughout; only the server's
+		# targets come and go.
+		if wanted != Vector2i.ZERO:
+			view.size = wanted
+		RenderingServer.viewport_set_size(view.get_viewport_rid(), wanted.x, wanted.y)
 	ModelShot.gpu_wait_us += Time.get_ticks_usec() - asked

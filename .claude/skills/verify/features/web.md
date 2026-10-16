@@ -240,7 +240,11 @@ plan with Claude as the client.
   Timeline); and Brickify's bar came a second late because the pointer leaving
   a part let go of the outline's window-sized render targets in the frame of
   the press, and a browser waits for the card to finish before it makes new
-  ones (`SelectionOutline._size_targets`, now four seconds later). A frame
+  ones. `SelectionOutline._size_targets` now tells the RenderingServer a size
+  of nothing, which frees them and makes none; let go of four seconds later
+  instead, it was a frame drawn for nothing that held Mirror's press 2.7 to
+  10.8 s on Orthanc (`outline_probe` checks the memory goes at once and no
+  frame is drawn after). A frame
   that waits in WebGL is named by the call it waited in: wrap the context's
   methods and sum by name, as `instrument()` does by frame; `checkFramebufferStatus`
   is a render target made. `--report-only` prints

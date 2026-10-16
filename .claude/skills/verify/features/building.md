@@ -48,8 +48,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   never in a picture, render or booklet, which draw the world in viewports of
   their own. `outline_probe` asks the picture: one brick, a chain alone and on
   its gears, Gandalf and Saruman on Orthanc, all 9,429 of Orthanc (a frame within
-  twice the bare one, nothing drawn standing still), a guard cut through and in
-  x-ray, and the hover — what selecting changed must lie round the parts, not
+  twice the bare one, nothing drawn standing still; then nothing selected, the
+  window-sized targets let go of at once and no frame drawn for it after), a
+  guard cut through and in x-ray, and the hover — what selecting changed must lie round the parts, not
   over them, and go all the way round. Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
   picture at 1x and 2x, and its frames standing still; before the picture it
@@ -585,7 +586,8 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
 # the selection's outline round its silhouette, never over it, for one brick,
-# a chain and Orthanc, through the cut and x-ray, and the hover's; at 1x and
+# a chain and Orthanc, through the cut and x-ray, and the hover's; its targets
+# let go of at once when nothing is outlined, with no frame drawn; at 1x and
 # at 2x (2800x1800 is the app at twice the pixels). Pictures in shots/outline/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/outline_probe.gd
