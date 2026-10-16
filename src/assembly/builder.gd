@@ -1842,6 +1842,14 @@ func _settle(
 		int(round(box.size.x / BrickLattice.STUD)),
 		int(round(box.size.z / BrickLattice.STUD)))
 	var snapped: Vector3 = snap_across_to(target, footprint)
+	# Unless what hangs past its plate makes its box another size: a clip
+	# plate's clip, a bracket's arm. Then its sockets say where the studs go.
+	var phase: Variant = _socket_phase(part, basis, footprint)
+	if phase != null and snap_across >= BrickLattice.STUD - 0.01:
+		var on: Vector2 = phase
+		snapped = Vector3(
+			round((target.x - on.x) / BrickLattice.STUD) * BrickLattice.STUD + on.x, target.y,
+			round((target.z - on.y) / BrickLattice.STUD) * BrickLattice.STUD + on.y)
 
 	# Then drop it: the resting height is the highest surface under any
 	# column the part covers, so a part laid across a step sits on the step
@@ -1888,7 +1896,67 @@ func _settle(
 		rest_cell = maxi(rest_cell, hit.adjacent().y)
 
 	var y: float = rest_cell * BrickLattice.CELL - box.position.y
+	# On its plate, not on what hangs below it, where that leaves room: the
+	# clip plates of 5762-1's step 4 hang their clips 2 LDU below the plate,
+	# over the edge of the plate they stand on, and stood 2 LDU up by their
+	# box. Nothing struck from the side or below.
+	var lift: float = _hangs_below(part, basis)
+	if lift > 0.01 and not (hit.is_valid() and hit.normal.y <= 0):
+		var low: float = y - lift
+		var at := Transform3D(basis, Vector3(snapped.x, low, snapped.z))
+		if low + box.position.y >= GROUND_CELL * BrickLattice.CELL - 0.01 \
+				and room_for(held_part, at):
+			return at
 	return Transform3D(basis, Vector3(snapped.x, y, snapped.z))
+
+
+## Where on the stud grid a part goes across, by its sockets, when its box
+## puts it elsewhere: [x, z] of its origin modulo a stud, or null where the
+## box and a socket agree (every plain part) or it has none. Studs stand at
+## odd multiples of half a stud (BrickLattice.snap_to_studs), so a socket
+## must too. Upright or upside down only: a part on its side has its
+## sockets on a side.
+func _socket_phase(part: Lbm.PartMesh, basis: Basis, footprint: Vector2i) -> Variant:
+	if part.sockets.is_empty() or absf((basis * Vector3.UP).y) < 0.99:
+		return null
+	var half: float = BrickLattice.STUD * 0.5
+	var by_box := Vector2(half if footprint.x % 2 == 1 else 0.0,
+		half if footprint.y % 2 == 1 else 0.0)
+	var counts: Dictionary = {}
+	for socket: Vector2 in part.sockets:
+		var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
+		var phase := Vector2(fposmod(half - at.x, BrickLattice.STUD),
+			fposmod(half - at.z, BrickLattice.STUD))
+		phase = Vector2(snappedf(phase.x, 0.5), snappedf(phase.y, 0.5))
+		if phase.distance_to(by_box) < 0.5:
+			return null
+		counts[phase] = int(counts.get(phase, 0)) + 1
+	var best: Variant = null
+	for phase: Vector2 in counts:
+		if best == null or int(counts[phase]) > int(counts[best]):
+			best = phase
+	return best
+
+
+## How far the part reaches below its plate, where it sits on the studs of
+## what is under it: the bottom of its cover under its sockets less the
+## bottom of all of it. 0 for a plain part, which has nothing below its
+## plate, and for one with no sockets or not upright.
+func _hangs_below(part: Lbm.PartMesh, basis: Basis) -> float:
+	if part.sockets.is_empty() or part.boxes.is_empty() \
+			or (basis * Vector3.UP).y < 0.99:
+		return 0.0
+	var seat: float = INF
+	var lowest: float = INF
+	for cells: AABB in part.boxes:
+		var low: Vector3 = cells.position * part.cell_ldu
+		var high: Vector3 = cells.end * part.cell_ldu
+		lowest = minf(lowest, low.y)
+		for socket: Vector2 in part.sockets:
+			if socket.x >= low.x - 0.01 and socket.x <= high.x + 0.01 \
+					and socket.y >= low.z - 0.01 and socket.y <= high.z + 0.01:
+				seat = minf(seat, low.y)
+	return seat - lowest if seat < INF else 0.0
 
 
 ## A part laid on its side, aimed at a face with studs on it — a brick

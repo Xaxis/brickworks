@@ -84,7 +84,7 @@ const MENUS: Array = [
 		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
+	["Build", ["timeline", "step_close", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "flex", "minifig", "mosaic",
 		"brickify", "part_maker", "print_part", "sticker",
@@ -112,7 +112,8 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
-	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
+	"steps": ["step_close", "-", "step_prev", "step_next", "step_new", "-", "step_earlier",
+		"step_later",
 		"step_merge", "step_delete"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
@@ -400,7 +401,7 @@ const SLOW_FROM: Dictionary = {
 	"mirror": 200, "replace": 200, "duplicate": 300, "paste": 300, "cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
-	"step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
+	"step_close": 300, "step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
 	"step_later": 300, "step_merge": 300, "step_delete": 300,
 	"turn_left": 300, "turn_right": 300, "collection_build": 0,
 	# What do I need? reads the collection and lays its list out whatever the
@@ -463,7 +464,8 @@ const DOING: Dictionary = {
 	"stability": "Checking stability…", "reseat": "Seating parts on their studs…",
 	"simulate": "Reading the mechanism…",
 	"cut": "Cutting away…", "xray": "Seeing through…", "grid": "Laying the stud grid…",
-	"step_new": "Making a step…", "step_earlier": "Moving the step…",
+	"step_close": "Making a step…", "step_new": "Making a step…",
+	"step_earlier": "Moving the step…",
 	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
 	"step_delete": "Taking out the step…",
 }
@@ -677,6 +679,12 @@ func _define() -> void:
 		"Keep the selection from being picked out, moved, painted or taken off")
 	_add("unlock", "Unlock everything", SHIFT | KEY_L, func() -> void: verbs.unlock_all(),
 		func() -> bool: return not builder.locked.is_empty())
+	# The column opened first, as / opens it for the search: typed into a
+	# folded one, the name would go to the model as its keys.
+	_add("find_colour", "A colour by name or number", SHIFT | KEY_C, func() -> void:
+		(app.get("_bin_dock") as SideDock).set_open(true)
+		(app.get("_bin") as PartsBin).focus_colour_find(), Callable(),
+		"Type a colour's name or number; Enter takes the first")
 	_add("paint", "Paint the selection", KEY_C, func() -> void: await verbs.press("paint"),
 		selected, "Paint the selection the colour in hand")
 	_add("replace", "Replace with the part in hand", 0, func() -> void: verbs.replace(),
@@ -708,6 +716,10 @@ func _define() -> void:
 	_add("step_new", "New step from selection", SHIFT | KEY_N,
 		func() -> void: edit_steps("new"), selected,
 		"The selected parts in a step of their own, after the step the timeline is on")
+	# Studio's step button: the parts put down since the last step are a
+	# step, and the next part starts another. Nothing to select first.
+	_add("step_close", "Next step", KEY_E, func() -> void: edit_steps("close"), something,
+		"The parts put down since the last step make a step, and the next part starts another")
 	var on_a_step: Callable = func() -> bool:
 		return (app.get("_steps") as StepsBar).current_step() != null
 	_add("step_earlier", "Step earlier", 0, func() -> void: edit_steps("earlier"), on_a_step,
@@ -1462,6 +1474,15 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_N:
 			if key.shift_pressed and not held and can("step_new"):
 				return run("step_new")
+		KEY_C:
+			# C alone paints (main); Shift-C asks for a colour by name.
+			if key.shift_pressed and not held and not key.alt_pressed:
+				return run("find_colour")
+		KEY_E:
+			# Shift-E turns the model (main); E alone ends the step.
+			if not key.shift_pressed and not held and not key.alt_pressed \
+					and can("step_close"):
+				return run("step_close")
 	return false
 
 
@@ -1486,14 +1507,16 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		return "this model is open to look at, not to change"
 	if op in ["prev", "next", "new"] and ids.is_empty():
 		return "select the parts first"
-	if not op in ["prev", "next", "new"] and at == null:
+	if not op in ["prev", "next", "new", "close"] and at == null:
 		return "go to a step on the timeline first"
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number if at != null else -1
 	var skip: Dictionary = store.scenery
+	var level: String = assemblies.entered if assemblies != null else ""
+	if op == "close":
+		return _close_step(level, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
 	var where: Array = _step_at(at)
-	var level: String = assemblies.entered if assemblies != null else ""
 	var count: int = ids.size()
 	var words: String = ""
 	match op:
@@ -1535,6 +1558,26 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 
 static func _parts(count: int) -> String:
 	return "1 part" if count == 1 else "%d parts" % count
+
+
+## Edit, Next step: what was put down in [param level] since its last step
+## made a step, one undo, said with its number as the timeline counts it.
+func _close_step(level: String, skip: Dictionary) -> String:
+	var undo: Array = AuthorSteps.close_step(world, level, skip)
+	var made: int = AuthorSteps.steps_in(world, level, skip).size()
+	if undo.is_empty():
+		return ("step %d is done: the next part starts step %d" % [made, made + 1]) \
+			if made > 0 else "put a part down first: a step is the parts put down since the last"
+	var count: int = 0
+	for entry: Dictionary in undo:
+		count += 1 if entry.has("brick") else 0
+	var words: String = "step %d: %s; the next part starts step %d" % [made,
+		_parts(count), made + 1]
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).refresh()
+	return words
 
 
 ## Where the timeline's step is among the author's: [section, step], or

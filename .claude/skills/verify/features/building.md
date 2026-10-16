@@ -523,6 +523,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `technic_hand_probe`. In a browser: `tools/web/technic_flow.mjs`, which
   aims each part at the connector where the page says it is
   (`brickworksState.joints`, with `on_joint` and `can_place`).
+- `placed by its sockets` (`Builder._socket_phase`, `Builder._hangs_below`,
+  2026-10-16): a part whose box is not its plate — a clip plate's clip, a
+  bracket's arm, anything that hangs past or below where it stands — goes
+  across the stud grid where its sockets say, not where its box's size says,
+  and down onto its plate where that leaves room, not onto the bottom of what
+  hangs below. 5762-1's two 4081b clip plates stood half a stud aside and 2
+  to 10 LDU up, and could not be put where the set has them by hand.
+  Plain parts, whose box and sockets agree, are placed as before.
+  `handbuild_probe -- only=build_from_a_booklet` aims both clips by the
+  pointer and checks place and turn exactly.
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it

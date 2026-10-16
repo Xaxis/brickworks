@@ -148,6 +148,8 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["R", "shift-R"], "turn the part in hand, or the selection"),
 		Binding.new(["T", "shift-T"], "tip it over"),
 		Binding.new(["[", "]"], "colour"),
+		Binding.new(["shift-C"], "a colour by its name or number"),
+		Binding.new(["E"], "next step: what was put down since the last step makes one"),
 		Binding.new(["C"], "paint", "paint"),
 		Binding.new(["X"], "lift, or move the selection"),
 		Binding.new(["%s-C" % _hold(), "%s-V" % _hold()], "copy, paste"),
@@ -184,6 +186,7 @@ static func for_keyboard() -> Array[Binding]:
 	_section(everything, "The view", _view_bindings())
 	_section(everything, "The timeline", [
 		Binding.new(["B"], "timeline"),
+		Binding.new(["left", "right"], "the step before, the step after"),
 		Binding.new(["space"], "play the timeline"),
 		Binding.new(["Home", "End"], "its start and end"),
 	])

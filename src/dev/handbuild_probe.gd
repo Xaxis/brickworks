@@ -101,6 +101,7 @@ func _run() -> void:
 	await _mirrored()
 	await _studio_file()
 	await _author_steps()
+	await _build_from_a_booklet()
 	await _swing_on_a_hinge()
 	await _a_submodel()
 	await _the_ruler()
@@ -1509,6 +1510,171 @@ func _author_steps() -> void:
 	await _key(KEY_BRACKETRIGHT)
 	_check("with nothing selected, ] still changes the colour in hand (%d to %d)"
 		% [colour, _builder.held_color], _builder.held_color != colour)
+
+
+## A real set built from its booklet with only what a person has, as the
+## CAD task test builds 5762-1's plane (docs/CADTASK.md): a part number
+## typed brings that part first, a colour is taken by its name, E ends each
+## step as it is built, the plane's clip plates go where the set has them,
+## and Right steps the timeline after a part was taken by a click on its
+## tile. Each was a gap the test met on 2026-10-16.
+func _build_from_a_booklet() -> void:
+	print("  building from a booklet: numbers, colours by name, clip plates, steps, the keys")
+	var bin: PartsBin = _main.get("_bin")
+	var shell: Shell = _main.get("_shell")
+	var steps: StepsBar = _main.get("_steps")
+	var bar: ModelBar = _main.get("_bar")
+	steps.stop()
+	_main.call("clear_model")
+	await _show_column("_bin_dock")
+	bin.show_category("All")
+	await _frames(6)
+
+	# The numbers off a parts list, each the first tile. "6157" listed a
+	# minifigure leg first, whose shop number 761579 has it in it.
+	for number: String in ["6157", "4081b", "3795", "32028", "3034"]:
+		await _take_by_number(bin, number)
+		_check("%s typed in the search, the first tile puts %s in hand (%s)"
+			% [number, number, _builder.held_part], _builder.held_part == number)
+
+	# A colour by its name: Shift-C, the name, Enter. The old greys are not
+	# in the palette until All, and look like the bluish greys beside them.
+	for asked: Array in [["light grey", 7], ["dark gray", 8], ["71", 71], ["Light Bluish", 71],
+			["light grey", 7]]:
+		await _key(KEY_C, false, true)
+		var field: LineEdit = bin._colour_find
+		_check("Shift-C puts the keys in the colour's name", field.has_focus())
+		await _type(str(asked[0]))
+		await _key(KEY_ENTER)
+		_check("\"%s\" and Enter: %d in hand (%d), the field let go" % [asked[0], asked[1],
+			_builder.held_color], _builder.held_color == int(asked[1]) and not field.has_focus()
+			and field.text.is_empty())
+	_check("...and its swatch shows, chosen (%s)" % str(bin._swatches.has(7)),
+		bin._swatches.has(7) and (bin._swatches[7] as Button).button_pressed)
+
+	# The plane's first two steps as its file has them, a plate up so the
+	# first stands on the baseplate rather than in it, then E: one step of
+	# the two plates, numbered as the timeline counts.
+	_put_ldr("3034", 7, [0, -8, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_put_ldr("3022", 15, [0, -16, -60, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_camera.frame(AABB(Vector3(-100, 0, -100), Vector3(200, 40, 200)))
+	await _frames(40)
+	var plates: Array = _model().map(func(b: BrickWorld.Brick) -> int: return b.id)
+	await _key(KEY_E)
+	_check("E with two parts down and no steps: they are step 1 (%s; \"%s\")"
+		% [str(plates.map(_step)), bar._status.text],
+		plates.all(func(id: int) -> bool: return _step(id) == 0)
+		and bar._status.text.contains("step 1: 2 parts"))
+
+	# The two clip plates of its step 4, each turned a quarter, the clip
+	# over the edge of the plate under it. The ghost stood 10 LDU high and
+	# half a stud aside: the part was snapped by its box, clip included.
+	await _take_by_number(bin, "4081b")
+	await _key(KEY_C, false, true)
+	await _type("light grey")
+	await _key(KEY_ENTER)
+	var clips: Array = []
+	for want: Array in [[-10, -24, -50, 0, 0, 1, 0, 1, 0, -1, 0, 0],
+			[10, -24, -50, 0, 0, -1, 0, 1, 0, 1, 0, 0]]:
+		var at: Transform3D = _ldr(want)
+		for _n: int in 4:
+			if BrickLattice.basis_for(_builder.held_face, _builder.held_rotation) \
+					.is_equal_approx(at.basis):
+				break
+			await _key(KEY_R)
+		# On the plate it stands on, under the middle of its own: where a
+		# person points to put a plate down.
+		var under: Vector2 = _screen(at.origin - Vector3(0, 8, 0))
+		await _move(under + Vector2(0, 1))
+		await _move(under)
+		var ghost: Variant = _builder.ghost_place()
+		_check("the clip plate's ghost stands where the plane has it (%s, wanted %s, %s)"
+			% [str(ghost), str(at.origin), "may go" if _builder.can_place() else "red"],
+			ghost != null and (ghost as Vector3).is_equal_approx(at.origin) and _builder.can_place())
+		await _click(under)
+		var made: int = 0
+		for brick: BrickWorld.Brick in _model():
+			if brick.part_id == "4081b" and not clips.has(brick.id):
+				made = brick.id
+		clips.append(made)
+		var put: Transform3D = _world.get_brick(made).transform if made != 0 else Transform3D()
+		_check("...a click puts it there, turned as the file has it, light grey (%s)"
+			% str(put.origin), made != 0 and put.origin.is_equal_approx(at.origin)
+			and put.basis.is_equal_approx(at.basis) and _world.get_brick(made).color_code == 7)
+	await _key(KEY_E)
+	_check("E again: the clips are step 2, the plates still step 1 (%s, %s)"
+		% [str(clips.map(_step)), str(plates.map(_step))],
+		clips.all(func(id: int) -> bool: return _step(id) == 1)
+		and plates.all(func(id: int) -> bool: return _step(id) == 0))
+	await _key(KEY_Z, true)
+	_check("Ctrl-Z takes the step back and leaves the parts (%s, %d parts)"
+		% [str(clips.map(_step)), _count()],
+		clips.all(func(id: int) -> bool: return _step(id) == -1) and _count() == 4)
+	await _key(KEY_Z, true, true)
+	_check("...and redo makes it again (%s)" % str(clips.map(_step)),
+		clips.all(func(id: int) -> bool: return _step(id) == 1))
+	await _key(KEY_E)
+	_check("E with nothing put down since says so, and makes no empty step (\"%s\")"
+		% bar._status.text, bar._status.text.contains("step 2 is done")
+		and AuthorSteps.steps_in(_world, "", _store.scenery).size() == 2)
+	# By its words: a command in two menus has a row, and an id, in each.
+	var build_menu: PopupMenu = shell.menu("Build").get_popup()
+	var index: int = -1
+	for row: int in build_menu.item_count:
+		if build_menu.get_item_text(row) == "Next step":
+			index = row
+	_check("Build lists Next step, with its key E (%s)" % (build_menu.get_item_text(index)
+		if index >= 0 else "not there"), index >= 0
+		and build_menu.get_item_accelerator(index) == KEY_E)
+
+	# The last part was taken by a click on its tile. The tile kept the keys,
+	# and Right walked the focus round the bin instead of the timeline.
+	var owner: Control = root.gui_get_focus_owner()
+	_check("a tile clicked does not keep the keys (%s)" % (owner.get_class() if owner else "none"),
+		owner == null or not bin.is_ancestor_of(owner))
+	await _key(KEY_ESCAPE)
+	await _key(KEY_B)
+	await _frames(20)
+	_check("B opens the timeline in the steps just made (\"%s\")" % steps._caption.text,
+		steps.is_playing_back() and steps._caption.text.begins_with("Step 1 of 2"))
+	await _key(KEY_RIGHT)
+	_check("Right steps it on (\"%s\")" % steps._caption.text,
+		steps._caption.text.begins_with("Step 2 of 2"))
+	await _key(KEY_LEFT)
+	_check("...and Left back (\"%s\")" % steps._caption.text,
+		steps._caption.text.begins_with("Step 1 of 2"))
+	await _shot("booklet_steps")
+	steps.stop()
+	await _key(KEY_ESCAPE)
+	_main.call("clear_model")
+	await _frames(4)
+
+
+## A part by its number, as a person takes one: a click in the search, the
+## old text selected, the number typed, a click on the first tile.
+func _take_by_number(bin: PartsBin, number: String) -> void:
+	await _click(bin._search.get_global_rect().get_center())
+	await _key(KEY_A, true)
+	await _type(number)
+	await create_timer(0.4).timeout
+	await _frames(4)
+	if bin._grid.get_child_count() == 0:
+		return
+	await _click((bin._grid.get_child(0) as Control).get_global_rect().get_center())
+	await _frames(4)
+
+
+func _ldr(v: Array) -> Transform3D:
+	var packed := PackedFloat64Array()
+	for x: Variant in v:
+		packed.append(float(x))
+	return LdrModel.to_transform(packed)
+
+
+func _put_ldr(part: String, colour: int, v: Array) -> void:
+	var where: Transform3D = _ldr(v)
+	var brick_id: int = _world.add_brick(part, colour, where)
+	_builder.register(brick_id, part, where)
 
 
 ## The timeline at the step whose caption begins [param caption], by its

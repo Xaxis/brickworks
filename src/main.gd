@@ -372,6 +372,11 @@ func _tell_page() -> void:
 		"scenery": _store.scenery.size(),
 		"own_plate": _floor != null and _floor.has_own_plate(),
 		"held": _builder.held_part,
+		# ...and its colour, as the note under the palette names it
+		# (tools/web/cad_task_flow.mjs reads which swatch a click took).
+		"colour": _builder.held_color,
+		# ...and the parts the bin lists first, as its tiles read.
+		"found": _bin.first_found() if _bin != null else [],
 		"custom": _library.custom.keys(),
 		# The parts the model is made of, by number: a printed version swapped
 		# in (tools/web/decor_flow.mjs) is one the canvas cannot name.
@@ -603,8 +608,12 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		var holder: Viewport = control.get_viewport()
 		if holder is Window and holder != get_window():
 			rect.position += Vector2((holder as Window).position)
-		var centre: Vector2 = (to_window * rect).get_center() / per_css
-		var at: Dictionary = {"x": roundi(centre.x), "y": roundi(centre.y)}
+		var shown: Rect2 = to_window * rect
+		var centre: Vector2 = shown.get_center() / per_css
+		# And how big, for a check that reads what is inside it by its look
+		# (the palette: tools/web/cad_task_flow.mjs).
+		var at: Dictionary = {"x": roundi(centre.x), "y": roundi(centre.y),
+			"w": roundi(shown.size.x / per_css), "h": roundi(shown.size.y / per_css)}
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at

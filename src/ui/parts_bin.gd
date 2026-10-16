@@ -93,6 +93,8 @@ var _status: Label
 var _palette: VBoxContainer
 var _palette_scroll: ScrollContainer
 var _all_colours: Button
+## A colour by its name or number: the palette shows what matches.
+var _colour_find: LineEdit
 var _colour_note: Label
 var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
@@ -162,6 +164,7 @@ func _build() -> void:
 	make.text = "Make a part…"
 	make.tooltip_text = ("A brick, plate, tile, slope or round part of any "
 		+ "size, or a part here resized — it joins the bin under Custom")
+	make.focus_mode = Control.FOCUS_NONE
 	make.add_theme_font_size_override("font_size", 12)
 	make.pressed.connect(func() -> void: make_wanted.emit())
 	head.add_child(make)
@@ -170,6 +173,7 @@ func _build() -> void:
 	_print_button.tooltip_text = ("Print a picture or a drawing on the part in hand — a tile, a "
 		+ "slope, any face — as a part of its own, under My prints; with one part picked out in "
 		+ "the model (Shift-click), on that part, where it stands")
+	_print_button.focus_mode = Control.FOCUS_NONE
 	_print_button.add_theme_font_size_override("font_size", 12)
 	_print_button.pressed.connect(func() -> void: print_wanted.emit())
 	head.add_child(_print_button)
@@ -177,6 +181,7 @@ func _build() -> void:
 	_stickers_button.text = "Stickers…"
 	_stickers_button.tooltip_text = ("The model's stickers: a new one for any face, the sheet "
 		+ "to print at true size")
+	_stickers_button.focus_mode = Control.FOCUS_NONE
 	_stickers_button.add_theme_font_size_override("font_size", 12)
 	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
 	head.add_child(_stickers_button)
@@ -247,6 +252,21 @@ func _build() -> void:
 	colour_title.add_theme_font_size_override("font_size", 13)
 	colour_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	colour_head.add_child(colour_title)
+	# A colour by its name or number, as Studio's colour menu filters as you
+	# type. The old greys (7 and 8), all over older sets, show only after
+	# All and look like the bluish greys beside them: a builder building
+	# from a booklet put three parts of eight in the wrong one (the CAD task
+	# test, 2026-10-16). Enter takes the first; Shift-C comes here.
+	_colour_find = LineEdit.new()
+	_colour_find.placeholder_text = "Name or number"
+	_colour_find.tooltip_text = ("A colour by its name or number, every colour there is: "
+		+ "Enter takes the first (Shift-C)")
+	_colour_find.clear_button_enabled = true
+	_colour_find.custom_minimum_size = Vector2(132, 0)
+	_colour_find.add_theme_font_size_override("font_size", 12)
+	_colour_find.text_changed.connect(func(_text: String) -> void: _build_swatches())
+	_colour_find.text_submitted.connect(_take_found_colour)
+	colour_head.add_child(_colour_find)
 	_all_colours = Button.new()
 	_all_colours.toggle_mode = true
 	_all_colours.flat = true
@@ -353,6 +373,7 @@ func _build_categories() -> void:
 				else "The parts you keep: right-click any part to add it or take it out")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
+		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_size_override("font_size", 12)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
@@ -370,6 +391,10 @@ func _build_swatches() -> void:
 		child.queue_free()
 	_swatches.clear()
 	var everything: bool = _all_colours.button_pressed
+	var asked: String = _colour_find.text.strip_edges() if _colour_find != null else ""
+	if not asked.is_empty():
+		_build_found(asked)
+		return
 
 	var current: int = 0
 	var total: int = 0
@@ -414,6 +439,126 @@ func _build_swatches() -> void:
 			"Also the %d colours not in a set since %d, or in no set inventory"
 				% [total - current, library.recent_since])
 	_mark_swatches()
+
+
+## The palette while a colour is asked for by name or number: the colours
+## that answer, best first, from every colour there is.
+func _build_found(asked: String) -> void:
+	var found: Array[PartLibrary.BrickColor] = colours_named(library, asked)
+	var title := Label.new()
+	title.add_theme_font_size_override("font_size", 11)
+	title.modulate = Color(1, 1, 1, 0.7)
+	title.text = "No colour is called that" if found.is_empty() \
+		else "%s: Enter takes the first" % ("1 colour" if found.size() == 1
+			else "%d colours" % found.size())
+	_palette.add_child(title)
+	if not found.is_empty():
+		_palette.add_child(_flow_of(found))
+	_mark_swatches()
+
+
+## Every colour whose name or number answers [param asked], best first: its
+## number exactly, its name exactly (LDraw's or LEGO's), its name beginning
+## so, every word in it, then numbers that begin so. Gray is grey, as
+## BrickLink and Rebrickable spell it; within a rank the most used first.
+static func colours_named(library: PartLibrary, asked: String) -> Array[PartLibrary.BrickColor]:
+	var said: String = _colour_words(asked)
+	var ranked: Array = []
+	if said.is_empty() or library == null:
+		return []
+	for code: int in library.colors:
+		var color: PartLibrary.BrickColor = library.colors[code]
+		if code in NOT_A_COLOUR or not _in_any_group(color):
+			continue
+		var rank: int = _colour_rank(color, said)
+		if rank >= 0:
+			ranked.append([rank, color])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool:
+		if int(a[0]) != int(b[0]):
+			return int(a[0]) < int(b[0])
+		var x: PartLibrary.BrickColor = a[1]
+		var y: PartLibrary.BrickColor = b[1]
+		if x.sets != y.sets:
+			return x.sets > y.sets
+		return x.code < y.code)
+	var out: Array[PartLibrary.BrickColor] = []
+	for pair: Array in ranked:
+		out.append(pair[1])
+	return out
+
+
+static func _colour_words(text: String) -> String:
+	var words: String = text.to_lower().replace("_", " ").replace("-", " ").replace("gray", "grey")
+	while words.contains("  "):
+		words = words.replace("  ", " ")
+	return words.strip_edges()
+
+
+## How well [param color] answers [param said] (from _colour_words): 0 its
+## number, 1 its LDraw name, 2 LEGO's, 3 a name beginning so, 4 every word
+## in a name, 5 a number beginning so; -1 not at all.
+static func _colour_rank(color: PartLibrary.BrickColor, said: String) -> int:
+	if said.is_valid_int():
+		if int(said) == color.code:
+			return 0
+		return 5 if str(color.code).begins_with(said) else -1
+	var names: Array[String] = [_colour_words(color.name), _colour_words(color.lego_name)]
+	if names[0] == said:
+		return 1
+	if names[1] == said:
+		return 2
+	for name: String in names:
+		if not name.is_empty() and name.begins_with(said):
+			return 3
+	for name: String in names:
+		var every: bool = not name.is_empty()
+		for word: String in said.split(" ", false):
+			if not (" %s " % name).contains(" %s" % word):
+				every = false
+				break
+		if every:
+			return 4
+	return -1
+
+
+static func _in_any_group(color: PartLibrary.BrickColor) -> bool:
+	for group: Array in GROUPS:
+		if (group[1] as Array).has(color.drawn_as):
+			var wanted: Variant = group[2]
+			if wanted == null or bool(wanted) == color.is_transparent():
+				return true
+	return false
+
+
+## Enter in the colour's name: the first that answers, in hand, as a click
+## on its swatch takes it, and the palette back as it was with that one
+## showing.
+func _take_found_colour(text: String) -> void:
+	var found: Array[PartLibrary.BrickColor] = colours_named(library, text)
+	if found.is_empty():
+		return
+	var code: int = found[0].code
+	_colour_find.text = ""
+	_build_swatches()
+	_on_colour(code)
+	swatch_pressed.emit(code)
+
+
+## The parts on the first tiles, in order: what a person reads off the top
+## of the list (brickworksState.found, for tools/web/cad_task_flow.mjs).
+func first_found(most: int = 6) -> PackedStringArray:
+	var out := PackedStringArray()
+	for n: int in mini(most, _results.size()):
+		out.append(_results[n].id)
+	return out
+
+
+## Shift-C: the colour's name, to be typed.
+func focus_colour_find() -> void:
+	if _colour_find == null:
+		return
+	_colour_find.grab_focus()
+	_colour_find.select_all()
 
 
 ## The palette's window, and the rows of categories: sized by the column
@@ -760,6 +905,9 @@ func controls_by_name() -> Dictionary:
 	# The search and the first part it found: how a browser check takes a
 	# part by its number, as a person does (tools/web/assembly_flow.mjs).
 	named["part search"] = _search
+	named["colour find"] = _colour_find
+	named["all colours"] = _all_colours
+	named["palette"] = _palette_scroll
 	if _grid.get_child_count() > 0:
 		named["first part"] = _grid.get_child(0)
 	if _make_button != null:
@@ -1315,6 +1463,14 @@ func _update_status() -> void:
 	if _set_aside == 0:
 		_status.tooltip_text = ("%s parts can be placed in this build"
 			% _comma(_offerable))
+	# A number typed that names a part this build cannot place: said, or the
+	# first tile reads as the answer. A web export without its parts served
+	# offered 6157 nowhere, and "6157" led with a minifigure leg whose shop
+	# number has it in it (the CAD task test, 2026-10-16).
+	var typed: String = _search.text.strip_edges().to_lower()
+	var named: PartLibrary.PartInfo = library.parts.get(typed) if library != null else null
+	if named != null and not named.reachable:
+		_status.text = "%s is not in this build of the app\n%s" % [typed, _status.text]
 
 
 func _make_cell(info: PartLibrary.PartInfo) -> Control:
@@ -1332,6 +1488,10 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# for a lookup to go through a string meant for a person.
 	button.set_meta("part", info.id)
 	button.toggle_mode = true
+	# Clicked, a tile kept the keys: the arrows then walked the focus round
+	# the grid, and Right never reached the timeline (the CAD task test,
+	# 2026-10-16). Nothing in the bin needs the keyboard but the search.
+	button.focus_mode = Control.FOCUS_NONE
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
