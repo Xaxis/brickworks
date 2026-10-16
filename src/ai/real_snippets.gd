@@ -19,6 +19,11 @@
 ## design — so ensure() fetches it from beside the build (knowledge/,
 ## which tools/export.sh web writes and deploy.sh serves under /b/<sha>/)
 ## the first time a design asks, and keeps it for the visit.
+##
+## A set under test is never in it. tools/bench/realset.py judges a design
+## against the real set of the same brief, and starts the design with
+## --held-out=<the set's number>: that set's pieces are dropped as the index
+## is read, so the designer cannot lay the answer it is measured against.
 class_name RealSnippets
 extends RefCounted
 
@@ -77,11 +82,26 @@ static func ensure(host: Node) -> bool:
 	return available()
 
 
-## Lookups by subject word and by id, made once from a fresh index.
+## Lookups by subject word and by id, made once from a fresh index, with
+## the pieces of any set held out (DesignMemory.held_out) left out.
 static func _take(read_in: Dictionary) -> void:
 	_document = read_in
 	_subject_of.clear()
 	_by_id.clear()
+	var held: PackedStringArray = DesignMemory.held_out()
+	if not held.is_empty() and _document.has("entries"):
+		var kept: Array = []
+		var hidden: Dictionary = {}
+		for raw: Variant in _document["entries"]:
+			var from: String = str((raw as Dictionary).get("set", ""))
+			if held.has(from):
+				hidden[from] = int(hidden.get(from, 0)) + 1
+			else:
+				kept.append(raw)
+		_document["entries"] = kept
+		for from: String in hidden:
+			# In the run's log, so a batch shows the set under test was out.
+			print("real sets: holding out %s (%d pieces)" % [from, int(hidden[from])])
 	var subjects: Dictionary = _document.get("subjects", {})
 	for subject: String in subjects:
 		for word: Variant in [subject] + (subjects[subject] as Array):

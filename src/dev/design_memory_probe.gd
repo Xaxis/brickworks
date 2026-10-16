@@ -3,6 +3,7 @@
 ##
 ##   godot --headless --path . --script src/dev/design_memory_probe.gd
 ##   godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=speed_champions
+##   godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1
 ##
 ## The memory (tools/design_memory.py, src/ai/design_memory.gd) is worth
 ## something only if three things hold. Asked about a subject in words no
@@ -138,6 +139,19 @@ func _held_out_check(subject: String, query: String, words: String) -> void:
 ## or any other, and every other subject still is.
 func _check_the_flag(flagged: PackedStringArray) -> void:
 	print("held out by the flag: %s" % ", ".join(flagged))
+	# A real set's number (tools/bench/realset.py): none of its pieces is
+	# in the real-set index, by id or by search.
+	var pieces: Array = RealSnippets.document().get("entries", [])
+	for id: String in flagged:
+		if not id.contains("-"):
+			continue
+		var left: int = pieces.filter(func(entry: Variant) -> bool:
+			return str((entry as Dictionary).get("set", "")) == id).size()
+		_ok(left == 0 and RealSnippets.entry(id + "/main").is_empty(),
+			"set %s has no pieces in the real-set index (%d left)" % [id, left])
+	if not pieces.is_empty():
+		var some: String = str((pieces[0] as Dictionary).get("set", ""))
+		_ok(not flagged.has(some), "...and other sets keep theirs (%s)" % some)
 	for pair: Array in HELD_OUT_QUERIES:
 		var found: PackedStringArray = PackedStringArray()
 		for row: Variant in DesignMemory.search(str(pair[0]), 64):

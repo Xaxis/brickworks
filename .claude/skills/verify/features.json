@@ -751,6 +751,14 @@
       "tests": []
     },
     {
+      "id": "cli:test designs against real sets",
+      "kind": "cli",
+      "entry": "tools/bench/realset.py",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | run --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:the author's steps in a browser",
       "kind": "cli",
       "entry": "tools/web/steps_flow.mjs",
