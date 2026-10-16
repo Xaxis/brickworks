@@ -15,6 +15,8 @@ extends SceneTree
 ## With --fixtures, tests/fixtures/brickify/bunny.obj is written again.
 
 var _failures: int = 0
+## Every model the probe laid, for the numbers they were laid in.
+var _laid: Array[Assistant.Model] = []
 var _library: PartLibrary
 var _checker: Assistant
 var _world: BrickWorld
@@ -276,6 +278,10 @@ func _run() -> void:
 		_check("one colour is one colour: %s" % colours, colours.keys() == [1])
 
 	print("")
+	print("  the whole model")
+	_whole()
+
+	print("")
 	print("  forty studs")
 	options = Brickify.Options.new()
 	options.studs = 40
@@ -291,6 +297,24 @@ func _run() -> void:
 	var mended: Dictionary = Brickify.mend(Assistant.Model.new(), _checker)
 	_check("mending a model with nothing in it comes back, not a crash (%d out)"
 		% int(mended.get("mended", -1)), mended.has("mended"))
+
+	# Every number laid is the one LDraw gives the part today: 3023 says
+	# "~Moved to 3023b", and a parts list then has no element for it.
+	var moved: Dictionary = {}
+	var count: int = 0
+	for model: Assistant.Model in _laid:
+		for placement: Assistant.Placement in model.placements:
+			count += 1
+			if _library.resolve(placement.part) != placement.part:
+				moved[placement.part] = _library.resolve(placement.part)
+	_check("every number laid is current, of %d parts in %d builds: moved %s" % [count,
+		_laid.size(), moved], moved.is_empty() and count > 0)
+	var turned: Array = []
+	for id: String in Brickify.parts_needed():
+		if _library.resolve(id) != id and _library.moved_by(id) != Transform3D.IDENTITY:
+			turned.append(id)
+	_check("and none of the %d Brickify may lay is a number whose stub turns it: %s" % [
+		Brickify.parts_needed().size(), turned], turned.is_empty())
 
 	_checker.free()
 	print("")
@@ -310,6 +334,7 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		_check("%s: %s" % [name, result["error"]], false)
 		return {}
 	var model: Assistant.Model = result["model"]
+	_laid.append(model)
 	var report: Dictionary = result["report"]
 	var grid: Brickify.Grid = result["grid"]
 	_check("%s at %d studs (%d x %d studs, %d plates): %d parts, %s, %d piece%s, %d mended, in %d ms"
@@ -331,6 +356,146 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		_builder.lattice.clear()
 		_checker.forget_built()
 	return result
+
+
+## Keeping the whole model, generally: a fox whose legs are thinner than a
+## stud (they never reached the grid, its body floated, and every part was
+## mended away), a piece apart from the body (dropped, once), and a model
+## that would tip (said to be buildable, unweighed).
+func _whole() -> void:
+	var fox: MeshFile = MeshFile.read(FileAccess.get_file_as_bytes(
+		"res://tests/fixtures/brickify/fox.obj"), "fox.obj")
+	_check("the fox: %d triangles, %s" % [fox.triangle_count(), fox.error],
+		fox.error.is_empty() and fox.triangle_count() == 576)
+	var options := Brickify.Options.new()
+	options.studs = 24
+	var laid: Dictionary = Brickify.build(fox, options, _checker)
+	_check("the fox at 24 studs is laid: %s" % str(laid.get("error", "%d parts" % (
+		(laid["model"] as Assistant.Model).placements.size() if laid.has("model") else 0))),
+		laid.has("model"))
+	if laid.has("model"):
+		var model: Assistant.Model = laid["model"]
+		_laid.append(model)
+		var legs: Array = _legs(fox, laid)
+		var kept: int = 0
+		for leg: Dictionary in legs:
+			kept += 1 if float(leg["held"]) >= 0.9 else 0
+		_check("its legs survive, each from its foot up, in parts: %s" % ", ".join(PackedStringArray(
+			legs.map(func(leg: Dictionary) -> String: return "%d%%" % roundi(100.0 * float(leg["held"]))))),
+			legs.size() == 4 and kept == 4)
+		var report: Dictionary = laid["report"]
+		var gone: Array = report.get("left_out", [])
+		_check("and the whole of it: %.1f%% of it in a part, %d piece%s left out %s" % [
+			100.0 * float(report.get("coverage", 0.0)), gone.size(), "" if gone.size() == 1 else "s",
+			gone], float(report.get("coverage", 0.0)) >= 0.97 and gone.is_empty())
+		_stands("the fox", model, laid)
+
+	var apart: MeshFile = BrickifySamples.floating()
+	laid = Brickify.build(apart, options, _checker)
+	_check("a body with a piece apart over it is laid: %s" % str(laid.get("error", "")),
+		laid.has("model"))
+	if laid.has("model"):
+		var model: Assistant.Model = laid["model"]
+		_laid.append(model)
+		# The piece apart's middle, where Brickify put it: a part there.
+		var middle: Vector3 = _in_build(apart, laid, Vector3(6.0, 8.7, 4.0))
+		var there: String = _part_at(model, middle)
+		_check("the piece apart is joined, not dropped: %s at its middle" % (there if not there.is_empty()
+			else "nothing"), not there.is_empty())
+		_stands("the body and its piece", model, laid)
+
+	var tips: MeshFile = BrickifySamples.overhang()
+	laid = Brickify.build(tips, options, _checker)
+	if laid.has("model"):
+		var model: Assistant.Model = laid["model"]
+		_laid.append(model)
+		var stand: Dictionary = (laid["report"] as Dictionary).get("stand", {})
+		_check("a model that would tip is given a stand: %s" % str(stand.get("why", "none")),
+			not stand.is_empty())
+		_stands("on it, it", model, laid)
+	else:
+		_check("a model that would tip is laid: %s" % str(laid.get("error", "")), false)
+
+
+## Weighed as the bench weighs it (check_design with Balance): one piece,
+## passing, and standing.
+func _stands(what: String, model: Assistant.Model, laid: Dictionary) -> void:
+	var report: Dictionary = _checker._check(model, true, true)
+	var balance: Balance.Report = report.get("balance")
+	var pieces: int = int(report.get("pieces", 0))
+	_check("%s: %s, %d piece%s; %s" % [what, report.get("summary", ""), pieces,
+		"" if pieces == 1 else "s", balance.words() if balance != null else "unweighed"],
+		bool(report.get("ok", false)) and pieces == 1 and balance != null and balance.stands())
+
+
+## A point of the model ([param p], its own units) where Brickify put it:
+## studs, plates and studs from the build's corner, lifted onto any stand.
+func _in_build(mesh: MeshFile, laid: Dictionary, p: Vector3) -> Vector3:
+	var grid: Brickify.Grid = laid["grid"]
+	var box: AABB = Brickify._turned_bounds(mesh, Brickify.turn_for(mesh.up))
+	var q: Vector3 = Brickify.turn_for(mesh.up) * p - box.position
+	var lift: int = int(((laid["report"] as Dictionary).get("stand", {}) as Dictionary).get("lift", 0))
+	return Vector3(q.x * grid.scale + (grid.across - box.size.x * grid.scale) / 2.0,
+		q.y * grid.scale * Brickify.PLATES + lift,
+		q.z * grid.scale + (grid.deep - box.size.z * grid.scale) / 2.0)
+
+
+## The part whose box holds [param at] (studs, plates, studs), or "".
+func _part_at(model: Assistant.Model, at: Vector3) -> String:
+	var point := Vector3(at.x * 20.0, at.y * 8.0, at.z * 20.0)
+	for placement: Assistant.Placement in model.placements:
+		var part: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if part != null and (_checker._transform(placement, part) * part.bounds).grow(2.0).has_point(point):
+			return placement.part
+	return ""
+
+
+## The model's legs, found from its own triangles: its corners within the
+## lowest twentieth of it, gathered stud by stud into feet, each foot's leg
+## as tall as its corners near it reach up to the belly. For each, how much
+## of that leg, plate by plate from the foot, has a part in it.
+func _legs(mesh: MeshFile, laid: Dictionary) -> Array:
+	var box: AABB = Brickify._turned_bounds(mesh, Brickify.turn_for(mesh.up))
+	var feet: Array = []             ## [centre Vector2 (studs), corners]
+	var low: float = box.position.y + box.size.y * 0.05
+	for p: Vector3 in mesh.positions:
+		if p.y > low:
+			continue
+		var at: Vector3 = _in_build(mesh, laid, p)
+		var plan := Vector2(at.x, at.z)
+		var found: bool = false
+		for foot: Array in feet:
+			if (foot[0] as Vector2).distance_to(plan) < 2.0:
+				foot[0] = ((foot[0] as Vector2) * float(foot[1]) + plan) / float(int(foot[1]) + 1)
+				foot[1] = int(foot[1]) + 1
+				found = true
+				break
+		if not found:
+			feet.append([plan, 1])
+	var model: Assistant.Model = laid["model"]
+	var lift: int = int(((laid["report"] as Dictionary).get("stand", {}) as Dictionary).get("lift", 0))
+	var out: Array = []
+	for foot: Array in feet:
+		var centre: Vector2 = foot[0]
+		# Up the leg: the corners within a stud of it, below the middle of
+		# the model.
+		var top: float = 0.0
+		for p: Vector3 in mesh.positions:
+			var at: Vector3 = _in_build(mesh, laid, p)
+			if Vector2(at.x, at.z).distance_to(centre) < 1.0 and p.y < box.get_center().y:
+				top = maxf(top, at.y - lift)
+		var plates: int = maxi(1, floori(top))
+		var held: int = 0
+		for j: int in plates:
+			var hit: bool = false
+			for dx: float in [-0.5, 0.0, 0.5]:
+				for dz: float in [-0.5, 0.0, 0.5]:
+					if not hit and not _part_at(model, Vector3(centre.x + dx, lift + j + 0.5,
+							centre.y + dz)).is_empty():
+						hit = true
+			held += 1 if hit else 0
+		out.append({"at": centre, "plates": plates, "held": float(held) / float(plates)})
+	return out
 
 
 ## For each stud of the model's plan, what its topmost part is: curved,

@@ -40,7 +40,10 @@ The Python side: LDraw in, mesh cache and catalogue out.
   the lattice alone.
 - `build the exact shapes`: `tools/build_exact.py --bricknet DIR --colliders DIR`
   writes `assets/generated/exact/<mesh hash>.bwx` for every part BrickNet has
-  (15,417 shapes, 884 MB, about 15 minutes on 8 jobs): its convex colliders with
+  (15,417 shapes, 984 MB, about 20 minutes on 8 jobs; each collider group is the
+  vertices its faces use, as BrickBench reads them, since BrickNet's files share
+  vertices between groups — built from each group's own `v` lines it was 884 MB
+  and most pieces lost corners): its convex colliders with
   their hulls' normals and edges, and its connector labels, in the app's frame.
   DIR is the `bricknet` package's `_data/v1` (MIT) and the folder of
   `<stem>.cvx.obj` its `python -m bricknet fetch-meshes` downloads; both are
@@ -49,7 +52,8 @@ The Python side: LDraw in, mesh cache and catalogue out.
   (symlinks to the shared files and an `exact/` of its own) and merge that
   folder in. Proves it when `tests/test_build_exact.py` passes (a box's three
   axes and no face diagonal, a flat piece's axes, the app's frame, an alias's
-  matrix) and `src/dev/exact_probe.gd` passes on the result.
+  matrix, a piece taking the vertices its faces share with another's) and
+  `src/dev/exact_probe.gd` passes on the result.
 
 - `export for linux` / `windows` / `macos`: the raw exports.
   `tools/export.sh desktop` makes all three. Each carries the whole part

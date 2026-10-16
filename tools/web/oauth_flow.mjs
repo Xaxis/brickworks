@@ -36,7 +36,7 @@ import { mkdirSync } from "node:fs";
 // in as the shared test account and disconnected its Claude (2026-10-14).
 const email = `delivered+bwoauthflow${Date.now().toString(36)}@resend.dev`;
 process.env.BW_TEST_EMAIL = email;
-const { launch, openColumnFor, withAssistant } = await import("./browser.mjs");
+const { launch, openColumnFor, withAssistant, withJobs } = await import("./browser.mjs");
 const { mintCode } = await import("./session.mjs");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -321,8 +321,11 @@ try {
   await seeing(true);
   await page.waitForTimeout(3000);
   let t0 = Date.now();
-  const built = await claude(first, "tools/call", { name: "submit_design", arguments: { name: "connected",
-    bricks: [{ part: "3001", color: 4, x: 40, y: 0, z: 40 }, { part: "3001", color: 1, x: 40, y: 3, z: 40 }] } });
+  // As a session makes it: a submit still going after 20 s becomes a job,
+  // followed to its answer (browser.mjs withJobs).
+  const firstJobs = withJobs(async (method, params) => (await claude(first, method, params)).json);
+  const built = { json: await firstJobs("tools/call", { name: "submit_design", arguments: { name: "connected",
+    bricks: [{ part: "3001", color: 4, x: 40, y: 0, z: 40 }, { part: "3001", color: 1, x: 40, y: 3, z: 40 }] } }) };
   check(!built.json?.result?.isError && !/not open|paused/.test(textOf(built)),
     `out of view, a design is built, in ${Math.round((Date.now() - t0) / 1000)}s: ${textOf(built).slice(0, 60)}`);
   await seeing(false);

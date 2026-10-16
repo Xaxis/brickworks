@@ -34,6 +34,11 @@ const out = args.out || "shots/brickify_web";
 mkdirSync(out, { recursive: true });
 const model = resolve(args.model || "tests/fixtures/brickify/bunny.obj");
 const studs = String(args.studs || 30);
+// The sub-assembly is named after the file; --least is how few parts it may
+// come to, --says a phrase its status line must have too ("on a stand").
+const name = model.split("/").pop().replace(/\.[^.]+$/, "");
+const least = Number(args.least || 300);
+const says = args.says ? new RegExp(String(args.says)) : null;
 
 const browser = await launch();
 const errors = [];
@@ -133,20 +138,21 @@ const frames = await page.evaluate(() => new Promise((done) => {
 const longest = Math.round(Math.max(...frames));
 const landed = await until(async () => {
   const s = await state();
-  return s && s.tree && s.tree["bunny#1"] && !(await controls()).brickify_go;
+  return s && s.tree && s.tree[`${name}#1`] && !(await controls()).brickify_go;
 }, 600, "landed");
 const s = await state();
 // The tree lists each sub-assembly's own parts by number, "3001,3004". A
 // first visit's example car, untouched, is taken off to make room, so then
-// the bunny is everything on the baseplate.
-const inside = String(s?.tree?.["bunny#1"] || "").split(",").filter(Boolean).length;
+// the model is everything on the baseplate.
+const inside = String(s?.tree?.[`${name}#1`] || "").split(",").filter(Boolean).length;
 const all = s?.bricks || 0;
-ok(landed && inside > 300 && (inside === all || all - before === inside),
-  `it lands as the sub-assembly bunny#1: ${inside} parts in it, ${all} on the baseplate (${before} before), the tree ${Object.keys(s?.tree || {})}`);
+ok(landed && inside > least && (inside === all || all - before === inside),
+  `it lands as the sub-assembly ${name}#1: ${inside} parts in it, ${all} on the baseplate (${before} before), the tree ${Object.keys(s?.tree || {})}`);
 ok(s?.selected === inside, `all of it selected, to move or turn: ${s?.selected}`);
 // What the status line said: buildable in one piece, every part it needed here.
 const summary = String(s?.brickified || "");
-ok(/buildable in one piece/.test(summary) && !/never arrived/.test(summary), `it says: "${summary}"`);
+ok(/buildable in one piece/.test(summary) && !/never arrived/.test(summary) && (!says || says.test(summary)),
+  `it says: "${summary}"`);
 ok(true, `frames while it worked: the longest ${longest} ms of ${frames.length}`);
 await page.waitForTimeout(8000);
 await shot("3_placed_selected.png");

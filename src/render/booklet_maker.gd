@@ -371,10 +371,15 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			_section = step.section
 			var said: String = _section.capitalize() if _section.begins_with("part ") \
 				else _section
+			# A group joined from several sections shows in each one's banner.
+			var here: Dictionary = {}
 			for mark: Dictionary in marks.values():
-				if str(mark["label"]) == said and not _marked.has(said):
-					_marked[said] = true
-					entry.marks.append(mark)
+				var label: String = str(mark["label"])
+				if here.has(label) or not said in (mark.get("sections", [label]) as Array):
+					continue
+				here[label] = true
+				_marked[label] = true
+				entry.marks.append(mark)
 		if step.unsupported:
 			entry.note = "Hold this in place: it rests on nothing until the next step."
 		if step.attaches():

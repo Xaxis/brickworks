@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints -->
 
 ## Sub-features
 
@@ -28,10 +28,31 @@ fixing what it got wrong.
   has it: each part BrickNet has is its convex colliders and connector labels
   (`assets/generated/exact/<hash>.bwx`, `tools/build_exact.py`). More than 1 LDU of
   overlap through any two pieces is a collision, named with its fix; a piece of the
-  design no connection holds is a fault unless it stands square (`rests`); a part
+  design no connection holds is a fault unless it stands square (`rests`); a piece
+  only the floor holds, on a bare floor (floor "none" or "grid", or no baseplate
+  laid: `Assistant._on_bare_floor`), is "tips over" unless its centre of mass is
+  over where it touches the floor by a hundredth of its height (`tips`: a body over
+  its heels, a can lying on one line of its facets); a part
   up to a plate off a stud, hole, hinge or bar is seated on it first (a nudge keeps
   the LDU past the lattice cell). Without the `exact/` folder the check is the
   lattice alone, as it was. Recipe under How to check it, "The check by real shapes".
+- `figures told of their joints`: `Style.character_of` (src/ai/style.gd) reads a
+  subject as a figure (people's words and he or she), a creature (the living
+  things that are not plants) or a thing with a face (eyes, brows, a grin), a
+  hyphenated word by its last part, and never a vehicle (its crew is its
+  crew); the subject is the brief, what a session from
+  outside was started on or asked plan_scale, find_reference and
+  how_real_sets_build_this about (`Assistant.heard`), and the design's name. For
+  one: check_design's and submit_design's reply, while nothing in it is posed
+  (`_posed`: an attach, a joint's part, a turned or hinged section), leads its
+  advice with each joint's one call (`_on_joints_said`, twice in full and then a
+  line); plan_scale lays out the posed minifigure and the armatures ("jointed
+  figure", "jointed animal"); search_parts names the joint parts under a limb's
+  search and a character's first (`_joint_parts_for`); read_guide "shapes" is led
+  by what a figure is built of (`_for_the_subject`); the review says which named
+  limb stands stiff and stacked (`_stiff_limbs_said`); the living things' advice no
+  longer tells a creature to lay its body as a shape. Recipe under How to check
+  it, "Figures on joints".
 - `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
   `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
   may say `"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`
@@ -2220,10 +2241,16 @@ godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd 
 ```
 
 Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
-without it `exact_probe` says SKIPPED. Proves it when: `exact_probe` ends "22
+without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
+it is since 2026-10-15 (each collider group the vertices its faces use, shared
+or not): built before, 679 of 3033's 785 pieces lost corners and a flame 1.27 LDU
+into a tipped lid read as clear. Proves it when: `exact_probe` ends "29
 passed, 0 failed" (on the code before it, fb64132, 4 of its first 21 passed and 17
 failed: every pair kind came back "buildable"; the 22nd is model-010's head in a
-breastplate); `exact_dump` on the BrickBench builds lists
+breastplate; the 23rd to 25th are the attach round's three that our check let
+through and verify.py refused — a body over its shoes' heels that tips, a can lying
+on its side that rolls, the flame against the lid — each confirmed by BrickBench's
+own simulation or colliders on the case itself); `exact_dump` on the BrickBench builds lists
 verify.py's own pairs and pieces (2026-10-14: identical on all twenty);
 `exact_cost_probe` says an edit to Orthanc spends under 3 s in the exact check
 (182 ms on 2026-10-14, at a load of 37; a whole new design of it 9.7 s, on a worker); and the connection audit over the sample
@@ -2269,6 +2296,33 @@ connector probe says so (scratch `verify_probe.py` in the 2026-10-15 run;
 docs/BRICKBENCH.md). The poses BrickAgent printed come from its own `attach` in the
 BrickBench venv, `python -I`, BRICKNET_DATA set; to make more, call
 `brickagent.Assembly.attach` the same way and print `parts(model)`.
+
+### Figures on joints
+
+```sh
+godot --headless --path . --script src/dev/figure_joints_probe.gd    # what a figure, a creature and a tower are told, where
+godot --headless --path . --script src/dev/techniques_probe.gd       # "jointed figure" and "jointed animal" build
+```
+
+Proves it when `figure_joints_probe` ends "0 failed": the subject is read by its
+words (a statue, a balloon-dog, a toilet's human head, a chair with eyes, he and
+she; not a whale-tail spoiler, a dollhouse, a clock face, a crane's arm, a toy
+car, nor the bench's Porsche "at minifigure scale" and fire engine "with a
+firefighter", which were told in every check before vehicles were left out); check_design on a statue stacked square leads its advice with each joint's
+call and an attach written out, twice in full and then a line, and says nothing
+of joints once an arm is on a clip, nor for a lighthouse; with no brief, the
+subject plan_scale was asked about is read; a dragon's advice names "jointed
+animal" and not the shape pattern for its body, a bonsai's is still a living
+thing's; plan_scale offers a statue of a man the posed minifigure and the
+armature, a dragon at a scale its joints, a lighthouse nothing; search_parts
+names 63868, 60478, 14418 and 44301a under "robot arm" and a balloon dog's first
+search, not its second nor a lighthouse's; read_guide "shapes" is led for the
+statue and unchanged for the lighthouse, and its description names "figures";
+the review of the stacked statue names its left and right arms stiff, of the
+posed one nothing. On merge29 (5c4708e) it does not load (no `Style.character_of`),
+and no reply in that arm's 28 bench sessions told of joints. The techniques probe
+builds both armatures by the check, and BrickBench's verify.py passes them
+exported, with the figure's right arm raised too (2026-10-15).
 
 ### BrickBench: the designer on an outside ruler
 

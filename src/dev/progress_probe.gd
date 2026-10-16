@@ -11,6 +11,10 @@
 ##     the slow work has been done (the work starts the frame after);
 ##   - while Timeline works out the steps, no frame is over BUDGET_MS, the
 ##     count goes up, and the steps come out the same as Instructions.plan's;
+##   - and no frame's own work in the sub-assembly search is over
+##     OWN_BUDGET_MS, judged in software too: the scripts' part of a frame,
+##     from its start to its drawing, which a slow drawing does not stretch.
+##     The search was one frame of 410 ms on Orthanc (2026-10-15);
 ##   - Cancel, and Timeline pressed again, both stop it and leave no bar
 ##     and no timeline;
 ##   - deleting all of it and undoing that say so first;
@@ -31,10 +35,17 @@
 extends SceneTree
 
 const BUDGET_MS := 200.0
+## A frame's own work, drawing aside: on the desktop, against 250 ms in a
+## browser (tools/web/progress_check.mjs), whose scripts are slower.
+const OWN_BUDGET_MS := 100.0
 
 var _failures: int = 0
 var _last_us: int = 0
 var _gaps: Array = []   ## [end in usec, ms]
+## Each frame's own work, from process_frame to the drawing:
+## [end in usec, ms, the bar's words as the frame ended].
+var _own: Array = []
+var _own_from: int = 0
 var _software: bool = false
 var _errors := _Errors.new()
 
@@ -70,6 +81,18 @@ func _process(_delta: float) -> bool:
 		_gaps.append([now, (now - _last_us) / 1000.0])
 	_last_us = now
 	return false
+
+
+## The longest frame of its own since [param from] while the bar said
+## [param words], and the longest for each thing it said.
+func _own_worst_since(from: int) -> Dictionary:
+	var worst: Dictionary = {}
+	for frame: Array in _own:
+		if int(frame[0]) - int(float(frame[1]) * 1000.0) < from:
+			continue
+		var said: String = str(frame[2])
+		worst[said] = maxf(float(worst.get(said, 0.0)), float(frame[1]))
+	return worst
 
 
 func _worst_since(from: int) -> float:
@@ -108,6 +131,15 @@ func _run() -> void:
 		or adapter.contains("swiftshader")
 	var main: Node = load("res://src/main.tscn").instantiate()
 	root.add_child(main)
+	# First of what runs in a frame: connected before any coroutine waits
+	# on it, so what they do when they wake is counted.
+	process_frame.connect(func() -> void: _own_from = Time.get_ticks_usec())
+	RenderingServer.frame_pre_draw.connect(func() -> void:
+		if _own_from > 0:
+			var now: int = Time.get_ticks_usec()
+			_own.append([now, (now - _own_from) / 1000.0,
+				Working.current().words if Working.is_busy() else ""])
+		_own_from = 0)
 	await _frames(120)
 	var playback: BuildPlayback = main.get("_playback")
 	playback.stop()
@@ -182,6 +214,14 @@ func _run() -> void:
 			", then ".join(PackedStringArray(seen["words"]))],
 		steps.visible and (_software or worst <= BUDGET_MS))
 	_check("...counting as it went (up to %d)" % int(seen["counted"]), int(seen["counted"]) > 1000)
+	var own: Dictionary = _own_worst_since(began)
+	var each := PackedStringArray()
+	for said: String in own:
+		each.append("%s %.0f" % [said if not said.is_empty() else "(the bar gone)", float(own[said])])
+	print("    (each thing's longest frame of its own, ms: %s)" % ", ".join(each))
+	var search: float = float(own.get("Finding what is built on the side…", -1.0))
+	_check("...and the sub-assembly search's longest frame of its own %.0f ms (budget %.0f)"
+		% [search, OWN_BUDGET_MS], search >= 0.0 and search <= OWN_BUDGET_MS)
 	_check("...and the bar is gone once the timeline is up", not Working.is_busy())
 	var laps: PackedStringArray = PackedStringArray(Instructions.laps.map(
 		func(lap: Array) -> String: return "%s %d" % [lap[0], int(lap[1])]))

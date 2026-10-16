@@ -372,10 +372,18 @@ can occupy the same millimetre.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
   `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
   `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
-  hidden parts by the booklet's sections, by build stage (about 300 parts a stage,
-  or as many as asked) or by half (left and right, front and back); one colour a
-  group, 22 CIE76 from every colour seen and 20 from the other groups', blue and
-  yellow first; each part only in a colour `PartInfo.colors` says it was made in.
+  hidden parts by the booklet's sections, by build stage (two unless asked,
+  `COLOURS`) or by half (left and right, front and back); a group under a tenth of
+  the coloured parts joins its neighbour (`SMALLEST`, `_join_small`), and no more
+  than four are left to the model (`MOST_COLOURS`). One colour a group: the first
+  of `ACCENTS` (Blue, Yellow, Red, Green, the modern brights, pinks and coral last)
+  reaching 60% as many of its parts as the best (`GOOD_ENOUGH`); a colour is out
+  only when it and the colours seen within 22 CIE76 are 2% of the outside's parts
+  (`OUTSIDE_SHARE`, `_out`), and a part never takes the colour of a seen part it
+  touches (`_touches`, kept "beside_seen"); each part only in a colour
+  `PartInfo.colors` says it was made in. `src/dev/hidden_colours_lego.gd` and
+  `tools/hidden_colours_audit.py --lego` measure the palette against LEGO's on the
+  68 sets that mark their insides (docs/HIDDEN_COLOURS.md).
   Keeps see-through and other finishes, prints, figures, locked parts, unknown
   colours, parts already in a vivid colour nothing outside has, and copied
   sub-assemblies unless every copy's part is hidden (`Assemblies.counterparts`).
@@ -730,8 +738,11 @@ at 90°"). Broken on purpose, it fails on: no Working line, no tint, the
 words gone with the message after 4 s, marks left after a change, no
 counterweight in the words, the marks never shown, and no poses swept.
 
-`hidden_colours_probe` (windowed; 727 s in software at load 45, 2026-10-15, so it can
-pass `PROBE_SECONDS` on a busy box) loads the real scene, its own 3D view off, and
+`hidden_colours_probe` (windowed) loads the real scene, its own 3D view off, and
+prints where its time goes. On 2026-10-15 at load 50 it took 657 s: the main scene's
+start was 461 s of it (every probe that loads `main.tscn` pays this, design_undo 398 s
+and gallery_tool 384 s headless at the same load), the probe's own work 170 s. On a
+quiet box the scene starts in about 20 s. It
 checks: a closed box of walls has exactly its three inner bricks hidden; a gap in
 the wall and a clear window in it each show the middle one; a preview, and apply
 without `agreed`, change nothing; applied, only those three change, in one step,
@@ -739,10 +750,12 @@ the scheme saved and read back and the booklet's chip in the colour's hex; on th
 castle through the panel's own Apply button, every part changed was hidden, every
 hidden part is coloured or kept for a counted reason, the step is recolours only
 and `copies_follow` finds nothing to rebuild, each colour is one the part was made
-in and none is seen outside, the outside drawn from eight sides (three never
+in, under 2% of the outside with the colours near it, and no part changed touches
+a seen part in its colour, the outside drawn from eight sides (three never
 measured from, one from below) is the same pixel for pixel while the cut-open
-inside is not, and one Undo restores every colour; 10182 opened from vendor/omr
-knows it is the set, refuses `agreed` alone and takes `set_agreed`. It ends on
+inside is not, and one Undo restores every colour; 75317 (a 294-part BrickHeadz with
+a hidden core) opened from vendor/omr knows it is the set, refuses `agreed` alone
+and takes `set_agreed`. It ends on
 "the hidden parts, and only those, take colours a person can find their place by".
 Pictures in `shots/hidden_colours/`. Broken on purpose, it fails on: a measure
 from fewer sides (the box's inner bricks or the gap), see-through parts drawn as

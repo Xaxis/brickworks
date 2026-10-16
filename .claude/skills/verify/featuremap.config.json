@@ -1431,7 +1431,7 @@
       "kind": "cli",
       "label": "audit hidden colours in real sets",
       "entry": "tools/hidden_colours_audit.py",
-      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr)",
+      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr). Our palette against LEGO's: src/dev/hidden_colours_lego.gd -- --out=FILE SETS… then python3 tools/hidden_colours_audit.py --lego FILE",
       "area": "geometry"
     },
     {
@@ -1923,6 +1923,20 @@
       "entry": "tools/steps_score.py",
       "reach": "python3 tools/steps_score.py run --which tune --out build/steps_score/tune && python3 tools/steps_score.py report --out build/steps_score/tune   (minutes, under heavy; needs vendor/omr; godot --headless --path . --script src/dev/steps_score.gd -- --selftest checks the measures alone)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "tooltips let clicks through",
+      "entry": "src/ui/tooltips.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/tooltip_probe.gd  (rest on a control until its tooltip shows, then click what it covers)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "figures told of their joints",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant"
     }
   ]
 }

@@ -340,11 +340,32 @@ const TRAITS: Dictionary = {
 		"spaceship", "starship", "shuttle", "rocket", "rover", "digger",
 		"excavator", "bulldozer", "vehicle", "porsche", "ferrari", "lamborghini",
 		"coupe", "roadster", "supercar", "hatchback", "sedan", "saloon",
-		"speed champions", "formula 1", "f1"],
+		"speed champions", "formula 1", "f1", "fire engine"],
 	"living": ["animal", "dragon", "owl", "bird", "eagle", "parrot", "cat",
 		"dog", "horse", "dinosaur", "creature", "monster", "fish", "whale",
 		"shark", "insect", "butterfly", "bear", "lion", "elephant", "bust",
-		"tree", "flower", "plant", "bonsai"],
+		"tree", "flower", "plant", "bonsai", "puppy", "kitten", "rabbit", "bunny",
+		"fox", "wolf", "pig", "cow", "sheep", "goat", "duck", "chicken", "penguin",
+		"frog", "turtle", "tortoise", "snake", "lizard", "crocodile", "monkey",
+		"gorilla", "giraffe", "zebra", "deer", "kangaroo", "koala", "panda",
+		"tiger", "unicorn", "octopus", "crab", "spider", "bee", "squirrel",
+		"hedgehog", "dolphin", "otter", "camel", "hippo", "rhino"],
+	# A person or a character of one: built of sub-assemblies on joints, as a
+	# creature is (Style.character_of).
+	# Not "minifigure": a car "at minifigure scale" is a car.
+	"figure": ["figure", "figurine", "character",
+		"statue", "person", "people", "man", "men", "woman", "women", "boy",
+		"girl", "child", "kid", "baby", "human", "humanoid", "knight", "wizard",
+		"witch", "king", "queen", "prince", "princess", "pirate", "soldier",
+		"astronaut", "cowboy", "ninja", "samurai", "viking", "warrior", "hero",
+		"superhero", "clown", "chef", "doctor", "farmer", "mermaid", "fairy",
+		"troll", "ogre", "goblin", "zombie", "ghost", "skeleton", "vampire",
+		"alien", "snowman", "scarecrow", "puppet", "mascot", "gnome",
+		"dancer", "athlete", "sailor", "firefighter", "fireman", "policeman",
+		"monk", "angel", "yeti", "teddy",
+		# A subject that is a he or a she is a person or a character of one. Three
+		# letters at least: SubjectWords does not read "he".
+		"his", "him", "himself", "she", "her", "herself"],
 	"machine": ["mech", "robot", "machine", "crane", "excavator", "digger",
 		"engine", "factory", "windmill", "clock", "mill", "pump", "drill",
 		"walker", "turbine"],
@@ -373,6 +394,70 @@ static func traits_of(about: String) -> Dictionary:
 	if found.is_empty() and is_tower(about):
 		found["tower"] = true
 	return found
+
+
+## The living things that are not creatures: no limbs to put on joints.
+const PLANTS: Array = ["tree", "flower", "plant", "bonsai", "tree trunk", "mushroom"]
+## What gives a thing a face, and so a character's build: a chair with eyes
+## and lashes, a paperclip with brows, a toilet that grins. Not "face" or
+## "mouth" alone, which a clock, a cliff and a river have.
+const FACE_WORDS: Array = ["eyes", "eyebrows", "eyelashes", "eyelids", "moustache",
+	"mustache", "grin", "grinning", "smile", "smiling", "frown", "frowning", "googly"]
+
+
+## Whether [param about] is a figure, a creature or a character, which a set
+## builds of sub-assemblies on joints: "figure" for a person or a character
+## of one, "creature" for an animal, "face" for a thing given a face; "" for
+## anything else. A hyphenated word is its last part, which is what it is
+## (a balloon-dog is a dog; a Porsche's whale-tail is a tail, and its
+## rear-engine an engine, neither a creature).
+static func character_of(about: String) -> String:
+	var heads: String = RegEx.create_from_string("\\b(?:\\w+-)+(\\w+)\\b").sub(
+		about.to_lower(), "$1", true)
+	# A vehicle named before any person is the subject, its driver or crew its
+	# crew: the bench's fire engine "with a firefighter" and its Porsche "at
+	# minifigure scale" were told, in every check, that they were figures with
+	# nothing on a joint. People named first are the subject, at a bus stop or
+	# at the wheel.
+	var said: PackedStringArray = SubjectWords.of(heads)
+	var vehicle: int = _first_at(said, TRAITS["vehicle"])
+	var person: int = _first_at(said, TRAITS["figure"])
+	if vehicle >= 0 and (person < 0 or vehicle < person):
+		return ""
+	if not SubjectWords.first_named(heads, TRAITS["figure"]).is_empty():
+		return "figure"
+	var creatures: Array = (TRAITS["living"] as Array).filter(func(word: Variant) -> bool:
+		return not PLANTS.has(word) and str(word) != "bust")
+	if not SubjectWords.first_named(heads, creatures).is_empty():
+		return "creature"
+	if not SubjectWords.first_named(heads, FACE_WORDS).is_empty():
+		return "face"
+	return ""
+
+
+## Where in [param said] (a brief's words) a word or phrase of [param
+## vocabulary] first comes, as SubjectWords names it; -1 for nowhere.
+static func _first_at(said: PackedStringArray, vocabulary: Array) -> int:
+	var best: int = -1
+	for raw: Variant in vocabulary:
+		var want: PackedStringArray = SubjectWords.of(str(raw))
+		if want.is_empty():
+			continue
+		for start: int in said.size() - want.size() + 1:
+			if best >= 0 and start >= best:
+				break
+			var all: bool = true
+			if want.size() == 1:
+				all = not SubjectWords.kind_of_word(said[start], {want[0]: true}).is_empty()
+			else:
+				for k: int in want.size():
+					if not SubjectWords.forms(said[start + k]).has(want[k]):
+						all = false
+						break
+			if all:
+				best = start
+				break
+	return best
 
 
 ## What a body the shape pattern laid is told under these shares.
@@ -423,11 +508,20 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 			+ "on a hinge (hinge: true) for a windscreen, a ramp or a hatch that "
 			+ "opens, and its face as lamps and a grille (show_technique "
 			+ "\"headlamps and grille\")")
-	if traits.has("living"):
-		if not shaped:
-			calls.append("the shape pattern, for a creature's body and head — "
-				+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
-				+ "and wedges fitted to its surface")
+	# A figure, a creature or a character is sub-assemblies on joints, not a
+	# shape: this said "the shape pattern, for a creature's body and head", the
+	# figures guide said the opposite, and the attach round's balloon dog was
+	# told both in one reply and built a stack of round bricks.
+	if not character_of(about).is_empty():
+		calls.append("for a figure, a creature or a character: its head, body and limbs "
+			+ "sub-assemblies of shaped parts (curved slopes, wedges and round bricks for a "
+			+ "body, nothing square that is not), each on a joint at its pose's angle — "
+			+ "place_technique \"posed minifigure\", \"jointed figure\", \"jointed animal\", "
+			+ "\"limb on a clip\", \"ball shoulder\", \"head on a neck\", \"tail on a bar\", "
+			+ "\"hinged wing\" — and the shape pattern only for a body that is a hull (a "
+			+ "whale's); its face in features, each a part — show_technique \"round "
+			+ "face\", \"eye with a highlight\", \"beak or snout\", \"ears or tufts\"")
+	elif traits.has("living"):
 		calls.append("for a living thing: curved slopes and wedges for a body, "
 			+ "sections on hinges for wings, ears and limbs, the rock pattern for "
 			+ "anything rough, and nothing square that is not; its face in "

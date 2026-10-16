@@ -139,7 +139,7 @@
       "id": "cli:audit hidden colours in real sets",
       "kind": "cli",
       "entry": "tools/hidden_colours_audit.py",
-      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr)",
+      "reach": "GODOT_GPU=1 xvfb-run -a godot --path . --script src/dev/hidden_colours_audit.gd -- --on-table --out=FILE && python3 tools/hidden_colours_audit.py FILE   (about an hour on the GPU; needs vendor/omr). Our palette against LEGO's: src/dev/hidden_colours_lego.gd -- --out=FILE SETS\u2026 then python3 tools/hidden_colours_audit.py --lego FILE",
       "area": "geometry",
       "tests": []
     },
@@ -1036,6 +1036,14 @@
       "entry": "src/parts/element_maker.gd",
       "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:figures told of their joints",
+      "kind": "lib",
+      "entry": "src/ai/style.gd",
+      "reach": "godot --headless --path . --script src/dev/figure_joints_probe.gd  (check_design, plan_scale, search_parts, read_guide and the review, for a figure, a creature and a tower)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -2175,6 +2183,14 @@
       "kind": "ui",
       "entry": "src/ui/edit_verbs.gd",
       "reach": "godot --path .  (Select, Move, Rotate, Hinge, Clone, Paint, Hide, Delete on the toolbar; V, Esc)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:tooltips let clicks through",
+      "kind": "ui",
+      "entry": "src/ui/tooltips.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/tooltip_probe.gd  (rest on a control until its tooltip shows, then click what it covers)",
       "area": "building",
       "tests": []
     },

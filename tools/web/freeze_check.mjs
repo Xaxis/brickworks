@@ -37,7 +37,7 @@
 // is a long task of half a second or more, so long tasks and input delay are
 // printed, against the idle page's, and judged by eye. Costs nothing: no
 // model is called.
-import { controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -173,7 +173,10 @@ if (!address.includes("/api/mcp")) {
 const view = await control("view");
 
 let sent = 0;
-async function claude(method, params) {
+// Calls as a session makes them: a job followed to its answer, and a call
+// turned away while one runs made again after it.
+const claude = withJobs(send);
+async function send(method, params) {
   sent += 1;
   const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
   if (bypass) headers["x-vercel-protection-bypass"] = bypass;

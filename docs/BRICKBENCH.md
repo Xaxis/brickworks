@@ -1347,6 +1347,218 @@ The run-to-run spread is wider than any of it: the car's two designs are
   part at the origin, on `7740d22` as here: the exact check asks every pair.
   face, rooms, detail and print fail on `7740d22` too (exact's "left").
 
+## 2026-10-15, later: figures on joints, told where they decide
+
+Attach gave sessions the joints; the attach round's transcripts say why none
+used them for a figure. Every character session (the potato toy, the balloon
+dog, the toilet with a head, the seated statue: two each) decided how to build
+at its **first submit_design or check_design**, and six of the eight had just
+read `read_guide "shapes"`, the section read_guide's own description sent them
+to ("the patterns that lay ... a body and a head with its face"). Eight of the
+round's ten guide reads were "shapes"; one was "figures". What those first
+replies said of a figure:
+
+- **check_design could not tell a figure from a tower.** It carries no name,
+  and a session from outside had not given the app its brief, so the statue,
+  the potato and the toilet were told "a prism pattern, for a tower, a pier or a
+  turret". Only the balloon dog's name ("dog") made it a living thing, whose
+  advice said "the shape pattern, for a creature's body and head", the opposite
+  of the figures guide.
+- The one figure line was the tail of the small-ellipsoid hint ("its limbs on
+  joints (read_guide "figures")"), and no session went.
+- **plan_scale was never called** (0 of 40) and its figure answer named no joint.
+- **No session searched for a limb or a joint part.**
+- The first review came after the body stood, said "a hinge or a leg built rigid"
+  among five faults of any model, and pointed at a section nobody read; the
+  balloon dog's tail was settled "built", of round bricks, under a feature review
+  that offered "tail on a bar".
+- The only channel that taught attach was attachment_points' template: 7 of 20
+  sessions attached something, for eyes, brows, lashes and flames, all after the
+  body stood.
+
+### The change (`6506514`; vehicles left out of it after the bench)
+
+All of it in what a session reads anyway; nothing in the MCP head (3,493
+characters with the connector's note, as before).
+
+- **The subject, by its words** (`Style.character_of`): a figure (people's words,
+  a statue, a mascot, he or she), a creature (the living things that are not
+  plants), or a thing given a face (eyes, brows, a grin). A hyphenated word is its
+  last part (a balloon-dog is a dog; a whale-tail spoiler is a tail). The app now
+  hears the brief Claude Code is started on, and the subject plan_scale,
+  find_reference and how_real_sets_build_this are asked about, so a check before
+  the first submit knows it.
+- **check_design's and submit_design's reply**, while nothing in the design is
+  posed (an attach, a joint's part, a turned or hinged section), leads its advice
+  with each joint's one call and one line of how: the posed minifigure, two new
+  armatures ("jointed figure", a brick-built person 13 plates to the shoulders
+  with ball shoulders and elbows and a head turned on a jumper; "jointed animal",
+  four legs, a head on a ball neck, a tail on a bar), limb on a clip, ball
+  shoulder, head on a neck, tail on a bar, hinged wing, and an attach written out.
+  Twice in full, then a line.
+- The living things' advice names the joints instead of the shape pattern.
+- **plan_scale** offers a person at minifigure scale the posed minifigure, and a
+  brick-built figure the armatures; a creature at a scale is told it is built on
+  joints all the same.
+- **search_parts** names the joint parts (60478 in 63868, 14417 or 22890 in
+  14418, 44302a and 44301a, 3937 under 3938) under a search for a limb, and under
+  a character's first search.
+- **read_guide "shapes"** is led, for a character, by what a figure is built of;
+  read_guide's description names "figures".
+- **The review** names each limb a design named (a part, a section, an assembly)
+  that stands stiff and stacked, square on the body with nothing on a joint, and
+  says so of a character with nothing on a joint at all.
+
+`src/dev/figure_joints_probe.gd` asks each of these of a statue, a balloon dog,
+a lighthouse and their near misses: 39 checks.
+
+### Exact's three gaps
+
+Each confirmed on the case itself with BrickBench's own simulation or
+colliders (`brickagent.physics._simulate`, `bricknet.collision`), and each a
+case in `exact_probe` (29 passed, 0 failed).
+
+- **042r2, "a dish on a round plate that PyBullet moves", is the body under it.**
+  Without the dish the potato still moves 3.9 LDU, and let move it falls over
+  (402 LDU): its centre of mass is 16 LDU behind the heels of its two shoes, and
+  the dish moved because the body under it did. A dish on a round plate on a
+  round brick stands (0.06 LDU). Our check held anything touching y=0 as held by
+  the ground, as on a baseplate; BrickBench's ground is a bare plane.
+- **047r1, the lying trash can,** touched the floor along one line of its facets
+  and rolled 3.25 LDU.
+- So **a piece only the floor holds must now settle on a bare floor**
+  (`ExactCheck.tips`): it tips about the edge its centre of mass is past (or
+  rolls, its centre over a line) until another of its points comes down, and
+  fails if its furthest point moves more than 2.5 LDU; only points within that
+  of the floor can catch it, so it is cheap. A bare floor is a design's floor
+  "none" or "grid", or the app's; on a baseplate the studs hold. A ball plate
+  lying on its ball, 4 LDU under its plate, tilts onto its far edge and stands,
+  as verify.py passes it.
+- **047r2, the flame against the tipped lid: our shapes were wrong.** BrickNet
+  measures the flame 1.268 LDU into the 6 x 10 plate (an exact separating-axis
+  test on its own pieces, 1.2685), our check 0. `tools/build_exact.py` read each
+  collider group as the vertex lines written under it, and BrickNet's files share
+  vertices between groups: 679 of 3033's 785 pieces and 49 of the flame's 74 lost
+  corners, the deciding one a slab 4.6 LDU thick read as a quad 0.7 deep. A group
+  is now the vertices its faces use, as BrickBench reads it; rebuilt, the
+  catalogue's shapes are 984 MB (884 before) and the pair is 1.2686 LDU.
+- The rebuilt shapes refuse what verify.py refuses and the old ones let through:
+  the **log pile** construction (verify.py: 1 piece unstable; withdrawn), a pylon
+  at 80 degrees whose hull stud is 1.275 LDU into it by BrickNet's colliders
+  (section_probe now asks up to 70), and the shipped Orthanc checked as a new
+  design finds 116 collisions where it found 90.
+
+**The shared catalogue's exact/ folder must be built again** with the fixed
+`build_exact.py` (`features/pipeline.md`); until it is, the app checks with the
+corners missing. A built copy is in the round's scratch (`figjoints-a261/gen2/exact`).
+
+### The controlled comparison, on ten held-out prompts and the four characters again
+
+**The prompts.** model-051 to model-060, used by no run before: a hill home, a
+skyscraper laboratory, a farmhouse and windmill, a doughnut shop with a rooftop
+mascot, a mailroom conspiracy board, a giant in a cubicle, a spy on a cable, a
+low office, a dirt-block house, a man looming over a model school. Six of the
+ten are people in scenes. With them, the attach round's four characters again:
+the potato toy, the balloon dog, the toilet with a head, the seated statue.
+
+**The two arms.** merge29 (`5c4708e`, with the shapes as exact built them) and
+joints (`6506514`, with the shapes rebuilt by the fixed `read_obj`). Each from a
+`git archive` of its commit, two designs a prompt, two at a time, on the
+subscription, kept to BrickNet's 14,441 parts: 56 designs. Every design checked
+by verify.py, drawn from the same four cameras and judged against every other
+design of its prompt and BrickAgent's: 280 verdicts, both orders
+(`bench/results/brickbench-2026-10-15-joints`, `compare.md`).
+
+| dimension | merge29 ELO (95%) | joints ELO (95%) | BrickAgent's Opus 5.5 |
+|---|---|---|---|
+| likeness | 809 (722-877) | 883 (798-950) | 1308 (1241-1441) |
+| surface | 920 (811-1005) | 912 (829-969) | 1168 (1077-1324) |
+| colour | 844 (706-922) | 913 (817-955) | 1243 (1137-1449) |
+| technique | 897 (827-955) | 921 (852-981) | 1182 (1110-1277) |
+| creativity | 900 (816-957) | 919 (861-956) | 1182 (1105-1307) |
+| buildability | 954 (886-1016) | 992 (939-1047) | 1054 (971-1132) |
+| **overall** | **809 (725-867)** | **883 (811-949)** | **1308 (1248-1406)** |
+
+| head to head, overall | verdicts for joints | 95% | prompts joints won every time / split / lost |
+|---|---|---|---|
+| joints vs merge29, all 14 | 67 of 112 (60%) | 51-68% | 2 / 12 / 0 |
+| ...the characters (042, 043, 044, 049) | 22 of 32 (69%) | 51-82% | 1 / 3 / 0 |
+| ...the people scenes (054-058, 060) | 33 of 48 (69%) | 55-80% | 1 / 5 / 0 |
+| ...the rest (051-053, 059), never told | 12 of 32 (38%) | 23-55% | 0 / 4 / 0 |
+| joints vs merge29, likeness | 67 of 112 (60%) | 51-68% | 3 / 11 / 0 |
+| joints vs BrickAgent | 5 of 56 (9%) | 4-19% | 0 / 4 / 10 |
+| merge29 vs BrickAgent | 2 of 56 (4%) | 1-12% | 0 / 2 / 12 |
+
+The gain is where the guidance speaks and not elsewhere: the four buildings are
+never told of joints, and there the arms trade verdicts as two runs of one arm
+do. Against BrickAgent both arms still lose almost every verdict.
+
+| arm | valid (verify.py) | shaped, characters | off the square, characters (pooled) | joints, characters (pooled) | sessions told of joints |
+|---|---|---|---|---|---|
+| merge29 | 26 of 28 | 30% | 0.1% | 0.1% | 0 of 28 |
+| joints | **27 of 28** | 34% | 3.4% | 0.8% | 20 of 28 |
+| BrickAgent | 14 of 14 | 36% | 0.2% | 0.1% | |
+
+Shares by `brickbench.py`'s measure; on these prompts BrickAgent's characters
+are 36% shaped, not the 62% of model-031 to 040, and its people scenes carry
+their joints in minifigures, which the shares leave out as figure parts.
+
+**Uptake, from the sessions' transcripts** (`uptake.py` in the round's scratch):
+
+| | attach round | merge29 | joints |
+|---|---|---|---|
+| characters with a limb or torso posed on a joint (of 8) | 0 | 0 | **2** (both statues: an arm on a click hinge, a torso leaning on one) |
+| characters told of joints (of 8) | 0 | 0 | 8 |
+| people scenes posed on joints (of 12) | | 8 | 9 |
+| people scenes told of joints (of 12) | | 0 | 12 |
+| any session posed on a joint or a hinged section (of 28) | 8 of 20 | 12 | 16 |
+
+The people scenes posed their minifigures on joints in both arms: merge29's
+sessions found "posed minifigure" themselves (show_technique, 7 sessions). The
+brick-built characters are where the change was aimed, and there it is told
+every time and acted on twice in eight: the balloon dog's sessions read the
+shapes guide's new lead and the joints in every submit's reply, and built round
+bricks by hand. The judge still preferred the joints arm's characters 69% of the
+time, likeness 63% (45-77%).
+
+**Validity.** joints 27 of 28, merge29 26 of 28. Two of the three failures are
+the same coin toss (a minifigure head exactly 1.0000 LDU into a 42446 bracket,
+the spy in both arms), which verify.py's sum lands over and our check, judging at
+1 LDU, passes. merge29's other failure, model-058's five collisions, our exact
+dump finds all five of with the rebuilt shapes and none with exact's.
+
+### No regression on big subjects: not shown, and one thing found
+
+The car and the fire truck went through `run.py` on the merged tree before the
+last fix, as round `2026-10-15-joints`, judged against every design of their
+subject. `run.py rank` reads the lever joints against attach at **-126 ELO**
+overall (judge's 95% -199 to -45; with the run-to-run spread -473 to +246); the
+car's two designs rank 4th and 18th of 22 (1245 and 830, 415 apart), the fire
+truck's 5th and 10th of 10 (1085 and 649, 436 apart; the second has a stud joint
+overloaded, 99 g on one stud). The transcripts show why it could be the change:
+**both cars and both fire trucks were told, in every check, that they were
+figures with nothing on a joint** — "at minifigure scale" made the Porsche a
+figure and "with a firefighter" the fire engine. Fixed after the bench (a
+vehicle with its crew is a vehicle; "minifigure" is a scale, not a person:
+`figure_joints_probe` asks both briefs), so a vehicle now hears none of it. The
+two subjects were not run again on the fixed code.
+
+### What is left
+
+- **Brick-built characters still mostly stack.** Told every time, two of eight
+  posed a limb. The likeliest reason: the joints come as a list after the
+  session has already chosen its build, and a hand-built body of round bricks
+  passes every check; the armature is a skeleton to dress, which costs a session
+  more than the body it has. A first-submit refusal for a character with no
+  joint, or a body pattern that lays on an armature, would test that.
+- **The coin toss at exactly 1 LDU** (a head against a thin bracket, both arms):
+  judging a design's own pairs at a hair under 1 LDU would close it, at the cost
+  of refusing pairs verify.py sometimes passes.
+- **The car and the fire truck on the fixed code**, to see the -126 go.
+- **The shared catalogue's exact/ shapes** are exact's, with the corners missing;
+  they need `tools/build_exact.py` again (a built copy is in the round's scratch,
+  `figjoints-a261/gen2/exact`).
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -1370,6 +1582,11 @@ The designs ran on the app code of `21ff198` (the runs recorded it as
 is in the main checkout's `bench/results/brickbench-2026-10-14/`, git-ignored.
 BrickAgent's builds are theirs: they were downloaded for this comparison only,
 and are never committed or republished.
+
+The figures-on-joints round (2026-10-15) is the same with `prompts --start 51`,
+the four characters' rows copied from the attach round's `prompts.json`, `--arm
+merge29` and `--arm joints` (each `--app` an archive of its commit), and
+`compare --arms merge29,joints`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the

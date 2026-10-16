@@ -351,12 +351,18 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	if job.cancelled:
 		return []
 	job.say("Finding what is built on the side…")
-	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
+	var assemblies: Array[Assembly] = []
+	await _find_assemblies_into(assemblies, nodes, world, library, job)
 	await job.next()
+	if job.cancelled:
+		return []
 	_find_bundles(nodes, world, library, assemblies)
 	lap.call("assemblies")
 	await job.next()
-	var built: Array[Node2] = _contract(nodes, assemblies)
+	if job.cancelled:
+		return []
+	var built: Array[Node2] = []
+	await _contract_into(built, nodes, assemblies, job)
 	await job.next()
 	var named: bool = _assign_regions(built, regions, nodes.size())
 	lap.call("contract")
@@ -732,7 +738,8 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 			await job.next()
 			if job.cancelled:
 				return
-		var looped: Dictionary = _cycles(nodes)
+		var looped: Dictionary = {}
+		await _cycles_into(looped, nodes, job)
 		var undone: bool = false
 		for index: int in hanging:
 			var node: Node2 = nodes[index]
@@ -802,6 +809,16 @@ static func _waiting_on(dependents: Dictionary, id: int) -> Dictionary:
 ## with two passes of a depth-first walk kept on a stack of its own, since
 ## a tower of eight thousand bricks is deeper than GDScript's call stack.
 static func _cycles(nodes: Array[Node2]) -> Dictionary:
+	var looped: Dictionary = {}
+	_cycles_into(looped, nodes, null)
+	return looped
+
+
+## [method _cycles] into [param looped]; a slice at a time with a
+## [param job], asked every few hundred steps of the walk.
+static func _cycles_into(looped: Dictionary, nodes: Array[Node2], job: Working.Job) -> void:
+	const ASK_EVERY := 256
+	var steps: int = 0
 	var index_of: Dictionary = {}
 	for index: int in nodes.size():
 		index_of[nodes[index].id] = index
@@ -814,6 +831,8 @@ static func _cycles(nodes: Array[Node2]) -> Dictionary:
 		forward.append([])
 		backward.append([])
 	for index: int in nodes.size():
+		if job != null and job.due():
+			await job.next()
 		for need: int in nodes[index].after:
 			if index_of.has(need):
 				var target: int = index_of[need]
@@ -828,6 +847,9 @@ static func _cycles(nodes: Array[Node2]) -> Dictionary:
 		var stack: Array = [[start, 0]]
 		visited[start] = 1
 		while not stack.is_empty():
+			steps += 1
+			if job != null and steps % ASK_EVERY == 0 and job.due():
+				await job.next()
 			var top: Array = stack[-1]
 			var edges: Array = forward[top[0]]
 			if int(top[1]) < edges.size():
@@ -852,17 +874,18 @@ static func _cycles(nodes: Array[Node2]) -> Dictionary:
 		var pending: Array[int] = [root]
 		component[root] = label
 		while not pending.is_empty():
+			steps += 1
+			if job != null and steps % ASK_EVERY == 0 and job.due():
+				await job.next()
 			var here: int = pending.pop_back()
 			sizes[label] += 1
 			for previous: int in backward[here]:
 				if component[previous] < 0:
 					component[previous] = label
 					pending.append(previous)
-	var looped: Dictionary = {}
 	for index: int in nodes.size():
 		if sizes[component[index]] > 1 or (forward[index] as Array).has(index):
 			looped[nodes[index].id] = true
-	return looped
 
 
 ## Needs only on bricks that are being built, once each. A joint into the
@@ -1160,9 +1183,27 @@ static func _overlaps_flat(a: AABB, b: AABB) -> bool:
 ## thing to pick up) and must not be most of the model.
 static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 		library: PartLibrary) -> Array[Assembly]:
+	var found: Array[Assembly] = []
+	_find_assemblies_into(found, nodes, world, library, null)
+	return found
+
+
+## [method _find_assemblies] into [param found]; a slice at a time with a
+## [param job]. On Orthanc it was one frame of 410 ms (progress_probe,
+## 2026-10-15).
+static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
+		world: BrickWorld, library: PartLibrary, job: Working.Job) -> void:
+	# Whether a sub-model is a figure asks the figures' index, which the
+	# first question builds: every part of the library looked at in one go.
+	if job != null:
+		await Minifig.index_paced(library)
 	var tops: Dictionary = {}
 	var inner: Dictionary = {}
 	for node: Node2 in nodes:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
 		var top: String = ""
 		var sub: String = ""
 		if not node.unit.is_empty():
@@ -1182,8 +1223,11 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 				inner[sub] = []
 			(inner[sub] as Array).append(node)
 
-	var found: Array[Assembly] = []
 	for top: String in tops:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
 		var members: Array = tops[top]
 		var figure: bool = _is_figure(members, world, library)
 		if figure or _holds_together(members, nodes.size(), _turned(members, world)):
@@ -1192,11 +1236,14 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 		for sub: String in inner:
 			if not sub.begins_with(top + "/"):
 				continue
+			if job != null and job.due():
+				await job.next()
+				if job.cancelled:
+					return
 			var parts: Array = inner[sub]
 			var sub_figure: bool = _is_figure(parts, world, library)
 			if sub_figure or _holds_together(parts, nodes.size(), _turned(parts, world)):
 				found.append(_assembly(sub, parts, sub_figure, world))
-	return found
 
 
 ## A flexible thing drawn in pieces (a hose LDraw draws a segment at a
@@ -1380,6 +1427,16 @@ static func _name_of(key: String) -> String:
 ## 664-part trailer, a locomotive and the figures riding them their
 ## callouts, all of them.
 static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array[Node2]:
+	var built: Array[Node2] = []
+	_contract_into(built, nodes, assemblies, null)
+	return built
+
+
+## [method _contract] into [param out]; a slice at a time with a
+## [param job]. On Orthanc its walk for loops was the longest frame of the
+## sub-assembly search (progress_probe, 2026-10-15).
+static func _contract_into(out: Array[Node2], nodes: Array[Node2],
+		assemblies: Array[Assembly], job: Working.Job) -> void:
 	var eased: int = 0
 	for _attempt: int in 24:
 		var member_of: Dictionary = {}
@@ -1395,6 +1452,8 @@ static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array
 				member_of[member.id] = made
 		var built: Array[Node2] = []
 		for node: Node2 in nodes:
+			if job != null and job.due():
+				await job.next()
 			if member_of.has(node.id):
 				continue
 			node.after = _mapped(node.needs, member_of, null)
@@ -1406,13 +1465,15 @@ static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array
 			made.node.after = _mapped(needs, member_of, made)
 			built.append(made.node)
 
-		var looped: Dictionary = _cycles(built)
+		var looped: Dictionary = {}
+		await _cycles_into(looped, built, job)
 		var caught: Array[Assembly] = []
 		for made: Assembly in assemblies:
 			if looped.has(made.node.id):
 				caught.append(made)
 		if caught.is_empty():
-			return built
+			out.assign(built)
+			return
 		if eased < 2:
 			eased += 1
 			_ease(looped, nodes, member_of, eased == 2)
@@ -1424,7 +1485,7 @@ static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array
 	assemblies.clear()
 	for node: Node2 in nodes:
 		node.after = node.needs.duplicate()
-	return nodes.duplicate()
+	out.assign(nodes)
 
 
 ## Give up the guessed needs on a loop: between two parts both on it, or in
