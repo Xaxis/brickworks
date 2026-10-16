@@ -149,8 +149,8 @@ func _one(name: String, text: String) -> Dictionary:
 	# What the web build tells the page twice a second of the sub-assemblies,
 	# kept while nothing changes: worked out each time, it walked the model
 	# three times a telling (asked twice here, it is the same answer).
-	var told: Array = _main.call("_page_assemblies")
-	row["page_kept"] = is_same(told[0], (_main.call("_page_assemblies") as Array)[0])
+	row["page_kept"] = _main.has_method("_page_assemblies") and is_same(
+		(_main.call("_page_assemblies") as Array)[0], (_main.call("_page_assemblies") as Array)[0])
 	var view: Rect2 = (_main.call("model_cover") as Dictionary)["view"]
 	var middle: Vector2 = view.get_center()
 
