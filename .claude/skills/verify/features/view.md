@@ -627,10 +627,14 @@ picture the assistant is shown.
   the Delete twice, the quicker kept. It holds ratios, never times: an orbit
   frame and a step of the timeline (and ten steps alone) no more than 3x from
   1,000 to 5,000 parts, select all, the move, undo, redo, Delete and its undo
-  no more than 9x (linear is 5, quadratic 25), and the model asked what is
-  under the pointer at most 3 times in a 30-frame turn (the press). Main at
-  63cab62 fails it: the move 10.7x, its redo 12.4x and Delete's undo 14.6x
-  (sub-model copies matched again at every edit), and 30 asks a turn. Pass:
+  no more than 9x (linear is 5, quadratic 25), the model asked what is
+  under the pointer at most 3 times in a 30-frame turn (the press), every
+  part's lattice cover its part's own after the moves, undo and redo, and
+  what the web build tells the page of the sub-assemblies kept while nothing
+  changes (`Main._page_assemblies`). Main at 63cab62 fails six: the move
+  13.1x, its redo 11.8x and Delete's undo 14.2x (sub-model copies matched
+  again at every edit), ten steps 11.8x, 29 asks a turn, and the page's
+  answer worked out at every asking. Pass:
   exit 0 and `bigmodel: every act grows no faster than the model`. With
   `-- --profile PATH...` it opens real sets' files instead, judges nothing,
   and prints where each act's time went: every handler of the builder's,

@@ -19,7 +19,7 @@ so the two are like for like, and then measured.
 |---|---|---|
 | A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact | not measured |
 | ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44) | not measured |
-| Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone is over 33 ms in every act from 925 parts | not measured |
+| Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts) | not measured |
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
 | ...seconds a part | modelled 8.3 to 9.2, or 9.8 to 11.4 with the steps marked | modelled 10.1 to 10.6, or 10.3 to 11.3 |
@@ -197,6 +197,147 @@ time; its steps were not reached. Two things the browser runs found besides:
   proven. The status bar's list of keys gives the timeline Home, End and
   space, not Right. Steps are now measured by a click on Next.
 
+### Big models, after (2026-10-16)
+
+The app's own work was over budget in every act from 925 parts up, so the
+next unit measured where it went and cut it (`src/dev/bigmodel_probe.gd --
+--profile`, headless, so no drawing: every handler of the builder's, world's,
+timeline's and store's signals timed one by one, every node's `_process` in
+an orbit, and the pieces of an edit and an undo timed alone). On 42082-1,
+4,139 of its parts here:
+
+- **A turn of the view** asked the model what was under the still pointer in
+  every frame, for the cursor (`Main._cursor_state`), and the lattice marched
+  that line from the eye a cell at a time, to its 20,000th cell on a miss:
+  22 to 26 ms a frame at every size, and in a browser up to 2.9 s a frame of
+  scripts on 42082-1. Now nothing is asked while the view is held or moving,
+  and a line is marched only through the box round what was ever put in.
+- **A move of everything** matched every sub-model's copies against it again
+  (`Assemblies.copies_follow`), up to 400 tries a pair, the model walked twice
+  an assembly: most of the 13 s. The rest was the lattice, which puts a
+  Technic part's cover (74 boxes on average; 305,648 for the set) in and out
+  box by box. Now an assembly moved whole, all its parts alike, is left
+  alone (it is the shape it was), a pass reads the model once, a perfect fit
+  ends the search, and a part is put in every bucket its bound reaches.
+- **Undo and redo** worked each part's cover out again from the part, and
+  matched every copy again for the step they left newest: redo 9.4 s, the
+  undo of Delete 7.5 s. Now a part moved by whole cells has its cover moved
+  (`BrickLattice.shift`), a part taken off carries its cover in the step, and
+  the step an undo or redo leaves newest is settled (`Builder.settled`).
+- **A step of the timeline** asked every brick whether it was on show and
+  wrote every batch holding one that changed again whole. Now the batches
+  are written once in the order and a step is a count raised or lowered in
+  each (`BrickWorld.reveal_upto`).
+- **Select all** grew with the model and no faster: 140 ms. The 65 s in a
+  browser was drawing the outline in software.
+- **In a browser, twice a second**, the page's state walked every part three
+  times for the sub-assemblies, and every connector of every part after any
+  change. Now they are kept until the model changes, and the connectors are
+  read only with a part in hand.
+
+The app's own work, headless on this box (load 40 to 60), each act from its
+key or click until it has happened and two frames more, the quicker of two,
+main (63cab62) and this branch run in turn in the same minutes, in ms; an
+orbit is its median frame:
+
+| act | made 1,000 | made 5,000 | 4883-1 (92) | 75969-1 (925) | 42082-1 (4,139) |
+|---|---|---|---|---|---|
+| orbit, a frame | 24 → 7 | 22 → 7 | 23 → 7 | 39 → 7 | 26 → 7 |
+| select all | 32 → 32 | 142 → 151 | 23 → 23 | 75 → 53 | 140 → 152 |
+| D, everything moved | 223 → 131 | 2,917 → 684 | 69 → 28 | 585 → 224 | 13,096 → 1,943 |
+| Ctrl-Z of that | 132 → 100 | 585 → 454 | 57 → 31 | 399 → 132 | 3,541 → 528 |
+| Ctrl-Shift-Z | 228 → 111 | 2,690 → 482 | 63 → 23 | 555 → 137 | 9,380 → 588 |
+| Delete | 91 → 68 | 294 → 314 | 44 → 26 | 226 → 92 | 882 → 473 |
+| Ctrl-Z of that | 215 → 96 | 3,062 → 326 | 56 → 31 | 441 → 103 | 7,541 → 413 |
+| a step (Next) | 51 → 21 | 65 → 21 | 70 → 21 | 66 → 21 | 101 → 21 |
+
+"Made" are the probe's own models (towers of four bricks in eight colours,
+fifty to a sub-model); their numbers are the suite's run of the probe against
+each (`check-before.log`, `check-h.log`). A step after is the frame it is
+drawn in and two idle ones, 7 ms each here: ten steps alone take under a
+millisecond at either size, against 26 and 304 ms on main. Select all did
+not change, and grows with the model, no faster.
+
+In a browser on SwiftShader, main's export and this branch's, the app's own
+work in the worst frame of each act (the frame less its time in WebGL), in
+ms; an orbit's median frame too. The move and its undo and redo are new to
+the browser run (`cad_frames.mjs` presses D, Ctrl-Z and Ctrl-Shift-Z with
+everything selected), so main has none here; headless above, they were 13 s,
+3.5 s and 9.4 s on main at 4,139 parts:
+
+| act | 92 parts | 925 parts | 5,025 parts |
+|---|---|---|---|
+| an orbit frame, median | 38 → 22 | 78 → 28 | 216 → 27 |
+| an orbit, its worst frame | 102 → 68 | 182 → 110 | 2,949 → 109 |
+| select all | 76 → 53 | 100 → 70 | 235 → 91 |
+| D, everything moved | — → 203 | — → 530 | — → 879 |
+| Ctrl-Z of that | — → 173 | — → 216 | — → 559 |
+| Ctrl-Shift-Z | — → 153 | — → 140 | — → 277 |
+| Delete of everything | 85 → 97 | 275 → 113 | 1,584 → 703 |
+| Ctrl-Z of that | 147 → 147 | 418 → 116 | 3,380 → 297 |
+| a step (Next), the worst of five | 200 → 37 | 76 → 54 | 323 → 35 |
+
+The scripts alone (a frame's own work from process to drawing, which the
+page now lists for every frame over 8 ms, `brickworksState.busy`), worst
+frame: an orbit 82 → 76, 161 → 73 and 2,925 → 52 ms; select all 46 → 16,
+38 → 48 and 209 → 93; Delete's undo 12 → 17, 375 → 101 and 3,360 → 12.
+
+Read with care. The 5,025-part file opened in a browser with 3,973 of its
+parts on main's run and 2,015 on this branch's (the parts the web build
+fetches when a model needs them did not arrive in that page; see below), so
+its after column is a smaller model; the headless table is the like for
+like. Each frame here is seconds of software drawing, so the page's state,
+written twice a second, was written in every frame of a turn: an orbit's
+median of 22 to 28 ms at every size is that and the engine's own work, not
+the model's. The worst frames still over 16 ms are the edits themselves,
+each one frame. And on a box at load 40 to 60, a frame's time includes
+waiting for a core.
+
+The parts that did not arrive were not this branch's doing: 42082-1 opened
+in a fresh page on main's export and this branch's side by side, each read
+the same 2,015 parts at once and had 2,373 four minutes on, in both
+(`flows/arrival-*.log`), the rest fetched one by one from the parts server
+on a loaded box. On main's run the 15 minutes of a part swept in hand, which
+the branch's rerun of 42082-1 left out, gave them time to come.
+
+On the desktop, now on the box's graphics card (an RX 6700 XT; the frames
+above, and the CAD task test's, were drawn by llvmpipe in software, so a
+frame there was a second whatever the app did), windowed under xvfb with
+Mesa copying each frame to it, `src/dev/cadtask_frames.gd` with the click
+fixed, main → this branch, one run each; median / 95th percentile / worst
+frame in ms. Copying a frame to xvfb is most of 20 ms by itself, so a frame
+under that is not to be had here:
+
+| act | 92 parts | 925 parts | 5,025 parts (4,139 here) |
+|---|---|---|---|
+| a frame drawn with nothing changed | 27 / 41 / 42 → 20 / 33 / 33 | 26 / 42 / 49 → 25 / 42 / 48 | 36 / 55 / 71 → 33 / 45 / 54 |
+| orbit | 25 / 41 / 47 → 23 / 36 / 43 | 51 / 69 / 99 → 22 / 33 / 65 | 55 / 72 / 110 → 32 / 46 / 57 |
+| a part in hand, swept | 38 / 49 / 65 → 35 / 51 / 53 | 50 / 81 / 280 → 28 / 60 / 232 | 59 / 489 / 1,076 → 39 / 550 / 1,088 |
+| 100 parts selected, a shift-click each | 24 / 29 / 33 → 22 / 35 / 37 | 29 / 39 / 40 → 24 / 48 / 48 | 30 / 45 / 52 → 36 / 45 / 52 |
+| select all | 20 / 30 / 35 → 20 / 29 / 31 | 24 / 55 / 69 → 24 / 35 / 69 | 29 / 52 / 154 → 33 / 53 / 170 |
+| Delete of those 100 | 19 / 38 / 65 → 29 / 37 / 43 | 27 / 56 / 72 → 30 / 55 / 106 | 34 / 62 / 192 → 29 / 59 / 165 |
+| Ctrl-Z of that | 22 / 41 / 102 → 22 / 34 / 70 | 24 / 50 / 77 → 26 / 46 / 54 | 25 / 58 / 94 → 33 / 63 / 94 |
+| a step of the timeline (Next) | 27 / 44 / 63 → 28 / 53 / 69 | 27 / 65 / 75 → 21 / 37 / 57 | 25 / 71 / 81 → 24 / 40 / 47 |
+| open, to the first frame drawn | 0.3 s → 0.3 s | 3.4 s → 3.3 s | 17.8 s → 18.0 s |
+| timeline (B) opens | 0.2 s → 0.1 s | 0.7 s → 0.6 s | 2.4 s → 2.8 s |
+
+The click now takes parts not yet taken: 92, 124 and 100 selected (75969-1's
+clicks take whole sub-assemblies), Delete took them all and Ctrl-Z put them
+back, and Right stepped the timeline at every size. A part held over the
+4,139-part model still has worst frames of a second; where that goes was not
+measured here, and it is left.
+
+The probe is in `tools/check.sh` (`bigmodel`): it makes the two models,
+measures each act twice and keeps the quicker, and holds ratios, never
+times: from 1,000 to 5,000 parts an orbit frame and a step (and ten steps
+alone) at most 3x, select all, the move, its undo and redo, Delete and its
+undo at most 9x (linear is 5, quadratic 25); and at most 3 asks of what is
+under the pointer in a 30-frame turn, every part's cover in the lattice its
+part's own after the moves, and the page's sub-assemblies kept while
+nothing changes. Main at 63cab62 fails six of them: the move 13.1x, its redo
+11.8x, Delete's undo 14.2x, ten steps 11.8x, 29 asks in a turn, and the
+page's answer worked out at every asking.
+
 ## 3. Building a real set from its steps
 
 **What was run.** Three small sets chosen by the same hash: 5762-1 Plane (52
@@ -284,7 +425,8 @@ not modelled, so Studio's turns may be fewer than modelled.
 
 ## The gaps, by how much a builder would feel them
 
-Nothing here was fixed in this unit; each is a unit of its own.
+Nothing here was fixed in the unit that measured them; each is a unit of
+its own. Item 3 has had its (section 2, "Big models, after").
 
 1. **No "next step" while building.** A builder following a booklet, or
    writing one, puts each step's parts in its own step. Here every step is
@@ -295,10 +437,13 @@ Nothing here was fixed in this unit; each is a unit of its own.
 2. **A part number typed in the search does not always come first.** "6157"
    puts 3816cpc44 first; the flow had to give up on that part. A builder
    working from a parts list types numbers all day.
-3. **Every interaction in a browser is over budget from 925 parts up, by the
+3. **Every interaction in a browser was over budget from 925 parts up, by the
    app's own work alone**: an orbit frame's own work 158 ms at 925 parts and
    2.7 s at 5,025; a part swept over the model 355 ms and 1.1 s. That is
-   before any drawing, so a graphics card does not take it away.
+   before any drawing, so a graphics card does not take it away. Since
+   "Big models, after" (section 2) a turn, select all, a move of everything
+   with its undo and redo, Delete and its undo and a step no longer walk
+   the model where they should not; a part swept in hand still does.
 4. **Some parts cannot be put where the set has them through the
    interface**: both 1 x 1 clip plates of the plane's step 4 (the ghost stood
    10 LDU off and came no nearer), and parts at angles off the 24 turns or at
@@ -345,7 +490,13 @@ parts. On this box, at load 40, the round trip took 20 minutes, the frames an
 hour (the 5,025-part model most of it) and two sets' first 8 parts 15
 minutes, each after a wait of 10 to 30 minutes for a slot.
 
-Run it bare: it puts each Godot run and browser under `heavy` itself. It writes
+Run it bare: it puts each Godot run and browser under `heavy` itself. The
+desktop frames mean something only on the graphics card: inside a `gpu`
+lease, `MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900
+--script src/dev/cadtask_frames.gd -- --frames-out=FILE.json MODEL...`, as
+"Big models, after" ran them. The app's own work at any size, and where it
+goes, is `src/dev/bigmodel_probe.gd` (bare, the suite's check; with
+`-- --profile PATH...`, every handler and piece timed). It writes
 to `bench/results/cadtask-<date>/` in the main checkout (git-ignored):
 `REPORT.md`, the probe's rows, the judged rows and the pictures. The
 comparison and the sampler are pinned by `tests/test_cadtask.py`.
