@@ -102,6 +102,7 @@ const WINDOW_ONLY: Dictionary = {
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
 	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
+	"find_colour": "a field the person types a colour's name into, for their next part; a session gives the LDraw colour code (edit_model's color and recolor)",
 	"reseat": "squares up parts a file left between studs; a session's parts are on the lattice already",
 	"settings": "the person's preferences, whether the assistant is in the window among them: theirs to choose, and with it off the connector is off, so no session is there to ask",
 	"keys": "help for the person",

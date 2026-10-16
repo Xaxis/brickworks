@@ -198,7 +198,7 @@ func _mouse() -> void:
 
 	# A box let go where this handler never sees the release.
 	#
-	# Dragging rightwards and letting go over the parts bin is what
+	# Dragging toward the parts bin and letting go over it is what
 	# hands naturally do, and it used to leave the box drawn with
 	# nothing holding it — after which every click was read as the end
 	# of a drag still in progress and the app took no input at all.
@@ -223,8 +223,11 @@ func _mouse() -> void:
 		var corner := Vector2(panel.x, _middle.y + 240.0)
 		_check("the corner to let go on is over a panel too",
 			_main._over_panel_at(corner))
-		await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(320.0, 240.0),
-			corner, true)
+		# Dragged toward the panel, whichever side it is on, so the box
+		# still encloses the bricks in the middle.
+		var start: Vector2 = (_middle - Vector2(320.0, 240.0) if panel.x > _middle.x
+			else _middle + Vector2(320.0, -240.0))
+		await _drag(MOUSE_BUTTON_LEFT, start, corner, true)
 		# What actually goes wrong is that the selection silently does
 		# not happen, so that is what to ask about. Asking only whether
 		# the box stopped being drawn was not enough: the next press
@@ -626,6 +629,9 @@ func _plates() -> int:
 	return _main._store.scenery.size()
 
 
+## A point over a panel beside the view, at half height: the right side
+## first, then the left, where the parts bin has docked since the layout
+## took Studio's (the probe looked only right, and found nothing).
 func _panel_point() -> Vector2:
 	var rect: Vector2 = root.get_visible_rect().size
 	var y: float = rect.y * 0.5
@@ -635,6 +641,12 @@ func _panel_point() -> Vector2:
 		if _main._over_panel_at(at):
 			return at
 		x -= 6
+	x = 6
+	while float(x) < rect.x * 0.45:
+		var at := Vector2(float(x), y)
+		if _main._over_panel_at(at):
+			return at
+		x += 6
 	return Vector2.ZERO
 
 
