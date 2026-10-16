@@ -12198,7 +12198,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# hole on its line, a part sunk into the one under it. Said for each pair
 	# this design is in, with how to fix it; between bricks standing, kept for
 	# the audit of real sets as the lattice's overlaps are.
-	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing)
+	var colliding: Dictionary = {}
+	_exact_collisions(model, exact, issues, overlapping, gave_way, collided, meshing, colliding)
 
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
@@ -12284,8 +12285,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	# this design resting on another with nothing joining them falls when
 	# the model is picked up, and its simulation lets it fall. Not said again
 	# of a section already said to lean on nothing or to be adrift.
+	var unheld: Dictionary = {}
 	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
-		clutched_pairs, stuck)
+		clutched_pairs, stuck, unheld)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -12504,6 +12506,10 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		"exact": {"collision": issues.get("collision", []),
 			"not held": issues.get("not held", []),
 			"tips over": issues.get("tips over", [])},
+		## The parts of what is not held, as indices into the placements.
+		"unheld": unheld.keys(),
+		## The later part of each pair whose real shapes collide.
+		"colliding": colliding.keys(),
 		## And what asking the exact shapes cost this check, ms.
 		"exact_ms": exact.spent_usec / 1000.0,
 		"exact_on": exact.spent_on,
@@ -12752,7 +12758,7 @@ static func _into_cell(cell: int, per: float) -> float:
 ## are in mesh, not in each other.
 func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		overlapping: Dictionary, gave_way: Dictionary, collided: Array,
-		meshing: Dictionary = {}) -> void:
+		meshing: Dictionary = {}, colliding: Dictionary = {}) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -12803,6 +12809,10 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 			gave_way[dressed] = true
 			continue
 		_note(issues, "collision", exact.said(found, namer))
+		# By index too, the later of the two, for what mends a design
+		# (Brickify.mend) to take out as it does a part that overlaps.
+		if maxi(a, b) < count:
+			colliding[maxi(a, b)] = mini(a, b)
 
 
 ## The parts of this design no connection holds, by BrickNet's rules where
@@ -12812,7 +12822,8 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 ## exact shape that this check holds. One fault a piece.
 func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
-		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {}) -> void:
+		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
+		unheld: Dictionary = {}) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -12899,6 +12910,10 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		if exact.rests(pieces[key]):
 			continue
 		_note(issues, "not held", exact.unheld_said(pieces[key], namer))
+		# By index too, for what mends a design (Brickify.mend) to join or
+		# take out, as it does a part floating.
+		for index: Variant in pieces[key]:
+			unheld[int(index)] = true
 	# And what the floor alone holds, on a bare floor: it stands while it
 	# balances. On a baseplate its studs hold it, as they do in the hand.
 	if _ground_only or not _on_bare_floor(model):
@@ -16143,12 +16158,16 @@ func _ensure_parts(model: Model) -> void:
 	var wanted: Dictionary = {}
 	# A retired number is placed as the part it became (BrickWorld._place),
 	# so that is the geometry wanted too.
-	var named: Array[String] = []
+	# Each part once: asked per placement, Brick Art's 1,327 tiles of a few
+	# kinds were a frame of 178 ms in a browser (progress_check, 2026-10-15).
+	var named: Dictionary = {}
 	for placement: Placement in model.placements:
-		named.append(placement.part)
+		if named.has(placement.part):
+			continue
+		named[placement.part] = true
 		var real: String = library.resolve(placement.part)
 		if real != placement.part:
-			named.append(real)
+			named[real] = true
 	for part_id: String in named:
 		# From disk first, where the build has it: only what is not there is
 		# fetched. Not resident meant fetched over HTTP even on the desktop,

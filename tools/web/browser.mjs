@@ -172,3 +172,34 @@ export async function chooseAssistant(page, on) {
   await page.waitForTimeout(1500);
   return (await now()) === on;
 }
+
+/// Tool calls made as a session makes them (src/net/tool_jobs.gd). A call
+/// still going after 20 s answers "Started job N": the job tool is called
+/// (it waits up to 10 s a time) until the job is done, and its answer is the
+/// call's. A call made while a job holds the app answers "The app is busy
+/// with job N": that job is followed, then the call made again. On a loaded
+/// box the knowledge check's own edit_model became a job and the call after
+/// it was turned away, so the check failed with the app doing as it says
+/// (2026-10-15). `claude(method, params)` sends one request; the wrapped one
+/// has the same shape.
+export function withJobs(claude, { waits = 60 } = {}) {
+  const said = (answer) => (answer?.result?.content || []).map((c) => c.text || "").join(" ");
+  const follow = async (id) => {
+    let answer;
+    for (let n = 0; n < waits; n++) {
+      answer = await claude("tools/call", { name: "job", arguments: { id } });
+      if (!/is still going/.test(said(answer))) break;
+    }
+    return answer;
+  };
+  return async (method, params) => {
+    if (method !== "tools/call" || params?.name === "job") return claude(method, params);
+    for (let tries = 0; ; tries++) {
+      const answer = await claude(method, params);
+      const busy = /The app is busy with job (\d+)/.exec(said(answer));
+      if (busy && tries < 3) { await follow(Number(busy[1])); continue; }
+      const started = /Started job (\d+)/.exec(said(answer));
+      return started ? follow(Number(started[1])) : answer;
+    }
+  };
+}

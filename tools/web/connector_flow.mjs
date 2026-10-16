@@ -17,7 +17,7 @@
 // preview's relay sits behind Vercel's login, so with BW_BYPASS the bypass
 // goes on the requests made from here as a header, and to the page as a
 // cookie for its own domain.
-import { launch, openColumnFor } from "./browser.mjs";
+import { launch, openColumnFor, withJobs } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -81,7 +81,10 @@ console.log(`address from the clipboard: ${address.slice(0, 60)}…`);
 await page.screenshot({ path: `${out}/1_connected.png`, timeout: 120000 }).catch(() => {});
 
 let sent = 0;
-async function claude(method, params) {
+// Calls as a session makes them: a job followed to its answer, and a call
+// turned away while one runs made again after it.
+const claude = withJobs(send);
+async function send(method, params) {
   sent += 1;
   const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
   if (bypass) headers["x-vercel-protection-bypass"] = bypass;

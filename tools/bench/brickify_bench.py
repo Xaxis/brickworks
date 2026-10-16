@@ -318,16 +318,29 @@ def load_colours() -> dict[int, tuple[float, float, float]]:
     return out
 
 
-def build_mesh(arm: dict, lib: Library):
-    """Every part's triangles placed, and each triangle's colour."""
+def stand_of(arm: dict) -> tuple[set[int], float]:
+    """The stand Brickify laid the build on: its parts (indices into "placed") and how far it
+    lifted the model, LDU. Empty and 0 for none."""
+    stand = arm.get("stand") or {}
+    return set(int(n) for n in stand.get("parts", [])), float(stand.get("lift_ldu", 0))
+
+
+def build_mesh(arm: dict, lib: Library, stand: bool = False):
+    """Every part's triangles placed, and each triangle's colour. Lowered by a stand's lift, so
+    the model lines up with the model it came from; the stand itself only when asked (a
+    picture shows it; likeness is of the model)."""
     np = _np()
     tris, cols = [], []
-    for pid, code, m in arm["placed"]:
+    skip, lift = stand_of(arm)
+    for n, (pid, code, m) in enumerate(arm["placed"]):
+        if n in skip and not stand:
+            continue
         t, codes, fixed, _ = lib.part(pid)
         if len(t) == 0:
             continue
         mat = np.array(m, dtype=np.float64).reshape(3, 4)
         placed = t.reshape(-1, 3).astype(np.float64) @ mat[:, :3].T + mat[:, 3]
+        placed[:, 1] -= lift
         tris.append(placed.reshape(-1, 3, 3).astype(np.float32))
         rgb = np.array(lib.colours.get(int(code), (1.0, 0.0, 1.0)), dtype=np.float32)
         c = fixed.copy()
@@ -480,12 +493,15 @@ def ciede2000(lab1, lab2):
 
 
 def bond(arm: dict, lib: Library) -> dict:
-    """Seams bridged and weak points, from the parts' boxes on the stud and plate grid."""
+    """Seams bridged and weak points, from the parts' boxes on the stud and plate grid. Of the
+    model's own parts: a stand's plates are bonded by construction and would flatter it."""
     np = _np()
     owner: dict[tuple[int, int, int], int] = {}
     one_by_one = 0
     boxes = []
-    for pid, _code, m in arm["placed"]:
+    skip, _lift = stand_of(arm)
+    placed = [one for n, one in enumerate(arm["placed"]) if n not in skip]
+    for pid, _code, m in placed:
         _, _, _, b = lib.part(pid)
         # A 1 x 1 by the part itself, whichever way it is turned: a plate, a tile, a cheese
         # slope, a brick with a stud on its side.
@@ -530,8 +546,8 @@ def bond(arm: dict, lib: Library) -> dict:
             if b is not None and b != a:
                 pairs.add((min(a, b), max(a, b)))
     bridged = sum(1 for a, b in pairs if vertical.get(a, set()) & vertical.get(b, set()))
-    weak = articulation_points(len(arm["placed"]), vertical)
-    parts = max(1, len(arm["placed"]))
+    weak = articulation_points(len(placed), vertical)
+    parts = max(1, len(placed))
     return {"seams": len(pairs), "seams_bridged": bridged,
             "seam_share": bridged / len(pairs) if pairs else 1.0,
             "weak_points": len(weak), "weak_share": len(weak) / parts,
@@ -815,13 +831,14 @@ def do_pictures(args: argparse.Namespace) -> int:
                     # Nothing laid is a result too: an empty panel, said.
                     panels.append((f"{arm_name}: nothing laid", np.full((res, res, 3), 255, dtype=np.uint8)))
                     continue
-                tris, cols = build_mesh(arm, lib)
+                tris, cols = build_mesh(arm, lib, stand=True)
                 if arm.get("align"):
                     sc = caster(src)
                     seen = np.concatenate([loc[hit] for hit, loc, _ in
                                            (cast(sc, centre, radius, v, 160) for v in view_dirs())])
                     tris = aligned(tris, seen, flat, centre, radius)
-                panels.append((f"{arm_name}: {len(arm['placed']):,} parts",
+                on_stand = " on a stand" if stand_of(arm)[0] else ""
+                panels.append((f"{arm_name}: {len(arm['placed']):,} parts{on_stand}",
                                render(caster(tris), lambda tri, _l, cols=cols: cols[tri], centre, radius, res, d, light)))
             label = 26
             font = ImageFont.load_default(size=16)
@@ -921,6 +938,9 @@ def rows(out: Path) -> list[dict]:
                     "no_element_parts": not_real(arm, pairs),
                     "over": (arm.get("balance") or {}).get("over"),
                     "stands": (arm.get("balance") or {}).get("stands"),
+                    "on_stand": bool(stand_of(arm)[0]), "stand_parts": len(stand_of(arm)[0]),
+                    "tied": arm.get("tied", 0), "joined": arm.get("joined", 0), "thin": arm.get("thin", 0),
+                    "left_out": arm.get("left_out", 0), "lost_share": arm.get("lost_share"),
                     "seconds": (ms.get("measure", 0) + ms.get("lay", 0) + ms.get("check", 0)) / 1000.0,
                     "grid": arm["grid"],
                 }
@@ -964,8 +984,8 @@ def do_report(args: argparse.Namespace) -> int:
              "piece with the check passing; that, and standing by Balance with no stud joint past its "
              "working load; parts the mend took out (mean).", "",
              _line(["Studs", "Arm", "Laid", "Whole", "One piece, check passes", "And stands, no joint past its load",
-                    "Mended (mean)", "Seconds (mean)", "Seconds (most)"]),
-             "|" + "---|" * 9]
+                    "Of those, on a stand", "Mended (mean)", "Seconds (mean)", "Seconds (most)"]),
+             "|" + "---|" * 10]
     n = len(models)
     for s in sizes:
         for a in arms:
@@ -977,6 +997,8 @@ def do_report(args: argparse.Namespace) -> int:
             lines.append(_line([str(s), a, f"{len(laid)}/{n}", f"{len(whole)}/{n}",
                                 f"{sum(1 for r in rs if r['one_piece'] and r['parts'] > 0)}/{n}",
                                 f"{sum(1 for r in laid if r['one_piece'] and r.get('stands') and not r.get('over'))}/{n}",
+                                str(sum(1 for r in laid if r['one_piece'] and r.get('stands') and not r.get('over')
+                                        and r.get('on_stand'))),
                                 _fmt(_mean([r["mended"] for r in rs]), ".0f"),
                                 _fmt(_mean([r["seconds"] for r in rs]), ".1f"),
                                 _fmt(max((r["seconds"] for r in rs), default=None), ".0f")]))
@@ -1031,8 +1053,8 @@ def do_report(args: argparse.Namespace) -> int:
         lines += [""] + header + rows4
     lines += ["", "### Each model", "",
               _line(["Model", "Studs", "Arm", "Parts", "Coverage", "Shaped", "IoU", "Chamfer", "Lost95", "Added95",
-                     "Normal (°)", "ΔE2000", "Check", "Pieces", "Seams bridged", "Seconds"]),
-              "|" + "---|" * 16]
+                     "Normal (°)", "ΔE2000", "Check", "Pieces", "Stands", "Seams bridged", "Seconds"]),
+              "|" + "---|" * 17]
     for m in models:
         for s in sizes:
             for a in arms:
@@ -1046,7 +1068,9 @@ def do_report(args: argparse.Namespace) -> int:
                     f"{r['shaped_share']:.0%}", _fmt(r.get("m_iou"), ".3f"), _fmt(r.get("m_chamfer_studs"), ".2f"),
                     _fmt(r.get("m_lost95_studs"), ".2f"), _fmt(r.get("m_added95_studs"), ".2f"),
                     _fmt(r.get("m_normal_deg"), ".1f"),
-                    _fmt(r.get("m_de2000"), ".1f"), check, str(r["pieces"]), _fmt(r.get("m_seam_share"), ".0%"),
+                    _fmt(r.get("m_de2000"), ".1f"), check, str(r["pieces"]),
+                    ("on a stand" if r.get("on_stand") else "yes") if r.get("stands") else "no",
+                    _fmt(r.get("m_seam_share"), ".0%"),
                     f"{r['seconds']:.1f}"]))
     text = "\n".join(lines) + "\n"
     if args.write:

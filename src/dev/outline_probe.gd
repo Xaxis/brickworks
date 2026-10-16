@@ -18,7 +18,8 @@
 ## where the selected parts are drawn (found by drawing them once in another
 ## colour). The outline must lie round them, not over them; it must go all
 ## the way round; and nothing else may change. Then all of Orthanc selected,
-## timed, with nothing drawn while nothing moves; and the outline kept
+## timed, with nothing drawn while nothing moves; nothing selected, the
+## targets let go of at once with no frame drawn for it; and the outline kept
 ## through the cut-away and x-ray.
 ##
 ## Pictures go to shots/outline/<tag>/.
@@ -234,8 +235,27 @@ func _orthanc() -> void:
 	var idle: int = Engine.get_frames_drawn() - drawn
 	IdleDraw.end()
 	_check("standing still with 9,000 parts outlined, %d frames drawn in 40" % idle, idle == 0)
+
+	# Nothing outlined: the targets the window's size let go of at once, and
+	# no frame drawn for it after. They were let go of 4 s later for a while,
+	# a frame drawn for nothing that held the next press in a browser.
+	var held: int = _card_memory()
+	var cleared_at: int = Time.get_ticks_msec()
 	_builder.clear_selection()
-	await _frames(4)
+	for _n: int in 3:
+		await RenderingServer.frame_post_draw
+	var freed: int = held - _card_memory()
+	var targets: int = 3 * root.size.x * root.size.y * 4
+	_check("nothing selected, the outline's targets let go of in %d ms: %.1f MB of the "
+		% [Time.get_ticks_msec() - cleared_at, freed / 1048576.0]
+		+ "card's memory, of %.1f MB" % (targets / 1048576.0), freed >= targets * 9 / 10)
+	IdleDraw.begin()
+	await create_timer(0.5).timeout
+	var since: int = Engine.get_frames_drawn()
+	await create_timer(6.0).timeout
+	var later: int = Engine.get_frames_drawn() - since
+	IdleDraw.end()
+	_check("...and %d frames drawn for it in the 6 s after" % later, later == 0)
 
 	# Through the cut-away and x-ray, a guard at the foot of the tower.
 	_camera.frame(_bounds(guard), 6.0)
@@ -552,3 +572,9 @@ func _save(image: Image, name: String) -> void:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	image.save_png(path)
 	print("    picture: shots/outline/%s/%s.png" % [_tag, name])
+
+
+## Bytes of the graphics card's memory in textures, render targets among them.
+func _card_memory() -> int:
+	return int(RenderingServer.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED))

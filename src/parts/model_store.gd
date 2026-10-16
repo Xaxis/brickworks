@@ -188,7 +188,46 @@ func tick() -> void:
 	# in flight.
 	if not whole:
 		return
-	_write(autosave(), title)
+	# A small model in one go, as before; a big one over frames.
+	if world.brick_count() - scenery.size() < PACED_FROM:
+		_write(autosave(), title)
+		return
+	_autosave_paced()
+
+
+## The working model's text made a slice at a time, then written in a frame
+## of its own: made and written in one, it was a frame of 512 ms in a browser
+## after Brick Art laid 1,327 parts (progress_check, 2026-10-15). Not written
+## when the model changed again meanwhile: the autosave after that writes it.
+func _autosave_paced() -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		_write(autosave(), title)
+		return
+	_autosaves += 1
+	var mine: int = _autosaves
+	_autosaving = true
+	var made_at: int = _dirty_at
+	var revision: int = world.revision
+	var made: Array = []
+	await _text_into(made, title, false, {}, FramePace.new())
+	await tree.process_frame
+	if mine != _autosaves:
+		return
+	_autosaving = false
+	# The model changed while its text was made: written again, as it is now,
+	# once it settles.
+	if _dirty_at != made_at or world.revision != revision:
+		_dirty_at = maxi(_dirty_at, Time.get_ticks_msec())
+		_pending = true
+		return
+	_write(autosave(), title, false, str(made[0]))
+
+
+## Autosaves begun, the latest the only one that may still write; and
+## whether it is being made now, not yet written ([method write_now]).
+var _autosaves: int = 0
+var _autosaving: bool = false
 
 
 ## Write the working model now rather than when it settles, as a reload
@@ -197,8 +236,12 @@ func tick() -> void:
 func write_now() -> String:
 	if not keeps or read_only:
 		return ""
-	if _pending and whole:
+	# One being made a slice at a time is not written yet: written now, and
+	# the one going let go.
+	if (_pending or _autosaving) and whole:
 		_pending = false
+		_autosaving = false
+		_autosaves += 1
 		_write(autosave(), title)
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
@@ -963,6 +1006,15 @@ var whole: bool = true
 ## and says so in the file, so they are kept when it is opened again.
 func to_text(title: String = "Model", with_steps: bool = false,
 		worked: Dictionary = {}) -> String:
+	var made: Array = []
+	_text_into(made, title, with_steps, worked, null)
+	return str(made[0])
+
+
+## [method to_text] into [param made]; a slice at a time with a
+## [param pace] (the autosave's).
+func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary,
+		pace: FramePace) -> void:
 	## brick id -> which step it belongs to, and each sub-assembly copy's
 	## path -> the step it goes on in.
 	var step_of: Dictionary = {}
@@ -980,8 +1032,10 @@ func to_text(title: String = "Model", with_steps: bool = false,
 
 	var placements: Array = []
 	for item: Variant in world.bricks():
+		if pace != null and pace.due():
+			await pace.next()
 		var brick: BrickWorld.Brick = item
-		if scenery.has(brick.id):
+		if world.get_brick(brick.id) != brick or scenery.has(brick.id):
 			continue
 		var placement := LdrModel.Placement.new(
 			brick.part_id, brick.color_code, brick.transform,
@@ -1002,7 +1056,11 @@ func to_text(title: String = "Model", with_steps: bool = false,
 	# Sorted by a key each, compared by the engine: the same order as a
 	# comparison written out here, which took a quarter of a second of
 	# Orthanc's every save, export and autosave.
+	if pace != null:
+		await pace.next()
 	placements = _in_file_order(placements)
+	if pace != null and pace.due():
+		await pace.next()
 	# A made part goes out inside the file, or the file means nothing
 	# anywhere the part was not made.
 	var used: Dictionary = {}
@@ -1017,6 +1075,8 @@ func to_text(title: String = "Model", with_steps: bool = false,
 	tree.library = library
 	tree.scenery = scenery
 	var instances: Dictionary = tree.file_frames(figure_frames())
+	if pace != null and pace.due():
+		await pace.next()
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
 		unit_steps) if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
@@ -1026,7 +1086,7 @@ func to_text(title: String = "Model", with_steps: bool = false,
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
-	return with_set(text, from_set)
+	made.append(with_set(text, from_set))
 
 
 ## [param text] with the set it came from on a line after its first.

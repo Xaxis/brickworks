@@ -110,9 +110,9 @@ export function viewerPart(uri) {
   return found ? found[1] : null;
 }
 export async function partRead(hash, uri, env = process.env) {
-  const root = env.PARTS_URL || (env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/parts/` : "");
+  const root = partsRoot(env);
   if (!root) return null;
-  const answer = await fetch(`${root.replace(/\/?$/, "/")}${hash}.lbm`);
+  const answer = await fetch(`${root}${hash}.lbm`);
   if (!answer.ok) return null;
   const bytes = Buffer.from(await answer.arrayBuffer());
   return { contents: [{ uri, mimeType: "application/octet-stream", blob: bytes.toString("base64") }] };
@@ -164,12 +164,38 @@ export function sessionShows(session) {
 // Where the part geometry is served from (api/account.js's parts_url), as
 // an origin: the one the page may fetch from.
 export function partsOrigin(env = process.env) {
-  const named = env.PARTS_URL || (env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/parts/` : "");
+  const named = partsRoot(env);
   try {
     return named ? new URL(named).origin : "";
   } catch {
     return "";
   }
+}
+
+// Where the part geometry is, ending in "/": the deployment's PARTS_URL,
+// else its Supabase bucket, else "" (a deployment serving its own).
+export function partsRoot(env = process.env) {
+  const named = env.PARTS_URL || (env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/parts/` : "");
+  return named ? named.replace(/\/?$/, "/") : "";
+}
+
+// A tool's answer with each model scene in it (viewer_scene's
+// structuredContent, a look's _meta["brickworks/view"].scene) reading its
+// geometry from partsRoot: the one origin the page may fetch from. The tab
+// learns where parts are only once its deployment answers; asked before
+// that, under load, it said "next to the app", which the page's policy
+// refuses, and every part went through the host instead (2026-10-15).
+export function withPartsRoot(answer, env = process.env) {
+  const root = partsRoot(env);
+  const result = answer && answer.result;
+  if (!root || !result || typeof result !== "object") return answer;
+  const fix = (scene) => {
+    if (scene && typeof scene === "object" && typeof scene.root === "string" && "step" in scene) scene.root = root;
+  };
+  fix(result.structuredContent);
+  const view = result._meta && result._meta["brickworks/view"];
+  if (view && typeof view === "object") fix(view.scene);
+  return answer;
 }
 
 function resourceMeta() {

@@ -33,8 +33,10 @@ whole cycle.
   128 sides of the finished model, and gives them a colour for each section,
   build stage or half, so you can tell where you are while you build, as the
   core of the LEGO® Eiffel Tower set is red one way and yellow the other.
-  Each part only takes a colour it is made in, never one seen on the
-  outside; it shows the inside cut open first, it is one step to undo, and
+  A few strong colours, in the order real sets use them (blue, yellow, red,
+  green), each part only in a colour it is made in, never one the outside
+  is made of or one a seen part beside it has; it shows the inside cut open
+  first, it is one step to undo, and
   a real set's own colours are never changed without a yes. The booklet says
   each colour where its group starts. Claude offers it at the end of a big
   model built in sections, and `colour_hidden_parts` does it over MCP.
@@ -266,6 +268,15 @@ whole cycle.
 
 ### Fixed
 
+- Brickify keeps the whole model. A leg, a spout or a wing thinner than a
+  stud is laid a stud thick instead of never reaching the bricks, so a fox,
+  a figure and an aircraft no longer come out with nothing. A piece apart is
+  joined to the rest by a pillar or a plate across the joint, not dropped;
+  what nothing can join is said, where and why. A model that would tip, or
+  stands on legs or wheels a few studs wide, is laid on a stand, and the
+  panel weighs it before it says "buildable". If a size lays nothing, the
+  panel says the smallest that keeps it. Plates go down as 3023b, the number
+  LDraw gives the commonest plate today, so parts lists find its element.
 - Checking a big Technic model is quick again. Since parts are checked where
   they stand, a turned part's collision cover is hundreds of boxes, and a part
   a file carries can be tens of thousands (the drum of the 42112 concrete

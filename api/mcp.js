@@ -131,7 +131,7 @@ import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
 import {
   ASK_VIEWS, EXTENSION, VIEWER_ONLY, VIEWER_TOOLS, asRead, isViewerOnly, partRead, sessionFor, sessionShows,
-  showsApps, viewerAsked, viewerListed, viewerPart, viewerRead, withViewer,
+  showsApps, viewerAsked, viewerListed, viewerPart, viewerRead, withPartsRoot, withViewer,
 } from "./_viewer.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
@@ -701,7 +701,10 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       changed = await toBeTold(where.listKey, served);
     }
   }
-  const send = (answer) => answerWith(response, readFor ? asRead(answer, readFor) : answer, changed, stream);
+  const send = (answer) => {
+    const rooted = withPartsRoot(answer);
+    return answerWith(response, readFor ? asRead(rooted, readFor) : rooted, changed, stream);
+  };
 
   // The handshake and the tool list, from what the tab sent when it
   // switched on: answered whether or not the tab is awake to answer.

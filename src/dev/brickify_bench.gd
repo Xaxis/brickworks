@@ -169,9 +169,31 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 				continue
 			model = result["model"]
 			grid = result["grid"]
+			var report: Dictionary = result["report"]
 			info["ms"] = result["ms"]
-			info["mended"] = int((result["report"] as Dictionary).get("mended", 0))
-			info["coverage"] = float((result["report"] as Dictionary).get("coverage", 0.0))
+			info["mended"] = int(report.get("mended", 0))
+			info["coverage"] = float(report.get("coverage", 0.0))
+			info["tied"] = int(report.get("tied", 0))
+			info["thin"] = grid.thin
+			info["joined"] = (report.get("joined", []) as Array).size()
+			info["left_out"] = (report.get("left_out", []) as Array).size()
+			info["lost_share"] = float((report.get("lost", {}) as Dictionary).get("share", 0.0))
+			info["lost_regions"] = ((report.get("lost", {}) as Dictionary).get("regions", []) as Array).size()
+			info["said"] = Brickify.said(result)
+			# The stand, by its parts (indices now) and how far it lifts the
+			# model: brickify_bench.py lines the model up again and leaves the
+			# stand out of the likeness, which is of the model.
+			var stand: Dictionary = report.get("stand", {})
+			if not stand.is_empty():
+				var indices: Array = []
+				for placement: Variant in stand.get("placements", []):
+					var at: int = model.placements.find(placement)
+					if at >= 0:
+						indices.append(at)
+				var rect: Rect2i = stand["rect"]
+				info["stand"] = {"rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y],
+					"why": str(stand["why"]), "parts": indices,
+					"lift_ldu": int(stand.get("lift", 0)) * 8}
 		info["total_ms"] = Time.get_ticks_msec() - t0
 		if arm == "greedy":
 			info["coverage"] = Brickify.coverage(grid, model, _checker)
@@ -320,6 +342,10 @@ func _record(model: Assistant.Model, info: Dictionary, stem: String, slug: Strin
 	var placed: Array = []
 	var lattice := BrickLattice.new()
 	var at_of: Array = []
+	# The model's own surface: a stand's tiles are not the model's top.
+	var stand: Dictionary = {}
+	for index: Variant in (info.get("stand", {}) as Dictionary).get("parts", []):
+		stand[int(index)] = true
 	for index: int in model.placements.size():
 		var p: Assistant.Placement = model.placements[index]
 		var part: Lbm.PartMesh = _library.mesh_for(p.part)
@@ -329,10 +355,11 @@ func _record(model: Assistant.Model, info: Dictionary, stem: String, slug: Strin
 		var at: Transform3D = _checker._transform(p, part)
 		at_of.append(at)
 		lattice.occupy_boxes(index + 1, _builder.boxes_for(part, at))
-		var kind: String = str(_kind.get(p.part, "plain"))
-		counts[kind] = int(counts[kind]) + 1
-		if p.face != "up":
-			counts["sideways"] = int(counts["sideways"]) + 1
+		if not stand.has(index):
+			var kind: String = str(_kind.get(p.part, "plain"))
+			counts[kind] = int(counts[kind]) + 1
+			if p.face != "up":
+				counts["sideways"] = int(counts["sideways"]) + 1
 		colours[p.color] = true
 		var lot: String = "%s/%d" % [p.part, p.color]
 		lots[lot] = int(lots.get(lot, 0)) + 1
@@ -351,7 +378,7 @@ func _record(model: Assistant.Model, info: Dictionary, stem: String, slug: Strin
 	for index: int in model.placements.size():
 		var p: Assistant.Placement = model.placements[index]
 		var part: Lbm.PartMesh = _library.mesh_for(p.part)
-		if part == null:
+		if part == null or stand.has(index):
 			continue
 		var at: Transform3D = at_of[index]
 		for connector: Lbm.Connector in part.connectors:

@@ -138,16 +138,16 @@ Of the hidden parts, 3,549 (6.1%) are in a colour the set uses mostly inside, vi
 | Red | 28 | 671 | 8.4% | 3 |
 | Green | 20 | 269 | 8.1% | 4 |
 | Dark Turquoise | 7 | 55 | 16.2% | 5 |
-| Bright Pink | 7 | 28 | 20.8% | 6 |
-| Lime | 6 | 48 | 5.6% | 7 |
-| Orange | 6 | 34 | 9.7% | 8 |
-| Medium Azure | 6 | 43 | 18.4% | 9 |
+| Bright Pink | 7 | 28 | 20.8% | 13 |
+| Lime | 6 | 48 | 5.6% | 6 |
+| Orange | 6 | 34 | 9.7% | 7 |
+| Medium Azure | 6 | 43 | 18.4% | 8 |
 | Medium Nougat | 3 | 142 | 8.1% | – |
-| Bright Green | 2 | 7 | 3.1% | 10 |
-| Medium Blue | 2 | 7 | 5.2% | 11 |
-| Dark Azure | 2 | 8 | 4.1% | 12 |
+| Bright Green | 2 | 7 | 3.1% | 9 |
+| Medium Blue | 2 | 7 | 5.2% | 10 |
+| Dark Azure | 2 | 8 | 4.1% | 11 |
 | Dark Orange | 2 | 11 | 5.9% | – |
-| Bright Light Orange | 1 | 3 | 3.8% | 13 |
+| Bright Light Orange | 1 | 3 | 3.8% | 12 |
 | Dark Pink | 1 | 14 | 6.0% | 14 |
 
 ### By section
@@ -184,6 +184,22 @@ Of the 4,393 parts in the sets' accent colours, the measure calls 80.8% hidden o
 | 10261-1 | 4,209 | 103 | none |
 | 10182-1 | 2,417 | 322 | none |
 
+### Our palette against LEGO's
+
+68 sets that mark their insides, each measured once (48 sides, one picture, as the audit) and planned by both palettes as display models, with their defaults (`src/dev/hidden_colours_lego.gd`, `tools/hidden_colours_audit.py --lego`). "Before" is the palette at 12aaca2, which ruled out any colour near one seen anywhere outside and gave every small group its own colour. A colour counts as LEGO's only when it is exactly one of the set's accents; stand-ins (Bright Light Orange for Yellow) count as colours of their own.
+
+| | sets given a colour | picks one of LEGO's | LEGO's colours picked (mean) | overlap (Jaccard, mean) | colours a set (mean) | pinks, magenta, coral |
+|---|---|---|---|---|---|---|
+| by stage, before | 67 | 23 (34%) | 23% | 0.13 | 4.2 | 25% of colours |
+| by stage, after | 67 | 55 (82%) | 66% | 0.39 | 2.2 | 0% of colours |
+| by section, before | 67 | 26 (39%) | 27% | 0.14 | 4.6 | 28% of colours |
+| by section, after | 67 | 52 (78%) | 63% | 0.34 | 2.8 | 0% of colours |
+
+- 10276-1.mpd: LEGO Medium Azure, Blue, Dark Azure, Medium Nougat, Nougat, Yellow, Red, Dark Orange; before Dark Turquoise, Lime, Dark Pink, Medium Blue, Orange, Bright Pink, Medium Azure, Magenta; after Blue, Yellow, Bright Light Orange (by stage)
+- 10294-1.mpd: LEGO Blue, Yellow, Red, Medium Nougat, Green, Dark Azure, Dark Orange, Lime, Orange; before Orange, Medium Blue, Dark Pink, Medium Lavender, Magenta, Medium Azure, Bright Pink, Coral; after Blue, Red (by stage)
+- 21309-1.mpd: LEGO Red, Yellow, Green; before Orange, Bright Pink, Medium Azure, Lime, Dark Turquoise, Magenta, Dark Pink; after Yellow, Bright Light Orange, Green, Bright Green (by stage)
+- 10179-1.mpd: LEGO Blue; before Green, Dark Turquoise, Lime, Orange, Medium Azure, Bright Pink, Medium Blue, Dark Pink; after Blue, Yellow (by stage)
+
 ### What it says
 
 - **It is a big-set, recent practice.** Fewer than 1 set in 100 under 200 parts
@@ -194,7 +210,8 @@ Of the 4,393 parts in the sets' accent colours, the measure calls 80.8% hidden o
   Turquoise, Bright Pink, Lime, Orange, Medium Azure in six or seven sets each).
   That is what the reviews name: the Colosseum's blue, red and yellow, the
   Titanic's five colours, the Saturn V's red, yellow and green all come out of the
-  files. Brickworks offers its colours in this measured order.
+  files. Brickworks offers its colours in this measured order, and like LEGO lets a
+  colour inside that the outside shows only a little of.
 - **LEGO marks; it does not paint the whole core.** Only 6.1% of hidden parts are
   in an accent colour, and only 2.2% are in a colour nothing outside has at all:
   the accent colour is very often also used, sparingly, somewhere seen. Brickworks
@@ -240,14 +257,17 @@ nothing about what is seen changed. Real sets are coloured as display models
 
 | model | grouped | parts | hidden | coloured | colours | outside, pixels that differ (8 or 7 sides) | copies rebuilt |
 |---|---|---|---|---|---|---|---|
-| 10276 Colosseum | by stage, on a table | 9,060 | 545 | 272 | Dark Turquoise (236), Bright Pink (14), Medium Blue (2), Orange (4), Medium Azure (3), Dark Pink (2), Lime (11) | 0, 0, 0, 0, 0, 0, 0 | 0 |
-| 21309 Saturn V | by stage, on a table | 1,845 | 506 | 299 | Orange (72), Bright Pink (54), Medium Azure (29), Lime (80), Dark Turquoise (49), Dark Pink (15) | 0, 0, 0, 0, 0, 0, 0 | 0 |
-| 10294 Titanic | by stage, on a table | 9,168 | 2,917 | 1,959 | Orange (634), Medium Blue (319), Dark Pink (183), Coral (53), Magenta (83), Medium Azure (353), Bright Pink (267), Medium Lavender (67) | 0, 0, 0, 0, 0, 0, 0 | 0 |
-| 10182 Café Corner | by stage, on a table | 2,417 | 225 | 67 | Dark Turquoise (8), Bright Pink (11), Orange (18), Blue (20), Magenta (4), Dark Pink (6) | 0, 0, 0, 0, 0, 0, 0 | 0 |
-| Wizard's Tower (models/orthanc.ldr) | by section | 9,427 | 157 | 157 | Red (44), Bright Pink (37), Dark Turquoise (42), Lime (34) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
-| castle (models/castle.ldr) | by section | 2,438 | 25 | 25 | Dark Turquoise (13), Lime (1), Bright Pink (11) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
-| 10283 Space Shuttle Discovery | left and right, on a table | 2,348 | 499 | 320 | Lime (114), Green (206) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10276 Colosseum | by stage, on a table | 9,060 | 545 | 259 | Blue (282) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 21309 Saturn V | by stage, on a table | 1,845 | 506 | 332 | Yellow (178), Green (159) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10294 Titanic | by stage, on a table | 9,168 | 2,917 | 2,225 | Blue (1245), Red (1109) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10182 Café Corner | by stage, on a table | 2,417 | 225 | 73 | Red (34), Blue (39) | 0, 0, 0, 0, 0, 0, 0 | 0 |
+| Wizard's Tower (models/orthanc.ldr) | by section | 9,541 | 212 | 212 | Blue (62), Red (48), Yellow (54), Green (48) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
+| castle (models/castle.ldr) | by section | 2,438 | 25 | 25 | Yellow (13), Red (12) | 0, 0, 0, 0, 0, 0, 0, 0 | 0 |
+| 10283 Space Shuttle Discovery | left and right, on a table | 2,348 | 499 | 307 | Green (128), Red (191) | 0, 0, 0, 0, 0, 0, 0 | 0 |
 
+Every model takes only Blue, Yellow, Red or Green, as LEGO's own insides mostly
+do: the Colosseum one colour (its second stage held under a tenth of the hidden
+parts and joined the first), the Wizard's Tower one for each of its four parts.
 Every model's outside is the same pixel for pixel from every side compared, and
 no copy of a sub-assembly was rebuilt (`Assemblies.unlike_copies` put back 16 to
 60 parts a set whose copies would otherwise no longer have matched). On the
@@ -269,7 +289,14 @@ The sampling is not idle caution. Measured from 48 sides, one picture each, the
 castle's outside differed by 7 pixels from one of the sides never measured from:
 a part seen through a crack at that angle. From 128 sides drawn twice, by none.
 
-`src/dev/hidden_colours_probe.gd` holds the rest in the suite: a closed box's
+`src/dev/hidden_colours_probe.gd` holds the rest in the suite. It says where its
+time goes: on 2026-10-15 at load 50 it took 657 s against the suite's 420, of which
+461 s was the main scene starting (every probe that loads `main.tscn` pays the same:
+design_undo 398 s and gallery_tool 384 s at that load), and 170 s its own work. With
+the window's 3D view off from the start and a 294-part set for the asking step in
+place of 10182, that work is down from about 210 s. Under 420 s it needs the scene to
+start faster or the box to be quieter; on a quiet box the scene starts in about 20 s.
+What it checks: a closed box's
 three inner bricks found exactly, a gap and a clear window seen through, the
 castle through the panel's own Apply (outside the same from eight sides, one
 Undo), a real set refused without a yes, and the booklet's marks.
@@ -293,16 +320,25 @@ Tools, Colour the hidden parts… (`src/ui/hidden_colours_panel.gd`), and
    by default (a model is picked up); off, it measures as a display model is looked at.
 2. **Group them** by section (the booklet's sections: the assemblies a design named, a
    sub-model, a region of a big model), by build stage (the booklet's steps cut into
-   stages of about 300 parts, as bags are; the person can set how many), or by half
-   (left and right, front and back).
-3. **One colour a group.** From the colours real sets put inside, in the order they use
-   them (blue, yellow, red, green, then the modern brights), and the other strong
-   colours in production; each at least 22 CIE76 units from every colour
-   seen on the outside and 20 from the other groups', in production
-   (`PartLibrary.is_current`); the largest group chooses first, the colour most of its
-   hidden parts were made in. Each part takes the group's colour only if the catalogue
-   says that part was made in it (`PartInfo.colors`, preferring `colors_recent`), else
-   a near colour no other group has, else it keeps its own.
+   two stages unless the person asks for more, as LEGO's marked sets use 1.9 colours
+   on average), or by half (left and right, front and back). Few, strong colours: a
+   group with under a tenth of the parts being coloured joins its neighbour in the
+   build (three in four of LEGO's smallest inside colours have more than 9% of the
+   set's), and no more than four groups are left to the model to say (62 of the 68
+   marked sets use four colours or fewer).
+3. **One colour a group**, the largest group first: the first colour in the order real
+   sets use them inside (Blue, Yellow, Red, Green, then the modern brights; the
+   pinks, magenta, lavender and coral last) that reaches at least 60% as many of the
+   group's parts as the colour reaching most, in production
+   (`PartLibrary.is_current`), and 20 CIE76 units from the other groups'. A colour is
+   out only when it, with the colours seen within 22 CIE76 of it, is 2% or more of
+   the outside's parts: 82 of LEGO's 130 inside colours are seen outside too, at a
+   median 0.15% of the outside, and 127 are under 2%. A small blue cart does not keep
+   blue out of a grey model; a blue wall does. A part never takes the colour of a seen
+   part it touches, which would read as more of that part. Each part takes the group's
+   colour only if the catalogue says that part was made in it (`PartInfo.colors`,
+   preferring `colors_recent`), else a near colour no other group has, else it keeps
+   its own.
 4. **Never what is seen**, nor: see-through, chrome, rubber and other finishes;
    printed and stickered parts; minifigures; locked parts; parts whose colours nobody
    knows; a hidden part already in a vivid colour nothing outside has (somebody coded

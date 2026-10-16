@@ -14,7 +14,7 @@
 // find_techniques fetches the index once and answers with real pieces,
 // place_technique lays one on a plate, and find_parts_like fetches the
 // looks and answers. Costs nothing: no model is called.
-import { launch, openColumnFor } from "./browser.mjs";
+import { launch, openColumnFor, withJobs } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -104,7 +104,10 @@ try {
   check(asked.length === 0, "connecting Claude asks for nothing under knowledge/ either");
 
   let sent = 0;
-  async function claude(method, params) {
+  // Every call as a session makes it: one that becomes a job is followed to
+  // its answer, and one turned away while a job runs waits for it.
+  const claude = withJobs(send);
+  async function send(method, params) {
     sent += 1;
     const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
     if (bypass) headers["x-vercel-protection-bypass"] = bypass;
@@ -113,19 +116,6 @@ try {
     });
     return answer.json();
   }
-  // An answer that started a job, followed to the job's own answer: "Started
-// job N" is followed with the job tool until it says done (each call waits
-// up to 10 s), as a session is told to.
-async function followed(answer) {
-  const started = said(answer).match(/Started job (\d+)/);
-  if (!started) return answer;
-  for (let n = 0; n < 36; n++) {
-    const next = await claude("tools/call", { name: "job", arguments: { id: Number(started[1]) } });
-    if (!/is still going/.test(said(next))) return next;
-  }
-  return answer;
-}
-
 const said = (answer) => (answer.result?.content || []).map((c) => c.text || "").join(" ").replace(/\s+/g, " ");
   const pictures = (answer) => (answer.result?.content || []).filter((c) => c.type === "image");
   await claude("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "knowledge_check", version: "1" } });
@@ -138,7 +128,7 @@ const said = (answer) => (answer.result?.content || []).map((c) => c.text || "")
   // A call still going after 20 s becomes a job (ToolJobs), as on a busy box
   // it did twice (21.8 s); a session follows it with the job tool, and so
   // does this, taking the job's answer as the call's.
-  const found = await followed(await claude("tools/call", { name: "find_techniques", arguments: { query: "car nose", max_studs: 8 } }));
+  const found = await claude("tools/call", { name: "find_techniques", arguments: { query: "car nose", max_studs: 8 } });
   const foundMs = Date.now() - t;
   const text = said(found);
   writeFileSync(`${out}/find_techniques.txt`, text);
@@ -158,12 +148,12 @@ const said = (answer) => (answer.result?.content || []).map((c) => c.text || "")
   await claude("tools/call", { name: "clear_model", arguments: {} });
   await claude("tools/call", { name: "edit_model", arguments: { add: [{ part: "91405", color: 72, x: 0, y: 0, z: 0, rot: 0 }] } });
   const laysId = (text.match(/(?:^| )\d\. (\S+) "[^;]*; lays as it stands/) || [])[1] || ids[0];
-  const placed = said(await followed(await claude("tools/call", { name: "place_technique", arguments: { id: laysId, x: 4, y: 1, z: 4 } })));
+  const placed = said(await claude("tools/call", { name: "place_technique", arguments: { id: laysId, x: 4, y: 1, z: 4 } }));
   writeFileSync(`${out}/place_technique.txt`, placed);
   check(placed.includes("Done."), `place_technique laid ${laysId} on the plate: ${placed.slice(0, 120)}`);
   check(asked.filter(([, u]) => u.endsWith("snippets.json.gz")).length === 1, "...without fetching the index again");
 
-  const looks = said(await followed(await claude("tools/call", { name: "find_parts_like", arguments: { query: "claw" } })));
+  const looks = said(await claude("tools/call", { name: "find_parts_like", arguments: { query: "claw" } }));
   writeFileSync(`${out}/find_parts_like.txt`, looks);
   check(asked.some(([, u]) => u.endsWith("part_looks.json")) && looks.includes("reads as"),
     `find_parts_like fetched the looks and answered: ${looks.slice(0, 100)}`);

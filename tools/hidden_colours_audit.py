@@ -2,6 +2,7 @@
 """Add up the hidden colours audit (src/dev/hidden_colours_audit.gd).
 
     python3 tools/hidden_colours_audit.py FILE.jsonl [FILE.jsonl ...]
+    python3 tools/hidden_colours_audit.py --lego FILE.jsonl ...   (src/dev/hidden_colours_lego.gd)
 
 Each line is one real set of the LDraw model repository: which of its parts
 nobody sees in the finished model on a table (measured from pictures,
@@ -26,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Our own order of preference (HiddenColours.ACCENTS), to set against LEGO's.
-OURS = [1, 14, 4, 2, 3, 29, 27, 25, 322, 10, 73, 321, 191, 5, 26, 30, 353, 212, 15, 19]
+OURS = [1, 14, 4, 2, 3, 27, 25, 322, 10, 73, 321, 191, 29, 5, 26, 30, 353, 212, 15, 19]
 
 
 def lab(rgb):
@@ -284,8 +285,65 @@ def main(paths):
     print()
 
 
+def lego(paths):
+    """Our palette against LEGO's, from src/dev/hidden_colours_lego.gd lines."""
+    colours = {int(c["code"]): c for c in json.load(open(ROOT / "assets/generated/colors.json"))}
+    rows = {}
+    for path in paths:
+        for line in open(path):
+            if line.strip():
+                row = json.loads(line)
+                rows[row["file"]] = row
+    rows = [r for r in rows.values() if r["lego"]]
+    soft = {29, 5, 26, 30, 353}  # the pinks, magenta, lavender and coral
+
+    def name(code):
+        return colours[code]["name"] if code in colours else str(code)
+
+    print(f"### Our palette against LEGO's\n\n{len(rows)} sets that mark their insides, "
+          f"each measured once and planned by both palettes, as display models.\n")
+    print("| | sets given a colour | picks one of LEGO's | LEGO's colours picked (mean) "
+          "| overlap (Jaccard, mean) | colours a set (mean) | pinks, magenta, coral |")
+    print("|---|---|---|---|---|---|---|")
+    for mode in ("stages", "sections"):
+        for when, key in (("before", mode + "_before"), ("after", mode)):
+            given = hit = 0
+            recall = jaccard = count = 0.0
+            soft_n = total_n = 0
+            for r in rows:
+                ours = set(r.get(key, []))
+                if not ours:
+                    continue
+                theirs = set(r["lego"])
+                given += 1
+                both = ours & theirs
+                hit += 1 if both else 0
+                recall += len(both) / len(theirs)
+                jaccard += len(both) / len(ours | theirs)
+                count += len(ours)
+                soft_n += len(ours & soft)
+                total_n += len(ours)
+            if not given:
+                continue
+            print(f"| by {mode[:-1] if mode == 'stages' else 'section'}, {when} | {given} | "
+                  f"{hit} ({100 * hit / given:.0f}%) | {100 * recall / given:.0f}% | "
+                  f"{jaccard / given:.2f} | {count / given:.1f} | "
+                  f"{100 * soft_n / max(1, total_n):.0f}% of colours |")
+    print()
+    for f in ("10276-1.mpd", "10294-1.mpd", "21309-1.mpd", "10179-1.mpd"):
+        r = next((x for x in rows if x["file"] == f), None)
+        if r:
+            print(f"- {f}: LEGO {', '.join(name(c) for c in r['lego'])}; before "
+                  f"{', '.join(name(c) for c in r.get('stages_before', []))}; after "
+                  f"{', '.join(name(c) for c in r.get('stages', []))} (by stage)")
+    print()
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         raise SystemExit(2)
-    main(sys.argv[1:])
+    if sys.argv[1] == "--lego":
+        lego(sys.argv[2:])
+    else:
+        main(sys.argv[1:])

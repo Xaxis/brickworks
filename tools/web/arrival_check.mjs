@@ -38,7 +38,7 @@
 // no more than --budget ms (2,000) of the engine's own work, and the app
 // never says the model is still going up (its build animation) once the
 // tab is in view with the answer given. Costs nothing: no model is called.
-import { launch, openColumnFor, START_MS } from "./browser.mjs";
+import { launch, openColumnFor, START_MS, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -225,18 +225,9 @@ async function runCase(size, mode) {
   const said = (answer) => (answer.result?.content || []).map((c) => c.text || "").join(" ").replace(/\s+/g, " ");
   // A call still going after 20 s answers with a job (src/net/tool_jobs.gd),
   // as the Falcon's check did on a loaded machine, and the submit after it
-  // was refused as the app being busy. Polled as a session polls it: the
-  // job's last answer is the call's.
-  async function tool(name, args) {
-    let answer = await claude("tools/call", { name, arguments: args });
-    const started = /Started job (\d+)/.exec(said(answer));
-    if (!started) return answer;
-    for (let tries = 0; tries < longest / 10000; tries++) {
-      answer = await claude("tools/call", { name: "job", arguments: { id: Number(started[1]) } });
-      if (!/is still going/.test(said(answer))) break;
-    }
-    return answer;
-  }
+  // was refused as the app being busy. Followed as a session follows it.
+  const jobs = withJobs(claude, { waits: Math.ceil(longest / 10000) });
+  const tool = (name, args) => jobs("tools/call", { name, arguments: args });
   await claude("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "arrival_check", version: "1" } });
   await claude("tools/list", {});
 
