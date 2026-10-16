@@ -275,3 +275,16 @@ def test_frame_table_marks_what_is_over_budget():
     # No frame finished in the 3 s it was given: longer than that, a miss.
     assert by[("web", "undo")]["longer_than_ms"] == 3010 and by[("web", "undo")]["p95_over"]
     assert len(rows) == 7
+
+
+def test_a_build_measured_must_offer_every_part():
+    # An export made with no PARTS_URL offers only the parts with the
+    # smallest meshes; the first run's "6157" led with another part for it.
+    import json
+    import tempfile
+    folder = Path(tempfile.mkdtemp())
+    catalogue = folder / "catalogue.json"
+    catalogue.write_text(json.dumps({"parts": [
+        {"id": "6157", "reachable": False}, {"id": "3001", "reachable": True}, {"id": "3023"}]}))
+    assert cadtask.web_parts_offered(catalogue) == (2, 3)
+    assert cadtask.web_parts_offered(folder / "none.json") == (0, 0)

@@ -91,9 +91,9 @@ def test_model_build_sums_parts_and_steps():
     three = klm.model_part("brickworks", parts[2], parts[1])
     assert built["seconds"] == klm.seconds(one + two + three)
     assert built["seconds_per_part"] == round(built["seconds"] / 3, 2)
-    # Steps: per step M K (Shift held), a click a part, Shift+N (K K).
+    # Steps: E once a step, as Studio's.
     marking = klm.model_steps("brickworks", [1, 2])
-    assert Counter(marking) == Counter({"M": 2, "K": 6, "P": 3, "B": 6})
+    assert Counter(marking) == Counter({"M": 2, "K": 2})
     assert built["with_steps"]["seconds"] == klm.seconds(one + two + three + marking)
     assert Counter(klm.model_steps("studio", [1, 2])) == Counter({"M": 2, "K": 2})
     # Actions are keys, pointings and clicks, a click once.
@@ -115,3 +115,15 @@ def test_compare_run_says_what_was_extra():
     assert got["modelled_seconds_per_part"] == modelled["seconds_per_part"]
     assert got["extra_aims"] == 3
     assert got["measured_wall_seconds_per_part"] == 30.0
+
+
+def test_an_old_grey_is_its_name_typed_in_brickworks():
+    # 7, Light Grey, is in no set since the palette's year: not in the short
+    # palette, so Shift-C, "Light Grey", Enter, both hands to the keys.
+    assert not klm.in_short_palette(7)
+    assert klm.in_short_palette(15)
+    ops = klm.model_part("brickworks", _part("3034", 7), _part("3034", 15))
+    assert Counter(ops) == Counter({"M": 2, "H": 2, "K": 3 + len("Light Grey"), "P": 1, "B": 2})
+    # Studio's colour menu shows every colour: two clicks either way.
+    assert Counter(klm.model_part("studio", _part("3034", 7), _part("3034", 15))) \
+        == Counter(klm.model_part("studio", _part("3034", 71), _part("3034", 15)))

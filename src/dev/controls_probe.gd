@@ -63,6 +63,29 @@ func _run() -> void:
 	_assert("Q alone puts the last part in hand", verbs.mode == "place")
 	_press(KEY_ESCAPE)
 	_assert("...and Escape lets go of it", verbs.mode == "select")
+	# E, Next step: the parts down so far make a step (as Studio's E), one
+	# undo; and Shift-C puts the keys in the colour's name (2026-10-16).
+	var stepped := func() -> int:
+		return world.bricks().filter(func(b: BrickWorld.Brick) -> bool: return b.step >= 0).size()
+	var unstepped: int = stepped.call()
+	_press(KEY_E)
+	for _n: int in 4:
+		await process_frame
+	_assert("E makes a step of the parts put down (%d to %d in a step)"
+		% [unstepped, stepped.call()], stepped.call() > unstepped)
+	_press(KEY_Z, true)
+	for _n: int in 4:
+		await process_frame
+	_assert("...and Ctrl-Z takes it back (%d in a step)" % stepped.call(),
+		stepped.call() == unstepped)
+	_press(KEY_C, false, true)
+	await process_frame
+	var bin: PartsBin = _main.get("_bin")
+	_assert("Shift-C puts the keys in the colour's name",
+		root.gui_get_focus_owner() == bin._colour_find)
+	_press(KEY_ESCAPE)
+	await process_frame
+	_assert("...and Escape gives them back", root.gui_get_focus_owner() != bin._colour_find)
 	# Pushed off the model first. F on an already-framed scene correctly
 	# does nothing, so checking that the transform changed would fail a
 	# working key — the question is whether F brings the camera back,

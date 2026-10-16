@@ -92,7 +92,19 @@ geometry in front of them.
   selected stayed red (2026-10-12). With a part in hand it is the colour of
   what goes down next. `handbuild_probe` clicks one. The bracket keys and the
   eyedropper go through `_on_colour` without painting, which opens the long
-  palette for a colour the short one does not show. The mosaic keeps its own 44 (`Mosaic.PALETTE`). The palette
+  palette for a colour the short one does not show. A colour by its name or
+  number (2026-10-16): the field beside Colour (`Shift-C` puts the keys in
+  it; Build and the controls list say so) shows, from every colour there is,
+  those that answer (`PartsBin.colours_named`: the number exactly, LDraw's or
+  LEGO's name exactly, a name beginning so, every word in a name, numbers
+  beginning so; gray is grey; the most used first), the line over them naming
+  the first ("Light Grey (7) first of 3"), so a name is typed only until it
+  is the one; Enter takes it into hand as a click on its swatch does, the
+  field emptied and the keys given back. The old greys (7 Light Grey, 8 Dark Grey), all over older sets,
+  are not in the short palette and look like the bluish greys beside them
+  under All: the CAD task test put 3 parts of 8 in the wrong colour for want
+  of them. `handbuild_probe -- only=build_from_a_booklet` types "light grey",
+  "dark gray", "71" and "Light Bluish" and reads the colour in hand. The mosaic keeps its own 44 (`Mosaic.PALETTE`). The palette
   is a section of its own at the foot of the left-hand column
   (`PartsBin.colours`, under the model tree and the properties), as tall as
   what it holds up to 14% of the column and a scroll beyond

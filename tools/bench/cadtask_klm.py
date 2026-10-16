@@ -35,7 +35,10 @@ Conventions, the same for both apps:
 
 from __future__ import annotations
 
+import json
 from collections import Counter
+from functools import lru_cache
+from pathlib import Path
 
 ## Seconds per operator (Card, Moran and Newell 1980, table 2).
 SECONDS = {"K": 0.28, "P": 1.1, "B": 0.1, "H": 0.4, "M": 1.35}
@@ -70,12 +73,41 @@ ASSUMPTIONS = [
     "Brickworks: / focuses the parts search (controls_hint.gd); the old text needs Ctrl+A.",
     "Brickworks: the part stays in hand after a click (the status bar says so), so a "
     "second copy costs no search; the turn in hand is kept.",
-    "Brickworks: the colour is a swatch in the always-open palette: one click.",
+    "Brickworks: the colour is a swatch in the always-open palette: one click. A colour not "
+    "in sets since the palette's year (the old greys, 7 and 8) is not in that palette and "
+    "has look-alikes beside it under All, so it is its name typed: Shift-C, the name, Enter "
+    "(parts_bin.gd, colours_named). The whole name is counted, which is the most: the line "
+    "over the palette names the first match, and a person stops typing once it is theirs.",
     "Brickworks: R and Shift-R turn the part in hand a quarter about its up; T and Shift-T "
     "roll it onto the next face in the order up, +z, down, -z, +x, -x (BrickLattice.FACES).",
-    "Brickworks: no control marks a step while building; each author step is its parts "
-    "selected (Shift held, a click each) and Edit > New step from selection, Shift+N.",
+    "Brickworks: E, Next step, once a step's parts are down: what was put down since the "
+    "last step makes one (shell.gd, step_close), as Studio's E is modelled.",
 ]
+
+
+## The colours the palette shows without All: those in sets lately
+## (assets/generated/colors.json's current, PartLibrary.is_current).
+COLOURS = Path(__file__).resolve().parent.parent.parent / "assets" / "generated" / "colors.json"
+
+
+@lru_cache(maxsize=1)
+def _palette() -> dict[int, dict]:
+    try:
+        return {int(c["code"]): c for c in json.loads(COLOURS.read_text())}
+    except (OSError, ValueError):
+        return {}
+
+
+def in_short_palette(code: int) -> bool:
+    """Whether the palette shows [code] before All is pressed. Unknown
+    colours count as shown, which favours neither app."""
+    colour = _palette().get(int(code))
+    return True if colour is None else bool(colour.get("current", True))
+
+
+def colour_name(code: int) -> str:
+    colour = _palette().get(int(code))
+    return str(colour["name"]) if colour else str(code)
 
 
 def seconds(ops: list[str] | Counter) -> float:
@@ -174,7 +206,12 @@ def model_part(app: str, part: dict, prev: dict | None) -> list[str]:
             # / to the search, Ctrl+A, the number; a look; the first tile.
             ops += ["M", "H", "K", "K", "K"] + typed + ["H", "M", "P", "B", "B"]
         if prev is None or prev["colour"] != part["colour"]:
-            ops += ["M", "P", "B", "B"]
+            if in_short_palette(part["colour"]):
+                ops += ["M", "P", "B", "B"]
+            else:
+                # Shift-C, the name, Enter: both hands to the keys and back.
+                ops += ["M", "H", "K", "K"] + ["K"] * len(colour_name(part["colour"])) \
+                    + ["K", "H"]
         turn_from = tuple(prev["turn"]) if prev else ("up", 0)
         keys = brickworks_turn_keys(turn_from, tuple(part["turn"]))
         if keys:
@@ -202,14 +239,10 @@ def model_part(app: str, part: dict, prev: dict | None) -> list[str]:
 def model_steps(app: str, steps: list[int]) -> list[str]:
     """Marking the author's steps: [steps] is how many parts each step has."""
     ops: list[str] = []
-    for n in steps:
-        if app == "studio":
-            # E for a new step before the step's parts.
-            ops += ["M", "K"]
-        else:
-            # Selected with Shift held (a click each), then Edit > New step
-            # from selection by its keys, Shift+N (src/ui/shell.gd).
-            ops += ["M", "K"] + ["P", "B", "B"] * n + ["K", "K"]
+    for _n in steps:
+        # Studio: E for a new step. Brickworks: E, Next step, once the
+        # step's parts are down (src/ui/shell.gd, step_close).
+        ops += ["M", "K"]
     return ops
 
 
@@ -230,7 +263,8 @@ def model_build(app: str, parts: list[dict], steps: list[int] | None = None) -> 
         "actions": sum(counts[k] for k in "KPB") - counts["B"] // 2,
         "seconds": seconds(counts), "seconds_per_part": round(seconds(counts) / n, 2),
         "with_steps": {"operators": dict(with_steps), "seconds": seconds(with_steps),
-                       "seconds_per_part": round(seconds(with_steps) / n, 2)},
+                       "seconds_per_part": round(seconds(with_steps) / n, 2),
+                       "actions": sum(with_steps[k] for k in "KPB") - with_steps["B"] // 2},
         "modelled": True,
     }
 
@@ -267,6 +301,12 @@ def compare_run(measured: dict, modelled: dict) -> dict:
     against the seconds it took here, and which operators it had over."""
     parts = max(int(measured.get("tried") or measured.get("parts") or 1), 1)
     ops = measured_operators(measured.get("counts", {}))
+    # A run that marked its steps (E once a step) is held to the model
+    # that marks them too.
+    if measured.get("counts", {}).get("step") and "with_steps" in modelled:
+        modelled = {**modelled, "operators": modelled["with_steps"]["operators"],
+                    "actions": modelled["with_steps"].get("actions", modelled["actions"]),
+                    "seconds_per_part": modelled["with_steps"]["seconds_per_part"]}
     model_ops = Counter(modelled["operators"])
     # The model's motor operators only: M and H are a person's, not events.
     extra = {op: ops[op] - model_ops.get(op, 0) for op in "KPB"}
