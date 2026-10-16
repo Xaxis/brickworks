@@ -96,6 +96,115 @@ technique and surface, the two weakest); and that likeness does not fall,
 which would say a session copied the nearest design's picture rather than
 designing past it. A subject moves only beyond the 0.5 run-to-run spread.
 
+## Against real sets (2026-10-16)
+
+From 2026-10-16 the bar is real LEGO® sets, judged blind, on subjects no round
+was tuned on. Every round before was steered by the subjects it was scored on,
+and our own judge once preferred an outside designer 40 of 40 after calling our
+rounds gains. BrickBench stays one outside check against other designers. We do
+not tune for it.
+
+`tools/bench/realset.py` is the test.
+
+- **Subjects.** The main model of a set in LDraw's model repository, 80 to
+  1,500 parts, from 2000 on, one model to its box. A set is out when its name,
+  its theme or a quarter of its sub-models' names name a kind any round touched:
+  every suite subject, all sixty BrickBench prompts we ran, and the runs and
+  probes in ROADMAP.md (cars, trucks, trains, ships, aircraft, spaceships,
+  rockets, castles and towers, shops, houses, plants, birds, dogs, cats, bears,
+  robots, wizards, statues and more; `TOUCHED` in the tool says where each came
+  from). The suite's reference sets are out by number too. That leaves 142 of
+  1,235 sets. The instructions sample (tools/steps_score.py) is not left out:
+  it scores build order, not design.
+- **Halves.** Fixed by a hash of the set number. Each half has an animal, a
+  person and a creature, then seven more across four sizes, the least used
+  theme first. Ten a half. Tune was looked at while the tool was built; proof
+  was run once, at the end.
+- **The brief** is the set's name, its theme, the footprint it fits in and a
+  quarter either side of its piece count: "Andrea’s Stage, in the style of
+  LEGO® Friends sets: fitting in about 18 x 18 studs, 70 to 110 pieces." The
+  designer never sees the set. Its own pieces are held out of the real-set
+  index for the run, and the log says so: "real sets: holding out 3932-1 (7
+  pieces)".
+- **The judge** sees the design and the set drawn by the same renderer, three
+  views each, under hashed names, in both orders. It is not told either is a
+  set. It picks one per dimension, with a reason. A subject counts the share
+  of its verdicts we won; a win rate has a 95% Wilson interval over subjects.
+
+**Calibration first.** On the tune half the judge named each set over a naive
+stack of itself (`calibrate.naive_stack`) in 120 of 120 verdicts, 95%
+97-100%, every dimension, both orders. Every verdict opened all six pictures.
+
+**The baseline: m32 on the proof half** (main at `2789cd0`, with only the
+set's own pieces held out; one design a subject, 2026-10-16). Ten subjects:
+Valentine's Bee, Jack Skellington & Sally and Steve & Creeper (BrickHeadz),
+Emma's Fashion Design Studio, Container Stacker, Container Yard, Imperial
+Hotel, Dino Explorer, Naida's Spa Secret and Rise of the Sphinx.
+
+| dimension | our design preferred to the set | 95% |
+|---|---|---|
+| likeness | 30% | 11-60% |
+| surface | 20% | 6-51% |
+| colour | 15% | 4-46% |
+| technique | 5% | 1-34% |
+| creativity | 25% | 8-56% |
+| overall | 20% | 6-51% |
+
+- **Overall, the set won seven subjects outright**, both orders. Ours won one
+  outright, the Container Stacker, whose set reads as a telehandler with a
+  hook. The judge split two: the bee, and Steve & Creeper.
+- **Technique is the gap.** One verdict in twenty went our way. The set's
+  reasons are clips on bars, hinged sub-assemblies and faces built sideways;
+  ours are stacked bricks and plates. Jack and Sally were pixel mosaics.
+- **A theme's style counts against us.** Container Yard lost as a stud-heavy
+  diorama where the brief said Technic, Naida's Spa as a generic scene where
+  it said Elves.
+- The two orders named the same model on 82% of dimensions. The model shown
+  first won 42% of verdicts.
+- **Blind by name, not by look.** In 7 of 24 verdicts the reason calls one
+  side a real set of its line ("looks like a real BrickHeadz"). Printed
+  tiles, mini-dolls and a line's build formula give a set away. The judge was
+  never told, and it still chose ours where ours read better as the brief.
+
+What they are made of, the median over the ten (tools/style.py, figures left
+out; floating by the build check's reading, src/dev/connection_audit.gd):
+
+| measure | ours | the sets | ours minus the set's, median |
+|---|---|---|---|
+| parts | 230 | 201 | +13 |
+| shapes per 100 parts | 15 | 28 | -8 |
+| shaped (curve, slope, angled) | 21% | 24% | -12 points |
+| 1 x 1 parts | 24% | 13% | +10 points |
+| colours | 11.5 | 13.5 | -3 |
+| tiles | 15% | 11% | +5 points |
+| studs not up (SNOT) | 4% | 25% | -19 points |
+| hinges, clips, bars, turntables | 0% | 3% | -3 points |
+| floating | 0% | 0% | 0 |
+
+The same size, half the variety of shapes, a sixth of the SNOT and almost no
+joints. Hidden colours were not read: that audit needs pictures of every part.
+
+**The tune half** ran two subjects end to end while the tool was built. The
+set won Andrea's Stage on every verdict. Our Year of the Sheep won overall
+both ways round, for its New Year dressing, and lost surface and technique to
+the set's posed sculpt.
+
+**A design took** 5 to 24 minutes, 9 at the median. Two workers did the proof
+half in 80 minutes, after 23 and 30 minutes in the `heavy` queue at load 40-50.
+
+**Another arm** runs on the same subjects and is judged two ways: each arm
+against the sets, and the two head to head, both orders.
+
+```sh
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms m32,mine --jobs 2
+```
+
+The arm's checkout must hold a set out too (src/ai/real_snippets.gd, from this
+round on), or it can lay the answer. The report names any design whose log
+lacks the hold-out line. Results are in `bench/results/realset-2026-10-16-m32/`
+(report-proof.md, report-tune.md) and `realset-sets/calibration-tune.md`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

@@ -1778,6 +1778,13 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "test designs against real sets",
+      "entry": "tools/bench/realset.py",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | run --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "area": "assistant"
+    },
+    {
       "kind": "lib",
       "label": "keep a run to a list of parts",
       "entry": "src/parts/parts_only.gd",

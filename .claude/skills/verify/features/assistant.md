@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints -->
 
 ## Sub-features
 
@@ -108,6 +108,17 @@ fixing what it got wrong.
   resampled, head to head, and what each arm's builds are made of (stacked,
   plain, shaped, tile, joints, size, baseplates). Under How to check it,
   "BrickBench".
+- `test designs against real sets`: `tools/bench/realset.py`, the main quality
+  bar since 2026-10-16: subjects drawn from LDraw's model repository that no round
+  touched (left out by kind, by name, theme and sub-model names), two fixed halves
+  (tune, proof) with an animal, a person and a creature each, a brief from the
+  set's name, theme, footprint and piece band, the real loop on the subscription
+  (`--arm`, `--checkout`), and the pairwise judge blind between the design and the
+  set, both orders; win rate per dimension with 95% intervals, the set-file
+  measures side by side, and two arms through the set and head to head. A set's
+  own pieces are held out of the designer's real-set index by `--held-out=<set
+  number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
+  sets". Under How to check it, "Real sets".
 - `keep a run to a list of parts`: `src/parts/parts_only.gd`, `--parts-only=FILE`
   (a part number a line, the first `#` line naming the list). search_parts and
   find_parts_like list only those; a design or edit with another is refused
@@ -2231,6 +2242,45 @@ agreement (2026-10-14: 256 of 256 verdicts on 24 known pairs, both orders the
 same on 99%); and every `judged/*.json` lists in `looked_at` all six design
 pictures (456 of 456 on 2026-10-14). A call is about 22 s; four at once judge a
 subject of 12 designs (132 calls) in about 13 minutes.
+
+### Real sets: our design against the set, blind
+
+`tools/bench/realset.py` draws its subjects from vendor/omr: main models of 80 to
+1,500 parts from 2000 on, one model to a box, none of a kind any round touched
+(`TOUCHED`, `TOUCHED_THEMES`, and a quarter of the sub-models' names; the suite's
+reference sets by number too). `sample` is fixed (a hash of the set number):
+tune, which the tool was built on, and proof, run only at the end.
+
+```sh
+python3 tools/minitest.py tests/test_realset.py              # exclusion, halves, brief, reading
+python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half while tuning
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py calibrate --which tune --jobs 2
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which proof --arm m32 --jobs 2
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms m32,mine --jobs 2
+godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
+```
+
+Each of `--jobs` workers runs its share of the subjects, one after another, as
+one `heavy` job (it queues for the machine once; worker-<set>.log): the set drawn
+and checked once into `bench/results/realset-sets/<set>/`, the design by run.py's
+design stage into `realset-<date>-<arm>/<set>/` (brief.json, design.ldr, views,
+audit.jsonl, record.json, judged/), both drawn by `bench_views.gd` and copied to
+`bench/results/blind/<code>/` under hashed names, which is also the judge's
+working folder, so neither a path nor the prompt says which is the set. Each
+stage is skipped when its output is there: the same command resumes.
+`calibrate` judges each tune set against `calibrate.naive_stack` of itself.
+
+Proves it when: `calibrate` names the set on every dimension of every verdict;
+the dry run writes a record with two verdicts and a report; a real design's log
+says `real sets: holding out <set>` once it searched the index; every
+`judged/*.json` lists all six pictures in `looked_at`; and the report's two
+orders agree on most dimensions with the model shown first winning near half
+(2026-10-16: 120 of 120 calibration verdicts named the set; m32's proof half,
+24 of 24 verdicts with all six pictures, orders agreeing on 82%, the first
+shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
+workers after the `heavy` queue).
 
 ### The check by real shapes
 
