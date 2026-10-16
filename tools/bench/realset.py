@@ -32,8 +32,10 @@ tuned on, judged blind.
   own pieces out of the real-set index (src/ai/real_snippets.gd) as well as
   out of design memory, and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
-  subscription under `heavy`. `--checkout` runs another checkout's app as
-  the arm; the renderer, the check and the judge are always this one's.
+  subscription. Each of `--jobs` workers takes its share of the subjects in
+  one `heavy` job, so it queues for the machine once. `--checkout` runs
+  another checkout's app as the arm; the renderer, the check and the judge
+  are always this one's.
 - **The comparison** draws the design and the set with the same renderer
   and cameras, copies both under names that say nothing (bench/results/
   blind/), and asks the pairwise judge, both orders, which is better on
@@ -800,20 +802,33 @@ def run(args: argparse.Namespace) -> int:
         raise SystemExit("set XDG_DATA_HOME to a folder of this run's: a design must never "
                          "write into the owner's app folder")
     wanted = _wanted(args.which, args.subjects)
+    if args.share:          # "K/N": every Nth subject from the Kth, so a half splits unseen
+        k, n = (int(x) for x in args.share.split("/"))
+        wanted = wanted[k::n]
     parts = style.Parts()
     out = arm_dir(args.date, args.arm)
     out.mkdir(parents=True, exist_ok=True)
     if args.what == "one":
+        if not (out / "arm.json").exists():
+            bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
+                                                 "commit": bench.commit(args.checkout),
+                                                 "date": args.date})
         for c in wanted:
-            one(c, args, parts)
+            bench.say(f"{c.number} {c.name}: starting")
+            try:
+                one(c, args, parts)
+            except Exception as failed:  # noqa: BLE001 - one subject's fault stops only it
+                bench.say(f"{c.number}: failed: {failed!r}")
         return 0
     bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                          "commit": bench.commit(args.checkout),
                                          "which": args.which, "date": args.date})
     bench.say(f"realset {args.which}: {len(wanted)} subjects on {args.arm} "
               f"({bench.commit(args.checkout)}), {args.jobs} at a time, into {out}")
-    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
-        list(workers.map(lambda c: _in_a_slot(c, args), wanted))
+    jobs = max(1, min(args.jobs, len(wanted)))
+    with ThreadPoolExecutor(max_workers=jobs) as workers:
+        list(workers.map(lambda share: _in_a_slot(share, args),
+                         [wanted[k::jobs] for k in range(jobs)]))
     done = sum(1 for c in wanted if (out / c.number / "record.json").exists())
     bench.say(f"realset {args.which}: {done} of {len(wanted)} recorded")
     text = report_arm(args.which, args.date, args.arm)
@@ -822,25 +837,30 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def _in_a_slot(c: Candidate, args: argparse.Namespace) -> int:
-    """One subject end to end as one `heavy` job: its design, its checks and any drawing in
-    software take the slot it holds (heavy runs a job inside a slot at once), so a subject
-    queues once, and --jobs is the slots held."""
-    where = arm_dir(args.date, args.arm) / c.number
-    where.mkdir(parents=True, exist_ok=True)
+def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
+    """A worker's subjects end to end, one after another, as one `heavy` job: each design,
+    check and drawing in software takes the slot it holds (heavy runs a job inside a slot
+    at once), so a worker queues for the machine once, and --jobs is the slots held."""
+    out = arm_dir(args.date, args.arm)
+    for c in share:
+        (out / c.number).mkdir(parents=True, exist_ok=True)
     command = [bench.HEAVY, sys.executable, str(Path(__file__).resolve()), "one",
                "--which", args.which, "--arm", args.arm, "--date", args.date,
-               "--judge-model", args.judge_model, "--subjects", c.number,
+               "--judge-model", args.judge_model,
+               "--subjects", ",".join(c.number for c in share),
                "--checkout", str(args.checkout), "--timeout", str(args.timeout),
                *(["--software"] if args.software else []),
                *(["--dry-run"] if args.dry_run else []),
                *(["--no-judge"] if args.no_judge else []),
                *(["--rejudge"] if args.rejudge else [])]
-    bench.say(f"{c.number} {c.name}: queued")
-    with (where / "one.log").open("a") as log:
+    named = ", ".join(c.number for c in share)
+    bench.say(f"{named}: queued")
+    log_path = out / f"worker-{share[0].number}.log"
+    with log_path.open("a") as log:
         status = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
-    bench.say(f"{c.number} {c.name}: ended {status}"
-              + ("" if (where / "record.json").exists() else f", not recorded; see {where}/one.log"))
+    left = [c.number for c in share if not (out / c.number / "record.json").exists()]
+    bench.say(f"{named}: ended {status}"
+              + (f"; not recorded: {', '.join(left)} (see {log_path})" if left else ""))
     return status
 
 
@@ -1133,6 +1153,8 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--no-judge", action="store_true")
             p.add_argument("--rejudge", action="store_true",
                            help="read recorded subjects through again (a verdict asked is kept)")
+            p.add_argument("--share", default="",
+                           help="K/N: only every Nth subject of the half from the Kth")
         if name == "compare":
             p.add_argument("--arms", required=True)
             p.add_argument("--dates", default="", help="each arm's date, when they differ")

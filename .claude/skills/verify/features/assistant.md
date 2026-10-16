@@ -2243,7 +2243,7 @@ same on 99%); and every `judged/*.json` lists in `looked_at` all six design
 pictures (456 of 456 on 2026-10-14). A call is about 22 s; four at once judge a
 subject of 12 designs (132 calls) in about 13 minutes.
 
-### Real sets: our design against LEGO's own, blind
+### Real sets: our design against the set, blind
 
 `tools/bench/realset.py` draws its subjects from vendor/omr: main models of 80 to
 1,500 parts from 2000 on, one model to a box, none of a kind any round touched
@@ -2262,7 +2262,8 @@ env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
 
-Each subject runs as one `heavy` job (`--jobs` is the slots held): the set drawn
+Each of `--jobs` workers runs its share of the subjects, one after another, as
+one `heavy` job (it queues for the machine once; worker-<set>.log): the set drawn
 and checked once into `bench/results/realset-sets/<set>/`, the design by run.py's
 design stage into `realset-<date>-<arm>/<set>/` (brief.json, design.ldr, views,
 audit.jsonl, record.json, judged/), both drawn by `bench_views.gd` and copied to
