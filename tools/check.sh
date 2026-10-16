@@ -87,6 +87,12 @@ probe() {
 }
 
 echo "── the project parses ──"
+# The class list in .godot is made from the tree, and a checkout that
+# reached its commit by a merge or a fast-forward keeps the old one. Main
+# at 2789cd0 "failed to parse" on five class names the last merges had
+# added (2026-10-16): the cache was stale, not the code. So it is brought
+# up to date first, and the parse reads the code.
+timeout 900 godot --headless --path . --import >/dev/null 2>&1
 # A parse error takes every probe down with it, and the message from a
 # probe that could not load says nothing about which file is wrong.
 parse=$(godot --headless --path . --quit 2>&1)
