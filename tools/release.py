@@ -315,10 +315,25 @@ def stage(assets: Path, version: str, date: str) -> dict[str, str]:
     for mesh in meshes:
         name = mesh + ".lbm"
         link_or_copy(assets / "parts" / name, generated / "parts" / name)
+    # The exact shapes (BrickNet's, which the build check reads where the
+    # lattice's cells would forgive a real collision) of every part a real
+    # set uses: 4,455 of 15,417, 337 MB of 938, and every part appearance in
+    # the 30,000 inventories (2026-10-16). The other 10,962 are parts no
+    # inventory has, stickers and rare variants mostly; a part without one
+    # is checked by its cover, as every part was before 2026-10-15.
+    exact = sorted({part["mesh"] for part in catalogue.get("parts", [])
+                    if part.get("mesh") and (part.get("in_sets") or 0) > 0
+                    and (assets / "exact" / (part["mesh"] + ".bwx")).exists()})
+    if exact:
+        (generated / "exact").mkdir()
+        for mesh in exact:
+            name = mesh + ".bwx"
+            link_or_copy(assets / "exact" / name, generated / "exact" / name)
     stamp = {"version": version, "commit": commit, "date": date}
     (STAGE / "release.json").write_text(json.dumps(stamp) + "\n")
-    say("  staged %s: %d parts' meshes, %s" % (commit, len(meshes), human(
-        sum((generated / "parts" / (m + ".lbm")).stat().st_size for m in meshes))))
+    say("  staged %s: %d parts' meshes, %s; %d exact shapes, %s" % (commit, len(meshes), human(
+        sum((generated / "parts" / (m + ".lbm")).stat().st_size for m in meshes)), len(exact),
+        human(sum((generated / "exact" / (m + ".bwx")).stat().st_size for m in exact))))
 
     log = WORK / "import.log"
     with log.open("w") as out:
