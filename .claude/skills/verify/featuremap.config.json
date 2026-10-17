@@ -780,7 +780,7 @@
       "kind": "lib",
       "label": "a model that tips falls",
       "entry": "src/assembly/topple.gd",
-      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=falling   (by hand: on no floor, swing a section out past the model's edge and let go; -- --only=tipping scans real sets headless)",
       "area": "building"
     },
     {
@@ -2231,6 +2231,13 @@
       "entry": "src/dev/worker_first_run_probe.gd",
       "reach": "godot --headless --path . --script src/dev/worker_first_run_probe.gd [-- rounds=N] [-- cold]   (operators run for the first time on every worker at once, through WorkerTasks.first_here, every round right and the engine still up; PartForge.warm's part and skin built all the way; the first carried parts built at once run the forge here first. -- cold skips first_here: the engine as it is, which crashes, rip 0x0)",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "swinging on a free joint",
+      "entry": "src/assembly/swing.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
+      "area": "building"
     }
   ]
 }

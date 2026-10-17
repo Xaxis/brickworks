@@ -548,7 +548,7 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
 | **S1 Balance at rest and across the cycle** | The support polygon, centre of mass and force-angle tipping margin at every frame. Stud joint moments against the cited capacities. Counterweight advice. The heat map and margin readout. Numbers in `check_design` and `simulate_mechanism`. `Stability` rewritten on margins with sources. | Arrangements with known answers (a T on one stud, a cantilever of n plates). The owner's orrery reproduces "18 studs past the edge" at its worst angle, and a counterweight added by the advice brings it inside. | 3–4 days |
 | **P2 Linkages and closed loops** | Newton–Raphson on loop closure. Cranks, connecting rods, 4-bars, pistons, cardan joints, steering. Linear actuators as screws. Pneumatic cylinders as driven prismatics. Jam, toggle and free-motion reports. | A 4-bar's coupler curve against the closed form. A crank-slider's stroke. 42xxx steering racks from the OMR. | 1.5–2 weeks |
 | **S2 Dynamic loads** | Inverse dynamics over the P1/P2 motion: joint forces and torques, the zero-moment point, a motor torque budget against Philo's table. | A swinging arm against m·ω²·r and I·α by hand. A motor geared to stall reported as stalling. | 1 week |
-| **P3 Forward dynamics** | Gravity moves things, friction, motor torque curves, collisions between moving parts. Jolt with the gear constraints bound through a GDExtension and the world scaled, or our own solver. | Pendulum periods. A gear train coasting down. Determinism per platform where it is promised. | 3–6 weeks; the riskiest |
+| **P3 Forward dynamics** | **Begun (§14):** a free joint swings, a chain of them together, with Coulomb friction, stopped by the room test; a model that tips falls in time about its edge. **Left:** gravity moves everything else, friction measured, motor torque curves, collisions between moving parts. Jolt with the gear constraints bound through a GDExtension and the world scaled, or our own solver. | Pendulum periods. A gear train coasting down. Determinism per platform where it is promised. | 3–6 weeks; the riskiest |
 
 ## What "accurate" can honestly mean
 
@@ -574,12 +574,17 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
   numbers and says when a margin is within that band. Friction pins are
   unmeasured. A small bench rig (a known arm, a known mass, a protractor) would
   pin them down, and is worth more than any model.
-- **Dynamics (S2, P3) is qualitative.**
+- **Dynamics (S2, P3) is as good as what it is made of.**
   - Friction and damping in the joints of LEGO® parts are unmeasured.
   - Jolt is tuned for metres, and is deterministic only per binary.
   
   "This arm will swing past the edge if driven at full speed" is a fair claim.
-  "It will fall at 1.7 s" is not.
+  Since G5 (§14), so is "it falls in a fifth of a second" and "it swings
+  with a period of 0.38 s", to a few per cent: they come from the masses and
+  the moments of inertia, and the probe holds them to the hand formulas. "It
+  swings 15 times before it hangs still" is not: that comes from a pin's
+  friction, which nobody has measured, and is good to a factor of 1.5 either
+  way.
 
 ## 6. Risks
 
@@ -1147,7 +1152,7 @@ pin without (3673, 3749, 4274) turns freely, as builders use them
 round hole and a turntable turn freely; hinges, clips, click hinges, balls
 and a stud hold. Let go, a free joint swings down to where the centre of mass
 of what it carries is lowest, or to what stops it: quasi-static, no swing
-back. Then Balance: stands, or tips and over which edge, and the most loaded
+back (since G5 it swings, §14). Then Balance: stands, or tips and over which edge, and the most loaded
 stud joint against its working load. "About", because a stud's clutch is not
 published (above): honest to a factor of two.
 
@@ -1308,7 +1313,8 @@ that edge and the new point. While it still does not stand, it falls again
 about the next edge, at most four times. Quasi-static, as the settling is:
 where it comes to rest, not how fast or whether it bounces (§ What
 "accurate" can honestly mean: "it will fall at 1.7 s" is not a fair claim).
-It is drawn falling over half a second, faster as it goes, and kept in the
+It was drawn falling over half a second, faster as it goes (since G5 it
+falls as a body falls about its edge, §14), and kept in the
 same undo step as the grab, in words: "tipped over to the left and lies on
 its side". A model standing on a baseplate's studs does not fall: they hold
 it, and on a baseplate the plate is the floor; it says so ("It does not fall:
@@ -1720,3 +1726,170 @@ apart); whether the
 meetings that stop 42006-1's boom and 42024-1's small actuator short of
 their ends are the real sets' or the room test's 2 LDU cells (not checked
 against the built models); dynamics (S2, P3).
+
+## 14. Swinging and falling in time (S2's first slice)
+
+G1 to G4 settled a free joint and a falling model quasi-statically: where it
+comes to rest, not how it gets there. A pin without friction ridges let go
+jumped to where its arm hangs, and a model past its edge was drawn falling
+over a fixed half second. The owner asked that a person move any part "with
+perfect physics", and a free joint that does not swing is the first thing a
+person sees is wrong. G5 is the motion: a section let go swings, and a model
+that tips falls as a body falls.
+
+**A pendulum, or a chain of them.** `src/assembly/swing.gd`. Let go, a section
+on a free joint (a pin without friction, an axle in a round hole, a turntable
+on its side: §10's `holds` false) is a rigid body turning about that joint's
+line, and every free joint inside it another (`Grab.swing_begin`), on Bodies'
+tree: an arm on two free pins is a double pendulum. The equations are
+Newton-Euler's written in the joints' turns, M(q) q'' = Q(q, q'): the mass
+matrix and the forces from each segment's mass, centre and moment of inertia,
+gravity, and the velocity terms (a swinging outer arm pulls on the inner one).
+They are stepped at 1 ms by semi-implicit Euler, which keeps a pendulum's
+energy from growing as an explicit step's does; at this step its period is
+off by under a part in ten thousand for anything that can be built. A click
+hinge, a ball, a loop, a gear train and a section of more than 40 parts settle
+as before (§10, §11).
+
+What it is made of, and how sure each is:
+
+| quantity | taken as | how sure |
+|---|---|---|
+| mass | `Stability.grams`: a part's walls, studs and tubes | within 6% of BrickLink's weighings for common bricks (§4); a mean figure, not this part's |
+| moment of inertia | each part's mass spread evenly through its box, about the line by parallel axes | a brick's mass is mostly in its walls, so its own share is low by up to a third; for a section a few studs out from its joint that share is a few per cent of the whole |
+| friction in a free joint | a journal bearing: μ r N against the turn. r 2.4 mm, a Technic hole's radius and a stud's; N the weight carried; μ 0.3 | μ for ABS on ABS is not published. ABS against steel and printed ABS on a pin-on-disc read 0.2 to 0.4 ([Ramadan et al. 2023](https://tribology.rs/journals/2023/2023-1/2023-1-13.html)), so the number of swings is good to about a factor of 1.5 either way. The rub of a beam's face on the beam beside it is not counted (nothing says how hard a pin's collar presses them), so a real arm may stop sooner |
+| what it meets | the room test (Grab's), each time the furthest moving point has gone 4 LDU, bisected where it meets something | as the drag's: 2 LDU cells. It stops dead there: how much a section of bricks bounces off another is not measured, so it does not bounce |
+| at rest | no joint's furthest point moving faster than 0.2 mm/s for 0.12 s | held by its friction within asin(μ r / d) of hanging straight (d its centre of mass's distance from the line), or pressed against what stopped it |
+
+Coulomb friction takes a fixed share of each swing: a pendulum loses
+2 μ r / d radians of its swing each half, and stops inside asin(μ r / d) of
+the bottom. Both are checked by hand below. Several free joints' friction is
+solved together at the velocity (projected Gauss-Seidel), each joint sticking
+or slipping as its torque allows.
+
+Measured with the pointer, windowed (`grab_probe -- --only=swing`), on made
+pendulums: a Technic beam 7 (32524) on a pin without friction (3673) in a
+Technic brick 1 x 4 on a tower of twelve 2 x 4 bricks, the beam in front of
+it. By hand from its parts as the probe reads them (the beam 1.81 g, its pin
+0.46 g): m 2.27 g, d 47.9 LDU, I 9,455 g·LDU², so 2π√(I/(m g d)) = 0.3744 s.
+
+| case | checked against | result |
+|---|---|---|
+| let go 30° out | each half swing against T0 lengthened for its amplitude by the elliptic integral, 2K(sin(θ/2))/π | five half swings: 0.3768 s a swing against 0.3762, 0.17% off; the worst half 0.36% |
+| the same | the swing lost each half, 2μr/d = 4.30° | 4.38°: 29.9, 25.4, 21.0, 16.6, 12.3, 7.9, 3.6° from hanging |
+| the same | where statics hangs it, within asin(μr/d) = 2.15° | 0.68° from straight down; the settle before it, 0.00° |
+| the same | its energy never above where it was let go | never above it |
+| let go 75° out | the first half swing against 2√(I/(m g d)) K(sin(θ/2)) at its mean amplitude, 0.2076 s | 0.2050 s, 1.3% off (Coulomb's loss within the swing is not in the hand form); 15 swings in 3.1 s, at rest 0.67° from hanging |
+| a column of 1 x 2 bricks in its swing, let go 60° out the other way | where a turn towards the column stops, 36.75° | its first swing ends at 36.85°, stopped dead; then it swings back and comes to rest hanging |
+| two beams 7 on two free pins, the inner let go 60° out | where the settle before it hangs the outer beam; its energy | they swing together, the outer folding against the inner and back, 28 times in 7.1 s; the outer beam comes to rest 2.0 LDU from where the settle hangs it (each pin's band, 0.9° and 1.7°, allows 4.5), the inner 0.97° from hanging; the energy never above where it was let go |
+| move_part degrees=40 | the reply | "then swung down under its own weight and back and forth 8 times in 1.7 s, and came to rest at 0°, hanging within its friction of straight down" |
+
+**Falling in time.** `Topple.timed`. Where a model that tips comes to rest is
+still `Topple.fall`'s (§11); how it gets there is now a rigid body turning
+about its edge from rest under gravity, θ'' = τ(θ)/I, its moment of inertia
+about the edge from the parts as above, stepped at 1 ms, stopping dead where
+it lands. A second fall about a further edge starts from rest. The edge is
+taken not to slip. Checked against the time by hand: energy gives
+θ'² = 2 m g r (cos φ0 − cos(φ0 + θ)) / I for a centre of mass r from the edge
+and φ0 past upright, and the time is the integral of dθ/θ' to the angle it
+falls, by Simpson's rule with θ = s² to take out the start's 1/√θ
+(`grab_probe -- --only=falling`):
+
+| model | by hand | Topple.timed |
+|---|---|---|
+| §11's made crane, its arm out 90°: 11.43 g, r 81.7 LDU, φ0 4.68°, I 111,472 g·LDU², falls 42.79° | 0.2109 s | 0.2110 s |
+| the made crane with a beam 3 on a free pin at its tower's side, its arm two bricks longer: 15.81 g, r 97.8 LDU, φ0 7.28°, falls 39.97° | 0.1974 s | 0.1970 s |
+
+A model barely past its edge falls slowly at first: the made crane is a
+fifth of a second, against the half second drawn before. It is drawn by the
+clock, and no frame of either fall drew a corner below the floor.
+
+**What hangs on a free joint as it lands.** A model past its edge as it is let
+go begins to fall at once, and what hangs on a free joint inside it is held
+while it falls (a fifth of a second) and let go as it lands
+(`Grab.land_begin`): the model stops dead, and the free parts keep their
+momentum about their joints (`Swing.carry`: M q' = Σ Jᵀ (m v, I ω) of the
+motion they had), so they swing on in the new lie until they hang. The two
+together, a joint swinging while the model falls, are not worked out. A
+grabbed joint that is itself free swings first, as before: it drops at
+once, and its swing may bring the weight back over the base. The made
+crane's beam 3, carried 40° off hanging by the fall, swung back and forth 5
+times in 0.58 s and came to rest 0.01° from straight down below its pin
+(its band 5.2°). The drag, the fall and the swing are one undo step, and
+over MCP: "Then it tipped over to the front and rests leaning 40°, its far
+end on the floor: … falling for 0.20 s. As it landed, the Technic Beam 3, 1
+part swung down under its own weight and back and forth 5 times in 0.58 s,
+and came to rest hanging within its friction of straight down."
+
+**In the app.** A swing is drawn by the clock, its time stepped each frame
+(`GrabDrag._swing_frame`) within 8 ms of the frame's work: past that it goes
+slower than the clock rather than hold the frame. It is kept as one undo step
+with the drag when it comes to rest; a click catches it where it is ("caught
+by a press 0.18 s into its swing"), kept the same way; Escape puts it back.
+Over MCP, move_part runs it to rest at once and says how it swung and where
+it came to rest. On the windowed probe under xvfb the swing's own work
+(stepping, its room tests, setting what is drawn) was 0.32 ms a frame on
+average and 0.72 at worst for the beam let go 30° out (94 frames, 104 room
+tests, none over 0.03 ms), 0.70 and 8.33 from 75°, 1.26 and 8.11 for the
+double pendulum (319 frames; the worst are frames catching up after the
+probe took a picture, stopped at the 8 ms budget), and 1.15 and 3.64 for the
+beam swinging as the crane landed. Each frame steps the time the clock has
+moved since the last, carrying what a whole 1 ms step ran over: the beam's
+1.44 s swing took 1.45 s on the clock, the double pendulum's 7.19 s 7.21,
+and the fall 0.199 s for its 0.197.
+
+In a browser (grab_flow: a beam 7 on a free pin beside the crane, the
+threaded web export drawn by SwiftShader on a loaded box) it swung as on the
+desktop, back and forth 14 times in 2.9 s, and came to rest at −1°; its own
+work was 5.4 ms a frame on average and 8.1 at worst. The page drew it
+slowly: from the release to rest its frames came 0.58 s apart (median),
+where turning the view with a right-drag drew them 33 ms apart in the same
+run, so the 2.98 s swing took 10.7 s on the clock in 14 frames. A frame
+steps the swing at most a quarter of a second
+(`GrabDrag.SWING_MOST_FRAME_S`); at the first cap, a twentieth, the same
+swing was drawn fifteen times slower than it is.
+
+Traced in Chromium (`grab_flow --trace=FILE`, with `--trace-drag=` and
+`--trace-view=` for the arm's drag and the view turning): each long frame of
+the swing is the page waiting on the GPU process in
+`CheckFramebufferStatus` or `GetBooleanv` (1.5 s of a 1.6 s frame), and the
+GPU process's WebGL flushes add up to 13 to 16 s over the swing's 16 to 18
+frames, about a second of SwiftShader's work a frame. The arm's drag costs
+770 ms of flushes over its 24 drawn frames (32 ms a frame), the view turning
+2.2 s over 17 (130 ms). Tried and ruled out, each in a build of its own,
+none bringing a frame under 0.6 s: the swing worked out ahead at the
+release and drawn back with no room test in a drawn frame (the app's frame
+0.05 to 0.23 ms); its moving part drawn apart from its batch, a one-instance
+MultiMesh moved by its node's transform, so no batch's buffer is written a
+frame (`_fresh_slots` is not it) and no `rebuilt` listener runs; and that
+part casting no shadow. What a frame in which a part has moved costs
+SwiftShader that one in which the view has turned does not is not found.
+The flow now fails while a swing draws under 15 frames a second (or the
+view turning's rate, if lower); it does, at about one.
+
+**The handles a browser test takes hold of.** The grab tool told a browser
+page where each joint's part was on the screen (for grab_flow to press on)
+twice a second, raycasting every part of each body, for every model in every
+browser. On a 4,000-part model that held frames 180 to 460 ms (sharesteps,
+2026-10-17). It now finds them only when the page asks
+(`window.brickworksGrabAsk`), again only when the model, the view or the
+window has changed, and from the four parts of a body furthest from its
+joint. On 42082-1 (2,184 parts) in a browser drawing in software, once its
+parts were in, the page not asking: before, 20 frames in 20 s, each 1.18 to
+1.28 s, and the page never went quiet in three minutes of waiting; after,
+1,201 frames, none longer than 17 ms. Asked, they are found once, in 973 ms
+on that model, and not again while nothing changes (`grab_flow --big=…
+--only-big`).
+
+**Left for later.** Spinning and coasting (S2's next): a wheel or a gear train
+spun by a drag and let go, coasting down against its bearings' friction,
+needs the train's inertia reflected through its ratios and a fling's speed
+read from the pointer (a release now starts from rest). A joint swinging
+while the model falls. A big section's swing (over 40 parts its room tests
+cost more than a frame; it settles as before). Loops, balls and click hinges
+swinging. Friction in a free pin measured on the bench (§ What "accurate"
+can honestly mean), and how much a section bounces. Why a swing's frames in
+a browser drawing in software cost SwiftShader about a second each when
+turning the view's cost 33 to 130 ms (above): the next step is a trace with
+the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
+SwiftShader's, to see which draw it is.
