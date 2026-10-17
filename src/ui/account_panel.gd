@@ -150,9 +150,20 @@ func setup(with_account: Account) -> void:
 
 	account.changed.connect(_follow)
 	_follow()
+	minimum_size_changed.connect(_keep_centred)
 
 
-func open() -> void:
+## Taller than it was placed for (this tab's Claude chats, ClaudeTabView,
+## with two chats listed), it grew downwards from where it was put, and its
+## foot, Sign out and Done, ran off an 800-pixel window: centred on what it
+## holds now, and no shorter than it was placed (main's _inset).
+func _keep_centred() -> void:
+	if not is_inside_tree():
+		return
+	var room: float = get_viewport().get_visible_rect().size.y - 48.0
+	var tall: float = maxf(minf(TALL, room), get_combined_minimum_size().y)
+	offset_top = -tall * 0.5
+	offset_bottom = tall * 0.5
 	_follow()
 	_kept.text = StorageKeep.words()
 	visible = not visible

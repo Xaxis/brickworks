@@ -57,7 +57,11 @@ func setup(with: ClaudeConnector) -> void:
 	_ways = HBoxContainer.new()
 	_ways.add_theme_constant_override("separation", 12)
 	add_child(_ways)
-	_ways.add_child(_line("Or in", 11, 0.7))
+	# Unwrapped: in a row, a wrapping label is given no width and stood its
+	# letters one under another.
+	var or_in: Label = _line("Or in", 11, 0.7)
+	or_in.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_ways.add_child(or_in)
 	_app = Look.link("the Claude app", 11)
 	_app.tooltip_text = "Opens the Claude desktop app on a new chat for this tab"
 	_app.pressed.connect(func() -> void: _open("app"))
@@ -204,6 +208,8 @@ static func chat_words(one: Variant) -> String:
 		did = ConnectorForm.said(str(it["did"]))
 	if not did.is_empty():
 		said += ", last: %s, %s" % [did.left(1).to_lower() + did.substr(1), _ago(str(it.get("last", "")))]
+	else:
+		said += ", nothing done here yet"
 	return said
 
 

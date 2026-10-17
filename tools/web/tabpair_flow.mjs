@@ -305,7 +305,8 @@ const bLook = await b.call("look_at_model");
 check(`B, untargeted now, stays in the truck: "${head(bLook.words)}"`, bLook.words.startsWith(`Tab ${truck.id}`));
 check(`...and neither touched the other's model: castle ${(await state(castle.page)).bricks}, truck ${(await state(truck.page)).bricks}`,
   (await state(castle.page)).bricks === castle.bricks && (await state(truck.page)).bricks === truck.bricks);
-for (const [tab, chat] of [[castle, a], [truck, b]]) {
+// What each chat did last, as its tab says it: A's edit, B's look.
+for (const [tab, chat, did] of [[castle, a, "changed the model"], [truck, b, "read what is built"]]) {
   const shown = await until(async () => {
     const said = await claude(tab.page);
     return said.badge === `Claude working · tab ${tab.id}` && (said.chats || []).length === 1
@@ -315,7 +316,7 @@ for (const [tab, chat] of [[castle, a], [truck, b]]) {
   await wait(1500);
   const said = await claude(tab.page);
   check(`${tab.name} shows one chat working in it, the right one: "${said.badge}" / "${(said.account_says || "").split("\n")[1] || ""}"`,
-    shown && /A Claude chat is working here: since \d\d:\d\d, last: changed the model/.test(said.account_says || ""));
+    shown && new RegExp(`A Claude chat is working here: since \\d\\d:\\d\\d, last: ${did}`).test(said.account_says || ""));
   await tab.page.screenshot({ path: `${out}/1_${tab === castle ? "castle" : "truck"}.png` });
   await accountShut(tab.page);
 }
