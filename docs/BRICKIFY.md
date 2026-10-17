@@ -1414,7 +1414,14 @@ The temple at 48 studs: smooth keeps its moon; plain loses it, as it did.
   parts than the solid (1,670 against 1,606): it met "no more parts" once
   only because the mend took 45 of its parts out.
 - `shapes_probe` (78), `exact_probe` (29) and `patterns_probe` (215): all
-  pass, headless; `brickify_ui_probe` in a window on the GPU: all pass.
+  pass, headless; `brickify_ui_probe` in a window on the GPU: all pass. For
+  the check's change: `dress_probe` (dressing that gives way, 26),
+  `responsive_probe` (a big check on a worker, 8) and `angled_probe` (7):
+  all pass.
+- On the commit, `brickify_probe` lays every build part for part as above;
+  its forty-stud bunny took 22.0 s beside three other probes at a load of
+  30 to 50, past the probe's 20 s; alone, at a load of 50, all 60 pass and
+  the bunny takes 12.3 s.
 - `tools/web/brickify_flow.mjs` (`brickify`, `brickify_fox` in the preview
   checks) needs a preview, and was not run.
 
