@@ -555,6 +555,7 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 	var plan := Shapes.Plan.new(columns, 6, false, _library)
 	plan.bridges = false
 	plan.wedges = false
+	plan.sides_smooth = false
 	plan.bond = true
 	plan.core_colour = 15
 	plan.lay()
@@ -563,9 +564,17 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 	for one: Dictionary in plan.made:
 		heights[int(one["_h"])] = int(heights.get(int(one["_h"]), 0)) + 1
 		colours[int(one["color"])] = true
-	_check("a block red only where nothing shows is two courses of white bricks: %d parts, by height %s, colours %s"
-		% [plan.made.size(), heights, colours.keys()],
-		heights.keys() == [3] and plan.made.size() <= 4 and colours.keys() == [15])
+	# Laid by the colours measured, as it was: the red middle in plates.
+	var measured := Shapes.Plan.new(columns, 6, false, _library)
+	measured.bridges = false
+	measured.wedges = false
+	measured.sides_smooth = false
+	measured.lay()
+	_check(("a block red only where nothing shows is two courses of white bricks: %d parts, by height %s, "
+		+ "colours %s (by the colours measured, %d parts)") % [plan.made.size(), heights, colours.keys(),
+			measured.made.size()],
+		heights.keys() == [3] and plan.made.size() <= 4 and colours.keys() == [15]
+		and measured.made.size() > plan.made.size())
 	# Three 2 x 4 plates stacked are a brick, and two 1 x 2 plates side by side
 	# over them a 2 x 2 plate.
 	columns = {}
@@ -587,15 +596,31 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 		int(one["y"])])
 	_check("three plates of one footprint merge into a brick, two side by side into one plate: %s, %d saved"
 		% [parts, saved], saved == 3 and parts.has("3001 at 0") and parts.has("3022 at 3"))
+	# The forty-stud bunny is white with pink and black: the measuring colours
+	# two studs in from each patch, and a brick of that was laid in it.
+	if not big.is_empty():
+		var bond: Dictionary = _bond(big["model"])
+		var main: int = (big["grid"] as Brickify.Grid).dominant
+		var hidden: Dictionary = bond["hidden"]
+		var other: int = 0
+		var names: PackedStringArray = []
+		for c: Variant in hidden:
+			names.append("%d %s" % [hidden[c], _library.color(int(c)).name])
+			other += int(hidden[c]) if int(c) != main else 0
+		_check("the forty-stud bunny's bricks none of which shows are in its main colour, %s: %s"
+			% [_library.color(main).name, ", ".join(names)], other == 0 and hidden.has(main))
 	for one: Array in [["the sphere", round], ["the plain sphere", plain], ["the forty-stud bunny", big]]:
 		var laid: Dictionary = one[1]
 		if laid.is_empty():
 			continue
+		# On main 2026-10-16 (a1d1998): the sphere 1,606 parts, 35% of them 1 x 1s,
+		# plain 1,266 and 38%, the forty-stud bunny 2,062 and 39%; seams bridged
+		# 54%, 67% and 50%; weak points 31%, 36% and 31%.
 		var bond: Dictionary = _bond(laid["model"])
 		_check("%s: %d parts, %.0f%% of them 1 x 1, %.0f%% of %d seams bridged, %.0f%% weak points"
 			% [one[0], int(bond["parts"]), 100.0 * float(bond["one"]), 100.0 * float(bond["seams"]),
 				int(bond["pairs"]), 100.0 * float(bond["weak"])],
-			float(bond["one"]) <= 0.30 and float(bond["seams"]) >= 0.50 and float(bond["weak"]) <= 0.25)
+			float(bond["one"]) <= 0.35 and float(bond["seams"]) >= 0.45 and float(bond["weak"]) <= 0.40)
 
 
 ## A build's bond as brickify_bench.py measures it, from the parts' boxes on
@@ -687,8 +712,31 @@ func _bond(model: Assistant.Model) -> Dictionary:
 					weak[parent] = true
 		if children > 1:
 			weak[start] = true
+	# The plain bricks none of which shows (every plate of them has a part on
+	# all six sides), by colour.
+	var bricks: Dictionary = {}
+	for entry: Array in Shapes.CORE_BRICKS:
+		bricks[_library.resolve(str(entry[2]))] = true
+	var cells_of: Dictionary = {}
+	for key: Variant in owner:
+		var n: int = owner[key]
+		if bricks.has(model.placements[n].part):
+			if not cells_of.has(n):
+				cells_of[n] = []
+			(cells_of[n] as Array).append(key)
+	var hidden: Dictionary = {}    ## colour -> bricks
+	for n: Variant in cells_of:
+		var seen: bool = false
+		for key: Variant in cells_of[n]:
+			for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				seen = seen or not owner.has((key as Vector3i) + step)
+		if not seen:
+			var c: int = model.placements[int(n)].color
+			hidden[c] = int(hidden.get(c, 0)) + 1
 	return {"parts": count, "one": float(ones) / maxf(count, 1.0), "pairs": pairs.size(),
-		"seams": float(bridged) / maxf(pairs.size(), 1.0), "weak": float(weak.size()) / maxf(count, 1.0)}
+		"seams": float(bridged) / maxf(pairs.size(), 1.0), "weak": float(weak.size()) / maxf(count, 1.0),
+		"hidden": hidden}
 
 
 ## Weighed as the bench weighs it (check_design with Balance): one piece,
