@@ -1321,6 +1321,14 @@
       "tests": []
     },
     {
+      "id": "lib:moving a chain of joints",
+      "kind": "lib",
+      "entry": "src/assembly/grab_chain.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=chain   (by hand: hold still 0.4 s on a minifigure's hand, then drag)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "lib:names filter",
       "kind": "lib",
       "entry": "api/_names.js",

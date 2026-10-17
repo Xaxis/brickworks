@@ -141,6 +141,7 @@ static func for_keyboard() -> Array[Binding]:
 		# A drag never places: on a part with Select it moves the part,
 		# anywhere else (or with a part in hand) it turns the view.
 		Binding.new(["drag"], "on a part on a joint, move it as the real one moves (Esc puts it back); on another part, carry it; anywhere else, turn the view", "orbit"),
+		Binding.new(["hold, then drag"], "on a part at the end of joints (a hand, a hook), held still a moment first: move it by the whole chain back to what stays"),
 		Binding.new(["%s-drag" % _hold()], "copy a part; on nothing, draw a box round several", "box"),
 		Binding.new(["alt-click", "G"], "take that part into hand"),
 		Binding.new(["Q"], "the last part back in hand"),

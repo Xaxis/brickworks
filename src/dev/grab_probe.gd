@@ -91,12 +91,19 @@ func _run() -> void:
 		return
 	var only: String = ""
 	for arg: String in args:
+		if arg.begins_with("--move-frames="):
+			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
 	for case: Array in CASES:
 		if not only.is_empty() and not str(case[0]).contains(only):
 			continue
 		await _case(case[0], case[1], case[2])
+	if only.is_empty() or only == "copies":
+		await _copies()
+	if only.is_empty() or only == "chain":
+		await _chain_case("chain: a minifigure's hand", "", "hand")
+		await _chain_case("chain: the crane's end", "res://vendor/omr/files/4096-1_Crane.mpd", "end")
 	if only.is_empty() or only == "mcp":
 		await _session()
 	if only.is_empty() or only == "big":
@@ -323,6 +330,7 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	var stop_ok: bool = false
 	var stop_said: String = ""
 	var furthest: float = 0.0
+	var miss_said: String = ""
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var screen: Vector2 = _camera.unproject_position(turned)
@@ -341,6 +349,10 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 						Balance.tidy(step), target]
 		else:
 			var off: float = absf(grab.angle - _detented(grab, target))
+			if off > 10.0 and miss_said.is_empty():
+				var ray: Vector3 = _camera.ray_normal(screen)
+				miss_said = "at %.0f° it read %.1f°, the ray %.2f along the line" % [target,
+					grab.angle, absf(ray.dot(grab.axis))]
 			worst = maxf(worst, off)
 			followed += 1
 			stopped_at = NAN
@@ -360,6 +372,8 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 		for n: int in range(1, 11):
 			var back: Vector3 = _about(grab.pivot, grab.axis, furthest * 0.05 * n) * hold
 			await _move(_camera.unproject_position(back), MOUSE_BUTTON_MASK_LEFT)
+	if not miss_said.is_empty():
+		print("    (%s)" % miss_said)
 	_check("%s: the angle follows the pointer in %d frames, to %.2f°%s" % [name, followed, worst,
 		" on its %s° clicks" % Balance.tidy(grab.link.detent) if grab.link.detent > 0.0 else ""],
 		followed >= 4 and worst <= 1.5)
@@ -546,6 +560,219 @@ func _gears_headless() -> void:
 		_gear_check("gears", grab)
 
 
+# -- copies of one sub-assembly --------------------------------------------------------
+
+
+## Two alike minifigures, copies of one sub-assembly: the first's arm
+## posed, the second's stays where it was, and the first is a sub-assembly of
+## its own in the same step; one undo puts back both the arm and the copy.
+## Then the same over MCP, on the second's arm.
+func _two_figures() -> Array:
+	_main.call("clear_model")
+	await _frames(3)
+	var figure := Minifig.new()
+	var parts: Array = figure.assemble(_library)
+	var out: Array = []
+	for n: int in 2:
+		var at := Transform3D(Basis.IDENTITY, Vector3(-30.0 + 60.0 * n, 0.0, 0.0))
+		var ids: PackedInt64Array = _builder.put_figure(parts, "Figure", at)
+		var path: String = "Figure#%d" % (n + 1)
+		for key: int in ids:
+			_world.get_brick(key).unit = path
+			_world.get_brick(key).group = Assemblies.group_of(path)
+		out.append(ids)
+	(_main.get("_bar") as ModelBar).opened.emit(_world.brick_count())
+	await _frames(10)
+	_builder.forget_history()
+	_verbs.set_mode("select")
+	return out
+
+
+func _copies() -> void:
+	print("\ncopies: two alike minifigures")
+	var figures: Array = await _two_figures()
+	var first: PackedInt64Array = figures[0]
+	var second: PackedInt64Array = figures[1]
+	var assemblies: Assemblies = (_main.get("_shell") as Shell).assemblies
+	_check("copies: two minifigures, copies of one sub-assembly (%d parts each)" % first.size(),
+		first.size() > 5 and assemblies.copies_of("Figure#1").size() == 1)
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var arm: int = _arm_of(first)
+	if arm == 0:
+		_check("copies: the first figure has an arm on its shoulder", false)
+		return
+	var child: int = int(bodies.body_of[arm])
+	_frame_on(PackedInt64Array(Array(first) + Array(second)))
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(bodies.members[child], bodies)
+	if press.is_empty():
+		_check("copies: the first figure's arm is under the pointer somewhere", false)
+		return
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null:
+		_check("copies: the arm is grabbed (%s)" % _grab.last_words, false)
+		await _button(screen, false)
+		return
+	for n: int in range(1, 9):
+		var turned: Vector3 = _about(grab.pivot, grab.axis, -6.0 * n) * grab._hold
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+	await _button(_last_screen, false)
+	await _settled()
+	await _frames(3)
+	var unmoved: bool = true
+	for key: int in second:
+		if _world.get_brick(key).transform != before[key]:
+			unmoved = false
+	var moved: bool = false
+	for key: int in first:
+		if _world.get_brick(key).transform != before[key]:
+			moved = true
+	var own: String = Assemblies.path_of(_world.get_brick(arm))
+	_check("copies: the first figure's arm turned (%s)" % _grab.last_words, moved)
+	_check("copies: the second figure did not move", unmoved)
+	_check("copies: the first is a sub-assembly of its own now (%s, %d other copies)" % [own,
+		assemblies.copies_of(own).size()], not own.begins_with("Figure#") or assemblies.copies_of(own).is_empty())
+	_check("copies: the status bar says so", _grab.last_words.contains("is now its own")
+		and _grab.last_words.contains("the other one stays as it was"))
+	_check("copies: one step to undo (%s)" % (_builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	_check("copies: one undo puts back the arm and the copy (%s, %s)" % [_differs(before),
+		Assemblies.path_of(_world.get_brick(arm))], _differs(before) == "none differs"
+		and Assemblies.path_of(_world.get_brick(arm)) == "Figure#1")
+	# Over MCP, the second's arm.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var other_arm: int = _arm_of(second)
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % other_arm, "degrees": -30}))
+	print("    move_part: %s" % said.replace("\n", " | "))
+	var first_still: bool = true
+	for key: int in first:
+		if _world.get_brick(key).transform != before[key]:
+			first_still = false
+	_check("copies over MCP: the second's arm turns, the first stays, and the reply says so",
+		said.contains("is now its own") and first_still
+		and _world.get_brick(other_arm).transform != before[other_arm])
+	_builder.undo()
+	await _frames(3)
+	_check("copies over MCP: one undo puts it back (%s)" % _differs(before),
+		_differs(before) == "none differs")
+
+
+## A minifigure's arm among [param ids]: 3818 or 3819.
+func _arm_of(ids: PackedInt64Array) -> int:
+	for key: int in ids:
+		var part: String = _world.get_brick(key).part_id
+		if part.begins_with("3818") or part.begins_with("3819"):
+			return key
+	return 0
+
+
+# -- the end of a chain ----------------------------------------------------------------
+
+
+## Held still on the end part, then dragged: the end goes under the pointer
+## along the chain back to the anchor, each joint within the range read for
+## it, and let go it is one step that undo takes back. [param path] empty:
+## the two minifigures, the first's hand.
+func _chain_case(name: String, path: String, end: String) -> void:
+	print("\n%s" % name)
+	var ids: PackedInt64Array = PackedInt64Array()
+	if path.is_empty():
+		var figures: Array = await _two_figures()
+		ids = figures[0]
+	elif not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	# The end: a hand, or the body furthest from the anchor by its chain.
+	var target_key: int = 0
+	if end == "hand":
+		for key: int in ids:
+			if _world.get_brick(key).part_id.begins_with("3820"):
+				target_key = key
+				break
+	else:
+		var longest: int = 0
+		for body: int in bodies.members:
+			var links: int = 0
+			for link: Bodies.Link in bodies.chain(body):
+				if link.axis != Vector3.ZERO:
+					links += 1
+			if links > longest:
+				longest = links
+				target_key = int((bodies.members[body] as PackedInt64Array)[0])
+	if target_key == 0:
+		_check("%s: an end with joints back from it" % name, false)
+		return
+	var child: int = int(bodies.body_of[target_key])
+	_frame_on(PackedInt64Array())
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(bodies.members[child], bodies)
+	if press.is_empty():
+		_check("%s: the end is under the pointer somewhere" % name, false)
+		return
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	# Held still, as a person does to take it by its chain.
+	await create_timer(0.5).timeout
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var links: GrabChain = _grab.chain
+	_check("%s: held still then dragged, it is taken by its chain (%s)" % [name,
+		links.said if links != null else _grab.last_words], links != null)
+	if links == null:
+		await _button(screen, false)
+		return
+	print("    %d joints, their ranges %s, read in %.0f ms" % [links.joints.size(),
+		str(links.ranges), links.range_ms])
+	# A place it can reach: each joint turned a third of the way to the end of
+	# its range, drawn where that puts the end.
+	var want := PackedFloat64Array()
+	for n: int in links.joints.size():
+		var span: Vector2 = links.ranges[n]
+		want.append(span.y / 3.0 if span.y > -span.x else span.x / 3.0)
+	var keep := PackedFloat64Array(links.angles)
+	for n: int in want.size():
+		links.angles[n] = want[n]
+	var goal: Vector3 = links.end_point()
+	for n: int in keep.size():
+		links.angles[n] = keep[n]
+	var goal_screen: Vector2 = _camera.unproject_position(goal)
+	for n: int in range(1, 13):
+		await _move(screen.lerp(goal_screen, float(n) / 12.0), MOUSE_BUTTON_MASK_LEFT)
+	await _frames(2)
+	var off: float = _camera.unproject_position(links.end_point()).distance_to(goal_screen)
+	var within: bool = true
+	for n: int in links.angles.size():
+		within = within and links.angles[n] >= links.ranges[n].x - 0.01 \
+			and links.angles[n] <= links.ranges[n].y + 0.01
+	_check("%s: the end is drawn under the pointer, %.1f px off; every joint within its range (%s)"
+		% [name, off, str(links.angles)], off < 4.0 and within)
+	if _windowed:
+		await _shot(name.replace(": ", "_").replace("'", ""), "2_mid")
+	_check("%s: the status bar says chain (%s)" % [name, _grab._said], _grab._said.to_lower().contains("chain"))
+	await _button(_last_screen, false)
+	await _frames(3)
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is tested and kept as one step (%s)" % [name, _builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts it back (%s)" % [name, _differs(before)], _differs(before) == "none differs")
+
+
 # -- a session -------------------------------------------------------------------------
 
 
@@ -644,8 +871,9 @@ func _big() -> void:
 	await _button(_last_screen, false)
 	var settling: int = Time.get_ticks_msec()
 	await _settled()
-	print("    let go: checked and kept in %d ms, its worst frame %.1f ms" % [
-		Time.get_ticks_msec() - settling, _grab.worst_settle_ms])
+	print(("    let go: checked and kept in %d ms, its worst frame %.1f ms (checking %.1f, cells %.1f); "
+		+ "the keeping frame %.0f ms %s") % [Time.get_ticks_msec() - settling, _grab.worst_settle_ms,
+		_grab.worst_verify_ms, _grab.worst_lay_ms, _grab.keep_ms, str(_grab.keep_took)])
 	_timings["big"] = {"file": path.get_file(), "parts": _world.brick_count(),
 		"moving": grab.moving.size(), "frames": _grab.frames, "mean_ms": snappedf(_grab.mean_ms, 0.01),
 		"worst_ms": snappedf(_grab.worst_ms, 0.01), "first_grab_ms": snappedf(grabbed_ms, 0.1),
@@ -851,6 +1079,8 @@ func _snapshot() -> Dictionary:
 
 
 var _names: Dictionary = {}
+## Frames each move is given before it is read (--move-frames=N).
+var _move_frames: int = 1
 
 
 static func _rounded(at: Transform3D) -> String:
@@ -891,7 +1121,7 @@ func _move(at: Vector2, mask: int) -> void:
 	move.button_mask = mask
 	Input.parse_input_event(move)
 	_last_screen = at
-	await _frames(1)
+	await _frames(_move_frames)
 
 
 func _button(at: Vector2, down: bool) -> void:

@@ -42,7 +42,10 @@ whole cycle.
   drives turn by their teeth. The model's balance and its loaded joints
   show while it moves. A pin without friction ridges swings down when let
   go. Each drag is one undo step. A Claude session does the same with
-  move_part.
+  move_part. Posing one copy of a shared sub-assembly makes it its own
+  first, so the other copies stay as they were. Hold still on a hand or a
+  hook for a moment, then drag, and the whole chain of joints back to the
+  body follows it.
 
 ### Changed
 

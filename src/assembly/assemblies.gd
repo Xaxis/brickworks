@@ -642,6 +642,12 @@ func _gather_moves(step: Dictionary, out: Dictionary, spoiled: Dictionary) -> vo
 		return
 	if not step.has("brick"):
 		return
+	# Which sub-assembly a brick is in changes neither its shape nor its
+	# place: a copy made its own and posed in one step (GrabDrag) moved 131
+	# parts of 7191's wing alike, and read as spoiled they had a nacelle
+	# matched against its copy part by part, 2.1 s in one frame.
+	if step.get("undo", "") == "regroup":
+		return
 	var brick_id: int = builder._live(int(step["brick"]))
 	if step.get("undo", "") != "move" or out.has(brick_id):
 		spoiled[brick_id] = true
@@ -663,9 +669,18 @@ func _moved_alike(path: String, moved: Dictionary) -> bool:
 			return false
 		if first == null:
 			first = how
-		elif not (how as Transform3D).is_equal_approx(first as Transform3D):
+		elif not Assemblies._alike(how, first):
 			return false
 	return first != null
+
+
+## Two moves the same to within what 32-bit transforms keep of them: a
+## turn of 7191's wing, read back part by part 300 LDU out, differed in the
+## fifth decimal, beyond is_equal_approx, and its nacelle was matched against
+## its copy part by part to find nothing to rebuild, 2 s in one frame.
+static func _alike(a: Transform3D, b: Transform3D) -> bool:
+	return a.origin.distance_to(b.origin) < 0.01 and a.basis.x.distance_to(b.basis.x) < 1e-4 \
+		and a.basis.y.distance_to(b.basis.y) < 1e-4 and a.basis.z.distance_to(b.basis.z) < 1e-4
 
 
 ## A pass over many assemblies begins: [method bricks_under] and
