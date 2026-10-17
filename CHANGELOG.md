@@ -15,6 +15,20 @@ whole cycle.
 
 ### Added
 
+- The booklet, laid out by hand, as Studio's Instruction Maker lays one
+  out. On the timeline (B), a Booklet row for the step showing, and Build,
+  Booklet page: turn the step's picture round or tilt it (or use the view
+  the window looks from), zoom in on what it adds, draw it larger or
+  smaller, start a new page, give it a page alone, leave its parts list off,
+  build a sub-assembly in a callout box or on pages of its own, and say how
+  many steps go on a page. Steps merge, split, move earlier or later (not
+  before the step they stand on) and take parts from each other as before.
+  Every change is one undo and is saved in the model's file: a turn as
+  LDraw's own `0 ROTSTEP`, which LPub, LDCad and Studio read, the rest as
+  lines other programs pass over. Someone else's file with its steps
+  changed keeps every line nobody changed. Instructions prints the booklet
+  just so. Over MCP, `booklet_layout` reads the pages and `edit_booklet`
+  sets a step.
 - Sections, as a builder builds one at a time. Build, Suggest sections
   splits any model the way a set splits into bags: each section one
   piece, of a sensible size, joined to the rest by few joints, numbered

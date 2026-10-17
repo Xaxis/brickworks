@@ -1330,6 +1330,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "the booklet by hand",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "gpu godot --path . --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the timeline's Booklet row or Build, Booklet page: turn, tilt, this view, zoom, size, new page, alone, parts list, callout, steps a page; Instructions prints it so)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "the booklet by hand in a browser",
+      "entry": "tools/web/booklet_edit_flow.mjs",
+      "reach": "node tools/web/booklet_edit_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "the author's steps in a browser",
       "entry": "tools/web/steps_flow.mjs",

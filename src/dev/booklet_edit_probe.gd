@@ -127,6 +127,7 @@ func _one_set(path: String, name: String) -> void:
 		await _reorder(base)
 		await _move(base)
 		await _looks_one_by_one(base, name)
+		await _over_mcp(base)
 	else:
 		await _first_look_adopts(base)
 	await _all_looks(name, before)
@@ -369,6 +370,49 @@ func _looks_one_by_one(base: String, name: String) -> void:
 	var out: Array = diff[0]
 	var put: Array = diff[1]
 	await _judge(diff, out.is_empty() and put.size() == 1 and str(put[0]).strip_edges() == "0 !BRICKWORKS CALLOUT OFF", base)
+
+
+## The same over MCP, as a session does it: booklet_layout changes nothing
+## and says what the pages are; edit_booklet is one undo and says it in the
+## file, and the layout read again says it too.
+func _over_mcp(base: String) -> void:
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var history: int = _history()
+	var layout: String = str(await tools.run("booklet_layout", {}))
+	_check("booklet_layout: %s" % layout.get_slice("\n", 0).left(110),
+		layout.contains("  page 2:") and _history() == history and _save() == base)
+	var own: Array[Instructions.Step] = _own_steps(2)
+	var pick: Instructions.Step = own[mini(3, own.size() - 1)]
+	var said: String = str(await tools.run("edit_booklet", {"step": pick.number, "zoom": 1.5,
+		"page": "new", "parts": false}))
+	var diff: Array = _edited("edit_booklet step %d zoom 1.5, a new page, no parts list (\"%s\")"
+		% [pick.number, said.left(90)], base, history)
+	var put: Array = (diff[1] as Array).map(func(line: Variant) -> String: return str(line).strip_edges())
+	var again: String = str(await tools.run("booklet_layout", {}))
+	_check("...booklet_layout says it: %s" % _line_with(again, "%d (" % pick.number),
+		_line_with(again, "%d (" % pick.number).contains("zoom 1.5x, new page, no parts list"))
+	await _judge(diff, (diff[0] as Array).is_empty() and put.size() == 3
+		and put.has("0 !BRICKWORKS ZOOM 1.5") and put.has("0 !BRICKWORKS PAGE NEW")
+		and put.has("0 !BRICKWORKS PARTS OFF"), base)
+	history = _history()
+	said = str(await tools.run("edit_booklet", {"step": pick.number, "turn": 90, "tilt": 15}))
+	diff = _edited("edit_booklet step %d turn 90, tilt 15 (\"%s\")" % [pick.number, said.left(90)],
+		base, history)
+	await _judge(diff, (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges().begins_with("0 ROTSTEP 15 90 0 REL"), base)
+	history = _history()
+	said = str(await tools.run("edit_booklet", {"step": 999}))
+	_check("edit_booklet on a step there is not refuses, no undo step (\"%s\")" % said.left(70),
+		said.begins_with("There is no step") and _history() == history)
+
+
+static func _line_with(text: String, part: String) -> String:
+	for line: String in text.split("\n"):
+		if line.contains(part):
+			return line.strip_edges().left(150)
+	return ""
 
 
 ## A model with no steps of its own given a look: the worked-out steps

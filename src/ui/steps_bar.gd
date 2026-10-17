@@ -452,7 +452,9 @@ func page_state() -> Dictionary:
 	if not visible:
 		return {}
 	return {"order": MODES[_mode], "caption": _caption.text, "pieces": _pieces.text,
-		"at": [_shown, _length()]}
+		"at": [_shown, _length()],
+		# How the booklet prints the step showing, as the Booklet row says.
+		"look": _look_said.text if _looks != null and _looks.visible else ""}
 
 
 ## How many places along the timeline there are, and which is showing.

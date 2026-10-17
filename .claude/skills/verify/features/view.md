@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
 
 ## Sub-features
 
@@ -945,6 +945,62 @@ picture the assistant is shown.
   2,438 pieces, 364 pages, 2 min and 72 MB; Orthanc 8,603 pieces, 1,298 pages,
   6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In
   Chromium on SwiftShader the web build makes the example car's in 89 s.
+- `the booklet by hand` and `the booklet by hand in a browser` (`src/assembly/booklet_looks.gd`, `BookletLooks`, and
+  `Shell.change_look`): how each step is printed, set by its designer as
+  Studio's Instruction Maker sets it. On the timeline (B), in the build order
+  or the author's steps, a **Booklet** row for the step showing: Turn left /
+  Turn right (45 degrees), Higher / Lower (15), This view (the angle the window
+  looks from), Usual view, Zoom in / out (0.5x to 3x, framed on what the step
+  adds), Bigger / Smaller (0.6x to 2x on the page), New page, Alone, Parts
+  list, Callout (the sub-assembly the step puts on, in a box or on pages of
+  its own), Per page (as fit, 1, 2, 4); the row's line says how the step is
+  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page.
+  Each is one undo (`steplooks` in `Builder._apply`: the table as it was);
+  the first on a model with no steps of its own gives it the worked-out
+  ones in the same undo. Kept in `BrickWorld.step_looks` by sub-model and
+  step, and moved with their parts by a step edit (`BookletLooks.follow`;
+  a turn by what its parts were seen from, `_turns_follow`). In the file a
+  turn is LDraw's `0 ROTSTEP x y z REL|ABS|ADD` ending the step before (it
+  turns the step after it, as MLCad reads it and LDraw's model repository
+  writes it, and holds until another or `0 ROTSTEP END`; a sub-model's
+  first step's goes before its first part); the rest are the app's own
+  lines inside the step (`0 !BRICKWORKS PAGE NEW|ALONE`, `ZOOM`, `SIZE`,
+  `PARTS OFF`, `CALLOUT OFF` in a sub-model, `PER_PAGE` in the model),
+  written by `BookletLooks.written_into` on every save and read on open.
+  Someone else's file whose steps were merged, split or reordered is
+  written again a sub-model at a time (`SourceFile._restep`): a merge is its
+  STEP line out, a split one in, a reorder whole steps moved with their
+  ROTSTEP, every other line byte for byte; a step of only a ROTSTEP in a
+  sub-model that is edited is taken out, its turn given to the step it
+  turned. Earlier refuses a step whose parts stand on the one before
+  (`AuthorSteps.blocked_swap`, read off the parts' boxes), and Earlier,
+  Later and Merge go to the nearest step with parts. `BookletMaker` draws a
+  turned step from its turn (`entry.fixed`), a zoomed one framed on its new
+  parts (`_zoomed`), lays pages out with the breaks, per-page most and sizes
+  (`Booklet.lay_out`), leaves a parts box off, and gives a callout turned off
+  pages of its own (`Callout.own_pages`); `lay_out_only` lays the pages out
+  drawing nothing, which is what `booklet_layout` reads. Over MCP:
+  `booklet_layout` (read-only: pages, steps and each step's look) and
+  `edit_booklet` (step=, turn=, tilt=, zoom=, size=, page=, parts=, callout=,
+  per_page=; one undo). `booklet_edit_probe` (gpu, windowed; `-- --into=DIR`,
+  never `--out=`, which Main takes as an export) opens 30050-1 (ROTSTEPs,
+  ABS), 106-1 and 10016-1 (no steps) as File, Open does; checks a file
+  opened and saved unchanged is the file; merges, splits, reorders (and is
+  refused where a step stands on the one before), moves a part, each one
+  undo, parts' lines only moved, every part seen from the side it was, and
+  the undo giving the file back byte for byte; each look alone adds exactly
+  its line (a turn: the STEP before it a ROTSTEP) and undoes exactly; every
+  look at once survives a save and reopen and saves to the same text; and
+  the booklet made from them has the new page's step heading its page, the
+  step alone alone, at most the steps a page asked, the parts box off, the
+  callout on its own pages, the turned step drawn from its turn and the
+  zoomed one larger, and its pages laid out without pictures are the same.
+  It writes each set's booklet before and after with their pages as JSON;
+  `node tools/web/booklet_print.mjs SET_after.html DIR` prints the PDF and
+  checks it has the booklet's pages. `booklet_edit_flow.mjs` does it in a
+  browser by the row's buttons and the keys (Right, Ctrl-Z, Ctrl-Shift-Z) on
+  106-1, makes the booklet from the timeline's Instructions, reads its pages
+  (`section.page[data-steps]`), prints it to PDF and exports the file.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
