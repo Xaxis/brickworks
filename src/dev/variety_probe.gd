@@ -70,7 +70,7 @@ func _initialize() -> void:
 		"and a three brick model is measured against nothing")
 
 	print("\nthe fire station, which is the right size and the wrong texture")
-	var station: Assistant.Model = _read(library, "res://models/station.ldr")
+	var station: Assistant.Model = _read(world, assistant, "res://models/station.ldr")
 	var said: String = assistant._variety(station)
 	print("     %s" % said.replace("\n", "\n     "))
 	_ok(said.contains("part-and-colour"), "its thin spread of lots is named")
@@ -81,7 +81,10 @@ func _initialize() -> void:
 
 	# Advice, never a fault: a repetitive model is still buildable, and
 	# refusing one would throw away a design that is merely plain.
+	var since: int = Time.get_ticks_msec()
 	var report: Dictionary = assistant._check(station, true)
+	print("     (checked in %.1f s: %s)" % [(Time.get_ticks_msec() - since) / 1000.0,
+		report.get("summary", "")])
 	_ok(bool(report.get("ok", false)) or str(report.get("summary", "")).contains("problem"),
 		"the design is still judged on whether it holds together")
 
@@ -92,8 +95,7 @@ func _initialize() -> void:
 	# straight to the final look — which says whether it would survive
 	# being picked up and lists visual faults, and never once mentioned
 	# that the model was made of too few different things.
-	var judged: Dictionary = assistant._check(station, true)
-	var measured: Array = judged.get("advice", [])
+	var measured: Array = report.get("advice", [])
 	var all_of_it: String = " ".join(PackedStringArray(measured))
 	_ok(not measured.is_empty(),
 		"the check hands back what it measured, not only the faults")
@@ -185,17 +187,20 @@ func _initialize() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-func _read(library: PartLibrary, path: String) -> Assistant.Model:
-	var model := Assistant.Model.new()
+## The station as the assistant sees a model on the baseplate: each part
+## where it stands. Read as parts and colours alone it was every part at
+## the origin, and the check below then weighed 535 parts piled in one
+## place against each other: past seven and a half minutes at a load of
+## 38, and the suite's limit is seven. The station as built is checked in
+## 0.4 s, and the whole probe takes 7 s at a load of 49 (2026-10-16).
+func _read(world: BrickWorld, assistant: Assistant, path: String) -> Assistant.Model:
 	var ldr: LdrModel = LdrModel.load_file(path)
 	if ldr == null:
-		return model
+		return Assistant.Model.new()
 	for piece: LdrModel.Placement in ldr.flatten():
-		var put := Assistant.Placement.new()
-		put.part = piece.part_id.to_lower().trim_suffix(".dat")
-		put.color = piece.color_code
-		model.placements.append(put)
-	return model
+		world.add_brick(piece.part_id.to_lower().trim_suffix(".dat"), piece.color_code,
+			piece.transform)
+	return assistant._model_from_world()
 
 
 func _ok(passed: bool, said: String) -> void:
