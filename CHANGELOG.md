@@ -124,6 +124,10 @@ whole cycle.
 
 ### Fixed
 
+- A shared model's Build it draws the steps before the one shown faded
+  again in a browser. Since the faster page turns, they were sometimes
+  drawn dark, in their own colours.
+
 - A part a set's file carries, kept by the app, is kept with the pieces it
   is drawn from. It used to be missing after a restart, and a model saved
   then went out without them.
