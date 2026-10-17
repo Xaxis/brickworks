@@ -450,12 +450,17 @@ func _check_floating(placed: Dictionary, at_table: bool) -> Dictionary:
 		if placed.has(placement.id):
 			kept.append(placement)
 	model.placements = kept
+	# Where the part reaches (Lbm.PartMesh.lowest_at), not its box: a turned
+	# part's box hangs below it wherever the part does not fill it. The table
+	# set at a turned tyre's box (8810's, 9.6 LDU under the tyre) or a wagon
+	# wheel's (6716's, 8.7) was more than two cells under every part, and the
+	# check called every part the author's sampled steps added floating.
 	var lowest: float = INF
 	for id: Variant in placed:
 		var brick: BrickWorld.Brick = _world.get_brick(int(id))
 		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id) if brick != null else null
 		if mesh != null:
-			lowest = minf(lowest, (brick.transform * mesh.bounds).position.y)
+			lowest = minf(lowest, mesh.lowest_at(brick.transform))
 	var was_only: bool = _assistant._ground_only
 	_assistant._ground_only = true
 	_assistant._ground_at = lowest if at_table and lowest != INF else 0.0

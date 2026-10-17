@@ -361,11 +361,7 @@ class Pictures extends RefCounted:
 		for other: Node2 in theirs:
 			var open: Array = _open[other.id]
 			for v: int in 2:
-				var left: Dictionary = open[v]
-				var over: Dictionary = mine[v]
-				for pixel: int in left.keys():
-					if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
-						left.erase(pixel)
+				_cover(open[v], mine[v])
 
 	## A step is done: its parts are built, and may stand in front of the
 	## next steps'.
@@ -458,25 +454,45 @@ class Pictures extends RefCounted:
 		var near: Array = _step.filter(func(one: Node2) -> bool:
 			return one != node and meet(one, node))
 		near.append_array(in_front(node))
-		var theirs: Array = near.map(func(other: Node2) -> Array: return pixels_of(other))
 		var mine: Array = pixels_of(node)
 		var out: Array = []
 		for v: int in 2:
-			var left: Dictionary = {}
-			var nearest: Dictionary = mine[v]
-			for pixel: int in nearest:
-				var depth: float = nearest[pixel]
-				var covered: bool = false
-				for other: Array in theirs:
-					var at: Dictionary = other[v]
-					if at.has(pixel) and float(at[pixel]) > depth:
-						covered = true
-						break
-				if not covered:
-					left[pixel] = depth
+			var left: Dictionary = (mine[v] as Dictionary).duplicate()
+			for other: Node2 in near:
+				if left.is_empty():
+					break
+				_cover(left, pixels_of(other)[v])
 			out.append(left)
 		_open[node.id] = out
 		return out
+
+	## Takes out of [param left] the pixels [param over] covers, nearer the
+	## eye. Walking the smaller of the two: a 1 x 1 plate in front of a
+	## baseplate is a handful of pixels, not a thousand. Every part in front
+	## of each pixel of the one asked about, in turn, was most of what the
+	## step pictures cost (76161's 2,398 parts, 490 ms of 630).
+	static func _cover(left: Dictionary, over: Dictionary) -> void:
+		if over.size() < left.size():
+			for pixel: int in over:
+				if left.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					left.erase(pixel)
+		else:
+			for pixel: int in left.keys():
+				if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					left.erase(pixel)
+
+	## How many of [param left]'s pixels [param over] covers, nearer the eye.
+	static func _covered(left: Dictionary, over: Dictionary) -> int:
+		var count: int = 0
+		if over.size() < left.size():
+			for pixel: int in over:
+				if left.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					count += 1
+		else:
+			for pixel: int in left:
+				if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					count += 1
+		return count
 
 	## Whether [param node] would hide one of [param step], parts the step
 	## being filled holds that show now.
@@ -495,11 +511,7 @@ class Pictures extends RefCounted:
 			var after: float = 0.0
 			for v: int in 2:
 				var left: Dictionary = open[v]
-				var covering: Dictionary = over[v]
-				var still: int = 0
-				for pixel: int in left:
-					if not (covering.has(pixel) and float(covering[pixel]) > float(left[pixel])):
-						still += 1
+				var still: int = left.size() - _covered(left, over[v])
 				var whole: float = float((total[v] as Dictionary).size())
 				before = maxf(before, float(left.size()) / whole)
 				after = maxf(after, float(still) / whole)
@@ -1507,7 +1519,12 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 	# By the plan and the height of each part's top, as _boxes_under keeps
 	# them: what rests on a part has its underside near that part's top.
 	const LAYER := 8.0
+	# Every part, and apart those no stud seats: a part on studs is asked only
+	# about those, since two parts on studs are read by their studs. Asked
+	# about every part near it, most of them on studs too, it was most of
+	# what reading the covers cost.
 	var grid: Dictionary = {}
+	var loose: Dictionary = {}
 	for index: int in nodes.size():
 		if job != null and job.due():
 			await job.next()
@@ -1520,6 +1537,10 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			if not grid.has(key):
 				grid[key] = []
 			(grid[key] as Array).append(index)
+			if not node.seated:
+				if not loose.has(key):
+					loose[key] = []
+				(loose[key] as Array).append(index)
 	# Each part's cover, its cover lifted a cell, and both their bounds:
 	# worked out only for a part that is asked about.
 	var covers: Dictionary = {}
@@ -1555,9 +1576,10 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		var lowest: int = floori((node.box.position.y - 2.5) / LAYER)
 		var highest: int = floori((node.box.end.y + 2.5) / LAYER)
 		var seen: Dictionary = {}
+		var near: Dictionary = loose if node.seated else grid
 		for cell: Vector2i in _cells(node.box, BUCKET):
 			for layer: int in range(lowest, highest + 1):
-				for other: int in grid.get(Vector3i(cell.x, cell.y, layer), []):
+				for other: int in near.get(Vector3i(cell.x, cell.y, layer), []):
 					if other == index or seen.has(other):
 						continue
 					seen[other] = true
