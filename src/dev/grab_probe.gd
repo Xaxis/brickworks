@@ -663,11 +663,50 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	print("    crank %s %s at %s; coupler %s; %s %s on %s" % [bodies.named([crank]), driver.kind,
 		driver.point, bodies.named([coupler]), "piston" if kind == "engine" else "rocker",
 		bodies.named([last]), far_joint.kind])
-	_frame_on(bodies.parts_of([crank, coupler, last]))
+	# Seen so the loop reads. A steering from above, everything over it cut
+	# away (K); an engine from along its crank, everything but the crank, the
+	# rod and the piston drawn see-through (x-ray, I).
+	var line: Vector3 = driver.axis.normalized()
+	var shown: PackedInt64Array = bodies.parts_of(bodies.beyond(crank) + bodies.beyond(last) + [coupler])
+	if kind == "engine":
+		var keep: Dictionary = {}
+		for key: int in bodies.parts_of([crank, coupler, last]):
+			keep[key] = true
+		var ghosts: Dictionary = {}
+		for brick: BrickWorld.Brick in _world.bricks():
+			if not keep.has(brick.id) and not _store.scenery.has(brick.id):
+				ghosts[brick.id] = true
+		_world.set_xray(ghosts)
+		_builder.lattice.see_through = ghosts
+		# From the crank's side of its axle, the wheel on it behind.
+		var crank_at := Vector3.ZERO
+		var body_at := Vector3.ZERO
+		for key: int in bodies.members[crank]:
+			var brick: BrickWorld.Brick = _world.get_brick(key)
+			var middle: Vector3 = brick.transform * _library.parts[brick.part_id].bounds.get_center()
+			body_at += middle / float((bodies.members[crank] as PackedInt64Array).size())
+			if brick.part_id.begins_with("2853"):
+				crank_at = middle
+		var side: float = -signf((body_at - crank_at).dot(line))
+		if side == 0.0:
+			side = 1.0
+		_camera.look_from((line * side + Vector3(0.0, 0.45, 0.35)).normalized())
+		shown = bodies.parts_of([coupler, last])
+	else:
+		var top: float = -INF
+		for key: int in shown:
+			var brick: BrickWorld.Brick = _world.get_brick(key)
+			top = maxf(top, (brick.transform * _library.parts[brick.part_id].bounds).end.y)
+		var cut := Plane(Vector3.UP, top + 1.0)
+		_world.set_cut(true, cut, false)
+		_builder.lattice.cut = cut
+		_camera.look_from(Vector3(0.12, 1.0, 0.3).normalized())
+		shown = PackedInt64Array()
+	_frame_on(shown)
 	await _frames(20)
 	var before: Dictionary = _snapshot()
 	var depth: int = _builder.history_depth()
-	var press: Dictionary = _press_point(bodies.members[crank], bodies)
+	var press: Dictionary = _press_off_line(bodies.members[crank], driver.point, line)
 	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
 			Vector3(-1, 0.6, -1)]:
 		if not press.is_empty():
@@ -682,9 +721,20 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	if _windowed:
 		await _shot(name.get_slice(":", 0), "1_before")
 	var screen: Vector2 = press["screen"]
+	# Past the slop the way the crank turns there, as a hand starts a turn:
+	# the first move decides between turning and sliding along the axle.
+	var ray_from: Vector3 = _camera.ray_origin(screen)
+	var ray_way: Vector3 = _camera.ray_normal(screen).normalized()
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(ray_from, ray_way)
+	var slop := Vector2(0, 7)
+	if hit.is_valid():
+		var on: Vector3 = ray_from + ray_way * hit.distance
+		var tangent: Vector3 = line.cross(on - driver.point)
+		if tangent.length() > 0.5:
+			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
 	await _move(screen, 0)
 	await _button(screen, true)
-	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
 	var grab: Grab = _grab.grab
 	if grab == null:
 		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s chain=%s)" % [
@@ -764,9 +814,12 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		if kind == "engine":
 			low_s = minf(low_s, float(form["s"]))
 			high_s = maxf(high_s, float(form["s"]))
-		if not mid_shot and _windowed and absf(grab.angle) > (100.0 if kind == "engine" else 15.0):
+		if not mid_shot and _windowed and absf(grab.angle) > (90.0 if kind == "engine" else 20.0):
 			mid_shot = true
 			await _shot(name.get_slice(":", 0), "2_mid")
+	print("    (mode %s, angle %.1f, held %.1f LDU off the line, pressed #%d %s)" % [grab.mode, grab.angle,
+		((grab._hold - grab.pivot) - grab.axis * (grab._hold - grab.pivot).dot(grab.axis)).length(),
+		int(press["brick"]), _world.get_brick(int(press["brick"])).part_id])
 	_check("%s: the crank follows the pointer in %d frames, to %.2f° (%d stopped by the model or the loop)"
 		% [name, followed, worst_follow, stops], followed >= 6 and worst_follow <= 1.5)
 	var unit: String = "LDU" if kind == "engine" else "°"
@@ -795,6 +848,10 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
 		_differs(before) == "none differs")
+	_world.set_xray({})
+	_builder.lattice.see_through = {}
+	_world.set_cut(false)
+	_builder.lattice.cut = Plane()
 
 
 ## The loop round [param kind]: {crank, coupler, last, far_joint}. A
@@ -1961,6 +2018,31 @@ func _press_point(moving: PackedInt64Array, bodies: Bodies) -> Dictionary:
 				continue
 			if _verbs.brick_at(screen) == key:
 				return {"screen": screen, "brick": key}
+	return {}
+
+
+## A screen point over one of [param ids] at least 12 LDU off the line
+## through [param point] along [param way], so a turn about it reads: the
+## rim of a wheel seen end on, not its hub. {} when none shows.
+func _press_off_line(ids: PackedInt64Array, point: Vector3, way: Vector3) -> Dictionary:
+	for key: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		for corner: int in 8:
+			for share: float in [0.85, 0.6]:
+				var at: Vector3 = brick.transform * info.bounds.get_center().lerp(
+					info.bounds.get_endpoint(corner), share)
+				var off: Vector3 = at - point
+				if (off - way * off.dot(way)).length() < 12.0 or _camera.is_position_behind(at):
+					continue
+				var screen: Vector2 = _camera.unproject_position(at)
+				if not root.get_visible_rect().grow(-8.0).has_point(screen) \
+						or bool(_main.call("_over_panel_at", screen)):
+					continue
+				if _verbs.brick_at(screen) == key:
+					return {"screen": screen, "brick": key}
 	return {}
 
 

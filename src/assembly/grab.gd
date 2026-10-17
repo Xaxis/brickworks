@@ -1132,10 +1132,22 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 			var a: Vector2 = eye.unproject_position(pivot)
 			var b: Vector2 = eye.unproject_position(pivot + axis * 20.0)
 			var line: Vector2 = (b - a)
-			if line.length() > 4.0:
-				var along: float = absf(moved.dot(line.normalized()))
-				var across: float = absf(moved.cross(line.normalized()))
-				if along > across * SLIDE_BIAS:
+			# The way the point held goes when it turns, as the eye sees it:
+			# the pointer slides only when it goes along the line clearly more
+			# than that way. Across the line was not enough: seen from above
+			# its axle, a wheel's rim turns along the axle's line on the screen,
+			# and an engine's crank slid instead of turning.
+			var held: Vector3 = _hold - pivot
+			var round_way: Vector3 = axis.cross(held - axis * held.dot(axis))
+			var turning := Vector2.ZERO
+			if round_way.length() > 0.5 and not eye.is_position_behind(_hold):
+				turning = eye.unproject_position(_hold + round_way.normalized() * 3.0) \
+					- eye.unproject_position(_hold)
+			if line.length() > 12.0:
+				var along: float = absf(moved.normalized().dot(line.normalized()))
+				var round: float = absf(moved.normalized().dot(turning.normalized())) \
+					if turning.length() > 0.5 else absf(moved.normalized().cross(line.normalized()))
+				if along > round * SLIDE_BIAS:
 					use_slide()
 	match mode:
 		"turn":
