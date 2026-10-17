@@ -42,6 +42,10 @@ resampling the files (2,000 times, seeded):
   first parts of each piece of the finished model a step begins (a second
   vehicle), and again with only the model's first parts; and again with no
   stud from the side holding anything, as the probe read it until 2026-10-17.
+  The main floating rows put the model, as it stands at each step, on a
+  table at its own lowest point: a car without its wheels lies on its
+  chassis. The build check's row does the same, beside it as it was, on the
+  floor under the finished model.
 
 `compare` pairs two runs of one sample file by file: the change in each
 measure and its interval.
@@ -492,6 +496,13 @@ def per_file(row: dict) -> dict[str, dict]:
             "floating_pieces_steps": (order.get("floating_pieces_steps", order["floating_steps"]),
                                       len(steps)),
         }
+        # On the table the model as it stands rests on, its own lowest point
+        # (src/dev/steps_score.gd Place.table), since 2026-10-17; a run from
+        # before has only the floor under the finished model.
+        out[name]["floating_table"] = (order.get("floating_table", order.get(
+            "floating_pieces", order["floating"])), order.get("measured_pieces", order["measured"]))
+        out[name]["floating_table_steps"] = (order.get("floating_table_steps", order.get(
+            "floating_pieces_steps", order["floating_steps"])), len(steps))
         # The same with no stud from the side holding anything, as the probe's
         # graph read it until 2026-10-17. A run from before has only that.
         old = order.get("without_side", order)
@@ -501,6 +512,10 @@ def per_file(row: dict) -> dict[str, dict]:
                                                        old["floating_steps"]), len(steps))
         checked = row.get("checked", {}).get(name)
         out[name]["checked"] = (checked["floating"], checked["parts"]) if checked else (0, 0)
+        # With the ground the floor under the finished model, as the check was
+        # asked until 2026-10-17, not the table under the model as it stands.
+        out[name]["checked_floor"] = (checked.get("floating_floor", checked["floating"]),
+                                      checked["parts"]) if checked else (0, 0)
         out[name]["checked_steps"] = (checked["steps_floating"], checked["cuts"]) \
             if checked else (0, 0)
     return out
@@ -519,8 +534,13 @@ MEASURES = [
     ("hidden", "new things hidden front and back", "ratio"),
     ("hidden_steps", "steps with a hidden new thing", "ratio"),
     ("blocked", "things put in under one already there", "ratio"),
-    ("floating_pieces", "things floating at their step", "ratio"),
-    ("floating_pieces_steps", "steps with a floating thing", "ratio"),
+    ("floating_table", "things floating at their step", "ratio"),
+    ("floating_table_steps", "steps with a floating thing", "ratio"),
+    ("floating_pieces", "things floating, the floor and a piece begun as the table, as 2026-10-16",
+     "ratio"),
+    ("floating_pieces_steps",
+     "steps with a floating thing, the floor and a piece begun as the table, as 2026-10-16",
+     "ratio"),
     ("floating", "things floating, only the model's first parts on the table", "ratio"),
     ("floating_steps", "steps with a floating thing, only the model's first parts on the table",
      "ratio"),
@@ -528,6 +548,7 @@ MEASURES = [
     ("floating_no_side_steps", "steps with a floating thing, no stud from the side holding, as before",
      "ratio"),
     ("checked", "parts the build check calls floating at sampled steps", "ratio"),
+    ("checked_floor", "...the ground the floor under the finished model, as before", "ratio"),
     ("checked_steps", "sampled steps with a part the build check calls floating", "ratio"),
 ]
 
@@ -557,7 +578,8 @@ def summarise(rows: list[dict]) -> dict:
         add("over", ratio, [(m["over"], m["steps"]) for m in mine])
         for key in ("units", "copies", "hidden", "hidden_steps", "blocked", "floating",
                     "floating_steps", "floating_pieces", "floating_pieces_steps",
-                    "floating_no_side", "floating_no_side_steps", "checked", "checked_steps"):
+                    "floating_no_side", "floating_no_side_steps", "floating_table",
+                    "floating_table_steps", "checked", "checked_floor", "checked_steps"):
             add(key, ratio, [m[key] for m in mine])
         sizes = [s for m in mine for s in m["sizes"]]
         got["sizes"] = {str(k): v for k, v in sorted(Counter(min(s, 13) for s in sizes).items())}
@@ -648,7 +670,8 @@ def compare(before: Path, after: Path) -> int:
               f"({low:+.3f} to {high:+.3f}); better in {better}, worse in {worse}")
         for key in ("together", "units", "copies", "hidden", "hidden_steps", "blocked",
                     "floating", "floating_steps", "floating_pieces", "floating_pieces_steps",
-                    "floating_no_side", "floating_no_side_steps", "checked"):
+                    "floating_no_side", "floating_no_side_steps", "floating_table",
+                    "floating_table_steps", "checked", "checked_floor"):
             a_rows = [a[key] for a, _ in pairs]
             b_rows = [b[key] for _, b in pairs]
             paired = list(zip(a_rows, b_rows))

@@ -289,41 +289,90 @@ class Covers extends RefCounted:
 ## it went in with (docs/INSTRUCTIONS.md). A part that would hide one the
 ## step already holds waits for the next step, where the first is built.
 ##
-## Only the step's own parts are drawn, and of those only the ones whose
-## pictures meet from both sides: drawing the whole build so far, to know
-## what each new part already showed, was half of the time the order took
-## (Orthanc's 5.1 s of 8.2), and two parts that do not meet from one side
-## cannot hide each other from both.
+## Only what lands on the part asked about is drawn: the step's own parts and
+## the parts of earlier steps whose pictures meet it from both sides and come
+## nearer the eye. Drawing the whole build so far, to know what each new part
+## already showed, was half of the time the order took (Orthanc's 5.1 s of
+## 8.2), and two parts that do not meet from one side cannot hide each other
+## from both.
 class Pictures extends RefCounted:
 	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
 	const PIXEL := 10.0
 	## A new part shows at least this much of itself, from one side or the
 	## other: the steps score's SEEN.
 	const SEEN := 0.1
+	## The squares, in pixels, that the parts built so far are kept in by
+	## where they land in the front view.
+	const SQUARE := 8.0
 	var _frames: Array = []          ## [view, right, up] per view
 	var _own: Dictionary = {}        ## node id -> [{pixel: depth}, {pixel: depth}]
-	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2], in pixels
+	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2, Vector2, Vector2]
+	var _built: Dictionary = {}      ## Vector2i -> the parts of earlier steps landing there
+	var _before: Dictionary = {}     ## node id -> earlier parts that may be in front of it
 
 	func _init() -> void:
 		for view: Vector3 in [BookletStudio.FRONT.normalized(), BookletStudio.BACK.normalized()]:
 			var right: Vector3 = Vector3.UP.cross(view).normalized()
 			_frames.append([view, right, view.cross(right).normalized()])
 
-	## Where [param node]'s box lands in each picture, as a rectangle.
+	## Where [param node]'s box lands in each picture, as a rectangle, and
+	## then how near the eye it comes in each, nearest and furthest.
 	func span_of(node: Node2) -> Array:
 		if _span.has(node.id):
 			return _span[node.id]
 		var out: Array = []
+		var depths: Array = []
 		for frame: Array in _frames:
 			var low := Vector2(INF, INF)
 			var high := Vector2(-INF, -INF)
+			var depth := Vector2(INF, -INF)
 			for corner: int in 8:
 				var point: Vector3 = node.box.get_endpoint(corner)
 				var flat := Vector2(point.dot(frame[1]), point.dot(frame[2])) / PIXEL
 				low = low.min(flat)
 				high = high.max(flat)
+				var d: float = point.dot(frame[0])
+				depth = Vector2(minf(depth.x, d), maxf(depth.y, d))
 			out.append(Rect2(low, high - low))
+			depths.append(depth)
+		out.append_array(depths)
 		_span[node.id] = out
+		return out
+
+	## A step is done: its parts are built, and may stand in front of the
+	## next steps'.
+	func built(step: Array) -> void:
+		_before.clear()
+		for node: Node2 in step:
+			var rect: Rect2 = span_of(node)[0]
+			for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
+				for y: int in range(floori(rect.position.y / SQUARE),
+						floori(rect.end.y / SQUARE) + 1):
+					var key := Vector2i(x, y)
+					if not _built.has(key):
+						_built[key] = []
+					(_built[key] as Array).append(node)
+
+	## The parts of earlier steps that land on [param node] in both pictures
+	## and come nearer the eye than its furthest point in both.
+	func in_front(node: Node2) -> Array:
+		if _before.has(node.id):
+			return _before[node.id]
+		var mine: Array = span_of(node)
+		var rect: Rect2 = mine[0]
+		var seen: Dictionary = {}
+		var out: Array = []
+		for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
+			for y: int in range(floori(rect.position.y / SQUARE), floori(rect.end.y / SQUARE) + 1):
+				for other: Node2 in _built.get(Vector2i(x, y), []):
+					if seen.has(other.id):
+						continue
+					seen[other.id] = true
+					var theirs: Array = span_of(other)
+					if meet(node, other) and (theirs[2] as Vector2).y > (mine[2] as Vector2).x \
+							and (theirs[3] as Vector2).y > (mine[3] as Vector2).x:
+						out.append(other)
+		_before[node.id] = out
 		return out
 
 	## Whether [param one] and [param other] land on each other in both
@@ -399,6 +448,7 @@ class Pictures extends RefCounted:
 				continue
 			var near: Array = step.filter(func(one: Node2) -> bool:
 				return one != other and meet(one, other))
+			near.append_array(in_front(other))
 			if shown(other, near) >= SEEN and shown(other, near + [node]) < SEEN:
 				return true
 		return false
@@ -2369,6 +2419,7 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 			break
 		steps.append({"nodes": picked, "section": section,
 			"unsupported": unsupported})
+		pictures.built(picked)
 		for node: Node2 in picked:
 			placed += node.assembly.members.size() if node.assembly != null else 1
 
