@@ -62,6 +62,8 @@ var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
+## ...and what a key or a click changes, as it was then ([method _page_moment]).
+var _told_moment: Array = []
 ## ...and how long telling it took the last time, which is a frame's work
 ## twice a second: a check reads it beside the slow frames.
 var _told_page_us: int = 0
@@ -388,13 +390,23 @@ func _joint_places(to_window: Transform2D, per_css: float) -> Array:
 ## the key form moved the field down seventeen pixels, the click landed on
 ## the text, and the key was typed into the app as keyboard shortcuts.
 ## A person finds the field by looking; this is how the test looks.
+##
+## What a key or a click changes is told in the frame it changed
+## ([method _page_moment]), not at the next half second. The app left a
+## sub-assembly in the frame after Escape, but the page heard at its next
+## half second, and the frames that lit the rest of the model again took
+## 0.4 to 4 seconds in a browser's software renderer: a check that read
+## the page 600 ms after the key found the wing still being edited, as
+## often as not (assembly_flow.mjs on the m37 preview, 2026-10-16).
 func _tell_page() -> void:
 	if not OS.has_feature("web") or _chat == null:
 		return
 	var now: int = Time.get_ticks_msec()
-	if now - _told_page_at < 500:
+	var moment: Array = _page_moment()
+	if now - _told_page_at < 500 and moment == _told_moment:
 		return
 	_told_page_at = now
+	_told_moment = moment
 	var telling: int = Time.get_ticks_usec()
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
@@ -585,6 +597,15 @@ func _tell_page() -> void:
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
+
+
+## What a key or a click changes that a check reads straight after it: the
+## tool, the selection, the sub-assembly being edited and what is in hand.
+## Asked every frame, so only what is cheap; not the count of parts, which
+## changes every frame a big model is opening.
+func _page_moment() -> Array:
+	return [_verbs.mode if _verbs != null else "", _builder.selection.size(),
+		_shell.assemblies.entered if _shell != null else "", _builder.held_part]
 
 
 ## Every control the page may press, by the name a browser check knows it by.
