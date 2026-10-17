@@ -159,6 +159,8 @@ const STRIP: Array = [
 	["sections_explode", "Exploded view", "Every section apart, and back together (Shift+Y)"],
 ]
 
+## The tree's state but for the suggestion, when it was last drawn.
+var _shown_base: String = ""
 var _strip: HFlowContainer
 var _buttons: Dictionary = {}
 var _hint: Label
@@ -284,18 +286,32 @@ func _refresh(now: bool) -> void:
 		var total: int = maxi(0, shell.world.brick_count() - assemblies.scenery.size())
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
 		_shown = ""
+		_shown_base = ""
 		return
 	var root: Assemblies.Item = assemblies.tree()
-	var state: String = _state_of(root) + "|" + assemblies.entered + "|" + _suggested_state() \
+	var base: String = _state_of(root) + "|" + assemblies.entered \
 		+ "|" + str(shell.world.broken_out.size()) + "|" + str(shell.builder.selection.size())
+	var state: String = base + "|" + _suggested_state()
 	if state == _shown and not now:
 		return
-	_shown = state
-	_count.text = "%d part%s" % [root.total, "" if root.total == 1 else "s"]
 	var folded: Dictionary = {}
 	var item: TreeItem = _tree.get_root()
 	if item != null:
 		_collect_folded(item, folded)
+	# Only the suggestion changed: its rows made again, not the model's. On
+	# 10179-1's 392 sub-assemblies the whole tree was 62 ms of one frame.
+	if base == _shown_base and item != null:
+		var old: TreeItem = _find(item, SUGGESTED)
+		if old != null:
+			old.free()
+		_shown = state
+		_fill_suggested(item, folded)
+		_mark_selected()
+		_update_strip()
+		return
+	_shown = state
+	_shown_base = base
+	_count.text = "%d part%s" % [root.total, "" if root.total == 1 else "s"]
 	_tree.clear()
 	var top: TreeItem = _tree.create_item()
 	_fill(top, root, folded)
@@ -636,20 +652,26 @@ func controls_by_name() -> Dictionary:
 	return out
 
 
-## Where a row is on the screen, for a browser check to click it: the row
-## whose metadata is [param meta] ("" the model, a path, or SUGGESTION and
-## its number). Null when it is not shown.
-func row_rect(meta: String) -> Variant:
-	if _tree == null or _tree.get_root() == null:
-		return null
-	var row: TreeItem = _find(_tree.get_root(), meta)
-	if row == null:
-		return null
-	var rect: Rect2 = _tree.get_item_area_rect(row)
-	if rect.size == Vector2.ZERO:
-		return null
-	rect.position += _tree.get_global_rect().position - Vector2(0, _tree.get_scroll().y)
-	# Only a row in view: one scrolled out is no place to click.
-	if not _tree.get_global_rect().has_point(rect.get_center()):
-		return null
-	return rect
+## Where the rows are on the screen, metadata -> Rect2, walked once: what
+## the page is told twice a second. Asked a row at a time, each a search of
+## the whole tree, it was 100 to 300 ms of a browser's frame every half
+## second on 10179-1's 392 sub-assemblies (2026-10-17).
+func row_rects() -> Dictionary:
+	var out: Dictionary = {}
+	if _tree == null or _tree.get_root() == null or not _tree.is_visible_in_tree():
+		return out
+	var area: Rect2 = _tree.get_global_rect()
+	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
+	var stack: Array = [_tree.get_root()]
+	while not stack.is_empty():
+		var row: TreeItem = stack.pop_back()
+		var rect: Rect2 = _tree.get_item_area_rect(row)
+		if rect.size != Vector2.ZERO:
+			rect.position += shift
+			if area.has_point(rect.get_center()):
+				out[str(row.get_metadata(0))] = rect
+		if not row.collapsed:
+			for child: TreeItem in row.get_children():
+				stack.append(child)
+	return out
+

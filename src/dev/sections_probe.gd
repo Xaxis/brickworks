@@ -19,7 +19,12 @@
 ##   a section broken out moves by whole studs or bricks, as one undo step,
 ##     and the file written meanwhile is the file written before; put back,
 ##     every part is where it was to the bit; each way undoes and redoes;
-##   the exploded view moves what is drawn and nothing of the model;
+##   the exploded view moves what is drawn and nothing of the model, the view
+##     framed on it with every section in the window and back after, and a
+##     click on the highest section where it is drawn choosing it;
+##   on the big one, the window keeps drawing while it is worked out on a
+##     worker (its longest frame at most 100 ms, or no longer than 300 idle
+##     frames' of the same model on a loaded box), and Cancel stops it;
 ##   evaluate_section, suggest_sections and break_out_section over MCP say
 ##     the same, and the read-only ones leave the model as it was.
 ## With --shots, pictures of the suggestion in the tree, a section broken
@@ -35,6 +40,7 @@ var _builder: Builder
 var _store: ModelStore
 var _library: PartLibrary
 var _shell: Shell
+var _verbs: EditVerbs
 var _ui: SectionsUi
 var _sections: Sections
 var _socket: CommandSocket
@@ -74,6 +80,7 @@ func _run() -> void:
 	_store = _main.get("_store")
 	_library = _main.get("_library")
 	_shell = _main.get("_shell")
+	_verbs = _main.get("_verbs")
 	_ui = _shell.sections
 	_sections = _ui.sections
 	_socket = CommandSocket.new()
@@ -146,9 +153,44 @@ func _one_set(name: String) -> void:
 	var row: Dictionary = {"set": name, "opened": int(opened.get("placed", 0))}
 	var whole_parts: int = Inventory.pieces_in(_world, _library, _store.scenery)
 	var whole: Inventory = Inventory.of(_world, _library, _store.scenery)
+	# The window's frames idle first, the same model in view: on a box this
+	# loaded, a frame with nothing to do took up to 140 ms (2026-10-17).
+	var idle: float = 0.0
+	if level_count() >= Sections.ON_A_WORKER_FROM:
+		var idle_at: int = Time.get_ticks_usec()
+		for _n: int in 300:
+			await process_frame
+			var now_idle: int = Time.get_ticks_usec()
+			idle = maxf(idle, (now_idle - idle_at) / 1000.0)
+			idle_at = now_idle
 	var started: int = Time.get_ticks_msec()
+	var frames: Array = [0, Time.get_ticks_usec(), 0, ""]   # longest, last, how many, when
+	var watch: Callable = func() -> void:
+		var now: int = Time.get_ticks_usec()
+		if now - int(frames[1]) > int(frames[0]):
+			frames[0] = now - int(frames[1])
+			frames[3] = "after %s, %d ms in" % [str(_sections.laps.back()[0])
+				if not _sections.laps.is_empty() else "the start",
+				(now - started * 1000) / 1000]
+		frames[1] = now
+		frames[2] = int(frames[2]) + 1
+	process_frame.connect(watch)
 	await _ui.suggest()
+	process_frame.disconnect(watch)
 	var took: int = Time.get_ticks_msec() - started
+	var longest_ms: float = int(frames[0]) / 1000.0
+	row["suggest_frames"] = int(frames[2])
+	if not _sections.laps.is_empty():
+		print("    on the window's thread: %s; the longest frame %s" % [str(_sections.laps),
+			str(frames[3])])
+	row["suggest_longest_frame_ms"] = snappedf(longest_ms, 0.1)
+	if level_count() >= Sections.ON_A_WORKER_FROM:
+		# At most 100 ms, or no longer than the idle window's own longest.
+		row["idle_longest_frame_ms"] = snappedf(idle, 0.1)
+		_check("%s: the window keeps drawing while it is worked out on a worker: %d frames "
+			% [name, int(frames[2])] + "in %d ms, the longest %.0f ms (at most 100, or the "
+			% [took, longest_ms] + "%.0f ms of 300 idle frames)" % idle,
+			(longest_ms <= 100.0 or longest_ms <= idle + 10.0) and int(frames[2]) > 5)
 	var made: Array = _sections.suggested
 	row["suggest_ms"] = took
 	row["sections"] = made.size()
@@ -272,6 +314,8 @@ func _one_set(name: String) -> void:
 	await _ui.suggest()
 
 	await _over_mcp(name, row)
+	await _cancelled(name)
+	await _ui.suggest()
 
 	# Accepted: sub-assemblies, one undo step.
 	var depth: int = _builder.history_depth()
@@ -443,6 +487,8 @@ func _exploded(name: String, row: Dictionary) -> void:
 	var text: String = _store.to_text("Probe")
 	var depth: int = _builder.history_depth()
 	var was_exploded: bool = _ui.is_exploded()
+	var camera: CadCamera = _main.get("_camera")
+	var view_was: Array = [camera._target_focus, camera._target_distance]
 	_ui.explode_now(true)
 	var drawn: int = _world.drawn_ids().size()
 	if drawn == 0:
@@ -454,17 +500,73 @@ func _exploded(name: String, row: Dictionary) -> void:
 	_check("%s: ...and changes nothing of the model (revision, history, file)" % name,
 		_world.revision == revision and _builder.history_depth() == depth
 		and _store.to_text("Probe") == text)
+	# Framed on what is drawn apart: every section's drawn box in the window.
+	await _frames(90)
+	var tops: Array = _sections.sections()
+	var outside := PackedStringArray()
+	var view: Rect2 = root.get_visible_rect()
+	var highest: String = ""
+	var top_y: float = -INF
+	for one: Dictionary in tops:
+		var box: AABB = _ui.drawn_bounds(str(one["path"]))
+		if box.end.y > top_y:
+			top_y = box.end.y
+			highest = str(one["path"])
+		for corner: int in 8:
+			var point: Vector3 = box.get_endpoint(corner)
+			if camera.is_position_behind(point) \
+					or not view.grow(2.0).has_point(camera.unproject_position(point)):
+				outside.append(Assemblies.label(str(one["path"])))
+				break
+	_check("%s: ...the view framed on it, every section drawn in the window%s" % [name,
+		"" if outside.is_empty() else ": not " + ", ".join(outside)], outside.is_empty())
+	# A click picks what is drawn: the highest section, at its drawn middle.
+	var middle: Vector2 = camera.unproject_position(_ui.drawn_bounds(highest).get_center())
+	var picked: int = _verbs.brick_at(middle)
+	var picked_path: String = Assemblies.path_of(_world.get_brick(picked)) \
+		if _world.get_brick(picked) != null else ""
+	_verbs.set_mode("select")
+	_verbs.click(middle, false)
+	var chosen: String = _shell.assemblies.selected_assembly()
+	_check("%s: ...a click on %s where it is drawn chooses it (picked %s, chosen %s)" % [name,
+		Assemblies.label(highest), picked_path, chosen],
+		Assemblies.within(picked_path, highest) and chosen == highest)
 	if not _shots.is_empty():
-		_main.get("_camera").frame(_main.call("_built_bounds").grow(80.0), 1.3)
-		await _frames(30)
+		await _frames(10)
 		await _shot(name.get_basename() + "_exploded")
+	_builder.clear_selection()
 	_ui.explode_now(false)
-	_check("%s: ...and back together, nothing drawn moved" % name,
-		_world.drawn_ids().is_empty() and not _ui.is_exploded())
+	await _frames(5)
+	_check("%s: ...and back together, nothing drawn moved, the view where it was" % name,
+		_world.drawn_ids().is_empty() and not _ui.is_exploded()
+		and camera._target_focus.is_equal_approx(view_was[0])
+		and is_equal_approx(camera._target_distance, float(view_was[1])))
 	row["exploded_groups"] = groups
 
 
 ## The same over MCP, as the connector calls it.
+## The parts the suggestion is made of: the model's, or the sub-assembly's.
+func level_count() -> int:
+	return _sections._bricks_in(_sections._level()).size()
+
+
+## Cancel stops a suggestion part way: nothing suggested, said so.
+func _cancelled(name: String) -> void:
+	if level_count() < Sections.ON_A_WORKER_FROM:
+		return
+	var job: Working.Job = Working.begin("Suggesting sections…", Sections.PHASES, true)
+	_cancel_after(job, 3)
+	var made: Array = await _sections.suggest(job)
+	job.end()
+	_check("%s: Cancel stops it: nothing suggested (%s)" % [name, _sections.why_none],
+		made.is_empty() and _sections.why_none.begins_with("stopped"))
+
+
+func _cancel_after(job: Working.Job, count: int) -> void:
+	await _frames(count)
+	job.cancel()
+
+
 func _over_mcp(name: String, row: Dictionary) -> void:
 	var text: String = _store.to_text("Probe")
 	var depth: int = _builder.history_depth()

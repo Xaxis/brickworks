@@ -541,7 +541,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a file is written with every section in place (`BrickWorld.home_of`,
   `ModelStore`). `Shift+Y` (View or Build, Exploded view) draws every
   section apart, lifted by its place in the stack and spread from the
-  middle, over 0.6 s, and back
+  middle, over 0.6 s, and back; framed on what is drawn, and a click
+  picks what is drawn under the pointer (`SectionsUi.pick_drawn` through
+  `EditVerbs.brick_at`), so a section is chosen where it is seen. A model of
+  600 parts or more is suggested on a worker, with Cancel, the window
+  drawing meanwhile
   (`BrickWorld.set_drawn`: nothing of the model moves). Evaluate the
   section… shows the chosen one alone: parts as the parts list counts
   them, lots, weight, one piece by the joint graph and by the build check

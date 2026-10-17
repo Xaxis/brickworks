@@ -6,6 +6,8 @@
 //
 //   node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… [--out=shots/sections_web]
 //        [--set=vendor/omr/files/21016-1.mpd]
+//   ... --timing --set=vendor/omr/files/10179-1.mpd   the app's own frames while a big
+//        model is suggested, against its idle frames
 //
 // Every step is a click or a key on what the page says is where
 // (window.brickworksControls, and brickworksState.sections.rows for the
@@ -151,6 +153,35 @@ await wait(4000);
 const bricks = (await state()).bricks;
 check(`the set is on the baseplate (${bricks} parts)`, bricks > 300);
 
+// --timing: a big model suggested, and the app's own frames read while it
+// is worked out (brickworksState.busy: each frame whose own work passed
+// 8 ms), against the same model's idle frames before.
+if (args.timing) {
+  const busySince = async (from) => ((await state()).busy || []).filter((f) => f[0] >= from);
+  const idleFrom = (await state()).now;
+  await wait(15000);
+  const idle = await busySince(idleFrom);
+  const idleLongest = idle.reduce((most, f) => Math.max(most, f[1]), 0);
+  const from = (await state()).now;
+  await click(await controlAt("sections_suggest"));
+  const done = await until((now) => ((now.sections || {}).suggested || []).length >= 2, 900);
+  const took = ((await state()).now - from) / 1000;
+  const during = await busySince(from);
+  const longest = during.reduce((most, f) => Math.max(most, f[1]), 0);
+  const over = during.filter((f) => f[1] > 100).length;
+  console.log(`    idle: ${idle.length} busy frames in 15 s, the longest ${idleLongest} ms`);
+  console.log(`    suggesting: ${took.toFixed(1)} s, ${during.length} busy frames, the longest ${longest} ms, ${over} over 100 ms`);
+  check(`${((done.sections || {}).suggested || []).length} sections suggested on ${bricks} parts in ${took.toFixed(1)} s`,
+    ((done.sections || {}).suggested || []).length >= 2);
+  check(`no frame of the app's own work over 100 ms while it is worked out, or over the idle page's ${idleLongest} ms (longest ${longest} ms)`,
+    longest <= Math.max(100, idleLongest + 10));
+  writeFileSync(`${out}/timing.json`, JSON.stringify({ set, bricks, took, idle, during }, null, 2));
+  await shot("timing_suggested");
+  await browser.close();
+  console.log(failed === 0 ? "sections timing in a browser: ok" : `sections timing in a browser: ${failed} FAILED`);
+  process.exit(failed === 0 ? 0 : 1);
+}
+
 console.log("  suggested");
 await click(await controlAt("sections_suggest"));
 let s = await until((now) => ((now.sections || {}).suggested || []).length >= 2, 240);
@@ -241,6 +272,22 @@ s = await until((st) => (st.sections || {}).exploded >= 1, 30);
 check(`Shift+Y draws ${(s.sections || {}).apart} sections apart, the model unchanged`,
   (s.sections || {}).exploded >= 1 && (s.sections || {}).apart >= 2 && (s.sections || {}).pose === home);
 await shot("exploded");
+// A click picks what is drawn: the section drawn highest on the page.
+await wait(2500);
+const drawn = (await sections()).drawn || {};
+const highest = Object.entries(drawn).sort((a, b) => a[1].y - b[1].y)[0];
+if (highest) {
+  const [path, at] = highest;
+  const own = (((await state()).tree || {})[path] || "").split(",").filter((p) => p).length;
+  await click(at);
+  s = await until((st) => st.selected === own, 10);
+  check(`a click on ${path} where it is drawn apart chooses it (${s.selected} of its ${own} parts)`,
+    own > 0 && s.selected === own);
+  await shot("exploded_chosen");
+} else {
+  check("the page says where each section is drawn apart", false);
+}
+await key("Escape", 800);
 await key("Shift+y", 2500);
 s = await until((st) => (st.sections || {}).exploded === 0, 30);
 check("Shift+Y again puts them back together", (s.sections || {}).exploded === 0);
