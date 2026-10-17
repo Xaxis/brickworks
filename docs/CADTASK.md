@@ -44,6 +44,15 @@ timeline take a tenth, a half and a thirtieth of a second (section 2, and
 place 2 ms, not 747 ("A part in hand over a big model"). Still behind:
 places off the 2 LDU lattice, and Studio itself never run beside it.
 
+**A day on (section 6)** 31 of the sets' 39 parts off the grid go where
+the file has them through the interface, with a Hinge and a place typed in
+Properties where the pointer cannot say it (8643-1's eight tyres do not:
+the app finds no room for a tyre where the set has it); every act on the desktop is
+under 100 ms at its worst frame at every size; and the files still come
+back as their authors wrote them. Worse: a step of the timeline in a
+browser held the page for seconds on a 925-part model; found to be the
+grab's drag handles, fixed (m62), and now held by a release check.
+
 ## 1. Files opened, saved and opened again
 
 **What was run.** 48 real sets' files from the LDraw model repository
@@ -1190,84 +1199,315 @@ y 35; whole LDU, not even), parts that stand on one of those, 54383/4 and
 place in eight aims, and the propeller (50746) on its 4286. Off-lattice
 places and the wedge plates are the next gaps.
 
+## 6. The test again, a day on (2026-10-17)
+
+Run at `7884160` (the releases m59 to m61 staged on top of live, before
+this unit's change; the parts off the grid and the release check below on
+its code) with the same sets and the same measures as the first run:
+the 54 files of section 1 (`cadtask.py roundtrip`), the three models of
+section 2 on the desktop on the box's graphics card (as "Big models, after"
+ran them) and in Chromium on SwiftShader, and the first 8 parts of the
+three sets of section 3 (`cadtask.py build --most 8`). The box was shared at
+a load of 30 to 50. Everything is in `bench/results/cadtask2-2026-10-17/`.
+Studio was still not run beside it.
+
+**Before → now.** "First" is the first run (2026-10-16 morning, `d9d7679`);
+"since" the last unit that measured the row the day before, where one did.
+
+| measure | first | since | now |
+|---|---|---|---|
+| files saved untouched and the author's own again (54) | 0 | 54 (fidelity) | **54** |
+| ...every meta line and the author kept | 0 | 54 | **54** |
+| ...author's steps kept | 40 of 44 | 44 of 44 | **44 of 44** |
+| ...the app's model the same opened again | 50 | 54 | **54** |
+| parts lost on open, neither shown nor kept | 4,740 | 0 | **0** |
+| LDCad skins drawn | none | 62 pieces in 8 files (flexdraw) | **62 in 8** |
+| shown nowhere: parts no library has | — | 2 in 2 files | 2 in 2 files |
+| open, median by size (1–29 … 2,501 up), ms | 54, 124, 246, 1,528, 3,880, 13,072 | 17, 38, 69, 337, 835, 1,902 (flexdraw, m39) | 17, 39, 81, 552, 1,464, 2,112 |
+| the slowest save | 718 s | 0.14 s | 0.2 s |
+| desktop, 42082-1 open to its first frame | 37 s (software) | 18.0 s (GPU) | **4.5 s** |
+| desktop, a part swept over 4,139 parts: median, worst frame | 4,946, 9,083 ms (software) | 39, 1,088 (GPU); 22, 30 (the sweep unit) | 22, 38 ms |
+| desktop, the worst frame of any act at 925 / 4,139 parts | 3,789 / 11,790 ms (software) | 280 / 1,088 (GPU) | **65 / 87 ms** |
+| browser, a part swept: the app's own work in its worst frame, 92 / 925 parts | 108 / 355 ms | 32 / 30 (the sweep unit, a move) | 70 / 190 |
+| browser, a step of the timeline (Next): its own work, 92 / 925 parts | 90 / 69 ms | 37 / 54 (big models) | **483 / 3,861** |
+| the plane's first 8 parts: put down, exact, actions a part | 6, 5, 15.5 | 8, 6, 17.4 (buildux) | **8, 8**, 17.6 |
+| 8643-1's first 8 | 2, 0, 14.9 | 8, 8, 15.6 | 8, 8, 15.5 |
+| 8841-1's first 8 | not reached | not reached | 5, 5, 11.5; 3 gaps |
+| the sets' 39 parts off the grid put where the file has them through the interface | — | 2 (the 4262s on file-placed pins, section 5) | **31 of 39** |
+
+On the desktop on the graphics card (median / 95th percentile / worst
+frame, ms, "Big models, after" → now; xvfb's copy of a frame is most of 15
+to 20 ms here):
+
+| act | 92 parts | 925 parts | 5,025 parts (4,139 here) |
+|---|---|---|---|
+| a frame drawn with nothing changed | 20 / 33 / 33 → 20 / 30 / 39 | 25 / 42 / 48 → 19 / 25 / 25 | 33 / 45 / 54 → 26 / 35 / 39 |
+| orbit | 23 / 36 / 43 → 20 / 28 / 32 | 22 / 33 / 65 → 16 / 24 / 27 | 32 / 46 / 57 → 23 / 34 / 44 |
+| a part in hand, swept | 35 / 51 / 53 → 22 / 35 / 40 | 28 / 60 / 232 → 17 / 21 / 26 | 39 / 550 / 1,088 → 22 / 34 / 38 |
+| 100 parts selected, a shift-click each | 22 / 35 / 37 → 19 / 35 / 41 | 24 / 48 / 48 → 19 / 26 / 28 | 36 / 45 / 52 → 23 / 25 / 26 |
+| select all | 20 / 29 / 31 → 15 / 23 / 24 | 24 / 35 / 69 → 21 / 37 / 65 | 33 / 53 / 170 → 23 / 33 / 83 |
+| Delete of those 100 | 29 / 37 / 43 → 20 / 37 / 41 | 30 / 55 / 106 → 17 / 30 / 43 | 29 / 59 / 165 → 21 / 31 / 87 |
+| Ctrl-Z of that | 22 / 34 / 70 → 19 / 71 / 88 | 26 / 46 / 54 → 17 / 25 / 26 | 33 / 63 / 94 → 26 / 41 / 44 |
+| a step of the timeline (Next) | 28 / 53 / 69 → 20 / 27 / 31 | 21 / 37 / 57 → 14 / 22 / 33 | 24 / 40 / 47 → 17 / 19 / 22 |
+| open, to the first frame drawn | 0.3 s → 0.14 s | 3.3 s → 0.93 s | 18.0 s → 4.5 s |
+| timeline (B) opens | 0.1 s → 0.1 s | 0.6 s → 0.6 s | 2.8 s → 3.5 s |
+
+Every act on the desktop but the two openings is now under 100 ms at its
+worst frame at every size, and the swept part over the crane, a second at
+its worst the day before, is 38 ms. In the browser (the app's own work in the worst frame of
+each act, the frame less its WebGL, first run → now, at 92 and 925 parts):
+an orbit 42 → 151 and 158 → 268 ms, a part swept 108 → 70 and 355 → 190,
+select all 54 → 76 and 269 → 283, Delete 23 → 28 and 258 → 116, its undo
+123 → 131 and 523 → 199, D (everything moved, new since) 157 and 414.
+On 42082-1 (first run → "Big models, after", on 2,015 of its parts arrived
+→ now): its open's worst frame 6.5 → 7.4 → 8.8 s; an orbit's median frame
+151 → 27 → 87 ms and its worst 2,664 → 109 → 2,505; a part swept 1,130 →
+— → 545 (the sweep unit's own run: 42); select all 688 → 91 → 159; D,
+everything moved, — → 879 → 2,690; its undo and redo 559 and 277 → 673
+and 554; Delete 684 → 703 → 370 and its undo — → 297 → 367. Its timeline's
+steps were stopped after the first, one frame of which took 136 s: the
+grab's handles below. The browser's numbers on the big model move with what has arrived
+and with the box: of the two before them, only the step below is outside
+that.
+
+**What got worse: a step of the timeline in a browser.** Each press of
+Next on 75969-1 (925 parts) held the page for five to seven frames of 2.2
+to 3.9 s of the app's own work each (`scripts_each` in `web_frames.json`);
+on 92 parts 0.3 to 0.5 s each. "Big models, after" measured 37 and 54 ms.
+The desktop draws a step's frames in 14 to 17 ms at the median and 33 at
+the worst (its engine's process time, read in the step act, said 503 ms
+once on 75969-1 and 3.4 s once on the crane, though no frame of the act
+took over 33 ms, so those readings are not a step's). The page's own
+report of its state took at most 69 ms a time, so it is not that.
+
+**Found: the grab's drag handles.** The same step act on 75969-1 alone,
+each build exported and served on a port of its own, one after another on
+the same box (`step-ab/`): the morning's build (`d78f768`, before the day's
+merges), the merge of the grab (`0bc6afa`), this tree's, and this tree's
+with the grab unit's `420422d` applied (without the swing fields it
+brought from earlier on its branch). The worst frame's own work of each of
+the five presses of Next, in ms:
+
+| build | the five presses of Next |
+|---|---|
+| the morning's, `d78f768` | 64, 75, 18, 21, 19 |
+| the grab merged, `0bc6afa` | 78, 1,773, 1,940, 715, 762 |
+| this tree's | 6,706, 6,457, 6,339, 5,683, 6,320 |
+| this tree's with `420422d` | 87, 66, 24, 13, 19 |
+
+`420422d` is the grab unit's own finding, on its branch and not yet on
+main when this ran: the grab tool found its drag handles (places on the
+page over a part of each body that turns on a joint, there for browser
+checks to press) twice a second in every browser, raycasting each body's
+parts. Now they are found only when a page asks. Applied, the step is what
+it was in the morning; it came in with the grab and grew with the merges
+after it. Why a step of the timeline was the act it hurt most was not
+measured. The coordinator shipped it as a release of its own (m62).
+
+**And a check that would have caught it.** No release check held what a
+frame costs: `steps_flow` checks what a step shows. `cad_frames.mjs --gate`
+now judges the app's own work, the frame less its WebGL, on 75969-1: each
+press of Next in its worst frame and an orbit's drawn frames at their 95th
+percentile under 200 ms, and select all in its worst frame under 400 (one
+frame does all of selecting 922 parts, and a good build read 114 to 190 ms
+of it here: a bar it sits a tenth under holds releases on the box's load). It is
+`frames` in `tools/release/preview_checks.sh`, in the battery, run alone
+as the other timing checks are. Run on the two builds locally, one after the other: This tree's build with `420422d`: every check passed (an orbit's drawn frames 49.2 ms at the 95th percentile, select all 190.4 ms, the five presses of Next 39, 26, 21, 38, 40 ms; `gate/`). This tree's build without it: 5 FAILED (an orbit's drawn frames 145.9 ms at the 95th percentile, select all 113.7 ms, the five presses of Next 6,093, 6,146, 6,190, 6,178, 5,990 ms; `gate/`).
+
+**The build.** The plane's first 8 parts all went down exactly, the clip
+plates too (section 5's fix of the click); 8643-1's 8 as before. 8841-1's
+first steps were reached for the first time: 5 of its first 8 parts put
+down, all 5 exactly. The other three were its step 1's two Technic pins
+and a 1 x 4 plate over them: the flow aims every part as it aims a brick,
+moving the pointer until the ghost stands where the file has it, and a
+pin's ghost goes into a hole when the pointer is on the hole's mouth
+(section 5), which that search does not try. The pictures beside the files
+are in `build/` (`*_side_by_side.png`), looked at.
+
+### Every part off the grid, through the interface
+
+**What was off the grid** (off the 24 turns, or a place off the 2 LDU
+lattice on some axis), in the three sets: 39 parts.
+
+| set | parts | what holds them |
+|---|---|---|
+| 5762-1 Plane | 2 round 1 x 1 plates at z −63, odd (and the 2 stacked on them, on the lattice, put too); 2 propellers at y −27 | the lights in clip plates' rings, the propellers on 4488's wheel pins |
+| 8643-1 | 8 wheel rims and 8 tyres at y −3 | the rims on 6157's wheel pins, the tyres on the rims |
+| 8841-1 Balance | its axle 6 at z 1; two pans of 9 parts each, hung 0.35 LDU off the lattice, their four 4262s at 66.4 degrees | the 4262s on an axle and the pins; the pins in 3651 connectors; plates on the 3651s' studs |
+
+**What a person had.** A part on a joint could be swung there by the ghost
+when its other end met a part down (section 5), and nothing else could
+reach a place off the lattice or a turn off the 24: Properties moved a
+selection by whole 2 LDU cells, J swung one 15 degrees at a press, and a
+part put on the studs of a part off the lattice went where the lattice
+said, up to a cell off.
+
+**What changed, the expert's way.** Studio puts such a part with its hinge
+and rotation tools, an angle about the connection typed or snapped, and a
+move by a typed amount. Here:
+
+- **Hinge**, in Properties, shown when the selection hangs from a joint (a
+  hinge's pin, a clip on a bar, a pin or an axle in a round hole): its turn
+  about that joint, in degrees off square. A number typed swings it there
+  (`Builder.hinge_angle`, `swing_selection`). Each pan's first 4262 goes
+  onto its axle at one of R's stops and is typed to 23.58 (−23.58 on the
+  other side): 66.42 degrees from level, acos 0.4, its pins 40 LDU either
+  side of the axle and its holes 100 apart.
+- **X, Y and Z** move the selection by exactly what is typed, to the
+  hundredth of an LDU (`Builder.move_selection_by`), checked for room as a
+  part put down is (`room_for`: a wheel round its pin is not in its way),
+  where they moved by whole cells and refused a move onto a joint.
+- **A part on a part off the lattice sits on its studs.** Aimed at the top,
+  the underside or the side of a part square but off the lattice, the part
+  in hand is put in that part's frame (`Builder._in_frame_of`), so 8841-1's
+  plates and connectors go onto each other 0.35 LDU off the lattice as the
+  file has them, where each went a third of an LDU off.
+- **Not J snapping.** A press of J stopping where the swung part's far hole
+  meets a pin was built and taken out again: swung 40 degrees off, the 4262
+  went one press and stopped against the pin it was to go on, as the real
+  one does; a hole goes onto a pin along it, not from the side. The second
+  4262 of each pan goes on by its ghost instead (section 5's `_closings`).
+
+**Proved, part by part** (`src/dev/offgrid_probe.gd`, windowed on the
+graphics card): each set's file opened for the truth, the parts before
+each run put down as the file has them, then each off-grid part taken into
+hand, turned with R and T, aimed with the pointer at what holds it (its
+joint, or the studs, side or underside of the part it rests on) until its
+ghost stood where the file has it, and clicked as a browser clicks; where
+the pointer could not say it, the part selected by a click and its Hinge or
+X, Y, Z typed in Properties. Each run's parts go down one after another on
+the ones the interface put before them, in the order a person takes within
+the step (each pan from its 4262 down: 4262, pin, connector, plate, plate,
+plate, connector, pin, 4262). Each is checked against the file to 0.05 LDU
+and 0.002 of its matrix (`shots/offgrid/offgrid.json`).
+
+Of the 39 parts off the grid, **31 of 39: 11 by the pointer alone, 20 with a number typed**; the two lights stacked on the off-grid ones, on the lattice, went down too. Each is checked to 0.05 LDU and 0.002 of its matrix, so to the LDU and the degree. What was typed, part by part (each number a person reads in Properties off the part it goes on, or works out: 23.58 is 66.42 degrees, acos 0.4, off square; the probe's own counts of moves and keys are its search, not a person's, and are in the rows):
+
+| set | part | put down | typed in Properties | off the file after |
+|---|---|---|---|---|
+| 5762-1 | #15 6141 | aimed by the pointer; exact, typed | Z 63.0 | 0.0 LDU, 0.0° |
+| 5762-1 | #16 6141 | aimed by the pointer; exact, typed | Z 63.0 | 0.0 LDU, 0.0° |
+| 5762-1 (stacked) | #17 6141 | aimed by the pointer; exact, typed | Z 72.0 | 0.0 LDU, 0.0° |
+| 5762-1 (stacked) | #18 6141 | aimed by the pointer; exact, typed | Z 72.0 | 0.0 LDU, 0.0° |
+| 5762-1 | #50 2421 | aimed at its joint; exact, typed | Z 68.0 | 0.0 LDU, 0.04° |
+| 5762-1 | #51 2421 | aimed at its joint; exact, typed | Z 68.0 | 0.0 LDU, 0.04° |
+| 8643-1 | #46 51719 | aimed at its joint; exact, typed | X -40.0 | 0.0 LDU, 0.04° |
+| 8643-1 | #47 51719 | aimed at its joint (shaft); exact by the pointer | nothing | 0.0 LDU, 0.04° |
+| 8643-1 | #48 51719 | aimed at its joint; exact, typed | X -40.0 | 0.0 LDU, 0.04° |
+| 8643-1 | #49 51719 | aimed at its joint (shaft); exact by the pointer | nothing | 0.0 LDU, 0.04° |
+| 8643-1 | #50 51719 | aimed at its joint; exact, typed | X -40.0 | 0.0 LDU, 0.04° |
+| 8643-1 | #51 51719 | aimed at its joint (shaft); exact by the pointer | nothing | 0.0 LDU, 0.04° |
+| 8643-1 | #52 51719 | aimed at its joint; exact, typed | X -40.0 | 0.0 LDU, 0.04° |
+| 8643-1 | #53 51719 | aimed at its joint (shaft); exact by the pointer | nothing | 0.0 LDU, 0.04° |
+| 8643-1 | #54 50951 | aimed by the pointer; off | X -40.0, Y 19.0, Z -160.0, Y 19.0, Y 19.0 | 80.001 LDU, 0.04° |
+| 8643-1 | #55 50951 | aimed by the pointer; off | X 40.0, Z -160.0, X 40.0, X 40.0 | 30.0 LDU, 0.04° |
+| 8643-1 | #56 50951 | aimed by the pointer; off | X -40.0, Y 19.0, Z -120.0, Y 19.0, Y 19.0 | 80.001 LDU, 0.04° |
+| 8643-1 | #57 50951 | aimed by the pointer; off | X 40.0, Y 19.0, Z -120.0, X 40.0, Y 19.0, X 40.0, Y 19.0 | 33.527 LDU, 0.04° |
+| 8643-1 | #58 50951 | aimed by the pointer; off | X -40.0, Y 19.0, Z -80.0, Y 19.0, Y 19.0 | 48.001 LDU, 0.04° |
+| 8643-1 | #59 50951 | aimed by the pointer; off | X 40.0, Y 19.0, Z -80.0, X 40.0, Y 19.0, X 40.0, Y 19.0 | 33.527 LDU, 0.04° |
+| 8643-1 | #60 50951 | aimed by the pointer; off | could not select it | 87.499 LDU, 0.04° |
+| 8643-1 | #61 50951 | aimed by the pointer; off | X 40.0, Z 60.0, X 40.0, Z 60.0, X 40.0, Z 60.0 | 41.231 LDU, 0.04° |
+| 8841-1 | #22 3706 | aimed at its joint; exact, typed | Z -1.0 | 0.0 LDU, 0.04° |
+| 8841-1 | #45 4262 | aimed at its joint; exact, typed | Hinge 23.58, X -260.0, Y 232.18, Z -10.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #44 4459 | aimed at its joint (pin hole); exact by the pointer | nothing | 0.005 LDU, 0.0° |
+| 8841-1 | #41 3651 | aimed at its joint (pin); exact by the pointer | nothing | 0.005 LDU, 0.0° |
+| 8841-1 | #40 3022 | aimed by the pointer; exact, typed | Z -30.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #38 3031 | aimed by the pointer; exact, typed | X -240.0, Z -30.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #39 3022 | aimed by the pointer; exact, typed | Y 156.35, Z -30.0 | 0.0 LDU, 0.0° |
+| 8841-1 | #42 3651 | aimed by the pointer; exact, typed | X -200.0, Z -30.0 | 0.0 LDU, 0.0° |
+| 8841-1 | #43 4459 | aimed at its joint (pin hole); exact by the pointer | nothing | 0.0 LDU, 0.0° |
+| 8841-1 | #46 4262 | aimed at its joint (pin); exact by the pointer | nothing | 0.002 LDU, 0.0° |
+| 8841-1 | #55 4262 | aimed at its joint; exact, typed | Hinge -23.58, X 260.0, Y 232.18, Z -10.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #52 4459 | aimed at its joint; exact, typed | Y 186.7 | 0.001 LDU, 0.0° |
+| 8841-1 | #51 3651 | aimed at its joint (pin); exact by the pointer | nothing | 0.005 LDU, 0.0° |
+| 8841-1 | #47 3022 | aimed by the pointer; exact, typed | Z -30.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #48 3031 | aimed by the pointer; exact, typed | X 240.0, Z -30.0 | 0.005 LDU, 0.0° |
+| 8841-1 | #49 3022 | aimed by the pointer; exact, typed | Y 156.35, Z -30.0 | 0.0 LDU, 0.0° |
+| 8841-1 | #50 3651 | aimed by the pointer; exact, typed | X 200.0, Z -30.0 | 0.0 LDU, 0.0° |
+| 8841-1 | #53 4459 | aimed at its joint (pin hole); exact by the pointer | nothing | 0.0 LDU, 0.0° |
+| 8841-1 | #54 4262 | aimed at its joint (pin); exact by the pointer | nothing | 0.002 LDU, 0.04° |
+
+The eight tyres are the misses: every typed move to the rim's place was
+refused ("no room there"), the tyre's cover running into the wheel
+holder's, and a tyre has no joint for its ghost to take on the rim (the
+gaps below, 1). A part the run could not put was put from the file, so
+the parts after it were tried on what holds them. The Y typed on two of
+the pans' plates is the plate under them read in Properties and a plate's
+8 LDU added (156.35 is 148.35 and 8); the X and Z typed on the pans are a
+stud or half a stud that the probe's pointer did not reach (the pans sit
+half a stud off the stud grid in Z, which Snap at ½ stud gives).
+
 ## The gaps, by how much a builder would feel them
 
-Nothing here was fixed in the unit that found them; 1, 2, 4 (the clip
-plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
-"Big models, after"), and 4's parts off the 24 turns on a joint after that
-(section 5).
+Rewritten on 2026-10-17 from the run of section 6, most felt first. The
+first run's thirteen are kept below, each with what closed it.
 
-1. **No "next step" while building.** *Fixed: `E` (section 4).* A builder following a booklet, or
-   writing one, puts each step's parts in its own step. Here every step is
-   its parts shift-clicked and Edit, New step from selection, after. Studio
-   has a Create step button (E) and puts new parts in the current step. On
-   the 21-step plane this turns Brickworks from 14% faster a part to 1%
-   slower, by the model.
-2. **A part number typed in the search does not always come first.**
-   *Not so: the export measured offered only half the parts (section 4).* "6157"
-   puts 3816cpc44 first; the flow had to give up on that part. A builder
-   working from a parts list types numbers all day.
-3. **Every interaction in a browser was over budget from 925 parts up, by the
-   app's own work alone**: an orbit frame's own work 158 ms at 925 parts and
-   2.7 s at 5,025; a part swept over the model 355 ms and 1.1 s. That is
-   before any drawing, so a graphics card does not take it away. Since
-   "Big models, after" (section 2) a turn, select all, a move of everything
-   with its undo and redo, Delete and its undo and a step no longer walk
-   the model where they should not; a part swept in hand still does.
-   *Since "A part in hand over a big model" (section 2): a move's own work
-   in a browser at 5,025 parts is 23 ms median and 34 at the 95th
-   percentile, against 31 and 958 (1.2 s worst); headless and on the desktop a
-   move no longer grows with the model, a brick, a pin, a copy, a figure or
-   a sticker.*
-4. **Some parts cannot be put where the set has them through the
-   interface** (*the clip plates fixed, section 4; turns off the 24 not*): both 1 x 1 clip plates of the plane's step 4 (the ghost stood
-   10 LDU off and came no nearer), and parts at angles off the 24 turns or at
-   places that are not whole LDU (8841-1 has 4 and 14 of them).
-5. **A file's own parts are left out**: 42082-1 opens with 3,973 of its
-   5,025 parts in a browser, the 1,052 left out being parts the file carries
-   (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
-   *Since:* none is dropped. What the app cannot draw stays in the file and is
-   saved back, and File, Open names it. *And since flexdraw, a browser builds
-   them too (every build ships LDraw's primitives): 42082-1 in a browser
-   leaves out 3, copies of one part drawn from an official subpart, where it left out 167.
-   And since webcarry, none: what a carried part is drawn from of LDraw's own
-   is fetched as the file opens (section 1).*
-6. **Colours are found by look in a palette of 320** (*fixed: `Shift-C`,
-   a colour by its name or number, section 4*): the old greys (7 and
-   8), all over older sets, show only after All, and Black and Rubber Black
-   look the same. The flow put 3 of its 8 parts in the wrong colour for want
-   of them. Studio's colour menu filters as you type
-   ([5459441964695]).
-7. **Saving drops the author's name and licence** from every file, and with
-   them `!HISTORY`, `!THEME`, `!CATEGORY`, `BFC` and other tools' meta lines.
-   For files under an attribution licence that is the credit itself.
-   *Since:* a file another tool wrote is saved as it was, every line kept.
-8. **LDCad's flexible parts are lost** on open: hoses, strings and bands
-   drawn as a skin of primitives. 225 of the repository's 1,576 files use them.
-   *Since:* kept in the file and named once each; *and since flexdraw,
-   drawn, one piece each, as LDCad drew them (section 1).*
-9. **Opening moves the model onto the ground** (36 of 48 files), so a saved
-   file has every coordinate changed, and a diff of the file says nothing.
-   *Since:* the lift is the view's, and the file keeps its coordinates.
-10. **Big files save slowly**: 42043-1 (7,909 parts) took 12 minutes to
-    write its LDraw; the next slowest 14 s.
-    *Since:* 0.35 s kept as it was, 2.8 s written whole.
-11. **Opening the app's own save again is not always the same model**:
-    3315-1 comes back 28 LDU higher with 5 parts gone; 42043-1 with 58 parts
-    moved; 4 of 44 files have their author's steps changed.
-    *Since:* a file kept is the same model opened again. Written whole, 3315-1
-    keeps its parts (its sub-model titled "33009" went out as `33009.ldr` and
-    came back as the part 33009). Written whole, every part comes back, a few
-    of the biggest models' (6 of 4,139 in 42082-1, 8 of 7,908 in 42043-1)
-    within rounding of where they were: a place is written to four decimals
-    through its sub-model's frame, and the probe, printing tenths, finds them
-    either side of one.
-12. **Right stops stepping the timeline once a part has been taken from the
-    bin by a click** (*fixed: the tile kept the keys, section 4*) (in a browser; the desktop probe takes its part without
-    a click, and Right worked there). Next worked every time it was tried.
-13. **Retired part numbers are written as the part they became** (5,623
-    parts in 45 of 48 files): the same shape in the same place, another line.
-    *Since:* written back under the file's own number.
+**Open, today:**
+
+1. **A tyre will not go on its rim where the set has it.** 8643-1's eight
+   tyres (50951 on 51719, on 6157's wheel pins): aimed, the ghost has no
+   joint for a tyre (`JointSnap` takes round ends a bar's size only), and
+   typed to the rim's place the move is refused, the tyre's cover running
+   into the wheel holder's (`room_for`'s blockers: the 6157 and the rim,
+   and only the rim is forgiven as joined). The file opens with them, but
+   a builder cannot put one there by hand. The next unit's: a tyre on a
+   rim as a joint, and the holder's cover where it meets the tyre.
+2. **Studio has still never been run beside it.** Every Studio number is
+   modelled (section 3); Wine needs a password on this box.
+3. **The actions a part** are 11.5 to 17.6 in this run's measured builds
+   against 7.8 to 15.9 modelled for the same parts (`REPORT.md`): the flow
+   aims, looks and aims again. By the model a part takes 7.5 to 12.2 s here
+   and 9.4 to 12.4 s in Studio, steps marked or not within a second of
+   that; a measured hand against Studio's has not been timed.
+4. **Pins aimed like bricks.** In 8841-1's first steps the build flow, which
+   aims every part by moving the pointer until its ghost stands where the
+   file has it, could not put the Technic pins in their holes: aimed at a
+   hole's mouth a pin goes in (section 5, `placing_probe`), aimed about the
+   brick it does not. In this run 2 pins, and the plate over them, of
+   8841-1's first 8.
+5. **The plane's wedge plates and the propeller on its slope** would not
+   come to their place in eight aims in the whole plane's run (section 5).
+   Not run again here: the whole plane takes 40 minutes of the box.
+6. **Places off the grid take a typed number where the pointer cannot say
+   it.** Section 6: of the 31 of 39 put, 11 go where the file has them
+   by the pointer alone and the rest with a number typed in Properties (a
+   light 1 LDU out of its clip, a wheel's or a propeller's place along its
+   pin, a pan's first 4262 swung to 23.58 degrees). Studio does the same with
+   its hinge tool; its snapping may find some of them unasked.
+
+**Closed:**
+
+- *A step of the timeline in a browser held the page for seconds* (found by
+  this run): 5.7 to 6.7 s of the app's own work in a press of Next on
+  75969-1, where the morning's build took 18 to 75 ms, and a builder
+  following a booklet on the web steps all day. The grab's drag handles,
+  found twice a second in every browser; fixed by the grab unit's `420422d`
+  (13 to 87 ms with it), shipped as m62, and held from now on by the
+  `frames` preview check (section 6).
+- *Parts that could not be put where the set has them* (the first run's
+  4): the clip plates (section 4, then the browser's click, section 5);
+  8841-1's 4262s swung onto their joints (section 5); the other parts off
+  the 24 turns or off the 2 LDU lattice but the tyres, typed in Properties
+  (Hinge, X, Y, Z to the hundredth) or put on the studs of a part off the
+  lattice in that part's frame (section 6).
+- *No "next step" while building* (1): `E` (section 4).
+- *A part number typed not first* (2): not so; the export measured offered
+  half the parts (section 4).
+- *Every interaction in a browser over budget from 925 parts* (3): "Big
+  models, after" and "A part in hand over a big model" (section 2); on the
+  desktop every act is now under 100 ms at its worst frame at every size
+  (section 6). In a browser all but the step above.
+- *A file's own parts left out* (5): kept and said (fidelity), drawn
+  (flexdraw), fetched in a browser (webcarry; section 1).
+- *Colours found by look in a palette of 320* (6): `Shift-C`, a colour by
+  its name or number, as Studio's colour menu filters as you type
+  ([5459441964695]; section 4).
+- *Saving drops the author's name and licence* (7), *LDCad's flexible parts
+  lost* (8), *the model moved onto the ground* (9), *big files save
+  slowly* (10), *the app's own save not the same model* (11), *retired
+  numbers renumbered* (13): the fidelity and flexdraw units (section 1).
+- *Right stops stepping the timeline after a tile was clicked* (12): the
+  bin's tiles keep no keys (section 4).
 
 [5459441964695]: https://studiohelp.bricklink.com/hc/en-us/articles/5459441964695
 
@@ -1292,7 +1532,8 @@ it is set decides, `tools/web_pack.py`) and `serve.py --parts` serves every
 part. Give a Godot run its own `XDG_DATA_HOME` with `godot/export_templates`
 linked in, or the export fails on "configuration errors".
 
-Run it bare: it puts each Godot run and browser under `heavy` itself. The
+Run it bare: it puts each Godot run and browser under `heavy` itself. `CADTASK_PORT`
+names the port a browser run serves on, where agents share the box. The
 desktop frames mean something only on the graphics card: inside a `gpu`
 lease, `MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900
 --script src/dev/cadtask_frames.gd -- --frames-out=FILE.json MODEL...`, as
@@ -1302,3 +1543,8 @@ goes, is `src/dev/bigmodel_probe.gd` (bare, the suite's check; with
 to `bench/results/cadtask-<date>/` in the main checkout (git-ignored):
 `REPORT.md`, the probe's rows, the judged rows and the pictures. The
 comparison and the sampler are pinned by `tests/test_cadtask.py`.
+
+The sets' parts off the grid are put through the interface by
+`src/dev/offgrid_probe.gd`, windowed on the graphics card as the frames are
+(`-- only=5762`, `8643` or `8841`); its rows are in
+`shots/offgrid/offgrid.json`, copied beside the run's other results.
