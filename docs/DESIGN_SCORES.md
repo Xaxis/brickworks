@@ -817,6 +817,173 @@ arm ran on `7b2943b`, whose head said step 1 at greater length, the rest as
 jointcheck and this arm) and every realset rejection traced to its piece
 (`labels.tsv`, `realset_pieces.tsv`).
 
+### Technique: bodies the app builds (2026-10-17, laid, not counted, the push taken out)
+
+Four levers came at the body from outside it, and each left it stacked: a
+session chooses the body at its first submission and lays it from memory.
+The figure pattern is the one lever that won, and it is one entry. So this
+round made three more bodies one entry each, with the technique the sets win
+on built in. Sessions laid them. The judge did not count them.
+
+**Which bodies.** Every verdict that gave a set technique, over the six arms
+judged on both halves (197 verdicts, 20 subjects), read for what it names in
+the set. Named in half or more of a subject's verdicts:
+
+- legs or limbs of angled joint segments: 7 subjects (Shelob's legs, the
+  scorpion's legs and claws, the wolf's and the sheep's legs, the sphinx's
+  legs and jaw, the dragon's wings and neck, the Tokyo Tower's legs);
+- a face built sideways, with side-built panels and clip hands: the 4
+  block-figure subjects (the bee, Robin, Steve & Creeper, Jack & Sally);
+- a boom on pins or gears: 3 (the Telehandler, the Container Yard, the
+  Container Stacker).
+
+The rest name details (spotlights on clips, a laptop's hinged lid), arches,
+vehicles of their own, a layered overhang.
+
+**The patterns** (`7225ecc`, then `c24de17`):
+
+- `{"pattern": "legs"}`: a chassis of two crossed layers of plates on two to
+  four pairs of legs of Joint-8 ball plates (14417 at the hip, 14419 for each
+  segment, 14418 for the foot), fanned, a neck and a jointed tail if said,
+  turned any way. Each segment is turned whole with its studs to the sky, so
+  a knee bends the way a socket bends furthest: aimed by `align`, every knee
+  bent 45 degrees or more was refused, its socket's rim meeting the next
+  plate's neck. The feet land 1 LDU over the floor: the chassis's height and
+  the first and last segments are worked out for it, exact to 0.1 LDU against
+  the parts as laid. `legs_probe`, 112 checks.
+- `{"pattern": "figure", "kind": "block"}`: a head as wide as the body,
+  a ring of bricks with studs on their side (22885), the face a plate on them
+  tiled round two printed eyes, the sides tiled panels in the hair's colour,
+  arms on side studs with a clip for a hand. `block_figure_probe`, 57.
+- `{"pattern": "boom"}`: two Technic beams on friction pins in a pair of
+  Technic bricks, raised to its angle, tied by pins, a hook block on the tip,
+  the foot grown under a long boom so it stands. `boom_probe`, 135.
+
+Told where the body is chosen: the patterns' description in submit_design,
+and a short block at the head of how_real_sets_build_this's answer, which
+every session asks first.
+
+**The tune half, first version** (`7225ecc`, arm `builtbodies`, one GPU
+lease, 2 to 16 minutes a design), against the start code:
+
+| dimension | start preferred to the set | builtbodies preferred to the set | start minus builtbodies, paired (95%) | start preferred to builtbodies, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 20% (6-51) | +10 (0, +25) | 75% (44-92) |
+| surface | 40% (17-69) | 20% (6-51) | +20 (+5, +40) | 60% (31-83) |
+| colour | 35% (14-65) | 30% (11-60) | +5 (0, +15) | 65% (35-86) |
+| technique | 5% (1-34) | 0% (0-28) | +5 (0, +15) | 50% (24-76) |
+| creativity | 25% (8-56) | 20% (6-51) | +5 (-10, +20) | 65% (35-86) |
+| overall | 30% (11-60) | 20% (6-51) | +10 (0, +30) | 75% (44-92) |
+
+- **Laid where the body is chosen.** Five of ten first submissions laid a
+  body pattern, where real sub-assemblies shown first reached one session in
+  twenty: Robin the block figure, the wolf, Shelob and the scorpion legs, the
+  Telehandler the boom. Four kept it to the end. The other five (a stage, a
+  river boat, a skyline, an island, a sheep) laid none.
+- **The judge did not count them.** Technique went to the set in all twenty
+  verdicts. Shelob: "simple clip joints on its legs"; "flat splayed legs that
+  look more like a crab". The scorpion: "a simple hinged-plate assembly"; "a
+  scorpion laid flat on the ground". The Telehandler: "a static Technic beam
+  laid on as the boom", against the set's worm gear. Robin: "only hangs a few
+  clips on the sides of a solid stack"; "no legs".
+- **The wolf's session threw its legs away**: laid low between knees raised
+  over it, it was "the app's low crawler", rebuilt on stacked legs.
+
+**The second version** (`c24de17`), from those: two pairs stand upright, legs
+under the body; three and four pairs arch on four segments; the block
+figure's legs are two bricks tall and its reply says it is bare until dressed.
+Run again on the four tune subjects that had laid a pattern (arm
+`builtbodies2`): 0 of 8 technique verdicts, 0 of 8 overall. Shelob kept her
+arched legs: "repetitive flat hinged plate chains laid out the same way". The
+wolf laid upright legs and rebuilt on stacked ones again; the scorpion and
+Robin laid none.
+
+**The proof half,** run once on `c24de17`, against the armature arm:
+
+| dimension | armature preferred to the set | builtbodies preferred to the set | armature minus builtbodies, paired (95%) | armature preferred to builtbodies, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 30% (11-60) | 0 (-20, +25) | 70% (40-89) |
+| surface | 40% (17-69) | 55% (27-80) | -15 (-40, +10) | 60% (31-83) |
+| colour | 30% (11-60) | 5% (1-34) | +25 (+5, +50) | 65% (35-86) |
+| technique | 15% (4-46) | 0% (0-28) | +15 (0, +40) | 65% (35-86) |
+| creativity | 45% (20-73) | 15% (4-46) | +30 (0, +60) | 85% (54-96) |
+| overall | 25% (8-56) | 15% (4-46) | +10 (-10, +35) | 75% (44-92) |
+
+- **Technique did not rise; it fell to none,** 0 of 20 against armature's 3.
+  Colour fell beyond noise and creativity all but did. Surface leaned our
+  way. Not shipped.
+- **Uptake.** Five of ten laid a body pattern at their first submission and
+  four kept it: the three block-figure briefs (the bee, Steve & Creeper, Jack &
+  Sally, every one) and the Container Yard's boom. Dino Explorer laid upright
+  legs and dropped them; the sphinx and the Container Stacker laid none.
+- **The block figures were built sideways and read stacked.** SNOT on the
+  three went from 0-27% (armature) to 41-48%, the sets' own 36-45%, and the
+  judge said "mostly plain stacked bricks with a tiled face", "faces mostly
+  bricks stacked studs-up", against the sets' "SNOT-mounted round eye tiles"
+  and "curved hair attached sideways". Rendered beside the set, Steve &
+  Creeper is the set's build, a flush face for the set's raised eyes; it won
+  surface both ways. The bee lost all but one surface verdict, where
+  armature's hand-built bee won everything but creativity; it came in five
+  colours to the set's 14.
+- **The boom read as one beam.** The Container Yard: "a single Technic beam
+  for the boom", against "a gear rack on the telescopic boom, a
+  linear-actuator-style piston, a pivoting spreader". A Technic brief's
+  technique is its mechanism, which a pinned boom is not.
+
+**What they are made of** (medians, ours against the sets):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 |
+|---|---|---|---|---|
+| tune, start | 22.4 | 8% | 1% | 30% |
+| tune, builtbodies | 25.1 | 11% | 1% | 33% |
+| tune, the sets | 29.2 | 35% | 7% | 19% |
+| proof, armature | 16 | 4% | 0% | 23% |
+| proof, builtbodies | 17.5 | 3% | 1% | 28% |
+| proof, the sets | 28.4 | 25% | 3% | 13% |
+
+Where a pattern was laid its parts moved toward the set's (the scorpion's
+angled parts 1% to 5%, the block figures' SNOT to the sets'); the medians did
+not. The build check read all the designs of both halves: a median 0%
+floating. The bee's and the Container Yard's logs have no hold-out line: those
+sessions never searched the real-set index.
+
+**BrickBench, once, as an outside check.** The armature round's six
+character prompts, one design each on `c24de17`, against that round's
+`figfaces` designs and BrickAgent's, our judge both orders twice: 72 verdicts.
+All six valid by verify.py. Head to head, figfaces 11 of 24 overall (46%,
+28-65%), 10 of 24 technique (42%, 24-61%): a tie. Against BrickAgent, 1 of 24
+overall (figfaces 2). No session laid legs, a block figure or a boom; three
+laid the figure pattern as before. So it says only that nothing else moved.
+
+**Taken out, kept aside.** None of it is on main. Without the push (the
+block at the head of how_real_sets_build_this's answer, the patterns'
+longer description in submit_design) sessions laid them as rarely as they
+used real sub-assemblies, and laid, they lost. The three patterns, each
+laying a body that passes the check as it stands, are kept with their probes
+on the branch `worktree-agent-a0ef4fa27d8208771` at fbf0d52
+(src/ai/legs_pattern.gd, block_figure.gd, boom_pattern.gd), for a unit that
+dresses what they lay: what the judge counts, below.
+
+**What it says.** An entry that lays the body is taken where advice is not:
+ten first submissions of twenty laid one and eight kept it, against one
+session in twenty that laid a real sub-assembly it was shown. But the judge's
+technique is not in the joints or the sideways studs; it is in what they
+make. A set's spider arches high on long
+segments of varied parts, its abdomen raised on a joint; ours repeated one
+thin chain. A set's block figure carries round printed eyes standing proud and
+curved hair; ours had the set's build with a flush face. A Technic set's boom
+has a rack and an actuator. The technique the judge sees is the silhouette a
+joint gives and the parts that dress it, which a pattern of plain plates on
+balls does not reach, and a session that has its body handed over dresses
+less: colour and creativity fell.
+
+Results: `bench/results/realset-2026-10-17-builtbodies/` (both halves),
+`realset-2026-10-17-builtbodies2/` (the second version on four tune
+subjects), `realset-2026-10-17-technique-base-vs-builtbodies/` and
+`realset-2026-10-17-armature-vs-builtbodies/`; BrickBench's in
+`brickbench-2026-10-16-armature` (arm `builtbodies`; the round's own
+`compare.md` kept) and `technique4-2026-10-17/compare-figfaces-builtbodies.md`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
