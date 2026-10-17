@@ -570,15 +570,22 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 ## Lambrecht's are [lambrecht]: as long every way (40 LDU), so a cube turned
 ## on its side fills the same box. One faces out where the model's surface
 ## in it, its triangles' areas summed by the way each faces, turns from
-## level by under [constant STEEP] (sine): a side steeper than 60 degrees.
-## Measured half a stud inside the surface, so a side on a cube's edge is the
-## cube it bounds; only where the surface in it is at least
-## [constant CUBE_AREA] square studs and mostly faces one way.
+## level by under [constant STEEP] (sine, 21 degrees): a side steeper than 69
+## degrees. Between 60 and 69 the 65 degree slopes laid upright do as well
+## (unit 4): turned from 60, Spot's steep faces turned from the model 0.8
+## degrees more and the side views of both it and the Stanford bunny stood
+## further off. Measured half a stud inside the surface, so a side within half a
+## stud of a cube's back (no stud of the model in that cube) is the cube
+## behind's; only where the surface in it is at least [constant CUBE_AREA]
+## square studs and mostly faces one way ([constant CUBE_AGREES]). A side
+## square to x or z is turned too: left upright, Spot's flanks turned from
+## the model 0.9 degrees more.
 const CUBE_STUDS := 2
 const CUBE_PLATES := 5
-const STEEP := 0.5
+const STEEP := 0.36
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
+const CUBE_IN := 0.5
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float) -> Dictionary:
@@ -595,9 +602,7 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 		var area: float = n.length()
 		if area < 0.000001:
 			continue
-		# Half a stud in: a side within half a stud of a cube's back has no
-		# stud of the model in that cube, and is the cube behind's.
-		var inward: Vector3 = -n / area * 0.5
+		var inward: Vector3 = -n / area * CUBE_IN
 		var longest: float = maxf(ab.length(), maxf(ac.length(), (ac - ab).length()))
 		var k: int = clampi(ceili(longest), 1, 8)
 		var share: Vector3 = n / float(k * k)
@@ -626,8 +631,8 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 		var way: Vector3 = sum.normalized()
 		if absf(way.y) >= STEEP:
 			continue
-		out[key] = Vector2i(signi(roundi(signf(way.x))), 0) if absf(way.x) >= absf(way.z) \
-			else Vector2i(0, signi(roundi(signf(way.z))))
+		out[key] = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
+			else Vector2i(0, 1 if way.z > 0.0 else -1)
 	return out
 
 

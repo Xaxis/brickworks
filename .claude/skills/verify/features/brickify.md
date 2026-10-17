@@ -59,7 +59,24 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
-  panels on a flat side; each surface part fitted by distance (`fine`,
+  panels on a flat side; steep sides on their sides (`Options.snot`,
+  Shapes' `cubes`): the model's surface summed by area and the way it faces
+  into cubes two studs by five plates by two studs (`Brickify._cubes`,
+  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z;
+  the cubes facing one way at one depth one shell (`Plan._cube_shells`,
+  `_cube_shell`), each cube the side's outermost with the core two studs
+  behind it and no cap or ledge a plate or two thick on it, laid as a design's
+  curved side is (`lay_shell`, its up turned out) and held by bricks with side
+  studs (30414, 11211, 87087) in the core's wall behind each cube's top row
+  (`_anchored`; first tier only); its slopes fitted by distance to the side
+  (`Grid.side`, rays along x and z at thirds of a stud), one on the core's
+  face only where a side stud grips it; a cube its shell covers under
+  `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
+  trial kept where the core kept its side studs); a piece of the core of four
+  parts or fewer a shell cuts off taken out before the check
+  (`Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`);
+  a build that leaves a region out laid again with its sides upright too;
+  each surface part fitted by distance (`fine`,
   `Grid.fine`, `Plan._fit_near`): every slope, curved and inverted slope in
   every turn and height that stands on the shape laid against the model's
   own surface at thirds of a stud (each part's surface read off its mesh,
