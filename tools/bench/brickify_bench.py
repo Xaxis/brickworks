@@ -40,7 +40,9 @@ build's own LDU (src/dev/brickify_bench.gd writes the frame):
 
 **faces** sorts the model's visible points by which way their surface faces (up, up and
 out, out, down and out, down) and gives each arm's normal error and distance for each: where
-the error is, and what a surface part can reach.
+the error is, and what a surface part can reach. The steep ("out") faces are split again by
+whether the nearest part of the build lies on its side; and seen from the four sides alone,
+the Hausdorff95 of the model's points and the build's ("sides").
 
 **pictures** draws the model and each build from the same corner, lit the
 same, and lays them side by side, one file a model and size.
@@ -335,12 +337,14 @@ def stand_of(arm: dict) -> tuple[set[int], float]:
     return set(int(n) for n in stand.get("parts", [])), float(stand.get("lift_ldu", 0))
 
 
-def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None = None):
+def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None = None,
+               sideways: list | None = None):
     """Every part's triangles placed, and each triangle's colour. Lowered by a stand's lift, so
     the model lines up with the model it came from; the stand itself only when asked (a
     picture shows it; likeness is of the model). With `cut` (LDU along z), only the parts whose
     middle is short of it, each a shade lighter or darker than the next, so the courses inside
-    show part by part."""
+    show part by part. With `sideways` (a list), it gets for each triangle whether its part
+    lies on its side (the part's up not the world's)."""
     np = _np()
     tris, cols = [], []
     skip, lift = stand_of(arm)
@@ -356,6 +360,9 @@ def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None =
             continue
         placed[:, 1] -= lift
         tris.append(placed.reshape(-1, 3, 3).astype(np.float32))
+        if sideways is not None:
+            # LDraw's up is -y: a part whose -y is within 60 degrees of level lies on its side.
+            sideways.append(np.full(len(t), abs((mat[:, :3] @ np.array([0.0, -1.0, 0.0]))[1]) < 0.5))
         rgb = np.array(lib.colours.get(int(code), (1.0, 0.0, 1.0)), dtype=np.float32)
         c = fixed.copy()
         c[codes == 16] = rgb
@@ -804,25 +811,36 @@ def do_faces(args: argparse.Namespace) -> int:
                 arm = json.loads(path.read_text())
                 if not arm.get("placed"):
                     continue
-                tris, _ = build_mesh(arm, lib)
+                on_side: list = []
+                tris, _ = build_mesh(arm, lib, sideways=on_side)
+                tri_side = np.concatenate(on_side) if on_side else np.zeros(0, dtype=bool)
                 bc = caster(tris)
-                bp, bn = [], []
+                bp, bn, bs = [], [], []
                 for d in dirs:
                     hit, loc, tri = cast(bc, centre, radius, d, args.res)
                     bp.append(loc[hit])
                     bn.append(facing(bc.mesh.face_normals[tri[hit]], d))
+                    bs.append(tri_side[tri[hit]])
                 # Seen from the four sides alone: the model's points and the build's in those views,
                 # the larger of the two 95th percentiles of each from the other (Hausdorff95), studs.
                 side_m = np.concatenate([hits[i][1][hits[i][0]] for i in SIDE_VIEWS])
                 side_b = np.concatenate([bp[i] for i in SIDE_VIEWS])
                 d_mb, _ = cKDTree(side_b).query(side_m)
                 d_bm, _ = cKDTree(side_m).query(side_b)
-                bp, bn = np.concatenate(bp), np.concatenate(bn)
+                bp, bn, bs = np.concatenate(bp), np.concatenate(bn), np.concatenate(bs)
                 dist, near = cKDTree(bp).query(pts)
                 err = np.degrees(np.arccos(np.clip(np.abs((nrm * bn[near]).sum(axis=1)), 0, 1)))
                 row[arm_name] = {name: {"normal_deg": float(err[m].mean()) if m.any() else None,
                                         "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
                                  for name, m in bins}
+                # The steep ("out") faces whose nearest part of the build lies on its side, and the
+                # rest: how much of the side SNOT reaches, and what each does there.
+                steep = dict(bins)["out"]
+                for which, m in (("on_side", steep & bs[near]), ("upright", steep & ~bs[near])):
+                    row[arm_name]["out_" + which] = {
+                        "share": float(m.sum() / max(1, steep.sum())),
+                        "normal_deg": float(err[m].mean()) if m.any() else None,
+                        "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
                 row[arm_name]["sides"] = {
                     "hausdorff95_studs": float(max(np.percentile(d_mb, 95), np.percentile(d_bm, 95)) / STUD),
                     "lost95_studs": float(np.percentile(d_mb, 95) / STUD),
@@ -835,7 +853,8 @@ def do_faces(args: argparse.Namespace) -> int:
                     print(f"  {arm_name:7s}", " | ".join(
                         f"{name} {row[arm_name][name]['normal_deg'] or 0:4.1f}° {row[arm_name][name]['lost_studs'] or 0:.2f}"
                         for name, _, _ in FACES), f"| sides H95 {row[arm_name]['sides']['hausdorff95_studs']:.2f}",
-                        flush=True)
+                        f"| out on its side {row[arm_name]['out_on_side']['share']:.0%}"
+                        f" {row[arm_name]['out_on_side']['normal_deg'] or 0:.1f}°", flush=True)
             target.write_text(json.dumps(results, indent=1))
     return 0
 
