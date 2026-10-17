@@ -395,8 +395,14 @@ does each round trip: 21321-1 opened third in one session took 181 s,
 against 5.6 s first (the before side had no fetch there to compare, and
 took 83 s to open 42115-1 second). So what a fetched file names is now
 asked for as it arrives, in the same batch (`_fetch_each`): 21321-1 then
-opened in 2.6 s, on a calmer box (load 4). Not measured since: 21321-1
-third in a session.
+opened in 2.6 s, on a calmer box (load 4), and third in a session in
+48.5 s where it took 181 s. And a reload after the three sets put the
+working model back with every part it carries, but 19 parts kept from the
+three files still did not build at start-up: they draw on subparts their
+file carried, which are not kept with them (as before this unit), and
+`_load_later` now also asks the bucket for those names, 400 each
+(`shotsJ/`, the flow's `--reload`). Keeping what a kept part is drawn from
+beside it is what is left.
 
 **A file that needs nothing fetched** is not slower. One that carries
 nothing does no more than before (`fetch_sources` returns before it looks).
