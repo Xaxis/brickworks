@@ -337,6 +337,8 @@ func _case(name: String, path: String, want: String) -> void:
 		grab.moving.size()], grab.moving.size() >= 1 and _same_set(grab.moving, moving)
 		or grab.moving.has(int(press["brick"])))
 	_check("%s: the model is untouched while it is dragged" % name, _world.revision == revision)
+	if not grab._round_self.is_empty():
+		await _round_parts_check(name, grab)
 	if want == "slide" and grab.can_slide():
 		await _slide_drag(name, grab)
 	elif grab.mode == "ball":
@@ -382,6 +384,45 @@ func _case(name: String, path: String, want: String) -> void:
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
 		_differs(before) == "none differs")
+
+
+## A round part turned beside the joint's line (4096's cones under the boom)
+## is tested as its own shape moved round, not by its turned cover: still
+## held to the model. Pushed 4 LDU into the part beside it, it has no room;
+## where it stands, it has.
+func _round_parts_check(name: String, grab: Grab) -> void:
+	var pushed: int = 0
+	var met: int = 0
+	var said := PackedStringArray()
+	for key: int in grab._round_self:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var box: AABB = brick.transform * _library.parts[brick.part_id].bounds
+		for other: BrickWorld.Brick in _world.bricks():
+			if grab.skip.has(other.id) or grab.moving.has(other.id) or _store.scenery.has(other.id):
+				continue
+			var info: PartLibrary.PartInfo = _library.parts.get(other.part_id)
+			if info == null or not box.grow(1.0).intersects(other.transform * info.bounds):
+				continue
+			# Beside it, not under or over it: side by side along the line by
+			# more than a plate's height.
+			var mine: Vector2 = Grab._reach_along(brick.transform, _library.parts[brick.part_id].bounds, grab.axis)
+			var theirs: Vector2 = Grab._reach_along(other.transform, info.bounds, grab.axis)
+			if minf(mine.y, theirs.y) - maxf(mine.x, theirs.x) < 8.0:
+				continue
+			var gap: Vector3 = (other.transform * info.bounds).get_center() - box.get_center()
+			gap -= grab.axis * gap.dot(grab.axis)
+			if gap.length() < 0.5:
+				continue
+			var at: Dictionary = grab.rest.duplicate()
+			at[key] = Transform3D(brick.transform.basis, brick.transform.origin + gap.normalized() * 4.0)
+			pushed += 1
+			var meets: bool = not grab.has_room(at)
+			if meets:
+				met += 1
+			said.append("#%d %s into #%d %s%s" % [key, brick.part_id, other.id, other.part_id,
+				"" if meets else " (room)"])
+	_check("%s: a round part pushed 4 LDU into the part beside it meets it (%d of %d: %s), and where it stands has room"
+		% [name, met, pushed, ", ".join(said)], pushed > 0 and met == pushed and grab.has_room(grab.rest))
 
 
 var _last_screen := Vector2.ZERO

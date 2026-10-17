@@ -159,6 +159,16 @@ var _verifying_lo: float = 0.0
 var _verifying_hi: Variant = null
 ## Moving parts all within reach of the joint's line: not tested for room.
 var _on_the_line: Dictionary = {}
+## Moving parts round about a line through their own middle along the
+## joint's (a cone, a round brick, a wheel lying flat), off the joint's
+## line: brick id -> that middle, in the part's own frame. Turned about the
+## joint, such a part's shape is its own shape moved round, and it is tested
+## so ([method _shape_at]). Its turned cover was not it: 2 LDU cells
+## worked out turned, and the corners of the square they come from, reach
+## past a round part, and 4096's boom met the plate beside its cones' feet
+## by 1.2 LDU from 3.7° to 8.8° either way, though the cones swing away from
+## it.
+var _round_self: Dictionary = {}
 ## Parts met, and whether they overlapped the moving side where it stood.
 var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
@@ -344,6 +354,7 @@ func _chosen() -> String:
 	# and a part whose whole sweep round the line meets nothing but what it
 	# may press on can never meet anything: neither is tested again.
 	_on_the_line.clear()
+	_round_self.clear()
 	begin_took["reading"] = (Time.get_ticks_usec() - clock) / 1000
 	clock = Time.get_ticks_usec()
 	if mode == "turn":
@@ -362,6 +373,10 @@ func _chosen() -> String:
 				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
 			if furthest <= ON_THE_LINE * 1.42 or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
+				continue
+			var middle: Vector3 = mesh.bounds.get_center()
+			if _round_on(key, brick.transform * middle, axis):
+				_round_self[key] = middle
 	if linkage != null:
 		for n: int in linkage.links.size():
 			var joined: Bodies.Link = linkage.links[n]
@@ -696,7 +711,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
-		var to: Transform3D = at[key]
+		var to: Transform3D = _shape_at(key, at[key])
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
@@ -732,6 +747,18 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	return Vector2i(result, n if result == -1 else 0)
 
 
+## Where [param key]'s shape stands with the part at [param to]: for a part
+## round about its own middle's line along the joint's ([member _round_self]),
+## its shape as it stood moved so its middle is where the turn puts it; else
+## [param to].
+func _shape_at(key: int, to: Transform3D) -> Transform3D:
+	if not _round_self.has(key) or not rest.has(key):
+		return to
+	var middle: Vector3 = _round_self[key]
+	var stood: Basis = (rest[key] as Transform3D).basis
+	return Transform3D(stood, to * middle - stood * middle)
+
+
 ## Whether each moving part at [param at] may meet anything ([method
 ## _near_anything], [method _boxes_meet]): key -> bool, for [method _test]
 ## to read rather than ask again. The turned covers of those that may, not
@@ -754,7 +781,7 @@ func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 		if mesh == null:
 			continue
-		var to: Transform3D = at[key]
+		var to: Transform3D = _shape_at(key, at[key])
 		var box: AABB = to * mesh.bounds
 		var may: bool = _near_anything(box) and _boxes_meet(key, mesh, to, box)
 		out[key] = may
@@ -892,9 +919,10 @@ static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
 
 ## Whether [param key] is round about the line through [param point] along
 ## [param way] and centred on it: a wheel, a tyre, a gear, a pulley, a round
-## plate on its axle. Turning on that line it sweeps only where it is, so it
-## is never tested (a tyre resting on the floor, turned with its axle, met
-## the floor by its turned cover's cells).
+## plate on its axle, a cone. Turning on that line it sweeps only where it
+## is, so it is never tested (a tyre resting on the floor, turned with its
+## axle, met the floor by its turned cover's cells); turning about a line
+## beside it, along that one, it is its own shape moved ([member _round_self]).
 func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
@@ -902,7 +930,7 @@ func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 		return false
 	var name: String = info.name.to_lower()
 	var round_name: bool = false
-	for word: String in ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round", "bush", "disk"]:
+	for word: String in ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round", "bush", "disk", "cone"]:
 		if name.contains(word):
 			round_name = true
 			break
