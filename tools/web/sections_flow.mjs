@@ -55,6 +55,18 @@ async function controlAt(name, seconds = 400) {
   }
   throw new Error(`the app never showed "${name}"`);
 }
+// A control where it stays: the column shifts when what is selected changes,
+// and a place read before the shift is no place to click.
+async function settledAt(name) {
+  let last = await controlAt(name);
+  for (let n = 0; n < 20; n++) {
+    await wait(700);
+    const now = (await controls())[name];
+    if (now && now.x === last.x && now.y === last.y) return now;
+    if (now) last = now;
+  }
+  return last;
+}
 async function state() {
   return page.evaluate(() => window.brickworksState || {});
 }
@@ -97,6 +109,14 @@ async function rowAt(id, seconds = 30) {
   for (let n = 0; n < seconds * 2; n++) {
     const rows = (await sections()).rows || {};
     if (rows[id]) return rows[id];
+    // Out of view in the tree: scrolled to, as a person scrolls it.
+    if (n % 4 === 3) {
+      const tree = (await controls()).outliner_tree;
+      if (tree) {
+        await page.mouse.move(tree.x, tree.y);
+        await page.mouse.wheel(0, n % 8 === 3 ? 120 : -120);
+      }
+    }
     await wait(500);
   }
   throw new Error(`the model tree never showed row ${id}`);
@@ -157,17 +177,20 @@ check(`a double-click renames suggestion 2 (${now[1] && now[1].name})`, now[1] &
 // Split, then merged back: one more, then one fewer.
 const before = now.length;
 await click(await rowAt("1"));
-await click(await controlAt("sections_split"));
-now = await suggested();
-check(`Split parts suggestion 1 in two (${before} -> ${now.length})`, now.length === before + 1);
+await click(await settledAt("sections_split"));
+s = await until((st) => ((st.sections || {}).suggested || []).length === before + 1, 20);
+now = (s.sections || {}).suggested || [];
+check(`Split parts suggestion 1 in two (${before} -> ${now.length}: "${s.said}")`, now.length === before + 1);
 await click(await rowAt("2"));
-await click(await controlAt("sections_merge"));
-now = await suggested();
-check(`Merge puts it back in with the one it is joined to most (${now.length})`, now.length === before);
+await click(await settledAt("sections_merge"));
+s = await until((st) => ((st.sections || {}).suggested || []).length === before, 20);
+now = (s.sections || {}).suggested || [];
+check(`Merge puts it back in with the one it is joined to most (${now.length}: "${s.said}")`,
+  now.length === before);
 const named = now.map((one) => one.name);
 
 console.log("  accepted");
-await click(await controlAt("sections_accept_all"));
+await click(await settledAt("sections_accept_all"));
 s = await until((st) => ((st.sections || {}).suggested || []).length === 0 && Object.keys(st.tree || {}).length >= 2, 30);
 const paths = Object.keys(s.tree || {});
 console.log(`    tree: ${paths.join(", ")}`);
@@ -178,7 +201,7 @@ await shot("accepted");
 console.log("  evaluated");
 const section = paths.find((p) => p.startsWith("Gate roof#")) || paths[paths.length - 1];
 await click(await rowAt(section));
-await click(await controlAt("sections_evaluate"));
+await click(await settledAt("sections_evaluate"));
 s = await until((st) => ((st.sections || {}).evaluated || {}).parts > 0 && (st.sections || {}).report_open, 120);
 const evaluated = (s.sections || {}).evaluated || {};
 console.log(`    ${JSON.stringify(evaluated)}`);

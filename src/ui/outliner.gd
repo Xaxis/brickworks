@@ -304,6 +304,14 @@ func _refresh(now: bool) -> void:
 	_update_strip()
 
 
+func _count_rows(item: TreeItem) -> int:
+	var count: int = 1
+	if not item.collapsed:
+		for child: TreeItem in item.get_children():
+			count += _count_rows(child)
+	return count
+
+
 func _suggested_state() -> String:
 	if sections == null:
 		return ""
@@ -318,8 +326,9 @@ func _suggested_state() -> String:
 func _fill_suggested(top: TreeItem, folded: Dictionary) -> void:
 	# Room for a few of them whatever the properties under it take: with a
 	# suggestion's parts selected, the tree was squeezed to one row.
-	_tree.custom_minimum_size.y = 60.0 if sections == null \
-		or sections.sections.suggested.is_empty() else 120.0
+	var rows: int = _count_rows(top) + (0 if sections == null
+		else sections.sections.suggested.size() + 1)
+	_tree.custom_minimum_size.y = clampf(rows * 24.0, 60.0, 120.0)
 	if sections == null or sections.sections.suggested.is_empty():
 		return
 	var head: TreeItem = _tree.create_item(top)
