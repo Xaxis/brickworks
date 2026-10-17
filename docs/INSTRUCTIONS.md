@@ -50,6 +50,20 @@ chose for real sets, says what the measure showed, and what changed.
   10%: put in under is met, floating is not. Hidden steps 13.8% to 14.3%
   (+0.5, -1.1 to +2.2) and tau 0.31 to 0.31 did not move beyond their
   noise; planning took 1.09 times as long.
+- **Steps a builder can follow** (2026-10-17). A step keeps its own new
+  parts in sight, fills from any of its parts and takes like parts from
+  further, puts on the parts beside a sub-assembly in the step that puts it
+  on, reads what rests on what off the parts' covers, and puts a part in
+  once what it touches stands; a wheel goes on with the holder its pin is
+  in. On the held-out sample: steps of one thing 23.3% to **19.6%**, steps
+  with a hidden new thing 14.5% to **11.7%**, things put in under 6.3% to
+  **5.5%**, steps with a floating thing 11.2% to **8.5%**, parts the build
+  check calls floating 17.3% to **4.0%**, steps for each of the author's
+  1.10 to 1.06. The aims were 25%, 12%, 6%, 8% and 8%: all are met but
+  floating, half a point short. Order is not: tau fell from 0.30 to
+  **0.26** (paired -0.045, -0.097 to +0.003), where it did not move on
+  tune. Proof was judged twice, the second time after a bug found on tune
+  (After).
 - **Pages.** A small model is no longer cut into "Part 1" and "Part 2": 918
   Space Transport's booklet lost a one-step page and a repeated banner. A
   section that touches nothing built before it is drawn on its own: 7636's
@@ -166,10 +180,20 @@ The arithmetic is pinned by `tests/test_steps_score.py`: tau-b against its
 definition pair by pair on random rankings with ties, and scipy's own
 example (-0.4714), samples that are the same every time and share no set.
 
+**Why, file by file.** `--explain` prints, for our build of each file it is
+given, every floating, hidden and put-in-under thing: what the planner had
+it need, rest on, hang from and be held by, and what the measure's graph
+holds it to, each with its step; and a `CLASS` line for each floating one,
+whether it floated on its own (a root: nothing it touches was in by its
+step) or went on one, and why the planner thought it held. Every run also
+keeps, with each hidden thing, whether the steps before hid it or only its
+own step's parts, and with each floating thing how many steps it waited.
+
 ```sh
 python3 tools/steps_score.py run --which tune --out build/steps_score/tune    # ~10 min under heavy
 python3 tools/steps_score.py report --out build/steps_score/tune
 python3 tools/steps_score.py compare build/steps_score/before build/steps_score/after
+godot --headless --path . --script src/dev/steps_score.gd -- --explain --out=/tmp/x.jsonl res://vendor/omr/files/8032-1_Cabrio.mpd
 ```
 
 ## Where it stood
@@ -351,6 +375,79 @@ same day:
 16. **The measure: a piece begun on the table** (below, and
     `src/dev/steps_score.gd` `Pieces.apart`).
 
+Then steps a builder can follow, 2026-10-17. The probe was asked first
+(`steps_score.gd --explain`, and two notes it now keeps with each thing it
+finds: whether a hidden thing was hidden by earlier steps or only by its own
+step's parts, and how many steps a floating thing waits to be held). On
+tune, 1,128 of the 1,535 steps of ours with a hidden new thing hid it behind
+a part of the same step, and 2,334 of the 4,092 things floating waited six
+steps or more for what holds them. Asked again once steps kept their parts
+in sight (17 to 19 below), one floating thing in seven floated on its own
+and the rest because they went on one of those; and those that floated on
+their own rested, as the planner read them, on a box their part does not
+touch (203), on a side stud the probe's graph does not hold (100), or hung
+from what their box touched (94).
+
+17. **A step keeps its own parts in sight** (`Instructions.Pictures`,
+    `_sequence_into`). Each step is drawn as it is filled, from the front and
+    the back, by the parts' boxes, ten LDU a pixel, as the probe draws covers.
+    A part that would hide one the step holds, from both sides, is left for
+    the next step, where the first is built and no longer new; unless the
+    first touches nothing standing but it, which holds it.
+    `instructions_probe` puts a 3 x 3 plate on a 1 x 1: it goes in the step
+    after.
+18. **A step is filled from any of its parts, and like parts from further**
+    (`_near_step`, `LIKE_REACH`). A step took what was near the part put in
+    last, so it ended at the first gap of four studs. It takes what is near
+    any of its parts, and one more of a part it holds, at that part's height,
+    from twelve studs: a row of tiles, the 1 x 1s round a rim.
+    `instructions_probe`'s three tiles five studs apart are one step.
+19. **A step that puts a sub-assembly on puts on the parts beside it**
+    (`ATTACH_TAKES_PARTS`), as the authors' steps do: 89% of ours that put
+    one on were the sub-assembly alone, against 43% of theirs. The step
+    player lists those parts on that page (`BuildSteps.lots`), which it
+    left out for an author's step that carried them too; `instructions_probe`
+    holds the page to exactly them.
+20. **What rests on what by the covers** (`_contacts_of`, `Node2.contacts`,
+    `Node2.over`): a part's cover lifted a cell meets another's, as the build
+    check weighs a model (`Stability.contacts`). Square parts take the
+    lattice's own boxes (`BrickLattice.boxes_for`), a turned part each of its
+    boxes' bounds, and two covers are compared only where their bounds meet:
+    two bricks one on the other meet in a layer a cell deep, and a stud's
+    round cover is a hundred boxes, most of them nowhere near it. A part no
+    stud seats rests on what its cover rests on, where its box sat on a part
+    it does not touch; a part that hangs, from what its cover touches before
+    what its box does.
+21. **A part that hangs under one resting on it goes in its step**
+    (`_hung_under`, `Node2.hung`), as a plate pressed up under a sign does:
+    after it, it went in under it. Not a pin or an axle, and on the model
+    only: in the hand it only hid the part under the other.
+22. **A part goes in once what it touches stands** (`_touching`,
+    `UNJOINED_LATER`, `_steadier`). The build so far is kept in pieces by
+    what touches what (studs, side studs, pins and axles, covers; not boxes,
+    which are guesses), and a piece stands when it is on the table, was the
+    first step, or joins one that stands. A ready part that joins no
+    standing piece goes after one that does, and a step is begun with one
+    that does, borrowed from a region this one waits on or moved to, before
+    one that does not. Counting what the planner's own needs touch as well
+    made floating steps worse (12.7% to 13.2%): a part went on one floating
+    as readily as on one standing.
+23. **A wheel under the holder its pin is on goes on with it** (`_hung_under`,
+    `_best`), so a vehicle stands on its wheels from there on; in the step
+    after, when the holder is in the model's first step, which is the
+    chassis. Every wheel went on last, and the build check, which holds a
+    part by the floor, called a car's chassis and all on it floating until
+    then. A wheel no holder rests on still goes on last, and a step begun
+    with other parts takes no wheel: one whose next part would hide another
+    filled up with the wheels beside it, and the example car began with its
+    wheels again.
+
+Tried on tune and not kept: every wheel as soon as what holds it is in (the
+build check's floating 6.8% to 3.3%, but tau 0.272 to 0.257), or once the
+chassis is (tau 0.258); a step that takes no part joining nothing standing
+(steps of one thing 17% to 47%, steps with a floating thing 9.7% to 16.9%,
+in a run that changed a wheel's rule too).
+
 ## After
 
 ### The author's steps and Technic pins (2026-10-15)
@@ -520,6 +617,87 @@ nothing of its own taking a pin only after the others (1,552 to 1,581); and
 a part held by its box alone waiting like a guessed one (floating 1,552 to
 1,471, but hidden steps 13.1% to 13.9% and put in under 6.4% to 6.7%).
 
+### Steps a builder can follow (2026-10-17)
+
+**Proof**, 100 files, 52,497 parts. Before is main at d24d4d6, scored the
+same morning; after is this change. It was judged on proof twice, and both
+are given. The first, at c10aae2: tau 0.30 to **0.25** (paired -0.056, -0.107
+to -0.008), the rest as below. Looking on tune for why, a wheel rim LDraw
+names as an alias ("=Wheel Rim 6.4 x 11") was no wheel to the planner, and
+40191's and 8120's rims went on in step 1 with their tyres (`_survey_into`).
+Fixed, tune's tau went from 0.268 back to 0.275, and proof was judged again
+at 2ed79c1; that is the table. The paired change, file by file (`compare`):
+steps with a hidden new thing -2.8 (-4.0 to -1.7), things put in under -0.8
+(-1.6 to -0.0), steps with a floating thing -2.7 (-4.3 to -1.1), parts the
+build check calls floating -13.2 (-20.9 to -7.2), and tau **-0.045 (-0.097
+to +0.003)**, better in 42 files and worse in 58.
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.94 → **0.94 (0.90–0.97)** | 0.30 → **0.26 (0.18–0.32)** | 0.28 → **0.22 (0.15–0.28)** | 0.25 |
+| author's same-step pairs kept together | 100.0% | 94.4% → **95.2% (88.3–98.6)** | 21.2% → **23.1% (11.9–41.6)** | 18.8% → **22.2% (11.4–41.3)** | 9.0% |
+| steps for each of the author's | 1.00 | 1.01 → **1.00 (1.00–1.03)** | 1.10 → **1.06 (0.94–1.22)** | 0.91 → **0.81 (0.71–0.94)** | 0.77 |
+| steps of one thing | 19.9% | 21.0% → **20.9%** | 23.3% → **19.6%** | 22.0% → **18.8%** | 0.2% |
+| author's sub-assemblies built on the side | 97.9% | 53.7% → **54.0% (40.8–67.9)** | 51.5% → **51.1% (38.3–64.5)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.7% | 9.9% → **9.9% (7.9–11.9)** | 14.5% → **11.7% (9.2–14.2)** | 22.7% → **20.5% (17.3–23.8)** | 21.2% |
+| things put in under one already there | 0.9% | 5.4% → **5.3% (3.9–6.8)** | 6.3% → **5.5% (3.5–8.6)** | 20.2% → **15.9% (10.9–21.5)** | 26.3% |
+| things floating at their step | 2.2% | 5.2% → **5.0% (3.6–6.6)** | 10.1% → **8.1% (5.4–11.3)** | 12.0% → **10.2% (7.0–14.0)** | 13.5% |
+| steps with a floating thing | 3.4% | 6.9% → **6.6% (5.1–8.2)** | 11.2% → **8.5% (5.9–11.6)** | 16.0% → **11.2% (8.2–14.8)** | 26.2% |
+| ...only the model's first parts on the table, as before | 3.5% | 10.1% → **9.7% (6.9–12.8)** | 12.9% → **9.7% (6.7–13.0)** | 20.0% → **14.0% (10.3–17.9)** | 26.2% |
+| parts the build check calls floating at sampled steps | 3.1% | – | 17.3% → **4.0% (1.4–7.4)** | 25.8% → **7.1% (2.9–12.2)** | – |
+| steps in all | 11,930 | 12,284 → 12,243 | 13,704 → 12,559 | 11,391 → 9,605 | 7,356 |
+
+Against what this work aimed at, on proof: steps of one thing 19.6% (at most
+25%), steps with a hidden new thing 11.7% (12%), things put in under 5.5%
+(6%), parts the build check calls floating 4.0% (8%) and steps for each of
+the author's 1.06 (0.9 to 1.2) are met. Steps with a floating thing, 8.5%, is
+not (8%). Nor is order: tau fell from 0.30 to 0.26 where it was not to fall
+at all. On tune it did not move (0.276 to 0.275, -0.042 to +0.043), file by
+file it swings both ways, by up to 0.8 in a file, and nearly all of the
+swing came in with reading what rests on what off the covers (20): a file's
+order changes wholesale when what its parts rest on does, and when a loop
+that makes costs a sub-assembly its callout (the Cabrio's, 0.49 to -0.06 on
+tune). Which way such a file goes is not something tune's hundred files
+could show; proof's went the wrong way on balance.
+
+**Tune**, 100 files, 48,064 parts, against main at d24d4d6. The paired
+change: steps with a hidden new thing -2.5 (-3.6 to -1.4), steps with a
+floating thing -2.7 (-3.9 to -1.6), the build check's floating -5.6 (-12.1 to
+-1.4), things put in under -0.2 (-0.8 to +0.4), tau -0.001 (-0.042 to
++0.043).
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.90 → **0.90 (0.85–0.94)** | 0.28 → **0.27 (0.20–0.34)** | 0.24 → **0.24 (0.18–0.31)** | 0.23 |
+| author's same-step pairs kept together | 100.0% | 93.0% → **92.9% (81.5–98.4)** | 68.0% → **68.7% (34.1–84.5)** | 64.8% → **66.1% (29.6–83.6)** | 4.1% |
+| steps for each of the author's | 1.00 | 1.02 → **1.02 (1.00–1.05)** | 1.16 → **1.11 (0.95–1.31)** | 1.01 → **0.88 (0.78–1.06)** | 0.83 |
+| steps of one thing | 18.5% | 20.5% → **20.4%** | 23.1% → **17.5%** | 18.9% → **15.8%** | 0.2% |
+| author's sub-assemblies built on the side | 97.4% | 59.2% → **58.7% (49.2–67.9)** | 54.7% → **53.0% (44.3–61.8)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.0% | 8.2% → **8.3% (6.8–10.0)** | 13.1% → **10.6% (8.6–12.9)** | 22.4% → **18.7% (16.2–21.3)** | 23.0% |
+| things put in under one already there | 1.2% | 6.7% → **6.9% (5.1–9.1)** | 6.1% → **5.9% (4.3–7.9)** | 17.3% → **13.2% (11.0–15.8)** | 26.2% |
+| things floating at their step | 2.4% | 6.3% → **6.3% (4.6–8.2)** | 9.4% → **7.5% (5.3–9.9)** | 12.2% → **9.5% (6.9–12.3)** | 14.0% |
+| steps with a floating thing | 2.9% | 7.4% → **7.5% (5.8–9.2)** | 12.1% → **9.4% (7.5–11.4)** | 17.3% → **13.8% (10.5–17.1)** | 29.5% |
+| ...only the model's first parts on the table, as before | 2.9% | 10.1% → **10.2% (7.5–13.1)** | 13.5% → **10.7% (8.4–13.2)** | 20.0% → **16.6% (12.4–20.9)** | 29.5% |
+| parts the build check calls floating at sampled steps | 6.0% | – | 9.0% → **3.4% (1.1–6.7)** | 19.3% → **6.3% (2.2–11.7)** | – |
+| steps in all | 9,650 | 10,063 → 10,075 | 11,719 → 10,439 | 9,130 → 7,752 | 6,692 |
+
+Run by run on tune, ours: the pictures alone took hidden steps from 13.1% to
+7.9% and left more steps of one part (23.1% to 26.1%), which filling from
+any part of a step undid (23.0%); putting the parts beside a sub-assembly in
+its step took steps of one thing to 17.3%, and a step's pictures, now
+holding a sub-assembly's box, hid more (8.1% to 9.9%); reading supports off
+the covers and waiting for what stands took floating steps from 12.7% to
+9.7%; and a wheel on with its holder took the build check's floating from
+10.3% to 2.9%.
+
+Planning takes two to three times as long. Back to back on this machine,
+the middle of three rounds each: 76161 (2,398 parts) 1.02 s to 2.18 s, 10129
+(1,454) 0.36 s to 1.09 s, the truck 7347 (561) 0.23 s to 0.44 s, the Cabrio
+0.15 s to 0.22 s. In the Timeline, Orthanc's 9,541 parts are laid out in
+8.2 s with no frame over 152 ms against the budget of 200
+(`progress_probe`), 5.1 s of it the order, where each step is drawn as it
+is filled.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the
@@ -619,6 +797,54 @@ steps before the 1 x 12 brick it is pinned to.
 ![8022 after, page 2](instructions/8022-after-page2.webp)
 ![8022 after, page 3](instructions/8022-after-page3.webp)
 
+Then steps a builder can follow (2026-10-17): three tune models with their
+steps taken out, a car, a building and a Technic set, made on the desktop on
+the GPU with main at d24d4d6 and with this change, and read page by page.
+
+75878 (197 parts, a Speed Champions car), before: step 4 lays two plates,
+and step 5 begins a headlight block of six parts beside them, a piece of its
+own; step 6 begins the other headlight the same way, and only step 7 joins
+the three.
+
+![75878 before, page 4](instructions/75878-before-page4.webp)
+
+After: the car's two sides go down first, a curved panel on each, and the
+round 1 x 1s of both sides go in one step; a headlight block comes at step 7.
+44 steps where there were 47. What reads badly: step 5 leaves three pieces
+side by side on the table, the middle plate not yet joined to either, for the
+next steps to bridge, and the headlight block of step 7 is again a piece of
+its own on the table.
+
+![75878 after, page 4](instructions/75878-after-page4.webp)
+
+40199 (286 parts, a shop), before: step 3 lays a black base plate and, in
+the same step, the yellow and white plates that lie on it, so the plate the
+step adds is mostly under the others it adds; step 4 does the same with the
+next base plate.
+
+![40199 before, page 3](instructions/40199-before-page3.webp)
+
+After: the black base goes down whole first, and the coloured plates of the
+floor follow on it, each in sight. 40 steps where there were 46.
+
+![40199 after, page 3](instructions/40199-after-page3.webp)
+
+8032 Cabrio (186 parts, Technic), before: steps 1 and 2 each pin a pair of
+beams at an angle, two pieces of the frame standing apart until a later step
+joins them.
+
+![8032 before, page 2](instructions/8032-before-page2.webp)
+
+After: the steering knuckle is step 1, the red beam goes on it with its
+pins and the steering rack at step 2, and the axle and the arms that hold it
+at step 3, as a Technic booklet builds a front axle. 33 steps where there
+were 47. What reads badly: the knuckle is a section of its own for one step
+("Cabrio Sub 6a") under a banner, then "the rest"; and the order is further
+from the author's than before (tau 0.49 to -0.06): the author builds the
+frame first.
+
+![8032 after, page 3](instructions/8032-after-page3.webp)
+
 ## What is left
 
 - **Order.** Ours reads what the file's shape says and not what its author
@@ -627,17 +853,24 @@ steps before the 1 x 12 brick it is pinned to.
   person's own model lists them in the order they made them. Following it
   would be reading, not planning, and on these files it reads the answer, so
   it was not done here; it is the obvious next step for files that carry it.
-- **Every step buildable.** On the held-out sample one step in nine still
-  floats something by the probe's graph (11.0%), against one in thirty for
-  authors, and 6.4% of things go in under one already there, against 0.8%.
-  Floating misses the 10% this work aimed at. Of the 1,396 floating steps
-  on tune, 539 put in a thing that joins nothing placed before it: the
-  planner had it rest on what its box touches and its cover does not (186),
-  hung it from what it touches (118), had to force a loop (76), read a
-  joint or a stud the probe's graph does not hold (59), or had it on the
-  table though it is not (57), and 43 otherwise. The rest are things joined
-  to one of those, floating with it until the build reaches it. Technic
-  still floats a thing in 24% of steps.
+- **Order, again.** Reading what rests on what off the covers moved tau
+  by up to 0.8 in a file, either way: on tune the gains and losses cancelled,
+  on proof the losses won (0.30 to 0.26). The biggest losses on tune are
+  files whose sub-assemblies lost their callouts to a loop the new supports
+  made (the Cabrio's, 8032, 0.49 to -0.06; 4002020, 0.01 to -0.38), and the
+  author's sub-assemblies built on the side fell a little (54.7% to 53.0% on
+  tune). Giving a loop up before a callout, as `_ease` does for guesses, is
+  the next thing to try for it.
+- **Every step buildable.** On the held-out sample one step in twelve still
+  floats something by the probe's graph (8.5%), against one in thirty for
+  authors, and 5.5% of things go in under one already there, against 0.9%.
+  Of what still floats on tune, a part on a side stud is one cause the
+  planner cannot help: the probe's graph does not hold a stud from the side
+  (`Stability.contacts` reads only what rests on what), where the build
+  check does, so such a part floats by the measure until something rests on
+  it or it on something. Teaching the measure side studs would be fair to
+  every build alike; it was not done here, so as not to move the measure
+  under this work.
   - **920's base**, most of whose parts stand square in its tilted launch
     pad's frame, is built in the hand now, and puts its hoses in a piece at a
     time: 330 LSynth pieces the file names after the model ("Rocket Launch
@@ -645,8 +878,11 @@ steps before the 1 x 12 brick it is pinned to.
     not know, so they are no bundle; 137 of them float at their step. 70 of
     its 209 steps float a thing, against 1 when it was built where it
     stands.
-  - **The app's build check** calls 17% of the parts our sampled steps add
-    floating (21% before), against 3% of the authors'.
+  - **The app's build check** calls 4% of the parts our sampled steps add
+    floating (17% before), against 3% of the authors'.
+- **The pictures and the covers cost time**: planning takes two to three
+  times as long (76161 1.0 s to 2.2 s, back to back), most of it drawing
+  each step as it is filled. Drawing only what is near the step is open.
 - **Sub-assemblies.** Ours builds on the side sub-models of at most 60
   parts and under 30% of the model (`ASSEMBLY_MOST`), a sub-model put on
   at an angle up to half the model, and one the model places itself at any

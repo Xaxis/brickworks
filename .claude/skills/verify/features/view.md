@@ -639,7 +639,12 @@ picture the assistant is shown.
   `_steadier`). A step of wheels is wheels. `instructions_probe` checks a 3 x 3
   plate on a 1 x 1 goes in the step after it, three tiles five studs apart in
   one step, and that a page putting a sub-assembly on lists exactly its loose
-  parts. PROOF_NUMBERS
+  parts. On the held-out steps-score sample (2026-10-17, against d24d4d6):
+  steps with a hidden new thing 14.5% to 11.7%, steps with a floating thing
+  11.2% to 8.5%, things put in under 6.3% to 5.5%, parts the build check
+  calls floating 17.3% to 4.0%, steps of one thing 23.3% to 19.6%, and tau
+  0.30 to 0.26, a loss (docs/INSTRUCTIONS.md). A wheel whose name LDraw
+  marks as an alias ("=Wheel Rim") is a wheel.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of

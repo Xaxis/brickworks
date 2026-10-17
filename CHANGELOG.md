@@ -95,9 +95,25 @@ whole cycle.
   builds more than one shader: its longest frame went from 140 ms to 91 ms,
   and the first draft comes half a second sooner. On the desktop the first
   open's longest frame went from as much as 133 ms to 19 ms.
+- A booklet's worked-out steps are easier to follow. A step no longer hides
+  one of its own new parts behind another, puts like parts that go on
+  together in one (a row of tiles, the 1 x 1s round a rim), and puts on the
+  parts beside a sub-assembly in the step that puts it on; a part goes in
+  once what it touches stands, reading what rests on what off the parts'
+  shapes, and a wheel goes on with the holder its pin is in. On 100 real
+  sets nobody tuned on, steps with a hidden new part went from 14.5% to
+  11.7%, steps leaving a part floating from 11.2% to 8.5%, parts the build
+  check calls floating from 17.3% to 4.0%, and steps of one part from 23.3%
+  to 19.6%. The order agrees less with the sets' own (Kendall tau 0.30 to
+  0.26), and working the steps out takes two to three times as long.
 
 ### Fixed
 
+- The step player lists the parts a step puts on beside a sub-assembly. An
+  author's step that put a sub-assembly on with parts of its own showed
+  those parts arriving and never said to pick them up.
+- A wheel rim LDraw names as an alias ("=Wheel Rim …") is a wheel in a
+  booklet. It went on as any other part, wherever its height put it.
 - A part a set's file carries, kept by the app, is kept with the pieces it
   is drawn from. It used to be missing after a restart, and a model saved
   then went out without them.
