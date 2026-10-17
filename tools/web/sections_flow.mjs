@@ -222,9 +222,12 @@ await key("Shift+y", 2500);
 s = await until((st) => (st.sections || {}).exploded === 0, 30);
 check("Shift+Y again puts them back together", (s.sections || {}).exploded === 0);
 
-await key("Control+z", 2000);
+// Back through the history: put back, broken out, then the sections made,
+// each one step.
+for (let n = 0; n < 3; n++) await key("Control+z", 2000);
 s = await until((st) => Object.keys(st.tree || {}).length === 0, 20);
-check("one undo takes all the sections away again", Object.keys(s.tree || {}).length === 0);
+check("three undos take back the put-back, the break-out and every section made",
+  Object.keys(s.tree || {}).length === 0 && Object.keys((s.sections || {}).out || {}).length === 0);
 
 writeFileSync(`${out}/results.json`, JSON.stringify({ set, bricks, results }, null, 2));
 await browser.close();

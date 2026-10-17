@@ -86,6 +86,9 @@ func _ready() -> void:
 	_tree.select_mode = Tree.SELECT_ROW
 	_tree.allow_rmb_select = true
 	_tree.focus_mode = Control.FOCUS_CLICK
+	# A key pressed with a row chosen is the window's (Y breaks the section
+	# out, F fits it), not a search of the rows by their first letters.
+	_tree.allow_search = false
 	# As tall as the column gives it (PanelStack), and never less than
 	# a few rows.
 	_tree.custom_minimum_size = Vector2(WIDE - 16.0, 60)
