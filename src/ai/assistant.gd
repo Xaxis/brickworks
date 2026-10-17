@@ -11727,7 +11727,16 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	for part_id: String in named:
 		Minifig.slot_for(library.parts.get(part_id))
 	_standing_now = _others_standing(alone)
-	_exact_now = _exact_shapes(model, alone)
+	# The exact shapes read a part at a time, the frame given back between:
+	# read in one go they were 52 of the 81 ms of the desktop's frame after
+	# Brick Art, and a browser's was 355 ms (progress_check, 2026-10-15).
+	var exact_ids: Array = _exact_ids(model, alone)
+	var pace := FramePace.new()
+	for part_id: String in exact_ids:
+		if pace.due():
+			await pace.next()
+		Exact.shape_for(library, part_id)
+	_exact_now = Exact.shapes_for(library, exact_ids)
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerThreadPool.add_task(func() -> void:
@@ -12641,19 +12650,26 @@ var _strict_mine: bool = false
 ## The exact shapes a check of [param model] reads, with what stands beside
 ## it: loaded here on the main thread, or as [method _checked] loaded them.
 func _exact_shapes(model: Model, alone: bool) -> Dictionary:
+	var ids: Array = _exact_ids(model, alone)
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		return Exact.shapes_for(library, ids)
+	var out: Dictionary = {}
+	for part_id: Variant in ids:
+		if _exact_now.has(part_id):
+			out[part_id] = _exact_now[part_id]
+	return out
+
+
+## The parts whose exact shapes a check of [param model] reads: its own, and
+## (not [param alone]) those of the bricks standing beside it.
+func _exact_ids(model: Model, alone: bool) -> Array:
 	var ids: Dictionary = {}
 	for placement: Placement in model.placements:
 		ids[placement.part] = true
 	if not alone and world != null:
 		for brick: BrickWorld.Brick in _others_standing(alone):
 			ids[brick.part_id] = true
-	if OS.get_thread_caller_id() == OS.get_main_thread_id():
-		return Exact.shapes_for(library, ids.keys())
-	var out: Dictionary = {}
-	for part_id: Variant in ids:
-		if _exact_now.has(part_id):
-			out[part_id] = _exact_now[part_id]
-	return out
+	return ids.keys()
 
 
 func _exact_check_for(model: Model, alone: bool) -> ExactCheck:

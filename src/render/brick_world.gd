@@ -444,17 +444,23 @@ func show_only(visible_ids: Dictionary) -> void:
 	_stop_reveal()
 	var everything: bool = visible_ids.is_empty()
 	var changed: bool = false
-	for brick_id: int in _bricks:
-		var brick: Brick = _bricks[brick_id]
-		var hide: bool = not (everything or visible_ids.has(brick_id))
+	# Marked here and rebuilt now, not marked a call a key with a rebuild
+	# put off to the frame's end as well: the timeline's first step hides
+	# all of Orthanc but a few parts, and that was 20 ms of the desktop's
+	# frame in calls alone.
+	for brick: Brick in _bricks.values():
+		var hide: bool = not (everything or visible_ids.has(brick.id))
 		if brick.hidden == hide:
 			continue
 		brick.hidden = hide
 		changed = true
-		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
-			_mark_dirty(key)
+		for key: String in _brick_batches.get(brick.id, NO_KEYS):
+			_dirty[key] = true
 	if changed:
 		_flush()
+
+
+var NO_KEYS: PackedStringArray = PackedStringArray()
 
 
 ## Draw only the bricks numbered below [param upto], which, in a world
