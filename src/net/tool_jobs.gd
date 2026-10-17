@@ -38,14 +38,23 @@ const KEPT := 12
 ## seconds, and has the answer within a moment of the work's end.
 var wait_s: float = 10.0
 ## How long a call not known to be long is waited for before it becomes a
-## job. Both variables so that a probe can shorten them.
-var after_s: float = 20.0
+## job. Both variables so that a probe can shorten them, and this one set
+## by --jobs-after=S (/app?jobs-after=S on the web): 0 makes every call a
+## job, which is how a check walks the job path on a model too small to be
+## slow (tools/web/model_view_check.mjs, viewer_tools_probe).
+var after_s: float = _after_asked(20.0)
 
 
 ## One piece of work a session started.
 class Entry extends RefCounted:
 	var id: int = 0
 	var tool: String = ""
+	## What the call was asked, as the session sent it.
+	var input: Dictionary = {}
+	## What a viewer is shown of its answer (ModelViews), drawn the first
+	## time a session that shows pages asks for it once it is done, so
+	## asked again it is the same.
+	var shown: Dictionary = {}
 	## What the person sees, and what the session is told. Null while a
 	## call not known to be long is still being waited for.
 	var work: Working.Job = null
@@ -60,6 +69,15 @@ class Entry extends RefCounted:
 
 var _entries: Array[Entry] = []
 var _next_id: int = 1
+
+
+static func _after_asked(otherwise: float) -> float:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--jobs-after="):
+			var given: String = argument.substr("--jobs-after=".length())
+			if given.is_valid_float():
+				return maxf(given.to_float(), 0.0)
+	return otherwise
 
 
 static func definition() -> Dictionary:
@@ -168,7 +186,9 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 
 
 ## Run [param run] for [param tool]: it takes the Working job it reports to
-## (null when there is none) and returns the tool's answer.
+## (null when there is none) and returns the tool's answer. [param entry]
+## is the call's, given so the caller can tell whether it became a job
+## (its id is then set) and which.
 ##
 ## [param long] (long_call) not empty: a job at once. The work starts on the
 ## next frame, so this answer is on its way to the session before the
@@ -177,8 +197,10 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 ## Otherwise the answer itself, unless it has none after [member after_s]:
 ## then a job from there, said in [param doing]'s words (what the work is
 ## saying it is doing), which cannot be stopped part way.
-func call_tool(tool: String, long: Dictionary, run: Callable, doing: Callable) -> Variant:
-	var entry := Entry.new()
+func call_tool(tool: String, long: Dictionary, run: Callable, doing: Callable,
+		entry: Entry = null) -> Variant:
+	if entry == null:
+		entry = Entry.new()
 	entry.tool = tool
 	entry.began_ms = Time.get_ticks_msec()
 	if not long.is_empty():
@@ -191,10 +213,15 @@ func call_tool(tool: String, long: Dictionary, run: Callable, doing: Callable) -
 	var until: int = entry.began_ms + roundi(after_s * 1000.0)
 	while not entry.finished and Time.get_ticks_msec() < until:
 		await tree.process_frame
-	if entry.finished:
+	# With no time at all (--jobs-after=0) every call is a job, even one that
+	# ended without waiting on anything: a check walks the job path that way
+	# whatever the model and the machine.
+	if entry.finished and after_s > 0.0:
 		return entry.answer
 	entry.work = Working.begin(str(doing.call()), 0, false)
 	_keep(entry)
+	if entry.finished:
+		entry.work.end()
 	return _started(entry)
 
 
@@ -231,21 +258,32 @@ func _go(entry: Entry, run: Callable) -> void:
 		entry.work.end()
 
 
-## The job tool: how one is going, its answer, or it stopped.
+## The job [param input] asks about: by its id, else the latest; null when
+## there is none.
+func asked_about(input: Dictionary) -> Entry:
+	if _entries.is_empty():
+		return null
+	if not input.has("id"):
+		return _entries[-1]
+	for one: Entry in _entries:
+		if one.id == int(input["id"]):
+			return one
+	return null
+
+
+## The job tool: how one is going, its answer, or it stopped. Once done, its
+## answer is the call's own, every block of it, after one line saying which
+## job it was: the words and the picture the call would have answered with
+## had it been quicker (and CommandSocket adds what a viewer is shown).
 func answer(input: Dictionary) -> Variant:
 	if _entries.is_empty():
 		return ("There are no jobs. A call that takes a long time (render_model, a booklet, "
 			+ "a Studio file, make_art, a recording, or anything still going after 20 s) "
 			+ "answers with a "
 			+ "job number to ask about here.")
-	var entry: Entry = _entries[-1]
-	if input.has("id"):
-		entry = null
-		for one: Entry in _entries:
-			if one.id == int(input["id"]):
-				entry = one
-		if entry == null:
-			return "No job %d. %s" % [int(input["id"]), _listing()]
+	var entry: Entry = asked_about(input)
+	if entry == null:
+		return "No job %d. %s" % [int(input["id"]), _listing()]
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if bool(input.get("cancel", false)) and not entry.finished:
 		if not entry.work.can_cancel:
@@ -273,9 +311,12 @@ func answer(input: Dictionary) -> Variant:
 			entry.tool, entry.seconds()]
 	else:
 		said = "Job %d (%s) is done, after %d s:\n" % [entry.id, entry.tool, entry.seconds()]
+	# The call's answer as it is, after a block of its own: a picture and
+	# its words, or words alone, block for block what answered at once.
+	var first: Array = [{"type": "text", "text": said.strip_edges()}]
 	if entry.answer is Array:
-		return [{"type": "text", "text": said.strip_edges()}] + (entry.answer as Array)
-	return said + str(entry.answer)
+		return first + (entry.answer as Array)
+	return first + [{"type": "text", "text": str(entry.answer)}]
 
 
 ## What the job holding the app is doing, for a call made meanwhile.

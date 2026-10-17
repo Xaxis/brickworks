@@ -484,7 +484,26 @@ func _run() -> void:
 	_check(refused, "...a refused call says so, and why")
 	connector.called.emit("plan_scale", {"subject": "a lighthouse", "longest_metres": 30.0})
 	_check(panel._run_now.text.contains("30 m"), "numbers read as numbers: %s" % panel._run_now.text)
+	# Between Claude's calls nothing on the panel moves: a label changed is
+	# the whole window drawn again, which in a browser drawing in software
+	# is seconds of it. The connector's line and the card's clock ticked
+	# every second, and the page never stopped drawing (2026-10-16).
+	# (The connector's line here can also say the probe's relay is out of
+	# reach, which is not a tick: what is checked is that nothing runs on a
+	# timer to change it.)
+	var clock_was: String = panel._run_clock.text
+	panel._run_started -= 2000
+	var until: int = Time.get_ticks_msec() + 1300
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	var ticking: Array = offer.find_children("*", "Timer", true, false).filter(
+		func(timer: Timer) -> bool: return not timer.is_stopped())
+	_check(panel._run_clock.text == clock_was and ticking.is_empty(),
+		"standing still between Claude's calls, the card's clock stays at %s, and nothing on the connector's line runs on a timer (%d)"
+			% [panel._run_clock.text, ticking.size()])
 	connector.answered.emit("plan_scale", true, "90 studs")
+	_check(panel._run_clock.text != clock_was,
+		"...and the clock moves with the next of them: %s" % panel._run_clock.text)
 	panel.claude_quiet_ms = 0
 	await process_frame
 	await process_frame

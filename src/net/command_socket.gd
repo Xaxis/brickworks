@@ -389,7 +389,8 @@ func answer_rpc(request: Dictionary) -> Variant:
 			return _result(sent_id, await _viewer().answer(name, input,
 				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
-		var called: Array = await _call(name, input)
+		var call := ToolJobs.Entry.new()
+		var called: Array = await _call(name, input, call)
 		if not bool(called[1]):
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
@@ -408,10 +409,10 @@ func answer_rpc(request: Dictionary) -> Variant:
 		var result: Dictionary = {"content": content, "isError": false}
 		# For a client that shows the model beside the call (ModelViews),
 		# asked for by the relay: the content above is the same either way.
-		if ModelViews.TOOLS.has(name) and ModelViews.asked(params):
-			var shown: Dictionary = await _shown(name)
-			if not shown.is_empty():
-				result["_meta"] = {ModelViews.KEY: shown}
+		if ModelViews.asked(params):
+			var meta: Dictionary = await _viewer_meta(name, input, call)
+			if not meta.is_empty():
+				result["_meta"] = meta
 		return _result(sent_id, result)
 	if method in ["resources/list", "prompts/list"]:
 		return _result(sent_id, {"resources": [], "prompts": []})
@@ -421,6 +422,48 @@ func answer_rpc(request: Dictionary) -> Variant:
 
 var _views := ModelViews.new()
 var _viewer_tools: ViewerTools = null
+
+## Where a call's _meta says which job it is, for the card in Claude: {id,
+## tool, done, input (its from and name)}. On the answer that started one,
+## so the card beside that call follows it to its end, and on the job
+## tool's.
+const JOB_KEY := "brickworks/job"
+
+
+## What a viewer is given with [param name]'s answer (asked for by the
+## relay, for a client that shows pages). A call that became a job carries
+## nothing of the model yet, only which job; the job tool's answer, once
+## the job is done, carries what the call's own would have (ModelViews),
+## drawn once for that job. [param call] is the call's own entry: its id is
+## set when it became a job.
+func _viewer_meta(name: String, input: Dictionary, call: ToolJobs.Entry) -> Dictionary:
+	if name == ToolJobs.TOOL:
+		var job: ToolJobs.Entry = jobs.asked_about(input)
+		if job == null:
+			return {}
+		var meta: Dictionary = {JOB_KEY: _job_said(job)}
+		if job.finished and job.answer != null and ModelViews.TOOLS.has(job.tool):
+			if job.shown.is_empty():
+				job.shown = await _shown(job.tool)
+			if not job.shown.is_empty():
+				meta[ModelViews.KEY] = job.shown
+		return meta
+	if not ModelViews.TOOLS.has(name):
+		return {}
+	if call.id > 0:
+		return {JOB_KEY: _job_said(call)}
+	var shown: Dictionary = await _shown(name)
+	return {ModelViews.KEY: shown} if not shown.is_empty() else {}
+
+
+## Of what the call was asked, only what the card shows (the side a picture
+## is from, the model's name): a design's bricks are no business of _meta's.
+static func _job_said(job: ToolJobs.Entry) -> Dictionary:
+	var asked: Dictionary = {}
+	for key: String in ["from", "name"]:
+		if job.input.get(key) is String:
+			asked[key] = job.input[key]
+	return {"id": job.id, "tool": job.tool, "done": job.finished, "input": asked}
 
 
 ## What the viewer is shown of the model after [param name]'s call: {} when
@@ -716,9 +759,12 @@ var jobs := ToolJobs.new()
 ## known to be long at once, any other once it has run for 20 s. It keeps
 ## the app until the work ends. While a job holds the app every other call
 ## is told so at once, and [code]job[/code] says how it is going.
-func _call(name: String, input: Dictionary) -> Array:
+func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null) -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
+	if entry == null:
+		entry = ToolJobs.Entry.new()
+	entry.input = input
 	var holding: ToolJobs.Entry = jobs.running()
 	if holding != null:
 		return [jobs.busy(holding), true]
@@ -737,7 +783,7 @@ func _call(name: String, input: Dictionary) -> Array:
 			var said: Variant = await _run_own(name, input)
 			_at_work -= 1
 			_one_step(name, before)
-			return said, doing), true]
+			return said, doing, entry), true]
 	if not await _take_a_turn():
 		holding = jobs.running()
 		return [jobs.busy(holding), true] if holding != null else [null, false]
@@ -753,7 +799,7 @@ func _call(name: String, input: Dictionary) -> Array:
 		if work == null or not work.cancelled:
 			answer = await _run(name, input, work)
 		_hand_back()
-		return answer, doing), true]
+		return answer, doing, entry), true]
 
 
 ## What the assistant last said it was doing, for the words of a call that

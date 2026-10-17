@@ -34,9 +34,22 @@
 //      The page asks for the turntable and shows it, the parts count, it
 //      turns, and nothing is refused by the policy.
 //      tools/web/app_host_check.mjs is the 3D page, in the reference host.
+//   4. Every call a job: a second tab of the account opened with
+//      /app?jobs-after=0 (ToolJobs.after_s), where any call becomes a job
+//      however small the model, called with target. The same design built
+//      and looked at there: each call answers "Started job N" with which job
+//      in its _meta, and one call of job once it is done gives the call's
+//      own answer, the words, the picture and the _meta the inline answer
+//      carried; a client that does not show pages gets the same words and
+//      picture. And the card beside a call that became a job follows it,
+//      through the host, and shows its picture.
 //
 // Before 2026-10-14 the relay served no resources and named nothing, so
-// every check from 1 on failed. Costs nothing: no model is called.
+// every check from 1 on failed. Before 2026-10-16 a job's answer carried
+// no _meta and the card beside a call that became one showed the model as
+// it stood mid-call, so 4 failed; on a loaded box view_model became a job
+// in 2 as well (release m33, load 75), which 2 now follows as a session
+// does. Costs nothing: no model is called.
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 
@@ -44,7 +57,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 // go to. Set before browser.mjs is loaded, which reads it once.
 const email = `delivered+bwmodelview${Date.now().toString(36)}@resend.dev`;
 process.env.BW_TEST_EMAIL = email;
-const { launch, openColumnFor, withAssistant } = await import("./browser.mjs");
+const { launch, openColumnFor, withAssistant, withJobs } = await import("./browser.mjs");
 const { mintSession } = await import("./session.mjs");
 
 // The throwaway account, and with it its connections and tabs. Not
@@ -163,12 +176,24 @@ class Conversation {
     return said;
   }
   call(name, input = {}) { return this.ask("tools/call", { name, arguments: input }); }
+  // A call as a session makes it: one that became a job is followed with
+  // job to its end (browser.mjs withJobs), and that answer is the call's.
+  followed(name, input = {}) {
+    return withJobs((method, params) => this.ask(method, params), { waits: 90 })("tools/call", { name, arguments: input });
+  }
 }
 
 const texts = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "text").map((b) => b.text);
 const images = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "image");
 const shownOf = (answer) => ((answer.result || {})._meta || {})["brickworks/view"];
 const kinds = (answer) => ((answer.result || {}).content || []).map((b) => b.type).join(",");
+const jobOf = (answer) => ((answer.result || {})._meta || {})["brickworks/job"];
+// The words a call's own answer says: not the relay's line naming the tab,
+// nor the job's line saying which job it was.
+const ownTexts = (answer) => texts(answer).filter((t) => !/^Tab \S+, /.test(t) && !/^Job \d+ \(\w+\) is done/.test(t));
+const ownKinds = (answer) => ((answer.result || {}).content || [])
+  .filter((b) => !(b.type === "text" && (/^Tab \S+, /.test(b.text) || /^Job \d+ \(\w+\) is done/.test(b.text))))
+  .map((b) => b.type).join(",");
 
 let browser = null;
 let account = "";
@@ -229,24 +254,29 @@ try {
     body: "<!doctype html><title>claude.ai (stand-in)</title>" }));
   const tab = await context.newPage();
   await tab.goto(withBypass(url), { waitUntil: "domcontentloaded", timeout: 180000 });
-  const controls = () => tab.evaluate(() => window.brickworksControls || {});
-  const claudeState = () => tab.evaluate(() => window.brickworksClaude || {});
-  let listening = false;
-  for (let n = 0; n < 600 && !listening; n++) {
-    listening = Boolean((await claudeState()).on);
-    if (listening) break;
-    const at = (await controls()).connect_claude;
-    if (at) {
-      const opened = context.waitForEvent("page", { timeout: 30000 }).catch(() => null);
-      await tab.mouse.click(at.x, at.y);
-      const claude = await opened;
-      if (claude) await claude.close();
-    } else if (n % 12 === 6) {
-      await openColumnFor(tab, "connect_claude");
+  // The tab listening for Claude, switched on as a person does.
+  async function listen(page) {
+    const controls = () => page.evaluate(() => window.brickworksControls || {});
+    const claudeState = () => page.evaluate(() => window.brickworksClaude || {});
+    let on = false;
+    for (let n = 0; n < 600 && !on; n++) {
+      on = Boolean((await claudeState()).on);
+      if (on) break;
+      const at = (await controls()).connect_claude;
+      if (at) {
+        const opened = context.waitForEvent("page", { timeout: 30000 }).catch(() => null);
+        await page.mouse.click(at.x, at.y);
+        const claude = await opened;
+        if (claude) await claude.close();
+      } else if (n % 12 === 6) {
+        await openColumnFor(page, "connect_claude");
+      }
+      await page.waitForTimeout(500);
     }
-    await tab.waitForTimeout(500);
+    return { on, status: (await claudeState()).status || "" };
   }
-  check(listening, `the account's tab is listening for Claude: "${(await claudeState()).status || ""}"`);
+  const listened = await listen(tab);
+  check(listened.on, `the account's tab is listening for Claude: "${listened.status}"`);
 
   // A small model: six parts, on bare ground.
   const design = { name: "Viewer check tower", bricks: [
@@ -295,14 +325,15 @@ try {
   const whole = (asked.result?.structuredContent || {}).views || [];
   check(whole.length === 4 && webp(whole) && (asked.result?.structuredContent || {}).parts === stated,
     `viewer_scene, views: true, gives the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
-  // A picture the tab cannot draw in 20 s comes back as letters, or as a
-  // job, whoever asked: on a loaded machine, asked again.
+  // A picture the tab cannot draw in 20 s comes back as letters (asked
+  // again), or as a job, which is followed as a session follows it: its
+  // answer is the call's own (4 below proves it).
   async function aPicture(conversation) {
-    let answer = await conversation.call("view_model", { from: "front" });
+    let answer = await conversation.followed("view_model", { from: "front" });
     for (let n = 0; n < 3 && images(answer).length === 0; n++) {
       console.log(`  (view_model came back without a picture: "${texts(answer).slice(-1)[0]?.slice(0, 60)}"; again)`);
       await tab.waitForTimeout(15000);
-      answer = await conversation.call("view_model", { from: "front" });
+      answer = await conversation.followed("view_model", { from: "front" });
     }
     return answer;
   }
@@ -320,7 +351,7 @@ try {
     "...its answers carry nothing for a viewer");
   check(JSON.stringify(texts(plainLooked)) === JSON.stringify(texts(looked)),
     "...and look_at_model's words are the same, word for word");
-  check(kinds(plainViewed) === kinds(viewed) && JSON.stringify(texts(plainViewed)) === JSON.stringify(texts(viewed))
+  check(ownKinds(plainViewed) === ownKinds(viewed) && JSON.stringify(ownTexts(plainViewed)) === JSON.stringify(ownTexts(viewed))
       && images(plainViewed)[0]?.mimeType === images(viewed)[0]?.mimeType,
     `...and view_model's words and picture the same (${kinds(plainViewed)})`);
   await tab.screenshot({ path: `${out}/1_tab.png`, timeout: 120000 }).catch(() => {});
@@ -467,6 +498,67 @@ try {
       && /From the front/.test(two.seen.where),
     `view_model: its own picture, and the count: "${two.seen.where}", "${two.seen.parts}"`);
   await host.screenshot({ path: `${out}/5_view_model.png` });
+
+  console.log("\n4. every call a job, in a second tab (/app?jobs-after=0): the job's answer is the call's own");
+  const jobTab = await context.newPage();
+  await jobTab.goto(withBypass(`${url}&jobs-after=0`), { waitUntil: "domcontentloaded", timeout: 180000 });
+  const jobListened = await listen(jobTab);
+  check(jobListened.on, `the second tab is listening too: "${jobListened.status}"`);
+  const first = String((looked.result?._meta || {})["brickworks/tab"] || "");
+  let target = "";
+  for (let n = 0; n < 24 && !target; n++) {
+    const open = texts(await viewer.call("tabs")).join("\n");
+    target = ([...open.matchAll(/^- ([a-z2-9]{4,12}): /gm)].map((m) => m[1]).find((id) => id !== first)) || "";
+    if (!target) await jobTab.waitForTimeout(5000);
+  }
+  check(Boolean(target) && Boolean(first), `tabs names it beside the first: ${target} (the first ${first})`);
+  // Started, and its _meta says which job; then one call of job, once it is
+  // done, gives the call's answer.
+  async function asJob(conversation, name, input) {
+    const started = await conversation.call(name, { ...input, target });
+    const id = Number((/Started job (\d+)/.exec(texts(started).join(" ")) || [])[1] || 0);
+    let done = started;
+    for (let n = 0; n < 90 && id; n++) {
+      done = await conversation.call("job", { id, target });
+      if (!/ is still going/.test(texts(done).join(" "))) break;
+    }
+    return { started, id, done };
+  }
+  await asJob(viewer, "clear_model", {});
+  const jobBuilt = await asJob(viewer, "submit_design", design);
+  check(jobBuilt.id > 0 && (jobOf(jobBuilt.started) || {}).id === jobBuilt.id && !shownOf(jobBuilt.started),
+    `submit_design answers "Started job ${jobBuilt.id}", its _meta saying which (${JSON.stringify(jobOf(jobBuilt.started))}) and carrying no model yet`);
+  const builtJob = shownOf(jobBuilt.done) || {};
+  check(/is done/.test(texts(jobBuilt.done).join(" ")) && /Built\./.test(texts(jobBuilt.done).join(" "))
+      && builtJob.parts === stated && (builtJob.views || []).length === 1 && (builtJob.views || [])[0]?.from === "corner"
+      && (builtJob.scene || {}).count === (builtShown.scene || {}).count && (jobOf(jobBuilt.done) || {}).done === true,
+    `...and job, once done, gives its answer with the _meta it would have carried at once: ${builtJob.parts} parts, `
+      + `${(builtJob.views || []).map((v) => v.from).join(",")}, ${(builtJob.scene || {}).count} bricks packed`);
+  const jobViewed = await asJob(viewer, "view_model", { from: "front" });
+  const viewedJob = shownOf(jobViewed.done) || {};
+  check(jobViewed.id > 0 && images(jobViewed.done).length === 1 && images(jobViewed.done)[0].data.length > 1000,
+    `view_model as job ${jobViewed.id}: one call of job once it is done gives the picture (${kinds(jobViewed.done)})`);
+  check(ownKinds(jobViewed.done) === ownKinds(viewed) && JSON.stringify(ownTexts(jobViewed.done)) === JSON.stringify(ownTexts(viewed))
+      && images(jobViewed.done)[0]?.mimeType === images(viewed)[0]?.mimeType,
+    `...the words and picture view_model answered with at once, block for block (${ownKinds(jobViewed.done)})`);
+  check(viewedJob.parts === stated && (viewedJob.views || []).length === 0 && (viewedJob.scene || {}).count >= stated,
+    `...and the _meta it carried at once: ${viewedJob.parts} parts, the model packed, its own picture the one shown`);
+  const plainJob = await asJob(plain, "view_model", { from: "front" });
+  check(plainJob.id > 0 && !shownOf(plainJob.done) && !jobOf(plainJob.done) && !jobOf(plainJob.started)
+      && ownKinds(plainJob.done) === ownKinds(jobViewed.done)
+      && JSON.stringify(ownTexts(plainJob.done)) === JSON.stringify(ownTexts(jobViewed.done)),
+    `a client that does not show pages: the same words and picture as a job, and no _meta (${kinds(plainJob.done)})`);
+  // The card beside the call that became a job: handed "Started job N", it
+  // follows the job through the host and shows the picture it gave.
+  const pageCalls = calledByPage.length;
+  const followedCard = await showIn("view_model", { from: "front" }, jobViewed.started);
+  const followedBy = await followedCard.frame.evaluate(() => ({ job: window.brickworksCard.job, followed: window.brickworksCard.followed }));
+  check(followedCard.seen.drawn && followedCard.seen.src.startsWith("data:image/png") && followedCard.seen.parts === count
+      && followedBy.followed === jobViewed.id && calledByPage.slice(pageCalls).includes("job"),
+    `the card beside the call that became job ${jobViewed.id} follows it (${calledByPage.slice(pageCalls).join(", ")}) and shows its picture: `
+      + `"${followedCard.seen.where}", "${followedCard.seen.parts}"`);
+  await host.screenshot({ path: `${out}/6_view_model_job.png` });
+  await jobTab.close();
   check(refused.length === 0, `the policy built from what the page declares refused nothing${refused.length ? `: ${refused[0]}` : ""}`);
 } catch (trouble) {
   if (!trouble.asked) check(false, `stopped: ${trouble.message}`);

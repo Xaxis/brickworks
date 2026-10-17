@@ -248,7 +248,15 @@ picture the assistant is shown.
   still and 144 for half a second after anything is drawn or a FramePace
   slice runs; in a browser at the page's own rate (sleep 0, the page's one
   thread cannot sleep). So nothing may write to the RenderingServer every
-  frame for nothing: a value set again unchanged is a frame drawn. The
+  frame for nothing: a value set again unchanged is a frame drawn. Nor a
+  label on a timer: the Claude panel's "Claude is building — N calls, m:ss"
+  ticked every second from Claude's first call until the tab was switched
+  off, so in Chromium on SwiftShader, after any call of Claude's, the page
+  drew a frame of 12 to 15 CPU-seconds back to back for good (89 to 185
+  CPU-seconds of the GPU process in 20 s standing still, 0.2 before the
+  first call, on 6 parts and on the 535-part station alike) and every
+  picture Claude asked for waited behind the frames queued (2026-10-16; it
+  and the run card's clock now move with Claude's calls). The
   camera set its pose every frame (`CadCamera._apply` now stops a hundredth
   of a pixel from its target and sets nothing at rest), the axis gizmo
   (the view cube since) redrew itself (now when the camera turned) and the pivot mark rebuilt its

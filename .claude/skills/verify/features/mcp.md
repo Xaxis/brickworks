@@ -90,6 +90,43 @@ asking for an API key.
   refused at once (nothing built, nothing to draw with, a plan that will not
   parse) is not a job, so its refusal is the answer. The guidance is in the
   answers themselves and one line of `GUIDE_HEAD`.
+  **A job's answer is the call's own** (2026-10-16): once done, one call of
+  `job` gives a line saying which job, then the call's answer block for
+  block, words and picture (a string answer is a block of its own too, so
+  the words match the inline answer exactly), and, to a client that shows
+  pages (the relay asks for it on `job` calls too, `asksViews`), the same
+  `_meta["brickworks/view"]` the inline answer would have carried, drawn
+  once for that job (`Entry.shown`), with `_meta["brickworks/job"]` = {id,
+  tool, done, input: its from and name}. The answer that started a job
+  carries that `brickworks/job` (not done) and no model. Before, the job's
+  answer had no `_meta`: release m33's `model_view` check at load 75 had
+  `view_model` become a job three times and the card nothing to draw.
+  `--jobs-after=S` (`/app?jobs-after=S`) sets `after_s`; at 0 every call is
+  a job, even one that never waited, so a check walks the path on any
+  model: `viewer_tools_probe` (`_as_jobs`), `model_view_check.mjs` section
+  4, and `mcp_check.py --window` against an app started `--jobs-after=0`.
+  **Why a picture took over 20 s in the browser** (measured 2026-10-16, a
+  local export in Chromium on SwiftShader under `heavy`, load 30 to 45,
+  nothing touching the page): the app's own work for a `view_model` is under
+  0.1 s; the rest is waiting for SwiftShader to rasterise (`GpuFence` holds:
+  5.7 to 13.8 s on 6 parts, 32 to 36 s on the 535-part station), with the
+  page's main thread at 60 frames a second. Behind it was needless drawing:
+  the connector panel's "Claude is building — N calls, m:ss" ticked every
+  second from Claude's first call on, and the run card's clock every frame,
+  so after any call of Claude's the page drew a whole frame back to back,
+  12 to 15 CPU-seconds of the GPU process each (89 to 185 CPU-seconds in 20 s
+  standing still, against 0.2 before the first call), and every picture
+  waited behind the frames queued. Both now move with Claude's calls
+  (`ChatPanel`, `ConnectorForm._tick`; `chat_probe` checks nothing runs on a
+  timer between calls). After: nothing drawn standing still after Claude's
+  calls (0 frames in 20 s, 12 to 14 before); on 6 parts (the `model_view`
+  check's tower) `look_at_model` 1.5 to 2.1 s (9 to 10 before) and
+  `view_model` 4.6 to 5.8 s, 25 to 32 CPU-seconds of SwiftShader each, after
+  a first of 13.3 s (7.7 to 23.9 s before); on the station `look_at_model`
+  2.3 to 2.6 s (21 and 32 before), `view_model` 9 to 16 s once the first
+  picture of the session has built its viewport (37.7 s, still a job), 22 to
+  53 s before. What is left is SwiftShader under load: on the RX 6700 XT the
+  same picture is under a second ("Job 3 (view_model) is done, after 0 s").
 - **Every tool says what it does to the person's work** (2026-10-14): MCP's
   `annotations` — `title`, `readOnlyHint`, `destructiveHint` (can take work
   away: clear, submit, edit, open, undo, Brick Art, restyle), `idempotentHint`
@@ -139,7 +176,13 @@ asking for an API key.
   WebP, under 100,000 characters, drawn once per change of the model. Never
   `structuredContent`: Claude Code gives the model that in place of the
   words. Every other client's answers are byte for byte what they were. A
-  call that became a job carries no pictures (the model is still going up).
+  call that became a job carries only which job it is
+  (`_meta["brickworks/job"]`); the `job` tool's answer once it is done
+  carries the call's whole share, and the card beside the call follows the
+  job through the host (`job {id, target}`, each call waiting up to 10 s;
+  where the host will not let it, `viewer_scene` until the tab is no longer
+  working) and shows that answer as the call's (`brickworksCard.job`,
+  `.followed`).
   `tools/web/model_view_check.mjs` proves it on a deployment: the relay's
   half, a real tab, a session that shows pages and one that does not, and
   the page in a sandboxed frame under the policy it declares, sent the
@@ -282,7 +325,9 @@ tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)
 node tools/web/model_view_check.mjs --url=http://127.0.0.1:8797/app --relay-only   # ...its relay half, with relay_server.mjs 8797
-godot --headless --path . --script src/dev/viewer_tools_probe.gd            # the viewer's own tools, on the real scene
+godot --headless --path . --script src/dev/viewer_tools_probe.gd            # the viewer's own tools, on the real scene, and a job's answer
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/viewer_tools_probe.gd   # ...in a window (on the GPU lease): the picture through the job
+godot --path . -- --mcp=8847 --jobs-after=0 & tools/mcp_check.py --port=8847 --window   # every call a job, in a window: the bridge's answers followed, view_model's picture
 node tools/viewer/scene_check.mjs --scene=.scratch-data/godot/app_userdata/Brickworks/viewer_tools_probe/scene.json   # the card reads what the tab packed
 node tools/viewer/build.mjs --deps=DIR --check                               # the committed page is the build of tools/viewer/
 BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=DIR/basic-host --out=shots/app_host   # in the MCP Apps reference host
@@ -315,6 +360,18 @@ page asks the tab for the model itself".
 ```sh
 tools/mcp_check.py --port=8846 --jobs                     # ...in a window: Orthanc's turntable as a job
 ```
+
+A job's answer (2026-10-16): `viewer_tools_probe` ends with "a call that
+became a job answers, once done, as it would have at once" — view_model and
+look_at_model asked inline, then with `after_s` 0: each "Started job N" with
+`brickworks/job` in its `_meta`, then one `job` call giving the call's own
+blocks (in a window `text,text,image`), the same `brickworks/view` parts,
+scene and views, and a client that does not show pages the same words and
+picture with no `_meta`. `model_view_check.mjs` section 4 does the same
+through the relay in a second tab opened `/app?jobs-after=0` (called with
+`target`), and shows the card the "Started job" answer: it calls `job`
+through the host and draws the picture. Against m33 section 4 fails at "job,
+once done, gives its answer with the _meta it would have carried at once".
 
 For the subscription path:
 

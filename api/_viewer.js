@@ -40,6 +40,11 @@ export const VIEWER_MIME = "text/html;profile=mcp-app";
 export const VIEWER_TOOLS = ["submit_design", "look_at_model", "view_model", "edit_model", "open_model", "brickify"];
 // What a call carries to the tab to ask for the viewer's share of its answer.
 export const ASK_VIEWS = "brickworks/views";
+// The calls that ask for it: those, and the job tool (src/net/tool_jobs.gd),
+// whose answer once a call has become a job and ended is that call's, the
+// viewer's share and all; and the card beside the call that became one asks
+// it for that, through the host (_meta "brickworks/job").
+export const asksViews = (name) => VIEWER_TOOLS.includes(name) || name === "job";
 
 const ONLY_APP = { ui: { resourceUri: VIEWER_URI, visibility: ["app"] } };
 const LOOKS = (title) => ({ title, readOnlyHint: true, openWorldHint: false });

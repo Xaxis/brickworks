@@ -61,7 +61,6 @@ var _private_link: LinkButton
 var _calls: int = 0
 var _since: int = 0
 var _heard: String = ""
-var _clock: Timer
 ## Claude was connected, and has been disconnected since: said until it is
 ## connected again or the tab is switched on.
 var _parted: bool = false
@@ -231,11 +230,6 @@ func setup(with: ClaudeConnector) -> void:
 			_say("Could not reach Brickworks to disconnect. Try again.", TROUBLE))
 	add_child(_disconnect)
 
-	_clock = Timer.new()
-	_clock.wait_time = 1.0
-	_clock.timeout.connect(_tick)
-	add_child(_clock)
-
 	connector.listening.connect(_on_listening)
 	connector.called.connect(_on_called)
 	connector.connections_changed.connect(func(_now: Array) -> void:
@@ -246,7 +240,6 @@ func setup(with: ClaudeConnector) -> void:
 			_parted = true
 			_calls = 0
 			_heard = ""
-			_clock.stop()
 		_linked = connector.connected()
 		_settle())
 	connector.trouble.connect(func(why: String) -> void:
@@ -353,7 +346,6 @@ func _on_called(tool: String, _arguments: Dictionary) -> void:
 	_calls += 1
 	if _calls == 1:
 		_since = Time.get_ticks_msec()
-		_clock.start()
 	_tick()
 	_show()
 
@@ -361,12 +353,20 @@ func _on_called(tool: String, _arguments: Dictionary) -> void:
 ## How much Claude has done, and for how long. Each step is told in the
 ## conversation above, on a card like the app's own designs get; the model
 ## itself is the main report, built on the baseplate as this updates.
+##
+## Said as each call comes, from the first call to this one, and not again
+## every second: the line ticked on a one-second timer from Claude's first
+## call until the tab was switched off, and each tick drew the whole window
+## again. In a browser drawing in software that is a frame of 12 to 15
+## CPU-seconds, so the page never stopped drawing once Claude had called,
+## and a picture Claude asked for waited behind every frame queued
+## (2026-10-16, measured: 89 to 185 CPU-seconds of drawing in 20 s standing
+## still, against 0.2 before Claude's first call).
 func _tick() -> void:
 	if _calls == 0 or not connector.is_on():
-		_clock.stop()
 		return
 	var seconds: int = (Time.get_ticks_msec() - _since) / 1000
-	_say("Claude is building — %d call%s, %d:%02d" % [_calls,
+	_say("Claude is building — %d call%s in %d:%02d" % [_calls,
 		"" if _calls == 1 else "s", seconds / 60, seconds % 60], CONNECTED)
 
 
