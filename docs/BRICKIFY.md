@@ -2256,7 +2256,100 @@ Spot at 48 studs (Keenan Crane, CC0), from behind:
 
 ![Spot at 48 studs from behind: main, then its sides on their sides](brickify/unit5-spot-48.jpg)
 
+### Second round: no slower, and the joints
+
+Asked of the first round: no stud joint past its load that `main` does not
+have (42 at 48 studs, 47 after it), and no model more than 1.3 times
+`main`'s time (the temple was twice it, laid three times), the forty-stud
+bunny at most 1.1 times.
+
+**What changed.**
+1. **Two lays at most.** A build that leaves a region out is laid again
+   unbonded and by the flag at once, as `main` lays it again, not first
+   upright and bonded: the temple, which loses its moon either way it is
+   bonded, was laid three times.
+2. **One colour asked for keeps its slopes to that colour on every path**
+   (Shapes' `sold_only`): `made_colours` does not recolour it, and laid again
+   by the flag the blue bunny had inverted slopes no one sells in blue.
+   Checked so for every sculpt instead, the temple's fallback changed and it
+   lost its moon.
+3. **The core three studs deep behind a turned cube** (`CUBE_BACK`, and not
+   another shell's): the fox at 48 studs, two deep, hung its head on 4
+   joints past their load, `main`'s 2; three deep, 2. Spot and the Stanford
+   bunny lay as before (34.9° and 37.7°).
+4. **Rays across only through a cube facing that way**: the rest were most
+   of measuring the cubes (0.76 s of a 24-stud bust's 7 s). The fox lays the
+   same 972 parts.
+
+Tried and taken out: a shell beside a piece of the core that the shells
+cut off (face to face) given back. On the toy car it gave back none; its
+weak column has no part on its side within four studs of it.
+
+**Joints past their load**, each run at 48 studs that has any (none at 24,
+before or after), the branch at `8c627ca`:
+
+| Model | `main` | After | Steep faces (°), `main` → after | Parts |
+|---|---|---|---|---|
+| Bob | 1 | 0 | 42.7 → 40.6 | 3,423 → 3,737 |
+| the figure | 4 | 2 | 31.3 → 32.5 | 2,377 → 2,598 |
+| the fox | 2 | 2 | 36.1 → 31.5 | 853 → 972 |
+| the toy car | 0 | 6 | 35.8 → 34.9 | 3,020 → 3,090 |
+| the temple (`main`'s build) | 35 | 35 | 39.8 → 39.8 | 10,867 → 10,867 |
+| All | 42 | 45 | | |
+
+The toy car's 6 are one column of 1 x 1s a stud across under a piece of
+225 g, each joint of it 26 times past its load. No part on its side is
+within four studs of it; laid upright (`Options.snot` false) the car has
+none, and its 5 shells buy 0.9° on its steep faces. The trade is that car's
+6 against the figure's and Bob's 3 fewer.
+
+**Time**, each model laid by `main` and by the branch one after the other
+(the box shared, at a load of 10 to 46): over all 28 runs 864 s for `main`
+and 859 s for the branch; the temple at 48 studs 391 s and 349 s. The six
+runs over 1.3 times, each laid again four times by each (two processes
+each, in turn, `brickify_phases.gd`; medians, `b63bcf8`):
+
+| Run | `main` (s) | Branch (s) | Times |
+|---|---|---|---|
+| the Hayes bust at 24 | 14.5 | 11.1 | 0.77 |
+| the toy car at 24 | 8.0 | 8.2 | 1.02 |
+| the Bell X-1 at 24 | 3.2 | 3.3 | 1.04 |
+| 3DBenchy at 48 | 19.3 | 21.8 | 1.13 |
+| the temple at 24 | 16.3 | 21.7 | 1.33 |
+| the avocado at 48 | 20.2 | 28.7 | 1.42 |
+
+The temple at 24 turns 5 to 13 ms of shells; the rest is its stitch, which
+took 7 to 19 s run to run on the same build, the box at a load near 46. The
+avocado at 48 is real: its shells take 1.5 s, its stitch 3 s more, and a
+1 x 1 plate and a tile left apart at its top (on `main`, none) send its
+mend to a second check, 4 to 6 s. The forty-stud bunny, six each side by
+side: 5.60 s for `main` (5.44 to 6.22) and 5.59 s for the branch (4.79 to
+6.44), 1.00 times, in 2,143 parts.
+
+**The bench again, second round** (`8c627ca`, the same models and sizes):
+
+| Studs | Run | Steep faces (°) | Nearest on its side | There (°) | Sides, Hausdorff95 | Whole | One piece | Standing | Joints past load | Parts | ΔE2000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 6% | 41.1 | 0.73 | 14/14 | 14/14 | 14/14 | 0 | 10,975 | 11.04 |
+| 24 | after | 39.3 | 14% | 34.2 | 0.73 | 14/14 | 14/14 | 14/14 | 0 | 11,647 | 11.04 |
+| 48 | `main` | 36.4 | 13% | 36.3 | 0.84 | 14/14 | 14/14 | 10/14 | 42 | 51,531 | 9.17 |
+| 48 | after | 35.0 | 29% | 29.5 | 0.87 | 14/14 | 14/14 | 10/14 | 45 | 55,460 | 9.22 |
+
+Parts 6.1% and 7.6% more; 1 x 1s 39.4% and 33.0%, seams bridged 40.8% and
+39.1%, weak points 31.4% and 25.6% (read as above).
+
+Neither ask is met in full: the toy car's 6 joints (the trade above), and
+the avocado at 48 studs at 1.42 times. What would close them: a pillar
+under the heavy piece a weak column carries, at its centre of mass, where
+`_prop` now props each joint of the column under the column itself; and
+the pieces the shells leave apart at a model's top found before the check.
+
 ### Proof
+
+The second round's runs (`b63bcf8`): `brickify_probe` 84 of 84, the
+forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
+`brickify_ui_probe` (GPU) 14, the bunny 1,266 parts; `quit_probe
+--only=brickify` gone 0.5 s after the window closed.
 
 - `brickify_probe` (headless): all 84 checks pass, in a new section
   "steep sides on their sides": the sphere at 24 studs with 416 parts on
@@ -2304,7 +2397,8 @@ Spot at 48 studs (Keenan Crane, CC0), from behind:
   shells hold.
 - **The bond's figures** do not read plates on their sides. Counting each
   shell's side-stud bricks as its joints would.
-- **The temple at 48 studs** is laid three times.
+- **The temple at 48 studs** was laid three times; after the second round,
+  twice, as on `main`.
 
 
 The models are not in the repository (two are Stanford's, for research use
