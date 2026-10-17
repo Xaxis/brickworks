@@ -62,8 +62,8 @@ func _check(what: String, ok: bool) -> void:
 		_failures += 1
 
 
-## [param texts] built alone, here, then at once [param rounds] times: each
-## round's every part the same to the byte as built alone.
+## [param texts] built at once [param rounds] times, and alone, here, after
+## the first: each round's every part the same to the byte as built alone.
 func _round_after_round(label: String, texts: Dictionary, others: Dictionary,
 		rounds: int) -> void:
 	print("%s" % label)
@@ -71,8 +71,14 @@ func _round_after_round(label: String, texts: Dictionary, others: Dictionary,
 	for name: String in others:
 		if not others[name] is PackedByteArray:
 			sources[name] = others[name]
-	var alone: Dictionary = {}
+	# At once first: the first set of a run starts the forge on every worker
+	# at once, as the app's start-up does (WorkerTasks.first_here). Built
+	# alone first, here, the forge was warm before any worker ran it.
 	var began: int = Time.get_ticks_msec()
+	var first: Dictionary = CustomParts._built_at_once(texts, others)
+	var slowest: int = Time.get_ticks_msec() - began
+	var alone: Dictionary = {}
+	began = Time.get_ticks_msec()
 	for file_name: String in texts:
 		if PartPrints.has_pictures(texts[file_name]):
 			continue
@@ -81,11 +87,12 @@ func _round_after_round(label: String, texts: Dictionary, others: Dictionary,
 		alone[file_name] = made.lbm if made.problem.is_empty() else made.problem
 	var alone_ms: int = Time.get_ticks_msec() - began
 	var differ: PackedStringArray = PackedStringArray()
-	var slowest: int = 0
 	for n: int in rounds:
-		began = Time.get_ticks_msec()
-		var built: Dictionary = CustomParts._built_at_once(texts, others)
-		slowest = maxi(slowest, Time.get_ticks_msec() - began)
+		var built: Dictionary = first
+		if n > 0:
+			began = Time.get_ticks_msec()
+			built = CustomParts._built_at_once(texts, others)
+			slowest = maxi(slowest, Time.get_ticks_msec() - began)
 		for file_name: String in alone:
 			var made: PartForge.Result = built.get(file_name)
 			var got: Variant = null if made == null \
