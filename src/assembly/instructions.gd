@@ -1240,7 +1240,10 @@ static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		node.group = brick.group
 		node.unit = brick.unit
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-		var name: String = info.name.strip_edges() if info != null else ""
+		# Past the marks LDraw puts before a name (an alias's "=", "~", "_"):
+		# 51719, "=Wheel Rim 6.4 x 11", was no wheel to the planner, and went
+		# on at step 1 with the plate its pin is in, its tyre with it.
+		var name: String = info.name.strip_edges().lstrip("=~_|") if info != null else ""
 		if name.begins_with("Wheel"):
 			node.wheel = 1
 		elif name.begins_with("Tyre") or name.begins_with("Tire"):
