@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser -->
 
 ## Sub-features
 
@@ -63,16 +63,39 @@ Whether what you built is still there tomorrow, and still means the same thing.
   lines (floor, share, set) are the only lines added. A file Brickworks wrote
   (`0 Author: Brickworks`) is written whole, as before.
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
-  a part of the file the library has not got (on the web, a part the file
-  carries, which needs the LDraw library to build; on both, LDCad's flexible
-  parts, a skin of `4-4cyli` and `axlehol8` primitives) is never dropped: it
-  stays in the file and is saved back, and File, Open says how many and which,
-  a flexible part once by its sub-model ("… not shown, kept in the file
-  (ropeLQ-1 (flexible))"), not 886 times by its primitive.
-  42082-1's 1,052 missing in a browser were the 166 parts it carries and one
-  rope of 886 pieces; its 886 on the desktop, the rope. `fidelity_probe`
-  checks both, and the cad task test counts a part lost on open only when it
+  a part of the file the library has not got, a part the file carries that
+  cannot be built (on the web, one drawn from an official part or subpart,
+  which a build does not ship: 42082-1's 13971, 8202-1's 57719), or a
+  flexible part whose skin cannot be built, is never dropped: it stays in the
+  file and is saved back, and File, Open says how many and which, a flexible
+  part once by its sub-model ("… (ropeLQ-1 (flexible))"). `fidelity_probe`
+  checks it, and the cad task test counts a part lost on open only when it
   is neither shown nor kept.
+- `flexible parts drawn` (`CustomParts.begin_skins`, `PartForge.build_skin`):
+  LDCad writes a hose's, a rope's or a band's skin after `0 !LDCAD
+  GENERATED` in its sub-model (primitives bent a segment at a time, a donor
+  section, polygons), with the parts at its ends. Each such sub-model's skin
+  is a part of its own (`<sub-model>-flex`, category Flexible, not in the
+  bin, not kept), built from its own lines without its parts, each on a
+  thread of its own begun before the file's carried parts are built and
+  joined after (`CustomParts.begin_skins`, `end_skins`: the model opens with
+  it; not the shared pool, which the last model's checks keep busy; in a
+  browser on the page's thread, where waiting on a new worker hangs), and
+  put in the sub-model as one piece paired with the GENERATED line: one
+  piece a copy, in the copy's colour, in its step, selectable and hideable
+  (a cover of 4-LDU blocks along its surface), its end parts parts still.
+  Saved untouched the file is itself; the piece moved, recoloured, taken
+  away or added writes the model whole (`SourceFile.write` returns null),
+  the skin carried as `0 FILE <sub-model>-flex.dat` with its donors, which
+  opens again as a skin (`0 !CATEGORY Flexible`). A generated copy of only
+  parts (a pneumatic hose of 166 segments, a chain) has no skin: its parts
+  were drawn already, and `Flex.items_in` reads it as one hose. Every build
+  ships LDraw's primitives (`PartForge.SHIPPED`, copied by tools/export.sh),
+  so skins and most carried parts build on the web and in a desktop
+  download: 42082-1 in a browser went from 167 not shown to 3.
+  `flex_skin_probe` proves the fixture and, given files, that every
+  flexible part of each is drawn and the file saves as itself;
+  `tools/web/flex_skin_flow.mjs` the same in a browser.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
   tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
   read from — goes out as an `.mpd` with one sub-model per group, titled as the
@@ -494,6 +517,9 @@ godot --headless --path . --script src/dev/import_probe.gd   # reads the format 
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, write, round trip, refusals
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
+godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
+# ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py
+node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin vendor/omr/files/42082-1.mpd
 godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
 godot --headless --path . --script src/dev/mesh_export_probe.gd -- --orthanc   # ...and the castle and Orthanc, every format, timed (~6 min)
 node tools/web/model3d_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: the car's GLB from the menu, downloaded and read

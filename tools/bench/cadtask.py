@@ -350,6 +350,35 @@ def compare(before_lines: list[str], after_lines: list[str], shift: float = 0.0,
     }
 
 
+# A flexible part's skin as the app draws it (CustomParts.begin_skins): one
+# piece numbered "<sub-model>-flex" in the generated sub-model's copy.
+SKIN = re.compile(r"-flex(-\d+)?$")
+
+
+def skins_apart(truth: list[str], app: list[str]) -> tuple[list[str], list[str], int]:
+    """LDCad's flexible parts, which the app draws as one piece each for the
+    lines of skin the file has in that copy of the sub-model (886 `4-4cyli`
+    for 42082-1's rope): the file's lines a piece stands for (under its copy,
+    a number the app has no part of) and the pieces, taken out of each side,
+    and how many lines that was. A skin drawn as polygons has no lines."""
+    pieces = [text for text in app if SKIN.search(Part(text).id)]
+    if not pieces:
+        return truth, app, 0
+    units = {Part(text).unit for text in pieces}
+    have = {Part(text).id for text in app}
+
+    def drawn(text: str) -> bool:
+        part = Part(text)
+        # A part at the skin's end is a part, under whatever number the app
+        # gave it (a pneumatic tube's 165).
+        return part.id not in have and not any(
+            (folder / f"{part.id}.dat").exists() for folder in LDRAW_PARTS) and any(
+            part.unit == unit or part.unit.startswith(unit + "/") for unit in units)
+
+    kept = [text for text in truth if not drawn(text)]
+    return kept, [text for text in app if not SKIN.search(Part(text).id)], len(truth) - len(kept)
+
+
 def judge_file(row: dict) -> dict:
     """One probe row: for each format written, the round trip from the file
     to the model opened from what was written, strict and up to the lift
@@ -368,22 +397,26 @@ def judge_file(row: dict) -> dict:
     out["missing"] = opened.get("missing_ids", {})
     out["open_ms"] = opened.get("ms")
     out["save_ms"] = next((w.get("save_ms") for w in row.get("out", {}).values()), None)
-    out["open"] = compare(truth["parts"], row["opened"], lift, authored)
+    # A flexible part drawn as its skin's one piece is the lines it stands for.
+    seen, opened_parts, out["skin_drawn"] = skins_apart(truth["parts"], row["opened"])
+    out["skins"] = len(row["opened"]) - len(opened_parts)
+    out["open"] = compare(seen, opened_parts, lift, authored)
     # Lost on open: a part of the file neither on the baseplate nor kept in
     # the model to be saved back (a part the app cannot show, said when it
     # opens, is kept when the file is someone else's: SourceFile).
     kept = bool(opened.get("kept"))
-    shown = [line for line in truth["parts"]
+    shown = [line for line in seen
              if not (kept and Part(line).id in out["missing"])]
-    out["unshown_kept"] = len(truth["parts"]) - len(shown)
-    out["open_lost"] = compare(shown, row["opened"], lift, authored)["why"].get("lost", 0)
+    out["unshown_kept"] = len(seen) - len(shown)
+    out["open_lost"] = compare(shown, opened_parts, lift, authored)["why"].get("lost", 0)
     out["formats"] = {}
     for fmt, written in row.get("out", {}).items():
         if written.get("error"):
             out["formats"][fmt] = {"error": written["error"]}
             continue
-        strict = compare(truth["parts"], written["reopened"], 0.0, authored)
-        lifted = compare(truth["parts"], written["reopened"], lift, authored)
+        again, reopened, _ = skins_apart(truth["parts"], written["reopened"])
+        strict = compare(again, reopened, 0.0, authored)
+        lifted = compare(again, reopened, lift, authored)
         own = compare(row["opened"], written["reopened"], 0.0, authored)
         before = Counter(truth.get("metas", {}))
         after = Counter(written["file"].get("metas", {}))
@@ -443,6 +476,9 @@ def summarise(judged: list[dict]) -> dict:
             "open_lost_parts": sum(j.get("open_lost", 0) for j in rows),
             "open_lost_files": sum(1 for j in rows if j.get("open_lost", 0)),
             "unshown_kept": sum(j.get("unshown_kept", 0) for j in rows),
+            "skins": sum(j.get("skins", 0) for j in rows),
+            "skin_drawn": sum(j.get("skin_drawn", 0) for j in rows),
+            "skin_files": sum(1 for j in rows if j.get("skins", 0)),
             "exact": sum(1 for j in rows if j["formats"][fmt]["strict"]["exact"]),
             "exact_up_to_lift": sum(1 for j in rows if j["formats"][fmt]["up_to_lift"]["exact"]),
             "same_shapes_up_to_lift": sum(

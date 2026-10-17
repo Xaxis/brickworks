@@ -219,6 +219,27 @@ def test_a_part_not_shown_is_lost_on_open_unless_kept():
     assert cadtask.summarise([told, dropped])["formats"]["ldr"]["open_lost_parts"] == 1
 
 
+def test_a_flexible_part_drawn_as_its_skin_is_the_lines_it_stands_for():
+    """LDCad's rope: its sub-model's skin is primitives in the file, and one
+    piece in the app ("<sub-model>-flex", CustomParts.take_skins). The piece
+    is those lines drawn, not one part added and 3 lost; a part beside it,
+    its end, is still itself; a primitive with no piece over it is lost."""
+    rope = "main#1/rope#1"
+    end = line("572a", 16, 0, -24, 0, unit=rope)
+    truth = [line("3001", 4, 0, 0, 0), end] + [
+        line("4-4cyli", 0, 0, -1.0 * n, 0, unit=rope) for n in range(3)]
+    app = [line("3001", 4, 0, 0, 0), end, line("x - rope-flex", 0, 0, 0, 0, unit=rope)]
+    row = _row(0.0, app, {}, opened=app)
+    row["truth"]["parts"] = truth
+    judged = cadtask.judge_file(row)
+    assert judged["skins"] == 1 and judged["skin_drawn"] == 3
+    assert judged["open_lost"] == 0 and judged["open"]["why"] == {}
+    assert judged["formats"]["ldr"]["strict"]["exact"]
+    unskinned = _row(0.0, app[:2], {}, opened=app[:2])
+    unskinned["truth"]["parts"] = truth
+    assert cadtask.judge_file(unskinned)["open_lost"] == 3
+
+
 def test_judge_and_summarise_count_formats_and_losses():
     lifted = [line("3001", 4, 0, -8, 0), line("3023b", 15, 0, -32, 0, steps="1")]
     judged = [cadtask.judge_file(_row(8.0, lifted, {"STEP": 2, "Author:": 1},

@@ -2003,6 +2003,20 @@
     },
     {
       "kind": "cli",
+      "label": "flex skin probe",
+      "entry": "src/dev/flex_skin_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd   (LDCad's flexible parts drawn: each skin one piece in its copy, colour and step, picked and hidden, every face; saved untouched the same file; a piece moved or taken away written whole and opened as edited; FILEs: every flexible part drawn, none said not shown)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "flexible parts in a browser",
+      "entry": "tools/web/flex_skin_flow.mjs",
+      "reach": "node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin MODEL.mpd   (a local export served by tools/web/serve.py: each file opened through Open… > From a file, its flexible parts drawn, none said not shown, the carried parts built counted, a picture each)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "placing probe",
       "entry": "src/dev/placing_probe.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/placing_probe.gd  (each click sent as a browser sends one: 35 across a plate's edge, a clip plate, a bar in its clip, a hinge, slopes, a pin in a hole and 8841-1's Technic plates swung onto their axle, each put where its ghost stood; -- only=edge|parts|balance)",

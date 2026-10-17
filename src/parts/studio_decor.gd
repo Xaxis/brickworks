@@ -201,12 +201,11 @@ static var _studio_copy: Dictionary = {}
 
 
 ## Whether PartForge can read [param name] itself: one of the primitives the
-## app ships, or a part of the checkout's LDraw library.
+## app ships, or a file of the checkout's LDraw library.
 static func _forge_reads(name: String) -> bool:
 	var key: String = PartForge.normalise(name)
 	return FileAccess.file_exists(PartForge.BUNDLED + key) \
-		or FileAccess.file_exists(PartForge.LIBRARY + "parts/" + key) \
-		or FileAccess.file_exists(PartForge.LIBRARY + "p/" + key)
+		or not PartForge.library_path(key).is_empty()
 
 
 ## Whether CustomParts/ holds [param file_name], at its top or in a folder.

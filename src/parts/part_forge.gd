@@ -27,12 +27,21 @@
 ## Primitives come from res://assets/ldraw/, the few the maker draws with,
 ## shipped with the app (CC BY 4.0, credited in docs/ATTRIBUTION.md), and
 ## from res://vendor/ldraw/ when a checkout has the whole library — which
-## is what lets a part embedded in somebody else's model file build here.
+## is what lets a part embedded in somebody else's model file build here —
+## or, in an exported build, from every primitive it ships ([constant
+## SHIPPED]).
 class_name PartForge
 extends RefCounted
 
 const BUNDLED := "res://assets/ldraw/"
 const LIBRARY := "res://vendor/ldraw/"
+## LDraw's primitives, every one (p/ and its 8/ and 48/), which every export
+## ships (tools/export.sh copies them from vendor/ldraw/p): what LDCad draws a
+## flexible part's skin with and what most parts a model file carries are
+## drawn from. A build has no vendor/, so without them the web and the
+## desktop downloads could build neither, and showed a real set's hoses and
+## its carried parts missing (docs/CADTASK.md).
+const SHIPPED := "res://assets/ldraw/p/"
 const COLOR_INHERIT := 16
 const COLOR_EDGE := 24
 const CELL := 2.0
@@ -184,11 +193,18 @@ func _source_for(name: String) -> Source:
 
 ## Where a reference resolves in a checkout's LDraw library, in the order
 ## tools/ldraw/library.py searches: parts and their subparts, then the
-## primitives.
+## primitives; and in a build, which has no vendor/, the primitives it ships.
 static func _read_library(key: String) -> String:
-	for path: String in [LIBRARY + "parts/" + key, LIBRARY + "p/" + key]:
+	var path: String = library_path(key)
+	return FileAccess.get_file_as_string(path) if not path.is_empty() else ""
+
+
+## The file [param key] (normalised) is in a checkout's LDraw library or a
+## build's primitives, or "".
+static func library_path(key: String) -> String:
+	for path: String in [LIBRARY + "parts/" + key, LIBRARY + "p/" + key, SHIPPED + key]:
 		if FileAccess.file_exists(path):
-			return FileAccess.get_file_as_string(path)
+			return path
 	return ""
 
 
@@ -2638,6 +2654,226 @@ static func with_mesh(built: Result) -> Result:
 	if built.mesh == null:
 		built.problem = "the geometry did not encode"
 	return built
+
+
+## Build what a flexible part is drawn with as LDCad generated it (a hose's,
+## a band's, a rope's skin: CustomParts.begin_skins), its geometry as the file
+## has it and nothing else. No connectors: a skin is joined to nothing, its
+## ends are parts. And no voxelised cover: 42082's rope runs a metre and a
+## half across the crane, a box of 33 million cells of air. Its cover is the
+## cells its surface passes through, a block of two cells a side each
+## ([method _skin_boxes]), which is what picking it and what stands near it
+## need. A reference to a file this build has not got is a problem, as in
+## [method build]: half a hose is not drawn. Safe on another thread
+## without [param meshed], as build is (CustomParts.begin_skins).
+static func build_skin(text: String, id: String, others: Dictionary = {},
+		library: bool = true, meshed: bool = true) -> Result:
+	var forge := PartForge.new()
+	forge._use_library = library
+	var result := Result.new()
+	result.id = id
+	var key: String = normalise(id + ".dat")
+	for name: String in others:
+		forge._given[normalise(name)] = others[name]
+	forge._given[key] = text
+	var source: Source = forge._source_for(key)
+	if source == null:
+		result.problem = "nothing to read"
+		return result
+	result.name = source.description
+	result.category = source.category
+	forge._flatten(key)
+	for name: String in forge._missing:
+		result.missing.append(name)
+	if not result.missing.is_empty():
+		result.problem = "it uses files this build does not have: " \
+			+ ", ".join(result.missing)
+		return result
+	if forge._tri_color.is_empty():
+		result.problem = "it has no faces"
+		return result
+	var surfaces: Array = forge._surfaces(forge._skin_normals())
+	var lo := PackedFloat64Array([INF, INF, INF])
+	var hi := PackedFloat64Array([-INF, -INF, -INF])
+	for v: int in forge._tri.size() / 3:
+		for n: int in 3:
+			lo[n] = minf(lo[n], forge._tri[v * 3 + n])
+			hi[n] = maxf(hi[n], forge._tri[v * 3 + n])
+	result.bounds_min = PackedFloat64Array([lo[0], -hi[1], -hi[2]])
+	result.bounds_max = PackedFloat64Array([hi[0], -lo[1], -lo[2]])
+	result.triangles = forge._tri_color.size()
+	result.boxes = forge._skin_boxes()
+	for box: Array in result.boxes:
+		result.cells += int(box[3]) * int(box[4]) * int(box[5])
+	result.lbm = encode(surfaces, result.bounds_min, result.bounds_max, [], result.boxes, [])
+	# Its mesh made where it is wanted, as build's: on the main thread.
+	return with_mesh(result) if meshed else result
+
+
+## The files [param text] draws on, through everything they draw on, that
+## this build cannot read: what [method build_skin] would call a problem, found
+## without building anything (a skin is built on another thread, and one that
+## cannot be is left out of that and said when the file opens).
+static func unreached(text: String, others: Dictionary = {}, library: bool = true) -> PackedStringArray:
+	var given: Dictionary = {}
+	for name: String in others:
+		given[normalise(name)] = others[name]
+	var missing := PackedStringArray()
+	var seen: Dictionary = {}
+	var todo: Array = [text]
+	while not todo.is_empty():
+		for raw: String in str(todo.pop_back()).split("\n"):
+			var line: String = raw.strip_edges()
+			if not line.begins_with("1 ") and not line.begins_with("1\t"):
+				continue
+			var words: PackedStringArray = line.replace("\t", " ").split(" ", false)
+			if words.size() < 15:
+				continue
+			var key: String = normalise(" ".join(words.slice(14)))
+			if seen.has(key):
+				continue
+			seen[key] = true
+			if given.has(key):
+				todo.append(given[key])
+			elif FileAccess.file_exists(BUNDLED + key):
+				continue
+			elif library and not library_path(key).is_empty():
+				# The library's own files draw on the library only.
+				continue
+			else:
+				missing.append(key)
+	return missing
+
+
+## A skin's normals, smooth where its faces meet within the crease angle of
+## what meets there: each corner the faces at its place summed by area, or
+## its own face's where that turns too far from the sum. One pass, not
+## [method _normals]' grouping of the faces round each corner by the edges
+## they share, which took 0.6 s of 42082's rope (28,000 faces) when its
+## segments are cylinders, smooth all round.
+func _skin_normals() -> PackedFloat64Array:
+	var count: int = _tri_color.size()
+	var cos_crease: float = cos(deg_to_rad(CREASE_DEGREES))
+	var face := PackedFloat64Array()
+	face.resize(count * 3)
+	var slot_of := PackedInt32Array()
+	slot_of.resize(count * 3)
+	var slots: Dictionary = {}
+	var sums := PackedFloat64Array()
+	for t: int in count:
+		var o: int = t * 9
+		var ux: float = _tri[o + 3] - _tri[o]
+		var uy: float = _tri[o + 4] - _tri[o + 1]
+		var uz: float = _tri[o + 5] - _tri[o + 2]
+		var vx: float = _tri[o + 6] - _tri[o]
+		var vy: float = _tri[o + 7] - _tri[o + 1]
+		var vz: float = _tri[o + 8] - _tri[o + 2]
+		var nx: float = uy * vz - uz * vy
+		var ny: float = uz * vx - ux * vz
+		var nz: float = ux * vy - uy * vx
+		var length: float = sqrt(nx * nx + ny * ny + nz * nz)
+		if length >= 1e-12:
+			face[t * 3] = nx / length
+			face[t * 3 + 1] = ny / length
+			face[t * 3 + 2] = nz / length
+		for c: int in 3:
+			var at := Vector3i(roundi(_tri[o + c * 3] * WELD_SCALE),
+				roundi(_tri[o + c * 3 + 1] * WELD_SCALE), roundi(_tri[o + c * 3 + 2] * WELD_SCALE))
+			var slot: int = slots.get(at, -1)
+			if slot < 0:
+				slot = sums.size() / 3
+				slots[at] = slot
+				sums.append(0.0)
+				sums.append(0.0)
+				sums.append(0.0)
+			slot_of[t * 3 + c] = slot
+			# The cross product's length is twice the area: weighted by it.
+			sums[slot * 3] += nx * 0.5
+			sums[slot * 3 + 1] += ny * 0.5
+			sums[slot * 3 + 2] += nz * 0.5
+	var normals := PackedFloat64Array()
+	normals.resize(count * 9)
+	for corner: int in count * 3:
+		var t: int = corner / 3
+		var slot: int = slot_of[corner]
+		var x: float = sums[slot * 3]
+		var y: float = sums[slot * 3 + 1]
+		var z: float = sums[slot * 3 + 2]
+		var length: float = sqrt(x * x + y * y + z * z)
+		if length > 1e-12 and (face[t * 3] * x + face[t * 3 + 1] * y
+				+ face[t * 3 + 2] * z) / length >= cos_crease:
+			normals[corner * 3] = x / length
+			normals[corner * 3 + 1] = y / length
+			normals[corner * 3 + 2] = z / length
+		else:
+			normals[corner * 3] = face[t * 3]
+			normals[corner * 3 + 1] = face[t * 3 + 1]
+			normals[corner * 3 + 2] = face[t * 3 + 2]
+	return normals
+
+
+## A skin's cover: every block of SKIN_BLOCK cells a side its surface passes
+## through, in the app's axes, run together along x. A face under a block
+## and a half across is taken at its middle, which is where a segment's
+## faces are along a hose; a wider one is sampled across at under a block
+## apart.
+const SKIN_BLOCK := 2
+const BLOCK_OFFSET := 1 << 20
+
+
+func _skin_boxes() -> Array:
+	var size: float = CELL * SKIN_BLOCK
+	var blocks: Dictionary = {}
+	var reach: float = 2.25 * size * size
+	for t: int in _tri_color.size():
+		var o: int = t * 9
+		var a := Vector3(_tri[o], -_tri[o + 1], -_tri[o + 2])
+		var b := Vector3(_tri[o + 3], -_tri[o + 4], -_tri[o + 5])
+		var c := Vector3(_tri[o + 6], -_tri[o + 7], -_tri[o + 8])
+		var longest: float = maxf(a.distance_squared_to(b),
+			maxf(a.distance_squared_to(c), b.distance_squared_to(c)))
+		if longest <= reach:
+			var mid: Vector3 = (a + b + c) / (3.0 * size)
+			blocks[Vector3i(floori(mid.x), floori(mid.y), floori(mid.z))] = true
+			continue
+		# Along each of its two sides from a at under a block apart: a long
+		# thin face (a straight run of rope merged into one segment, 400 LDU
+		# by 3) is sampled along its length, not over a square of it.
+		var along_b: int = maxi(1, ceili(a.distance_to(b) / size))
+		var along_c: int = maxi(1, ceili(a.distance_to(c) / size))
+		for i: int in along_b + 1:
+			var u: float = float(i) / along_b
+			for j: int in along_c + 1:
+				var v: float = float(j) / along_c
+				if u + v > 1.0 + 1e-9:
+					break
+				var p: Vector3 = a + (b - a) * u + (c - a) * v
+				blocks[Vector3i(floori(p.x / size), floori(p.y / size),
+					floori(p.z / size))] = true
+	# Sorted by y, z, then x, as one number each: a block's place is within
+	# a million either way of the part's origin.
+	var order := PackedInt64Array()
+	for k: Vector3i in blocks:
+		order.append(((k.y + BLOCK_OFFSET) << 42) | ((k.z + BLOCK_OFFSET) << 21)
+			| (k.x + BLOCK_OFFSET))
+	order.sort()
+	var boxes: Array = []
+	var run: Array = []
+	for packed: int in order:
+		var k := Vector3i((packed & 0x1FFFFF) - BLOCK_OFFSET,
+			(packed >> 42) - BLOCK_OFFSET, ((packed >> 21) & 0x1FFFFF) - BLOCK_OFFSET)
+		if not run.is_empty() and int(run[1]) == k.y * SKIN_BLOCK \
+				and int(run[2]) == k.z * SKIN_BLOCK \
+				and int(run[0]) + int(run[3]) == k.x * SKIN_BLOCK:
+			run[3] = int(run[3]) + SKIN_BLOCK
+			continue
+		if not run.is_empty():
+			boxes.append(run)
+		run = [k.x * SKIN_BLOCK, k.y * SKIN_BLOCK, k.z * SKIN_BLOCK,
+			SKIN_BLOCK, SKIN_BLOCK, SKIN_BLOCK]
+	if not run.is_empty():
+		boxes.append(run)
+	return boxes
 
 
 func _build(text: String, id: String, others: Dictionary,

@@ -401,6 +401,9 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	var custom: bool = library.custom.has(brick.part_id)
 	_ids.text = ("Made here · %s" % brick.part_id) if custom else (
 		"LDraw %s · BrickLink %s" % [brick.part_id, brick.part_id.trim_suffix(".dat")])
+	# A flexible part's skin was drawn by LDCad and came in the file.
+	if custom and CustomParts.is_skin_text(library.custom_source(brick.part_id)):
+		_ids.text = "Flexible part from the file, as LDCad drew it · %s" % brick.part_id
 	var studio: PrintStudio = shell.app.get("_studio") if shell.app != null else null
 	var versions: int = studio.versions_of(brick.part_id).size() if studio != null else 0
 	_versions_button.visible = versions > 0 and not Stickers.sticks(library, brick.part_id)

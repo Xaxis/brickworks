@@ -18,7 +18,7 @@ so the two are like for like, and then measured.
 | question | measured here | Studio |
 |---|---|---|
 | A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact. *Since (the same day): 48 of 48, and the six 6 of 6, the saved file the author's own but for one line of the app's* | not measured |
-| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said* | not measured |
+| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said; and LDCad's flexible parts are drawn, on the desktop and in a browser (flexdraw, section 1)* | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts) | not measured |
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
@@ -191,6 +191,125 @@ left out the subparts and primitives the file's parts are drawn from (10 of
 its 21 carried files): the same session still had them built, a new one would
 not have. A carried part is now written with what it is drawn from
 (`CustomParts.drawn_from`). And a file kept is not rewritten at all.
+
+### Since: what a file carries is drawn (the flexdraw unit, the same day)
+
+**What changed.** LDCad's flexible parts are drawn. LDCad keeps the path a
+hose, a rope, a band or a cable follows in `!LDCAD` meta lines and writes
+what it draws below them, after `0 !LDCAD GENERATED`: primitives bent along
+the path a segment at a time (42082-1's rope is `4-4cyli` 886 times), pieces
+of a donor section the file carries, or the polygons themselves, with the
+parts at its ends (a pneumatic tube's `165`, a string's `572a`) as parts.
+Each such sub-model's skin is now built from its own lines without its
+parts (`CustomParts.begin_skins`, `PartForge.build_skin`) as one part of its
+own, each on a thread of its own while the parts the file carries are built,
+so a big set's first open hardly waits for it (in a browser, on the page's
+own thread: a thread's worker there starts only once the page is free, and
+waiting for it hung the page on 42082-1's four). It goes in the sub-model as
+one piece: in the copy's colour, where the file puts it, in the step the
+file places the copy in, selected by a click on it and hidden with the rest. Its end parts stay
+parts. The file is not changed: the piece stands for its GENERATED line, so
+a save untouched is the file again, byte for byte; the piece moved,
+recoloured or taken away writes the model whole, the skin carried as a part
+(`0 FILE <sub-model>-flex.dat`, with the path's meta lines where nothing
+else was in the sub-model, and the donor sections it is drawn from), which
+opens again drawn. A generated sub-model of nothing but parts (a pneumatic
+hose LDCad laid as 166 segments, a chain) has no skin: its parts were drawn
+already, and `Flex.items_in` reads it as one hose. A skin is weighed by its
+cover, not its box (`Stability.grams`): as a shell of the box it spans,
+42082-1's rope weighed 1.3 kg; by its cover, 1.5 g.
+
+And every build ships LDraw's primitives, all 2,844 (`assets/ldraw/p/`,
+copied from `vendor/ldraw/p` by `tools/export.sh`; 10 MB of text, about
+1.4 MB more over the wire in the compressed pck, 21.3 MB in all). A build has
+no `vendor/`: the web build, and a desktop download, had only the eleven
+primitives the element maker draws with, so neither could build a skin, nor
+most of the parts a file carries.
+
+**The files.** 42082-1 and the first three in SHA-1 order of their names
+among the repository's files whose generated sub-models have 50 lines or more
+that are not parts: 8202-1, 42058-1, 42053-1. Desktop renders on the
+graphics card and pictures of a local web export in Chromium on SwiftShader
+are in `bench/results/flexdraw-2026-10-16/` (`desktop/`, `desktop-final/`,
+`desktop-before/`, `web-final/`).
+
+| file | what is flexible | pieces of skin drawn, desktop | their faces | in a browser: sub-models drawn; parts not shown |
+|---|---|---|---|---|
+| 42082-1 (crane) | the hoist rope, two rubber bands, a PF cable, two flexible axles | 6 (of 4 sub-models) | 42,032 | 4 of 4; 3, where the fidelity unit's export said 167 |
+| 8202-1 | a rubber string round a pulley | 1 | 8,480 | 1 of 1; 2 |
+| 42058-1 | a ribbed exhaust hose, drawn as polygons | 1 | 11,840 | 1 of 1; 1 |
+| 42053-1 | four rigid 3 mm hoses, two flexible axles, a flex-system hose (its 15 pneumatic tubes are `166` segments, drawn before) | 7 (of 3) | 5,632 | 3 of 3; 4 |
+
+Each skin's faces were counted again by the Python pipeline
+(`tools/ldraw/geometry.flatten`, which builds the library's meshes) from the
+same file: the six skins that are nothing but skin match it face for face
+(288, 8,560, 28,224, 2,336, 8,480, 11,840). Across the repository, the 238
+files with generated content have 1,161 generated sub-models; 596 have a skin,
+and every one built on the desktop (2.4 million faces, 49 s of building in
+all, `skin_census.json`). Of those, 455 match the Python pipeline's flatten
+of the same sub-model face for face, their bounds within 0.05 LDU; the other
+108 compared all have fewer faces than it, as a skin must where its
+sub-model has parts in it, which it leaves to be parts; 33 had no flatten to
+compare with (`skin_vs_python.txt`). In the pictures, 42082-1's rope
+runs from the winch over the boom and down to the hook block in two falls;
+8202-1's white string loops the pulley and runs along the fork; 42058-1's
+grey ribbed hose curves from the engine; 42053-1's hoses stand between the
+valves and the frame. Before, those places were empty. In a browser the
+same pieces are drawn, and what is still not shown is a carried part drawn
+from an official part or subpart, which no build ships (42082-1's 13971,
+8202-1's 57719 of `79` and `80` ribbed-hose segments, 42053-1's 26280 and
+47223d-f1).
+
+**Could a flexible part be one of Brickworks' own hoses** (`Flex`, Build,
+Hose, tube or chain…)? Where LDCad laid real segments (a pneumatic tube of
+`166`, a ribbed hose of `79`), it already is: those are parts, and
+`Flex.items_in` reads the sub-model as one hose. Where it drew a skin, not
+without loss. `Flex` lays segments along its own curve between two ends, and
+its kinds have no rope, rubber band, cable or polygon skin; laid again, the
+hose would not be where the author's is, and saving it back needs LDCad's
+path written as LDCad writes it. Drawing the skin shows exactly what the
+author saw, and the file stays theirs. Re-laying one as a Brickworks hose
+is a step a person could ask for, written whole, not what opening does.
+
+**Open time.** The four files opened as `bigmodel_probe` opens one (the
+store's open, the app's handlers, two frames), each three times in one app,
+one after another, before (`ef93129`) and after side by side at once on this
+box (load about 25 on 24 cores), so both had the same machine
+(`bench/results/flexdraw-2026-10-16/open-side-by-side-*.log`). The first open
+of a file builds what it carries; the others find it built.
+
+| file | parts | first open, before → after | opened again, quickest of 2 |
+|---|---|---|---|
+| 42082-1 | 4,139 | 14.2 → 14.3 s | 3.54 → 3.54 s |
+| 8202-1 | 69 | 0.68 → 7.5 s, *see below* | 0.04 → 0.14 s |
+| 42058-1 | 138 | 10.6 → 2.9 s | 0.68 → 0.65 s |
+| 42053-1 | 2,719 | 5.42 → 5.56 s | 0.73 → 0.73 s |
+
+Building a skin is the new work (42082-1's four 1.0 s on one thread,
+8202-1's 0.16 s, 42058-1's 0.33 s), so each is built on a thread of its own,
+begun before the parts the file carries are built and joined after: on the
+other three it costs nothing that measures. 8202-1's first
+open is the miss. Opened right after 42082-1, it waited 7 s for the app's
+check of 42082-1, still reading the library on a worker: a new part is not
+added while a check reads (`PartLibrary.add_custom`), and a skin is new on
+every first open in a session, where a part a file carries is kept and found
+next time. Opened again, it is 0.1 s slower, in the app's handlers after
+the open: laying the floor takes 27 ms more (the skin's box, turned, reaches
+20 LDU below the model); the rest was not found. The first open of 42058-1
+before was 10.6 s in this run and 7.8 to 11.3 s in five others; after, 2.3
+to 6.4 s in five: the box's noise, not the change.
+
+**The round trip** (`cadtask.py roundtrip`, the 54 files of the fidelity
+sample, `bench/results/flexdraw-2026-10-16/roundtrip-final/`) is as the fidelity
+unit left it: 54 of 54 saved untouched are the same file, every meta line
+and the author kept, the app's model the same opened again, 44 of 44
+author's steps kept, nothing lost on open. And the 4,713 lines of skin in 5
+of the files, which were kept and said, are drawn: 62 pieces in 8 files (3
+of them skins of polygons only, which no count had seen). What is still not
+shown is 2 parts in 2 files the library has not got, where it was 4,715; the
+same shapes up to the lift, 52 of 54 where it was 47. The judge reads a piece
+of skin as the lines of its copy it stands for (`cadtask.skins_apart`), or it
+calls the piece added and every primitive lost.
 
 ## 2. The frames a builder feels
 
@@ -860,7 +979,9 @@ plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
    5,025 parts in a browser, the 1,052 left out being parts the file carries
    (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
    *Since:* none is dropped. What the app cannot draw stays in the file and is
-   saved back, and File, Open names it.
+   saved back, and File, Open names it. *And since flexdraw, a browser builds
+   them too (every build ships LDraw's primitives): 42082-1 in a browser
+   leaves out 3, copies of one part drawn from an official subpart, where it left out 167.*
 6. **Colours are found by look in a palette of 320** (*fixed: `Shift-C`,
    a colour by its name or number, section 4*): the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black
@@ -873,7 +994,8 @@ plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
    *Since:* a file another tool wrote is saved as it was, every line kept.
 8. **LDCad's flexible parts are lost** on open: hoses, strings and bands
    drawn as a skin of primitives. 225 of the repository's 1,576 files use them.
-   *Since:* kept in the file and named once each; still not drawn.
+   *Since:* kept in the file and named once each; *and since flexdraw,
+   drawn, one piece each, as LDCad drew them (section 1).*
 9. **Opening moves the model onto the ground** (36 of 48 files), so a saved
    file has every coordinate changed, and a diff of the file says nothing.
    *Since:* the lift is the view's, and the file keeps its coordinates.

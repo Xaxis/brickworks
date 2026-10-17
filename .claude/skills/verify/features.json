@@ -408,6 +408,22 @@
       "tests": []
     },
     {
+      "id": "cli:flex skin probe",
+      "kind": "cli",
+      "entry": "src/dev/flex_skin_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd   (LDCad's flexible parts drawn: each skin one piece in its copy, colour and step, picked and hidden, every face; saved untouched the same file; a piece moved or taken away written whole and opened as edited; FILEs: every flexible part drawn, none said not shown)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:flexible parts in a browser",
+      "kind": "cli",
+      "entry": "tools/web/flex_skin_flow.mjs",
+      "reach": "node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin MODEL.mpd   (a local export served by tools/web/serve.py: each file opened through Open\u2026 > From a file, its flexible parts drawn, none said not shown, the carried parts built counted, a picture each)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:floor in a browser",
       "kind": "cli",
       "entry": "tools/web/floor_flow.mjs",

@@ -33,6 +33,13 @@ All part geometry derives from the LDraw Parts Library.
   A part the maker writes is an unofficial part, not a library one: its
   header names the maker as its author, and LDraw's own `u` and `t`
   numbers are assigned by the Parts Library admin, so it uses none.
+- Every one of the library's primitives (`p/`, with `p/8/` and `p/48/`,
+  2,844 files, each naming its author, under CC BY 2.0 or CC BY 4.0 as its
+  own header says) is copied unchanged into `assets/ldraw/p/` by
+  `tools/export.sh` and ships in every exported build: LDCad's flexible
+  parts in a model file are drawn from them (`CustomParts.begin_skins`), and
+  so are most of the parts a model file carries. The notice above covers
+  them.
 
 ## BrickNet's connector labels and colliders
 

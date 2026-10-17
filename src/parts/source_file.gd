@@ -418,6 +418,11 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 					or brick.step != origin.step or not _same(origin.at, now[1]):
 				changed = true
 		if removed == live.size() and live.size() == origins.size():
+			# A flexible part's skin stands for its GENERATED line and the
+			# lines under it (CustomParts.begin_skins): taking that line out
+			# is not taking the skin out.
+			if lines[line].strip_edges().begins_with("0 "):
+				return null
 			replace[line] = ""
 			continue
 		if removed > 0:
@@ -446,6 +451,10 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		var at: Transform3D = entry[1]
 		var section: String = _section_of(brick.unit)
 		if not sections.has(section) or int(copies.get(section, 1)) > 1:
+			return null
+		# A skin built from this file is no file of its own here: written
+		# whole, it is carried.
+		if CustomParts.is_skin(brick.part_id) and not sections.has(brick.part_id):
 			return null
 		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
 			return null

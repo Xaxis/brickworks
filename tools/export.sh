@@ -169,6 +169,14 @@ case "$target" in
   web|web-nothreads|all)
     python3 tools/web_pack.py || { echo "export FAILED: web pack"; exit 1; } ;;
 esac
+# Every LDraw primitive goes in every build (PartForge.SHIPPED: 10 MB of text,
+# about 1.4 MB more over the wire in the compressed pck): what LDCad draws a
+# flexible part's skin with, and what most parts a model file carries are
+# drawn from. A build has no vendor/, so without them neither was drawn on
+# the web or in a desktop download.
+[ -d vendor/ldraw/p ] || { echo "export FAILED: no vendor/ldraw/p (tools/fetch_data.sh)"; exit 1; }
+rm -rf assets/ldraw/p && cp -R vendor/ldraw/p assets/ldraw/p \
+  || { echo "export FAILED: could not copy the LDraw primitives"; exit 1; }
 godot --headless --import >/dev/null 2>&1 || true
 case "$target" in
   web) build_web "Web" build/web ;;

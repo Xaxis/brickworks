@@ -19,8 +19,8 @@
 ##   licence, and opens as edited;
 ## - saved under a name of its own, it opens under that name, its first line
 ##   the author's still;
-## - a part the app cannot show is kept and named; the flexible part by its
-##   sub-model, once.
+## - a part the app cannot show is kept and named; the flexible part is
+##   drawn, as one piece (flex_skin_probe proves the rest of that).
 ##
 ## With FILE arguments, each is also opened, saved untouched and compared
 ## line for line (the repository's own files).
@@ -46,6 +46,7 @@ const FILE := """0 FILE fidelity - main.ldr
 1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
 1 1 0 0 60 1 0 0 0 1 0 0 0 1 3001.dat
 1 14 -120 -8 0 1 0 0 0 1 0 0 0 1 30028.dat
+1 14 40 0 -60 1 0 0 0 1 0 0 0 1 nopart9x.dat
 0 STEP
 1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
 1 16 0 -48 0 1 0 0 0 1 0 0 0 1 fidelity - once.ldr
@@ -195,13 +196,15 @@ func _brick(part_id: String, colour: int, unit: String = "") -> BrickWorld.Brick
 func _untouched() -> void:
 	print("fidelity: saved untouched")
 	var opened: Dictionary = _open(FILE)
-	_expect(int(opened["placed"]) == 10, "10 parts on the baseplate (%d)" % int(opened["placed"]))
+	_expect(int(opened["placed"]) == 11, "11 parts on the baseplate, the band one of them (%d)"
+		% int(opened["placed"]))
 	_expect(_store._lifted_by > 0.0, "stood on the ground: lifted %s" % _store._lifted_by)
 	_expect(bool(opened.get("kept")), "the file is kept")
 	var unshown: Dictionary = opened.get("unshown", {})
-	_expect(unshown.size() == 1 and int(unshown.values()[0]) == 1
-		and str(unshown.keys()[0]).contains("flexible"),
-		"the band named once, as a flexible part: %s" % unshown)
+	_expect(unshown == {"nopart9x": 1},
+		"the part the library has not got named, and the band not: %s" % unshown)
+	_expect(_brick("fidelity - band-flex", 71, "Band#1") != null,
+		"the band drawn, one piece in its copy, in its colour")
 	var saved: String = _store.to_text(_store.title, true)
 	var differ: Array = _differ(FILE, saved)
 	_expect(differ.is_empty(), "the same file, line for line: %s" % ["; ".join(differ)])
@@ -269,13 +272,14 @@ func _copies_apart() -> void:
 		"0 !LICENSE Redistributable under CCAL version 2.0"),
 		"written whole, still under its author's name and licence")
 	_expect(not saved.contains("0 Author: Brickworks"), "not claimed as Brickworks's")
-	_expect(saved.contains("0 !LDCAD PATH_SKIN") and saved.contains(
-		"\n1 71 0 -96 200 1 0 0 0 1 0 0 0 1 fidelity - band.ldr\n"),
-		"the flexible part it could not show carried, where it was, in its colour")
+	_expect(saved.contains("\n1 14 40 0 -60 1 0 0 0 1 0 0 0 1 nopart9x.dat\n"),
+		"the part it could not show carried, where it was, in its colour")
+	_expect(saved.contains("0 FILE fidelity - band-flex.dat") and saved.contains(
+		"0 !LDCAD PATH_SKIN"), "the band carried as a part, its path with it")
 	var again: Dictionary = _open(saved)
-	_expect(_model() == model, "opened again, the model as edited")
-	_expect(str(again.get("unshown", {})).contains("flexible"),
-		"and the flexible part still there, still said: %s" % again.get("unshown", {}))
+	_expect(_model() == model, "opened again, the model as edited, the band in it")
+	_expect(again.get("unshown", {}) == {"nopart9x": 1},
+		"and the part it cannot show still there, still said: %s" % again.get("unshown", {}))
 
 
 func _named() -> void:
