@@ -69,6 +69,10 @@ whole cycle.
 
 ### Fixed
 
+- A part a set's file carries, kept by the app, is kept with the pieces it
+  is drawn from. It used to be missing after a restart, and a model saved
+  then went out without them.
+
 - The pictures the assistant judges its work by no longer draw dark tops
   white from one side. Its fill light caught the stud tops of the far rows,
   and a dark grey model could read as banded in white.
