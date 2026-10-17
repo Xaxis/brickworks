@@ -196,8 +196,29 @@ static func _pass_viewport() -> SubViewport:
 	return view
 
 
+## [method show_selection] drawn once into the mask and the passes but not
+## laid on the screen, then let go: the first selection's shaders and
+## targets made while nobody is waiting on them. The step player's first
+## page, on a slowed phone in software, spent most of a second making them.
+## Anything shown meanwhile is left as it is.
+func warm(selection: Dictionary) -> void:
+	show_selection(selection)
+	if _overlay == null:
+		return
+	_overlay.visible = false
+	var asked: int = _shown_count
+	await RenderingServer.frame_post_draw
+	if asked == _shown_count:
+		show_selection({})
+
+
+## How many times something was shown: warm lets go only of its own.
+var _shown_count: int = 0
+
+
 ## Outline these bricks (id -> anything), or nothing for an empty set.
 func show_selection(selection: Dictionary) -> void:
+	_shown_count += 1
 	if _mask == null:
 		return
 	var whole: Array = []

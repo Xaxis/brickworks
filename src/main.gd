@@ -2178,6 +2178,10 @@ func _ready_the_pages() -> void:
 	await get_tree().process_frame
 	if _build_pages != null and _build_pages.last() >= 1:
 		_build_pages.view(1)
+		# And the line round a page's new parts, made once unseen.
+		await get_tree().process_frame
+		if _build_pages != null and not _build_mode.is_open():
+			_build_outline.warm(_build_pages.fresh(1))
 
 
 ## Put [param page] on screen: what is built by then, the rest out of

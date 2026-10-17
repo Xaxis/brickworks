@@ -685,7 +685,11 @@ plan with Claude as the client.
   itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
   likewise) — which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
-  read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
+  read-only, no second renderer: one GET of `/api/share?id=` — made by the
+  page itself the moment it loads (`src/boot/shell.html`,
+  `window.brickworksSharePrefetch`, 2026-10-17), while the engine downloads
+  and starts, and taken by `SharedModels.fetch` (on a preview it came 2.4 s
+  after the engine's first frame when the app asked) — (asked again, up
   to three times, when nothing at all comes back: on a preview a viewer said
   "Could not reach Brickworks" once in four runs, and the same link opened at
   the next try), the model opened
@@ -779,18 +783,19 @@ plan with Claude as the client.
   (`window.brickworksBuildDrawn`). Not done: the author's own steps (`0 STEP`, item 1
   of docs/COMPETITIVE.md) are not kept yet, so these are always
   `Instructions.plan`'s; the parts are fetched for the whole model before
-  the first page, not page by page; the first step waits for every step to
-  be worked out (9 to 12 s after the first frame for 1,000 parts slowed
-  four times here, against a 3 s aim; 75 to 135 s for 4,000, all of it
-  the main thread's own work, not frames waiting on the drawing); on
-  4,000 parts some turns' frames still spend 180 to 460 ms in the frame's
-  processing outside the turn (`turn_frames[1]`) and outside Main's own
-  `_process` (`turn_frames[4]`, about 12 ms with the page told within it):
-  always in a frame that also told the page everything, never located yet;
-  and at 1,000 parts the jump to step 30 is 120 to 230 ms on screen of
-  which 30 to 150 ms is the WebGL calls (7,200 of them, 224 draws) of
-  drawing step 30 itself, slowed with everything else (see the share steps
-  flow below).
+  the first page, not page by page; a link shared before steps were carried
+  (`SharedPages`, below) still has them worked out on the phone (9 to 12 s
+  after the first frame for 1,000 parts slowed four times, 75 to 135 s for
+  4,000). The grab's twice-a-second search for handles stalled turns on
+  4,000 parts by 180 to 460 ms (found by `share_steps_flow --trace`, in the
+  nodes' processing, not Main's); the viewer stops the grab
+  (`_grab_drag.set_process(false)`), and the stability weigh, and tells the
+  lattice of the parts after the model is up (`ModelStore.lattice_later`,
+  `register_later`). Left: on a box at load 30 to 50 a turn's frame now and
+  then waits hundreds of ms to seconds inside WebGL calls on SwiftShader
+  (the part pictures' fence, the outline's window-sized passes, step 30's
+  7,000 calls), however little the app did (see the share steps flow
+  below).
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",

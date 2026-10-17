@@ -301,7 +301,23 @@ func _lay_strip() -> void:
 		_strip.add_child(cell)
 		_tiles.append(tile)
 	if thumbnails != null:
+		_watch_after_this_frame()
+
+
+## The parts' pictures asked for once the page itself is drawn: the frame a
+## page is turned in draws the model and the step, and the pictures (each a
+## little scene of its own, drawn and read back) come in the frames after.
+## Drawn in that same frame, on a slowed phone in software, they were half
+## its WebGL calls.
+func _watch_after_this_frame() -> void:
+	_strip_laid += 1
+	var laid: int = _strip_laid
+	await RenderingServer.frame_post_draw
+	if laid == _strip_laid and thumbnails != null:
 		thumbnails.watch(self, _tiles if visible else ([] as Array[ThumbTile]))
+
+
+var _strip_laid: int = 0
 
 
 func open() -> void:
