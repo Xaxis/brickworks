@@ -298,7 +298,7 @@ class Covers extends RefCounted:
 ## from both.
 class Pictures extends RefCounted:
 	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
-	const PIXEL := 14.0
+	const PIXEL := 10.0
 	## A new part shows at least this much of itself, from one side or the
 	## other: the steps score's SEEN.
 	const SEEN := 0.1
