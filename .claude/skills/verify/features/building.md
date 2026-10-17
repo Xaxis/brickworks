@@ -600,6 +600,8 @@ Runtime:
 
 ```sh
 # the real gestures, in a real window — this is the one that catches feel
+# (a box let go over a column, whichever side it is: the parts bin's, on the
+# left, on a first visit)
 godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd
 # what a dragged box catches, which needs a camera with a viewport to project into
 godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd

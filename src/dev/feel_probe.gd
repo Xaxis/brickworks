@@ -223,7 +223,10 @@ func _mouse() -> void:
 		var corner := Vector2(panel.x, _middle.y + 240.0)
 		_check("the corner to let go on is over a panel too",
 			_main._over_panel_at(corner))
-		await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(320.0, 240.0),
+		# From the far side of the bricks, towards the panel: rightwards
+		# to a column on the right, leftwards to one on the left.
+		var towards: float = 1.0 if panel.x > _middle.x else -1.0
+		await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(320.0 * towards, 240.0),
 			corner, true)
 		# What actually goes wrong is that the selection silently does
 		# not happen, so that is what to ask about. Asking only whether
@@ -626,6 +629,11 @@ func _plates() -> int:
 	return _main._store.scenery.size()
 
 
+## A point over a column beside the model, halfway down: the right-hand
+## one first, then the left, nearest the model each way. The parts bin is
+## in the left-hand column and on a first visit nothing is in the right
+## (the assistant is off), so looking on the right alone found nothing,
+## and the check of a box let go over a panel never ran (2026-10-16).
 func _panel_point() -> Vector2:
 	var rect: Vector2 = root.get_visible_rect().size
 	var y: float = rect.y * 0.5
@@ -635,6 +643,12 @@ func _panel_point() -> Vector2:
 		if _main._over_panel_at(at):
 			return at
 		x -= 6
+	x = 6
+	while float(x) < rect.x * 0.45:
+		var at := Vector2(float(x), y)
+		if _main._over_panel_at(at):
+			return at
+		x += 6
 	return Vector2.ZERO
 
 
