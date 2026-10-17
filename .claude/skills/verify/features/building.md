@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser -->
 
 ## Sub-features
 
@@ -563,6 +563,57 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   unselected one (`Joints.rounds`). It may press only on the part it is joined
   to; anything else refuses it. The parts stand off the grid afterwards, held
   as turned covers (`Builder.swing_selection`).
+- `grab and move on a joint` (`src/ui/grab_drag.gd` over `src/assembly/grab.gd`;
+  owner, 2026-10-17): with the Select tool a drag on a part that hangs on a
+  joint moves its whole rigid body and everything beyond it about that joint,
+  as the real thing moves; no tool or panel first. A click still selects; a
+  drag on a part held rigidly to what stays still carries it (`EditVerbs.
+  drag_start`), as does Ctrl's copy-drag and a locked part. Turn: a hinge, a
+  clip, a turntable, a pin or an axle in a round hole, a 1x1 part on one stud;
+  a click hinge on 22.5° clicks. Slide: a drag along the line of a clip on a
+  bar or a hole on an axle (the first few pixels decide). Ball: every way.
+  It stops at the last angle the lattice has room for (`Grab.turn_to`
+  bisects). A gear drives its train by the teeth (`Mechanism`, as Simulate). A
+  closed loop or a locked train is said, not moved. While dragging the model
+  is drawn moved (`BrickWorld.set_drawn`; revision, lattice and history
+  untouched), weighed each 50 ms (`Balance.weigh_pose`): polygon and centre of
+  mass on the floor, loaded stud joints tinted, the model leaning 4° when it
+  would tip, a status line. Let go: a joint without friction (a pin without
+  ridges, an axle, a turntable) swings down under its weight (`Grab.settle`),
+  one undo step ("turned the arm, 2 parts, on its hinge to 45°"), and the
+  status bar says how it stands. Escape puts it back. Past 40 moving parts a
+  frame's room test stops at 10 ms and the rest is checked on pauses and at
+  the release (`Grab.verify_step`, "checked when you pause"); a press on a
+  big model before its joints are read says so. Over MCP: `move_part`.
+  Headless gear check without a pointer: `grab_probe -- --gears` (8020's
+  crank turns the sails 1 in 9).
+  Probe: `grab_probe` (real sets, simulated pointer events); browser:
+  `tools/web/grab_flow.mjs`.
+- `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
+  bodies (two studs or more, an axle in an axle hole, glue: one body; two
+  joints on different lines between two bodies: one body) and the joints
+  between them, from `Joints`' rules (studs_in, through, rounds, balls,
+  held_otherwise). Resting with no stud in it holds nothing; resting on a
+  joint's half with its studs under the foot is carried by it (a hinge brick
+  on a turntable's top). A joint between two parts overrides their shared
+  studs and cells (turntable top and base, hinge halves, click halves); a
+  tyre is one with its wheel; a lone pin is part of the first thing it is in.
+  Each piece's anchor: a locked part's body, else what stands on the
+  baseplate (a stud in a socket), else the heaviest body. Read ahead once a
+  revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
+  `grab_probe -- --survey FILE` prints the bodies and joints.
+- `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
+  state, pure until `commit`: `begin` (what moves, on what, or "rigid",
+  "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (bisected to
+  the last pose with room), `follow` (the pointer's ray to an angle, a slide
+  or a ball's turn), `settle` (a free joint down under its weight), `commit`
+  (one undo step). `grab_probe` checks each on real sets.
+- `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
+  takes the arm by mouse where `window.brickworksGrab.handles` says it is,
+  drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
+  puts it back, then turns the turret on its turntable; the app's frame cost
+  of a drag and the page's longest wait. In `preview_checks.sh`'s map as
+  `grab`.
 - `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
   as BrickLink Studio does it. With a part in hand that has a Technic or a
   bar end, aimed at a connector it fits, the ghost goes onto it: a pin into a

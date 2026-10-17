@@ -35,6 +35,14 @@ whole cycle.
 - Each window says which Claude chat is working in it, on the toolbar and
   in Account. When two chats work in one, it says so, and Keep this one
   moves the other off.
+- A part on a joint can be taken hold of and moved as the real one moves.
+  With Select, drag a hinge's leaf, a clip on a bar, a turntable's top, a
+  wheel or a gear, a minifigure's arm or a ball joint: everything built on
+  it comes along, it stops where it meets the model, and the gears it
+  drives turn by their teeth. The model's balance and its loaded joints
+  show while it moves. A pin without friction ridges swings down when let
+  go. Each drag is one undo step. A Claude session does the same with
+  move_part.
 
 ### Changed
 

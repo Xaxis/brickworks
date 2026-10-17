@@ -2091,6 +2091,34 @@
       "entry": "src/dev/tabpair_probe.gd",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabpair_probe.gd -- 8790   (with .env sourced)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "grab and move on a joint",
+      "entry": "src/ui/grab_drag.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd   (by hand: Select tool, drag a part that hangs on a hinge, clip, turntable, pin, axle, ball or round stud)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "rigid bodies and joints",
+      "entry": "src/assembly/bodies.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --survey vendor/omr/files/4096-1_Crane.mpd",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "moving a body on its joint",
+      "entry": "src/assembly/grab.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "grab in a browser",
+      "entry": "tools/web/grab_flow.mjs",
+      "reach": "node tools/web/grab_flow.mjs --url=http://127.0.0.1:8820/ --out=<dir>  (after PARTS_URL=x tools/export.sh web and tools/web/serve.py build/web 8820 --parts assets/generated/parts; a preview: preview_checks.sh ... grab)",
+      "area": "building"
     }
   ]
 }

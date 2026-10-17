@@ -3026,6 +3026,7 @@ func _build_ui() -> void:
 	_flex.panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_flex.panel.position = Vector2(12, 48)
 	_flex.changed.connect(_on_model_edited)
+	_make_grab_drag()
 
 	# Along the top of the model, when a model opened with parts a fraction
 	# of a stud off their studs: src/ui/seat_offer.gd.
@@ -4761,6 +4762,9 @@ var _press_at: Vector2 = Vector2.ZERO
 var _press_copies: bool = false
 ## A part (with its selection) picked up by a drag and following it.
 var _dragging_part: bool = false
+## A part grabbed by a drag and moved about its joint (GrabDrag).
+var _grab_drag: GrabDrag
+var _grabbing: bool = false
 ## A left press that is not yet a click or a drag. A drag from it moves the
 ## view ("turn", "slide", "zoom") or draws a box ("box"); "" for a finger,
 ## whose drags are the camera's. Nothing is placed or selected until it
@@ -4959,6 +4963,32 @@ func _drop_dragged(at: Vector2) -> void:
 	_refresh_preview(at)
 
 
+## A part grabbed in the view and moved about its joint (GrabDrag): with
+## the Select tool, a drag on a part that hangs on a hinge, a clip, a
+## turntable, a pin, an axle, a ball or a round stud. False for a part held
+## rigidly, which is carried as before; Ctrl's copy and a locked part too.
+func _grab_on_joint(brick_id: int) -> bool:
+	if _grab_drag == null or _press_copies or _builder.is_locked(brick_id):
+		return false
+	var selected: Dictionary = _builder.selection if _builder.selection.has(brick_id) else {}
+	if not _grab_drag.press(brick_id, _press_at, selected):
+		return false
+	_builder.hide_preview()
+	return true
+
+
+func _make_grab_drag() -> void:
+	_grab_drag = GrabDrag.new()
+	_grab_drag.world = _world
+	_grab_drag.builder = _builder
+	_grab_drag.library = _library
+	_grab_drag.camera = _camera
+	_grab_drag.scenery = _store.scenery
+	_grab_drag.say = _bar.say
+	_grab_drag.edited = _on_model_edited
+	add_child(_grab_drag)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# A shared model's viewer only looks: none of what follows — placing,
 	# picking up, a finger held down to take a part off — is reachable.
@@ -5027,8 +5057,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _press_brick != 0 and not _dragging_part \
 				and (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
 				and moved.position.distance_to(_press_at) > DRAG_SLOP:
-			_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
+			_grabbing = _grab_on_joint(_press_brick)
+			if not _grabbing:
+				_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
 			_press_brick = 0
+		if _grabbing:
+			_grab_drag.motion(moved.position)
+			return
 		if _dragging_part:
 			_refresh_preview(moved.position)
 			return
@@ -5092,7 +5127,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# again.
 	var ending_a_box: bool = (button.button_index == MOUSE_BUTTON_LEFT
 		and not button.pressed and _marquee.is_drawing())
-	if _over_panel_at(button.position) and not ending_a_box:
+	# A grab's release is its own wherever the pointer has got to, as a box's.
+	var ending_a_grab: bool = _grabbing and button.button_index == MOUSE_BUTTON_LEFT \
+		and not button.pressed
+	if _over_panel_at(button.position) and not ending_a_box and not ending_a_grab:
 		return
 
 	# The right button acts on release, not on press.
@@ -5122,6 +5160,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _verbs != null and _verbs.mode == "zoom" \
 				and button.position.distance_to(_press_at) <= DRAG_SLOP:
 			_camera.zoom_by_drag(-40.0 if not button.shift_pressed else 40.0, button.position)
+		_refresh_preview(button.position)
+		return
+	# A part grabbed on its joint, let go: kept where the drag left it.
+	if _grabbing and not button.pressed:
+		_grabbing = false
+		_grab_drag.release()
 		_refresh_preview(button.position)
 		return
 	# A part being dragged, let go of where the drag ends: put down there
@@ -5616,7 +5660,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _escape_closes_something() -> bool:
-	return (_marquee != null and _marquee.is_drawing()) \
+	return _grabbing or (_marquee != null and _marquee.is_drawing()) \
 		or (_controls != null and _controls.visible) \
 		or (_mosaic != null and _mosaic.visible) \
 		or (_brickify != null and _brickify.visible) \
@@ -5898,6 +5942,10 @@ func _key_pressed(key: InputEventKey) -> void:
 			# A box being drawn is the innermost of all: the button is
 			# still down. Thrown away, and the release that ends the
 			# drag is not taken for a click.
+			if _grabbing:
+				_grabbing = false
+				_grab_drag.cancel()
+				return
 			if _marquee != null and _marquee.is_drawing():
 				_marquee.finish()
 				_box_began = false

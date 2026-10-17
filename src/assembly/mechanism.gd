@@ -1487,6 +1487,25 @@ func pose(angle: float) -> Dictionary:
 	return out
 
 
+## [method pose] for [param keys] (key -> anything) alone: a part dragged on
+## its joint asks every frame where the gears it drives stand (Grab), and
+## the whole model's parts each frame was most of a big model's frame.
+func pose_of(angle: float, keys: Dictionary) -> Dictionary:
+	var at: Dictionary = {ground: Transform3D.IDENTITY}
+	for joint: Joint in tree:
+		var parent: Transform3D = at.get(joint.parent, Transform3D.IDENTITY)
+		var about: Transform3D = Transform3D(Basis.IDENTITY, joint.point) \
+			* Transform3D(Basis(joint.way, joint.rate * angle), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -joint.point)
+		var both: Transform3D = parent * about
+		at[joint.child] = Transform3D(both.basis.orthonormalized(), both.origin)
+	var out: Dictionary = {}
+	for key: Variant in keys:
+		out[key] = (at.get(body_of(int(key)), Transform3D.IDENTITY) as Transform3D) \
+			* (rest[int(key)] as Transform3D)
+	return out
+
+
 # -- saying what it found ---------------------------------------------------------
 
 

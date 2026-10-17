@@ -1078,3 +1078,121 @@ would want rollers there to turn freely; and the app does not yet check that
 moving parts clear each other through the cycle (P2), so the layout's rule,
 nothing joined to a ring inside its teeth, was the session's to keep.
 
+
+## 10. Grab and move (G1)
+
+The owner asked (2026-10-17) that a person "should be able to manipulate and
+move any hinging, moving, otherwise interactive part with perfect
+physics/support/structure simulation", and then that a grab take hold of
+sections of the build, not one part. G1 is the first slice: the part itself,
+taken in the view and moved as the real one moves.
+
+**What moves.** `src/assembly/bodies.gd` reads the model as rigid bodies and
+the joints between them, from `Joints`' rules, so the build check, Balance and
+Sections read the same graph:
+
+| between two parts | what it is |
+|---|---|
+| two studs or more in another part (`Joints.studs_in`) | rigid |
+| one stud, when either part is a single stud across | turns on the stud: a 1x1 round plate, a minifigure's head |
+| one stud under a wider part | rigid: clutch holds it |
+| an axle in an axle hole (`Joints.through`, "grips") | rigid |
+| an axle in a round hole ("turns") | turns on its line; slides as far as the axle reaches |
+| a pin in a round hole | turns on its line; a pin is held by its collar and does not slide. A pin keyed to nothing is part of the first thing it is in (Mechanism's rule) |
+| a clip on a bar, a hinge's pin, a turntable (`Joints.rounds`) | turns on the shared line; a clip or a minifigure's hand slides along its bar |
+| a tyre on its wheel | rigid: it does not turn on the rim |
+| a click hinge's fingers | turns in clicks of 22.5° |
+| a ball in its socket (`Joints.balls`) | turns every way about its middle |
+| glue, a magnet, one thing in pieces | rigid |
+| resting on a part with the lower part's studs under its foot (`Stability.contacts`) | as studs: the lattice's cover of a hinge brick is hollow where its turntable's studs reach |
+| resting on a part with no stud in it | nothing: a flap folded down lifts off |
+
+A joint between two parts overrides every stud and cell they share: a
+turntable's top and base, a hinge brick's halves, a click hinge's two parts
+are held by their joint alone. A stud the lattice finds in either of two such
+parts is given to the one whose face it meets (a turntable's base, not its
+top), so what stands on the top turns with it and what the base stands on
+stays. Two joints between the same two bodies on different lines hold them as
+one, as Mechanism's two pins through two beams do. Each piece of the model
+has an **anchor**, the side that stays: a part the person locked; else what
+stands on the baseplate's studs, a stud in one of its sockets (a tyre resting
+on the plate is not); else the heaviest body. A car's chassis stays and
+its wheels turn; a crane's base stays and its boom swings. Grabbing a part
+moves its body and everything beyond it, on the one joint between it and the
+anchor. Grabbing the anchored half of a joint (a hinge plate's lower half)
+moves the half across it. A selection moves whole bodies only, about what
+joins them to the rest; a selection held on by studs is carried as before.
+
+**How it moves** (`src/assembly/grab.gd`, `src/ui/grab_drag.gd`). With Select,
+a press on such a part and a drag past 5 pixels takes hold of it. A turn
+follows the angle of the pointer about the joint's line, in the plane of the
+point held, so the point stays under the pointer. A drag along a slider's
+line, as the eye sees it, slides instead (the first move decides). A ball
+turns so the point held goes towards the pointer. Every frame asks the
+lattice whether anything but what it is joined to is in the way; if so, the
+angle is bisected back to the last one with room, 10 rounds, under 0.2°.
+Nothing else limits it: a hinge with room to go all the way round does.
+
+**Couplings.** A grabbed gear drives its train through `Mechanism`, the
+Simulate solver: the gears it meshes turn by their teeth, with the parts
+keyed to them. What hangs on a driven gear by a clip or a hinge does not yet
+follow it. A **closed loop** (a four-bar, a crank and its rod, a steering rack
+on its arms) is held at both ends: the drag says so and moves nothing. That
+is P2.
+
+**Physics on release, honestly.** A joint holds by friction or it does not.
+A pin's name says which: "with Friction Ridges" (2780, 43093, 6558) holds; a
+pin without (3673, 3749, 4274) turns freely, as builders use them
+(Eurobricks, "Technic pins: to friction or not to friction"). An axle in a
+round hole and a turntable turn freely; hinges, clips, click hinges, balls
+and a stud hold. Let go, a free joint swings down to where the centre of mass
+of what it carries is lowest, or to what stops it: quasi-static, no swing
+back. Then Balance: stands, or tips and over which edge, and the most loaded
+stud joint against its working load. "About", because a stud's clutch is not
+published (above): honest to a factor of two.
+
+**Ready before the press.** The bodies, the graph Balance weighs
+(`Balance.prepare`) and the gear trains (`Mechanism.build`, anchors as the
+ground) are read once a model revision, a quarter of a second after it last
+changed, on a worker from 300 parts (`GrabDrag._ready_ahead`), so a press finds
+them read. On 7191 (1,312 parts) that takes 4 to 7 s on a loaded box; a press
+on a big model before it is done says so and waits, rather than hold the
+window. Each frame a moving part's box is asked of the lattice first, and its
+turned cover is worked out only when something it may hit is near it; a part
+whose whole sweep round the line meets nothing is never tested.
+
+**A big section.** Past 40 moving parts a frame's room test stops after
+10 ms. The section is drawn where the pointer says, the status bar says it is
+"too big to test every frame: checked when you pause", and the test carries
+on, a share a frame, while the pointer rests and after it is let go
+(`Grab.verify_step`); what it meets is bisected back a round a frame. On
+7191's 131-part wing: the grab begins in 79 to 91 ms, a drag frame's own work
+is 1.9 to 2.8 ms on average and 24 to 32 ms at worst, whole frames 20 to 27 ms
+on average. Let go, the wing (on a free axle) is swung down under its weight
+and checked in 17 to 20 s, a frame at a time, the worst frame 160 ms: one
+part's turned cover is one test, and the budget is asked between parts.
+
+**Live structure.** The graph read ahead is weighed for each pose alone
+(`Balance.weigh_pose`) every 50 ms: the support polygon and the centre of
+mass on the floor, stud joints past half their working load tinted amber to
+red, the model drawn leaning 4° over the edge it would tip over, and a line
+in the status bar. The model, its lattice, its history and its revision are
+untouched until the button comes up (`BrickWorld.set_drawn`); then the pose
+is one undo step. Escape puts it back.
+
+**Over MCP**, `move_part`: part= a part's number or a sub-assembly's name.
+Alone it changes nothing and says what would move, on what joint, whether it
+holds or swings, and how the model stands. degrees= or along= move it as a
+drag does and answer with what moved and the balance after.
+
+**Left for later.** Inverse kinematics along a chain of joints (an arm's
+shoulder, elbow and wrist dragged by the hand). Every modifier on a left drag
+is the view's already (Alt turns, Shift slides, Ctrl draws a box or copies),
+so the proposal is a press held still on the end part for 0.4 s before it is
+dragged, or a Chain toggle on the hint strip; each joint's range is the
+lattice's, so an IK step costs a room test per joint, which the box-first test
+now makes cheap. Closed loops (P2); what hangs
+on a driven gear following it; a free joint inside what moves settling too
+(only the grabbed joint settles); dynamics (S2, P3); the click step measured
+on real parts rather than read from retailers; settling a model that tips
+(it is said and drawn leaning, not laid over).

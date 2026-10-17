@@ -28,6 +28,7 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   [flex_pose]="tools/web/flex_pose_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_pose_web"
+  [grab]="tools/web/grab_flow.mjs --url=$P/app $B --out=$S/${TAG}_grab_web"
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"
@@ -56,7 +57,7 @@ declare -A CMD=(
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=stand --out=$S/${TAG}_brickify_fox_web"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose progress share_probe site download"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)

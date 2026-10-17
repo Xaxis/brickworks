@@ -179,7 +179,9 @@ static func through(entries: Array) -> Array:
 					(out[int(seen[key])] as Array)[2] = how
 				continue
 			seen[key] = out.size()
-			out.append([line[0], hole[0], how])
+			# The line too, for what turns on it (Bodies): a point on it, its
+			# way, the shaft's ends along it and the hole's place.
+			out.append([line[0], hole[0], how, origin, way, float(line[4]), float(line[5]), along])
 	return out
 
 
