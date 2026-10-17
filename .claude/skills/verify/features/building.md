@@ -698,7 +698,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a flat four-bar beside it round and the loop carries the coupler and the
   other crank (eight handles on the page now); the app's frame cost
   of a drag and the page's longest wait. In `preview_checks.sh`'s map as
-  `grab`.
+  `grab`. Its waits over 250 ms come under load, on live's build as on new
+  ones, mostly in the first drag (MECHANISMS §13): the balance mark's shaders
+  are built before the press (`BalanceMark.warm`); what is left is the GPU
+  process drawing in software, which a Chromium trace of the drag shows
+  (`browser.startTracing` round the drag; long `FireAnimationFrame` tasks
+  waiting in `GetBooleanv`).
 - `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
   as BrickLink Studio does it. With a part in hand that has a Technic or a
   bar end, aimed at a connector it fits, the ghost goes onto it: a pin into a

@@ -61,9 +61,8 @@ func show_report(weighed: Balance.Report, tints: Dictionary = {}) -> void:
 ## Draw one triangle nobody can see, in front of [param eye], for two
 ## frames, so the renderer builds this mark's material (unshaded, blended,
 ## over everything) before a drag first needs it. A browser drawing in
-## software built it in the first drag's frames: on a loaded box the page
-## waited 300 to 670 ms there, on live's build as on this one (MECHANISMS
-## §13). Nothing is left drawn after.
+## software built it in the first drag's first frame, 203 ms of it on a
+## loaded box (MECHANISMS §13). Nothing is left drawn after.
 func warm(eye: Camera3D) -> void:
 	if report != null or eye == null:
 		return

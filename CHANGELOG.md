@@ -80,6 +80,9 @@ whole cycle.
 
 ### Changed
 
+- The first drag of a session in a browser no longer builds the balance
+  mark's shaders in its first frame: they are built, unseen, as soon as the
+  model has been read.
 - Dragging a part on a joint: the status bar says where it is ten times a
   second rather than every frame, and a big section drawn by its slide (an
   actuator's arm) is checked for room when you pause, as a turned one is,

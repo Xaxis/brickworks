@@ -1665,6 +1665,37 @@ rather than each frame (`GrabDrag.TELL_EVERY_MS`): every new line was laid
 out afresh and set a timer of its own to clear it; its share was not
 measured apart.
 
+**The first drag in a browser.** grab_flow held release m54: on its
+preview the page waited over 250 ms during a drag. Five alternating runs
+each on local exports of the held build (d24d4d6) and live's (047bb4a), on a
+box loaded 12 to 43 on 24 cores, waited over 250 ms in two runs of five on
+both, nearly always in the session's first drag: the held build 470 and
+335 ms, live's 387, 671 and 805. The app's own drag frames stayed under
+13 ms in every run. So it was not the racks' code. A build that says the
+app's longest frame gap and what the grab spent in it, traced in Chromium,
+put the wait in the renderer: a 670 ms gap in which the grab spent 1 ms (its
+press). Two causes, one the app's:
+
+- In the first frame of the first drag Godot built the balance mark's
+  shaders: 10 compiled, 3,208 queries of their uniforms, 203 ms. Proven the
+  mark's by a build that draws no mark during the drag: the build moved to
+  the frame after the release, where the mark is first drawn. The mark is now
+  drawn once, unseen, as soon as the model has been read (`BalanceMark.warm`,
+  a transparent triangle in front of the eye for two frames, as Render warms
+  its renderer before it is opened); in six traced runs no first drag built
+  a shader.
+- After each pointer move of a drag the renderer checks a framebuffer and
+  asks the GPU a question (`checkFramebufferStatus`, `getParameter`), and a
+  question waits for every command the GPU process has queued. In a browser
+  drawing in software that process is SwiftShader on the same loaded CPU: one
+  to one and a half seconds into the first drag, on both builds, with and
+  without the mark, it was 334 to 950 ms behind, and the page waited that
+  long. Later drags in a session mostly waited under 100 ms, but the four-bar
+  waited 219 to 805 ms in three runs of ten, the same way. Which call of the
+  renderer checks the framebuffer was not found; in two of three runs of the
+  warmed build the first drag waited 16 to 28 ms. It is SwiftShader's time,
+  and left.
+
 **Racks in guides, tried and left.** 42035-1's 1 x 7 steering rack (87761)
 is pinned through its middle hole by a long pin (87082) into a beam 7, so
 read as the parts stand it can only turn on that pin, and its 12 tooth
