@@ -5807,10 +5807,13 @@ func _unjointed_refusal(design: Model) -> String:
 		+ "patterns, sized and coloured to this design, and build on it:\n  %s\n" % call
 		+ ("It lays feet, legs, hips, a torso, arms on ball shoulders posed by words (down, "
 			+ "bent, forward, raised, out), hands, and a head turning on a "
-			+ "jumper's stud, with hair; \"seated\": true sits it on a block of its own; "
-			+ "\"kind\": \"head\" is a head on a neck alone. " if kind == "figure"
+			+ "jumper's stud, with printed eyes and hair; \"seated\": true sits it on a "
+			+ "block of its own; \"lean\": \"forward\" (or degrees) hunches its torso on a "
+			+ "hinge at the waist; \"kind\": \"head\" is a head on a neck alone. "
+			if kind == "figure"
 			else "It lays four legs, a body, the head on a ball neck (up, down, forward, left, "
-			+ "right) with eyes, and the tail on a bar (raised, level, down). ")
+			+ "right) with printed eyes on its sides and a nose, and the tail on a bar (raised, "
+			+ "level, down). ")
 		+ "Each part is named (\"head\", \"chest\", \"left hand\", \"tail\"): your own bricks "
 		+ "attach to them, a hat {\"part\": ..., \"attach\": {\"to\": \"hair.stud[0]\"}}, or stand "
 		+ "on their studs. Keep the rest of the design (a plinth, props), leave out the body "
@@ -17232,12 +17235,15 @@ for the shape it makes, in sub-assemblies joined at angles.
 "pose": {"right arm": "down", "left arm": "raised", "head": 20}} lays a \
 person feet to crown with its arms on ball shoulders, posed by words (down, \
 bent, forward, raised, out; "seated": true on a seat of \
-its own), and its head turning on a jumper's stud; "kind": "animal" with a \
-"length" in studs four legs, a body, the head on a ball neck and the tail \
-on a bar; "kind": "head" a head on a neck. Every part is named ("head", \
+its own; "lean": "forward" hunched on a hinge at the waist), and its head \
+turning on a jumper's stud, two printed eyes on its face; "kind": "animal" \
+with a "length" in studs four legs, a body, the head on a ball neck with \
+eyes on its sides and a nose, and the tail on a bar; "kind": "head" a head \
+on a neck, with its face. Every part is named ("head", \
 "chest", "left hand", "tail"): attach your own to them (a hat on \
 "hair.stud[0]", a sword in "right hand"), or pose one again with an edit's \
-align or yaw. Then dress it: a face, clothes, a hat, what it holds.
+align or yaw. Then dress it: clothes, a hat, what it holds ("face": false \
+leaves the face to you).
   The brief is the scope and the size. Build what it names (each figure, \
 what they hold, what they stand on) in its proportions (tiny, squat, \
 round, a head as big as its body), and nothing it does not name: an \
