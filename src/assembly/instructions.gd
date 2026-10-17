@@ -212,6 +212,9 @@ class Node2 extends RefCounted:
 	var contacts: PackedInt64Array = PackedInt64Array()
 	## What rests on it by the covers: their covers sit on its own.
 	var over: PackedInt64Array = PackedInt64Array()
+	## What it hangs from that rests on it: it goes in in their step, on the
+	## model ([method _hung_under]).
+	var hung: PackedInt64Array = PackedInt64Array()
 
 
 ## What fills a point, by the parts' own collision covers: the cover the
@@ -934,6 +937,17 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 				continue
 			if not node.held_by.is_empty() and not by_touch:
 				continue
+			# By what its cover touches, where that is held: its box touched
+			# parts it does not, and hung from those it floated.
+			for other_id: int in node.contacts:
+				var at: int = index_of.get(other_id, -1)
+				if at >= 0 and held.has(at) and not nodes[at].needs.has(node.id) \
+						and not node.needs.has(other_id):
+					node.needs.append(other_id)
+					node.weak.append(other_id)
+			if not node.needs.is_empty():
+				now_held.append(index)
+				continue
 			var box: AABB = node.box.grow(1.0)
 			var lowest: int = floori(box.position.y / LAYER)
 			var highest: int = floori(box.end.y / LAYER)
@@ -1057,12 +1071,14 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 ## plate pressed up under a sign does ([method _pressed_up]): put in after
 ## it, it is put in under it, and before it, it floats. What rests on what
 ## is the parts' covers' ([member Node2.over]); not a pin or an axle, which
-## goes in along its line.
+## goes in along its line. On the model only: a sub-assembly in the hand is
+## any way up, and there it only hid the part under the one it hangs from.
 static func _hung_under(nodes: Array[Node2]) -> void:
 	for node: Node2 in nodes:
 		for need: int in node.needs:
-			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need):
-				node.under.append(need)
+			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need) \
+					and not node.hung.has(need):
+				node.hung.append(need)
 
 
 ## Every node that waits, by any route, for [param id], given who waits
@@ -1294,7 +1310,21 @@ static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			else:
 				_hold(owner, into)
 	await _boxes_under(nodes, job)
+	await _contacts_of(nodes, world, library, job, frame)
+	# What a part no stud seats rests on is what its cover rests on, where
+	# its cover rests on anything: its box sat on a slope's or a bracket's
+	# box, which the part itself does not touch, and it went in on nothing.
+	var under_it: Dictionary = {}     ## id -> what its cover rests on
 	for node: Node2 in nodes:
+		for top: int in node.over:
+			if not under_it.has(top):
+				under_it[top] = PackedInt64Array()
+			(under_it[top] as PackedInt64Array).append(node.id)
+	for node: Node2 in nodes:
+		if not node.seated and not node.boxed.is_empty() and under_it.has(node.id):
+			var resting: PackedInt64Array = under_it[node.id]
+			if not Array(node.boxed).any(func(id: int) -> bool: return resting.has(id)):
+				node.boxed = resting.duplicate()
 		for need: int in node.boxed:
 			if not node.needs.has(need):
 				node.needs.append(need)
@@ -1308,7 +1338,6 @@ static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			if other.seated and not node.needs.has(other_id) and not other.needs.has(node.id):
 				node.needs.append(other_id)
 	_pressed_up(nodes, by_id)
-	await _contacts_of(nodes, world, library, job, frame)
 
 
 ## What rests on what by the parts' covers, as the build check weighs a
@@ -2178,13 +2207,18 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 	# What each node touches, and whether it would join what is built: see
 	# [method _touching].
 	var touches: Dictionary = _touching(nodes, parts_of)
+	# What is built so far, in pieces by what touches what, and which pieces
+	# stand: on the table, in the first step, or joined to one that does. A
+	# part joined only to a piece in the air went on it, and floated with it.
+	var piece: Dictionary = {}       ## placed id -> the id it is joined under
+	var stands: Dictionary = {}      ## a piece's root -> true
 	var joins := func(node: Node2) -> bool:
-		if remaining.size() == nodes.size():
+		if steps.is_empty():
 			return true
 		if not in_hand and node.box.position.y <= floor_y + 2.0:
 			return true
 		for other: int in touches.get(node.id, {}):
-			if not remaining.has(other):
+			if piece.has(other) and stands.has(_root_of(piece, other)):
 				return true
 		return false
 	## The region being built, and what each one is called in the
@@ -2255,12 +2289,24 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 				ready.erase(here.id)
 				picked.append(here)
 				pictures.draw(here)
+				piece[here.id] = here.id
+				if steps.is_empty() or not in_hand and here.box.position.y <= floor_y + 2.0:
+					stands[here.id] = true
+				for other: int in touches.get(here.id, {}):
+					if piece.has(other):
+						var one: int = _root_of(piece, here.id)
+						var two: int = _root_of(piece, other)
+						if one != two:
+							piece[two] = one
+							if stands.has(two):
+								stands[one] = true
 				for dependent: int in dependents.get(here.id, []):
 					waiting[dependent] = int(waiting[dependent]) - 1
 					if int(waiting[dependent]) == 0 and remaining.has(dependent):
 						ready[dependent] = by_id[dependent]
-						if (by_id[dependent] as Node2).under.has(here.id):
-							placing.append(by_id[dependent])
+						var under_it: Node2 = by_id[dependent]
+						if under_it.under.has(here.id) or not in_hand and under_it.hung.has(here.id):
+							placing.append(under_it)
 			unsupported = unsupported or forced
 			last_at = node.box.get_center()
 			have_last = true
@@ -2403,6 +2449,14 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 			best_score = score
 			best = node
 	return best
+
+
+## The root of [param id]'s piece, in a union of placed parts by id.
+static func _root_of(piece: Dictionary, id: int) -> int:
+	var at: int = id
+	while int(piece[at]) != at:
+		at = piece[at]
+	return at
 
 
 ## Whether [param node] belongs in a step holding [param step] though it is

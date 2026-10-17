@@ -313,7 +313,8 @@ func _built_on_the_side(world: BrickWorld, library: PartLibrary) -> void:
 	_assert("...and then both go on in one step, after it",
 		attach != null and attach.copies.size() == 2
 		and attach.index > (windows[-1] as Instructions.Step).index
-		and attach.number == window.number and attach.brick_ids.is_empty())
+		and attach.number == window.number)
+	_attach_pages("shed", steps, world, library)
 
 	var figure: Array = steps.filter(func(step: Instructions.Step) -> bool:
 		return step.in_callout() and step.figure)
@@ -365,6 +366,41 @@ func _a_published_model(world: BrickWorld, library: PartLibrary) -> void:
 		callouts.has("Window") and callouts.has("Table") and callouts.has("Chair")
 		and callouts.has("Skateboard") and callouts.has("MiniFig1"))
 	_assert("...and a window is built once for two (%dx)" % most, most >= 2)
+	var carrying: int = _attach_pages("31009", steps, world, library)
+	_assert("a step that puts one on puts on the parts beside it too (%d steps do)" % carrying,
+		carrying > 0)
+
+
+## The steps that put a sub-assembly on: each one's loose parts (brick_ids)
+## are none of its copies', and the step player lists exactly them on its
+## page (BuildSteps.lots), the sub-assembly having been picked up on its
+## callout's pages. Returns how many carry loose parts.
+func _attach_pages(what: String, steps: Array[Instructions.Step], world: BrickWorld,
+		library: PartLibrary) -> int:
+	var pages: BuildSteps = BuildSteps.of(world, library, steps)
+	var carrying: int = 0
+	var wrong: int = 0
+	for step: Instructions.Step in steps:
+		if not step.attaches():
+			continue
+		var counted: Dictionary = {}
+		for brick_id: int in step.brick_ids:
+			for copy: PackedInt64Array in step.copies:
+				if copy.has(brick_id):
+					wrong += 1
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+			counted[key] = int(counted.get(key, 0)) + 1
+		var listed: Dictionary = {}
+		for lot: Dictionary in pages.lots(step.index):
+			listed["%s:%d" % [lot["part"], lot["colour"]]] = int(lot["count"])
+		if listed != counted:
+			wrong += 1
+		if not step.brick_ids.is_empty():
+			carrying += 1
+	_assert("%s: a page that puts a sub-assembly on lists exactly its loose parts (%d wrong)"
+		% [what, wrong], wrong == 0)
+	return carrying
 
 
 ## The example car a first visit opens: its booklet began with four
