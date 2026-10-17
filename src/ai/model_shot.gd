@@ -164,10 +164,14 @@ func _build() -> void:
 	key.light_specular = BrickWorld.light_specular(0.25)
 	_viewport.add_child(key)
 
+	# Light, not a glint: the fill's highlight, left at the engine's 0.5,
+	# drew the back rows' stud tops white in the front left view (2.3% of
+	# the model pale, highlight_probe), as the booklet's fill has none.
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-14.0, 132.0, 0.0)
 	fill.light_energy = BrickWorld.light_energy(0.35)
 	fill.light_color = Color(0.95, 0.96, 1.0)
+	fill.light_specular = 0.0
 	_viewport.add_child(fill)
 
 	_stage = BrickWorld.new()
