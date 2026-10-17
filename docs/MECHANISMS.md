@@ -1155,8 +1155,22 @@ published (above): honest to a factor of two.
 (`Balance.prepare`) and the gear trains (`Mechanism.build`, anchors as the
 ground) are read once a model revision, a quarter of a second after it last
 changed, on a worker from 300 parts (`GrabDrag._ready_ahead`), so a press finds
-them read. Each frame a moving part's box is asked of the lattice first, and
-its turned cover is worked out only when something it may hit is near it.
+them read. On 7191 (1,312 parts) that takes 4 to 7 s on a loaded box; a press
+on a big model before it is done says so and waits, rather than hold the
+window. Each frame a moving part's box is asked of the lattice first, and its
+turned cover is worked out only when something it may hit is near it; a part
+whose whole sweep round the line meets nothing is never tested.
+
+**A big section.** Past 40 moving parts a frame's room test stops after
+10 ms. The section is drawn where the pointer says, the status bar says it is
+"too big to test every frame: checked when you pause", and the test carries
+on, a share a frame, while the pointer rests and after it is let go
+(`Grab.verify_step`); what it meets is bisected back a round a frame. On
+7191's 131-part wing: the grab begins in 79 to 91 ms, a drag frame's own work
+is 1.9 to 2.8 ms on average and 24 to 32 ms at worst, whole frames 20 to 27 ms
+on average. Let go, the wing (on a free axle) is swung down under its weight
+and checked in 17 to 20 s, a frame at a time, the worst frame 160 ms: one
+part's turned cover is one test, and the budget is asked between parts.
 
 **Live structure.** The graph read ahead is weighed for each pose alone
 (`Balance.weigh_pose`) every 50 ms: the support polygon and the centre of

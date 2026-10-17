@@ -539,7 +539,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   would tip, a status line. Let go: a joint without friction (a pin without
   ridges, an axle, a turntable) swings down under its weight (`Grab.settle`),
   one undo step ("turned the arm, 2 parts, on its hinge to 45°"), and the
-  status bar says how it stands. Escape puts it back. Over MCP: `move_part`.
+  status bar says how it stands. Escape puts it back. Past 40 moving parts a
+  frame's room test stops at 10 ms and the rest is checked on pauses and at
+  the release (`Grab.verify_step`, "checked when you pause"); a press on a
+  big model before its joints are read says so. Over MCP: `move_part`.
+  Headless gear check without a pointer: `grab_probe -- --gears` (8020's
+  crank turns the sails 1 in 9).
   Probe: `grab_probe` (real sets, simulated pointer events); browser:
   `tools/web/grab_flow.mjs`.
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid

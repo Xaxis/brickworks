@@ -39,6 +39,8 @@ extends RefCounted
 ## Bisection rounds for where a turn stops: 180° / 2^10 is under 0.2°.
 const ROUNDS := 10
 const BALL_ROUNDS := 6
+## How long the press may spend finding parts that can never meet anything.
+const NEVER_MEET_MS := 30
 ## Where a turn stops, to within this, degrees.
 const STOP_TO := 0.15
 ## A part all within this of the joint's line turns inside the holes it is
@@ -51,6 +53,9 @@ const BELOW_FLOOR := 4.0
 const SLIDE_BIAS := 1.6
 ## Degrees a pixel when the joint's plane is edge on to the eye.
 const EDGE_ON_RATE := 0.5
+## Below this the pointer's ray meets the plane a turn is in too slantwise
+## to read an angle off it, and the turn drawn nearest the pointer is taken.
+const EDGE_ON := 0.12
 
 var world: BrickWorld
 var builder: Builder
@@ -90,6 +95,10 @@ var mechanism: Mechanism
 ## The model's gear trains read ahead (GrabDrag), the anchors their ground;
 ## read here for the piece grabbed when not.
 var shared_mechanism: Mechanism = null
+## What the press spent, ms: reading what moves, the sweeps, the gears.
+var begin_took: Dictionary = {}
+## Why no gear turns with it, when none does: for a probe.
+var gear_note: String = ""
 var _driver: int = -1
 var _drive_sign: float = 1.0
 ## What moves, said: "the boom, 38 parts, on its turntable".
@@ -110,8 +119,22 @@ var _unwrapped: float = 0.0
 var _decided: bool = false
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
+## A frame's room test may run this long, ms (GrabDrag sets it); past it a
+## turn is taken on trust and checked on a pause or at the release.
+var budget_ms: float = INF
+## Let go and settled under its weight (once), and what that said.
+var settled: bool = false
+var swung: String = ""
+## The turn shown is not checked for room yet past [member _checked_angle].
+var unchecked: bool = false
+var _checked_angle: float = 0.0
+var _verify_from: int = 0
+var _verifying_lo: float = 0.0
+var _verifying_hi: Variant = null
 ## Moving parts all within reach of the joint's line: not tested for room.
 var _on_the_line: Dictionary = {}
+## Parts met, and whether they overlapped the moving side where it stood.
+var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
 var blocked_by: Array = []
 ## A ball's last turn that had no room, and where it stood then: not asked
@@ -140,6 +163,8 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 		_from_part(brick_id)
 	if state != "moves":
 		return state
+	var clock: int = Time.get_ticks_usec()
+	begin_took.clear()
 	moving.clear()
 	for key: int in bodies.parts_of(moving_bodies):
 		moving[key] = true
@@ -161,14 +186,10 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 			for pair: Array in joined.pairs:
 				for key: int in pair:
 					skip[key] = true
-	# What it already overlaps where it stands is not in its way: covers are
-	# 2 LDU cells, and a minifigure's hand sits closer to its leg than that.
-	for key: int in moving:
-		var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
-		if boxes.is_empty():
-			continue
-		for other: int in builder.lattice.blockers_boxes(boxes, 0, skip):
-			skip[other] = true
+	# What it already overlaps where it stands is not in its way (covers are
+	# 2 LDU cells, and a minifigure's hand sits closer to its leg than that):
+	# asked of each part met, when it is met (has_room), not of all 131 parts
+	# of a wing at the press.
 	# A ball's socket sits flush against what the ball stands out of: within
 	# a stud of the ball, a part touching the moving side by a cell is not
 	# in its way, as the cells cannot tell a flush face from a collision
@@ -213,8 +234,12 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 	# and a part whose whole sweep round the line meets nothing but what it
 	# may press on can never meet anything: neither is tested again.
 	_on_the_line.clear()
+	begin_took["reading"] = (Time.get_ticks_usec() - clock) / 1000
+	clock = Time.get_ticks_usec()
 	if mode == "turn":
 		_never_meet()
+	begin_took["sweeps"] = (Time.get_ticks_usec() - clock) / 1000
+	clock = Time.get_ticks_usec()
 	if mode == "turn":
 		for key: int in moving:
 			var brick: BrickWorld.Brick = world.get_brick(key)
@@ -230,6 +255,7 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
 	_gears()
+	begin_took["gears"] = (Time.get_ticks_usec() - clock) / 1000
 	placed = rest.duplicate()
 	said = "%s %s" % [bodies.named(moving_bodies), link.words()]
 	return state
@@ -334,6 +360,7 @@ func _gears() -> void:
 			joint = turning_on
 			break
 	if joint == null:
+		gear_note = "no gear of it turns on this joint's line in the gear reading"
 		mechanism = null
 		return
 	var solved: Dictionary = mechanism.solve({driven: 1.0})
@@ -341,6 +368,7 @@ func _gears() -> void:
 		# Gears that fight lock it, and are named. A lock no one mesh makes is
 		# Mechanism's reading of a loop of pins elsewhere in a big model, not
 		# of these gears: moved on its joint, its gears left where they are.
+		gear_note = "the gear reading says: %s" % str(solved["said"])
 		if bool(solved["locked"]) and not (solved["culprits"] as Array).is_empty():
 			_refuse("locked", "%s will not turn: its gears lock (%s)." % [bodies.named(moving_bodies),
 				", ".join(PackedStringArray(solved["culprits"]))])
@@ -348,11 +376,15 @@ func _gears() -> void:
 		return
 	_driver = driven
 	_drive_sign = 1.0 if joint.way.dot(axis) > 0.0 else -1.0
-	var turned: Dictionary = mechanism.pose(0.7)
-	for key: int in turned:
-		if moving.has(key) or not mechanism.rest.has(key):
+	# What turns: every body the solve gives a spin, its parts; not the whole
+	# model posed to find them (1,300 parts at the press).
+	for one: int in mechanism.bodies:
+		if one == mechanism.ground or mechanism.floating.has(one) \
+				or mechanism.omega(one).length() <= 1e-6:
 			continue
-		if not Grab._same(turned[key], mechanism.rest[key]):
+		for key: int in mechanism.bodies[one]:
+			if moving.has(key) or not mechanism.rest.has(key):
+				continue
 			coupled[key] = true
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
@@ -408,10 +440,24 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 ## Whether every part that moves has room at [param at]: nothing in the
 ## way but what it is joined to, and nothing through the floor.
 func has_room(at: Dictionary) -> bool:
+	return _test(at, 0, INF).x == 1
+
+
+## Test [param at] from the [param from]th moving part on, for at most
+## [param budget] ms: Vector2i(1 room, 0 none, -1 out of time; the part to
+## go on from).
+func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	var started: int = Time.get_ticks_usec()
 	tests += 1
-	var free: bool = true
-	for key: int in moving:
+	var keys: Array = moving.keys()
+	var result: int = 1
+	var n: int = from
+	while n < keys.size():
+		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
+			result = -1
+			break
+		var key: int = keys[n]
+		n += 1
 		if _on_the_line.has(key):
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(key)
@@ -421,7 +467,7 @@ func has_room(at: Dictionary) -> bool:
 		var to: Transform3D = at[key]
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
-			free = false
+			result = 0
 			break
 		# Its box first: nothing but what it may press on anywhere near it,
 		# and its turned cover is not worked out at all. A sail turning in
@@ -430,19 +476,47 @@ func has_room(at: Dictionary) -> bool:
 			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
 		var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
+		# What it overlapped where it stood is not in its way: forgiven and
+		# asked again.
+		while not hit.is_empty() and _overlapped_at_rest(int(hit[0])):
+			skip[int(hit[0])] = true
+			hit = builder.lattice.blockers_boxes(packed, 0, skip)
 		if not hit.is_empty():
 			blocked_by = [key, int(hit[0])]
-			free = false
+			result = 0
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
-	return free
+	return Vector2i(result, n if result == -1 else 0)
+
+
+## Whether [param other] overlapped any part of the moving side where they
+## stood when it was grabbed: the same answer, asked when first met, as
+## asking every moving part at the press, so a turn tested later finds what
+## one tested earlier found.
+func _overlapped_at_rest(other: int) -> bool:
+	if _rest_overlap.has(other):
+		return _rest_overlap[other]
+	var touching: bool = false
+	var boxes: PackedInt32Array = builder.lattice.boxes_of(other)
+	if not boxes.is_empty():
+		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
+			if moving.has(key):
+				touching = true
+				break
+	_rest_overlap[other] = touching
+	return touching
 
 
 ## Every moving part whose sweep all the way round the joint's line, a
 ## cylinder about it as far out as the part reaches, has nothing in it but
 ## what the moving side may press on: put with [member _on_the_line].
 func _never_meet() -> void:
+	var started: int = Time.get_ticks_msec()
 	for key: int in moving:
+		# An aid, not a rule: a big section's sweeps are many and wide, and
+		# the press comes first. What is not looked at is tested as usual.
+		if Time.get_ticks_msec() - started > NEVER_MEET_MS:
+			return
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
@@ -500,10 +574,30 @@ func turn_to(degrees: float) -> float:
 		return angle
 	_wall = NAN
 	var at: Dictionary = transforms_at(wanted)
-	if has_room(at):
+	var room: int = _test(at, 0, budget_ms).x
+	if room != 0:
+		# Room, or not all asked this frame: a big section is shown where the
+		# pointer says and checked when it pauses or is let go
+		# ([method verify_step]), rather than hold the frame.
+		if room == 1 and not unchecked:
+			_checked_angle = wanted
+		else:
+			unchecked = true
 		angle = wanted
 		placed = at
 		stopped = false
+		return angle
+	if budget_ms < INF:
+		# Met something, on a section too big to bisect in a frame: it stays
+		# where it last had room and the stop is found a round a frame
+		# (verify_step), on a pause or at the release.
+		_wall = wanted
+		if not unchecked:
+			_checked_angle = angle
+		unchecked = true
+		_verifying_lo = _checked_angle
+		_verifying_hi = wanted
+		stopped = true
 		return angle
 	var low: float = angle
 	var high: float = wanted
@@ -513,7 +607,7 @@ func turn_to(degrees: float) -> float:
 		1, ROUNDS)
 	for _round: int in rounds:
 		var middle: float = (low + high) * 0.5
-		if has_room(transforms_at(middle)):
+		if _test(transforms_at(middle), 0, budget_ms).x != 0:
 			low = middle
 		else:
 			high = middle
@@ -526,6 +620,52 @@ func turn_to(degrees: float) -> float:
 	placed = transforms_at(angle)
 	stopped = true
 	return angle
+
+
+## One frame's worth of checking a turn shown on trust: the whole section
+## tested where it stands, a [member budget_ms] at a time; if something is in
+## the way, bisected back towards the last turn checked, a round a frame.
+## True once it stands where it has room.
+func verify_step() -> bool:
+	if not unchecked or mode != "turn":
+		unchecked = false
+		return true
+	if _verifying_hi == null:
+		var r: Vector2i = _test(transforms_at(angle), _verify_from, budget_ms)
+		if r.x == -1:
+			_verify_from = r.y
+			return false
+		_verify_from = 0
+		if r.x == 1:
+			unchecked = false
+			_checked_angle = angle
+			return true
+		_verifying_hi = angle
+		_verifying_lo = _checked_angle
+	var hi: float = float(_verifying_hi)
+	if absf(hi - _verifying_lo) < STOP_TO:
+		angle = _verifying_lo
+		placed = transforms_at(angle)
+		_wall = hi
+		_verifying_hi = null
+		unchecked = false
+		stopped = true
+		_checked_angle = angle
+		return true
+	var middle: float = (_verifying_lo + hi) * 0.5
+	var r2: Vector2i = _test(transforms_at(middle), _verify_from, budget_ms)
+	if r2.x == -1:
+		_verify_from = r2.y
+		return false
+	_verify_from = 0
+	if r2.x == 1:
+		_verifying_lo = middle
+	else:
+		_verifying_hi = middle
+	angle = _verifying_lo
+	placed = transforms_at(angle)
+	stopped = true
+	return false
 
 
 ## Slide [param along] LDU from where it was grabbed, along the shaft as far
@@ -632,7 +772,7 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 					mode = "slide"
 	match mode:
 		"turn":
-			turn_to(_pointer_angle(origin, direction, screen))
+			turn_to(_pointer_angle(origin, direction, screen, eye))
 		"slide":
 			slide_to(_pointer_along(origin, direction))
 		"ball":
@@ -641,13 +781,43 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 
 ## Where the pointer says the joint is turned, degrees, unwrapped so a turn
 ## past half way carries on round.
-func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2) -> float:
+func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2,
+		eye: Camera3D = null) -> float:
 	var held: Vector3 = _hold - pivot
 	held -= axis * held.dot(axis)
 	var facing: float = absf(direction.normalized().dot(axis))
-	if held.length() < 1.0 or facing < 0.12:
-		# Edge on, or held on the line itself: up and down the screen turn it.
+	if held.length() < 1.0:
+		# Held on the line itself: up and down the screen turn it.
 		return -(screen.y - _hold_screen.y) * EDGE_ON_RATE
+	if facing < EDGE_ON and eye != null:
+		# Nearly edge on, the plane the held point turns in is a line on the
+		# screen: the turn whose held point is drawn nearest the pointer,
+		# within a half turn of where it is (4096's boom, seen from the side).
+		var best: float = _unwrapped
+		var nearest: float = INF
+		for k: int in range(-36, 37):
+			var trial: float = _unwrapped + float(k) * 2.5
+			var at: Vector3 = Transform3D(Basis.IDENTITY, pivot) \
+				* Transform3D(Basis(axis, deg_to_rad(trial)), Vector3.ZERO) \
+				* Transform3D(Basis.IDENTITY, -pivot) * _hold
+			if eye.is_position_behind(at):
+				continue
+			var gap: float = eye.unproject_position(at).distance_to(screen)
+			if gap < nearest:
+				nearest = gap
+				best = trial
+		for k: int in range(-10, 11):
+			var trial: float = best + float(k) * 0.25
+			var at: Vector3 = Transform3D(Basis.IDENTITY, pivot) \
+				* Transform3D(Basis(axis, deg_to_rad(trial)), Vector3.ZERO) \
+				* Transform3D(Basis.IDENTITY, -pivot) * _hold
+			var gap: float = eye.unproject_position(at).distance_to(screen)
+			if gap < nearest:
+				nearest = gap
+				best = trial
+		_unwrapped = best
+		_last_raw = wrapf(best, -180.0, 180.0)
+		return best
 	# The plane the held point turns in: through it, square to the line.
 	var denom: float = direction.dot(axis)
 	var t: float = (_hold - origin).dot(axis) / denom

@@ -27,6 +27,13 @@ const LEAN := 4.0
 ## Weighed at most this often while dragging, ms: a big model's weighing is
 ## a few milliseconds and the frame comes first.
 const WEIGH_EVERY_MS := 50
+## The room test's share of a frame, ms: past it a big section is moved on
+## trust and checked when the pointer pauses or lets go (Grab.verify_step).
+const FRAME_BUDGET_MS := 10.0
+## More parts than this moving is a big section.
+const BIG_SECTION := 40
+## A pause this long, ms, is when a turn moved on trust is checked.
+const PAUSE_MS := 120
 
 var world: BrickWorld
 var builder: Builder
@@ -51,6 +58,7 @@ var frames: int = 0
 ## and weighing.
 var worst_follow_ms: float = 0.0
 var worst_weigh_ms: float = 0.0
+var worst_settle_ms: float = 0.0
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
 var _judge: Balance = null
@@ -60,6 +68,9 @@ var _weighed_at: int = 0
 var _said: String = ""
 var _total_ms: float = 0.0
 var _leaning: bool = false
+var _moved_at: int = 0
+## A grab let go while its turn was still being checked: kept once it is.
+var _settling: Grab = null
 
 
 ## A drag began on [param brick_id] at [param screen]. True when the drag
@@ -78,10 +89,20 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 	grab.builder = builder
 	grab.library = library
 	if not is_ready():
+		# A big model is read on a worker; a press before it is done waits
+		# for it rather than hold the window for seconds.
+		if world.brick_count() >= READY_OFF_THREAD_FROM and not OS.has_feature("nothreads"):
+			grab = null
+			say.call("Reading how this model's parts are joined… a moment, then drag again.")
+			last_words = "reading"
+			return true
 		_ready_now()
 	grab.bodies = _bodies
 	grab.shared_mechanism = _mechanism
 	var state: String = grab.begin(brick_id, at, selection)
+	# A section this big is tested within a frame's share, and checked fully
+	# on pauses and at the release; a smaller one is bisected at once.
+	grab.budget_ms = FRAME_BUDGET_MS if grab.moving.size() > BIG_SECTION else INF
 	if state == "rigid":
 		grab = null
 		return false
@@ -90,6 +111,7 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 		last_words = grab.why
 		return true
 	worst_ms = 0.0
+	worst_settle_ms = 0.0
 	worst_follow_ms = 0.0
 	worst_weigh_ms = 0.0
 	_total_ms = 0.0
@@ -119,8 +141,11 @@ func motion(screen: Vector2) -> void:
 		report = _judge.weigh_pose(grab.placed)
 		_show(report, true)
 		worst_weigh_ms = maxf(worst_weigh_ms, float(Time.get_ticks_usec() - weighing) / 1000.0)
+	_moved_at = Time.get_ticks_msec()
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
-	if grab.stopped:
+	if grab.unchecked:
+		line += " — too big to test every frame: checked when you pause"
+	elif grab.stopped:
 		line += " — stopped: it meets the model"
 	if report != null and not report.empty:
 		line += " · " + _standing_words(report, true)
@@ -141,7 +166,24 @@ func release() -> String:
 	grab = null
 	if held.state != "moves":
 		return held.why
-	var swung: String = held.settle()
+	if held.unchecked:
+		# Checked a frame at a time from here (_process), then kept.
+		_settling = held
+		say.call("%s — checking where it stops…" % _capital(held.said))
+		return "checking"
+	return _keep(held)
+
+
+## Keep a grab let go: settle what swings, one step to undo, and say how the
+## model stands.
+func _keep(held: Grab) -> String:
+	if not held.settled:
+		held.settled = true
+		held.swung = held.settle()
+		if held.unchecked:
+			_settling = held
+			return "checking"
+	var swung: String = held.swung
 	world.set_drawn({})
 	_unlean()
 	var moved: int = held.commit(held.step_words())
@@ -169,6 +211,7 @@ func release() -> String:
 
 ## Escape, or the drag lost: everything back where it was, nothing kept.
 func cancel() -> void:
+	_settling = null
 	if grab == null:
 		return
 	grab = null
@@ -403,7 +446,26 @@ var _told_page_at: int = 0
 
 func _process(_delta: float) -> void:
 	_ready_ahead()
+	# A big section moved on trust: checked while the pointer rests, and,
+	# let go, before it is kept.
+	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
+		grab.verify_step()
+		world.set_drawn(grab.placed)
+	if _settling != null:
+		var started: int = Time.get_ticks_usec()
+		var done: bool = _settling.verify_step()
+		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - started) / 1000.0)
+		world.set_drawn(_settling.placed)
+		if done:
+			var held: Grab = _settling
+			_settling = null
+			_keep(held)
 	_tell_page()
+
+
+## Whether a grab let go is still being checked before it is kept.
+func is_settling() -> bool:
+	return _settling != null
 
 
 # -- ready ahead of the press ------------------------------------------------------
