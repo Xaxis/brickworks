@@ -143,6 +143,8 @@ var _use_library: bool = true
 ## The bundled primitives are the same in every build, so they are parsed
 ## once, here, and nothing else is kept here.
 static var _bundled: Dictionary = {}
+## Parts are built on worker threads too (CustomParts.take_from).
+static var _bundled_lock := Mutex.new()
 
 
 static func normalise(name: String) -> String:
@@ -153,8 +155,12 @@ func _source_for(name: String) -> Source:
 	var key: String = normalise(name)
 	if _parsed.has(key):
 		return _parsed[key]
-	if _bundled.has(key) and not _given.has(key):
-		return _bundled[key]
+	if not _given.has(key):
+		_bundled_lock.lock()
+		var kept: Source = _bundled.get(key)
+		_bundled_lock.unlock()
+		if kept != null:
+			return kept
 	var text: String = ""
 	var bundled: bool = false
 	if _given.has(key):
@@ -170,7 +176,9 @@ func _source_for(name: String) -> Source:
 	var source: Source = parse(text, key)
 	_parsed[key] = source
 	if bundled:
+		_bundled_lock.lock()
 		_bundled[key] = source
+		_bundled_lock.unlock()
 	return source
 
 
@@ -2612,15 +2620,28 @@ static func _bottom_sockets(grid: Grid) -> Array:
 ## [param library] lets references resolve into vendor/ldraw where a
 ## checkout has it. [param cover]: a part whose collision cover and
 ## underside this one is, for a print, which is that part to the triangle.
+## Without [param meshed] the geometry is encoded but not made a mesh
+## ([member Result.mesh] null), which may be done off the main thread; the
+## caller makes it ([method with_mesh]).
 static func build(text: String, id: String, others: Dictionary = {},
-		library: bool = true, cover: Lbm.PartMesh = null) -> Result:
+		library: bool = true, cover: Lbm.PartMesh = null, meshed: bool = true) -> Result:
 	var forge := PartForge.new()
 	forge._use_library = library
-	return forge._build(text, id, others, cover)
+	return forge._build(text, id, others, cover, meshed)
+
+
+## [param built], built without its mesh ([method build]), with it made.
+static func with_mesh(built: Result) -> Result:
+	if not built.problem.is_empty() or built.mesh != null:
+		return built
+	built.mesh = Lbm.parse(built.lbm, built.id)
+	if built.mesh == null:
+		built.problem = "the geometry did not encode"
+	return built
 
 
 func _build(text: String, id: String, others: Dictionary,
-		cover: Lbm.PartMesh = null) -> Result:
+		cover: Lbm.PartMesh = null, meshed: bool = true) -> Result:
 	var result := Result.new()
 	result.id = id
 	var key: String = normalise(id + ".dat")
@@ -2686,7 +2707,4 @@ func _build(text: String, id: String, others: Dictionary,
 
 	result.lbm = encode(surfaces, result.bounds_min, result.bounds_max,
 		result.connectors, result.boxes, result.sockets)
-	result.mesh = Lbm.parse(result.lbm, id)
-	if result.mesh == null:
-		result.problem = "the geometry did not encode"
-	return result
+	return with_mesh(result) if meshed else result

@@ -16059,18 +16059,17 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 
 
 func _work_out_corner(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
-	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-	var hi := -lo
-	for cell: Vector3i in builder._cells_for(part, Transform3D(basis, Vector3.ZERO)):
-		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
-		hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
-	if lo.x == 0x7FFFFFFF:
-		lo = Vector3i.ZERO
+	# The corner and far corner of its cells, from its boxes (Builder._cell_span).
+	var span: Array = builder._cell_span(part, Transform3D(basis, Vector3.ZERO))
+	if span.is_empty():
+		return Vector3i.ZERO
+	var lo: Vector3i = span[0]
+	var hi: Vector3i = span[1]
 	# Upright or upside down only. On its side a part's height runs across,
 	# and that is measured in plates, not studs. And not a minifigure's: a
 	# skeleton's neck stud sits on a line and its arms reach past its legs,
 	# and a figure is put together by its own transforms, not on studs.
-	elif absf((basis * Vector3.UP).y) > 0.99 and not _figure_part(part_id):
+	if absf((basis * Vector3.UP).y) > 0.99 and not _figure_part(part_id):
 		lo.x = _footprint_start(part, basis, 0, lo.x, hi.x + 1)
 		lo.z = _footprint_start(part, basis, 2, lo.z, hi.z + 1)
 	return lo

@@ -420,6 +420,84 @@ nothing changes. Main at 63cab62 fails six of them: the move 13.1x, its redo
 11.8x, Delete's undo 14.2x, ten steps 11.8x, 29 asks in a turn, and the
 page's answer worked out at every asking.
 
+### Big files open in seconds (2026-10-16, later)
+
+Opening 42082-1 (a Technic crane: 4,139 parts shown, parts of its own
+carried in the file, an LDCad rope) took 18 s headless; Studio opens it in
+seconds. `ModelStore.open_text` now keeps what each phase took
+(`open_phases`), and `bigmodel_probe.gd -- --open` opens a file and nothing
+else, `--dump` writing the world it opened part by part. Each file's first
+open in a fresh process (the parts it carries built, as for a person opening
+it), headless at load 25 to 45, main (e502c58) and this branch run side by
+side, in ms (`bench/results/openspeed-2026-10-16/final-*.log`):
+
+| phase | 75969-1 (925 parts) | 42082-1 (4,139 parts) |
+|---|---|---|
+| reading the file (`LdrModel.parse`) | 66 → 19 | 763 → 240 |
+| building the parts it carries | 1,098 → 296 | 1,854 → 847 |
+| putting the parts down: drawn, covers, lattice | 880 → 240 | 6,806 → 1,857 |
+| everything else in `open_text` | 22 → 24 | 130 → 129 |
+| the bar's opened handlers | 716 → 52 | 4,035 → 128 |
+| **open, until it settles** | **2,827 → 677** | **13,687 → 3,314** |
+| opened again, the carried parts built (the quicker of two) | 550 → 217 | 4,365 → 1,313 |
+
+Main's own run of the same probe, earlier in the day, was 18.0 s for
+42082-1 (load 40 to 60); across this unit's runs main took 10.6 to 13.7 s
+and this branch, as committed, 3.2 to 3.3 s. Where it went, and what changed:
+
+- **One handler of the bar's opened, 3 to 4.9 s, was the offer to seat
+  old models' parts** (`SeatOffer.check`, `Seating.misplaced`). Not its walk
+  over the parts: for each part and turn it found the corner of the part's
+  cover by making every cell of it (`Builder._cells_for`), once in Seating
+  and once in `Assistant._corner_cell`, and a Technic part's cover is
+  thousands of cells. The corner now comes from the cover's boxes
+  (`Builder._cell_span`); on every part of both files in all 24 turns and
+  the file's own, at four places, on and off the lattice, it is the same
+  corner (37,000 of 37,000).
+- **Putting the parts down was the turned parts' covers.** A part off the
+  24 turns has its cover worked out cell by cell (`BrickLattice
+  .cells_for_turned`): 510 covers and 1.27 million cells on 42082-1, 5.4 s of
+  the 6.3 s it spent placing. They are the same covers by the same code,
+  now set going on the engine's worker threads as each part is read and
+  worked out while the parts are drawn (`Builder.prepare_covers`,
+  `finish_covers`). And a part's cover is worked out once for each part
+  and turn, with its bound and rows, and moved to where each part stands
+  (`Builder.register`, `BrickLattice.occupy_moved`). Making the cell walk
+  itself cheaper, by line rather than by cell or skipping lines a thin box
+  never reaches, gave the same cells no faster, and was left out.
+- **The parts a file carries were built one after another**, each made and
+  voxelised in GDScript (`PartForge`): 28 of 42082-1's, 15 parts and the
+  subparts and primitives they are drawn from, the biggest (24121) half a
+  second alone. They are built all at once on worker threads now,
+  their meshes made on the main thread (`CustomParts._built_at_once`); the
+  parts kept from files opened before are built the same way when the app
+  starts (`CustomParts.load_all`).
+- **Reading split every line a character at a time** (`LdrModel._fields`):
+  now the engine's split, the same fields on all 62,532 lines of both files,
+  as written and trimmed.
+
+Nothing is lost. The world each file opened into, written part by part
+(number, colour, transform, sub-model path, step, lattice cover, and the
+store's title, unshown parts, lift, floor and set, the sub-models' steps and
+the undo history), is byte for byte main's for both files. A build without
+threads (the "Web (no threads)" export) works the covers and the carried
+parts out on its one thread, as before; it gets the seat offer, the moved
+covers and the reading. The browser's open was not measured here.
+
+The probe (`bigmodel`, in `tools/check.sh`) now also opens the two sets,
+where the checkout has `vendor/omr`, each once and first: 42082-1 must open
+whole and take no more than LINEAR's share of its 4.5 times the parts (at
+most 8.0x). This branch: 4.5x (693 ms and 3,094 ms); main 5.3x (1,968 ms and
+10,478 ms), run side by side.
+
+Found on the way, and left: **the engine dumps core as it quits after
+opening any file that carries parts of its own** (75969-1 and 42082-1 every
+time, on main as on this branch; 4883-1, which carries none, never; not
+under gdb, and not mended by emptying PartForge's cache of parsed primitives,
+waiting 600 frames, or not freeing the window first). On the desktop that is
+a crash as the app closes. The check opens the sets in a process of its own
+so it can say so rather than fail on it.
+
 ## 3. Building a real set from its steps
 
 **What was run.** Three small sets chosen by the same hash: 5762-1 Plane (52

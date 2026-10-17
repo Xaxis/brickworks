@@ -82,28 +82,12 @@ static func modified_text(library: PartLibrary, edit: PartEditor.Edit) -> Dictio
 
 ## Add a part from its LDraw text: built, registered and, with [param
 ## keep], written to [member dir]. [param others] are files it may draw on
-## from the same model file.
+## from the same model file. [param built]: the part built already
+## ([method _built_at_once]), or null to build it here.
 static func add(library: PartLibrary, text: String, id: String, keep: bool = true,
-		others: Dictionary = {}) -> Dictionary:
-	# A print drawn here carries pictures (PartPrints): from the model file
-	# it came in, or kept beside it.
-	var pictures: Dictionary = {}
-	var sources: Dictionary = {}
-	for name: String in others:
-		if others[name] is PackedByteArray:
-			pictures[name.to_lower()] = others[name]
-		else:
-			sources[name] = others[name]
-	var built: PartForge.Result
-	if PartPrints.has_pictures(text):
-		for name: String in PartPrints.pictures_named(text):
-			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
-				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
-			if pictures.has(name.to_lower()):
-				pictures[name] = pictures[name.to_lower()]
-		built = PartPrints.build(text, id, pictures, library)
-	else:
-		built = PartForge.build(text, id, sources)
+		others: Dictionary = {}, built: PartForge.Result = null) -> Dictionary:
+	if built == null:
+		built = _built(library, text, id, others)
 	if not built.problem.is_empty():
 		return {"id": id, "problem": built.problem}
 	var base: String = PartPrints.base_in(text)
@@ -127,6 +111,31 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 				picture.store_buffer(built.mesh.print_files[name])
 				picture.close()
 	return {"id": id, "problem": ""}
+
+
+## A part built from its LDraw text, as [method add] builds it.
+static func _built(library: PartLibrary, text: String, id: String,
+		others: Dictionary) -> PartForge.Result:
+	# A print drawn here carries pictures (PartPrints): from the model file
+	# it came in, or kept beside it.
+	var pictures: Dictionary = {}
+	var sources: Dictionary = {}
+	for name: String in others:
+		if others[name] is PackedByteArray:
+			pictures[name.to_lower()] = others[name]
+		else:
+			sources[name] = others[name]
+	var built: PartForge.Result
+	if PartPrints.has_pictures(text):
+		for name: String in PartPrints.pictures_named(text):
+			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
+				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
+			if pictures.has(name.to_lower()):
+				pictures[name] = pictures[name.to_lower()]
+		built = PartPrints.build(text, id, pictures, library)
+	else:
+		built = PartForge.build(text, id, sources)
+	return built
 
 
 ## What the catalogue would say about a built part.
@@ -159,12 +168,15 @@ static func load_all(library: PartLibrary) -> int:
 	var found: int = 0
 	if not DirAccess.dir_exists_absolute(dir):
 		return 0
+	var texts: Dictionary = {}
 	for file_name: String in DirAccess.get_files_at(dir):
-		if not file_name.ends_with(".dat"):
-			continue
+		if file_name.ends_with(".dat"):
+			texts[file_name] = FileAccess.get_file_as_string(dir + file_name)
+	var built: Dictionary = _built_at_once(texts, {})
+	for file_name: String in texts:
 		var id: String = file_name.get_basename()
-		var result: Dictionary = add(library,
-			FileAccess.get_file_as_string(dir + file_name), id, false)
+		var result: Dictionary = add(library, texts[file_name], id, false, {},
+			built.get(file_name))
 		if str(result["problem"]).is_empty():
 			found += 1
 		else:
@@ -179,6 +191,12 @@ static func load_all(library: PartLibrary) -> int:
 static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	var added: PackedStringArray = PackedStringArray()
 	var problems: PackedStringArray = PackedStringArray()
+	# Everything a part may be drawn from: the other parts, and the subparts
+	# and primitives the file carries for them (LdrModel.embedded_sources).
+	var carried: Dictionary = model.embedded_parts.duplicate()
+	carried.merge(model.embedded_sources)
+	carried.merge(model.embedded_data)
+	var wanted: PackedStringArray = PackedStringArray()
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
 		var text: String = model.embedded_parts[file_name]
@@ -192,19 +210,62 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
 		if id.begins_with("bl_") and plain != null and not plain.custom:
 			continue
-		# Everything it may be drawn from: the other parts, and the subparts
-		# and primitives the file carries for them (LdrModel.embedded_sources).
-		var carried: Dictionary = model.embedded_parts.duplicate()
-		carried.merge(model.embedded_sources)
-		carried.merge(model.embedded_data)
+		wanted.append(file_name)
+	var texts: Dictionary = {}
+	for file_name: String in wanted:
+		texts[file_name] = model.embedded_parts[file_name]
+	var built: Dictionary = _built_at_once(texts, carried)
+	for file_name: String in wanted:
+		var id: String = file_name.get_basename()
+		var text: String = model.embedded_parts[file_name]
 		var result: Dictionary = add(library, text, id,
-			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried)
+			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried,
+			built.get(file_name))
 		if str(result["problem"]).is_empty():
 			added.append(id)
 			drawn_from[id] = needs(text, model.embedded_sources)
 		else:
 			problems.append("%s: %s" % [id, result["problem"]])
 	return {"added": added, "problems": problems}
+
+
+## The parts [param texts] holds (file name -> LDraw text), drawn from
+## [param others] as [method add] has them, built all at once on the
+## engine's worker threads as [method add] would build each, their meshes
+## made here: file name -> PartForge.Result. Built one after another they
+## were most of opening a file that carries parts (42082-1: 1.8 s of 4.3),
+## and of starting the app after opening one ([method load_all]). A print is
+## left out (PartPrints builds it with the library), and so is everything on
+## a build without threads.
+static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
+	if texts.size() < 2 or (OS.has_feature("web") and not OS.has_feature("threads")) \
+			or OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return {}
+	var sources: Dictionary = {}
+	for name: String in others:
+		if not others[name] is PackedByteArray:
+			sources[name] = others[name]
+	var plain: PackedStringArray = PackedStringArray()
+	for file_name: String in texts:
+		if not PartPrints.has_pictures(texts[file_name]):
+			plain.append(file_name)
+	if plain.size() < 2:
+		return {}
+	var made: Array = []
+	made.resize(plain.size())
+	var writing := Mutex.new()
+	var task: int = WorkerThreadPool.add_group_task(func(n: int) -> void:
+		var result: PartForge.Result = PartForge.build(texts[plain[n]],
+			plain[n].get_basename(), sources, true, null, false)
+		writing.lock()
+		made[n] = result
+		writing.unlock(),
+		plain.size(), -1, true, "carried parts")
+	WorkerThreadPool.wait_for_group_task_completion(task)
+	var out: Dictionary = {}
+	for n: int in plain.size():
+		out[plain[n]] = PartForge.with_mesh(made[n])
+	return out
 
 
 ## The subparts and primitives a part a model file carried is drawn from,

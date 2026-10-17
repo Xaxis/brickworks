@@ -374,21 +374,13 @@ static func _key(name: String) -> String:
 	return text
 
 
-## The fields of a line, split on any run of whitespace.
+## The fields of a line, split on any run of whitespace (space, tab, a
+## carriage return). By the engine's split: a character at a time here, it
+## was most of reading a big file (42082-1, 2.6 MB: 0.6 to 0.9 s).
 static func _fields(line: String) -> PackedStringArray:
-	var out := PackedStringArray()
-	var token: String = ""
-	for n: int in line.length():
-		var c: String = line[n]
-		if c == " " or c == "\t" or c == "\r":
-			if not token.is_empty():
-				out.append(token)
-				token = ""
-		else:
-			token += c
-	if not token.is_empty():
-		out.append(token)
-	return out
+	if line.contains("\t") or line.contains("\r"):
+		line = line.replace("\t", " ").replace("\r", " ")
+	return line.split(" ", false)
 
 
 static func to_transform(v: PackedFloat64Array) -> Transform3D:
