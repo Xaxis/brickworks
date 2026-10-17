@@ -449,7 +449,10 @@ picture the assistant is shown.
   find its own change by looking rather than by re-reading coordinates. Framed
   on every staged part's corners and the ruler's ends, the camera slid to their
   middle (`ModelShot._staged_corners`; `centring_probe` checks the car, Orthanc
-  and an L within 2%: an L framed on its box sat 3% high). The stage
+  and an L within 2%: an L framed on its box sat 3% high). Lit by a key and a
+  fill, the fill without a glint (`highlight_probe`, windowed: no view more than
+  2% pale; with the engine's glint the front left one drew dark stud tops white,
+  2.3%). The stage
   is a copy of the world — the model keeps the colours it was given. It is
   staged again only when the world's `revision`, what is left out or what is
   picked out changed (`ModelShot._restage`, a slice a frame by `FramePace`
