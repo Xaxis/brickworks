@@ -332,7 +332,7 @@ var laps: Array = []
 
 func _lap(what: String, since: int) -> int:
 	var now: int = Time.get_ticks_usec()
-	laps.append([what, snappedf((now - since) / 1000.0, 0.1)])
+	laps.append([what, snappedf((now - since) / 1000.0, 0.1), Time.get_ticks_msec()])
 	return now
 
 
@@ -418,6 +418,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 		for n: int in groups[c]:
 			made.ids.append((bricks[n] as BrickWorld.Brick).id)
 		suggested.append(made)
+	var at: int = _lap("suggestions set up", began)
 	# What joins each to the rest, and which way it comes off.
 	var sits: Dictionary = {}      ## section -> it stands on another's studs
 	var carries: Dictionary = {}   ## section -> another stands on its studs
@@ -451,6 +452,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 		if pace.due():
 			await pace.next()
 		tally.call(key, false)
+	at = _lap("joins tallied, over frames", at)
 	# What each is built onto: what its parts need first, as the planner has it.
 	var needs: Dictionary = cut["needs"]
 	for brick_id: int in needs:
@@ -466,6 +468,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 					if not onto.has(c):
 						onto[c] = {}
 					onto[c][d] = true
+	at = _lap("what each is built onto", at)
 	# Built in turn: each after every one it needs, the earliest begun first
 	# among those ready; a loop of needs is taken where it begins.
 	var order: Array = []
@@ -512,6 +515,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 	suggested = renumbered
 	groups = new_groups
 	onto = new_onto
+	at = _lap("put in turn", at)
 	for c: int in groups.size():
 		if pace.due():
 			await pace.next()
@@ -523,6 +527,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 			made.onto.append(other + 1)
 		made.onto.sort()
 		made.name = _name(made, box, model_box, bricks, groups[c], names_taken)
+	at = _lap("named, over frames", at)
 	for apart: Array in [[figures, "Minifigures" if figures.size() > 8 else "Minifigure"],
 			[loose, "Loose parts"]]:
 		var members: Array = apart[0]

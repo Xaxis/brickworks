@@ -45,9 +45,11 @@ func suggest() -> String:
 	var job: Working.Job = Working.begin("Suggesting sections…", Sections.PHASES, true)
 	await job.shown()
 	var made: Array = await sections.suggest(job)
+	var ending: int = Time.get_ticks_usec()
 	job.end()
 	if shell.outliner != null and not shell.outliner.is_open():
 		shell.outliner.set_open(true)
+	sections._lap("said", ending)
 	var said: String
 	if made.is_empty():
 		said = sections.why_none
@@ -511,7 +513,8 @@ func page_state() -> Dictionary:
 			evaluated[key] = last_evaluation[key]
 	return {"suggested": suggested, "why_none": sections.why_none, "out": out,
 		"exploded": snappedf(_share, 0.01), "apart": _apart_count if is_exploded() else 0,
-		"evaluated": evaluated, "report_open": is_showing(), "pose": pose()}
+		"evaluated": evaluated, "report_open": is_showing(), "pose": pose(),
+		"laps": sections.laps}
 
 
 ## Where every part stands, in short: the same string for the same places

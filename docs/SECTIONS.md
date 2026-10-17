@@ -86,12 +86,25 @@ frames were drawn meanwhile. On this box, loaded to 40, the longest of
 them was 94 to 142 ms, as long as idle frames of the same model were (69
 to 173 ms). Over MCP the call becomes a job past 20 s, as every tool does.
 
-In a browser (a local export drawn in software, on this loaded box) the
-same model took 122 s, and the page drew on through it, but not well
-enough: one frame of 7.3 s near the end of the worker's run, and 49 over
-100 ms, against idle frames of at most 99 ms. Many of those came after,
-every half second, from the page being told where the tree's rows are a
-row at a time; that is one walk of the tree now, not measured since.
+In a browser (a local export drawn in software, on this loaded box),
+`tools/web/sections_flow.mjs --timing` on 10179-1, counting from the press
+of Suggest sections, with the same page idle first, model tree open:
+
+| | Took | Longest frame of the app's own work | Frames over 100 ms |
+|---|---|---|---|
+| before (2026-10-17, 02:59) | 122 s, counted from before the button was found | 7,299 ms | 49 |
+| the rows walked once (f303a3b) | 30 s | 146 ms | 4, against 0 idle with the tree folded |
+| the rows kept until the tree changes | 44 s | 271 ms | 5, against 1 in 15 s idle |
+
+The 7.3 s frame came the moment the tree, with 10179-1's 392 sub-assembly
+rows, was open and in view, not at the end of the worker's run: the page
+was told where each row is by asking the tree for it a row at a time, each
+a search of the whole tree, twice a second. The CPU profile cannot name a
+GDScript function (the page's thread is WebAssembly and WebGL calls); the
+moment, the laps of the window's own work (none over 51 ms) and its going
+away with the rows walked once say what it was. What is left over 100 ms
+is the press itself (271 ms: the Working bar shown and the parts found)
+and the frame the model and its lattice are copied in for the worker.
 
 ## The exploded view
 
