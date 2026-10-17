@@ -604,6 +604,22 @@
       "tests": []
     },
     {
+      "id": "cli:placing in a browser",
+      "kind": "cli",
+      "entry": "tools/web/placing_flow.mjs",
+      "reach": "node --env-file=.env tools/web/placing_flow.mjs --url=http://127.0.0.1:8931/ --out=<dir> [--only=edge,parts,balance]  (after PARTS_URL=x tools/export.sh web and tools/web/serve.py build/web 8931 --parts assets/generated/parts: the ghost's pose against the part a click put down, brickworksState.ghost_pose and .put)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:placing probe",
+      "kind": "cli",
+      "entry": "src/dev/placing_probe.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/placing_probe.gd  (each click sent as a browser sends one: 35 across a plate's edge, a clip plate, a bar in its clip, a hinge, slopes, a pin in a hole and 8841-1's Technic plates swung onto their axle, each put where its ghost stood; -- only=edge|parts|balance)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:prints and stickers in a browser",
       "kind": "cli",
       "entry": "tools/web/studio_flow.mjs",

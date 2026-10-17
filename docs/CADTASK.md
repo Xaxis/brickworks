@@ -23,7 +23,7 @@ so the two are like for like, and then measured.
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
 | ...seconds a part | modelled 8.3 to 9.2, or 9.8 to 11.4 with the steps marked | modelled 10.1 to 10.6, or 10.3 to 11.3 |
-| ...what cannot be built through the interface | both clip plates of the plane's step 4; 6157, whose number does not bring it first in the search; the old greys, by their swatch; parts off the 24 turns | not measured |
+| ...what cannot be built through the interface | both clip plates of the plane's step 4; 6157, whose number does not bring it first in the search; the old greys, by their swatch; parts off the 24 turns. *Since: the clip plates, a browser click where its ghost stood, and 8841-1's plates off the 24 turns swung onto their joints (sections 4 and 5)* | not measured |
 
 **The answer to "why this and not Studio" is not yet "it is as faithful".**
 A Studio builder's file does not come back as they wrote it, and building a
@@ -608,11 +608,119 @@ steps it is about 4% slower than before (9.58, 8.56 and 8.67 s), the old
 greys' names typed in full, which is the most a person types: the line over
 the palette names the first match, and the flow typed 7 to 9 letters.
 
+## 5. What the ghost shows is where the part goes (2026-10-16, later still)
+
+**Why a click in the browser put the clip plates a stud forward.** A click
+aims before it puts, since a finger has no move before it. Godot reads a
+move from the browser's `pointermove`, to the fraction of a CSS pixel, and a
+press or release from `mousedown` and `mouseup`, whose `clientX` Chrome cuts
+to the whole pixel (measured: a move to 100.6 is a press at 100, at device
+pixel ratios 1, 1.25 and 2). So the click was aimed up to a pixel up and
+left of where the ghost had been aimed. On the edge of a face it struck the
+face beside; against a side, where the place steps by 2 LDU, the next step.
+The desktop's moves and presses come in the same whole pixels, so it never
+showed there, and a person's mouse on a high-density screen (most laptops)
+meets it just as the flow did. The smallest case, one 4081b over the front
+edge of a 2 x 2 plate with the pointer stepped across the edge a third of a
+pixel at a time (`tools/web/placing_flow.mjs`, `bench/results/placing-2026-10-16`):
+
+| | clicks that put a clip plate down | somewhere other than its ghost |
+|---|---|---|
+| before | 35 | **16**: a stud forward and 2 LDU up, as the plane's were, and 2 LDU along a side |
+| after | 35 | 0 (one more read the page's ghost before the part had arrived; below) |
+
+**The fix** (`Main._true_point`): a press, a release, the system's pointer
+and a part let go from the bin within a CSS pixel of the last move are taken
+at that move's place. Every place a put-down was aimed apart from its ghost
+goes through it: the click that puts the part in hand down, the drop of a
+part dragged out of the bin or carried, Shift-click, Alt-click's pick, the
+Select tool's click, the right click's menu, and the ghost re-aimed after a
+key, a fetched part or a closed box (`Main._pointer`, `Main._pointed`).
+Nothing else computes a put-down apart from its ghost: `Builder.place`,
+the carried group's and the minifigure's put the transform the ghost shows.
+
+**And a ghost left behind, on the desktop.** A ghost re-aimed with no
+event of its own, as when the part's shape arrives after the pointer has
+moved onto the model, was aimed at the system's pointer, which with a
+probe's events is wherever the real pointer was left. Now it is aimed where
+the app last saw the pointer move or press, unless the system's pointer has
+moved since over a window of the app's own (`Main._pointer`).
+`placing_probe` takes 3022 and 3023 from their tiles and moves onto the
+model in one move and in two: the first case failed before (its ghost 260
+pixels from the pointer) and all four pass. The browser's like case is not
+this one (below).
+
+**Parts off the 24 turns** (`Builder._closings`). A part on something round
+in something round is turned about it to where another of its ends comes
+onto an end of a part down that takes it, as Studio turns a part to fit its
+connections ([its help on snapping](https://studiohelp.bricklink.com/hc/en-us/articles/5412087360919)): found for the person until R or T is pressed, one
+of R's stops on the way round, and where T's next way onto the joint lands.
+8841-1's two 4262s hang from an axle at 66.4 degrees, their lower holes on
+two pins: aimed at its pin, each now stands where the file has it to 0.001
+LDU and 0.0001 of its matrix, the first after one T. Their holes were not
+holes to the app at all: LDraw draws 4262's ends as plain cylinders, so a
+round hole a pin's size through a plate's thickness is now a pin hole, its
+mouth a collar's half further out than a counterbored Technic hole's
+(`JointSnap.ends_of`).
+
+**Proved** on the desktop by `placing_probe` (every click sent as a browser
+sends one): 35 clicks across the edge, all where the ghost stood; the
+plane's two clip plates exactly as the file has them; a bar in a clip, a
+hinge's base and top, two slopes, a Technic brick and a pin in its hole,
+each put where its ghost stood to 0.01 LDU; both 4262s as the file has them.
+In a browser by `tools/web/placing_flow.mjs`: the plane's two clip plates
+put where their ghosts stood and as the file has them; 8841-1's file opened
+up to its plates, each 4262 aimed at its pin as the page says the pin is,
+and put where its ghost stood and as the file has it (after one `T` and two).
+
+**The first aim after a part is taken from its tile, in the browser.** The
+flow's other seven parts (a bar in a clip, a hinge, slopes, a Technic brick
+and a pin) were each taken from the search, the pointer moved onto the
+model in one jump, and the ghost read: every one stood where the jump had
+started, 500 LDU and more off, behind the bin, until the next move, and a
+click put the part under the pointer (this is the "540 to 560 LDU" of
+section 3's failed runs, and the first of the edge's 35 clicks). The page
+received the jump's last move and Godot's own pointer followed it, but the
+app's input never saw it: it went to a window of the app's own, the tile's
+tooltip, up as the pointer left (`diag3`: the app's last move halfway, the
+system's pointer on the model). Now a move the app never saw is followed
+from the system's pointer once the moves stop (`Main._follow_unseen_move`;
+not while a button is down or a menu or a dialog is up).
+
+| browser, `placing_flow.mjs` | the edge's 35 clicks | the seven parts after a take |
+|---|---|---|
+| before | 1 elsewhere (the first) | 0 put where the ghost stood |
+| after (`web5`) | **0 elsewhere** | **4 of 7**; the hinge base and the 2 x 1 slope a stud from their ghosts, and the hinge's top red where the flow aimed it |
+
+The two left are not explained: the ghost followed is aimed at the system's
+pointer, which a browser gives in whole pixels, and the click's own move,
+at the fraction, may aim a stud over; a person's hand moves again before it
+clicks, and the ghost then follows that move exactly.
+
+**The whole plane again** (`cadtask.py build --only 5762-1 --most 0
+--minutes 40`, its flow on an export with the click's fix,
+`bench/results/placing-2026-10-16/plane`), against the run before:
+
+| | tried | put down | exact | steps kept | actions a part | seconds a part |
+|---|---|---|---|---|---|---|
+| before (`buildux-2026-10-16/whole`) | 35 | 16 | 11 | 8 of 8 | 15.7 | 27.2 |
+| after | **52 of 52** | **29** | **29** | 12 of 12 | 15.8 | 47.6 (the box at load 40 to 70) |
+
+Both clip plates and both 1 x 6 plates that then had no room went where the
+file has them, and every part put down is exact. The 23 parts still not
+put down are places off the 2 LDU lattice (6141s at z 63 and 72, 2421 at
+y 35; whole LDU, not even), parts that stand on one of those, 54383/4 and
+41769 the wedge plates of step 5, whose ghosts would not come to their
+place in eight aims, and the propeller (50746) on its 4286. Off-lattice
+places and the wedge plates are the next gaps.
+
 ## The gaps, by how much a builder would feel them
 
 Nothing here was fixed in the unit that found them; 1, 2, 4 (the clip
 plates), 6 and 12 were fixed after (section 4), and 3 had its own (section 2,
 "Big models, after").
+plates), 6 and 12 were fixed after (section 4), and 4's parts off the 24
+turns on a joint after that (section 5).
 
 1. **No "next step" while building.** *Fixed: `E` (section 4).* A builder following a booklet, or
    writing one, puts each step's parts in its own step. Here every step is

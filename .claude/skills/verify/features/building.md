@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
 
 ## Sub-features
 
@@ -524,7 +524,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a hollow stud. The connector aimed at is the one nearest the pointer's
   line, within 12 LDU, and not behind what the line met. `R` turns the part
   about the joint — a cross in a cross by quarters, anything round by 45°
-  or the toolbar's turn step if finer — and `T` takes the next way onto it
+  or the toolbar's turn step if finer, stopping too where it also joins
+  another part (`swung onto a second joint`) — and `T` takes the next way onto it
   (in from the other face, the other way up, the next hole of a beam,
   the other end of a bar). Until either is pressed, the way with room that
   joins the most parts is found (a beam aimed at one of two pins goes on
@@ -553,6 +554,50 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   upright part of the CAD task's three sets against where its file has it
   across the grid: 97 of 140 by the sockets' rule, 87 by the box alone,
   worse for none.
+- `what the ghost shows is where it goes` (`Main._true_point`, 2026-10-16):
+  a click aims before it puts (a finger has no move before it), and in a
+  browser the click was aimed somewhere else: Godot reads a move from the
+  browser's pointermove, to the fraction of a CSS pixel, and a press or
+  release from mousedown and mouseup, whose clientX Chrome cuts to the whole
+  pixel. On the edge of a face, or against a side where the place steps by
+  2 LDU, that put the part other than where its ghost stood: the plane's
+  clip plates a stud forward and 2 LDU up, and 16 of 35 clicks stepped
+  across a plate's edge. A press, a release, the system's pointer (a ghost
+  re-aimed after a key, a fetched part, a closed box) and a part dropped
+  from the bin within a CSS pixel of the last move are taken at that move's
+  place (`Main._pointer`, `Main._pointed`). The page tells the ghost's whole
+  pose and the pose of the last part put down
+  (`brickworksState.ghost_pose`, `.put`), and where the app last saw the
+  pointer and where the system says it is (`.pointer`). A ghost re-aimed with
+  no event of its own (a part's shape arriving, a colour, a key) is aimed
+  where the app last saw the pointer move or press, not at the system's
+  pointer, unless that has moved since over a window of the app's own
+  (`Main._pointer`): with a probe's events, a part whose shape arrived after
+  the move onto the model had its ghost put back 260 pixels off. And a move
+  the app never saw is followed from the system's pointer once the moves
+  stop (`Main._follow_unseen_move`): in a browser the last move off a part's
+  tile went to the tile's tooltip, and the ghost stood 500 LDU off behind the
+  bin until the next move (not while a button is down or a menu or dialog is
+  up; docs/CADTASK.md section 5). Probe: `placing_probe` (a
+  part taken from its tile and moved onto the model in one move and two; each click
+  sent as a browser sends one, the move fractional and the press cut down:
+  35 clicks across the edge, then a clip plate, a bar in its clip, a hinge,
+  slopes, a pin in a hole, and 8841-1's Technic plates; every put-down
+  equal to its ghost to 0.01 LDU). In a browser: `tools/web/placing_flow.mjs`.
+- `swung onto a second joint` (`Builder._closings`, 2026-10-16): a part on
+  something round in something round (a hole on a pin, on an axle's tip) is
+  turned about it to where another of its ends comes onto an end of a part
+  down that takes it, as Studio turns a part to fit its connections: found
+  for the person until R or T is pressed, a stop of R's on the way round,
+  and where `T`'s next way onto the joint lands when it can. 8841-1's two
+  4262s hang from an axle at 66.4 degrees with their lower holes on two
+  pins, off the 24 turns and the whole LDU: aimed at a pin, each stands
+  where the file has it to 0.001 LDU (one with one `T`). A round hole a pin's
+  size through a plate's thickness that LDraw draws as a plain cylinder
+  (4262's steering ends) is a pin hole, its mouth a collar's half out from a
+  Technic hole's (`JointSnap.ends_of`, `COUNTERBORE`). Probe: `placing_probe
+  -- only=balance`; in a browser, `placing_flow.mjs --only=balance` opens the
+  set's file up to its plates and puts both through the interface.
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it
@@ -682,6 +727,19 @@ node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots
 # opening its column, Q bringing the parts bin out, a rail's click switching)
 # — every step a key or a click, with pictures in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
+# what the ghost shows is where the part goes: each click sent as a browser
+# sends one (the move fractional, the press cut to the whole pixel), 35 across
+# a plate's edge, then a clip plate, a bar in its clip, a hinge, slopes, a pin
+# in a hole and 8841-1's 4262s swung onto their axle; every put-down equal to
+# its ghost. Pictures in shots/placing/ (-- only=edge|parts|balance)
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/placing_probe.gd
+# ...and in a browser: the ghost's pose (brickworksState.ghost_pose) against
+# the part each click put down (.put); edge, parts, and 8841-1's file opened up
+# to its plates and both put through the interface
+PARTS_URL=x tools/export.sh web
+python3 tools/web/serve.py build/web 8931 --parts assets/generated/parts --delay 0 &
+node --env-file=.env tools/web/placing_flow.mjs --url=http://127.0.0.1:8931/ --out=shots/placing_web
 # the assistant off: the first run on the parts bin with the model in view and
 # its one button offering the assistant; nothing of AI by name or by text in
 # the window, any menu, the menu on a part, Brick Art, Account, My collection,

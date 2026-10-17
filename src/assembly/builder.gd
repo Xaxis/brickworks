@@ -1646,6 +1646,15 @@ var _joint_words: String = ""
 ## turned about it, as R and T leave them.
 var _joint_way: int = 0
 var _joint_roll: int = 0
+## Degrees about the joint past the roll's steps: where the turn brings
+## another end of the part onto an end of a part down (_closings), which
+## no step reaches. 8841-1's Technic plates hang from an axle at 66.4
+## degrees, their far holes on pins, and were off every turn a part had.
+var _joint_extra: float = 0.0
+## The ways onto the joint and the way the part was held, as the ghost was
+## last worked out from them: what R finds the next stop by.
+var _joint_options: Array = []
+var _joint_basis: Basis = Basis.IDENTITY
 ## Whether R or T has been pressed on this joint. Until one has, the way
 ## that has room and joins the most is found for the person; after, what
 ## they chose is shown, red where it does not fit.
@@ -1709,14 +1718,18 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		_joint_part = held_part
 		_joint_way = 0
 		_joint_roll = 0
+		_joint_extra = 0.0
 		_joint_chosen = false
 	if key != _joint_key:
 		_joint_key = key
+		_joint_extra = 0.0
 		_joint_chosen = false
 	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	_joint_options = options
+	_joint_basis = basis
 	if _joint_asked(key, basis, options) != _joint_last:
 		_joint_last_at = _joint_pose(options, posmod(_joint_way, options.size()),
-			_joint_roll, site, basis)
+			_joint_roll, site, basis, _joint_extra)
 		_joint_last_fits = room_for(held_part, _joint_last_at, true)
 		if not _joint_chosen:
 			_best_on_joint(options, site, basis)
@@ -1739,24 +1752,96 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 ## T have chosen, the turn step, and the first way on (which says which
 ## face is near and where along a bar the pointer is).
 func _joint_asked(key: String, basis: Basis, options: Array) -> String:
-	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
-		_joint_way, _joint_roll, _joint_chosen, turn_step, options[0][1], options[0][2]]
+	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
+		_joint_way, _joint_roll, _joint_extra, _joint_chosen, turn_step, options[0][1],
+		options[0][2]]
 
 
-## The pose for one of the ways onto a joint, turned so many steps.
+## The pose for one of the ways onto a joint, turned so many steps and
+## [param extra] degrees more.
 func _joint_pose(options: Array, way: int, roll: int, site: JointSnap.End,
-		basis: Basis) -> Transform3D:
+		basis: Basis, extra: float = 0.0) -> Transform3D:
 	var option: Array = options[way]
 	var step: float = JointSnap.step_of(option[0], site, turn_step)
 	return JointSnap.pose(option[0], site, int(option[1]), float(option[2]),
-		roll * step, basis)
+		roll * step + extra, basis)
 
 
-## Of the ways onto the joint at each quarter turn, the one with room that
-## joins the most parts, first found on a tie, leaving R and T on it.
-## Bounded, since a long beam has a way for each hole: a quarter turn of
-## each of a dozen of them.
-const _JOINT_TRIES := 48
+## The turns about a round joint, in degrees from the way's own (roll 0),
+## at which another end of the part in hand comes onto an end of a part
+## down that takes it: a Technic plate on a pin swung until its far hole
+## is over an axle, as Studio turns a part to fit its connections. Only
+## about something round in something round (a pin, an axle in a pin
+## hole); a cross turns by quarters, which the steps reach, and a clip
+## slides on its bar.
+func _closings(options: Array, way: int, site: JointSnap.End, basis: Basis) -> Array:
+	var out: Array = []
+	var held_end: JointSnap.End = options[way][0]
+	if held_end.is_round() or JointSnap.step_of(held_end, site, 0.0) == JointSnap.CROSS_STEP:
+		return out
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	if part == null:
+		return out
+	var at: Transform3D = _joint_pose(options, way, 0, site, basis)
+	var axis: Vector3 = site.axis
+	# The ends of the parts it could swing onto: near anywhere it reaches
+	# turned about the joint, the box about the joint grown by its size.
+	var size: float = part.bounds.size.length()
+	var box := AABB(site.at - Vector3.ONE * size, Vector3.ONE * size * 2.0)
+	var reach := PackedInt32Array([floori(box.position.x / BrickLattice.CELL),
+		floori(box.position.y / BrickLattice.CELL), floori(box.position.z / BrickLattice.CELL),
+		ceili(box.end.x / BrickLattice.CELL), ceili(box.end.y / BrickLattice.CELL),
+		ceili(box.end.z / BrickLattice.CELL)])
+	var downs: Array = []
+	for other: int in lattice.near_bounds(reach):
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		if brick == null:
+			continue
+		for end: JointSnap.End in JointSnap.ends_of(library.mesh_for(brick.part_id)):
+			var placed: JointSnap.End = end.placed(brick.transform, other)
+			if absf(placed.axis.dot(axis)) >= 0.999 and not placed.is_round():
+				downs.append(placed)
+	for mine: JointSnap.End in JointSnap.ends_of(part):
+		if mine == held_end or mine.is_round():
+			continue
+		var p: Vector3 = at * mine.at
+		if absf((at.basis * mine.axis).normalized().dot(axis)) < 0.999:
+			continue
+		var from_axis: Vector3 = _off_axis(p - site.at, axis)
+		if from_axis.length() < 1.0:
+			continue
+		for down: JointSnap.End in downs:
+			if not JointSnap.mates(mine, down):
+				continue
+			var to: Vector3 = _off_axis(down.at - site.at, axis)
+			if absf(to.length() - from_axis.length()) > 0.5:
+				continue
+			# Near enough along the axis to meet (an axle's end is its tip,
+			# and it may run a long way through): whether they do is asked
+			# of the joints below.
+			if absf((down.at - p).dot(axis)) > mine.reach + down.reach + BrickLattice.STUD * 4.0:
+				continue
+			var angle: float = fposmod(rad_to_deg(from_axis.signed_angle_to(to, axis)), 360.0)
+			if not out.any(func(a: float) -> bool: return absf(a - angle) < 0.01):
+				out.append(angle)
+	# Only where it does join one more part than on the joint alone.
+	if out.is_empty():
+		return out
+	var alone: int = _joins_made(at)
+	return out.filter(func(angle: float) -> bool:
+		return _joins_made(_joint_pose(options, way, 0, site, basis, angle)) > alone)
+
+
+static func _off_axis(v: Vector3, axis: Vector3) -> Vector3:
+	return v - axis * v.dot(axis)
+
+
+## Of the ways onto the joint at each quarter turn, and turned where the
+## part also joins another end (_closings), the one with room that joins
+## the most parts, first found on a tie, leaving R and T on it. Bounded,
+## since a long beam has a way for each hole: a quarter turn of each of a
+## dozen of them, and where each swings onto another end.
+const _JOINT_TRIES := 64
 
 
 func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
@@ -1768,23 +1853,56 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 		var way: int = posmod(_joint_way + n, options.size())
 		var step: float = JointSnap.step_of(options[way][0], site, turn_step)
 		var quarter: int = maxi(roundi(90.0 / step), 1)
+		# [roll, extra]: the quarters first, so a tie stays square.
+		var turns: Array = []
 		for q: int in 4:
-			if n == 0 and q == 0:
-				continue
+			if not (n == 0 and q == 0):
+				turns.append([_joint_roll + q * quarter, 0.0])
+		for closing: float in _closings(options, way, site, basis):
+			turns.append([0, closing])
+		for turn: Array in turns:
 			tries += 1
 			if tries > _JOINT_TRIES:
 				return
-			var roll: int = _joint_roll + q * quarter
-			var at: Transform3D = _joint_pose(options, way, roll, site, basis)
+			var at: Transform3D = _joint_pose(options, way, int(turn[0]), site, basis,
+				float(turn[1]))
 			if not room_for(held_part, at, true):
 				continue
 			var joins: int = _joins_made(at)
 			if joins > best_joins:
 				best_joins = joins
 				_joint_way = way
-				_joint_roll = roll
+				_joint_roll = int(turn[0])
+				_joint_extra = float(turn[1])
 				_joint_last_at = at
 				_joint_last_fits = true
+
+
+## R on a joint: the next stop about it, a step on, or sooner where the
+## part also joins another end there (_closings). [param by] is +1 or -1.
+func _turn_on_joint(by: int) -> void:
+	if _joint_options.is_empty():
+		_joint_roll += by
+		return
+	var way: int = posmod(_joint_way, _joint_options.size())
+	var step: float = JointSnap.step_of(_joint_options[way][0], _joint_site, turn_step)
+	var now: float = _joint_roll * step + _joint_extra
+	var next: float = (floorf(now / step + 0.001) + 1.0) * step if by > 0 \
+		else (ceilf(now / step - 0.001) - 1.0) * step
+	for closing: float in _closings(_joint_options, way, _joint_site, _joint_basis):
+		var gone: float = fposmod((closing - now) * by, 360.0)
+		if gone < 0.01 or gone > 359.99:
+			continue
+		var stop: float = now + gone * by
+		if (by > 0 and stop < next) or (by < 0 and stop > next):
+			next = stop
+	var steps: float = next / step
+	if absf(steps - roundf(steps)) < 0.001:
+		_joint_roll = roundi(steps)
+		_joint_extra = 0.0
+	else:
+		_joint_roll = 0
+		_joint_extra = next
 
 
 ## How many parts down the part in hand would be joined to at a pose, by a
@@ -2286,7 +2404,8 @@ func rotate_held(quarter_turns: int) -> void:
 		carrying.turn(quarter_turns)
 		return
 	if _joint_site != null:
-		_joint_roll += quarter_turns
+		for _n: int in absi(quarter_turns):
+			_turn_on_joint(signi(quarter_turns))
 		_joint_chosen = true
 		return
 	held_rotation = posmod(held_rotation + quarter_turns, 4)
@@ -2299,6 +2418,14 @@ func tip_held(steps: int = 1) -> void:
 	if _joint_site != null:
 		_joint_way += steps
 		_joint_chosen = true
+		# Swung onto another end, if this way can be: the first such turn.
+		_joint_extra = 0.0
+		if not _joint_options.is_empty():
+			var closings: Array = _closings(_joint_options,
+				posmod(_joint_way, _joint_options.size()), _joint_site, _joint_basis)
+			if not closings.is_empty():
+				_joint_roll = 0
+				_joint_extra = closings[0]
 		return
 	var faces: Array[String] = BrickLattice.FACES
 	var at: int = maxi(faces.find(held_face), 0)
@@ -2328,6 +2455,11 @@ func ghost_place() -> Variant:
 	if not has_preview() or is_carrying() or not held_figure.is_empty():
 		return null
 	return _ghost_transform.origin
+
+
+## The ghost's whole pose, place and turn (what place() puts down).
+func ghost_transform() -> Transform3D:
+	return _ghost_transform
 
 
 ## Whether a click would put the held part down where the ghost is.

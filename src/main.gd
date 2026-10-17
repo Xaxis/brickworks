@@ -119,6 +119,14 @@ var _hover_outline: SelectionOutline
 var _hovered: int = 0
 var _hovered_from: Vector2 = Vector2(-1, -1)
 var _view_pointer: Vector2 = Vector2(-1, -1)
+## The last part put down from the hand (Builder.placed), for the page.
+var _last_put: int = 0
+## Where the last move of the pointer left it (_input), to the fraction of
+## a pixel: what the ghost was aimed by (_true_point).
+var _pointer_at: Vector2 = Vector2(-INF, -INF)
+## Where the system said the pointer was at that move (_pointer), and when.
+var _system_at: Vector2 = Vector2(-INF, -INF)
+var _pointer_seen_ms: int = 0
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
@@ -290,6 +298,32 @@ func _page_assemblies() -> Array:
 var _page_tree: Array = []
 
 
+## The ghost's whole pose, place and turn, or null while there is none:
+## twelve numbers, the place then the basis by columns, to a thousandth.
+## tools/web/placing_flow.mjs compares it with where a click put the part.
+func _ghost_pose_on_page() -> Variant:
+	if _builder == null or _builder.ghost_place() == null:
+		return null
+	return _pose_numbers(_builder.ghost_transform())
+
+
+## The last part put down from the hand, and its pose as the ghost's is
+## told: {part, pose}, or null.
+func _put_on_page() -> Variant:
+	var brick: BrickWorld.Brick = _world.get_brick(_last_put) if _last_put != 0 else null
+	if brick == null:
+		return null
+	return {"part": brick.part_id, "id": brick.id, "pose": _pose_numbers(brick.transform)}
+
+
+static func _pose_numbers(at: Transform3D) -> Array:
+	var out: Array = []
+	for v: Vector3 in [at.origin, at.basis.x, at.basis.y, at.basis.z]:
+		for n: int in 3:
+			out.append(snappedf(v[n], 0.001))
+	return out
+
+
 ## Each sub-assembly's own parts, where they are on the page: path ->
 ## {x, y} in CSS pixels, the top middle of their bounds.
 func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
@@ -454,6 +488,17 @@ func _tell_page() -> void:
 		# Where the ghost stands, for tools/web/idle_check.mjs to know the
 		# pointer moved it before asking that the move was drawn.
 		"ghost": _ghost_on_page(),
+		# ...its whole pose, and the pose of the part last put down from
+		# the hand: what the ghost showed and where the part went, for
+		# tools/web/placing_flow.mjs.
+		"ghost_pose": _ghost_pose_on_page(),
+		"put": _put_on_page(),
+		# ...and where the app last saw the pointer move, and where the
+		# system says it is, in the window's pixels.
+		"pointer": {"moved": [snappedf(_pointer_at.x, 0.01), snappedf(_pointer_at.y, 0.01)]
+			if _pointer_at.x > -INF else null,
+			"system": [snappedf(get_viewport().get_mouse_position().x, 0.01),
+				snappedf(get_viewport().get_mouse_position().y, 0.01)]},
 		# Where the view is: how far it has turned in all (not wrapped),
 		# its tilt, its distance and what it looks at, for
 		# tools/web/nav_flow.mjs to see a drag turn it all the way round.
@@ -2375,7 +2420,8 @@ func _build_ui() -> void:
 			_builder.hide_preview()
 		else:
 			_refresh_preview(at))
-	_bin.part_dropped.connect(func(at: Vector2) -> void:
+	_bin.part_dropped.connect(func(let_go: Vector2) -> void:
+		var at: Vector2 = _true_point(let_go)
 		if _over_panel_at(at):
 			return
 		_aim_at(at)
@@ -2600,7 +2646,8 @@ func _build_ui() -> void:
 	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
 	_store.begun.connect(func(_name: String) -> void: _named_for_work = "")
-	_builder.placed.connect(func(_id: int, _part: String) -> void:
+	_builder.placed.connect(func(id: int, _part: String) -> void:
+		_last_put = id
 		_sample_untouched = false)
 	_builder.removed.connect(func(_id: int) -> void:
 		_sample_untouched = false)
@@ -4547,7 +4594,8 @@ func _process(_delta: float) -> void:
 			_left_nav = ""
 			_camera.end_drag(MOUSE_BUTTON_LEFT)
 		if _dragging_part:
-			_drop_dragged(get_viewport().get_mouse_position())
+			_drop_dragged(_pointer())
+	_follow_unseen_move()
 	if _store != null:
 		_store.tick()
 		_watch_other_tabs()
@@ -4619,10 +4667,98 @@ const DRAG_SLOP := 5.0
 ## The part under the pointer, for a key that acts on it: none when the
 ## pointer is over a panel, which a key must not reach through.
 func _brick_under_pointer() -> int:
-	var at: Vector2 = get_viewport().get_mouse_position()
+	var at: Vector2 = _pointer()
 	if _verbs == null or _over_interface(at):
 		return 0
 	return _verbs.brick_at(at)
+
+
+## Where a press, a release or the system says the pointer is, as the move
+## that put it there says.
+##
+## A browser tells Godot a move to the fraction of a CSS pixel (its
+## pointermove) and a press or release in whole CSS pixels, cut down
+## (mousedown's and mouseup's clientX), and the system's pointer then
+## follows the press. A click aims before it puts (a finger has no move
+## before it), so it aimed up to a pixel up and left of where the ghost
+## had been aimed, and on the edge of a face, or against a side where
+## the place steps by 2 LDU, it put the part somewhere else: the plane's
+## clip plates went down a stud forward and 2 LDU up from where their
+## ghosts stood, and of 35 clicks stepped across a plate's edge 16 put a
+## clip plate other than where its ghost showed (2026-10-16,
+## tools/web/placing_flow.mjs). A position within that pixel of the last
+## move is that move.
+func _true_point(at: Vector2) -> Vector2:
+	var css: float = _css_pixel()
+	var off: Vector2 = _pointer_at - at
+	if absf(off.x) <= css + 0.01 and absf(off.y) <= css + 0.01:
+		return _pointer_at
+	return at
+
+
+## A CSS pixel in the model's units: the browser's device pixels a CSS
+## pixel, through the window's scale. A screen pixel off the web.
+func _css_pixel() -> float:
+	return maxf(DisplayServer.screen_get_scale(), 1.0) \
+		/ maxf(get_viewport().get_final_transform().get_scale().x, 0.01)
+
+
+## Where the pointer is now: where the app last saw it move or press
+## (_input), unless the system's pointer has moved since without the app
+## seeing it, over a window of its own (a menu, a dialog).
+##
+## A ghost aimed with no event of its own (the part's shape arrived, a
+## colour or a key) was aimed at the system's pointer, which is not always
+## where the app last saw the pointer: with a probe's events it is wherever
+## the real pointer was left, so a part whose shape arrived after the move
+## onto the model had its ghost put back there, 260 pixels off, while a
+## click put the part under the pointer (placing_probe, 2026-10-16); in a
+## browser it is the press's whole pixel (_true_point).
+func _pointer() -> Vector2:
+	var system: Vector2 = get_viewport().get_mouse_position()
+	if _pointer_at.x > -INF and system.distance_to(_system_at) <= _css_pixel() * 1.5:
+		return _pointer_at
+	return _true_point(system)
+
+
+## A move the app never saw, followed as it would have been.
+##
+## In a browser the last move off a part's tile onto the model (a jump, as
+## Playwright makes, or a quick hand) went to the tile's tooltip as it
+## closed, a window of its own, and not to the app: the system's pointer was
+## on the model, the app's last sight of it halfway there, and the ghost
+## stood where that half-move had aimed it, 500 LDU off behind the bin,
+## until the next move, while a click put the part under the pointer
+## (2026-10-16, tools/web/placing_flow.mjs). Only once the moves have
+## stopped coming (a pointer in motion is ahead of its events), not while a
+## button is down, not off the window, and not while a window other than a
+## tooltip is up: a menu's or a dialog's moves are theirs. One distance a
+## frame otherwise.
+func _follow_unseen_move() -> void:
+	if not (_pointer_at.x > -INF) or Time.get_ticks_msec() - _pointer_seen_ms < 150:
+		return
+	var system: Vector2 = get_viewport().get_mouse_position()
+	if system.distance_to(_system_at) <= _css_pixel() * 1.5:
+		return
+	if Input.get_mouse_button_mask() != 0 or not get_viewport().get_visible_rect().has_point(system):
+		return
+	for sub: Window in get_window().get_embedded_subwindows():
+		if sub.visible and not Tooltips.is_tooltip(sub):
+			return
+	_pointer_at = system
+	_system_at = system
+	_hover_again()
+
+
+## A button's event, at the place the move before it says (_true_point).
+func _pointed(button: InputEventMouseButton) -> InputEventMouseButton:
+	var at: Vector2 = _true_point(button.position)
+	if at == button.position:
+		return button
+	var moved: InputEventMouseButton = button.duplicate()
+	moved.global_position = button.global_position + (at - button.position)
+	moved.position = at
+	return moved
 
 
 ## What a left drag from this press does, by the tool and the keys held:
@@ -4814,7 +4950,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if not (event is InputEventMouseButton):
 		return
-	var button: InputEventMouseButton = event
+	var button: InputEventMouseButton = _pointed(event as InputEventMouseButton)
 	# Alt with any button but the left is the system's. (Alt with the left:
 	# a click takes the part into hand, a drag turns the view — below.)
 	if button.alt_pressed and button.button_index != MOUSE_BUTTON_LEFT:
@@ -5241,7 +5377,7 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 		return
 	var mouse: Vector2 = at
 	if not (mouse.x < INF):
-		mouse = get_viewport().get_mouse_position()
+		mouse = _pointer()
 	# A sticker in hand over a tile's top is squared to the screen.
 	_builder.view_up = _camera.global_transform.basis.y
 	_builder.update_preview(
@@ -5261,7 +5397,7 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 func _hover_again() -> void:
 	if _marquee.is_drawing() or _camera.is_turning() or _camera.is_sliding():
 		return
-	var at: Vector2 = get_viewport().get_mouse_position()
+	var at: Vector2 = _pointer()
 	if _over_panel_at(at):
 		_builder.hide_preview()
 		return
@@ -5340,6 +5476,16 @@ func _input(event: InputEvent) -> void:
 	# model or not, so moving onto the bar lets go of the part.
 	if event is InputEventMouseMotion and not _viewing.is_empty():
 		_view_pointer = (event as InputEventMouseMotion).position
+	# And where every move left it, to the fraction of a pixel, or a press
+	# put it, and where the system said it was then (_true_point, _pointer).
+	if event is InputEventMouseMotion:
+		_pointer_at = (event as InputEventMouseMotion).position
+		_system_at = get_viewport().get_mouse_position()
+		_pointer_seen_ms = Time.get_ticks_msec()
+	elif event is InputEventMouseButton:
+		_pointer_at = _true_point((event as InputEventMouseButton).position)
+		_system_at = get_viewport().get_mouse_position()
+		_pointer_seen_ms = Time.get_ticks_msec()
 	var key: InputEventKey = event as InputEventKey
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return
@@ -5541,7 +5687,7 @@ func _key_pressed(key: InputEventKey) -> void:
 		KEY_G:
 			# And take a colour and part back off the model, into hand.
 			if _brick_under_pointer() != 0 \
-					and _verbs.pick_at(get_viewport().get_mouse_position()):
+					and _verbs.pick_at(_pointer()):
 				_refresh_preview()
 			elif _verbs.mode == "place" and _builder.pick_hovered():
 				_refresh_preview()
