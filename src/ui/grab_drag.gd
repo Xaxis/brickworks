@@ -101,6 +101,9 @@ var _settling: Grab = null
 ## time and kept when it comes to rest, or when a press catches it.
 var _swinging: Grab = null
 var _swing_began: int = 0
+## The model's revision when the swing began: an edit while it swings (an
+## undo, a session's call) puts it back rather than keep it over the edit.
+var _swing_revision: int = -1
 ## The swing's own share of a frame, ms, at most: past it the swing goes
 ## slower than the clock rather than hold the frame.
 const SWING_BUDGET_MS := 8.0
@@ -351,6 +354,7 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 				held.swung = ""
 			else:
 				_swinging = held
+				_swing_revision = world.revision
 				_swing_began = Time.get_ticks_msec()
 				swing_frames = 0
 				swing_worst_ms = 0.0
@@ -567,6 +571,7 @@ func _land(timing: Dictionary, depth: int, words: String) -> bool:
 	held.landing_depth = depth
 	held.landing_said = words
 	_swinging = held
+	_swing_revision = world.revision
 	_swing_began = Time.get_ticks_msec()
 	swing_frames = 0
 	swing_worst_ms = 0.0
@@ -1040,6 +1045,10 @@ func is_swinging() -> bool:
 ## One frame of a swing: the frame's time stepped (Swing.advance, within
 ## its budget), drawn, and kept once it rests.
 func _swing_frame(delta: float) -> void:
+	if world.revision != _swing_revision:
+		cancel()
+		say.call("The model changed while it swung: the swing is put back")
+		return
 	var started: int = Time.get_ticks_usec()
 	var held: Grab = _swinging
 	held.swing.advance(clampf(delta, 0.0, SWING_MOST_FRAME_S), SWING_BUDGET_MS)

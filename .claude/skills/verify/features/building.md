@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint -->
 
 ## Sub-features
 
@@ -680,24 +680,55 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   turned over MCP. `--actuator-set=FILE` tries another set.
 - `a model that tips falls` (`src/assembly/topple.gd`, `Topple`): let go past
   its edge, the model turns about that edge until another corner of its
-  cover reaches the floor, again while it still does not stand, drawn in
-  0.5 s (`GrabDrag._fall_frame`) and kept in the grab's undo step; "tipped
-  over to the left and lies on its side". Not on a baseplate's studs, which
-  hold it ("It does not fall: it stands on the baseplate's studs"), nor a
-  model Balance reads as past its edge where it stood.
+  cover reaches the floor, again while it still does not stand, and kept in
+  the grab's undo step; "tipped over to the left and lies on its side,
+  falling for 0.21 s". How it gets there is `Topple.timed`: a rigid body
+  turning about the edge from rest under gravity, its moment of inertia from
+  the parts, drawn by the clock (`GrabDrag._fall_frame`). What hangs on a
+  free joint in it is held while it falls and swings on as it lands
+  (`Grab.land_begin`, `Swing.carry`). Not on a baseplate's studs, which hold
+  it ("It does not fall: it stands on the baseplate's studs"), nor a model
+  Balance reads as past its edge where it stood.
   `grab_probe -- --only=falling` (windowed): a made crane (a tall arm on a
   hinge on a 2x2 tower) dragged out on no floor falls 42.79° as atan2 over
-  every drawn vertex says, then stays standing on a baseplate's studs;
-  pictures before, falling, fallen. `-- --only=tipping` scans real sets
-  through move_part. `-- --only=follow`: an arm hung on a driven axle turns
-  by the tooth ratio (a made 8:24 train, 8418's B model).
+  every drawn vertex says, in 0.2110 s against 0.2109 by the energy integral
+  by hand, no frame below the floor, then stays standing on a baseplate's
+  studs; then a crane with a beam 3 on a free pin at its tower's side
+  falls (0.1970 s against 0.1974) and the beam swings on as it lands and
+  hangs within its friction (`-- --only=landing` alone); pictures before,
+  falling, fallen, and a sequence of the landing. `-- --only=tipping` scans
+  real sets through move_part. `-- --only=follow`: an arm hung on a driven
+  axle turns by the tooth ratio (a made 8:24 train, 8418's B model).
+- `swinging on a free joint` (`src/assembly/swing.gd`, `Swing`; MECHANISMS
+  §14): let go, a section on a pin without friction, an axle in a round hole
+  or a free turntable swings as a rigid pendulum about its joint, a chain of
+  free joints together (Newton-Euler in the joints' turns, semi-implicit
+  Euler at 1 ms), losing 2μr/d a half swing to the joint's friction, stopped
+  dead by the room test, at rest within asin(μr/d) of hanging; drawn by the
+  clock (`GrabDrag._swing_frame`, 8 ms a frame at most), one undo step with
+  the drag, a click catches it (`GrabDrag.catch`), Escape puts it back;
+  move_part runs it to rest and says how it swung.
+  `grab_probe -- --only=swing` (windowed): a made beam 7 on a free pin, its
+  period against 2π√(I/(m g d)) worked by hand from its parts and lengthened
+  by the elliptic integral (under 1%), its loss a half swing against 2μr/d,
+  its rest against statics and the settle, its energy never above where it
+  was let go; 75° out with a sequence of pictures; caught by a press; over
+  MCP; a column in its swing stopping it where a drag stops. `-- --only=double`:
+  two beams on two free pins swinging together, the outer coming to rest
+  where the settle hangs it, with pictures. The swing's own frame cost is
+  checked under 33 ms and written to timings.json.
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
   puts it back, then turns the turret on its turntable, then drags a crank of
   a flat four-bar beside it round and the loop carries the coupler and the
-  other crank (eight handles on the page now); the app's frame cost
-  of a drag and the page's longest wait. In `preview_checks.sh`'s map as
+  other crank, then drags a beam 3 on a free pin out and lets go: it swings
+  and comes to rest, and the swing's own frame cost is read from the page
+  (eight handles at most; the page asks for them with
+  `window.brickworksGrabAsk`, and the app finds none unless asked); the
+  app's frame cost of a drag and the page's longest wait. `--big=FILE
+  --only-big` opens a big model instead and times its frames standing
+  still, the page not asking for handles (no frame past 100 ms). In `preview_checks.sh`'s map as
   `grab`. Its waits over 250 ms come under load, on live's build as on new
   ones, mostly in the first drag (MECHANISMS §13): the balance mark's shaders
   are built before the press (`BalanceMark.warm`); what is left is the GPU
