@@ -596,19 +596,15 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 		int(one["y"])])
 	_check("three plates of one footprint merge into a brick, two side by side into one plate: %s, %d saved"
 		% [parts, saved], saved == 3 and parts.has("3001 at 0") and parts.has("3022 at 3"))
-	# The forty-stud bunny is white with pink and black: the measuring colours
-	# two studs in from each patch, and a brick of that was laid in it.
+	# The forty-stud bunny is white with pink and black, and the measuring
+	# colours two studs in from each patch: on main (a1d1998) its hidden core
+	# was 203 bricks and 159 plates, three plates wherever two colours met
+	# out of sight.
 	if not big.is_empty():
-		var bond: Dictionary = _bond(big["model"])
-		var main: int = (big["grid"] as Brickify.Grid).dominant
-		var hidden: Dictionary = bond["hidden"]
-		var other: int = 0
-		var names: PackedStringArray = []
-		for c: Variant in hidden:
-			names.append("%d %s" % [hidden[c], _library.color(int(c)).name])
-			other += int(hidden[c]) if int(c) != main else 0
-		_check("the forty-stud bunny's bricks none of which shows are in its main colour, %s: %s"
-			% [_library.color(main).name, ", ".join(names)], other == 0 and hidden.has(main))
+		var hidden: Dictionary = _bond(big["model"])["hidden"]
+		_check("the forty-stud bunny's hidden core is bricks, plates only at its edges: %d bricks, %d plates"
+			% [int(hidden["brick"]), int(hidden["plate"])],
+			int(hidden["plate"]) * 2 <= int(hidden["brick"]))
 	for one: Array in [["the sphere", round], ["the plain sphere", plain], ["the forty-stud bunny", big]]:
 		var laid: Dictionary = one[1]
 		if laid.is_empty():
@@ -712,19 +708,21 @@ func _bond(model: Assistant.Model) -> Dictionary:
 					weak[parent] = true
 		if children > 1:
 			weak[start] = true
-	# The plain bricks none of which shows (every plate of them has a part on
-	# all six sides), by colour.
-	var bricks: Dictionary = {}
+	# The plain bricks and plates none of which shows (every plate of them has
+	# a part on all six sides).
+	var plain: Dictionary = {}    ## part -> "brick" or "plate"
 	for entry: Array in Shapes.CORE_BRICKS:
-		bricks[_library.resolve(str(entry[2]))] = true
+		plain[_library.resolve(str(entry[2]))] = "brick"
+	for entry: Array in Shapes.CORE_PLATES:
+		plain[_library.resolve(str(entry[2]))] = "plate"
 	var cells_of: Dictionary = {}
 	for key: Variant in owner:
 		var n: int = owner[key]
-		if bricks.has(model.placements[n].part):
+		if plain.has(model.placements[n].part):
 			if not cells_of.has(n):
 				cells_of[n] = []
 			(cells_of[n] as Array).append(key)
-	var hidden: Dictionary = {}    ## colour -> bricks
+	var hidden: Dictionary = {"brick": 0, "plate": 0}
 	for n: Variant in cells_of:
 		var seen: bool = false
 		for key: Variant in cells_of[n]:
@@ -732,8 +730,8 @@ func _bond(model: Assistant.Model) -> Dictionary:
 					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
 				seen = seen or not owner.has((key as Vector3i) + step)
 		if not seen:
-			var c: int = model.placements[int(n)].color
-			hidden[c] = int(hidden.get(c, 0)) + 1
+			var kind: String = plain[model.placements[int(n)].part]
+			hidden[kind] = int(hidden[kind]) + 1
 	return {"parts": count, "one": float(ones) / maxf(count, 1.0), "pairs": pairs.size(),
 		"seams": float(bridged) / maxf(pairs.size(), 1.0), "weak": float(weak.size()) / maxf(count, 1.0),
 		"hidden": hidden}

@@ -5352,7 +5352,17 @@ class Plan extends RefCounted:
 	## two halves, one half laid and the other its mirror.
 	func _layer(cells: Dictionary, j: int, given: Array, course: int) -> Array:
 		if bond and course >= 0:
-			return _bonded(cells, j, given, course)
+			if axis.is_empty():
+				return _bonded(cells, j, given, course)
+			# A shape that is its own mirror keeps its strip across the middle
+			# and its halves mirrored, whose joints move from course to course,
+			# but its hidden bricks in the core's colour: laid as the rest are, a
+			# plain sphere's seams bridged fell from 67% to 57%.
+			var shown: Dictionary = {}
+			for key: Variant in cells:
+				var c: int = shown_colour(key, j, 3)
+				shown[key] = c if c >= 0 else (core_colour if c == ANY else int(cells[key]))
+			cells = shown
 		var out: Array = []
 		var by_colour: Dictionary = {}
 		for key: Variant in cells:
