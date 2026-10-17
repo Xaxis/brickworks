@@ -124,8 +124,9 @@ var _last_put: int = 0
 ## Where the last move of the pointer left it (_input), to the fraction of
 ## a pixel: what the ghost was aimed by (_true_point).
 var _pointer_at: Vector2 = Vector2(-INF, -INF)
-## Where the system said the pointer was at that move (_pointer).
+## Where the system said the pointer was at that move (_pointer), and when.
 var _system_at: Vector2 = Vector2(-INF, -INF)
+var _pointer_seen_ms: int = 0
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
@@ -4505,6 +4506,7 @@ func _process(_delta: float) -> void:
 			_camera.end_drag(MOUSE_BUTTON_LEFT)
 		if _dragging_part:
 			_drop_dragged(_pointer())
+	_follow_unseen_move()
 	if _store != null:
 		_store.tick()
 		_watch_other_tabs()
@@ -4628,6 +4630,35 @@ func _pointer() -> Vector2:
 	if _pointer_at.x > -INF and system.distance_to(_system_at) <= _css_pixel() * 1.5:
 		return _pointer_at
 	return _true_point(system)
+
+
+## A move the app never saw, followed as it would have been.
+##
+## In a browser the last move off a part's tile onto the model (a jump, as
+## Playwright makes, or a quick hand) went to the tile's tooltip as it
+## closed, a window of its own, and not to the app: the system's pointer was
+## on the model, the app's last sight of it halfway there, and the ghost
+## stood where that half-move had aimed it, 500 LDU off behind the bin,
+## until the next move, while a click put the part under the pointer
+## (2026-10-16, tools/web/placing_flow.mjs). Only once the moves have
+## stopped coming (a pointer in motion is ahead of its events), not while a
+## button is down, not off the window, and not while a window other than a
+## tooltip is up: a menu's or a dialog's moves are theirs. One distance a
+## frame otherwise.
+func _follow_unseen_move() -> void:
+	if not (_pointer_at.x > -INF) or Time.get_ticks_msec() - _pointer_seen_ms < 150:
+		return
+	var system: Vector2 = get_viewport().get_mouse_position()
+	if system.distance_to(_system_at) <= _css_pixel() * 1.5:
+		return
+	if Input.get_mouse_button_mask() != 0 or not get_viewport().get_visible_rect().has_point(system):
+		return
+	for sub: Window in get_window().get_embedded_subwindows():
+		if sub.visible and not Tooltips.is_tooltip(sub):
+			return
+	_pointer_at = system
+	_system_at = system
+	_hover_again()
 
 
 ## A button's event, at the place the move before it says (_true_point).
@@ -5357,9 +5388,11 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_pointer_at = (event as InputEventMouseMotion).position
 		_system_at = get_viewport().get_mouse_position()
+		_pointer_seen_ms = Time.get_ticks_msec()
 	elif event is InputEventMouseButton:
 		_pointer_at = _true_point((event as InputEventMouseButton).position)
 		_system_at = get_viewport().get_mouse_position()
+		_pointer_seen_ms = Time.get_ticks_msec()
 	var key: InputEventKey = event as InputEventKey
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return

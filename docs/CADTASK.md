@@ -532,20 +532,29 @@ put where their ghosts stood and as the file has them; 8841-1's file opened
 up to its plates, each 4262 aimed at its pin as the page says the pin is,
 and put where its ghost stood and as the file has it (after one `T` and two).
 
-**Not yet in the browser: the first aim after a part is taken from its
-tile.** The flow's other seven parts (a bar in a clip, a hinge, slopes, a
-Technic brick and a pin) were each taken from the search, the pointer moved
-onto the model in one jump, and the ghost read: every one still stood
-where the part had been taken, 500 LDU and more off, behind the bin, and a
-click put the part under the pointer. A second move puts the ghost under
-the pointer (the edge's 34 later clicks, and every aim the build flow
-corrects; this is the "540 to 560 LDU" of section 3's failed runs).
-`Main._pointer` did not change it: in the browser the last of the jump's
-moves does not move the ghost, though the page receives it (a capture of
-the page's own pointer events, `bench/results/placing-2026-10-16/diag`),
-and why was not found in the time. A hand moves in many small moves, so a
-person sees the ghost follow; but until the pointer moves again the ghost
-is shown somewhere other than where a click puts the part.
+**The first aim after a part is taken from its tile, in the browser.** The
+flow's other seven parts (a bar in a clip, a hinge, slopes, a Technic brick
+and a pin) were each taken from the search, the pointer moved onto the
+model in one jump, and the ghost read: every one stood where the jump had
+started, 500 LDU and more off, behind the bin, until the next move, and a
+click put the part under the pointer (this is the "540 to 560 LDU" of
+section 3's failed runs, and the first of the edge's 35 clicks). The page
+received the jump's last move and Godot's own pointer followed it, but the
+app's input never saw it: it went to a window of the app's own, the tile's
+tooltip, up as the pointer left (`diag3`: the app's last move halfway, the
+system's pointer on the model). Now a move the app never saw is followed
+from the system's pointer once the moves stop (`Main._follow_unseen_move`;
+not while a button is down or a menu or a dialog is up).
+
+| browser, `placing_flow.mjs` | the edge's 35 clicks | the seven parts after a take |
+|---|---|---|
+| before | 1 elsewhere (the first) | 0 put where the ghost stood |
+| after (`web5`) | **0 elsewhere** | **4 of 7**; the hinge base and the 2 x 1 slope a stud from their ghosts, and the hinge's top red where the flow aimed it |
+
+The two left are not explained: the ghost followed is aimed at the system's
+pointer, which a browser gives in whole pixels, and the click's own move,
+at the fraction, may aim a stud over; a person's hand moves again before it
+clicks, and the ghost then follows that move exactly.
 
 **The whole plane again** (`cadtask.py build --only 5762-1 --most 0
 --minutes 40`, its flow on an export with the click's fix,

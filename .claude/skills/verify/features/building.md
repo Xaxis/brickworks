@@ -558,9 +558,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   where the app last saw the pointer move or press, not at the system's
   pointer, unless that has moved since over a window of the app's own
   (`Main._pointer`): with a probe's events, a part whose shape arrived after
-  the move onto the model had its ghost put back 260 pixels off. (In a
-  browser the first aim after a take is still left behind: docs/CADTASK.md
-  section 5.) Probe: `placing_probe` (a
+  the move onto the model had its ghost put back 260 pixels off. And a move
+  the app never saw is followed from the system's pointer once the moves
+  stop (`Main._follow_unseen_move`): in a browser the last move off a part's
+  tile went to the tile's tooltip, and the ghost stood 500 LDU off behind the
+  bin until the next move (not while a button is down or a menu or dialog is
+  up; docs/CADTASK.md section 5). Probe: `placing_probe` (a
   part taken from its tile and moved onto the model in one move and two; each click
   sent as a browser sends one, the move fractional and the press cut down:
   35 clicks across the edge, then a clip plate, a bar in its clip, a hinge,
