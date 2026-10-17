@@ -202,10 +202,11 @@ of a donor section the file carries, or the polygons themselves, with the
 parts at its ends (a pneumatic tube's `165`, a string's `572a`) as parts.
 Each such sub-model's skin is now built from its own lines without its
 parts (`CustomParts.begin_skins`, `PartForge.build_skin`) as one part of its
-own, each on a thread of its own while the parts the file carries are built,
-so a big set's first open hardly waits for it (in a browser, on the page's
-own thread: a thread's worker there starts only once the page is free, and
-waiting for it hung the page on 42082-1's four). It goes in the sub-model as
+own, each on the engine's worker threads beside the parts the file carries
+(`CustomParts._built_at_once`), so a big set's first open hardly waits for
+it. (A thread started for each instead hung a browser page on 42082-1's
+four: a new thread's worker there starts only once the page is free.) It
+goes in the sub-model as
 one piece: in the copy's colour, where the file puts it, in the step the
 file places the copy in, selected by a click on it and hidden with the rest. Its end parts stay
 parts. The file is not changed: the piece stands for its GENERATED line, so
@@ -286,7 +287,7 @@ of a file builds what it carries; the others find it built.
 | 42053-1 | 2,719 | 5.42 → 5.56 s | 0.73 → 0.73 s |
 
 Building a skin is the new work (42082-1's four 1.0 s on one thread,
-8202-1's 0.16 s, 42058-1's 0.33 s), so each is built on a thread of its own,
+8202-1's 0.16 s, 42058-1's 0.33 s), so each is built on a worker thread,
 begun before the parts the file carries are built and joined after: on the
 other three it costs nothing that measures. 8202-1's first
 open is the miss. Opened right after 42082-1, it waited 7 s for the app's

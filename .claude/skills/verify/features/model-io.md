@@ -77,10 +77,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   section, polygons), with the parts at its ends. Each such sub-model's skin
   is a part of its own (`<sub-model>-flex`, category Flexible, not in the
   bin, not kept), built from its own lines without its parts, each on a
-  thread of its own begun before the file's carried parts are built and
-  joined after (`CustomParts.begin_skins`, `end_skins`: the model opens with
-  it; not the shared pool, which the last model's checks keep busy; in a
-  browser on the page's thread, where waiting on a new worker hangs), and
+  worker thread at high priority, begun before the file's carried parts are
+  built and joined after (`CustomParts.begin_skins`, `end_skins`: the model
+  opens with it; the pool's low side is the app's checks, busy for seconds;
+  a `Thread` started for each hung a browser page, whose new workers start
+  only when the page is free), and
   put in the sub-model as one piece paired with the GENERATED line: one
   piece a copy, in the copy's colour, in its step, selectable and hideable
   (a cover of 4-LDU blocks along its surface), its end parts parts still.
