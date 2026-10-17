@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts in a browser, cli:LDraw files in storage -->
 
 ## Sub-features
 
@@ -97,6 +97,40 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `flex_skin_probe` proves the fixture and, given files, that every
   flexible part of each is drawn and the file saves as itself;
   `tools/web/flex_skin_flow.mjs` the same in a browser.
+- `carried parts fetched` (`CustomParts.fetch_sources`, `unreached_by`,
+  `PartForge.keep_fetched`): a part a file carries, or a skin, may be drawn
+  from LDraw's own subparts and parts, which the desktop reads from
+  `vendor/ldraw` and no build ships. On the web every open of a file
+  (`ModelStore.open_text_fetched`, `open_fetched`, `restore_fetched`,
+  `open_version`; the file picker, a saved model, an example, the start-up
+  restore, a shared model, MCP's open) first asks `PartForge.unreached` what
+  its carried parts and skins name that this build cannot read, and fetches
+  those from `<PARTS_URL>ldraw/parts/<name>` six at a time, and what each
+  names as it arrives (`_fetch_each`: every answer heard by a callable of
+  its own, in any order; no time limit, as a mesh fetch has none, since a
+  request is polled once a frame), the status bar's Working line saying
+  "Fetching N LDraw files…". Kept for the session; a file not there
+  (Supabase answers 400, a server 404) or a web page is not taken, and the
+  part is said not shown with why (`CustomParts._with_why`; the flow prints
+  the console's "could not fetch" lines). A carried print gets the file's
+  subparts too (`PartPrints.build`'s others). A carried part the web kept
+  (`CustomParts.dir`) that needs such files is built at start-up once they
+  come (`load_all` defers it to `_load_later`). The desktop, and a file that
+  carries nothing, wait for no frame. `tools/storage_ldraw.py` put the library's parts/
+  (34,122 files, 495 MB) in the bucket, additive only; run it after
+  `tools/fetch_data.sh` brings a newer library. `carried_fetch_probe`
+  proves it with the library withheld (`PartForge.withheld`) and served by
+  python's http.server on 8841: each file's carried parts as the desktop
+  builds them, answers heard in any order, two files in one session,
+  the start-up restore, a kept part at start-up, nothing fetched twice, 404
+  and HTML refused;
+  `-- --timing FILE` says what looking costs a file that needs nothing; `-- --census
+  OUT.json` counts what every file in vendor/omr needs.
+  `tools/web/carried_flow.mjs` opens files in a browser from a local export
+  served by `tools/web/serve.py DIR PORT --parts-url "$PARTS_URL"` (the real
+  bucket) and fails on a carried part said not shown, a console line saying
+  one did not build, or a script error; `--reload` reloads after the last
+  file and checks it, put back at start-up, builds again.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
   tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
   read from — goes out as an `.mpd` with one sub-model per group, titled as the
@@ -521,6 +555,10 @@ godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py
 node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin vendor/omr/files/42082-1.mpd
+godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   # carried parts built from LDraw files fetched over HTTP, the library withheld
+godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census bench/results/census.json   # which of vendor/omr's files need the library's files, and which
+python3 tools/web/serve.py build/web 8840 --parts-url "$PARTS_URL" &   # a local export reading the real parts bucket
+node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried vendor/omr/files/42082-1.mpd vendor/omr/files/21321-1.mpd
 godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
 godot --headless --path . --script src/dev/mesh_export_probe.gd -- --orthanc   # ...and the castle and Orthanc, every format, timed (~6 min)
 node tools/web/model3d_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: the car's GLB from the menu, downloaded and read

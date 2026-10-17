@@ -138,7 +138,7 @@ static func _built(library: PartLibrary, text: String, id: String,
 				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
 			if pictures.has(name.to_lower()):
 				pictures[name] = pictures[name.to_lower()]
-		built = PartPrints.build(text, id, pictures, library)
+		built = PartPrints.build(text, id, pictures, library, sources)
 	elif is_skin_text(text):
 		built = PartForge.build_skin(text, id, sources)
 	else:
@@ -172,6 +172,9 @@ static func info_for(built: PartForge.Result) -> PartLibrary.PartInfo:
 
 
 ## Every part kept in [member dir], built and added. Returns how many.
+## On the web one drawn from LDraw's own files is built once they are
+## fetched ([method _load_later]): a carried part a file brought, kept, was
+## said at every start not to build.
 static func load_all(library: PartLibrary) -> int:
 	var found: int = 0
 	if not DirAccess.dir_exists_absolute(dir):
@@ -180,6 +183,14 @@ static func load_all(library: PartLibrary) -> int:
 	for file_name: String in DirAccess.get_files_at(dir):
 		if file_name.ends_with(".dat"):
 			texts[file_name] = FileAccess.get_file_as_string(dir + file_name)
+	var later: Dictionary = {}
+	if OS.has_feature("web") or not sources_from.is_empty():
+		for file_name: String in texts.keys():
+			if not PartForge.unreached(texts[file_name]).is_empty():
+				later[file_name] = texts[file_name]
+				texts.erase(file_name)
+	if not later.is_empty():
+		_load_later(library, later)
 	var built: Dictionary = _built_at_once(texts, {})
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
@@ -190,6 +201,24 @@ static func load_all(library: PartLibrary) -> int:
 		else:
 			push_warning("custom part %s: %s" % [id, result["problem"]])
 	return found
+
+
+## The kept parts [param texts] (file name -> text) draw on files of LDraw's
+## own: fetched, once the deployment says where from, then built and added.
+static func _load_later(library: PartLibrary, texts: Dictionary) -> void:
+	await _fetch_until(library, func() -> PackedStringArray:
+		var named: Dictionary = {}
+		for text: String in texts.values():
+			for key: String in PartForge.unreached(text):
+				named[key] = true
+		return PackedStringArray(named.keys()))
+	for file_name: String in texts:
+		var id: String = file_name.get_basename()
+		if library.parts.has(id):
+			continue
+		var result: Dictionary = add(library, texts[file_name], id, false)
+		if not str(result["problem"]).is_empty():
+			push_warning("custom part %s: %s" % [id, result["problem"]])
 
 
 ## The parts a model file carries, added to the library so the model can
@@ -208,20 +237,7 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	# LDCad's skins first, each on a thread of its own: built while the parts
 	# the file carries are built here, and in the model before it opens.
 	var skins_begun: Array = begin_skins(library, model, problems)
-	for file_name: String in model.embedded_parts:
-		var id: String = file_name.get_basename()
-		var text: String = model.embedded_parts[file_name]
-		var info: PartLibrary.PartInfo = library.parts.get(id)
-		if info != null and not info.custom:
-			continue
-		if info != null and library.custom_source(id) == text:
-			continue
-		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
-		# 5095): the library's, as ModelStore.studio_part reads the name.
-		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
-		if id.begins_with("bl_") and plain != null and not plain.custom:
-			continue
-		wanted.append(file_name)
+	wanted = _to_build(library, model)
 	var texts: Dictionary = {}
 	for file_name: String in wanted:
 		texts[file_name] = model.embedded_parts[file_name]
@@ -236,9 +252,256 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 			added.append(id)
 			drawn_from[id] = needs(text, model.embedded_sources)
 		else:
-			problems.append("%s: %s" % [id, result["problem"]])
+			problems.append("%s: %s" % [id, _with_why(str(result["problem"]))])
 	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
 	return {"added": added, "problems": problems, "skins": flexible}
+
+
+## The parts [param model] carries that [method take_from] builds, by file
+## name: not one of the library's own, and not one built already as it is.
+static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArray:
+	var wanted := PackedStringArray()
+	for file_name: String in model.embedded_parts:
+		var id: String = file_name.get_basename()
+		var text: String = model.embedded_parts[file_name]
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info != null and not info.custom:
+			continue
+		if info != null and library.custom_source(id) == text:
+			continue
+		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
+		# 5095): the library's, as ModelStore.studio_part reads the name.
+		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
+		if id.begins_with("bl_") and plain != null and not plain.custom:
+			continue
+		wanted.append(file_name)
+	return wanted
+
+
+# -- The library's own files, fetched -----------------------------------------
+#
+# A part a file carries is drawn from LDraw text: the file's own sections,
+# the primitives every build ships (PartForge.SHIPPED), and often the
+# library's own subparts and parts, which a desktop reads from vendor/ldraw
+# and no build ships (parts/ is 34,000 files, 601 MB). 42082-1's three
+# 13971 are drawn from s\13971s01.dat. So the web fetches the ones a file
+# needs, from beside the geometry (tools/storage_ldraw.py put the library's
+# parts/ there, under ldraw/), before the file opens, and keeps them for the
+# session.
+
+
+## Where the library's files are fetched from: "" for the default, which is
+## beside the geometry on the web (PartLibrary.remote_parts) and nowhere on
+## the desktop, which reads them from vendor/ldraw. A probe points it at a
+## server of its own.
+static var sources_from: String = ""
+## Under the root: the library's parts/ as LDraw lays it out.
+const SOURCES_DIR := "ldraw/parts/"
+## Fetches open at once, as PartLibrary.MAX_IN_FLIGHT.
+const MOST_FETCHES := 6
+## How long a file waits for the deployment to say where geometry lives,
+## at start-up, before its carried parts are built without what it names.
+const DEPLOYMENT_WAIT_MS := 20000
+## Names that could not be fetched -> [why, whether to ask again]: not
+## there (asked once a session), or the network failing (asked next time).
+static var _unfetched: Dictionary = {}
+
+
+## The root the library's files are fetched from, or "" for nowhere.
+static func fetch_root(library: PartLibrary) -> String:
+	if not sources_from.is_empty():
+		return sources_from.rstrip("/") + "/"
+	if OS.has_feature("web") and not library.remote_parts.is_empty():
+		return library.remote_parts.rstrip("/") + "/"
+	return ""
+
+
+## The files the parts [param model] carries and its flexible parts are drawn
+## from that this build cannot read (PartForge.unreached), each once: what
+## [method take_from] would leave them out for. On the desktop, with the
+## library to hand, only what is nowhere.
+static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringArray:
+	var found: Dictionary = {}
+	var wanted: PackedStringArray = _to_build(library, model)
+	if not wanted.is_empty():
+		var carried: Dictionary = {}
+		for name: String in model.embedded_parts:
+			carried[name] = model.embedded_parts[name]
+		carried.merge(model.embedded_sources)
+		for file_name: String in wanted:
+			for key: String in PartForge.unreached(model.embedded_parts[file_name], carried):
+				found[key] = true
+	if not model.generated.is_empty():
+		var sources: Dictionary = model.section_texts.duplicate()
+		sources.merge(model.embedded_sources)
+		var pieces: Dictionary = {}
+		for key: String in model.generated:
+			var sub: LdrModel.SubModel = model.submodels.get(key)
+			if sub == null:
+				continue
+			var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+			var seen: Array = _skins_of_body.get(body, [])
+			if not seen.is_empty() and (str(seen[0]).is_empty() or library.parts.has(seen[0])):
+				continue
+			if not model.skin_texts.has(body):
+				model.skin_texts[body] = _skin_text(library, model, sub, body, pieces)
+			var made_of: Dictionary = model.skin_texts[body]
+			if made_of.is_empty():
+				continue
+			made_of["unreached"] = PartForge.unreached(str(made_of["text"]), sources)
+			for name: String in made_of["unreached"]:
+				found[name] = true
+	return PackedStringArray(found.keys())
+
+
+## Fetch what [param model]'s carried parts and flexible parts are drawn from
+## that this build has not got, before it opens ([method unreached_by]):
+## a few at a time, from [method fetch_root], and again for what those draw
+## on, the status bar saying so while it waits. Kept for the session
+## (PartForge.keep_fetched). One that cannot be had is left, and the part
+## drawn from it is said not shown when the file opens, with why. Nothing
+## to do, and nothing waited for, on the desktop or for a file that needs
+## nothing.
+static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
+	if model == null or (model.embedded_parts.is_empty() and model.generated.is_empty()):
+		return
+	await _fetch_until(library, func() -> PackedStringArray:
+		return unreached_by(library, model))
+
+
+## Fetch what [param named] (a callable giving the names still unreached)
+## names, until it names nothing that can be had: [method fetch_sources]'s
+## loop, for a file or for kept parts.
+static func _fetch_until(library: PartLibrary, named: Callable) -> void:
+	if not OS.has_feature("web") and sources_from.is_empty():
+		return
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	# The network's failures of last time are asked again.
+	for key: String in _unfetched.keys():
+		if bool(_unfetched[key][1]):
+			_unfetched.erase(key)
+	var job: Working.Job = null
+	var waited_from: int = Time.get_ticks_msec()
+	# What the files fetched draw on is fetched as each arrives
+	# (_fetch_each); a pass after looks again, for what failed. Bounded, as a
+	# reference that loops would not be.
+	for _pass: int in 32:
+		var wanted := PackedStringArray()
+		for key: String in named.call():
+			if not _unfetched.has(key):
+				wanted.append(key)
+		if wanted.is_empty():
+			break
+		if job == null:
+			job = Working.begin("Fetching the LDraw files carried parts are drawn from…")
+		# At start-up the deployment may not have said where yet.
+		while fetch_root(library).is_empty() \
+				and Time.get_ticks_msec() - waited_from < DEPLOYMENT_WAIT_MS:
+			await tree.process_frame
+		var root: String = fetch_root(library)
+		if root.is_empty():
+			for key: String in wanted:
+				_unfetched[key] = ["nowhere to fetch it from yet", true]
+			break
+		await _fetch_each(tree, root, wanted, job)
+	if job != null:
+		job.end()
+
+
+## Fetch [param keys] from [param root], [constant MOST_FETCHES] at a time,
+## and what each names that is not here yet as it arrives: a subpart's own
+## subparts, asked for at once rather than after the rest (a frame drawing a
+## big model in software can take seconds, and each request is polled once
+## a frame). [param job] says how many. How many arrived.
+##
+## Each answer is taken by a callable of its own, whenever it comes. Awaited
+## one after another, an answer that came while an earlier one was awaited
+## was never heard, and in a browser, where answers come in any order,
+## 21321-1 waited for ever before it opened.
+static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray,
+		job: Working.Job = null) -> int:
+	var arrived: Array = [0]
+	var going: Array = [0]
+	var todo: Array = Array(keys)
+	var asked: Dictionary = {}
+	for key: String in keys:
+		asked[key] = true
+	var say: Callable = func() -> void:
+		if job != null:
+			job.say("Fetching %d LDraw %s carried parts are drawn from…"
+				% [asked.size(), "file" if asked.size() == 1 else "files"])
+	say.call()
+	while not todo.is_empty() or int(going[0]) > 0:
+		while not todo.is_empty() and int(going[0]) < MOST_FETCHES:
+			var key: String = todo.pop_front()
+			# No time limit, as the geometry's fetches have none. One is polled
+			# once a frame, and a frame drawing a big model in software can take
+			# seconds: 42115-1 opened after 42082-1 had all six of its files
+			# arrive in the browser and given up on by a 30 s limit.
+			var request := HTTPRequest.new()
+			tree.root.add_child(request)
+			request.request_completed.connect(func(result: int, code: int,
+					headers: PackedStringArray, body: PackedByteArray) -> void:
+				request.queue_free()
+				going[0] = int(going[0]) - 1
+				if not _took(key, result, code, headers, body):
+					return
+				arrived[0] = int(arrived[0]) + 1
+				for named: String in PartForge.unreached(PartForge.fetched(key)):
+					if not asked.has(named) and not _unfetched.has(named):
+						asked[named] = true
+						todo.append(named)
+						say.call(), CONNECT_ONE_SHOT)
+			if request.request(root + SOURCES_DIR + key.uri_encode().replace("%2F", "/")) != OK:
+				_unfetched[key] = ["the request could not start", true]
+				request.queue_free()
+				continue
+			going[0] = int(going[0]) + 1
+		await tree.process_frame
+	return int(arrived[0])
+
+
+## Keep what came for [param key], or why it is not LDraw. Whether it was.
+static func _took(key: String, result: int, code: int, headers: PackedStringArray,
+		body: PackedByteArray) -> bool:
+	var why: String = _fetch_problem(result, code, headers, body)
+	if not why.is_empty():
+		# Not there is so for the session; the network may come back.
+		_unfetched[key] = [why, code == 0 or code >= 500]
+		push_warning("could not fetch the LDraw file %s: %s" % [key, why])
+		return false
+	PartForge.keep_fetched(key, body.get_string_from_utf8())
+	return true
+
+
+## Why a fetched body is not an LDraw file, or "". A missing file is a
+## status (Supabase says 400 for one), and a web page is not LDraw even with
+## 200: a missing part once came back as the landing page.
+static func _fetch_problem(result: int, code: int, headers: PackedStringArray,
+		body: PackedByteArray) -> String:
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return "the network failed (%d)" % result
+	if code != 200:
+		return "not there (HTTP %d)" % code
+	for header: String in headers:
+		if header.to_lower().begins_with("content-type:") and header.to_lower().contains("html"):
+			return "a web page came back, not LDraw"
+	var start: String = body.slice(0, 64).get_string_from_utf8().strip_edges()
+	if body.is_empty() or start.begins_with("<"):
+		return "a web page came back, not LDraw" if not body.is_empty() else "it came back empty"
+	return ""
+
+
+## [param problem] with why each file it names could not be fetched, where
+## one was asked for.
+static func _with_why(problem: String) -> String:
+	var why := PackedStringArray()
+	for key: String in _unfetched:
+		if problem.contains(key):
+			why.append("%s: %s" % [key, _unfetched[key][0]])
+	return problem if why.is_empty() else "%s (fetching %s)" % [problem, "; ".join(why)]
 
 
 # -- LDCad's flexible parts --------------------------------------------------
@@ -308,7 +571,8 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 				begun.append({"key": key, "sub": sub, "id": seen[0], "text": seen[1],
 					"sources": {}, "pieces": pieces, "task": -1, "built": [null]})
 			continue
-		var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
+		var made_of: Dictionary = model.skin_texts[body] if model.skin_texts.has(body) \
+			else _skin_text(library, model, sub, body, pieces)
 		if made_of.is_empty():
 			_skins_of_body[body] = ["", ""]
 			continue
@@ -321,10 +585,12 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
 			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
 		if not (library.parts.has(id) and library.custom_source(id) == text):
-			var unreached: PackedStringArray = PartForge.unreached(text, sources)
+			# Found already where the web looked before it opened (unreached_by).
+			var unreached: PackedStringArray = made_of["unreached"] if made_of.has("unreached") \
+				else PartForge.unreached(text, sources)
 			if not unreached.is_empty():
-				problems.append("%s (flexible): it uses files this build does not have: %s"
-					% [sub.name, ", ".join(unreached)])
+				problems.append(_with_why("%s (flexible): it uses files this build does not have: %s"
+					% [sub.name, ", ".join(unreached)]))
 				continue
 			# Its own copy of what it reads, and nothing it shares
 			# (PartForge.build_skin): it is read on another thread.

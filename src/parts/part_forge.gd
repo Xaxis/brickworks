@@ -193,19 +193,48 @@ func _source_for(name: String) -> Source:
 
 ## Where a reference resolves in a checkout's LDraw library, in the order
 ## tools/ldraw/library.py searches: parts and their subparts, then the
-## primitives; and in a build, which has no vendor/, the primitives it ships.
+## primitives; in a build, which has no vendor/, the primitives it ships;
+## and then what was fetched this session ([method fetched]).
 static func _read_library(key: String) -> String:
 	var path: String = library_path(key)
-	return FileAccess.get_file_as_string(path) if not path.is_empty() else ""
+	return FileAccess.get_file_as_string(path) if not path.is_empty() else fetched(key)
 
 
 ## The file [param key] (normalised) is in a checkout's LDraw library or a
 ## build's primitives, or "".
 static func library_path(key: String) -> String:
-	for path: String in [LIBRARY + "parts/" + key, LIBRARY + "p/" + key, SHIPPED + key]:
+	var places: Array = [LIBRARY + "p/" + key, SHIPPED + key] if withheld \
+		else [LIBRARY + "parts/" + key, LIBRARY + "p/" + key, SHIPPED + key]
+	for path: String in places:
 		if FileAccess.file_exists(path):
 			return path
 	return ""
+
+
+## A checkout's library read as a build has it: its primitives, which every
+## build ships, and not its parts or subparts, which no build does. What a
+## probe sets to see what the web can build (webcarry_probe).
+static var withheld: bool = false
+## The LDraw library's own files fetched this session, by normalised name:
+## official subparts and parts that parts a file carries are drawn from,
+## which no build ships (CustomParts.fetch_sources). Read on worker threads.
+static var _fetched: Dictionary = {}
+static var _fetched_lock := Mutex.new()
+
+
+## The text of [param key] fetched this session, or "".
+static func fetched(key: String) -> String:
+	_fetched_lock.lock()
+	var text: String = str(_fetched.get(key, ""))
+	_fetched_lock.unlock()
+	return text
+
+
+## Keep [param text], fetched, as the library's [param key] for the session.
+static func keep_fetched(key: String, text: String) -> void:
+	_fetched_lock.lock()
+	_fetched[key] = text
+	_fetched_lock.unlock()
 
 
 ## Parse a file's text. Unreadable lines are skipped, as every renderer
@@ -2740,6 +2769,9 @@ static func unreached(text: String, others: Dictionary = {}, library: bool = tru
 			elif library and not library_path(key).is_empty():
 				# The library's own files draw on the library only.
 				continue
+			elif library and not fetched(key).is_empty():
+				# But one fetched may draw on one not fetched yet.
+				todo.append(fetched(key))
 			else:
 				missing.append(key)
 	return missing

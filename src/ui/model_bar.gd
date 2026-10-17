@@ -422,7 +422,7 @@ func _on_pick(id: int) -> void:
 func open_with_progress(path: String) -> int:
 	var job: Working.Job = Working.begin("Opening %s…" % path.get_file())
 	await job.shown()
-	var placed: int = store.open(path)
+	var placed: int = await store.open_fetched(path)
 	job.end()
 	return placed
 
@@ -437,7 +437,7 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 		name = store.title
 	var job: Working.Job = Working.begin("Opening “%s” as saved %s…" % [name, version.when()])
 	await job.shown()
-	var placed: int = store.open_version(version.path, name)
+	var placed: int = await store.open_version(version.path, name)
 	job.end()
 	if placed <= 0 and store.awaited.is_empty():
 		return 0
@@ -463,7 +463,7 @@ func _import() -> void:
 			# slice at a time: see open_with_progress.
 			var job: Working.Job = Working.begin("Opening %s…" % file_name.get_file())
 			await job.shown()
-			var result: Dictionary = store.open_text(
+			var result: Dictionary = await store.open_text_fetched(
 				text, file_name.get_basename())
 			job.end()
 			if not str(result["error"]).is_empty():

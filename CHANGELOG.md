@@ -67,6 +67,11 @@ whole cycle.
 - Brickify stops when you cancel it, close its panel or quit. It used to
   run on to its end: quitting during a large run waited 25 s, and now
   takes under a second.
+- In a browser, a part a file carries that is drawn from LDraw's own
+  subparts or parts is built too. The files it needs are fetched as it
+  opens, only those (42082-1: one, 3 KB), and kept for the visit. 190 of
+  the 1,576 real sets' files left parts out for want of them; they now
+  open with the same parts as on the desktop.
 
 ## [0.3.0] - 2026-10-16
 
