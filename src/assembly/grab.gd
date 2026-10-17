@@ -56,6 +56,9 @@ const EDGE_ON_RATE := 0.5
 ## Below this the pointer's ray meets the plane a turn is in too slantwise
 ## to read an angle off it, and the turn drawn nearest the pointer is taken.
 const EDGE_ON := 0.12
+## Pixels a degree away from where it was weighs, edge on: enough to choose
+## between a turn and its mirror, too little to hold it back.
+const CONTINUITY := 0.15
 
 var world: BrickWorld
 var builder: Builder
@@ -161,6 +164,24 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 		_from_selection(selection)
 	else:
 		_from_part(brick_id)
+	return _chosen()
+
+
+## Take hold of [param child]'s body and all beyond it on [param joined],
+## the joint between it and its parent: one link of a chain (GrabChain).
+func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
+	_hold = at
+	link = joined
+	body = child
+	part = int((bodies.members[child] as PackedInt64Array)[0])
+	moving_bodies = bodies.beyond(child)
+	state = "moves"
+	return _chosen()
+
+
+## What follows from the joint and the bodies chosen: what moves, what it may
+## press on, its weight, how it moves, the gears it drives.
+func _chosen() -> String:
 	if state != "moves":
 		return state
 	var clock: int = Time.get_ticks_usec()
@@ -802,7 +823,11 @@ func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2,
 				* Transform3D(Basis.IDENTITY, -pivot) * _hold
 			if eye.is_position_behind(at):
 				continue
-			var gap: float = eye.unproject_position(at).distance_to(screen)
+			# Edge on, a turn and its mirror about the plane's long axis are
+			# drawn at one place: of the two, the one nearer where it was
+			# (4096's boom jumped 45° to its mirror for a frame).
+			var gap: float = eye.unproject_position(at).distance_to(screen) \
+				+ absf(trial - _unwrapped) * CONTINUITY
 			if gap < nearest:
 				nearest = gap
 				best = trial
@@ -811,7 +836,8 @@ func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2,
 			var at: Vector3 = Transform3D(Basis.IDENTITY, pivot) \
 				* Transform3D(Basis(axis, deg_to_rad(trial)), Vector3.ZERO) \
 				* Transform3D(Basis.IDENTITY, -pivot) * _hold
-			var gap: float = eye.unproject_position(at).distance_to(screen)
+			var gap: float = eye.unproject_position(at).distance_to(screen) \
+				+ absf(trial - _unwrapped) * CONTINUITY
 			if gap < nearest:
 				nearest = gap
 				best = trial
@@ -903,7 +929,7 @@ func settle() -> String:
 
 ## Put every part that moved where it now stands, as one step to undo,
 ## called [param words]. Returns how many moved.
-func commit(words: String) -> int:
+func commit(words: String, cells: Dictionary = {}) -> int:
 	var steps: Array = []
 	for key: int in placed:
 		var brick: BrickWorld.Brick = world.get_brick(key)
@@ -915,9 +941,21 @@ func commit(words: String) -> int:
 		steps.append({"undo": "move", "brick": key, "transform": rest[key]})
 		world.move_brick(key, to)
 		builder.lattice.release(key)
-		builder.lattice.occupy_boxes(key, builder.boxes_for(library.mesh_for(brick.part_id), to))
+		# Worked out ahead, a share a frame, for a big section (GrabDrag).
+		var boxes: Variant = cells.get(key)
+		builder.lattice.occupy_boxes(key, boxes if boxes != null
+			else builder.boxes_for(library.mesh_for(brick.part_id), to))
 	builder.record(steps, words)
 	return steps.size()
+
+
+## The parts that will move when it is kept: brick id -> where.
+func changed() -> Dictionary:
+	var out: Dictionary = {}
+	for key: int in placed:
+		if world.get_brick(key) != null and not Grab._same(placed[key], rest[key]):
+			out[key] = placed[key]
+	return out
 
 
 ## The joint now, in words: "45°", "3 LDU along", "turned 30°".

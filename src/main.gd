@@ -4765,6 +4765,10 @@ var _dragging_part: bool = false
 ## A part grabbed by a drag and moved about its joint (GrabDrag).
 var _grab_drag: GrabDrag
 var _grabbing: bool = false
+## When the press that may become a grab came, and how long it must be held
+## still to take the part by its chain of joints (GrabChain), ms.
+var _press_ms: int = 0
+const CHAIN_HOLD_MS := 400
 ## A left press that is not yet a click or a drag. A drag from it moves the
 ## view ("turn", "slide", "zoom") or draws a box ("box"); "" for a finger,
 ## whose drags are the camera's. Nothing is placed or selected until it
@@ -4971,7 +4975,9 @@ func _grab_on_joint(brick_id: int) -> bool:
 	if _grab_drag == null or _press_copies or _builder.is_locked(brick_id):
 		return false
 	var selected: Dictionary = _builder.selection if _builder.selection.has(brick_id) else {}
-	if not _grab_drag.press(brick_id, _press_at, selected):
+	# Held still on it a moment before dragging: by its chain of joints.
+	var chained: bool = Time.get_ticks_msec() - _press_ms >= CHAIN_HOLD_MS
+	if not _grab_drag.press(brick_id, _press_at, selected, chained):
 		return false
 	_builder.hide_preview()
 	return true
@@ -4986,6 +4992,7 @@ func _make_grab_drag() -> void:
 	_grab_drag.scenery = _store.scenery
 	_grab_drag.say = _bar.say
 	_grab_drag.edited = _on_model_edited
+	_grab_drag.assemblies = _shell.assemblies
 	add_child(_grab_drag)
 
 
@@ -5214,6 +5221,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if under != 0:
 				_press_brick = under
 				_press_copies = button.ctrl_pressed or button.meta_pressed
+				_press_ms = Time.get_ticks_msec()
 				return
 		_pending_left = true
 		_pending_verb = verb
