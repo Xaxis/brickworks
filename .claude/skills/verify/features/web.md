@@ -780,7 +780,16 @@ plan with Claude as the client.
   `brickworksShare.build` also has `turn_last`, `turn_frames` (the rest of
   the turn's frame) and `told_laps` (what telling the page cost, piece by
   piece), and the page hears which frame drew a page
-  (`window.brickworksBuildDrawn`). Not done: the author's own steps (`0 STEP`, item 1
+  (`window.brickworksBuildDrawn`). **The parts' pictures** along the bottom
+  are asked for once the page is drawn (`BuildMode._watch_after_this_frame`)
+  and drawn ahead while the page is left alone (`main._draw_ahead`: once the
+  page's own are in and a second has passed, the next three pages' parts and
+  then every other page's, a stage's worth (`PartThumbnails.STAGES`) at a
+  time, each part in a colour once, kept by `PartThumbnails`): drawn only
+  when a page asked, a picture took seconds behind the turn on a slowed
+  phone, and pictures of the player showed blank tiles. `pictures_ms` in
+  `brickworksShare.build`, and `window.brickworksPicturesDrawn` = [page,
+  when] the frame every picture of the page is in. Not done: the author's own steps (`0 STEP`, item 1
   of docs/COMPETITIVE.md) are not kept yet, so these are always
   `Instructions.plan`'s; the parts are fetched for the whole model before
   the first page, not page by page; a link shared before steps were carried
@@ -1744,7 +1753,8 @@ nodes' processing. Proves it when it ends "a shared model's pages turn
 quickly on a slow phone, and its first step comes up quickly": each turn on
 screen under 100 ms at 300 and 1,000 parts and under 200 ms at 4,000, the
 first step, each tap at once, within 3 s of the first frame at 300 and
-1,000 parts and 5 s at 4,000. On a box at load 30 to 50 a frame's WebGL
+1,000 parts and 5 s at 4,000, and every turn's parts' pictures all drawn
+within 1 s of the tap (`window.brickworksPicturesDrawn`). On a box at load 30 to 50 a frame's WebGL
 calls wait seconds on SwiftShader now and then, and a turn with them misses
 however little the app did (the line says the WebGL time). Measured
 2026-10-17 at load 25 to 54 (bench/results/sharesteps-2026-10-17/r7-local):

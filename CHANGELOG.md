@@ -77,8 +77,10 @@ whole cycle.
   on 4,000 parts with the processor slowed four times the steps are in
   about 3 s after the page first draws, where working them out took 75 to
   135 s. Links shared before this work their steps out as they did. The
-  page also asks for the model while the app is still starting, and the
-  step player no longer stalls twice a second on a big model.
+  page also asks for the model while the app is still starting, the
+  step player no longer stalls twice a second on a big model, and the
+  parts' pictures of the pages to come are drawn while you build, so a
+  page's parts list is there when you turn to it.
 - With several tabs or windows open, a new Claude chat that has not chosen
   one asks before its first change, listing them. It used to build in the
   tab used last, which could be the one another chat was building in.
