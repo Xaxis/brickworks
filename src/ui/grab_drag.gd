@@ -107,8 +107,11 @@ var _swing_revision: int = -1
 ## The swing's own share of a frame, ms, at most: past it the swing goes
 ## slower than the clock rather than hold the frame.
 const SWING_BUDGET_MS := 8.0
-## A frame's simulated time at most, s: a slow frame does not leap.
-const SWING_MOST_FRAME_S := 0.05
+## A frame's simulated time at most, s: a hitch does not leap far, and a
+## browser drawing in software (a frame each 0.5 to 0.7 s on a loaded box)
+## shows the swing in steps rather than fifteen times slower than it is. The
+## steps are still 1 ms; SWING_BUDGET_MS bounds the work.
+const SWING_MOST_FRAME_S := 0.25
 ## The last swing's frames: how many, the worst and mean of its own work
 ## (stepping, room tests, drawing), ms; and how long it took on the clock.
 var swing_frames: int = 0
@@ -1264,6 +1267,10 @@ func _tell_page() -> void:
 	state["swing_frames"] = swing_frames
 	state["swing_mean_ms"] = snappedf(swing_mean_ms, 0.01)
 	state["swing_worst_ms"] = snappedf(swing_worst_ms, 0.01)
+	# Simulated against the clock: a frame steps at most SWING_MOST_FRAME_S,
+	# so frames slower than that draw the swing slower than it is.
+	state["swing_s"] = snappedf(last_swing.time, 0.01) if last_swing != null else 0.0
+	state["swing_clock_s"] = snappedf(swing_clock_s, 0.01)
 	var said: String = JSON.stringify(state)
 	if said == _told_page:
 		return

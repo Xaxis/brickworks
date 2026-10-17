@@ -1827,8 +1827,24 @@ slower than the clock rather than hold the frame. It is kept as one undo step
 with the drag when it comes to rest; a click catches it where it is ("caught
 by a press 0.18 s into its swing"), kept the same way; Escape puts it back.
 Over MCP, move_part runs it to rest at once and says how it swung and where
-it came to rest. On the windowed probe under xvfb the swing's own work was
-FRAME_RESULT.
+it came to rest. On the windowed probe under xvfb the swing's own work
+(stepping, its room tests, setting what is drawn) was 0.24 ms a frame on
+average and 0.51 at worst for the beam let go 30° out (123 frames, 104 room
+tests, none over 0.03 ms), 0.42 and 1.21 from 75°, 0.89 and 3.28 for the
+double pendulum (448 frames), and 0.66 and 1.41 for the beam swinging as the
+crane landed: under a tenth of the 8 ms it may take.
+
+In a browser (grab_flow: a beam 7 on a free pin beside the crane, the
+threaded web export drawn by SwiftShader on a box loaded 30 to 50) it swung
+as on the desktop, back and forth 14 times in 2.9 s, and came to rest at
+−1°; its own work was 4.6 ms a frame on average and 8.2 at worst. The page
+drew it slowly: a frame each 0.65 s (median), where turning the view with a
+right-drag drew one each 0.18 s, so the 2.98 s swing took 18.7 s on the
+clock in 24 frames. A frame steps the swing at most a quarter of a second
+(`GrabDrag.SWING_MOST_FRAME_S`); at the first cap, a twentieth, the same
+swing was drawn fifteen times slower than it is. What the page spends
+drawing a swing's frame beyond what turning the view costs was not traced;
+the app's share of it is the 4.6 ms.
 
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)
