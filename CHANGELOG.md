@@ -91,6 +91,9 @@ whole cycle.
   is written as the app closes, a turntable keeps the frames it has, and
   the app's log says what was not finished. Before, a 4K picture being
   saved as you quit was lost without a word.
+- In a browser, opening Render a second time no longer stalls the page.
+  Two of its frames waited 170-800 ms each to read the draft back; now
+  none takes over 50 ms, and the draft is the same.
 - In a browser, a part a file carries that is drawn from LDraw's own
   subparts or parts is built too. The files it needs are fetched as it
   opens, only those (42082-1: one, 3 KB), and kept for the visit. 190 of

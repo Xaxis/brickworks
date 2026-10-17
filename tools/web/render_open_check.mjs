@@ -20,12 +20,18 @@
 // included (building a program is a WebGL call the page waits in), and the
 // programs it linked are counted and timed apart.
 //
-// Fails when a frame of the first open is over --budget ms (250), when the
-// draft never comes, or when a script error reaches the console. Prints the
-// second open's longest frame beside it, with --programs every program
-// linked and the frame it was linked in, and with --before=N the longest
-// frames of the N s before the press. Leaves open.json and pictures of
-// both opens in --out (shots/render_open).
+// Fails when a frame of either open is over --budget ms (250), when the
+// draft never comes, or when a script error reaches the console. With
+// --programs it prints every program linked and the frame it was linked in,
+// and with --before=N the longest frames of the N s before the press.
+// Leaves open.json and pictures of both opens in --out (shots/render_open).
+// --port=N serves the export on that port rather than any free one.
+//
+// The second open built nothing and still had two frames of 170-800 ms,
+// each waiting in readPixels (2026-10-17): its reads come within half a
+// second of the press, while GpuFence lets the window draw to answer it,
+// and a read waited for those frames too, queued after its fence. A read
+// now waits for a fence put after the last frame drawn (GpuFence.finished).
 //
 // The press comes once the page has gone quiet, and by then the panel has
 // made its renderer ready (RenderDialog._warm_when_idle): its viewports, and
@@ -58,7 +64,7 @@ async function freePort() {
 let server = null;
 let url = args.url;
 if (!url) {
-  const port = await freePort();
+  const port = args.port ? Number(args.port) : await freePort();
   server = spawn("node", ["tools/web/relay_server.mjs", String(port), `--static=${args.dir || "build/web"}`],
     { stdio: ["ignore", "pipe", "inherit"] });
   await new Promise((done) => server.stdout.once("data", done));
@@ -308,8 +314,11 @@ try {
   rows.push(again);
   check(`the first open drew its draft (${firstOpen.status.slice(0, 60)})`, firstOpen.drafted !== null);
   check(`no frame of the first open over ${budget} ms (the longest ${firstOpen.longest} ms; `
-    + `${firstOpen.programs} programs linked; the second open's longest ${again.longest} ms)`,
-    firstOpen.longest <= budget);
+    + `${firstOpen.programs} programs linked)`, firstOpen.longest <= budget);
+  check(`the second open drew its draft (${again.status.slice(0, 60)})`, again.drafted !== null);
+  check(`no frame of the second open over ${budget} ms (the longest ${again.longest} ms, `
+    + `waiting in ${again.worstFrames[0] ? again.worstFrames[0].waits || "nothing" : "nothing"})`,
+    again.longest <= budget);
 } catch (error) {
   check(String(error), false);
 }

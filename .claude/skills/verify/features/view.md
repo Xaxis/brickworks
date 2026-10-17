@@ -1120,14 +1120,15 @@ picture the assistant is shown.
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
   callback, WebGL included, with the programs it linked counted apart), then
-  a second open beside it. Fails past `--budget` ms (250) for a frame of the
-  first open, on no draft, or on a script error. It presses Render after the
-  page has gone quiet, so the panel has made its renderer ready by then.
-  The desktop's half is `render_probe.gd -- --first-open`: the same open on
-  the sample car, every frame timed, fails past `--budget` ms (100); left
-  alone first as a person leaves it, or pressed `--at-once` before that, or
-  `--during` the making ready while it waits for someone using the window
-  (it must wait, and the press must not).
+  a second open, closed and pressed again once the page is quiet. Fails past
+  `--budget` ms (250) for a frame of either open, on no draft, or on a
+  script error; `--port=N` serves the export there. It presses Render after
+  the page has gone quiet, so the panel has made its renderer ready by then.
+  The desktop's half is `render_probe.gd -- --first-open`: the same two
+  opens on the sample car, every frame timed, fails past `--budget` ms
+  (100); left alone first as a person leaves it, or pressed `--at-once`
+  before that, or `--during` the making ready while it waits for someone
+  using the window (it must wait, and the press must not).
 
 ## How to reach it
 
@@ -1283,13 +1284,14 @@ node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out
 MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
 # The first open of Render in a fresh browser, every frame timed (the engine's
 # frame callback, WebGL calls in it, the programs it linked): fails past
-# --budget ms (250) for any frame from the press to the draft; prints a
-# second open beside it. --programs lists each program linked, by its
-# #defines, and the frame it was linked in. A local export, served by it:
+# --budget ms (250) for any frame from the press to the draft, of the first
+# open and of a second. --programs lists each program linked, by its
+# #defines, and the frame it was linked in. A local export, served by it
+# (on --port=N if given):
 node tools/web/render_open_check.mjs --dir=build/web --out=shots/render_open
 # The same on the desktop, on the card (Forward+): every frame from the press
-# to the draft under --budget ms (100), the draft left as
-# shots/render/first_draft_<renderer>.png. A fresh XDG_DATA_HOME is a machine
+# to the draft under --budget ms (100), both opens, the drafts left as
+# shots/render/{first,second}_draft_<renderer>.png. A fresh XDG_DATA_HOME is a machine
 # that has never rendered (no shader cache); --at-once presses before the
 # panel has made its renderer ready, --during while it is waiting for a touch.
 MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 \
@@ -1430,10 +1432,18 @@ take, which is what made a design run give up on looking at itself.
   41-66 ms once it had) out of the open: 19 ms, the warm-up's own frame 88 ms
   while nobody was using the window (`render_probe.gd -- --first-open`).
   Pressed before the warm-up (`--at-once`), an open is as it was.
-  Still to do: a second open's longest frame is a read-back, 170-800 ms
-  (`readPixels`, within half a second of the press), likely waiting for the
-  window's frames drawn after its fence while the press was answered
-  (`GpuFence.ANSWER_MS`); not yet measured apart.
+  A second open's longest frame was a read-back, 170-800 ms, two of them
+  (`readPixels`, 130-550 ms after the press): its fence had passed, and the
+  read waited for the window's frames drawn after it, which GpuFence lets
+  draw for half a second after a press to answer it (`GpuFence.ANSWER_MS`).
+  `GpuFence.finished` now follows a fence that passes with frames drawn
+  after it by another, until one passes with none: the second open's
+  longest frame 243-266 ms before (one over 250), 34-42 ms after (three
+  runs each, `render_open_check.mjs`, 2026-10-17), the first open's 85-94
+  ms either way, both drafts pixel for pixel the same, the second draft
+  1.9-2.0 s instead of 1.5 s (its reads wait out the half second). The
+  desktop has no fences (`GpuFence.put` is 0) and reads at once: its second
+  open 9 frames, the longest 16 ms (`render_probe.gd -- --first-open`).
 - **A render's steps must make the engine draw.** The app may draw only
   what changed (IdleDraw's low-processor mode), and each step waits for the
   frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a
