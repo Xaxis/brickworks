@@ -330,10 +330,12 @@ def stand_of(arm: dict) -> tuple[set[int], float]:
     return set(int(n) for n in stand.get("parts", [])), float(stand.get("lift_ldu", 0))
 
 
-def build_mesh(arm: dict, lib: Library, stand: bool = False):
+def build_mesh(arm: dict, lib: Library, stand: bool = False, cut: float | None = None):
     """Every part's triangles placed, and each triangle's colour. Lowered by a stand's lift, so
     the model lines up with the model it came from; the stand itself only when asked (a
-    picture shows it; likeness is of the model)."""
+    picture shows it; likeness is of the model). With `cut` (LDU along z), only the parts whose
+    middle is short of it, each a shade lighter or darker than the next, so the courses inside
+    show part by part."""
     np = _np()
     tris, cols = [], []
     skip, lift = stand_of(arm)
@@ -345,12 +347,16 @@ def build_mesh(arm: dict, lib: Library, stand: bool = False):
             continue
         mat = np.array(m, dtype=np.float64).reshape(3, 4)
         placed = t.reshape(-1, 3).astype(np.float64) @ mat[:, :3].T + mat[:, 3]
+        if cut is not None and (placed[:, 2].min() + placed[:, 2].max()) / 2 > cut:
+            continue
         placed[:, 1] -= lift
         tris.append(placed.reshape(-1, 3, 3).astype(np.float32))
         rgb = np.array(lib.colours.get(int(code), (1.0, 0.0, 1.0)), dtype=np.float32)
         c = fixed.copy()
         c[codes == 16] = rgb
         c[codes == 24] = rgb * 0.6  # edge colour, if a part carries one
+        if cut is not None:
+            c = np.clip(c * (0.6 + 0.65 * ((n * 2654435761) % 1000) / 1000.0), 0, 1).astype(np.float32)
         cols.append(c)
     if not tris:
         return np.zeros((0, 3, 3), np.float32), np.zeros((0, 3), np.float32)
@@ -807,7 +813,8 @@ def do_pictures(args: argparse.Namespace) -> int:
     arms = [a for a in ARMS if not args.arms or a in args.arms.split(",")]
     before = Path(args.before) if args.before else None
     before_lib = Library(before, load_colours()) if before else None
-    d = np.array([-0.62, -0.42, -0.66])
+    # Cut, the cut face nearly head on.
+    d = np.array([-0.3, -0.35, -0.89]) if args.cut else np.array([-0.62, -0.42, -0.66])
     d /= np.linalg.norm(d)
     light = np.array([0.35, -0.8, -0.45])
     light /= np.linalg.norm(light)
@@ -842,7 +849,7 @@ def do_pictures(args: argparse.Namespace) -> int:
                 if not arm.get("placed"):
                     # Nothing laid is a result too: an empty panel, said.
                     return (f"{said}: nothing laid", np.full((res, res, 3), 255, dtype=np.uint8))
-                tris, cols = build_mesh(arm, parts, stand=True)
+                tris, cols = build_mesh(arm, parts, stand=True, cut=float(centre[2]) if args.cut else None)
                 if arm.get("align"):
                     sc = caster(src)
                     seen = np.concatenate([loc[hit] for hit, loc, _ in
@@ -870,7 +877,7 @@ def do_pictures(args: argparse.Namespace) -> int:
             for n, (name, pixels) in enumerate(panels):
                 sheet.paste(Image.fromarray(pixels), (n * res, label))
                 draw.text((n * res + 8, 4), name, fill=(40, 40, 40), font=font)
-            target = into / f"{model_dir.name}-{size_dir.name}.jpg"
+            target = into / f"{model_dir.name}-{size_dir.name}{'-cut' if args.cut else ''}.jpg"
             sheet.save(target, quality=args.quality, optimize=True)
             print(target)
     return 0
@@ -1146,6 +1153,8 @@ def main() -> int:
     p.add_argument("--quality", type=int, default=80)
     p.add_argument("--arms", default="", help="only these arms")
     p.add_argument("--before", default="", help="an earlier run of the same models: each arm before, then after")
+    p.add_argument("--cut", action="store_true",
+                   help="each build cut in half across z, its parts shaded apart, to see the core's courses")
     p = sub.add_parser("report")
     p.add_argument("out")
     p.add_argument("--write", default="")
