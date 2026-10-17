@@ -3177,16 +3177,21 @@ func _fall_time_by_hand(placed: Dictionary, hand: Dictionary) -> Dictionary:
 
 ## The fall just shown against the hand: its simulated time (Topple.timed)
 ## against the integral, its drawn frames never through the floor, and the
-## clock it took.
-func _fall_time_check(name: String, placed: Dictionary, hand: Dictionary) -> void:
+## clock it took: checked when [param pictured] is false (a picture taken
+## during the fall holds its frames, and the last frame ends it late).
+func _fall_time_check(name: String, placed: Dictionary, hand: Dictionary, pictured: bool = false) -> void:
 	var by_hand: Dictionary = _fall_time_by_hand(placed, hand)
 	print("    by hand: m %.2f g, its centre of mass %.1f LDU from the edge and %.2f° past upright, I about the edge %.0f g·LDU²: falls %.2f° in %.4f s"
 		% [by_hand["m"], by_hand["r"], by_hand["phi0"], by_hand["I"], hand["angle"], by_hand["seconds"]])
 	var off: float = absf(_grab.fall_seconds - float(by_hand["seconds"])) / float(by_hand["seconds"])
 	_check("%s: it falls in %.4f s, a rigid body turning about its edge from rest; the integral by hand %.4f s, %.2f%% off"
 		% [name, _grab.fall_seconds, by_hand["seconds"], 100.0 * off], off < 0.02)
-	_check("%s: drawn falling over %.3f s on the clock (%.3f s simulated), not a fixed half second"
-		% [name, _grab.fall_clock_s, _grab.fall_seconds], absf(_grab.fall_clock_s - _grab.fall_seconds) < 0.1)
+	if pictured:
+		print("    drawn falling over %.3f s on the clock (%.3f s simulated), with pictures taken during it"
+			% [_grab.fall_clock_s, _grab.fall_seconds])
+	else:
+		_check("%s: drawn falling over %.3f s on the clock (%.3f s simulated), not a fixed half second"
+			% [name, _grab.fall_clock_s, _grab.fall_seconds], absf(_grab.fall_clock_s - _grab.fall_seconds) < 0.1)
 	var floor_y: float = float(hand.get("floor", _lowest()))
 	_check("%s: no frame of it went through the floor (lowest corner drawn %.2f LDU from it)"
 		% [name, _grab.fall_lowest - floor_y], _grab.fall_lowest >= floor_y - 1.0)
@@ -3312,7 +3317,7 @@ func _landing_case() -> void:
 		var fell: float = rad_to_deg(up_before.angle_to(up_after))
 		_check("landing: it turned %.2f° about its edge, where the hand puts it down (%.2f°)" % [fell, hand["angle"]],
 			absf(fell - float(hand["angle"])) < 1.5)
-		await _fall_time_check("landing", fall_from, hand)
+		await _fall_time_check("landing", fall_from, hand, _windowed)
 	_check("landing: as it landed the beam swung on in its new lie, and it says so", landed_swing
 		and _grab.last_words.contains("as it landed"))
 	# The beam hangs: its centre of mass under its pin, within its friction.

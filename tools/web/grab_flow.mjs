@@ -245,17 +245,33 @@ if (args.big) {
     await open(path.resolve(args.big));
     const opened = await until(state, (s) => (s.bricks || 0) > 500 && !/arriving|opening|reading/i.test(s.said || ""), 900);
     check(Boolean(opened), `${path.basename(args.big)} opened: ${(await state()).bricks} parts`);
-    // Read for a grab (GrabDrag reads a model's joints once it stands still).
+    // Read for a grab (GrabDrag reads a model's joints once it stands still),
+    // and quiet: its parts arrived and drawn, five seconds in a row with no
+    // frame past 100 ms (a big model drawn in software takes a while).
     await until(grab, (g) => g.ready, 300);
-    await page.waitForTimeout(5000);
+    let quiet = null;
+    for (let n = 0; n < 36 && !quiet; n++) {
+      const probe = await frameGaps(5);
+      if (probe.over100 === 0) quiet = probe;
+    }
+    check(Boolean(quiet), "the page went quiet once the model was in");
     const seconds = Number(args.seconds || 20);
     const gaps = await frameGaps(seconds);
-    console.log(`      standing still ${seconds} s: ${gaps.frames} frames, longest ${gaps.longest.join(", ")} ms; `
-      + `${gaps.over50} past 50 ms, ${gaps.over100} past 100 ms`);
+    console.log(`      standing still ${seconds} s, the page not asking: ${gaps.frames} frames, longest `
+      + `${gaps.longest.join(", ")} ms; ${gaps.over50} past 50 ms, ${gaps.over100} past 100 ms`);
     timings.big = { model: path.basename(args.big), ...gaps };
-    const asked = await grab();
-    check((asked.handles || []).length === 0, `no handles found while the page does not ask (${(asked.handles || []).length})`);
+    const unasked = await grab();
+    check((unasked.handles || []).length === 0 && !unasked.handles_found,
+      `no handles found while the page does not ask (${(unasked.handles || []).length}, found ${unasked.handles_found} times)`);
     check(gaps.over100 === 0, `no frame past 100 ms standing still on ${path.basename(args.big)} (${gaps.over100})`);
+    // Asked, they are found once, and not again while nothing changes.
+    await page.evaluate(() => { window.brickworksGrabAsk = true; });
+    const askedGaps = await frameGaps(10);
+    const asked = await grab();
+    console.log(`      asked for 10 s: found ${asked.handles_found} time(s), the last in ${asked.handles_ms} ms, `
+      + `${(asked.handles || []).length} handles; frames longest ${askedGaps.longest.join(", ")} ms`);
+    timings.big_asked = { found: asked.handles_found, ms: asked.handles_ms, ...askedGaps };
+    check(asked.handles_found === 1, `asked, they are found once and kept while nothing changes (${asked.handles_found})`);
     await shot("big.png");
   } catch (trouble) {
     check(false, `stopped: ${trouble.message}`);

@@ -1265,7 +1265,10 @@ func _tell_page() -> void:
 			get_viewport().get_final_transform()]
 		if seen != _handles_for:
 			_handles_for = seen
+			var finding: int = Time.get_ticks_usec()
 			_handles = _find_handles()
+			handles_ms = float(Time.get_ticks_usec() - finding) / 1000.0
+			handles_found += 1
 		handles = _handles
 	var state: Dictionary = {"grabbing": grab != null, "handles": handles,
 		"said": last_words, "frames": frames, "worst_ms": snappedf(worst_ms, 0.01),
@@ -1275,6 +1278,8 @@ func _tell_page() -> void:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)
 		state["stopped"] = grab.stopped
+	state["handles_found"] = handles_found
+	state["handles_ms"] = snappedf(handles_ms, 0.1)
 	state["swinging"] = _swinging != null
 	state["swing_frames"] = swing_frames
 	state["swing_mean_ms"] = snappedf(swing_mean_ms, 0.01)
@@ -1290,6 +1295,9 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksGrab = %s" % said, true)
 
 
+## How often the handles were found, and what the last finding cost, ms.
+var handles_found: int = 0
+var handles_ms: float = 0.0
 ## The handles found last, and for what: [revision, eye, view size, its
 ## place in the window].
 var _handles: Array = []
