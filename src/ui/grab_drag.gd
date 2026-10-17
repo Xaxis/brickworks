@@ -80,6 +80,7 @@ var _moved_at: int = 0
 var _laying: Grab = null
 var _lay_keys: Array = []
 var _laid: Dictionary = {}
+var _lay_task: int = -1
 ## The frame that kept the last big section, ms.
 var keep_ms: float = 0.0
 ## What that frame spent, ms: making copies its own, the commit, what an
@@ -342,6 +343,9 @@ func _own_copies(held: Grab) -> String:
 func cancel() -> void:
 	_settling = null
 	_laying = null
+	if _lay_task >= 0:
+		WorkerTasks.collect(_lay_task)
+		_lay_task = -1
 	if chain != null:
 		chain = null
 		world.set_drawn({})
@@ -592,13 +596,31 @@ func _process(_delta: float) -> void:
 		world.set_drawn(grab.placed)
 	if _laying != null:
 		var began: int = Time.get_ticks_usec()
+		# The cells on a worker (Builder.boxes_for is safe off the main
+		# thread): one big part's turned cover alone was 187 ms of a frame.
+		if _lay_task < 0 and not _lay_keys.is_empty() and not OS.has_feature("nothreads"):
+			var work: Array = []
+			for key: int in _lay_keys:
+				var brick: BrickWorld.Brick = world.get_brick(key)
+				if brick != null:
+					work.append([key, library.mesh_for(brick.part_id), _laying.placed[key]])
+			_lay_keys.clear()
+			var out: Dictionary = _laid
+			var cells: Builder = builder
+			_lay_task = WorkerTasks.add(func() -> void:
+				for item: Array in work:
+					out[item[0]] = cells.boxes_for(item[1], item[2]), false, "lay a section's cells")
+		if _lay_task >= 0:
+			if WorkerThreadPool.is_task_completed(_lay_task):
+				WorkerTasks.collect(_lay_task)
+				_lay_task = -1
 		while not _lay_keys.is_empty() and float(Time.get_ticks_usec() - began) / 1000.0 < FRAME_BUDGET_MS:
 			var key: int = _lay_keys.pop_back()
 			var brick: BrickWorld.Brick = world.get_brick(key)
 			if brick != null:
 				_laid[key] = builder.boxes_for(library.mesh_for(brick.part_id), _laying.placed[key])
 		worst_lay_ms = maxf(worst_lay_ms, float(Time.get_ticks_usec() - began) / 1000.0)
-		if _lay_keys.is_empty():
+		if _lay_keys.is_empty() and _lay_task < 0:
 			var held: Grab = _laying
 			_laying = null
 			var kept_at: int = Time.get_ticks_usec()
