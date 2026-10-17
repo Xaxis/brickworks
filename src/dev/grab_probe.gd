@@ -871,8 +871,9 @@ func _big() -> void:
 	await _button(_last_screen, false)
 	var settling: int = Time.get_ticks_msec()
 	await _settled()
-	print("    let go: checked and kept in %d ms, its worst frame %.1f ms; the keeping frame %.0f ms %s" % [
-		Time.get_ticks_msec() - settling, _grab.worst_settle_ms, _grab.keep_ms, str(_grab.keep_took)])
+	print(("    let go: checked and kept in %d ms, its worst frame %.1f ms (checking %.1f, cells %.1f); "
+		+ "the keeping frame %.0f ms %s") % [Time.get_ticks_msec() - settling, _grab.worst_settle_ms,
+		_grab.worst_verify_ms, _grab.worst_lay_ms, _grab.keep_ms, str(_grab.keep_took)])
 	_timings["big"] = {"file": path.get_file(), "parts": _world.brick_count(),
 		"moving": grab.moving.size(), "frames": _grab.frames, "mean_ms": snappedf(_grab.mean_ms, 0.01),
 		"worst_ms": snappedf(_grab.worst_ms, 0.01), "first_grab_ms": snappedf(grabbed_ms, 0.1),

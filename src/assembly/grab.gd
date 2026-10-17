@@ -128,6 +128,11 @@ var budget_ms: float = INF
 ## Let go and settled under its weight (once), and what that said.
 var settled: bool = false
 var swung: String = ""
+## A big section's copies made their own ahead of the frame that keeps it:
+## the history's depth before, and what was said.
+var own_done: bool = false
+var own_depth: int = 0
+var own_words: String = ""
 ## The turn shown is not checked for room yet past [member _checked_angle].
 var unchecked: bool = false
 var _checked_angle: float = 0.0

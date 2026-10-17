@@ -63,6 +63,9 @@ var frames: int = 0
 var worst_follow_ms: float = 0.0
 var worst_weigh_ms: float = 0.0
 var worst_settle_ms: float = 0.0
+## Of those: checking where it stops, and working out its cells.
+var worst_verify_ms: float = 0.0
+var worst_lay_ms: float = 0.0
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
 var _judge: Balance = null
@@ -145,6 +148,8 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 		return true
 	worst_ms = 0.0
 	worst_settle_ms = 0.0
+	worst_verify_ms = 0.0
+	worst_lay_ms = 0.0
 	worst_follow_ms = 0.0
 	worst_weigh_ms = 0.0
 	_total_ms = 0.0
@@ -249,6 +254,11 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	# A big section's cells in the lattice worked out a share a frame before
 	# it is kept: 131 turned parts at once held the release's frame 170 ms.
 	if cells.is_empty() and held.moving.size() > BIG_SECTION and _laying == null:
+		# The copies made their own in this frame, the cells in the next ones,
+		# the move kept in the last: each well inside a frame.
+		held.own_depth = builder.history_depth()
+		held.own_words = _own_copies(held)
+		held.own_done = true
 		_laying = held
 		_lay_keys = held.changed().keys()
 		_laid = {}
@@ -256,9 +266,9 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	var swung: String = held.swung
 	world.set_drawn({})
 	_unlean()
-	var depth: int = builder.history_depth()
+	var depth: int = held.own_depth if held.own_done else builder.history_depth()
 	var clock: int = Time.get_ticks_usec()
-	var own: String = _own_copies(held)
+	var own: String = held.own_words if held.own_done else _own_copies(held)
 	keep_took["copies"] = (Time.get_ticks_usec() - clock) / 1000
 	clock = Time.get_ticks_usec()
 	var moved: int = held.commit(held.step_words(), cells)
@@ -587,6 +597,7 @@ func _process(_delta: float) -> void:
 			var brick: BrickWorld.Brick = world.get_brick(key)
 			if brick != null:
 				_laid[key] = builder.boxes_for(library.mesh_for(brick.part_id), _laying.placed[key])
+		worst_lay_ms = maxf(worst_lay_ms, float(Time.get_ticks_usec() - began) / 1000.0)
 		if _lay_keys.is_empty():
 			var held: Grab = _laying
 			_laying = null
@@ -597,6 +608,7 @@ func _process(_delta: float) -> void:
 	if _settling != null:
 		var started: int = Time.get_ticks_usec()
 		var done: bool = _settling.verify_step()
+		worst_verify_ms = maxf(worst_verify_ms, float(Time.get_ticks_usec() - started) / 1000.0)
 		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - started) / 1000.0)
 		world.set_drawn(_settling.placed)
 		if done:
