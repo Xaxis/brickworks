@@ -491,6 +491,17 @@ func _over_mcp(name: String, row: Dictionary) -> void:
 	var undo: String = await _say("undo", {"steps": 3})
 	_check("%s: the session's three steps undo (%s)" % [name, undo.left(60)],
 		_builder.history_depth() == depth and _sections.sections().is_empty())
+	# Named and merged by a session: two suggestions as one section called
+	# Gate, the first as it is; one step, undone.
+	await _ui.suggest()
+	var count: int = _sections.suggested.size()
+	var merged: String = await _say("make_sections", {"sections": [
+		{"name": "Gate", "from": [2, 3]}, {"from": [1]}]})
+	var gate: String = _sections.find_section("Gate")
+	_check("%s: make_sections merges two into Gate, keeps one, one undo step (%s)" % [name,
+		merged.left(80)], count == 3 and not gate.is_empty()
+		and _sections.sections().size() == 2 and _builder.history_depth() == depth + 1)
+	await _say("undo", {})
 	# The suggestion again, for the window's own checks after this.
 	await _ui.suggest()
 
