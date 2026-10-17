@@ -41,6 +41,8 @@ var _picker: MeshFilePicker
 var _checker: Assistant
 var _busy: bool = false
 var _stopped: bool = false
+## The run on its worker, or -1.
+var _task: int = -1
 ## A model's bounds in its own units, stood up as chosen, and its longest side.
 var _box := AABB()
 var _longest: float = 1.0
@@ -80,7 +82,10 @@ func _ready() -> void:
 	_build()
 
 
+## The app closing while a run is on its worker: the run ends first, since
+## it reads the checker (WorkerTasks).
 func _exit_tree() -> void:
+	WorkerTasks.collect(_task)
 	if _checker != null:
 		_checker.free()
 		_checker = null
@@ -179,11 +184,11 @@ func _on_picked(bytes: PackedByteArray, file_name: String, extras: Dictionary) -
 		mesh = MeshFile.read(bytes, file_name, extras)
 	else:
 		var read: Array = [null]
-		var task: int = WorkerThreadPool.add_task(func() -> void:
+		var task: int = WorkerTasks.add(func() -> void:
 			read[0] = MeshFile.read(bytes, file_name, extras), false, "read a 3D model")
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 		mesh = read[0]
 	if mesh == null or not mesh.error.is_empty():
 		said.emit(mesh.error if mesh != null else "could not read %s" % file_name.get_file())
@@ -600,14 +605,16 @@ func brickify(job: Working.Job = null) -> void:
 		# A worker never loads a part, and the library keeps new arrivals
 		# aside while one reads it (PartLibrary.begin_reading).
 		library.begin_reading()
-		var task: int = WorkerThreadPool.add_task(func() -> void:
+		var task: int = WorkerTasks.add(func() -> void:
 			result.merge(Brickify.build(mesh, choice, checker, progress)), false, "brickify")
+		_task = task
 		library.reading_in(task)
 		while not WorkerThreadPool.is_task_completed(task):
 			_status.text = "%s… %d s" % [progress.said(), (Time.get_ticks_msec() - began) / 1000]
 			job.say("Brickifying %s: %s…" % [mesh.name, progress.said()])
 			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
+		_task = -1
 		library.end_reading(task)
 	if _stopped:
 		_busy = false

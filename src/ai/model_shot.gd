@@ -525,10 +525,10 @@ func encode(image: Image) -> Dictionary:
 	if OS.has_feature("nothreads"):
 		work.call()
 	else:
-		var task: int = WorkerThreadPool.add_task(work, false, "encode a picture")
+		var task: int = WorkerTasks.add(work, false, "encode a picture")
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 	if (encoded[0] as PackedByteArray).is_empty():
 		return {}
 	return {

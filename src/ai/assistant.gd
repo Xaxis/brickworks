@@ -11743,12 +11743,12 @@ func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Diction
 	_exact_now = Exact.shapes_for(library, exact_ids)
 	library.begin_reading()
 	var report: Dictionary = {}
-	var task: int = WorkerThreadPool.add_task(func() -> void:
+	var task: int = WorkerTasks.add(func() -> void:
 		report.merge(_check(model, alone, weigh)), false, "check a design")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await Engine.get_main_loop().process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
+	WorkerTasks.collect(task)
 	library.end_reading(task)
 	_standing_held = false
 	_standing_now = []
