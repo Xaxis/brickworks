@@ -274,31 +274,33 @@ is a step a person could ask for, written whole, not what opening does.
 
 **Open time.** The four files opened as `bigmodel_probe` opens one (the
 store's open, the app's handlers, two frames), each three times in one app,
-one after another, before (`ef93129`) and after side by side at once on this
-box (load about 25 on 24 cores), so both had the same machine
-(`bench/results/flexdraw-2026-10-16/open-side-by-side-*.log`). The first open
-of a file builds what it carries; the others find it built.
+one after another, before (`01ccd68`, release m39, with "openspeed"'s faster
+open) and after side by side at once on this box (load about 25 on 24
+cores), twice, so both had the same machine
+(`bench/results/flexdraw-2026-10-16/open-m39-*.log`). The first open of a
+file builds what it carries; the others find it built.
 
 | file | parts | first open, before → after | opened again, quickest of 2 |
 |---|---|---|---|
-| 42082-1 | 4,139 | 14.2 → 14.3 s | 3.54 → 3.54 s |
-| 8202-1 | 69 | 0.68 → 7.5 s, *see below* | 0.04 → 0.14 s |
-| 42058-1 | 138 | 10.6 → 2.9 s | 0.68 → 0.65 s |
-| 42053-1 | 2,719 | 5.42 → 5.56 s | 0.73 → 0.73 s |
+| 42082-1 | 4,139 | 3.30 → 3.61 s; 3.68 → 4.12 s | 1.00 → 1.04 s; 1.32 → 1.45 s |
+| 8202-1 | 69 | 5.2 → 11.3 s; 0.23 → 11.8 s, *see below* | 70 → 89 ms; 22 → 98 ms |
+| 42058-1 | 138 | 1.80 → 1.87 s; 5.65 → 1.07 s | 258 → 319 ms; 270 → 276 ms |
+| 42053-1 | 2,719 | 2.03 → 2.13 s; 1.74 → 1.65 s | 275 → 292 ms; 319 → 288 ms |
 
 Building a skin is the new work (42082-1's four 1.0 s on one thread,
-8202-1's 0.16 s, 42058-1's 0.33 s), so each is built on a worker thread,
-begun before the parts the file carries are built and joined after: on the
-other three it costs nothing that measures. 8202-1's first
-open is the miss. Opened right after 42082-1, it waited 7 s for the app's
-check of 42082-1, still reading the library on a worker: a new part is not
-added while a check reads (`PartLibrary.add_custom`), and a skin is new on
-every first open in a session, where a part a file carries is kept and found
-next time. Opened again, it is 0.1 s slower, in the app's handlers after
-the open: laying the floor takes 27 ms more (the skin's box, turned, reaches
-20 LDU below the model); the rest was not found. The first open of 42058-1
-before was 10.6 s in this run and 7.8 to 11.3 s in five others; after, 2.3
-to 6.4 s in five: the box's noise, not the change.
+8202-1's 0.16 s, 42058-1's 0.33 s). Each is built on the engine's worker
+threads beside the parts the file carries, begun before them and joined
+after, and a sub-model already read this session is not read again: on
+42058-1 and 42053-1 that leaves nothing the box's noise does not swamp.
+**The misses.** 42082-1 opens 9 to 12% slower the first time and 4 to 10%
+after. 8202-1, 69 parts, opens again 20 to 75 ms slower, in the app's
+handlers after the open (laying the floor takes 27 ms more: the skin's box,
+turned, reaches 20 LDU below the model; the rest was not found). And its
+first open right after 42082-1 waited for the app's check of 42082-1, still
+reading the library on a worker: a new part is not added while a check
+reads (`PartLibrary.add_custom`), and a skin is new on every first open in a
+session, where a part a file carries is kept on disk and found at start
+(the before side's first opens of it took 5.2 s and 0.23 s).
 
 **The round trip** (`cadtask.py roundtrip`, the 54 files of the fidelity
 sample, `bench/results/flexdraw-2026-10-16/roundtrip-final/`) is as the fidelity
