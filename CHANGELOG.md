@@ -13,6 +13,18 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- LDCad's hoses, ropes, strings and bands are drawn: each as one piece,
+  from the file's own lines, in its colour and step, to click and hide.
+  They used to be kept in the file but left out of the view.
+
+### Changed
+
+- In a browser, the parts a file carries are built and shown: the LEGO®
+  Technic set 42082 leaves out 3 parts instead of 167. The download is
+  about 1.4 MB larger for it.
+
 ## [0.3.0] - 2026-10-16
 
 A release about the whole craft. A model can be rendered, shared by
