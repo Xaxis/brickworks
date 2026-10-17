@@ -86,8 +86,8 @@ studs, against a greedy stack of standard bricks and legolization:
    kept, the forty-stud bunny 0.82 times `main`'s time; a figure's hair
    top and smooth against plain at 48 not there yet.*
 3. **Bond like a builder**: fewer, longer parts and staggered seams in the
-   hidden core. *2026-10-16, section 8: the hidden core in 43% fewer parts,
-   the builds 2.36 times the greedy stack's at 48 studs from 2.74, seams
+   hidden core. *2026-10-16, section 8: the hidden core in 39% fewer parts,
+   the builds 2.42 times the greedy stack's at 48 studs from 2.74, seams
    bridged 45% from 42%; three quarters of the parts show, so 1.6 times
    needs unit 4's surface.*
 4. **Fit the surface by distance**, with the slope angles it lacks.
@@ -1453,22 +1453,23 @@ bridged (greedy 52.9%) and 25.9% of its parts weak points (greedy 18.8%).
 Branch `worktree-agent-a6d1f2bc253969c28`, from `main` at `aad2371` with the
 m39 release (`a1d1998`) merged.
 
-**In short.** The hidden core is laid in 43% fewer parts, and the builds in
-14% fewer at 48 studs (51,014 from 59,156) and 12% fewer at 24: 2.36 times
-the greedy stack's at 48 (from 2.74), plain 1.84 (from 2.25). 1 x 1s are
-35.0% (from 37.8%), seams bridged 44.9% (from 42.1%), and stud joints past
-their working load 14 (from 48). Weak points rose, 27.1% of the parts from
-25.9%, though there are 8% fewer of them. The four targets on the bond
-(1.6 times the parts, 20% 1 x 1s, 60% of seams bridged, greedy's weak
+**In short.** The hidden core is laid in 39% fewer parts, and the builds in
+12% fewer at 48 studs (52,160 from 59,156) and at 24: 2.42 times the greedy
+stack's at 48 (from 2.74), plain 1.84 (from 2.25). 1 x 1s are 35.1% (from
+37.8%), seams bridged 44.9% (from 42.1%). Weak points rose, 27.2% of the
+parts from 25.9%, though there are fewer of them. The four targets on the
+bond (1.6 times the parts, 20% 1 x 1s, 60% of seams bridged, greedy's weak
 points) are all missed, and measured why: three quarters of smooth's parts
 are not hidden. With no hidden part at all, smooth at 48 studs would still
-be 2.04 times the greedy stack's parts, 41% of them 1 x 1s. Likeness and
-colour are unchanged on 13 of the 14 models. The fourteenth, the temple at
-48 studs smooth, lost the moon on its stick (lost95 2.15 studs from 0.82):
-smooth is whole in 27 of 28 runs, from 28, a target missed, and ΔE2000 at
-48 studs smooth is 1.31 times the floor from 1.27, all but 0.02 of it the
-moon. Plain is whole in 27 of 28, as before. The bunny takes 1.05 times
-`main`'s time.
+be 2.04 times the greedy stack's parts, 41% of them 1 x 1s. The rest holds:
+smooth whole in 28 of 28 runs and plain in 27, as on `main`; likeness and
+ΔE2000 unchanged (1.27 times the floor at 48 smooth); stud joints past their
+working load fewer or as many on all but 4 runs (22 from 29 at 48 plain).
+The bonded temple at 48 studs lost the moon on its stick, so a bonded build
+that leaves a region of the model out is laid again by the colours measured
+(item 5 below): the temple is `main`'s build again, and on the bench's
+largest scene that doubles its time. The forty-stud bunny takes 1.03 to
+1.08 times `main`'s time in three batches.
 
 **What was wrong.** Two faults, and a limit.
 
@@ -1517,7 +1518,13 @@ for it with `bond`, and a design's shapes lay as before):
    across the middle and its halves mirrored, its hidden bricks in the main
    colour: laid as the others are, a plain sphere's seams bridged fell from
    67% to 57%.
-5. **The bench** draws a build cut in half (`pictures --cut`), its parts
+5. **A bonded build is kept only if it keeps as much of the model**
+   (`Options.bond`, `build`). Where it leaves a region of the model out, it
+   is laid again by the colours measured and the one that fills more of the
+   model kept, the time of both counted. On the bench this lays 4 of the
+   56 runs twice and keeps the unbonded build on one: the temple at 48
+   studs smooth, whose moon comes back.
+6. **The bench** draws a build cut in half (`pictures --cut`), its parts
    shaded apart, to see the courses inside.
 
 **Tried and taken out.**
@@ -1536,6 +1543,16 @@ for it with `bond`, and a design's shapes lay as before):
   the one with fewer parts apart: on the temple at 48 studs the bonded plan
   had fewer parts apart (1,045 against 1,107) and still lost its moon to the
   mend, and the lay took twice as long.
+- *Rounds that follow the work*: a round for each piece the plan began
+  apart in, on top of the 96, counted in rounds, not seconds, so a model
+  lays the same on a busy box and in a browser. The temple at 48 studs
+  began 543 pieces apart; its stitch ran 443 rounds of the 639 and stopped
+  because nothing more joined, 108 pieces still apart, in 332 s where its
+  96 rounds took 30. The mend took out 143 parts, not 349, but the moon was
+  among them: no way the stitch has joins it in the bonded layout.
+- *What of a course holds a thin part laid as it was*, and the merge kept
+  off thin parts: the moon still lost, and the toy car at 48 kept 210 more
+  parts.
 - *Splitting and merging about each weak point* (legolization's refinement
   [luo-slides]) was not tried: over half the weak points hold a surface
   part or the staircase's next plate alone (above).
@@ -1561,7 +1578,7 @@ them.
 | 24 | plain | after | 9,185 | 2.31 (2.34, 1.78 to 3.70) | 39.2% | 46.4% | 35.1% |
 | 24 | greedy | | 3,974 | 1.00 | 27.1% | 46.7% | 29.6% |
 | 48 | smooth | main | 59,156 | 2.74 (2.87, 2.28 to 4.28) | 37.8% | 42.1% | 25.9% |
-| 48 | smooth | after | 51,014 | 2.36 (2.45, 1.84 to 4.14) | 35.0% | 44.9% | 27.1% |
+| 48 | smooth | after | 52,160 | 2.42 (2.45, 1.84 to 4.14) | 35.1% | 44.9% | 27.2% |
 | 48 | plain | main | 48,598 | 2.25 (2.21, 1.63 to 3.80) | 38.0% | 47.0% | 28.3% |
 | 48 | plain | after | 39,597 | 1.84 (1.89, 1.36 to 3.26) | 34.0% | 51.2% | 30.6% |
 | 48 | greedy | | 21,574 | 1.00 | 19.5% | 52.9% | 18.8% |
@@ -1582,7 +1599,7 @@ more: their hidden core was bricks already, and the change there is fewer
 | figure | 2,695 → 2,393 (2.92 → 2.60) | 35% → 32% | 45% → 44% | 25% → 26% | 4 → 3 | 2 → 2 |
 | fox | 945 → 834 (3.06 → 2.70) | 37% → 37% | 38% → 42% | 40% → 42% | 1 → 2 | 2 → 2 |
 | milk truck | 4,149 → 3,348 (2.28 → 1.84) | 20% → 22% | 45% → 54% | 11% → 11% | 2 → 0 | 8 → 4 |
-| temple | 10,867 → 9,721 (2.88 → 2.57) | 51% → 49% | 37% → 36% | 33% → 32% | 35 → 1 | 219 → 349 |
+| temple | 10,867 → 10,867 (2.88 → 2.88), laid again unbonded | 51% → 51% | 37% → 37% | 33% → 33% | 35 → 35 | 219 → 219 |
 | Hayes bust | 7,720 → 5,476 (3.19 → 2.26) | 56% → 50% | 26% → 32% | 22% → 31% | 0 → 0 | 3 → 4 |
 | Bell X-1 | 650 → 630 (4.28 → 4.14) | 27% → 25% | 47% → 47% | 28% → 28% | 0 → 0 | 9 → 4 |
 | Spot | 5,082 → 4,405 (2.70 → 2.34) | 37% → 34% | 47% → 49% | 21% → 24% | 0 → 0 | 0 → 0 |
@@ -1597,31 +1614,34 @@ them) or showing, and the surface's own parts.
 | | Hidden bricks | Hidden plates | Bricks that show | Plates that show | Surface parts | All |
 |---|---|---|---|---|---|---|
 | main | 5,824 | 9,059 | 9,387 | 21,954 | 12,692 | 58,916 |
-| after | 5,609 | 2,893 | 9,720 | 19,920 | 12,632 | 50,774 |
+| after | 5,513 | 3,503 | 9,490 | 20,756 | 12,658 | 51,920 |
 | of them 1 x 1, main | 1,534 | 4,565 | 3,482 | 9,834 | 4,843 | 24,258 |
-| of them 1 x 1, after | 987 | 1,162 | 2,146 | 10,058 | 4,850 | 19,203 |
+| of them 1 x 1, after | 1,000 | 1,539 | 2,172 | 10,431 | 4,852 | 19,994 |
 
 **Whole, standing, and the time.**
 
 | Run | Arm | Studs | Whole | One piece, check passes | And stands, no joint past its load | On a stand | Joints past their load | Parts | Taken out by the mend (mean) | Seconds (mean) | Seconds (most) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | main | smooth | 24 | 14/14 | 14/14 | 11/14 | 5 | 8 | 12,944 | 1.9 | 6.3 | 20 |
-| after | smooth | 24 | 14/14 | 14/14 | 11/14 | 5 | 3 | 11,353 | 1.7 | 5.6 | 19 |
+| after | smooth | 24 | 14/14 | 14/14 | 11/14 | 5 | 3 | 11,353 | 1.7 | 6.5 | 23 |
 | main | smooth | 48 | 14/14 | 14/14 | 9/14 | 2 | 48 | 59,156 | 18.9 | 36.4 | 171 |
-| after | smooth | 48 | 13/14 | 14/14 | 9/14 | 2 | 14 | 51,014 | 27.8 | 30.9 | 117 |
+| after | smooth | 48 | 14/14 | 14/14 | 9/14 | 2 | 48 | 52,160 | 18.5 | 48.0 | 332 |
 | main | plain | 24 | 14/14 | 14/14 | 10/14 | 5 | 18 | 10,807 | 1.2 | 4.9 | 18 |
-| after | plain | 24 | 14/14 | 14/14 | 10/14 | 5 | 11 | 9,185 | 1.2 | 3.9 | 15 |
+| after | plain | 24 | 14/14 | 14/14 | 10/14 | 5 | 11 | 9,185 | 1.2 | 4.9 | 21 |
 | main | plain | 48 | 13/14 | 14/14 | 9/14 | 3 | 29 | 48,598 | 20.8 | 23.2 | 111 |
-| after | plain | 48 | 13/14 | 14/14 | 11/14 | 3 | 22 | 39,597 | 16.4 | 20.0 | 108 |
+| after | plain | 48 | 13/14 | 14/14 | 11/14 | 3 | 22 | 39,597 | 16.4 | 36.7 | 323 |
 
 Every run laid the model, in one piece, its check passing, in both. The
 seconds are not a fair ratio: `main` and the branch were laid two hours
 apart on a box shared with other jobs (a load of 25 to 40 each time); the
-bunny below is. Joints past their working load fell on 9 runs (the temple
-at 48 smooth 35 to 1) and rose on 4 (the toy car at 48 smooth 0 to 2, the
-fox at 48 smooth 1 to 2, the temple at 24 plain 3 to 5, the figure at 48
-plain 3 to 4). The mend took out more at 48 smooth (27.8 a run from 18.9):
-the temple's 349 parts from 219; the other 13 runs together 5 fewer.
+bunny below is. The four runs that leave a region out (the temple at 48,
+smooth and plain, the X-1 at 24 smooth, the toy car at 24 plain) are laid
+twice: the temple at 48 took 332 s smooth and 323 plain, from 171 and 111.
+The temple, the X-1 and the toy car are counted above from the run that
+laid them again, the other eleven models from the first after run. Joints past their working
+load fell on 8 runs and rose on 4 (the toy car at 48 smooth 0 to 2, the fox
+at 48 smooth 1 to 2, the temple at 24 plain 3 to 5, the figure at 48 plain
+3 to 4).
 
 **Likeness and colour**, the means of every model (ΔE2000 over the 10 with
 colours of their own).
@@ -1633,16 +1653,15 @@ colours of their own).
 | 24 | plain | main | 0.877 | 0.235 | 0.42 | 0.74 | 0.928 | 41.8 | 10.77 | 1.45 |
 | 24 | plain | after | 0.876 | 0.238 | 0.42 | 0.75 | 0.926 | 41.8 | 10.77 | 1.45 |
 | 48 | smooth | main | 0.927 | 0.264 | 0.47 | 0.98 | 0.906 | 37.4 | 9.46 | 1.27 |
-| 48 | smooth | after | 0.925 | 0.276 | 0.57 | 0.98 | 0.905 | 37.6 | 9.72 | 1.31 |
+| 48 | smooth | after | 0.927 | 0.263 | 0.47 | 0.98 | 0.906 | 37.3 | 9.47 | 1.27 |
 | 48 | plain | main | 0.926 | 0.267 | 0.54 | 0.93 | 0.928 | 38.5 | 9.11 | 1.23 |
 | 48 | plain | after | 0.927 | 0.265 | 0.53 | 0.93 | 0.929 | 38.3 | 9.08 | 1.22 |
 
-The change at 48 smooth is the temple's moon: without the temple, IoU
-0.928 and 0.928, Chamfer 0.254 and 0.254 studs, lost95 0.45 and 0.45,
-ΔE2000 9.16 and 9.18. Model by model, ΔE2000 is within 0.1 of `main`'s on
-every coloured run but four: the temple at 48 smooth (14.57 from 12.11),
-the toy car at 48 (13.19 from 12.98 smooth, 12.07 from 11.86 plain), and
-the avocado at 48 plain, better (8.66 from 8.96).
+The temple at 48 smooth is `main`'s build part for part, its moon on its
+stick (lost95 0.817 studs, measured again). Model by model, ΔE2000 is
+within 0.1 of `main`'s on every coloured run but three: the toy car at 48
+(13.19 from 12.98 smooth, 12.07 from 11.86 plain) and the avocado at 48
+plain, better (8.66 from 8.96).
 
 **Where the time goes**, the forty-stud bunny laid three times by `main`
 and by the branch side by side, twice in turn (medians of the six,
@@ -1654,35 +1673,37 @@ seconds):
 | branch | 9.98 (8.87 to 10.80) | 1.08 | 5.74 (3.32, 1.96, 0.07) | 3.12 |
 
 1.05 times `main`'s time, the ranges overlapping; in an earlier batch on a
-calmer box, 5.87 s against 5.70 (1.03). The core's lay is 0.2 s more (what
+calmer box, 5.87 s against 5.70 (1.03); after the last commit, which lays
+the bunny the same, three each side by side, 6.93 s against 6.40 (1.08). The core's lay is 0.2 s more (what
 shows is asked of every plate), the stitch 0.2 s less, the merge 0.07 s;
 the check 0.26 s more, on 35 fewer parts.
 
 **What the numbers say.**
 1. **The hidden core is bricks.** At 48 studs smooth its plates fell from
-   9,059 to 2,893 and its parts from 14,883 to 8,502, 43% fewer; over the
-   whole build, 14% fewer parts (8,142), 12% at 24 studs. Plain, whose core
-   is a larger share, 19% and 15%.
+   9,059 to 3,503 and its parts from 14,883 to 9,016, 39% fewer; over the
+   whole build, 12% fewer parts (6,996), 12% at 24 studs. Plain, whose core
+   is a larger share, 19% and 15%. The temple at 48 smooth, laid again
+   unbonded, keeps none of it.
 2. **The targets were set on the core, and the parts are in the surface.**
-   Parts are 2.36 times the greedy stack's at 48 studs smooth (target 1.6)
+   Parts are 2.42 times the greedy stack's at 48 studs smooth (target 1.6)
    and 1.84 plain; laid plain, three models reach it (the milk truck 1.36,
    the avocado 1.48, Spot 1.60), and none smooth (the nearest 1.84). 1 x 1s
-   are 35.0% (target 20%): of the 19,203 left at 48 smooth, 10,058 are plates
-   of the staircase and 4,850 slopes and tiles a stud wide. Seams bridged
-   44.9% (target 60%), weak points 27.1% (target greedy's 18.8%), the share
-   up because the parts fell faster than the weak points did (13,734 from
-   14,875).
-3. **It stands better.** Stud joints past their working load fell from 48 to
-   14 at 48 studs smooth and from 29 to 22 plain, 8 to 3 and 18 to 11 at 24;
-   standing runs are as many or more (plain at 48, 11 of 14 from 9).
-4. **Likeness and colour are unchanged but for one run.** On every other run
-   IoU is within 0.012 of `main`'s, Chamfer within 0.03 studs, lost95 within
-   0.05 (the largest each the temple laid plain, or the Hayes bust at 24),
-   and ΔE2000 within 0.1 but for the toy car at 48 (0.2 worse) and the
-   avocado plain at 48 (0.3 better). The temple at 48 smooth lost its moon
-   (below).
-5. **Time is within a few per cent**: the bunny takes 1.05 times `main`'s
-   time, and took 1.03 in an earlier batch (this unit but its last commit).
+   are 35.1% (target 20%): of the 19,994 left at 48 smooth, 10,431 are plates
+   of the staircase and 4,852 slopes and tiles a stud wide. Seams bridged
+   44.9% (target 60%), weak points 27.2% (target greedy's 18.8%), the share
+   up because the parts fell faster than the weak points did.
+3. **It stands as well or better.** Stud joints past their working load fell
+   from 29 to 22 at 48 studs plain, 8 to 3 and 18 to 11 at 24, and stayed 48
+   at 48 smooth (35 of them the temple's, `main`'s build); standing runs are
+   as many or more (plain at 48, 11 of 14 from 9).
+4. **Likeness, colour and the whole model are unchanged.** Smooth is whole
+   in 28 of 28 runs and plain in 27; IoU within 0.012 of `main`'s on every
+   run, Chamfer within 0.03 studs, lost95 within 0.05 (the largest each the
+   temple laid plain, or the Hayes bust at 24); ΔE2000 within 0.1 but for
+   the toy car at 48 (0.2 worse) and the avocado plain at 48 (0.3 better).
+5. **Time**: the bunny takes 1.03 to 1.08 times `main`'s time in three
+   batches. The four runs that leave a region out are laid twice; the
+   temple at 48 studs, the bench's largest, takes about twice as long.
 
 Spot at 48 studs (Keenan Crane, CC0): from outside, the same build, its
 patches where they were, in 4,405 parts from 5,082 (smooth) and 3,008 from
@@ -1696,8 +1717,9 @@ before, the core's courses are bands of plates; after, long bricks.
 
 ![The milk truck at 48 studs cut in half: the model, then smooth before and after](brickify/unit3-milk-truck-48-cut.jpg)
 
-The temple at 48 studs (Objaverse, CC-BY 4.0): smooth loses the moon on
-its stick, as plain did and does.
+The temple at 48 studs (Objaverse, CC-BY 4.0): laid bonded, smooth lost
+the moon on its stick; laid again by the colours measured, it keeps it, as
+`main` does. Plain loses it before and after.
 
 ![The temple at 48 studs: the model, then smooth and plain before and after](brickify/unit3-objaverse-48.jpg)
 
@@ -1734,12 +1756,10 @@ its stick, as plain did and does.
 - **Weak points**: most hold a surface part or the staircase's next plate
   alone. A slope that stands on two parts, or a staircase plate that reaches
   under the next stud, would take them out; the core cannot.
-- **The temple at 48 studs smooth** loses its moon on its stick again, as
-  plain does: its stitch runs out of its 96 rounds with about 420 pieces
-  apart either way, and the mend takes out 349 parts where it took 219.
-  Laid with the merge alone, or the bonded courses alone, it loses the moon
-  too: any change to its layout does. Joining a piece a round is the limit
-  (unit 2b's "what is left").
+- **The temple at 48 studs**: bonded, its stitch cannot join the moon on
+  its stick, with 96 rounds or 443, and plain loses it either way. Laying
+  it twice keeps the moon but doubles the time of the bench's largest
+  scene; joining a piece a round is the limit (unit 2b's "what is left").
 - **Seams bridged** rose 3 to 4 points, short of 60%. With the hemmed-in
   studs first, a course has one placement for each brick; a stagger needs
   the choice made over the whole course (Kollsker's lookahead), not stud by

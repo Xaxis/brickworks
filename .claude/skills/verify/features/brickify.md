@@ -69,7 +69,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   one colour where it shows and is sold in it (`Plan._made`); a shape that is
   its own mirror keeps its strip and mirrored halves; and once stitched, two
   plain parts side by side that make a part we lay, and three plates of one
-  footprint stacked, merged (a merge only joins, so never more pieces);
+  footprint stacked, merged (a merge only joins, so never more pieces); a
+  bonded build that leaves a region of the model out laid again by the colours
+  measured (`Options.bond` false) and the one filling more kept, both times
+  counted (the temple at 48 studs keeps its moon so, at twice the time);
   every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
   once a round for it, not once a piece tried; its first ways, kept
@@ -267,11 +270,11 @@ XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/de
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
-#   48 studs 51,014 parts from 59,156 (2.36 times the greedy stack's from 2.74), 1x1s
-#   35.0% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.1% from 25.9%,
-#   joints past their load 14 from 48; likeness and ΔE2000 unchanged but the temple at
-#   48 smooth, which lost its moon (whole 27 of 28 from 28). `bond OUT` gives the bond
-#   figures without ray casting; `pictures --cut` draws each build cut in half.
+#   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s
+#   35.1% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.2% from 25.9%;
+#   whole 28 of 28 smooth and 27 plain, likeness and ΔE2000 unchanged; the temple at 48
+#   laid twice (bonded, it lost its moon), about twice its time. `bond OUT` gives the
+#   bond figures without ray casting; `pictures --cut` draws each build cut in half.
 #   2026-10-16 after unit 2 (docs/BRICKIFY.md section 6), against 2789cd0: ΔE2000
 #   on the 10 coloured models 1.28 times the floor at 48 studs (from 1.54), 1.54 at
 #   24 (from 2.00); Spot's neutral surface laid in a colour 0% (from 40%), the
