@@ -43,7 +43,12 @@ page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => {
   if (/SCRIPT ERROR|USER ERROR|Parse Error/i.test(m.text())) errors.push(m.text().slice(0, 300));
 });
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
+// A protected preview is opened once with its bypass, which sets a cookie
+// for the rest (as assembly_flow does); preview_checks passes --bypass.
+const first = args.bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 
 const state = () => page.evaluate(() => window.brickworksState || {});
 const controls = () => page.evaluate(() => window.brickworksControls || {});
