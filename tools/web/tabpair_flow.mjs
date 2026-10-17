@@ -71,6 +71,12 @@ await context.route(/^https:\/\/claude\.ai\//, (route) => {
   popups.push(route.request().url());
   return route.fulfill({ status: 200, contentType: "text/html", body: "<title>claude.ai</title>" });
 });
+// The tab claude.ai opened in, closed once it has been asked for.
+context.on("page", (page) => {
+  setTimeout(() => {
+    if (/claude\.ai/.test(page.url())) page.close().catch(() => {});
+  }, 4000);
+});
 
 async function claudeToken() {
   const client = "https://claude.ai/oauth/mcp-oauth-client-metadata";
