@@ -918,8 +918,20 @@ func _source_text(title_now: String) -> Variant:
 		return null
 	var bricks: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
-		if not scenery.has(brick.id):
-			bricks.append(brick)
+		if scenery.has(brick.id):
+			continue
+		# A section broken out is written where it was pulled from: its
+		# parts as they stand there (BrickWorld.home_of).
+		if not world.broken_out.is_empty():
+			var home := BrickWorld.Brick.new(brick.id, brick.part_id, brick.color_code,
+				world.home_of(brick))
+			home.group = brick.group
+			home.unit = brick.unit
+			home.step = brick.step
+			home.hidden = brick.hidden
+			bricks.append(home)
+			continue
+		bricks.append(brick)
 	var waiting: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
@@ -1177,25 +1189,28 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		kept = HiddenColours.written_into(kept, hidden_scheme)
 		made.append(kept if set_in(kept) == from_set else with_set(kept, from_set))
 		return
-	var authored: bool = AuthorSteps.any(world, scenery)
+	# A section broken out is written where it was pulled from: the whole
+	# file, frames and steps, from the model as built (BrickWorld.home_of).
+	var model: BrickWorld = world if world.broken_out.is_empty() else world.copy_at_home()
+	var authored: bool = AuthorSteps.any(model, scenery)
 	if not worked.is_empty() and not authored:
 		step_of = worked["bricks"]
 		unit_steps = worked["units"]
 	elif authored or (with_steps and world.library != null):
-		var numbers: Dictionary = AuthorSteps.numbers_for_file(world, world.library,
+		var numbers: Dictionary = AuthorSteps.numbers_for_file(model, world.library,
 			scenery, with_steps) if authored \
-			else AuthorSteps.numbers_from_plan(world, world.library, scenery)
+			else AuthorSteps.numbers_from_plan(model, world.library, scenery)
 		step_of = numbers["bricks"]
 		unit_steps = numbers["units"]
 
 	# In the file's coordinates, not where the model was stood for the view.
 	var back := Transform3D(Basis.IDENTITY, -_lift_now())
 	var placements: Array = []
-	for item: Variant in world.bricks():
+	for item: Variant in model.bricks():
 		if pace != null and pace.due():
 			await pace.next()
 		var brick: BrickWorld.Brick = item
-		if world.get_brick(brick.id) != brick or scenery.has(brick.id):
+		if model.get_brick(brick.id) != brick or scenery.has(brick.id):
 			continue
 		var placement := LdrModel.Placement.new(
 			brick.part_id, brick.color_code, back * brick.transform,
@@ -1230,11 +1245,11 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
 	# definition once, every copy a reference to it (LdrModel.write_tree).
 	var tree := Assemblies.new()
-	tree.world = world
+	tree.world = model
 	tree.builder = builder
 	tree.library = library
 	tree.scenery = scenery
-	var figures: Dictionary = figure_frames()
+	var figures: Dictionary = figure_frames(model)
 	var instances: Dictionary = tree.file_frames(figures)
 	if pace != null and pace.due():
 		await pace.next()
@@ -1269,6 +1284,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
+	if model != world:
+		model.free()
 	made.append(with_set(text, from_set))
 
 
@@ -1417,9 +1434,9 @@ static func with_authored_steps(text: String) -> String:
 ## Each minifigure in the model, by its group, and the frame it stands
 ## in: so a figure goes out as a sub-model of its own, standing at its
 ## origin and placed where it stands, the way real sets' files keep them.
-func figure_frames() -> Dictionary:
+func figure_frames(from: BrickWorld = null) -> Dictionary:
 	var members: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
+	for brick: BrickWorld.Brick in (from if from != null else world).bricks():
 		if brick.group.is_empty() or scenery.has(brick.id):
 			continue
 		if not members.has(brick.group):

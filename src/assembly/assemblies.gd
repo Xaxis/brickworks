@@ -535,6 +535,15 @@ func after_edit() -> int:
 	return int(followed[1])
 
 
+## The newest step changed where parts are in the tree and not one part's
+## shape or place (Sections.accept): no copy is built again for it. Copies a
+## file holds that were never alike (31037's, 10179's) were rebuilt from
+## one of them when sections were made round them, 1,115 parts of 10179-1
+## swapped for others (2026-10-17).
+func no_copies_follow() -> void:
+	_seen = builder.last_step()
+
+
 ## Every other copy of the assemblies at [param touched] (paths, and
 ## what they are in) built again from the one that changed. Returns
 ## [history steps, copies rebuilt]; the caller keeps the steps with the

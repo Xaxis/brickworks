@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- Sections, as a builder builds one at a time. Build, Suggest sections
+  splits any model the way a set splits into bags: each section one
+  piece, of a sensible size, joined to the rest by few joints, numbered
+  in build order. The suggestions sit in the model tree to accept,
+  rename, merge or split; accepted, they are sub-assemblies, one undo.
+  `Y` breaks a section out of the model to work on and puts it back
+  exactly; `Shift+Y` draws every section apart. Evaluate the section
+  weighs one alone: its parts, weight, whether it holds together and
+  stands, what joins it and what that carries, and its own booklet.
+  Claude has the same as `suggest_sections`, `make_sections`,
+  `break_out_section` and `evaluate_section`.
 - LDCad's hoses, ropes, strings and bands are drawn: each as one piece,
   from the file's own lines, in its colour and step, to click and hide.
   They used to be kept in the file but left out of the view.

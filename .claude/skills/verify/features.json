@@ -751,6 +751,14 @@
       "tests": []
     },
     {
+      "id": "cli:sections in a browser",
+      "kind": "cli",
+      "entry": "tools/web/sections_flow.mjs",
+      "reach": "node tools/web/sections_flow.mjs --url=<preview>/app --bypass=\u2026",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:see inside in a browser",
       "kind": "cli",
       "entry": "tools/web/see_inside_flow.mjs",
@@ -1382,6 +1390,14 @@
       "entry": "src/parts/model_store.gd",
       "reach": "godot --headless --path . --script src/dev/store_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:sections suggested",
+      "kind": "lib",
+      "entry": "src/assembly/sections.gd",
+      "reach": "godot --headless --path . --script src/dev/sections_probe.gd",
+      "area": "building",
       "tests": []
     },
     {
@@ -2140,6 +2156,14 @@
       "entry": "src/ui/seat_offer.gd",
       "reach": "godot --path .  (open a model saved before 2026-10-10 with parts off their studs)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:sections",
+      "kind": "ui",
+      "entry": "src/ui/sections_ui.gd",
+      "reach": "godot --path .  (Build, Suggest sections; the model tree's Accept, Merge, Split, Evaluate; Y breaks the selected sub-assembly out and puts it back; Shift+Y the exploded view)",
+      "area": "building",
       "tests": []
     },
     {

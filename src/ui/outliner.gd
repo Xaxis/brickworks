@@ -7,6 +7,12 @@
 ## typed over; dragging a row onto another puts it inside that one, and
 ## onto the model puts it back at the top. The eye and the lock on each
 ## row hide and lock it whole.
+##
+## Sections suggested (SectionsUi, Suggest sections) are listed under the
+## model's own rows, numbered in the order they would be built, with what
+## to do with them under the tree: accept one or all (each a sub-assembly,
+## one undo), rename (a double-click or F2), merge (drag one onto another,
+## or Merge), split, evaluate, break out and the exploded view.
 class_name Outliner
 extends PanelContainer
 
@@ -15,9 +21,15 @@ const TOOLS := "res://assets/ui/tools/"
 ## Button ids on a row.
 const EYE := 0
 const LOCK := 1
+const ACCEPT := 2
+## A suggestion's row and the row over them: never an assembly's path,
+## which cannot hold "#" at the start of a name.
+const SUGGESTED := "#suggested"
+const SUGGESTION := "#suggestion:"
 
 var shell: Shell
 var assemblies: Assemblies
+var sections: SectionsUi
 
 var _open: bool = true
 var _header: Button
@@ -74,6 +86,9 @@ func _ready() -> void:
 	_tree.select_mode = Tree.SELECT_ROW
 	_tree.allow_rmb_select = true
 	_tree.focus_mode = Control.FOCUS_CLICK
+	# A key pressed with a row chosen is the window's (Y breaks the section
+	# out, F fits it), not a search of the rows by their first letters.
+	_tree.allow_search = false
 	# As tall as the column gives it (PanelStack), and never less than
 	# a few rows.
 	_tree.custom_minimum_size = Vector2(WIDE - 16.0, 60)
@@ -89,15 +104,34 @@ func _ready() -> void:
 	column.add_child(_tree)
 
 	var hint := Label.new()
+	_hint = hint
 	hint.text = "Double-click to edit inside; drag onto another to nest"
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.modulate = Color(1, 1, 1, 0.55)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(WIDE - 16.0, 0)
 	column.add_child(hint)
+	_strip = HFlowContainer.new()
+	_strip.add_theme_constant_override("h_separation", 4)
+	_strip.add_theme_constant_override("v_separation", 4)
+	_strip.custom_minimum_size = Vector2(WIDE - 16.0, 0)
+	column.add_child(_strip)
+	for row: Array in STRIP:
+		var button := Button.new()
+		button.text = str(row[1])
+		button.name = str(row[0])
+		button.tooltip_text = str(row[2])
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 11)
+		var id: String = row[0]
+		button.pressed.connect(func() -> void: _strip_pressed(id))
+		_strip.add_child(button)
+		_buttons[id] = button
+	if sections != null:
+		sections.sections.suggested_changed.connect(func() -> void: _refresh(true))
 
 	var density: float = Icons.density(self)
-	for name: String in ["show_all", "hide", "lock", "unlock"]:
+	for name: String in ["show_all", "hide", "lock", "unlock", "accept"]:
 		var path: String = TOOLS + name + ".svg"
 		if FileAccess.file_exists(path):
 			_icons[name] = Icons.texture_for(path, 14.0, density)
@@ -106,6 +140,103 @@ func _ready() -> void:
 	shell.world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void: _refresh(false))
 	shell.builder.selection_changed.connect(func(_n: int) -> void: _mark_selected())
 	_refresh(true)
+
+
+## The buttons under the tree: name, words, tooltip.
+const STRIP: Array = [
+	["sections_suggest", "Suggest sections",
+		"How a builder would split the model into sections, as a set into bags"],
+	["sections_accept_all", "Accept all", "Make every suggested section a sub-assembly: one undo"],
+	["sections_accept", "Accept", "Make the chosen suggestion a sub-assembly"],
+	["sections_merge", "Merge",
+		"Put the chosen suggestion in with the one it is joined to most (or drag it onto another)"],
+	["sections_split", "Split", "Part the chosen suggestion in two where it is held least"],
+	["sections_dismiss", "Dismiss", "Put the suggestions away"],
+	["sections_evaluate", "Evaluate…",
+		"The chosen section on its own: parts, weight, whether it holds together and stands, what joins it, its steps"],
+	["sections_break_out", "Break out",
+		"Pull the chosen section away from the model to work on it (Y); again puts it back"],
+	["sections_explode", "Exploded view", "Every section apart, and back together (Shift+Y)"],
+]
+
+var _strip: HFlowContainer
+var _buttons: Dictionary = {}
+var _hint: Label
+
+
+## Which suggestion's row is chosen, or 0.
+func _chosen_suggestion() -> int:
+	var row: TreeItem = _tree.get_selected() if _tree != null else null
+	if row == null:
+		return 0
+	var meta: String = str(row.get_metadata(0))
+	return meta.trim_prefix(SUGGESTION).to_int() if meta.begins_with(SUGGESTION) else 0
+
+
+func _strip_pressed(id: String) -> void:
+	if sections == null:
+		return
+	var number: int = _chosen_suggestion()
+	match id:
+		"sections_suggest":
+			await sections.suggest()
+		"sections_accept_all":
+			sections.accept()
+		"sections_accept":
+			if number > 0:
+				sections.accept([number])
+		"sections_merge":
+			if number > 0:
+				shell.bar.say(sections.sections.merge(number))
+		"sections_split":
+			if number > 0:
+				shell.bar.say(sections.sections.split(number))
+		"sections_dismiss":
+			sections.sections.dismiss()
+		"sections_evaluate":
+			await sections.show_evaluation("", number)
+		"sections_break_out":
+			sections.break_out_or_back()
+		"sections_explode":
+			sections.toggle_explode()
+	_update_strip()
+
+
+## The buttons that would do something now.
+func _update_strip() -> void:
+	if _strip == null or sections == null:
+		return
+	var suggested: bool = not sections.sections.suggested.is_empty()
+	var number: int = _chosen_suggestion()
+	var target: bool = sections.can_target()
+	var out_any: bool = not shell.world.broken_out.is_empty()
+	# Only what would do something now, so the row fits under the tree.
+	var shown: Dictionary = {
+		"sections_suggest": not suggested,
+		"sections_accept_all": suggested,
+		"sections_accept": number > 0,
+		"sections_merge": number > 0,
+		"sections_split": number > 0,
+		"sections_dismiss": suggested,
+		"sections_evaluate": number > 0 or target,
+		"sections_break_out": not suggested and (target or out_any),
+		"sections_explode": number == 0,
+	}
+	for id: String in _buttons:
+		(_buttons[id] as Button).visible = bool(shown.get(id, true))
+	if _hint != null:
+		_hint.visible = _open and not suggested
+	(_buttons["sections_accept"] as Button).disabled = number == 0
+	(_buttons["sections_merge"] as Button).disabled = number == 0
+	(_buttons["sections_split"] as Button).disabled = number == 0
+	(_buttons["sections_evaluate"] as Button).disabled = number == 0 and not target
+	var out: bool = not shell.world.broken_out.is_empty()
+	var this_out: bool = target and not sections.sections.out_record(sections.target()).is_empty()
+	(_buttons["sections_break_out"] as Button).text = "Put back" if this_out \
+		or (not target and out) else "Break out"
+	(_buttons["sections_break_out"] as Button).disabled = not target and not out
+	(_buttons["sections_explode"] as Button).text = "Together" if sections.is_exploded() \
+		else "Exploded view"
 
 
 func is_open() -> bool:
@@ -119,6 +250,8 @@ func set_open(open: bool) -> void:
 		for child: Node in _tree.get_parent().get_children():
 			if child is Label:
 				(child as Label).visible = open
+		if _strip != null:
+			_strip.visible = open
 		_arrow.down = open
 		_arrow.queue_redraw()
 	ShellPrefs.put("outliner_open", open)
@@ -145,13 +278,16 @@ func _process(_delta: float) -> void:
 func _refresh(now: bool) -> void:
 	if _tree == null or _renaming:
 		return
+	if sections != null:
+		sections.sections.forget_if_stale()
 	if not _open or not is_visible_in_tree():
 		var total: int = maxi(0, shell.world.brick_count() - assemblies.scenery.size())
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
 		_shown = ""
 		return
 	var root: Assemblies.Item = assemblies.tree()
-	var state: String = _state_of(root) + "|" + assemblies.entered
+	var state: String = _state_of(root) + "|" + assemblies.entered + "|" + _suggested_state() \
+		+ "|" + str(shell.world.broken_out.size()) + "|" + str(shell.builder.selection.size())
 	if state == _shown and not now:
 		return
 	_shown = state
@@ -163,7 +299,58 @@ func _refresh(now: bool) -> void:
 	_tree.clear()
 	var top: TreeItem = _tree.create_item()
 	_fill(top, root, folded)
+	_fill_suggested(top, folded)
 	_mark_selected()
+	_update_strip()
+
+
+func _count_rows(item: TreeItem) -> int:
+	var count: int = 1
+	if not item.collapsed:
+		for child: TreeItem in item.get_children():
+			count += _count_rows(child)
+	return count
+
+
+func _suggested_state() -> String:
+	if sections == null:
+		return ""
+	var bits := PackedStringArray()
+	for made: Sections.Suggestion in sections.sections.suggested:
+		bits.append("%d:%s:%d" % [made.number, made.name, made.ids.size()])
+	return ",".join(bits)
+
+
+## The suggested sections, under the model's own rows: numbered as they
+## would be built, each with its part count and a tick to accept it.
+func _fill_suggested(top: TreeItem, folded: Dictionary) -> void:
+	# Room for a few of them whatever the properties under it take: with a
+	# suggestion's parts selected, the tree was squeezed to one row.
+	var rows: int = _count_rows(top) + (0 if sections == null
+		else sections.sections.suggested.size() + 1)
+	_tree.custom_minimum_size.y = clampf(rows * 24.0, 60.0, 120.0)
+	if sections == null or sections.sections.suggested.is_empty():
+		return
+	var head: TreeItem = _tree.create_item(top)
+	var list: Array = sections.sections.suggested
+	head.set_text(0, "Suggested sections (%d)" % list.size())
+	head.set_metadata(0, SUGGESTED)
+	head.set_tooltip_text(0, "How a builder would split it, in the order they are built. "
+		+ "Accept makes each a sub-assembly; drag one onto another to merge them")
+	head.set_custom_color(0, Color(0.55, 0.78, 1.0))
+	head.collapsed = folded.has(SUGGESTED)
+	for made: Sections.Suggestion in list:
+		var row: TreeItem = _tree.create_item(head)
+		row.set_text(0, "%d. %s" % [made.number, made.name])
+		row.set_metadata(0, SUGGESTION + str(made.number))
+		row.set_tooltip_text(0, made.said() + ". Click to select it, double-click to rename it")
+		row.set_text(1, str(made.ids.size()))
+		row.set_text_alignment(1, HORIZONTAL_ALIGNMENT_RIGHT)
+		row.set_custom_color(1, Color(1, 1, 1, 0.55))
+		row.set_custom_color(0, Color(0.75, 0.87, 1.0))
+		var tick: Texture2D = _icons.get("accept")
+		if tick != null:
+			row.add_button(1, tick, ACCEPT, false, "Accept it: make it a sub-assembly")
 
 
 func _state_of(node: Assemblies.Item) -> String:
@@ -222,6 +409,16 @@ func _mark_selected() -> void:
 		return
 	var chosen: String = assemblies.selected_assembly()
 	var row: TreeItem = _find(_tree.get_root(), chosen) if not chosen.is_empty() else null
+	# A suggestion whose parts are what is selected stays chosen, so its
+	# Merge, Split and Evaluate stay under the tree.
+	if row == null and sections != null:
+		var picked: Dictionary = shell.builder.selection
+		for made: Sections.Suggestion in sections.sections.suggested:
+			if made.ids.size() != picked.size() or picked.is_empty():
+				continue
+			if Array(made.ids).all(func(id: int) -> bool: return picked.has(id)):
+				row = _find(_tree.get_root(), SUGGESTION + str(made.number))
+				break
 	# Lit to match the view, which is not a person choosing the row: the
 	# row's own handler would select again, and round it went.
 	_marking = true
@@ -230,6 +427,7 @@ func _mark_selected() -> void:
 		row.select(0)
 		_tree.scroll_to_item(row)
 	_marking = false
+	_update_strip()
 
 
 func _find(item: TreeItem, path: String) -> TreeItem:
@@ -252,7 +450,12 @@ func _on_selected() -> void:
 	if row == null:
 		return
 	var path: String = str(row.get_metadata(0))
-	if path.is_empty():
+	if path.is_empty() or path == SUGGESTED:
+		_update_strip()
+		return
+	if path.begins_with(SUGGESTION):
+		_select_suggestion(path.trim_prefix(SUGGESTION).to_int())
+		_update_strip()
 		return
 	# To the level where this row is one thing to click: the assembly it
 	# is in, entered (or the model, for a row at the top).
@@ -266,12 +469,34 @@ func _on_selected() -> void:
 	builder.selection_changed.emit(builder.selection.size())
 
 
-## Double-click: edit inside it. On the model's row: back to the top.
+func _select_suggestion(number: int) -> void:
+	var builder: Builder = shell.builder
+	for made: Sections.Suggestion in sections.sections.suggested:
+		if made.number != number:
+			continue
+		if not assemblies.entered.is_empty() and not Assemblies.within(made.level,
+				assemblies.entered):
+			assemblies.enter("")
+		builder.selection.clear()
+		for brick_id: int in made.ids:
+			if not builder.lattice.unseen.has(brick_id):
+				builder.selection[brick_id] = true
+		builder.selection_changed.emit(builder.selection.size())
+		shell.bar.say(made.said())
+
+
+## Double-click: edit inside it. On the model's row: back to the top. On a
+## suggestion: rename it.
 func _on_activated() -> void:
 	var row: TreeItem = _tree.get_selected()
 	if row == null:
 		return
 	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED:
+		return
+	if path.begins_with(SUGGESTION):
+		rename_selected()
+		return
 	if path.is_empty():
 		assemblies.enter("")
 	else:
@@ -288,6 +513,11 @@ func _on_edited() -> void:
 		return
 	var path: String = str(row.get_metadata(0))
 	var typed: String = row.get_text(0).strip_edges()
+	if path.begins_with(SUGGESTION):
+		var called: String = sections.sections.rename(path.trim_prefix(SUGGESTION).to_int(), typed)
+		shell.bar.say("it will be called %s" % called if not called.is_empty() else "")
+		_refresh(true)
+		return
 	var name: String = assemblies.rename(path, typed)
 	shell.verbs.edited.call()
 	shell.bar.say("called %s" % name)
@@ -297,10 +527,17 @@ func _on_edited() -> void:
 ## Rename the selected row in place, as a second click on it does.
 func rename_selected() -> void:
 	var row: TreeItem = _tree.get_selected()
-	if row == null or str(row.get_metadata(0)).is_empty():
+	if row == null or str(row.get_metadata(0)).is_empty() or str(row.get_metadata(0)) == SUGGESTED:
 		return
 	_renaming = true
-	row.set_text(0, Assemblies.definition(Assemblies.leaf(str(row.get_metadata(0)))))
+	var meta: String = str(row.get_metadata(0))
+	if meta.begins_with(SUGGESTION):
+		var number: int = meta.trim_prefix(SUGGESTION).to_int()
+		for made: Sections.Suggestion in sections.sections.suggested:
+			if made.number == number:
+				row.set_text(0, made.name)
+	else:
+		row.set_text(0, Assemblies.definition(Assemblies.leaf(meta)))
 	row.set_editable(0, true)
 	_tree.edit_selected(true)
 
@@ -315,6 +552,9 @@ func _gui_input(event: InputEvent) -> void:
 
 func _on_button(row: TreeItem, _column: int, id: int, _mouse: int) -> void:
 	var path: String = str(row.get_metadata(0))
+	if id == ACCEPT and path.begins_with(SUGGESTION):
+		sections.accept([path.trim_prefix(SUGGESTION).to_int()])
+		return
 	var ids: PackedInt64Array = assemblies.ids_under(path)
 	var builder: Builder = shell.builder
 	match id:
@@ -341,8 +581,13 @@ func _on_button(row: TreeItem, _column: int, id: int, _mouse: int) -> void:
 
 func _drag_data(at: Vector2) -> Variant:
 	var row: TreeItem = _tree.get_item_at_position(at)
-	if row == null or str(row.get_metadata(0)).is_empty():
+	if row == null or str(row.get_metadata(0)).is_empty() or str(row.get_metadata(0)) == SUGGESTED:
 		return null
+	if str(row.get_metadata(0)).begins_with(SUGGESTION):
+		var shown := Label.new()
+		shown.text = row.get_text(0)
+		_tree.set_drag_preview(shown)
+		return {"suggestion": str(row.get_metadata(0)).trim_prefix(SUGGESTION).to_int()}
 	var words := Label.new()
 	words.text = row.get_text(0)
 	_tree.set_drag_preview(words)
@@ -350,6 +595,11 @@ func _drag_data(at: Vector2) -> Variant:
 
 
 func _can_drop(at: Vector2, data: Variant) -> bool:
+	if data is Dictionary and (data as Dictionary).has("suggestion"):
+		var onto: TreeItem = _tree.get_item_at_position(at)
+		return onto != null and str(onto.get_metadata(0)).begins_with(SUGGESTION) \
+			and str(onto.get_metadata(0)).trim_prefix(SUGGESTION).to_int() \
+				!= int((data as Dictionary)["suggestion"])
 	if not (data is Dictionary) or not (data as Dictionary).has("assembly"):
 		return false
 	var row: TreeItem = _tree.get_item_at_position(at)
@@ -365,6 +615,10 @@ func _drop(at: Vector2, data: Variant) -> void:
 	if row == null:
 		return
 	var into: String = str(row.get_metadata(0))
+	if (data as Dictionary).has("suggestion"):
+		shell.bar.say(sections.sections.merge(int((data as Dictionary)["suggestion"]),
+			into.trim_prefix(SUGGESTION).to_int()))
+		return
 	var moved: String = assemblies.move_into(str((data as Dictionary)["assembly"]), into)
 	shell.verbs.edited.call()
 	shell.bar.say("%s is in %s now" % [Assemblies.label(moved),
@@ -375,4 +629,27 @@ func _drop(at: Vector2, data: Variant) -> void:
 func controls_by_name() -> Dictionary:
 	if not is_visible_in_tree():
 		return {}
-	return {"outliner": _header, "outliner_tree": _tree}
+	var out: Dictionary = {"outliner": _header, "outliner_tree": _tree}
+	for id: String in _buttons:
+		if (_buttons[id] as Button).is_visible_in_tree():
+			out[id] = _buttons[id]
+	return out
+
+
+## Where a row is on the screen, for a browser check to click it: the row
+## whose metadata is [param meta] ("" the model, a path, or SUGGESTION and
+## its number). Null when it is not shown.
+func row_rect(meta: String) -> Variant:
+	if _tree == null or _tree.get_root() == null:
+		return null
+	var row: TreeItem = _find(_tree.get_root(), meta)
+	if row == null:
+		return null
+	var rect: Rect2 = _tree.get_item_area_rect(row)
+	if rect.size == Vector2.ZERO:
+		return null
+	rect.position += _tree.get_global_rect().position - Vector2(0, _tree.get_scroll().y)
+	# Only a row in view: one scrolled out is no place to click.
+	if not _tree.get_global_rect().has_point(rect.get_center()):
+		return null
+	return rect

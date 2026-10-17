@@ -29,6 +29,8 @@ var inspector: Inspector
 var assemblies: Assemblies
 var outliner: Outliner
 var banner: AssemblyBanner
+## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
+var sections: SectionsUi
 var grid: StudGrid
 var tour: Tour
 ## My collection: src/ui/collection_dialog.gd.
@@ -77,16 +79,19 @@ const MENUS: Array = [
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "printed_versions", "mirror",
 		"-", "ask_claude", "-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
-		"rename_assembly", "make_unique", "-", ">steps", "-", "reshape_flex"]],
+		"rename_assembly", "make_unique", "-", "break_out", "put_back", "-", ">steps", "-",
+		"reshape_flex"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "explode", "-", "turn_left",
+		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
 	["Build", ["timeline", "step_close", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
-		"leave_submodel", "enter_assembly", "select_submodel", "-", "flex", "minifig", "mosaic",
+		"leave_submodel", "enter_assembly", "select_submodel", "-", "suggest_sections",
+		"evaluate_section", "break_out", "explode", "-", "flex", "minifig", "mosaic",
 		"brickify", "part_maker", "print_part", "sticker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
@@ -160,6 +165,20 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	see_inside.say = bar.say
 	see_inside.bounds_of_model = func() -> AABB: return app.call("_built_bounds")
 	add_child(see_inside)
+	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
+	sections = SectionsUi.new()
+	sections.shell = self
+	sections.sections = Sections.new()
+	sections.sections.world = world
+	sections.sections.library = library
+	sections.sections.builder = builder
+	sections.sections.assemblies = assemblies
+	sections.sections.scenery = store.scenery
+	add_child(sections)
+	# A suggestion is of the model it was made for.
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void: sections.sections.dismiss())
+	bar.opened.connect(func(_n: int) -> void: sections.sections.dismiss())
 	_define()
 
 	for menu: Array in MENUS:
@@ -185,6 +204,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
+	outliner.sections = sections
 	stack.add_section(outliner, "tree_height")
 
 	inspector = Inspector.new()
@@ -846,6 +866,25 @@ func _define() -> void:
 			var path: String = assemblies.selected_assembly()
 			return not path.is_empty() and not assemblies.copies_of(path).is_empty(),
 		"Cut this copy loose, so editing it changes no other")
+	# Sections (SectionsUi): the model split as a builder builds it.
+	_add("suggest_sections", "Suggest sections", 0, func() -> void: await sections.suggest(),
+		something, "How a builder would split this into sections, as a set into bags: "
+		+ "shown in the model tree to accept, rename, merge or split")
+	_add("evaluate_section", "Evaluate the section…", 0,
+		func() -> void: await sections.show_evaluation(), sections.can_target,
+		"The selected section on its own: parts, weight, whether it holds together and "
+		+ "stands, what joins it to the rest, its own steps")
+	_add("break_out", "Break out the section", KEY_Y,
+		func() -> void: sections.break_out_or_back(),
+		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
+		"Pull the selected section away from the model to work on it, or put it back "
+		+ "exactly where it was (Y again)")
+	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
+		func() -> bool: return not world.broken_out.is_empty(),
+		"Every section broken out back exactly where it was")
+	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
+		something, "Every section drawn apart, and back together (Shift+Y again)")
+	_ticked("explode", func() -> bool: return sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
@@ -1474,6 +1513,11 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_N:
 			if key.shift_pressed and not held and can("step_new"):
 				return run("step_new")
+		KEY_Y:
+			# Y breaks the selected section out or puts it back; Shift+Y
+			# draws every section apart (SectionsUi).
+			if not held and not key.alt_pressed:
+				return run("explode" if key.shift_pressed else "break_out")
 		KEY_C:
 			# C alone paints (main); Shift-C asks for a colour by name.
 			if key.shift_pressed and not held and not key.alt_pressed:

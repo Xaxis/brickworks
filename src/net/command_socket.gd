@@ -595,6 +595,11 @@ const HINTS := {
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],
 	"make_unique": ["Make a copy unique", "add"],
+	"suggest_sections": ["Suggest sections", "look"],
+	"make_sections": ["Make the sections", "add"],
+	# Moves a section's parts away from the model, or back; one step each.
+	"break_out_section": ["Break out a section", "add"],
+	"evaluate_section": ["Evaluate a section", "look"],
 	# Recolours parts nobody sees, after the person says yes; one step.
 	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],

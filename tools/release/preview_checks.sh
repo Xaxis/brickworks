@@ -47,6 +47,7 @@ declare -A CMD=(
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
   [technic]="tools/web/technic_flow.mjs --url=$P/app $B --out=$S/${TAG}_technic"
   [assembly]="tools/web/assembly_flow.mjs --url=$P/app $B --out=$S/${TAG}_assembly_web"
+  [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"
   [placing]="tools/web/placing_flow.mjs --url=$P/app $B --out=$S/${TAG}_placing_web"
   [flex_skin]="tools/web/flex_skin_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_skin_web $R/vendor/omr/files/8202-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
