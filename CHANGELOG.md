@@ -77,6 +77,17 @@ whole cycle.
 - A steering column that rides on joints that move, in a cab on hinges,
   turns its pinion through its gears as exactly as a column that stands
   still, and the cab stays put while it turns.
+- Parts a set has off the grid can be put where the set has them. In
+  Properties, X, Y and Z take any place to the hundredth of an LDU, not
+  only whole steps of two, and Hinge, shown when the selection hangs from
+  a hinge, pin, axle or clip, swings it about that joint to the angle
+  typed, as Studio's hinge tool does. A part put on the studs of a part
+  that stands off
+  the grid, under it or against its side sits on that part's studs, where
+  it went up to an LDU beside them. The three sets of the CAD task test
+  have 39 such parts (a balance's pans hung at 66.4 degrees, wheels,
+  propellers, lights in clips); 31 now go where the file has them, all
+  but a car's eight tyres.
 
 ### Changed
 

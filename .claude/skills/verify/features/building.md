@@ -796,9 +796,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hangs from a round joint (`Builder._joint_of`: a hinge's pin, a clip on a
   bar, a pin or an axle in a round hole), is its turn about that joint in
   degrees off square; a number typed swings it there (`swing_selection`, as
-  J does by 15). Enter in any of them gives the keys back to the model (a
-  field kept them, and the R, T and arrows pressed next were typed into
-  it). And a part aimed at the studs, the underside or the side of a part
+  J does by 15). And a part aimed at the studs, the underside or the side of a part
   that stands square but off the 2 LDU lattice is put in that part's frame
   (`Builder._in_frame_of`: the part's place past its cell added to what
   the lattice found, since its cover is counted from that cell), where it
@@ -808,7 +806,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its slide along the axle typed; the pins, 3651s, plates and the second
   4262 aimed and clicked), its axle 1 LDU along, 5762-1's lights and
   propellers, 8643-1's wheels and tyres; each against the file to 0.05
-  LDU and 0.002 of its matrix, rows in `shots/offgrid/offgrid.json`.
+  LDU and 0.002 of its matrix, rows in `shots/offgrid/offgrid.json`. A part
+  the run cannot put is put from the file for the parts after it. Known
+  and failing (2026-10-17): 31 of 39 pass; 8643-1's eight tyres find no
+  room where the set has them (the wheel holder's cover), typed or aimed.
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it

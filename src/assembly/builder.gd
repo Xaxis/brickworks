@@ -806,12 +806,18 @@ static func _ldu_words(by: Vector3) -> String:
 	return ", ".join(words)
 
 
+## The most parts a selection may have for Properties to show its Hinge.
+const HINGED_MOST := 60
+
+
 ## How far the selection stands turned about the joint it hangs from, in
 ## degrees off square, -45 to 45; null when it hangs from none
 ## ([method _joint_of]). What the properties' Hinge shows and types over.
 func hinge_angle() -> Variant:
 	var alive: PackedInt64Array = _living_selection()
-	if alive.is_empty():
+	# What swings on a hinge is a handful of parts; asked of everything
+	# selected, the joints of a whole big model would be read at Ctrl-A.
+	if alive.is_empty() or alive.size() > HINGED_MOST:
 		return null
 	var joint: Dictionary = _joint_of(alive)
 	if joint.is_empty():
@@ -1509,10 +1515,17 @@ func _joint_of(ids: PackedInt64Array) -> Dictionary:
 	if first:
 		return {}
 	var reach: AABB = box.grow(BrickLattice.STUD * 2.0)
-	for brick: BrickWorld.Brick in world.bricks():
-		if picked.has(brick.id):
+	# The parts near it by the lattice's buckets, not every part of the
+	# model: Properties asks this at every selection (hinge_angle).
+	var cells := PackedInt32Array([floori(reach.position.x / BrickLattice.CELL),
+		floori(reach.position.y / BrickLattice.CELL), floori(reach.position.z / BrickLattice.CELL),
+		ceili(reach.end.x / BrickLattice.CELL), ceili(reach.end.y / BrickLattice.CELL),
+		ceili(reach.end.z / BrickLattice.CELL)])
+	for other: int in lattice.near_bounds(cells):
+		if picked.has(other):
 			continue
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 		if part != null and (brick.transform * part.bounds).abs().intersects(reach):
 			entries.append([brick.id, brick.transform, part])
 	var held: Dictionary = Joints.rounds(entries)
