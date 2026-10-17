@@ -268,7 +268,15 @@ plan with Claude as the client.
   Account, and C's next call is told it was moved
   off with the castle unchanged, A building on. Pictures `1_castle.png`,
   `1_truck.png`, `2_two_chats.png`, `3_kept.png`. In
-  `tools/release/preview_checks.sh` as `tabpair` and `tabpair_probe`.
+  `tools/release/preview_checks.sh` as `tabpair` and `tabpair_probe`; both
+  passed on preview brickworks-otcd0v1a2 (2026-10-17), with `tabs`,
+  `list_changed` and `oauth`. And by real Claude in real tabs: on that
+  preview, two tabs (Castle, Fire Truck) each pressed New chat for this tab,
+  and two `claude -p` sessions run at once were each given its tab's first
+  message and asked for a brick: each called `select_tab` with its own id,
+  targeted every call after, and built in its own model alone (71→72,
+  44→45), each toolbar reading `Claude working · tab <its id>`
+  (`bench/results/tabpair-2026-10-17/claude_tabs`).
 - `progress check` (`tools/web/progress_check.mjs`, 2026-10-12): presses each
   slow thing in Chromium on SwiftShader and times it against the press's own
   time in the page — how long before the status bar's bar (`Working`) was
