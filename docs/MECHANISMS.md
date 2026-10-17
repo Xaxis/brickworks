@@ -1135,10 +1135,10 @@ Nothing else limits it: a hinge with room to go all the way round does.
 
 **Couplings.** A grabbed gear drives its train through `Mechanism`, the
 Simulate solver: the gears it meshes turn by their teeth, with the parts
-keyed to them. What hangs on a driven gear by a clip or a hinge does not yet
-follow it. A **closed loop** (a four-bar, a crank and its rod, a steering rack
-on its arms) is held at both ends: the drag says so and moves nothing. That
-is P2.
+keyed to them. What hangs on a driven gear by a clip or a hinge did not yet
+follow it, and a **closed loop** (a four-bar, a crank and its rod, a steering
+rack on its arms) was held at both ends and moved nothing: section 11 does
+both.
 
 **Physics on release, honestly.** A joint holds by friction or it does not.
 A pin's name says which: "with Friction Ridges" (2780, 43093, 6558) holds; a
@@ -1207,10 +1207,166 @@ Alone it changes nothing and says what would move, on what joint, whether it
 holds or swings, and how the model stands. degrees= or along= move it as a
 drag does and answer with what moved and the balance after.
 
-**Left for later.** A chain over MCP; a chain's ranges read with the other
+**Left for later** (a chain over MCP, closed loops, what hangs on a driven
+gear, free joints inside what moves, and a model that tips are section 11's).
+A chain over MCP; a chain's ranges read with the other
 joints turned (each is read alone, from where the model stands); closed
 loops (P2); what hangs
 on a driven gear following it; a free joint inside what moves settling too
 (only the grabbed joint settles); dynamics (S2, P3); the click step measured
 on real parts rather than read from retailers; settling a model that tips
 (it is said and drawn leaning, not laid over).
+
+## 11. Loops, what hangs on a train, and falling over (G2)
+
+G1 left four things for later that a person meets at once: a part held at
+both ends said so and moved nothing; what hung on a driven gear stayed where
+it was; only the grabbed joint settled; and a model past its edge was drawn
+leaning, not laid over. G2 does each, and no more precisely than the parts
+allow.
+
+**Closed loops (P2).** `src/assembly/linkage.gd`. Bodies grows its tree from
+the anchor, and each link the tree did not grow along closes a loop. A grab
+whose moving side is held by one of those (`Bodies.loops_out`) takes every
+closing link whose loop runs through a joint that moves, and every joint of
+those loops, until nothing more joins. Each joint is one unknown, its turn;
+one more when it slides (an axle in a round hole, a piston); three for a
+ball. A loop is closed when each closing joint still holds its halves
+together: its point where it is in one is where it is in the other, and
+their lines are one line (a ball keeps only its middle; a sliding joint
+keeps only its line). The grabbed joint is driven; the rest are found by
+damped Gauss-Newton (Levenberg-Marquardt) on those residuals, with exact
+derivatives (a turn moves a point at x by its way crossed with x less its
+point), from the pose last kept, the driver followed in steps of 5° so a
+four-bar stays open or crossed as it was built. Real models hold a loop by
+more joints than it needs; least squares takes the extra equations as they
+come, so a redundant chassis does not read as jammed (§6, Redundancy). It is
+P2's Newton-Raphson, numbered as §3 has it.
+
+Honest about what it cannot do: where the loop does not close at the angle
+the pointer asks, it stops at the nearest angle that does (bisected to a
+fiftieth of a step) and says "its loop closes no further that way"; a loop
+that closes neither a degree one way nor the other has no freedom and is
+"Locked: this loop has no freedom". A slide inside a loop goes as far as the
+loop takes it: its connectors' lengths are drawn approximately (8218's
+piston needs 20 LDU of its cylinder and the connectors give 19). A loop
+holds where it is put if any joint in it holds by friction; if none does, it
+turns down under its own weight when let go, its driver stepped downhill
+while the centre of mass of what it moves comes lower and it has room.
+
+Measured on real sets, each against its closed form, by the pointer, 60
+frames each (`grab_probe -- --only=loops`):
+
+| set | loop | checked against | worst |
+|---|---|---|---|
+| 8020-1 Jeep | the steering: two arms on their kingpins and the track rod (a four-bar, 4 hinges) | the rocker's turn where two circles meet: the far pin on a circle about its kingpin, at the track rod's length from the near pin | 0.012° |
+| 8218-1 | the engine: crank, connecting rod, piston in its cylinder (2 axles, a sliding hinge, a ball) | the crank-slider's quadratic: the wrist pin on the cylinder's line at the rod's length from the crank pin | under 0.001 LDU; stroke 20.00 LDU, twice the 10.00 LDU throw |
+
+The engine needed two readings the connectors did not give: an engine's
+piston slides in its cylinder, freely (`Bodies._slide_within`: a short shaft
+inside a longer bore of the same round), and its rod's ball end sits between
+the piston's two small bores, a socket no connector names
+(`Bodies._bores_across`). Without them the rod hung loose from its crank and
+the piston turned in its cylinder.
+
+The room test had to learn three things the loops showed. A steering arm
+built flush against the brick beside it met it by one turned 2 LDU cell at
+3° and not at all at 10°: two parts whose turned boxes are into each other by
+no more than 1 LDU only touch (`Grab._touching`, the separating axis test on
+their boxes). A part turning on a line square to the face it rests on slides
+over that face: its reach along the line is unchanged, so it meets the part
+under it no more than it did (`Grab._slides_over`). A tyre resting on the
+floor, turned with its axle, met the floor by its turned cover: a part round
+about the line it turns on and centred on it (a wheel, a tyre, a gear) sweeps
+only where it is, and is not tested (`Grab._round_on`).
+
+**What hangs on a driven gear.** The gears a grab drives are Mechanism's
+bodies; what hangs on them by a clip, a hinge, a tyre on its rim or an arm
+pinned on is Bodies'. Every part of a driven part's rigid body in Bodies, and
+everything beyond it there, now goes round with the driven part that carries
+it (`Grab._follow_driven`), and is tested for room as the section is
+(`grab_probe -- --only=follow`). A made train, an 8 tooth crank driving a 24
+on a Technic brick with an arm on a hinge on the 24's axle: the crank turned
+30°, the arm turns 10.000°, a third, to 0.0000° of the gear reading's rate.
+On 8418's B model an excavator bucket (30394) hung on a driven body turns
+3.750° for the crank's 30°, an eighth.
+
+**Every free joint settles.** Let go, the grabbed joint swings down as
+before, and then every joint inside what moved (and inside what follows a
+driven gear) that does not hold by friction swings what it carries down
+under its line too, innermost first and over again three times (a pendulum
+on a pendulum), each as far as it has room against the model that stands
+(`Grab._settle_inside`); the status bar names them. It is not tested against
+the rest of what moved, which is not yet in the lattice.
+
+**Falling over.** `src/assembly/topple.gd`. Let go past its edge (Balance's
+margin below zero), a model turns about the support's edge the centre of
+mass is past, until another corner of its cover reaches the floor: a corner
+u out past the edge and h above the floor touches when the model has turned
+atan2(h, u), and the least of those over every corner is where it rests on
+that edge and the new point. While it still does not stand, it falls again
+about the next edge, at most four times. Quasi-static, as the settling is:
+where it comes to rest, not how fast or whether it bounces (§ What
+"accurate" can honestly mean: "it will fall at 1.7 s" is not a fair claim).
+It is drawn falling over half a second, faster as it goes, and kept in the
+same undo step as the grab, in words: "tipped over to the left and lies on
+its side". A model standing on a baseplate's studs does not fall: they hold
+it, and on a baseplate the plate is the floor; it says so ("It does not fall:
+it stands on the baseplate's studs"). `GrabDrag.topple_on_baseplate` turns
+that off. A model Balance reads as past its edge where it stood does not fall
+either: Balance's support is the lowest cells, and 8218's smaller front tyres
+stand clear of them, so it reads as tipping at rest; a grab of its engine
+does not throw it on its nose.
+
+Real sets rarely tip from one turn: the six biggest sections of 64 sets
+turned ±90° and ±150° on no floor left none past its edge. So the probe
+builds one that does (`grab_probe -- --only=falling`): a tall arm of five
+1x2 bricks on a hinge (3937 and 3938) on a tower of four 2x2 bricks, on no
+floor, the arm dragged out to 90°. Its centre of mass is then 6.7 LDU past
+the tower's front edge. Let go, it falls 42.79° about that edge; worked by
+hand over every vertex of every part as posed, the first point down is a
+corner of the 1x2 plate on the arm's end, 108.0 LDU out past the edge and
+100.0 up, atan2(100.0, 108.0) = 42.79°; that corner then stands 0.00 LDU off
+the floor, nothing is below it, and the model rests with its centre of mass
+a stud inside what it lies on: "tipped over to the front and rests leaning
+43°, its far end on the floor". The drag and the fall are one undo step. On a
+16x16 baseplate's studs the same drag leaves it standing: "would tip over to
+the front, 0.3 studs past its edge. It does not fall: it stands on the
+baseplate's studs".
+
+**A loop's drag frame.** The steering's worst drag frame was 162 ms: every
+round of bisecting where it stops worked out its arms' and wheels' turned
+covers afresh, 11 to 16 ms each. A part whose turned box is apart from every
+part near it, or into one only by touching, or sliding over a face square to
+its line, skips its cover (`Grab._boxes_meet`); the driver turns on a
+quarter-degree grid, so covers already worked out are found again; and a
+stop is bisected a round at a time, finished on a pause. Over six runs on a
+loaded box the drag's own worst frame was 26 to 41 ms (the wheel's cover
+alone 11 to 16 ms as the box was loaded), whole frames 25 to 45 ms; not
+reliably under 33. Covers worked out side by side on workers did not help:
+Builder's worker cache holds its lock while it works one out.
+
+The first move of a drag decides between turning and sliding a joint that
+does both. It slid when the pointer went along the line more than across
+it; seen from above its axle, a wheel's rim turns along that line on the
+screen, and the engine's crank slid. It now slides only when the pointer
+goes along the line clearly more than the point held goes when it turns.
+
+**The release frame and a chain over MCP.** A big section let go is checked
+and swung down on a worker (`GrabDrag._verify_off_thread`), the window
+drawing it where it was let go meanwhile; the frame-at-a-time path stays for
+the browser without threads. `move_part` takes `to=` [x, y, z] in studs, as
+it says where a joint is: the part drawn there by its whole chain back to
+the anchor (GrabChain, as a person's hold-then-drag), tested, eased back to
+the furthest that has room, one undo step. On 4096 the crane's end reached
+its point to 0.32 LDU along 4 joints. On 7191 the 131-part wing let go is
+now checked and kept in 8 s, its worst frame 69 ms (the commit 49 and what an
+edit sets going 17; the checking itself is off the window); it was 17 to
+20 s with a worst frame of 160 ms.
+
+**Left for later.** Racks: a rack driven by its pinion, a steering rack
+and its arms, a scissor lift (Mechanism has no prismatic joint yet, §5), the
+next unit; a loop's drag frame reliably under 33 ms; a loop through a joint the tree grew
+as a ball is solved, but the ball itself cannot be grabbed to drive it; the
+settling of free joints inside a loop; the fall of a model whose support
+Balance cannot see; dynamics (S2, P3).

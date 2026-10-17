@@ -46,6 +46,21 @@ whole cycle.
   first, so the other copies stay as they were. Hold still on a hand or a
   hook for a moment, then drag, and the whole chain of joints back to the
   body follows it.
+- A part held at both ends moves as its loop allows: drag a steering arm
+  and the other arm and the track rod follow it, turn an engine's crank
+  and its rod and piston go up and down. A loop that will not close where
+  the pointer is stops at the nearest pose that does, and a loop with no
+  freedom says it is locked. An engine's piston now slides in its
+  cylinder.
+- A model turned past its edge falls over when let go, about the edge it
+  tips over, until it lies on the floor, in half a second and in the same
+  undo step: "tipped over to the left and lies on its side". A model
+  standing on a baseplate's studs does not, and says the studs hold it.
+- What hangs on a gear that turns goes round with it, and every joint
+  without friction inside what moved swings down when let go, not only the
+  one dragged.
+- Claude can move a part along its whole chain of joints to a point:
+  move_part with to=.
 
 ### Changed
 
