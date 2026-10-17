@@ -26,7 +26,7 @@ if ! git "${ID[@]}" merge --no-ff --no-commit "$REF" >/dev/null 2>&1; then
   fi
   # Docs and the generated feature map: the same union every time.
   for f in $(git diff --name-only --diff-filter=U | grep -E '\.md$'); do
-    python3 "$HERE/resolve_docs.py" "$f" >/dev/null && git add "$f"
+    out=$(python3 "$HERE/resolve_docs.py" "$f") && { echo "$out" | grep DOUBLED; git add "$f"; }
   done
   if git diff --name-only --diff-filter=U | grep -qx .claude/skills/verify/features.json; then
     git checkout --theirs .claude/skills/verify/features.json && git add .claude/skills/verify/features.json
