@@ -261,10 +261,13 @@ func _the_button() -> void:
 		before != null and before == tools.get("tool_timeline"))
 	# The example car, or whatever a first run puts on the baseplate.
 	var title: String = (bar as ModelBar).model_name()
-	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(
-		title.to_snake_case() + "_instructions.html")
-	if path.is_empty() or path.begins_with("/_"):
-		path = OS.get_user_data_dir().path_join(title.to_snake_case() + "_instructions.html")
+	# Into a folder of the probe's own (Download.folder), never the person's
+	# Downloads: the probe deletes a booklet of this name before it writes,
+	# so it would have taken a person's own booklet of that name with it.
+	var folder: String = OS.get_user_data_dir().path_join("sessions/probe/downloads")
+	DirAccess.make_dir_recursive_absolute(folder)
+	Download.folder = folder
+	var path: String = Download.downloads().path_join(title.to_snake_case() + "_instructions.html")
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)
 	button.pressed.emit()

@@ -190,15 +190,19 @@ func _initialize() -> void:
 
 	# A download is named after the model, and a design names the model:
 	# a title climbing out of the folder must land inside it.
-	var folder: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	if folder.is_empty():
-		folder = OS.get_user_data_dir()
+	# In the probe's own session folder, two deep, so a title that did
+	# climb out would still land in the probe's data and never in the
+	# person's Downloads (or two folders above it, their home).
+	var folder: String = OS.get_user_data_dir().path_join("sessions/probe/downloads/a/b")
+	DirAccess.make_dir_recursive_absolute(folder)
+	Download.folder = folder
 	var inside: String = folder.path_join("brickworks_store_probe_escape.txt")
 	var outside: String = folder.path_join("../../brickworks_store_probe_escape.txt").simplify_path()
 	Download.give("x", "../../brickworks_store_probe_escape.txt")
 	_expect(FileAccess.file_exists(inside) and not FileAccess.file_exists(outside),
 		"a download named to climb out of the folder lands in it")
 	DirAccess.remove_absolute(inside)
+	Download.folder = ""
 	DirAccess.remove_absolute(outside)
 
 	# Two tabs (or windows) with one saved model open (2026-10-13): when one
