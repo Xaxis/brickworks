@@ -233,10 +233,6 @@ func _number(words: String, says: String) -> SpinBox:
 	spin.select_all_on_focus = true
 	spin.add_theme_font_size_override("font_size", 12)
 	spin.get_line_edit().add_theme_font_size_override("font_size", 12)
-	# Enter takes the number and gives the keys back to the model: kept, the
-	# R, T and arrows a person pressed next were typed into the box.
-	var field: LineEdit = spin.get_line_edit()
-	field.text_submitted.connect(func(_text: String) -> void: field.release_focus.call_deferred())
 	_place.add_child(spin)
 	return spin
 

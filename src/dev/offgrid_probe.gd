@@ -34,6 +34,11 @@ const RUNS := [
 ]
 const EXACT_PLACE := 0.05
 const EXACT_TURN := 0.002
+## Parts the file has a hair off where what holds them puts them, typed to
+## the file's place only once the parts that hang from them are down: 8841-1's
+## right pan has one pin 0.35 LDU off its hole (-186.7 where its hole is at
+## -186.35), and the connector on it is where the hole says.
+const TYPED_LAST := {"8841-1_Balance.mpd": [52]}
 
 var _failures: int = 0
 var _main: Node
@@ -48,6 +53,9 @@ var _rows: Array = []
 var _acts: Dictionary = {}
 ## Where the pointer was last moved, in the window's units.
 var _last_point := Vector2.ZERO
+## Parts of the run to type to the file's place at its end (TYPED_LAST):
+## [row, brick id, want].
+var _later: Array = []
 
 
 func _initialize() -> void:
@@ -131,10 +139,29 @@ func _one_run(file: String, before: int, order: Array) -> void:
 	_builder.clear_selection()
 	await _frames(10)
 	var made: Dictionary = {}
+	_later = []
 	for index: int in order:
 		var put: Array = truth[index - 1]
 		var row: Dictionary = await _put_one(file, index, put, made)
 		_rows.append(row)
+	# The file's own hairs, typed now that nothing more hangs from them.
+	for later: Array in _later:
+		var row: Dictionary = later[0]
+		var brick_id: int = later[1]
+		var want: Transform3D = later[2]
+		row["typed"] = await _type_to(brick_id, want)
+		var got: Transform3D = _world.get_brick(brick_id).transform
+		row["final"] = _ldr_of(got)
+		row["off_ldu"] = snappedf(got.origin.distance_to(want.origin), 0.001)
+		row["off_degrees"] = snappedf(rad_to_deg(Quaternion(got.basis.orthonormalized())
+			.angle_to(Quaternion(want.basis.orthonormalized()))), 0.001)
+		row["acts"] = _acts.duplicate()
+		var exact: bool = _near(got, want, EXACT_PLACE, EXACT_TURN)
+		row["result"] = "exact, typed" if exact else "off"
+		_check("%s #%d %s, typed last to the file's place: %s (%s; wanted %s; typed %s)" % [
+			file.get_slice("_", 0), int(row["index"]), row["part"], row["result"], row["final"],
+			row["want"], ", ".join(row["typed"])], exact)
+		_builder.clear_selection()
 	await _shot("%s_%d" % [file.get_basename().get_slice("_", 0), before])
 
 
@@ -187,9 +214,18 @@ func _put_one(file: String, index: int, put: Array, made: Dictionary) -> Diction
 	row["put"] = _ldr_of(got)
 	row["by_pointer"] = _near(got, want, EXACT_PLACE, EXACT_TURN)
 	var typed: Array = []
-	if not _near(got, want, EXACT_PLACE, EXACT_TURN):
+	var last: bool = (TYPED_LAST.get(file, []) as Array).has(index)
+	if not _near(got, want, EXACT_PLACE, EXACT_TURN) and not last:
 		typed = await _type_to(brick_id, want)
 		got = _world.get_brick(brick_id).transform
+	if last and not _near(got, want, EXACT_PLACE, EXACT_TURN):
+		_later.append([row, brick_id, want])
+		row["typed"] = []
+		row["final"] = _ldr_of(got)
+		row["result"] = "typed last"
+		_builder.clear_selection()
+		await _frames(3)
+		return row
 	row["typed"] = typed
 	row["final"] = _ldr_of(got)
 	row["off_ldu"] = snappedf(got.origin.distance_to(want.origin), 0.001)
@@ -519,16 +555,31 @@ func _joint_axis(brick_id: int) -> Vector3:
 func _select(brick_id: int) -> void:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-	var middle: Vector3 = (brick.transform * mesh.bounds).abs().get_center()
+	var box: AABB = (brick.transform * mesh.bounds).abs()
+	var middle: Vector3 = box.get_center()
 	await _key(KEY_V)
-	for attempt: int in 6:
-		var p: Vector3 = middle if attempt == 0 else middle + Vector3(
-			[3, -3, 0, 0, 3][attempt - 1], [0, 0, 3, -3, 3][attempt - 1], 0)
-		await _click(_screen(p))
-		if _builder.selection.has(brick_id) and _builder.selection.size() == 1:
-			return
-		_builder.clear_selection()
-		await _frames(2)
+	# On its body, not its middle, which a tyre's is not; from the view the
+	# part was put down in first, then turned to it from each side in turn,
+	# as a person turns to a part to click it.
+	var half: Vector3 = box.size * 0.5
+	var points: Array = [middle, middle + Vector3(0, half.y - 1.0, 0),
+		middle + Vector3(half.x - 2.0, half.y - 1.0, 0), middle + Vector3(-half.x + 2.0, half.y - 1.0, 0),
+		middle + Vector3(0, half.y - 1.0, half.z - 2.0), middle + Vector3(0, half.y - 1.0, -half.z + 2.0),
+		middle + Vector3(half.x - 1.0, 0, 0), middle + Vector3(-half.x + 1.0, 0, 0),
+		middle + Vector3(0, 0, half.z - 1.0), middle + Vector3(0, 0, -half.z + 1.0)]
+	var views: Array = [Vector3.ZERO, Vector3(0.35, 0.8, 0.5), Vector3(-0.35, 0.8, 0.5),
+		Vector3(0.35, 0.8, -0.5), Vector3(-0.35, 0.8, -0.5)]
+	for view: Vector3 in views:
+		if view != Vector3.ZERO:
+			_camera.frame(box.grow(30.0))
+			_camera.look_from(view.normalized())
+			await _frames(40)
+		for p: Vector3 in points:
+			await _click(_screen(p))
+			if _builder.selection.has(brick_id) and _builder.selection.size() == 1:
+				return
+			_builder.clear_selection()
+			await _frames(2)
 
 
 ## Click into a box in Properties, select what is in it, type, Enter.
