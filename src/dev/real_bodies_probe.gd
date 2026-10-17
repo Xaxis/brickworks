@@ -108,10 +108,10 @@ func _run() -> void:
 		"...asking for the choice before the first brick")
 
 	# 4. No line: sets about the subject; no subject either: nothing.
-	assistant.heard("a barn owl perched on a branch", true)
-	var owl: Variant = await assistant.use_tool("how_real_sets_build_this", {"subject": "owl"})
-	var owl_text: String = str(((owl as Array)[0] as Dictionary).get("text", "")) if owl is Array else ""
-	_ok(owl_text.contains("From real sets about owl"), "a brief of no line is shown sets about its subject")
+	assistant.heard("a scarlet macaw parrot on a perch", true)
+	var bird: Variant = await assistant.use_tool("how_real_sets_build_this", {"subject": "parrot"})
+	var bird_text: String = str(((bird as Array)[0] as Dictionary).get("text", "")) if bird is Array else ""
+	_ok(bird_text.contains("From real sets about parrot"), "a brief of no line is shown sets about its subject")
 	var opening: String = ""
 	for block: Variant in assistant.opening_for("make it two studs taller"):
 		opening += str((block as Dictionary).get("text", ""))
@@ -135,7 +135,7 @@ func _run() -> void:
 	for entry: Dictionary in grilles:
 		all_fit = all_fit and bool(entry.get("lays", false)) and int(entry["parts"]) <= FeaturePass.MOST_PARTS
 	_ok(all_fit, "...each one that lays whole, as before")
-	assistant.heard("a barn owl perched on a branch", true)
+	assistant.heard("a scarlet macaw parrot on a perch", true)
 	var eyes: Array = assistant.feature_pass().candidates_for("eyes")
 	_ok(not eyes.is_empty(), "a brief of no line still finds pieces for a feature (%d)" % eyes.size())
 
