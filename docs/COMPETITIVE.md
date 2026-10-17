@@ -856,10 +856,11 @@ refreshing them means the full mesh build: about 90 minutes, then
 ## Sections: one at a time
 
 Builders build a section at a time, as a set's bags come. Studio has
-sub-models: made from a selection, edited in place or in a tab of their
-own [st-submodel]. Its help pages describe no way to suggest them, no view
-that pulls one away from the model or all of them apart, and no check of
-one on its own. Brickworks suggests sections from the booklet planner and
+sub-models: made from a selection (`Ctrl+G`), cloned with the clones
+following, released, kept in palettes and in the step list [st-submodel].
+Its help page on them describes no way to suggest them, no view that pulls
+one away from the model or all of them apart, and no check of one on its
+own (read 2026-10-17). Brickworks suggests sections from the booklet planner and
 the build check's joint graph, breaks one out and puts it back to the bit,
 draws them all apart, and weighs one alone: parts, weight, one piece,
 balance, the joints that hold it, its own booklet ([sections]).

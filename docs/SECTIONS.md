@@ -104,9 +104,9 @@ Technic, one big. Desktop, 2026-10-17, on a loaded machine.
 | Set | Parts | Sections | Sizes | Suggest | Need a later one |
 |---|---|---|---|---|---|
 | 21016-1 Sungnyemun, one model | 325 | 3 | 82 to 127 | 0.1 to 0.2 s | none |
-| 31025-1 Mountain Hut, 10 sub-models | 549 | 5, a minifigure, 26 loose | 33 to 275 | 0.2 to 0.3 s | none |
+| 31025-1 Mountain Hut, 10 sub-models | 549 | 5, a minifigure, 25 loose | 33 to 275 | 0.2 to 0.3 s | none |
 | 42093-1 Corvette, Technic | 576 | 5, inside its one sub-model | 56 to 164 | 2 to 4 s | 3 of 5 |
-| 10179-1, 5,266 parts | 5,266 | 42 and 254 loose parts | 48 to 302 | 9 to 14 s | 21 of 43 |
+| 10179-1, 5,266 parts | 5,266 | 42 and 254 loose parts | 46 to 299 | 9 to 15 s | 21 of 43 |
 
 On all four:
 
@@ -141,7 +141,7 @@ Pictures, drawn by the GPU: `bench/results/sections-2026-10-16/shots/`.
 - Interlocked models. A Technic frame or a UCS hull is sub-models that
   need each other both ways; 3 of the Corvette's 5 sections and 21 of
   10179-1's 43 need a later one. No cut along the build order fixes that.
-- Big models wait. 10179-1 takes 9 to 14 s in one go on the desktop: the
+- Big models wait. 10179-1 takes 9 to 15 s in one go on the desktop: the
   planner's reading is not paced here as the Timeline's is.
 - Loose parts. The joint graph reads studs, pins, axles, clips and
   hinges, not a tile held from the side or a tyre on its rim. On 10179-1,
