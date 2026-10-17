@@ -4279,6 +4279,47 @@
   {
     "annotations": {
       "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Move a part on its joint"
+    },
+    "description": "Move a part about its joint as the person's drag on it does: its whole rigid body and everything beyond it turn on the joint between it and what stays (a locked part, what stands on the baseplate, else the heaviest body): a hinge, a clip on a bar, a turntable, a pin or an axle in a round hole, a ball, a 1x1 round part on one stud. part= a part's number (look_at_model) or a sub-assembly's name. With nothing else it changes nothing and says what would move, on what, and how the model stands. degrees= turns it that far from where it is (a ball: about axis=), along= slides it that many studs along a bar or an axle; it stops where it meets the model, gears it drives turn by their teeth, a joint without friction swings down under its own weight once let go, and the answer says what moved and how the model stands then. One undo step.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "along": {
+          "description": "studs to slide along its line",
+          "type": "number"
+        },
+        "axis": {
+          "description": "a ball's turn about this way (x y z), with degrees=",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "degrees": {
+          "description": "turn from where it is now",
+          "type": "number"
+        },
+        "part": {
+          "description": "a part's number, or a sub-assembly's name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "part"
+      ],
+      "type": "object"
+    },
+    "name": "move_part"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
