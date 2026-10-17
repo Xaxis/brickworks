@@ -78,9 +78,19 @@ var _rack_turn: Array = []    ## PackedFloat64Array, a coefficient a column
 ## together where they meet. Offered by the grab (the train it drives), not
 ## read off the whole model: a drivetrain is not a loop.
 var gear_meshes: Array = []
-var _gear_rows: Array = []    ## PackedFloat64Array, a coefficient a column
+## For each mesh, both gears where they stood: [body, centre, axis, the way
+## to the other gear's axis square to its own, its lever (how far its teeth
+## move at the mesh for a radian of its own turn), -1 or +1, the columns that
+## move either gear].
+var _gear_ends: Array = []
+## Each mesh's two gears' turns as last kept, radians: a turn is read off
+## where the gear stands, -pi to pi, and unwrapped against these.
+var _gear_kept: Array = []
 var _offered: Array = []
-## A gear of [member gear_meshes] is carried by more than its own joint.
+## A gear of [member gear_meshes] is carried by more than its own joint: a
+## gear riding on a joint the loop moves (8062-1's column, in a cab of
+## hinges). Each mesh is read in the frame the two gears stand in, so it is
+## as exact there as on axles in what stands.
 var gears_carried: bool = false
 ## For each closing joint, the joints on the way from the anchor to each of
 ## its halves: [PackedInt32Array for a, for b].
@@ -98,6 +108,12 @@ var _index_of: Dictionary = {}   ## Link -> joint index
 ## Grams and centre of mass of each moved body where it stands.
 var _grams: Dictionary = {}
 var _centre: Dictionary = {}
+## The turn columns of joints that only slide (an actuator's rod in its
+## body): held at nought, never solved for.
+var _still: Dictionary = {}
+## How far a slide may go, column -> Vector2(least, most) from where it
+## stood: an actuator's or a cylinder's stroke.
+var _limits: Dictionary = {}
 ## How the last solve went: iterations and the residual left, LDU.
 var iterations: int = 0
 var residual: float = 0.0
@@ -221,12 +237,24 @@ func _read(driver: Bodies.Link, child: int) -> void:
 		_axis.append(link.axis.normalized())
 		_point.append(link.point)
 		turn_col.append(cols)
+		if not link.turns:
+			_still[cols] = true
 		cols += 1
 		if link.axis == Vector3.ZERO:
 			# A ball: three turns, about x, then y, then z where it stood.
 			cols += 2
 			slide_col.append(-1)
 		elif link.slide.x + link.slide.y > 0.0:
+			if not link.turns:
+				# An actuator's stroke, its rod or its body the one that moves.
+				var rod_moves: bool = int(bodies.body_of.get(link.shaft_part, -1)) == kid
+				_limits[cols] = Vector2(-link.slide.y, link.slide.x) if rod_moves \
+					else Vector2(-link.slide.x, link.slide.y)
+			slide_col.append(cols)
+			cols += 1
+		elif not link.turns:
+			# Drawn all the way out or in, with nowhere to go but back.
+			_limits[cols] = Vector2.ZERO
 			slide_col.append(cols)
 			cols += 1
 		else:
@@ -251,35 +279,50 @@ func _read(driver: Bodies.Link, child: int) -> void:
 					turn[turn_col[n]] += _axis[n].dot(mesh.axis) * (1.0 if s == 0 else -1.0)
 		_rack_turn.append(turn)
 	for coupling: Mechanism.Coupling in gear_meshes:
-		# Mechanism's row, on these joints: each joint's turn moves the teeth
-		# at the mesh along their way (a worm's thread advancing too); the one
-		# gear's side less the other's.
-		var row := PackedFloat64Array()
-		row.resize(cols)
-		row.fill(0.0)
-		var ends: Array = [[int(bodies.body_of[coupling.one.key]), coupling.point, coupling.along, -1.0],
-			[int(bodies.body_of[coupling.other.key]), coupling.point_other, coupling.along_other, 1.0]]
-		for end: Array in ends:
-			var point: Vector3 = end[1]
-			var along: Vector3 = end[2]
-			# Linear, as Mechanism's rows are, only while each gear turns on its
-			# own axle in what stands: a gear carried by a joint the loop moves
-			# is not read so yet (8062-1's column turned 4.6° off its bevels).
-			if _joints_on(int(end[0])).size() > 1:
+		# Mechanism's equation, the teeth moving together where they meet, with
+		# each gear's turn read against the line to the other gear's axis
+		# rather than against the world: a pair carried round together turns
+		# neither against the other, so a gear riding on a joint the loop moves
+		# is read as exactly as one on an axle in what stands. Linear in the
+		# joints' turns, as Mechanism's rows are, it turned 8062-1's column
+		# 4.6° off its bevels.
+		var ends: Array = []
+		var columns := PackedInt32Array()
+		for side: int in 2:
+			var gear: Mechanism.Gear = coupling.one if side == 0 else coupling.other
+			var mate: Mechanism.Gear = coupling.other if side == 0 else coupling.one
+			var point: Vector3 = coupling.point if side == 0 else coupling.point_other
+			var along: Vector3 = coupling.along if side == 0 else coupling.along_other
+			var body: int = int(bodies.body_of[gear.key])
+			if _joints_on(body).size() > 1:
 				gears_carried = true
-			for n: int in _joints_on(int(end[0])):
-				if _axis[n] == Vector3.ZERO:
-					continue
-				var moves: float = _axis[n].cross(point - _point[n]).dot(along) \
-					+ coupling.lead * _axis[n].dot(along)
-				row[turn_col[n]] += float(end[3]) * moves
-				if slide_col[n] >= 0:
-					row[slide_col[n]] += float(end[3]) * _axis[n].dot(along)
-		_gear_rows.append(row)
+			for n: int in _joints_on(body):
+				for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
+						if _axis[n] == Vector3.ZERO else []):
+					if c >= 0 and not columns.has(c):
+						columns.append(c)
+			var toward: Vector3 = mate.centre - gear.centre
+			toward -= gear.axis * toward.dot(gear.axis)
+			ends.append([body, gear.centre, gear.axis, toward.normalized(),
+				gear.axis.cross(point - gear.centre).dot(along) + coupling.lead * gear.axis.dot(along),
+				-1.0 if side == 0 else 1.0])
+		ends.append(columns)
+		_gear_ends.append(ends)
+		_gear_kept.append(PackedFloat64Array([0.0, 0.0]))
 	q.resize(cols)
 	q.fill(0.0)
 	kept = q.duplicate()
+	_gear_at_keep = _gear_kept.duplicate(true)
 	driver_col = turn_col[0]
+	if not links[0].turns and slide_col[0] >= 0:
+		# An actuator's rod: driven along it.
+		driver_col = slide_col[0]
+	for n: int in range(1, links.size()):
+		if bodies.beyond(child_of[n]).has(parent_of[0]):
+			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
+					if _axis[n] == Vector3.ZERO else []):
+				if c >= 0:
+					_carrying[c] = true
 	# What moves: everything beyond each joint of the loops.
 	var seen: Dictionary = {}
 	for n: int in links.size():
@@ -420,12 +463,45 @@ func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 			out.append_array([gap.x, gap.y, gap.z])
 	for k: int in racks.size():
 		out.append(_rack_residual(k, at, cache))
-	for row: PackedFloat64Array in _gear_rows:
-		var teeth: float = 0.0
-		for c: int in cols:
-			teeth += row[c] * at[c]
-		out.append(teeth)
+	for k: int in _gear_ends.size():
+		out.append(_gear_residual(k, at, cache))
 	return out
+
+
+## Gear mesh [param k]'s two gears' turns, radians, with the joints at
+## [param at]: each gear's own turn about its axis, read against the line
+## from it to the other gear's axis, unwrapped against the turn last kept.
+func _gear_turns(k: int, at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
+	var ends: Array = _gear_ends[k]
+	var out := PackedFloat64Array([0.0, 0.0])
+	for side: int in 2:
+		var end: Array = ends[side]
+		var mate: Array = ends[1 - side]
+		var mine: Transform3D = _place(int(end[0]), at, cache)
+		var theirs: Transform3D = _place(int(mate[0]), at, cache)
+		var u: Vector3 = (mine.basis * (end[2] as Vector3)).normalized()
+		var centre: Vector3 = mine * (end[1] as Vector3)
+		var toward: Vector3 = theirs * (mate[1] as Vector3) - centre
+		var line: Vector3 = (toward - u * toward.dot(u)).normalized()
+		var mark: Vector3 = (mine.basis * (end[3] as Vector3)).normalized()
+		var turn: float = atan2(u.dot(line.cross(mark)), line.dot(mark))
+		var was: float = (_gear_kept[k] as PackedFloat64Array)[side]
+		out[side] = turn + TAU * roundf((was - turn) / TAU)
+	return out
+
+
+## How far gear mesh [param k]'s teeth stand apart where they meet, LDU:
+## each gear's lever times its turn, the one's less the other's.
+func _gear_residual(k: int, at: PackedFloat64Array, cache: Dictionary) -> float:
+	var ends: Array = _gear_ends[k]
+	var turns: PackedFloat64Array = _gear_turns(k, at, cache)
+	return float(ends[0][5]) * float(ends[0][4]) * turns[0] + float(ends[1][5]) * float(ends[1][4]) * turns[1]
+
+
+## Each gear's turn where [param at] stands, kept to unwrap the next against.
+func _keep_gear_turns(at: PackedFloat64Array) -> void:
+	for k: int in _gear_ends.size():
+		_gear_kept[k] = _gear_turns(k, at, {})
 
 
 ## How far rack [param k] stands from where its pinion's teeth put it, LDU:
@@ -543,8 +619,22 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 				if slide_col[n] >= 0:
 					row[slide_col[n]] += mesh.line.dot(back * ways[n]) * sign
 		rows.append(row)
-	for row: PackedFloat64Array in _gear_rows:
-		rows.append(row.duplicate())
+	# A gear mesh's row by central differences, over the columns that move
+	# either gear: its turns are read off angles, and a step of 1e-3 keeps the
+	# difference well above single precision's rounding.
+	for k: int in _gear_ends.size():
+		var row := PackedFloat64Array()
+		row.resize(cols)
+		row.fill(0.0)
+		for c: int in (_gear_ends[k][2] as PackedInt32Array):
+			if _still.has(c):
+				continue
+			var up: PackedFloat64Array = at.duplicate()
+			var down: PackedFloat64Array = at.duplicate()
+			up[c] += 1e-3
+			down[c] -= 1e-3
+			row[c] = (_gear_residual(k, up, {}) - _gear_residual(k, down, {})) / 2e-3
+		rows.append(row)
 	return rows
 
 
@@ -590,6 +680,36 @@ static func _worst(r: PackedFloat64Array) -> float:
 ## Close the loops with the driver held at q[driver_col], from q as it is.
 ## True when every closing joint meets to CLOSE_TO.
 func _close() -> bool:
+	# What carries the driver held where it is first: a steering column
+	# turned in a cab of hinges turns its gears, and the cab does not tilt
+	# for it, as a hand on the wheel finds. Least squares over every joint
+	# shared the column's turn between its pinion and the cab's hinges (8062-1:
+	# 10.7° of 30). Where the loop cannot close so (a wheel turned on its
+	# steering arm carries the arm's kingpin with it), every joint is free
+	# again, for the rest of this grab.
+	if _try_held and not _carrying.is_empty():
+		var from: PackedFloat64Array = q.duplicate()
+		if _close_with(_carrying):
+			return true
+		q = from
+		# Freed, it closes: it needed what carries the driver to move. Not
+		# even freed: the loop's own stop, and it is held again next time.
+		if _close_with({}):
+			_try_held = false
+			return true
+		return false
+	return _close_with({})
+
+
+## Whether the loop closes with the joints of columns [param held] kept
+## where they are, as _close says.
+var _try_held: bool = true
+## The columns of the joints that carry the driver's joint: from the anchor
+## to what the driver turns in.
+var _carrying: Dictionary = {}
+
+
+func _close_with(held: Dictionary) -> bool:
 	solves += 1
 	var cache: Dictionary = {}
 	var r: PackedFloat64Array = _residual(q, cache)
@@ -601,7 +721,7 @@ func _close() -> bool:
 		var jac: Array = _jacobian(q, cache)
 		var free: Array = []
 		for c: int in cols:
-			if c != driver_col:
+			if c != driver_col and not _still.has(c) and not held.has(c):
 				free.append(c)
 		var n: int = free.size()
 		if n == 0:
@@ -711,6 +831,7 @@ func kept_value() -> float:
 ## to a fiftieth of a step). Returns that value.
 func reach(value: float) -> float:
 	q = kept.duplicate()
+	_gear_kept = _gear_at_keep.duplicate(true)
 	var from: float = q[driver_col]
 	var step: float = STEP_SLIDE if is_slide() else STEP_TURN
 	var count: int = maxi(1, ceili(absf(value - from) / step))
@@ -719,9 +840,12 @@ func reach(value: float) -> float:
 	for n: int in range(1, count + 1):
 		var at: float = lerpf(from, value, float(n) / float(count))
 		q[driver_col] = at
-		if _close():
+		if _close() and _within():
 			good = at
 			good_q = q.duplicate()
+			# The gears' turns unwrapped against this step's, not the first's:
+			# a worm turns many times over in one drag.
+			_keep_gear_turns(q)
 			continue
 		# Short of it: the furthest that closes between the last good and here.
 		var low: float = good
@@ -730,9 +854,10 @@ func reach(value: float) -> float:
 			var middle: float = (low + high) * 0.5
 			q = good_q.duplicate()
 			q[driver_col] = middle
-			if _close():
+			if _close() and _within():
 				low = middle
 				good_q = q.duplicate()
+				_keep_gear_turns(q)
 			else:
 				high = middle
 		q = good_q
@@ -741,9 +866,32 @@ func reach(value: float) -> float:
 	return good
 
 
+## Whether every actuator's and cylinder's rod is within its stroke as q
+## stands: drawn out no further than the part goes, nor in.
+func _within() -> bool:
+	for c: int in _limits:
+		var span: Vector2 = _limits[c]
+		if q[c] < span.x - 0.01 or q[c] > span.y + 0.01:
+			return false
+	return true
+
+
+## How far the slide in column [param c] may go, from where it stood:
+## Vector2(least, most), or INF both ways where nothing but the loop limits
+## it.
+func limits_of(c: int) -> Vector2:
+	return _limits.get(c, Vector2(-INF, INF))
+
+
 ## Keep the pose q stands in as where the next move starts.
 func keep() -> void:
 	kept = q.duplicate()
+	_keep_gear_turns(q)
+	_gear_at_keep = _gear_kept.duplicate(true)
+
+
+## The gears' turns in the pose last kept (_gear_kept, as keep() left it).
+var _gear_at_keep: Array = []
 
 
 ## Whether the driver can move at all: the loop closes a little way one way

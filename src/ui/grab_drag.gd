@@ -65,6 +65,8 @@ var last_report: Balance.Report = null
 var worst_ms: float = 0.0
 var mean_ms: float = 0.0
 var frames: int = 0
+## The last motion's cost, ms: for a probe sampling frame by frame.
+var last_motion_ms: float = 0.0
 ## The worst of each part of it: following the pointer (the room tests),
 ## and weighing.
 var worst_follow_ms: float = 0.0
@@ -201,6 +203,14 @@ func motion(screen: Vector2) -> void:
 		_show(report, true)
 		worst_weigh_ms = maxf(worst_weigh_ms, float(Time.get_ticks_usec() - weighing) / 1000.0)
 	_moved_at = Time.get_ticks_msec()
+	# The line is said ten times a second, not every frame: each new text is
+	# laid out afresh and sets a timer of its own to clear it. Said at once
+	# when it stops or goes again.
+	if now - _told_at < TELL_EVERY_MS and grab.stopped == _told_stopped:
+		_count_frame(started)
+		return
+	_told_at = now
+	_told_stopped = grab.stopped
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
 	if grab.unchecked and grab.linkage != null:
 		line += " — stopped: it meets the model (found to a tenth of a degree when you pause)"
@@ -213,11 +223,23 @@ func motion(screen: Vector2) -> void:
 	if report != null and not report.empty:
 		line += " · " + _standing_words(report, true)
 	_tell(line)
+	_count_frame(started)
+
+
+## The status line during a drag, said at most this often, ms.
+const TELL_EVERY_MS := 100
+var _told_at: int = 0
+var _told_stopped: bool = false
+
+
+## A drag frame's cost, from [param started] (usec), into the counts.
+func _count_frame(started: int) -> void:
 	var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
 	frames += 1
 	_total_ms += spent
 	worst_ms = maxf(worst_ms, spent)
 	mean_ms = _total_ms / float(frames)
+	last_motion_ms = spent
 
 
 ## The end of a chain drawn to the pointer: the point under it in the plane

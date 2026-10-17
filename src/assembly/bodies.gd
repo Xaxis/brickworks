@@ -76,6 +76,9 @@ class Link extends RefCounted:
 	var pairs: Array = []
 	## Which part of the pair is the shaft (its id) when it slides.
 	var shaft_part: int = 0
+	## False for a joint that only slides: a linear actuator's rod in its body,
+	## a pneumatic cylinder's.
+	var turns: bool = true
 
 	func other(body: int) -> int:
 		return b if body == a else a
@@ -83,6 +86,10 @@ class Link extends RefCounted:
 	## "on its hinge", "on its turntable", "on a pin without friction".
 	func words() -> String:
 		match kind:
+			"actuator":
+				return "in its linear actuator"
+			"cylinder":
+				return "in its pneumatic cylinder"
 			"click":
 				return "on its click hinge"
 			"turntable":
@@ -190,12 +197,31 @@ func _read() -> void:
 		info_of[brick.id] = library.parts.get(brick.part_id)
 	var candidates: Array = []   ## [part a, part b, kind, point, axis, holds, detent, slide, shaft]
 
+	# Linear actuators and pneumatic cylinders: the rod slides in its body
+	# along their axis as far as the library draws it out and in, and does not
+	# turn there. Nothing else joins the two.
+	var acting: Dictionary = {}   ## Vector2i pair -> true
+	for c: Array in _actuators(entries):
+		candidates.append(c)
+		acting[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
+	# A screw's input turns in its body and is held there: it does not slide.
+	var inputs: Dictionary = {}   ## input part -> its actuator's body part
+	var actuator_table: Dictionary = Mechanism.table().get("actuators", {})
+	for body_part: String in actuator_table:
+		if (actuator_table[body_part] as Dictionary).has("input"):
+			inputs[str(actuator_table[body_part]["input"])] = body_part
+	var part_of: Dictionary = {}
+	for entry: Array in entries:
+		part_of[int(entry[0])] = str(entry[3])
+
 	# Pins and axles.
 	var shaft_lines: Dictionary = {}
 	var pin_rows: Dictionary = {}   ## pin -> the parts it is in
 	for one: Array in Joints.through(entries):
 		var a: int = int(one[0])
 		var b: int = int(one[1])
+		if acting.has(Vector2i(mini(a, b), maxi(a, b))):
+			continue
 		if str(one[2]) == "grips":
 			_join(a, b)
 			continue
@@ -208,6 +234,11 @@ func _read() -> void:
 		var along: float = float(one[7])
 		var slide := Vector2.ZERO if is_pin \
 			else Vector2(maxf(along - float(one[5]), 0.0), maxf(float(one[6]) - along, 0.0))
+		if str(inputs.get(part_of.get(a, ""), "-")) == str(part_of.get(b, "")) \
+				or str(inputs.get(part_of.get(b, ""), "-")) == str(part_of.get(a, "")):
+			# An actuator's input: held in its body, its screw holding it.
+			slide = Vector2.ZERO
+			holds = true
 		candidates.append([a, b, "pin" if is_pin else "axle", one[3], one[4], holds, 0.0,
 			slide, a])
 		if is_pin:
@@ -224,7 +255,7 @@ func _read() -> void:
 			var a: int = int(one)
 			var b: int = int(other)
 			var pair := Vector2i(mini(a, b), maxi(a, b))
-			if done.has(pair) or shaft_lines.has(pair):
+			if done.has(pair) or shaft_lines.has(pair) or acting.has(pair):
 				continue
 			done[pair] = true
 			var zones: Array = rounds[one][other]
@@ -459,6 +490,7 @@ func _read() -> void:
 			link.detent = c[6]
 			link.slide = c[7]
 			link.shaft_part = c[8]
+			link.turns = not (str(c[2]) in ["actuator", "cylinder"])
 			made[pair] = link
 			links.append(link)
 			for end: int in [x, y]:
@@ -552,6 +584,26 @@ func _anchor_and_grow() -> void:
 				children[at] = []
 			(children[at] as Array).append(next)
 			queue.append(next)
+	# A linear actuator or a cylinder in a loop is a joint of the tree, not the
+	# one that closes it: its rod is dragged along it, and a loop is driven from
+	# a joint of the tree (Linkage). The body it would close on is hung from it
+	# instead, and the joint that body hung from closes the loop.
+	for link: Link in closing.duplicate():
+		if link.turns:
+			continue
+		var child: int = link.a if beyond(link.b).has(link.a) else link.b
+		var parent: int = link.other(child)
+		var old: Link = parent_link.get(child)
+		if old == null or beyond(child).has(parent):
+			continue
+		(children[parent_of[child]] as Array).erase(child)
+		closing.erase(link)
+		closing.append(old)
+		parent_link[child] = link
+		parent_of[child] = parent
+		if not children.has(parent):
+			children[parent] = []
+		(children[parent] as Array).append(child)
 
 
 ## Every body beyond [param body], it included: what comes along when it
@@ -605,6 +657,8 @@ func loops_out(inside: Dictionary, but: Link) -> Array[Link]:
 
 ## Every pinion standing in a rack (Racks.find), read once, where each
 ## joins two bodies: a steering column's pinion in the rack on its track rod.
+## And every linear actuator's screw whose input is a part of its own, read
+## as a pinion in the rod (Racks.screws): its input turned, the rod goes out.
 func racks() -> Array[Racks.Pinion]:
 	if _racks_read:
 		return _racks
@@ -613,10 +667,58 @@ func racks() -> Array[Racks.Pinion]:
 	for brick: BrickWorld.Brick in world.bricks():
 		if body_of.has(brick.id):
 			entries.append([brick.id, brick.part_id, brick.transform])
-	for mesh: Racks.Pinion in Racks.find(entries):
+	for mesh: Racks.Pinion in Racks.find(entries) + Racks.screws(entries, links):
 		if int(body_of[mesh.rack]) != int(body_of[mesh.gear]):
 			_racks.append(mesh)
 	return _racks
+
+
+## Each rod standing in its actuator's body (the gear table's actuators,
+## where the library's contracted and extended files draw it): [body, rod,
+## kind, point, axis, holds, detent, slide, shaft] as _read gathers joints,
+## the axis the way the rod goes out and the slide as far as it may go out
+## and back in from where it stands. A screw holds where it is left; a
+## cylinder's air holds it while its valve is shut.
+func _actuators(entries: Array) -> Array:
+	var table: Dictionary = Mechanism.table().get("actuators", {})
+	var out: Array = []
+	if table.is_empty():
+		return out
+	var rods: Dictionary = {}   ## rod part -> Array of entries
+	var rod_parts: Dictionary = {}
+	for body_part: String in table:
+		rod_parts[str(table[body_part]["rod"])] = true
+	for entry: Array in entries:
+		if rod_parts.has(str(entry[3])):
+			if not rods.has(str(entry[3])):
+				rods[str(entry[3])] = []
+			(rods[str(entry[3])] as Array).append(entry)
+	for entry: Array in entries:
+		var spec: Dictionary = table.get(str(entry[3]), {})
+		if spec.is_empty():
+			continue
+		var at: Transform3D = entry[1]
+		var inverse: Transform3D = at.affine_inverse()
+		var local_axis: Vector3 = Mechanism._axis_of(spec.get("axis", "z"))
+		var from: float = float(spec["from"])
+		var to: float = float(spec["to"])
+		var stroke: float = absf(to - from)
+		var sense: float = signf(to - from)
+		for rod: Array in rods.get(str(spec["rod"]), []):
+			var rod_at: Transform3D = rod[1]
+			var local: Vector3 = inverse * rod_at.origin
+			var along: float = local.dot(local_axis)
+			if (local - local_axis * along).length() > Mechanism.LINE_SLACK \
+					or along < minf(from, to) - Mechanism.REACH_SLACK \
+					or along > maxf(from, to) + Mechanism.REACH_SLACK:
+				continue
+			if absf((inverse.basis * (rod_at.basis * local_axis)).normalized().dot(local_axis)) < 0.99:
+				continue
+			var out_by: float = clampf((along - from) * sense, 0.0, stroke)
+			out.append([int(entry[0]), int(rod[0]), "actuator" if str(spec.get("kind", "")) == "screw"
+				else "cylinder", at * (local_axis * along), (at.basis * (local_axis * sense)).normalized(),
+				true, 0.0, Vector2(stroke - out_by, out_by), int(rod[0])])
+	return out
 
 
 var _racks: Array[Racks.Pinion] = []

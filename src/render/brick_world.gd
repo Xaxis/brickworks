@@ -765,6 +765,12 @@ func _mark_dirty(key: String) -> void:
 		_flush_when_due.call_deferred()
 
 
+## The last rebuild's cost, ms, and how many batches it wrote: for a probe
+## timing a drag's frames.
+var last_flush_ms: float = 0.0
+var last_flush_batches: int = 0
+
+
 ## Whether a big rebuild may be spread over frames (FramePace), batches
 ## not yet rebuilt drawing as they were a frame or two longer. The world on
 ## screen does: writing every batch of the owner's 4,242-part Falcon Heavy,
@@ -820,13 +826,16 @@ func _flush() -> void:
 	_rebuild_queued = false
 	if _drawing_held > 0:
 		return
+	var began: int = Time.get_ticks_usec()
 	var triangles: int = 0
 	for key: String in _dirty:
 		var batch: Batch = _batches.get(key)
 		if batch == null:
 			continue
 		_rebuild(batch, key)
+	last_flush_batches = _dirty.size()
 	_dirty.clear()
+	last_flush_ms = float(Time.get_ticks_usec() - began) / 1000.0
 
 	var live: int = 0
 	for key: String in _batches:

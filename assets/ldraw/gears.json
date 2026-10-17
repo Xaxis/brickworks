@@ -94,6 +94,17 @@
     "64781": {"teeth": 22, "from": -84.0, "to": 84.0, "pitch_line": 5.0, "z": [-7.0, 7.0]}
   },
   "rack_pitch": 8.0,
+  "actuators_about": "Linear actuators and pneumatic cylinders whose body and rod are two parts, in the app's axes (the body's own frame, +Y up): the rod stands on the body's axis, its origin at from when drawn in and at to when drawn out, as the library's contracted and extended files (drawn) place it; tools/gears.py checks the two against those files. kind screw: a screw inside drives the rod as its input turns and holds it where it is left; kind air: a pneumatic cylinder, pushed by air. input: the part that turns a screw's input, where it is a part of its own; turns: turns of the input over the whole stroke, counted by builders on the Eurobricks forum (topic 196207, 2023-24: the small one 7,112 to 7,226 degrees in six runs, the 8 x 2 x 2 9,665 to 9,709 in six, the 12 x 2 x 2 43.75 turns once). Which way round extends it is not read from the parts.",
+  "actuators": {
+    "92693c01": {"rod": "92696", "axis": "z", "from": -120.0, "to": -180.0, "drawn": ["92693c01-f1", "92693c01-f2"], "kind": "screw", "input": "92695", "turns": 19.9},
+    "62271c01": {"rod": "62274c01", "axis": "z", "from": -170.0, "to": -270.0, "drawn": ["61927-f1", "61927-f2"], "kind": "screw", "turns": 26.9},
+    "u9559c01": {"rod": "62274c01", "axis": "z", "from": -170.0, "to": -270.0, "drawn": ["43097-f1", "43097-f2"], "kind": "screw", "turns": 26.9},
+    "u9487c01": {"rod": "62274c02", "axis": "z", "from": -250.0, "to": -410.0, "drawn": ["40918-f1", "40918-f2"], "kind": "screw", "turns": 43.75},
+    "19466c01": {"rod": "19467c01", "axis": "y", "from": 200.0, "to": 320.0, "drawn": ["19478-f1", "19478-f2"], "kind": "air"},
+    "u9145c01": {"rod": "21828c01", "axis": "y", "from": 200.0, "to": 320.0, "drawn": ["19476-f1", "19476-f2"], "kind": "air"},
+    "2947bc01": {"rod": "2944c01", "axis": "y", "from": 78.0, "to": 116.0, "drawn": ["19475-f1", "19475-f2"], "kind": "air"},
+    "2793c03": {"rod": "2796c01", "axis": "y", "from": 120.0, "to": 188.0, "drawn": ["2793c01-f1", "2793c01-f2"], "kind": "air"}
+  },
   "not_gears": {
     "569": "a 1970s large-tooth gear: another module, not measured",
     "570": "a 1970s large-tooth gear: another module, not measured",

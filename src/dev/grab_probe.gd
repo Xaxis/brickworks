@@ -135,6 +135,13 @@ func _run() -> void:
 				asked_worms.append(["worm: %s" % arg.get_file(), "res://" + arg.trim_prefix("--worm-set=")])
 		for one: Array in (WORMS if asked_worms.is_empty() else asked_worms):
 			await _worm_case(one[0], one[1])
+	if only.is_empty() or only == "actuators":
+		var asked_actuators: Array = []
+		for arg: String in args:
+			if arg.begins_with("--actuator-set="):
+				asked_actuators.append(["actuator: %s" % arg.get_file(), "res://" + arg.trim_prefix("--actuator-set=")])
+		for one: Array in (ACTUATORS if asked_actuators.is_empty() else asked_actuators):
+			await _actuator_case(one[0], one[1], one[2] if one.size() > 2 else false)
 	if only.is_empty() or only == "scissor":
 		await _scissor_case()
 	if only.is_empty() or only == "falling":
@@ -291,7 +298,10 @@ func _survey(path: String) -> void:
 					for brick: BrickWorld.Brick in _world.bricks():
 						if brick.part_id == part:
 							asked.append([brick.id])
-							print("    #%d %s at %s" % [brick.id, part, brick.transform])
+							var its: int = int(bodies.body_of.get(brick.id, -1))
+							print("    #%d %s at %s, in body %d of %d parts: %s" % [brick.id, part, brick.transform,
+								its, (bodies.members.get(its, PackedInt64Array()) as PackedInt64Array).size(),
+								bodies.named([its]) if its >= 0 else "none"])
 		for link: Bodies.Link in bodies.closing:
 			asked.append_array(link.pairs)
 		for pair: Array in asked:
@@ -874,6 +884,12 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		var tangent: Vector3 = line.cross(on - driver.point)
 		if tangent.length() > 0.5:
 			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
+	# What a frame costs with nothing moving: drawing the model and the window.
+	_cost_idle.clear()
+	for _n: int in 30:
+		var idle_began: int = Time.get_ticks_usec()
+		await _frames(1)
+		_cost_idle.append(float(Time.get_ticks_usec() - idle_began) / 1000.0)
 	await _move(screen, 0)
 	await _button(screen, true)
 	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
@@ -939,11 +955,15 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	var mid_shot: bool = false
 	var form := {"prev": NAN}
 	var frame_worst: float = 0.0
+	var whole := PackedFloat64Array()
+	_costs_begin()
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var began: int = Time.get_ticks_usec()
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
-		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		whole.append(float(Time.get_ticks_usec() - began) / 1000.0)
+		frame_worst = maxf(frame_worst, whole[whole.size() - 1])
+		_costs_sample()
 		if grab.stopped:
 			stops += 1
 		else:
@@ -988,6 +1008,10 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 			and absf(along - by_teeth) < 0.1)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s; drawing and weighing the rest), %d solves"
 		% [frame_worst, _grab.worst_follow_ms, _grab.worst_follow_said, linkage.solves])
+	print("    whole frames: %s; %s" % [_spread(whole), _costs_said()])
+	if kind == "fourbar" and _windowed:
+		_check("%s: whole drag frames, drawing included, under 33 ms: %s" % [name, _spread(whole)],
+			_percentile(whole, 1.0) < 33.0)
 	print("    the slowest part to test: %s" % grab.slowest_said)
 	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
@@ -1163,6 +1187,7 @@ const RACKS: Array = [
 	["rack and pinion: a racer's steering", "res://vendor/omr/files/8808-1.mpd"],
 	["rack and pinion: a column turning its pinion through bevels", "res://vendor/omr/files/8054-1_Model-C.mpd"],
 	["rack and pinion: a grader's column through bevels", "res://vendor/omr/files/8828-1_Grader.mpd"],
+	["rack and pinion: a column riding in a cab of hinges", "res://vendor/omr/files/8062-1_Truck-with-Motorbike.mpd"],
 ]
 ## Tried and not passing, run with --rack-set=: 5533-1_Tractor-Pulling's
 ## steering stops at 24° against the model, and its arms stand 5.7° and
@@ -1254,7 +1279,11 @@ func _rack_case(name: String, path: String) -> void:
 				trial.library = _library
 				trial.bodies = bodies
 				trial.shared_mechanism = train
-				if trial.begin(theirs.key, _world.get_brick(theirs.key).transform.origin) == "moves" \
+				var trial_state: String = trial.begin(theirs.key, _world.get_brick(theirs.key).transform.origin)
+				print("    (the column on %s, %d teeth: %s %s%s; %s)" % [theirs.part, theirs.teeth, trial_state,
+					trial.why if not trial.why.is_empty() else trial.said, "" if trial.linkage == null
+					else ", gears carried" if trial.linkage.gears_carried else "", trial.gear_note])
+				if trial_state == "moves" \
 						and trial.linkage != null and not trial.linkage.racks.is_empty() \
 						and not trial.linkage.gear_meshes.is_empty():
 					wheel_body = column
@@ -1374,6 +1403,12 @@ func _rack_case(name: String, path: String) -> void:
 		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
 		if not grab.stopped:
 			followed += 1
+		elif followed + 1 >= targets.find(target) and absf(target) <= 24.0:
+			print("      (at %.0f° it reads %.2f°: %s%s; the loop's residual %.4f after %d rounds)" % [target, grab.angle,
+				"its loop closes no further" if grab.loop_short else "it meets the model",
+				"" if grab.blocked_by.size() != 2 else ", #%d %s meets #%d %s" % [int(grab.blocked_by[0]),
+				_world.get_brick(int(grab.blocked_by[0])).part_id, int(grab.blocked_by[1]),
+				_world.get_brick(int(grab.blocked_by[1])).part_id], grab.linkage.residual, grab.linkage.iterations])
 		turned_most = maxf(turned_most, absf(grab.angle))
 		var moved := func(which: String) -> Transform3D:
 			var key: int = keys[which]
@@ -1388,10 +1423,19 @@ func _rack_case(name: String, path: String) -> void:
 		if not is_nan(ratio):
 			# The column's own turn, as drawn, against the pinion's: the gears'
 			# teeth say how many times one goes round for the other.
+			# Both turns against what carries the column (Willis: in the frame
+			# of the carrier, two gears in mesh turn as their teeth say, however
+			# the carrier moves; it stands still on 8054 and 8828, and rides on
+			# the cab's hinges on 8062).
 			var w_column: Transform3D = (grab.placed.get(column_gear, grab.rest.get(column_gear))
 				as Transform3D) * (grab.rest.get(column_gear) as Transform3D).affine_inverse()
-			var column_turn: float = _turn_about(w_column.basis, grab.axis)
-			worst_ratio = maxf(worst_ratio, absf(absf(psi) - ratio * absf(column_turn)))
+			var carrier_key: int = int((bodies.members[int(bodies.parent_of[wheel_body])] as PackedInt64Array)[0])
+			var w_carrier: Transform3D = (grab.placed.get(carrier_key, _world.get_brick(carrier_key).transform)
+				as Transform3D) * (grab.rest.get(carrier_key, _world.get_brick(carrier_key).transform)
+				as Transform3D).affine_inverse()
+			var column_turn: float = _turn_about((w_carrier.affine_inverse() * w_column).basis, grab.axis)
+			var pinion_turn: float = _turn_about((w_carrier.affine_inverse() * w_gear).basis, mesh.axis)
+			worst_ratio = maxf(worst_ratio, absf(absf(pinion_turn) - ratio * absf(column_turn)))
 		var along: float = mesh.line.dot(w_rack.affine_inverse() * (w_gear * mesh.centre) - mesh.centre)
 		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 \
 			* signf(mesh.rate)
@@ -1762,6 +1806,290 @@ func _worm_case(name: String, path: String) -> void:
 	await _frames(3)
 	_check("%s: let go, nothing was kept (%s)" % [name, _differs(before)], _builder.history_depth() == depth
 		and _differs(before) == "none differs")
+
+
+# -- linear actuators -----------------------------------------------------------------------
+
+## Real sets with a linear actuator raising a boom.
+## Each with whether an end of its stroke is in reach of the drag: 42024-1's
+## small one meets the model both ways first.
+const ACTUATORS: Array = [
+	["actuator: a wheel loader's arm", "res://vendor/omr/files/42081-1.mpd", true],
+	["actuator: a small one, and its input", "res://vendor/omr/files/42024-1.mpd", false],
+]
+## Tried and not passing, run with --actuator-set=: 42006-1's boom closes its
+## triangle to 0.006° but stops 3.4 LDU out and 13.3 in, a beam 5 of the boom
+## meeting an axle 8 of the turret by the room test.
+
+
+## The triangle an actuator closes: its body pinned to one body (x), its rod
+## pinned to another (y), and those two pinned to each other, every pin along
+## one way (k). {b, d, x, y, p, r, o, k}: the actuator's body and rod bodies,
+## the three pins' points. {} where it closes none.
+func _actuator_triangle(bodies: Bodies, link: Bodies.Link) -> Dictionary:
+	var pair: Array = link.pairs[0]
+	var b: int = int(bodies.body_of[int(pair[0])])
+	var d: int = int(bodies.body_of[int(pair[1])])
+	for pb: Bodies.Link in bodies.touching.get(b, []):
+		if pb == link or pb.axis == Vector3.ZERO:
+			continue
+		var x: int = pb.other(b)
+		for pd: Bodies.Link in bodies.touching.get(d, []):
+			if pd == link or pd.axis == Vector3.ZERO:
+				continue
+			var y: int = pd.other(d)
+			if y == x or y == b or x == d:
+				continue
+			for po: Bodies.Link in bodies.touching.get(x, []):
+				if po.other(x) != y or po.axis == Vector3.ZERO:
+					continue
+				var k: Vector3 = po.axis.normalized()
+				if absf(pb.axis.normalized().dot(k)) < 0.999 or absf(pd.axis.normalized().dot(k)) < 0.999:
+					continue
+				return {"b": b, "d": d, "x": x, "y": y, "p": pb.point, "r": pd.point, "o": po.point, "k": k}
+	return {}
+
+
+## By hand: how far the triangle's y body has turned against its x body
+## about k, degrees, with the rod drawn [param e] LDU out along [param way]
+## from where it stood. The rod's pin moves along the actuator, so the two
+## pins stand |r + way e - p| apart, square to k; the rod's pin goes round o
+## at its own distance from it, the body's pin stays at its own: the angle at
+## o is the law of cosines'.
+static func _triangle_turn(tri: Dictionary, way: Vector3, e: float) -> float:
+	var k: Vector3 = tri["k"]
+	var o: Vector3 = tri["o"]
+	var p: Vector3 = tri["p"]
+	var r: Vector3 = tri["r"]
+	var flat := func(v: Vector3) -> Vector3:
+		return v - k * v.dot(k)
+	var to_p: Vector3 = flat.call(p - o)
+	var to_r: Vector3 = flat.call(r - o)
+	var apart: float = (flat.call(r + way * e - p) as Vector3).length()
+	var c: float = (to_r.length_squared() + to_p.length_squared() - apart * apart) \
+		/ (2.0 * to_r.length() * to_p.length())
+	if absf(c) > 1.0:
+		return NAN
+	var was: float = atan2(k.dot(to_p.cross(to_r)), to_p.dot(to_r))
+	return rad_to_deg(signf(was) * acos(c) - was)
+
+
+## Draw an actuator's rod out and in by the pointer, past both ends of its
+## stroke: every frame it stays within the stroke the library draws, and the
+## boom its loop raises stands where the law of cosines puts it for the rod's
+## place. Then take hold of the boom: the actuator's screw holds it. Then turn
+## the input over MCP (move_part degrees=), where it is a part of its own:
+## the rod goes the stroke over the turns builders counted.
+func _actuator_case(name: String, path: String, reaches_an_end: bool = false) -> void:
+	print("\n%s: %s" % [name, path.get_file()])
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var chosen: Bodies.Link = null
+	var tri: Dictionary = {}
+	for link: Bodies.Link in bodies.links:
+		if link.kind != "actuator":
+			continue
+		var found: Dictionary = _actuator_triangle(bodies, link)
+		print("    actuator %s~%s: slide %s, %s" % [_world.get_brick(int(link.pairs[0][0])).part_id,
+			_world.get_brick(int(link.pairs[0][1])).part_id, link.slide, "closes a triangle" if not found.is_empty()
+			else "in no triangle"])
+		if chosen == null and not found.is_empty():
+			chosen = link
+			tri = found
+	_check("%s: a linear actuator raises something by a loop here" % name, chosen != null)
+	if chosen == null:
+		return
+	var body_key: int = int(chosen.pairs[0][0])
+	var rod_key: int = int(chosen.pairs[0][1])
+	var stroke: float = chosen.slide.x + chosen.slide.y
+	var out_by: float = chosen.slide.y
+	var way: Vector3 = chosen.axis.normalized()
+	var x_key: int = int((bodies.members[int(tri["x"])] as PackedInt64Array)[0])
+	var y_key: int = int((bodies.members[int(tri["y"])] as PackedInt64Array)[0])
+	print("    %s in %s: stroke %s LDU, drawn out %s; its loop turns %s against %s" % [
+		_world.get_brick(rod_key).part_id, _world.get_brick(body_key).part_id, Balance.tidy(stroke),
+		Balance.tidy(out_by), bodies.named([int(tri["y"])]), bodies.named([int(tri["x"])])])
+	var around: PackedInt64Array = bodies.parts_of([int(tri["b"]), int(tri["d"]), int(tri["y"])])
+	_camera.look_from(tri["k"] as Vector3 + Vector3(0.0, 0.25, 0.0))
+	_frame_on(around)
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(PackedInt64Array([rod_key]), bodies)
+	for side: Vector3 in [-(tri["k"] as Vector3), Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1)]:
+		if not press.is_empty():
+			break
+		_camera.look_from(side.normalized())
+		_frame_on(around)
+		await _frames(10)
+		press = _press_point(PackedInt64Array([rod_key]), bodies)
+	if press.is_empty():
+		_check("%s: the rod is under the pointer somewhere" % name, false)
+		return
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "1_before")
+	var screen: Vector2 = press["screen"]
+	var rod_at: Vector3 = _world.get_brick(rod_key).transform.origin
+	var first: Vector2 = (_camera.unproject_position(rod_at + way * 3.0) - _camera.unproject_position(rod_at)) \
+		.normalized() * 7.0
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + first, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	_check("%s: a drag on the rod draws it along its actuator, the loop with it (%s)" % [name,
+		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
+		and grab.mode == "slide" and grab.linkage != null)
+	if grab == null or grab.state != "moves" or grab.linkage == null:
+		await _button(screen, false)
+		return
+	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(), grab.moving.size()])
+	var hold: Vector3 = grab._hold
+	var sense: float = signf(grab.axis.dot(way))
+	var targets: Array = []
+	var top: float = stroke - out_by + 16.0
+	var bottom: float = -out_by - 16.0
+	var at: float = 0.0
+	while at < top:
+		at += 4.0
+		targets.append(at)
+	while at > bottom:
+		at -= 4.0
+		targets.append(at)
+	# Let go half way out, somewhere new.
+	while at < (stroke - out_by) * 0.5:
+		at += 4.0
+		targets.append(at)
+	var moved := func(key: int) -> Transform3D:
+		var now: Transform3D = _world.get_brick(key).transform
+		return (grab.placed.get(key, now) as Transform3D) * (grab.rest.get(key, now) as Transform3D).affine_inverse()
+	var worst: float = 0.0
+	var checked: int = 0
+	var followed: int = 0
+	var most: float = -INF
+	var least: float = INF
+	var outside: float = 0.0
+	var table := PackedStringArray()
+	var mid_shot: bool = false
+	var frame_worst: float = 0.0
+	var rod_rest: Vector3 = _world.get_brick(rod_key).transform.origin
+	var stop_said: Dictionary = {}
+	for target: float in targets:
+		var began: int = Time.get_ticks_usec()
+		await _move(_camera.unproject_position(hold + way * target), MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		# As drawn: the rod's place along the actuator against its body.
+		var rel: Transform3D = (moved.call(body_key) as Transform3D).affine_inverse() * moved.call(rod_key)
+		var e: float = way.dot(rel * rod_rest - rod_rest)
+		most = maxf(most, e)
+		least = minf(least, e)
+		outside = maxf(outside, maxf(-(out_by + e), out_by + e - stroke))
+		if not grab.stopped and absf(e - target) < 1.0:
+			followed += 1
+		elif grab.stopped and not stop_said.has(signf(target)):
+			stop_said[signf(target)] = true
+			var at_end: bool = absf(e - (stroke - out_by)) < 0.05 or absf(e + out_by) < 0.05
+			print("      (stopped at %.2f LDU asked %.0f: %s%s)" % [e, target, "the end of its stroke" if at_end
+				else ("its loop closes no further" if grab.loop_short else "it meets the model"),
+				"" if at_end or grab.blocked_by.size() != 2
+				else ", #%d %s meets #%d %s" % [int(grab.blocked_by[0]), _world.get_brick(int(grab.blocked_by[0])).part_id,
+				int(grab.blocked_by[1]), _world.get_brick(int(grab.blocked_by[1])).part_id]])
+		var turned: float = _turn_about(((moved.call(x_key) as Transform3D).affine_inverse()
+			* moved.call(y_key)).basis, tri["k"])
+		var by_hand: float = _triangle_turn(tri, way, e)
+		if not is_nan(by_hand):
+			worst = maxf(worst, absf(wrapf(turned - by_hand, -180.0, 180.0)))
+			checked += 1
+		if absf(fmod(target, 20.0)) < 0.01:
+			table.append("      rod %+7.2f LDU out (%.2f of %s in its stroke): %s turned %+7.3f°, by hand %+7.3f°%s"
+				% [e, out_by + e, Balance.tidy(stroke), bodies.named([int(tri["y"])]).get_slice(",", 0), turned,
+				by_hand, " (stopped)" if grab.stopped else ""])
+		if not mid_shot and _windowed and e >= stroke - out_by - 0.5:
+			mid_shot = true
+			await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "2_out")
+	for row: String in table:
+		print(row)
+	_check("%s: the rod follows the pointer in %d frames, from %.2f to %.2f LDU" % [name, followed, least, most],
+		followed >= 10)
+	_check(("%s: drawn past both ends it never leaves its stroke: %.2f to %.2f LDU, the stroke's %.2f to %.2f, "
+		+ "past it by %.3f; %s") % [name, least, most, -out_by, stroke - out_by, maxf(outside, 0.0),
+		"both ends reached" if absf(most - (stroke - out_by)) < 0.1 and absf(least + out_by) < 0.1
+		else ("an end reached, the other short of it where the model stops it" if absf(most - (stroke - out_by))
+		< 0.1 or absf(least + out_by) < 0.1 else "the model stops it short of both")], outside < 0.05
+		and (not reaches_an_end or absf(most - (stroke - out_by)) < 0.1 or absf(least + out_by) < 0.1))
+	_check("%s: in %d poses the boom stands where the rod's place puts it, by the law of cosines, to %.4f°"
+		% [name, checked, worst], checked >= 10 and worst < 0.05)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, _grab.worst_follow_said, grab.linkage.solves])
+	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	# The boom taken hold of: the actuator's screw holds it.
+	_grab._ready_now()
+	bodies = _grab._bodies
+	var boom: int = int(bodies.body_of[y_key])
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	trial.shared_mechanism = _grab._mechanism
+	var boom_part: int = y_key
+	for key: int in bodies.members[boom]:
+		if key != rod_key:
+			boom_part = key
+			break
+	var state: String = trial.begin(boom_part, _world.get_brick(boom_part).transform.origin)
+	_check("%s: the boom taken hold of does not move: %s" % [name, trial.why.get_slice("(", 0).strip_edges()
+		if not trial.why.is_empty() else trial.said], state == "locked" and trial.why.contains("self-locking"))
+	# The input turned over MCP, where it is a part of its own.
+	await _input_turned(name, bodies)
+
+
+## A small linear actuator's input turned a whole turn over MCP (move_part
+## degrees=360): its rod goes out the stroke over the turns builders counted
+## (60 LDU over 19.9 turns for the small one: 3.02 LDU), and one undo puts it
+## back.
+func _input_turned(name: String, bodies: Bodies) -> void:
+	var screw: Racks.Pinion = null
+	for mesh: Racks.Pinion in bodies.racks():
+		if mesh.screw:
+			screw = mesh
+			break
+	if screw == null:
+		print("    (no actuator here has its input as a part of its own: the input is not turned)")
+		return
+	var spec: Dictionary = (Mechanism.table()["actuators"] as Dictionary)[_world.get_brick(screw.body).part_id]
+	var per_turn: float = absf(float(spec["to"]) - float(spec["from"])) / float(spec["turns"])
+	var before: Dictionary = _snapshot()
+	var rod_was: Transform3D = _world.get_brick(screw.rack).transform
+	var body_was: Transform3D = _world.get_brick(screw.body).transform
+	var said: String = _grab.for_session({"part": str(screw.gear), "degrees": 360.0})
+	await _frames(3)
+	var rod_now: Transform3D = _world.get_brick(screw.rack).transform
+	var body_now: Transform3D = _world.get_brick(screw.body).transform
+	# The rod's place against its body, before and after, along the actuator.
+	var e: float = screw.line.dot(body_was.basis * (body_now.affine_inverse() * rod_now.origin
+		- body_was.affine_inverse() * rod_was.origin))
+	print("    move_part %s degrees=360: %s" % [screw.gear, said.replace("\n", " / ")])
+	_check("%s: its input turned once over MCP, the rod goes %.3f LDU, the stroke over %.1f turns: %.3f" % [name,
+		absf(e), float(spec["turns"]), per_turn], absf(absf(e) - per_turn) < 0.01)
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts the input and the rod back (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
 
 
 # -- a scissor lift ----------------------------------------------------------------------
@@ -3029,6 +3357,68 @@ func _frame_on(ids: PackedInt64Array) -> void:
 		box = here if first else box.merge(here)
 		first = false
 	_camera.frame(box, 1.15)
+
+
+# -- what a frame costs ----------------------------------------------------------------
+
+## Per frame of a drag: the engine's process time (scripts: the drag, the
+## status bar, the balance), the renderer's CPU time (the scene culled and
+## the draw lists built, with what set_drawn rewrote) and its GPU time.
+var _cost_process := PackedFloat64Array()
+var _cost_cpu := PackedFloat64Array()
+var _cost_gpu := PackedFloat64Array()
+var _cost_drag := PackedFloat64Array()
+var _cost_flush := PackedFloat64Array()
+var _cost_batches: int = 0
+var _cost_idle := PackedFloat64Array()
+var _cost_drag_frames: int = 0
+
+
+func _costs_begin() -> void:
+	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
+	_cost_process.clear()
+	_cost_cpu.clear()
+	_cost_gpu.clear()
+	_cost_drag.clear()
+	_cost_flush.clear()
+	_cost_batches = 0
+
+
+func _costs_sample() -> void:
+	var viewport: RID = root.get_viewport_rid()
+	_cost_process.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+	_cost_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport)
+		+ RenderingServer.get_frame_setup_time_cpu())
+	_cost_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+	_cost_drag.append(_grab.last_motion_ms)
+	_cost_flush.append(_world.last_flush_ms)
+	_cost_batches = maxi(_cost_batches, _world.last_flush_batches)
+	_world.last_flush_ms = 0.0
+
+
+func _costs_said() -> String:
+	return ("idle frames before the press %s; render CPU %s; GPU %s; the drag's own (follow, draw, "
+		+ "weigh, say) %s; the batches rewritten %s, %d at most") % [_spread(_cost_idle), _spread(_cost_cpu),
+		_spread(_cost_gpu), _spread(_cost_drag), _spread(_cost_flush), _cost_batches]
+
+
+## "mean 12.3, 95% 20.1, worst 31.0 ms"
+static func _spread(values: PackedFloat64Array) -> String:
+	if values.is_empty():
+		return "none"
+	var total: float = 0.0
+	for value: float in values:
+		total += value
+	return "mean %.1f, 95%% %.1f, worst %.1f ms" % [total / values.size(), _percentile(values, 0.95),
+		_percentile(values, 1.0)]
+
+
+static func _percentile(values: PackedFloat64Array, share: float) -> float:
+	if values.is_empty():
+		return 0.0
+	var sorted: PackedFloat64Array = values.duplicate()
+	sorted.sort()
+	return sorted[clampi(ceili(share * sorted.size()) - 1, 0, sorted.size() - 1)]
 
 
 # -- helpers -------------------------------------------------------------------------
