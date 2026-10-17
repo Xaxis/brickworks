@@ -27,7 +27,7 @@ const CASES: Array = [
 	["click hinge", "res://vendor/omr/files/4915-1_Fork-Lift.mpd", "click", 0.0],
 	["gear train", "res://vendor/omr/files/8020-1_Windmill.mpd", "gear", 0.0],
 	["minifigure", "res://vendor/omr/files/6627-1.mpd", "figure", 0.0],
-	["ball joint", "res://vendor/omr/files/8209-1.mpd", "ball", 0.0],
+	["ball joint", "res://vendor/omr/files/30472-1.mpd", "ball", 0.0],
 	["slider", "res://vendor/omr/files/6630-1.mpd", "slide", 0.0],
 ]
 
@@ -145,6 +145,14 @@ func _survey(path: String) -> void:
 		return
 	var bodies: Bodies = _bodies()
 	print("%s: %d parts, %s" % [path.get_file(), _world.brick_count(), bodies.summary()])
+	for body: int in bodies.members:
+		var ids: PackedInt64Array = bodies.members[body]
+		if ids.size() > 1 and ids.size() < 30:
+			var parts := PackedStringArray()
+			for key: int in ids:
+				parts.append(_world.get_brick(key).part_id)
+			print("    body %d%s: %s" % [body, " (anchor)" if bodies.anchors.has(body) else "",
+				" ".join(parts)])
 	for link: Bodies.Link in bodies.links:
 		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
 		var moved: Array = bodies.beyond(child)
@@ -194,6 +202,18 @@ func _case(name: String, path: String, want: String) -> void:
 	# Past the slop: the drag is the grab's.
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var grab: Grab = _grab.grab
+	if grab == null:
+		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s)" % [
+			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(),
+			_main.get("_press_brick"), _verbs.mode])
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		print("    (Grab.begin on #%d directly: %s %s)" % [int(press["brick"]),
+			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin),
+			trial.why])
 	_check("%s: a drag on #%d is a grab on its joint, not a carry (%s)" % [name, int(press["brick"]),
 		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
 		and not _builder.is_carrying())
@@ -538,14 +558,22 @@ func _press_point(moving: PackedInt64Array, bodies: Bodies) -> Dictionary:
 		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		var centre: Vector3 = brick.transform * info.bounds.get_center()
-		if _camera.is_position_behind(centre):
-			continue
-		var screen: Vector2 = _camera.unproject_position(centre)
-		if not root.get_visible_rect().has_point(screen):
-			continue
-		if _verbs.brick_at(screen) == key:
-			return {"screen": screen, "brick": key}
+		# Its middle, then points towards its corners: a wing under a
+		# fuselage shows only its tip.
+		var box: AABB = info.bounds
+		var spots: Array = [box.get_center()]
+		for corner: int in 8:
+			spots.append(box.get_center().lerp(box.get_endpoint(corner), 0.7))
+		for spot: Vector3 in spots:
+			var at: Vector3 = brick.transform * spot
+			if _camera.is_position_behind(at):
+				continue
+			var screen: Vector2 = _camera.unproject_position(at)
+			if not root.get_visible_rect().grow(-8.0).has_point(screen) \
+					or bool(_main.call("_over_panel_at", screen)):
+				continue
+			if _verbs.brick_at(screen) == key:
+				return {"screen": screen, "brick": key}
 	return {}
 
 

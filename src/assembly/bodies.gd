@@ -186,34 +186,9 @@ func _read() -> void:
 		info_of[brick.id] = library.parts.get(brick.part_id)
 	var candidates: Array = []   ## [part a, part b, kind, point, axis, holds, detent, slide, shaft]
 
-	# Studs: two or more between two parts hold them; one alone turns when
-	# either is a single stud across.
-	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
-	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
-		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
-		return there if there != 0 and there != int(key) else null)
-	for stud: Array in studs:
-		var a: int = int(stud[0])
-		var b: int = int(stud[1])
-		if scenery.has(a) or scenery.has(b):
-			_standing[b if scenery.has(a) else a] = true
-			continue
-		if not _up.has(a) or not _up.has(b):
-			continue
-		var pair := Vector2i(mini(a, b), maxi(a, b))
-		if not per_pair.has(pair):
-			per_pair[pair] = []
-		(per_pair[pair] as Array).append([stud[2], stud[3]])
-	for pair: Vector2i in per_pair:
-		var found: Array = per_pair[pair]
-		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))):
-			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
-				Vector2.ZERO, 0])
-		else:
-			_join(pair.x, pair.y)
-
 	# Pins and axles.
 	var shaft_lines: Dictionary = {}
+	var pin_rows: Dictionary = {}   ## pin -> the parts it is in
 	for one: Array in Joints.through(entries):
 		var a: int = int(one[0])
 		var b: int = int(one[1])
@@ -225,10 +200,16 @@ func _read() -> void:
 		var is_pin: bool = shaft_name.to_lower().contains("pin")
 		var holds: bool = is_pin and _has_friction(shaft_name)
 		# How far the hole may run along the shaft before it comes off it.
+		# A pin is held by its collar; an axle slides in a round hole.
 		var along: float = float(one[7])
-		var slide := Vector2(maxf(along - float(one[5]), 0.0), maxf(float(one[6]) - along, 0.0))
+		var slide := Vector2.ZERO if is_pin \
+			else Vector2(maxf(along - float(one[5]), 0.0), maxf(float(one[6]) - along, 0.0))
 		candidates.append([a, b, "pin" if is_pin else "axle", one[3], one[4], holds, 0.0,
 			slide, a])
+		if is_pin:
+			if not pin_rows.has(a):
+				pin_rows[a] = []
+			(pin_rows[a] as Array).append(b)
 		shaft_lines[Vector2i(mini(a, b), maxi(a, b))] = true
 
 	# Rounds: clips, hinges, turntables.
@@ -261,7 +242,15 @@ func _read() -> void:
 			elif names.contains("turntable"):
 				kind = "turntable"
 				holds = false
-			var slide_and_shaft: Array = _slide_on(a, b, zone)
+			# A tyre is held on its wheel: it does not turn on the rim.
+			if names.contains("tyre") or names.contains("tire "):
+				_join(a, b)
+				continue
+			# A clip, or a minifigure's hand, slides along the bar it holds;
+			# a hinge's pin and a head on its neck do not.
+			var slide_and_shaft: Array = [Vector2.ZERO, 0]
+			if names.contains("clip") or names.contains("minifig hand"):
+				slide_and_shaft = _slide_on(a, b, zone)
 			candidates.append([a, b, kind, zone[0], (zone[1] as Vector3).normalized(), holds,
 				detent, slide_and_shaft[0], slide_and_shaft[1]])
 
@@ -279,6 +268,39 @@ func _read() -> void:
 			candidates.append([a, b, "ball", _ball_middle(a, b), Vector3.ZERO, true, 0.0,
 				Vector2.ZERO, 0])
 
+	# Studs: two or more between two parts hold them; one alone turns when
+	# either is a single stud across.
+	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
+	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
+		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
+		return there if there != 0 and there != int(key) else null)
+	for stud: Array in studs:
+		var a: int = int(stud[0])
+		var b: int = int(stud[1])
+		if scenery.has(a) or scenery.has(b):
+			_standing[b if scenery.has(a) else a] = true
+			continue
+		if not _up.has(a) or not _up.has(b):
+			continue
+		var pair := Vector2i(mini(a, b), maxi(a, b))
+		if not per_pair.has(pair):
+			per_pair[pair] = []
+		(per_pair[pair] as Array).append([stud[2], stud[3]])
+	var turning: Dictionary = {}
+	for c: Array in candidates:
+		turning[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
+	# A stud between two parts that already turn on a round (a turntable's
+	# top on its base's middle, read as a stud too) is that round's.
+	for pair: Vector2i in per_pair:
+		var found: Array = per_pair[pair]
+		if found.size() == 1 and turning.has(pair):
+			continue
+		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))):
+			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
+				Vector2.ZERO, 0])
+		else:
+			_join(pair.x, pair.y)
+
 	# Glue, magnets, one thing in pieces.
 	var stuck: Dictionary = Joints.held_otherwise(entries, library)
 	for one: Variant in stuck:
@@ -286,6 +308,16 @@ func _read() -> void:
 			if _up.has(int(one)) and _up.has(int(other)):
 				_join(int(one), int(other))
 
+	# A pin keyed to nothing is part of the first thing it is in, and what
+	# else it is in turns against that on its line (Mechanism's rule): a
+	# beam pinned to a frame turns on the frame, the pin with the frame.
+	var sizes: Dictionary = {}
+	for entry: Array in entries:
+		var root: int = _find(int(entry[0]))
+		sizes[root] = int(sizes.get(root, 0)) + 1
+	for pin: int in pin_rows:
+		if int(sizes.get(_find(pin), 1)) == 1:
+			_join(pin, int((pin_rows[pin] as Array)[0]))
 	# Two joints between the same two bodies on different lines hold them.
 	var changed: bool = true
 	while changed:
@@ -310,15 +342,18 @@ func _read() -> void:
 
 	members.clear()
 	body_of.clear()
+	var lists: Dictionary = {}   ## body -> Array of keys (a packed array is copied by value)
 	for entry: Array in entries:
 		var key: int = int(entry[0])
 		var body: int = _find(key)
 		body_of[key] = body
-		if not members.has(body):
-			members[body] = PackedInt64Array()
-		(members[body] as PackedInt64Array).append(key)
+		if not lists.has(body):
+			lists[body] = []
+		(lists[body] as Array).append(key)
 		var info: PartLibrary.PartInfo = info_of.get(key)
 		grams[body] = float(grams.get(body, 0.0)) + (Stability.grams(info) if info != null else 0.0)
+	for body: int in lists:
+		members[body] = PackedInt64Array(lists[body])
 
 	# One link per pair of bodies, with every pair of parts it joins.
 	var made: Dictionary = {}
@@ -588,6 +623,31 @@ func _slide_on(a: int, b: int, zone: Array) -> Array:
 		if back + on > 4.0:
 			return [Vector2(back, on), pair[0]]
 	return [Vector2.ZERO, 0]
+
+
+## The studs of [param low] pointing up into [param high]'s foot: each
+## [where, way], their tips inside its box and no more than a plate above
+## its bottom.
+func _studs_under(low: int, high: int) -> Array:
+	var under: BrickWorld.Brick = world.get_brick(low)
+	var over: BrickWorld.Brick = world.get_brick(high)
+	var mesh: Lbm.PartMesh = library.mesh_for(under.part_id)
+	var top: Lbm.PartMesh = library.mesh_for(over.part_id)
+	if mesh == null or top == null:
+		return []
+	var box: AABB = (over.transform * top.bounds).grow(1.0)
+	var out: Array = []
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or connector.gender != "male":
+			continue
+		var way: Vector3 = (under.transform.basis * connector.axis).normalized()
+		if way.y < 0.9:
+			continue
+		var foot: Vector3 = under.transform * connector.position
+		var tip: Vector3 = foot + way * Joints.STUD_REACH
+		if box.has_point(tip) and tip.y - box.position.y < BrickLattice.PLATE + 1.0:
+			out.append([foot, way])
+	return out
 
 
 func _ball_middle(a: int, b: int) -> Vector3:

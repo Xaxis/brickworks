@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
 
 ## Sub-features
 
@@ -549,6 +549,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   held_otherwise). Resting with no stud in it holds nothing. Each piece's
   anchor: a locked part's body, else what stands on the baseplate, else the
   heaviest body. `grab_probe -- --survey FILE` prints it.
+- `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
+  state, pure until `commit`: `begin` (what moves, on what, or "rigid",
+  "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (bisected to
+  the last pose with room), `follow` (the pointer's ray to an angle, a slide
+  or a ball's turn), `settle` (a free joint down under its weight), `commit`
+  (one undo step). `grab_probe` checks each on real sets.
+- `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
+  takes the arm by mouse where `window.brickworksGrab.handles` says it is,
+  drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
+  puts it back, then turns the turret on its turntable; the app's frame cost
+  of a drag and the page's longest wait. In `preview_checks.sh`'s map as
+  `grab`.
 - `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
   as BrickLink Studio does it. With a part in hand that has a Technic or a
   bar end, aimed at a connector it fits, the ghost goes onto it: a pin into a

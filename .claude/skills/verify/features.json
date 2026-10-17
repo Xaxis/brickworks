@@ -448,6 +448,14 @@
       "tests": []
     },
     {
+      "id": "cli:grab in a browser",
+      "kind": "cli",
+      "entry": "tools/web/grab_flow.mjs",
+      "reach": "node tools/web/grab_flow.mjs --url=http://127.0.0.1:8820/ --out=<dir>  (after PARTS_URL=x tools/export.sh web and tools/web/serve.py build/web 8820 --parts assets/generated/parts; a preview: preview_checks.sh ... grab)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:hoses and chains by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/flex_pose_flow.mjs",
@@ -1273,6 +1281,14 @@
       "tests": []
     },
     {
+      "id": "lib:moving a body on its joint",
+      "kind": "lib",
+      "entry": "src/assembly/grab.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "lib:names filter",
       "kind": "lib",
       "entry": "api/_names.js",
@@ -1366,6 +1382,14 @@
       "entry": "src/ai/model_shot.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:rigid bodies and joints",
+      "kind": "lib",
+      "entry": "src/assembly/bodies.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --survey vendor/omr/files/4096-1_Crane.mpd",
+      "area": "building",
       "tests": []
     },
     {
@@ -1782,6 +1806,14 @@
       "entry": "web/gallery.html",
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:grab and move on a joint",
+      "kind": "ui",
+      "entry": "src/ui/grab_drag.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd   (by hand: Select tool, drag a part that hangs on a hinge, clip, turntable, pin, axle, ball or round stud)",
+      "area": "building",
       "tests": []
     },
     {

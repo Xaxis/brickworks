@@ -910,7 +910,7 @@ func hint() -> String:
 			if builder.is_carrying():
 				return "Select: a click puts it down · %s · Esc puts it back" % look
 			if over != 0:
-				return "Select: click selects it · drag moves it · %s-drag copies it · double-click edits inside a sub-assembly" % held
+				return "Select: click selects it · drag moves it (on a joint, as the real part moves) · %s-drag copies it · double-click edits inside a sub-assembly" % held
 			return "Select: click lets go of the selection · %s · %s-drag draws a box" % [look, held]
 		"place":
 			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
