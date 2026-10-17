@@ -114,7 +114,11 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   Hollow, A stand where it needs one (on by default), Surface (smooth, or plain
   bricks and plates), Colour (its own, one, or its own cut to at most N; a stand
   is black, or the one colour, or the darkest kept). Brickify works on a worker
-  (the web's page keeps drawing); the status line is `Brickify.said` (one piece
+  (the web's page keeps drawing). Cancel, closing the panel, quitting, or the
+  library having to add a part (a file opened meanwhile) tell the run to stop
+  (`BrickifyDialog._stop`, `Brickify.Progress.stop`): it ends at its next step,
+  between laying's steps too, and nothing is put down (`quit_probe`'s brickify
+  run). The status line is `Brickify.said` (one piece
   and standing, weighed, on what, joined, left out). Nothing laid sets the size
   to the smallest that lays it whole and says so. The result goes down beside what is built — in the middle of an
   empty baseplate — as one sub-assembly named after the file, one undo, and

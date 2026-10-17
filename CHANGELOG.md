@@ -50,6 +50,9 @@ whole cycle.
 - The gallery no longer shows the models Brickworks's own checks share
   while they run, and neither do profiles, collections or the sitemap.
   Each is still at its own link.
+- Brickify stops when you cancel it, close its panel or quit. It used to
+  run on to its end: quitting during a large run waited 25 s, and now
+  takes under a second.
 
 ## [0.3.0] - 2026-10-16
 
