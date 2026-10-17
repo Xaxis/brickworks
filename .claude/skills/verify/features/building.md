@@ -540,7 +540,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`BrickWorld.broken_out`, carried by the history's `sectionout` step) and
   a file is written with every section in place (`BrickWorld.home_of`,
   `ModelStore`). `Shift+Y` (View or Build, Exploded view) draws every
-  section apart along its way off, over 0.6 s, and back
+  section apart, lifted by its place in the stack and spread from the
+  middle, over 0.6 s, and back
   (`BrickWorld.set_drawn`: nothing of the model moves). Evaluate the
   section… shows the chosen one alone: parts as the parts list counts
   them, lots, weight, one piece by the joint graph and by the build check
@@ -548,7 +549,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (Balance), the studs and pins that join it to the rest and what that
   carries (80 g a stud, Stability), and its own steps; with its parts list,
   BrickLink wanted list and booklet (`_export_booklet` with the rest left
-  out). All of it works with the assistant off. Probe: `sections_probe`;
+  out). All of it works with the assistant off. For other code:
+  `Sections.graph_of` (the joint graph, static: studs, turns, pins, fixed)
+  and `break_out_parts(ids)` for parts that are no sub-assembly. Probe: `sections_probe`;
   in a browser, `tools/web/sections_flow.mjs`.
 - `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a

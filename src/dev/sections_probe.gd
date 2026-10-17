@@ -309,6 +309,17 @@ func _one_set(name: String) -> void:
 			await _shot(name.get_basename() + "_evaluated")
 			if _ui._dialog != null:
 				_ui._dialog.hide()
+			# Its own booklet: the booklet's code with the rest left out.
+			if name == SETS[0]:
+				var steps: int = int(_ui.last_evaluation.get("steps", 0))
+				var to: String = _shots.path_join(name.get_basename() + "_section_booklet.html")
+				var note: String = await _ui.booklet(to)
+				# Its author's steps when the file has them, as the booklet
+				# keeps; the evaluation counts the worked-out ones.
+				_check("%s: the section's own booklet is written (%s; %d steps worked out)"
+					% [name, note, steps], FileAccess.file_exists(to)
+					and FileAccess.get_file_as_string(to).length() > 1000
+					and note.contains(" steps"))
 	await _break_out_and_back(name, row)
 	await _exploded(name, row)
 	_report.append(row)

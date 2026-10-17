@@ -74,7 +74,8 @@ the section in place. Other programs never see a model pulled apart.
 
 ## The exploded view
 
-`Shift+Y` draws every section apart along its way off, over 0.6 s, and
+`Shift+Y` draws every section apart, each lifted by its place in the
+stack, lowest least, and spread out from the middle, over 0.6 s, and
 back. Only the picture moves (`BrickWorld.set_drawn`, as Simulate uses):
 the model, the history and the file do not change. A change to the model
 puts it back together at once.
@@ -96,8 +97,64 @@ away, written by the same code as the whole model's.
 
 ## Measured
 
-RESULTS
+`src/dev/sections_probe.gd` on four sets from `vendor/omr/files`, chosen
+once: one built as one model, one with its author's sub-models, one
+Technic, one big. Desktop, 2026-10-17, on a loaded machine.
+
+| Set | Parts | Sections | Sizes | Suggest | Need a later one |
+|---|---|---|---|---|---|
+| 21016-1 Sungnyemun, one model | 325 | 3 | 82 to 127 | 0.1 to 0.2 s | none |
+| 31025-1 Mountain Hut, 10 sub-models | 549 | 5, a minifigure, 26 loose | 33 to 275 | 0.2 to 0.3 s | none |
+| 42093-1 Corvette, Technic | 576 | 5, inside its one sub-model | 56 to 164 | 2 to 4 s | 3 of 5 |
+| 10179-1, 5,266 parts | 5,266 | 42 and 254 loose parts | 48 to 302 | 9 to 14 s | 21 of 43 |
+
+On all four:
+
+- every part is in exactly one suggestion;
+- the parts as the parts list counts them, and the grams, add up to the
+  whole model's: 325, 549, 576 and 5,266; 255.8 g, 630.9 g, 660.7 g and
+  7,424.6 g;
+- each section is one piece to the build check run on it alone: all of
+  them on the three smaller sets, 40 of 42 on 10179-1 (one holds 4 parts
+  its file has off their studs);
+- each has its own steps, as the booklet would build it alone;
+- accepted, they are sub-assemblies in one undo step, undone and redone
+  whole;
+- two sections each, one up and one to the side, broken out by whole
+  studs and bricks in one undo step, a file written meanwhile the same as
+  before, put back with every part where it was to the bit, each way
+  undone and redone;
+- the exploded view draws every part apart and changes nothing of the
+  model, its history or its file;
+- `suggest_sections`, `evaluate_section`, `make_sections` and
+  `break_out_section` over MCP, the first two changing nothing
+  (`read_only_probe` too).
+
+Sungnyemun's Base, its own booklet: 36 steps, written by the booklet's own
+code with the rest of the model left out.
+
+Pictures, drawn by the GPU: `bench/results/sections-2026-10-16/shots/`.
+`tools/web/sections_flow.mjs` does the same by clicks and keys in a browser.
 
 ## What is left
 
-LEFT
+- Interlocked models. A Technic frame or a UCS hull is sub-models that
+  need each other both ways; 3 of the Corvette's 5 sections and 21 of
+  10179-1's 43 need a later one. No cut along the build order fixes that.
+- Big models wait. 10179-1 takes 9 to 14 s in one go on the desktop: the
+  planner's reading is not paced here as the Timeline's is.
+- Loose parts. The joint graph reads studs, pins, axles, clips and
+  hinges, not a tile held from the side or a tyre on its rim. On 10179-1,
+  254 parts it holds to nothing are a section of loose parts.
+- Clicks in the exploded view act on the parts where they stand.
+
+## For other code
+
+`Sections.graph_of(bricks, library, lattice)` is the joint graph with
+nothing of the window: studs (rigid, but a single round stud turns),
+`turns` (hinges, turntables, clips on bars, balls), `pins` (plugs in
+sockets; a pin turns, an axle in a cross hole does not, and it does not
+tell them apart) and `fixed` (glue, a hose's pieces, magnets).
+`Sections.break_out(path)` and `break_out_parts(ids)` pull a section or
+any parts off the way they come off; `put_back(key)` puts them back.
+

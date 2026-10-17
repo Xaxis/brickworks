@@ -197,16 +197,37 @@ func _bricks_in(at: String) -> Array:
 	return out
 
 
-## The build check's joint graph over [param bricks], as Balance builds it:
-## {"studs": pair -> studs, "under": pair -> the id of the one under,
-## "links": pair -> 1}. A pair is [method _pair] of two brick ids.
+## The build check's joint graph over [param bricks], as Balance builds it
+## ([method graph_of] with this model's library and lattice).
 func joint_graph(bricks: Array) -> Dictionary:
+	return graph_of(bricks, library, builder.lattice)
+
+
+## The joint graph over [param bricks] (BrickWorld.Brick, all standing in
+## [param lattice]), with nothing of the window: what holds each pair of
+## them, as Balance builds its graph. A pair is [method _pair] of two brick
+## ids, the lower first. Returns:
+##   "studs": pair -> how many studs join them (Stability.contacts' shared
+##     cells over [constant STUD_CELLS]); rigid, but for a single round stud,
+##     which turns: the caller asks for studs == 1 and the parts' shapes.
+##   "under": pair -> the id of the one under, for a stud pair.
+##   "turns": pair -> 1 for a shaft turning in a bore (a hinge's pin in its
+##     eye, a turntable, a clip on a bar, a bar in a hollow stud: Joints.rounds)
+##     and a ball in a socket (Joints.balls): joints that move.
+##   "pins": pair -> 1 for a plug in its socket (Joints.both_ways: a pin in a
+##     pin hole, an axle in an axle hole, a ball, a bar in a clip). A pin
+##     turns; an axle in a cross hole does not, and this does not tell them
+##     apart.
+##   "fixed": pair -> 1 for what is held otherwise and never moves (glue, a
+##     hose's pieces, magnets: Joints.held_otherwise).
+##   "links": pair -> 1 for any of turns, pins and fixed.
+static func graph_of(bricks: Array, library: PartLibrary, lattice: BrickLattice) -> Dictionary:
 	var own: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
 		own[brick.id] = true
 	var judge := Stability.new()
 	judge.library = library
-	judge.lattice = builder.lattice
+	judge.lattice = lattice
 	var contacts: Dictionary = judge.contacts(bricks)
 	var studs: Dictionary = {}
 	var under: Dictionary = {}
@@ -221,13 +242,25 @@ func joint_graph(bricks: Array) -> Dictionary:
 			var key: int = _pair(int(low), int(high))
 			studs[key] = int(studs.get(key, 0)) + maxi(1, roundi(float(row[high]) / STUD_CELLS))
 			under[key] = int(low)
-	var links: Dictionary = {}
-	for held: Dictionary in _held_otherwise(bricks):
-		for one: Variant in held:
-			for other: Variant in held[one]:
-				if int(one) != int(other) and own.has(int(one)) and own.has(int(other)):
-					links[_pair(int(one), int(other))] = 1
-	return {"studs": studs, "under": under, "links": links}
+	var entries: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh != null:
+			entries.append([brick.id, brick.transform, mesh, brick.part_id,
+				Assemblies.path_of(brick)])
+	var kinds: Dictionary = {"turns": [Joints.rounds(entries), Joints.balls(entries)],
+		"pins": [Joints.both_ways(entries)], "fixed": [Joints.held_otherwise(entries, library)]}
+	var out: Dictionary = {"studs": studs, "under": under, "links": {}}
+	for kind: String in kinds:
+		var found: Dictionary = {}
+		for held: Dictionary in kinds[kind]:
+			for one: Variant in held:
+				for other: Variant in held[one]:
+					if int(one) != int(other) and own.has(int(one)) and own.has(int(other)):
+						found[_pair(int(one), int(other))] = 1
+		out[kind] = found
+		(out["links"] as Dictionary).merge(found)
+	return out
 
 
 ## Pins, axles, balls, clips, hinges, glue and one thing in pieces, as
@@ -239,7 +272,7 @@ func _held_otherwise(bricks: Array) -> Array:
 		if mesh != null:
 			entries.append([brick.id, brick.transform, mesh, brick.part_id,
 				Assemblies.path_of(brick)])
-	return [Joints.both_ways(entries), Joints.rounds(entries),
+	return [Joints.both_ways(entries), Joints.rounds(entries), Joints.balls(entries),
 		Joints.held_otherwise(entries, library)]
 
 
@@ -1264,9 +1297,25 @@ func break_out(path: String, words_name: String = "") -> Dictionary:
 	var name: String = words_name if not words_name.is_empty() else Assemblies.label(path)
 	if path.is_empty():
 		return {"ok": false, "words": "choose a section (a sub-assembly) to break out"}
+	return _break_out(path, assemblies.ids_under(path), name)
+
+
+## Any parts pulled away the same way, a selection that is no sub-assembly
+## among them: what a part dragged off its studs is offered (grab). Kept
+## under "#parts:" and its first part's number; [method put_back] with
+## the key the answer gives ("key") puts them back.
+func break_out_parts(ids: PackedInt64Array, words_name: String = "the parts") -> Dictionary:
+	if ids.is_empty():
+		return {"ok": false, "words": "nothing to break out"}
+	var first: int = ids[0]
+	for brick_id: int in ids:
+		first = mini(first, brick_id)
+	return _break_out("#parts:%d" % first, ids, words_name)
+
+
+func _break_out(path: String, ids: PackedInt64Array, name: String) -> Dictionary:
 	if not out_record(path).is_empty():
 		return {"ok": false, "words": "%s is broken out already" % name}
-	var ids: PackedInt64Array = assemblies.ids_under(path)
 	if ids.is_empty():
 		return {"ok": false, "words": "no section %s" % name}
 	# A copy inside another with copies: moving it would rebuild the others.
@@ -1318,7 +1367,7 @@ func break_out(path: String, words_name: String = "") -> Dictionary:
 		if moved > 0:
 			return {"ok": true, "words": "broke %s out, %s %s" % [name,
 				_distance(reach, way), way_words(way)], "offset": offset,
-				"bounds": bounds_of(ids)}
+				"bounds": bounds_of(ids), "key": path}
 		reach += step
 	return {"ok": false, "words": "nowhere clear to pull %s out to" % name}
 
@@ -1456,19 +1505,30 @@ func exploded(share: float, groups: Array = []) -> Dictionary:
 			all[brick_id] = true
 	var whole: AABB = bounds_of(all.keys())
 	var centre: Vector3 = whole.get_center()
-	var placed: Dictionary = {}
+	# Each lifted by where it is in the stack, lowest least, as a drawing
+	# of a build takes it apart, and spread out from the middle across:
+	# drawn along its way off alone, Sungnyemun's base and walls both went
+	# to the front, one over the other.
+	var boxes: Array = []
 	for group: Dictionary in groups:
-		var own: Dictionary = {}
+		boxes.append(bounds_of(group["ids"]))
+	var order: Array = range(groups.size())
+	order.sort_custom(func(x: int, y: int) -> bool:
+		var bx: AABB = boxes[x]
+		var by: AABB = boxes[y]
+		if not is_equal_approx(bx.position.y, by.position.y):
+			return bx.position.y < by.position.y
+		return bx.get_center().y < by.get_center().y)
+	var rise: float = whole.size.y * 0.6 + BrickLattice.BRICK * mini(groups.size(), 6)
+	var placed: Dictionary = {}
+	for k: int in order.size():
+		var group: Dictionary = groups[order[k]]
+		var box: AABB = boxes[order[k]]
+		var lift: float = rise * k / maxf(order.size() - 1, 1.0)
+		var across: Vector3 = (box.get_center() - centre) * Vector3(0.45, 0.0, 0.45)
+		var shift := Vector3(snappedf(across.x, 2.0), snappedf(lift, 2.0),
+			snappedf(across.z, 2.0)) * share
 		for brick_id: int in group["ids"]:
-			own[brick_id] = true
-		var way: Vector3 = group.get("way", way_off(own))
-		var box: AABB = bounds_of(own.keys())
-		var along: float = absf(box.size.dot(way))
-		var out: Vector3 = way * (along * 0.6 + BrickLattice.STUD * 2.0) \
-			+ (box.get_center() - centre) * Vector3(0.35, 0.2, 0.35)
-		var shift := Vector3(snappedf(out.x, 2.0), snappedf(maxf(out.y, 0.0), 2.0),
-			snappedf(out.z, 2.0)) * share
-		for brick_id: int in own:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			if brick != null:
 				placed[brick_id] = brick.transform.translated(shift)
@@ -1539,22 +1599,41 @@ func evaluate(ids: PackedInt64Array, name: String = "") -> Dictionary:
 	out["joins"] = {"studs": int(held["studs"]), "pins": int(held["pins"]),
 		"parts": joined.size()}
 	out["way"] = way_words(way_off(own, held))
-	var hangs: bool = (held["on"] as Dictionary).is_empty()
-	var studs: int = int(held["studs"])
-	var hold: float = studs * Stability.GRAMS_PER_STUD
+	# What its joints carry: what it stands on takes its weight pressing
+	# down; one it hangs from pulls, which a stud holds 80 g of at the
+	# working load (Stability); on the ground, it carries the rest.
+	var on_studs: int = 0
+	for other: int in held["on"]:
+		on_studs += int(held["on"][other])
+	var under_studs: int = 0
+	for other: int in held["carries"]:
+		under_studs += int(held["carries"][other])
+	var pins: int = int(held["pins"])
+	var lowest: float = INF
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+			if info != null:
+				lowest = minf(lowest, (brick.transform * info.bounds).position.y)
+	var grounded: bool = bounds_of(own.keys()).position.y <= lowest + 1.0
+	var hold: float = under_studs * Stability.GRAMS_PER_STUD
 	if joined.is_empty():
 		out["load"] = "it touches nothing else of the model"
-	elif hangs and studs > 0:
-		out["load"] = ("it hangs from %s: %s on %d stud%s, which hold %.0f g at the working load (%s)"
-			% [joins_words(studs, int(held["pins"])), stock.weight(), studs,
-			"" if studs == 1 else "s", hold, "carries it" if stock.grams <= hold
-			else "too heavy for them: %.1fx" % (stock.grams / maxf(hold, 1.0))])
-	elif hangs:
-		out["load"] = ("it is held by %d pin, axle or clip joint%s alone, %s on them"
-			% [int(held["pins"]), "" if int(held["pins"]) == 1 else "s", stock.weight()])
+	elif grounded:
+		out["load"] = "it stands on the ground and carries the rest on %d stud%s%s" % [
+			under_studs, "" if under_studs == 1 else "s",
+			"" if on_studs == 0 else ", standing on %d of its own" % on_studs]
+	elif on_studs > 0:
+		out["load"] = "it stands on %d stud%s of the rest: %s pressing down on them" % [
+			on_studs, "" if on_studs == 1 else "s", stock.weight()]
+	elif under_studs > 0:
+		out["load"] = ("it hangs from %d stud%s of the rest: %s on studs that hold %.0f g at "
+			% [under_studs, "" if under_studs == 1 else "s", stock.weight(), hold]
+			+ "the working load (%s)" % ("they carry it" if stock.grams <= hold
+				else "too heavy for them: %.1fx" % (stock.grams / maxf(hold, 1.0))))
 	else:
-		out["load"] = "it stands on %s of the rest: %s pressing down on them" % [
-			joins_words(studs, int(held["pins"])), stock.weight()]
+		out["load"] = "it is held by %d pin, axle or clip joint%s alone, %s on them" % [
+			pins, "" if pins == 1 else "s", stock.weight()]
 	# Its own steps, as the booklet would build it alone.
 	var steps: Array = Instructions.plan(world, library, rest)
 	out["steps"] = steps.size()
