@@ -265,6 +265,9 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 
 ## Skin part id -> the key of the sub-model it is the skin of.
 static var skins: Dictionary = {}
+## A generated sub-model's text -> [its skin's id, the skin's text], or
+## ["", ""] for one that draws only parts: what begin_skins made of it.
+static var _skins_of_body: Dictionary = {}
 
 
 ## Whether [param part_id] is a flexible part's skin built from a file.
@@ -288,19 +291,33 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 	var begun: Array = []
 	if model.generated.is_empty():
 		return begun
-	var sources: Dictionary = model.section_texts.duplicate()
-	sources.merge(model.embedded_sources)
+	var sources: Dictionary = {}
 	var pieces: Dictionary = {}     ## reference key -> whether it is a piece
 	for key: String in model.generated:
 		var sub: LdrModel.SubModel = model.submodels.get(key)
 		if sub == null:
 			continue
 		var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+		# A sub-model seen before this session is not read again: its skin,
+		# or that it has none (42058's hose is 15,760 lines: read again on
+		# every open, 40 ms of a 150 ms one).
+		var seen: Array = _skins_of_body.get(body, [])
+		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.parts.has(seen[0])
+				and library.custom_source(seen[0]) == str(seen[1]))):
+			if not str(seen[0]).is_empty():
+				begun.append({"key": key, "sub": sub, "id": seen[0], "text": seen[1],
+					"sources": {}, "pieces": pieces, "task": -1, "built": [null]})
+			continue
 		var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
 		if made_of.is_empty():
+			_skins_of_body[body] = ["", ""]
 			continue
+		if sources.is_empty():
+			sources = model.section_texts.duplicate()
+			sources.merge(model.embedded_sources)
 		var text: String = made_of["text"]
 		var id: String = _skin_id(library, key, text)
+		_skins_of_body[body] = [id, text]
 		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
 			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
 		if not (library.parts.has(id) and library.custom_source(id) == text):
@@ -352,7 +369,8 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 			library.add_custom(info, built.mesh, text)
 		var key: String = entry["key"]
 		skins[id] = key
-		drawn_from[id] = needs(text, entry["sources"])
+		if not drawn_from.has(id) or not (entry["sources"] as Dictionary).is_empty():
+			drawn_from[id] = needs(text, entry["sources"])
 		var kept: Array[LdrModel.Placement] = []
 		for placement: LdrModel.Placement in sub.placements:
 			if _is_piece(library, model, LdrModel._key(placement.part_id), entry["pieces"]):
