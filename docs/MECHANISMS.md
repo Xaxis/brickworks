@@ -1420,6 +1420,21 @@ the far arm's turn from the far pin.
 |---|---|---|---|---|
 | 8841-1 Chassis | the steering wheel, by a universal joint to the pinion's column | 0.010 LDU | 0.014° | 0.016° |
 | 8808-1 | the steering wheel on the pinion's column | 0.010 LDU | 0.016° | 0.018° |
+| 8054-1 Model C | the column, turning the pinion's axle through two 14 tooth bevels | 0.001 LDU | 0.001° | 0.001° |
+| 8828-1 Grader | the column, through two 14 tooth bevels | 0.010 LDU | 0.015° | 0.017° |
+
+**Through gears.** A steering column often turns its pinion through a pair
+of bevels. A grab whose gear train (Mechanism's, read ahead) reaches a
+pinion in a rack that does not move with it offers the train's meshes to
+the loop (`Grab._train_to_racks`), and `Linkage` takes each as one more
+equation, linear, as Mechanism writes it: the two gears' teeth move together
+where they meet. On 8054 and 8828 the pinion turned one to one with the
+column, as the 14 and 14 teeth say, to 0.001° and 0.024°. That row is exact
+only while each gear turns on its own axle in what stands; where a gear
+rides on a joint the loop moves (8062-1's column, in a cab of hinges), the
+grab turns the column as before, its gears by their teeth, and leaves the
+rack (`Linkage.gears_carried`). Offered so, 8062's pinion had turned 4.6°
+off its bevels.
 
 5533-1's tractor does not pass: its steering wheel turns the pinion by
 gears, which this does not read, so the column is turned instead; it stops
@@ -1472,21 +1487,15 @@ Over four runs of 8020's four-bar on a loaded box (`grab_probe --
 average and 5.6 ms at worst, and the page's longest wait during the drag
 was 69 ms.
 
-**Tried and left.** A steering wheel that turns its pinion through gears:
-offered the grabbed train's meshes as linear equations of the loop, 8062-1's
-column took its loop through its pair of 14 tooth bevels, but its drag
-stopped at 6.8° and the pinion turned 4.6° off the bevels' one to one, so it
-was taken out rather than shipped unproven. 42035-1's 1 x 7 steering rack
-is read as one body with the connector its pinion's axle turns in, so the
-pinion cannot push it; 8849-1's whole steering is read as hanging from the
-pinion's axle. Both are `Bodies` readings of a sliding fit the connectors do
-not name.
+**Tried and left.** 42035-1's 1 x 7 steering rack is read as one body with
+the connector its pinion's axle turns in, so the pinion cannot push it;
+8849-1's whole steering is read as hanging from the pinion's axle. Both are
+`Bodies` readings of a sliding fit the connectors do not name.
 
-**Left for later.** Gears between a steering wheel and its pinion (5533's,
-8062's, 9393's and every 42xxx's bevels): Mechanism's gear train and
-Linkage's loop are still read apart. A rack held in a guide the joints do
-not read (a 1 x 13 steering rack between beams, 42078's rack in its
-housing, 42035's in its connector): `Bodies` gives it no slide. Worms and
-linear actuators driving a rack (the library has both; a linear actuator's
-travel per turn is not published); 2790a's teeth; whole frames, drawing
-included, under 33 ms; dynamics (S2, P3).
+**Left for later.** Gears riding on joints the loop moves (8062's column);
+5533's steering wheel, which reaches its pinion by neither. A rack held in
+a guide the joints do not read (a 1 x 13 steering rack between beams,
+42078's rack in its housing, 42035's in its connector): `Bodies` gives it no
+slide. Worms and linear actuators driving a rack (the library has both; a
+linear actuator's travel per turn is not published); 2790a's teeth; whole
+frames, drawing included, under 33 ms; dynamics (S2, P3).

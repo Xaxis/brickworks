@@ -61,9 +61,10 @@ whole cycle.
   one dragged.
 - Claude can move a part along its whole chain of joints to a point:
   move_part with to=.
-- A gear rack moves with its pinion: turn a steering wheel and the rack on
-  the track rod goes a tooth for every tooth of the pinion, and the arms
-  and wheels turn with it; turn a wheel and the steering wheel turns.
+- A gear rack moves with its pinion: turn a steering wheel, or a column
+  that turns the pinion through bevels, and the rack on the track rod goes
+  a tooth for every tooth of the pinion, and the arms and wheels turn with
+  it; turn a wheel and the column turns.
 - A scissor lift rises and folds as its foot is dragged along its rail.
 
 ### Changed

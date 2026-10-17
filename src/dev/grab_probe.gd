@@ -839,6 +839,21 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		var throw: float = float(form["throw"])
 		_check("%s: the piston's stroke over a turn is twice the crank's throw (%.2f LDU, 2 x %.2f)" % [
 			name, high_s - low_s, throw], absf((high_s - low_s) - 2.0 * throw) < 0.2)
+	# A pinion in the loop's rack (8020's column on its track rod) turns as the
+	# rack's place along its teeth says: dragged from the wheel, the column
+	# turns.
+	for mesh: Racks.Pinion in linkage.racks:
+		var keyed := func(key: int) -> Transform3D:
+			return (grab.placed.get(key, grab.rest.get(key, _world.get_brick(key).transform)) as Transform3D) \
+				* (grab.rest.get(key, _world.get_brick(key).transform) as Transform3D).affine_inverse()
+		var against: Transform3D = (keyed.call(mesh.rack) as Transform3D).affine_inverse() \
+			* (keyed.call(mesh.gear) as Transform3D)
+		var psi: float = _turn_about(against.basis, mesh.axis)
+		var along: float = mesh.line.dot(against * mesh.centre - mesh.centre)
+		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 * signf(mesh.rate)
+		_check("%s: the pinion in the track rod's rack turned %.2f° with it, %.3f teeth: the rack %.2f LDU along them, the teeth %.2f"
+			% [name, psi, psi / 360.0 * mesh.teeth, along, by_teeth], absf(psi) > 1.0
+			and absf(along - by_teeth) < 0.1)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s; drawing and weighing the rest), %d solves"
 		% [frame_worst, _grab.worst_follow_ms, _grab.worst_follow_said, linkage.solves])
 	print("    the slowest part to test: %s" % grab.slowest_said)

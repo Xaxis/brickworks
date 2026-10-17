@@ -637,8 +637,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   LDU apart, each rack's pitch line as measured on the OMR's sets) is one
   more equation of a loop in `Linkage`: the rack goes a tooth for each tooth
   of the pinion's turn against it. A 1980s steering turns from its column.
-  `grab_probe -- --only=racks` (windowed): 8841-1_Chassis
-  and 8808-1, the steering turned by the pointer, every frame the rack
+  `grab_probe -- --only=racks` (windowed): 8841-1_Chassis, 8808-1, and
+  8054-1 and 8828-1 turned at the column above their bevels (the train's
+  meshes offered to the loop, `Grab._train_to_racks`; the pinion's turn
+  against the bevels' teeth), the steering turned by the pointer, every frame the rack
   against its teeth and both arms against the track rod's pins and the
   rack's place, by hand; pictures cut over the pinion. A loop that can only
   slide its grabbed joint is driven by the slide: `-- --only=scissor` makes a
