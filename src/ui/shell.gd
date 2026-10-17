@@ -1673,6 +1673,11 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	var target: String = name
 	match op:
 		"set":
+			if str(fields.get("turn", "")) == "usual":
+				fields = fields.duplicate()
+				var before: Dictionary = BookletLooks.turn_at(world, section, step - 1) \
+					if step > 0 else {}
+				fields["turn"] = "end" if not before.is_empty() else null
 			if fields.has("callout"):
 				var unit: String = _attached(at, section)
 				if unit.is_empty():

@@ -46,6 +46,9 @@ var job: Working.Job = null
 var marks: Dictionary = {}
 
 var _studio: BookletStudio
+## Lay the pages out and draw nothing ([method lay_out_only]): which steps
+## go on which page, read in a moment where the pictures take minutes.
+var dry: bool = false
 var _world: BrickWorld
 ## The parts list the booklet ends with, which its steps' parts boxes agree
 ## with.
@@ -67,6 +70,35 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	var html: String = await _make(world, scenery, title)
 	busy = false
 	return html
+
+
+## The booklet's pages as [method make] lays them out, with no picture
+## drawn: each step's place, size and look, for the timeline and a session
+## (booklet_layout). The steps the booklet turns round by itself are
+## decided as it draws them; here they are seen from the front.
+func lay_out_only(world: BrickWorld, scenery: Dictionary, title: String) -> Array[Booklet.Page]:
+	dry = true
+	await _make(world, scenery, title)
+	var out: Array[Booklet.Page] = []
+	if document != null:
+		out = document.pages
+	return out
+
+
+## The bricks of [param order] on a stage of their own: drawn, or, laying
+## out only, their boxes alone, numbered as a drawn one numbers them.
+func _stage(order: Array) -> BookletStudio.Stage:
+	if not dry:
+		return _studio.stage(order)
+	var made := BookletStudio.Stage.new()
+	for entry: Array in order:
+		var part: Lbm.PartMesh = library.mesh_for(str(entry[1]))
+		if part == null:
+			continue
+		made.count += 1
+		made.number[int(entry[0])] = made.count
+		made.boxes.append((entry[3] as Transform3D) * part.bounds)
+	return made
 
 
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
@@ -95,16 +127,17 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		px_per_mm = minf(px_per_mm, 3.6)
 	elif steps.size() > 300:
 		px_per_mm = minf(px_per_mm, 4.2)
-	_studio = BookletStudio.new()
-	_studio.library = library
-	add_child(_studio)
-	await get_tree().process_frame
+	if not dry:
+		_studio = BookletStudio.new()
+		_studio.library = library
+		add_child(_studio)
+		await get_tree().process_frame
 
 	var order: Array = []
 	for step: Instructions.Step in steps:
 		for brick_id: int in step.brick_ids:
 			order.append(_entry_of(brick_id))
-	_main = _studio.stage(order)
+	_main = _stage(order)
 	_order = order
 	await get_tree().process_frame
 
@@ -133,6 +166,10 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
 		int(BookletLooks.booklet(world).get("per_page", 0)))
+	if dry:
+		document.pages = pages
+		_forget_all()
+		return ""
 	var drawn: int = 0
 	var total: int = 0
 	for page: Booklet.Page in pages:
@@ -189,12 +226,13 @@ func _stopped() -> bool:
 
 ## Put the stages away, as at the end; an empty booklet, for a stop.
 func _forget_all() -> String:
-	for made: BookletStudio.Stage in _stages:
-		_studio.forget(made)
+	if is_instance_valid(_studio):
+		for made: BookletStudio.Stage in _stages:
+			_studio.forget(made)
+		if _main != null:
+			_studio.forget(_main)
 	_stages.clear()
-	if _main != null:
-		_studio.forget(_main)
-		_main = null
+	_main = null
 	if is_instance_valid(_studio):
 		_studio.queue_free()
 	return ""
@@ -270,10 +308,14 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		var part: Lbm.PartMesh = library.mesh_for(lot.part_id)
 		if part == null:
 			continue
-		var stage: BookletStudio.Stage = _studio.stage(
-			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
 		var extent: Rect2 = BookletStudio.extent([part.bounds], BookletStudio.FRONT)
 		made.size = Booklet.part_size(extent.size)
+		if dry:
+			made.size += Vector2(1.0, 1.0)
+			lots[key] = made
+			continue
+		var stage: BookletStudio.Stage = _studio.stage(
+			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
 		# Twice the page's resolution: a part is small on the page and
 		# read closely.
 		var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
@@ -479,7 +521,7 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		for brick_id: int in step.shown_ids:
 			order.append(_entry_of(brick_id))
 		spans.append([from, order.size()])
-	var stage: BookletStudio.Stage = _studio.stage(order)
+	var stage: BookletStudio.Stage = _stage(order)
 	_stages.append(stage)
 	callout.from = _facing(attach)
 	var boxes: Array = []
@@ -520,6 +562,14 @@ func _facing(attach: Instructions.Step) -> Vector3:
 ## turned while the back is still where the work is.
 func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	var facing: Vector3 = BookletStudio.FRONT
+	if dry:
+		var was: Vector3 = BookletStudio.FRONT
+		for entry: Booklet.Entry in entries:
+			if not entry.fixed:
+				entry.from = BookletStudio.FRONT
+			entry.turned = _round_from(was, entry.from)
+			was = entry.from
+		return
 	var keep: int = _studio.supersample
 	_studio.supersample = 1
 	var count: int = 0
@@ -623,7 +673,7 @@ func _find_apart(entries: Array[Booklet.Entry]) -> void:
 		var upto: int = int(_ranks[int(entries[end].get_meta("step"))][1])
 		if not first.section.is_empty() and from > 1 and upto >= from \
 				and not _touches(from, upto):
-			var stage: BookletStudio.Stage = _studio.stage(_order.slice(from - 1, upto))
+			var stage: BookletStudio.Stage = _stage(_order.slice(from - 1, upto))
 			_stages.append(stage)
 			for n: int in range(at, end + 1):
 				_apart[entries[n]] = [stage, from - 1]

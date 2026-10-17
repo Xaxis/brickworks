@@ -499,6 +499,57 @@ static func _number(value: float) -> String:
 # -- what the booklet is told ---------------------------------------------------
 
 
+## The pages a booklet lays out (BookletMaker.lay_out_only), as a session
+## reads them: a line a page from [param from], each step with how its
+## designer set it.
+static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int = 2) -> String:
+	var told := PackedStringArray()
+	var steps: int = 0
+	var kinds: Dictionary = {}
+	for page: Booklet.Page in pages:
+		kinds[page.kind] = int(kinds.get(page.kind, 0)) + 1
+		if page.kind == "steps":
+			steps += page.entries.size()
+	var most: int = int(booklet(world).get("per_page", 0))
+	told.append("%d pages of steps and %d of callouts, %d steps; %s a page. Then the "
+		% [int(kinds.get("steps", 0)), int(kinds.get("callout", 0)), steps,
+			"as many as fit" if most == 0 else "at most %d" % most]
+		+ "finished model and the parts list.")
+	var characters: int = 0
+	var off: Dictionary = {}
+	for page: Booklet.Page in pages:
+		for entry: Booklet.Entry in page.entries:
+			if entry.callout != null and entry.callout.own_pages:
+				off[entry.callout.name] = true
+		if page.number < from:
+			continue
+		var each := PackedStringArray()
+		for entry: Booklet.Entry in page.entries:
+			var how := PackedStringArray()
+			if not entry.look.is_empty():
+				var named: String = entry.look.get_slice("|", 0)
+				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int())
+				if not own_line.is_empty():
+					how.append(own_line)
+			if entry.callout != null:
+				how.append("puts on the %s%s, %s" % [entry.callout.name,
+					" x%d" % entry.callout.times if entry.callout.times > 1 else "",
+					"built in a callout box" if entry.callout.inline else "built on its own pages"])
+			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
+				else ""])
+		var line: String = "  page %d%s: step%s %s" % [page.number,
+			(" (the %s, built on its own)" % page.name) if page.kind == "callout" else "",
+			"" if page.entries.size() == 1 else "s", ", ".join(each)]
+		characters += line.length()
+		if characters > 6000:
+			told.append("  ... booklet_layout {\"from\": %d} for the rest." % page.number)
+			break
+		told.append(line)
+	if not off.is_empty():
+		told.append("Built on pages of their own by choice: %s." % ", ".join(off.keys()))
+	return "\n".join(told)
+
+
 ## How a step's look reads, for the timeline and a session: "turned 90°,
 ## zoom 1.5x, new page", or "".
 static func said(world: BrickWorld, section: String, step: int) -> String:

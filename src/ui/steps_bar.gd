@@ -81,6 +81,11 @@ const AUTHORS := 3
 var _authored: bool = false
 ## The row of step edits, shown in the author's steps.
 var _edits: HBoxContainer
+## How the booklet prints the step showing (BookletLooks): its own row.
+var _looks: HBoxContainer
+var _look_said: Label
+var _look_toggles: Dictionary = {}
+var _per_page: Button
 ## Whether the steps may be changed here: not for a model shared by link
 ## and opened to look at.
 var editable: bool = true
@@ -107,6 +112,9 @@ signal export_wanted()
 ## A step edit pressed on the bar: "earlier", "later", "merge", "delete" or
 ## "new" (Shell.edit_steps does it, on the step showing).
 signal edit_wanted(op: String)
+## A Booklet page command for the step showing: "turn_left", "zoom_in",
+## "new_page" ... (Shell.edit_look does it).
+signal look_wanted(op: String)
 signal closed
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
@@ -248,6 +256,57 @@ func _build() -> void:
 		made.pressed.connect(func() -> void: edit_wanted.emit(op))
 		_edits.add_child(made)
 		_named["steps_" + op] = made
+
+	# How the booklet prints the step showing, as Studio's Instruction Maker
+	# sets a step's view and page beside its step list: the step showing is
+	# the one changed, and the line at the end says how it is set.
+	_looks = HBoxContainer.new()
+	_looks.add_theme_constant_override("separation", 6)
+	_looks.visible = false
+	column.add_child(_looks)
+	var title := Label.new()
+	title.text = "Booklet:"
+	title.add_theme_font_size_override("font_size", 11)
+	title.modulate = Color(1, 1, 1, 0.72)
+	_looks.add_child(title)
+	for look: Array in [
+			["turn_left", "Turn left", "This step's picture with the model turned 45 degrees, and the steps after it until turned again"],
+			["turn_right", "Turn right", "Turned 45 degrees the other way"],
+			["tilt_up", "Higher", "Seen from 15 degrees higher"],
+			["tilt_down", "Lower", "Seen from 15 degrees lower"],
+			["this_view", "This view", "This step drawn from the angle the window looks from now"],
+			["usual_view", "Usual view", "Back to the booklet's usual angle from this step"],
+			["zoom_in", "Zoom in", "Closer in on what this step adds"],
+			["zoom_out", "Zoom out", "Further out"],
+			["bigger", "Bigger", "Drawn larger on the page, so fewer steps share it"],
+			["smaller", "Smaller", "Drawn smaller on the page"],
+			["new_page", "New page", "This step at the top of a new page"],
+			["alone", "Alone", "This step on a page of its own"],
+			["parts", "Parts list", "The box of the parts this step adds"],
+			["callout", "Callout", "The sub-assembly this step puts on built in a box beside it; "
+				+ "off, on pages of its own"]]:
+		var op: String = look[0]
+		var made: Button = _button(look[1], look[2])
+		if op in ["new_page", "alone", "parts", "callout"]:
+			made.toggle_mode = true
+			_look_toggles[op] = made
+			made.toggled.connect(func(_on: bool) -> void: look_wanted.emit(op))
+		else:
+			made.pressed.connect(func() -> void: look_wanted.emit(op))
+		_looks.add_child(made)
+		_named["booklet_" + op] = made
+	_per_page = _button("Per page: as fit", "At most this many steps on a page: as they fit, 1, 2 or 4")
+	_per_page.pressed.connect(func() -> void: look_wanted.emit("per_page"))
+	_looks.add_child(_per_page)
+	_named["booklet_per_page"] = _per_page
+	_look_said = Label.new()
+	_look_said.add_theme_font_size_override("font_size", 11)
+	_look_said.modulate = Color(1, 1, 1, 0.72)
+	_look_said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_look_said.clip_text = true
+	_look_said.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_looks.add_child(_look_said)
+	_named["booklet_said"] = _look_said
 
 
 ## Words, not symbols.
@@ -425,6 +484,10 @@ func _set_mode_quietly(mode: int) -> void:
 	_mode = mode
 	_order_button.text = MODES[mode]
 	_edits.visible = mode == AUTHORS and editable
+	# The booklet follows the build order or the author's steps, and an
+	# edit of how a step is printed gives a model the worked-out steps
+	# first, as a step edit does.
+	_looks.visible = (mode == AUTHORS or mode == 0) and editable
 
 
 ## The order after this one, the author's steps only for a model that has them.
@@ -725,10 +788,34 @@ func _show(count: int) -> void:
 				# to anyone following it with real bricks in their hands.
 				_pieces.text += "  (hold this one in place)"
 	_pieces.tooltip_text = _pieces.text
+	_show_look()
 	# Everything up to here, as a count of the order: going backwards is the
 	# same path as forwards. It was every brick up to here gathered again,
 	# and every brick in the model asked whether it was among them.
 	reveal_upto.emit(_order_packed, _shown, _order_key)
+
+
+## How the booklet prints the step showing: the toggles as it is set, and
+## a line saying so.
+func _show_look() -> void:
+	if _looks == null or not _looks.visible:
+		return
+	var at: Instructions.Step = current_step()
+	var section: String = at.authored_in if at != null else ""
+	var step: int = at.authored_step if at != null else -1
+	var own: Dictionary = BookletLooks.of(_world, section, step) if step >= 0 else {}
+	(_look_toggles["new_page"] as Button).set_pressed_no_signal(str(own.get("page", "")) == "new")
+	(_look_toggles["alone"] as Button).set_pressed_no_signal(str(own.get("page", "")) == "alone")
+	(_look_toggles["parts"] as Button).set_pressed_no_signal(bool(own.get("parts", true)))
+	var unit: String = BookletLooks.attached(_world, at, section) if at != null else ""
+	var callout: Button = _look_toggles["callout"]
+	callout.disabled = unit.is_empty()
+	callout.set_pressed_no_signal(not unit.is_empty() and BookletLooks.callout_on(_world, unit))
+	var most: int = int(BookletLooks.booklet(_world).get("per_page", 0))
+	_per_page.text = "Per page: %s" % ("as fit" if most == 0 else str(most))
+	var said: String = BookletLooks.said(_world, section, step) if step >= 0 else ""
+	_look_said.text = said if not said.is_empty() else "as the booklet chooses"
+	_look_said.tooltip_text = _look_said.text
 
 
 ## The world stopped showing the order a count at a time: something changed
