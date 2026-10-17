@@ -5,7 +5,7 @@ scripts. Logs go to `$RELEASE_OUT` (default `$TMPDIR/brickworks-release`).
 
 ```sh
 tools/release/release_wt.sh merge20 <main sha>        # a staging worktree that can deploy
-tools/release/merge_unit.sh <worktree> <sha> "Merge …" # each ready unit, as the user
+MERGE_GATES=ship tools/release/merge_unit.sh <worktree> <sha> "Merge …" # each ready unit, as the user
 #   on CONFLICTS: resolve, git add, then
 tools/release/merge_finish.sh <worktree> "Merge …"
 # the unit's affected probes (featuremap affected), then:
@@ -43,6 +43,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   check failed at load 75-95 and held m33 twice on 2026-10-16; the only way
   on was a fresh deploy and every check again. Rerun the one that failed,
   alone, when the load allows, then promote with it.
+- `ship.sh` runs the merge gates itself, once for every unit merged, under
+  the release's priority: the parse gate on every GDScript file changed since
+  main, and the tool list against the app. Run per merge without priority,
+  each gate waited 30 to 70 minutes for a slot at load 50 (2026-10-16).
+  `MERGE_GATES=ship` has `merge_unit.sh` leave them to it; without it the
+  merge still runs them, as before.
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.

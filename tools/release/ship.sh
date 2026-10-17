@@ -41,6 +41,14 @@ if [ -n "${SHIP_REUSE:-}" ] && [ "$(cat $S/${TAG}_preview.sha 2>/dev/null)" = "$
 fi
 if [ -z "$URL" ]; then
   ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
+  # The merge gates, here under the release's priority: every GDScript file
+  # changed since main parses, and the tool list is the app's. Run per merge
+  # without priority, each waited 30 to 70 minutes for a slot at load 50 on
+  # 2026-10-16, before the release waited again (MERGE_GATES=ship).
+  "$HERE/parse_gate.sh" "$W" main || { echo "SHIP: held, a script does not parse"; exit 1; }
+  sync=$(~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd 2>&1)
+  echo "$sync" | grep -q "the MCP is in step with the app" \
+    || { echo "SHIP: held, the tool list is not the app's"; echo "$sync" | grep -E "FAIL" | head -3; exit 1; }
   timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh > $S/${TAG}_preview.log 2>&1
   URL=$(grep -oE "deploy done https://[^ ]+" $S/${TAG}_preview.log | cut -d' ' -f3)
   [ -n "$URL" ] || { echo "SHIP: preview deploy failed"; tail -3 $S/${TAG}_preview.log; exit 1; }
