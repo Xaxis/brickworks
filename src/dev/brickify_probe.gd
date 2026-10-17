@@ -306,6 +306,10 @@ func _run() -> void:
 		_check("in seconds: %.1f s (measured %d ms, laid %d ms, checked %d ms)" % [total / 1000.0,
 			ms["measure"], ms["lay"], ms["check"]], total < 20000)
 
+	print("")
+	print("  bonded as a builder bonds")
+	_bonded(round, plain, big)
+
 	# The stitch ends because nothing more joins, not because its rounds ran
 	# out: kept unchecked, its first ways laid the same pair again and again,
 	# on most of the bench's models, until all 96 were spent and the rejoin
@@ -529,6 +533,162 @@ func _across_colours() -> void:
 		not same and joined and across.size() == 1
 		and int(studs.get(4, 0)) + int(studs.get(1, 0)) == 6
 		and absi(int(studs.get(4, 0)) - int(studs.get(1, 0))) <= 2)
+
+
+## Bonded as a builder bonds (unit 3): the hidden core in whole bricks
+## whatever colour the measuring gave it, parts merged where two make one,
+## and builds with few 1 x 1s, most seams bridged and few parts whose loss
+## splits them, measured as the bench measures them (brickify_bench.py
+## bond). Laid in the colours measured, a cow's core changed colour two
+## studs in from every patch, and 37% of its 5,082 parts were 1 x 1s.
+func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
+	# A block four studs square and six plates tall, white outside and red in
+	# the middle where nothing of it shows: two courses of bricks, all white.
+	var columns: Dictionary = {}
+	for x: int in 4:
+		for z: int in 4:
+			var column := PackedInt32Array()
+			for j: int in 6:
+				var inner: bool = x in [1, 2] and z in [1, 2] and j in [1, 2, 3, 4]
+				column.append(4 if inner else 15)
+			columns[Vector2i(x, z)] = column
+	var plan := Shapes.Plan.new(columns, 6, false, _library)
+	plan.bridges = false
+	plan.wedges = false
+	plan.bond = true
+	plan.core_colour = 15
+	plan.lay()
+	var heights: Dictionary = {}
+	var colours: Dictionary = {}
+	for one: Dictionary in plan.made:
+		heights[int(one["_h"])] = int(heights.get(int(one["_h"]), 0)) + 1
+		colours[int(one["color"])] = true
+	_check("a block red only where nothing shows is two courses of white bricks: %d parts, by height %s, colours %s"
+		% [plan.made.size(), heights, colours.keys()],
+		heights.keys() == [3] and plan.made.size() <= 4 and colours.keys() == [15])
+	# Three 2 x 4 plates stacked are a brick, and two 1 x 2 plates side by side
+	# over them a 2 x 2 plate.
+	columns = {}
+	for x: int in 4:
+		for z: int in 2:
+			columns[Vector2i(x, z)] = PackedInt32Array([15, 15, 15, 15])
+	plan = Shapes.Plan.new(columns, 4, false, _library)
+	plan.bond = true
+	plan.core_colour = 15
+	for y: int in 3:
+		plan.made.append(plan._annotated({"part": "3020", "color": 15, "x": 0, "y": y, "z": 0, "rot": 0},
+			Shapes.CORE_PLATES, 1, true))
+	plan.made.append(plan._annotated({"part": "3023", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 0},
+		Shapes.CORE_PLATES, 1, true))
+	plan.made.append(plan._annotated({"part": "3023", "color": 15, "x": 0, "y": 3, "z": 1, "rot": 0},
+		Shapes.CORE_PLATES, 1, true))
+	var saved: int = plan.merge()
+	var parts: Array = plan.made.map(func(one: Dictionary) -> String: return "%s at %d" % [one["part"],
+		int(one["y"])])
+	_check("three plates of one footprint merge into a brick, two side by side into one plate: %s, %d saved"
+		% [parts, saved], saved == 3 and parts.has("3001 at 0") and parts.has("3022 at 3"))
+	for one: Array in [["the sphere", round], ["the plain sphere", plain], ["the forty-stud bunny", big]]:
+		var laid: Dictionary = one[1]
+		if laid.is_empty():
+			continue
+		var bond: Dictionary = _bond(laid["model"])
+		_check("%s: %d parts, %.0f%% of them 1 x 1, %.0f%% of %d seams bridged, %.0f%% weak points"
+			% [one[0], int(bond["parts"]), 100.0 * float(bond["one"]), 100.0 * float(bond["seams"]),
+				int(bond["pairs"]), 100.0 * float(bond["weak"])],
+			float(bond["one"]) <= 0.30 and float(bond["seams"]) >= 0.50 and float(bond["weak"]) <= 0.25)
+
+
+## A build's bond as brickify_bench.py measures it, from the parts' boxes on
+## the stud and plate grid: the share of 1 x 1s; of the pairs of parts side
+## by side in a plate's layer, the share a third part joins from above or
+## below; and the share of parts whose removal splits the rest (articulation
+## points of the graph of parts on parts). A stand's parts left out.
+func _bond(model: Assistant.Model) -> Dictionary:
+	var owner: Dictionary = {}    ## Vector3i(x, plate, z) -> index
+	var ones: int = 0
+	var count: int = model.placements.size()
+	for n: int in count:
+		var placement: Assistant.Placement = model.placements[n]
+		var part: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if part == null:
+			continue
+		if roundi(part.bounds.size.x / 20.0) == 1 and roundi(part.bounds.size.z / 20.0) == 1:
+			ones += 1
+		var box: AABB = _checker._transform(placement, part) * part.bounds
+		for j: int in range(floori(box.position.y / 8.0), ceili(box.end.y / 8.0)):
+			var centre: float = (j + 0.5) * 8.0
+			if centre < box.position.y or centre > box.end.y - 3.9:
+				continue
+			for x: int in range(roundi(box.position.x / 20.0), roundi(box.end.x / 20.0)):
+				for z: int in range(roundi(box.position.z / 20.0), roundi(box.end.z / 20.0)):
+					if not owner.has(Vector3i(x, j, z)):
+						owner[Vector3i(x, j, z)] = n
+	var vertical: Array = []
+	for n: int in count:
+		vertical.append({})
+	for key: Variant in owner:
+		var a: int = owner[key]
+		var c: int = int(owner.get((key as Vector3i) + Vector3i(0, 1, 0), -1))
+		if c >= 0 and c != a:
+			(vertical[a] as Dictionary)[c] = true
+			(vertical[c] as Dictionary)[a] = true
+	var pairs: Dictionary = {}
+	for key: Variant in owner:
+		var a: int = owner[key]
+		for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(0, 0, 1)]:
+			var b: int = int(owner.get((key as Vector3i) + step, -1))
+			if b >= 0 and b != a:
+				pairs[Vector2i(mini(a, b), maxi(a, b))] = true
+	var bridged: int = 0
+	for key: Variant in pairs:
+		var pair: Vector2i = key
+		for c: Variant in vertical[pair.x]:
+			if (vertical[pair.y] as Dictionary).has(c):
+				bridged += 1
+				break
+	# Tarjan's articulation points, iteratively.
+	var disc := PackedInt32Array()
+	disc.resize(count)
+	disc.fill(-1)
+	var low := PackedInt32Array()
+	low.resize(count)
+	var weak: Dictionary = {}
+	var timer: int = 0
+	for start: int in count:
+		if disc[start] >= 0 or (vertical[start] as Dictionary).is_empty():
+			continue
+		disc[start] = timer
+		low[start] = timer
+		timer += 1
+		var children: int = 0
+		var stack: Array = [[start, -1, (vertical[start] as Dictionary).keys(), 0]]
+		while not stack.is_empty():
+			var top: Array = stack[-1]
+			var node: int = top[0]
+			var near: Array = top[2]
+			if int(top[3]) < near.size():
+				var next: int = near[top[3]]
+				top[3] = int(top[3]) + 1
+				if disc[next] < 0:
+					disc[next] = timer
+					low[next] = timer
+					timer += 1
+					if node == start:
+						children += 1
+					stack.append([next, node, (vertical[next] as Dictionary).keys(), 0])
+				elif next != int(top[1]):
+					low[node] = mini(low[node], disc[next])
+				continue
+			stack.pop_back()
+			var parent: int = top[1]
+			if parent >= 0:
+				low[parent] = mini(low[parent], low[node])
+				if parent != start and low[node] >= disc[parent]:
+					weak[parent] = true
+		if children > 1:
+			weak[start] = true
+	return {"parts": count, "one": float(ones) / maxf(count, 1.0), "pairs": pairs.size(),
+		"seams": float(bridged) / maxf(pairs.size(), 1.0), "weak": float(weak.size()) / maxf(count, 1.0)}
 
 
 ## Weighed as the bench weighs it (check_design with Balance): one piece,

@@ -1420,7 +1420,8 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "sold_in": options.palette,
+		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "bond": true,
+		"sold_in": options.palette,
 		"plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 

@@ -59,7 +59,16 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
-  panels on a flat side; every piece kept (`keep_pieces`: no prune, nothing
+  panels on a flat side; the core bonded as a builder bonds it (`bond`,
+  `Plan.shows`, `Plan.shown_colour`, `Plan._bonded`, `Plan.merge`): only
+  what shows of a brick is laid in its colour and what is hidden in any (a
+  brick none of which shows in the model's main colour), so three plates of
+  the body are a brick whatever colour the measuring gave the hidden ones;
+  each course's studs, fewest free beside them first, under the first brick
+  that fits in one colour where it shows; and once stitched, two plain
+  parts side by side that make a part we lay, and three plates of one
+  footprint stacked, merged (a merge only joins, so never more pieces);
+  every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
   once a round for it, not once a piece tried; its first ways, kept
   unchecked, taken back to the plan at its fewest pieces once a round's
