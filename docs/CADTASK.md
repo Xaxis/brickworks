@@ -31,6 +31,17 @@ set from its booklet has no way to say where a step ends. By the model the
 hand is faster here; the measured runs took a quarter to over a half more
 actions than their model, most of it aiming.
 
+**By the end of the same day it is, on what was measured.** Every one of the
+48 real sets' files, and the six Studio and LDD files, comes back as its
+author wrote it (section 1, "since"). `E` ends a step as Studio's Create step
+does, a colour is found by its name, and a click puts the part where its
+ghost stood: rebuilding the plane by hand, 29 of the 52 parts tried went
+down, every one exact (sections 4 and 5). The 4,139-part crane opens in 3.3 seconds, not
+13.7, and selecting all of it, undoing a move of all of it and stepping its
+timeline take a tenth, a half and a thirtieth of a second (section 2, and
+"Big files open in seconds"). Still behind: a part in hand swept over a big
+model, places off the 2 LDU lattice, and Studio itself never run beside it.
+
 ## 1. Files opened, saved and opened again
 
 **What was run.** 48 real sets' files from the LDraw model repository
