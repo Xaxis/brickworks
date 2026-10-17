@@ -217,7 +217,7 @@ async function where(page, name, seconds = 600) {
 async function laps(page) {
   await page.waitForTimeout(700);
   const said = await build(page);
-  return said.turn_last ? { ...said.turn_last, frames: said.turn_frames } : {};
+  return said.turn_last ? { ...said.turn_last, frames: said.turn_frames, told: said.told_laps } : {};
 }
 
 async function settle(page, span = 1200, seconds = 60) {
@@ -298,6 +298,12 @@ try {
     // the cover is up.
     const opened = Date.now();
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+    // On a deployment the link is the model's own page, whose button opens
+    // it in the app (serve.py goes straight on).
+    const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+    if (cta) {
+      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), cta.tap()]);
+    }
     const firstFrame = await until(page, () => (window.stepFrames.frames.find(([, , , d]) => d > 0) || [0])[0],
       "the engine's first frame", 600, null, 50);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate });

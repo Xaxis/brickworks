@@ -140,7 +140,8 @@ func _turn_mark() -> void:
 		_turn_frames = [snappedf((_turn_marks[1] - _turn_marks[0]) / 1000.0, 0.1),
 			snappedf((_turn_marks[2] - _turn_marks[1]) / 1000.0, 0.1),
 			snappedf((_turn_marks[3] - _turn_marks[2]) / 1000.0, 0.1),
-			snappedf(_told_this_frame_us / 1000.0, 0.1)]
+			snappedf(_told_this_frame_us / 1000.0, 0.1),
+			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1)]
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -469,6 +470,8 @@ func _tell_page() -> void:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
+	var lap: int = Time.get_ticks_usec()
+	var laps: Dictionary = {}
 	var where: Dictionary = _page_places(_page_controls(), to_window, per_css)
 	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
 		var faces: Dictionary = _gizmo.face_points()
@@ -476,6 +479,7 @@ func _tell_page() -> void:
 			var at: Vector2 = to_window * (faces[face] as Vector2) / per_css
 			where[face] = {"x": roundi(at.x), "y": roundi(at.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	lap = _lap(laps, "controls", lap)
 	# And, when a check asks for it, the model's part of the window and
 	# what covers it (model_cover): a grid of points over it walked
 	# through the interface is too much work to do twice a second.
@@ -497,6 +501,7 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksBricks = %d" % _world.brick_count(), true)
 	# And what a test cannot see in the canvas: how many bricks there are,
 	# what is in hand, which parts were made here.
+	lap = _lap(laps, "before_state", lap)
 	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
 		"bricks": _world.brick_count() - _store.scenery.size(),
 		# Parts of a model just opened still on their way over the network
@@ -624,6 +629,7 @@ func _tell_page() -> void:
 	# And a model shared by link: the owner's panel, what the viewer is
 	# showing, how far along its timeline, and whether this run can write
 	# anything at all (tools/web/share_flow.mjs).
+	lap = _lap(laps, "state", lap)
 	JavaScriptBridge.eval("window.brickworksShare = %s" % JSON.stringify({
 		"viewing": _viewing,
 		"copying": _copying,
@@ -636,6 +642,8 @@ func _tell_page() -> void:
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
+	_lap(laps, "share", lap)
+	_told_laps = laps
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
 	if _account != null:
@@ -2176,6 +2184,7 @@ func build_state() -> Dictionary:
 	said["turn_most"] = _build_turned_most
 	said["turn_last"] = _build_turned_last
 	said["turn_frames"] = _turn_frames
+	said["told_laps"] = _told_laps
 	# Counted by the pages, not by asking every brick twice a second.
 	said["shown"] = _build_pages.standing(_build_page) if _build_pages != null else 0
 	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
@@ -4752,6 +4761,18 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	var began: int = Time.get_ticks_usec()
+	_process_main(_delta)
+	_main_process_us = Time.get_ticks_usec() - began
+
+
+var _main_process_us: int = 0
+## What the last telling of the page took, piece by piece, in ms.
+var _told_laps: Dictionary = {}
+var _weighed_us: int = 0
+
+
+func _process_main(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
 	if not _viewing.is_empty():
@@ -4792,7 +4813,9 @@ func _process(_delta: float) -> void:
 	if _store != null:
 		_store.tick()
 		_watch_other_tabs()
+	var weighing: int = Time.get_ticks_usec()
 	_weigh()
+	_weighed_us = Time.get_ticks_usec() - weighing
 	var telling: int = Time.get_ticks_usec()
 	_tell_page()
 	_told_this_frame_us = Time.get_ticks_usec() - telling

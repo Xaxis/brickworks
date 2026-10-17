@@ -755,11 +755,36 @@ plan with Claude as the client.
   `view_build` (the bar's, or on a window under 1,040 points a big yellow
   Build it over the model, above the timeline). `brickworksState.told_ms` and
   `told_most_ms` say what publishing all this to the page costs a frame,
-  twice a second. Not done: the author's own steps (`0 STEP`, item 1
+  twice a second. **A page turn** (2026-10-17) changes the step's parts,
+  not the model: a page is a count of the build order (`BuildSteps.order`,
+  `count`, shown by `BrickWorld.reveal_upto` with the timeline's own order
+  and key when the pages are its steps, so the world the timeline laid out
+  is laid out for the player and the cover costs nothing), and only the
+  bricks whose fading changes are faded or not (`BuildSteps.fading(from,
+  to)`: the two pages' own parts and those of the pages between), each
+  written into the buffer its batch was written with and the batch handed
+  that buffer again (`BrickWorld.set_faded_in_order`; `_write_in_order`
+  packs it and keeps it — a slot written in place is never drawn in a
+  browser). It asked every brick whether it was shown and faded and wrote
+  every batch holding one that changed again whole: on 4,000 parts on a
+  phone slowed four times, 90 to 500 ms a turn and 1.4 s to the last page;
+  the turn's own work is now 2 to 10 ms (`turn_last`). A tap on or within
+  16 points of the progress bar goes to the step under it (`page_wanted`,
+  control `build_progress`; the bar keeps its size, so every picture of a
+  step is as it was). Build it tapped while the steps are still being
+  worked out is taken up when they are (`_build_wanted`; it did nothing).
+  `brickworksShare.build` also has `turn_last`, `turn_frames` (the rest of
+  the turn's frame) and `told_laps` (what telling the page cost, piece by
+  piece), and the page hears which frame drew a page
+  (`window.brickworksBuildDrawn`). Not done: the author's own steps (`0 STEP`, item 1
   of docs/COMPETITIVE.md) are not kept yet, so these are always
   `Instructions.plan`'s; the parts are fetched for the whole model before
-  the first page, not page by page; and a page turn is not yet under 100 ms
-  on a phone (see the browser flow below).
+  the first page, not page by page; the first step waits for every step to
+  be worked out (9 to 12 s after the first frame for 1,000 parts slowed
+  four times here, against a 3 s aim); and on 4,000 parts a turn that lands
+  in a frame where the page is told everything, or in another frame's
+  processing outside the turn, still takes 250 to 370 ms (see the share
+  steps flow below).
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
@@ -1616,6 +1641,45 @@ the parts; a finger turning the model; the page in `localStorage`; and after a
 reload, step 3 again. Pictures
 `shots/build_web/<size>_1_viewer.png` to `_5_reloaded.png`. Against a
 deployment: `--url=<preview> --id=<a published link's id> --bypass=…`.
+
+**Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
+each page turn of Build it timed from the finger to the frame, and the first
+step from the link, on a phone slowed four times, at 300, 1,000 and 4,000
+parts (the lowest parts of Orthanc's own model, so the steps are worked out).
+About ten minutes a size here, most of it the steps being worked out:
+
+```sh
+tools/export.sh web
+node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR
+set -a; . ./.env; set +a
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_steps_flow.mjs --url=<preview> --publish --out=DIR
+```
+
+`--build` serves the export itself (`serve.py`, one link a size with
+`--share ID=FILE`); `--publish` publishes the three to a deployment from a
+throwaway account at a Resend test address (marked a test, so no gallery
+lists them), and unpublishes them and deletes the account at the end;
+`--ids=300:ID,...` names links already up. Chromium on SwiftShader, 390 x
+844 at 3x, touch, `Emulation.setCPUThrottlingRate` 4 from the engine's first
+frame (slowed from the start, the download and the engine starting took over
+ten minutes). Build it is tapped the moment it is offered and Start the
+moment the cover is up; then Next three times, Back, a tap on the progress
+bar at step 30, and End. Every engine frame is timed in the page (its
+callback, its time inside WebGL, its WebGL calls and draws); a turn is from
+the touchend the page heard to the end of the frame that drew the page (the
+app says which: `window.brickworksBuildDrawn` = [page, when]) and to the
+next frame's start, "on screen"; with `brickworksShare.build.turn_last` (the
+turn's own laps: world, outline, view, page, kept), `turn_frames` (the rest
+of that frame: to its processing, the processing, the drawing, and the page
+told all within it) and whether the page was told all in that frame. Proves
+it when it ends "a shared model's pages turn quickly on a slow phone, and its
+first step comes up quickly": each turn on screen under 100 ms at 300 and
+1,000 parts and under 200 ms at 4,000, the first step within 3 s of the first
+frame at 300 and 1,000. `--report-only` says it all and judges nothing (a
+build from before: no drawn mark, no tap on the bar, the turn read as the
+first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
+`_step30`, `_step<last>` (at full speed), and `times.json`. In
+`tools/release/preview_checks.sh` as `share_steps`, run alone.
 
 And the deploy, which is the only proof that counts for the web build:
 
