@@ -165,6 +165,11 @@ var _ball_walled: bool = false
 ## How long the last test for room took, ms, and how many tests a drag ran.
 var test_ms: float = 0.0
 var tests: int = 0
+## This frame's share of solving the loop and of testing for room, ms, and
+## how many tests it ran (GrabDrag keeps the worst).
+var frame_solve_ms: float = 0.0
+var frame_test_ms: float = 0.0
+var frame_tests: int = 0
 
 
 ## Read what [param brick_id] would move, from where the pointer [param at]
@@ -543,8 +548,11 @@ static func _same(a: Transform3D, b: Transform3D) -> bool:
 func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDENTITY) -> Dictionary:
 	if linkage != null:
 		# The loop closed with its driver there, from the pose last kept.
+		var solving: int = Time.get_ticks_usec()
 		linkage.reach(along if linkage.is_slide() else deg_to_rad(degrees))
-		return linkage.transforms(rest)
+		var out_loop: Dictionary = linkage.transforms(rest)
+		frame_solve_ms += float(Time.get_ticks_usec() - solving) / 1000.0
+		return out_loop
 	var move := Transform3D.IDENTITY
 	if mode == "ball":
 		move = Transform3D(Basis.IDENTITY, pivot) * Transform3D(turned, Vector3.ZERO) \
@@ -615,6 +623,8 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 			result = 0
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
+	frame_test_ms += test_ms
+	frame_tests += 1
 	return Vector2i(result, n if result == -1 else 0)
 
 
@@ -827,6 +837,9 @@ func _near_anything(box: AABB) -> bool:
 func turn_to(degrees: float) -> float:
 	if state != "moves" or mode != "turn":
 		return angle
+	frame_solve_ms = 0.0
+	frame_test_ms = 0.0
+	frame_tests = 0
 	var wanted: float = degrees
 	if link.detent > 0.0:
 		wanted = roundf(wanted / link.detent) * link.detent

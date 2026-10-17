@@ -66,6 +66,8 @@ var frames: int = 0
 ## The worst of each part of it: following the pointer (the room tests),
 ## and weighing.
 var worst_follow_ms: float = 0.0
+## What the worst following frame spent its time on.
+var worst_follow_said: String = ""
 var worst_weigh_ms: float = 0.0
 var worst_settle_ms: float = 0.0
 ## Of those: checking where it stops, and working out its cells.
@@ -179,7 +181,11 @@ func motion(screen: Vector2) -> void:
 		return
 	var started: int = Time.get_ticks_usec()
 	grab.follow(camera.ray_origin(screen), camera.ray_normal(screen), screen, camera)
-	worst_follow_ms = maxf(worst_follow_ms, float(Time.get_ticks_usec() - started) / 1000.0)
+	var following: float = float(Time.get_ticks_usec() - started) / 1000.0
+	if following > worst_follow_ms:
+		worst_follow_said = "solving %.1f ms, %d room tests %.1f ms" % [grab.frame_solve_ms,
+			grab.frame_tests, grab.frame_test_ms]
+	worst_follow_ms = maxf(worst_follow_ms, following)
 	world.set_drawn(grab.placed)
 	var now: int = Time.get_ticks_msec()
 	if _judge != null and now - _weighed_at >= WEIGH_EVERY_MS:

@@ -115,6 +115,14 @@ func _run() -> void:
 				await _loop_case(loop[0], loop[1], loop[2])
 	if only.is_empty() or only == "falling":
 		await _made_fall()
+	if only.is_empty() or only == "follow":
+		var gear_sets: Array = []
+		for arg: String in args:
+			if arg.begins_with("--list="):
+				for line: String in FileAccess.get_file_as_string(arg.trim_prefix("--list=")).split("\n"):
+					if not line.strip_edges().is_empty():
+						gear_sets.append("res://" + line.strip_edges())
+		await _follow_case(gear_sets if not gear_sets.is_empty() else FOLLOWING)
 	if only == "tipping":
 		var asked: Array = []
 		for arg: String in args:
@@ -768,8 +776,8 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		var throw: float = float(form["throw"])
 		_check("%s: the piston's stroke over a turn is twice the crank's throw (%.2f LDU, 2 x %.2f)" % [
 			name, high_s - low_s, throw], absf((high_s - low_s) - 2.0 * throw) < 0.2)
-	print("    drag frames: worst %.1f ms whole (following %.2f ms worst), %d solves" % [frame_worst,
-		_grab.worst_follow_ms, linkage.solves])
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s; drawing and weighing the rest), %d solves"
+		% [frame_worst, _grab.worst_follow_ms, _grab.worst_follow_said, linkage.solves])
 	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
 		"moving": grab.moving.size(), "parts": _world.brick_count()}
@@ -932,6 +940,8 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 
 # -- a model that tips -------------------------------------------------------------------
 
+## Technic sets tried for a part hung on a driven gear's body.
+const FOLLOWING: Array = ["res://vendor/omr/files/8418-1_B-Model.mpd"]
 ## Sets with a free joint inside a section that swings.
 const SETTLING: Array = ["res://vendor/omr/files/8218-1.mpd", "res://vendor/omr/files/42045-1.mpd"]
 ## Sets tried, on no floor, for a section that turned out tips the model.
@@ -1260,6 +1270,129 @@ func _made_fall() -> void:
 		await _shot("falling", "5_on_baseplate")
 	_builder.undo()
 	await _frames(3)
+
+
+## A made train: an 8 tooth crank driving a 24 tooth gear on a Technic
+## brick, and on the 24's axle a 1x2 brick with an axle hole carrying a hinge
+## whose top holds a 1x6 plate: an arm hung on the driven axle by a joint the
+## gear reading does not read. LDraw's units, y down.
+const MADE_GEARS := """0 A crank turns an arm through two gears
+0 Name: made_gears.ldr
+0 !BRICKWORKS FLOOR NONE
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3010.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3010.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3010.dat
+1 7 0 -96 0 1 0 0 0 1 0 0 0 1 3701.dat
+1 0 -20 -86 0 0 0 -1 0 1 0 1 0 0 3705.dat
+1 0 20 -86 0 0 0 -1 0 1 0 1 0 0 3705.dat
+1 7 -20 -86 -20 1 0 0 0 1 0 0 0 1 3647.dat
+1 7 20 -86 -20 1 0 0 0 1 0 0 0 1 3648b.dat
+1 14 20 -96 20 1 0 0 0 1 0 0 0 1 32064a.dat
+1 71 20 -120 20 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 20 -120 20 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 20 -128 20 1 0 0 0 1 0 0 0 1 3666.dat
+"""
+
+
+## An arm hung on a driven gear's axle goes round with the gear: the made
+## train, then real Technic sets with gears until one has something hung on
+## a driven body. The arm's turn about its axle is the crank's times the
+## train's tooth ratio, as Simulate reads it.
+func _follow_case(paths: Array) -> void:
+	print("\nwhat hangs on a driven gear: a made train, 8 teeth driving 24")
+	var path: String = OUT.path_join("made_gears.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(MADE_GEARS)
+	file.close()
+	if await _open(path):
+		_grab._ready_now()
+		print("    %s; the gear trains %s" % [_grab._bodies.summary(), "read" if _grab._mechanism != null
+			else "NOT read"])
+		var crank: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == "3647":
+				crank = brick.id
+		await _follow_check("made train", crank, true)
+	for one: String in paths:
+		if not await _open(one):
+			continue
+		_grab._ready_now()
+		if _grab._mechanism == null:
+			continue
+		var bodies: Bodies = _grab._bodies
+		for body: int in bodies.parent_link:
+			var link: Bodies.Link = bodies.parent_link[body]
+			if link.kind != "axle" and link.kind != "pin":
+				continue
+			var gear: int = 0
+			for key: int in bodies.members[body]:
+				if not Mechanism.spec_of(_world.get_brick(key).part_id).is_empty():
+					gear = key
+					break
+			if gear == 0:
+				continue
+			var trial := Grab.new()
+			trial.world = _world
+			trial.builder = _builder
+			trial.library = _library
+			trial.bodies = bodies
+			trial.shared_mechanism = _grab._mechanism
+			if trial.begin(gear, _world.get_brick(gear).transform.origin) != "moves" or trial.followers.is_empty():
+				continue
+			print("\nwhat hangs on a driven gear: %s" % one.get_file())
+			await _follow_check(one.get_file(), gear, false)
+			return
+	print("\n(what hangs on a driven gear: no real set of %d has a part hung on a driven body by a joint of its own)"
+		% paths.size())
+
+
+## Turn [param gear] 30° through Grab and check every follower: its turn
+## about its carrier's axle is the crank's turn times the ratio Simulate
+## gives the carrier's body.
+func _follow_check(name: String, gear: int, made: bool) -> void:
+	var grab := Grab.new()
+	grab.world = _world
+	grab.builder = _builder
+	grab.library = _library
+	grab.bodies = _grab._bodies
+	grab.shared_mechanism = _grab._mechanism
+	var state: String = grab.begin(gear, _world.get_brick(gear).transform.origin)
+	print("    grabbed #%d %s: %s %s; %d driven parts, %d hung on them (%s)" % [gear,
+		_world.get_brick(gear).part_id, state, grab.why, grab.coupled.size(), grab.followers.size(),
+		" ".join(PackedStringArray(grab.followers.keys().map(func(k: int) -> String:
+			return _world.get_brick(k).part_id)))])
+	_check("%s: something hangs on the driven gear's body by a joint of its own (%d parts)" % [name,
+		grab.followers.size()], not grab.followers.is_empty())
+	if grab.followers.is_empty():
+		return
+	grab.turn_to(30.0)
+	# The turn the train gives each carrier, from the gear reading the grab
+	# drives (Mechanism: radians a radian of the crank, about each body's
+	# line): the follower's own turn, as a rotation vector, must be it times
+	# the crank's.
+	var mechanism: Mechanism = grab.mechanism
+	var crank: float = deg_to_rad(grab.angle) * grab._drive_sign
+	var worst: float = 0.0
+	var said := PackedStringArray()
+	var ratio: float = 0.0
+	for key: int in grab.followers:
+		var carrier: int = grab.followers[key]
+		var spin: Vector3 = mechanism.omega(mechanism.body_of(carrier))
+		ratio = spin.length()
+		var turned: Quaternion = Quaternion(((grab.placed[key] as Transform3D).basis
+			* (grab.rest[key] as Transform3D).basis.inverse()).orthonormalized())
+		var measured: Vector3 = turned.get_axis() * turned.get_angle() if turned.get_angle() > 1e-6 \
+			else Vector3.ZERO
+		var expected: Vector3 = spin * crank
+		worst = maxf(worst, rad_to_deg((measured - expected).length()))
+		if said.size() < 2:
+			said.append("%s %.3f° for %.3f° (%s of the crank's)" % [_world.get_brick(key).part_id,
+				rad_to_deg(measured.length()), rad_to_deg(expected.length()), Simulation.figure(ratio)])
+	_check("%s: the crank turned %.0f°, what hangs on the driven axle turns by the tooth ratio: %s, to %.4f°"
+		% [name, grab.angle, ", ".join(said), worst], not said.is_empty() and worst < 0.05)
+	if made:
+		_check("%s: the arm turns a third of the crank's turn (8 teeth to 24): %s" % [name,
+			Simulation.figure(ratio)], absf(ratio - 1.0 / 3.0) < 1e-4)
 
 
 ## The centre of mass of the model with [param placed] where it says.
