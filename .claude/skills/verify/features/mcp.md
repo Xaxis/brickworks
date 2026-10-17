@@ -105,6 +105,25 @@ asking for an API key.
   a job, even one that never waited, so a check walks the path on any
   model: `viewer_tools_probe` (`_as_jobs`), `model_view_check.mjs` section
   4, and `mcp_check.py --window` against an app started `--jobs-after=0`.
+  **Why a picture took over 20 s in the browser** (measured 2026-10-16, a
+  local export in Chromium on SwiftShader under `heavy`, load 30 to 45,
+  nothing touching the page): the app's own work for a `view_model` is under
+  0.1 s; the rest is waiting for SwiftShader to rasterise (`GpuFence` holds:
+  5.7 to 13.8 s on 6 parts, 32 to 36 s on the 535-part station), with the
+  page's main thread at 60 frames a second. Behind it was needless drawing:
+  the connector panel's "Claude is building — N calls, m:ss" ticked every
+  second from Claude's first call on, and the run card's clock every frame,
+  so after any call of Claude's the page drew a whole frame back to back,
+  12 to 15 CPU-seconds of the GPU process each (89 to 185 CPU-seconds in 20 s
+  standing still, against 0.2 before the first call), and every picture
+  waited behind the frames queued. Both now move with Claude's calls
+  (`ChatPanel`, `ConnectorForm._tick`; `chat_probe` checks nothing runs on a
+  timer between calls). After: nothing drawn standing still after Claude's
+  calls (0 frames in 20 s, 12 to 14 before); on the station `look_at_model`
+  2.3 to 2.6 s (21 and 32 before), `view_model` 9 to 16 s once the first
+  picture of the session has built its viewport (37.7 s, still a job), 22 to
+  53 s before. What is left is SwiftShader under load: on the RX 6700 XT the
+  same picture is under a second ("Job 3 (view_model) is done, after 0 s").
 - **Every tool says what it does to the person's work** (2026-10-14): MCP's
   `annotations` — `title`, `readOnlyHint`, `destructiveHint` (can take work
   away: clear, submit, edit, open, undo, Brick Art, restyle), `idempotentHint`

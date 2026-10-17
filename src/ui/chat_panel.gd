@@ -1288,6 +1288,7 @@ func _on_claude_called(tool: String, arguments: Dictionary) -> void:
 			+ "has built stays.")
 		_show_for_key(OwnKey.has_key())
 	_claude_busy = true
+	_run_clock.text = _elapsed()
 	_step(step)
 	_follow_the_card()
 
@@ -1297,6 +1298,7 @@ func _on_claude_answered(tool: String, ok: bool, text: String) -> void:
 		return
 	_claude_busy = false
 	_claude_last = Time.get_ticks_msec()
+	_run_clock.text = _elapsed()
 	if ok and tool in ["submit_design", "edit_model"]:
 		_claude_built = true
 	# What came of it, in its first line: a part number, a scale, a count
@@ -1411,8 +1413,12 @@ func _on_finished(ok: bool, summary: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Claude's card has its clock set as each call comes and goes, not every
+	# second: a label changed is the whole window drawn again, and in a
+	# browser drawing in software that was a frame of 12 to 15 CPU-seconds a
+	# second, the drawing never at rest while Claude worked, and every
+	# picture Claude asked for waiting behind it (2026-10-16).
 	if _claude_card():
-		_run_clock.text = _elapsed()
 		# Quiet for long enough, with nothing in hand: Claude has finished,
 		# or stopped to talk to the person.
 		if not _claude_busy and Time.get_ticks_msec() - _claude_last > claude_quiet_ms:

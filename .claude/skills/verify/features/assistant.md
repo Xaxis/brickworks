@@ -380,7 +380,12 @@ fixing what it got wrong.
   "Make a new address" and a field to paste one added before —
   `ClaudeConnector.adopt`). The state line: waiting for Claude (amber),
   "Connected to Claude [and Claude Code] — it builds in this tab" (green),
-  building with a count and a clock, switched off in this tab (grey), trouble
+  building with a count and a clock ("Claude is building — 12 calls in 3:41",
+  said as each call comes, never on a timer: a one-second tick drew the whole
+  window every second from Claude's first call on, which in a browser drawing
+  in software kept the page drawing for good and every picture waiting behind
+  it, 2026-10-16; the run card's clock likewise moves with Claude's calls),
+  switched off in this tab (grey), trouble
   (red), taken over by another tab. The account's connections come from
   `/api/oauth?op=connections`: on sign-in (`resume`), when the section is
   shown, every 5 s for ten minutes after Connect Claude, and at once when the
