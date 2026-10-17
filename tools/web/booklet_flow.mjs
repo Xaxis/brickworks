@@ -100,19 +100,35 @@ try {
   await page.waitForTimeout(Number(args.load || 20000));
   if (model) {
     await open(model);
-    // Its parts arrive over the network too: settled when the count holds.
+    // Its parts arrive over the network too: settled when the app says
+    // none is still on its way. The count holding between two looks was
+    // the test, and it holds between two arrivals: 7636 was photographed,
+    // and its booklet asked for, with a hundred parts still to come, each
+    // redrawing a page that draws in software (2026-10-16). A build that
+    // does not say (before brickworksState.awaited) gets the old test.
+    const started = Date.now();
     let last = -1;
     let parts = 0;
+    let waiting = null;
     for (let n = 0; n < 240; n++) {
       await page.waitForTimeout(2000);
-      parts = await page.evaluate(() => (window.brickworksState || {}).bricks || 0);
-      if (parts > 0 && parts === last && n > 5) break;
+      const now = await page.evaluate(() => window.brickworksState || {});
+      parts = now.bricks || 0;
+      waiting = now.awaited;
+      if (parts > 0 && (waiting === undefined ? parts === last && n > 5 : waiting === 0)) break;
       last = parts;
     }
-    check(`${path.basename(model)} opens (${parts} parts)`, parts > 0);
+    console.log(`  (every part arrived in ${Math.round((Date.now() - started) / 1000)} s; `
+      + `${waiting === undefined ? "the build does not say what is still on its way" : `${waiting} still on the way`})`);
+    check(`${path.basename(model)} opens (${parts} parts)`, parts > 0 && !waiting);
     at = await page.evaluate(() => (window.brickworksControls || {}).instructions);
   }
-  await page.screenshot({ path: path.join(out, "app.png") });
+  // A picture of the app before the press, kept and not checked: a frame
+  // of 7636's 372 parts drawn in SwiftShader at a load of 60 to 90 took 5
+  // to 14 s, and a screenshot behind a few of them 76 s, so Playwright's
+  // 30 s ended the run before Instructions was pressed (2026-10-16).
+  await page.screenshot({ path: path.join(out, "app.png"), timeout: 180000 })
+    .catch((e) => console.log(`  (no app.png: ${String(e).split("\n")[0].slice(0, 100)})`));
   check("the toolbar has Instructions", Boolean(at));
 
   // Where it is now, waited for: the toolbar is laid out again as the car's

@@ -1029,9 +1029,12 @@ node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
 # the tab it opens, checks the booklet in it and prints it to booklet.pdf.
 # Serve with --parts assets/generated/parts --delay 0 so parts come from this
-# checkout. 2026-10-16, SwiftShader at load ~50: the car's booklet in 259 s;
-# --model=7636 stalled the page past Playwright's 30 s screenshot once opened,
-# on main's export and the branch's alike, so a big model is for the preview.
+# checkout. 2026-10-16, SwiftShader at load ~50: the car's booklet in 259 s.
+# --model waits until the app says no part is still on its way
+# (brickworksState.awaited): 7636's 372 took 146 s, and the old test (the count
+# holding between two looks) photographed it at 324. Each frame of it drawn in
+# SwiftShader at load 60-90 takes 5-14 s (a key turning the view), so app.png
+# waits up to 180 s and is not a check; a big model's booklet is slow here.
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
