@@ -24,6 +24,12 @@ whole cycle.
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is
   about 1.4 MB larger for it.
+- A part in hand keeps up over a big model. Aiming a brick over the
+  4,139 parts of set 42082 took up to 747 ms a move; it takes about 2 ms.
+  A pin or a sticker in hand asks only the parts near the pointer.
+- A file opened straight after a big one opens at once. Set 8202 after
+  42082 waited 12 s for the status bar to finish weighing 42082; it now
+  opens in 1.5 s, and the new model is weighed after.
 
 ## [0.3.0] - 2026-10-16
 
