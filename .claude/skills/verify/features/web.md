@@ -314,6 +314,26 @@ plan with Claude as the client.
   one printable line of at most 80 characters (the table's own check too),
   escaped by every page that shows it and put in as text by `gallery.js` and
   the admin page.
+  **Test models** (2026-10-17, `supabase/test_models.sql`, applied to the live
+  project that day with `tools/apply_sql.mjs`, dry-run first; the project has
+  no migration table, so it is recorded here): column `test` boolean not null
+  default false, never granted to the publishable key. A publish from a session
+  at a Resend test address (`@resend.dev`, `isTestAccount` in `api/_auth.js`:
+  every probe and flow signs in at one, nobody else can) writes `test: true`.
+  No public list shows a test model: `directory_models` leaves them out
+  unless the query says `tests` (or `private`, an owner's own view);
+  `profile_page(wanted, tests)`, `collection_page(list, tests)` and
+  `collection_count(list, private, tests)` are new forms beside the old,
+  which are now those forms without tests; `sitemap_pages` never lists one,
+  nor a profile or a collection with nothing else; a model's page lists a
+  test remix only when it is a test itself (`directory_model`). `?tests=1` on
+  `?op=list`, `/api/people?op=profile|collection`, `/u/<handle>` and
+  `/c/<id>` (anything else but 0 or false: 400) shows them, answered
+  `private, no-store` so the CDN never keeps it; the parameter is in the
+  address the CDN keys on, so a visitor's list is never that answer. A test
+  model's own page and link work as any other. Rows from before the release
+  that marks them are all false: the live site shows that release's probe
+  models until it ships.
   **The directory** (2026-10-13, `supabase/directory.sql`, applied to the
   live project that day with `tools/apply_sql.mjs`, dry-run first with
   `--dry --try=FILE`, which rolls back): columns `description` (1 to 1000
@@ -464,7 +484,8 @@ plan with Claude as the client.
   its pictures, and profile and collection pages, for 30 s and serves them 30 s
   more while it asks again (`SHARED_CACHE`, `public, max-age=0, s-maxage=30,
   stale-while-revalidate=30`); a versioned small picture five minutes in a
-  browser; the viewer's JSON and everything signed in, never. A model taken
+  browser; the viewer's JSON, everything signed in and anything asked with
+  `tests=1` (`TESTS_CACHE`, `private, no-store`), never. A model taken
   down or out leaves within a minute rather than at once; the probes ask past
   the CDN with a query of their own, and the browser flows load a page again
   until it shows what was done, for two minutes at most.
@@ -518,7 +539,9 @@ plan with Claude as the client.
   so a search can be sent and a reload asks it again; an address asking for
   what the list does not know gets the whole gallery and its address put
   right; an answer to an older question is thrown away. A card shows the
-  small picture when there is one, and its views, likes and remixes.
+  small picture when there is one, and its views, likes and remixes. An
+  address with `tests=1` asks the list with it on every question, test
+  models in (share_flow opens `/gallery?tests=1`: its model is a test's).
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -1269,6 +1292,22 @@ key. On a deployment, also the list's and a model page's second asking
 answered by the CDN (`x-vercel-cache` HIT or STALE). It removes what it made
 that does not go with its accounts (barred fingerprints, reports by handle,
 its accounts' counts). 304 checks with `--master`, about two minutes locally.
+
+Test models' part of it (since 2026-10-17, `supabase/test_models.sql`): every
+model it publishes is a test account's, so every list it checks (the gallery,
+a profile, a collection, the remix and search questions) is asked with
+`tests=1`, and beside them what a visitor gets: the row marked `test` (read
+with the secret key); the visitor's list, past the CDN and as the CDN gives
+it (the address `/gallery` asks), without the probe's listed models, twice;
+the `tests=1` answer `private, no-store` and, on a deployment, answered by
+the function a second time, never the CDN; `tests=maybe` 400; a profile's
+JSON and page without `tests=1` showing 0 models; a public collection's JSON
+and page without it showing none; the sitemap with none of the probe's
+models or profiles; `test` closed to the publishable key. 288 checks
+locally and 291 on a deployment, without `--master`. On preview
+brickworks-k5c2nla0r (2026-10-17) a watcher polling the public list every
+5 s through the run saw up to 15 test models listed and none shown to a
+visitor in 31 polls, nor in the sitemap.
 
 Reporting and acting on it, in a real browser on a deployment (one
 throwaway account; `MASTER_EMAIL` signed in as the tests are):

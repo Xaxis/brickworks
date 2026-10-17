@@ -420,8 +420,14 @@ shared model; then, from answers played by `FakeGallery`, each licence's
 words, the owner's description, kind and tags, a size and kinds read from the
 file, and the most used part named. `mcp_check.py`, with the app's
 `BRICKWORKS_API` at a deployment that has the directory (or the local
-functions), also searches the gallery over MCP and opens the first model
-with its licence, size and picture as an MCP image block. A real session, on
+functions), also searches the gallery over MCP and opens a model with its
+licence, size and picture as an MCP image block: the newest the list itself
+(`/api/share?op=list` of `BRICKWORKS_API` or brickworks.diy, up to three
+pages) says has a picture (`image`), named in the line ("the gallery lists a
+model with a picture: <name> (<id>)", then "<id> opened as a reference").
+Until 2026-10-17 it opened the newest, which was a probe's model with no
+picture while share_probe ran on the live site, and all five desktop release
+jobs failed on it (run 39017125610). A real session, on
 the subscription (`env -u ANTHROPIC_API_KEY claude -p ... --strict-mcp-config
 --tools "" --restricted --allowedTools mcp__brickworks__gallery`, against an
 app started with `--mcp=PORT`), asked for a castle as a reference, answered

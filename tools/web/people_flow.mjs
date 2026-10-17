@@ -183,18 +183,20 @@ try {
     && !(await row.locator("a", { hasText: "Its page" }).isHidden()));
   await shot(page, "3_profile-laptop.png");
 
-  // --- 4. The pages anybody sees.
+  // --- 4. The pages anybody sees. Asked with tests=1: the owner signed in
+  // at a test address, so the house is a test model, which a page shows
+  // nobody who does not ask (api/people.js).
   console.log("the collection's page and the owner's profile, signed out");
   const stranger = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
   const look = await stranger.newPage();
   listen(look, "stranger");
-  await look.goto(`${site}/c/${listId}`, { waitUntil: "load", timeout: 60000 });
+  await look.goto(`${site}/c/${listId}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
     by: document.querySelector(".handle")?.textContent, cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
   check(`/c/${listId}: "${state.title}", ${state.by}, the house in it`, state.title === LIST && state.cards.includes(modelId)
     && /Flow Visitor/.test(state.by || ""));
   await shot(look, "4_collection-laptop.png");
-  await look.goto(`${site}/u/${ownerHandle}`, { waitUntil: "load", timeout: 60000 });
+  await look.goto(`${site}/u/${ownerHandle}?tests=1`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ title: document.querySelector("h1")?.textContent,
     cards: [...document.querySelectorAll("a.model")].map((a) => a.dataset.id) }));
   check(`/u/${ownerHandle}: "${state.title}", the house credited to them`, state.title === "Flow Owner" && state.cards.includes(modelId));
@@ -213,8 +215,8 @@ try {
   await phone.addInitScript((value) => { try { localStorage.setItem("brickworks.session", value); } catch {} }, kept);
   const small = await phone.newPage();
   listen(small, "phone");
-  for (const [where, name] of [[`/m/${modelId}`, "model"], ["/profile", "profile"], [`/c/${listId}`, "collection"],
-    [`/u/${ownerHandle}`, "profile_public"]]) {
+  for (const [where, name] of [[`/m/${modelId}`, "model"], ["/profile", "profile"], [`/c/${listId}?tests=1`, "collection"],
+    [`/u/${ownerHandle}?tests=1`, "profile_public"]]) {
     await small.goto(site + where, { waitUntil: "load", timeout: 60000 });
     await small.waitForTimeout(1500);
     if (name === "model") await small.click("details.collect summary").catch(() => {});

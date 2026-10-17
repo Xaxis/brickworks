@@ -80,7 +80,9 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   return { status: reply.status, json: await reply.json().catch(() => null) };
 }
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
-const inList = async (id) => ((await api(`/api/share?op=list&page=1&q=${rand}`)).json?.models || []).some((m) => m.id === id);
+// With tests=1: the flow's account is a test's, and its models are in no
+// visitor's gallery at all (api/share.js); asked, they are, until taken out.
+const inList = async (id) => ((await api(`/api/share?op=list&page=1&tests=1&q=${rand}`)).json?.models || []).some((m) => m.id === id);
 
 const ids = [];
 const browser = await launch({ signedOut: true });

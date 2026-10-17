@@ -36,6 +36,9 @@ whole cycle.
 - The pictures the assistant judges its work by no longer draw dark tops
   white from one side. Its fill light caught the stud tops of the far rows,
   and a dark grey model could read as banded in white.
+- The gallery no longer shows the models Brickworks's own checks share
+  while they run, and neither do profiles, collections or the sitemap.
+  Each is still at its own link.
 
 ## [0.3.0] - 2026-10-16
 

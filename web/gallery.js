@@ -31,6 +31,9 @@
   let asking = 0;
   let tag = "";
   let filled = false;
+  // A probe's own models are tests, which the list leaves out unless asked
+  // (api/share.js): an address with tests=1 asks, and keeps asking.
+  const tests = new URLSearchParams(location.search).get("tests") === "1";
 
   function counted(n, one, many) {
     const value = Number(n) || 0;
@@ -98,6 +101,7 @@
     if (technic.checked) asked.set("technic", "1");
     if (tag) asked.set("tag", tag);
     if (chosen(sort) && chosen(sort) !== "newest") asked.set("sort", chosen(sort));
+    if (tests) asked.set("tests", "1");
     return asked;
   }
 
@@ -148,7 +152,7 @@
         q.value = "";
         instructions.checked = technic.checked = false;
         tag = "";
-        history.replaceState(null, "", "/gallery");
+        history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
         return next(true);
       }
       if (!reply.ok) throw new Error(String(reply.status));
