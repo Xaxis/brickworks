@@ -300,7 +300,10 @@ picture the assistant is shown.
   first, so a drag changes counts and writes only the parts it crosses.
   Measured in software (llvmpipe) on Orthanc: a frame cut at 60% costs less
   than a whole one (0.4 s against 1.3 s), turning the cut on is 65 ms of the
-  app's own work and dragging it 11 ms a plate. The variants discard what is past the plane and draw the back
+  app's own work and dragging it 11 ms a plate. On the GPU (2026-10-16) the
+  cut on is 162 ms of that work and a plate 2.0 ms; `see_inside_probe` holds a
+  move under a tenth of the work of turning the cut on (a whole frame was the
+  yardstick, and on the GPU a frame is 18 ms of the GPU's own). The variants discard what is past the plane and draw the back
   faces as the cut face (`PLASTIC_CAP` in `plastic_body.gdshaderinc`: flat,
   square to the plane, hatched in the part's colour) — LDraw's surfaces are
   closed, so a back face seen past the plane is exactly where the plane is

@@ -387,12 +387,16 @@ func _orthanc() -> void:
 		var each: float = float(Time.get_ticks_usec() - began) / 1000.0 / maxf(moves, 1)
 		print("    dragging the cut up the tower a plate a move: %d moves, %.1f ms each, %.1f the slowest"
 			% [moves, each, slowest])
-		# Against a whole frame of the same model on the same machine, not a
-		# wall clock: at a load of 50 a move took 26 ms and a frame 1,355,
-		# and the 25 ms budget failed a drag that was fine. A drag that
-		# rewrote every part would cost a good share of a frame.
-		_check("dragging it costs %.1f ms a move, under a tenth of a whole frame (%.0f ms)"
-			% [each, whole_ms], each < whole_ms * 0.1)
+		# Against the app's own work of sorting every part for the cut, on
+		# the same model on the same machine, not a wall clock: at a load
+		# of 50 a move took 26 ms, and a 25 ms budget failed a drag that
+		# was fine. A drag that rewrote every part would cost about that
+		# whole sort. It was measured against a whole frame, which held
+		# while the suite drew in software (1,355 ms a frame); on the GPU a
+		# frame of Orthanc is 19 ms of the GPU's, which says nothing of
+		# what a move costs the CPU, and a 2.2 ms move failed (2026-10-16).
+		_check("dragging it costs %.1f ms a move, under a tenth of sorting every part for the cut (%.0f ms; a frame is %.0f)"
+			% [each, work, whole_ms], each < work * 0.1)
 		see.call("move_to", _odd(lerpf(low, high, 0.6)))
 	_world.rebuilds_in_slices = true
 	await _settled()
