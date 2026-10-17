@@ -564,16 +564,27 @@ picture the assistant is shown.
   2789cd0): things put in under one already there 19.6% to 11.3%, steps with a
   floating thing 18.1% to 14.9%, steps with a hidden new thing 19.2% to 13.8%,
   tau 0.27 to 0.31; planning the 100 files 16.0 s to 19.2 s, the 1,454-part
-  Rebel Snowspeeder 0.58 s.
+  Rebel Snowspeeder 0.58 s. Then pins by reach and a model on its stand in
+  its own frame (2026-10-16, against 33da719, side by side): put in under
+  11.3% to 6.4%, steps with a floating thing 13.0% to 11.0% (a piece begun on
+  the table; 14.9% to 12.7% by the old rule), the 7 Technic files 31.5% to
+  24.0%, hidden steps 13.8% to 14.3% and tau 0.31 within noise, planning 1.09
+  times, the Snowspeeder 0.33 s.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
   the model) and one piece — a top-level one, or one nested a level inside a
   big one (`LdrModel.Placement.unit` keeps "House#1/Window#3", and the brick
   carries it as `Brick.unit`) — or one put on at an angle (most of its parts
-  off the square, `_turned`) of any size up to half the model, built square in
-  the hand with steps of a page's size and kept in the order the build would
-  have reached it as a section (its region). A loop that would cost one its
+  off the square, `_turned`) of any size up to half the model, or short of the
+  whole when the model places it itself (a model on its stand, 76161's
+  Batwing), built square in the hand with steps of a page's size and kept in
+  the order the build would have reached it as a section (its region). What
+  rests on what in a turned one, and so its order in the hand, is read in the
+  frame most of its parts stand square in, upright as most of them stand
+  (`_frame_turned`, `_frame_of`, `Assembly.framed`); `instructions_probe`'s
+  wing on its edge is built brick on brick in its own frame. A flexible thing
+  inside one goes in as one there too (`Assembly.bundles`). A loop that would cost one its
   callout gives up the needs guessed from touching boxes first, then those
   read off a box, and only then the smallest assembly on it (`_contract`,
   `_ease`). A flexible thing drawn in pieces outside a callout goes in as one
@@ -590,9 +601,16 @@ picture the assistant is shown.
   link that would make a loop (`_cycles`, the parts on a loop, not those
   downstream of one) is undone and relinked to a part that does not wait for
   it. On Orthanc, parts placed touching nothing already placed went from 193 to
-  6 of 8,603, with no step forced. A pin that joins two parts goes into the
-  lowest and the others go on it (`_find_joints`): waiting for both put it in
-  last, buried between two beams. Wheels go on what holds them and tyres on
+  6 of 8,603, with no step forced. A pin that joins two parts goes into one
+  and the others go on it (`_find_joints`): waiting for both put it in last,
+  buried between two beams. It goes into the one nearest the table through
+  what holds it (`_reach`: studs, side studs, pins and axles either way, what
+  a box sits on, from the lowest part that is neither a wheel nor a pin), then
+  the lowest, and the lowest where the nearest would close a loop; a joint
+  read both ways round is one, held by the nearer. A part held only by a
+  guess (off the table, needing only what its box touches) goes in after what
+  is held for certain (`Node2.guessed`), and a forced step takes the lowest
+  part that is not a wheel. Wheels go on what holds them and tyres on
   their wheels (`_wheels`, by name: "Wheel …", "Tyre …"), whether or not the
   joint is known; a wheel holds nothing up, and goes in last within its
   region: the example car's booklet began with four wheels on the table. Steps take
@@ -612,12 +630,17 @@ picture the assistant is shown.
   `report` says Kendall's tau-b against the author, same-step pairs kept
   together, step counts and sizes, the author's sub-assemblies built on the
   side, and new things hidden from front and back, put in under a part already
-  there, or floating at their step, each with a 95% interval from resampling
+  there, or floating at their step (held to nothing on the table: the model's
+  first parts, and the first parts of each piece of the finished model a step
+  begins, as the authors build a second vehicle in the hand; and again with
+  only the model's first parts), each with a 95% interval from resampling
   the files; `compare BEFORE AFTER` pairs two runs file by file. "Held" is the
   probe's own graph (`Stability.contacts` and the joints the build check
   reads), not the planner's. Every run first checks the measures on models
   with known answers (a stack built from the top floats twice; a plate in a
-  deep well is hidden) and scores nothing if one is wrong; the maths is pinned
+  deep well is hidden; a second tower begun from its top floats once when a
+  piece begins on the table, twice by the model's first parts alone) and
+  scores nothing if one is wrong; the maths is pinned
   by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
   against the definition).
 - `cad task frames` and `cad task frames in a browser`

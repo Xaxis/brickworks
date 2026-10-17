@@ -37,7 +37,10 @@ resampling the files (2,000 times, seeded):
 - the author's sub-assemblies (every copy of a sub-model) the build makes on
   the side: a copy it builds apart with at least 80% of the same parts;
 - new parts hidden from the front and the back, parts put in under one
-  already there, and parts floating at their step.
+  already there, and parts floating at their step: held to nothing on the
+  table at the end of it, the table holding the model's first parts and the
+  first parts of each piece of the finished model a step begins (a second
+  vehicle), and again with only the model's first parts.
 
 `compare` pairs two runs of one sample file by file: the change in each
 measure and its interval.
@@ -479,6 +482,14 @@ def per_file(row: dict) -> dict[str, dict]:
             "blocked": (order["blocked"], order["items"]),
             "floating": (order["floating"], order["measured"]),
             "floating_steps": (order["floating_steps"], len(steps)),
+            # A step that begins a piece of the finished model begins it on
+            # the table (src/dev/steps_score.gd Pieces.apart), as the
+            # authors' own books do; "floating" holds only the model's first
+            # parts to it. Runs from before the first have the second only.
+            "floating_pieces": (order.get("floating_pieces", order["floating"]),
+                                order.get("measured_pieces", order["measured"])),
+            "floating_pieces_steps": (order.get("floating_pieces_steps", order["floating_steps"]),
+                                      len(steps)),
         }
         checked = row.get("checked", {}).get(name)
         out[name]["checked"] = (checked["floating"], checked["parts"]) if checked else (0, 0)
@@ -500,8 +511,11 @@ MEASURES = [
     ("hidden", "new things hidden front and back", "ratio"),
     ("hidden_steps", "steps with a hidden new thing", "ratio"),
     ("blocked", "things put in under one already there", "ratio"),
-    ("floating", "things floating at their step", "ratio"),
-    ("floating_steps", "steps with a floating thing", "ratio"),
+    ("floating_pieces", "things floating at their step", "ratio"),
+    ("floating_pieces_steps", "steps with a floating thing", "ratio"),
+    ("floating", "things floating, only the model's first parts on the table", "ratio"),
+    ("floating_steps", "steps with a floating thing, only the model's first parts on the table",
+     "ratio"),
     ("checked", "parts the build check calls floating at sampled steps", "ratio"),
     ("checked_steps", "sampled steps with a part the build check calls floating", "ratio"),
 ]
@@ -531,7 +545,8 @@ def summarise(rows: list[dict]) -> dict:
             [m["sizes"] for m in mine])
         add("over", ratio, [(m["over"], m["steps"]) for m in mine])
         for key in ("units", "copies", "hidden", "hidden_steps", "blocked", "floating",
-                    "floating_steps", "checked", "checked_steps"):
+                    "floating_steps", "floating_pieces", "floating_pieces_steps", "checked",
+                    "checked_steps"):
             add(key, ratio, [m[key] for m in mine])
         sizes = [s for m in mine for s in m["sizes"]]
         got["sizes"] = {str(k): v for k, v in sorted(Counter(min(s, 13) for s in sizes).items())}
@@ -621,7 +636,8 @@ def compare(before: Path, after: Path) -> int:
               f"{mean([b['tau'] for _, b in pairs]):.3f}, change {mean(diffs):+.3f} "
               f"({low:+.3f} to {high:+.3f}); better in {better}, worse in {worse}")
         for key in ("together", "units", "copies", "hidden", "hidden_steps", "blocked",
-                    "floating", "floating_steps", "checked"):
+                    "floating", "floating_steps", "floating_pieces", "floating_pieces_steps",
+                    "checked"):
             a_rows = [a[key] for a, _ in pairs]
             b_rows = [b[key] for _, b in pairs]
             paired = list(zip(a_rows, b_rows))

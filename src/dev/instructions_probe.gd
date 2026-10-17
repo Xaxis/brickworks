@@ -37,6 +37,7 @@ func _initialize() -> void:
 	_studs_read_alike(world, library)
 	_pressed_up(world, library)
 	_turned_section(world, library)
+	_on_its_edge(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -506,6 +507,58 @@ func _turned_section(world: BrickWorld, library: PartLibrary) -> void:
 	print("\n  a section of 70 put on at 30 degrees")
 	_assert("it is built on the side and put on whole (%d steps put it on)" % put_on.size(),
 		put_on.size() == 1)
+
+
+## A model stood on its edge on a stand, as 76161's Batwing is: the wing,
+## two columns of eight 2 x 4 bricks in its own frame, laid on its side and
+## turned 20 degrees, is most of the model. Its author builds it flat and
+## stands it up, so it is built on the side, and in its own frame: each
+## brick after the one it sits on there. Read in the world's, where the
+## columns lie flat, nothing in it sat on anything.
+func _on_its_edge(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	var stand_top: float = -INF
+	for level: int in 3:
+		var id: int = world.add_brick("3001", 7, Transform3D(Basis.IDENTITY,
+			Vector3(0.0, level * 24.0, 0.0)))
+		stand_top = maxf(stand_top, _box(id, world, library).end.y)
+	var turn := Basis(Vector3.UP, deg_to_rad(20.0)) * Basis(Vector3.RIGHT, deg_to_rad(90.0))
+	var bounds: AABB = library.mesh_for("3001").bounds
+	var local: Array[Transform3D] = []
+	var low: float = INF
+	for column: int in 2:
+		for level: int in 8:
+			var at := Transform3D(turn, Vector3.ZERO) * Transform3D(Basis.IDENTITY,
+				Vector3(column * 40.0 - 20.0, level * 24.0, -84.0))
+			local.append(at)
+			low = minf(low, (at * bounds).position.y)
+	var wing: Array[int] = []
+	for at: Transform3D in local:
+		var id: int = world.add_brick("3001", 1, at.translated(Vector3(0.0, stand_top - 4.0 - low, 0.0)))
+		world.get_brick(id).unit = "wing#1"
+		world.get_brick(id).group = "wing"
+		wing.append(id)
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a wing on its edge", steps, world, library)
+	var put_on: Array = steps.filter(func(step: Instructions.Step) -> bool:
+		return step.attaches() and step.copies.size() == 1 \
+			and step.copies[0].size() == wing.size())
+	var order: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for id: int in step.brick_ids:
+			order[id] = order.size()
+	var early: int = 0
+	for column: int in 2:
+		for level: int in range(1, 8):
+			var here: int = wing[column * 8 + level]
+			var under: int = wing[column * 8 + level - 1]
+			if int(order.get(here, -1)) < int(order.get(under, -1)):
+				early += 1
+	print("\n  a wing of 16 stood on its edge on a stand of 3")
+	_assert("it is built on the side and put on whole (%d steps put it on)" % put_on.size(),
+		put_on.size() == 1)
+	_assert("...each brick after the one it sits on in its own frame (%d before it)" % early,
+		early == 0)
 
 
 func _load(world: BrickWorld, library: PartLibrary, ldr: LdrModel) -> void:
