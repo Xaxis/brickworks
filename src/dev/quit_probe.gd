@@ -23,7 +23,7 @@ extends SceneTree
 
 const PARTS := 1000
 const WAYS := ["close", "menu", "brickify"]
-const BRICKIFY_STUDS := 48
+const BRICKIFY_STUDS := 64
 const BRICKIFY_GONE := 8000
 
 var _failures: int = 0
