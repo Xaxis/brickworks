@@ -824,10 +824,9 @@ func _save() -> void:
 ## ask for it to be shown, and every answer names its tab and model, and
 ## says when others are open (api/mcp.js). mcp_sync_probe holds the two
 ## together under the limit.
-const CONNECTED_NOTE := ("These tools build in Brickworks, in a tab of the "
-	+ "person's browser that keeps working while they are here. Each answer "
-	+ "begins with the tab and model it acted on; tabs lists them all. When "
-	+ "the person names a tab or a model, call select_tab with it first.\n\n")
+const CONNECTED_NOTE := ("These tools build in the person's Brickworks tab, "
+	+ "which works on while they are here. Each answer names its tab and model. "
+	+ "When the person names a tab or model, call select_tab first.\n\n")
 
 
 func _model() -> String:
