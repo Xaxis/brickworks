@@ -603,6 +603,36 @@ func loops_out(inside: Dictionary, but: Link) -> Array[Link]:
 	return out
 
 
+## Every pinion standing in a rack (Racks.find), read once, where each
+## joins two bodies: a steering column's pinion in the rack on its track rod.
+func racks() -> Array[Racks.Pinion]:
+	if _racks_read:
+		return _racks
+	_racks_read = true
+	var entries: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if body_of.has(brick.id):
+			entries.append([brick.id, brick.part_id, brick.transform])
+	for mesh: Racks.Pinion in Racks.find(entries):
+		if int(body_of[mesh.rack]) != int(body_of[mesh.gear]):
+			_racks.append(mesh)
+	return _racks
+
+
+var _racks: Array[Racks.Pinion] = []
+var _racks_read: bool = false
+
+
+## The racks and pinions with one half in [param inside] (body -> true) and
+## the other out of it: a turn of one drives the other.
+func racks_out(inside: Dictionary) -> Array[Racks.Pinion]:
+	var out: Array[Racks.Pinion] = []
+	for mesh: Racks.Pinion in racks():
+		if inside.has(int(body_of[mesh.rack])) != inside.has(int(body_of[mesh.gear])):
+			out.append(mesh)
+	return out
+
+
 ## How [param body] is said: "the boom, 38 parts" — its sub-assembly's name
 ## when most of it is in one, else its heaviest part's name.
 func named(bodies_list: Array) -> String:

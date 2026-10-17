@@ -1433,6 +1433,14 @@
       "tests": []
     },
     {
+      "id": "lib:racks and their pinions",
+      "kind": "lib",
+      "entry": "src/assembly/racks.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "lib:real sets' pieces by what they are",
       "kind": "lib",
       "entry": "src/ai/real_snippets.gd",

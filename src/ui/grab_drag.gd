@@ -937,6 +937,8 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 		floor_ids: Dictionary, held: Dictionary) -> Array:
 	var clock: int = Time.get_ticks_msec()
 	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held)
+	# Pinions in racks, read here too, not on the press.
+	bodies.racks()
 	var took: Dictionary = {"bodies": Time.get_ticks_msec() - clock}
 	clock = Time.get_ticks_msec()
 	var judge := Balance.new()
@@ -1002,7 +1004,7 @@ func _tell_page() -> void:
 	var handles: Array = []
 	if grab == null and is_ready():
 		for body: Variant in _bodies.parent_link:
-			if handles.size() >= 4:
+			if handles.size() >= 8:
 				break
 			var spot: Variant = _handle(int(body), _bodies.parent_link[body])
 			if spot != null:

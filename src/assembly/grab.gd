@@ -51,6 +51,9 @@ const ON_THE_LINE := 6.5
 const BELOW_FLOOR := 4.0
 ## A loop's driver is turned on a grid of this, degrees.
 const LOOP_GRID := 0.25
+## A loop with no more moving parts than this has what they overlap where
+## they stand found at the press.
+const LOOP_AHEAD_PARTS := 80
 ## Two parts whose turned boxes are into each other by no more than this
 ## only touch, LDU: under a cell of the cover, 0.4 mm.
 const TOUCHING := 1.0
@@ -156,6 +159,16 @@ var _verifying_lo: float = 0.0
 var _verifying_hi: Variant = null
 ## Moving parts all within reach of the joint's line: not tested for room.
 var _on_the_line: Dictionary = {}
+## Moving parts round about a line through their own middle along the
+## joint's (a cone, a round brick, a wheel lying flat), off the joint's
+## line: brick id -> that middle, in the part's own frame. Turned about the
+## joint, such a part's shape is its own shape moved round, and it is tested
+## so ([method _shape_at]). Its turned cover was not it: 2 LDU cells
+## worked out turned, and the corners of the square they come from, reach
+## past a round part, and 4096's boom met the plate beside its cones' feet
+## by 1.2 LDU from 3.7° to 8.8° either way, though the cones swing away from
+## it.
+var _round_self: Dictionary = {}
 ## Parts met, and whether they overlapped the moving side where it stood.
 var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
@@ -208,7 +221,7 @@ func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
 	var ours: Dictionary = {}
 	for one: int in moving_bodies:
 		ours[one] = true
-	if not bodies.loops_out(ours, joined).is_empty():
+	if not bodies.loops_out(ours, joined).is_empty() or not bodies.racks_out(ours).is_empty():
 		return _refuse("loop", "that joint is in a closed loop")
 	state = "moves"
 	return _chosen()
@@ -228,23 +241,40 @@ func _chosen() -> String:
 	for one: int in moving_bodies:
 		ours[one] = true
 	var held: Array[Bodies.Link] = bodies.loops_out(ours, link)
+	# A pinion in a rack that does not move with it holds it too: the rack
+	# goes as the teeth say, and what the rack is joined to with it.
+	var geared: Array[Racks.Pinion] = bodies.racks_out(ours)
+	# Or a pinion the grabbed part turns through gears: a steering wheel and
+	# its bevels. Their meshes hold the loop too.
+	var couplings: Array = []
+	if geared.is_empty() and held.is_empty():
+		var offer: Array = _train_to_racks(ours)
+		couplings = offer[0]
+		geared.assign(offer[1])
 	linkage = null
-	if not held.is_empty():
+	var loop: Linkage = null
+	var other_words: String = ""
+	if not held.is_empty() or not geared.is_empty():
 		# Held at both ends: a closed loop, moved as it allows (Linkage).
-		var other: Bodies.Link = held[0]
+		other_words = held[0].words().trim_prefix("on ") if not held.is_empty() \
+			else "by %s" % geared[0].said(world)
 		if link.axis == Vector3.ZERO:
 			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
-		var loop := Linkage.read(bodies, link, body)
+		loop = Linkage.read(bodies, link, body, couplings)
+		if loop.gears_carried and held.is_empty() and bodies.racks_out(ours).is_empty():
+			# Its gears ride on joints the loop moves: not read so yet. Turned
+			# as before, its gears by their teeth and the rack left standing.
+			loop = null
+	if loop != null:
 		if not loop.why.is_empty():
 			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
-				bodies.named(moving_bodies), link.words().trim_prefix("on "),
-				other.words().trim_prefix("on "), loop.why])
+				bodies.named(moving_bodies), link.words().trim_prefix("on "), other_words, loop.why])
 		if not loop.can_move():
 			return _refuse("locked", ("Locked: this loop has no freedom. %s is held at both ends, "
 				+ "%s and %s, and %s closes neither a degree one way nor the other.") % [
-				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "),
-				other.words().trim_prefix("on "), loop.said()])
+				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "), other_words,
+				loop.said()])
 		linkage = loop
 		moving_bodies = loop.moved
 		ours.clear()
@@ -287,6 +317,18 @@ func _chosen() -> String:
 				var mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
 				if mesh != null and (them.transform * mesh.bounds).intersects(near_ball):
 					skip[other] = true
+	# A loop's few parts: what each overlaps where it stands is found now,
+	# not by the first frame's test, which worked out a wheel's turned cover
+	# (18 ms) to find its own tyre's neighbour forgiven.
+	if linkage != null and moving.size() <= LOOP_AHEAD_PARTS:
+		for key: int in moving:
+			var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
+			if boxes.is_empty():
+				continue
+			for other: int in builder.lattice.blockers_boxes(boxes, key, {}):
+				if not moving.has(other):
+					_rest_overlap[other] = true
+					skip[other] = true
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -305,10 +347,14 @@ func _chosen() -> String:
 	pivot = link.point
 	axis = link.axis.normalized()
 	mode = "ball" if axis == Vector3.ZERO else "turn"
+	if linkage != null and linkage.is_slide():
+		# Its loop lets it slide and not turn: a scissor lift's foot.
+		mode = "slide"
 	# An axle or a pin on the joint's own line sweeps only the holes it is in,
 	# and a part whose whole sweep round the line meets nothing but what it
 	# may press on can never meet anything: neither is tested again.
 	_on_the_line.clear()
+	_round_self.clear()
 	begin_took["reading"] = (Time.get_ticks_usec() - clock) / 1000
 	clock = Time.get_ticks_usec()
 	if mode == "turn":
@@ -327,6 +373,10 @@ func _chosen() -> String:
 				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
 			if furthest <= ON_THE_LINE * 1.42 or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
+				continue
+			var middle: Vector3 = mesh.bounds.get_center()
+			if _round_on(key, brick.transform * middle, axis):
+				_round_self[key] = middle
 	if linkage != null:
 		for n: int in linkage.links.size():
 			var joined: Bodies.Link = linkage.links[n]
@@ -481,6 +531,53 @@ func _gears() -> void:
 	_follow_driven()
 
 
+## The gear train the grabbed joint drives, when it reaches a pinion in a
+## rack that does not move with it (a steering wheel turning its pinion
+## through bevels): [the train's meshes, those pinions], else [[], []]. The
+## train is the gear reading's (GrabDrag reads it ahead), solved from the
+## grabbed joint as [method _gears] solves it.
+func _train_to_racks(ours: Dictionary) -> Array:
+	var none: Array = [[], []]
+	if shared_mechanism == null or link.axis == Vector3.ZERO or bodies.racks().is_empty():
+		return none
+	var gear_parts: Array = []
+	for key: int in moving:
+		if not Mechanism.spec_of(world.get_brick(key).part_id).is_empty():
+			gear_parts.append(key)
+	if gear_parts.is_empty():
+		return none
+	var train: Mechanism = shared_mechanism
+	var driven: int = -1
+	for key: int in [part] + gear_parts:
+		var here: int = train.body_of(key)
+		var turning_on: Mechanism.Joint = train.joint_of(here)
+		if turning_on != null and Bodies._same_line(turning_on.point, turning_on.way, link.point,
+				link.axis.normalized()):
+			driven = here
+			break
+	if driven < 0:
+		return none
+	var solved: Dictionary = train.solve({driven: 1.0})
+	if not bool(solved["ok"]):
+		return none
+	var turning: Dictionary = {}
+	for gear: Mechanism.Gear in train.gears:
+		if gear.body == driven or (gear.body != train.ground and not train.floating.has(gear.body)
+				and train.omega(gear.body).length() > 1e-6):
+			turning[gear.key] = true
+	var pinions: Array = []
+	for mesh: Racks.Pinion in bodies.racks():
+		if turning.has(mesh.gear) and not ours.has(int(bodies.body_of[mesh.rack])):
+			pinions.append(mesh)
+	if pinions.is_empty():
+		return none
+	var meshes: Array = []
+	for coupling: Mechanism.Coupling in train.couplings:
+		if coupling.how != "chain" and turning.has(coupling.one.key) and turning.has(coupling.other.key):
+			meshes.append(coupling)
+	return [meshes, pinions]
+
+
 ## What hangs on a driven body by a joint the gear reading does not read (a
 ## clip, a hinge, a tyre on its hub, an arm pinned to the gear) goes round
 ## with it: every part of the driven body's rigid body in [Bodies] and of
@@ -599,6 +696,9 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		keys.append_array(followers.keys())
 	var result: int = 1
 	var n: int = from
+	# Which parts' turned covers this test wants, worked out side by side
+	# first, when the whole test is asked at once.
+	var meets: Dictionary = _covers_ahead(at, keys) if budget == INF else {}
 	while n < keys.size():
 		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
 			result = -1
@@ -611,7 +711,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
-		var to: Transform3D = at[key]
+		var to: Transform3D = _shape_at(key, at[key])
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
@@ -622,7 +722,10 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		# turned box against each part near it: apart from all of them, or
 		# only touching, it meets nothing (a steering's wheel beside its
 		# mudguard cost 19 ms a test by its turned cover).
-		if not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
+		if meets.has(key):
+			if not bool(meets[key]):
+				continue
+		elif not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
 			continue
 		var part_began: int = Time.get_ticks_usec()
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
@@ -642,6 +745,71 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	frame_test_ms += test_ms
 	frame_tests += 1
 	return Vector2i(result, n if result == -1 else 0)
+
+
+## Where [param key]'s shape stands with the part at [param to]: for a part
+## round about its own middle's line along the joint's ([member _round_self]),
+## its shape as it stood moved so its middle is where the turn puts it; else
+## [param to].
+func _shape_at(key: int, to: Transform3D) -> Transform3D:
+	if not _round_self.has(key) or not rest.has(key):
+		return to
+	var middle: Vector3 = _round_self[key]
+	var stood: Basis = (rest[key] as Transform3D).basis
+	return Transform3D(stood, to * middle - stood * middle)
+
+
+## Whether each moving part at [param at] may meet anything ([method
+## _near_anything], [method _boxes_meet]): key -> bool, for [method _test]
+## to read rather than ask again. The turned covers of those that may, not
+## worked out yet, are worked out side by side on the engine's workers and
+## kept as [method Builder.boxes_for] keeps its own: a four-bar's frame asked
+## for its two wheels' and two arms' covers, 11 to 16 ms each, one after the
+## other. Nothing ahead on a build without threads, or for one cover.
+func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
+	var out: Dictionary = {}
+	# Not in a browser: its workers start when first asked, and the first
+	# drag's frame waited 1.3 s for them.
+	if OS.has_feature("web"):
+		return out
+	var wanted: Array = []   ## [mesh, basis]
+	var asked: Dictionary = {}
+	for key: int in keys:
+		if _on_the_line.has(key) or not at.has(key):
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var to: Transform3D = _shape_at(key, at[key])
+		var box: AABB = to * mesh.bounds
+		var may: bool = _near_anything(box) and _boxes_meet(key, mesh, to, box)
+		out[key] = may
+		if not may or not builder.turned_wanted(mesh, to.basis):
+			continue
+		var exact: String = "%d|%s" % [mesh.get_instance_id(), to.basis]
+		if not asked.has(exact):
+			asked[exact] = true
+			wanted.append([mesh, to.basis])
+	if wanted.size() < 2:
+		return out
+	var made: Array = []
+	made.resize(wanted.size())
+	var writing := Mutex.new()
+	var tasks: Array[int] = []
+	for n: int in wanted.size():
+		var mesh: Lbm.PartMesh = wanted[n][0]
+		var basis: Basis = wanted[n][1]
+		tasks.append(WorkerTasks.add(func() -> void:
+			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(mesh.boxes, Vector3i.ZERO, basis)
+			writing.lock()
+			made[n] = shape
+			writing.unlock(), true, "a grabbed part's turned cover"))
+	for task: int in tasks:
+		WorkerTasks.collect(task)
+	for n: int in wanted.size():
+		builder.keep_turned(wanted[n][0], wanted[n][1], made[n])
+	return out
 
 
 ## What [param key], its cover [param packed] at [param to], meets: nothing
@@ -751,9 +919,10 @@ static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
 
 ## Whether [param key] is round about the line through [param point] along
 ## [param way] and centred on it: a wheel, a tyre, a gear, a pulley, a round
-## plate on its axle. Turning on that line it sweeps only where it is, so it
-## is never tested (a tyre resting on the floor, turned with its axle, met
-## the floor by its turned cover's cells).
+## plate on its axle, a cone. Turning on that line it sweeps only where it
+## is, so it is never tested (a tyre resting on the floor, turned with its
+## axle, met the floor by its turned cover's cells); turning about a line
+## beside it, along that one, it is its own shape moved ([member _round_self]).
 func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
@@ -761,7 +930,7 @@ func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 		return false
 	var name: String = info.name.to_lower()
 	var round_name: bool = false
-	for word: String in ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round", "bush", "disk"]:
+	for word: String in ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round", "bush", "disk", "cone"]:
 		if name.contains(word):
 			round_name = true
 			break

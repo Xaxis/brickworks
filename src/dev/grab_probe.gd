@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab2-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab3-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -54,6 +54,8 @@ var _grab: GrabDrag
 var _store: ModelStore
 var _windowed: bool = false
 var _timings: Dictionary = {}
+## The last case reached its end.
+var _case_done: bool = false
 
 
 func _initialize() -> void:
@@ -106,13 +108,28 @@ func _run() -> void:
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
 	for case: Array in CASES:
-		if not only.is_empty() and not str(case[0]).contains(only):
+		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
+		# A case that stopped on a script error says so: it counted no
+		# failure, and what it left going broke the next one.
+		_case_done = false
+		var failed_before: int = _failures
 		await _case(case[0], case[1], case[2])
+		if not _case_done and _failures == failed_before:
+			_check("%s: the case ran to its end" % case[0], false)
 	if only.is_empty() or only == "loops" or only == "fourbar" or only == "engine":
 		for loop: Array in LOOPS:
 			if only.is_empty() or only == "loops" or only == loop[2]:
 				await _loop_case(loop[0], loop[1], loop[2])
+	if only.is_empty() or only == "racks":
+		var asked_racks: Array = []
+		for arg: String in args:
+			if arg.begins_with("--rack-set="):
+				asked_racks.append(["rack and pinion: %s" % arg.get_file(), "res://" + arg.trim_prefix("--rack-set=")])
+		for one: Array in (RACKS if asked_racks.is_empty() else asked_racks):
+			await _rack_case(one[0], one[1])
+	if only.is_empty() or only == "scissor":
+		await _scissor_case()
 	if only.is_empty() or only == "falling":
 		await _made_fall()
 	if only.is_empty() or only == "follow":
@@ -166,6 +183,7 @@ func _open(path: String) -> bool:
 	if not FileAccess.file_exists(path):
 		print("  (no %s: tools/omr.py fetch brings the sets; skipped)" % path)
 		return false
+	await _clean_slate()
 	_main.call("clear_model")
 	await _frames(3)
 	_main.call("_open", ProjectSettings.globalize_path(path))
@@ -186,6 +204,40 @@ func _open(path: String) -> bool:
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	return _world.brick_count() > 0
+
+
+## Until the view stops moving: framed from another side, it eases there
+## over some frames, and a point picked on the way is over another part by
+## the press.
+func _camera_still() -> void:
+	var was: Transform3D = _camera.global_transform
+	var still: int = 0
+	for _n: int in 240:
+		await process_frame
+		var now: Transform3D = _camera.global_transform
+		still = still + 1 if now.is_equal_approx(was) else 0
+		was = now
+		if still >= 3:
+			return
+
+
+## Nothing an earlier case left going: a button still down, a grab or a
+## drag not let go, a part in hand, a selection. A case that stopped half
+## way (the windmill's press once carried a part off and the case ended on
+## it) left a drag going, and the next case's press was not a grab.
+func _clean_slate() -> void:
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or bool(_main.get("_dragging_part")) \
+			or bool(_main.get("_grabbing")) or _grab.is_grabbing():
+		await _button(_last_screen, false)
+	if _grab.is_grabbing():
+		_grab.cancel()
+	if _builder.is_carrying():
+		_verbs.put_away()
+	_main.set("_dragging_part", false)
+	_main.set("_grabbing", false)
+	_main.set("_press_brick", 0)
+	_builder.clear_selection()
+	await _frames(2)
 
 
 func playback_stop() -> bool:
@@ -300,24 +352,60 @@ func _case(name: String, path: String, want: String) -> void:
 		return
 	if _windowed:
 		await _shot(name, "1_before")
+	# Still that part under the point, once the view has come to rest: framed
+	# from another side, the view was still moving, and the windmill's press
+	# landed on the frame beside its crank and carried it off.
+	await _camera_still()
+	for _settle: int in 6:
+		if _verbs.brick_at(press["screen"]) == int(press["brick"]):
+			break
+		await _frames(10)
+		var again: Dictionary = _press_point(bodies.members[child], bodies)
+		if again.is_empty():
+			again = _press_point(moving, bodies)
+		if not again.is_empty():
+			press = again
+	# What a grab of the part pressed reads, asked before the press: a press
+	# that carries it off takes it out of the model.
+	var pressed: int = int(press["brick"])
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	var trial_said: String = trial.begin(pressed, _world.get_brick(pressed).transform.origin)
+	trial_said += " " + (trial.why if not trial.why.is_empty() else trial.said)
+	if "--debug" in OS.get_cmdline_user_args():
+		_grab._ready_now()
+		var as_drag := Grab.new()
+		as_drag.world = _world
+		as_drag.builder = _builder
+		as_drag.library = _library
+		as_drag.bodies = _grab.get("_bodies")
+		as_drag.shared_mechanism = _grab.get("_mechanism")
+		print("    (as GrabDrag reads it: %s %s %s)" % [as_drag.begin(pressed,
+			_world.get_brick(pressed).transform.origin), as_drag.why, as_drag.said])
 	var screen: Vector2 = press["screen"]
+	var revision_before: int = _world.revision
+	var under_before: int = _verbs.brick_at(screen)
 	await _move(screen, 0)
+	var under_hover: int = _verbs.brick_at(screen)
 	await _button(screen, true)
+	var pressed_on: int = int(_main.get("_press_brick"))
+	var pressed_at: Vector2 = _main.get("_press_at")
+	var pressed_part: String = _world.get_brick(pressed_on).part_id if _world.get_brick(pressed_on) != null else "?"
 	# Past the slop: the drag is the grab's.
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var grab: Grab = _grab.grab
 	if grab == null:
-		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s)" % [
+		print("    (the press landed on #%d %s; under the point before %d, hovering %d, pressed %d at %s, event %s, main pressed at %s; revision %d at the case, %d before the press, %d now; playing %s)" % [
+			pressed_on, pressed_part, under_before, under_hover, int(press["brick"]), screen, _as_event(screen), pressed_at,
+			revision, revision_before, _world.revision, (_main.get("_playback") as BuildPlayback).is_playing()])
+		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s copies=%s locked=%s ready=%s selection=%s; GrabDrag said %s)" % [
 			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(),
-			_main.get("_press_brick"), _verbs.mode])
-		var trial := Grab.new()
-		trial.world = _world
-		trial.builder = _builder
-		trial.library = _library
-		trial.bodies = bodies
-		print("    (Grab.begin on #%d directly: %s %s)" % [int(press["brick"]),
-			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin),
-			trial.why])
+			_main.get("_press_brick"), _verbs.mode, _main.get("_press_copies"),
+			_builder.is_locked(pressed), _grab.is_ready(), _builder.selection.keys(), _grab.last_words])
+		print("    (Grab.begin on #%d directly, before the press: %s)" % [pressed, trial_said])
 	_check("%s: a drag on #%d is a grab on its joint, not a carry (%s)" % [name, int(press["brick"]),
 		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
 		and not _builder.is_carrying())
@@ -328,6 +416,8 @@ func _case(name: String, path: String, want: String) -> void:
 		grab.moving.size()], grab.moving.size() >= 1 and _same_set(grab.moving, moving)
 		or grab.moving.has(int(press["brick"])))
 	_check("%s: the model is untouched while it is dragged" % name, _world.revision == revision)
+	if not grab._round_self.is_empty():
+		await _round_parts_check(name, grab)
 	if want == "slide" and grab.can_slide():
 		await _slide_drag(name, grab)
 	elif grab.mode == "ball":
@@ -373,6 +463,46 @@ func _case(name: String, path: String, want: String) -> void:
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
 		_differs(before) == "none differs")
+	_case_done = true
+
+
+## A round part turned beside the joint's line (4096's cones under the boom)
+## is tested as its own shape moved round, not by its turned cover: still
+## held to the model. Pushed 4 LDU into the part beside it, it has no room;
+## where it stands, it has.
+func _round_parts_check(name: String, grab: Grab) -> void:
+	var pushed: int = 0
+	var met: int = 0
+	var said := PackedStringArray()
+	for key: int in grab._round_self:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var box: AABB = brick.transform * _library.parts[brick.part_id].bounds
+		for other: BrickWorld.Brick in _world.bricks():
+			if grab.skip.has(other.id) or grab.moving.has(other.id) or _store.scenery.has(other.id):
+				continue
+			var info: PartLibrary.PartInfo = _library.parts.get(other.part_id)
+			if info == null or not box.grow(1.0).intersects(other.transform * info.bounds):
+				continue
+			# Beside it, not under or over it: side by side along the line by
+			# more than a plate's height.
+			var mine: Vector2 = Grab._reach_along(brick.transform, _library.parts[brick.part_id].bounds, grab.axis)
+			var theirs: Vector2 = Grab._reach_along(other.transform, info.bounds, grab.axis)
+			if minf(mine.y, theirs.y) - maxf(mine.x, theirs.x) < 8.0:
+				continue
+			var gap: Vector3 = (other.transform * info.bounds).get_center() - box.get_center()
+			gap -= grab.axis * gap.dot(grab.axis)
+			if gap.length() < 0.5:
+				continue
+			var at: Dictionary = grab.rest.duplicate()
+			at[key] = Transform3D(brick.transform.basis, brick.transform.origin + gap.normalized() * 4.0)
+			pushed += 1
+			var meets: bool = not grab.has_room(at)
+			if meets:
+				met += 1
+			said.append("#%d %s into #%d %s%s" % [key, brick.part_id, other.id, other.part_id,
+				"" if meets else " (room)"])
+	_check("%s: a round part pushed 4 LDU into the part beside it meets it (%d of %d: %s), and where it stands has room"
+		% [name, met, pushed, ", ".join(said)], pushed > 0 and met == pushed and grab.has_room(grab.rest))
 
 
 var _last_screen := Vector2.ZERO
@@ -413,6 +543,10 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 						and not grab.has_room(grab.transforms_at(grab.angle + way * step))
 					stop_said = "room at %.1f°, none %s° on towards %.0f°" % [grab.angle,
 						Balance.tidy(step), target]
+					if grab.blocked_by.size() == 2:
+						stop_said += ": #%d %s meets #%d %s" % [int(grab.blocked_by[0]),
+							_world.get_brick(int(grab.blocked_by[0])).part_id, int(grab.blocked_by[1]),
+							_world.get_brick(int(grab.blocked_by[1])).part_id]
 		else:
 			var off: float = absf(grab.angle - _detented(grab, target))
 			if off > 10.0 and miss_said.is_empty():
@@ -817,7 +951,7 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 			high_s = maxf(high_s, float(form["s"]))
 		if not mid_shot and _windowed and absf(grab.angle) > (90.0 if kind == "engine" else 20.0):
 			mid_shot = true
-			await _shot(name.get_slice(":", 0), "2_mid")
+			await _clean_shot(name.get_slice(":", 0), "2_mid")
 	print("    (mode %s, angle %.1f, held %.1f LDU off the line, pressed #%d %s)" % [grab.mode, grab.angle,
 		((grab._hold - grab.pivot) - grab.axis * (grab._hold - grab.pivot).dot(grab.axis)).length(),
 		int(press["brick"]), _world.get_brick(int(press["brick"])).part_id])
@@ -830,6 +964,21 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		var throw: float = float(form["throw"])
 		_check("%s: the piston's stroke over a turn is twice the crank's throw (%.2f LDU, 2 x %.2f)" % [
 			name, high_s - low_s, throw], absf((high_s - low_s) - 2.0 * throw) < 0.2)
+	# A pinion in the loop's rack (8020's column on its track rod) turns as the
+	# rack's place along its teeth says: dragged from the wheel, the column
+	# turns.
+	for mesh: Racks.Pinion in linkage.racks:
+		var keyed := func(key: int) -> Transform3D:
+			return (grab.placed.get(key, grab.rest.get(key, _world.get_brick(key).transform)) as Transform3D) \
+				* (grab.rest.get(key, _world.get_brick(key).transform) as Transform3D).affine_inverse()
+		var against: Transform3D = (keyed.call(mesh.rack) as Transform3D).affine_inverse() \
+			* (keyed.call(mesh.gear) as Transform3D)
+		var psi: float = _turn_about(against.basis, mesh.axis)
+		var along: float = mesh.line.dot(against * mesh.centre - mesh.centre)
+		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 * signf(mesh.rate)
+		_check("%s: the pinion in the track rod's rack turned %.2f° with it, %.3f teeth: the rack %.2f LDU along them, the teeth %.2f"
+			% [name, psi, psi / 360.0 * mesh.teeth, along, by_teeth], absf(psi) > 1.0
+			and absf(along - by_teeth) < 0.1)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s; drawing and weighing the rest), %d solves"
 		% [frame_worst, _grab.worst_follow_ms, _grab.worst_follow_said, linkage.solves])
 	print("    the slowest part to test: %s" % grab.slowest_said)
@@ -844,7 +993,7 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	_check("%s: let go, it is one step to undo (%s)" % [name, _builder.history_words(1)[0]
 		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
 	if _windowed:
-		await _shot(name.get_slice(":", 0), "3_after")
+		await _clean_shot(name.get_slice(":", 0), "3_after")
 	_builder.undo()
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
@@ -995,6 +1144,583 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 	var got: float = rad_to_deg(atan2(axis.dot(from.cross(got_vec)), from.dot(got_vec)))
 	form["s"] = got
 	return absf(wrapf(got - want, -180.0, 180.0))
+
+
+# -- racks -----------------------------------------------------------------------------
+
+## Steerings of real sets whose track rod carries a rack that the pinion on the
+## steering column pushes: the rack and the two arms on their kingpins are a
+## four-bar, held by the pinion's teeth (Racks, Linkage).
+const RACKS: Array = [
+	["rack and pinion: the steering wheel pushes the track rod's rack", "res://vendor/omr/files/8841-1_Chassis.mpd"],
+	["rack and pinion: a racer's steering", "res://vendor/omr/files/8808-1.mpd"],
+	["rack and pinion: a column turning its pinion through bevels", "res://vendor/omr/files/8054-1_Model-C.mpd"],
+	["rack and pinion: a grader's column through bevels", "res://vendor/omr/files/8828-1_Grader.mpd"],
+]
+## Tried and not passing, run with --rack-set=: 5533-1_Tractor-Pulling's
+## steering stops at 24° against the model, and its arms stand 5.7° and
+## 9.2° off this planar hand form (its kingpins lean 3° and stand 6 LDU apart
+## in height).
+
+
+## Turn the steering by the pointer, as a person turns it: the steering
+## wheel where the set has one, else the pinion's column. Every frame, by
+## hand: the rack has gone a tooth (8 LDU) for every tooth of the pinion's
+## turn against it, and the arms stand where the track rod's two pins and
+## the rack's place along its teeth put them (two circles, and the rack's
+## place found along the near arm's turn by bisection).
+func _rack_case(name: String, path: String) -> void:
+	print("\n%s: %s" % [name, path.get_file()])
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var meshes: Array[Racks.Pinion] = bodies.racks()
+	_check("%s: a pinion stands in a rack (%s)" % [name, ", ".join(meshes.map(
+		func(m: Racks.Pinion) -> String: return "%s, %.2f LDU off its pitch line" % [m.said(_world), m.off]))],
+		not meshes.is_empty())
+	if meshes.is_empty():
+		return
+	var mesh: Racks.Pinion = meshes[0]
+	var pinion: int = int(bodies.body_of[mesh.gear])
+	var rack: int = int(bodies.body_of[mesh.rack])
+	# The four-bar: the near arm the rack's body hangs from, the far arm its
+	# other pin closes on, each on its kingpin.
+	var near_pin: Bodies.Link = bodies.parent_link.get(rack)
+	var near_arm: int = int(bodies.parent_of.get(rack, -1))
+	var far_pin: Bodies.Link = null
+	for link: Bodies.Link in bodies.touching.get(rack, []):
+		if bodies.closing.has(link):
+			far_pin = link
+	if near_pin == null or far_pin == null or not bodies.parent_link.has(near_arm):
+		_check("%s: the rack is a track rod on two arms" % name, false)
+		return
+	var far_arm: int = far_pin.other(rack)
+	var near_king: Bodies.Link = bodies.parent_link[near_arm]
+	var far_king: Bodies.Link = bodies.parent_link.get(far_arm)
+	print("    rack %s on its track rod (%s); arms %s and %s on kingpins at %s and %s; pinion %s on %s" % [
+		_world.get_brick(mesh.rack).part_id, bodies.named([rack]), bodies.named([near_arm]),
+		bodies.named([far_arm]), near_king.point, far_king.point if far_king != null else "?",
+		bodies.named([pinion]), bodies.parent_link[pinion].words() if bodies.parent_link.has(pinion) else "?"])
+	# Pressed where a person turns it: the steering wheel, else the column.
+	# The steering wheel only where turning it reaches the pinion by joints:
+	# a wheel that drives its pinion through gears is not read so yet.
+	var wheel_body: int = pinion
+	for brick: BrickWorld.Brick in _world.bricks():
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null or not info.name.contains("Steering Wheel") or not bodies.body_of.has(brick.id) \
+				or not bodies.parent_link.has(int(bodies.body_of[brick.id])):
+			continue
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		trial.shared_mechanism = _grab.get("_mechanism")
+		if trial.begin(brick.id, brick.transform.origin) == "moves" and trial.linkage != null \
+				and not trial.linkage.racks.is_empty():
+			wheel_body = int(bodies.body_of[brick.id])
+		else:
+			print("    (the steering wheel does not reach the pinion by joints or gears read here: the pinion's column is turned)")
+		break
+	# Else a column that turns the pinion's axle through gears (a pair of
+	# bevels under the steering wheel): turned there, the train's meshes hold
+	# the loop with the rack.
+	var train: Mechanism = _grab.get("_mechanism")
+	var ratio: float = NAN
+	var column_gear: int = 0
+	if wheel_body == pinion and train != null and not "--pinion" in OS.get_cmdline_user_args():
+		for coupling: Mechanism.Coupling in train.couplings:
+			var ends: Array = [coupling.one, coupling.other]
+			for k: int in 2:
+				var mine: Mechanism.Gear = ends[k]
+				var theirs: Mechanism.Gear = ends[1 - k]
+				if int(bodies.body_of.get(mine.key, -1)) != pinion or theirs.kind == "worm":
+					continue
+				var column: int = int(bodies.body_of.get(theirs.key, -1))
+				if column < 0 or column == pinion or not bodies.parent_link.has(column):
+					continue
+				var trial := Grab.new()
+				trial.world = _world
+				trial.builder = _builder
+				trial.library = _library
+				trial.bodies = bodies
+				trial.shared_mechanism = train
+				if trial.begin(theirs.key, _world.get_brick(theirs.key).transform.origin) == "moves" \
+						and trial.linkage != null and not trial.linkage.racks.is_empty() \
+						and not trial.linkage.gear_meshes.is_empty():
+					wheel_body = column
+					column_gear = theirs.key
+					ratio = float(theirs.teeth) / float(mine.teeth)
+					print("    the column that turns the pinion through gears: %s, %d teeth to the pinion axle's %d (%s)"
+						% [bodies.named([column]), theirs.teeth, mine.teeth, coupling.how])
+					break
+			if wheel_body != pinion:
+				break
+	var driver: Bodies.Link = bodies.parent_link[wheel_body]
+	var line: Vector3 = driver.axis.normalized()
+	# From above, everything over the arms and the track rod cut away, the
+	# steering wheel's column standing out of the cut.
+	var top: float = -INF
+	for key: int in bodies.parts_of([rack, near_arm, far_arm]):
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		top = maxf(top, (brick.transform * _library.parts[brick.part_id].bounds).end.y)
+	var steering: PackedInt64Array = bodies.parts_of([rack, near_arm, far_arm, pinion, wheel_body])
+	# Cut just over the pinion: the column, the seat and the body over the
+	# steering are cut away; the rack, its pinion, the arms and the wheels
+	# below the cut stay.
+	for key: int in [mesh.gear, column_gear]:
+		var gear_brick: BrickWorld.Brick = _world.get_brick(key)
+		if gear_brick != null:
+			top = maxf(top, (gear_brick.transform * _library.parts[gear_brick.part_id].bounds).end.y)
+	var cut := Plane(Vector3.UP, top + 1.0)
+	_world.set_cut(true, cut, false)
+	_builder.lattice.cut = cut
+	_camera.look_from(Vector3(0.05, 1.0, 0.12).normalized())
+	_frame_on(steering)
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	# The pinion's own rim first, where the column is turned: a part near
+	# the line, seen end on, reads as a slide along it.
+	var pressable: PackedInt64Array = bodies.members[wheel_body]
+	if wheel_body == pinion:
+		pressable = PackedInt64Array([mesh.gear]) + pressable
+	elif column_gear != 0:
+		pressable = PackedInt64Array([column_gear]) + pressable
+	var press: Dictionary = _press_off_line(pressable, driver.point, line)
+	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
+			Vector3(-1, 0.6, -1)]:
+		if not press.is_empty():
+			break
+		_camera.look_from(side.normalized())
+		_frame_on(steering)
+		await _frames(10)
+		press = _press_off_line(pressable, driver.point, line)
+	if press.is_empty():
+		_check("%s: the steering is under the pointer somewhere" % name, false)
+		return
+	if _windowed:
+		await _shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "1_before")
+	var screen: Vector2 = press["screen"]
+	var ray_from: Vector3 = _camera.ray_origin(screen)
+	var ray_way: Vector3 = _camera.ray_normal(screen).normalized()
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(ray_from, ray_way)
+	var slop := Vector2(0, 7)
+	if hit.is_valid():
+		var on: Vector3 = ray_from + ray_way * hit.distance
+		var tangent: Vector3 = line.cross(on - driver.point)
+		if tangent.length() > 0.5:
+			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
+	if slop.length() < 6.0 or is_nan(slop.x):
+		slop = Vector2(0, 7)
+	print("    pressed #%d %s at %s, first move %s" % [int(press["brick"]),
+		_world.get_brick(int(press["brick"])).part_id, screen, slop])
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null:
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		print("    (press state: grabbing=%s dragging=%s carrying=%s chain=%s said=%s press_brick=%s; Grab.begin on #%d %s directly: %s %s)" % [
+			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(), _grab.chain != null,
+			_grab.last_words,
+			_main.get("_press_brick"), int(press["brick"]), _world.get_brick(int(press["brick"])).part_id,
+			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin), trial.why])
+	_check("%s: a drag on the steering takes the loop and the rack (%s)" % [name, _grab.last_words
+		if grab == null else grab.said], grab != null and grab.state == "moves" and grab.linkage != null
+		and not grab.linkage.racks.is_empty())
+	if grab == null or grab.linkage == null:
+		await _button(screen, false)
+		return
+	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(),
+		grab.moving.size()])
+	var targets: Array = []
+	for n: int in range(1, 16):
+		targets.append(6.0 * n)
+	for n: int in range(14, -16, -1):
+		targets.append(6.0 * n)
+	var hold: Vector3 = grab._hold
+	var worst_teeth: float = 0.0
+	var worst_far: float = 0.0
+	var worst_near: float = 0.0
+	var checked: int = 0
+	var followed: int = 0
+	var frame_worst: float = 0.0
+	var mid_shot: bool = false
+	var table := PackedStringArray()
+	var keys: Dictionary = {"rack": mesh.rack, "gear": mesh.gear,
+		"near": int((bodies.members[near_arm] as PackedInt64Array)[0]),
+		"far": int((bodies.members[far_arm] as PackedInt64Array)[0])}
+	var form := {"phi": 0.0, "far": far_pin.point}
+	var turned_most: float = 0.0
+	var worst_ratio: float = 0.0
+	for target: float in targets:
+		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
+		var began: int = Time.get_ticks_usec()
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		if not grab.stopped:
+			followed += 1
+		turned_most = maxf(turned_most, absf(grab.angle))
+		var moved := func(which: String) -> Transform3D:
+			var key: int = keys[which]
+			return (grab.placed.get(key, grab.rest.get(key, _world.get_brick(key).transform)) as Transform3D) \
+				* (grab.rest.get(key, _world.get_brick(key).transform) as Transform3D).affine_inverse()
+		var w_rack: Transform3D = moved.call("rack")
+		var w_gear: Transform3D = moved.call("gear")
+		# The teeth: the pinion's turn against the rack, and where its centre
+		# now is along the rack's teeth, as the rack sees it.
+		var against: Transform3D = w_rack.affine_inverse() * w_gear
+		var psi: float = _turn_about(against.basis, mesh.axis)
+		if not is_nan(ratio):
+			# The column's own turn, as drawn, against the pinion's: the gears'
+			# teeth say how many times one goes round for the other.
+			var w_column: Transform3D = (grab.placed.get(column_gear, grab.rest.get(column_gear))
+				as Transform3D) * (grab.rest.get(column_gear) as Transform3D).affine_inverse()
+			var column_turn: float = _turn_about(w_column.basis, grab.axis)
+			worst_ratio = maxf(worst_ratio, absf(absf(psi) - ratio * absf(column_turn)))
+		var along: float = mesh.line.dot(w_rack.affine_inverse() * (w_gear * mesh.centre) - mesh.centre)
+		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 \
+			* signf(mesh.rate)
+		worst_teeth = maxf(worst_teeth, absf(along - by_teeth))
+		# The arms by hand: the near arm's turn as drawn, the far arm's from
+		# two circles, and the near arm's from the rack's place along its teeth.
+		var phi_near: float = _turn_about(moved.call("near").basis, near_king.axis.normalized())
+		var phi_far: float = _turn_about(moved.call("far").basis, far_king.axis.normalized())
+		var hand: Dictionary = _steer_by_hand(near_king, far_king, near_pin, far_pin, mesh, by_teeth, form)
+		if not hand.is_empty():
+			checked += 1
+			worst_near = maxf(worst_near, absf(wrapf(phi_near - float(hand["near"]), -180.0, 180.0)))
+			worst_far = maxf(worst_far, absf(wrapf(phi_far - float(hand["far"]), -180.0, 180.0)))
+			if absf(fmod(target, 30.0)) < 0.01 and not grab.stopped:
+				table.append("      steering %+6.1f°: pinion %+6.1f° in the rack, %+.3f teeth, rack %+6.2f LDU (teeth %+6.2f); arms %+6.2f° and %+6.2f° (by hand %+6.2f°, %+6.2f°)"
+					% [grab.angle, psi, psi / 360.0 * mesh.teeth, along, by_teeth, phi_near, phi_far,
+					float(hand["near"]), float(hand["far"])])
+		if not mid_shot and _windowed and absf(grab.angle) > 40.0:
+			mid_shot = true
+			await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "2_mid")
+	for row: String in table:
+		print(row)
+	_check("%s: the steering follows the pointer in %d frames, %s, as far as %.1f°" % [name, followed,
+		grab.mode, turned_most], followed >= 6 and grab.mode == "turn" and turned_most >= 30.0)
+	if not is_nan(ratio):
+		_check("%s: the pinion turns %.3f of the column's turn, by the gears' teeth, to %.3f°" % [name, ratio,
+			worst_ratio], worst_ratio < 0.1)
+	_check("%s: in %d poses the rack has gone a tooth, 8 LDU, for each tooth of the pinion's turn, to %.3f LDU"
+		% [name, checked, worst_teeth], checked >= 6 and worst_teeth < 0.1)
+	_check("%s: the near arm turns as the rack's place along its teeth says, by hand, to %.3f°" % [name,
+		worst_near], checked >= 6 and worst_near < 0.1)
+	_check("%s: the far arm stands where the track rod's pins put it, by hand, to %.3f°" % [name, worst_far],
+		checked >= 6 and worst_far < 0.1)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, _grab.worst_follow_said, grab.linkage.solves])
+	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	_world.set_cut(false)
+	_builder.lattice.cut = Plane()
+
+
+## A picture of the pose with the drag's balance mark (the support and the
+## centre of mass on the floor) hidden for it: the links read.
+func _clean_shot(name: String, when: String) -> void:
+	var mark: Node3D = _grab.get("_mark")
+	var was: bool = mark != null and mark.visible
+	if mark != null:
+		mark.visible = false
+	await _shot(name, when)
+	if mark != null:
+		mark.visible = was
+
+
+## A steering's arms by hand, in the plane square to its kingpins, for the
+## rack [param s] LDU along its teeth against the pinion: the near arm turned
+## by phi carries the track rod's near pin round its kingpin; the far pin is
+## where the circle about the far kingpin meets the circle about the near
+## pin at the track rod's length; the track rod's turn follows from its two
+## pins, and with it where the pinion's centre is along the rack. phi is
+## found by bisection where that is [param s]. {near, far} degrees, or {}.
+func _steer_by_hand(near_king: Bodies.Link, far_king: Bodies.Link, near_pin: Bodies.Link,
+		far_pin: Bodies.Link, mesh: Racks.Pinion, s: float, form: Dictionary) -> Dictionary:
+	var k: Vector3 = near_king.axis.normalized()
+	var flat := func(v: Vector3) -> Vector3:
+		return v - k * v.dot(k)
+	var a_n: Vector3 = near_king.point
+	var a_f: Vector3 = far_king.point
+	var p_n0: Vector3 = near_pin.point
+	var p_f0: Vector3 = far_pin.point
+	var r_f: float = (flat.call(p_f0 - a_f) as Vector3).length()
+	var rod: float = (flat.call(p_f0 - p_n0) as Vector3).length()
+	# Where the rack stands along its teeth with the near arm at phi:
+	# [s, far arm's turn, the far pin], or [] where the circles do not meet.
+	var at := func(phi: float) -> Array:
+		var p_n: Vector3 = _about(a_n, k, phi) * p_n0
+		var centre: Vector3 = a_f + k * k.dot(p_n - a_f)
+		var d_vec: Vector3 = flat.call(p_n - a_f)
+		var d: float = d_vec.length()
+		if d < 0.001 or d > r_f + rod or d < absf(r_f - rod):
+			return []
+		var x: float = (r_f * r_f - rod * rod + d * d) / (2.0 * d)
+		var y: float = sqrt(maxf(r_f * r_f - x * x, 0.0))
+		var ex: Vector3 = d_vec / d
+		var ey: Vector3 = k.cross(ex)
+		var one: Vector3 = centre + ex * x + ey * y
+		var two: Vector3 = centre + ex * x - ey * y
+		var prev: Vector3 = form["far"]
+		var p_f: Vector3 = one if one.distance_to(prev) < two.distance_to(prev) else two
+		var from: Vector3 = flat.call(p_f0 - p_n0)
+		var to: Vector3 = flat.call(p_f - p_n)
+		var rho: float = atan2(k.dot(from.cross(to)), from.dot(to))
+		# The track rod placed: p_n0 to p_n, turned rho about k.
+		var rod_at: Transform3D = Transform3D(Basis.IDENTITY, p_n) * Transform3D(Basis(k, rho), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -p_n0)
+		var seen: Vector3 = rod_at.affine_inverse() * mesh.centre
+		var far_from: Vector3 = flat.call(p_f0 - a_f)
+		var far_to: Vector3 = flat.call(p_f - a_f)
+		return [mesh.line.dot(seen - mesh.centre), rad_to_deg(atan2(k.dot(far_from.cross(far_to)),
+			far_from.dot(far_to))), p_f]
+	# s as the near arm turns is monotonic near where it stands: bisect
+	# between the last answer less and more 40°.
+	var lo: float = float(form["phi"]) - 40.0
+	var hi: float = float(form["phi"]) + 40.0
+	var f_lo: Array = at.call(lo)
+	var f_hi: Array = at.call(hi)
+	if f_lo.is_empty() or f_hi.is_empty() or signf(float(f_lo[0]) - s) == signf(float(f_hi[0]) - s):
+		return {}
+	for _round: int in 60:
+		var mid: float = (lo + hi) * 0.5
+		var f_mid: Array = at.call(mid)
+		if f_mid.is_empty():
+			return {}
+		if signf(float(f_mid[0]) - s) == signf(float(f_lo[0]) - s):
+			lo = mid
+			f_lo = f_mid
+		else:
+			hi = mid
+	var phi: float = (lo + hi) * 0.5
+	var found: Array = at.call(phi)
+	if found.is_empty():
+		return {}
+	form["phi"] = phi
+	form["far"] = found[2]
+	return {"near": phi, "far": float(found[1])}
+
+
+# -- a scissor lift ----------------------------------------------------------------------
+
+## A scissor lift of two stages, made here: four Technic beams 9 (40490) crossed
+## and pinned at their middles and ends (pins with friction, 2780), one foot
+## pinned to a beam 15 on the floor, the other on a cross block (6536)
+## that slides along an axle 8 (3707) held at its ends by two more cross
+## blocks pinned to a second beam 15; the two beams 15 held apart by three
+## beams 5 between them, each pinned to the next by two pins. Its links
+## stand at 45° to the floor: each stage is 160 LDU across its pins (beam
+## 9's end holes) and 113.1 high.
+const SCISSOR_LINK := 160.0
+const SCISSOR_ANGLE := 45.0
+
+
+## The made lift as an LDraw file: y down, the lift in the x-y plane, its
+## fixed foot at the origin. Positions worked out from the link and angle.
+static func _made_scissor() -> String:
+	var c: float = cos(deg_to_rad(SCISSOR_ANGLE))
+	var s: float = sin(deg_to_rad(SCISSOR_ANGLE))
+	var across: float = SCISSOR_LINK * c
+	var high: float = SCISSOR_LINK * s
+	var lines := PackedStringArray(["0 A scissor lift, made by grab_probe", "0 Name: made_scissor.ldr", ""])
+	var put := func(colour: int, at: Vector3, rows: Array, part: String) -> void:
+		lines.append("1 %d %s %s %s %s %s.dat" % [colour, _num(at.x), _num(at.y), _num(at.z),
+			" ".join(rows.map(func(v: float) -> String: return _num(v))), part])
+	# A beam along d in the x-y plane, its holes along z.
+	var beam := func(colour: int, middle: Vector3, d: Vector2, part: String) -> void:
+		put.call(colour, middle, [-d.y, 0.0, d.x, d.x, 0.0, d.y, 0.0, 1.0, 0.0], part)
+	var up_right := Vector2(c, -s)
+	var up_left := Vector2(-c, -s)
+	beam.call(4, Vector3(across / 2.0, -high / 2.0, 0.0), up_right, "40490")
+	beam.call(14, Vector3(across / 2.0, -high / 2.0, 20.0), up_left, "40490")
+	beam.call(4, Vector3(across / 2.0, -high * 1.5, 0.0), up_right, "40490")
+	beam.call(14, Vector3(across / 2.0, -high * 1.5, 20.0), up_left, "40490")
+	# Pins along z.
+	var along_z: Array = [0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0]
+	for at: Vector3 in [Vector3(across / 2.0, -high / 2.0, 10.0), Vector3(across / 2.0, -high * 1.5, 10.0),
+			Vector3(across, -high, 10.0), Vector3(0.0, -high, 10.0), Vector3(0.0, 0.0, -10.0),
+			Vector3(0.0, 0.0, 50.0), Vector3(140.0, 0.0, 50.0)]:
+		put.call(0, at, along_z, "2780")
+	# The floor: two beams 15 along x, three beams 5 between them at the far
+	# end, each layer pinned to the next twice.
+	var along_x_holes_z: Array = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+	put.call(71, Vector3(140.0, 0.0, -20.0), along_x_holes_z, "32278")
+	put.call(71, Vector3(140.0, 0.0, 60.0), along_x_holes_z, "32278")
+	for z: float in [0.0, 20.0, 40.0]:
+		put.call(71, Vector3(240.0, 0.0, z), along_x_holes_z, "32316")
+	for z: float in [-10.0, 10.0, 30.0, 50.0]:
+		for x: float in [220.0, 260.0]:
+			put.call(0, Vector3(x, 0.0, z), along_z, "2780")
+	# The rail, an axle 8 along x held by two cross blocks at its ends.
+	put.call(72, Vector3(80.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "3707")
+	put.call(1, Vector3(0.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "6536")
+	put.call(1, Vector3(140.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "6536")
+	# The sliding foot: a cross block on the rail by its pin hole, an axle 2
+	# in its axle hole through the beam's end.
+	put.call(2, Vector3(across, 0.0, 40.0), [0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0], "6536")
+	put.call(72, Vector3(across, 0.0, 30.0), along_z, "3704")
+	return "\n".join(lines) + "\n"
+
+
+static func _num(v: float) -> String:
+	var out: String = "%.4f" % v
+	while out.contains(".") and (out.ends_with("0") or out.ends_with(".")):
+		out = out.substr(0, out.length() - 1)
+	return "0" if out == "-0" else out
+
+
+## Raise the made lift by sliding its foot along the rail with the pointer:
+## every frame the top stands 2·L·sin θ above the floor pin, θ where the
+## foot's distance from the fixed foot, L·cos θ, puts it (L = 160); by hand,
+## sqrt(L² − x²) a stage.
+func _scissor_case() -> void:
+	var name: String = "scissor lift"
+	print("\n%s: a made one, two stages of beams 9 at %.0f°" % [name, SCISSOR_ANGLE])
+	var path: String = OUT.path_join("made_scissor.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(_made_scissor())
+	file.close()
+	if not await _open(path):
+		_check("%s: the made lift opens" % name, false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var across: float = SCISSOR_LINK * cos(deg_to_rad(SCISSOR_ANGLE))
+	var high: float = SCISSOR_LINK * sin(deg_to_rad(SCISSOR_ANGLE))
+	# The foot that slides (the cross block at the beam's end), and the top
+	# link's top pin hole, in the app's axes (LDraw's y and z turned over).
+	# Opened, the model may stand elsewhere than the file put it: found from
+	# its one axle 8, at (80, 20, -40) in the file.
+	var shift := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3707":
+			shift = brick.transform.origin - Vector3(80.0, 20.0, -40.0)
+	var foot: int = 0
+	var top_link: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "6536" and brick.transform.origin.distance_to(shift + Vector3(across, 0.0, -40.0)) < 1.0:
+			foot = brick.id
+		if brick.part_id == "40490" and brick.transform.origin.distance_to(
+				shift + Vector3(across / 2.0, high * 1.5, 0.0)) < 1.0:
+			top_link = brick.id
+	if foot == 0 or top_link == 0:
+		_check("%s: the made lift has its sliding foot and its top link" % name, false)
+		return
+	var foot_body: int = int(bodies.body_of[foot])
+	var joint: Bodies.Link = bodies.parent_link.get(foot_body)
+	print("    the foot: %s %s, slides %s" % [bodies.named([foot_body]), joint.words() if joint != null else "?",
+		joint.slide if joint != null else Vector2.ZERO])
+	var top_at: Vector3 = shift + Vector3(across, high * 2.0, 0.0)
+	_camera.look_from(Vector3(0.35, 0.3, 1.0).normalized())
+	_frame_on(PackedInt64Array())
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(bodies.members[foot_body], bodies)
+	if press.is_empty():
+		_check("%s: the sliding foot is under the pointer" % name, false)
+		return
+	if _windowed:
+		await _shot("scissor_lift", "1_before")
+	var screen: Vector2 = press["screen"]
+	var rail := Vector3.RIGHT
+	var first: Vector2 = (_camera.unproject_position(_world.get_brick(foot).transform.origin - rail * 3.0)
+		- _camera.unproject_position(_world.get_brick(foot).transform.origin)).normalized() * 7.0
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + first, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	_check("%s: a drag on the foot along its rail slides it, the lift's loops with it (%s)" % [name,
+		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
+		and grab.linkage != null and grab.mode == "slide")
+	if grab == null or grab.linkage == null or grab.mode != "slide":
+		await _button(screen, false)
+		return
+	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(), grab.moving.size()])
+	var hold: Vector3 = grab._hold
+	var way: float = signf(grab.axis.dot(rail))
+	var targets: Array = []
+	for n: int in range(1, 21):
+		targets.append(-4.0 * n)
+	for n: int in range(19, -2, -1):
+		targets.append(-4.0 * n)
+	var worst: float = 0.0
+	var followed: int = 0
+	var worst_follow: float = 0.0
+	var checked: int = 0
+	var frame_worst: float = 0.0
+	var mid_shot: bool = false
+	var table := PackedStringArray()
+	for target: float in targets:
+		var at_screen: Vector2 = _camera.unproject_position(hold + rail * target)
+		var began: int = Time.get_ticks_usec()
+		await _move(at_screen, MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		# Drawn: the foot's place along the rail and the top's height.
+		if not grab.stopped:
+			followed += 1
+			worst_follow = maxf(worst_follow, absf(grab.shift * grab.axis.dot(rail) - target))
+		var foot_now: Transform3D = grab.placed.get(foot, _world.get_brick(foot).transform)
+		var x: float = foot_now.origin.x - shift.x
+		var top_now: Transform3D = (grab.placed.get(top_link, _world.get_brick(top_link).transform) as Transform3D) \
+			* _world.get_brick(top_link).transform.affine_inverse()
+		var h: float = (top_now * top_at).y - shift.y
+		if absf(x) >= SCISSOR_LINK:
+			continue
+		var by_hand: float = 2.0 * sqrt(SCISSOR_LINK * SCISSOR_LINK - x * x)
+		worst = maxf(worst, absf(h - by_hand))
+		checked += 1
+		if absf(fmod(target, 20.0)) < 0.01:
+			table.append("      foot %6.2f LDU from the fixed one (%+6.2f): links at %5.2f°, top %7.2f LDU high; by hand 2·sqrt(160² − %.2f²) = %7.2f"
+				% [x, grab.shift, rad_to_deg(acos(x / SCISSOR_LINK)), h, x, by_hand])
+		if not mid_shot and _windowed and h > high * 2.0 + 60.0:
+			mid_shot = true
+			await _clean_shot("scissor_lift", "2_raised")
+	for row: String in table:
+		print(row)
+	_check("%s: the foot follows the pointer along its rail in %d frames, to %.2f LDU" % [name, followed,
+		worst_follow], followed >= 20 and worst_follow < 1.0)
+	_check("%s: in %d poses the top stands where the foot's place puts it, 2·sqrt(L² − x²), to %.3f LDU"
+		% [name, checked, worst], checked >= 20 and worst < 0.1)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, _grab.worst_follow_said, grab.linkage.solves])
+	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot("scissor_lift", "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
 
 
 # -- a model that tips -------------------------------------------------------------------

@@ -13,7 +13,10 @@
 // is on the page) and drags it up: the arm turns on its hinge while the
 // button is down, the status bar says what moves and how the model stands,
 // and letting go keeps it as one step. Ctrl+Z puts it back where it was. Then
-// the turret is dragged round on its turntable, carrying the arm. Fails if
+// the turret is dragged round on its turntable, carrying the arm. Beside it a
+// four-bar lies flat, two cranks pinned to a beam 15 and a coupler across
+// their ends: a crank dragged round turns the other one by the loop (Linkage),
+// as a steering's arms turn. Fails if
 // nothing turns, the arm does not come back on undo, the page stops answering
 // for longer than --stall ms (default 250) during a drag, or a script error
 // reaches the console. Pictures of each step in OUT, and the app's own frame
@@ -46,6 +49,16 @@ writeFileSync(model, [
   "1 15 0 -32 0 1 0 0 0 1 0 0 0 1 3937.dat",
   "1 4 0 -32 0 1 0 0 0 1 0 0 0 1 3938.dat",
   "1 4 0 -40 -50 0 0 1 0 1 0 -1 0 0 3795.dat",
+  // The four-bar, flat beside it: a beam 15 the frame, two beams 5 its
+  // cranks pinned 120 apart, a beam 7 the coupler across their far ends.
+  "1 71 200 0 0 1 0 0 0 1 0 0 0 1 32278.dat",
+  "1 14 240 -20 -60 0 0 1 0 1 0 -1 0 0 32316.dat",
+  "1 14 240 -20 60 0 0 1 0 1 0 -1 0 0 32316.dat",
+  "1 4 280 -40 0 1 0 0 0 1 0 0 0 1 32524.dat",
+  "1 0 200 -10 -60 0 -1 0 1 0 0 0 0 1 3673.dat",
+  "1 0 200 -10 60 0 -1 0 1 0 0 0 0 1 3673.dat",
+  "1 0 280 -30 -60 0 -1 0 1 0 0 0 0 1 3673.dat",
+  "1 0 280 -30 60 0 -1 0 1 0 0 0 0 1 3673.dat",
   "",
 ].join("\n"));
 
@@ -157,7 +170,7 @@ try {
   let opened = null;
   for (let attempt = 0; attempt < 3 && !opened; attempt++) {
     await open(model);
-    opened = await until(state, (s) => s.bricks === 6 && !/arriving/.test(s.said || ""), 240);
+    opened = await until(state, (s) => s.bricks === 14 && !/arriving/.test(s.said || ""), 240);
     if (!opened) await page.waitForTimeout(15000);
   }
   check(Boolean(opened), `the crane opened: ${(await state()).bricks} parts`);
@@ -211,6 +224,37 @@ try {
     timings.turret = { frames: kept && kept.frames, mean_ms: kept && kept.mean_ms,
       worst_ms: kept && kept.worst_ms, stall_ms: round.stall };
     await shot("5_turret_after.png");
+  }
+
+  // The four-bar: a crank taken by the mouse and dragged round; the loop
+  // turns the other crank and carries the coupler.
+  // A crank is said by the part under its handle: the beam 5 or its pin.
+  const isCrank = (h) => h.kind === "pin" && (h.part === "32316" || h.part === "3673");
+  const bars = await until(grab, (g) => !g.grabbing && (g.handles || []).some(isCrank), 20);
+  const crank = bars && bars.handles.find(isCrank);
+  if (check(Boolean(crank), `a crank of the four-bar is there to take hold of `
+    + `(${bars ? bars.handles.map((h) => `${h.part} on its ${h.kind}`).join(", ") : "none"})`)) {
+    const others = (h) => h.kind === "pin" && h.id !== crank.id;
+    const before = bars.handles.filter(others);
+    const loop = await drag(crank, { x: 60, y: -90 }, 24, "6_fourbar_mid_drag.png");
+    check(Boolean(loop.mid && loop.mid.grabbing && /loop/.test(loop.mid.what || "")
+      && Math.abs(loop.mid.angle || 0) > 5),
+      `the crank turns and takes its loop: ${loop.mid && loop.mid.angle}° (${loop.mid && loop.mid.what})`);
+    const kept = await until(grab, (g) => !g.grabbing && /loop/.test(g.said || ""), 10);
+    check(Boolean(kept), `and is kept: "${kept && kept.said}"`);
+    check(loop.stall <= stallLimit, `the page answered throughout the four-bar's drag: its longest wait ${loop.stall} ms`);
+    timings.fourbar = { frames: kept && kept.frames, mean_ms: kept && kept.mean_ms,
+      worst_ms: kept && kept.worst_ms, stall_ms: loop.stall };
+    console.log(`      the app's own cost of a four-bar frame: mean ${kept && kept.mean_ms} ms, worst `
+      + `${kept && kept.worst_ms} ms over ${kept && kept.frames} frames`);
+    const after = ((await until(grab, (g) => (g.handles || []).length >= 2, 10)) || { handles: [] }).handles;
+    const moved = before.filter((h) => {
+      const now = after.find((a) => a.id === h.id);
+      return now && Math.hypot(now.x - h.x, now.y - h.y) > 6;
+    });
+    check(moved.length >= 1,
+      `the loop carried what the crank does not hold: ${moved.map((h) => h.part).join(", ") || "nothing"} moved`);
+    await shot("7_fourbar_after.png");
   }
 } catch (trouble) {
   check(false, `stopped: ${trouble.message}`);
