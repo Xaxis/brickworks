@@ -72,6 +72,20 @@ the offset. Putting back is one more undo step.
 A file saved, autosaved or exported while a section is out is written with
 the section in place. Other programs never see a model pulled apart.
 
+## Not holding the window
+
+A model of 600 parts or more is read on a worker, as the build check is:
+from copies of the model and its lattice, every part's geometry loaded and
+the tables filled first, the library holding new arrivals aside. The
+Working bar says "Suggesting sections… 3 of 8" with Cancel; what is left
+on the window's thread is paced. On 10179-1 (5,266 parts, 15 to 16 s on
+the desktop) the window's own work in any frame was at most 35 ms (the
+two copies), and a new suggestion redraws only its own rows of the model
+tree (29 ms; the whole tree of 392 sub-assemblies was 62). 500 to 640
+frames were drawn meanwhile. On this box, loaded to 40, the longest of
+them was 94 to 142 ms, as long as idle frames of the same model were (69
+to 173 ms). Over MCP the call becomes a job past 20 s, as every tool does.
+
 ## The exploded view
 
 `Shift+Y` draws every section apart, each lifted by its place in the
@@ -79,6 +93,14 @@ stack, lowest least, and spread out from the middle, over 0.6 s, and
 back. Only the picture moves (`BrickWorld.set_drawn`, as Simulate uses):
 the model, the history and the file do not change. A change to the model
 puts it back together at once.
+
+The view frames everything as it is drawn apart, and goes back to where
+it was after. A click picks what is drawn under the pointer: the lattice
+is asked once for each way the sections moved, the ray moved back by it,
+and the nearest part moved that way wins. So a section is chosen where it
+is seen, at the level the sections are in, and Evaluate the section… and
+`Y` work on it. The selection's outline is drawn round the parts where
+they are drawn.
 
 ## Evaluating a section
 
@@ -149,12 +171,9 @@ to the model as it opened. Pictures in `bench/results/sections-2026-10-16/web/`.
 - Interlocked models. A Technic frame or a UCS hull is sub-models that
   need each other both ways; 3 of the Corvette's 5 sections and 21 of
   10179-1's 43 need a later one. No cut along the build order fixes that.
-- Big models wait. 10179-1 takes 9 to 15 s in one go on the desktop: the
-  planner's reading is not paced here as the Timeline's is.
 - Loose parts. The joint graph reads studs, pins, axles, clips and
   hinges, not a tile held from the side or a tyre on its rim. On 10179-1,
   254 parts it holds to nothing are a section of loose parts.
-- Clicks in the exploded view act on the parts where they stand.
 
 ## For other code
 

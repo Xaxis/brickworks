@@ -19,7 +19,12 @@
 ##   a section broken out moves by whole studs or bricks, as one undo step,
 ##     and the file written meanwhile is the file written before; put back,
 ##     every part is where it was to the bit; each way undoes and redoes;
-##   the exploded view moves what is drawn and nothing of the model;
+##   the exploded view moves what is drawn and nothing of the model, the view
+##     framed on it with every section in the window and back after, and a
+##     click on the highest section where it is drawn choosing it;
+##   on the big one, the window keeps drawing while it is worked out on a
+##     worker (its longest frame at most 100 ms, or no longer than 300 idle
+##     frames' of the same model on a loaded box), and Cancel stops it;
 ##   evaluate_section, suggest_sections and break_out_section over MCP say
 ##     the same, and the read-only ones leave the model as it was.
 ## With --shots, pictures of the suggestion in the tree, a section broken
