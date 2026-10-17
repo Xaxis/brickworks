@@ -479,10 +479,22 @@ and this branch, as committed, 3.2 to 3.3 s. Where it went, and what changed:
 Nothing is lost. The world each file opened into, written part by part
 (number, colour, transform, sub-model path, step, lattice cover, and the
 store's title, unshown parts, lift, floor and set, the sub-models' steps and
-the undo history), is byte for byte main's for both files. A build without
-threads (the "Web (no threads)" export) works the covers and the carried
-parts out on its one thread, as before; it gets the seat offer, the moved
-covers and the reading. The browser's open was not measured here.
+the undo history), is byte for byte main's for both files. The 54 files of
+the round trip (`tools/bench/cadtask.py`'s judge on `roundtrip_probe.gd`)
+judge exactly as the fidelity unit's did: 54 of 54 saved files the author's
+own, as LDraw and as .io. A build without threads (the "Web (no threads)"
+export) works the covers and the carried parts out on its one thread, as
+before; it gets the seat offer, the moved covers and the reading.
+
+In a browser (each build's threaded export served locally with every part,
+`cad_frames.mjs --only=open`, SwiftShader on this box; the web build has no
+LDraw library, so the parts a file carries are kept in it and not shown, on
+both), File, Open to the first parts down: 75969-1 2.6 and 3.1 s → 1.2 and
+1.4 s; 42082-1 6.7 s → 4.8 s (one run; in the second the count of parts
+fired early on both builds). The worst frame's own work: 2.4 to 2.9 s → 1.0
+to 1.1 s, and 6.3 s → 3.6 s. Until the page is quiet is still 8 to 60 s on
+either build, the parts outside the web pack arriving one by one and each
+drawn in software, and was no better here (`web-*/frames*.log`).
 
 The probe (`bigmodel`, in `tools/check.sh`) now also opens the two sets,
 where the checkout has `vendor/omr`, each once and first: 42082-1 must open
