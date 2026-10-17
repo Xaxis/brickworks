@@ -1587,7 +1587,7 @@ the two pins' distances to it (`grab_probe -- --only=actuators`):
 | set | actuator | travel drawn | ends | arm against the law of cosines |
 |---|---|---|---|---|
 | 42081-1 | 8 x 2 x 2 raising the digging arm | −56.00 to +40.00 LDU, 55 frames | out to the end exactly and no further; in, 4 LDU short of its end, the room test stops it (a 15265 meeting a 3811) | 73 poses, worst 0.0021°: the arm turned 29.67° at the outer end, 36.44° the other way at −56 |
-| 42024-1 | the small one, in a loop of 36 joints | −44.00 to +4.00 LDU, 16 frames | the room test stops it both ways first (a pin 6558 meeting a cross block 6536) | 49 poses, worst 0.0002° |
+| 42024-1 | the small one, in a loop of 36 joints | −44.00 to +4.00 LDU, 14 to 16 frames | the room test stops it both ways first (a pin 6558 meeting a cross block 6536) | 49 poses, worst 0.0002° |
 
 On 42024-1 the input turned a whole turn over MCP (`move_part degrees=360`)
 moved the rod 3.014 LDU against the 3.015 the count gives, and one undo put
@@ -1652,7 +1652,8 @@ of it, and it is the harness's: xvfb shows the picture through a software
 copy (`MESA_VK_WSI_DEBUG=sw`), which no display with a GPU swapchain has.
 The drag's worst is one steering arm's turned cover, 9.3 ms, where it stands
 in its brick. With the web export running beside it on the same box, the
-same drag measured 20.7 mean and 35.5 worst, the idle frame 16.0 and 30.8:
+same drag measured 20.7 mean and 35.5 worst, the idle frame 16.0 and 30.8
+(in the full run, a browser test beside it: 20.5 and 42.8, idle 18.3 and 33.1):
 the box's load moves the whole frame more than the drag does, so "under
 33 ms" holds on a quiet box and is not a promise under load. The probe now
 checks what the app controls: the drawing's share of a drag frame (under
