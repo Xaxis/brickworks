@@ -417,6 +417,100 @@ static func _key(ida: int, idb: int, rel: Transform3D) -> Array:
 ## [param rel] in a's frame: [depth, piece of a, piece of b, axis in a's
 ## frame], or [] when none do.
 static func _clash_local(a: Shape, b: Shape, rel: Transform3D, allowed: float = TAU) -> Array:
+	var hits: Array = _overlapping(a, b, rel, allowed, true)
+	return hits[0] if not hits.is_empty() else []
+
+
+## Every pair of pieces of two placed parts that overlap by more than TAU:
+## [depth, piece of a, piece of b, axis in the world from a towards b] each.
+## Where [method clash] stops at the first, this finds them all, to say
+## where on the two parts they meet.
+static func overlaps(a: Item, b: Item) -> Array:
+	if a == null or b == null or not a.shape.has_pieces() or not b.shape.has_pieces():
+		return []
+	var out: Array = []
+	for hit: Array in _overlapping(a.shape, b.shape, a.at.affine_inverse() * b.at, TAU, false):
+		out.append([hit[0], hit[1], hit[2], (a.at.basis * (hit[3] as Vector3)).normalized()])
+	return out
+
+
+## Directions over the sphere, a Fibonacci lattice of 128: every direction is
+## within 13.7 degrees of one of them, so a convex set reaching no further
+## than H along each reaches no further than H * [constant SPHERE_SLACK].
+static var _sphere := PackedVector3Array()
+const SPHERE_SLACK := 1.03
+## And about a line, 7.5 degrees apart: 1 / cos(7.5 degrees) = 1.0086.
+const ROUND_STEPS := 24
+const ROUND_SLACK := 1.009
+## A whole turn, in radians (TAU here is the overlap a build allows).
+const TAU_TURN := 2.0 * PI
+
+
+## How far the overlap of piece [param pa] of [param a] and piece [param pb]
+## of [param b] can reach from [param point], or from the line through it
+## along [param line] when that is not zero, in LDU. An upper bound, the least
+## of: how far either piece reaches (the overlap is inside both), and the two
+## pieces' common extent along directions all round.
+static func overlap_reach(a: Item, pa: int, b: Item, pb: int, point: Vector3,
+		line: Vector3 = Vector3.ZERO) -> float:
+	var mine: PackedVector3Array = _from(a, pa, point, line)
+	var theirs: PackedVector3Array = _from(b, pb, point, line)
+	var reach: float = minf(_furthest(mine), _furthest(theirs))
+	var ways := PackedVector3Array()
+	var slack: float = SPHERE_SLACK
+	if line == Vector3.ZERO:
+		if _sphere.is_empty():
+			var turn: float = PI * (3.0 - sqrt(5.0))
+			for n: int in 128:
+				var y: float = 1.0 - 2.0 * (float(n) + 0.5) / 128.0
+				var r: float = sqrt(1.0 - y * y)
+				_sphere.append(Vector3(cos(turn * n) * r, y, sin(turn * n) * r))
+		ways = _sphere
+	else:
+		var across: Vector3 = line.cross(Vector3.UP if absf(line.y) < 0.9 else Vector3.RIGHT).normalized()
+		var other: Vector3 = line.cross(across)
+		for n: int in ROUND_STEPS:
+			var angle: float = TAU_TURN * float(n) / float(ROUND_STEPS)
+			ways.append(across * cos(angle) + other * sin(angle))
+		slack = ROUND_SLACK
+	var most: float = 0.0
+	for way: Vector3 in ways:
+		most = maxf(most, minf(_extent(mine, way), _extent(theirs, way)))
+	return minf(reach, most * slack)
+
+
+## A piece's vertices in the world, from [param point] (and square to [param
+## line] when it is not zero).
+static func _from(item: Item, piece: int, point: Vector3, line: Vector3) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for v: Vector3 in (item.shape.pieces[piece] as Piece).verts:
+		var d: Vector3 = item.at * v - point
+		if line != Vector3.ZERO:
+			d -= line * d.dot(line)
+		out.append(d)
+	return out
+
+
+static func _furthest(verts: PackedVector3Array) -> float:
+	var far: float = 0.0
+	for v: Vector3 in verts:
+		far = maxf(far, v.length())
+	return far
+
+
+static func _extent(verts: PackedVector3Array, way: Vector3) -> float:
+	var most: float = -INF
+	for v: Vector3 in verts:
+		most = maxf(most, v.dot(way))
+	return most
+
+
+## The pairs of pieces that overlap by more than [param allowed], with b
+## placed at [param rel] in a's frame: [depth, piece of a, piece of b, axis in
+## a's frame] each, the first only when [param first].
+static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
+		first: bool) -> Array:
+	var hits: Array = []
 	var whole: Array = box_in(b.lo, b.hi, rel)
 	var b_lo: Vector3 = whole[0]
 	var b_hi: Vector3 = whole[1]
@@ -431,7 +525,7 @@ static func _clash_local(a: Shape, b: Shape, rel: Transform3D, allowed: float = 
 				and minf(p.hi.z, b_hi.z) - maxf(p.lo.z, b_lo.z) > allowed:
 			mine.append(i)
 	if mine.is_empty():
-		return []
+		return hits
 	for j: int in b.pieces.size():
 		var q: Piece = b.pieces[j]
 		var box: Array = box_in(q.lo, q.hi, rel)
@@ -454,8 +548,10 @@ static func _clash_local(a: Shape, b: Shape, rel: Transform3D, allowed: float = 
 					moved[v] = rel * q.verts[v]
 			var found: Array = _overlap(p, q, moved, basis, rel.origin, allowed)
 			if not found.is_empty():
-				return [found[0], i, j, found[1]]
-	return []
+				hits.append([found[0], i, j, found[1]])
+				if first:
+					return hits
+	return hits
 
 
 ## The depth two convex pieces overlap by, with its axis, when it is more

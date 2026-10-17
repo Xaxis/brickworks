@@ -1844,7 +1844,7 @@
       "kind": "lib",
       "label": "the check by real shapes",
       "entry": "src/ai/exact_check.gd",
-      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr)",
+      "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/joint_check_probe.gd, src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr, src/dev/joint_collisions.gd -- --out=F [SET.mpd ...], src/dev/replay_calls.gd -- --calls=F)",
       "area": "assistant"
     },
     {

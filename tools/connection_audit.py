@@ -546,6 +546,12 @@ def report(out: Path, write: Path | None, before: Path | None = None) -> int:
     say("excuses overlaps between parts already standing, and keeps them for this count")
     say("(`Assistant._standing_overlaps`).")
     say("")
+    say("Two parts a joint joins (a ball in its socket, a bar in its clip, a pin in its")
+    say("hole, a hinge's knuckles) meet inside the joint by their real shapes, and the")
+    say("check holds that to be the joint, not an overlap (`ExactCheck.at_joint`):")
+    say("`src/dev/joint_collisions.gd` counts those of real sets, and docs/DESIGN_SCORES.md")
+    say("(\"Technique: joints held by their real shapes\") says what they were and are.")
+    say("")
     say(f"- Overlapping pairs: {now['overlaps']:,}, of them {now['misread_overlaps']:,} with a "
         "part read off its place.")
     say(f"- Files with none: {sum(1 for r in now['checked'] if not r.get('overlaps')):,} of "

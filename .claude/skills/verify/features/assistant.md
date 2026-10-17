@@ -2313,7 +2313,25 @@ and a half of ten took 45-55 minutes on two or three workers).
 godot --headless --path . --script src/dev/exact_probe.gd        # one case a pair kind BrickBench refused, and builds that are right
 godot --headless --path . --script src/dev/exact_cost_probe.gd   # station (535) and Orthanc (9,427): as standing, an edit, a whole design
 godot --headless --path . --script src/dev/exact_dump.gd -- --out=F.jsonl A.mpd B.mpd   # pairs and pieces, to set beside verify.py
+godot --headless --path . --script src/dev/joint_check_probe.gd  # real sets' joints pass, joints turned too far and folded hinges do not
+godot --headless --path . --script src/dev/joint_collisions.gd -- --out=F.jsonl [--shard=K/N] [SET.mpd ...]   # real sets' jointed pairs the shapes collide, and which the check holds to be the joint
+godot --headless --path . --script src/dev/replay_calls.gd -- --calls=F.jsonl [--only=21,30]   # a session's design calls made again on this checkout's check
 ```
+
+**Joints** (`ExactCheck.at_joint`): two parts BrickNet's labels join by a ball, a
+clip on a bar, a hinge (a turntable's too), a pin or an axle, whose overlapping
+pieces all meet inside that joint's round (`JOINT_ROUND`: a ball 9.5 LDU from its
+middle, a bar 5.5 from its line, a pin or an axle 9.5, a hinge 9.5), are the joint,
+not a collision; never in a run kept to BrickBench's parts (`PartsOnly`), whose
+verify.py forgives nothing. A ball joint that collides away from the ball is said as
+turned too far, with the angle it clears at (`ExactCheck._ball_turned`). Proves it
+when: `joint_check_probe` ends "19 passed, 0 failed" (each real set's pair in it
+collides by its shapes, which the check refused before: the whale's Joint-8 ball,
+10283's towball, 10315's clip, 10261's universal joint, 10246's lever, 10276's pin);
+`joint_collisions` over the repository counts the jointed pairs left
+(docs/DESIGN_SCORES.md, "Technique: joints held by their real shapes"); and
+`replay_calls` on a session's calls (one {n, name, input} line each, taken from its
+transcript) repeats the refusals that session met, on the code it ran.
 
 Needs `assets/generated/exact/` (`tools/build_exact.py`, in features/pipeline.md);
 without it `exact_probe` says SKIPPED. The shapes must be built by `read_obj` as
