@@ -185,7 +185,16 @@ static func made_in_glass(library: PartLibrary, part: String, colour: int) -> bo
 
 
 ## Every brick of a shape, or a reason in [param trouble].
+## Whether a run's [param stop] (Brickify.Progress.stopped) says to stop.
+static func _halted(stop: Callable) -> bool:
+	return stop.is_valid() and bool(stop.call())
+
+
 static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Array:
+	# Asked between the steps, a run on a worker that was told to stop
+	# (Brickify.Progress) ends at the next: a 64-stud bunny's laying held
+	# the app's quit 18 s.
+	var stop: Callable = pattern.get("stop", Callable()) as Callable
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var origin := Vector3(float(at.get("x", 0.0)), float(at.get("y", 0.0)),
 		float(at.get("z", 0.0)))
@@ -253,6 +262,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				any = any or here >= 0
 			if any:
 				columns[Vector2i(x, z)] = column
+		if _halted(stop):
+			return []
 	# A plate of the shape with nothing of it above, below or beside is held
 	# by nothing, and a 1 x 1 laid there was reported floating on three of
 	# the four first bodies. Left out.
@@ -383,8 +394,12 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall,
 			"ms": {}}
 		var clock: int = Time.get_ticks_msec()
+		if _halted(stop):
+			return []
 		plan.round_runs()
 		last["ms"]["rounds"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		last["rounds"] = plan.round_made.size()
 		last["round_runs"] = plan.round_said
 		# Before the sides are turned out and the surface is sloped: the plates
@@ -452,13 +467,19 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 						roundi(100.0 * float(covered[facing]))])
 			shells = held
 			plan.under_shells(shells)
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		if surface != "none":
 			plan.surface(surface)
 		last["ms"]["surface"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		plan.lay()
 		last["ms"]["core"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		# A model standing on legs is pieces at its foot that meet the body above
 		# only side by side: pruned first from the foot, a bunny on its feet kept
@@ -467,6 +488,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		if stitched:
 			plan.stitch()
 		last["ms"]["stitch"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		# Pruned here, a teapot's spout and handle went without a word, and
 		# its coverage still read 98%.
 		if not keep_pieces:
