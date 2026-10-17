@@ -347,8 +347,9 @@ static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 			_unfetched.erase(key)
 	var job: Working.Job = null
 	var waited_from: int = Time.get_ticks_msec()
-	# Each pass fetches what the last one's files draw on: a subpart's own
-	# subparts. Bounded, as a reference that loops would not be.
+	# What the files fetched draw on is fetched as each arrives
+	# (_fetch_each); a pass after looks again, for what failed. Bounded, as a
+	# reference that loops would not be.
 	for _pass: int in 32:
 		var wanted := PackedStringArray()
 		for key: String in unreached_by(library, model):
@@ -367,24 +368,34 @@ static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 			for key: String in wanted:
 				_unfetched[key] = ["nowhere to fetch it from yet", true]
 			break
-		job.say("Fetching %d LDraw %s the parts it carries are drawn from…"
-			% [wanted.size(), "file" if wanted.size() == 1 else "files"])
-		await _fetch_each(tree, root, wanted)
+		await _fetch_each(tree, root, wanted, job)
 	if job != null:
 		job.end()
 
 
-## Fetch [param keys] from [param root], [constant MOST_FETCHES] at a time.
-## How many arrived.
+## Fetch [param keys] from [param root], [constant MOST_FETCHES] at a time,
+## and what each names that is not here yet as it arrives: a subpart's own
+## subparts, asked for at once rather than after the rest (a frame drawing a
+## big model in software can take seconds, and each request is polled once
+## a frame). [param job] says how many. How many arrived.
 ##
 ## Each answer is taken by a callable of its own, whenever it comes. Awaited
 ## one after another, an answer that came while an earlier one was awaited
 ## was never heard, and in a browser, where answers come in any order,
 ## 21321-1 waited for ever before it opened.
-static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray) -> int:
+static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray,
+		job: Working.Job = null) -> int:
 	var arrived: Array = [0]
 	var going: Array = [0]
 	var todo: Array = Array(keys)
+	var asked: Dictionary = {}
+	for key: String in keys:
+		asked[key] = true
+	var say: Callable = func() -> void:
+		if job != null:
+			job.say("Fetching %d LDraw %s the parts it carries are drawn from…"
+				% [asked.size(), "file" if asked.size() == 1 else "files"])
+	say.call()
 	while not todo.is_empty() or int(going[0]) > 0:
 		while not todo.is_empty() and int(going[0]) < MOST_FETCHES:
 			var key: String = todo.pop_front()
@@ -398,8 +409,14 @@ static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray) 
 					headers: PackedStringArray, body: PackedByteArray) -> void:
 				request.queue_free()
 				going[0] = int(going[0]) - 1
-				if _took(key, result, code, headers, body):
-					arrived[0] = int(arrived[0]) + 1, CONNECT_ONE_SHOT)
+				if not _took(key, result, code, headers, body):
+					return
+				arrived[0] = int(arrived[0]) + 1
+				for named: String in PartForge.unreached(PartForge.fetched(key)):
+					if not asked.has(named) and not _unfetched.has(named):
+						asked[named] = true
+						todo.append(named)
+						say.call(), CONNECT_ONE_SHOT)
 			if request.request(root + SOURCES_DIR + key.uri_encode().replace("%2F", "/")) != OK:
 				_unfetched[key] = ["the request could not start", true]
 				request.queue_free()

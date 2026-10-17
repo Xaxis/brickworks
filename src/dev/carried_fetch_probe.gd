@@ -3,6 +3,7 @@
 ##
 ##   godot --headless --path . --script src/dev/carried_fetch_probe.gd [-- FILE ...]
 ##   godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census OUT.json [FILE ...]
+##   godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --timing FILE ...
 ##
 ## The checkout's library is withheld as a build has it (PartForge.withheld:
 ## the primitives every build ships and nothing else), and the library's parts/
@@ -23,6 +24,12 @@
 ##   no frame and fetches nothing;
 ## - a file the server has not got is said not shown, with why (HTTP 404),
 ##   and a web page that comes back is not taken for LDraw.
+##
+## --timing opens each FILE five times each way, alternately, from a fresh
+## session each time and the library withheld: as the web opens it (what it
+## needs looked for first, CustomParts.unreached_by) and with nothing looked
+## for, as before; and says the median of each. For a file that needs nothing
+## fetched, what looking costs.
 ##
 ## --census reads every file in vendor/omr/files (or the FILEs) as the web
 ## build would: which carry parts it could not build without the library's
@@ -75,6 +82,10 @@ func _run() -> void:
 	_store.keeps = false
 	await process_frame
 
+	if args.size() >= 2 and args[0] == "--timing":
+		await _timing(args.slice(1))
+		quit(0)
+		return
 	if not await _serve():
 		print("carriedfetch: FAIL could not serve the library on port %d" % PORT)
 		quit(1)
@@ -195,9 +206,18 @@ func _any_order() -> void:
 	var began: int = Time.get_ticks_msec()
 	while not done[0] and Time.get_ticks_msec() - began < 40000:
 		await process_frame
-	_expect(done[0] and PartForge._fetched.size() == keys.size(),
-		"a 1.9 MB file first and three small: all %d heard, in %d ms (%d kept)"
-			% [keys.size(), Time.get_ticks_msec() - began, PartForge._fetched.size()])
+	var heard: int = Array(keys).filter(func(key: String) -> bool:
+		return not PartForge.fetched(key).is_empty()).size()
+	_expect(done[0] and heard == keys.size(),
+		"a 1.9 MB file first and three small: all %d heard, in %d ms (%d of them)"
+			% [keys.size(), Time.get_ticks_msec() - began, heard])
+	# What a fetched file names is fetched as it arrives, in the same batch:
+	# nothing left for another pass.
+	var left: PackedStringArray = PackedStringArray()
+	for key: String in keys:
+		left.append_array(PartForge.unreached(PartForge.fetched(key)))
+	_expect(done[0] and left.is_empty(), "and what they name, as each came: %d files in all, %s left"
+		% [PartForge._fetched.size(), left])
 	_fresh()
 
 
@@ -376,6 +396,39 @@ func _web_page() -> void:
 	_expect(CustomParts._fetch_problem(HTTPRequest.RESULT_SUCCESS, 200,
 		PackedStringArray(["Content-Type: text/plain"]), "0 ~Subpart\n".to_utf8_buffer()) == "",
 		"LDraw text: taken")
+
+
+# -- what looking costs --------------------------------------------------------
+
+
+func _timing(paths: PackedStringArray) -> void:
+	PartForge.withheld = true
+	for path: String in paths:
+		var text: String = FileAccess.get_file_as_string(path)
+		var name: String = path.get_file().get_basename()
+		var ways: Dictionary = {"looked": [], "not": []}
+		var looks: Array = []
+		for n: int in 10:
+			var looking: bool = n % 2 == 0
+			_fresh()
+			# Somewhere to fetch from that is never reached: a file that needs
+			# nothing asks nothing of it.
+			CustomParts.sources_from = "http://127.0.0.1:9/" if looking else ""
+			var began: int = Time.get_ticks_usec()
+			var opened: Dictionary = await _open(text, name)
+			var ms: float = (Time.get_ticks_usec() - began) / 1000.0
+			(ways["looked" if looking else "not"] as Array).append(ms)
+			if looking:
+				looks.append(float(_store.open_phases.get("fetch", 0.0)))
+			if not CustomParts._unfetched.is_empty():
+				print("  note %s needs files fetched: %s" % [name, CustomParts._unfetched.keys()])
+		for way: String in ways:
+			(ways[way] as Array).sort()
+		looks.sort()
+		print("carriedfetch timing: %s opened in %.0f ms looking first, %.0f ms not (medians of 5; looking itself %.1f ms)"
+			% [name, ways["looked"][2], ways["not"][2], looks[2]])
+	PartForge.withheld = false
+	CustomParts.sources_from = ""
 
 
 # -- the census ---------------------------------------------------------------
