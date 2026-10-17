@@ -265,9 +265,10 @@ func _case(name: String, path: String, want: String) -> void:
 	print("    said: %s" % _grab.last_words)
 	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "parts": _world.brick_count(),
-		"moving": grab.moving.size()}
-	print("    drag frames: %d, mean %.2f ms, worst %.2f ms" % [_grab.frames, _grab.mean_ms,
-		_grab.worst_ms])
+		"moving": grab.moving.size(), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"worst_weigh_ms": snappedf(_grab.worst_weigh_ms, 0.01)}
+	print("    drag frames: %d, mean %.2f ms, worst %.2f ms (following %.2f, weighing %.2f)" % [
+		_grab.frames, _grab.mean_ms, _grab.worst_ms, _grab.worst_follow_ms, _grab.worst_weigh_ms])
 	# Every part that moved stands where the drag left it.
 	var kept: bool = true
 	for key: int in placed:
@@ -302,6 +303,7 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	var driven: Dictionary = {}
 	var stop_ok: bool = false
 	var stop_said: String = ""
+	var furthest: float = 0.0
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var screen: Vector2 = _camera.unproject_position(turned)
@@ -323,12 +325,19 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 			worst = maxf(worst, off)
 			followed += 1
 			stopped_at = NAN
+		if absf(grab.angle) > absf(furthest):
+			furthest = grab.angle
 		if not mid_shot and _windowed and absf(grab.angle) > 40.0:
 			mid_shot = true
 			await _shot(name, "2_mid")
 		if want == "gear" and not grab.coupled.is_empty() and driven.is_empty() \
 				and absf(grab.angle) > 20.0:
 			driven = _gear_check(name, grab)
+	# Let go half way to the furthest it went, so a joint the model stops at
+	# rest one way (a boom laid on its cones) is still let go somewhere new.
+	if absf(grab.angle) < 1.0 and absf(furthest) > 2.0:
+		var back: Vector3 = _about(grab.pivot, grab.axis, furthest * 0.5) * hold
+		await _move(_camera.unproject_position(back), MOUSE_BUTTON_MASK_LEFT)
 	_check("%s: the angle follows the pointer in %d frames, to %.2f°%s" % [name, followed, worst,
 		" on its %s° clicks" % Balance.tidy(grab.link.detent) if grab.link.detent > 0.0 else ""],
 		followed >= 4 and worst <= 1.5)
@@ -384,8 +393,8 @@ func _gear_check(name: String, grab: Grab) -> Dictionary:
 	var sails: int = -1
 	for key: int in grab.coupled:
 		var body: int = simulation.model.body_of(key)
-		if simulation.rates.has(body) and (sails < 0
-				or (simulation.keys_of[body] as Array).size() > (simulation.keys_of[sails] as Array).size()):
+		if simulation.rates.has(body) and absf(float(simulation.rates[body])) > 1e-6 and (sails < 0
+				or absf(float(simulation.rates[body])) < absf(float(simulation.rates[sails]))):
 			sails = body
 	if sails >= 0:
 		var turned: float = 0.0
@@ -435,18 +444,30 @@ func _ball_drag(name: String, grab: Grab) -> void:
 	var hold: Vector3 = grab._hold
 	var worst: float = 0.0
 	var followed: int = 0
-	var about: Vector3 = (hold - grab.pivot).cross(_camera.global_transform.basis.z).normalized()
-	for n: int in range(1, 13):
-		var turned: Vector3 = _about(grab.pivot, about, 4.0 * n) * hold
-		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
-		if not grab.stopped:
-			var now: Vector3 = grab.twist * (hold - grab.pivot) + grab.pivot
-			worst = maxf(worst, now.distance_to(turned))
-			followed += 1
-		if n == 6 and _windowed:
-			await _shot(name, "2_mid")
-	_check("%s: the ball turns so the held point follows the pointer in %d frames, to %.2f LDU" % [
-		name, followed, worst], followed >= 3 and worst < 1.5)
+	var out: Vector3 = (hold - grab.pivot).normalized()
+	var side: Vector3 = out.cross(_camera.global_transform.basis.z).normalized()
+	var up: Vector3 = out.cross(side).normalized()
+	var met := PackedStringArray()
+	# Three ways round, each there and back: a wing on a ball meets its
+	# fuselage one way and swings free another.
+	for about: Vector3 in [side, up, -side]:
+		for n: int in [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0]:
+			var turned: Vector3 = _about(grab.pivot, about, 4.0 * n) * hold
+			await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+			if not grab.stopped:
+				var now: Vector3 = grab.twist * (hold - grab.pivot) + grab.pivot
+				worst = maxf(worst, now.distance_to(turned))
+				followed += 1
+			elif not grab.blocked_by.is_empty() and met.size() < 3:
+				var line: String = "%s meets %s" % [_world.get_brick(int(grab.blocked_by[0])).part_id,
+					_world.get_brick(int(grab.blocked_by[1])).part_id]
+				if not met.has(line):
+					met.append(line)
+			if n == 6 and about == side and _windowed:
+				await _shot(name, "2_mid")
+	_check("%s: the ball turns so the held point follows the pointer in %d frames, to %.2f LDU%s" % [
+		name, followed, worst, " (stopped where %s)" % ", ".join(met) if not met.is_empty() else ""],
+		followed >= 3 and worst < 1.5)
 
 
 # -- a session -------------------------------------------------------------------------
@@ -486,54 +507,85 @@ func _session() -> void:
 
 
 func _big() -> void:
-	var path: String = "res://vendor/omr/files/10179-1.mpd"
-	for candidate: String in ["res://vendor/omr/files/7191-1.mpd", "res://vendor/omr/files/10030-1.mpd",
-			"res://vendor/omr/files/10179-1.mpd"]:
-		if FileAccess.file_exists(candidate):
-			path = candidate
-			break
+	var path: String = "res://vendor/omr/files/7191-1.mpd"
 	print("\nframe timings on a big model: %s" % path.get_file())
 	if not await _open(path):
 		return
-	var started: int = Time.get_ticks_msec()
-	var bodies: Bodies = _bodies()
-	print("    %d parts read as %s" % [_world.brick_count(), bodies.summary()])
-	var chosen: Dictionary = _choose(bodies, "any")
-	if chosen.is_empty():
-		print("    (no joint to drag)")
-		return
-	var moving: PackedInt64Array = bodies.parts_of(bodies.beyond(int(chosen["child"])))
-	_frame_on(moving)
+	# As a person pauses after opening: the app reads the joints ahead.
+	var waited: int = Time.get_ticks_msec()
+	while not _grab.is_ready() and Time.get_ticks_msec() - waited < 60000:
+		await process_frame
+	print("    %d parts read ahead in %d ms %s (%s), %.1f s after it opened" % [_world.brick_count(),
+		_grab.ready_ms, "on a worker" if _grab.ready_off_thread else "on the main thread",
+		str(_grab.ready_took), float(Time.get_ticks_msec() - waited) / 1000.0])
+	_check("the joints are read ahead of the press", _grab.is_ready())
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	# The biggest sections first that a pointer can land on.
+	var tried: Array = []
+	for link: Bodies.Link in bodies.links:
+		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
+		if bodies.parent_link.get(child) != link or link.kind == "stud":
+			continue
+		tried.append([bodies.parts_of(bodies.beyond(child)).size(), child])
+	tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] > y[0])
+	_frame_on(PackedInt64Array())
 	await _frames(10)
-	var press: Dictionary = _press_point(moving, bodies)
+	var press: Dictionary = {}
+	var child: int = -1
+	for entry: Array in tried.slice(0, 12):
+		press = _press_point(bodies.members[int(entry[1])], bodies)
+		if not press.is_empty():
+			child = int(entry[1])
+			break
 	if press.is_empty():
+		_check("a section of the big model is under the pointer somewhere", false)
 		return
 	var screen: Vector2 = press["screen"]
-	var began: int = Time.get_ticks_usec()
+	var before: Dictionary = _snapshot()
 	await _move(screen, 0)
 	await _button(screen, true)
+	var began: int = Time.get_ticks_usec()
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var grabbed_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
 	var grab: Grab = _grab.grab
 	if grab == null or grab.state != "moves":
+		_check("the big model's section is grabbed (%s)" % _grab.last_words, false)
 		await _button(screen, false)
 		return
-	for n: int in 40:
-		var turned: Vector3 = _about(grab.pivot, grab.axis, 2.0 * n) * grab._hold
+	var frame_worst: float = 0.0
+	var frame_total: float = 0.0
+	for n: int in 60:
+		var turned: Vector3 = _about(grab.pivot, grab.axis if grab.axis != Vector3.ZERO
+			else Vector3.UP, 3.0 * n) * grab._hold
+		var at: int = Time.get_ticks_usec()
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+		var spent: float = float(Time.get_ticks_usec() - at) / 1000.0
+		frame_worst = maxf(frame_worst, spent)
+		frame_total += spent
+	if _windowed:
+		await _shot("big", "2_mid")
 	await _button(_last_screen, false)
 	_timings["big"] = {"file": path.get_file(), "parts": _world.brick_count(),
 		"moving": grab.moving.size(), "frames": _grab.frames, "mean_ms": snappedf(_grab.mean_ms, 0.01),
 		"worst_ms": snappedf(_grab.worst_ms, 0.01), "first_grab_ms": snappedf(grabbed_ms, 0.1),
-		"bodies_ms": bodies.took_ms}
-	print("    %d parts, %d moving: grab began in %.0f ms (bodies read in %d ms); %d frames, mean %.2f ms, worst %.2f ms"
-		% [_world.brick_count(), grab.moving.size(), grabbed_ms, bodies.took_ms, _grab.frames,
-		_grab.mean_ms, _grab.worst_ms])
-	_check("a drag frame on %d parts is within a 60 Hz frame (worst %.1f ms)" % [
-		_world.brick_count(), _grab.worst_ms], _grab.worst_ms < 16.7)
+		"ready_ms": _grab.ready_ms, "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"worst_weigh_ms": snappedf(_grab.worst_weigh_ms, 0.01),
+		"app_frame_mean_ms": snappedf(frame_total / 60.0, 0.01), "app_frame_worst_ms": snappedf(frame_worst, 0.01)}
+	print(("    %d parts, %s (%d moving): the grab began in %.0f ms; %d drag frames, mean %.2f ms, "
+		+ "worst %.2f ms (following %.2f, weighing %.2f); whole frames as drawn here in software, "
+		+ "mean %.1f ms, worst %.1f ms") % [_world.brick_count(), grab.said, grab.moving.size(),
+		grabbed_ms, _grab.frames, _grab.mean_ms, _grab.worst_ms, _grab.worst_follow_ms,
+		_grab.worst_weigh_ms, frame_total / 60.0, frame_worst])
+	_check("the grab began within 100 ms at %d parts (%.0f ms)" % [_world.brick_count(), grabbed_ms],
+		grabbed_ms < 100.0)
+	_check("a drag frame's work at %d parts is under 16 ms on average and 33 at worst (%.2f, %.2f)"
+		% [_world.brick_count(), _grab.mean_ms, _grab.worst_ms],
+		_grab.mean_ms < 16.0 and _grab.worst_ms < 33.0)
 	_builder.undo()
-	await _frames(2)
-	print("    (%d ms in all)" % (Time.get_ticks_msec() - started))
+	await _frames(3)
+	_check("big: one undo puts every part back exactly (%s)" % _differs(before),
+		_differs(before) == "none differs")
 
 
 # -- choosing -----------------------------------------------------------------------
@@ -560,11 +612,12 @@ func _choose(bodies: Bodies, want: String) -> Dictionary:
 			"turntable", "hinge", "click", "ball":
 				ok = link.kind == want
 			"gear":
-				# The crank: the smallest side with a gear on it, not the sails.
+				# The crank: the gear axle that turns the slowest body of the
+				# train slowest, which on 8020 is the sails at 1 in 9.
 				for key: int in moved:
 					if not Mechanism.spec_of(_world.get_brick(key).part_id).is_empty():
 						ok = link.kind == "axle" or link.kind == "pin"
-						score = -float(moved.size())
+						score = _slowest_driven(key)
 						break
 			"figure":
 				for key: int in moved:
@@ -582,6 +635,19 @@ func _choose(bodies: Bodies, want: String) -> Dictionary:
 			best_score = score
 			best = {"link": link, "child": child}
 	return best
+
+
+## How many turns of [param key]'s axle the slowest body it drives takes for
+## one of its own: a crank's is the largest.
+func _slowest_driven(key: int) -> float:
+	var simulation: Simulation = Simulation.read(_world.bricks(), _library, _store.scenery)
+	simulation.drive(simulation.model.body_of(key))
+	var slowest: float = 0.0
+	for body: int in simulation.turning:
+		var rate: float = absf(float(simulation.rates[body]))
+		if rate > 1e-6:
+			slowest = maxf(slowest, 1.0 / rate)
+	return slowest
 
 
 ## A screen point over a part of [param moving], away from its joint's

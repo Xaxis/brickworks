@@ -546,9 +546,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
   between them, from `Joints`' rules (studs_in, through, rounds, balls,
-  held_otherwise). Resting with no stud in it holds nothing. Each piece's
-  anchor: a locked part's body, else what stands on the baseplate, else the
-  heaviest body. `grab_probe -- --survey FILE` prints it.
+  held_otherwise). Resting with no stud in it holds nothing; resting on a
+  joint's half with its studs under the foot is carried by it (a hinge brick
+  on a turntable's top). A joint between two parts overrides their shared
+  studs and cells (turntable top and base, hinge halves, click halves); a
+  tyre is one with its wheel; a lone pin is part of the first thing it is in.
+  Each piece's anchor: a locked part's body, else what stands on the
+  baseplate (a stud in a socket), else the heaviest body. Read ahead once a
+  revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
+  `grab_probe -- --survey FILE` prints the bodies and joints.
 - `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
   state, pure until `commit`: `begin` (what moves, on what, or "rigid",
   "loop", "locked" with `why`), `turn_to`/`slide_to`/`ball_to` (bisected to

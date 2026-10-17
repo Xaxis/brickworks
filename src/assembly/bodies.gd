@@ -305,27 +305,26 @@ func _read() -> void:
 	var turning: Dictionary = {}
 	for c: Array in candidates:
 		turning[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
-	# A part resting on another (Stability.contacts, as Balance reads it)
-	# with studs of the lower under its foot, where the lattice's cover of
-	# the upper is hollow at the stud's tip: 4096's hinge brick 3937 on its
-	# turntable's top read as resting on nothing, and the turntable carried
-	# none of the crane.
-	var judge := Stability.new()
-	judge.library = library
-	judge.lattice = lattice
-	var model: Array = []
-	for entry: Array in entries:
-		model.append(world.get_brick(int(entry[0])))
-	var above: Dictionary = judge.contacts(model)["above"]
-	for low: Variant in above:
-		for high: Variant in above[low]:
-			var a: int = int(low)
-			var b: int = int(high)
-			var pair := Vector2i(mini(a, b), maxi(a, b))
-			if a == b or per_pair.has(pair) or turning.has(pair) or not _up.has(a) \
-					or not _up.has(b):
+	# What rests on a joint's half with that half's studs under its foot is
+	# carried by it, where the lattice's cover of the part above is hollow at
+	# the studs' tips: 4096's hinge brick 3937 on its turntable's top read as
+	# resting on nothing, and the turntable carried none of the crane. Only
+	# on a joint's half: a boom laid down on two cones' studs rests there,
+	# and reading every such rest as studs (Stability.contacts) clicked it
+	# down and locked the turntable under it, at 4 s for 1,300 parts.
+	for low: Variant in partners:
+		var a: int = int(low)
+		if not _up.has(a):
+			continue
+		var lid: PackedInt32Array = BrickLattice.moved_by(lattice.boxes_of(a), Vector3i(0, 1, 0))
+		if lid.is_empty():
+			continue
+		for other: int in lattice.near_bounds(lid, a):
+			var pair := Vector2i(mini(a, other), maxi(a, other))
+			if per_pair.has(pair) or turning.has(pair) or not _up.has(other) \
+					or BrickLattice.shared_cells(lid, lattice.boxes_of(other)) <= 0:
 				continue
-			var under: Array = _studs_under(a, b)
+			var under: Array = _studs_under(a, other)
 			if not under.is_empty():
 				per_pair[pair] = under
 				_resting[pair] = true
@@ -731,14 +730,27 @@ func _studs_under(low: int, high: int) -> Array:
 	return out
 
 
+## The middle of the ball that is in the other's socket: a plate with two
+## balls turned about the wrong one ran its wing into the fuselage at once.
 func _ball_middle(a: int, b: int) -> Vector3:
+	var balls: Array = []
+	var sockets: Array = []
 	for key: int in [a, b]:
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		for connector: Lbm.Connector in mesh.connectors:
 			if connector.kind == "ball":
-				return brick.transform * connector.position
-	return world.get_brick(a).transform.origin
+				balls.append(brick.transform * connector.position)
+			elif connector.kind == "socket":
+				sockets.append(brick.transform * connector.position)
+	var best: Vector3 = balls[0] if not balls.is_empty() else world.get_brick(a).transform.origin
+	var nearest: float = INF
+	for ball: Vector3 in balls:
+		for socket: Vector3 in sockets:
+			if ball.distance_to(socket) < nearest:
+				nearest = ball.distance_to(socket)
+				best = ball
+	return best
 
 
 static func _one_line(c: Array, d: Array) -> bool:

@@ -47,6 +47,10 @@ var last_report: Balance.Report = null
 var worst_ms: float = 0.0
 var mean_ms: float = 0.0
 var frames: int = 0
+## The worst of each part of it: following the pointer (the room tests),
+## and weighing.
+var worst_follow_ms: float = 0.0
+var worst_weigh_ms: float = 0.0
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
 var _judge: Balance = null
@@ -86,6 +90,8 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 		last_words = grab.why
 		return true
 	worst_ms = 0.0
+	worst_follow_ms = 0.0
+	worst_weigh_ms = 0.0
 	_total_ms = 0.0
 	frames = 0
 	_said = ""
@@ -104,12 +110,15 @@ func motion(screen: Vector2) -> void:
 		return
 	var started: int = Time.get_ticks_usec()
 	grab.follow(camera.ray_origin(screen), camera.ray_normal(screen), screen, camera)
+	worst_follow_ms = maxf(worst_follow_ms, float(Time.get_ticks_usec() - started) / 1000.0)
 	world.set_drawn(grab.placed)
 	var now: int = Time.get_ticks_msec()
 	if _judge != null and now - _weighed_at >= WEIGH_EVERY_MS:
 		_weighed_at = now
+		var weighing: int = Time.get_ticks_usec()
 		report = _judge.weigh_pose(grab.placed)
 		_show(report, true)
+		worst_weigh_ms = maxf(worst_weigh_ms, float(Time.get_ticks_usec() - weighing) / 1000.0)
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
 	if grab.stopped:
 		line += " — stopped: it meets the model"
@@ -416,6 +425,8 @@ var _changed_at: int = 0
 ## How long the last reading took, ms, and whether it ran on a worker.
 var ready_ms: int = 0
 var ready_off_thread: bool = false
+## Each step of it, ms: bodies, balance, gears.
+var ready_took: Dictionary = {}
 
 
 ## Whether what a grab needs is read for the model as it stands: the bodies,
@@ -458,7 +469,7 @@ func _ready_ahead() -> void:
 	_still_lattice = builder.lattice.copy_for_reading()
 	var floor_ids: Dictionary = scenery.duplicate()
 	var held: Dictionary = builder.locked.duplicate()
-	var out: Array = [null, null, null, 0]
+	var out: Array = [null, null, null, 0, {}]
 	_ready_out = out
 	var still: BrickWorld = _still
 	var cells: BrickLattice = _still_lattice
@@ -469,6 +480,7 @@ func _ready_ahead() -> void:
 		out[0] = read[0]
 		out[1] = read[1]
 		out[2] = read[2]
+		out[4] = read[3]
 		out[3] = Time.get_ticks_msec() - started, false, "read the model's joints")
 	library.reading_in(_readying)
 	ready_off_thread = true
@@ -479,20 +491,24 @@ func _ready_ahead() -> void:
 func _ready_now() -> void:
 	var started: int = Time.get_ticks_msec()
 	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked)
-	read.append(Time.get_ticks_msec() - started)
+	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3]], world.revision)
 	ready_off_thread = false
-	_adopt(read, world.revision)
 
 
 static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 		floor_ids: Dictionary, held: Dictionary) -> Array:
+	var clock: int = Time.get_ticks_msec()
 	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held)
+	var took: Dictionary = {"bodies": Time.get_ticks_msec() - clock}
+	clock = Time.get_ticks_msec()
 	var judge := Balance.new()
 	judge.library = parts
 	judge.lattice = cells
 	judge.floor_ids = floor_ids
 	if not judge.prepare(from.bricks()):
 		judge = null
+	took["balance"] = Time.get_ticks_msec() - clock
+	clock = Time.get_ticks_msec()
 	# The gear trains, read once for every grab of a gear (Grab._gears): the
 	# anchors are the ground.
 	var mechanism: Mechanism = null
@@ -512,7 +528,8 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 			ground.append(brick.id)
 	if gears >= 2:
 		mechanism = Mechanism.build(list, ground)
-	return [bodies, judge, mechanism]
+	took["gears"] = Time.get_ticks_msec() - clock
+	return [bodies, judge, mechanism, took]
 
 
 func _adopt(read: Array, revision: int) -> void:
@@ -520,6 +537,7 @@ func _adopt(read: Array, revision: int) -> void:
 	_judge = read[1]
 	_mechanism = read[2]
 	ready_ms = int(read[3]) if read.size() > 3 else 0
+	ready_took = read[4] if read.size() > 4 else {}
 	if _bodies != null:
 		_bodies.world = world
 		_bodies.lattice = builder.lattice
@@ -544,9 +562,7 @@ func _tell_page() -> void:
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var handles: Array = []
-	if grab == null:
-		if not is_ready():
-			return
+	if grab == null and is_ready():
 		for body: Variant in _bodies.parent_link:
 			if handles.size() >= 4:
 				break
@@ -559,7 +575,8 @@ func _tell_page() -> void:
 				handles.append(spot)
 	var state: Dictionary = {"grabbing": grab != null, "handles": handles,
 		"said": last_words, "frames": frames, "worst_ms": snappedf(worst_ms, 0.01),
-		"mean_ms": snappedf(mean_ms, 0.01), "revision": world.revision}
+		"mean_ms": snappedf(mean_ms, 0.01), "revision": world.revision, "ready": is_ready(),
+		"ready_ms": ready_ms, "bodies": _bodies.summary() if _bodies != null else ""}
 	if grab != null:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)

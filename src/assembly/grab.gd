@@ -38,6 +38,12 @@ extends RefCounted
 
 ## Bisection rounds for where a turn stops: 180° / 2^10 is under 0.2°.
 const ROUNDS := 10
+const BALL_ROUNDS := 6
+## Where a turn stops, to within this, degrees.
+const STOP_TO := 0.15
+## A part all within this of the joint's line turns inside the holes it is
+## in, LDU: an axle or a pin, radius 4, on its own line.
+const ON_THE_LINE := 6.5
 ## A part may sink this far below the floor the model stands on, LDU, as
 ## Balance lets a pose: half a plate.
 const BELOW_FLOOR := 4.0
@@ -104,6 +110,14 @@ var _unwrapped: float = 0.0
 var _decided: bool = false
 ## Where the last stop was met, degrees; NAN for none.
 var _wall: float = NAN
+## Moving parts all within reach of the joint's line: not tested for room.
+var _on_the_line: Dictionary = {}
+## The last part that met something, and what it met: [moving, met].
+var blocked_by: Array = []
+## A ball's last turn that had no room, and where it stood then: not asked
+## again while the pointer asks further the same way.
+var _ball_wall := Quaternion.IDENTITY
+var _ball_walled: bool = false
 ## How long the last test for room took, ms, and how many tests a drag ran.
 var test_ms: float = 0.0
 var tests: int = 0
@@ -173,6 +187,20 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 	pivot = link.point
 	axis = link.axis.normalized()
 	mode = "ball" if axis == Vector3.ZERO else "turn"
+	# An axle or a pin on the joint's own line sweeps only the holes it is in.
+	_on_the_line.clear()
+	if mode == "turn":
+		for key: int in moving:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if mesh == null:
+				continue
+			var furthest: float = 0.0
+			for corner: int in 8:
+				var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - pivot
+				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
+			if furthest <= ON_THE_LINE * 1.42:
+				_on_the_line[key] = true
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
 	_gears()
@@ -284,7 +312,10 @@ func _gears() -> void:
 		return
 	var solved: Dictionary = mechanism.solve({driven: 1.0})
 	if not bool(solved["ok"]):
-		if bool(solved["locked"]):
+		# Gears that fight lock it, and are named. A lock no one mesh makes is
+		# Mechanism's reading of a loop of pins elsewhere in a big model, not
+		# of these gears: moved on its joint, its gears left where they are.
+		if bool(solved["locked"]) and not (solved["culprits"] as Array).is_empty():
 			_refuse("locked", "%s will not turn: its gears lock (%s)." % [bodies.named(moving_bodies),
 				", ".join(PackedStringArray(solved["culprits"]))])
 		mechanism = null
@@ -355,6 +386,8 @@ func has_room(at: Dictionary) -> bool:
 	tests += 1
 	var free: bool = true
 	for key: int in moving:
+		if _on_the_line.has(key):
+			continue
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
@@ -370,7 +403,9 @@ func has_room(at: Dictionary) -> bool:
 		if not _near_anything(box):
 			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
-		if not builder.lattice.blockers_boxes(packed, 0, skip).is_empty():
+		var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
+		if not hit.is_empty():
+			blocked_by = [key, int(hit[0])]
 			free = false
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
@@ -415,7 +450,11 @@ func turn_to(degrees: float) -> float:
 		return angle
 	var low: float = angle
 	var high: float = wanted
-	for _round: int in ROUNDS:
+	# As many halvings as bring the step under STOP_TO: a frame's step is a
+	# few degrees, and each round tests every part that may hit something.
+	var rounds: int = clampi(ceili(log(maxf(absf(wanted - angle), STOP_TO) / STOP_TO) / log(2.0)),
+		1, ROUNDS)
+	for _round: int in rounds:
 		var middle: float = (low + high) * 0.5
 		if has_room(transforms_at(middle)):
 			low = middle
@@ -465,6 +504,16 @@ func ball_to(turned: Basis) -> Basis:
 		return twist
 	var from := Quaternion(twist.orthonormalized())
 	var to := Quaternion(turned.orthonormalized())
+	# Asked further than the turn that met something, about much the same
+	# way: still met, and not tested again.
+	if _ball_walled:
+		var wall_step: Quaternion = _ball_wall * from.inverse()
+		var step: Quaternion = to * from.inverse()
+		if step.get_angle() >= wall_step.get_angle() - 0.001 and wall_step.get_angle() > 0.0001 \
+				and step.get_axis().dot(wall_step.get_axis()) > 0.9:
+			stopped = true
+			return twist
+	_ball_walled = false
 	if has_room(transforms_at(0.0, 0.0, Basis(to))):
 		twist = Basis(to)
 		placed = transforms_at(0.0, 0.0, twist)
@@ -472,7 +521,9 @@ func ball_to(turned: Basis) -> Basis:
 		return twist
 	var low: float = 0.0
 	var high: float = 1.0
-	for _round: int in ROUNDS:
+	# Fewer rounds than a turn: a ball's way changes every frame, so no wall
+	# is kept, and 1/64 of a frame's step is under a degree.
+	for _round: int in BALL_ROUNDS:
 		var middle: float = (low + high) * 0.5
 		if has_room(transforms_at(0.0, 0.0, Basis(from.slerp(to, middle)))):
 			low = middle
@@ -481,6 +532,8 @@ func ball_to(turned: Basis) -> Basis:
 	twist = Basis(from.slerp(to, low))
 	placed = transforms_at(0.0, 0.0, twist)
 	stopped = true
+	_ball_wall = from.slerp(to, high)
+	_ball_walled = true
 	return twist
 
 

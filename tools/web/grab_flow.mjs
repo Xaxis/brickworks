@@ -165,7 +165,9 @@ try {
   await page.waitForTimeout(4000);
   const ready = await until(grab, (g) => (g.handles || []).length >= 2, 60);
   check(Boolean(ready), `the arm and the turret are there to take hold of: `
-    + `${ready && ready.handles.map((h) => `${h.part} on its ${h.kind}`).join(", ")}`);
+    + `${ready ? ready.handles.map((h) => `${h.part} on its ${h.kind}`).join(", ")
+      : JSON.stringify(await grab())}`);
+  if (!ready) throw new Error("no handles to take hold of");
   await shot("1_before.png");
   const arm = ready.handles.find((h) => h.part === "3795") || ready.handles.find((h) => h.kind === "hinge");
   const revision = (await grab()).revision;
