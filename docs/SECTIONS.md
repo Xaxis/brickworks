@@ -33,23 +33,28 @@ are reused (`src/assembly/sections.gd`):
 Then:
 
 1. Parts that never part are one unit: a sub-assembly the file already has,
-   when it fits in a section, and each of the planner's sub-builds.
-2. Units are joined strongest first. The strength of a join is what holds
-   two units over the root of their sizes multiplied, `w / sqrt(a·b)`: two
-   bricks on four studs join before two walls on four studs.
-3. Joining stops at about one section for every 90 parts (at least 2, at
-   most 40), and no section grows past 1.7 times the average. What is
-   left between sections is where the model is held least.
-4. A section under 0.3 of the average goes in with the one it is held to
-   most. Minifigures are a section of their own, as a set bags them.
-5. Sections are numbered in the planner's order: one comes after another
-   when any of its parts needs one of the other's. Ties go to the lower.
-6. Each is named by where it is: Base, Top, Left side, Front, Back, or the
-   name of the sub-model it is. The way it comes off is up when it stands
-   on the rest's studs and nothing stands on it, and otherwise out the
-   side of the model it is on.
-
-A section is joined only along joints, so each is one piece.
+   when it fits in a section and is one piece, and each of the planner's
+   sub-builds.
+2. The booklet's own order is cut, not the model in space. A bag is a run
+   of the build, so what a section needs is in it or an earlier one. Cut
+   in space first, where the joint graph holds least, Sungnyemun came out
+   as two halves side by side, each built onto the other.
+3. A cut falls near every bag's worth, about one for every 90 parts (at
+   least 2, at most 40), between half and 1.6 bags from the last, where
+   least holds the units before it to the units after.
+4. Each run is then its pieces by the joint graph, so each section is one
+   piece. A piece under 0.3 of a bag goes in with one it is held to: its
+   own run's first, then the run before, then the run after. One the
+   graph holds to nothing goes with what the planner says it rests on.
+   Parts held by nothing at all are Loose parts; minifigures are a
+   section of their own, as a set bags them.
+5. Sections are numbered so each comes after every one it needs, by the
+   planner's needs less its guesses; where two need each other, the one
+   begun first comes first.
+6. Each is named by where it is: Base, Top, Left side, Front, Back, Upper
+   part, or the name of the sub-model it is (not a file's "subModel-48").
+   The way it comes off is up when it stands on the rest's studs and
+   nothing stands on it, and otherwise out the side of the model it is on.
 
 ## Breaking out and putting back
 

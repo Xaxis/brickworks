@@ -526,10 +526,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   decides: the booklet planner's reading (`Instructions._survey`,
   supports, `_find_assemblies`, `_find_bundles`) and the build check's
   joint graph as Balance builds it (`Stability.contacts` studs, `Joints`
-  pins, axles, clips); a sub-model the file has that fits a section and the
-  planner's sub-builds stay whole; units are joined strongest first by
-  joint strength over size (w / sqrt(a·b)) up to 1.7 times the average,
-  about one section for every 90 parts (2 to 40); minifigures are a
+  pins, axles, clips); a sub-model the file has that fits a section and is
+  one piece, and the planner's sub-builds, stay whole; the booklet's own
+  order is cut near every bag's worth (about one section for every 90
+  parts, 2 to 40) where least holds the parts before to the parts after,
+  each run split into its pieces so each section is one piece, numbered so
+  each comes after what it needs; minifigures are a
   section of their own. `Y` (Build, Break out the section, or the tree's
   Break out) pulls the chosen sub-assembly up off the studs it stands on,
   or out the side of the model it is on, two studs clear, by whole studs

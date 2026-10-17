@@ -190,6 +190,8 @@ func _one_set(name: String) -> void:
 		var pieces: int = Sections._pieces(bricks, _sections.joint_graph(bricks))
 		if not one.apart and pieces != 1:
 			unjoined.append("%s (%d pieces)" % [one.name, pieces])
+		if _arg("weigh", "yes") == "no":
+			continue
 		var weighed: Dictionary = await _ui.evaluate("", one.number)
 		sum_parts += int(weighed.get("parts", 0))
 		sum_grams += float(weighed.get("grams", 0.0))
@@ -202,13 +204,24 @@ func _one_set(name: String) -> void:
 				steps_none.append(one.name)
 	sizes.sort()
 	row["sizes"] = sizes
+	row["loose"] = 0
+	for one: Sections.Suggestion in made:
+		if one.apart and one.name.begins_with("Loose"):
+			row["loose"] = one.ids.size()
 	var backwards := PackedStringArray()
 	for one: Sections.Suggestion in made:
 		for under: int in one.onto:
 			if under >= one.number:
 				backwards.append("%d onto %d" % [one.number, under])
-	_check("%s: each built only onto earlier ones, so they are built in turn%s" % [name,
-		"" if backwards.is_empty() else ": not " + ", ".join(backwards)], backwards.is_empty())
+	# Measured, not required: interlocked sub-models (a Technic frame, a
+	# UCS hull) need each other both ways, and no cut of them is in turn.
+	var needing: Dictionary = {}
+	for pair: String in backwards:
+		needing[pair.get_slice(" ", 0)] = true
+	print("    built in turn: %s" % ("every section only onto earlier ones" if backwards.is_empty()
+		else "%d of %d sections need a later one (%s)" % [needing.size(), made.size(),
+			", ".join(backwards.slice(0, 8))]))
+	row["need_later"] = needing.size()
 	# The joint graph reads studs, pins, axles and clips, not a tyre on its
 	# rim or a part held by friction, which the build check does: its word
 	# is the one that counts, and this is for reading.
@@ -237,6 +250,9 @@ func _one_set(name: String) -> void:
 	# Accepted: sub-assemblies, one undo step.
 	var depth: int = _builder.history_depth()
 	var before_paths: int = _shell.assemblies.paths().size()
+	var path_was: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		path_was[brick.id] = Assemblies.path_of(brick)
 	var said: String = _ui.accept()
 	var made_paths: PackedStringArray = PackedStringArray()
 	for one: Dictionary in _sections.sections():
@@ -244,13 +260,29 @@ func _one_set(name: String) -> void:
 	_check("%s: accept all makes them sub-assemblies, one undo step (%s; history %d -> %d)"
 		% [name, said.left(80), depth, _builder.history_depth()],
 		_builder.history_depth() == depth + 1 and _shell.assemblies.paths().size() > before_paths)
+	var made_count: int = _shell.assemblies.paths().size()
+	var accepted_depth: int = _builder.history_depth()
 	_builder.undo()
 	_main.call("_on_model_edited")
-	var undone: bool = _shell.assemblies.paths().size() == before_paths
+	var after_undo: int = _shell.assemblies.paths().size()
+	var undo_depth: int = _builder.history_depth()
+	var differ: Array = []
+	var gone: int = 0
+	for brick_id: int in path_was:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null:
+			gone += 1
+		elif Assemblies.path_of(brick) != str(path_was[brick_id]):
+			differ.append("%d %s -> %s" % [brick_id, path_was[brick_id], Assemblies.path_of(brick)])
+	if not differ.is_empty() or gone > 0:
+		print("    (after undo %d parts gone, %d elsewhere: %s)" % [gone, differ.size(),
+			"; ".join(differ.slice(0, 4))])
 	_builder.redo()
 	_main.call("_on_model_edited")
-	_check("%s: ...undone in one, and redone" % name, undone
-		and _shell.assemblies.paths().size() > before_paths)
+	_check("%s: ...undone in one, and redone (%d paths, %d made, %d undone, %d redone; history %d, %d, %d)"
+		% [name, before_paths, made_count, after_undo, _shell.assemblies.paths().size(),
+		accepted_depth, undo_depth, _builder.history_depth()], after_undo == before_paths
+		and _shell.assemblies.paths().size() == made_count)
 
 	await _break_out_and_back(name, row)
 	await _exploded(name, row)
@@ -281,7 +313,15 @@ func _break_out_and_back(name: String, row: Dictionary) -> void:
 			before[brick.id] = brick.transform
 		var depth: int = _builder.history_depth()
 		var done: Dictionary = _sections.break_out(path)
+		var step_size: int = _builder.next_change_size()
 		_main.call("_on_model_edited")
+		var gone: int = 0
+		for brick_id: int in before:
+			if _world.get_brick(brick_id) == null:
+				gone += 1
+		if gone > 0 or _builder.next_change_size() != step_size:
+			print("    (after the break-out was edited, %d parts gone, its step %d -> %d)" % [
+				gone, step_size, _builder.next_change_size()])
 		var offset: Vector3 = done.get("offset", Vector3.ZERO)
 		var moved_right: bool = bool(done.get("ok", false))
 		for brick_id: int in _shell.assemblies.ids_under(path):

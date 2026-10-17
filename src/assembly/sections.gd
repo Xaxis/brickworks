@@ -252,6 +252,7 @@ func _held_otherwise(bricks: Array) -> Array:
 func suggest() -> Array[Suggestion]:
 	suggested = []
 	why_none = ""
+	_made_in = world.generation()
 	level = _level()
 	var bricks: Array = _bricks_in(level)
 	if bricks.size() < SMALLEST:
@@ -468,6 +469,22 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 			held[a][b] = float(held[a].get(b, 0.0)) + much
 			held[b][a] = float(held[b].get(a, 0.0)) + much
 
+	# What the planner says each part rests on or needs, guesses and all:
+	# what a piece the joint graph holds to nothing is put with (a tile
+	# held by its clips, a part the graph does not read).
+	var leans: Array = []
+	leans.resize(count)
+	for n: int in count:
+		leans[n] = []
+	for node: Instructions.Node2 in nodes:
+		if not index_of.has(node.id):
+			continue
+		var n: int = index_of[node.id]
+		for need: int in node.needs:
+			if index_of.has(need) and int(index_of[need]) != n:
+				(leans[n] as Array).append(int(index_of[need]))
+				(leans[int(index_of[need])] as Array).append(n)
+
 	# Units: what never parts. A sub-assembly the model has, when it fits in
 	# a section and is one piece; the planner's sub-builds, figures and hoses.
 	var unit := _Sets.new(count)
@@ -644,6 +661,22 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 				var q: int = follow.call(int(piece_of[int(rb)]))
 				if q != p:
 					pull[q] = float(pull.get(q, 0.0)) + float(held[a][b])
+		# A part or two held by nothing the graph reads (a tile in clips, a
+		# part whose joint it does not know): with what it rests on or
+		# carries. Bigger ones stay loose: put with a section by a guess,
+		# the build check found it in two pieces (10179-1, 2026-10-17).
+		if pull.is_empty() and int(parts_in[p]) <= 2:
+			for a: int in count:
+				var ra: Variant = rank.get(unit.top(a))
+				if ra == null or int(piece_of[int(ra)]) != p:
+					continue
+				for b: int in leans[a]:
+					var rb: Variant = rank.get(unit.top(b))
+					if rb == null:
+						continue
+					var q: int = follow.call(int(piece_of[int(rb)]))
+					if q != p:
+						pull[q] = float(pull.get(q, 0.0)) + 0.5
 		var best: int = -1
 		var best_key: float = -INF
 		for q: int in pull:
@@ -692,9 +725,18 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 	for s: int in order:
 		if not (sections[s] as Array).is_empty():
 			ordered.append(sections[s])
+	# What each part needs first, as the planner has it, less what it only
+	# guessed from a box touching or a height (Node2.weak).
 	var needs: Dictionary = {}
 	for node: Instructions.Node2 in nodes:
-		needs[node.id] = node.needs
+		if node.weak.is_empty():
+			needs[node.id] = node.needs
+			continue
+		var sure := PackedInt64Array()
+		for need: int in node.needs:
+			if not need in node.weak:
+				sure.append(need)
+		needs[node.id] = sure
 	return {"sections": ordered, "figures": figures, "loose": loose, "graph": graph,
 		"index_of": index_of, "needs": needs}
 
@@ -762,7 +804,10 @@ func _name(made: Suggestion, box: AABB, whole: AABB, bricks: Array, members: Arr
 		paths[_child_of(level, Assemblies.path_of(bricks[n]))] = true
 	if paths.size() == 1 and not str(paths.keys()[0]).is_empty():
 		var own: String = Assemblies.definition(Assemblies.leaf(str(paths.keys()[0])))
-		if own.length() <= 40:
+		# "subModel-48", as some files call every sub-model, says nothing.
+		var numbered: bool = own.to_lower().replace(" ", "").replace("_", "").replace("-", "") \
+			.trim_prefix("submodel").is_valid_int()
+		if own.length() <= 40 and not numbered:
 			return _unused(own, taken)
 	var wide: float = maxf(whole.size.x * whole.size.z, 1.0)
 	var footprint: float = box.size.x * box.size.z
@@ -1017,6 +1062,7 @@ func accept(numbers: Array = []) -> PackedStringArray:
 		return PackedStringArray()
 	builder.regroup(changes, "made %d section%s of %s" % [made_paths.size(),
 		"" if made_paths.size() == 1 else "s", Builder._many(changes.size())])
+	assemblies.no_copies_follow()
 	var kept: Array[Suggestion] = []
 	for made: Suggestion in suggested:
 		if not numbers.is_empty() and not made.number in numbers:
@@ -1026,6 +1072,16 @@ func accept(numbers: Array = []) -> PackedStringArray:
 	assemblies.changed.emit()
 	suggested_changed.emit()
 	return made_paths
+
+
+## The model the suggestion was made for: one opened since has other parts.
+var _made_in: int = -1
+
+
+## Put the suggestion away when the model it was made for is gone.
+func forget_if_stale() -> void:
+	if not suggested.is_empty() and world.generation() != _made_in:
+		dismiss()
 
 
 func dismiss() -> void:
@@ -1364,6 +1420,11 @@ func _move(targets: Dictionary, words: String, state: Dictionary, path: String,
 		world.broken_out.erase(path)
 	steps.append(state)
 	builder.record(steps, words)
+	# The section moved whole: no part's shape changed, and no copy of a
+	# sub-model is built again for it. One split between sections (a file's
+	# unlike copies, 10179-1) had its other copy rebuilt, 10 parts swapped,
+	# and the section could not go back (2026-10-17).
+	assemblies.no_copies_follow()
 	return landing.size()
 
 

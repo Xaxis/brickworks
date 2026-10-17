@@ -275,6 +275,8 @@ func _process(_delta: float) -> void:
 func _refresh(now: bool) -> void:
 	if _tree == null or _renaming:
 		return
+	if sections != null:
+		sections.sections.forget_if_stale()
 	if not _open or not is_visible_in_tree():
 		var total: int = maxi(0, shell.world.brick_count() - assemblies.scenery.size())
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
