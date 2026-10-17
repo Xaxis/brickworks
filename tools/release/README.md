@@ -53,6 +53,13 @@ What each one guards against, all learned the hard way on 2026-10-13:
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
 
+`tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
+and nothing else: never a locked one (the harness locks an agent's while it
+runs), one with a process inside, one with uncommitted tracked edits, or one
+whose branch is not on main. "Its commit is on main" alone also describes a
+running agent that has not committed yet, and two agents lost their work to
+a cleanup that checked only that (2026-10-16).
+
 A mesh sub-build ships on the staging worktree's own copy of the
 catalogue (`ln -sfn <copy> <worktree>/assets/generated`). Merge it into the
 shared catalogue only after the release is live, with `tools/merge_subbuild.py`
