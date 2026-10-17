@@ -138,15 +138,17 @@ function instrument() {
   let inside = false;
   let gl = 0;
   let draws = 0;
+  let calls = 0;
   const timed = (callback) => (time) => {
     if (inside) { callback(time); return; }
     inside = true;
     gl = 0;
     draws = 0;
+    calls = 0;
     const t0 = performance.now();
     try { callback(time); } finally {
       inside = false;
-      perf.frames.push([t0, performance.now() - t0, gl, draws]);
+      perf.frames.push([t0, performance.now() - t0, gl, draws, calls]);
       if (perf.frames.length > 40000) perf.frames.splice(0, 20000);
     }
   };
@@ -158,6 +160,7 @@ function instrument() {
     const drawing = name.startsWith("draw");
     context[name] = function (...a) {
       if (drawing) draws += 1;
+      calls += 1;
       const t0 = performance.now();
       try { return was.apply(this, a); } finally { gl += performance.now() - t0; }
     };
@@ -171,6 +174,13 @@ function instrument() {
   window.addEventListener("touchend", () => perf.taps.push(performance.now()), true);
   // What the app said it was doing, as it changed: where the first step's
   // time went (the app tells the page twice a second).
+  // When the app tells the page all it says (Main._tell_page, twice a
+  // second): a turn whose frame did that too is said so.
+  perf.tells = [];
+  let told = undefined;
+  Object.defineProperty(window, "brickworksState", { configurable: true,
+    get() { return told; },
+    set(v) { told = v; perf.tells.push(performance.now()); if (perf.tells.length > 4000) perf.tells.splice(0, 2000); } });
   perf.phases = [];
   let said = "";
   setInterval(() => {
@@ -202,6 +212,14 @@ async function where(page, name, seconds = 600) {
 
 // Frames go quiet: none in the last [span] ms with over 30 ms of the app's
 // own work, and none with draw calls for the camera still gliding.
+// The app's own laps of the last turn (Main._build_go), once it has told
+// the page.
+async function laps(page) {
+  await page.waitForTimeout(700);
+  const said = await build(page);
+  return said.turn_last ? { ...said.turn_last, frames: said.turn_frames } : {};
+}
+
 async function settle(page, span = 1200, seconds = 60) {
   await page.waitForTimeout(300);
   await until(page, (s) => {
@@ -235,11 +253,14 @@ async function timedTap(page, at, wanted) {
     page: wanted,
     // The frame that handled it: its own work and its time in WebGL.
     frame: Math.round(first[1]), own: Math.round(first[1] - first[2]), webgl: Math.round(first[2]),
+    draws: first[3], calls: first[4],
     waited: Math.round(first[0] - done.tap),
     handled: Math.round(handled - done.tap),
     drawn: Math.round(drawn - done.tap),
     shown: Math.round(Math.max(next[0], shown) - done.tap),
     marked: done.mark !== null,
+    told: await page.evaluate(([from, to]) => window.stepFrames.tells.some((t) => t >= from && t <= to),
+      [first[0], handled]),
   };
 }
 
@@ -311,6 +332,15 @@ try {
       first_step: firstStep, start: first };
     record.first.phases = await page.evaluate((from) => window.stepFrames.phases
       .map(([t, what]) => [t - Math.round(from), what]), firstFrame);
+    // Where the wait went: the engine's frames between the first and step 1,
+    // their own work and their time in WebGL, and the time between them.
+    record.first.frames = await page.evaluate(([from, to]) => {
+      const frames = window.stepFrames.frames.filter(([t0]) => t0 >= from && t0 <= to);
+      const sum = (f) => Math.round(frames.reduce((n, x) => n + f(x), 0));
+      return { count: frames.length, own: sum(([, d, g]) => d - g), webgl: sum(([, , g]) => g),
+        longest: Math.round(Math.max(0, ...frames.map(([, d]) => d))), wall: Math.round(to - from) };
+    }, [firstFrame, tapAt + first.shown]);
+    say(`from the first frame to step 1: ${JSON.stringify(record.first.frames)} (ms)`);
     say(`on the way: ${record.first.phases.map(([t, what]) => `${(t / 1000).toFixed(1)} s ${what}`).join(" · ")}`);
     const s1 = await build(page);
     say(`Build it offered ${Math.round(offered - firstFrame)} ms after the first frame; `
@@ -326,11 +356,11 @@ try {
     const next = (await controls(page)).build_next;
     const back = (await controls(page)).build_back;
     for (let k = 2; k <= 4; k += 1) {
-      record.turns.push({ what: "next", ...(await timedTap(page, next, k)) });
+      record.turns.push({ what: "next", ...(await timedTap(page, next, k)), laps: await laps(page) });
       await settle(page);
     }
     await shot(page, cdp, `${n}_step4.png`);
-    record.turns.push({ what: "back", ...(await timedTap(page, back, 3)) });
+    record.turns.push({ what: "back", ...(await timedTap(page, back, 3)), laps: await laps(page) });
     await settle(page);
     const last = (await build(page)).last;
     const bar = (await controls(page)).build_progress;
@@ -338,7 +368,8 @@ try {
       // The progress bar is the steps across: a tap lands on the step under
       // it. Aimed at the middle of step 30's share.
       const x = bar.x - bar.w / 2 + (bar.w * (JUMP - 0.5)) / last;
-      record.turns.push({ what: `jump to ${JUMP}`, ...(await timedTap(page, { x, y: bar.y }, JUMP)) });
+      record.turns.push({ what: `jump to ${JUMP}`, ...(await timedTap(page, { x, y: bar.y }, JUMP)),
+        laps: await laps(page) });
       await settle(page);
       await shot(page, cdp, `${n}_step${JUMP}.png`);
     } else {
@@ -367,7 +398,9 @@ try {
     record.told_most_ms = (await page.evaluate(() => (window.brickworksState || {}).told_most_ms));
     for (const turn of record.turns) {
       const line = `${turn.what} to ${turn.page}: on screen ${turn.shown ?? "?"} ms, drawn ${turn.drawn} ms `
-        + `(frame ${turn.frame} ms: own ${turn.own}, WebGL ${turn.webgl ?? "?"}; waited ${turn.waited ?? "?"} for it)`;
+        + `(frame ${turn.frame} ms: own ${turn.own}, WebGL ${turn.webgl ?? "?"} in ${turn.calls ?? "?"} calls, `
+        + `${turn.draws ?? "?"} draws; waited ${turn.waited ?? "?"} for it${turn.told ? "; the page told all in it" : ""})`
+        + (turn.laps ? ` ${JSON.stringify(turn.laps)}` : "");
       if (turn.what === "end (key)" || reportOnly) say(line);
       else check(`${line} under ${BAR(n)} ms`, turn.shown <= BAR(n));
     }

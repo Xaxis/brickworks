@@ -124,6 +124,29 @@ var _build_turned_us: int = 0
 var _build_turned_most_us: int = 0
 ## ...and where the longest one's time went, ms by what it did.
 var _build_turned_most: Dictionary = {}
+var _build_turned_last: Dictionary = {}
+## The frames a turn is drawn in, the turn's own and the two after, as
+## [ms of every script's processing, ms of it telling the page, ms of the
+## engine's drawing on this side]: what a turn's frame cost besides the turn.
+var _turn_frames: Array = []
+var _turn_frames_left: int = 0
+var _told_this_frame_us: int = 0
+
+
+## Read at the start of each frame, of the frame before.
+func _time_turn_frames() -> void:
+	if _turn_frames_left <= 0:
+		return
+	_turn_frames_left -= 1
+	if _turn_frames_left == 2:
+		# This is the turn's own frame: nothing of it is measured yet.
+		_told_this_frame_us = 0
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+		return
+	_turn_frames.append([snappedf(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, 0.1),
+		snappedf(_told_this_frame_us / 1000.0, 0.1),
+		snappedf(RenderingServer.viewport_get_measured_render_time_cpu(get_viewport().get_viewport_rid())
+			+ RenderingServer.get_frame_setup_time_cpu(), 0.1)])
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -1148,8 +1171,12 @@ func _ready() -> void:
 	# Which parts are a figure's, sorted a slice at a time once the window
 	# is up: the first question about a figure built it in one frame, the
 	# autosave's after Brickify among them.
+	# Not in the viewer, which puts no figure down: there it took the
+	# frames a shared model opens and works its steps out in, and the
+	# steps ask for it themselves when a sub-model needs it.
 	get_tree().create_timer(1.0).timeout.connect(func() -> void:
-		Minifig.index_paced(_library))
+		if _viewing.is_empty():
+			Minifig.index_paced(_library))
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
@@ -2091,6 +2118,9 @@ func _build_go(page: int) -> void:
 	if _build_turned_us > _build_turned_most_us:
 		_build_turned_most_us = _build_turned_us
 		_build_turned_most = took
+	_build_turned_last = took
+	_turn_frames = []
+	_turn_frames_left = 3
 	# And the page told which frame drew it, for a check to time a turn from
 	# the tap to the frame (tools/web/share_steps_flow.mjs).
 	if OS.has_feature("web") and not RenderingServer.frame_post_draw.is_connected(_build_drawn):
@@ -2145,6 +2175,8 @@ func build_state() -> Dictionary:
 	said["turn_ms"] = roundi(_build_turned_us / 1000.0)
 	said["turn_most_ms"] = roundi(_build_turned_most_us / 1000.0)
 	said["turn_most"] = _build_turned_most
+	said["turn_last"] = _build_turned_last
+	said["turn_frames"] = _turn_frames
 	# Counted by the pages, not by asking every brick twice a second.
 	said["shown"] = _build_pages.standing(_build_page) if _build_pages != null else 0
 	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
@@ -4721,6 +4753,7 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	_time_turn_frames()
 	_watch_view()
 	_steer_from_keys(_delta)
 	if not _viewing.is_empty():
@@ -4762,7 +4795,9 @@ func _process(_delta: float) -> void:
 		_store.tick()
 		_watch_other_tabs()
 	_weigh()
+	var telling: int = Time.get_ticks_usec()
 	_tell_page()
+	_told_this_frame_us = Time.get_ticks_usec() - telling
 	if _counts == null:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is

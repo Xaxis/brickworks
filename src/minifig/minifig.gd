@@ -1318,6 +1318,14 @@ static func _sort_into(sorted: Array, library: PartLibrary, pace: FramePace) -> 
 static func index_paced(library: PartLibrary) -> void:
 	if library == null or _indexed_for(library):
 		return
+	# One sort at a time: a second caller waits for the one under way. The
+	# warm-up and the Timeline both sorted the whole library at once,
+	# slice for slice, each frame doing the work twice.
+	while _sorting_for == library.get_instance_id():
+		await Engine.get_main_loop().process_frame
+	if _indexed_for(library):
+		return
+	_sorting_for = library.get_instance_id()
 	var made: int = library.custom.size()
 	var sorted: Array = []
 	await _sort_into(sorted, library, FramePace.new())
@@ -1325,6 +1333,11 @@ static func index_paced(library: PartLibrary) -> void:
 	if library.custom.size() != made:
 		sorted = []
 	_index(library, sorted)
+	_sorting_for = 0
+
+
+## The library whose index is being sorted a slice at a time, or 0.
+static var _sorting_for: int = 0
 
 
 static func _named_pair(library: PartLibrary, id: String) -> String:

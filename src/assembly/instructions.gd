@@ -1317,10 +1317,6 @@ static func _find_assemblies(nodes: Array[Node2], world: BrickWorld,
 ## 2026-10-15).
 static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 		world: BrickWorld, library: PartLibrary, job: Working.Job) -> void:
-	# Whether a sub-model is a figure asks the figures' index, which the
-	# first question builds: every part of the library looked at in one go.
-	if job != null:
-		await Minifig.index_paced(library)
 	var tops: Dictionary = {}
 	var inner: Dictionary = {}
 	for node: Node2 in nodes:
@@ -1347,6 +1343,13 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 				inner[sub] = []
 			(inner[sub] as Array).append(node)
 
+	# Whether a sub-model is a figure asks the figures' index, which the
+	# first question builds: every part of the library looked at. Only
+	# when there is a sub-model to ask about: a model of one piece waited
+	# for all 29,000 parts to be sorted for nothing, 27 s of a slowed
+	# phone's 41 before a shared model's first step (share_steps_flow).
+	if job != null and not tops.is_empty():
+		await Minifig.index_paced(library)
 	for top: String in tops:
 		if job != null and job.due():
 			await job.next()
