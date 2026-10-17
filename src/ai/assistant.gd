@@ -18300,10 +18300,8 @@ section of the rest in full.
 
 HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
-that exists; how_real_sets_build_this with the subject and your main \
-masses as assemblies: how real sets of its line build each (on hinges, \
-sideways, of slopes), to decide here how yours are built; real sets' parts; \
-the faults the judge found in our own designs of it.
+that exists; how_real_sets_build_this with the subject and main masses \
+as assemblies: how its line's sets build each, and our designs' faults.
  2. The silhouette: the main masses, sized in studs off the picture and \
 the brief. A hull, a car body, a fuselage or a building is a shape pattern \
 (read_guide "shapes"); a figure, a creature, a character or anything \

@@ -1242,7 +1242,7 @@
       "kind": "lib",
       "label": "real sets' pieces by what they are",
       "entry": "src/ai/real_snippets.gd",
-      "reach": "godot --headless --path . --script src/dev/snippets_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/snippets_probe.gd; godot --headless --path . --script src/dev/real_bodies_probe.gd",
       "area": "assistant"
     },
     {
