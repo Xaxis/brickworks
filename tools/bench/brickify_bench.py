@@ -761,6 +761,8 @@ def do_bond(args: argparse.Namespace) -> int:
 
 FACES = (("up", 0.966, 1.01), ("up and out", 0.5, 0.966), ("out", -0.5, 0.5),
          ("down and out", -0.966, -0.5), ("down", -1.01, -0.966))
+# The views from the four sides, of view_dirs(): +x, -x, +z, -z.
+SIDE_VIEWS = (0, 1, 4, 5)
 
 
 def do_faces(args: argparse.Namespace) -> int:
@@ -809,12 +811,22 @@ def do_faces(args: argparse.Namespace) -> int:
                     hit, loc, tri = cast(bc, centre, radius, d, args.res)
                     bp.append(loc[hit])
                     bn.append(facing(bc.mesh.face_normals[tri[hit]], d))
+                # Seen from the four sides alone: the model's points and the build's in those views,
+                # the larger of the two 95th percentiles of each from the other (Hausdorff95), studs.
+                side_m = np.concatenate([hits[i][1][hits[i][0]] for i in SIDE_VIEWS])
+                side_b = np.concatenate([bp[i] for i in SIDE_VIEWS])
+                d_mb, _ = cKDTree(side_b).query(side_m)
+                d_bm, _ = cKDTree(side_m).query(side_b)
                 bp, bn = np.concatenate(bp), np.concatenate(bn)
                 dist, near = cKDTree(bp).query(pts)
                 err = np.degrees(np.arccos(np.clip(np.abs((nrm * bn[near]).sum(axis=1)), 0, 1)))
                 row[arm_name] = {name: {"normal_deg": float(err[m].mean()) if m.any() else None,
                                         "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
                                  for name, m in bins}
+                row[arm_name]["sides"] = {
+                    "hausdorff95_studs": float(max(np.percentile(d_mb, 95), np.percentile(d_bm, 95)) / STUD),
+                    "lost95_studs": float(np.percentile(d_mb, 95) / STUD),
+                    "added95_studs": float(np.percentile(d_bm, 95) / STUD)}
             key = f"{model_dir.name}/{size_dir.name}"
             results[key] = row
             print(key, " ".join(f"{name} {row['share'][name]:.0%}" for name, _, _ in FACES), flush=True)
@@ -822,7 +834,8 @@ def do_faces(args: argparse.Namespace) -> int:
                 if arm_name in row:
                     print(f"  {arm_name:7s}", " | ".join(
                         f"{name} {row[arm_name][name]['normal_deg'] or 0:4.1f}° {row[arm_name][name]['lost_studs'] or 0:.2f}"
-                        for name, _, _ in FACES), flush=True)
+                        for name, _, _ in FACES), f"| sides H95 {row[arm_name]['sides']['hausdorff95_studs']:.2f}",
+                        flush=True)
             target.write_text(json.dumps(results, indent=1))
     return 0
 

@@ -395,6 +395,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.core_colour = colour
 		plan.sold_in = PackedInt32Array(pattern.get("sold_in", []))
 		plan.faces = faces
+		if pattern.get("cubes") is Dictionary:
+			plan.cubes = pattern["cubes"]
+		if pattern.get("side_fine") is Callable:
+			plan.side_fine = pattern["side_fine"]
 		plan.mirror_of()
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall,
 			"ms": {}}
@@ -443,7 +447,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan.screen(asked)
 		var shells: Array = []
 		if sideways:
-			shells = plan.shells()
+			clock = Time.get_ticks_msec()
+			shells = plan.shells("straight" if surface == "none" else surface)
 			# A shell whose side studs hold less than most of what it took out
 			# of the core is laid upright instead: on a body three and a half
 			# plates tall (a minifigure-scale car) the rows and the side studs
@@ -454,10 +459,16 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			# the other back at 59%, and came out lopsided.
 			var covered: Dictionary = {}    ## facing -> share
 			for shell: Dictionary in shells:
-				plan.lay_shell(shell, "straight" if surface == "none" else surface, true)
+				# A cube's shell was tried as it was cut (_cube_shells).
+				if not bool(shell.get("tried", false)):
+					plan.lay_shell(shell, "straight" if surface == "none" else surface, true)
 				covered[shell["facing"]] = float(shell.get("covered", 0.0))
 			var held: Array = []
 			for shell: Dictionary in shells:
+				# A cube's shell keeps only the cubes it covers already.
+				if bool(shell.get("tried", false)):
+					held.append(shell)
+					continue
 				var facing: Vector2i = shell["facing"]
 				var share: float = covered[facing]
 				var twin := Vector2i(facing.x, -facing.y) if plan.axis == "z" \
@@ -472,6 +483,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 						roundi(100.0 * float(covered[facing]))])
 			shells = held
 			plan.under_shells(shells)
+			last["ms"]["shells"] = Time.get_ticks_msec() - clock
 		if _halted(stop):
 			return []
 		clock = Time.get_ticks_msec()
@@ -526,7 +538,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# Laid upright again where it does. Nor take away what a windscreen
 	# stands on: a round fuselage turned out at its nose lost the plates
 	# under its cockpit's screen, and the screen with them.
-	if not shells.is_empty() and (plan.pieces().size() > 1
+	if not shells.is_empty() and plan.cubes.is_empty() and (plan.pieces().size() > 1
 			or plan.screens_kept() < plan.screens_laid):
 		var upright: Array = build.call(false)
 		if upright.is_empty():
@@ -537,6 +549,24 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 					and up.screens_kept() > plan.screens_kept()):
 			plan = up
 			shells = []
+	if OS.has_environment("BRICKIFY6_DEBUG"):
+		print("DEBUG sideways %d pieces (%d shells)" % [plan.pieces().size(), shells.size()])
+		for piece: Array in plan.pieces().slice(1):
+			var lo := Vector3(INF, INF, INF)
+			var hi := -lo
+			var names: Array = []
+			for n: int in piece:
+				var one: Dictionary = plan.made[n]
+				var p := Vector3(float(one["x"]), float(one["y"]), float(one["z"]))
+				lo = lo.min(p)
+				hi = hi.max(p)
+				names.append(str(one["part"]))
+			print("DEBUG  piece %d parts %s..%s %s" % [piece.size(), str(lo), str(hi), str(names.slice(0, 6))])
+		for shell: Dictionary in shells:
+			print("DEBUG  shell %s face %d lanes %d..%d top %d rows %d cubes %d held %d covered %.2f" % [
+				str(shell["facing"]), int(shell["face"]), int(shell["a0"]), int(shell["a1"]), int(shell["top"]),
+				int(shell["rows"]), (shell.get("cubes", []) as Array).size(), (shell["held"] as Dictionary).size(),
+				float(shell.get("covered", 0))])
 	# What each screen laid, or why it laid none; and a steep front of a raised
 	# solid said with no screen, which is how a session says a cabin.
 	said.append_array(plan.screens_said)
@@ -631,6 +661,9 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		return not bool(one.get("_fixed", false)))
 	var turned_out: int = 0
 	for shell: Dictionary in shells:
+		# A sculpt's shells are many: the run's stop asked between them.
+		if _halted(stop):
+			return []
 		var laid: Array = plan.lay_shell(shell, "straight" if surface == "none" else surface)
 		turned_out += laid.size()
 		made = made + laid
@@ -2678,10 +2711,12 @@ class Plan extends RefCounted:
 	## Each shell is {facing, along, a0, a1, face, top, rows, held}: the way
 	## out and the way along it, the lanes it spans, the plane of the core's
 	## face in studs out, the plate its top row starts under, how many rows.
-	func shells() -> Array:
+	func shells(kind: String = "straight") -> Array:
 		var out: Array = []
 		if library == null or not colour_at.is_valid() or library.mesh_for(ANCHOR) == null:
 			return out
+		if not cubes.is_empty():
+			return _cube_shells(kind)
 		# Opposite sides together, so a mirrored shape's two flanks are cut
 		# by the same corners.
 		for facing: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -2865,11 +2900,23 @@ class Plan extends RefCounted:
 		var shell := {"facing": facing, "along": along, "a0": low.x, "a1": high.x + 1,
 			"face": face, "top": top, "rows": rows, "held": {}, "cells": mine,
 			"outside": outside, "glass": glass}
-		# Its side studs: every second row, in the core's outer wall behind
-		# each lane the shell's first row of plates covers there.
+		return shell if _anchored(shell) else {}
+
+	## A shell's side studs: every second row, in the core's outer wall behind
+	## each lane the shell's first row of plates covers there. Given back, and
+	## false, where none holds it.
+	func _anchored(shell: Dictionary) -> bool:
+		var facing: Vector2i = shell["facing"]
+		var along: Vector2i = shell["along"]
+		var low := Vector2i(int(shell["a0"]), 0)
+		var high := Vector2i(int(shell["a1"]) - 1, 0)
+		var face: int = shell["face"]
+		var top: int = shell["top"]
+		var rows: int = shell["rows"]
+		var mine: Dictionary = shell["cells"]
 		if _anchor_turn(facing) < 0:
 			drop_shell(shell)
-			return {}
+			return false
 		for w: int in range(0, rows, 2):
 			var jb: int = top - roundi(2.5 * w) - 3
 			if jb < 0:
@@ -2930,7 +2977,8 @@ class Plan extends RefCounted:
 						corner = Vector2i(mini(corner.x, cell.x), mini(corner.y, cell.y))
 					anchors.append({"part": part, "color": int((run[0] as Array)[2]), "x": corner.x,
 						"y": jb, "z": corner.y, "rot": turn, "_cells": cells, "_h": 3,
-						"_studs": cells, "_base": cells, "_holds": [facing, holds]})
+						"_studs": cells, "_base": cells, "_holds": [facing, holds],
+						"_of": int(shell.get("id", -1))})
 					for held: Vector2i in holds:
 						(shell["held"] as Dictionary)[held] = true
 				run = [lane] if not lane.is_empty() else []
@@ -2938,8 +2986,209 @@ class Plan extends RefCounted:
 		# left, they were laid by nobody, and a body thinned to a strip.
 		if (shell["held"] as Dictionary).is_empty():
 			drop_shell(shell)
+			return false
+		return true
+
+	## Lambrecht's cubes [lambrecht], for a sculpt's grid: the cubes of its
+	## surface two studs by five plates by two studs that face out, as
+	## Brickify measured them (Vector3i(x / 2, j / 5, z / 2) -> the way out).
+	## A side steeper than 60 degrees laid upright is a staircase a stud a
+	## step, its studs up, whichever way it turns; turned out, the same side
+	## is plates two fifths of a stud thick, slopes and tiles facing it.
+	var cubes: Dictionary = {}
+	## Each cube's studs and plates, as Brickify's cubes are cut.
+	const CUBE_STUDS := 2
+	const CUBE_PLATES := 5
+	## A cube with fewer of the model's plates than this is its side's flat
+	## back, which the core lays as well; and one whose kept parts cover
+	## less than [constant CUBE_KEEPS] of its plates goes back to the core.
+	const CUBE_LEAST := 4
+	const CUBE_KEEPS := 0.6
+	## Shells in the order made: a side stud says which it holds.
+	var _shells_made: int = 0
+	## Why cubes were left upright, by reason, for a probe to say.
+	var _why_not: Dictionary = {}
+	## The model's side at a point (Brickify.Grid.side): with it, a cube's
+	## shell fits its slopes by distance (_fit_near) as a top's are.
+	var side_fine: Callable = Callable()
+
+	## The cubes as shells: those facing one way at one depth one shell, laid
+	## as a curved side is (lay_shell), each held by side studs in the core's
+	## wall behind it; a cube its side studs do not hold given back to the
+	## core, and the shell laid again without it. First-tier connections
+	## only: a side stud into a plate's underside, nothing wedged.
+	func _cube_shells(kind: String) -> Array:
+		var groups: Dictionary = {}    ## Vector3i(way x, way z, depth) -> cubes
+		var keys: Array = cubes.keys()
+		keys.sort()
+		for key: Variant in keys:
+			var c: Vector3i = key
+			var facing: Vector2i = cubes[c]
+			var group := Vector3i(facing.x, facing.y, c.x if facing.x != 0 else c.z)
+			if not groups.has(group):
+				groups[group] = []
+			(groups[group] as Array).append(c)
+		var out: Array = []
+		var asked: int = 0
+		for key: Variant in groups:
+			asked += 1
+			if asked % 8 == 0 and stop.is_valid() and bool(stop.call()):
+				return out
+			var group: Vector3i = key
+			var facing := Vector2i(group.x, group.y)
+			var list: Array = groups[key]
+			var shell: Dictionary = {}
+			for _round: int in 3:
+				shell = _cube_shell(facing, list)
+				if shell.is_empty():
+					break
+				lay_shell(shell, kind, true)
+				var covered: Dictionary = shell.get("covered_at", {})
+				var count: Dictionary = {}    ## cube -> [plates, covered]
+				for plate: Variant in shell["cells"]:
+					var p: Vector3i = plate
+					var c := Vector3i(floori(p.x / float(CUBE_STUDS)), floori(p.y / float(CUBE_PLATES)),
+						floori(p.z / float(CUBE_STUDS)))
+					var was: Vector2i = count.get(c, Vector2i.ZERO)
+					count[c] = was + Vector2i(1, 1 if covered.has(p) else 0)
+				var kept: Array = []
+				for c: Vector3i in shell["cubes"]:
+					var n: Vector2i = count.get(c, Vector2i.ZERO)
+					if n.x > 0 and float(n.y) >= CUBE_KEEPS * n.x:
+						kept.append(c)
+				if kept.size() == (shell["cubes"] as Array).size():
+					break
+				_why_not["uncovered"] = int(_why_not.get("uncovered", 0)) + (shell["cubes"] as Array).size() \
+					- kept.size()
+				drop_shell(shell)
+				shell = {}
+				if kept.is_empty():
+					break
+				list = kept
+			if not shell.is_empty():
+				shell["tried"] = true
+				out.append(shell)
+			else:
+				_why_not["unheld"] = int(_why_not.get("unheld", 0)) + list.size()
+		var kept_cubes: int = 0
+		for shell: Dictionary in out:
+			kept_cubes += (shell["cubes"] as Array).size()
+		_why_not["kept"] = kept_cubes
+		_why_not["asked"] = cubes.size()
+		Shapes.last["cubes"] = _why_not
+		return out
+
+	## One shell of the cubes [param list], all facing [param facing] at one
+	## depth: each cube's plates of the model taken from the core where the
+	## cube is the side's outermost, the core is behind it, and it has plates
+	## enough; held, or {}.
+	func _cube_shell(facing: Vector2i, list: Array) -> Dictionary:
+		var along: Vector2i = along_of(facing)
+		var mine: Dictionary = {}
+		var outside: Array[Vector3i] = []
+		var lanes := Vector2i(1 << 30, -(1 << 30))
+		var face: int = 1 << 30
+		var top: int = -(1 << 30)
+		var bottom: int = 1 << 30
+		var kept: Array = []
+		var out3 := Vector3i(facing.x, 0, facing.y)
+		for c: Vector3i in list:
+			var cells: Array[Vector2i] = []
+			for dx: int in CUBE_STUDS:
+				for dz: int in CUBE_STUDS:
+					cells.append(Vector2i(c.x * CUBE_STUDS + dx, c.z * CUBE_STUDS + dz))
+			var j0: int = c.y * CUBE_PLATES
+			var plates: Array[Vector3i] = []
+			var empty: Array[Vector3i] = []
+			var beyond: int = 0
+			var backed: int = 0
+			var inmost: int = 1 << 30
+			for cell: Vector2i in cells:
+				inmost = mini(inmost, _lane(cell, facing, along).y)
+			# Nor under a cap of the core a plate or two thick, which would
+			# stand on the shell's edge and be held by nothing: a single tile
+			# over a bunny's flank came away on its own. Above a cube of the
+			# same shell, or a brick or more of the core, it is held.
+			# The same under it: a ledge a plate or two thick hung from it.
+			var capped: bool = false
+			# A cap of one plate is a tile over it; of two, a plate that reaches
+			# the core behind holds it.
+			if not list.has(c + Vector3i(0, 1, 0)):
+				for cell: Vector2i in cells:
+					var over: int = 0
+					while over < 3 and at(cell, j0 + CUBE_PLATES + over) >= 0:
+						over += 1
+					capped = capped or over == 1 or over == 2 \
+						and at(cell - facing, j0 + CUBE_PLATES) < 0
+			if not list.has(c - Vector3i(0, 1, 0)):
+				for cell: Vector2i in cells:
+					var under: int = 0
+					while under < 3 and j0 - 1 - under >= 0 and at(cell, j0 - 1 - under) >= 0:
+						under += 1
+					capped = capped or (under == 1 or under == 2) and j0 - 1 - under >= 0
+			if capped:
+				_why_not["capped"] = int(_why_not.get("capped", 0)) + 1
+				continue
+			for cell: Vector2i in cells:
+				var past: Vector2i = cell + facing * CUBE_STUDS
+				var inner: bool = _lane(cell, facing, along).y == inmost
+				for j: int in range(j0, j0 + CUBE_PLATES):
+					var key := Vector3i(cell.x, j, cell.y)
+					if at(past, j) >= 0:
+						beyond += 1
+					if inner and at(cell - facing, j) >= 0 and at(cell - facing * 2, j) >= 0:
+						backed += 1
+					if at(cell, j) < 0:
+						if not taken.has(key):
+							empty.append(key)
+					elif not taken.has(key) and not shelled.has(key) and not Shapes.is_glass(library, at(cell, j)):
+						plates.append(key)
+			# The side's outermost, the core behind it, plates enough.
+			# Anything of the model further out is cut off by the shell: a sliver
+			# a stud thick past a bunny's flank stood apart.
+			if beyond > 0 or backed < CUBE_STUDS * CUBE_PLATES * 6 / 10 or plates.size() < CUBE_LEAST:
+				var why: String = "beyond" if beyond > 0 else ("backed" if plates.size() >= CUBE_LEAST else "few")
+				_why_not[why] = int(_why_not.get(why, 0)) + 1
+				continue
+			kept.append(c)
+			for key: Vector3i in plates:
+				mine[key] = true
+			outside.append_array(empty)
+			for cell: Vector2i in cells:
+				var lt: Vector2i = _lane(cell, facing, along)
+				lanes = Vector2i(mini(lanes.x, lt.x), maxi(lanes.y, lt.x))
+				face = mini(face, lt.y)
+			top = maxi(top, j0 + CUBE_PLATES)
+			bottom = mini(bottom, j0)
+		if kept.is_empty():
 			return {}
-		return shell
+		# Not over a side-stud brick another shell laid, its studs up into
+		# this one's plates (as _shell keeps clear).
+		var studs_up: Dictionary = {}
+		for one: Dictionary in anchors:
+			for cell: Vector2i in one["_cells"]:
+				studs_up[cell] = int(one["y"]) + int(one["_h"])
+		for key: Variant in mine.keys():
+			var p: Vector3i = key
+			var column := Vector2i(p.x, p.z)
+			if studs_up.has(column) and int(studs_up[column]) == p.y:
+				mine.erase(key)
+		for key: Variant in mine:
+			taken[key] = true
+			shelled[key] = true
+		for key: Vector3i in outside:
+			taken[key] = true
+		_shells_made += 1
+		var shell := {"facing": facing, "along": along, "a0": lanes.x, "a1": lanes.y + 1,
+			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
+			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept}
+		return shell if _anchored(shell) else {}
+
+	## Whether side-stud brick [param one] holds [param shell]: a cube's shell
+	## by its own number, a design's by the way it faces.
+	static func _holds(one: Dictionary, shell: Dictionary) -> bool:
+		return one.has("_holds") and (one["_holds"] as Array)[0] == shell["facing"] \
+			and int(one.get("_of", -1)) == int(shell.get("id", -1))
 
 	## A shell given back to the core: its plates, the plates beside it it
 	## kept clear, and its side studs.
@@ -2949,10 +3198,9 @@ class Plan extends RefCounted:
 			shelled.erase(key)
 		for key: Vector3i in shell["outside"]:
 			taken.erase(key)
-		var facing: Vector2i = shell["facing"]
 		var left: Array = []
 		for one: Dictionary in anchors:
-			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
+			if _holds(one, shell):
 				for cell: Vector2i in one["_cells"]:
 					for m: int in 3:
 						taken.erase(Vector3i(cell.x, int(one["y"]) + m, cell.y))
@@ -3056,7 +3304,7 @@ class Plan extends RefCounted:
 		# Tried before the core is laid, every side stud it was given.
 		var held_here: Dictionary = {}
 		for one: Dictionary in (anchors if trial else made):
-			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
+			if _holds(one, shell):
 				for held: Vector2i in (one["_holds"] as Array)[1]:
 					held_here[held] = true
 		# A face asked for on this side: its square is the face's, laid on the
@@ -3099,6 +3347,29 @@ class Plan extends RefCounted:
 		sub.sample = func(x: float, j: float, z: float) -> bool:
 			return int(local_colour.call(x, j, z)) >= 0
 		sub.held = held_here
+		# A sculpt's colours and the colours it may lay go with it on its side.
+		sub.colour_shown = colour_shown
+		sub.sold_in = sold_in
+		sub.stop = stop
+		# And its side's own surface, at thirds of a stud along and down, in
+		# plates out from the face: its slopes fitted by distance.
+		if side_fine.is_valid() and shell.has("id"):
+			var sf: Callable = side_fine
+			var sign_: float = 1.0 if facing.x + facing.y > 0 else -1.0
+			sub.fine = func(cell: Vector2i, near: float, under: bool) -> PackedFloat32Array:
+				var nine := PackedFloat32Array()
+				nine.resize(9)
+				nine.fill(NAN)
+				var t_near: float = face + near / Shapes.PLATES_PER_STUD
+				for i: int in 3:
+					for k: int in 3:
+						var p: Vector2 = _point(a0 + cell.x + (i + 0.5) / 3.0, t_near, facing, along)
+						var up: float = top - Shapes.PLATES_PER_STUD * (cell.y + (k + 0.5) / 3.0)
+						var hit: float = float(sf.call(facing, p.y if facing.x != 0 else p.x, up,
+							p.x if facing.x != 0 else p.y, under))
+						if not is_nan(hit):
+							nine[i * 3 + k] = (hit * sign_ - face) * Shapes.PLATES_PER_STUD
+				return nine
 		if sub.held.is_empty():
 			shell["covered"] = 0.0
 			return []
@@ -3139,9 +3410,10 @@ class Plan extends RefCounted:
 						if mine.has(key):
 							covered[key] = true
 		shell["covered"] = float(covered.size()) / float(maxi(1, mine.size()))
+		shell["covered_at"] = covered
 		if trial:
 			return []
-		_close_side_studs(facing, sub, held_here, masked, local_colour)
+		_close_side_studs(shell, sub, held_here, masked, local_colour)
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
 			sub.made.size(), laid, sub.held.size(), roundi(100.0 * float(shell["covered"]))])
@@ -3180,7 +3452,7 @@ class Plan extends RefCounted:
 	## face. The shell keeps only what a side stud holds, and the cabins
 	## round's first car kept 54% of its plates: the studs it let go of stood
 	## open along its cabin, and its session called the body too blocky.
-	func _close_side_studs(facing: Vector2i, sub: Plan, held_here: Dictionary,
+	func _close_side_studs(shell: Dictionary, sub: Plan, held_here: Dictionary,
 			masked: Dictionary, local_colour: Callable) -> void:
 		var used: Dictionary = {}
 		for one: Dictionary in sub.made:
@@ -3191,7 +3463,7 @@ class Plan extends RefCounted:
 		for cell: Variant in masked:
 			used[cell] = true
 		for one: Dictionary in made:
-			if not one.has("_holds") or (one["_holds"] as Array)[0] != facing:
+			if not _holds(one, shell):
 				continue
 			var holds: Array = (one["_holds"] as Array)[1]
 			var open: Array[Vector2i] = []
@@ -4090,6 +4362,15 @@ class Plan extends RefCounted:
 						var plain: float = 0.4 * stair / count + TURN * rad_to_deg(stair_turn / maxi(turns, 1))
 						if score > plain:
 							continue
+						# On its side, on the core's face, a slope is held only by a
+						# side stud into a row it grips by (as _fit has it).
+						if flank and not under and base == 0:
+							var gripped: bool = false
+							var one_wide: String = str(entry[3]) if not str(entry[3]).is_empty() else str(entry[4])
+							for row: Variant in Shapes.part(library, one_wide).get("grips", []):
+								gripped = gripped or held.has(cell + out * int(row))
+							if not gripped:
+								continue
 						least = minf(least, score)
 						found.append([score, length, {"cell": cell, "facing": out, "length": length,
 							"tall": tall_, "y": base, "kind": entry[0], "under": under,

@@ -107,6 +107,13 @@ class Options extends RefCounted:
 	## "fine"); off, chosen by the flag as before, as [method build] lays it
 	## again where the build leaves a region of the model out.
 	var near: bool = true
+	## Its steep sides laid on their sides (Shapes' "cubes"): each cube of
+	## the surface two studs by five plates by two studs that faces out
+	## within 30 degrees of level laid in plates, slopes and tiles whose up
+	## points out, on bricks with studs on the side; off, every side a
+	## staircase of studs up, as [method build] lays it again where the
+	## build leaves a region of the model out.
+	var snot: bool = true
 
 	func copied() -> Options:
 		var out := Options.new()
@@ -194,6 +201,42 @@ class Grid extends RefCounted:
 	var margin: float = 0.0
 	## What measuring took, ms, step by step.
 	var ms: Dictionary = {}
+	## The cubes of the surface that face out (see [method Brickify._cubes]):
+	## Vector3i(x / 2, j / 5, z / 2) -> the way out, Vector2i(x, z).
+	var cubes: Dictionary = {}
+	## Rays across, for those sides: along x through every third of a stud
+	## along z and up, and along z through every third across and up; where
+	## each goes in and comes out, studs along it, as [member spans] has them.
+	var spans_x: Array = []
+	var spans_z: Array = []
+	var side_rows: int = 0
+
+	## The model's side where a ray along the way [param facing] points, at
+	## [param side_at] studs across it and [param up] plates, leaves the
+	## model going that way (or with [param inner], comes into it), nearest
+	## [param near] studs along it and within [param reach]; else NAN. What
+	## Shapes fits a side laid on its side to, as [method fine] a top.
+	func side(facing: Vector2i, side_at: float, up: float, near: float, inner: bool,
+			reach: float = 2.0) -> float:
+		var along_x: bool = facing.x != 0
+		var spans_here: Array = spans_x if along_x else spans_z
+		if spans_here.is_empty():
+			return NAN
+		var fu: int = floori(side_at * FINE)
+		var fv: int = floori(up / PLATES * FINE)
+		var width: int = (deep if along_x else across) * FINE
+		if fu < 0 or fv < 0 or fu >= width or fv >= side_rows:
+			return NAN
+		var span: PackedFloat32Array = spans_here[fu * side_rows + fv]
+		var outward: bool = facing.x + facing.y > 0
+		var best: float = NAN
+		var gap: float = reach
+		for n: int in range(1 if outward != inner else 0, span.size(), 2):
+			var d: float = absf(span[n] - near)
+			if d <= gap:
+				gap = d
+				best = span[n]
+		return best
 
 	func index(x: int, j: int, z: int) -> int:
 		return (x * deep + z) * tall + j
@@ -451,7 +494,139 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> 
 	grid.stand_colour = _stand_colour(grid, options, library)
 	_stance(grid, options)
 	grid.ms["stance"] = Time.get_ticks_msec() - clock
+	if options.smooth and options.snot:
+		clock = Time.get_ticks_msec()
+		grid.cubes = _cubes(grid, points, count, outward)
+		if not grid.cubes.is_empty():
+			grid.side_rows = ceili(grid.tall / PLATES * FINE)
+			grid.spans_x = _side_spans(grid, points, count, outward, true)
+			grid.spans_z = _side_spans(grid, points, count, outward, false)
+		grid.ms["cubes"] = Time.get_ticks_msec() - clock
 	return grid
+
+
+## The rays of [member Grid.spans_x] (or with [param along_x] false,
+## spans_z): as the rays up are cast, along x or z.
+static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outward: float,
+		along_x: bool) -> Array:
+	var fu: int = (grid.deep if along_x else grid.across) * FINE
+	var fv: int = grid.side_rows
+	var hits: Array = []
+	hits.resize(fu * fv)
+	const NUDGE_U := 0.0000613
+	const NUDGE_V := 0.0000287
+	for t: int in count:
+		var a: Vector3 = points[3 * t]
+		var b: Vector3 = points[3 * t + 1]
+		var c: Vector3 = points[3 * t + 2]
+		# Across the ray and up (in studs), and along it.
+		var au: float = a.z if along_x else a.x
+		var bu: float = b.z if along_x else b.x
+		var cu: float = c.z if along_x else c.x
+		var av: float = a.y / PLATES
+		var bv: float = b.y / PLATES
+		var cv: float = c.y / PLATES
+		var d: float = (bu - au) * (cv - av) - (cu - au) * (bv - av)
+		if absf(d) < 0.0000001:
+			continue
+		var n: Vector3 = (b - a).cross(c - a) * outward
+		var way: float = n.x if along_x else n.z
+		var u0: int = maxi(0, ceili(minf(au, minf(bu, cu)) * FINE - 0.5 - 0.01))
+		var u1: int = mini(fu - 1, floori(maxf(au, maxf(bu, cu)) * FINE - 0.5 + 0.01))
+		var v0: int = maxi(0, ceili(minf(av, minf(bv, cv)) * FINE - 0.5 - 0.01))
+		var v1: int = mini(fv - 1, floori(maxf(av, maxf(bv, cv)) * FINE - 0.5 + 0.01))
+		var aw: float = a.x if along_x else a.z
+		var bw: float = b.x if along_x else b.z
+		var cw: float = c.x if along_x else c.z
+		for iu: int in range(u0, u1 + 1):
+			var pu: float = (iu + 0.5) / FINE + NUDGE_U
+			for iv: int in range(v0, v1 + 1):
+				var pv: float = (iv + 0.5) / FINE + NUDGE_V
+				var w1: float = ((pu - au) * (cv - av) - (cu - au) * (pv - av)) / d
+				if w1 < 0.0 or w1 > 1.0:
+					continue
+				var w2: float = ((bu - au) * (pv - av) - (pu - au) * (bv - av)) / d
+				if w2 < 0.0 or w1 + w2 > 1.0:
+					continue
+				var column: int = iu * fv + iv
+				if hits[column] == null:
+					hits[column] = []
+				(hits[column] as Array).append(Vector3(aw + (bw - aw) * w1 + (cw - aw) * w2,
+					1.0 if way > 0.0 else -1.0, t))
+	var out: Array = []
+	out.resize(fu * fv)
+	var nothing := PackedFloat32Array()
+	for column: int in fu * fv:
+		if hits[column] == null:
+			out[column] = nothing
+			continue
+		var list: Array = hits[column]
+		list.sort()
+		out[column] = _spans(list)
+	return out
+
+
+## A cube of the surface is two studs by five plates by two studs, as
+## Lambrecht's are [lambrecht]: as long every way (40 LDU), so a cube turned
+## on its side fills the same box. One faces out where the model's surface
+## in it, its triangles' areas summed by the way each faces, turns from
+## level by under [constant STEEP] (sine): a side steeper than 60 degrees.
+## Measured a hair inside the surface, so a side on a cube's edge is the
+## cube it bounds; only where the surface in it is at least
+## [constant CUBE_AREA] square studs and mostly faces one way.
+const CUBE_STUDS := 2
+const CUBE_PLATES := 5
+const STEEP := 0.5
+const CUBE_AREA := 1.0
+const CUBE_AGREES := 0.6
+
+
+static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float) -> Dictionary:
+	var sums: Dictionary = {}    ## Vector3i -> Vector3, area times the way out, square studs
+	var areas: Dictionary = {}   ## Vector3i -> float
+	var iso := Vector3(1.0, 1.0 / PLATES, 1.0)
+	for t: int in count:
+		var a: Vector3 = points[3 * t]
+		var b: Vector3 = points[3 * t + 1]
+		var c: Vector3 = points[3 * t + 2]
+		var ab: Vector3 = (b - a) * iso
+		var ac: Vector3 = (c - a) * iso
+		var n: Vector3 = ab.cross(ac) * (0.5 * outward)
+		var area: float = n.length()
+		if area < 0.000001:
+			continue
+		var inward: Vector3 = -n / area * 0.25
+		var longest: float = maxf(ab.length(), maxf(ac.length(), (ac - ab).length()))
+		var k: int = clampi(ceili(longest), 1, 8)
+		var share: Vector3 = n / float(k * k)
+		var each: float = area / float(k * k)
+		for i: int in k:
+			for m: int in k - i:
+				for flip: int in 2:
+					if flip == 1 and i + m >= k - 1:
+						continue
+					var u: float = (i + (1.0 if flip == 0 else 2.0) / 3.0) / k
+					var v: float = (m + (1.0 if flip == 0 else 2.0) / 3.0) / k
+					var p: Vector3 = a + (b - a) * u + (c - a) * v
+					p += Vector3(inward.x, inward.y * PLATES, inward.z)
+					var key := Vector3i(floori(p.x / CUBE_STUDS), floori(p.y / CUBE_PLATES),
+						floori(p.z / CUBE_STUDS))
+					sums[key] = (sums.get(key, Vector3.ZERO) as Vector3) + share
+					areas[key] = float(areas.get(key, 0.0)) + each
+	var out: Dictionary = {}
+	var keys: Array = sums.keys()
+	keys.sort()
+	for key: Variant in keys:
+		var sum: Vector3 = sums[key]
+		var area: float = areas[key]
+		if area < CUBE_AREA or sum.length() < CUBE_AGREES * area:
+			continue
+		var way: Vector3 = sum.normalized()
+		if absf(way.y) >= STEEP:
+			continue
+		out[key] = Vector2i(signi(roundi(signf(way.x))), 0) if absf(way.x) >= absf(way.z) \
+			else Vector2i(0, signi(roundi(signf(way.z))))
+	return out
 
 
 ## The stand's colour: the one colour asked for, the darkest of the colours
@@ -1476,6 +1651,11 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 	if options.near:
 		shape["fine"] = grid.fine
+	if not grid.cubes.is_empty():
+		shape["sideways"] = true
+		shape["cubes"] = grid.cubes
+		if options.near:
+			shape["side_fine"] = grid.side
 	return shape
 
 
@@ -1665,11 +1845,12 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# which its stitch could no longer join, where the colours measured kept it.
 	# Laid again with its slopes by the flag too, as before both: unbonded with
 	# its slopes fitted by distance, the temple lost the moon again.
-	if (options.bond or options.near and options.smooth) \
+	if (options.bond or (options.near or options.snot) and options.smooth) \
 			and not (report["lost"]["regions"] as Array).is_empty():
 		var unbonded: Options = options.copied()
 		unbonded.bond = false
 		unbonded.near = false
+		unbonded.snot = false
 		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
 		if other.has("model"):
 			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])
