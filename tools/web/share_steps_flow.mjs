@@ -388,13 +388,16 @@ try {
     let buildIt = offeredAt;
     for (let tries = 1; ; tries += 1) {
       await page.touchscreen.tap(buildIt.x, buildIt.y);
-      const isOpen = () => ((window.brickworksShare || {}).build || {}).open === true
-        && Boolean((window.brickworksControls || {}).build_next);
-      await until(page, () => (((window.brickworksShare || {}).build || {}).open === true
-        && (window.brickworksControls || {}).build_next)
+      // Open as soon as the app says so; its controls are told the page a
+      // telling or two later, which on a busy box is seconds.
+      const isOpen = () => ((window.brickworksShare || {}).build || {}).open === true;
+      await until(page, () => ((window.brickworksShare || {}).build || {}).open === true
         || ((window.brickworksShare || {}).steps || []).length > 0, "the cover or the timeline", 600, null, 100);
-      const open = await until(page, isOpen, "the cover", 4, null, 100).catch(() => null);
-      if (open) break;
+      const open = await until(page, isOpen, "the cover", 20, null, 100).catch(() => null);
+      if (open) {
+        await until(page, () => (window.brickworksControls || {}).build_next, "Start on the cover", 120);
+        break;
+      }
       if (tries >= 3) throw new Error("Build it tapped three times and no cover");
       record.tapped_again = (record.tapped_again || 0) + 1;
       buildIt = await until(page, () => ((window.brickworksShare || {}).steps || []).length > 0
