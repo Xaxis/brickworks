@@ -4202,9 +4202,11 @@ class Plan extends RefCounted:
 				var id: String = str(entry[2 + wide])
 				if id.is_empty() or not _sold(id):
 					return ""
-				# Fitted by distance, only in a colour it is sold in: two of the one
-				# wide where the two wide is not.
-				if fine.is_valid() and pick.has("colour") and not _made(id, int(pick["colour"])):
+				# With colours to lay in (a sculpt's), only in a colour it is sold
+				# in: two of the one wide where the two wide is not. Fitted by the
+				# flag too: a blue bunny laid again so came back with inverted
+				# slopes no one sells in blue.
+				if not sold_in.is_empty() and pick.has("colour") and not _made(id, int(pick["colour"])):
 					return ""
 				var shape: Dictionary = Shapes.part(library, id, bool(pick["under"]))
 				if shape.is_empty() or int(shape["w"]) != wide \
