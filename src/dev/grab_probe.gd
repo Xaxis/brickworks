@@ -778,6 +778,7 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 			name, high_s - low_s, throw], absf((high_s - low_s) - 2.0 * throw) < 0.2)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s; drawing and weighing the rest), %d solves"
 		% [frame_worst, _grab.worst_follow_ms, _grab.worst_follow_said, linkage.solves])
+	print("    the slowest part to test: %s" % grab.slowest_said)
 	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
 		"moving": grab.moving.size(), "parts": _world.brick_count()}

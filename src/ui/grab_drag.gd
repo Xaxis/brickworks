@@ -35,6 +35,8 @@ var topple_on_baseplate: bool = false
 ## The room test's share of a frame, ms: past it a big section is moved on
 ## trust and checked when the pointer pauses or lets go (Grab.verify_step).
 const FRAME_BUDGET_MS := 10.0
+## A loop's room test may run this long in a frame, ms.
+const LOOP_BUDGET_MS := 24.0
 ## More parts than this moving is a big section.
 const BIG_SECTION := 40
 ## A pause this long, ms, is when a turn moved on trust is checked.
@@ -145,8 +147,12 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	grab.shared_mechanism = _mechanism
 	var state: String = grab.begin(brick_id, at, selection)
 	# A section this big is tested within a frame's share, and checked fully
-	# on pauses and at the release; a smaller one is bisected at once.
-	grab.budget_ms = FRAME_BUDGET_MS if grab.moving.size() > BIG_SECTION else INF
+	# on pauses and at the release; a smaller one is bisected at once. A loop
+	# is tested whole each frame but bisected where it stops a round at a
+	# time, on pauses: each round solves the loop and works out its turned
+	# parts' covers afresh (a steering's two wheels, 11 ms each).
+	grab.budget_ms = FRAME_BUDGET_MS if grab.moving.size() > BIG_SECTION \
+		else (LOOP_BUDGET_MS if grab.linkage != null else INF)
 	if state == "rigid":
 		grab = null
 		return false
@@ -196,7 +202,9 @@ func motion(screen: Vector2) -> void:
 		worst_weigh_ms = maxf(worst_weigh_ms, float(Time.get_ticks_usec() - weighing) / 1000.0)
 	_moved_at = Time.get_ticks_msec()
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
-	if grab.unchecked:
+	if grab.unchecked and grab.linkage != null:
+		line += " — stopped: it meets the model (found to a tenth of a degree when you pause)"
+	elif grab.unchecked:
 		line += " — too big to test every frame: checked when you pause"
 	elif grab.loop_short:
 		line += " — stopped: its loop closes no further that way"

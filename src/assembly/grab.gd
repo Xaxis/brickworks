@@ -49,6 +49,8 @@ const ON_THE_LINE := 6.5
 ## A part may sink this far below the floor the model stands on, LDU, as
 ## Balance lets a pose: half a plate.
 const BELOW_FLOOR := 4.0
+## A loop's driver is turned on a grid of this, degrees.
+const LOOP_GRID := 0.25
 ## Two parts whose turned boxes are into each other by no more than this
 ## only touch, LDU: under a cell of the cover, 0.4 mm.
 const TOUCHING := 1.0
@@ -170,6 +172,9 @@ var tests: int = 0
 var frame_solve_ms: float = 0.0
 var frame_test_ms: float = 0.0
 var frame_tests: int = 0
+## The slowest part to test in a drag, and on what: for a probe.
+var slowest_us: int = 0
+var slowest_said: String = ""
 
 
 ## Read what [param brick_id] would move, from where the pointer [param at]
@@ -613,11 +618,22 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 			break
 		# Its box first: nothing but what it may press on anywhere near it,
 		# and its turned cover is not worked out at all. A sail turning in
-		# the air cost a windmill's drag 38 ms a frame that way.
-		if not _near_anything(box):
+		# the air cost a windmill's drag 38 ms a frame that way. Then its
+		# turned box against each part near it: apart from all of them, or
+		# only touching, it meets nothing (a steering's wheel beside its
+		# mudguard cost 19 ms a test by its turned cover).
+		if not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
 			continue
+		var part_began: int = Time.get_ticks_usec()
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
+		var cover_us: int = Time.get_ticks_usec() - part_began
 		var hit: PackedInt64Array = _blocked(key, mesh, to, packed)
+		var part_us: int = Time.get_ticks_usec() - part_began
+		if part_us > slowest_us:
+			slowest_us = part_us
+			slowest_said = "#%d %s: cover %.1f ms, blockers %.1f ms; its box is into #%d %s's" % [key,
+				brick.part_id, cover_us / 1000.0, (part_us - cover_us) / 1000.0, _near_part,
+				world.get_brick(_near_part).part_id if world.get_brick(_near_part) != null else "?"]
 		if not hit.is_empty():
 			blocked_by = [key, int(hit[0])]
 			result = 0
@@ -819,6 +835,42 @@ func _never_meet() -> void:
 			_on_the_line[key] = true
 
 
+## Whether the part [param mesh] at [param to] (its world box [param box])
+## may meet any part near it but what it may press on: their boxes, each
+## turned as it stands, into each other by more than [constant TOUCHING].
+## Boxes hold the shapes, so boxes apart are shapes apart, and the turned
+## cover need not be worked out.
+func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bool:
+	var cell: float = BrickLattice.CELL
+	var bound := PackedInt32Array([floori(box.position.x / cell), floori(box.position.y / cell),
+		floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
+		ceili(box.end.z / cell)])
+	for other: int in builder.lattice.near_bounds(bound):
+		if skip.has(other):
+			continue
+		var them: BrickWorld.Brick = world.get_brick(other)
+		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+		if their_mesh == null:
+			return true
+		if Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= TOUCHING \
+				or _slides_over(key, mesh, to, other):
+			continue
+		# Into its box: then against its cover, box by box, which hugs it.
+		var cover: PackedInt32Array = builder.lattice.boxes_of(other)
+		var cell_size: float = BrickLattice.CELL
+		for at: int in range(0, cover.size(), 6):
+			var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
+				Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
+					cover[at + 5] - cover[at + 2]) * cell_size)
+			if Grab.box_depth(to, mesh.bounds, Transform3D.IDENTITY, piece) > TOUCHING:
+				_near_part = other
+				return true
+	return false
+
+
+var _near_part: int = 0
+
+
 ## Whether anything but what the moving side may press on has its bounds
 ## within [param box].
 func _near_anything(box: AABB) -> bool:
@@ -853,6 +905,10 @@ func turn_to(degrees: float) -> float:
 		return angle
 	_wall = NAN
 	loop_short = false
+	if linkage != null:
+		# On a quarter-degree grid: a part's turned cover is kept per turn
+		# (Builder.boxes_for), so a drag back over the same ground finds them.
+		wanted = snappedf(wanted, LOOP_GRID)
 	if linkage != null and not linkage.is_slide():
 		# As far as the loop closes towards it.
 		var reached: float = rad_to_deg(linkage.reach(deg_to_rad(wanted)))
@@ -1382,7 +1438,7 @@ func _room_for(at: Dictionary) -> bool:
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			return false
-		if not _near_anything(box):
+		if not _near_anything(box) or not _boxes_meet(int(key), mesh, to, box):
 			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
 		if not _blocked(int(key), mesh, to, packed).is_empty():
