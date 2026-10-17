@@ -1284,7 +1284,12 @@ only where it is, and is not tested (`Grab._round_on`).
 bodies; what hangs on them by a clip, a hinge, a tyre on its rim or an arm
 pinned on is Bodies'. Every part of a driven part's rigid body in Bodies, and
 everything beyond it there, now goes round with the driven part that carries
-it (`Grab._follow_driven`), and is tested for room as the section is.
+it (`Grab._follow_driven`), and is tested for room as the section is
+(`grab_probe -- --only=follow`). A made train, an 8 tooth crank driving a 24
+on a Technic brick with an arm on a hinge on the 24's axle: the crank turned
+30°, the arm turns 10.000°, a third, to 0.0000° of the gear reading's rate.
+On 8418's B model an excavator bucket (30394) hung on a driven body turns
+3.750° for the crank's 30°, an eighth.
 
 **Every free joint settles.** Let go, the grabbed joint swings down as
 before, and then every joint inside what moved (and inside what follows a
@@ -1311,11 +1316,41 @@ it stands on the baseplate's studs"). `GrabDrag.topple_on_baseplate` turns
 that off. A model Balance reads as past its edge where it stood does not fall
 either: Balance's support is the lowest cells, and 8218's smaller front tyres
 stand clear of them, so it reads as tipping at rest; a grab of its engine
-does not throw it on its nose. **Not yet seen to fall:** `grab_probe --
---only=tipping` turned the six biggest sections of 64 sets on no floor (two
-minifigures, 4096, 6630, 30181, 4903 and 60 sets of 40 to 160 parts) by
-±90° and ±150° through move_part, and none was left past its edge, so the
-fall has run on no real model yet.
+does not throw it on its nose.
+
+Real sets rarely tip from one turn: the six biggest sections of 64 sets
+turned ±90° and ±150° on no floor left none past its edge. So the probe
+builds one that does (`grab_probe -- --only=falling`): a tall arm of five
+1x2 bricks on a hinge (3937 and 3938) on a tower of four 2x2 bricks, on no
+floor, the arm dragged out to 90°. Its centre of mass is then 6.7 LDU past
+the tower's front edge. Let go, it falls 42.79° about that edge; worked by
+hand over every vertex of every part as posed, the first point down is a
+corner of the 1x2 plate on the arm's end, 108.0 LDU out past the edge and
+100.0 up, atan2(100.0, 108.0) = 42.79°; that corner then stands 0.00 LDU off
+the floor, nothing is below it, and the model rests with its centre of mass
+a stud inside what it lies on: "tipped over to the front and rests leaning
+43°, its far end on the floor". The drag and the fall are one undo step. On a
+16x16 baseplate's studs the same drag leaves it standing: "would tip over to
+the front, 0.3 studs past its edge. It does not fall: it stands on the
+baseplate's studs".
+
+**A loop's drag frame.** The steering's worst drag frame was 162 ms: every
+round of bisecting where it stops worked out its arms' and wheels' turned
+covers afresh, 11 to 16 ms each. A part whose turned box is apart from every
+part near it, or into one only by touching, or sliding over a face square to
+its line, skips its cover (`Grab._boxes_meet`); the driver turns on a
+quarter-degree grid, so covers already worked out are found again; and a
+stop is bisected a round at a time, finished on a pause. Over six runs on a
+loaded box the drag's own worst frame was 26 to 41 ms (the wheel's cover
+alone 11 to 16 ms as the box was loaded), whole frames 25 to 45 ms; not
+reliably under 33. Covers worked out side by side on workers did not help:
+Builder's worker cache holds its lock while it works one out.
+
+The first move of a drag decides between turning and sliding a joint that
+does both. It slid when the pointer went along the line more than across
+it; seen from above its axle, a wheel's rim turns along that line on the
+screen, and the engine's crank slid. It now slides only when the pointer
+goes along the line clearly more than the point held goes when it turns.
 
 **The release frame and a chain over MCP.** A big section let go is checked
 and swung down on a worker (`GrabDrag._verify_off_thread`), the window
@@ -1329,9 +1364,9 @@ now checked and kept in 8 s, its worst frame 69 ms (the commit 49 and what an
 edit sets going 17; the checking itself is off the window); it was 17 to
 20 s with a worst frame of 160 ms.
 
-**Left for later.** Racks and their pinions in a loop (Mechanism has no
-prismatic joint yet, §5), so a steering rack driven by its wheel and a
-scissor lift on a screw are not solved; a loop through a joint the tree grew
+**Left for later.** Racks: a rack driven by its pinion, a steering rack
+and its arms, a scissor lift (Mechanism has no prismatic joint yet, §5), the
+next unit; a loop's drag frame reliably under 33 ms; a loop through a joint the tree grew
 as a ball is solved, but the ball itself cannot be grabbed to drive it; the
 settling of free joints inside a loop; the fall of a model whose support
 Balance cannot see; dynamics (S2, P3).

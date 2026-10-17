@@ -639,7 +639,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   over to the left and lies on its side". Not on a baseplate's studs, which
   hold it ("It does not fall: it stands on the baseplate's studs"), nor a
   model Balance reads as past its edge where it stood.
-  `grab_probe -- --only=tipping` (headless; move_part on no floor).
+  `grab_probe -- --only=falling` (windowed): a made crane (a tall arm on a
+  hinge on a 2x2 tower) dragged out on no floor falls 42.79° as atan2 over
+  every drawn vertex says, then stays standing on a baseplate's studs;
+  pictures before, falling, fallen. `-- --only=tipping` scans real sets
+  through move_part. `-- --only=follow`: an arm hung on a driven axle turns
+  by the tooth ratio (a made 8:24 train, 8418's B model).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
