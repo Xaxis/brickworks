@@ -28,6 +28,10 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
 
 ### Added
 
+- Characters with faces. A person's or a head's eyes, an animal's eyes on
+  the sides of its head and its nose, joints covered in the body's colour,
+  and a torso that leans forward, back or to the side.
+
 - A part on a round joint swings to join the part its other end meets,
   as Studio turns a part to fit: R steps through it and T lands on it, so
   a Technic link at 66 degrees goes where the set has it.
@@ -230,6 +234,17 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
 
 ### Changed
 
+- Big files open in seconds: the LEGO® Technic set 42082, 4,139 parts, in
+  about 3 seconds where it took 14, part for part the same model.
+- A body built on real joints passes the check. On the real sets of
+  LDraw's model repository it refused 3,361 joined pairs, a ball in its
+  socket or a bar in its clip; it refuses 440 now, and still catches every
+  true collision.
+- Booklets a Technic builder can follow: a part held by a pin or an axle
+  goes in after what holds it, and a model shown on its stand is built in
+  its own frame. Parts put in under one already placed fell from 11% to 6%
+  of steps on sets nobody tuned on.
+
 - Brickify lays the whole model again, and quicker: all 28 test models
   whole in the smooth style, and the 40-stud bunny in about four fifths
   of the time it took.
@@ -323,6 +338,11 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
   (docs/TRADEMARKS.md).
 
 ### Fixed
+
+- Closing the app after opening a model of 600 parts or more no longer
+  crashes it, and an edit made just before closing is kept.
+- A booklet whose sub-assembly needs pages of its own is made whole, where
+  it used to stop with an error.
 
 - In a browser, a click puts the part where its ghost stood. Across a
   plate's edge 16 of 35 clicks used to land a stud forward or 2 LDU up;
