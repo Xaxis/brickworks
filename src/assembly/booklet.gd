@@ -335,8 +335,15 @@ static func _page_scale(group: Array, panels: Array) -> float:
 	var scale: float = MOST_SCALE
 	for index: int in group.size():
 		var entry: Entry = group[index]
-		scale = minf(scale, _fit(entry, panels[index])[0] / maxf(entry.size, 0.1))
+		scale = minf(scale, _fit(entry, panels[index])[0] / _grown(entry))
 	return scale
+
+
+## How much larger than the page's other steps its designer drew [param
+## entry]: its size, and its zoom, which frames a smaller part of the model
+## in the same room (BookletMaker._zoomed).
+static func _grown(entry: Entry) -> float:
+	return maxf(entry.size, 0.1) * maxf(entry.zoom, 0.1)
 
 
 ## How big the step's model can be drawn in [param panel], and where:
@@ -368,14 +375,14 @@ static func _fit(entry: Entry, panel: Rect2) -> Array:
 		if scale > best_scale:
 			best_scale = scale
 			best = option
-	return [minf(best_scale, MOST_SCALE * maxf(entry.size, 0.1) * maxf(entry.zoom, 1.0)), best]
+	return [minf(best_scale, MOST_SCALE * _grown(entry)), best]
 
 
 static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	entry.rect = panel
 	# Larger or smaller than the page's other steps where its designer said.
-	entry.scale = minf(scale * entry.size, _fit(entry, panel)[0]) \
-		if not is_equal_approx(entry.size, 1.0) else scale
+	entry.scale = minf(scale * _grown(entry), _fit(entry, panel)[0]) \
+		if not is_equal_approx(_grown(entry), 1.0) else scale
 	entry.number_size = _number_size(entry, panel)
 	var parts: Vector2 = _parts_size(entry.lots, _parts_width(entry, panel))
 	entry.parts_rect = Rect2(panel.position, parts) if not entry.lots.is_empty() else Rect2()

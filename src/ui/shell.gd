@@ -1653,7 +1653,7 @@ func edit_look(op: String) -> void:
 	if read_only:
 		return
 	var steps: StepsBar = app.get("_steps")
-	bar.say(change_look(op, steps.current_step()))
+	bar.say(change_look(op, steps.booklet_step()))
 
 
 ## How the booklet prints step [param at]: [param op] one of the Booklet

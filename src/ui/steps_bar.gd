@@ -526,6 +526,19 @@ func current_step() -> Instructions.Step:
 	return _steps[step]
 
 
+## The step of the booklet's pages the timeline is on: the current step,
+## or, inside a callout, the step that puts it on, whose page shows the
+## callout and is the page a page break or a view is for.
+func booklet_step() -> Instructions.Step:
+	var at: Instructions.Step = current_step()
+	if at == null or not at.in_callout():
+		return at
+	for step: Instructions.Step in _steps:
+		if step.number == at.number and step.callout_step == 0:
+			return step
+	return at
+
+
 ## The step a part put down by hand goes in (Builder.place_step): the one
 ## showing, in the author's steps, when the part goes where that step is.
 func place_step(path: String) -> int:
@@ -802,7 +815,7 @@ func _show(count: int) -> void:
 func _show_look() -> void:
 	if _looks == null or not _looks.visible:
 		return
-	var at: Instructions.Step = current_step()
+	var at: Instructions.Step = booklet_step()
 	var section: String = at.authored_in if at != null else ""
 	var step: int = at.authored_step if at != null else -1
 	var own: Dictionary = BookletLooks.of(_world, section, step) if step >= 0 else {}
