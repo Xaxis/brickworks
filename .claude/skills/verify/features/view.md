@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
 
 ## Sub-features
 
@@ -146,6 +146,30 @@ picture the assistant is shown.
   dialog once and ended a design run 46 minutes in. Ctrl+Q (Cmd+Q) quits on the
   desktop. `controls_probe` presses Escape with nothing open and fails, from
   `_finalize`, if the app quit under it.
+- `quitting cleanly` (`src/render/worker_tasks.gd`, `WorkerTasks`; `Main._exit_tree`):
+  the window's close button, File, Quit, Ctrl+Q and any `quit()` end the app
+  with exit 0 and the working model written. The engine keeps a worker task,
+  and the GDScript it runs, until somebody waits for it; one waited for over
+  frames was not when the app quit in between (a model of 600 parts or more is
+  weighed on a worker after every change, `Main._weigh`), and the engine freed
+  it after GDScript had gone: SIGSEGV in the task's destructor, then SIGABRT,
+  every time a big file was closed straight after opening (2026-10-16; it was
+  read as "files that carry parts" because the sets tried were big). Every
+  task the app waits for goes through `WorkerTasks.add` and `collect`, and
+  those still out when the tree goes are collected then; Brickify's dialog
+  collects its run before freeing the checker it reads. And the autosave
+  waits 2.5 s for a change to settle, so an edit made just before closing
+  was lost: `Main._exit_tree` writes the working model now
+  (`ModelStore.write_now`). `quit_probe` (headless) runs the app twice, a
+  1,000-part model each time, deletes a part (its sub-model copy with it)
+  while the weigh is out and quits by the close request and by File, Quit:
+  each exits 0 with a task out, and its autosave is the model as it stood at
+  the quit. Pass: exit 0 and `quit: quits cleanly and keeps the last edit`.
+  On main both runs exit 134 and their autosave still has the 50 parts. The
+  windowed close button is pressed for real with WM_DELETE_WINDOW from
+  outside, which on a bare Xvfb needs the atom made first (Godot asks for it
+  only if it exists, as a window manager makes it): results for 2026-10-16
+  in `bench/results/quitcrash-2026-10-16/` of the main checkout.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'
@@ -680,12 +704,13 @@ picture the assistant is shown.
   and first, so the parts the file carries are built (kept nowhere:
   `CustomParts.keeps` off): 42082-1 opened whole (4,139 parts), and opening
   it takes no more than LINEAR's share of its 4.5 times 75969-1's parts
-  (at most 8.0x; 4.5x here, main 5.3x). They open in a second run of the probe
-  (`--open`), its own process, which the check reads back: the engine dumps
-  core as it quits after any file that carries parts of its own (main too,
-  e502c58; not under gdb), and a `note` line says so; a script error there,
-  or no measurement, fails. Without `vendor/omr` it says so and judges
-  nothing there. Pass:
+  (at most 8.0x; 4.7x here, main 5.3x). Without `vendor/omr` it says so and
+  judges nothing there. Then it quits as a window closes after a big model:
+  at once, the model up and its weigh on a worker (`quitting with the model's
+  weigh on a worker`), so a crash on the way out fails it. Until 2026-10-16
+  the engine dumped core there (see `quitting cleanly`), and this cleared
+  the model and opened the real sets in a process of its own to step round
+  it. Pass:
   exit 0 and `bigmodel: every act grows no faster than the model`. With
   `-- --open [--times=N] [--dump=DIR] [--profile] PATH...` it only opens
   each file N times (3): the open to its second frame and until it settles,

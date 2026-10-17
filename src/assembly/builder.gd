@@ -2452,7 +2452,7 @@ func prepare_covers(placements: Array) -> void:
 		else:
 			continue
 		var n: int = jobs.size() - 1
-		tasks.append(WorkerThreadPool.add_task(func() -> void:
+		tasks.append(WorkerTasks.add(func() -> void:
 			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(boxes, Vector3i.ZERO, turn)
 			writing.lock()
 			made[n] = shape
@@ -2475,7 +2475,7 @@ func finish_covers() -> void:
 	var preparing: Array = _preparing
 	_preparing = []
 	for task: int in preparing[1]:
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 	var jobs: Array = preparing[0]
 	var made: Dictionary = preparing[2]
 	for n: int in jobs.size():

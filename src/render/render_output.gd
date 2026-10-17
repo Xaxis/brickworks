@@ -41,11 +41,11 @@ static func off_thread(work: Callable) -> void:
 	if OS.has_feature("nothreads"):
 		work.call()
 		return
-	var task: int = WorkerThreadPool.add_task(work, false, "encode a render")
+	var task: int = WorkerTasks.add(work, false, "encode a render")
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
+	WorkerTasks.collect(task)
 
 
 ## Keep a picture as a PNG. Returns the line to show.
@@ -109,7 +109,7 @@ func add_frame(n: int, image: Image) -> void:
 		work.call()
 		_keep_frame(n, encoded)
 		return
-	_pending.append([WorkerThreadPool.add_task(work, false, "encode a turntable frame"),
+	_pending.append([WorkerTasks.add(work, false, "encode a turntable frame"),
 		encoded, n])
 	await _drain(MOST_PENDING)
 
@@ -125,7 +125,7 @@ func _drain(keep: int) -> void:
 		var oldest: Array = _pending[0]
 		while not WorkerThreadPool.is_task_completed(int(oldest[0])):
 			await tree.process_frame
-		WorkerThreadPool.wait_for_task_completion(int(oldest[0]))
+		WorkerTasks.collect(int(oldest[0]))
 		_pending.pop_front()
 		_keep_frame(int(oldest[2]), oldest[1])
 

@@ -521,6 +521,19 @@ waiting 600 frames, or not freeing the window first). On the desktop that is
 a crash as the app closes. The check opens the sets in a process of its own
 so it can say so rather than fail on it.
 
+Mended the same day. Not the parts the file carries but its size: 10129-1,
+1,454 parts and none carried, did it too, and 4883-1 is 121 parts. A model
+of 600 parts or more is weighed on a worker after every change, and the
+engine keeps a worker task until somebody waits for it; quitting while the
+weigh ran left its task to the engine, which freed it after GDScript had
+gone (SIGSEGV in a null lock, then SIGABRT from the crash handler). A task started from GDScript and never
+waited for does it in a ten-line script. Every task the app waits for now
+goes through `WorkerTasks`, which collects those still out as the tree goes,
+and the app writes the working model as it closes: an edit made in the 2.5 s
+before was lost too. The check opens the sets in its own run again and
+quits with the weigh on a worker, so a crash on the way out fails it;
+`quit_probe` quits by the close request and File, Quit after an edit.
+
 ## 3. Building a real set from its steps
 
 **What was run.** Three small sets chosen by the same hash: 5762-1 Plane (52

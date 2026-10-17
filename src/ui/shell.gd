@@ -1215,12 +1215,12 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) 
 		judge.lattice = builder.lattice.copy_for_reading()
 		var still: BrickWorld = world.copy_for_reading()
 		library.begin_reading()
-		var task: int = WorkerThreadPool.add_task(func() -> void:
+		var task: int = WorkerTasks.add(func() -> void:
 			weighed[0] = judge.measure(still.bricks(), poses), false, "weigh the balance")
 		library.reading_in(task)
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 		library.end_reading(task)
 		still.free()
 	job.end()

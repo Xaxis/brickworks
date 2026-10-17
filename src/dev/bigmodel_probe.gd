@@ -117,7 +117,7 @@ func _run() -> void:
 			rows.append(await _one("made %d" % size, _made(size)))
 		# And two real sets opened, where this checkout has them: each its
 		# first open, the parts the file carries built.
-		sets = _real_sets()
+		sets = await _real_sets()
 	else:
 		for path: String in paths:
 			if _open_only:
@@ -134,13 +134,22 @@ func _run() -> void:
 		_judge_open(sets)
 		print("bigmodel: %s" % ("every act grows no faster than the model"
 			if _failures == 0 else "%d acts grow faster than the model" % _failures))
-	# Down as a window closes, the model off and the work it set going let
-	# finish: quit straight after a big model, the engine dumped core on the
-	# way out now and then, and the suite read that as a failure.
-	_main.call("clear_model")
-	await _quiet()
-	_main.queue_free()
-	await _frames(30)
+	await _quit_mid_weigh()
+
+
+## Quit as a person closes the window after a big model: at once, the model
+## up and its weigh on a worker (Main._weigh). The engine dumped core on the
+## way out when it was (WorkerTasks), and the suite reads that exit as this
+## check failing; until that was found, this cleared the model and let its
+## work finish first, and opened the real sets in a process of its own.
+func _quit_mid_weigh() -> void:
+	_main.set("_stability_revision", -1)
+	for _n: int in 300:
+		if bool(_main.get("_weighing")):
+			break
+		await process_frame
+	print("  quitting with the model's weigh %s" % ("on a worker" if bool(_main.get("_weighing"))
+		else "not going"))
 	quit(1 if _failures > 0 else 0)
 
 
@@ -597,41 +606,19 @@ func _judge(small: Dictionary, big: Dictionary) -> void:
 		_ratio(act, small[act]["total_ms"], big[act]["total_ms"], LINEAR)
 
 
-## The real sets' first opens (_opened), opened by this probe again in a
-## process of its own (--open): [] when the checkout has not got them. Its
-## own, because the engine dumps core as it quits after opening a file that
-## carries parts of its own (on main too, e502c58, every time; not under
-## gdb): nothing to do with how fast the file opened, so said and not judged
-## here, where the suite would read it as this check failing. A script error
-## in it, or no measurement from it, is a failure.
+## The real sets' first opens (_opened), each once, the parts the file
+## carries built: [] when the checkout has not got them.
 func _real_sets() -> Array:
-	var paths: Array = []
 	for path: String in REAL_SETS:
 		if not FileAccess.file_exists(path):
 			return []
-		paths.append(ProjectSettings.globalize_path(path))
-	var written: String = OS.get_user_data_dir().path_join("bigmodel_real_sets.json")
-	DirAccess.remove_absolute(written)
-	var arguments: PackedStringArray = PackedStringArray(["--headless", "--path",
-		ProjectSettings.globalize_path("res://"), "--script", "res://src/dev/bigmodel_probe.gd",
-		"--", "--open", "--times=1", "--bigmodel-out=" + written])
-	arguments.append_array(paths)
-	var said: Array = []
-	var code: int = OS.execute(OS.get_executable_path(), arguments, said, true)
-	var output: String = "".join(said)
-	for line: String in output.split("\n"):
-		if line.begins_with("  ") and line.contains(" parts: "):
-			print(line)
-	if output.contains("SCRIPT ERROR") or output.contains("Parse Error") \
-			or not FileAccess.file_exists(written):
-		print(output.right(2000))
-		_check("the real sets opened, in a process of their own", false)
-		return []
-	if code != 0:
-		print("  note  the real sets' own process exited %d as it quit: the engine's fault "
-			% code + "after a file that carries parts, which main has too")
-	var read: Variant = JSON.parse_string(FileAccess.get_file_as_string(written))
-	return (read as Dictionary).get("models", []) if read is Dictionary else []
+	var times: int = _times
+	_times = 1
+	var sets: Array = []
+	for path: String in REAL_SETS:
+		sets.append(await _opened(path))
+	_times = times
+	return sets
 
 
 ## The real sets' first opens (_opened): the big one opened whole, and in

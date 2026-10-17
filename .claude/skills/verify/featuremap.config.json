@@ -1984,7 +1984,7 @@
       "kind": "cli",
       "label": "big models stay fast",
       "entry": "src/dev/bigmodel_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, and 75969-1 and 42082-1 opened, the big one's open held near-linear); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened",
+      "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened",
       "area": "view"
     },
     {
@@ -2014,6 +2014,20 @@
       "entry": "tools/web/placing_flow.mjs",
       "reach": "node --env-file=.env tools/web/placing_flow.mjs --url=http://127.0.0.1:8931/ --out=<dir> [--only=edge,parts,balance]  (after PARTS_URL=x tools/export.sh web and tools/web/serve.py build/web 8931 --parts assets/generated/parts: the ghost's pose against the part a click put down, brickworksState.ghost_pose and .put)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "quitting cleanly",
+      "entry": "src/render/worker_tasks.gd",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; by hand: open a big file, close the window at once)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "quit probe",
+      "entry": "src/dev/quit_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd",
+      "area": "view"
     }
   ]
 }
