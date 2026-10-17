@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- Building from a booklet takes fewer actions. E makes the parts put down
+  since the last step into a step of their own, one undo. Shift-C opens a
+  colour field: type a name or a number and the line above the palette
+  names the colour it will take, so the old greys are a few letters away.
+
+- Figures on joints. Ask for a person, an animal or a head and it is laid
+  on working joints, posed as asked, and a character built as a stack is
+  sent back once to be jointed. Judged blind against real LEGO® sets on
+  subjects no one tuned on, these designs were preferred to the last
+  release's on every count.
+
 - The model in Claude, in 3D. Where Claude shows Brickworks beside its
   calls (claude.ai and the Claude apps), the card is the real model now,
   in the parts' own shapes and colours, not four pictures of it: drag to
@@ -202,6 +213,30 @@ whole cycle.
 
 ### Changed
 
+- A file another program wrote comes back as it went in. Of 48 real sets'
+  files from LDraw's model repository, every one is saved and reopened
+  exactly: its author and licence, its part numbers as written, its
+  coordinates, its steps, its sub-models and LDCad's flexible parts. A part
+  this app cannot draw is kept in the file and named when it opens, never
+  dropped. Saving a 7,909-part set takes a third of a second, not twelve
+  minutes.
+
+- Big models stay quick. On a 4,000-part set, selecting everything takes a
+  tenth of a second, undoing a move of all of it half a second, and a step
+  of the timeline a thirtieth. In a browser that undo was still running
+  after fifteen minutes.
+
+- The booklet's steps can be built as drawn: a part goes in only once what
+  holds it is there, and never under one already placed. A section that
+  touches nothing built before it gets a stage of its own.
+
+- Brickify's colours read right. A grey or black model stays grey or black
+  instead of turning brown or blue, and every part is in a colour it is
+  really sold in, with its element number.
+
+- The desktop app checks parts against their exact shapes, as the web
+  build does, for every part a real set uses.
+
 - The build check holds what real sets hold, measured against every set in
   the LDraw model repository (docs/CONNECTIONS.md): click hinges, a towball
   or a ball turned in its socket, and a clip turned to an odd angle on its
@@ -267,6 +302,12 @@ whole cycle.
   (docs/TRADEMARKS.md).
 
 ### Fixed
+
+- Clip plates seat by their sockets, where their box used to put them a
+  stud off.
+- A clicked tile in the parts bin no longer keeps the arrow keys.
+- A design no longer inherits the last one's subject: after a character, a
+  car or a tower was being sent back as a figure.
 
 - Brickify keeps the whole model. A leg, a spout or a wing thinner than a
   stud is laid a stud thick instead of never reaching the bricks, so a fox,
