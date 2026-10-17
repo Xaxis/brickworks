@@ -261,6 +261,16 @@ func _one_set(name: String) -> void:
 		await _shot(name.get_basename() + "_suggested")
 		_builder.clear_selection()
 
+	# Split and merged back, as the model tree's buttons do.
+	var before_split: int = _sections.suggested.size()
+	var split_said: String = _sections.split(1)
+	var after_split: int = _sections.suggested.size()
+	var merge_said: String = _sections.merge(2)
+	_check("%s: split parts suggestion 1 in two (%s), merge puts it back (%s)" % [name,
+		split_said, merge_said], after_split == before_split + 1
+		and _sections.suggested.size() == before_split)
+	await _ui.suggest()
+
 	await _over_mcp(name, row)
 
 	# Accepted: sub-assemblies, one undo step.

@@ -972,7 +972,6 @@ func split(number: int) -> String:
 	var taken: Dictionary = {}
 	for one: Suggestion in suggested:
 		taken[one.name] = true
-	taken.erase(made.name)
 	made.ids = PackedInt64Array(halves[0])
 	var other := Suggestion.new()
 	other.level = made.level
@@ -993,13 +992,74 @@ func _two(bricks: Array) -> Array:
 	var cut: Dictionary = _cut(bricks, 2)
 	var parts: Array = cut["sections"]
 	if parts.size() < 2:
-		return []
+		return _halves(bricks)
 	var out: Array = [[], []]
 	for s: int in parts.size():
 		for n: int in parts[s]:
 			(out[0 if s == 0 else 1] as Array).append((bricks[n] as BrickWorld.Brick).id)
 	for n: int in (cut["figures"] as Array) + (cut["loose"] as Array):
 		(out[1] as Array).append((bricks[n] as BrickWorld.Brick).id)
+	return out
+
+
+## [param bricks] in two across their longest side, when the build order
+## will not part them: a flat base of plates, whose upper courses are each
+## held only to the course under them, came back whole. Each half is its
+## biggest piece, what else is in it going to the other. Ids, lower first.
+func _halves(bricks: Array) -> Array:
+	if bricks.size() < 4:
+		return []
+	var graph: Dictionary = joint_graph(bricks)
+	var count: int = bricks.size()
+	var held: Array = []
+	held.resize(count)
+	var index_of: Dictionary = {}
+	for n: int in count:
+		held[n] = {}
+		index_of[(bricks[n] as BrickWorld.Brick).id] = n
+	for kind: String in ["studs", "links"]:
+		for key: int in graph[kind]:
+			var a: int = index_of[key >> 32]
+			var b: int = index_of[key & 0xFFFFFFFF]
+			held[a][b] = true
+			held[b][a] = true
+	var box: AABB = _bounds_of_indices(bricks, range(count))
+	var axis: int = 0 if box.size.x >= box.size.z else 2
+	if box.size.y > box.size[axis]:
+		axis = 1
+	var order: Array = range(count)
+	order.sort_custom(func(x: int, y: int) -> bool:
+		return (bricks[x] as BrickWorld.Brick).transform.origin[axis] \
+			< (bricks[y] as BrickWorld.Brick).transform.origin[axis])
+	var side := PackedInt32Array()
+	side.resize(count)
+	for k: int in count:
+		side[order[k]] = 0 if k < count / 2 else 1
+	for which: int in [0, 1]:
+		var pieces: Array = []
+		var seen: Dictionary = {}
+		for n: int in count:
+			if side[n] != which or seen.has(n):
+				continue
+			var piece: Array = [n]
+			seen[n] = true
+			var at: int = 0
+			while at < piece.size():
+				for b: int in held[piece[at]]:
+					if side[b] == which and not seen.has(b):
+						seen[b] = true
+						piece.append(b)
+				at += 1
+			pieces.append(piece)
+		pieces.sort_custom(func(x: Array, y: Array) -> bool: return x.size() > y.size())
+		for extra: Array in pieces.slice(1):
+			for n: int in extra:
+				side[n] = 1 - which
+	var out: Array = [[], []]
+	for n: int in count:
+		(out[side[n]] as Array).append((bricks[n] as BrickWorld.Brick).id)
+	if (out[0] as Array).is_empty() or (out[1] as Array).is_empty():
+		return []
 	return out
 
 
