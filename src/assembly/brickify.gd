@@ -99,6 +99,17 @@ class Options extends RefCounted:
 	## A stand under it where it needs one (see [constant THIN_FOOT]);
 	## off, it is laid as it stands, and said if it would tip.
 	var stand: bool = true
+	## Its core bonded as a builder bonds it (Shapes' "bond"); off, laid by
+	## the colours measured, as [method build] lays it again where the
+	## bonded build leaves more of the model out.
+	var bond: bool = true
+
+	func copied() -> Options:
+		var out := Options.new()
+		for property: Dictionary in get_property_list():
+			if int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+				out.set(property["name"], get(property["name"]))
+		return out
 
 
 ## What a worker says it is doing, for the dialog to show.
@@ -1420,7 +1431,7 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "bond": true,
+		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "bond": options.bond,
 		"sold_in": options.palette,
 		"plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
@@ -1591,6 +1602,24 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			"at %d studs nothing of it held together" % options.studs)
 	var out: Dictionary = {"model": model, "report": report, "grid": grid, "trouble": trouble,
 		"ms": times}
+	# A bonded core is kept only if it keeps as much of the model. Where the
+	# bonded build leaves a region of it out, it is laid again by the colours
+	# measured and the one that fills more of the model kept, the time of both
+	# counted. A temple scene at 48 studs, bonded, lost the moon on its stick,
+	# which its stitch could no longer join, where the colours measured kept it.
+	if options.bond and not (report["lost"]["regions"] as Array).is_empty():
+		var unbonded: Options = options.copied()
+		unbonded.bond = false
+		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
+		if other.has("model"):
+			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])
+			var kept: Dictionary = out if bonded else other
+			var spent: Dictionary = other["ms"] if bonded else times
+			for step: String in ["measure", "lay", "check"]:
+				kept["ms"][step] = int(kept["ms"].get(step, 0)) + int(spent.get(step, 0))
+			kept["report"]["bond"] = "bonded" if bonded else "laid again unbonded"
+			out = kept
+			report = out["report"]
 	# What it lost is said; and where most of it went, a size that keeps it.
 	if suggest and float(report["coverage"]) < 0.75:
 		out["studs"] = _keeps_at(mesh, options, checker, progress)
