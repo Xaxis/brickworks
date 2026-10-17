@@ -283,6 +283,12 @@ func _chosen() -> String:
 			ours[one] = true
 		for key: int in bodies.parts_of(moving_bodies):
 			moving[key] = true
+		# A gear the loop moves that a worm standing still drives: the worm holds
+		# it, as it holds a train turned from the gear's side (_gears).
+		var held_by: Mechanism.Coupling = _worm_holding(ours)
+		if held_by != null:
+			linkage = null
+			return _refuse("locked", _worm_words(held_by))
 	skip = moving.duplicate()
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
@@ -514,6 +520,14 @@ func _gears() -> void:
 				", ".join(PackedStringArray(solved["culprits"]))])
 		mechanism = null
 		return
+	# A worm turns its gear; its gear cannot turn it (self-locking). Grabbed
+	# on the gear's side, the train is held there.
+	var held_back: Array[Mechanism.Coupling] = mechanism.worms_back_driven(driven)
+	if not held_back.is_empty():
+		_refuse("locked", _worm_words(held_back[0]))
+		gear_note = "a worm it would turn backwards holds it"
+		mechanism = null
+		return
 	_driver = driven
 	_drive_sign = 1.0 if joint.way.dot(axis) > 0.0 else -1.0
 	# What turns: every body the solve gives a spin, its parts; not the whole
@@ -529,6 +543,33 @@ func _gears() -> void:
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
 	_follow_driven()
+
+
+## Why a worm holds what was grabbed, in words: its gear cannot turn it.
+func _worm_words(worm: Mechanism.Coupling) -> String:
+	var worm_body: int = int(bodies.body_of.get(worm.one.key, -1))
+	# Its thread's lead angle: a tooth a turn round its pitch circle.
+	var lead: float = float(Mechanism.table().get("worm_lead", PI * 2.5))
+	var climbs: float = rad_to_deg(atan(lead / (TAU * maxf(worm.one.radius, 1.0))))
+	return ("Held by a worm: %s turns the %d tooth gear that turns %s, and a gear cannot turn its worm "
+		+ "back (a worm is self-locking: its thread climbs at %.0f°, too shallow for the gear's teeth to "
+		+ "push it round). Turn the worm's axle instead.") % [bodies.named([worm_body]) if worm_body >= 0
+		else "the worm", worm.other.teeth, bodies.named(moving_bodies), climbs]
+
+
+## A worm standing still whose gear is among [param ours] (Bodies body ->
+## true), from the gear reading read ahead; null for none.
+func _worm_holding(ours: Dictionary) -> Mechanism.Coupling:
+	if shared_mechanism == null:
+		return null
+	for coupling: Mechanism.Coupling in shared_mechanism.couplings:
+		if coupling.how != "worm":
+			continue
+		var wheel: int = int(bodies.body_of.get(coupling.other.key, -1))
+		var worm: int = int(bodies.body_of.get(coupling.one.key, -1))
+		if wheel >= 0 and ours.has(wheel) and not ours.has(worm):
+			return coupling
+	return null
 
 
 ## The gear train the grabbed joint drives, when it reaches a pinion in a

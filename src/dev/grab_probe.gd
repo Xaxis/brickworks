@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab3-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab4-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -128,6 +128,13 @@ func _run() -> void:
 				asked_racks.append(["rack and pinion: %s" % arg.get_file(), "res://" + arg.trim_prefix("--rack-set=")])
 		for one: Array in (RACKS if asked_racks.is_empty() else asked_racks):
 			await _rack_case(one[0], one[1])
+	if only.is_empty() or only == "worms":
+		var asked_worms: Array = []
+		for arg: String in args:
+			if arg.begins_with("--worm-set="):
+				asked_worms.append(["worm: %s" % arg.get_file(), "res://" + arg.trim_prefix("--worm-set=")])
+		for one: Array in (WORMS if asked_worms.is_empty() else asked_worms):
+			await _worm_case(one[0], one[1])
 	if only.is_empty() or only == "scissor":
 		await _scissor_case()
 	if only.is_empty() or only == "falling":
@@ -1521,6 +1528,240 @@ func _steer_by_hand(near_king: Bodies.Link, far_king: Bodies.Link, near_pin: Bod
 	form["phi"] = phi
 	form["far"] = found[2]
 	return {"near": phi, "far": float(found[1])}
+
+
+# -- worms ---------------------------------------------------------------------------------
+
+## Real sets with a worm driving a gear: a crane's winch, a tower crane.
+const WORMS: Array = [
+	["worm: a tower crane's winch", "res://vendor/omr/files/42042-1_Tower-Crane.mpd"],
+	["worm: a tractor's sower, on a 24", "res://vendor/omr/files/8063-1_Sower.mpd"],
+	["worm: a log loader's grabber", "res://vendor/omr/files/8049-1.mpd"],
+]
+## Tried and not passing, run with --worm-set=: 8062-1_Crane's winch stops at
+## once, its gear's axle carrying a universal joint whose far end the grab
+## does not turn (a universal joint is not read as passing a turn on);
+## 8258-1's worm stops at 10°, a beam on its axle meeting the beam beside it.
+
+
+## Turn a worm by the pointer, as a person turns its crank, two whole turns:
+## every frame its gear has turned a tooth for each turn of the worm (1/24 of
+## a turn for a 24, by hand from the teeth its name gives). Then take hold of
+## the gear's side: nothing turns, and the status bar says the worm holds it.
+func _worm_case(name: String, path: String) -> void:
+	print("\n%s: %s" % [name, path.get_file()])
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var train: Mechanism = _grab._mechanism
+	if train == null:
+		_check("%s: the gear trains are read" % name, false)
+		return
+	var chosen: Mechanism.Coupling = null
+	for coupling: Mechanism.Coupling in train.couplings:
+		if coupling.how != "worm":
+			continue
+		var worm_body: int = int(bodies.body_of.get(coupling.one.key, -1))
+		if worm_body < 0 or not bodies.parent_link.has(worm_body):
+			continue
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		trial.shared_mechanism = train
+		var state: String = trial.begin(coupling.one.key, _world.get_brick(coupling.one.key).transform.origin)
+		if state == "moves" and trial.coupled.has(coupling.other.key):
+			chosen = coupling
+			break
+		print("    (the worm #%d on %s: %s %s)" % [coupling.one.key, coupling.other.part, state, trial.why])
+	_check("%s: a worm turns a gear here (%s)" % [name, train.couplings_said()], chosen != null)
+	if chosen == null:
+		return
+	var worm_key: int = chosen.one.key
+	var wheel_key: int = chosen.other.key
+	var worm_body: int = int(bodies.body_of[worm_key])
+	var wheel_body: int = int(bodies.body_of[wheel_key])
+	var wheel_name: String = _library.parts[_world.get_brick(wheel_key).part_id].name
+	# The gear's teeth, by hand: the number its name gives.
+	var named_teeth: int = 0
+	var words: PackedStringArray = wheel_name.split(" ")
+	for n: int in range(1, words.size()):
+		if words[n].begins_with("Tooth") and words[n - 1].is_valid_int():
+			named_teeth = int(words[n - 1])
+	print("    the worm #%d %s on %s; it turns #%d %s (%s, %d teeth), %s LDU from its axis for %s" % [worm_key,
+		_world.get_brick(worm_key).part_id, bodies.parent_link[worm_body].words(), wheel_key,
+		_world.get_brick(wheel_key).part_id, wheel_name, named_teeth, Mechanism._tidy(chosen.apart),
+		Mechanism._tidy(chosen.ideal)])
+	var driver: Bodies.Link = bodies.parent_link[worm_body]
+	var line: Vector3 = driver.axis.normalized()
+	var around: PackedInt64Array = bodies.parts_of([worm_body, wheel_body])
+	_camera.look_from(Vector3(0.6, 0.7, 1.0).normalized())
+	_frame_on(around)
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var revision: int = _world.revision
+	var press: Dictionary = _press_off_line(bodies.parts_of(bodies.beyond(worm_body)), driver.point, line)
+	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
+			Vector3(-1, 0.6, -1), Vector3(0.1, 1, 0.1)]:
+		if not press.is_empty():
+			break
+		_camera.look_from(side.normalized())
+		_frame_on(around)
+		await _frames(10)
+		press = _press_off_line(bodies.parts_of(bodies.beyond(worm_body)), driver.point, line)
+	if press.is_empty():
+		_check("%s: the worm's axle is under the pointer somewhere" % name, false)
+		return
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "1_before")
+	var screen: Vector2 = press["screen"]
+	# The first move round the axle, as a hand turning a crank moves: along the
+	# line it would read as a slide.
+	var ray_from: Vector3 = _camera.ray_origin(screen)
+	var ray_way: Vector3 = _camera.ray_normal(screen).normalized()
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(ray_from, ray_way)
+	var slop := Vector2(0, 7)
+	if hit.is_valid():
+		var on: Vector3 = ray_from + ray_way * hit.distance
+		var tangent: Vector3 = line.cross(on - driver.point)
+		if tangent.length() > 0.5:
+			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
+	if slop.length() < 6.0 or is_nan(slop.x):
+		slop = Vector2(0, 7)
+	print("    pressed #%d %s at %s, first move %s" % [int(press["brick"]),
+		_world.get_brick(int(press["brick"])).part_id, screen, slop])
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	_check("%s: a drag on the worm's axle turns it and its gear (%s)" % [name, _grab.last_words
+		if grab == null else grab.said], grab != null and grab.state == "moves" and grab.coupled.has(wheel_key))
+	if grab == null or not grab.coupled.has(wheel_key):
+		await _button(screen, false)
+		return
+	var hold: Vector3 = grab._hold
+	var worm_axis: Vector3 = chosen.one.axis
+	var wheel_axis: Vector3 = chosen.other.axis
+	var worm_turned: float = 0.0
+	var last_worm: float = 0.0
+	var worst: float = 0.0
+	var sense: float = 0.0
+	var followed: int = 0
+	var checked: int = 0
+	var table := PackedStringArray()
+	var mid_shot: bool = false
+	var frame_worst: float = 0.0
+	for n: int in range(1, 73):
+		var target: float = 10.0 * n
+		var began: int = Time.get_ticks_usec()
+		await _move(_camera.unproject_position(_about(grab.pivot, grab.axis, target) * hold),
+			MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		if not grab.stopped and absf(grab.angle - target) < 1.5:
+			followed += 1
+		elif n <= 3 or (n % 18 == 0):
+			print("      (at %.0f°: the grab reads %.2f°, stopped %s%s)" % [target, grab.angle, grab.stopped,
+				"" if grab.blocked_by.size() != 2 else ", #%d %s meets #%d %s" % [int(grab.blocked_by[0]),
+				_world.get_brick(int(grab.blocked_by[0])).part_id, int(grab.blocked_by[1]),
+				_world.get_brick(int(grab.blocked_by[1])).part_id]])
+		# As drawn: the worm's own turn about its axis, unwrapped, and its gear's.
+		var w_worm: Transform3D = (grab.placed.get(worm_key, grab.rest[worm_key]) as Transform3D) \
+			* (grab.rest[worm_key] as Transform3D).affine_inverse()
+		var raw: float = _turn_about(w_worm.basis, worm_axis)
+		worm_turned += wrapf(raw - last_worm, -180.0, 180.0)
+		last_worm = raw
+		var w_wheel: Transform3D = (grab.placed.get(wheel_key, grab.rest[wheel_key]) as Transform3D) \
+			* (grab.rest[wheel_key] as Transform3D).affine_inverse()
+		var wheel_turned: float = _turn_about(w_wheel.basis, wheel_axis)
+		if absf(worm_turned) < 5.0:
+			continue
+		if sense == 0.0:
+			sense = signf(wheel_turned * worm_turned)
+		# By hand: a tooth a turn of the worm.
+		var by_hand: float = sense * worm_turned / float(maxi(named_teeth, 1))
+		worst = maxf(worst, absf(wheel_turned - by_hand))
+		checked += 1
+		if n % 18 == 0:
+			table.append("      worm %+7.1f° (%+.2f turns): gear %+7.3f°, by hand %+.2f/%d turns = %+7.3f°"
+				% [worm_turned, worm_turned / 360.0, wheel_turned, worm_turned / 360.0, named_teeth, by_hand])
+		if not mid_shot and _windowed and absf(worm_turned) >= 360.0:
+			mid_shot = true
+			await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "2_mid")
+	for row: String in table:
+		print(row)
+	_check("%s: the worm follows the pointer round in %d of 72 frames, %.0f° (%.1f turns)" % [name, followed,
+		grab.angle, grab.angle / 360.0], followed >= 60 and absf(grab.angle) >= 700.0)
+	_check("%s: in %d poses its %d tooth gear has turned a tooth for each turn of the worm, 1/%d, to %.4f°"
+		% [name, checked, named_teeth, named_teeth, worst], named_teeth > 0 and checked >= 60 and worst < 0.01
+		and chosen.other.teeth == named_teeth)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst)" % [frame_worst, _grab.worst_follow_ms])
+	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	# The other way round: the gear's side taken hold of does not turn the worm.
+	_grab._ready_now()
+	bodies = _grab._bodies
+	wheel_body = int(bodies.body_of[wheel_key])
+	var wheel_link: Bodies.Link = bodies.parent_link.get(wheel_body)
+	if wheel_link == null:
+		print("    (the gear's body is an anchor here: nothing to take hold of on its side)")
+		return
+	# A part of the gear's own body: one further out turns on a joint of its own.
+	var back_press: Dictionary = _press_off_line(bodies.members[wheel_body], wheel_link.point,
+		wheel_link.axis.normalized())
+	if back_press.is_empty():
+		_frame_on(bodies.members[wheel_body])
+		await _frames(10)
+		back_press = _press_off_line(bodies.members[wheel_body], wheel_link.point,
+			wheel_link.axis.normalized())
+	if not back_press.is_empty():
+		var trial_back := Grab.new()
+		trial_back.world = _world
+		trial_back.builder = _builder
+		trial_back.library = _library
+		trial_back.bodies = bodies
+		trial_back.shared_mechanism = _grab._mechanism
+		var pressed_back: int = int(back_press["brick"])
+		print("    (a grab of #%d %s reads: %s, %s %s)" % [pressed_back, _world.get_brick(pressed_back).part_id,
+			trial_back.begin(pressed_back, _world.get_brick(pressed_back).transform.origin), trial_back.said,
+			trial_back.gear_note])
+	if back_press.is_empty():
+		_check("%s: the gear's side is under the pointer somewhere" % name, false)
+		return
+	revision = _world.revision
+	depth = _builder.history_depth()
+	before = _snapshot()
+	var at: Vector2 = back_press["screen"]
+	await _move(at, 0)
+	await _button(at, true)
+	for step: int in range(1, 6):
+		await _move(at + Vector2(6.0 * step, 4.0 * step), MOUSE_BUTTON_MASK_LEFT)
+	var held: Grab = _grab.grab
+	var drawn_moved: bool = held != null and held.state == "moves" and not held.changed().is_empty()
+	var status: String = _grab.last_words
+	print("    pressed the gear's side, #%d %s: %s" % [int(back_press["brick"]),
+		_world.get_brick(int(back_press["brick"])).part_id, status])
+	_check("%s: a drag on the gear's side turns nothing: the worm holds it, said (\"%s\")" % [name,
+		status.get_slice("(", 0).strip_edges()], held != null and held.state == "locked" and not drawn_moved
+		and status.contains("self-locking") and _world.revision == revision)
+	await _button(_last_screen, false)
+	await _frames(3)
+	_check("%s: let go, nothing was kept (%s)" % [name, _differs(before)], _builder.history_depth() == depth
+		and _differs(before) == "none differs")
 
 
 # -- a scissor lift ----------------------------------------------------------------------
