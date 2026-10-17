@@ -571,7 +571,7 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 ## on its side fills the same box. One faces out where the model's surface
 ## in it, its triangles' areas summed by the way each faces, turns from
 ## level by under [constant STEEP] (sine): a side steeper than 60 degrees.
-## Measured a hair inside the surface, so a side on a cube's edge is the
+## Measured half a stud inside the surface, so a side on a cube's edge is the
 ## cube it bounds; only where the surface in it is at least
 ## [constant CUBE_AREA] square studs and mostly faces one way.
 const CUBE_STUDS := 2
@@ -595,7 +595,9 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 		var area: float = n.length()
 		if area < 0.000001:
 			continue
-		var inward: Vector3 = -n / area * 0.25
+		# Half a stud in: a side within half a stud of a cube's back has no
+		# stud of the model in that cube, and is the cube behind's.
+		var inward: Vector3 = -n / area * 0.5
 		var longest: float = maxf(ab.length(), maxf(ac.length(), (ac - ab).length()))
 		var k: int = clampi(ceili(longest), 1, 8)
 		var share: Vector3 = n / float(k * k)

@@ -549,6 +549,28 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 					and up.screens_kept() > plan.screens_kept()):
 			plan = up
 			shells = []
+	# A sculpt's cubes on their sides can leave a part or four of its core cut
+	# off beside them, on nothing and under nothing: taken out here, as the
+	# mend would take them out, so the check is asked once. A spot at 48
+	# studs left seven such, and its mend checked it three times over.
+	if not plan.cubes.is_empty() and not shells.is_empty():
+		var gone: Dictionary = {}
+		for piece: Array in plan.pieces().slice(1):
+			if piece.size() > 4:
+				continue
+			var touches: bool = false
+			for n: int in piece:
+				touches = touches or plan.beside_shell(plan.made[n])
+			if touches:
+				for n: int in piece:
+					gone[n] = true
+		if not gone.is_empty():
+			var left: Array = []
+			for n: int in plan.made.size():
+				if not gone.has(n):
+					left.append(plan.made[n])
+			plan.made = left
+		last["cut_off"] = gone.size()
 	if OS.has_environment("BRICKIFY6_DEBUG"):
 		print("DEBUG sideways %d pieces (%d shells)" % [plan.pieces().size(), shells.size()])
 		for piece: Array in plan.pieces().slice(1):
@@ -3184,6 +3206,18 @@ class Plan extends RefCounted:
 			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept}
 		return shell if _anchored(shell) else {}
 
+	## Whether a part of the core touches a plate a shell has taken, beside,
+	## over or under it.
+	func beside_shell(one: Dictionary) -> bool:
+		var y: int = roundi(float(one["y"]))
+		for cell: Vector2i in one.get("_cells", []):
+			for v: int in int(one.get("_h", 1)):
+				for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1),
+						Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+					if shelled.has(Vector3i(cell.x, y + v, cell.y) + step):
+						return true
+		return false
+
 	## Whether side-stud brick [param one] holds [param shell]: a cube's shell
 	## by its own number, a design's by the way it faces.
 	static func _holds(one: Dictionary, shell: Dictionary) -> bool:
@@ -3324,95 +3358,109 @@ class Plan extends RefCounted:
 			if not trial:
 				faces_laid.append(asked["said"])
 				kept.append("a face %s: %s" % [asked["said"], (laid_face as Dictionary)["said"]])
-		var local: Dictionary = {}
-		for u: int in int(shell["a1"]) - a0:
-			for w: int in rows:
-				var column := PackedInt32Array()
-				column.resize(depth)
-				var any: bool = false
-				for v: int in depth:
-					column[v] = int(local_colour.call(u + 0.5, v + 0.5, w + 0.5))
-					any = any or column[v] >= 0
-				if any:
-					local[Vector2i(u, w)] = column
-		# A face may take the whole side: then it is all that is laid there.
-		if local.is_empty() and face_parts.is_empty():
-			return []
-		var sub := Plan.new(local, depth, true, library)
-		sub.flank = true
-		sub.sides_smooth = false
-		sub.rounds = false
-		sub.wedges = wedges
-		sub.colour_at = local_colour
-		sub.sample = func(x: float, j: float, z: float) -> bool:
-			return int(local_colour.call(x, j, z)) >= 0
-		sub.held = held_here
-		# A sculpt's colours and the colours it may lay go with it on its side.
-		sub.colour_shown = colour_shown
-		sub.sold_in = sold_in
-		sub.stop = stop
-		# And its side's own surface, at thirds of a stud along and down, in
-		# plates out from the face: its slopes fitted by distance.
-		if side_fine.is_valid() and shell.has("id"):
-			var sf: Callable = side_fine
-			var sign_: float = 1.0 if facing.x + facing.y > 0 else -1.0
-			sub.fine = func(cell: Vector2i, near: float, under: bool) -> PackedFloat32Array:
-				var nine := PackedFloat32Array()
-				nine.resize(9)
-				nine.fill(NAN)
-				var t_near: float = face + near / Shapes.PLATES_PER_STUD
-				for i: int in 3:
-					for k: int in 3:
-						var p: Vector2 = _point(a0 + cell.x + (i + 0.5) / 3.0, t_near, facing, along)
-						var up: float = top - Shapes.PLATES_PER_STUD * (cell.y + (k + 0.5) / 3.0)
-						var hit: float = float(sf.call(facing, p.y if facing.x != 0 else p.x, up,
-							p.x if facing.x != 0 else p.y, under))
-						if not is_nan(hit):
-							nine[i * 3 + k] = (hit * sign_ - face) * Shapes.PLATES_PER_STUD
-				return nine
-		if sub.held.is_empty():
-			shell["covered"] = 0.0
-			return []
-		if not local.is_empty():
-			sub.mirror_of()
-			sub.surface(kind)
-			sub.lay()
-		var laid: int = sub.made.size()
-		# None reaching into the glass beside it: an inverted slope hung from
-		# a fuselage's flank reached into its canopy's glass bricks.
-		var glass: Dictionary = shell.get("glass", {})
-		if not glass.is_empty():
-			sub.made = sub.made.filter(func(one: Dictionary) -> bool:
+		# A cube's shell as it was tried, where the core kept every side stud
+		# it was tried on: laid again, it is the same parts (it reads nothing
+		# outside its cubes, so nothing the core laid since).
+		var sub: Plan = null
+		var laid: int = 0
+		if not trial and shell.has("id") and shell.get("_sub") is Plan and faces.is_empty() \
+				and (shell["_held"] as Dictionary) == held_here:
+			sub = shell["_sub"]
+			laid = int(shell["_laid"])
+		else:
+			var local: Dictionary = {}
+			for u: int in int(shell["a1"]) - a0:
+				for w: int in rows:
+					var column := PackedInt32Array()
+					column.resize(depth)
+					var any: bool = false
+					for v: int in depth:
+						column[v] = int(local_colour.call(u + 0.5, v + 0.5, w + 0.5))
+						any = any or column[v] >= 0
+					if any:
+						local[Vector2i(u, w)] = column
+			# A face may take the whole side: then it is all that is laid there.
+			if local.is_empty() and face_parts.is_empty():
+				return []
+			sub = Plan.new(local, depth, true, library)
+			sub.flank = true
+			sub.sides_smooth = false
+			sub.rounds = false
+			sub.wedges = wedges
+			sub.colour_at = local_colour
+			sub.sample = func(x: float, j: float, z: float) -> bool:
+				return int(local_colour.call(x, j, z)) >= 0
+			sub.held = held_here
+			# A sculpt's colours and the colours it may lay go with it on its side.
+			sub.colour_shown = colour_shown
+			sub.sold_in = sold_in
+			sub.stop = stop
+			# And its side's own surface, at thirds of a stud along and down, in
+			# plates out from the face: its slopes fitted by distance.
+			if side_fine.is_valid() and shell.has("id"):
+				var sf: Callable = side_fine
+				var sign_: float = 1.0 if facing.x + facing.y > 0 else -1.0
+				sub.fine = func(cell: Vector2i, near: float, under: bool) -> PackedFloat32Array:
+					var nine := PackedFloat32Array()
+					nine.resize(9)
+					nine.fill(NAN)
+					var t_near: float = face + near / Shapes.PLATES_PER_STUD
+					for i: int in 3:
+						for k: int in 3:
+							var p: Vector2 = _point(a0 + cell.x + (i + 0.5) / 3.0, t_near, facing, along)
+							var up: float = top - Shapes.PLATES_PER_STUD * (cell.y + (k + 0.5) / 3.0)
+							var hit: float = float(sf.call(facing, p.y if facing.x != 0 else p.x, up,
+								p.x if facing.x != 0 else p.y, under))
+							if not is_nan(hit):
+								nine[i * 3 + k] = (hit * sign_ - face) * Shapes.PLATES_PER_STUD
+					return nine
+			if sub.held.is_empty():
+				shell["covered"] = 0.0
+				return []
+			if not local.is_empty():
+				sub.mirror_of()
+				sub.surface(kind)
+				sub.lay()
+			laid = sub.made.size()
+			# None reaching into the glass beside it: an inverted slope hung from
+			# a fuselage's flank reached into its canopy's glass bricks.
+			var glass: Dictionary = shell.get("glass", {})
+			if not glass.is_empty():
+				sub.made = sub.made.filter(func(one: Dictionary) -> bool:
+					for cell: Vector2i in one.get("_cells", []):
+						for v: int in int(one.get("_h", 1)):
+							var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5,
+								cell.y + 0.5)
+							var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
+							for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+								if glass.has(Vector3i(floori(p.x), j_, floori(p.z))):
+									return false
+					return true)
+			# Pruned to what a side stud holds, and not stitched: a piece of a
+			# shell on a stud of its own is held, and a stitch lays parts again
+			# that no stud may reach.
+			if not local.is_empty():
+				sub.prune()
+			sub.made.append_array(face_parts)
+			# How much of what it took out of the core its kept parts cover.
+			var covered: Dictionary = {}
+			for one: Dictionary in sub.made:
 				for cell: Vector2i in one.get("_cells", []):
 					for v: int in int(one.get("_h", 1)):
-						var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5,
-							cell.y + 0.5)
+						var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5, cell.y + 0.5)
 						var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
 						for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
-							if glass.has(Vector3i(floori(p.x), j_, floori(p.z))):
-								return false
-				return true)
-		# Pruned to what a side stud holds, and not stitched: a piece of a
-		# shell on a stud of its own is held, and a stitch lays parts again
-		# that no stud may reach.
-		if not local.is_empty():
-			sub.prune()
-		sub.made.append_array(face_parts)
-		# How much of what it took out of the core its kept parts cover.
-		var covered: Dictionary = {}
-		for one: Dictionary in sub.made:
-			for cell: Vector2i in one.get("_cells", []):
-				for v: int in int(one.get("_h", 1)):
-					var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5, cell.y + 0.5)
-					var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
-					for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
-						var key := Vector3i(floori(p.x), j_, floori(p.z))
-						if mine.has(key):
-							covered[key] = true
-		shell["covered"] = float(covered.size()) / float(maxi(1, mine.size()))
-		shell["covered_at"] = covered
-		if trial:
-			return []
+							var key := Vector3i(floori(p.x), j_, floori(p.z))
+							if mine.has(key):
+								covered[key] = true
+			shell["covered"] = float(covered.size()) / float(maxi(1, mine.size()))
+			shell["covered_at"] = covered
+			if trial:
+				# Kept for the lay after the core's, where the same side studs hold it.
+				shell["_sub"] = sub
+				shell["_held"] = held_here.duplicate()
+				shell["_laid"] = laid
+				return []
 		_close_side_studs(shell, sub, held_here, masked, local_colour)
 		# How much of each shell its side studs kept, for a probe to say.
 		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
