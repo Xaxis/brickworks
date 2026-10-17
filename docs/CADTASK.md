@@ -717,10 +717,9 @@ places and the wedge plates are the next gaps.
 ## The gaps, by how much a builder would feel them
 
 Nothing here was fixed in the unit that found them; 1, 2, 4 (the clip
-plates), 6 and 12 were fixed after (section 4), and 3 had its own (section 2,
-"Big models, after").
-plates), 6 and 12 were fixed after (section 4), and 4's parts off the 24
-turns on a joint after that (section 5).
+plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
+"Big models, after"), and 4's parts off the 24 turns on a joint after that
+(section 5).
 
 1. **No "next step" while building.** *Fixed: `E` (section 4).* A builder following a booklet, or
    writing one, puts each step's parts in its own step. Here every step is
@@ -748,7 +747,6 @@ turns on a joint after that (section 5).
    (`0 FILE 42082 - 18575.dat`), and with 4,139 on the desktop.
    *Since:* none is dropped. What the app cannot draw stays in the file and is
    saved back, and File, Open names it.
-6. **Colours are found by look in a palette of 320**: the old greys (7 and
 6. **Colours are found by look in a palette of 320** (*fixed: `Shift-C`,
    a colour by its name or number, section 4*): the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black
