@@ -605,6 +605,9 @@ func _the_panel(text: String) -> void:
 	var model: String = str(sent.get("model", ""))
 	_ok(model.contains(".dat") and model.contains("0 !DATA") and not model.contains("!BRICKWORKS SHARE"),
 		"the model went as LDraw with its made part and print inside, and no link line")
+	_ok(model.count(SharedPages.HEAD) == 1 and model.contains(SharedPages.PAGE),
+		"...and with its build steps, worked out once for the link (SharedPages), %d of them"
+		% model.count(SharedPages.PAGE))
 	var picture := Image.new()
 	var png: PackedByteArray = Marshalls.base64_to_raw(str(sent.get("image", "")))
 	var read: int = picture.load_png_from_buffer(png) if not png.is_empty() else ERR_FILE_EOF

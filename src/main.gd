@@ -116,6 +116,8 @@ var _build_key: int = 0
 ## for (-1, where this device left it), taken up when they are.
 const NO_BUILD_WANTED := -2
 var _build_wanted: int = NO_BUILD_WANTED
+## Whether the link's steps came with it (SharedPages), not worked out here.
+var _steps_carried: bool = false
 ## What was in sight before the player took the window, put back after.
 var _build_left: Dictionary = {}
 ## How long turning to the last page took, and the longest, in microseconds:
@@ -134,14 +136,53 @@ var _turn_marks := PackedInt64Array()
 var _told_this_frame_us: int = 0
 
 
+const TURN_MARKS: Array[String] = ["turned", "process_frame", "pre_draw", "post_draw"]
+
+
 func _turn_mark() -> void:
 	_turn_marks.append(Time.get_ticks_usec())
+	# Named in a browser's trace too (tools/web/share_steps_flow.mjs --trace).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.timeStamp('bw:%s')" % TURN_MARKS[_turn_marks.size() - 1], true)
 	if _turn_marks.size() == 4:
-		_turn_frames = [snappedf((_turn_marks[1] - _turn_marks[0]) / 1000.0, 0.1),
-			snappedf((_turn_marks[2] - _turn_marks[1]) / 1000.0, 0.1),
-			snappedf((_turn_marks[3] - _turn_marks[2]) / 1000.0, 0.1),
+		var ms := func(from: int, to: int) -> float:
+			return snappedf((to - from) / 1000.0, 0.1) if from > 0 and to > 0 else -1.0
+		_turn_frames = [ms.call(_turn_marks[0], _turn_marks[1]),
+			ms.call(_turn_marks[1], _turn_marks[2]), ms.call(_turn_marks[2], _turn_marks[3]),
 			snappedf(_told_this_frame_us / 1000.0, 0.1),
-			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1)]
+			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1),
+			ms.call(_turn_marks[1], _probe_first), ms.call(_probe_first, _probe_last),
+			ms.call(_probe_last, _turn_marks[2])]
+
+
+## The first and the last node to process in a frame (FrameProbe): in the
+## frame a page is turned, when every node's processing began and ended.
+var _probe_first: int = 0
+var _probe_last: int = 0
+
+
+class FrameProbe extends Node:
+	var seen: Callable
+
+	func _process(_delta: float) -> void:
+		seen.call()
+
+
+func _add_frame_probes() -> void:
+	for first: bool in [true, false]:
+		var probe := FrameProbe.new()
+		probe.name = "FirstToProcess" if first else "LastToProcess"
+		probe.process_priority = -1000000 if first else 1000000
+		probe.seen = func() -> void:
+			if _turn_marks.size() != 2:
+				return
+			if first:
+				_probe_first = Time.get_ticks_usec()
+				JavaScriptBridge.eval("console.timeStamp('bw:first_node')", true)
+			else:
+				_probe_last = Time.get_ticks_usec()
+				JavaScriptBridge.eval("console.timeStamp('bw:last_node')", true)
+		add_child(probe)
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -639,6 +680,7 @@ func _tell_page() -> void:
 		"view": _share_view.page_state() if _share_view != null else {},
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
+		"carried": _steps_carried,
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
@@ -1838,6 +1880,15 @@ func _enter_view() -> void:
 	_shell.read_only = true
 	# Somebody else's steps, to step through and not to change.
 	_steps.editable = false
+	# Nothing is taken hold of here: the grab's reading of the model's
+	# joints, and its telling the page twice a second where to take hold
+	# (every part of a body raycast for a handle), are not wanted. On 4,000
+	# parts of a slowed phone that was 260 to 460 ms of a frame every half
+	# second, and a page turned in such a frame waited for it
+	# (share_steps_flow --trace: the time was in the nodes' processing, not
+	# Main's).
+	if _grab_drag != null:
+		_grab_drag.set_process(false)
 	var column: Control = _bar.get_parent()
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
@@ -1871,6 +1922,8 @@ func _enter_view() -> void:
 	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
+	if OS.has_feature("web"):
+		_add_frame_probes()
 	_build_outline = SelectionOutline.new()
 	_build_outline.world = _world
 	_build_outline.library = _library
@@ -1996,10 +2049,20 @@ func _view_shared() -> void:
 	_lay_baseplate()
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+	# The steps whoever shared it worked out, when they came with it and
+	# match what opened (SharedPages): a phone does not work them out. An
+	# old link, or one that does not match, has them worked out here.
+	var carried: Dictionary = SharedPages.read(str(shared.get("model", "")), _world, _store.scenery)
+	_steps_carried = not carried.is_empty()
 	_share_view.ready_to_look()
 	# The finished model, on a timeline to drag back through.
-	if await _steps.start(_world, _library, _store.scenery):
+	if _steps_carried and _steps.start_from(carried["steps"], int(carried["mode"]), _world,
+			_library, _store.scenery):
 		_steps.to_end()
+	elif await _steps.start(_world, _library, _store.scenery):
+		_steps.to_end()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksStepsReady = performance.now()", true)
 	# Back where this device left it: a phone that slept mid-build opens on
 	# the page it was on.
 	_build_pages = null
@@ -2123,6 +2186,10 @@ func _build_go(page: int) -> void:
 	_build_turned_last = took
 	_turn_frames = []
 	_turn_marks = PackedInt64Array([Time.get_ticks_usec()])
+	_probe_first = 0
+	_probe_last = 0
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.timeStamp('bw:turned')", true)
 	_told_this_frame_us = 0
 	for done: Signal in [get_tree().process_frame, RenderingServer.frame_pre_draw,
 			RenderingServer.frame_post_draw]:

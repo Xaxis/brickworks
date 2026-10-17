@@ -42,7 +42,7 @@
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,6 +62,7 @@ const bypass = String(args.bypass || process.env.BW_BYPASS || "");
 const JUMP = Number(args.jump || 30);
 const BAR = (parts) => (parts > 1000 ? 200 : 100);
 const FIRST_BAR = 3000;
+const FIRST_BAR_BIG = 5000;
 
 let failed = 0;
 const check = (what, ok) => {
@@ -81,6 +82,40 @@ function model(n) {
     "", ...parts, ""].join("\r\n");
 }
 
+// --- the models, with their steps carried --------------------------------
+//
+// Each shared as the app shares it: its steps worked out and written at
+// the end of its text (SharedPages, by src/dev/share_pages_probe.gd
+// --write, the same code the Share panel runs), so the phone reads them
+// and works nothing out. --bare shares the text alone, as a link from
+// before carried steps is: the phone works them out.
+const texts = {};
+{
+  const dir = path.join(out, "models");
+  mkdirSync(dir, { recursive: true });
+  const pairs = [];
+  for (const n of sizes) {
+    const bare = path.join(dir, `steps_${n}_bare.ldr`);
+    writeFileSync(bare, model(n));
+    texts[n] = bare;
+    pairs.push(bare, path.join(dir, `steps_${n}.ldr`));
+  }
+  if (!args.bare) {
+    const made = spawnSync("godot", ["--headless", "--path", root, "--script", "src/dev/share_pages_probe.gd",
+      "--", "--write", ...pairs], { encoding: "utf8", timeout: 900000,
+      // Never the person's own app data: the checkout's scratch copy.
+      env: { ...process.env, XDG_DATA_HOME: process.env.XDG_DATA_HOME || path.join(root, ".scratch-data") } });
+    for (const line of String(made.stdout || "").split("\n").filter((l) => / -> /.test(l))) say(line.trim());
+    for (const n of sizes) {
+      const carried = path.join(dir, `steps_${n}.ldr`);
+      if (!/0 !BRICKWORKS PAGES /.test(readFileSync(carried, "utf8"))) {
+        throw new Error(`no steps written for ${n} parts: ${String(made.stderr || "").slice(-300)}`);
+      }
+      texts[n] = carried;
+    }
+  }
+}
+
 // --- where the links are -------------------------------------------------
 
 let site = String(args.url || "").replace(/\/$/, "");
@@ -93,10 +128,8 @@ if (args.build) {
   const port = Number(args.port || 8800);
   const shared = [];
   for (const n of sizes) {
-    const file = path.join(out, `steps_${n}.ldr`);
-    writeFileSync(file, model(n));
     links[n] = `Steps${String(n).padStart(5, "0")}`;
-    shared.push("--share", `${links[n]}=${file}`);
+    shared.push("--share", `${links[n]}=${texts[n]}`);
   }
   server = spawn("python3", [path.join(here, "serve.py"), path.resolve(String(args.build)), String(port),
     "--parts", path.join(root, "assets/generated/parts"), "--delay", "0", ...shared],
@@ -113,7 +146,7 @@ if (args.build) {
     const reply = await fetch(`${site}/api/share`, {
       method: "POST",
       headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: `Steps ${n}`, model: model(n) }),
+      body: JSON.stringify({ name: `Steps ${n}`, model: readFileSync(texts[n], "utf8") }),
     });
     const body = await reply.json().catch(() => ({}));
     if (!body.id) throw new Error(`publishing ${n} parts: ${reply.status} ${body.error || ""}`);
@@ -274,6 +307,43 @@ const shot = async (page, cdp, name) => {
 };
 
 const times = {};
+
+// --trace=DIR: a Chromium trace of the turns (Next, Back, the jump), and
+// what in each turn's frame took the time: the app marks the frame
+// (console.timeStamp "bw:turned", "bw:process_frame", "bw:first_node",
+// "bw:last_node", "bw:pre_draw", "bw:post_draw"), and the trace says what
+// ran between, garbage collection and all.
+const traceDir = args.trace ? path.resolve(String(args.trace)) : "";
+const TRACED = ["devtools.timeline", "v8", "v8.execute", "disabled-by-default-v8.gc", "blink.console", "toplevel"];
+
+function readTrace(file) {
+  const events = JSON.parse(readFileSync(file, "utf8")).traceEvents || [];
+  const marks = events.filter((e) => e.name === "TimeStamp" && /^bw:/.test(e.args?.data?.message || ""));
+  const out = [];
+  for (let n = 0; n < marks.length; n += 1) {
+    if (marks[n].args.data.message !== "bw:turned") continue;
+    const { pid, tid } = marks[n];
+    const at = {};
+    for (let k = n; k < marks.length && !(k > n && marks[k].args.data.message === "bw:turned"); k += 1) {
+      at[marks[k].args.data.message.slice(3)] = marks[k].ts;
+    }
+    const from = at.turned;
+    const to = at.post_draw || from;
+    const inside = events.filter((e) => e.pid === pid && e.tid === tid && e.ph === "X" && e.dur
+      && e.ts >= from && e.ts + e.dur <= to + 1000);
+    const gc = inside.filter((e) => /GC|Scavenge|MarkCompact|MinorMS|MajorMS/i.test(e.name));
+    const sum = (list) => Math.round(list.reduce((t, e) => t + e.dur, 0) / 1000);
+    const top = inside.filter((e) => !/RunTask|ThreadControllerImpl|FireAnimationFrame|FunctionCall|v8.callFunction/
+      .test(e.name)).sort((a, b) => b.dur - a.dur).slice(0, 4)
+      .map((e) => `${e.name} ${Math.round(e.dur / 1000)}`);
+    const step = (a, b) => (at[a] && at[b] ? Math.round((at[b] - at[a]) / 1000) : null);
+    out.push({ frame: Math.round((to - from) / 1000), gc: sum(gc), gc_events: gc.length,
+      to_processing: step("turned", "process_frame"), before_nodes: step("process_frame", "first_node"),
+      nodes: step("first_node", "last_node"), after_nodes: step("last_node", "pre_draw"),
+      drawing: step("pre_draw", "post_draw"), top });
+  }
+  return out;
+}
 const browser = await launch({ signedOut: true });
 try {
   for (const n of sizes) {
@@ -331,11 +401,27 @@ try {
         && (window.brickworksControls || {}).view_build, "the timeline up", 600);
     }
     const start = (await controls(page)).build_next;
+    // When the cover was drawn, as the app says, and the Build it tap
+    // before it; then Start.
+    const cover = await page.evaluate(() => [window.stepFrames.taps[window.stepFrames.taps.length - 1],
+      (window.brickworksBuildDrawn || [null, 0])[1], window.brickworksStepsReady || 0,
+      Boolean((window.brickworksShare || {}).carried)]);
     const first = await timedTap(page, start, 1);
     const tapAt = await page.evaluate(() => window.stepFrames.taps[window.stepFrames.taps.length - 1]);
     const firstStep = Math.round(tapAt + first.shown - firstFrame);
+    // The same with every tap made the moment the app could take it: when
+    // its steps were ready (Build it does nothing useful sooner), the cover
+    // as long as it took from then, and step 1 as long as it took from
+    // Start. The flow's own polling (the page hears where a control is
+    // half a second after it appears) is not the app's time.
+    const [buildTap, coverDrawn, stepsReady, carried] = cover;
+    const ready = stepsReady || offered;
+    const atOnce = coverDrawn > 0 && stepsReady > 0
+      ? Math.round(ready - firstFrame + (coverDrawn - Math.max(buildTap, ready)) + first.shown) : firstStep;
     record.first = { first_frame: Math.round(firstFrame), build_it_offered: Math.round(offered - firstFrame),
-      first_step: firstStep, start: first };
+      steps_ready: stepsReady ? Math.round(stepsReady - firstFrame) : null, carried,
+      cover_ms: coverDrawn ? Math.round(coverDrawn - Math.max(buildTap, ready)) : null,
+      first_step: firstStep, first_step_at_once: atOnce, start: first };
     record.first.phases = await page.evaluate((from) => window.stepFrames.phases
       .map(([t, what]) => [t - Math.round(from), what]), firstFrame);
     // Where the wait went: the engine's frames between the first and step 1,
@@ -351,14 +437,23 @@ try {
     const s1 = await build(page);
     say(`Build it offered ${Math.round(offered - firstFrame)} ms after the first frame; `
       + `step 1 on screen ${firstStep} ms after it ("${s1.caption}", ${s1.fresh} new parts, ${s1.lots} lots)`);
-    if (n <= 1000 && !reportOnly) {
-      check(`the first step is drawn within ${FIRST_BAR / 1000} s of the page's first frame (${firstStep} ms)`,
-        firstStep <= FIRST_BAR);
+    say(`steps ${carried ? "carried with the link" : "worked out here"}, ready ${record.first.steps_ready} ms `
+      + `after the first frame; the cover ${record.first.cover_ms} ms after Build it; step 1 on screen `
+      + `${first.shown} ms after Start; with each tap at once, step 1 ${atOnce} ms after the first frame `
+      + `(as tapped here, ${firstStep})`);
+    if (!reportOnly) {
+      const bar = n > 1000 ? FIRST_BAR_BIG : FIRST_BAR;
+      check(`the first step is drawn within ${bar / 1000} s of the page's first frame, each tap made at once `
+        + `(${atOnce} ms)`, atOnce <= bar);
     }
     await settle(page);
     await shot(page, cdp, `${n}_step1.png`);
 
     // The turns.
+    if (traceDir) {
+      mkdirSync(traceDir, { recursive: true });
+      await browser.startTracing(page, { path: path.join(traceDir, `${n}_turns.json`), categories: TRACED });
+    }
     const next = (await controls(page)).build_next;
     const back = (await controls(page)).build_back;
     for (let k = 2; k <= 4; k += 1) {
@@ -380,6 +475,11 @@ try {
       await shot(page, cdp, `${n}_step${JUMP}.png`);
     } else {
       say(bar ? `only ${last} steps: no jump to ${JUMP}` : "no progress bar to tap (a build from before): no jump");
+    }
+    if (traceDir) {
+      await browser.stopTracing();
+      record.traced = readTrace(path.join(traceDir, `${n}_turns.json`));
+      for (const turn of record.traced) say(`traced: ${JSON.stringify(turn)}`);
     }
     // End, a jump to the last step, as a key.
     const endAt = await page.evaluate(() => performance.now());

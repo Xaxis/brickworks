@@ -443,6 +443,14 @@ func publish() -> void:
 		_publish.disabled = false
 		_fail("Stopped before it was published.")
 		return
+	# Its build steps, worked out here once and carried with it, so a phone
+	# opening the link to build from does not work them out (SharedPages).
+	_status.text = "Working out its steps for the link…"
+	var steps_job: Working.Job = Working.begin("Working out the steps of “%s” for its link…" % name)
+	await steps_job.shown()
+	model = await SharedPages.attach(model, store.library, store, steps_job)
+	steps_job.end()
+	_status.text = "Publishing…"
 	var body: Dictionary = {"name": name, "model": model}
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():

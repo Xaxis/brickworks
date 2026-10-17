@@ -1004,7 +1004,7 @@ static func _without_app_lines(text: String) -> String:
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
-				or line.begins_with(TITLE_META):
+				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
 	return "\n".join(kept)
