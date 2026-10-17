@@ -149,6 +149,11 @@ whole cycle.
 
 ### Fixed
 
+- In a browser, a step of the timeline on a big model is quick again. Since
+  parts could be grabbed and moved on their joints, the page looked for
+  every part's drag handle twice a second, and a step on a 925-part model
+  took 6 s.
+
 - A shared model's Build it draws the steps before the one shown faded
   again in a browser. Since the faster page turns, they were sometimes
   drawn dark, in their own colours.
