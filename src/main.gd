@@ -352,17 +352,13 @@ func _sections_on_page(to_window: Transform2D, per_css: float) -> Dictionary:
 		return {}
 	var said: Dictionary = _shell.sections.page_state()
 	var rows: Dictionary = {}
-	var metas: Array = []
-	for made: Sections.Suggestion in _shell.sections.sections.suggested:
-		metas.append(Outliner.SUGGESTION + str(made.number))
-	for path: String in _shell.assemblies.paths():
-		metas.append(path)
-	for meta: String in metas:
-		var rect: Variant = _shell.outliner.row_rect(meta)
-		if rect is Rect2:
-			var centre: Vector2 = to_window * (rect as Rect2).get_center() / per_css
-			rows[meta.trim_prefix(Outliner.SUGGESTION)] = {"x": roundi(centre.x),
-				"y": roundi(centre.y)}
+	var rects: Dictionary = _shell.outliner.row_rects()
+	for meta: String in rects:
+		if meta.is_empty() or meta == Outliner.SUGGESTED:
+			continue
+		var centre: Vector2 = to_window * (rects[meta] as Rect2).get_center() / per_css
+		rows[meta.trim_prefix(Outliner.SUGGESTION)] = {"x": roundi(centre.x),
+			"y": roundi(centre.y)}
 	said["rows"] = rows
 	# ...and, drawn apart, where on the page each section is drawn: its box's
 	# middle, for a check to click a section where it is seen.

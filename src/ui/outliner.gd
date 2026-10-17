@@ -652,20 +652,26 @@ func controls_by_name() -> Dictionary:
 	return out
 
 
-## Where a row is on the screen, for a browser check to click it: the row
-## whose metadata is [param meta] ("" the model, a path, or SUGGESTION and
-## its number). Null when it is not shown.
-func row_rect(meta: String) -> Variant:
-	if _tree == null or _tree.get_root() == null:
-		return null
-	var row: TreeItem = _find(_tree.get_root(), meta)
-	if row == null:
-		return null
-	var rect: Rect2 = _tree.get_item_area_rect(row)
-	if rect.size == Vector2.ZERO:
-		return null
-	rect.position += _tree.get_global_rect().position - Vector2(0, _tree.get_scroll().y)
-	# Only a row in view: one scrolled out is no place to click.
-	if not _tree.get_global_rect().has_point(rect.get_center()):
-		return null
-	return rect
+## Where the rows are on the screen, metadata -> Rect2, walked once: what
+## the page is told twice a second. Asked a row at a time, each a search of
+## the whole tree, it was 100 to 300 ms of a browser's frame every half
+## second on 10179-1's 392 sub-assemblies (2026-10-17).
+func row_rects() -> Dictionary:
+	var out: Dictionary = {}
+	if _tree == null or _tree.get_root() == null or not _tree.is_visible_in_tree():
+		return out
+	var area: Rect2 = _tree.get_global_rect()
+	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
+	var stack: Array = [_tree.get_root()]
+	while not stack.is_empty():
+		var row: TreeItem = stack.pop_back()
+		var rect: Rect2 = _tree.get_item_area_rect(row)
+		if rect.size != Vector2.ZERO:
+			rect.position += shift
+			if area.has_point(rect.get_center()):
+				out[str(row.get_metadata(0))] = rect
+		if not row.collapsed:
+			for child: TreeItem in row.get_children():
+				stack.append(child)
+	return out
+

@@ -86,6 +86,13 @@ frames were drawn meanwhile. On this box, loaded to 40, the longest of
 them was 94 to 142 ms, as long as idle frames of the same model were (69
 to 173 ms). Over MCP the call becomes a job past 20 s, as every tool does.
 
+In a browser (a local export drawn in software, on this loaded box) the
+same model took 122 s, and the page drew on through it, but not well
+enough: one frame of 7.3 s near the end of the worker's run, and 49 over
+100 ms, against idle frames of at most 99 ms. Many of those came after,
+every half second, from the page being told where the tree's rows are a
+row at a time; that is one walk of the tree now, not measured since.
+
 ## The exploded view
 
 `Shift+Y` draws every section apart, each lifted by its place in the
