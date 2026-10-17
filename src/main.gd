@@ -2277,8 +2277,11 @@ func _draw_ahead(page: int) -> void:
 	# ...and the page left alone a moment: a batch of pictures is a frame of
 	# the whole window and a wait on the card, and begun at once it made the
 	# cover and Start wait seconds behind it on a slowed phone in software.
+	# On the cover longer: Start comes soon after it, and its frame waited
+	# seconds behind a batch begun a second after the cover went up.
 	since = Time.get_ticks_msec()
-	while still.call() and Time.get_ticks_msec() - since < AHEAD_AFTER_MS:
+	var quiet: int = AHEAD_AFTER_MS if page > 0 else AHEAD_ON_COVER_MS
+	while still.call() and Time.get_ticks_msec() - since < quiet:
 		await get_tree().process_frame
 	if not still.call():
 		return
@@ -2325,6 +2328,7 @@ var _ahead_turn: int = 0
 const AHEAD_FIRST := 3
 ## How long a page is left alone before the pictures of others are drawn.
 const AHEAD_AFTER_MS := 1000
+const AHEAD_ON_COVER_MS := 4000
 const AHEAD_AT_ONCE := PartThumbnails.STAGES
 
 
