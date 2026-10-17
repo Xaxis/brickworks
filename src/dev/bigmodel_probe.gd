@@ -82,6 +82,8 @@ var _sweep_only: bool = false
 ## --shots=DIR, windowed: a picture of each sweep halfway across, what the
 ## person sees with the part in hand over the model.
 var _shots: String = ""
+## --held=brick,pin,...: only these of SWEEPS swept, with --sweep and paths.
+var _held: PackedStringArray = PackedStringArray()
 var _model_name: String = ""
 ## Name -> [calls, total us, most us], while profiling.
 var _spent: Dictionary = {}
@@ -111,6 +113,8 @@ func _run() -> void:
 			_sweep_only = true
 		elif argument.begins_with("--shots="):
 			_shots = argument.trim_prefix("--shots=")
+		elif argument.begins_with("--held="):
+			_held = argument.trim_prefix("--held=").split(",")
 		else:
 			paths.append(argument)
 	# Parts a file carries are built on its first open, as for a person
@@ -238,6 +242,8 @@ func _one(name: String, text: String) -> Dictionary:
 	# Before the orbit, so the view is the one the open framed and two
 	# builds' sweeps meet the model at the same places, ghost for ghost.
 	for kind: String in SWEEPS:
+		if not _held.is_empty() and not _held.has(kind):
+			continue
 		var swept: Dictionary = await _sweep(kind, middle, view)
 		if not swept.is_empty():
 			row["sweep" if kind == "brick" else "sweep_" + kind] = swept

@@ -184,26 +184,26 @@ static func _faces_of(library: PartLibrary, part_id: String) -> PackedVector3Arr
 
 ## A brick's triangles lying flat in the plane, turned the plane's way, in
 ## the world: those of the face containing [param near], or all of them
-## when it is [constant Vector3.INF].
+## when it is [constant Vector3.INF]. From the part's triangles kept once
+## (_faces_of): read from its meshes at every move, each read was the
+## drawing's copy of them fetched back, with a sticker in hand.
 static func _flat(library: PartLibrary, brick: BrickWorld.Brick, normal: Vector3, plane: float,
 		near: Vector3) -> Array:
 	var out: Array = []
-	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-	for surface: ArrayMesh in mesh.surfaces:
-		var corners: PackedVector3Array = surface.get_faces()
-		for t: int in corners.size() / 3:
-			var a: Vector3 = brick.transform * corners[t * 3]
-			var b: Vector3 = brick.transform * corners[t * 3 + 1]
-			var c: Vector3 = brick.transform * corners[t * 3 + 2]
-			var n: Vector3 = (b - a).cross(c - a)
-			if n.length() < 1e-6:
-				continue
-			if absf(n.normalized().dot(normal)) < 0.99:
-				continue
-			if absf(normal.dot(a) - plane) > 0.3 or absf(normal.dot(b) - plane) > 0.3 \
-					or absf(normal.dot(c) - plane) > 0.3:
-				continue
-			out.append([a, b, c])
+	var corners: PackedVector3Array = _faces_of(library, brick.part_id)
+	for t: int in corners.size() / 3:
+		var a: Vector3 = brick.transform * corners[t * 3]
+		var b: Vector3 = brick.transform * corners[t * 3 + 1]
+		var c: Vector3 = brick.transform * corners[t * 3 + 2]
+		var n: Vector3 = (b - a).cross(c - a)
+		if n.length() < 1e-6:
+			continue
+		if absf(n.normalized().dot(normal)) < 0.99:
+			continue
+		if absf(normal.dot(a) - plane) > 0.3 or absf(normal.dot(b) - plane) > 0.3 \
+				or absf(normal.dot(c) - plane) > 0.3:
+			continue
+		out.append([a, b, c])
 	return out
 
 
