@@ -1857,7 +1857,12 @@ browser. On a 4,000-part model that held frames 180 to 460 ms (sharesteps,
 2026-10-17). It now finds them only when the page asks
 (`window.brickworksGrabAsk`), again only when the model, the view or the
 window has changed, and from the four parts of a body furthest from its
-joint. HANDLES_RESULT
+joint. On 42082-1 (2,184 parts) in a browser drawing in software, once its
+parts were in, the page not asking: before, 20 frames in 20 s, each 1.18 to
+1.28 s, and the page never went quiet in three minutes of waiting; after,
+1,201 frames, none longer than 17 ms. Asked, they are found once, in 973 ms
+on that model, and not again while nothing changes (`grab_flow --big=…
+--only-big`).
 
 **Left for later.** Spinning and coasting (S2's next): a wheel or a gear train
 spun by a drag and let go, coasting down against its bearings' friction,

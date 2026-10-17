@@ -256,13 +256,16 @@ if (args.big) {
     }
     check(Boolean(quiet), "the page went quiet once the model was in");
     const seconds = Number(args.seconds || 20);
+    // Found so far (the page asked as it loaded, before this model).
+    const foundBefore = (await grab()).handles_found;
     const gaps = await frameGaps(seconds);
     console.log(`      standing still ${seconds} s, the page not asking: ${gaps.frames} frames, longest `
       + `${gaps.longest.join(", ")} ms; ${gaps.over50} past 50 ms, ${gaps.over100} past 100 ms`);
     timings.big = { model: path.basename(args.big), ...gaps };
     const unasked = await grab();
-    check((unasked.handles || []).length === 0 && !unasked.handles_found,
-      `no handles found while the page does not ask (${(unasked.handles || []).length}, found ${unasked.handles_found} times)`);
+    check((unasked.handles || []).length === 0 && unasked.handles_found === foundBefore,
+      `no handles found while the page does not ask (${(unasked.handles || []).length}; found ${unasked.handles_found} `
+      + `times in all, ${foundBefore} before)`);
     check(gaps.over100 === 0, `no frame past 100 ms standing still on ${path.basename(args.big)} (${gaps.over100})`);
     // Asked, they are found once, and not again while nothing changes.
     await page.evaluate(() => { window.brickworksGrabAsk = true; });
@@ -271,7 +274,8 @@ if (args.big) {
     console.log(`      asked for 10 s: found ${asked.handles_found} time(s), the last in ${asked.handles_ms} ms, `
       + `${(asked.handles || []).length} handles; frames longest ${askedGaps.longest.join(", ")} ms`);
     timings.big_asked = { found: asked.handles_found, ms: asked.handles_ms, ...askedGaps };
-    check(asked.handles_found === 1, `asked, they are found once and kept while nothing changes (${asked.handles_found})`);
+    check(asked.handles_found === foundBefore + 1,
+      `asked, they are found once and kept while nothing changes (${asked.handles_found - foundBefore})`);
     await shot("big.png");
   } catch (trouble) {
     check(false, `stopped: ${trouble.message}`);

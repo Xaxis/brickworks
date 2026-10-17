@@ -133,10 +133,11 @@ whole cycle.
 
 ### Fixed
 
-- A big model no longer stutters twice a second in a browser. The grab
-  tool looked for places to take hold of every half second, for a test
-  that was not running, and on a 4,000-part model each look held a frame
-  for 180 to 460 ms.
+- A big model no longer stutters in a browser. The grab tool looked for
+  places to take hold of every half second, for a test that was not
+  running: on a 4,000-part model each look held a frame for 180 to 460 ms,
+  and on a 2,184-part one drawn without a graphics card the page drew one
+  frame a second. It now draws sixty.
 
 - A shared model's Build it draws the steps before the one shown faded
   again in a browser. Since the faster page turns, they were sometimes

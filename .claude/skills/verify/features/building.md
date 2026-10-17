@@ -727,8 +727,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (eight handles at most; the page asks for them with
   `window.brickworksGrabAsk`, and the app finds none unless asked); the
   app's frame cost of a drag and the page's longest wait. `--big=FILE
-  --only-big` opens a big model instead and times its frames standing
-  still, the page not asking for handles (no frame past 100 ms). In `preview_checks.sh`'s map as
+  --only-big` opens a big model instead, waits for the page to go quiet,
+  and times its frames standing still, the page not asking for handles (no
+  frame past 100 ms; none found), then asks (found once, its cost said). On
+  42082-1 drawn by SwiftShader: 1,201 frames in 20 s, none past 17 ms; the
+  build before the page had to ask drew 20, each over a second. The swing
+  also reports the page's frames against turning the view, for reference
+  (software drawing is slow: MECHANISMS §14). In `preview_checks.sh`'s map as
   `grab`. Its waits over 250 ms come under load, on live's build as on new
   ones, mostly in the first drag (MECHANISMS §13): the balance mark's shaders
   are built before the press (`BalanceMark.warm`); what is left is the GPU
