@@ -2268,15 +2268,20 @@ tune, which the tool was built on, and proof, run only at the end.
 python3 tools/minitest.py tests/test_realset.py              # exclusion, halves, brief, reading
 python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half while tuning
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py calibrate --which tune --jobs 2
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which proof --arm m32 --jobs 2
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2
+gpu env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later
+gpu env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
+heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms m32,mine --jobs 2
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
 
-Each of `--jobs` workers runs its share of the subjects, one after another, as
-one `heavy` job (it queues for the machine once; worker-<set>.log): the set drawn
+Each of `--jobs` workers runs its share of the subjects, one after another
+(worker-<set>.log). Run under one `gpu`, every worker's designs (run.py's design
+stage takes the lease itself when it is run bare) and pictures share that lease,
+and no worker waits for a CPU slot; `--audit-later` leaves the build check's
+reading (floating parts, the only CPU work) to `audit`, one `heavy` job after the
+run. `--software` draws on lavapipe and makes each worker one `heavy` job, as every
+run was before 2026-10-16's technique round: the set drawn
 and checked once into `bench/results/realset-sets/<set>/`, the design by run.py's
 design stage into `realset-<date>-<arm>/<set>/` (brief.json, design.ldr, views,
 audit.jsonl, record.json, judged/), both drawn by `bench_views.gd` and copied to
@@ -2293,7 +2298,9 @@ orders agree on most dimensions with the model shown first winning near half
 (2026-10-16: 120 of 120 calibration verdicts named the set; m32's proof half,
 24 of 24 verdicts with all six pictures, orders agreeing on 82%, the first
 shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
-workers after the `heavy` queue).
+workers after the `heavy` queue; on the GPU with audits later, 2026-10-16's
+technique round started each half at once at load 45-75, its workers in one lease,
+and a half of ten took 45-55 minutes on two or three workers).
 
 ### The check by real shapes
 
