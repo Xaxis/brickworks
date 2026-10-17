@@ -559,10 +559,7 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 ## The polygon and the weight on the floor, the loaded joints tinted, and,
 ## while dragging, the model leaning over the edge it would tip over.
 func _show(weighed: Balance.Report, live: bool) -> void:
-	if _mark == null:
-		_mark = BalanceMark.new()
-		_mark.world = world
-		add_child(_mark)
+	_make_mark()
 	var tints: Dictionary = {}
 	for one: Balance.JointLoad in weighed.joints:
 		if one.ratio < 0.5 or scenery.has(one.beyond):
@@ -574,6 +571,17 @@ func _show(weighed: Balance.Report, live: bool) -> void:
 		_lean(weighed)
 	else:
 		_unlean()
+
+
+func _make_mark() -> void:
+	if _mark == null:
+		_mark = BalanceMark.new()
+		_mark.world = world
+		add_child(_mark)
+
+
+## Whether the balance mark has been drawn once ahead of the first drag.
+var _mark_warmed: bool = false
 
 
 func _lean(weighed: Balance.Report) -> void:
@@ -798,6 +806,12 @@ var _told_page_at: int = 0
 
 func _process(_delta: float) -> void:
 	_ready_ahead()
+	# The balance mark drawn once, unseen, while nothing is held, so its
+	# material is built before the first drag needs it (BalanceMark.warm).
+	if not _mark_warmed and grab == null and chain == null and camera != null and is_ready():
+		_mark_warmed = true
+		_make_mark()
+		_mark.warm(camera)
 	if not _falling.is_empty():
 		_fall_frame()
 	# A big section moved on trust: checked while the pointer rests, and,
