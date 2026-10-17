@@ -77,8 +77,9 @@ run() {
 }
 : > "$S/$TAG.out"
 # Timing checks run alone: beside a heavy flow, idle's ghost drew 4 or 6
-# frames for 7 moves, and 16 every time alone (2026-10-13).
-SOLO=" idle arrival progress cursor render_open "
+# frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
+# page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
+SOLO=" idle arrival progress cursor render_open grab "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED
