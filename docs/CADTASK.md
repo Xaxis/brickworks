@@ -231,8 +231,9 @@ most of the parts a file carries.
 among the repository's files whose generated sub-models have 50 lines or more
 that are not parts: 8202-1, 42058-1, 42053-1. Desktop renders on the
 graphics card and pictures of a local web export in Chromium on SwiftShader
-are in `bench/results/flexdraw-2026-10-16/` (`desktop/`, `desktop-final/`,
-`desktop-before/`, `web-final/`).
+are in `bench/results/flexdraw-2026-10-16/` (`desktop-m39/` and `web-m39/`
+from this branch on m39; `desktop/`, `web/` and `desktop-before/` from
+the same change on m37, and before it).
 
 | file | what is flexible | pieces of skin drawn, desktop | their faces | in a browser: sub-models drawn; parts not shown |
 |---|---|---|---|---|
