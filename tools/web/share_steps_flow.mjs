@@ -300,6 +300,23 @@ async function timedTap(page, at, wanted) {
 const shot = async (page, cdp, name) => {
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
   await page.waitForTimeout(1500);
+  // The page as it comes to rest, so pictures of two builds compare: the
+  // view arrived (its distance the same twice, half a second apart) and
+  // every part's picture along the bottom drawn. On a busy box the camera
+  // was still gliding in at 1.5 s, and step 1 was framed further out.
+  let distance = -1;
+  for (let n = 0; n < 60; n += 1) {
+    const now = await page.evaluate(() => [((window.brickworksState || {}).view || {}).distance,
+      ((window.brickworksShare || {}).build || {}).pictures, ((window.brickworksShare || {}).build || {}).lots]);
+    if (now[0] === distance && now[1] === now[2]) break;
+    distance = now[0];
+    await page.waitForTimeout(500);
+  }
+  // ...and twenty frames more, by which the camera's glide (a share of the
+  // way each frame, by the frame's length) has arrived.
+  const frames = await page.evaluate(() => window.stepFrames.frames.length);
+  await until(page, (n) => window.stepFrames.frames.length >= n + 20, "twenty frames", 60, frames, 100)
+    .catch(() => null);
   await page.screenshot({ path: path.join(out, name), timeout: 180000 })
     .catch((trouble) => say(`no picture ${name}: ${String(trouble).split("\n")[0]}`));
   await cdp.send("Emulation.setCPUThrottlingRate", { rate });
