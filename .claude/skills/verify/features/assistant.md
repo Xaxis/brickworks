@@ -2322,8 +2322,11 @@ godot --headless --path . --script src/dev/replay_calls.gd -- --calls=F.jsonl [-
 clip on a bar, a hinge (a turntable's too), a pin or an axle, whose overlapping
 pieces all meet inside that joint's round (`JOINT_ROUND`: a ball 9.5 LDU from its
 middle, a bar 5.5 from its line, a pin or an axle 9.5, a hinge 9.5), are the joint,
-not a collision; never in a run kept to BrickBench's parts (`PartsOnly`), whose
-verify.py forgives nothing. A ball joint that collides away from the ball is said as
+not a collision, where the check refuses (`Assistant._exact_collisions`); never in a
+run kept to BrickBench's parts (`PartsOnly`), whose verify.py forgives nothing. The
+seat and the lattice still see the overlap (`ExactCheck.between`): asked there too,
+it left a pin's collar inside its hole (`axle_probe`) and let a hinge's top 2 LDU off
+its pivot through (`joints_probe`). A ball joint that collides away from the ball is said as
 turned too far, with the angle it clears at (`ExactCheck._ball_turned`). Proves it
 when: `joint_check_probe` ends "19 passed, 0 failed" (each real set's pair in it
 collides by its shapes, which the check refused before: the whale's Joint-8 ball,

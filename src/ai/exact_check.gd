@@ -256,9 +256,11 @@ static func _joint_kind(a: Exact.Shape, ka: int, b: Exact.Shape, kb: int) -> Str
 	return "stud"
 
 
-## How two items meet: {} when their exact shapes are clear or meet only
-## where a joint joins them ([method at_joint]), the collision otherwise, null
-## when either has no shape to ask.
+## How two items meet: {} when their exact shapes are clear, the collision
+## otherwise, null when either has no shape to ask. A collision at a joint is
+## still one here: a pin's collar inside its hole is slid out to the mouth by
+## it, and a hinge's top off its pivot stays the lattice's overlap; what the
+## check refuses leaves out the joint's own ([method at_joint]).
 func between(i: int, j: int) -> Variant:
 	if not _shaped(i) or not _shaped(j):
 		return null
@@ -268,9 +270,6 @@ func between(i: int, j: int) -> Variant:
 	if _asked.has(key):
 		return _asked[key]
 	var found: Dictionary = Exact.clash(items[a], items[b])
-	# A ball in its socket, a bar in its clip: the joint, not a collision.
-	if not found.is_empty() and not at_joint(a, b).is_empty():
-		found = {}
 	if not found.is_empty():
 		found["a"] = a
 		found["b"] = b
