@@ -179,6 +179,8 @@ var _spin_with: Dictionary = {}
 var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
 var blocked_by: Array = []
+## The last moving part that met something or went through the floor.
+var met: int = 0
 ## A ball's last turn that had no room, and where it stood then: not asked
 ## again while the pointer asks further the same way.
 var _ball_wall := Quaternion.IDENTITY
@@ -813,6 +815,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
+			met = key
 			break
 		# Its box first: nothing but what it may press on anywhere near it,
 		# and its turned cover is not worked out at all. A sail turning in
@@ -837,6 +840,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 				world.get_brick(_near_part).part_id if world.get_brick(_near_part) != null else "?"]
 		if not hit.is_empty():
 			blocked_by = [key, int(hit[0])]
+			met = key
 			result = 0
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
@@ -1809,6 +1813,246 @@ func _settle_loop() -> String:
 		return ""
 	return "the loop turned %d° under its own weight: no joint in it holds by friction" % roundi(
 		absf(angle - from))
+
+
+## The swing under its weight once let go ([Swing]): the grabbed joint when
+## it does not hold, and every free joint inside what moved, a chain of them
+## swinging together. Null when it settles as before ([method settle]): a
+## loop, a ball, a gear train, a click hinge, a section of more than
+## [constant SWING_MOST_PARTS] parts (its room tests cost more than a frame).
+var swing: Swing = null
+## More parts than this moving settle as before.
+const SWING_MOST_PARTS := 40
+## The grabbed joint's turn where it was let go, degrees; the child body of
+## each joint that swings -> its index in [member swing].
+var _let_go_at: float = 0.0
+var _swing_index: Dictionary = {}
+## The bodies that move (body -> true), for the swing's tree.
+var _ours: Dictionary = {}
+## A swing that began as the model landed from a fall (GrabDrag): the
+## history's depth the drag began at, and what was said of the fall.
+var landing: bool = false
+var landing_depth: int = 0
+var landing_said: String = ""
+
+
+## Set up [member swing] from where it was let go. False when nothing it
+## carries swings (every joint holds, or it is not a case a swing takes).
+func swing_begin() -> bool:
+	swing = null
+	_swing_index.clear()
+	if state != "moves" or mode != "turn" or linkage != null or grams <= 0.0 or unchecked:
+		return false
+	if not coupled.is_empty() or not followers.is_empty() or moving.size() > SWING_MOST_PARTS:
+		return false
+	if bodies.parent_link.get(body) != link:
+		return false
+	_ours.clear()
+	for one: int in moving_bodies:
+		_ours[one] = true
+	var free: Dictionary = {}   ## child body -> its link
+	if Grab._swings(link):
+		free[body] = link
+	for one: int in moving_bodies:
+		if one == body:
+			continue
+		var joined: Bodies.Link = bodies.parent_link.get(one)
+		if joined != null and Grab._swings(joined) and _ours.has(int(bodies.parent_of.get(one, -1))):
+			free[one] = joined
+	if free.is_empty():
+		return false
+	_let_go_at = angle
+	_make_swing(free)
+	return true
+
+
+## Whether a joint swings when let go: it turns on a line, freely (no
+## friction holds it, no clicks).
+static func _swings(joined: Bodies.Link) -> bool:
+	return joined != null and not joined.holds and joined.axis != Vector3.ZERO and joined.turns \
+		and joined.detent <= 0.0
+
+
+## A model that has just landed from a fall (GrabDrag): every joint in it
+## that does not hold swings in its new lie, starting with the speed the
+## fall gave it: the model was turning at [param spin] (rad/s about its
+## line) about [param about], and stops dead as it lands; what hangs on a
+## free joint carries on (its momentum about the joint kept: Swing.carry).
+## False when nothing in it swings. [member bodies] must be read for the
+## model as it lies.
+func land_begin(spin: Vector3, about: Vector3) -> bool:
+	state = "moves"
+	mode = "turn"
+	linkage = null
+	landing = true
+	var free: Dictionary = {}
+	for one: Variant in bodies.parent_link:
+		var joined: Bodies.Link = bodies.parent_link[one]
+		if Grab._swings(joined) and not bodies.anchors.has(int(one)):
+			free[int(one)] = joined
+	if free.is_empty():
+		return false
+	_ours.clear()
+	moving_bodies = []
+	for one: int in free:
+		for x: int in bodies.beyond(one):
+			if not _ours.has(x):
+				_ours[x] = true
+				moving_bodies.append(x)
+	# The outermost free joint in: what is said moved, and its line.
+	body = -1
+	for one: int in free:
+		if not _ours.has(int(bodies.parent_of.get(one, -1))):
+			if body < 0 or bodies.parts_of(bodies.beyond(one)).size() > bodies.parts_of(bodies.beyond(body)).size():
+				body = one
+	if body < 0:
+		return false
+	link = free[body]
+	pivot = link.point
+	axis = link.axis.normalized()
+	moving.clear()
+	for key: int in bodies.parts_of(moving_bodies):
+		moving[key] = true
+	skip = moving.duplicate()
+	for one: int in moving_bodies:
+		for joined: Bodies.Link in bodies.touching.get(one, []):
+			if _ours.has(joined.other(one)):
+				continue
+			for pair: Array in joined.pairs:
+				for key: int in pair:
+					skip[key] = true
+	rest.clear()
+	grams = 0.0
+	_floor_y = INF
+	for brick: BrickWorld.Brick in world.bricks():
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if info == null or mesh == null:
+			continue
+		# Its lowest point, not its turned box's: a model lying tilted reaches
+		# lower by its boxes' corners than by its shapes.
+		_floor_y = minf(_floor_y, mesh.lowest_at(brick.transform))
+		if moving.has(brick.id):
+			rest[brick.id] = brick.transform
+			grams += Stability.grams(info)
+	placed = rest.duplicate()
+	said = bodies.named(moving_bodies)
+	angle = 0.0
+	_let_go_at = 0.0
+	_make_swing(free)
+	swing.carry(spin, about)
+	return true
+
+
+## [member swing] from [param free] (child body -> its link), each joint's
+## line where [member placed] has it.
+func _make_swing(free: Dictionary) -> void:
+	var order: Array = free.keys()
+	order.sort_custom(func(x: int, y: int) -> bool: return _depth(x) < _depth(y))
+	var made := Swing.new()
+	for child: int in order:
+		var joined: Bodies.Link = free[child]
+		var point: Vector3 = joined.point
+		var way: Vector3 = joined.axis.normalized()
+		var parent: int = -1
+		if bodies.parent_of.has(child):
+			# Its line where what carries it now stands.
+			var carrier: int = int(bodies.parent_of[child])
+			var carrier_key: int = int((bodies.members[carrier] as PackedInt64Array)[0])
+			if placed.has(carrier_key):
+				var carried: Transform3D = (placed[carrier_key] as Transform3D) \
+					* (rest[carrier_key] as Transform3D).affine_inverse()
+				point = carried * joined.point
+				way = (carried.basis * joined.axis).normalized()
+			parent = _swing_joint_of(carrier)
+		_swing_index[child] = made.add_joint(point, way, parent,
+			bodies.named(bodies.beyond(child)).get_slice(",", 0))
+	var by_joint: Dictionary = {}   ## joint index -> brick ids
+	for one: int in moving_bodies:
+		var j: int = _swing_joint_of(one)
+		if j < 0:
+			continue
+		if not by_joint.has(j):
+			by_joint[j] = []
+		(by_joint[j] as Array).append_array(Array(bodies.members[one] as PackedInt64Array))
+	for j: int in by_joint:
+		var start: Dictionary = {}
+		for key: int in by_joint[j]:
+			start[key] = placed[key]
+		made.add_segment(j, start, Swing.lump(world, library, by_joint[j], placed))
+	made.ready_up(world, library)
+	made.room = func(at: Dictionary) -> int:
+		var whole: Dictionary = placed.duplicate()
+		for key: Variant in at:
+			whole[key] = at[key]
+		met = 0
+		return 0 if _test(whole, 0, INF).x != 0 else maxi(met, 1)
+	swing = made
+
+
+## How many bodies lie between [param one] and the edge of what moves.
+func _depth(one: int) -> int:
+	var n: int = 0
+	var at: int = one
+	while _ours.has(at) and bodies.parent_of.has(at) and n < 1000:
+		at = int(bodies.parent_of[at])
+		n += 1
+	return n
+
+
+## The swing's joint [param one] hangs from: the innermost free joint
+## between it and the edge of what moves; -1 for none (it does not swing).
+func _swing_joint_of(one: int) -> int:
+	var at: int = one
+	for _n: int in 1000:
+		if _swing_index.has(at):
+			return int(_swing_index[at])
+		if not _ours.has(at) or not bodies.parent_of.has(at):
+			return -1
+		at = int(bodies.parent_of[at])
+	return -1
+
+
+## Whether the grabbed joint itself swings (it does not hold).
+func swing_has_grabbed() -> bool:
+	return swing != null and _swing_index.has(body)
+
+
+## Where the swing has it now: [member placed], and the grabbed joint's
+## [member angle].
+func swing_pose() -> void:
+	if swing == null:
+		return
+	var at: Dictionary = swing.pose()
+	for key: Variant in at:
+		placed[key] = at[key]
+	if _swing_index.has(body):
+		angle = _let_go_at + rad_to_deg(swing.q[int(_swing_index[body])])
+
+
+## What the swing did, in words: "swung down under its own weight and back
+## and forth 9 times in 3.2 s, and came to rest at 2°, hanging within its
+## friction of straight down"; "" for no swing.
+func swing_words() -> String:
+	if swing == null:
+		return ""
+	var said: String = swing.words()
+	if said.is_empty():
+		return ""
+	if not _swing_index.has(body):
+		var names := PackedStringArray()
+		for one: Swing.Joint in swing.joints:
+			names.append(one.name)
+		return "%s inside it %s" % [", ".join(names), said]
+	var hangs: String = ""
+	if swing.stops == 0 or swing.joints[int(_swing_index[body])].pressed == 0:
+		hangs = ", hanging within its friction of straight down"
+	else:
+		hangs = ", resting against what it met"
+	var out: String = "%s, and came to rest at %d°%s" % [said, roundi(angle), hangs]
+	if swing.joints.size() > 1:
+		out += " (a chain of %d free joints, swinging together)" % swing.joints.size()
+	return out
 
 
 ## Put every part that moved where it now stands, as one step to undo,

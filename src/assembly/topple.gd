@@ -1,9 +1,13 @@
 ## A model whose centre of mass is past the edge of what it stands on falls
 ## over: turned about that edge until something else of it reaches the floor,
-## and again about the next edge while it still does not stand. Quasi-static,
-## as a grab's settling is: where it comes to rest, not how fast it gets
-## there or whether it bounces ("it will fall at 1.7 s" is not a fair claim;
-## docs/MECHANISMS.md, What "accurate" can honestly mean).
+## and again about the next edge while it still does not stand. Where it
+## comes to rest is [method fall]'s, found from the parts' covers; how it gets
+## there is [method timed]'s: a rigid body turning about the edge under
+## gravity from rest, θ'' = τ(θ)/I, its moment of inertia about the edge from
+## the parts (Swing.lump), stopping dead where it lands (no bounce: how much a
+## model of bricks bounces is not measured). The edge is taken not to slip,
+## and each further fall starts from rest. Its time is as good as the masses
+## and the moment of inertia (docs/MECHANISMS.md §14), a few per cent.
 ##
 ## Each fall is a turn about a line on the floor: the support's edge the
 ## centre of mass is past (Balance.margin_in). A point of the model a
@@ -109,20 +113,75 @@ static func fall(points: PackedVector3Array, centre: Vector3, floor_y: float) ->
 	return {"turn": turn, "falls": falls, "steps": steps, "rests": rests, "words": said}
 
 
-## The turn [param share] (0 to 1) of the way through [param steps], each
-## fall in turn by its share of the whole angle.
-static func part_way(steps: Array, share: float) -> Transform3D:
+## The time step of [method timed], s.
+const STEP := 0.001
+
+
+## [param steps] (fall's) in time: each a turn about its edge from rest under
+## gravity, the model a rigid body of [param lumped] (Swing.lump where it
+## stands: grams, centre, inertia). {"seconds": the whole fall, "falls": [{
+## "seconds", "table": the turn every STEP, radians}], "speed": the last
+## fall's turning rate as it lands, rad/s, "line" and "point": its edge}.
+static func timed(steps: Array, lumped: Dictionary) -> Dictionary:
+	var grams: float = float(lumped["grams"])
+	var centre: Vector3 = lumped["centre"]
+	var inertia: Basis = lumped["inertia"]
+	var turn := Transform3D.IDENTITY
+	var falls: Array = []
 	var total: float = 0.0
+	var speed: float = 0.0
+	var line := Vector3.ZERO
+	var point := Vector3.ZERO
+	var weight := Vector3(0.0, -grams * Swing.GRAVITY, 0.0)
 	for step: Array in steps:
-		total += float(step[2])
-	var left: float = total * clampf(share, 0.0, 1.0)
+		point = step[0]
+		line = (step[1] as Vector3).normalized()
+		var angle: float = step[2]
+		var lever: Vector3 = turn * centre - point
+		lever -= line * lever.dot(line)
+		var spun: Basis = turn.basis * inertia * turn.basis.transposed()
+		var about_edge: float = line.dot(spun * line) + grams * lever.length_squared()
+		var theta: float = 0.0
+		var omega: float = 0.0
+		var seconds: float = 0.0
+		var table := PackedFloat32Array([0.0])
+		while theta < angle:
+			var torque: float = line.dot((Basis(line, theta) * lever).cross(weight))
+			omega += STEP * maxf(torque, 0.0) / maxf(about_edge, 1e-9)
+			if omega <= 0.0:
+				# Balanced on the edge: it would stand there; nudged on.
+				omega = 0.01
+			theta = minf(theta + STEP * omega, angle)
+			seconds += STEP
+			table.append(theta)
+			if seconds > 20.0:
+				theta = angle
+				table.append(theta)
+		falls.append({"seconds": seconds, "table": table})
+		total += seconds
+		speed = omega
+		turn = Transform3D(Basis.IDENTITY, point) * Transform3D(Basis(line, angle), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -point) * turn
+	return {"seconds": total, "falls": falls, "speed": speed, "line": line, "point": point}
+
+
+## The turn [param seconds] into [param steps] timed as [param timing]
+## ([method timed]).
+static func turn_at(steps: Array, timing: Dictionary, seconds: float) -> Transform3D:
 	var out := Transform3D.IDENTITY
-	for step: Array in steps:
-		var angle: float = minf(float(step[2]), left)
-		left -= angle
+	var left: float = seconds
+	var falls: Array = timing["falls"]
+	for n: int in steps.size():
+		var step: Array = steps[n]
+		var fall: Dictionary = falls[n]
+		var table: PackedFloat32Array = fall["table"]
+		var angle: float = float(step[2])
+		if left < float(fall["seconds"]):
+			angle = table[clampi(int(left / STEP), 0, table.size() - 1)]
 		var a: Vector3 = step[0]
 		out = Transform3D(Basis.IDENTITY, a) * Transform3D(Basis(step[1], angle), Vector3.ZERO) \
 			* Transform3D(Basis.IDENTITY, -a) * out
+		left -= float(fall["seconds"])
 		if left <= 0.0:
 			break
 	return out
