@@ -167,12 +167,12 @@ func read_mechanism() -> Simulation:
 		library.mesh_for(brick.part_id)
 	var made: Array = [null]
 	library.begin_reading()
-	var task: int = WorkerThreadPool.add_task(func() -> void:
+	var task: int = WorkerTasks.add(func() -> void:
 		made[0] = Simulation.read(standing, library, scenery), false, "read the mechanism")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
+	WorkerTasks.collect(task)
 	library.end_reading(task)
 	still.free()
 	return made[0]

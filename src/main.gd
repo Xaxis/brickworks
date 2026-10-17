@@ -4386,12 +4386,12 @@ func _weigh() -> void:
 		var still: BrickWorld = _world.copy_for_reading()
 		var weighed: Array = [null]
 		_library.begin_reading()
-		var task: int = WorkerThreadPool.add_task(func() -> void:
+		var task: int = WorkerTasks.add(func() -> void:
 			weighed[0] = judge.check(still), false, "weigh the model")
 		_library.reading_in(task)
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 		_library.end_reading(task)
 		still.free()
 		_weighing = false
@@ -4579,8 +4579,12 @@ func _watch_other_tabs() -> void:
 
 
 ## The window closing lets its session go, so the next one to open takes
-## it at once rather than once the hold has run out.
+## it at once rather than once the hold has run out. The working model is
+## written first: the autosave waits for a change to settle, and an edit
+## made just before closing the app was lost.
 func _exit_tree() -> void:
+	if _store != null:
+		_store.write_now()
 	TabSession.release()
 
 

@@ -155,8 +155,8 @@ static func _encoded(on: Node, image: Image) -> String:
 	if OS.has_feature("nothreads"):
 		work.call()
 	else:
-		var task: int = WorkerThreadPool.add_task(work, false, "encode a view of the model")
+		var task: int = WorkerTasks.add(work, false, "encode a view of the model")
 		while not WorkerThreadPool.is_task_completed(task):
 			await on.get_tree().process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 	return str(out[0])
