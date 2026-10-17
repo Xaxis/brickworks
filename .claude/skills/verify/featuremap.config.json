@@ -2063,6 +2063,34 @@
       "entry": "tools/web/sections_flow.mjs",
       "reach": "node tools/web/sections_flow.mjs --url=<preview>/app --bypass=…",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "this tab and its claude chats",
+      "entry": "src/ui/claude_tab_view.gd",
+      "reach": "Claude connected: the toolbar's Tab <id> line, Account's Claude part and the assistant panel's Or with your Claude plan: New chat for this tab, the chats working here, Keep this one",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "two chats probe",
+      "entry": "tools/web/tabpair_probe.mjs",
+      "reach": "node tools/web/relay_server.mjs 8831, then node tools/web/tabpair_probe.mjs --url=http://127.0.0.1:8831   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "two chats browser flow",
+      "entry": "tools/web/tabpair_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8832 --static=build/web, then node tools/web/tabpair_flow.mjs --url=http://127.0.0.1:8832/app --out=shots/tabpair   (with .env sourced; or a preview with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "two windows probe",
+      "entry": "src/dev/tabpair_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabpair_probe.gd -- 8790   (with .env sourced)",
+      "area": "web"
     }
   ]
 }

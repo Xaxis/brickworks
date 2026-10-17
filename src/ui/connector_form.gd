@@ -58,6 +58,7 @@ var _disconnect: LinkButton
 var _code_link: LinkButton
 var _desktop_link: LinkButton
 var _private_link: LinkButton
+var _tab_view: ClaudeTabView
 var _calls: int = 0
 var _since: int = 0
 var _heard: String = ""
@@ -141,6 +142,12 @@ func setup(with: ClaudeConnector) -> void:
 	_status = _line("", 13, 1.0)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_state_row.add_child(_status)
+
+	# This tab as Claude knows it, the chats working in it, and a new chat
+	# for it (ClaudeTabView): shown while Claude can reach this tab.
+	_tab_view = ClaudeTabView.new()
+	add_child(_tab_view)
+	_tab_view.setup(connector)
 
 	# After Connect Claude: what to do in the tab that just opened — adding
 	# Brickworks the first time, connecting the one there after that
@@ -276,12 +283,13 @@ func alone(only: bool) -> void:
 
 
 func controls_by_name() -> Dictionary:
-	return {"connect_claude": _connect, "claude_here": _here,
+	var named: Dictionary = _tab_view.controls_by_name() if _tab_view != null else {}
+	return named.merged({"connect_claude": _connect, "claude_here": _here,
 		"connector_shared": _shared, "connector_copy": _copy,
 		"connector_code": _code_link, "connector_code_copy": _code_copy,
 		"connector_desktop": _desktop_link, "connector_desktop_copy": _desktop_copy,
 		"connector_private": _private_link, "connector_address": _address,
-		"connector_private_copy": _private_copy, "claude_disconnect": _disconnect}
+		"connector_private_copy": _private_copy, "claude_disconnect": _disconnect})
 
 
 func _on_listening(on: bool, address: String) -> void:

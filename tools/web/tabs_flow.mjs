@@ -404,7 +404,7 @@ const gone = await call(token, session, "edit_model", {
 check(`the tree's tab closed, the session's next call says so: "${gone.words.split(".")[0]}"`,
   // Closed before the call reached it, nothing was done; closed with the
   // call in it, the relay cannot know, and says so. Both are honest.
-  gone.error && gone.words.includes(`The tab this session was working in, ${wood.id}`)
+  gone.error && gone.words.includes(`The tab this chat was working in, ${wood.id}`)
     && (gone.words.includes("has closed, so nothing was done")
       || gone.words.includes("closed before it answered, so whether it was done is not known")));
 check(`...and nothing was done in the tabs still open: ${(await state(home.page)).bricks}, ${(await state(cart.page)).bricks}`,

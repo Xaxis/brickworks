@@ -33,6 +33,9 @@ declare -A CMD=(
   [site]="tools/web/site_check.mjs --url=$P"
   [download]="tools/web/download_check.mjs --url=$P/download"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
+  # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
+  [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
+  [tabpair]="tools/web/tabpair_flow.mjs --url=$P/app --out=$S/${TAG}_tabpair"
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
