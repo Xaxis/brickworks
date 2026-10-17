@@ -1097,17 +1097,26 @@ Sections read the same graph:
 | one stud, when either part is a single stud across | turns on the stud: a 1x1 round plate, a minifigure's head |
 | one stud under a wider part | rigid: clutch holds it |
 | an axle in an axle hole (`Joints.through`, "grips") | rigid |
-| an axle or a pin in a round hole ("turns") | turns on its line; slides as far as the shaft reaches |
-| a clip on a bar, a hinge's pin, a turntable (`Joints.rounds`) | turns on the shared line; a clip slides along its bar |
+| an axle in a round hole ("turns") | turns on its line; slides as far as the axle reaches |
+| a pin in a round hole | turns on its line; a pin is held by its collar and does not slide. A pin keyed to nothing is part of the first thing it is in (Mechanism's rule) |
+| a clip on a bar, a hinge's pin, a turntable (`Joints.rounds`) | turns on the shared line; a clip or a minifigure's hand slides along its bar |
+| a tyre on its wheel | rigid: it does not turn on the rim |
 | a click hinge's fingers | turns in clicks of 22.5° |
 | a ball in its socket (`Joints.balls`) | turns every way about its middle |
 | glue, a magnet, one thing in pieces | rigid |
+| resting on a part with the lower part's studs under its foot (`Stability.contacts`) | as studs: the lattice's cover of a hinge brick is hollow where its turntable's studs reach |
 | resting on a part with no stud in it | nothing: a flap folded down lifts off |
 
-Two joints between the same two bodies on different lines hold them as one,
-as Mechanism's two pins through two beams do. Each piece of the model has an
-**anchor**, the side that stays: a part the person locked; else what stands
-on the baseplate's studs; else the heaviest body. A car's chassis stays and
+A joint between two parts overrides every stud and cell they share: a
+turntable's top and base, a hinge brick's halves, a click hinge's two parts
+are held by their joint alone. A stud the lattice finds in either of two such
+parts is given to the one whose face it meets (a turntable's base, not its
+top), so what stands on the top turns with it and what the base stands on
+stays. Two joints between the same two bodies on different lines hold them as
+one, as Mechanism's two pins through two beams do. Each piece of the model
+has an **anchor**, the side that stays: a part the person locked; else what
+stands on the baseplate's studs, a stud in one of its sockets (a tyre resting
+on the plate is not); else the heaviest body. A car's chassis stays and
 its wheels turn; a crane's base stays and its boom swings. Grabbing a part
 moves its body and everything beyond it, on the one joint between it and the
 anchor. Grabbing the anchored half of a joint (a hinge plate's lower half)
@@ -1142,8 +1151,14 @@ back. Then Balance: stands, or tips and over which edge, and the most loaded
 stud joint against its working load. "About", because a stud's clutch is not
 published (above): honest to a factor of two.
 
-**Live structure.** The graph Balance weighs is read once when the part is
-taken hold of (`Balance.prepare`), then each pose is weighed alone
+**Ready before the press.** The bodies, the graph Balance weighs
+(`Balance.prepare`) and the gear trains (`Mechanism.build`, anchors as the
+ground) are read once a model revision, a quarter of a second after it last
+changed, on a worker from 300 parts (`GrabDrag._ready_ahead`), so a press finds
+them read. Each frame a moving part's box is asked of the lattice first, and
+its turned cover is worked out only when something it may hit is near it.
+
+**Live structure.** The graph read ahead is weighed for each pose alone
 (`Balance.weigh_pose`) every 50 ms: the support polygon and the centre of
 mass on the floor, stud joints past half their working load tinted amber to
 red, the model drawn leaning 4° over the edge it would tip over, and a line
@@ -1157,7 +1172,12 @@ holds or swings, and how the model stands. degrees= or along= move it as a
 drag does and answer with what moved and the balance after.
 
 **Left for later.** Inverse kinematics along a chain of joints (an arm's
-shoulder, elbow and wrist dragged by the hand); closed loops (P2); what hangs
+shoulder, elbow and wrist dragged by the hand). Every modifier on a left drag
+is the view's already (Alt turns, Shift slides, Ctrl draws a box or copies),
+so the proposal is a press held still on the end part for 0.4 s before it is
+dragged, or a Chain toggle on the hint strip; each joint's range is the
+lattice's, so an IK step costs a room test per joint, which the box-first test
+now makes cheap. Closed loops (P2); what hangs
 on a driven gear following it; a free joint inside what moves settling too
 (only the grabbed joint settles); dynamics (S2, P3); the click step measured
 on real parts rather than read from retailers; settling a model that tips

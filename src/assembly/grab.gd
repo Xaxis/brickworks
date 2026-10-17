@@ -81,6 +81,9 @@ var placed: Dictionary = {}
 ## Gears the grabbed one turns, and what they turn on: brick id -> true.
 var coupled: Dictionary = {}
 var mechanism: Mechanism
+## The model's gear trains read ahead (GrabDrag), the anchors their ground;
+## read here for the piece grabbed when not.
+var shared_mechanism: Mechanism = null
 var _driver: int = -1
 var _drive_sign: float = 1.0
 ## What moves, said: "the boom, 38 parts, on its turntable".
@@ -147,12 +150,10 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 	# What it already overlaps where it stands is not in its way: covers are
 	# 2 LDU cells, and a minifigure's hand sits closer to its leg than that.
 	for key: int in moving:
-		var brick: BrickWorld.Brick = world.get_brick(key)
-		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh == null:
+		var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
+		if boxes.is_empty():
 			continue
-		for other: int in builder.lattice.blockers_boxes(builder.boxes_for(mesh, brick.transform),
-				0, skip):
+		for other: int in builder.lattice.blockers_boxes(boxes, 0, skip):
 			skip[other] = true
 	rest.clear()
 	grams = 0.0
@@ -250,21 +251,35 @@ func _gears() -> void:
 			break
 	if not any or mode != "turn":
 		return
-	var list: Array = []
-	var held: Array = []
-	var piece: Dictionary = _piece_of(body)
-	for key: int in piece:
-		var brick: BrickWorld.Brick = world.get_brick(key)
-		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if mesh == null:
-			continue
-		list.append({"key": key, "part": brick.part_id, "at": brick.transform, "mesh": mesh})
-		if bodies.anchors.has(int(bodies.body_of[key])):
-			held.append(key)
-	mechanism = Mechanism.build(list, held)
-	var driven: int = mechanism.body_of(part)
-	var joint: Mechanism.Joint = mechanism.joint_of(driven)
-	if joint == null or not Bodies._same_line(joint.point, joint.way, pivot, axis):
+	if shared_mechanism != null:
+		mechanism = shared_mechanism
+	else:
+		var list: Array = []
+		var held: Array = []
+		var piece: Dictionary = _piece_of(body)
+		for key: int in piece:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if mesh == null:
+				continue
+			list.append({"key": key, "part": brick.part_id, "at": brick.transform, "mesh": mesh})
+			if bodies.anchors.has(int(bodies.body_of[key])):
+				held.append(key)
+		mechanism = Mechanism.build(list, held)
+	# The driver is what the gear that moves turns on, on the grabbed joint's
+	# line: the part pressed may be a sail pinned to it, which Mechanism
+	# reads as a body of its own.
+	var driven: int = -1
+	var joint: Mechanism.Joint = null
+	for key: int in [part] + moving.keys():
+		var body_here: int = mechanism.body_of(key)
+		var turning_on: Mechanism.Joint = mechanism.joint_of(body_here)
+		if turning_on != null and Bodies._same_line(turning_on.point, turning_on.way, pivot, axis) \
+				and (key == part or not Mechanism.spec_of(world.get_brick(key).part_id).is_empty()):
+			driven = body_here
+			joint = turning_on
+			break
+	if joint == null:
 		mechanism = null
 		return
 	var solved: Dictionary = mechanism.solve({driven: 1.0})
@@ -327,9 +342,9 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 		# Not squared up: a file's own six-decimal turns would read as moved.
 		out[key] = move * (rest[key] as Transform3D)
 	if mechanism != null and not coupled.is_empty():
-		var all: Dictionary = mechanism.pose(deg_to_rad(degrees) * _drive_sign)
+		var driven: Dictionary = mechanism.pose_of(deg_to_rad(degrees) * _drive_sign, coupled)
 		for key: int in coupled:
-			out[key] = all[key]
+			out[key] = driven[key]
 	return out
 
 
@@ -345,16 +360,34 @@ func has_room(at: Dictionary) -> bool:
 		if mesh == null:
 			continue
 		var to: Transform3D = at[key]
-		if (to * mesh.bounds).position.y < _floor_y - BELOW_FLOOR \
-				and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
+		var box: AABB = to * mesh.bounds
+		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			free = false
 			break
+		# Its box first: nothing but what it may press on anywhere near it,
+		# and its turned cover is not worked out at all. A sail turning in
+		# the air cost a windmill's drag 38 ms a frame that way.
+		if not _near_anything(box):
+			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
 		if not builder.lattice.blockers_boxes(packed, 0, skip).is_empty():
 			free = false
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
 	return free
+
+
+## Whether anything but what the moving side may press on has its bounds
+## within [param box].
+func _near_anything(box: AABB) -> bool:
+	var cell: float = BrickLattice.CELL
+	var bound := PackedInt32Array([floori(box.position.x / cell), floori(box.position.y / cell),
+		floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
+		ceili(box.end.z / cell)])
+	for other: int in builder.lattice.near_bounds(bound):
+		if not skip.has(other):
+			return true
+	return false
 
 
 ## Turn to [param degrees] from where it was grabbed, as far as it has room
@@ -522,15 +555,15 @@ func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2) -> flo
 ## Where the pointer says a slide has gone: the point of the joint's line
 ## nearest the pointer's ray, against where it was held.
 func _pointer_along(origin: Vector3, direction: Vector3) -> float:
-	var held: float = (_hold - pivot).dot(axis)
+	# The line the held point slides on, not the joint's own: the pointer
+	# stays on the point it took hold of, whatever the eye's perspective.
 	var d: Vector3 = direction.normalized()
-	var w: Vector3 = pivot - origin
+	var w: Vector3 = _hold - origin
 	var b: float = axis.dot(d)
 	var denom: float = 1.0 - b * b
 	if denom < 1e-4:
 		return shift
-	var s: float = (b * w.dot(d) - w.dot(axis)) / denom
-	return s - held
+	return (b * w.dot(d) - w.dot(axis)) / denom
 
 
 ## A ball turned so the point held goes towards the pointer: the turn that

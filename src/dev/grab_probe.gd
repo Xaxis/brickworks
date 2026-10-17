@@ -23,8 +23,9 @@ const OUT := "/mnt/Projects/brickworks/bench/results/grab-2026-10-17"
 ## on its moving side must be (any when empty).
 const CASES: Array = [
 	["turntable", "res://vendor/omr/files/4096-1_Crane.mpd", "turntable", 0.0],
+	["turned turntable", "res://vendor/omr/files/30181-1.mpd", "turntable", 0.0],
 	["hinge", "res://vendor/omr/files/4096-1_Crane.mpd", "hinge", 0.0],
-	["click hinge", "res://vendor/omr/files/4915-1_Fork-Lift.mpd", "click", 0.0],
+	["click hinge", "res://vendor/omr/files/4903-1.mpd", "click", 0.0],
 	["gear train", "res://vendor/omr/files/8020-1_Windmill.mpd", "gear", 0.0],
 	["minifigure", "res://vendor/omr/files/6627-1.mpd", "figure", 0.0],
 	["ball joint", "res://vendor/omr/files/30472-1.mpd", "ball", 0.0],
@@ -120,6 +121,12 @@ func _open(path: String) -> bool:
 		if _store.awaited.is_empty() and _world.brick_count() > 0:
 			break
 	await _frames(10)
+	# As File, Open ends: the bar says it opened, and the model's floor is
+	# laid under it then (main.gd's opened handler). Opened behind the bar's
+	# back, the floor was laid by the first edit instead, and an undo of the
+	# drag found one part more than before it (the baseplate).
+	(_main.get("_bar") as ModelBar).opened.emit(_world.brick_count())
+	await _frames(5)
 	if playback_stop():
 		await _frames(3)
 	_builder.forget_history()
@@ -153,6 +160,9 @@ func _survey(path: String) -> void:
 				parts.append(_world.get_brick(key).part_id)
 			print("    body %d%s: %s" % [body, " (anchor)" if bodies.anchors.has(body) else "",
 				" ".join(parts)])
+	for pair: Vector2i in bodies._resting:
+		print("    resting on studs: %s on %s" % [_world.get_brick(pair.x).part_id,
+			_world.get_brick(pair.y).part_id])
 	for link: Bodies.Link in bodies.links:
 		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
 		var moved: Array = bodies.beyond(child)
@@ -290,6 +300,8 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 		targets.append(5.0 * n)
 	var mid_shot: bool = false
 	var driven: Dictionary = {}
+	var stop_ok: bool = false
+	var stop_said: String = ""
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var screen: Vector2 = _camera.unproject_position(turned)
@@ -297,6 +309,15 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 		if grab.stopped:
 			if is_nan(stopped_at):
 				stopped_at = grab.angle
+				if stop_said.is_empty():
+					# Where it stopped, there is room; a step further towards
+					# the pointer, none.
+					var way: float = 1.0 if _detented(grab, target) > grab.angle else -1.0
+					var step: float = grab.link.detent if grab.link.detent > 0.0 else 1.0
+					stop_ok = grab.has_room(grab.transforms_at(grab.angle)) \
+						and not grab.has_room(grab.transforms_at(grab.angle + way * step))
+					stop_said = "room at %.1f°, none %s° on towards %.0f°" % [grab.angle,
+						Balance.tidy(step), target]
 		else:
 			var off: float = absf(grab.angle - _detented(grab, target))
 			worst = maxf(worst, off)
@@ -311,14 +332,8 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	_check("%s: the angle follows the pointer in %d frames, to %.2f°%s" % [name, followed, worst,
 		" on its %s° clicks" % Balance.tidy(grab.link.detent) if grab.link.detent > 0.0 else ""],
 		followed >= 4 and worst <= 1.5)
-	if grab.stopped or not is_nan(stopped_at):
-		var at: float = grab.angle
-		var way: float = 1.0 if _last_target > at else -1.0
-		var step: float = grab.link.detent if grab.link.detent > 0.0 else 1.0
-		var room_here: bool = grab.has_room(grab.transforms_at(at))
-		var room_past: bool = grab.has_room(grab.transforms_at(at + way * step))
-		_check("%s: it stops where the model is: room at %.1f°, none %s° on" % [name, at,
-			Balance.tidy(step)], room_here and not room_past)
+	if not stop_said.is_empty():
+		_check("%s: it stops where the model is: %s" % [name, stop_said], stop_ok)
 	else:
 		print("    (nothing stopped it over ±150°)")
 	if want == "gear":
@@ -364,6 +379,28 @@ func _gear_check(name: String, grab: Grab) -> Dictionary:
 				Simulation.figure(float(simulation.rates[body]))])
 	_check("%s: %d driven parts turn by the tooth counts at %.0f° (%s), to %.3f°" % [name, checked,
 		grab.angle, ", ".join(ratios), worst], checked > 0 and worst < 0.05)
+	# The sails: the driven body with most parts, which docs/MECHANISMS.md
+	# says turns once in 9 of the crank's turns.
+	var sails: int = -1
+	for key: int in grab.coupled:
+		var body: int = simulation.model.body_of(key)
+		if simulation.rates.has(body) and (sails < 0
+				or (simulation.keys_of[body] as Array).size() > (simulation.keys_of[sails] as Array).size()):
+			sails = body
+	if sails >= 0:
+		var turned: float = 0.0
+		for key: int in simulation.keys_of[sails]:
+			if grab.placed.has(key):
+				turned = _turn_about((grab.placed[key] as Transform3D).basis
+					* (grab.rest[key] as Transform3D).basis.inverse(), simulation.axis_of(sails))
+				break
+		_check("%s: the sails (%s) turn %.3f° for the crank's %.1f°: 1 in %s, as the train's 9:1"
+			% [name, simulation.names.get(sails, "?"), turned, grab.angle,
+			Simulation.figure(1.0 / maxf(absf(float(simulation.rates[sails])), 1e-9))],
+			absf(absf(float(simulation.rates[sails])) - 1.0 / 9.0) < 1e-4
+			and absf(absf(turned) - absf(grab.angle) / 9.0) < 0.05)
+	else:
+		_check("%s: the sails are among the driven parts" % name, false)
 	return {"checked": checked}
 
 
@@ -523,9 +560,11 @@ func _choose(bodies: Bodies, want: String) -> Dictionary:
 			"turntable", "hinge", "click", "ball":
 				ok = link.kind == want
 			"gear":
+				# The crank: the smallest side with a gear on it, not the sails.
 				for key: int in moved:
 					if not Mechanism.spec_of(_world.get_brick(key).part_id).is_empty():
 						ok = link.kind == "axle" or link.kind == "pin"
+						score = -float(moved.size())
 						break
 			"figure":
 				for key: int in moved:

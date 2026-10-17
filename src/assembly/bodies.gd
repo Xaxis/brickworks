@@ -130,6 +130,8 @@ var took_ms: int = 0
 
 var _up: Dictionary = {}
 var _standing: Dictionary = {}   ## brick id -> true: on the baseplate's studs
+## Pairs joined by studs the lattice did not see, from their resting.
+var _resting: Dictionary = {}
 
 
 ## Read [param from]'s model. Pure but for asking the lattice what a stud
@@ -274,11 +276,25 @@ func _read() -> void:
 	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
 		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
 		return there if there != 0 and there != int(key) else null)
+	# Which parts turn against which: a stud reaching into one of them may be
+	# in the other, the two sharing cells round their joint.
+	var partners: Dictionary = {}   ## id -> Array of ids it turns against
+	for c: Array in candidates:
+		for ends: Array in [[int(c[0]), int(c[1])], [int(c[1]), int(c[0])]]:
+			if not partners.has(ends[0]):
+				partners[ends[0]] = []
+			(partners[ends[0]] as Array).append(ends[1])
 	for stud: Array in studs:
 		var a: int = int(stud[0])
 		var b: int = int(stud[1])
+		if partners.has(b):
+			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array))
 		if scenery.has(a) or scenery.has(b):
-			_standing[b if scenery.has(a) else a] = true
+			# On the baseplate's studs: a part that takes studs from below,
+			# not a tyre the plate's studs touch.
+			var on: int = b if scenery.has(a) else a
+			if _in_a_socket(on, stud[2]):
+				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
 			continue
@@ -289,11 +305,36 @@ func _read() -> void:
 	var turning: Dictionary = {}
 	for c: Array in candidates:
 		turning[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
-	# A stud between two parts that already turn on a round (a turntable's
-	# top on its base's middle, read as a stud too) is that round's.
+	# A part resting on another (Stability.contacts, as Balance reads it)
+	# with studs of the lower under its foot, where the lattice's cover of
+	# the upper is hollow at the stud's tip: 4096's hinge brick 3937 on its
+	# turntable's top read as resting on nothing, and the turntable carried
+	# none of the crane.
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = lattice
+	var model: Array = []
+	for entry: Array in entries:
+		model.append(world.get_brick(int(entry[0])))
+	var above: Dictionary = judge.contacts(model)["above"]
+	for low: Variant in above:
+		for high: Variant in above[low]:
+			var a: int = int(low)
+			var b: int = int(high)
+			var pair := Vector2i(mini(a, b), maxi(a, b))
+			if a == b or per_pair.has(pair) or turning.has(pair) or not _up.has(a) \
+					or not _up.has(b):
+				continue
+			var under: Array = _studs_under(a, b)
+			if not under.is_empty():
+				per_pair[pair] = under
+				_resting[pair] = true
+	# A turntable's top on its base, a hinge brick's halves, a click hinge's
+	# two parts: the joint between them is what holds them, whatever studs
+	# or cells they also share.
 	for pair: Vector2i in per_pair:
 		var found: Array = per_pair[pair]
-		if found.size() == 1 and turning.has(pair):
+		if turning.has(pair):
 			continue
 		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))):
 			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
@@ -623,6 +664,46 @@ func _slide_on(a: int, b: int, zone: Array) -> Array:
 		if back + on > 4.0:
 			return [Vector2(back, on), pair[0]]
 	return [Vector2.ZERO, 0]
+
+
+## Which of [param ids] a stud at [param foot] pointing [param way] is in:
+## the one whose face it meets is nearest the stud's foot. A turntable's top
+## and base share cells round their middle, and the lattice answers one of
+## them for a stud of the chassis under the base.
+func _sits_on(foot: Vector3, way: Vector3, ids: Array) -> int:
+	var best: int = int(ids[0])
+	var nearest: float = INF
+	for key: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var box: AABB = brick.transform * mesh.bounds
+		# The face it meets nearest its foot, and of two alike the one that
+		# reaches least far past it: a turntable's base, not its top.
+		var face: float = box.position.y if way.y > 0.0 else box.end.y
+		var score: float = absf(face - foot.y) * 1000.0 \
+			+ (box.end.y - foot.y if way.y > 0.0 else foot.y - box.position.y)
+		if absf(way.y) < 0.9:
+			score = box.get_center().distance_to(foot)
+		if score < nearest - 0.01:
+			nearest = score
+			best = key
+	return best
+
+
+## Whether a stud at [param foot] is in one of [param key]'s sockets: a part
+## that takes studs from below, not a tyre the baseplate's studs touch.
+func _in_a_socket(key: int, foot: Vector3) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return false
+	for socket: Vector2 in mesh.sockets:
+		var at: Vector3 = brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)
+		if at.distance_to(foot) <= Mechanism.STUD_SLACK + 4.0:
+			return true
+	return false
 
 
 ## The studs of [param low] pointing up into [param high]'s foot: each

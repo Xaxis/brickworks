@@ -73,9 +73,10 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 	grab.world = world
 	grab.builder = builder
 	grab.library = library
-	if _bodies == null or _bodies.revision != world.revision:
-		_bodies = Bodies.read(world, library, builder.lattice, scenery, builder.locked)
+	if not is_ready():
+		_ready_now()
 	grab.bodies = _bodies
+	grab.shared_mechanism = _mechanism
 	var state: String = grab.begin(brick_id, at, selection)
 	if state == "rigid":
 		grab = null
@@ -84,15 +85,6 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 		say.call(grab.why)
 		last_words = grab.why
 		return true
-	# The graph Balance weighs read once a model revision, as the bodies are.
-	if _judge_revision != world.revision:
-		_judge = Balance.new()
-		_judge.library = library
-		_judge.lattice = builder.lattice
-		_judge.floor_ids = scenery
-		_judge_revision = world.revision
-		if not _judge.prepare(world.bricks()):
-			_judge = null
 	worst_ms = 0.0
 	_total_ms = 0.0
 	frames = 0
@@ -279,13 +271,14 @@ func for_session(input: Dictionary) -> String:
 	if ids.is_empty():
 		return ("No part or sub-assembly %s here. part= takes a part's number (look_at_model) or "
 			+ "a sub-assembly's name.") % asked
-	if _bodies == null or _bodies.revision != world.revision:
-		_bodies = Bodies.read(world, library, builder.lattice, scenery, builder.locked)
+	if not is_ready():
+		_ready_now()
 	var held := Grab.new()
 	held.world = world
 	held.builder = builder
 	held.library = library
 	held.bodies = _bodies
+	held.shared_mechanism = _mechanism
 	var selection: Dictionary = {}
 	if ids.size() > 1:
 		for key: int in ids:
@@ -313,11 +306,9 @@ func for_session(input: Dictionary) -> String:
 		how, slides, held.moving_bodies.size(), "y" if held.moving_bodies.size() == 1 else "ies",
 		(", and %d part%s of the gear train it drives" % [held.coupled.size(),
 			"" if held.coupled.size() == 1 else "s"]) if not held.coupled.is_empty() else ""])
-	var judge := Balance.new()
-	judge.library = library
-	judge.lattice = builder.lattice
-	judge.floor_ids = scenery
-	var weighs: bool = judge.prepare(world.bricks())
+	# The graph read for this revision, as a drag weighs with.
+	var judge: Balance = _judge
+	var weighs: bool = judge != null
 	if not input.has("degrees") and not input.has("along"):
 		if weighs:
 			lines.append("As it stands: %s." % _standing_words(judge.weigh_pose({}), false))
@@ -402,7 +393,140 @@ var _told_page_at: int = 0
 
 
 func _process(_delta: float) -> void:
+	_ready_ahead()
 	_tell_page()
+
+
+# -- ready ahead of the press ------------------------------------------------------
+
+## From this many parts the reading goes to a worker, as the balance's does.
+const READY_OFF_THREAD_FROM := 300
+## How long the model must stand still before it is read, ms: not between
+## the parts of one paste.
+const READY_AFTER_MS := 250
+
+var _mechanism: Mechanism = null
+var _readying: int = -1
+var _ready_for: int = -1
+var _still: BrickWorld = null
+var _still_lattice: BrickLattice = null
+var _ready_out: Array = []
+var _seen_revision: int = -1
+var _changed_at: int = 0
+## How long the last reading took, ms, and whether it ran on a worker.
+var ready_ms: int = 0
+var ready_off_thread: bool = false
+
+
+## Whether what a grab needs is read for the model as it stands: the bodies,
+## the graph Balance weighs, and the gear trains.
+func is_ready() -> bool:
+	return _bodies != null and _bodies.revision == world.revision \
+		and _judge_revision == world.revision
+
+
+## Read what a grab needs once the model has stood still a moment, so a
+## press finds it ready: Bodies.read and Balance.prepare cost 0.4 s and more
+## at 1,300 parts, which at the press held the drag's first frame for 5 s.
+func _ready_ahead() -> void:
+	if world == null or builder == null:
+		return
+	var now: int = Time.get_ticks_msec()
+	if world.revision != _seen_revision:
+		_seen_revision = world.revision
+		_changed_at = now
+	if _readying >= 0:
+		if not WorkerThreadPool.is_task_completed(_readying):
+			return
+		WorkerTasks.collect(_readying)
+		library.end_reading(_readying)
+		_readying = -1
+		if _ready_for == world.revision and grab == null:
+			_adopt(_ready_out, _ready_for)
+		_still.free()
+		_still = null
+		_still_lattice = null
+		return
+	if grab != null or is_ready() or now - _changed_at < READY_AFTER_MS:
+		return
+	if world.brick_count() < READY_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+		_ready_now()
+		return
+	var started: int = Time.get_ticks_msec()
+	_ready_for = world.revision
+	_still = world.copy_for_reading()
+	_still_lattice = builder.lattice.copy_for_reading()
+	var floor_ids: Dictionary = scenery.duplicate()
+	var held: Dictionary = builder.locked.duplicate()
+	var out: Array = [null, null, null, 0]
+	_ready_out = out
+	var still: BrickWorld = _still
+	var cells: BrickLattice = _still_lattice
+	var parts: PartLibrary = library
+	library.begin_reading()
+	_readying = WorkerTasks.add(func() -> void:
+		var read: Array = GrabDrag._read_all(still, parts, cells, floor_ids, held)
+		out[0] = read[0]
+		out[1] = read[1]
+		out[2] = read[2]
+		out[3] = Time.get_ticks_msec() - started, false, "read the model's joints")
+	library.reading_in(_readying)
+	ready_off_thread = true
+
+
+## Read now, on this thread: a small model, a browser without threads, or a
+## press that came before the reading was done.
+func _ready_now() -> void:
+	var started: int = Time.get_ticks_msec()
+	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked)
+	read.append(Time.get_ticks_msec() - started)
+	ready_off_thread = false
+	_adopt(read, world.revision)
+
+
+static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
+		floor_ids: Dictionary, held: Dictionary) -> Array:
+	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held)
+	var judge := Balance.new()
+	judge.library = parts
+	judge.lattice = cells
+	judge.floor_ids = floor_ids
+	if not judge.prepare(from.bricks()):
+		judge = null
+	# The gear trains, read once for every grab of a gear (Grab._gears): the
+	# anchors are the ground.
+	var mechanism: Mechanism = null
+	var list: Array = []
+	var ground: Array = []
+	var gears: int = 0
+	for brick: BrickWorld.Brick in from.bricks():
+		if floor_ids.has(brick.id):
+			continue
+		var mesh: Lbm.PartMesh = parts.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		if not Mechanism.spec_of(brick.part_id).is_empty():
+			gears += 1
+		list.append({"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh})
+		if bodies.body_of.has(brick.id) and bodies.anchors.has(int(bodies.body_of[brick.id])):
+			ground.append(brick.id)
+	if gears >= 2:
+		mechanism = Mechanism.build(list, ground)
+	return [bodies, judge, mechanism]
+
+
+func _adopt(read: Array, revision: int) -> void:
+	_bodies = read[0]
+	_judge = read[1]
+	_mechanism = read[2]
+	ready_ms = int(read[3]) if read.size() > 3 else 0
+	if _bodies != null:
+		_bodies.world = world
+		_bodies.lattice = builder.lattice
+		_bodies.revision = revision
+	if _judge != null:
+		_judge.lattice = builder.lattice
+	_judge_revision = revision
 
 
 ## What a drag is doing, for a browser test: window.brickworksGrab, with a
@@ -421,8 +545,8 @@ func _tell_page() -> void:
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var handles: Array = []
 	if grab == null:
-		if _bodies == null or _bodies.revision != world.revision:
-			_bodies = Bodies.read(world, library, builder.lattice, scenery, builder.locked)
+		if not is_ready():
+			return
 		for body: Variant in _bodies.parent_link:
 			if handles.size() >= 4:
 				break
