@@ -384,6 +384,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 							plan.taken[Vector3i(x, j, z)] = true
 		plan.colour_at = func(x: float, j: float, z: float) -> int:
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
+		plan.stop = stop
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
 		plan.rejoin = bool(pattern.get("rejoin", keep_pieces))
@@ -500,12 +501,18 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan.made.append(one.duplicate(true))
 		# Stitched again only where something changed since: with every piece
 		# kept and nothing fixed added, it was the first stitch twice over.
+		if _halted(stop):
+			return []
 		if not (stitched and keep_pieces and fixed.is_empty()):
 			plan.stitch()
+		if _halted(stop):
+			return []
 		if plan.bond:
 			clock = Time.get_ticks_msec()
 			last["merged"] = plan.merge()
 			last["ms"]["merge"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		return [plan, shells]
 	var built: Array = build.call(bool(pattern.get("sideways", not gridded)))
 	if built.is_empty():
@@ -1894,6 +1901,10 @@ class Plan extends RefCounted:
 	## 5,082 parts, 37% of them 1 x 1s, where a greedy stack of bricks was
 	## 1,882.
 	var bond: bool = false
+	## A run's stop (Brickify.Progress.stopped), asked each course of lay
+	## and each pass of merge: bonding made a course long enough that a quit
+	## waited 10 s for the laying.
+	var stop: Callable = Callable()
 	## The colour of a core part none of which shows: the model's main colour.
 	var core_colour: int = -1
 	var _made_in_colour: Dictionary = {}
@@ -4127,6 +4138,8 @@ class Plan extends RefCounted:
 		made.append_array(round_made)
 		made.append_array(anchors)
 		for j: int in tall:
+			if stop.is_valid() and bool(stop.call()):
+				break
 			if j % 3 == 0:
 				var k: int = j / 3
 				var bricks: Dictionary = {}
@@ -5591,6 +5604,8 @@ class Plan extends RefCounted:
 		var changed: bool = true
 		var passes: int = 0
 		while changed and passes < 6:
+			if stop.is_valid() and bool(stop.call()):
+				break
 			changed = false
 			passes += 1
 			# Side by side.
