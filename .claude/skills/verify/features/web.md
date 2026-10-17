@@ -1717,13 +1717,33 @@ app says which: `window.brickworksBuildDrawn` = [page, when]) and to the
 next frame's start, "on screen"; with `brickworksShare.build.turn_last` (the
 turn's own laps: world, outline, view, page, kept), `turn_frames` (the rest
 of that frame: to its processing, the processing, the drawing, and the page
-told all within it) and whether the page was told all in that frame. Proves
-it when it ends "a shared model's pages turn quickly on a slow phone, and its
-first step comes up quickly": each turn on screen under 100 ms at 300 and
-1,000 parts and under 200 ms at 4,000, the first step within 3 s of the first
-frame at 300 and 1,000. `--report-only` says it all and judges nothing (a
-build from before: no drawn mark, no tap on the bar, the turn read as the
-first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
+told all within it, Main's own processing, the nodes' processing between
+the first and the last to process) and whether the page was told all in
+that frame. The models are shared as the app shares them, their steps
+carried (written by `share_pages_probe.gd --write`, the Share panel's own
+`SharedPages.attach`; the Godot run uses `XDG_DATA_HOME`, the checkout's
+`.scratch-data` when unset); `--bare` shares the text alone, as a link from
+before carried steps, whose steps the phone works out. The first step is
+said as tapped by the flow and with each tap made at once — from the
+engine's first frame to the steps being in (`window.brickworksStepsReady`),
+plus the cover drawn after Build it and step 1 after Start: the page hears
+of a control half a second after it appears, which is the flow's time, not
+the app's — with `brickworksShare.carried` and the viewer's way there
+(`brickworksShare.opened`: fetched, opened with `ModelStore.open_phases`,
+drawn, parts, steps). `--trace=DIR` records a Chromium trace of the turns
+and says, for each turn's frame, what ran between the app's marks
+(`console.timeStamp` "bw:turned", "bw:process_frame", "bw:first_node",
+"bw:last_node", "bw:pre_draw", "bw:post_draw") and the garbage collection
+in it: how the grab's twice-a-second search for handles was found in the
+nodes' processing. Proves it when it ends "a shared model's pages turn
+quickly on a slow phone, and its first step comes up quickly": each turn on
+screen under 100 ms at 300 and 1,000 parts and under 200 ms at 4,000, the
+first step, each tap at once, within 3 s of the first frame at 300 and
+1,000 parts and 5 s at 4,000. On a box at load 30 to 50 a frame's WebGL
+calls wait seconds on SwiftShader now and then, and a turn with them misses
+however little the app did (the line says the WebGL time). `--report-only`
+says it all and judges nothing (a build from before: no drawn mark, no tap
+on the bar, the turn read as the first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
 `_step30`, `_step<last>` (at full speed), and `times.json`. In
 `tools/release/preview_checks.sh` as `share_steps`, run alone.
 

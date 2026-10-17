@@ -72,6 +72,13 @@ whole cycle.
   opens it when they are, where it did nothing, and a model in one piece
   works its steps out without first sorting the whole parts library: the
   first step of 1,000 parts comes up in 9 to 12 s instead of 45.
+- A model you share carries its build steps, worked out once when you
+  share it, so a phone opening the link to build from works nothing out:
+  on 4,000 parts with the processor slowed four times the steps are in
+  about 3 s after the page first draws, where working them out took 75 to
+  135 s. Links shared before this work their steps out as they did. The
+  page also asks for the model while the app is still starting, and the
+  step player no longer stalls twice a second on a big model.
 - With several tabs or windows open, a new Claude chat that has not chosen
   one asks before its first change, listing them. It used to build in the
   tab used last, which could be the one another chat was building in.
