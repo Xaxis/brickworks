@@ -661,6 +661,12 @@ func row_rects() -> Dictionary:
 	if _tree == null or _tree.get_root() == null or not _tree.is_visible_in_tree():
 		return out
 	var area: Rect2 = _tree.get_global_rect()
+	# The same tree, scrolled and placed the same: the same rows. Walked
+	# again only when one of those changed, not twice a second.
+	var asked: String = "%s|%s|%s" % [_shown, str(area), str(_tree.get_scroll())]
+	if asked == _rows_asked:
+		return _rows
+	_rows_asked = asked
 	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
 	var stack: Array = [_tree.get_root()]
 	while not stack.is_empty():
@@ -673,5 +679,10 @@ func row_rects() -> Dictionary:
 		if not row.collapsed:
 			for child: TreeItem in row.get_children():
 				stack.append(child)
+	_rows = out
 	return out
+
+
+var _rows_asked: String = ""
+var _rows: Dictionary = {}
 

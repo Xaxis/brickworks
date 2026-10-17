@@ -158,6 +158,10 @@ check(`the set is on the baseplate (${bricks} parts)`, bricks > 300);
 // 8 ms), against the same model's idle frames before.
 if (args.timing) {
   const busySince = async (from) => ((await state()).busy || []).filter((f) => f[0] >= from);
+  // The model tree open and its Suggest sections found first, so the idle
+  // page is the same page that is then asked: the tree's rows and all.
+  await settledAt("sections_suggest");
+  await wait(5000);
   const idleFrom = (await state()).now;
   await wait(15000);
   const idle = await busySince(idleFrom);
@@ -167,8 +171,9 @@ if (args.timing) {
   await cdp.send("Profiler.enable");
   await cdp.send("Profiler.setSamplingInterval", { interval: 2000 });
   await cdp.send("Profiler.start");
+  const button = await settledAt("sections_suggest");
   const from = (await state()).now;
-  await click(await controlAt("sections_suggest"));
+  await click(button);
   const done = await until((now) => ((now.sections || {}).suggested || []).length >= 2, 900);
   await wait(3000);
   const { profile } = await cdp.send("Profiler.stop");
