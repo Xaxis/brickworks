@@ -1014,8 +1014,12 @@ picture the assistant is shown.
   per_page=; one undo). `booklet_edit_probe` (`gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot
   --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd --
   --into=DIR`: windowed on Xvfb, or the pictures are never drawn; never
-  `--out=`, which Main takes as an export; `--no-booklet` headless) opens 30050-1 (ROTSTEPs,
-  ABS), 106-1 and 10016-1 (no steps) as File, Open does; checks a file
+  `--out=`, which Main takes as an export; `--no-booklet` headless) first does steps_flow.mjs's own moves on gatehouse.mpd (Shift-] on the yellow
+  brick, Ctrl-Z, Shift-] again; the export four steps of the model's own, the
+  blue brick's ending in its ROTSTEP, read as LDraw reads it: a ROTSTEP ends a
+  step as STEP does, which steps_flow's reader missed in m65; `--only=gatehouse`
+  alone), then opens 30050-1 (ROTSTEPs, ABS), 106-1 and 10016-1 (no steps) as
+  File, Open does; checks a file
   opened and saved unchanged is the file; merges, splits, reorders (and is
   refused where a step stands on the one before), moves a part, each one
   undo, parts' lines only moved, every part seen from the side it was, and
