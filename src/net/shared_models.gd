@@ -36,7 +36,9 @@ static func embed_for(id: String) -> String:
 ## a viewer on a preview said "Could not reach Brickworks" once in four runs,
 ## and the same link opened at the next try. Reading is safe to repeat.
 func fetch(id: String) -> Dictionary:
-	var answer: Dictionary = {}
+	var answer: Dictionary = await _asked_early(id)
+	if not answer.is_empty():
+		return answer
 	for attempt: int in 3:
 		answer = await _fetch("/api/share?id=" + id.uri_encode(), HTTPClient.METHOD_GET, "", "")
 		if int(answer["code"]) != 0:
@@ -46,6 +48,30 @@ func fetch(id: String) -> Dictionary:
 
 
 ## Publish {name, author?, model, image?, id?} as the session's account.
+## The link's answer as the page asked for it before the engine started
+## (src/boot/shell.html, window.brickworksSharePrefetch), taken once; empty
+## when the page did not ask, asked for another link, or got nothing, and
+## the link is then asked for here.
+func _asked_early(id: String) -> Dictionary:
+	if not OS.has_feature("web"):
+		return {}
+	var asked: String = "(function(){var p=window.brickworksSharePrefetch;" \
+		+ "return p && p.id===%s ? (p.done ? 2 : 1) : 0})()" % JSON.stringify(id)
+	var state: Variant = JavaScriptBridge.eval(asked, true)
+	while state != null and int(state) == 1:
+		await get_tree().process_frame
+		state = JavaScriptBridge.eval(asked, true)
+	if state == null or int(state) != 2:
+		return {}
+	var status: int = int(JavaScriptBridge.eval("window.brickworksSharePrefetch.status", true))
+	var text: Variant = JavaScriptBridge.eval("window.brickworksSharePrefetch.text", true)
+	JavaScriptBridge.eval("window.brickworksSharePrefetch = null", true)
+	if status == 0 or not (text is String):
+		return {}
+	var json := JSON.new()
+	return {"code": status, "body": json.data if json.parse(text) == OK else null}
+
+
 func publish(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/share", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 

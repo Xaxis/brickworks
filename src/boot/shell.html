@@ -224,6 +224,25 @@ $GODOT_HEAD_INCLUDE
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 
+// A shared model's link (?view=<id>) asked for at once, while the engine
+// downloads and starts, which takes seconds: its text, and the build steps
+// carried with it, are then here when the viewer asks (SharedModels.fetch
+// takes them from window.brickworksSharePrefetch; it asks again itself if
+// this failed). On a preview the answer took 2.4 s after the engine's first
+// frame, which was most of the way to a shared model's first step.
+(function () {
+	try {
+		const id = new URLSearchParams(location.search).get("view") || "";
+		if (!/^[A-Za-z0-9]{10}$/.test(id)) return;
+		const early = window.brickworksSharePrefetch = { id: id, done: false, status: 0, text: "" };
+		fetch("/api/share?id=" + id).then((reply) => reply.text().then((text) => {
+			early.status = reply.status;
+			early.text = text;
+			early.done = true;
+		})).catch(() => { early.done = true; });
+	} catch (e) {}
+})();
+
 (function () {
 	"use strict";
 

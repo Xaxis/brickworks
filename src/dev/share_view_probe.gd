@@ -222,6 +222,16 @@ func _run() -> void:
 	_ok(_fingerprint(world) == before, "1 looks from the front, and nothing moves")
 
 	print("\nthe part under the pointer")
+	# The viewer tells the lattice of the parts once the model is up, a
+	# slice a frame (ModelStore.lattice_later): what is under a pointer
+	# is known a moment after the model is on screen.
+	var told_from: int = Time.get_ticks_msec()
+	while not (store.get("_unregistered") as Array).is_empty() \
+			and Time.get_ticks_msec() - told_from < 30000:
+		await process_frame
+	_ok(store.lattice_later and (store.get("_unregistered") as Array).is_empty(),
+		"the lattice is told of every part after the model is up (%.1f s)"
+		% ((Time.get_ticks_msec() - told_from) / 1000.0))
 	var target: BrickWorld.Brick = _a_visible_brick(world, store, library, camera, view_rect)
 	_ok(target != null, "a part of the model is on screen")
 	if target != null:
