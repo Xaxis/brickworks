@@ -502,6 +502,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		# only side by side: pruned first from the foot, a bunny on its feet kept
 		# its feet and lost the rest. Joined first, then pruned.
 		var stitched: bool = bool(pattern.get("stitch_first", false))
+		# What a sculpt's shells cut off is taken out before the stitch spends
+		# its rounds on it: a bunny at 48 studs tried 86 joins where it had 27.
+		if not shells.is_empty():
+			last["cut_off"] = plan.cut_off(true)
 		if stitched:
 			plan.stitch()
 		last["ms"]["stitch"] = Time.get_ticks_msec() - clock
@@ -555,23 +559,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# studs left seven such, and its mend checked it three times over; a milk
 	# truck's strip a stud wide under its flank was 29 parts in three pieces.
 	if not plan.cubes.is_empty() and not shells.is_empty():
-		var gone: Dictionary = {}
-		for piece: Array in plan.pieces().slice(1):
-			if piece.size() > Plan.CUT_OFF:
-				continue
-			var touches: bool = false
-			for n: int in piece:
-				touches = touches or plan.beside_shell(plan.made[n])
-			if touches:
-				for n: int in piece:
-					gone[n] = true
-		if not gone.is_empty():
-			var left: Array = []
-			for n: int in plan.made.size():
-				if not gone.has(n):
-					left.append(plan.made[n])
-			plan.made = left
-		last["cut_off"] = gone.size()
+		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off()
 	# What each screen laid, or why it laid none; and a steep front of a raised
 	# solid said with no screen, which is how a session says a cabin.
 	said.append_array(plan.screens_said)
@@ -3263,6 +3251,32 @@ class Plan extends RefCounted:
 			"face": face, "top": top, "rows": 2 * (top - bottom) / CUBE_PLATES, "held": {},
 			"cells": mine, "outside": outside, "glass": {}, "id": _shells_made, "cubes": kept}
 		return shell if _anchored(shell) else {}
+
+	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts
+	## or fewer, that touch a shell (with [param wholly], every part of them
+	## does: a sliver beside one, not a leg that meets one at its top):
+	## taken out of [member made]. How many parts.
+	func cut_off(wholly: bool = false) -> int:
+		if cubes.is_empty() or shelled.is_empty():
+			return 0
+		var gone: Dictionary = {}
+		for piece: Array in pieces().slice(1):
+			if piece.size() > CUT_OFF:
+				continue
+			var touches: bool = wholly
+			for n: int in piece:
+				touches = (touches and beside_shell(made[n])) if wholly \
+					else (touches or beside_shell(made[n]))
+			if touches:
+				for n: int in piece:
+					gone[n] = true
+		if not gone.is_empty():
+			var left: Array = []
+			for n: int in made.size():
+				if not gone.has(n):
+					left.append(made[n])
+			made = left
+		return gone.size()
 
 	## Whether a part of the core touches a plate a shell has taken, beside,
 	## over or under it.
