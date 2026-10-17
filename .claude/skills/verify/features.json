@@ -863,11 +863,35 @@
       "tests": []
     },
     {
+      "id": "cli:two chats browser flow",
+      "kind": "cli",
+      "entry": "tools/web/tabpair_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8832 --static=build/web, then node tools/web/tabpair_flow.mjs --url=http://127.0.0.1:8832/app --out=shots/tabpair   (with .env sourced; or a preview with BW_BYPASS)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:two chats probe",
+      "kind": "cli",
+      "entry": "tools/web/tabpair_probe.mjs",
+      "reach": "node tools/web/relay_server.mjs 8831, then node tools/web/tabpair_probe.mjs --url=http://127.0.0.1:8831   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:two windows check",
       "kind": "cli",
       "entry": "tools/windows_check.py",
       "reach": "tools/windows_check.py   (two headless apps on ports 8851 and 8852, in a data folder of their own)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:two windows probe",
+      "kind": "cli",
+      "entry": "src/dev/tabpair_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabpair_probe.gd -- 8790   (with .env sourced)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2296,6 +2320,14 @@
       "entry": "tools/viewer/card.js",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:this tab and its claude chats",
+      "kind": "ui",
+      "entry": "src/ui/claude_tab_view.gd",
+      "reach": "Claude connected: the toolbar's Tab <id> line, Account's Claude part and the assistant panel's Or with your Claude plan: New chat for this tab, the chats working here, Keep this one",
+      "area": "web",
       "tests": []
     },
     {
