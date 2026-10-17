@@ -135,9 +135,19 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	var drawn: int = 0
 	var total: int = 0
 	for page: Booklet.Page in pages:
-		total += page.entries.size()
+		for entry: Booklet.Entry in page.entries:
+			if not entry.in_callout:
+				total += 1
 	for page: Booklet.Page in pages:
 		for entry: Booklet.Entry in page.entries:
+			# A callout too big to sit beside its step has pages of its own
+			# (Booklet._callout_pages), and its steps are drawn with the step
+			# it belongs to (_draw, from its callout's stage). Drawn here as
+			# well, as a step of the model's own, they had no rank on the
+			# main stage and stopped the booklet with a script error (8022
+			# Tow Truck, 2026-10-16).
+			if entry.in_callout:
+				continue
 			drawn += 1
 			if drawn % 5 == 1:
 				_say("Drawing the steps…", total, drawn - 1)
