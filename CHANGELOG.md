@@ -32,6 +32,8 @@ whole cycle.
   tab used last, which could be the one another chat was building in.
 - Claude finds a tab by its model's name as well as its id: "the castle
   tab".
+- With two chats in one tab, one chat's undo no longer takes back the
+  other's change.
 
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is

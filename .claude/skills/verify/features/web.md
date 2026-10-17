@@ -208,7 +208,18 @@ plan with Claude as the client.
   `op=keep&chat=` moves every other chat off: the other's next untargeted call
   is answered "The person moved this chat off tab …", nothing done, until it
   chooses. An answer in a tab another chat holds says "Careful: another chat
-  has been working in it…".
+  has been working in it…". With more than one tab open, `select_tab`'s answer
+  and `target`'s description ask Claude to pass `target` on every call
+  (`SAY_TARGET`): claude.ai is reported to reuse one `Mcp-Session-Id` across
+  chats, and two chats on one key are one chat here. Real Claude Code
+  (`claude -p` with `--mcp-config` naming the local relay and a token,
+  `--tools ""`, two at once, each told one stand-in tab's first message and to
+  add a brick) called `select_tab` with its tab's id, then targeted every
+  call, each building only in its own tab (2026-10-17; the run's log is in
+  `bench/results/tabpair-2026-10-17/claude_pair2`). Undo per chat: each step a
+  chat's call makes carries `by` (`CommandSocket.CHAT_KEY`, `_mark`), and the
+  `undo` tool stops at a step another chat made, saying so
+  (`AppTools._undo`, `AppTools.chat`).
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
   Claude part and the assistant panel's "Or with your Claude plan"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
@@ -232,8 +243,9 @@ plan with Claude as the client.
   "the castle tab"`, a target by id binding chat B, chat C told "Careful" in
   the held castle, the castle hearing two chats (`op=chats` and
   `brickworks/chats`), `op=keep` moving C off and C told so twice with the
-  castle asked nothing, and `select_tab "cast"` matching two and choosing
-  neither. Seconds; deletes its throwaway account.
+  castle asked nothing, `select_tab "cast"` matching two and choosing
+  neither, and two chats on one session each landing in its own tab by
+  `target`. 29 checks, seconds; deletes its throwaway account.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
   — two windows as two of the app's connectors in one process, each with its
   own world and socket and a fresh `TabSession` id: the three links and the
@@ -251,8 +263,9 @@ plan with Claude as the client.
   links name it, the page staying put; A chooses "the pair castle tab", B
   reads the truck's id off its first message and targets it, each change
   landing in its own page alone; each tab's toolbar and Account then name its
-  one chat; C chooses the castle, whose toolbar says 2 Claude chats, Keep this
-  one beside A is pressed in Account, and C's next call is told it was moved
+  one chat; C chooses the castle, whose toolbar says 2 Claude chats, C's
+  `undo` leaves A's change standing, Keep this one beside A is pressed in
+  Account, and C's next call is told it was moved
   off with the castle unchanged, A building on. Pictures `1_castle.png`,
   `1_truck.png`, `2_two_chats.png`, `3_kept.png`. In
   `tools/release/preview_checks.sh` as `tabpair` and `tabpair_probe`.

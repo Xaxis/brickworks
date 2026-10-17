@@ -63,7 +63,14 @@ chat for each. Each chat has to stay in its own tab. Since 2026-10-17:
    ahead in the most recent tab no other chat holds, and says which.
 4. **A chat stays in its tab.** Once chosen, every call goes there until
    the chat chooses another. Clicking into another tab to watch changes
-   nothing.
+   nothing. With more than one tab open, Claude is also asked to name the
+   tab on every call (`target`). That matters because claude.ai is
+   reported to reuse one connection across chats
+   (<https://claudeissues.com/issue/41836-no-session-conversation-identifier-sent-to-mcp-servers-cannot-distinguish-concur>);
+   the relay then cannot tell two chats apart, but a chat that names its
+   tab on each call stays in it. Claude Code sessions started from each
+   tab's first message did so in our test: `select_tab`, then every call
+   targeted.
 5. **The tab says who is working in it.** The toolbar shows "Claude
    working · tab k7qd" while a chat works there (any call in the last 30
    minutes). Account names the chat by when it started and what it did
@@ -71,6 +78,14 @@ chat for each. Each chat has to stay in its own tab. Since 2026-10-17:
    "2 Claude chats", and Account has **Keep this one** beside each. The
    other chat is moved off. Its next call does nothing and tells Claude to
    ask which tab to work in.
+6. **Undo keeps to its own chat.** Each change a chat makes is one undo
+   step, marked with that chat. Claude's `undo` stops at a step another
+   chat made, and says so. The person's own Undo takes back any step, as
+   before.
+
+What is not possible: two chats that share one connection look like one
+chat to the relay, so the tab cannot show them as two or keep one. Naming
+the tab on every call (4) is what keeps them apart.
 
 The desktop app's windows are tabs here too: each window registers with
 the relay under its own id (`src/parts/tab_session.gd`), so two windows,
