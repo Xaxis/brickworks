@@ -17,6 +17,9 @@ extends SceneTree
 var _failures: int = 0
 ## Every model the probe laid, for the numbers they were laid in.
 var _laid: Array[Assistant.Model] = []
+## Each build's stitch: [name, studs, rounds, stalls], for the stitch to be
+## seen to end before its rounds run out.
+var _stitched: Array = []
 var _library: PartLibrary
 var _checker: Assistant
 var _world: BrickWorld
@@ -223,10 +226,17 @@ func _run() -> void:
 		var hollow_parts: int = (hollow["model"] as Assistant.Model).placements.size()
 		var solid_plastic: float = _plastic(round["model"])
 		var hollow_plastic: float = _plastic(hollow["model"])
-		_check("hollow is less plastic and no more parts: %.0f%% of the plastic in %d parts against %d, %d studs hollowed"
-			% [100.0 * hollow_plastic / solid_plastic, hollow_parts, solid_parts,
+		# All of it: it met "no more parts" once only by its mend taking 45
+		# parts out, which the stitch had left apart while its first ways laid
+		# the same pair again and again. Whole, its hollow's ceiling joined,
+		# it is a few parts more than the solid sphere.
+		var taken: int = int((hollow["report"] as Dictionary).get("mended", 0))
+		_check(("hollow is less plastic, nothing taken out, and hardly more parts: %.0f%% of the "
+			+ "plastic in %d parts against %d, %d taken out, %d studs hollowed")
+			% [100.0 * hollow_plastic / solid_plastic, hollow_parts, solid_parts, taken,
 				(hollow["grid"] as Brickify.Grid).hollowed],
-			hollow_plastic < solid_plastic * 0.75 and hollow_parts <= solid_parts
+			hollow_plastic < solid_plastic * 0.75 and taken == 0
+			and hollow_parts <= solid_parts * 1.1
 			and (hollow["grid"] as Brickify.Grid).hollowed > 0)
 	# A dome scanned with no underside: the sphere's top half alone, open.
 	var open := MeshFile.new()
@@ -296,6 +306,17 @@ func _run() -> void:
 		_check("in seconds: %.1f s (measured %d ms, laid %d ms, checked %d ms)" % [total / 1000.0,
 			ms["measure"], ms["lay"], ms["check"]], total < 20000)
 
+	# The stitch ends because nothing more joins, not because its rounds ran
+	# out: kept unchecked, its first ways laid the same pair again and again,
+	# on most of the bench's models, until all 96 were spent and the rejoin
+	# was never tried.
+	var spent: Array = _stitched.filter(func(one: Array) -> bool: return int(one[2]) >= 96)
+	_check("every stitch ends before its 96 rounds run out, of %d builds (%s); stalled and taken back %d times: %s"
+		% [_stitched.size(), ", ".join(_stitched.map(func(one: Array) -> String:
+			return "%s %d: %d" % [one[0], one[1], one[2]])),
+		_stitched.reduce(func(sum: int, one: Array) -> int: return sum + int(one[3]), 0), spent],
+		spent.is_empty() and not _stitched.is_empty())
+
 	# A model with nothing in it: the check's report then has no count of
 	# pieces, and mending read it unguarded and stopped the script.
 	var mended: Dictionary = Brickify.mend(Assistant.Model.new(), _checker)
@@ -339,6 +360,9 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		return {}
 	var model: Assistant.Model = result["model"]
 	_laid.append(model)
+	var ms: Dictionary = result.get("ms", {})
+	_stitched.append([name, options.studs, int(ms.get("lay.stitch.rounds", 0)),
+		int(ms.get("lay.stitch.stalls", 0))])
 	var report: Dictionary = result["report"]
 	var grid: Brickify.Grid = result["grid"]
 	_check("%s at %d studs (%d x %d studs, %d plates): %d parts, %s, %d piece%s, %d mended, in %d ms"
@@ -427,6 +451,26 @@ func _whole() -> void:
 			gone], float(report.get("coverage", 0.0)) >= 0.97 and gone.is_empty())
 		_stands("the fox", model, laid)
 
+	# Laid plain, its colours split its plates at their edges, and the stitch
+	# paired the same plates again and again until its rounds ran out: 21
+	# parts of its hind legs came out held by nothing and were taken out.
+	var plain := Brickify.Options.new()
+	plain.studs = 24
+	plain.smooth = false
+	var flat: Dictionary = Brickify.build(fox, plain, _checker)
+	if flat.has("model"):
+		_laid.append(flat["model"])
+		var report: Dictionary = flat["report"]
+		var gone: Array = report.get("left_out", [])
+		var ms: Dictionary = flat["ms"]
+		_check("laid plain, the whole of it too: %.1f%% in a part, %d mended, %s left out; its stitch %d rounds"
+			% [100.0 * float(report.get("coverage", 0.0)), int(report.get("mended", 0)), gone,
+				int(ms.get("lay.stitch.rounds", 0))],
+			float(report.get("coverage", 0.0)) >= 0.97 and gone.is_empty())
+	else:
+		_check("the fox laid plain: %s" % str(flat.get("error", "")), false)
+	_across_colours()
+
 	var apart: MeshFile = BrickifySamples.floating()
 	laid = Brickify.build(apart, options, _checker)
 	_check("a body with a piece apart over it is laid: %s" % str(laid.get("error", "")),
@@ -452,6 +496,39 @@ func _whole() -> void:
 		_stands("on it, it", model, laid)
 	else:
 		_check("a model that would tip is laid: %s" % str(laid.get("error", "")), false)
+
+
+## Two plates side by side in two colours, a piece each: the stitch lays a
+## plate across the edge, moving as few studs into the other colour as it
+## can, and the rest of each side keeps its own. Joined only within a colour,
+## a fox's legs and an aircraft's gear stood apart at their colour's edge and
+## were taken out.
+func _across_colours() -> void:
+	var columns: Dictionary = {}
+	for x: int in 6:
+		columns[Vector2i(x, 0)] = PackedInt32Array([4 if x < 3 else 1])
+	var plan := Shapes.Plan.new(columns, 1, false, _library)
+	plan.made = [
+		plan._annotated({"part": "3623", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+			Shapes.CORE_PLATES, 1, true),
+		plan._annotated({"part": "3623", "color": 1, "x": 3, "y": 0, "z": 0, "rot": 0},
+			Shapes.CORE_PLATES, 1, true)]
+	var same: bool = plan._pair_across([0], {1: true})
+	var joined: bool = plan._pair_across([0], {1: true}, {}, true)
+	var studs: Dictionary = {}       ## colour -> studs
+	var across: Array = []
+	for one: Dictionary in plan.made:
+		var cells: Array = one["_cells"]
+		studs[int(one["color"])] = int(studs.get(int(one["color"]), 0)) + cells.size()
+		var xs: Array = cells.map(func(cell: Vector2i) -> int: return cell.x)
+		if xs.min() <= 2 and xs.max() >= 3:
+			across.append("%s in %d" % [one["part"], one["color"]])
+	_check(("two plates of two colours side by side are not paired as one colour (%s), and are "
+		+ "across them: %d parts, %s reaching across, red %d studs and blue %d")
+		% [same, plan.made.size(), across, int(studs.get(4, 0)), int(studs.get(1, 0))],
+		not same and joined and across.size() == 1
+		and int(studs.get(4, 0)) + int(studs.get(1, 0)) == 6
+		and absi(int(studs.get(4, 0)) - int(studs.get(1, 0))) <= 2)
 
 
 ## Weighed as the bench weighs it (check_design with Balance): one piece,

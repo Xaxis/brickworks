@@ -1558,7 +1558,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 		var was: int = model.placements.size()
 		var props: int = _prop(model, checker, balance)
 		if props > 0:
-			var after: Dictionary = checker._check(model, true, true)
+			var after: Dictionary = checker._check(model, true, true, false, false)
 			var weighed: Balance.Report = after.get("balance")
 			if weighed != null and weighed.over < balance.over \
 					and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
@@ -2091,11 +2091,13 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 
 
 ## The check, counted and timed into [param clock]; weighed only when it
-## passes in one piece, which is when the mend stops, or [param weigh].
+## passes in one piece, which is when the mend stops, or [param weigh]; and
+## without its advice, which nothing here reads: a quarter of each check of
+## a forty-stud scan.
 static func _timed(model: Assistant.Model, checker: Assistant, clock: Dictionary,
 		weigh: bool = false) -> Dictionary:
 	var t: int = Time.get_ticks_msec()
-	var report: Dictionary = checker._check(model, true, weigh, true)
+	var report: Dictionary = checker._check(model, true, weigh, true, false)
 	clock["checks"] = int(clock["checks"]) + 1
 	clock["checks_ms"] = int(clock["checks_ms"]) + Time.get_ticks_msec() - t
 	return report

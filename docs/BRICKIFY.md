@@ -81,9 +81,10 @@ studs, against a greedy stack of standard bricks and legolization:
    nothing. *Done 2026-10-15, section 5: whole in 25 of 28 from 13.*
 2. **Colour that reads right**: a hue-keeping match, faces voted by what is
    seen, only colours the part is made in. *2026-10-16, section 6: 1.28 times
-   the floor at 48 studs from 1.54, every part with an element number; a
-   figure's hair top, smooth against plain at 48, wholeness (24 of 28) and
-   time not there yet.*
+   the floor at 48 studs from 1.54, every part with an element number. Unit
+   2b, section 7: whole again, smooth in 28 of 28 and plain in 27, colour
+   kept, the forty-stud bunny 0.82 times `main`'s time; a figure's hair
+   top and smooth against plain at 48 not there yet.*
 3. **Bond like a builder**: fewer, longer parts and staggered seams in the
    hidden core.
 4. **Fit the surface by distance**, with the slope angles it lacks.
@@ -1226,6 +1227,213 @@ The Bell X-1 at 48 studs (Smithsonian, CC0): its undercarriage is gone.
   try counts the whole plan's pieces).
 - **Dithering on flat panels** was not tried.
 
+## 7. Unit 2b: whole and fast again (2026-10-16)
+
+Unit 2 made the colours read right and cost two things. Smooth kept the
+whole model in 24 of 28 runs (from 25) and plain in 25 (from 27): the Bell
+X-1 at 48 studs lost its undercarriage, the fox laid plain at 24 lost 21
+parts, the temple at 24 lost 72 and its moon. And the forty-stud bunny took
+1.12 times `main`'s time, where the target was 12 s. Branch
+`worktree-agent-a7d8073d80103c257`, from `main` at `69a0d1d` with unit 2
+(`49a4769`) merged.
+
+**In short.** Smooth keeps the whole model in all 28 runs (from 24) and
+plain in 27 (from 25); all 56 are in one piece with the check passing, as
+before. The mend takes 598 parts out over the bench, from 2,569, in 124
+checks, from 182, and the bench's runs take 16 to 26% less time. Colour is
+kept: ΔE2000 at 48 studs is 1.27 times the floor for smooth (from 1.28) and
+1.23 for plain (from 1.21); at 24, 1.49 and 1.45 (from 1.54 and 1.56).
+The forty-stud bunny takes 0.82 times `main`'s time in the same batch
+(12.0 s against 14.6), from 1.12: 12 s by the clock, but 12.9 s against
+the 15.8 `main` took in unit 2's batch, so the target is met only just, if
+at all. Parts rise 2 to 6%. The figure's hair top is still the skin's
+colour, and smooth is still a little worse than plain at 48 studs (9.46
+against 9.11).
+
+**What was wrong.** Three faults, each older than unit 2; its colours
+brought them out. Unit 2's lead, a thin part laid in the one colour most of
+its cells are, was tried first and is not among them: it joined nothing
+more (the fox still lost its 21 parts, the X-1 its gear) and cost the
+temple 2 ΔE.
+
+1. **The stitch spun.** Shapes joins a sculpt's pieces first by two cheap
+   ways it keeps unchecked (two plates side by side laid again with one
+   across the joint; an edge part laid again in plain parts), then by ways
+   it keeps only if they leave fewer pieces (`rejoin`). On 41 of the 56
+   runs the first ways laid the same pair again and again until all 96
+   rounds ran out, and the rejoin was never tried. What was still apart
+   went to the mend, which took it out and checked again: the fox's 21
+   parts, the X-1's gear. Unit 2's colours moved the joints; the spin was
+   there on `main` too.
+2. **No join crossed a colour's edge.** Every way of joining lays its parts
+   in one colour, so a piece that met the rest only where the colour
+   changed could not be joined. With the stitch mended, the avocado, the
+   milk truck and the Hayes bust at 24 studs still had 4 to 17 parts taken
+   out each this way.
+3. **The first check came back unweighed.** A check that finds dressing
+   that gave way (a tile on a side stud) checks again without it, and that
+   second check dropped unit 2's "weigh it once it is whole": the mend got
+   an unweighed report and checked a third time to weigh it. And every
+   check worked out its advice (a quarter of its time on the bunny), which
+   nothing in Brickify reads.
+
+**What changed** ([shapes.gd](../src/ai/shapes.gd),
+[brickify.gd](../src/assembly/brickify.gd),
+[assistant.gd](../src/ai/assistant.gd)):
+
+1. **A stitch that stops spinning** (`Plan.stitch`). It keeps the plan at
+   its fewest pieces. When a round's pieces apart are ones it has seen
+   before, or twelve rounds in a row leave no fewer (`STALLED`), it goes
+   back to that plan, and from then on tries the first ways with the
+   rejoin's, each kept only if it leaves fewer pieces. The stitch now runs
+   out of rounds on 6 runs (the temple and the toy car at 48, the temple at
+   24), each joining a piece a round to the end.
+2. **A plate across a colour's edge**, the rejoin's last way
+   (`_pair_across` with colours): two plates of two colours side by side
+   laid again with one across the joint, the one that lays fewest studs in
+   the other side's colour first, the rest of each side in its own colour.
+   A stud or two change colour where a piece would otherwise be lost.
+3. **One check where there were two or three.** The check again without
+   dressing asks what the first was asked (`_without_dressing`), and
+   Brickify's checks skip the advice (`_check`'s `advise`; the faults are
+   the same).
+4. **Pieces counted in packed arrays** (`Plan.pieces`, walked in the same
+   order, so the stitch makes the same joins), and what the rejoin may lay
+   again mapped once a round, not once a way tried (`_replatable_at`).
+
+**Tried and taken out.** Each thin part in its cells' commonest colour
+(above), and the same with each laid part then coloured by its own cells'
+vote: the same joins, so the same losses. Plates about the joint laid
+again with the colour's edge turned stud by stud, plate by plate: no run
+joined that the plate across did not. Going back to the unchecked first
+ways after each stall: the temple at 48 stalled 13 times in its 96 rounds
+and lost its moon. For the hair, a face with another just over it in its
+column (the head under the cap), which changed nothing; and of the faces
+colouring a cell from one side, only the one in front, which laid the top
+of her hair in its own greys but cost Bob, Spot, the toy car and the
+temple up to 1 ΔE, and Bob's neutral surface went 32% to 69% coloured at
+48.
+
+### The bench again
+
+The same 14 models at 24 and 48 studs, smooth and plain, against unit 2's
+own run: this branch's base lays what unit 2 laid, part for part (`main`'s
+changes since do not touch Brickify). Both ran in two processes at once, at
+a load of 10 to 45 then and 15 to 45 now; only the bunny below is a fair
+ratio.
+
+| Run | Arm | Studs | Whole | One piece, check passes | And stands, no joint past its load | On a stand | Parts | Taken out (mean) | Checks (mean) | Stitch out of rounds | Seconds (mean) | Seconds (most) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| unit 2 | smooth | 24 | 11/14 | 14/14 | 11/14 | 5 | 12,241 | 39.9 | 3.0 | 9 | 9.6 | 25 |
+| after | smooth | 24 | 14/14 | 14/14 | 11/14 | 5 | 12,944 | 1.9 | 2.1 | 1 | 8.1 | 26 |
+| unit 2 | smooth | 48 | 13/14 | 14/14 | 9/14 | 2 | 57,947 | 68.8 | 3.6 | 11 | 59.0 | 241 |
+| after | smooth | 48 | 14/14 | 14/14 | 9/14 | 2 | 59,156 | 18.9 | 2.4 | 2 | 48.6 | 224 |
+| unit 2 | plain | 24 | 13/14 | 14/14 | 9/14 | 5 | 10,377 | 20.4 | 3.1 | 10 | 7.2 | 25 |
+| after | plain | 24 | 14/14 | 14/14 | 10/14 | 5 | 10,807 | 1.2 | 2.0 | 1 | 5.6 | 24 |
+| unit 2 | plain | 48 | 12/14 | 14/14 | 9/14 | 4 | 47,505 | 54.4 | 3.3 | 11 | 40.3 | 205 |
+| after | plain | 48 | 13/14 | 14/14 | 9/14 | 3 | 48,598 | 20.8 | 2.4 | 2 | 29.9 | 147 |
+
+Whole again: the armadillo, the temple and the X-1 at 24 smooth; the X-1
+at 48 smooth and plain (lost95 10.4 and 10.7 studs to 0.68 and 0.63, and
+no stand needed now); the fox at 24 plain (3.9 to 0.48). Still not whole:
+the temple at 48 plain (2.24, from 2.97), which loses its moon on its
+stick, as it did.
+
+**Colour**, mean CIEDE2000 over the 10 models with colours of their own,
+against the palette's floor (7.4):
+
+| Studs | Arm | ΔE2000 unit 2 | ΔE2000 after | Times the floor, unit 2 | Times the floor, after | Per model, median (range) |
+|---|---|---|---|---|---|---|
+| 24 | smooth | 11.47 | 11.07 | 1.54 | 1.49 | 1.39 (1.18 to 2.89) → 1.39 (1.06 to 2.86) |
+| 24 | plain | 11.58 | 10.77 | 1.56 | 1.45 | 1.44 (1.12 to 2.80) → 1.38 (1.06 to 2.76) |
+| 48 | smooth | 9.51 | 9.46 | 1.28 | 1.27 | 1.21 (0.93 to 2.33) → 1.21 (0.93 to 2.34) |
+| 48 | plain | 9.03 | 9.11 | 1.21 | 1.23 | 1.20 (0.91 to 2.14) → 1.21 (0.91 to 2.10) |
+
+Every coloured run is within 0.05 of unit 2's or closer but one, the
+temple at 48 plain: 14.7 from 13.3, the moon lost in both. The fox at 24
+plain goes 12.0 to 6.7, the figure at 24 from 14.5 to 13.0, the temple at
+24 smooth 13.6 to 12.9. Spot's patches stay
+black (none of its neutral surface in a colour), the figure's hair top is
+as it was (7.8% of its neutral surface in a colour at 48, from 8.0%).
+Every part still has an element number.
+
+**Where the time goes**, the forty-stud bunny laid three times by `main`
+and by the branch in one job, side by side, then again the other way
+round (medians of the six, seconds):
+
+| | Total | Measure (colour) | Lay (core, stitch) | Check (checks) |
+|---|---|---|---|---|
+| main | 14.6 (13.6 to 18.1) | 0.9 | 9.0 | 4.8 (1) |
+| branch | 12.0 (11.2 to 13.8) | 1.3 (0.9) | 7.1 (3.7, 3.0) | 3.6 (1) |
+
+The check is one now, weighed the first time (unit 2's were two, 8.3 s in
+its batch). Of the stitch, the rejoin is 2.0 s: once the first ways stall
+(the bunny's do once, early), each is tried with the rejoin's and counted. A
+stall of four rounds with the first ways left unchecked after it was
+faster still (0.71 times `main`'s time in its own batch), but lost the
+temple's moon at 48.
+
+**What the numbers say.**
+1. **The whole model again, colours kept.** Smooth 28 of 28 and plain 27
+   of 28, against targets of 25 and 27, with ΔE no worse but at 48 plain
+   (0.08). The mend takes out a quarter of what it did.
+2. **Faster, and for the right reason.** The bunny's one check is weighed
+   the first time, and the stitch's rounds join pieces rather than lay the
+   same pair again. The bench's 48-stud runs take 18 to 26% less time,
+   though they now do the rejoin's work.
+3. **A few more parts.** 2 to 6% more: the rejoin lays bricks about a
+   joint again as plates, where the mend once took the piece out. The
+   hollow sphere is 1,670 parts against the solid's 1,606; it was 1,599
+   only because the mend took 45 parts of it out.
+
+The temple at 24 studs (Objaverse, CC-BY 4.0): smooth keeps its moon now.
+
+![The temple at 24 studs: the model, then smooth and plain before and after](brickify/unit2b-objaverse-24.jpg)
+
+The Bell X-1 at 48 studs (Smithsonian, CC0): its undercarriage back, and no
+stand needed.
+
+![The Bell X-1 at 48 studs: the model, then smooth and plain before and after](brickify/unit2b-smithsonian-2-48.jpg)
+
+The fox at 24 studs (CC0 model, CC BY 4.0 conversion): laid plain, whole.
+
+![The fox at 24 studs: the model, then smooth and plain before and after](brickify/unit2b-fox-24.jpg)
+
+The temple at 48 studs: smooth keeps its moon; plain loses it, as it did.
+
+![The temple at 48 studs: the model, then smooth and plain before and after](brickify/unit2b-objaverse-48.jpg)
+
+### Proof
+
+- `brickify_probe` (headless): all 60 checks pass, three of them new: every
+  stitch of the probe's nine builds ends before its 96 rounds run out (the
+  hollow sphere's and the 20-stud bunny's ran all 96 before); the fox laid
+  plain is whole; two plates of two colours side by side are joined by a
+  plate across the edge, red keeping 4 studs and blue 2. The hollow
+  sphere's check now asks for nothing taken out and at most a tenth more
+  parts than the solid (1,670 against 1,606): it met "no more parts" once
+  only because the mend took 45 of its parts out.
+- `shapes_probe` (78), `exact_probe` (29) and `patterns_probe` (215): all
+  pass, headless; `brickify_ui_probe` in a window on the GPU: all pass.
+- `tools/web/brickify_flow.mjs` (`brickify`, `brickify_fox` in the preview
+  checks) needs a preview, and was not run.
+
+### What is left
+
+- **The figure's hair top**, in the skin's colour. The cap of her hair is
+  a surface 0.44 studs over the top of her head, not a solid, so the head
+  is not buried and votes for the same top cell as the hair. Neither test
+  tried here was right for every model (above).
+- **Smooth level with plain at 48 studs**: 9.46 against 9.11. The tiles
+  and wedges show their cell's colour, not the face they stand for.
+- **The temple at 48 plain**, and the stitch's budget: it joins a piece a
+  round, and on the temple at 48 424 pieces are still apart when its 96
+  rounds run out. The mend takes 219 parts out (smooth) and 235 (plain,
+  with the moon).
+- **Parts**: the rejoin's plates cost 2 to 6% more parts.
+- **Time**: the core's lay (3.5 s of the bunny's) and one check (3.5 s)
+  are most of what is left.
+
 ## Repeat it
 
 The models are not in the repository (two are Stanford's, for research use
@@ -1257,12 +1465,19 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --in
     --arms smooth --before $S/main
 # where the time goes, main's beside the branch's in one heavy job (only the ratio means anything):
 XDG_DATA_HOME=$W/.scratch-data heavy godot --headless --path $W --script src/dev/brickify_phases.gd -- 3
+# one model laid smooth or plain, with its phases and what the mend took out (unit 2b):
+XDG_DATA_HOME=$W/.scratch-data heavy godot --headless --path $W --script src/dev/brickify_phases.gd -- 0 \
+    $S/prepared/fox/Fox.glb:24:+Y:plain
+# unit 2b against unit 2's run, both arms:
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --into $S/pictures \
+    --arms smooth,plain --before $S/unit2
 ```
 
 The run behind sections 3 and 4 used the app at `7a55e86` (main), on
 2026-10-15, the box shared with other jobs at a load of 20 to 60 on 24
 threads; section 6's, `2789cd0` and the branch on 2026-10-16, at a load of
-10 to 60.
+10 to 60; section 7's, `69a0d1d` with unit 2 and the branch, the same day,
+at a load of 15 to 45.
 
 ## Each model, every arm
 
