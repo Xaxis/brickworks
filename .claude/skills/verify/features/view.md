@@ -1016,7 +1016,10 @@ picture the assistant is shown.
   it is first opened, the first time nobody has touched the window for 3 s
   and nothing on it has been drawn for as long, and never while nobody can
   see it, the panel has its renderer made ready (`_warm_when_idle`,
-  `StudioRender.warm_up`), each step waiting while anyone is using the window.
+  `StudioRender.warm_up`), each step waiting while anyone is using the window:
+  a few frames drawn once, standing still. Not in a probe that does not ask
+  (`RenderDialog.warms_when_idle`), as IdleDraw leaves a probe be: idle_probe
+  counted them as 9 frames drawn in 5 s standing still.
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of

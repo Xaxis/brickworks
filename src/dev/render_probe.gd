@@ -476,6 +476,7 @@ func _first_open(method: String) -> void:
 	var shell: Shell = _main.get("_shell")
 	var dialog: RenderDialog = _main.get("_render")
 	IdleDraw.begin()
+	RenderDialog.warms_when_idle = true
 	# The car and its parts in.
 	for _n: int in 120:
 		await process_frame

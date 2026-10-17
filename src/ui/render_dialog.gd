@@ -103,6 +103,10 @@ var _drawn_ms: int = 0
 var _drawn_frames: int = -1
 var _warm_asked: bool = false
 const WARM_IDLE_MS := 3000
+## Whether that is done at all: as the app runs, but not in a probe that did
+## not ask for it, as IdleDraw leaves a probe be. A probe that counts the
+## frames drawn standing still would count its few frames, once.
+static var warms_when_idle: bool = not OS.get_cmdline_args().has("--script")
 
 
 ## The renderer made ready the first time nobody has touched the window for a
@@ -114,7 +118,7 @@ const WARM_IDLE_MS := 3000
 ## meanwhile has it wait for them, and it is never done while nobody can see
 ## the window.
 func _warm_when_idle() -> void:
-	if _warm_asked:
+	if _warm_asked or not warms_when_idle:
 		return
 	var now: int = Time.get_ticks_msec()
 	if Engine.get_frames_drawn() != _drawn_frames:
