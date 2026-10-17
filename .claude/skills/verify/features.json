@@ -1295,6 +1295,16 @@
       "tests": []
     },
     {
+      "id": "lib:linear actuators",
+      "kind": "lib",
+      "entry": "assets/ldraw/gears.json",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator out and in; move_part a small actuator's input degrees=360)",
+      "area": "building",
+      "tests": [
+        "tests/test_gears.py"
+      ]
+    },
+    {
       "id": "lib:made parts in the library and in files",
       "kind": "lib",
       "entry": "src/parts/custom_parts.gd",
@@ -1436,7 +1446,7 @@
       "id": "lib:racks and their pinions",
       "kind": "lib",
       "entry": "src/assembly/racks.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel, or 8062-1_Truck-with-Motorbike's column in its cab, and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
       "area": "building",
       "tests": []
     },
@@ -1670,6 +1680,14 @@
       "entry": "src/ai/techniques.gd",
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:worms hold their gears",
+      "kind": "lib",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=worms   (by hand: turn 42042-1_Tower-Crane's winch worm round and its spool turns an eighth a turn; drag the spool and it is held, said)",
+      "area": "building",
       "tests": []
     },
     {

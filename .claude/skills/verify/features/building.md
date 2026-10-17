@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:a model that tips falls -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls -->
 
 ## Sub-features
 
@@ -636,7 +636,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   steering (a four-bar: the rocker against two circles meeting) and 8218-1's
   engine (a crank-slider: the piston against the quadratic, the stroke twice
   the throw); `-- --debug` prints the joints, residuals and the derivatives
-  against finite differences.
+  against finite differences. `-- --only=fourbar` (windowed) also takes the
+  drag's frames apart: the window's idle frame (30 before the press), the
+  renderer's CPU and GPU time, the drag's own work and the batches rewritten,
+  and checks the drawing's share of a frame under 4 ms. Whole frames depend
+  on the box's load (MECHANISMS §13): read them on a quiet box.
 - `racks and their pinions` (`src/assembly/racks.gd`, `Racks`; MECHANISMS
   §12): a pinion standing in a gear rack (the gear table's `racks`: teeth 8
   LDU apart, each rack's pitch line as measured on the OMR's sets) is one
@@ -650,7 +654,30 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   rack's place, by hand; pictures cut over the pinion. A loop that can only
   slide its grabbed joint is driven by the slide: `-- --only=scissor` makes a
   two-stage scissor lift and drags its foot along its rail, the top against
-  2·sqrt(160² − x²). The loop pictures hide the drag's balance mark.
+  2·sqrt(160² − x²). The loop pictures hide the drag's balance mark. A gear
+  mesh offered to a loop is read against the line between the two gears'
+  axes (`Linkage._gear_turns`), so a column riding on joints the loop moves
+  turns its pinion exactly: 8062-1's column in its cab of hinges is in the
+  racks run (the pinion against the column, both against the column's
+  carrier); what carries the driver is held first (`Linkage._carrying`).
+- `worms` (`Mechanism.worms_back_driven`, `Grab._worm_holding`; MECHANISMS
+  §13): a worm turns its gear a tooth a turn and holds it; a grab on the
+  gear's side is refused in words ("Held by a worm … self-locking").
+  `grab_probe -- --only=worms` (windowed): 42042-1's winch (1/8), 8063-1's
+  sower (1/24, its gear's side a loop) and 8049-1's grabber, each worm turned
+  two turns by the pointer and its gear checked against the teeth its name
+  gives every frame, then the gear's side pressed. `--worm-set=FILE` tries
+  another set.
+- `linear actuators` (the gear table's `actuators`, `Bodies._actuators`,
+  `Racks.screws`; MECHANISMS §13): a rod in its actuator or cylinder slides
+  and does not turn, never past the stroke the library's contracted and
+  extended files draw (`tools/gears.py check`, `tests/test_gears.py`); in a
+  loop it is a joint of the tree; the small actuator's input drives the rod
+  a stroke over 19.9 turns; the loop's other joints are held by the screw,
+  said. `grab_probe -- --only=actuators` (windowed): 42081-1's digging arm
+  and 42024-1's small actuator, the rod dragged past both ends, the arm
+  against the law of cosines by hand, the arm grabbed and refused, the input
+  turned over MCP. `--actuator-set=FILE` tries another set.
 - `a model that tips falls` (`src/assembly/topple.gd`, `Topple`): let go past
   its edge, the model turns about that edge until another corner of its
   cover reaches the floor, again while it still does not stand, drawn in

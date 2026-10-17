@@ -66,9 +66,24 @@ whole cycle.
   a tooth for every tooth of the pinion, and the arms and wheels turn with
   it; turn a wheel and the column turns.
 - A scissor lift rises and folds as its foot is dragged along its rail.
+- A worm turns its gear a tooth for each of its turns, and holds it: take
+  hold of the gear's side and nothing turns, and the status bar says the
+  worm holds it and to turn the worm's axle instead.
+- Linear actuators move as the real ones do: drag the rod and it draws out
+  or in, never past the ends of its stroke, and the boom it lifts rises
+  with it; turn a small actuator's input (or move_part it) and the rod goes
+  out a turn's worth of its screw. The boom itself is held by the actuator's
+  screw, and says so.
+- A steering wheel whose column rides on joints that move turns its pinion
+  through the column's gears as exactly as a column that stands still, and
+  the cab it rides in stays put while it turns.
 
 ### Changed
 
+- Dragging a part on a joint: the status bar says where it is ten times a
+  second rather than every frame, and a big section drawn by its slide (an
+  actuator's arm) is checked for room when you pause, as a turned one is,
+  instead of holding the window: one such frame took 31 s.
 - With several tabs or windows open, a new Claude chat that has not chosen
   one asks before its first change, listing them. It used to build in the
   tab used last, which could be the one another chat was building in.

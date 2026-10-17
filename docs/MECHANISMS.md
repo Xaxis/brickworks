@@ -1512,3 +1512,172 @@ a guide the joints do not read (a 1 x 13 steering rack between beams,
 slide. Worms and linear actuators driving a rack (the library has both; a
 linear actuator's travel per turn is not published); 2790a's teeth; whole
 frames, drawing included, under 33 ms; dynamics (S2, P3).
+
+## 13. Worms, linear actuators, gears that ride, and the frame (G4)
+
+G3 left worms, linear actuators, gears riding on joints a loop moves, racks
+in guides the joints do not read, and whole frames under 33 ms. G4 does the
+first three and the frame; the racks in guides are left, and why is below.
+
+**A worm turns its gear, and holds it.** Mechanism already read a worm as a
+mesh whose thread advances a tooth a turn (section 3), so a worm's axle
+grabbed turns its gear by its teeth. Turned the other way, from the gear's
+side, it turned the worm backwards, which a worm never does: its thread
+climbs a tooth, π mm, round a 4 mm pitch radius, a lead angle of 7° (5° for
+27938's 6 mm), too shallow for the gear's teeth to push it round. A grab
+whose train reaches a worm from its gear's side, going out from the grabbed
+joint mesh by mesh (`Mechanism.worms_back_driven`), or whose loop moves a
+gear whose worm stands still (`Grab._worm_holding`), is refused in words:
+"Held by a worm: … a gear cannot turn its worm back (a worm is
+self-locking: its thread climbs at 7°, too shallow for the gear's teeth to
+push it round). Turn the worm's axle instead." The friction that makes it
+so is not measured (section 4); that it holds is what builders build
+cranes and winches on. Which way a worm's thread runs is still not read
+from the part (section 2): the ratio is the teeth's, the direction assumed.
+
+Measured with the pointer, two whole turns of the worm in 10° frames, the
+gear against the teeth its name gives (`grab_probe -- --only=worms`):
+
+| set | worm drives | gear's turn for the worm's 720°, by hand | worst | the gear's side grabbed |
+|---|---|---|---|---|
+| 42042-1 Tower Crane | the winch's spool, through an 8 | 720/8 = 90° | 0.0000° | held, said |
+| 8063-1 Sower | a 24 tooth crown gear | 720/24 = 30° | 0.0000° | held, said (a loop) |
+| 8049-1 | the log grabber, through an 8 | 90° | 0.0000° | held, said |
+
+8062-1's crane winch stops at once: its gear's axle carries a universal
+joint, and what hangs on a driven gear goes round with it rigidly (section
+11), so the joint's centre met its far end; a universal joint passing a
+turn on is not read. 8258-1's worm stops at 10°, a beam on its axle meeting
+the beam beside it.
+
+**Linear actuators and cylinders.** The library draws each actuator as a
+body and a rod, and its own contracted and extended files place the rod
+for each end: the small 4 x 1 x 1 (92693c01) 60 LDU apart, three studs; the
+8 x 2 x 2 (62271c01, and u9559c01 of 43097) 100; the 12 x 2 x 2 (u9487c01)
+160; the 2 x 11 pneumatic cylinder (19466c01) 120. The gear table's
+`actuators` keeps those (`tools/gears.py check` holds them to the files),
+and `Bodies` reads a rod standing on its body's axis between them as a
+joint that slides and does not turn (`actuator`, `cylinder`), from where it
+stands to either end; nothing else the two share joins them. A screw holds
+where it is left and so, with its valve shut, does a cylinder's air. In a
+loop the actuator is a joint of the tree, not the one that closes it, so a
+drag on its rod drives the loop by its slide (`Linkage`, which keeps every
+slide of an actuator within its stroke and never turns one).
+
+Turning the input: the small actuator's input is a part of its own (92695),
+and a turn of it drives the rod by the screw, read as a pinion in a rack
+(`Racks.screws`): the rod goes the stroke over the input's turns. How many
+turns is not published, nor drawn: the screw is inside. Builders counted
+them on the Eurobricks forum (topic 196207, 2023-24): the small one 7,112°
+to 7,226° from in to out over six runs, 19.9 turns, so 60/19.9 = 3.02 LDU
+(1.21 mm) a turn, to about 1%; the 8 x 2 x 2 9,665° to 9,709°, 26.9 turns,
+3.72 LDU a turn; the 12 x 2 x 2 43.75 turns, counted once. Which way round
+draws it out is not read. The 8 x 2 x 2's input is drawn in its body's part,
+so it cannot be turned on its own; its rod is dragged. A screw cannot be
+pushed round from its rod: a grab of anything else in an actuator's loop is
+refused, "Held by its linear actuator: … whose screw holds it where it is
+(a screw is self-locking). Drag the actuator's rod, or turn its input."
+
+Measured with the pointer on the rod, 4 LDU a frame out past one end, in
+past the other and back, the arm it raises against the law of cosines by
+hand: the rod's pin drawn along the actuator from where it stood, the pins
+|r + a e − p| apart square to the arm's pivot, the angle at the pivot from
+the two pins' distances to it (`grab_probe -- --only=actuators`):
+
+| set | actuator | travel drawn | ends | arm against the law of cosines |
+|---|---|---|---|---|
+| 42081-1 | 8 x 2 x 2 raising the digging arm | −56.00 to +40.00 LDU, 55 frames | out to the end exactly and no further; in, 4 LDU short of its end, the room test stops it (a 15265 meeting a 3811) | 73 poses, worst 0.0021°: the arm turned 29.67° at the outer end, 36.44° the other way at −56 |
+| 42024-1 | the small one, in a loop of 36 joints | −44.00 to +4.00 LDU, 16 frames | the room test stops it both ways first (a pin 6558 meeting a cross block 6536) | 49 poses, worst 0.0002° |
+
+On 42024-1 the input turned a whole turn over MCP (`move_part degrees=360`)
+moved the rod 3.014 LDU against the 3.015 the count gives, and one undo put
+input and rod back. The arm grabbed on either set is held, said. 42006-1's
+boom closes its triangle to 0.006° but stops 3.4 LDU out and 13.3 in, a beam
+of the boom meeting an axle of the turret by the room test. 42080-1's
+pneumatic cylinders are not read sliding: their rod and body are in one
+body of 458 parts, held to the turret by more than the cylinder.
+
+A section this big moved by its slide was bisected where it stopped by
+whole room tests: 42081-1's arm, 262 parts, held one frame 31 s at the end
+of its stroke (164 tests). A slide is now tested within the frame's share
+and its stop found on pauses and at the release, as a turn's is
+(`Grab.slide_to`, `Grab.verify_step`).
+
+**Gears that ride on joints a loop moves.** G3 read each gear mesh offered
+to a loop as Mechanism's linear row: right while each gear turns on its own
+axle in what stands, and 4.6° off on 8062-1, whose steering column turns in
+a cab of hinges, so the column route was refused there. A mesh is now held
+by each gear's turn read against the line from it to the other gear's axis
+(`Linkage._gear_turns`), its lever as Mechanism has it: a pair carried round
+together turns neither against the other, so the equation is as exact on a
+moving carrier as on a fixed one (unwrapped against the turn last kept, so a
+worm turned many times over in a drag stays on its count; its derivatives
+by central differences, being read off angles). Then the cab's hinges took
+up a share of the column's turn, 10.7° of 30: least squares over every joint
+moves the free ones too. What carries the driver is now held where it is
+first (`Linkage._carrying`), and freed only when the loop closes no other
+way, for the rest of that grab (a wheel turned on its steering arm moves the
+arm's kingpin). A bevel turned on its joint in a moving cab was tested by its
+turned cover and met the plate beside it at 4.25°; a round part on a joint
+the loop carries is tested where its carrier puts it (`Grab._tested_at`).
+
+8062-1's column dragged ±90° by the pointer, 45 frames: the pinion turns
+1.000 of the column's turn to 0.001°, both measured against the column's
+carrier (Willis: in the carrier's frame two gears turn as their teeth say);
+the rack a tooth for a tooth of the pinion to 0.000 LDU; both arms by hand to
+0.000°. 8054-1 and 8828-1, through bevels that stand still, 0.001° and 0.024°
+as before; 8841-1 and 8808-1 unchanged.
+
+**The four-bar's whole frame.** G3 measured 8020-1's four-bar at 29.7 to
+37.9 ms a whole frame, drawing included, and its own work at 14 to 16; what
+else a frame did was not known. Each frame is now taken apart
+(`grab_probe -- --only=fourbar`): the window's own frame with nothing moving,
+timed for 30 frames before the press; the renderer's CPU and GPU time
+(`RenderingServer.viewport_get_measured_render_time_*`); the drag's own work
+(`GrabDrag.last_motion_ms`: following the pointer, set_drawn, weighing,
+saying); and rewriting the batches the moved parts are drawn in
+(`BrickWorld.rebuilt_ms`). On a quiet box, the windowed probe under xvfb:
+
+| per frame | mean | 95% | worst |
+|---|---|---|---|
+| whole drag frame | 15.0 ms | 19.4 | 25.9 |
+| the window alone, nothing moving | 13.5 | 16.5 | 21.2 |
+| the renderer, CPU / GPU | 1.0 / 6.1 | 1.3 / 6.8 | 1.5 / 7.2 |
+| the drag's own work | 1.7 | 9.8 | 11.1 |
+| rewriting the moved parts' 16 batches | 0.3 | 0.5 | 0.8 |
+
+A drag frame is the window's idle frame plus the drag's work: drawing what
+moved adds nothing measurable (−0.2 ms on average). The idle frame is most
+of it, and it is the harness's: xvfb shows the picture through a software
+copy (`MESA_VK_WSI_DEBUG=sw`), which no display with a GPU swapchain has.
+The drag's worst is one steering arm's turned cover, 9.3 ms, where it stands
+in its brick. With the web export running beside it on the same box, the
+same drag measured 20.7 mean and 35.5 worst, the idle frame 16.0 and 30.8:
+the box's load moves the whole frame more than the drag does, so "under
+33 ms" holds on a quiet box and is not a promise under load. The probe now
+checks what the app controls: the drawing's share of a drag frame (under
+4 ms on average). The status line during a drag is said ten times a second
+rather than each frame (`GrabDrag.TELL_EVERY_MS`): every new line was laid
+out afresh and set a timer of its own to clear it; its share was not
+measured apart.
+
+**Racks in guides, tried and left.** 42035-1's 1 x 7 steering rack (87761)
+is pinned through its middle hole by a long pin (87082) into a beam 7, so
+read as the parts stand it can only turn on that pin, and its 12 tooth
+double bevel's axle turns in a cross block (32184) pinned to the same beam:
+the pinion cannot push it, and whether it slides on that pin in the real
+model the parts do not say. 42078-1's racks with a beam under them (18942)
+slide in their housings (18940), two pairs on the main model with no gear
+within 70 LDU of either, and one alone on the dump truck with none within
+50: there is no pinion in either file to read 18942's pitch line from
+(section 12), so a guide read as a slider would move only by dragging the
+rack itself. Both want the guide read from the parts' shapes (a slot the
+rack's beam runs in), which the connectors do not give.
+
+**Left for later.** Racks in guides (above); a universal joint passing a turn
+on (8062-1's crane winch); a worm's hand, read from its thread; 42080-1's
+pneumatic cylinders, held to their turret by more than the cylinder; the
+8 x 2 x 2 actuator's input, drawn inside its body's part; a big section's
+worst frame (42081-1's 262-part arm drawn by its actuator held one frame
+2.7 s, not yet taken apart); the room test's false meetings that stop 42006-1's boom and
+42024-1's small actuator short of their ends; dynamics (S2, P3).

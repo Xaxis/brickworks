@@ -773,7 +773,21 @@
       "kind": "lib",
       "label": "racks and their pinions",
       "entry": "src/assembly/racks.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel, or 8062-1_Truck-with-Motorbike's column in its cab, and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "worms hold their gears",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=worms   (by hand: turn 42042-1_Tower-Crane's winch worm round and its spool turns an eighth a turn; drag the spool and it is held, said)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "linear actuators",
+      "entry": "assets/ldraw/gears.json",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator out and in; move_part a small actuator's input degrees=360)",
       "area": "building"
     },
     {
