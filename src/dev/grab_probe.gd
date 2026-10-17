@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab2-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab3-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -113,6 +113,13 @@ func _run() -> void:
 		for loop: Array in LOOPS:
 			if only.is_empty() or only == "loops" or only == loop[2]:
 				await _loop_case(loop[0], loop[1], loop[2])
+	if only.is_empty() or only == "racks":
+		var asked_racks: Array = []
+		for arg: String in args:
+			if arg.begins_with("--rack-set="):
+				asked_racks.append(["rack and pinion: %s" % arg.get_file(), "res://" + arg.trim_prefix("--rack-set=")])
+		for one: Array in (RACKS if asked_racks.is_empty() else asked_racks):
+			await _rack_case(one[0], one[1])
 	if only.is_empty() or only == "falling":
 		await _made_fall()
 	if only.is_empty() or only == "follow":
@@ -995,6 +1002,320 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 	var got: float = rad_to_deg(atan2(axis.dot(from.cross(got_vec)), from.dot(got_vec)))
 	form["s"] = got
 	return absf(wrapf(got - want, -180.0, 180.0))
+
+
+# -- racks -----------------------------------------------------------------------------
+
+## Steerings of real sets whose track rod carries a rack that the pinion on the
+## steering column pushes: the rack and the two arms on their kingpins are a
+## four-bar, held by the pinion's teeth (Racks, Linkage).
+const RACKS: Array = [
+	["rack and pinion: the steering wheel pushes the track rod's rack", "res://vendor/omr/files/8841-1_Chassis.mpd"],
+	["rack and pinion: a tractor's steering", "res://vendor/omr/files/5533-1_Tractor-Pulling.mpd"],
+	["rack and pinion: a racer's steering", "res://vendor/omr/files/8808-1.mpd"],
+]
+
+
+## Turn the steering by the pointer, as a person turns it: the steering
+## wheel where the set has one, else the pinion's column. Every frame, by
+## hand: the rack has gone a tooth (8 LDU) for every tooth of the pinion's
+## turn against it, and the arms stand where the track rod's two pins and
+## the rack's place along its teeth put them (two circles, and the rack's
+## place found along the near arm's turn by bisection).
+func _rack_case(name: String, path: String) -> void:
+	print("\n%s: %s" % [name, path.get_file()])
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var meshes: Array[Racks.Pinion] = bodies.racks()
+	_check("%s: a pinion stands in a rack (%s)" % [name, ", ".join(meshes.map(
+		func(m: Racks.Pinion) -> String: return "%s, %.2f LDU off its pitch line" % [m.said(_world), m.off]))],
+		not meshes.is_empty())
+	if meshes.is_empty():
+		return
+	var mesh: Racks.Pinion = meshes[0]
+	var pinion: int = int(bodies.body_of[mesh.gear])
+	var rack: int = int(bodies.body_of[mesh.rack])
+	# The four-bar: the near arm the rack's body hangs from, the far arm its
+	# other pin closes on, each on its kingpin.
+	var near_pin: Bodies.Link = bodies.parent_link.get(rack)
+	var near_arm: int = int(bodies.parent_of.get(rack, -1))
+	var far_pin: Bodies.Link = null
+	for link: Bodies.Link in bodies.touching.get(rack, []):
+		if bodies.closing.has(link):
+			far_pin = link
+	if near_pin == null or far_pin == null or not bodies.parent_link.has(near_arm):
+		_check("%s: the rack is a track rod on two arms" % name, false)
+		return
+	var far_arm: int = far_pin.other(rack)
+	var near_king: Bodies.Link = bodies.parent_link[near_arm]
+	var far_king: Bodies.Link = bodies.parent_link.get(far_arm)
+	print("    rack %s on its track rod (%s); arms %s and %s on kingpins at %s and %s; pinion %s on %s" % [
+		_world.get_brick(mesh.rack).part_id, bodies.named([rack]), bodies.named([near_arm]),
+		bodies.named([far_arm]), near_king.point, far_king.point if far_king != null else "?",
+		bodies.named([pinion]), bodies.parent_link[pinion].words() if bodies.parent_link.has(pinion) else "?"])
+	# Pressed where a person turns it: the steering wheel, else the column.
+	# The steering wheel only where turning it reaches the pinion by joints:
+	# a wheel that drives its pinion through gears is not read so yet.
+	var wheel_body: int = pinion
+	for brick: BrickWorld.Brick in _world.bricks():
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null or not info.name.contains("Steering Wheel") or not bodies.body_of.has(brick.id) \
+				or not bodies.parent_link.has(int(bodies.body_of[brick.id])):
+			continue
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		if trial.begin(brick.id, brick.transform.origin) == "moves" and trial.linkage != null \
+				and not trial.linkage.racks.is_empty():
+			wheel_body = int(bodies.body_of[brick.id])
+		else:
+			print("    (the steering wheel turns its pinion by gears, not by joints: the pinion's column is turned)")
+		break
+	var driver: Bodies.Link = bodies.parent_link[wheel_body]
+	var line: Vector3 = driver.axis.normalized()
+	# From above, everything over the arms and the track rod cut away, the
+	# steering wheel's column standing out of the cut.
+	var top: float = -INF
+	for key: int in bodies.parts_of([rack, near_arm, far_arm]):
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		top = maxf(top, (brick.transform * _library.parts[brick.part_id].bounds).end.y)
+	var steering: PackedInt64Array = bodies.parts_of([rack, near_arm, far_arm, pinion, wheel_body])
+	# Cut just over the pinion: the column, the seat and the body over the
+	# steering are cut away; the rack, its pinion, the arms and the wheels
+	# below the cut stay.
+	var gear_brick: BrickWorld.Brick = _world.get_brick(mesh.gear)
+	top = maxf(top, (gear_brick.transform * _library.parts[gear_brick.part_id].bounds).end.y)
+	var cut := Plane(Vector3.UP, top + 1.0)
+	_world.set_cut(true, cut, false)
+	_builder.lattice.cut = cut
+	_camera.look_from(Vector3(0.05, 1.0, 0.12).normalized())
+	_frame_on(steering)
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_off_line(bodies.members[wheel_body], driver.point, line)
+	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
+			Vector3(-1, 0.6, -1)]:
+		if not press.is_empty():
+			break
+		_camera.look_from(side.normalized())
+		_frame_on(steering)
+		await _frames(10)
+		press = _press_off_line(bodies.members[wheel_body], driver.point, line)
+	if press.is_empty():
+		_check("%s: the steering is under the pointer somewhere" % name, false)
+		return
+	if _windowed:
+		await _shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "1_before")
+	var screen: Vector2 = press["screen"]
+	var ray_from: Vector3 = _camera.ray_origin(screen)
+	var ray_way: Vector3 = _camera.ray_normal(screen).normalized()
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(ray_from, ray_way)
+	var slop := Vector2(0, 7)
+	if hit.is_valid():
+		var on: Vector3 = ray_from + ray_way * hit.distance
+		var tangent: Vector3 = line.cross(on - driver.point)
+		if tangent.length() > 0.5:
+			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
+	if slop.length() < 6.0 or is_nan(slop.x):
+		slop = Vector2(0, 7)
+	print("    pressed #%d %s at %s, first move %s" % [int(press["brick"]),
+		_world.get_brick(int(press["brick"])).part_id, screen, slop])
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null:
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		print("    (press state: grabbing=%s dragging=%s carrying=%s chain=%s said=%s press_brick=%s; Grab.begin on #%d %s directly: %s %s)" % [
+			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(), _grab.chain != null,
+			_grab.last_words,
+			_main.get("_press_brick"), int(press["brick"]), _world.get_brick(int(press["brick"])).part_id,
+			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin), trial.why])
+	_check("%s: a drag on the steering takes the loop and the rack (%s)" % [name, _grab.last_words
+		if grab == null else grab.said], grab != null and grab.state == "moves" and grab.linkage != null
+		and not grab.linkage.racks.is_empty())
+	if grab == null or grab.linkage == null:
+		await _button(screen, false)
+		return
+	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(),
+		grab.moving.size()])
+	var targets: Array = []
+	for n: int in range(1, 16):
+		targets.append(6.0 * n)
+	for n: int in range(14, -16, -1):
+		targets.append(6.0 * n)
+	var hold: Vector3 = grab._hold
+	var worst_teeth: float = 0.0
+	var worst_far: float = 0.0
+	var worst_near: float = 0.0
+	var checked: int = 0
+	var followed: int = 0
+	var frame_worst: float = 0.0
+	var mid_shot: bool = false
+	var table := PackedStringArray()
+	var keys: Dictionary = {"rack": mesh.rack, "gear": mesh.gear,
+		"near": int((bodies.members[near_arm] as PackedInt64Array)[0]),
+		"far": int((bodies.members[far_arm] as PackedInt64Array)[0])}
+	var form := {"phi": 0.0, "far": far_pin.point}
+	for target: float in targets:
+		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
+		var began: int = Time.get_ticks_usec()
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		if not grab.stopped:
+			followed += 1
+		var moved := func(which: String) -> Transform3D:
+			var key: int = keys[which]
+			return (grab.placed.get(key, grab.rest.get(key, _world.get_brick(key).transform)) as Transform3D) \
+				* (grab.rest.get(key, _world.get_brick(key).transform) as Transform3D).affine_inverse()
+		var w_rack: Transform3D = moved.call("rack")
+		var w_gear: Transform3D = moved.call("gear")
+		# The teeth: the pinion's turn against the rack, and where its centre
+		# now is along the rack's teeth, as the rack sees it.
+		var against: Transform3D = w_rack.affine_inverse() * w_gear
+		var psi: float = _turn_about(against.basis, mesh.axis)
+		var along: float = mesh.line.dot(w_rack.affine_inverse() * (w_gear * mesh.centre) - mesh.centre)
+		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 \
+			* signf(mesh.rate)
+		worst_teeth = maxf(worst_teeth, absf(along - by_teeth))
+		# The arms by hand: the near arm's turn as drawn, the far arm's from
+		# two circles, and the near arm's from the rack's place along its teeth.
+		var phi_near: float = _turn_about(moved.call("near").basis, near_king.axis.normalized())
+		var phi_far: float = _turn_about(moved.call("far").basis, far_king.axis.normalized())
+		var hand: Dictionary = _steer_by_hand(near_king, far_king, near_pin, far_pin, mesh, by_teeth, form)
+		if not hand.is_empty():
+			checked += 1
+			worst_near = maxf(worst_near, absf(wrapf(phi_near - float(hand["near"]), -180.0, 180.0)))
+			worst_far = maxf(worst_far, absf(wrapf(phi_far - float(hand["far"]), -180.0, 180.0)))
+			if absf(fmod(target, 30.0)) < 0.01 and not grab.stopped:
+				table.append("      steering %+6.1f°: pinion %+6.1f° in the rack, %+.3f teeth, rack %+6.2f LDU (teeth %+6.2f); arms %+6.2f° and %+6.2f° (by hand %+6.2f°, %+6.2f°)"
+					% [grab.angle, psi, psi / 360.0 * mesh.teeth, along, by_teeth, phi_near, phi_far,
+					float(hand["near"]), float(hand["far"])])
+		if not mid_shot and _windowed and absf(grab.angle) > 40.0:
+			mid_shot = true
+			await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "2_mid")
+	for row: String in table:
+		print(row)
+	_check("%s: the steering follows the pointer in %d frames" % [name, followed], followed >= 6)
+	_check("%s: in %d poses the rack has gone a tooth, 8 LDU, for each tooth of the pinion's turn, to %.3f LDU"
+		% [name, checked, worst_teeth], checked >= 6 and worst_teeth < 0.1)
+	_check("%s: the near arm turns as the rack's place along its teeth says, by hand, to %.3f°" % [name,
+		worst_near], checked >= 6 and worst_near < 0.1)
+	_check("%s: the far arm stands where the track rod's pins put it, by hand, to %.3f°" % [name, worst_far],
+		checked >= 6 and worst_far < 0.1)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, _grab.worst_follow_said, grab.linkage.solves])
+	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	_world.set_cut(false)
+	_builder.lattice.cut = Plane()
+
+
+## A picture of the pose with the drag's balance mark (the support and the
+## centre of mass on the floor) hidden for it: the links read.
+func _clean_shot(name: String, when: String) -> void:
+	var mark: Node3D = _grab.get("_mark")
+	var was: bool = mark != null and mark.visible
+	if mark != null:
+		mark.visible = false
+	await _shot(name, when)
+	if mark != null:
+		mark.visible = was
+
+
+## A steering's arms by hand, in the plane square to its kingpins, for the
+## rack [param s] LDU along its teeth against the pinion: the near arm turned
+## by phi carries the track rod's near pin round its kingpin; the far pin is
+## where the circle about the far kingpin meets the circle about the near
+## pin at the track rod's length; the track rod's turn follows from its two
+## pins, and with it where the pinion's centre is along the rack. phi is
+## found by bisection where that is [param s]. {near, far} degrees, or {}.
+func _steer_by_hand(near_king: Bodies.Link, far_king: Bodies.Link, near_pin: Bodies.Link,
+		far_pin: Bodies.Link, mesh: Racks.Pinion, s: float, form: Dictionary) -> Dictionary:
+	var k: Vector3 = near_king.axis.normalized()
+	var flat := func(v: Vector3) -> Vector3:
+		return v - k * v.dot(k)
+	var a_n: Vector3 = near_king.point
+	var a_f: Vector3 = far_king.point
+	var p_n0: Vector3 = near_pin.point
+	var p_f0: Vector3 = far_pin.point
+	var r_f: float = (flat.call(p_f0 - a_f) as Vector3).length()
+	var rod: float = (flat.call(p_f0 - p_n0) as Vector3).length()
+	# Where the rack stands along its teeth with the near arm at phi:
+	# [s, far arm's turn, the far pin], or [] where the circles do not meet.
+	var at := func(phi: float) -> Array:
+		var p_n: Vector3 = _about(a_n, k, phi) * p_n0
+		var centre: Vector3 = a_f + k * k.dot(p_n - a_f)
+		var d_vec: Vector3 = flat.call(p_n - a_f)
+		var d: float = d_vec.length()
+		if d < 0.001 or d > r_f + rod or d < absf(r_f - rod):
+			return []
+		var x: float = (r_f * r_f - rod * rod + d * d) / (2.0 * d)
+		var y: float = sqrt(maxf(r_f * r_f - x * x, 0.0))
+		var ex: Vector3 = d_vec / d
+		var ey: Vector3 = k.cross(ex)
+		var one: Vector3 = centre + ex * x + ey * y
+		var two: Vector3 = centre + ex * x - ey * y
+		var prev: Vector3 = form["far"]
+		var p_f: Vector3 = one if one.distance_to(prev) < two.distance_to(prev) else two
+		var from: Vector3 = flat.call(p_f0 - p_n0)
+		var to: Vector3 = flat.call(p_f - p_n)
+		var rho: float = atan2(k.dot(from.cross(to)), from.dot(to))
+		# The track rod placed: p_n0 to p_n, turned rho about k.
+		var rod_at: Transform3D = Transform3D(Basis.IDENTITY, p_n) * Transform3D(Basis(k, rho), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -p_n0)
+		var seen: Vector3 = rod_at.affine_inverse() * mesh.centre
+		var far_from: Vector3 = flat.call(p_f0 - a_f)
+		var far_to: Vector3 = flat.call(p_f - a_f)
+		return [mesh.line.dot(seen - mesh.centre), rad_to_deg(atan2(k.dot(far_from.cross(far_to)),
+			far_from.dot(far_to))), p_f]
+	# s as the near arm turns is monotonic near where it stands: bisect
+	# between the last answer less and more 40°.
+	var lo: float = float(form["phi"]) - 40.0
+	var hi: float = float(form["phi"]) + 40.0
+	var f_lo: Array = at.call(lo)
+	var f_hi: Array = at.call(hi)
+	if f_lo.is_empty() or f_hi.is_empty() or signf(float(f_lo[0]) - s) == signf(float(f_hi[0]) - s):
+		return {}
+	for _round: int in 60:
+		var mid: float = (lo + hi) * 0.5
+		var f_mid: Array = at.call(mid)
+		if f_mid.is_empty():
+			return {}
+		if signf(float(f_mid[0]) - s) == signf(float(f_lo[0]) - s):
+			lo = mid
+			f_lo = f_mid
+		else:
+			hi = mid
+	var phi: float = (lo + hi) * 0.5
+	var found: Array = at.call(phi)
+	if found.is_empty():
+		return {}
+	form["phi"] = phi
+	form["far"] = found[2]
+	return {"near": phi, "far": float(found[1])}
 
 
 # -- a model that tips -------------------------------------------------------------------

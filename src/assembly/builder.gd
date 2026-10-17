@@ -2396,13 +2396,18 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 				part.boxes, Vector3i.ZERO, at.basis)
 			_turned_cache[key] = shape
 	else:
+		# Looked up and kept under the lock, worked out outside it: held
+		# while a cover was worked out (11 to 16 ms for a wheel), it made
+		# workers asked for covers side by side take turns.
 		_turned_lock.lock()
 		shape = _turned_off_main.get(key, PackedInt32Array())
+		_turned_lock.unlock()
 		if shape.is_empty():
 			shape = BrickLattice.boxes_for_turned(
 				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_lock.lock()
 			_turned_off_main[key] = shape
-		_turned_lock.unlock()
+			_turned_lock.unlock()
 	var out := PackedInt32Array()
 	out.resize(shape.size())
 	var n: int = 0
@@ -2415,6 +2420,26 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 		out[n + 5] = shape[n + 5] + cell.z
 		n += 6
 	return out
+
+
+## Whether [method boxes_for] on this thread would work out a turned cover
+## for [param part] at [param basis] afresh: turned, not stretched, with a
+## cover, and not kept yet.
+func turned_wanted(part: Lbm.PartMesh, basis: Basis) -> bool:
+	if part == null or part.boxes.is_empty() or BrickLattice.is_square_to_grid(basis) \
+			or OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return false
+	var stretch := Vector3(basis.x.length(), basis.y.length(), basis.z.length())
+	if not stretch.is_equal_approx(Vector3.ONE) and basis.determinant() > 0.0:
+		return false
+	return not _turned_cache.has("%d|%s" % [part.get_instance_id(), basis])
+
+
+## Keep a turned cover worked out elsewhere (Grab, side by side on workers)
+## as [method boxes_for] keeps its own on this thread.
+func keep_turned(part: Lbm.PartMesh, basis: Basis, shape: PackedInt32Array) -> void:
+	if OS.get_thread_caller_id() == OS.get_main_thread_id() and not shape.is_empty():
+		_turned_cache["%d|%s" % [part.get_instance_id(), basis]] = shape
 
 
 ## A part's cover boxes made [param stretch] as long on each axis, for a

@@ -937,6 +937,8 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 		floor_ids: Dictionary, held: Dictionary) -> Array:
 	var clock: int = Time.get_ticks_msec()
 	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held)
+	# Pinions in racks, read here too, not on the press.
+	bodies.racks()
 	var took: Dictionary = {"bodies": Time.get_ticks_msec() - clock}
 	clock = Time.get_ticks_msec()
 	var judge := Balance.new()

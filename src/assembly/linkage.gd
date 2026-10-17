@@ -62,6 +62,16 @@ var slide_col := PackedInt32Array()
 var cols: int = 0
 ## The closing joints the loops are held by.
 var closing: Array[Bodies.Link] = []
+## Pinions in racks the loops are held by too (Racks.Pinion): a steering's
+## track rod pushed by the pinion on its column. Each is one more equation:
+## the rack has gone along its line, against the pinion, a tooth for each
+## tooth of the pinion's turn against it.
+var racks: Array[Racks.Pinion] = []
+## For each, its pinion's body and its rack's, the loop joints on the way to
+## each, and the pinion's turn against the rack as a sum of coordinates.
+var _rack_ends: Array = []    ## [pinion body, rack body]
+var _rack_sides: Array = []   ## [PackedInt32Array, PackedInt32Array]
+var _rack_turn: Array = []    ## PackedFloat64Array, a coefficient a column
 ## For each closing joint, the joints on the way from the anchor to each of
 ## its halves: [PackedInt32Array for a, for b].
 var _sides: Array = []
@@ -95,6 +105,21 @@ static func read(from: Bodies, driver: Bodies.Link, child: int) -> Linkage:
 	return out
 
 
+## The joints on the way from the anchor to one end of a closing joint, or
+## of a rack and its pinion, and not to the other: what that loop turns.
+func _only(a: int, b: int) -> Array:
+	var on_a: Array = _path(a)
+	var on_b: Array = _path(b)
+	var only: Array = []
+	for one: Variant in on_a:
+		if not on_b.has(one):
+			only.append(one)
+	for one: Variant in on_b:
+		if not on_a.has(one):
+			only.append(one)
+	return only
+
+
 func _path(body: int) -> Array:
 	var out: Array = []
 	var at: int = body
@@ -108,20 +133,30 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	var inside: Dictionary = {driver: true}
 	var used: Dictionary = {}
 	var changed: bool = true
+	var meshes: Array[Racks.Pinion] = bodies.racks()
 	while changed:
 		changed = false
+		for mesh: Racks.Pinion in meshes:
+			if used.has(mesh):
+				continue
+			var only_mesh: Array = _only(int(bodies.body_of[mesh.gear]), int(bodies.body_of[mesh.rack]))
+			var reaches: bool = false
+			for one: Variant in only_mesh:
+				if inside.has(one):
+					reaches = true
+					break
+			if not reaches:
+				continue
+			used[mesh] = true
+			racks.append(mesh)
+			for one: Variant in only_mesh:
+				if not inside.has(one):
+					inside[one] = true
+			changed = true
 		for loop: Bodies.Link in bodies.closing:
 			if used.has(loop):
 				continue
-			var on_a: Array = _path(loop.a)
-			var on_b: Array = _path(loop.b)
-			var only: Array = []
-			for one: Variant in on_a:
-				if not on_b.has(one):
-					only.append(one)
-			for one: Variant in on_b:
-				if not on_a.has(one):
-					only.append(one)
+			var only: Array = _only(loop.a, loop.b)
 			var touches: bool = false
 			for one: Variant in only:
 				if inside.has(one):
@@ -166,6 +201,23 @@ func _read(driver: Bodies.Link, child: int) -> void:
 			slide_col.append(-1)
 	for loop: Bodies.Link in closing:
 		_sides.append([_joints_on(loop.a), _joints_on(loop.b)])
+	for mesh: Racks.Pinion in racks:
+		var pinion: int = int(bodies.body_of[mesh.gear])
+		var rack: int = int(bodies.body_of[mesh.rack])
+		_rack_ends.append([pinion, rack])
+		var sides: Array = [_joints_on(pinion), _joints_on(rack)]
+		_rack_sides.append(sides)
+		# The pinion's turn against the rack about its axis, as the joints
+		# turn it from where they stood: each joint's share is its line's
+		# along the pinion's axis, the pinion's side less the rack's.
+		var turn := PackedFloat64Array()
+		turn.resize(cols)
+		turn.fill(0.0)
+		for s: int in 2:
+			for n: int in (sides[s] as PackedInt32Array):
+				if _axis[n] != Vector3.ZERO:
+					turn[turn_col[n]] += _axis[n].dot(mesh.axis) * (1.0 if s == 0 else -1.0)
+		_rack_turn.append(turn)
 	q.resize(cols)
 	q.fill(0.0)
 	kept = q.duplicate()
@@ -308,7 +360,27 @@ func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 			out.append_array([turned.x, turned.y, turned.z])
 		else:
 			out.append_array([gap.x, gap.y, gap.z])
+	for k: int in racks.size():
+		out.append(_rack_residual(k, at, cache))
 	return out
+
+
+## How far rack [param k] stands from where its pinion's teeth put it, LDU:
+## where the pinion's centre now is in the rack's own frame, along the
+## rack's teeth, from where it was; plus the teeth's share of the pinion's
+## turn against the rack.
+func _rack_residual(k: int, at: PackedFloat64Array, cache: Dictionary) -> float:
+	var mesh: Racks.Pinion = racks[k]
+	var ends: Array = _rack_ends[k]
+	var wa: Transform3D = _place(int(ends[0]), at, cache)
+	var wb: Transform3D = _place(int(ends[1]), at, cache)
+	var seen: Vector3 = wb.affine_inverse() * (wa * mesh.centre)
+	var turn: float = 0.0
+	var coefficients: PackedFloat64Array = _rack_turn[k]
+	for c: int in cols:
+		if coefficients[c] != 0.0:
+			turn += coefficients[c] * at[c]
+	return mesh.line.dot(seen - mesh.centre) + mesh.rate * turn
 
 
 static func _slides(loop: Bodies.Link) -> bool:
@@ -384,6 +456,30 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 				for c: int in cols:
 					row[c] = turns[c][r]
 				rows.append(row)
+	for k: int in racks.size():
+		var mesh: Racks.Pinion = racks[k]
+		var ends: Array = _rack_ends[k]
+		var wa: Transform3D = _place(int(ends[0]), at, cache)
+		var wb: Transform3D = _place(int(ends[1]), at, cache)
+		var x: Vector3 = wa * mesh.centre
+		var back: Basis = wb.basis.inverse()
+		var row: PackedFloat64Array = (_rack_turn[k] as PackedFloat64Array).duplicate()
+		for c: int in cols:
+			row[c] *= mesh.rate
+		# The pinion's centre moved by a joint on its side moves where it is
+		# seen from the rack; a joint on the rack's side moves the rack under
+		# it the other way.
+		var sides: Array = _rack_sides[k]
+		for s: int in 2:
+			var sign: float = 1.0 if s == 0 else -1.0
+			for n: int in (sides[s] as PackedInt32Array):
+				var lines: Array = ball_ways.get(n, [ways[n]])
+				for line: int in lines.size():
+					var w: Vector3 = lines[line]
+					row[turn_col[n] + line] += mesh.line.dot(back * w.cross(x - points[n])) * sign
+				if slide_col[n] >= 0:
+					row[slide_col[n]] += mesh.line.dot(back * ways[n]) * sign
+		rows.append(row)
 	return rows
 
 
@@ -653,5 +749,11 @@ func said() -> String:
 	var parts := PackedStringArray()
 	for kind: String in kinds:
 		parts.append("%d %s" % [int(kinds[kind]), kind])
-	return "a loop of %d joints (%s), closed by %d" % [links.size() + closing.size(),
+	var words: String = "a loop of %d joints (%s), closed by %d" % [links.size() + closing.size(),
 		", ".join(parts), closing.size()]
+	if not racks.is_empty():
+		var teeth := PackedStringArray()
+		for mesh: Racks.Pinion in racks:
+			teeth.append(mesh.said(bodies.world))
+		words += " and %s" % ", ".join(teeth)
+	return words

@@ -208,7 +208,7 @@ func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
 	var ours: Dictionary = {}
 	for one: int in moving_bodies:
 		ours[one] = true
-	if not bodies.loops_out(ours, joined).is_empty():
+	if not bodies.loops_out(ours, joined).is_empty() or not bodies.racks_out(ours).is_empty():
 		return _refuse("loop", "that joint is in a closed loop")
 	state = "moves"
 	return _chosen()
@@ -228,23 +228,26 @@ func _chosen() -> String:
 	for one: int in moving_bodies:
 		ours[one] = true
 	var held: Array[Bodies.Link] = bodies.loops_out(ours, link)
+	# A pinion in a rack that does not move with it holds it too: the rack
+	# goes as the teeth say, and what the rack is joined to with it.
+	var geared: Array[Racks.Pinion] = bodies.racks_out(ours)
 	linkage = null
-	if not held.is_empty():
+	if not held.is_empty() or not geared.is_empty():
 		# Held at both ends: a closed loop, moved as it allows (Linkage).
-		var other: Bodies.Link = held[0]
+		var other_words: String = held[0].words().trim_prefix("on ") if not held.is_empty() \
+			else "by %s" % geared[0].said(world)
 		if link.axis == Vector3.ZERO:
 			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
 		var loop := Linkage.read(bodies, link, body)
 		if not loop.why.is_empty():
 			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
-				bodies.named(moving_bodies), link.words().trim_prefix("on "),
-				other.words().trim_prefix("on "), loop.why])
+				bodies.named(moving_bodies), link.words().trim_prefix("on "), other_words, loop.why])
 		if not loop.can_move():
 			return _refuse("locked", ("Locked: this loop has no freedom. %s is held at both ends, "
 				+ "%s and %s, and %s closes neither a degree one way nor the other.") % [
-				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "),
-				other.words().trim_prefix("on "), loop.said()])
+				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "), other_words,
+				loop.said()])
 		linkage = loop
 		moving_bodies = loop.moved
 		ours.clear()
@@ -599,6 +602,9 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		keys.append_array(followers.keys())
 	var result: int = 1
 	var n: int = from
+	# Which parts' turned covers this test wants, worked out side by side
+	# first, when the whole test is asked at once.
+	var meets: Dictionary = _covers_ahead(at, keys) if budget == INF else {}
 	while n < keys.size():
 		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
 			result = -1
@@ -622,7 +628,10 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		# turned box against each part near it: apart from all of them, or
 		# only touching, it meets nothing (a steering's wheel beside its
 		# mudguard cost 19 ms a test by its turned cover).
-		if not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
+		if meets.has(key):
+			if not bool(meets[key]):
+				continue
+		elif not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
 			continue
 		var part_began: int = Time.get_ticks_usec()
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
@@ -642,6 +651,57 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	frame_test_ms += test_ms
 	frame_tests += 1
 	return Vector2i(result, n if result == -1 else 0)
+
+
+## Whether each moving part at [param at] may meet anything ([method
+## _near_anything], [method _boxes_meet]): key -> bool, for [method _test]
+## to read rather than ask again. The turned covers of those that may, not
+## worked out yet, are worked out side by side on the engine's workers and
+## kept as [method Builder.boxes_for] keeps its own: a four-bar's frame asked
+## for its two wheels' and two arms' covers, 11 to 16 ms each, one after the
+## other. Nothing ahead on a build without threads, or for one cover.
+func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
+	var out: Dictionary = {}
+	if OS.has_feature("web") and not OS.has_feature("threads"):
+		return out
+	var wanted: Array = []   ## [mesh, basis]
+	var asked: Dictionary = {}
+	for key: int in keys:
+		if _on_the_line.has(key) or not at.has(key):
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var to: Transform3D = at[key]
+		var box: AABB = to * mesh.bounds
+		var may: bool = _near_anything(box) and _boxes_meet(key, mesh, to, box)
+		out[key] = may
+		if not may or not builder.turned_wanted(mesh, to.basis):
+			continue
+		var exact: String = "%d|%s" % [mesh.get_instance_id(), to.basis]
+		if not asked.has(exact):
+			asked[exact] = true
+			wanted.append([mesh, to.basis])
+	if wanted.size() < 2:
+		return out
+	var made: Array = []
+	made.resize(wanted.size())
+	var writing := Mutex.new()
+	var tasks: Array[int] = []
+	for n: int in wanted.size():
+		var mesh: Lbm.PartMesh = wanted[n][0]
+		var basis: Basis = wanted[n][1]
+		tasks.append(WorkerTasks.add(func() -> void:
+			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(mesh.boxes, Vector3i.ZERO, basis)
+			writing.lock()
+			made[n] = shape
+			writing.unlock(), true, "a grabbed part's turned cover"))
+	for task: int in tasks:
+		WorkerTasks.collect(task)
+	for n: int in wanted.size():
+		builder.keep_turned(wanted[n][0], wanted[n][1], made[n])
+	return out
 
 
 ## What [param key], its cover [param packed] at [param to], meets: nothing
