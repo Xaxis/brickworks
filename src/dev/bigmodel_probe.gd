@@ -630,9 +630,11 @@ func _sweep(kind: String, middle: Vector2, view: Rect2) -> Dictionary:
 	aims.sort()
 	out["aim_ms"] = aims[aims.size() / 2]
 	out["aim_worst_ms"] = aims.back()
-	out["same"] = _found_as_by_all(points)
-	print("    sweep %-7s a ghost in %d of %d moves; aiming %.2f ms a move (worst %.2f)%s"
+	out["same"] = _found_as_by_all(points, out)
+	print("    sweep %-7s a ghost in %d of %d moves; aiming %.2f ms a move (worst %.2f)%s%s"
 		% [kind, out["aimed"], ghosts.size(), out["aim_ms"], out["aim_worst_ms"],
+		"; aimed at a connector in %d of %d asks" % [out["on_a_joint"], points.size() * 2]
+			if out.has("on_a_joint") else "",
 		"" if out["same"] else "; NOT what asking every one finds"])
 	if _profile:
 		_sweep_sections(out, points)
@@ -675,7 +677,7 @@ func _aim_map(row: Dictionary, view: Rect2) -> void:
 ## every one found: the connector a part in hand is aimed at
 ## (JointSnap.aimed_at with and without its grid), and every part whose box
 ## the line meets for a sticker (Stickers._along against every part's).
-func _found_as_by_all(points: Array) -> bool:
+func _found_as_by_all(points: Array, said: Dictionary = {}) -> bool:
 	var camera: CadCamera = _main.get("_camera")
 	var library: PartLibrary = _builder.library
 	var part: Lbm.PartMesh = library.mesh_for(_builder.held_part)
@@ -712,6 +714,10 @@ func _found_as_by_all(points: Array) -> bool:
 				var near: JointSnap.End = JointSnap.aimed_at(
 					JointSnap.near(grid, origin, way, before), held, origin, way, before,
 					_builder.lattice.unseen)
+				# How many of the asks found a connector at all: none would
+				# make the same answer an empty one.
+				if all != null:
+					said["on_a_joint"] = int(said.get("on_a_joint", 0)) + 1
 				# The same end, read twice: two objects, one connector.
 				if _end_words(all) != _end_words(near):
 					print("    at %s the grid found %s, asking every one %s" % [point,
