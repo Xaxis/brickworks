@@ -90,6 +90,11 @@ class Geometry extends RefCounted:
 	var above: Array = []
 	## Whether the finished model holds it to the ground.
 	var held: PackedByteArray = PackedByteArray()
+	## Which piece of the finished model it is in: the parts it is held to,
+	## any way round, by any route. A second vehicle standing beside the
+	## first is a piece of its own.
+	var piece: PackedInt32Array = PackedInt32Array()
+	var piece_size: PackedInt32Array = PackedInt32Array()
 	## Per view: index -> the pixels it covers and how near each is.
 	var pixels: Array = []
 	var depths: Array = []
@@ -652,6 +657,28 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 				queue.append(next)
 	g.held = held
 
+	# The finished model's pieces, through what holds what.
+	var piece := PackedInt32Array()
+	piece.resize(g.count)
+	piece.fill(-1)
+	var sizes := PackedInt32Array()
+	for start: int in g.count:
+		if piece[start] >= 0:
+			continue
+		var label: int = sizes.size()
+		sizes.append(0)
+		piece[start] = label
+		var pending: Array[int] = [start]
+		while not pending.is_empty():
+			var here: int = pending.pop_back()
+			sizes[label] += 1
+			for next: int in g.near[here]:
+				if piece[next] < 0:
+					piece[next] = label
+					pending.append(next)
+	g.piece = piece
+	g.piece_size = sizes
+
 	_pictures(g, covers)
 	return g
 
@@ -738,13 +765,19 @@ func _pictures(g: Geometry, covers: Array) -> void:
 
 ## Union-find over parts, a root knowing whether what it joins reaches
 ## the ground (or the table a sub-assembly is built on).
+##
+## [member apart] is the same with a second rule for the table: a step that
+## begins a piece of the finished model on it (a second vehicle, a cart
+## beside the house) begins it on the table, as the model's first parts do.
 class Pieces extends RefCounted:
 	var parent: PackedInt32Array = PackedInt32Array()
 	var grounded: PackedByteArray = PackedByteArray()
+	var apart: PackedByteArray = PackedByteArray()
 
 	func _init(count: int) -> void:
 		parent.resize(count)
 		grounded.resize(count)
+		apart.resize(count)
 		for index: int in count:
 			parent[index] = index
 
@@ -757,9 +790,16 @@ class Pieces extends RefCounted:
 
 	func ground(index: int) -> void:
 		grounded[root(index)] = 1
+		apart[root(index)] = 1
+
+	func ground_apart(index: int) -> void:
+		apart[root(index)] = 1
 
 	func reaches(index: int) -> bool:
 		return grounded[root(index)] == 1
+
+	func reaches_apart(index: int) -> bool:
+		return apart[root(index)] == 1
 
 	func join(one: int, other: int) -> void:
 		var a: int = root(one)
@@ -768,6 +808,7 @@ class Pieces extends RefCounted:
 			return
 		parent[b] = a
 		grounded[a] = grounded[a] | grounded[b]
+		apart[a] = apart[a] | apart[b]
 
 
 ## What can be seen from one side: the nearest thing at each pixel, and
@@ -823,6 +864,8 @@ class Place extends RefCounted:
 	var floor_cell: int = 0
 	var in_hand: bool = false
 	var begun: bool = false
+	## The pieces of the finished model begun here: piece -> true.
+	var pieces_begun: Dictionary = {}
 
 	func _init(count: int, area: int, on_the_ground: bool, lowest: int) -> void:
 		at.resize(count)
@@ -844,11 +887,21 @@ func _place_of(places: Dictionary, context: int, g: Geometry) -> Place:
 static func _put(place: Place, parts: PackedInt32Array, k: int, g: Geometry) -> void:
 	var first: bool = not place.begun and not parts.is_empty()
 	place.begun = place.begun or not parts.is_empty()
+	# Only a piece the finished model holds: one the graph does not hold is
+	# not counted either way, as before.
+	var fresh: Dictionary = {}
+	if not place.in_hand:
+		for index: int in parts:
+			if g.held[index] == 1 and not place.pieces_begun.has(g.piece[index]):
+				fresh[g.piece[index]] = true
 	for index: int in parts:
 		place.at[index] = k
 		if first or not place.in_hand and g.bottom[index] != 0x7FFFFFFF \
 				and g.bottom[index] <= place.floor_cell + ON_THE_GROUND:
 			place.pieces.ground(index)
+		elif fresh.has(g.piece[index]):
+			place.pieces.ground_apart(index)
+	place.pieces_begun.merge(fresh)
 	for index: int in parts:
 		for other: int in g.near[index]:
 			if place.at[other] >= 0:
@@ -876,8 +929,16 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 	var blocked_steps: int = 0
 	## Which: [step, the thing's first part, its size], to say what they are.
 	var said: Dictionary = {"hidden": [], "blocked": [], "floating": []}
-	## Each thing found floating at its step: [place, the thing, step].
+	## Each thing found floating at its step: [place, the thing, step]; and
+	## by the second rule for the table (Pieces.apart).
 	var floating: Array = []
+	var floating_apart: Array = []
+	## How each piece of the finished model the graph holds is begun on the
+	## model: built in the hand and put on whole, in the model's first step,
+	## on the ground, or in the air. All pieces, and those of ten parts or
+	## more.
+	var starts: Dictionary = {"first": 0, "hand": 0, "ground": 0, "air": 0}
+	var starts_big: Dictionary = {"first": 0, "hand": 0, "ground": 0, "air": 0}
 	## Every thing, with where it is built, to count those the graph holds.
 	var all_things: Array = []
 
@@ -944,12 +1005,36 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 		if blocked_here:
 			blocked_steps += 1
 
+		# How a piece of the finished model is begun on the model.
+		if not place.in_hand:
+			var now: Dictionary = {}
+			for thing: PackedInt32Array in things:
+				var which: int = g.piece[thing[0]]
+				if place.pieces_begun.has(which) or now.has(which) or g.held[thing[0]] == 0:
+					continue
+				now[which] = true
+				var how: String = "air"
+				if thing.size() > 1:
+					how = "hand"
+				elif not place.begun:
+					how = "first"
+				elif Array(thing).any(func(index: int) -> bool:
+						return g.bottom[index] != 0x7FFFFFFF \
+							and g.bottom[index] <= place.floor_cell + ON_THE_GROUND):
+					how = "ground"
+				starts[how] = int(starts[how]) + 1
+				if g.piece_size[which] >= 10:
+					starts_big[how] = int(starts_big[how]) + 1
+
 		# Placed, and joined to what is there.
 		_put(place, placed, k, g)
 		for thing: PackedInt32Array in things:
 			all_things.append([place, thing])
 			if not Array(thing).any(func(index: int) -> bool: return place.pieces.reaches(index)):
 				floating.append([place, thing, k])
+			if not Array(thing).any(func(index: int) -> bool:
+					return place.pieces.reaches_apart(index)):
+				floating_apart.append([place, thing, k])
 
 		# Seen: drawn into the picture so far, then how much of each new
 		# thing is its own.
@@ -999,11 +1084,26 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 				(entry[1] as PackedInt32Array).size()])
 			floating_steps[int(entry[2])] = true
 	var measured: int = all_things.filter(held_at_end).size()
+	var held_apart := func(entry: Array) -> bool:
+		var where: Place = entry[0]
+		return Array(entry[1]).any(func(index: int) -> bool: return where.pieces.reaches_apart(index))
+	var apart_items: int = 0
+	var apart_steps: Dictionary = {}
+	said["floating_pieces"] = []
+	for entry: Array in floating_apart:
+		if held_apart.call(entry):
+			apart_items += 1
+			(said["floating_pieces"] as Array).append([int(entry[2]),
+				(entry[1] as PackedInt32Array)[0], (entry[1] as PackedInt32Array).size()])
+			apart_steps[int(entry[2])] = true
 	return {"rank": rank, "sizes": sizes, "kinds": kinds, "types": types,
 		"copies": copies_out, "items": items, "hidden": hidden_items,
 		"hidden_steps": hidden_steps, "blocked": blocked_items,
 		"blocked_steps": blocked_steps, "floating": floating_items,
-		"floating_steps": floating_steps.size(), "measured": measured, "which": said}
+		"floating_steps": floating_steps.size(), "measured": measured,
+		"floating_pieces": apart_items, "floating_pieces_steps": apart_steps.size(),
+		"measured_pieces": all_things.filter(held_apart).size(),
+		"starts": starts, "starts_big": starts_big, "which": said}
 
 
 # -- the measures on models whose answers are known ---------------------------
@@ -1068,6 +1168,25 @@ func _selftest() -> void:
 	_assert("...though nothing is put in under anything there (%d)" % int(wrong["blocked"]),
 		int(wrong["blocked"]) == 0)
 
+	# Two pieces: a brick alone, then a tower of four beside it begun from
+	# its top. By the model's first parts alone, the top floats, and so does
+	# the second, which joins nothing there yet. Begun on the table as the
+	# piece it starts, the top stands, and only the second floats.
+	g = _toy_two()
+	var two: Dictionary = _measure(_steps_of([[0], [4], [2], [1], [3]], 5), g)
+	_assert("a second piece is a piece of its own (%d pieces)" % g.piece_size.size(),
+		g.piece_size.size() == 2)
+	_assert("begun from its top, two float by the model's first parts (%d)"
+		% int(two["floating"]), int(two["floating"]) == 2)
+	_assert("...and one when a piece is begun on the table (%d)" % int(two["floating_pieces"]),
+		int(two["floating_pieces"]) == 1)
+	_assert("...and the second piece is begun in the air (%s)" % str(two["starts"]),
+		int(two["starts"]["first"]) == 1 and int(two["starts"]["air"]) == 1)
+	var stood: Dictionary = _measure(_steps_of([[0], [1], [2], [3], [4]], 5), g)
+	_assert("built from the bottom, neither rule finds one floating (%d, %d)" % [
+		int(stood["floating"]), int(stood["floating_pieces"])],
+		int(stood["floating"]) == 0 and int(stood["floating_pieces"]) == 0)
+
 	# A 1 x 1 plate in a well: a ring of 1 x 1 bricks four high round a
 	# square two studs across. Put in after the ring, it cannot be seen
 	# from the front or the back; put in first, it can.
@@ -1095,6 +1214,24 @@ func _toy_stack() -> Geometry:
 	var index_of: Dictionary = {}
 	for level: int in 3:
 		var at := Transform3D(Basis.IDENTITY, Vector3(0, level * 24.0, 0))
+		var id: int = _world.add_brick("3001", 4, at)
+		_builder.register(id, "3001", at)
+		index_of[id] = bricks.size()
+		bricks.append(_world.get_brick(id))
+	return _geometry(bricks, index_of)
+
+
+## A 2 x 4 brick alone, then a tower of four ten studs from it.
+func _toy_two() -> Geometry:
+	_world.clear()
+	_builder.lattice.clear()
+	var bricks: Array = []
+	var index_of: Dictionary = {}
+	var places: Array = [Vector3.ZERO]
+	for level: int in 4:
+		places.append(Vector3(200, level * 24.0, 0))
+	for where: Vector3 in places:
+		var at := Transform3D(Basis.IDENTITY, where)
 		var id: int = _world.add_brick("3001", 4, at)
 		_builder.register(id, "3001", at)
 		index_of[id] = bricks.size()

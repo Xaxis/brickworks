@@ -188,6 +188,9 @@ class Node2 extends RefCounted:
 	## by height ([method _find_hangers]): given up before a sub-assembly is
 	## ([method _contract]).
 	var weak: PackedInt64Array = PackedInt64Array()
+	## Off the table and held, as far as the plan knows, only by guesses:
+	## it goes in after what is held for certain ([method _best]).
+	var guessed: bool = false
 
 
 ## What fills a point, by the parts' own collision covers: the cover the
@@ -257,6 +260,13 @@ class Assembly extends RefCounted:
 	var whole: bool = false
 	## The node standing for it in the main build.
 	var node: Node2 = null
+	## Its parts again, read in the frame they stand square in, for one put
+	## on turned: what rests on what in it there, and its order in the hand
+	## ([method _frame_turned]). Empty for one square to the world.
+	var framed: Array[Node2] = []
+	## The flexible things in it, each its pieces' ids: each goes in as one
+	## in its steps on the side ([method _find_bundles]).
+	var bundles: Array[PackedInt64Array] = []
 
 
 ## Work out the steps for everything currently in the world.
@@ -288,6 +298,7 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	_find_hangers(nodes)
 	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
 	_find_bundles(nodes, world, library, assemblies)
+	_frame_turned(assemblies, world, library, null)
 	var built: Array[Node2] = _contract(nodes, assemblies)
 	var named: bool = _assign_regions(built, regions, nodes.size())
 	var raw: Array = _sequence(built, named, _per_step(nodes.size()))
@@ -357,6 +368,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	if job.cancelled:
 		return []
 	await _find_bundles_into(nodes, world, library, assemblies, job)
+	await _frame_turned(assemblies, world, library, job)
 	lap.call("assemblies")
 	await job.next()
 	if job.cancelled:
@@ -516,7 +528,7 @@ static func _most_common(values: Array) -> String:
 ## one is not: the hole has to exist, so the pin needs the part it goes
 ## into.
 static func _find_joints(nodes: Array[Node2], world: BrickWorld,
-		library: PartLibrary) -> void:
+		library: PartLibrary, frame: Transform3D = Transform3D.IDENTITY) -> void:
 	var entries: Array = []
 	for node: Node2 in nodes:
 		var brick: BrickWorld.Brick = world.get_brick(node.id)
@@ -525,7 +537,7 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if part == null:
 			continue
-		entries.append([node.id, brick.transform, part])
+		entries.append([node.id, frame * brick.transform, part])
 	if entries.is_empty():
 		return
 	var by_id: Dictionary = {}
@@ -549,26 +561,138 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 			if not (sockets_of[plug.id] as Array).has(socket):
 				(sockets_of[plug.id] as Array).append(socket)
 	# A pin that joins two parts goes into one and the other goes on it,
-	# as a Technic booklet has it: into the lowest, and the others after.
-	# Waiting for every part it goes into put it in last, between two beams
-	# already there, where no picture can show it: 1,296 Technic parts the
-	# booklet's view could not see in 100 real sets, against 431 in their
-	# authors' steps (docs/INSTRUCTIONS.md).
-	for plug_id: int in sockets_of:
+	# as a Technic booklet has it: into the one the build reaches first, and
+	# the others after. Waiting for every part it goes into put it in last,
+	# between two beams already there, where no picture can show it: 1,296
+	# Technic parts the booklet's view could not see in 100 real sets,
+	# against 431 in their authors' steps (docs/INSTRUCTIONS.md).
+	var reach: Dictionary = _reach(nodes, by_id, sockets_of)
+	var lowest := func(a: Node2, b: Node2) -> bool:
+		if absf(a.box.position.y - b.box.position.y) > 0.5:
+			return a.box.position.y < b.box.position.y
+		return a.id < b.id
+	var nearest := func(a: Node2, b: Node2) -> bool:
+		var one: int = int(reach.get(a.id, 0x7FFFFFFF))
+		var two: int = int(reach.get(b.id, 0x7FFFFFFF))
+		if one != two:
+			return one < two
+		return lowest.call(a, b)
+	# A joint found both ways round, an axle pin's axle gripped by the arm
+	# its pin turns in, is one joint: the one the build reaches first holds
+	# the other. Read as two, each part needed the other, and 8022's
+	# steering arms were forced in on nothing.
+	for plug_id: int in sockets_of.keys():
 		var plug: Node2 = by_id[plug_id]
 		var into: Array = sockets_of[plug_id]
-		into.sort_custom(func(a: Node2, b: Node2) -> bool:
-			if absf(a.box.position.y - b.box.position.y) > 0.5:
-				return a.box.position.y < b.box.position.y
-			return a.id < b.id)
-		var first: Node2 = into[0]
+		for socket: Node2 in into.duplicate():
+			var back: Array = sockets_of.get(socket.id, [])
+			if back.has(plug) and nearest.call(plug, socket):
+				into.erase(socket)
+		if into.is_empty():
+			sockets_of.erase(plug_id)
+	var base: Dictionary = {}       ## id -> its needs before the joints
+	for node: Node2 in nodes:
+		base[node.id] = node.needs.duplicate()
+	var chosen: Dictionary = {}     ## plug id -> what it goes into first
+	var low: Dictionary = {}        ## ...and the lowest of them
+	for plug_id: int in sockets_of:
+		var into: Array = (sockets_of[plug_id] as Array).duplicate()
+		into.sort_custom(lowest)
+		low[plug_id] = into[0]
+		into.sort_custom(nearest)
+		chosen[plug_id] = into[0]
+	# Unless that closes a loop, where what it would go into rests on another
+	# of the parts it joins: then the lowest, as before.
+	for _attempt: int in 3:
+		_pin(nodes, by_id, base, sockets_of, chosen)
+		var differ: Array = chosen.keys().filter(func(id: int) -> bool:
+			return chosen[id] != low[id])
+		if differ.is_empty():
+			break
+		for node: Node2 in nodes:
+			node.after = node.needs
+		var looped: Dictionary = _cycles(nodes)
+		var undone: bool = false
+		for plug_id: int in differ:
+			if looped.has(plug_id):
+				chosen[plug_id] = low[plug_id]
+				undone = true
+		if not undone:
+			break
+		_pin(nodes, by_id, base, sockets_of, chosen)
+	_wheels(nodes)
+
+
+## Each plug into the part [param chosen] names, and the other parts it
+## joins on it, on top of the needs in [param base].
+static func _pin(nodes: Array[Node2], by_id: Dictionary, base: Dictionary,
+		sockets_of: Dictionary, chosen: Dictionary) -> void:
+	for node: Node2 in nodes:
+		node.needs = (base[node.id] as PackedInt64Array).duplicate()
+	for plug_id: int in sockets_of:
+		var plug: Node2 = by_id[plug_id]
+		var first: Node2 = chosen[plug_id]
 		if not plug.needs.has(first.id):
 			plug.needs.append(first.id)
-		for at: int in range(1, into.size()):
-			var other: Node2 = into[at]
-			if not other.needs.has(plug.id) and not plug.needs.has(other.id):
+		for other: Node2 in sockets_of[plug_id]:
+			if other != first and not other.needs.has(plug.id) and not plug.needs.has(other.id):
 				other.needs.append(plug.id)
-	_wheels(nodes)
+
+
+## How far each part is from the table, through what holds it: the parts
+## on the table 0, and a part one more than the nearest that holds it: a
+## stud it sits on, a side stud, a pin or an axle either way, and failing
+## those what its box sits on. Unreached parts are not in it.
+##
+## Which part a pin goes into first was the lowest of them, and a Technic
+## model is not built from the bottom up: a beam under the frame, held by
+## pins that go up into it, was the lowest of every pin it holds, so they
+## all went into it, and it went in first, on nothing. In the 7 Technic
+## files of the held-out sample a step left a thing floating in 31.5% of
+## steps, against 13.2% in the rest. Into what holds it already, the pin
+## holds it up.
+static func _reach(nodes: Array[Node2], by_id: Dictionary, sockets_of: Dictionary) -> Dictionary:
+	var next: Dictionary = {}    ## id -> ids it holds or is held by
+	var link := func(one: int, other: int) -> void:
+		if not next.has(one):
+			next[one] = []
+		(next[one] as Array).append(other)
+	for node: Node2 in nodes:
+		for top: int in node.carries:
+			link.call(node.id, top)
+		for other: int in node.held_by:
+			link.call(node.id, other)
+		for under: int in node.boxed:
+			link.call(under, node.id)
+	for plug_id: int in sockets_of:
+		for socket: Node2 in sockets_of[plug_id]:
+			link.call(plug_id, socket.id)
+			link.call(socket.id, plug_id)
+	# The table, or the lowest of a car that stands on its wheels: they go
+	# on last. Not a pin or an axle, which goes into something: a truck's
+	# axles are lower than its frame, and the frame went on them.
+	var floor_y: float = INF
+	for node: Node2 in nodes:
+		if node.wheel == 0 and not sockets_of.has(node.id):
+			floor_y = minf(floor_y, node.box.position.y)
+	var reach: Dictionary = {}
+	var wave: Array[int] = []
+	for node: Node2 in nodes:
+		if node.box.position.y <= floor_y + 2.0 and node.wheel == 0 \
+				and not sockets_of.has(node.id):
+			reach[node.id] = 0
+			wave.append(node.id)
+	var depth: int = 0
+	while not wave.is_empty():
+		depth += 1
+		var after: Array[int] = []
+		for id: int in wave:
+			for other: int in next.get(id, []):
+				if not reach.has(other) and by_id.has(other):
+					reach[other] = depth
+					after.append(other)
+		wave = after
+	return reach
 
 
 ## A wheel goes on what holds it, and a tyre on its wheel.
@@ -983,7 +1107,7 @@ const SLICE := 100
 
 ## [method _find_supports], a slice at a time with a [param job].
 static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
-		job: Working.Job) -> void:
+		job: Working.Job, frame: Transform3D = Transform3D.IDENTITY) -> void:
 	var by_id: Dictionary = {}
 	var entries: Array = []
 	var covers := Covers.new()
@@ -997,8 +1121,8 @@ static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		var part: Lbm.PartMesh = library.mesh_for(node.part_id)
 		if brick == null or part == null:
 			continue
-		entries.append([node.id, brick.transform, part])
-		covers.add(node.id, brick.transform, part)
+		entries.append([node.id, frame * brick.transform, part])
+		covers.add(node.id, frame * brick.transform, part)
 	for start: int in range(0, entries.size(), SLICE):
 		if job != null and job.due():
 			job.count(start)
@@ -1230,7 +1354,7 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 				return
 		var members: Array = tops[top]
 		var figure: bool = _is_figure(members, world, library)
-		if figure or _holds_together(members, nodes.size(), _turned(members, world)):
+		if figure or _holds_together(members, nodes.size(), _turned(members, world), true):
 			found.append(_assembly(top, members, figure, world))
 			continue
 		for sub: String in inner:
@@ -1281,6 +1405,39 @@ static func _find_bundles_into(nodes: Array[Node2], world: BrickWorld, library: 
 		if brick != null and part != null:
 			entries.append([node.id, brick.transform, part, node.part_id,
 				Assemblies.path_of(brick)])
+	for group: Array in _flexible(entries, library):
+		var made := Assembly.new()
+		made.whole = true
+		made.key = "flexible:%d" % int(group[0])
+		made.name = "flexible"
+		made.kind = made.key
+		for id: int in group:
+			made.members.append(by_id[id])
+		assemblies.append(made)
+	# And one in a sub-assembly built on the side goes in as one there
+	# ([method _on_the_side]): 920's launch pad, built in the hand, put its
+	# hose in 140 pieces, each floating.
+	for made: Assembly in assemblies:
+		if made.whole or made.figure:
+			continue
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
+		var inside: Array = []
+		for member: Node2 in made.members:
+			var brick: BrickWorld.Brick = world.get_brick(member.id)
+			var part: Lbm.PartMesh = library.mesh_for(member.part_id)
+			if brick != null and part != null:
+				inside.append([member.id, brick.transform, part, member.part_id,
+					Assemblies.path_of(brick)])
+		for group: Array in _flexible(inside, library):
+			made.bundles.append(PackedInt64Array(group))
+
+
+## The flexible things among [param entries] (as Flex.one_thing takes
+## them), each the ids of its pieces, two or more.
+static func _flexible(entries: Array, library: PartLibrary) -> Array:
 	var parent: Dictionary = {}
 	var root_of := func(id: int) -> int:
 		var at: int = id
@@ -1298,19 +1455,12 @@ static func _find_bundles_into(nodes: Array[Node2], world: BrickWorld, library: 
 		var root: int = root_of.call(id)
 		if not groups.has(root):
 			groups[root] = []
-		(groups[root] as Array).append(by_id[id])
+		(groups[root] as Array).append(id)
+	var out: Array = []
 	for root: int in groups:
-		var members: Array = groups[root]
-		if members.size() < 2:
-			continue
-		var made := Assembly.new()
-		made.whole = true
-		made.key = "flexible:%d" % root
-		made.name = "flexible"
-		made.kind = made.key
-		for member: Node2 in members:
-			made.members.append(member)
-		assemblies.append(made)
+		if (groups[root] as Array).size() >= 2:
+			out.append(groups[root])
+	return out
 
 
 static func _is_figure(members: Array, world: BrickWorld,
@@ -1332,16 +1482,20 @@ static func _is_figure(members: Array, world: BrickWorld,
 ##
 ## A sub-model put on at an angle ([param turned]) is built on the side
 ## whatever its size, up to half the model: square, in the hand, and then
-## put on turned, as its author built it. Built where it stands, its parts
+## put on turned, as its author built it. One the model places itself
+## ([param top]) is built so at any size short of the whole: a model on its
+## stand, as 76161's Batwing stands on its edge, is that sub-model and the
+## stand, and its author builds the Batwing flat and stands it up. Built where it stands, its parts
 ## went in at an angle against parts already there: on the five biggest
 ## files of the sample the planner was tuned on, 19 in 20 of the things put
 ## in under a part already there were turned parts of a sub-model too big
 ## to be a callout, and their authors put in none (docs/INSTRUCTIONS.md).
-static func _holds_together(members: Array, total: int, turned: bool = false) -> bool:
+static func _holds_together(members: Array, total: int, turned: bool = false,
+		top: bool = false) -> bool:
 	if members.size() < 2:
 		return false
 	if turned:
-		if members.size() * 2 > total:
+		if members.size() >= total or not top and members.size() * 2 > total:
 			return false
 	elif members.size() > ASSEMBLY_MOST or members.size() * 10 > total * 3:
 		return false
@@ -1388,6 +1542,102 @@ static func _turned(members: Array, world: BrickWorld) -> bool:
 		if brick != null and not BrickLattice.is_square_to_grid(brick.transform.basis):
 			off += 1
 	return off * 2 > members.size()
+
+
+## A sub-assembly put on turned is built square in the hand, as its author
+## built it: what rests on what in it, and so its order, is read in the
+## frame its parts stand square in, where "under" means under. 76161's
+## Batwing stands on its edge on a stand; built in the world's frame, 1,692
+## of its 2,396 things went in under a part already there.
+static func _frame_turned(assemblies: Array[Assembly], world: BrickWorld,
+		library: PartLibrary, job: Working.Job) -> void:
+	for made: Assembly in assemblies:
+		if made.figure or made.whole or not _turned(made.members, world):
+			continue
+		var frame: Variant = _frame_of(made.members, world)
+		if frame == null:
+			continue
+		var at := Transform3D(frame as Basis, Vector3.ZERO)
+		var nodes: Array[Node2] = []
+		for member: Node2 in made.members:
+			var brick: BrickWorld.Brick = world.get_brick(member.id)
+			var part: Lbm.PartMesh = library.mesh_for(member.part_id)
+			if brick == null or part == null:
+				continue
+			var copy := Node2.new()
+			copy.id = member.id
+			copy.part_id = member.part_id
+			copy.group = member.group
+			copy.unit = member.unit
+			copy.wheel = member.wheel
+			copy.box = (at * brick.transform) * part.bounds
+			nodes.append(copy)
+		await _supports_of(nodes, world, library, job, at)
+		if job != null and job.cancelled:
+			return
+		_find_joints(nodes, world, library, at)
+		_tidy_needs(nodes)
+		await _hangers_of(nodes, job)
+		made.framed = nodes
+
+
+## How far a turned basis may be from square and still be square, for the
+## six decimals LDraw writes a turn in and the three it often gets.
+const SQUARE_SLACK := 0.02
+
+
+## The turn that stands most of [param members] square, upright as most
+## of them stand, as a Basis from the world's frame to theirs; null when
+## no one frame holds most of them square.
+static func _frame_of(members: Array, world: BrickWorld) -> Variant:
+	var bases: Array[Basis] = []
+	for node: Node2 in members:
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		if brick != null:
+			bases.append(brick.transform.basis.orthonormalized())
+	if bases.is_empty():
+		return null
+	# A few of the parts' own frames, and the one most of them are square in.
+	var best: Basis = Basis.IDENTITY
+	var most: int = 0
+	var every: int = maxi(1, bases.size() / 12)
+	for at: int in range(0, bases.size(), every):
+		var back: Basis = bases[at].inverse()
+		var square: int = 0
+		for basis: Basis in bases:
+			if _square(back * basis):
+				square += 1
+		if square > most:
+			most = square
+			best = back
+	if most * 2 <= bases.size():
+		return null
+	# Turned so that most parts' studs point up in it.
+	var ups: Dictionary = {}
+	for basis: Basis in bases:
+		var turned: Basis = best * basis
+		if _square(turned):
+			var up := Vector3i((turned * Vector3.UP).round())
+			ups[up] = int(ups.get(up, 0)) + 1
+	var upright := Vector3i.UP
+	for up: Vector3i in ups:
+		if int(ups[up]) > int(ups.get(upright, 0)):
+			upright = up
+	if upright == Vector3i.DOWN:
+		best = Basis(Vector3.RIGHT, PI) * best
+	elif upright != Vector3i.UP:
+		best = Basis(Vector3(upright).cross(Vector3.UP).normalized(), PI / 2.0) * best
+	return best
+
+
+static func _square(basis: Basis) -> bool:
+	for axis: int in 3:
+		var column: Vector3 = basis[axis]
+		for k: int in 3:
+			var value: float = absf(column[k])
+			if value > SQUARE_SLACK and absf(value - 1.0) > SQUARE_SLACK:
+				return false
+	return true
 
 
 static func _assembly(key: String, members: Array, figure: bool,
@@ -1609,6 +1859,16 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 		remaining[node.id] = node
 		if int(waiting[node.id]) == 0:
 			ready[node.id] = node
+	# What is held only by guesses, off the table: the lowest that is not a
+	# wheel, which goes on last.
+	var floor_y: float = INF
+	for node: Node2 in nodes:
+		if node.wheel == 0:
+			floor_y = minf(floor_y, node.box.position.y)
+	for node: Node2 in nodes:
+		node.guessed = node.assembly == null and node.wheel == 0 \
+			and node.box.position.y > floor_y + 2.0 \
+			and Array(node.needs).all(func(need: int) -> bool: return node.weak.has(need))
 
 	var last_at: Vector3 = Vector3.ZERO
 	var have_last: bool = false
@@ -1752,10 +2012,16 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 		return [moved, MOVED]
 	# Nothing anywhere is ready: the lowest remaining goes in anyway, and
 	# the step says so. With +Y up the underside is box.position.y, so the
-	# smallest value is the one nearest the table.
+	# smallest value is the one nearest the table. Not a wheel, which waits
+	# on its axle and not on a loop: 8022's tyres went on before their rims.
 	var lowest: Node2 = null
 	for node: Node2 in remaining.values():
-		if lowest == null or node.box.position.y < lowest.box.position.y:
+		if lowest == null:
+			lowest = node
+		elif (node.wheel > 0) != (lowest.wheel > 0):
+			if lowest.wheel > 0:
+				lowest = node
+		elif node.box.position.y < lowest.box.position.y:
 			lowest = node
 	return [lowest, MOVED]
 
@@ -1785,6 +2051,11 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 		# plate they hang from at the bottom of it.
 		if node.wheel > 0:
 			score += 1.0e9
+		# And a part held only by a guess after what is held for certain:
+		# begun first, it was a piece of its own in the air until the rest
+		# reached it.
+		elif node.guessed:
+			score += 1.0e8
 		if score < best_score:
 			best_score = score
 			best = node
@@ -1884,15 +2155,66 @@ static func _on_the_side(made: Assembly, per_step: int) -> Array:
 	var own: Dictionary = {}
 	for member: Node2 in made.members:
 		own[member.id] = true
+	# A flexible thing in it goes in as one, as it does in the main build:
+	# a node stands for it while the order is worked out.
+	var bundle_of: Dictionary = {}   ## member id -> the node standing for its bundle
+	var held: Dictionary = {}        ## that node's id -> its pieces
+	for at: int in made.bundles.size():
+		var stand := Node2.new()
+		stand.id = -(at + 1)
+		held[stand.id] = []
+		for id: int in made.bundles[at]:
+			bundle_of[id] = stand
 	var members: Array[Node2] = []
-	for member: Node2 in made.members:
-		member.after = PackedInt64Array()
-		for need: int in member.needs:
-			if own.has(need):
-				member.after.append(need)
-		member.region = ""
-		members.append(member)
-	return _sequence(members, false, per_step)
+	for member: Node2 in (made.framed if not made.framed.is_empty() else made.members):
+		var stand: Node2 = bundle_of.get(member.id)
+		if stand == null:
+			member.after = _within(member.needs, own, bundle_of, null)
+			member.region = ""
+			members.append(member)
+			continue
+		if (held[stand.id] as Array).is_empty():
+			stand.box = member.box
+			stand.part_id = member.part_id
+			members.append(stand)
+		else:
+			stand.box = stand.box.merge(member.box)
+		(held[stand.id] as Array).append(member)
+		for need: int in _within(member.needs, own, bundle_of, stand):
+			if not stand.after.has(need):
+				stand.after.append(need)
+	var out: Array = _sequence(members, false, per_step)
+	if held.is_empty():
+		return out
+	for chunk: Dictionary in out:
+		var nodes: Array[Node2] = []
+		for node: Node2 in chunk["nodes"]:
+			if held.has(node.id):
+				for piece: Node2 in held[node.id]:
+					nodes.append(piece)
+			else:
+				nodes.append(node)
+		chunk["nodes"] = nodes
+	return out
+
+
+## [param needs] among [param own], each piece of a flexible thing standing
+## as its node ([param bundle_of]), and none of [param stand]'s own.
+static func _within(needs: PackedInt64Array, own: Dictionary, bundle_of: Dictionary,
+		stand: Node2) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	for need: int in needs:
+		if not own.has(need):
+			continue
+		var target: int = need
+		var into: Node2 = bundle_of.get(need)
+		if into != null:
+			if into == stand:
+				continue
+			target = into.id
+		if not out.has(target):
+			out.append(target)
+	return out
 
 
 # -- the author's steps --------------------------------------------------------
