@@ -144,6 +144,8 @@ func _run() -> void:
 		print("booklet edit: vendor/omr is not in this checkout; nothing judged")
 		quit(0)
 		return
+	if _only.is_empty() or _only == "gatehouse":
+		await _gatehouse()
 	for set: Array in SETS:
 		if _only.is_empty() or str(set[1]) == _only:
 			await _one_set(str(set[0]), str(set[1]))
@@ -151,6 +153,73 @@ func _run() -> void:
 	print("booklet edit: %s" % ("every check passed" if _failures == 0
 		else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
+
+
+# -- steps_flow's own case ----------------------------------------------------------
+
+
+## What steps_flow.mjs does in a browser, here: gatehouse.mpd's yellow brick
+## (step 2 of the model's own, the timeline's step 3) moved by Shift-] into
+## the blue brick's step, Ctrl-Z, Shift-] again, and the file exported.
+## The blue brick's step ends in a ROTSTEP that turns the windows' step
+## after it; the yellow brick's step, emptied, goes. The export must have
+## four steps of the model's own, the yellow with the blue in the second,
+## the windows and the white brick in the third with the ROTSTEP before
+## them still, the green plate in the fourth. m65 lost the ROTSTEP line, so
+## the third step ran into the second (three steps).
+func _gatehouse() -> void:
+	_name = "gatehouse"
+	print("")
+	print("gatehouse.mpd, as steps_flow.mjs moves its yellow brick")
+	await _open("res://tests/fixtures/steps/gatehouse.mpd")
+	await _timeline()
+	_steps.set_mode(StepsBar.AUTHORS)
+	await _frames(2)
+	var yellow: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3003":
+			yellow = brick.id
+	var third: Instructions.Step = _go(3)
+	var said: String = _shell.change_steps("next", [yellow], third)
+	_check("Shift-] on step 3's yellow brick: \"%s\"" % said, said.contains("moved 1 part"))
+	_builder.undo()
+	await _frames(2)
+	_steps.refresh(3)
+	said = _shell.change_steps("next", [yellow], _go(3))
+	_check("...Ctrl-Z, and Shift-] again: \"%s\"" % said, said.contains("moved 1 part"))
+	var text: String = _save()
+	var kept: FileAccess = FileAccess.open(_out.path_join("gatehouse_moved.mpd"), FileAccess.WRITE)
+	kept.store_string(text)
+	kept.close()
+	var main: Array = _main_steps(text)
+	_check("exported: four steps of the model's own, the yellow brick with the blue (%s)"
+		% JSON.stringify(main), main.size() == 4 and str(main[0]) == "base.ldr/16"
+		and str(main[1]) == "3003.dat/14 3005.dat/1"
+		and str(main[2]) == "3004.dat/15 window.ldr/16 window.ldr/16"
+		and str(main[3]) == "3022.dat/2")
+	_check("...the blue brick's step still ends in its ROTSTEP, which turns the windows' step",
+		text.contains("3005.dat\n0 ROTSTEP 0 45 0 ABS\n") or text.contains("3005.dat\r\n0 ROTSTEP 0 45 0 ABS"))
+
+
+## A file's model's own steps as steps_flow.mjs reads them: each step's
+## parts, "file/colour", sorted, the model's section only.
+static func _main_steps(text: String) -> Array:
+	var main: String = text.split("0 NOFILE")[0]
+	var steps: Array = []
+	var now: Array = []
+	for raw: String in main.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 STEP") or line.begins_with("0 ROTSTEP"):
+			now.sort()
+			steps.append(" ".join(now))
+			now = []
+		elif line.begins_with("1 "):
+			var words: PackedStringArray = line.split(" ", false)
+			now.append(words[words.size() - 1].to_lower() + "/" + words[1])
+	if not now.is_empty():
+		now.sort()
+		steps.append(" ".join(now))
+	return steps
 
 
 # -- one set -----------------------------------------------------------------------
@@ -196,7 +265,7 @@ func _open(path: String) -> void:
 	await _frames(10)
 	_check("opened %s: %d parts, %s" % [path.get_file(), _world.brick_count(),
 		"the author's steps" if AuthorSteps.any(_world, _store.scenery) else "no steps of its own"],
-		_world.brick_count() > 20 and _store.awaited.is_empty())
+		_world.brick_count() > 10 and _store.awaited.is_empty())
 
 
 func _timeline() -> void:
