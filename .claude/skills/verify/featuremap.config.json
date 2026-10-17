@@ -2047,7 +2047,7 @@
       "kind": "cli",
       "label": "cad task frames in a browser",
       "entry": "tools/web/cad_frames.mjs",
-      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web); --gate --arrive=300 --only=orbit,select_all,step on 75969-1 is the release's frames check: each step and an orbit's frames under 200 ms of the app's own work, select all under 400, exit 1 on a miss",
       "area": "view"
     },
     {
@@ -2231,6 +2231,20 @@
       "entry": "src/dev/worker_first_run_probe.gd",
       "reach": "godot --headless --path . --script src/dev/worker_first_run_probe.gd [-- rounds=N] [-- cold]   (operators run for the first time on every worker at once, through WorkerTasks.first_here, every round right and the engine still up; PartForge.warm's part and skin built all the way; the first carried parts built at once run the forge here first. -- cold skips first_here: the engine as it is, which crashes, rip 0x0)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "typed place and hinge",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "off-grid probe",
+      "entry": "src/dev/offgrid_probe.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
+      "area": "building"
     }
   ]
 }

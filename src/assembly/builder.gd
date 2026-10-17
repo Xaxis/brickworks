@@ -751,6 +751,85 @@ func move_selection(by: Vector3i) -> int:
 		return Transform3D(at.basis, at.origin + shift), "", by)
 
 
+## Shift the selection by any amount in LDU, to the thousandth an LDraw
+## file writes, or refuse and change nothing: the properties' X, Y and Z
+## typed, as Studio's and LDCad's moves by a typed amount. Whole cells go
+## through [method move_selection], which keeps each cover. A part a set
+## has off the 2 LDU lattice (8841-1's pan hangs 0.35 LDU off it, 5762-1's
+## lights stand an odd LDU out of their clips) could only be put a cell
+## either side of where the file has it.
+func move_selection_by(by: Vector3) -> int:
+	var cells := Vector3i(roundi(by.x / BrickLattice.CELL), roundi(by.y / BrickLattice.CELL),
+		roundi(by.z / BrickLattice.CELL))
+	var rest: Vector3 = (by - BrickLattice.to_ldu(cells)).abs()
+	if maxf(rest.x, maxf(rest.y, rest.z)) < 0.0005:
+		var moved: int = move_selection(cells)
+		if moved > 0:
+			return moved
+	return _moved_joined(by)
+
+
+## The selection moved by [param by] as one step where each part has room
+## by the rule a part put down has it (room_for): nothing in its way but
+## what it joins as real parts join, a wheel round its pin, a plate's hole
+## on an axle. A typed move onto a joint was refused by the bare lattice,
+## which reads a pin in its bore as two parts in one place. Refused,
+## changing nothing, where any would run into something.
+func _moved_joined(by: Vector3) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var was: Dictionary = {}
+	for brick_id: int in alive:
+		was[brick_id] = world.get_brick(brick_id).transform
+		lattice.release(brick_id)
+	var landing: Dictionary = {}
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var to: Transform3D = _tidy(Transform3D(brick.transform.basis,
+			brick.transform.origin + by), BrickLattice.is_square_to_grid(brick.transform.basis))
+		if not room_for(brick.part_id, to, true):
+			for back: int in alive:
+				lattice.occupy_boxes(back, boxes_for(
+					library.mesh_for(world.get_brick(back).part_id), was[back]))
+			return 0
+		landing[brick_id] = to
+	var steps: Array = []
+	for brick_id: int in alive:
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+		world.move_brick(brick_id, landing[brick_id])
+		lattice.occupy_boxes(brick_id, boxes_for(
+			library.mesh_for(world.get_brick(brick_id).part_id), landing[brick_id]))
+	_history.append({"undo": "group", "steps": steps,
+		"words": "moved %s %s LDU" % [_many(steps.size()), _ldu_words(by)]})
+	_redo.clear()
+	return steps.size()
+
+
+static func _ldu_words(by: Vector3) -> String:
+	var words := PackedStringArray()
+	for n: int in 3:
+		words.append(String.num(snappedf(by[n], 0.001), 3))
+	return ", ".join(words)
+
+
+## How far the selection stands turned about the joint it hangs from, in
+## degrees off square, -45 to 45; null when it hangs from none
+## ([method _joint_of]). What the properties' Hinge shows and types over.
+func hinge_angle() -> Variant:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return null
+	var joint: Dictionary = _joint_of(alive)
+	if joint.is_empty():
+		return null
+	var axis: Vector3 = (joint["axis"] as Vector3).normalized()
+	var basis: Basis = world.get_brick(alive[0]).transform.basis.orthonormalized()
+	var off: Basis = basis * BrickLattice.snap_basis(basis).inverse()
+	var across: Vector3 = axis.cross(Vector3.UP if absf(axis.y) < 0.9 else Vector3.RIGHT)
+	return rad_to_deg(across.signed_angle_to(off * across, axis))
+
+
 ## Turn the selection a quarter at a time about the stud nearest its
 ## middle, where it stands, or refuse and change nothing.
 ##
@@ -1657,7 +1736,36 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
 		if _seated_on != 0 else room_for(held_part, _ghost_transform)
+	# Not on side studs: those are found where the struck part's own are.
+	var framed: Variant = _in_frame_of(hit.brick_id, _ghost_transform) \
+		if hit.is_valid() and onto == null else null
+	if framed != null and room_for(held_part, framed):
+		_ghost_transform = framed
+		_ghost_valid = true
 	_show_ghost(part)
+
+
+## [param at], worked out against the lattice, put in the frame of the part
+## it was aimed at when that part stands square but off the lattice: on its
+## studs, under it, against its side, exactly as on a part on the lattice,
+## where the lattice alone puts it up to a cell off. A part's cover off the
+## lattice is counted from the cell its origin is in (BrickLattice.within),
+## so what was aimed at by it is that far, the part's own place past the
+## cell, from where the part is. 8841-1's pan hangs from its pins 0.35 LDU
+## off the lattice and its plates went a third of an LDU off each other;
+## 5762-1's lights stand an LDU out of the lattice. Null where there is
+## nothing to follow: a part on the lattice, a turned one, none.
+func _in_frame_of(brick_id: int, at: Transform3D) -> Variant:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if world != null else null
+	if brick == null or not BrickLattice.is_square_to_grid(brick.transform.basis) \
+			or not BrickLattice.is_off_lattice(brick.transform.origin):
+		return null
+	var past: Vector3 = brick.transform.origin \
+		- BrickLattice.to_ldu(BrickLattice.to_cell(brick.transform.origin))
+	for n: int in 3:
+		if past[n] < 0.01 or past[n] > BrickLattice.CELL - 0.01:
+			past[n] = 0.0
+	return _tidy(Transform3D(at.basis, at.origin + past), true)
 
 
 ## Which way the screen's up is: a sticker in hand over a face that lies (a

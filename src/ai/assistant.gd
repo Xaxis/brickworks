@@ -12686,7 +12686,9 @@ func _exact_ids(model: Model, alone: bool) -> Array:
 
 
 func _exact_check_for(model: Model, alone: bool) -> ExactCheck:
-	return ExactCheck.new(_exact_shapes(model, alone), model.placements.size())
+	var exact := ExactCheck.new(_exact_shapes(model, alone), model.placements.size())
+	exact.ground = _ground_at
+	return exact
 
 
 ## Whether placement [param index] is this design's to answer for: placed or
@@ -15422,7 +15424,8 @@ func _check_support(
 		# is not this design's to answer for.
 		# Unless what is asked is what an edit leaves hanging: then only the
 		# ground holds (_left_hanging).
-		if floor_y <= 0 or (floor_y <= 2 and _on_the_ground(placement, model)) \
+		var ground_cell: int = floori(_ground_at / BrickLattice.CELL)
+		if floor_y <= ground_cell or (floor_y <= ground_cell + 2 and _on_the_ground(placement, model)) \
 				or (placement.id != 0 and not placement.moved and not _ground_only):
 			grounded.append(index)
 			continue
@@ -15629,7 +15632,7 @@ func _on_the_ground(placement: Placement, model: Model) -> bool:
 	if part == null:
 		return false
 	var cells: float = 1.0 if placement.id == 0 or placement.moved else 2.0
-	return part.lowest_at(_joined_at(placement, part, model)) \
+	return part.lowest_at(_joined_at(placement, part, model)) - _ground_at \
 		<= cells * BrickLattice.CELL + 0.01
 
 
@@ -19802,6 +19805,11 @@ func _focus_stability() -> String:
 ## Set while a check asks what holds a part from the ground alone, not
 ## excusing the parts that were standing before (see [method _left_hanging]).
 var _ground_only: bool = false
+## Where the ground is for a check, in LDU up from the floor: 0, the floor,
+## for every design. A booklet's half-built model rests at its own lowest
+## point, and the steps score's build check sets this to it
+## (src/dev/steps_score.gd _build_check).
+var _ground_at: float = 0.0
 ## What held before an edit about a selection, by the world's revision:
 ## [revision, brick ids hanging already, pieces].
 var _hanging_before: Array = []

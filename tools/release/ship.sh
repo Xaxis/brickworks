@@ -9,6 +9,13 @@ TAG=$2
 # relative path from here failed that cd (2026-10-15).
 W=$(cd "$1" && pwd) || exit 1
 shift 2
+# Every release runs the site check and the frames check, named or not: a
+# feature that taxed every frame (the grab handles, found twice a second)
+# held a big model's timeline step at 6 s for hours while every check named
+# passed (2026-10-17).
+for always in site frames; do
+  case " $* " in *" $always "*) ;; *) set -- "$@" "$always";; esac
+done
 # The main checkout (where .env and the shared catalogue live), wherever
 # this worktree is, and where the release's logs go.
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")

@@ -245,7 +245,7 @@
       "id": "cli:cad task frames in a browser",
       "kind": "cli",
       "entry": "tools/web/cad_frames.mjs",
-      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web); --gate --arrive=300 --only=orbit,select_all,step on 75969-1 is the release's frames check: each step and an orbit's frames under 200 ms of the app's own work, select all under 400, exit 1 on a miss",
       "area": "view",
       "tests": []
     },
@@ -617,6 +617,14 @@
       "entry": "tools/web/oauth_probe.mjs",
       "reach": "node tools/web/oauth_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:off-grid probe",
+      "kind": "cli",
+      "entry": "src/dev/offgrid_probe.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
+      "area": "building",
       "tests": []
     },
     {
@@ -2537,6 +2545,14 @@
       "kind": "ui",
       "entry": "src/ui/tour.gd",
       "reach": "godot --path .  (Help, Take the tour)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:typed place and hinge",
+      "kind": "ui",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
       "area": "building",
       "tests": []
     },

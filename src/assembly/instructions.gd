@@ -48,9 +48,14 @@ const ATTACH_TAKES_PARTS := true
 ## touches nothing built yet: see [method _best].
 const WHEELS_LATER := 1.0e9
 const UNJOINED_LATER := 3.0e8
+## A wheel goes on with the holder its pin is in ([method _hung_under]):
+## off, as the authors build.
+const WHEELS_WITH_HOLDER := false
 ## A step begun with a part that touches nothing standing looks elsewhere
 ## first for one that does ([method _steadier]).
 const STEADIER_FIRST := true
+## ...in another region too, not only one this region waits on.
+const STEADIER_MOVES := false
 
 ## How far apart two of one part at one height can be and still go in one
 ## step: twelve studs, a row of tiles or a ring of 1 x 1s round a rim, as a
@@ -273,33 +278,143 @@ class Covers extends RefCounted:
 		return null
 
 
-## What a step's picture shows, by the parts' boxes: the nearest thing at
-## each pixel from the front and from the back, the two ways a booklet looks
-## (BookletStudio.FRONT, BACK), drawn as the steps score draws covers
-## (src/dev/steps_score.gd _pictures): the faces of each box that look
-## towards the eye, as points a pixel apart.
+## What a step's picture shows of its own parts, by their boxes, from the
+## front and from the back, the two ways a booklet looks (BookletStudio.FRONT,
+## BACK): the faces of each box that look towards the eye, as points a pixel
+## apart, as the steps score draws covers (src/dev/steps_score.gd
+## _pictures).
 ##
 ## A step filled with whatever was ready and near hid its own parts: in 100
 ## real sets, 1,128 of the 1,535 steps of ours with a new thing hidden front
 ## and back hid it behind a part of the same step, a brick put on the plate
 ## it went in with (docs/INSTRUCTIONS.md). A part that would hide one the
 ## step already holds waits for the next step, where the first is built.
+##
+## Only what lands on the part asked about is drawn: the step's own parts and
+## the parts of earlier steps whose pictures meet it from both sides and come
+## nearer the eye. Drawing the whole build so far, to know what each new part
+## already showed, was half of the time the order took (Orthanc's 5.1 s of
+## 8.2), and two parts that do not meet from one side cannot hide each other
+## from both.
 class Pictures extends RefCounted:
 	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
 	const PIXEL := 10.0
 	## A new part shows at least this much of itself, from one side or the
 	## other: the steps score's SEEN.
 	const SEEN := 0.1
+	## The squares, in pixels, that the parts built so far are kept in by
+	## where they land in the front view.
+	const SQUARE := 8.0
+	## How far, in LDU, an earlier part may be from one and still count as
+	## in front of it: a stud and a bit.
+	const IN_FRONT := 24.0
 	var _frames: Array = []          ## [view, right, up] per view
-	var _depth: Array = [{}, {}]     ## per view: pixel -> nearest depth
-	var _owner: Array = [{}, {}]     ## per view: pixel -> node id
 	var _own: Dictionary = {}        ## node id -> [{pixel: depth}, {pixel: depth}]
-	var _seen: Dictionary = {}       ## node id -> [pixels it owns in each view]
+	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2, Vector2, Vector2]
+	var _built: Dictionary = {}      ## Vector2i -> the parts of earlier steps landing there
+	var _before: Dictionary = {}     ## node id -> earlier parts that may be in front of it
+	var _step: Array = []            ## the parts of the step being filled
+	## node id -> the pixels of it still in sight in each view, with their
+	## depths, as the step stands: worked out once a step, and each part the
+	## step takes after takes its own out of them.
+	var _open: Dictionary = {}
 
 	func _init() -> void:
 		for view: Vector3 in [BookletStudio.FRONT.normalized(), BookletStudio.BACK.normalized()]:
 			var right: Vector3 = Vector3.UP.cross(view).normalized()
 			_frames.append([view, right, view.cross(right).normalized()])
+
+	## Where [param node]'s box lands in each picture, as a rectangle, and
+	## then how near the eye it comes in each, nearest and furthest.
+	func span_of(node: Node2) -> Array:
+		if _span.has(node.id):
+			return _span[node.id]
+		var out: Array = []
+		var depths: Array = []
+		for frame: Array in _frames:
+			var low := Vector2(INF, INF)
+			var high := Vector2(-INF, -INF)
+			var depth := Vector2(INF, -INF)
+			for corner: int in 8:
+				var point: Vector3 = node.box.get_endpoint(corner)
+				var flat := Vector2(point.dot(frame[1]), point.dot(frame[2])) / PIXEL
+				low = low.min(flat)
+				high = high.max(flat)
+				var d: float = point.dot(frame[0])
+				depth = Vector2(minf(depth.x, d), maxf(depth.y, d))
+			out.append(Rect2(low, high - low))
+			depths.append(depth)
+		out.append_array(depths)
+		_span[node.id] = out
+		return out
+
+	## [param node] goes into the step being filled.
+	func accept(node: Node2) -> void:
+		var theirs: Array = []
+		for other: Node2 in _step:
+			if _open.has(other.id) and meet(node, other):
+				theirs.append(other)
+		_step.append(node)
+		if theirs.is_empty():
+			return
+		var mine: Array = pixels_of(node)
+		for other: Node2 in theirs:
+			var open: Array = _open[other.id]
+			for v: int in 2:
+				var left: Dictionary = open[v]
+				var over: Dictionary = mine[v]
+				for pixel: int in left.keys():
+					if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
+						left.erase(pixel)
+
+	## A step is done: its parts are built, and may stand in front of the
+	## next steps'.
+	func built(step: Array) -> void:
+		_before.clear()
+		_open.clear()
+		_step.clear()
+		for node: Node2 in step:
+			var rect: Rect2 = span_of(node)[0]
+			for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
+				for y: int in range(floori(rect.position.y / SQUARE),
+						floori(rect.end.y / SQUARE) + 1):
+					var key := Vector2i(x, y)
+					if not _built.has(key):
+						_built[key] = []
+					(_built[key] as Array).append(node)
+
+	## The parts of earlier steps near [param node] that land on it in both
+	## pictures and come nearer the eye than its furthest point in both.
+	func in_front(node: Node2) -> Array:
+		if _before.has(node.id):
+			return _before[node.id]
+		var mine: Array = span_of(node)
+		var rect: Rect2 = mine[0]
+		var seen: Dictionary = {}
+		var out: Array = []
+		# Near it: a tower across the model does not hide a plate from both
+		# sides, and on a big model everything in front of it is hundreds.
+		var near: AABB = node.box.grow(IN_FRONT)
+		for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
+			for y: int in range(floori(rect.position.y / SQUARE), floori(rect.end.y / SQUARE) + 1):
+				for other: Node2 in _built.get(Vector2i(x, y), []):
+					if seen.has(other.id):
+						continue
+					seen[other.id] = true
+					var theirs: Array = span_of(other)
+					if near.intersects(other.box) and meet(node, other) \
+							and (theirs[2] as Vector2).y > (mine[2] as Vector2).x \
+							and (theirs[3] as Vector2).y > (mine[3] as Vector2).x:
+						out.append(other)
+		_before[node.id] = out
+		return out
+
+	## Whether [param one] and [param other] land on each other in both
+	## pictures.
+	func meet(one: Node2, other: Node2) -> bool:
+		var a: Array = span_of(one)
+		var b: Array = span_of(other)
+		return (a[0] as Rect2).intersects(b[0]) and (a[1] as Rect2).intersects(b[1])
 
 	## The pixels [param node]'s box covers from each view, and how near.
 	func pixels_of(node: Node2) -> Array:
@@ -335,54 +450,60 @@ class Pictures extends RefCounted:
 		_own[node.id] = out
 		return out
 
-	func draw(node: Node2) -> void:
+	## The pixels of [param node] in sight in each view, as the step being
+	## filled and the earlier parts near it leave them.
+	func open_of(node: Node2) -> Array:
+		if _open.has(node.id):
+			return _open[node.id]
+		var near: Array = _step.filter(func(one: Node2) -> bool:
+			return one != node and meet(one, node))
+		near.append_array(in_front(node))
+		var theirs: Array = near.map(func(other: Node2) -> Array: return pixels_of(other))
 		var mine: Array = pixels_of(node)
-		var counts: Array = [0, 0]
+		var out: Array = []
 		for v: int in 2:
-			var depth: Dictionary = _depth[v]
-			var owner: Dictionary = _owner[v]
+			var left: Dictionary = {}
 			var nearest: Dictionary = mine[v]
 			for pixel: int in nearest:
-				if float(nearest[pixel]) > float(depth.get(pixel, -INF)):
-					var was: int = owner.get(pixel, 0)
-					if was != 0 and _seen.has(was):
-						(_seen[was] as Array)[v] = int(_seen[was][v]) - 1
-					depth[pixel] = nearest[pixel]
-					owner[pixel] = node.id
-					counts[v] += 1
-		_seen[node.id] = counts
+				var depth: float = nearest[pixel]
+				var covered: bool = false
+				for other: Array in theirs:
+					var at: Dictionary = other[v]
+					if at.has(pixel) and float(at[pixel]) > depth:
+						covered = true
+						break
+				if not covered:
+					left[pixel] = depth
+			out.append(left)
+		_open[node.id] = out
+		return out
 
-	## How much of [param node] shows, the better of the two views, as
-	## drawn so far, less [param taken] pixels of each view.
-	func shown(node: Node2, taken: Array = [0, 0]) -> float:
-		var mine: Array = pixels_of(node)
-		var seen: Array = _seen.get(node.id, [0, 0])
-		var best: float = 0.0
-		for v: int in 2:
-			var total: int = (mine[v] as Dictionary).size()
-			if total == 0:
-				return 1.0
-			best = maxf(best, float(int(seen[v]) - int(taken[v])) / float(total))
-		return best
-
-	## Whether drawing [param node] would hide one of [param step], the parts
-	## a step holds already, that shows now.
+	## Whether [param node] would hide one of [param step], parts the step
+	## being filled holds that show now.
 	func would_hide(node: Node2, step: Array) -> bool:
-		var in_step: Dictionary = {}
+		var over: Array = []
 		for other: Node2 in step:
-			in_step[other.id] = [0, 0]
-		var mine: Array = pixels_of(node)
-		for v: int in 2:
-			var depth: Dictionary = _depth[v]
-			var owner: Dictionary = _owner[v]
-			var nearest: Dictionary = mine[v]
-			for pixel: int in nearest:
-				var was: int = owner.get(pixel, 0)
-				if was != 0 and in_step.has(was) \
-						and float(nearest[pixel]) > float(depth[pixel]):
-					(in_step[was] as Array)[v] = int(in_step[was][v]) + 1
-		for other: Node2 in step:
-			if shown(other) >= SEEN and shown(other, in_step[other.id]) < SEEN:
+			if not meet(node, other):
+				continue
+			var total: Array = pixels_of(other)
+			if (total[0] as Dictionary).is_empty() or (total[1] as Dictionary).is_empty():
+				continue
+			var open: Array = open_of(other)
+			if over.is_empty():
+				over = pixels_of(node)
+			var before: float = 0.0
+			var after: float = 0.0
+			for v: int in 2:
+				var left: Dictionary = open[v]
+				var covering: Dictionary = over[v]
+				var still: int = 0
+				for pixel: int in left:
+					if not (covering.has(pixel) and float(covering[pixel]) > float(left[pixel])):
+						still += 1
+				var whole: float = float((total[v] as Dictionary).size())
+				before = maxf(before, float(left.size()) / whole)
+				after = maxf(after, float(still) / whole)
+			if before >= SEEN and after < SEEN:
 				return true
 		return false
 
@@ -1077,17 +1198,36 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 ## goes in along its line. On the model only: a sub-assembly in the hand is
 ## any way up, and there it only hid the part under the one it hangs from.
 ##
-## A wheel under the plate or the holder its pin is on goes on with it, so a
-## vehicle stands on its wheels from there on: with every wheel last, the
-## build check, which holds a part by the floor, called a car's chassis and
-## all on it floating until its wheels went on.
-## Not in the model's first step, which is the chassis: the example car
-## began with its wheels standing on the table. They go on in the next.
+## With [constant WHEELS_WITH_HOLDER], a wheel goes on with the holder its
+## pin is in (in the step after, when that is the model's first: the example
+## car began with its wheels standing on the table), and a tyre with its
+## wheel. It is off: the sets' authors put their wheels on last, 81% of the
+## way through on tune, and with the wheels on early a truck's order agreed
+## with its author's at 0.39 where it had at 0.87. The build check asked for
+## them early only because it held a half-built model by the floor under the
+## finished one; it holds it by the table now (src/dev/steps_score.gd).
 static func _hung_under(nodes: Array[Node2]) -> void:
+	var by_id: Dictionary = {}
+	for node: Node2 in nodes:
+		by_id[node.id] = node
 	for node: Node2 in nodes:
 		for need: int in node.needs:
-			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need) \
-					and not node.hung.has(need):
+			var other: Node2 = by_id.get(need)
+			if other == null or node.joined.has(need) or node.under.has(need) \
+					or node.hung.has(need):
+				continue
+			# A wheel on the holder its pin is in, and a tyre on its wheel,
+			# whichever way their covers meet.
+			if node.wheel > 0:
+				if WHEELS_WITH_HOLDER and (other.wheel == 0 or node.wheel == 2 and other.wheel == 1):
+					node.hung.append(need)
+				continue
+			# Hanging: held from the side or by what it touches, and the other
+			# rests on it. Not a part on the other's studs: two parts a stud
+			# joins reach into each other, so each cover meets the other's
+			# lifted, and read that way every part of a stack hung from the one
+			# on top of it: 30300's first step took fourteen parts.
+			if (node.weak.has(need) or node.held_by.has(need)) and node.over.has(need):
 				node.hung.append(need)
 
 
@@ -1364,13 +1504,28 @@ static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
 		job: Working.Job, frame: Transform3D = Transform3D.IDENTITY) -> void:
 	const BUCKET := 40.0
-	var covers: Array = []
+	# By the plan and the height of each part's top, as _boxes_under keeps
+	# them: what rests on a part has its underside near that part's top.
+	const LAYER := 8.0
 	var grid: Dictionary = {}
 	for index: int in nodes.size():
 		if job != null and job.due():
 			await job.next()
 			if job.cancelled:
 				return
+		var node: Node2 = nodes[index]
+		var layer: int = floori(node.box.end.y / LAYER)
+		for cell: Vector2i in _cells(node.box, BUCKET):
+			var key := Vector3i(cell.x, cell.y, layer)
+			if not grid.has(key):
+				grid[key] = []
+			(grid[key] as Array).append(index)
+	# Each part's cover, its cover lifted a cell, and both their bounds:
+	# worked out only for a part that is asked about.
+	var covers: Dictionary = {}
+	var cover_of := func(index: int) -> Array:
+		if covers.has(index):
+			return covers[index]
 		var node: Node2 = nodes[index]
 		var mine := PackedInt32Array()
 		var brick: BrickWorld.Brick = world.get_brick(node.id)
@@ -1385,63 +1540,56 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 				for box: AABB in part.boxes:
 					mine.append_array(_cells_round(at * AABB(box.position * part.cell_ldu,
 						box.size * part.cell_ldu)))
-		covers.append(mine)
-		var grown: AABB = node.box.grow(2.0)
-		for x: int in range(floori(grown.position.x / BUCKET), floori(grown.end.x / BUCKET) + 1):
-			for y: int in range(floori(grown.position.y / BUCKET), floori(grown.end.y / BUCKET) + 1):
-				for z: int in range(floori(grown.position.z / BUCKET),
-						floori(grown.end.z / BUCKET) + 1):
-					var key := Vector3i(x, y, z)
-					if not grid.has(key):
-						grid[key] = []
-					(grid[key] as Array).append(index)
-	var lids: Array = []
-	var cover_bounds: Array = []
-	var lid_bounds: Array = []
-	for mine: PackedInt32Array in covers:
 		var lid: PackedInt32Array = BrickLattice.moved_by(mine, Vector3i(0, 1, 0))
-		lids.append(lid)
-		cover_bounds.append(_bounds_of(mine))
-		lid_bounds.append(_bounds_of(lid))
+		var out: Array = [mine, _bounds_of(mine), lid, _bounds_of(lid)]
+		covers[index] = out
+		return out
+	# Each part against those whose top is near its underside, or above it
+	# and still under its top: what it may rest on.
 	for index: int in nodes.size():
 		if job != null and job.due():
 			await job.next()
 			if job.cancelled:
 				return
 		var node: Node2 = nodes[index]
-		var mine: PackedInt32Array = covers[index]
-		if mine.is_empty():
-			continue
-		var lid: PackedInt32Array = lids[index]
-		var grown: AABB = node.box.grow(2.5)
+		var lowest: int = floori((node.box.position.y - 2.5) / LAYER)
+		var highest: int = floori((node.box.end.y + 2.5) / LAYER)
 		var seen: Dictionary = {}
-		for x: int in range(floori(grown.position.x / BUCKET), floori(grown.end.x / BUCKET) + 1):
-			for y: int in range(floori(grown.position.y / BUCKET), floori(grown.end.y / BUCKET) + 1):
-				for z: int in range(floori(grown.position.z / BUCKET),
-						floori(grown.end.z / BUCKET) + 1):
-					for other: int in grid.get(Vector3i(x, y, z), []):
-						if other <= index or seen.has(other):
-							continue
-						seen[other] = true
-						var them: Node2 = nodes[other]
-						# One over the other: their plans overlap, and one's
-						# underside is within a cell of the other's top or
-						# into it. Side by side, they do not rest on each other.
-						if not _overlaps_flat(node.box, them.box) \
-								or node.box.position.y > them.box.end.y + 2.5 \
-								or them.box.position.y > node.box.end.y + 2.5:
-							continue
-						var on_mine: bool = _meet(lid, lid_bounds[index], covers[other],
-							cover_bounds[other])
-						var on_theirs: bool = _meet(lids[other], lid_bounds[other], mine,
-							cover_bounds[index])
-						if on_mine:
-							node.over.append(them.id)
-						if on_theirs:
-							them.over.append(node.id)
-						if on_mine or on_theirs:
-							node.contacts.append(them.id)
-							them.contacts.append(node.id)
+		for cell: Vector2i in _cells(node.box, BUCKET):
+			for layer: int in range(lowest, highest + 1):
+				for other: int in grid.get(Vector3i(cell.x, cell.y, layer), []):
+					if other == index or seen.has(other):
+						continue
+					seen[other] = true
+					var them: Node2 = nodes[other]
+					# Two parts on studs are read by their studs; what their
+					# covers say is for a part no stud seats. Asked of every
+					# pair, it tripled what reading supports cost.
+					if node.seated and them.seated:
+						continue
+					# Under it: their plans overlap, and the other's top is
+					# within a cell of its underside, or above it.
+					if not _overlaps_flat(node.box, them.box) \
+							or them.box.end.y < node.box.position.y - 2.5:
+						continue
+					# Each pair once, from the one whose top is higher.
+					if them.box.end.y > node.box.end.y \
+							or them.box.end.y == node.box.end.y and other < index:
+						continue
+					var mine: Array = cover_of.call(index)
+					var theirs: Array = cover_of.call(other)
+					if (mine[0] as PackedInt32Array).is_empty() \
+							or (theirs[0] as PackedInt32Array).is_empty():
+						continue
+					var on_mine: bool = _meet(mine[2], mine[3], theirs[0], theirs[1])
+					var on_theirs: bool = _meet(theirs[2], theirs[3], mine[0], mine[1])
+					if on_mine:
+						node.over.append(them.id)
+					if on_theirs:
+						them.over.append(node.id)
+					if on_mine or on_theirs:
+						node.contacts.append(them.id)
+						them.contacts.append(node.id)
 
 
 ## The box round packed boxes (six ints each), as six ints.
@@ -2224,19 +2372,28 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 	# [method _touching].
 	var touches: Dictionary = _touching(nodes, parts_of)
 	# What is built so far, in pieces by what touches what, and which pieces
-	# stand: on the table, in the first step, or joined to one that does. A
-	# part joined only to a piece in the air went on it, and floated with it.
+	# stand: on the table, or joined to one that does. A part joined only to a
+	# piece in the air went on it, and floated with it. The table is where the
+	# model as it stands rests, its own lowest point: a car without its wheels
+	# lies on its chassis. In the hand, the first step's parts are the piece.
 	var piece: Dictionary = {}       ## placed id -> the id it is joined under
 	var stands: Dictionary = {}      ## a piece's root -> true
+	var members: Dictionary = {}     ## a piece's root -> its parts' ids
+	var table: Array[float] = [INF]  ## the lowest underside built so far
+	## What touches a standing piece: kept as pieces come to stand, not asked
+	## of every part ready each time a part is chosen, which on 76161's
+	## Batwing in the hand was most of what choosing cost.
+	var by_standing: Dictionary = {}
+	var stood := func(ids: Array) -> void:
+		for id: int in ids:
+			for other: int in touches.get(id, {}):
+				by_standing[other] = true
 	var joins := func(node: Node2) -> bool:
-		if steps.is_empty():
+		if in_hand and steps.is_empty() or piece.is_empty():
 			return true
-		if not in_hand and node.box.position.y <= floor_y + 2.0:
+		if not in_hand and node.box.position.y <= table[0] + 2.0:
 			return true
-		for other: int in touches.get(node.id, {}):
-			if piece.has(other) and stands.has(_root_of(piece, other)):
-				return true
-		return false
+		return by_standing.has(node.id)
 	## The region being built, and what each one is called in the
 	## booklet: its own name, or "part n" in the order they are reached.
 	var current: String = ""
@@ -2304,18 +2461,34 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 				remaining.erase(here.id)
 				ready.erase(here.id)
 				picked.append(here)
-				pictures.draw(here)
+				pictures.accept(here)
 				piece[here.id] = here.id
-				if steps.is_empty() or not in_hand and here.box.position.y <= floor_y + 2.0:
+				members[here.id] = [here.id]
+				if in_hand and steps.is_empty() or not in_hand \
+						and here.box.position.y <= table[0] + 2.0:
 					stands[here.id] = true
+				if not in_hand:
+					table[0] = minf(table[0], here.box.position.y)
 				for other: int in touches.get(here.id, {}):
 					if piece.has(other):
 						var one: int = _root_of(piece, here.id)
 						var two: int = _root_of(piece, other)
-						if one != two:
-							piece[two] = one
-							if stands.has(two):
-								stands[one] = true
+						if one == two:
+							continue
+						# The bigger keeps its root; a piece that comes to stand
+						# makes all it touches joined.
+						if (members[one] as Array).size() < (members[two] as Array).size():
+							var swap: int = one
+							one = two
+							two = swap
+						if stands.has(one) != stands.has(two):
+							stood.call(members[two] if stands.has(one) else members[one])
+							stands[one] = true
+						piece[two] = one
+						(members[one] as Array).append_array(members[two])
+						members.erase(two)
+				if stands.has(_root_of(piece, here.id)):
+					stood.call([here.id])
 				for dependent: int in dependents.get(here.id, []):
 					waiting[dependent] = int(waiting[dependent]) - 1
 					if int(waiting[dependent]) == 0 and remaining.has(dependent):
@@ -2339,6 +2512,7 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 			break
 		steps.append({"nodes": picked, "section": section,
 			"unsupported": unsupported})
+		pictures.built(picked)
 		for node: Node2 in picked:
 			placed += node.assembly.members.size() if node.assembly != null else 1
 
@@ -2399,8 +2573,7 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 	# does all that goes on it until what holds it is reached: begin with
 	# one this region waits for, or one elsewhere, that joins what stands.
 	if STEADIER_FIRST and here != null and joins.is_valid() and not joins.call(here):
-		var held := func(node: Node2) -> bool: return joins.call(node)
-		var steady: Array = _steadier(ready, remaining, last_at, have_last, current, held, joins)
+		var steady: Array = _steadier(ready, remaining, last_at, have_last, current, joins)
 		if not steady.is_empty():
 			return steady
 	if here != null:
@@ -2438,11 +2611,11 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 	return [lowest, MOVED]
 
 
-## A ready node that joins what stands ([param held]), when the region's
+## A ready node that joins what stands ([param joins]), when the region's
 ## best does not: one the region waits for, then the nearest anywhere, as
 ## [method _next] borrows and moves. Empty when there is none.
 static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3,
-		have_last: bool, current: String, held: Callable, joins: Callable) -> Array:
+		have_last: bool, current: String, joins: Callable) -> Array:
 	var wanted: Dictionary = {}
 	for node: Node2 in remaining.values():
 		if node.region != current:
@@ -2450,11 +2623,16 @@ static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3
 		for need: int in node.after:
 			if remaining.has(need):
 				wanted[need] = true
+	# From another region: this one's were all looked at for the step's first.
 	var borrowed: Node2 = _best(ready, last_at, have_last, false,
-		func(node: Node2) -> bool: return wanted.has(node.id) and held.call(node), false, joins)
+		func(node: Node2) -> bool: return node.region != current and wanted.has(node.id), false,
+		joins, [], true)
 	if borrowed != null:
 		return [borrowed, BORROWED]
-	var moved: Node2 = _best(ready, last_at, have_last, false, held, true, joins)
+	if not STEADIER_MOVES:
+		return []
+	var moved: Node2 = _best(ready, last_at, have_last, false,
+		func(_node: Node2) -> bool: return true, true, joins, [], true)
 	if moved != null:
 		return [moved, MOVED]
 	return []
@@ -2469,7 +2647,7 @@ static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3
 ## the build moving to the region next door rather than across the model.
 static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 		same_step: bool, allowed: Callable, nearest_first: bool,
-		joins: Callable = Callable(), step: Array = []) -> Node2:
+		joins: Callable = Callable(), step: Array = [], only_joined: bool = false) -> Node2:
 	var best: Node2 = null
 	var best_score: float = INF
 	for node: Node2 in ready.values():
@@ -2477,15 +2655,20 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 			continue
 		var distance: float = (node.box.get_center().distance_to(last_at)
 			if have_last else 0.0)
-		if same_step and distance > NEAR and not _near_step(node, step):
-			continue
-		var score: float = (distance * 1000.0 + node.box.position.y
+		# The cheap reasons first, and whether it joins what stands only for
+		# one that could still be the best: asked of every part ready, every
+		# time a part was chosen, it was most of what Orthanc's order cost.
+		var base: float = (distance * 1000.0 + node.box.position.y
 			if nearest_first
 			else node.box.position.y * 1000.0 + distance)
+		if base >= best_score:
+			continue
+		if same_step and distance > NEAR and not _near_step(node, step):
+			continue
+		var score: float = base
 		# Wheels go on at the end, as a set's do, not with the chassis
-		# plate they hang from at the bottom of it. Except one under the plate
-		# or the holder its pin is on, which goes on with it ([method
-		# _hung_under]), or in the step after when that was the first.
+		# plate they hang from at the bottom of it; unless they go on with
+		# their holder ([constant WHEELS_WITH_HOLDER], [method _hung_under]).
 		if node.wheel > 0 and node.hung.is_empty():
 			score += WHEELS_LATER
 		# And a part held only by a guess after what is held for certain:
@@ -2497,7 +2680,11 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 		# rests on was let go to break a loop, or is outside the sub-assembly
 		# being built in the hand, and put in first it floated, and what went
 		# on it floated with it.
+		if score >= best_score:
+			continue
 		if joins.is_valid() and not joins.call(node):
+			if only_joined:
+				continue
 			score += UNJOINED_LATER
 		if score < best_score:
 			best_score = score
@@ -2510,6 +2697,13 @@ static func _root_of(piece: Dictionary, id: int) -> int:
 	var at: int = id
 	while int(piece[at]) != at:
 		at = piece[at]
+	# Every part on the way points at the root from now on: a union walked
+	# from its newest part to its oldest was a list as long as the build.
+	var on: int = id
+	while on != at:
+		var next: int = piece[on]
+		piece[on] = at
+		on = next
 	return at
 
 
@@ -2578,6 +2772,7 @@ static func _touching(nodes: Array[Node2], parts_of: Dictionary = {}) -> Diction
 ## Number the steps and open each sub-assembly into its callout: its own
 ## steps, then the step that puts it on.
 static func _expand(raw: Array, world: BrickWorld) -> Array[Step]:
+	_fold_lone_sections(raw)
 	var out: Array[Step] = []
 	var number: int = 0
 	var callouts: int = 0
@@ -2663,6 +2858,45 @@ static func _expand(raw: Array, world: BrickWorld) -> Array[Step]:
 	for index: int in out.size():
 		out[index].index = index + 1
 	return out
+
+
+## A section of one step is no section: it goes under the banner of the
+## section after it, or before it when it is the last. 8032's steering
+## knuckle, a sub-model built in place, was "Cabrio Sub 6a" for one step and
+## then "the rest", two banners on one page.
+static func _fold_lone_sections(raw: Array) -> void:
+	var runs: Array = []      ## [first entry, last entry] of each section's run
+	for at: int in raw.size():
+		if runs.is_empty() or str(raw[at]["section"]) != str(raw[(runs[-1] as Array)[1]]["section"]):
+			runs.append([at, at])
+		else:
+			(runs[-1] as Array)[1] = at
+	if runs.size() < 2:
+		return
+	for k: int in runs.size():
+		var run: Array = runs[k]
+		if int(run[0]) != int(run[1]) or str(raw[run[0]]["section"]).is_empty():
+			continue
+		# Into the one after, or else the one before, that it touches: a step
+		# that touches neither is a thing of its own, a yard beside the
+		# house, drawn on its own (BookletMaker._find_apart) under its banner.
+		for into: Array in ([runs[k + 1]] if k + 1 < runs.size() else []) \
+				+ ([runs[k - 1]] if k > 0 else []):
+			if _touches_run(raw[run[0]]["nodes"], raw, into):
+				raw[run[0]]["section"] = raw[into[0]]["section"]
+				break
+
+
+## Whether any of [param nodes] touches a node of the steps of [param raw]
+## from [code]run[0][/code] to [code]run[1][/code], by their boxes.
+static func _touches_run(nodes: Array, raw: Array, run: Array) -> bool:
+	for node: Node2 in nodes:
+		var box: AABB = node.box.grow(1.0)
+		for at: int in range(int(run[0]), int(run[1]) + 1):
+			for other: Node2 in raw[at]["nodes"]:
+				if box.intersects(other.box):
+					return true
+	return false
 
 
 static func _add(step: Step, node: Node2) -> void:

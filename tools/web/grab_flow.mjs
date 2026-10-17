@@ -76,6 +76,9 @@ page.choosers = [];
 page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+// The app finds the grab handles only when a page asks for them: found for
+// every page twice a second, they held a timeline step 6 s in a browser.
+await page.addInitScript(() => { window.brickworksGrabAsk = true; });
 page.on("console", (m) => {
   if (/SCRIPT ERROR|Parse Error|USER ERROR/.test(m.text())) errors.push(m.text().slice(0, 300));
 });

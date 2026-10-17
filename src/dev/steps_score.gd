@@ -102,6 +102,10 @@ class Geometry extends RefCounted:
 	var pixels: Array = []
 	var depths: Array = []
 	var area: int = 0
+	## The same model read as before 2026-10-17, with no stud from the side
+	## holding anything (near, held, piece and piece_size its own), for the
+	## rows said "as before".
+	var without_side: Geometry = null
 
 
 func _initialize() -> void:
@@ -263,6 +267,15 @@ func _score(path: String, shuffle_seed: int) -> Dictionary:
 	for name: String in plans:
 		clock = Time.get_ticks_msec()
 		scored[name] = _measure(plans[name], geometry)
+		# Floating again with no stud from the side holding, as it was read
+		# before 2026-10-17.
+		var before: Dictionary = _measure(plans[name], geometry.without_side)
+		var kept: Dictionary = {}
+		for key: String in ["floating", "floating_steps", "measured", "floating_pieces",
+				"floating_pieces_steps", "measured_pieces", "floating_table",
+				"floating_table_steps"]:
+			kept[key] = before[key]
+		scored[name]["without_side"] = kept
 		laps["measure " + name] = Time.get_ticks_msec() - clock
 	row["orders"] = scored
 	if _checking and bricks.size() <= CHECKED_MOST:
@@ -392,21 +405,21 @@ func _build_check(plans: Dictionary, bricks: Array) -> Dictionary:
 		var counted: int = 0
 		var floating: int = 0
 		var steps_floating: int = 0
+		var floating_floor: int = 0
+		var steps_floating_floor: int = 0
 		for k: int in on_model.size():
 			for index: int in on_model[k]:
 				placed[(bricks[index] as BrickWorld.Brick).id] = true
 			if not cuts.has(k):
 				continue
-			var model: Assistant.Model = _assistant._model_from_world()
-			var kept: Array[Assistant.Placement] = []
-			for placement: Assistant.Placement in model.placements:
-				if placed.has(placement.id):
-					kept.append(placement)
-			model.placements = kept
-			var said: Dictionary = {}
-			for at: Variant in _assistant._check(model, true).get("floating", []):
-				said[model.placements[int(at)].id] = true
+			# On the table, the model as built so far rests at its own lowest
+			# point: a car without its wheels lies on its chassis. And on the
+			# floor, as the check stood it until 2026-10-17, where it floated
+			# until its wheels went on.
+			var said: Dictionary = _check_floating(placed, true)
+			var said_floor: Dictionary = _check_floating(placed, false)
 			var here: int = 0
+			var here_floor: int = 0
 			for index: int in on_model[k]:
 				var id: int = (bricks[index] as BrickWorld.Brick).id
 				if floating_whole.has(id):
@@ -414,12 +427,44 @@ func _build_check(plans: Dictionary, bricks: Array) -> Dictionary:
 				counted += 1
 				if said.has(id):
 					here += 1
+				if said_floor.has(id):
+					here_floor += 1
 			floating += here
 			steps_floating += 1 if here > 0 else 0
+			floating_floor += here_floor
+			steps_floating_floor += 1 if here_floor > 0 else 0
 		out[name] = {"cuts": cuts.size(), "parts": counted, "floating": floating,
-			"steps_floating": steps_floating}
+			"steps_floating": steps_floating, "floating_floor": floating_floor,
+			"steps_floating_floor": steps_floating_floor}
 	_assistant._ground_only = false
 	return out
+
+
+## The bricks of [param placed] (brick id -> true) the build check calls
+## floating, by id, with only them in the model: the ground where the
+## lowest of them stands when [param at_table], else the floor.
+func _check_floating(placed: Dictionary, at_table: bool) -> Dictionary:
+	var model: Assistant.Model = _assistant._model_from_world()
+	var kept: Array[Assistant.Placement] = []
+	for placement: Assistant.Placement in model.placements:
+		if placed.has(placement.id):
+			kept.append(placement)
+	model.placements = kept
+	var lowest: float = INF
+	for id: Variant in placed:
+		var brick: BrickWorld.Brick = _world.get_brick(int(id))
+		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id) if brick != null else null
+		if mesh != null:
+			lowest = minf(lowest, (brick.transform * mesh.bounds).position.y)
+	var was_only: bool = _assistant._ground_only
+	_assistant._ground_only = true
+	_assistant._ground_at = lowest if at_table and lowest != INF else 0.0
+	var said: Dictionary = {}
+	for at: Variant in _assistant._check(model, true).get("floating", []):
+		said[model.placements[int(at)].id] = true
+	_assistant._ground_at = 0.0
+	_assistant._ground_only = was_only
+	return said
 
 
 ## The model again in [member _other], its parts added in [param order],
@@ -715,6 +760,20 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 	for one: Variant in otherwise:
 		for other: Variant in (otherwise[one] as Dictionary):
 			link.call(one, other)
+	# Kept as it stands, for the rows as before.
+	var before: Array = []
+	for index: int in g.count:
+		before.append(PackedInt32Array((near[index] as Dictionary).keys()))
+	# And a stud from the side, which the build check holds by as it holds any
+	# stud (Assistant._studs_reaching_in, Joints.studs_in, on its lattice): one
+	# reaching up or down is a contact of the covers already, one from the side
+	# was nothing here, and a tile on a headlight brick's side stud floated
+	# until something rested on it.
+	var lattice: BrickLattice = _builder.lattice
+	for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
+			var at: int = lattice.brick_at(BrickLattice.to_cell(tip))
+			return at if at != 0 and at != int(key) else null):
+		link.call(stud[0], stud[1])
 
 	for index: int in g.count:
 		g.near.append(PackedInt32Array((near[index] as Dictionary).keys()))
@@ -724,7 +783,21 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 				resting.append(over)
 		g.above.append(resting)
 
-	# Held in the finished model: out from the ground.
+	_hold(g)
+	_pictures(g, covers)
+	var old_way := Geometry.new()
+	for field: String in ["count", "part", "bottom", "floor_cell", "above", "pixels", "depths",
+			"area"]:
+		old_way.set(field, g.get(field))
+	old_way.near = before
+	_hold(old_way)
+	g.without_side = old_way
+	return g
+
+
+## What the finished model holds to the ground, and its pieces, through
+## [member Geometry.near].
+static func _hold(g: Geometry) -> void:
 	var held := PackedByteArray()
 	held.resize(g.count)
 	var queue: Array[int] = []
@@ -761,9 +834,6 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 					pending.append(next)
 	g.piece = piece
 	g.piece_size = sizes
-
-	_pictures(g, covers)
-	return g
 
 
 static func _grounded(g: Geometry, index: int, floor_cell: int) -> bool:
@@ -856,13 +926,25 @@ class Pieces extends RefCounted:
 	var parent: PackedInt32Array = PackedInt32Array()
 	var grounded: PackedByteArray = PackedByteArray()
 	var apart: PackedByteArray = PackedByteArray()
+	## The lowest cell any part of a piece reaches, at its root: whether the
+	## piece rests on the table under the build as it stands.
+	var low: PackedInt32Array = PackedInt32Array()
 
 	func _init(count: int) -> void:
 		parent.resize(count)
 		grounded.resize(count)
 		apart.resize(count)
+		low.resize(count)
+		low.fill(0x7FFFFFFF)
 		for index: int in count:
 			parent[index] = index
+
+	func lowest(index: int, cell: int) -> void:
+		var at: int = root(index)
+		low[at] = mini(low[at], cell)
+
+	func on_table(index: int, table: int) -> bool:
+		return low[root(index)] <= table + ON_THE_GROUND
 
 	func root(index: int) -> int:
 		var at: int = index
@@ -892,6 +974,7 @@ class Pieces extends RefCounted:
 		parent[b] = a
 		grounded[a] = grounded[a] | grounded[b]
 		apart[a] = apart[a] | apart[b]
+		low[a] = mini(low[a], low[b])
 
 
 ## What can be seen from one side: the nearest thing at each pixel, and
@@ -952,6 +1035,11 @@ class Place extends RefCounted:
 	var floor_cell: int = 0
 	var in_hand: bool = false
 	var begun: bool = false
+	## The lowest cell of what is built here so far of each piece of the
+	## finished model (Geometry.piece): the table that piece, as it stands,
+	## rests on at its own lowest point. A second vehicle stands on the table
+	## beside the first.
+	var table: Dictionary = {}
 	## The pieces of the finished model begun here: piece -> true.
 	var pieces_begun: Dictionary = {}
 
@@ -982,6 +1070,11 @@ static func _put(place: Place, parts: PackedInt32Array, k: int, g: Geometry) -> 
 		for index: int in parts:
 			if g.held[index] == 1 and not place.pieces_begun.has(g.piece[index]):
 				fresh[g.piece[index]] = true
+	for index: int in parts:
+		if g.bottom[index] != 0x7FFFFFFF:
+			place.pieces.lowest(index, g.bottom[index])
+			place.table[g.piece[index]] = mini(int(place.table.get(g.piece[index], 0x7FFFFFFF)),
+				g.bottom[index])
 	for index: int in parts:
 		place.at[index] = k
 		if first or not place.in_hand and g.bottom[index] != 0x7FFFFFFF \
@@ -1021,6 +1114,7 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 	## by the second rule for the table (Pieces.apart).
 	var floating: Array = []
 	var floating_apart: Array = []
+	var floating_table: Array = []
 	## How each piece of the finished model the graph holds is begun on the
 	## model: built in the hand and put on whole, in the model's first step,
 	## on the ground, or in the air. All pieces, and those of ten parts or
@@ -1151,6 +1245,13 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 					return place.pieces.reaches_apart(index)):
 				floating_apart.append([place, thing, k])
 				pending_float.append(floating_apart.size() - 1)
+			# On the table the model as it stands rests on: its own lowest point.
+			# In the hand, its first parts as before.
+			if not Array(thing).any(func(index: int) -> bool:
+					return place.pieces.reaches(index) if place.in_hand \
+						else place.pieces.on_table(index, int(place.table.get(g.piece[index],
+							0x7FFFFFFF)))):
+				floating_table.append([place, thing, k])
 		# How many steps each floating thing waits to be held.
 		for n: int in range(pending_float.size() - 1, -1, -1):
 			var entry: Array = floating_apart[pending_float[n]]
@@ -1222,7 +1323,17 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 				(entry[1] as PackedInt32Array)[0], (entry[1] as PackedInt32Array).size(),
 				int(float_delay.get(at_entry, -1))])
 			apart_steps[int(entry[2])] = true
-	return {"rank": rank, "sizes": sizes, "kinds": kinds, "types": types,
+	var table_items: int = 0
+	var table_steps: Dictionary = {}
+	said["floating_table"] = []
+	for entry: Array in floating_table:
+		if held_apart.call(entry):
+			table_items += 1
+			(said["floating_table"] as Array).append([int(entry[2]),
+				(entry[1] as PackedInt32Array)[0], (entry[1] as PackedInt32Array).size()])
+			table_steps[int(entry[2])] = true
+	return {"floating_table": table_items, "floating_table_steps": table_steps.size(),
+		"rank": rank, "sizes": sizes, "kinds": kinds, "types": types,
 		"copies": copies_out, "items": items, "hidden": hidden_items,
 		"hidden_steps": hidden_steps, "blocked": blocked_items,
 		"blocked_steps": blocked_steps, "floating": floating_items,
@@ -1306,12 +1417,56 @@ func _selftest() -> void:
 		% int(two["floating"]), int(two["floating"]) == 2)
 	_assert("...and one when a piece is begun on the table (%d)" % int(two["floating_pieces"]),
 		int(two["floating_pieces"]) == 1)
+	_assert("...and none when each piece rests on the table at its own lowest point (%d)"
+		% int(two["floating_table"]), int(two["floating_table"]) == 0)
+	_assert("bottom, top, middle of a stack: the top floats on that table too (%d), built from"
+		% int(gap["floating_table"]) + " the top nothing does (%d)" % int(down["floating_table"]),
+		int(gap["floating_table"]) == 1 and int(down["floating_table"]) == 0)
 	_assert("...and the second piece is begun in the air (%s)" % str(two["starts"]),
 		int(two["starts"]["first"]) == 1 and int(two["starts"]["air"]) == 1)
 	var stood: Dictionary = _measure(_steps_of([[0], [1], [2], [3], [4]], 5), g)
 	_assert("built from the bottom, neither rule finds one floating (%d, %d)" % [
 		int(stood["floating"]), int(stood["floating_pieces"])],
 		int(stood["floating"]) == 0 and int(stood["floating_pieces"]) == 0)
+
+	# A plate on a brick's side stud is held by it, as the build check holds
+	# it; read as before, with no stud from the side, it was held by nothing.
+	var studded: Array = _toy_side_stud()
+	_assert("a brick with a stud on its side is in the library", studded[0] != null)
+	if studded[0] != null:
+		g = studded[0]
+		_assert("a plate on a side stud is held (%d of 2)" % Array(g.held).count(1),
+			g.held[int(studded[1])] == 1)
+		_assert("...and was not, read with no stud from the side (%d of 2)"
+			% Array(g.without_side.held).count(1), g.without_side.held[int(studded[1])] == 0)
+		var sideways: Dictionary = _measure(_steps_of([[0], [1]], 2), g)
+		_assert("...and put on after the brick it floats nowhere (%d)"
+			% int(sideways["floating_pieces"]), int(sideways["floating_pieces"]) == 0)
+
+	# The build check on a half-built model: a 2 x 4 brick standing on two
+	# 1 x 2 bricks under its ends, as a car body stands on its wheels. With
+	# the body alone, the ground at the body's own underside holds it, as the
+	# table under a car without its wheels does; on the floor it floats.
+	_world.clear()
+	_builder.lattice.clear()
+	# The finished car on the floor, as a file opened here stands.
+	var body: int = _world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 48, 0)))
+	_builder.register(body, "3001", _world.get_brick(body).transform)
+	for x: float in [-30.0, 30.0]:
+		var wheel: int = _world.add_brick("3004", 0, Transform3D(Basis.IDENTITY,
+			Vector3(x, 24, 0)))
+		_builder.register(wheel, "3004", _world.get_brick(wheel).transform)
+	var alone: Dictionary = {body: true}
+	_assert("the build check holds a car body before its wheels on the table (%d floating)"
+		% _check_floating(alone, true).size(), _check_floating(alone, true).is_empty())
+	_assert("...where on the floor it floated (%d)" % _check_floating(alone, false).size(),
+		_check_floating(alone, false).has(body))
+	var whole_car: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		whole_car[brick.id] = true
+	_assert("...and the whole car stands either way (%d, %d)" % [
+		_check_floating(whole_car, true).size(), _check_floating(whole_car, false).size()],
+		_check_floating(whole_car, true).is_empty() and _check_floating(whole_car, false).is_empty())
 
 	# A 1 x 1 plate in a well: a ring of 1 x 1 bricks four high round a
 	# square two studs across. Put in after the ring, it cannot be seen
@@ -1331,6 +1486,34 @@ func _selftest() -> void:
 		int(early["hidden"]) == 0)
 	_assert("...nor is it blocked or floating (%d, %d)" % [int(late["blocked"]),
 		int(late["floating"])], int(late["blocked"]) == 0 and int(late["floating"]) == 0)
+
+
+## A 1 x 1 brick with a stud on its side, standing on the ground, and a
+## 1 x 1 plate on that stud: [the geometry, the plate's index].
+func _toy_side_stud() -> Array:
+	_world.clear()
+	_builder.lattice.clear()
+	var bricks: Array = []
+	var index_of: Dictionary = {}
+	var at := Transform3D.IDENTITY
+	var id: int = _world.add_brick("87087", 4, at)
+	_builder.register(id, "87087", at)
+	index_of[id] = 0
+	bricks.append(_world.get_brick(id))
+	var side: Lbm.Connector = null
+	for connector: Lbm.Connector in _library.mesh_for("87087").connectors:
+		if connector.kind == "stud" and connector.gender == "male" and absf(connector.axis.y) < 0.5:
+			side = connector
+	if side == null:
+		return [null, -1]
+	var way: Vector3 = side.axis.normalized()
+	var turn := Basis(Vector3.UP.cross(way).normalized(), PI / 2.0)
+	var plate_at := Transform3D(turn, side.position + way * 8.0)
+	id = _world.add_brick("3024", 14, plate_at)
+	_builder.register(id, "3024", plate_at)
+	index_of[id] = 1
+	bricks.append(_world.get_brick(id))
+	return [_geometry(bricks, index_of), 1]
 
 
 func _toy_stack() -> Geometry:

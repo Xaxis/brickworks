@@ -28,7 +28,13 @@ What each one guards against, all learned the hard way on 2026-10-13:
   checks (idle, arrival, progress, cursor) run alone: beside a heavy flow,
   idle drew 4 frames for 7 moves, against 16 alone. An unknown name fails,
   where it used to run bare node and "pass". The script runs from a copy
-  of itself, so editing it mid-battery cannot break the run.
+  of itself, so editing it mid-battery cannot break the run. `frames`
+  (`cad_frames.mjs --gate`, alone too) holds what a frame costs the app on
+  75969-1: each press of the timeline's Next and an orbit's frames under
+  200 ms of the app's own work, select all under 400. No check held that:
+  the grab's drag
+  handles took a step from 75 ms to 6.7 s, and m61 shipped with it
+  (docs/CADTASK.md, section 6).
 - The merge scripts hold a lock (`.git/worktrees/<name>/merging`) until their
   last gate is done, and `ship.sh` refuses a worktree that has one. m26 was
   shipped as soon as its merge commit appeared, while the tool-list check
@@ -43,6 +49,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   ships only if it shipped, and writes its own. `-` for none before. A
   waiter written by hand found the release before by its command line, its
   own grep hid it, and m43's ship went at once (2026-10-17).
+- Every release runs `site` and `frames` whether they are named or not:
+  `frames` holds a big model's step, orbit and select all to the app's own
+  work per frame, after a feature that ran twice a second left a step at
+  6 s while every named check passed.
 - To hold releases, write a reason to `$RELEASE_OUT/HOLD` (all) or
   `$RELEASE_OUT/<tag>.hold` (one): a queued release waits, and one already
   shipping stops before main moves. Remove the file to let them go. Killing

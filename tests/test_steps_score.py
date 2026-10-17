@@ -176,3 +176,52 @@ def test_a_file_scored_by_hand():
     assert summary["ours"]["steps_ratio"]["value"] == 2.0
     assert summary["ours"]["units"]["value"] == 1.0
     assert summary["author"]["units"]["value"] == 0.0
+
+
+def test_floating_read_without_side_studs_has_a_row_of_its_own():
+    # One step of two things: one floats by the graph as it now is, two read
+    # with no stud from the side holding (a tile on a side stud). A run made
+    # before the probe kept both has only the second, which is then both.
+    ours = {"rank": [0, 0], "sizes": [2], "kinds": [1], "copies": [], "items": 2,
+            "hidden": 0, "hidden_steps": 0, "blocked": 0, "floating": 1, "floating_steps": 1,
+            "measured": 2, "floating_pieces": 1, "floating_pieces_steps": 1,
+            "measured_pieces": 2,
+            "without_side": {"floating": 2, "floating_steps": 1, "measured": 2,
+                             "floating_pieces": 2, "floating_pieces_steps": 1,
+                             "measured_pieces": 2}}
+    author = dict(ours, without_side={"floating": 0, "floating_steps": 0, "measured": 2,
+                                      "floating_pieces": 0, "floating_pieces_steps": 0,
+                                      "measured_pieces": 2})
+    got = steps_score.per_file({"file": "x.mpd", "parts": 2, "orders": {"author": author,
+                                                                         "ours": ours}})
+    assert got["ours"]["floating_pieces"] == (1, 2)
+    assert got["ours"]["floating_no_side"] == (2, 2)
+    assert got["ours"]["floating_no_side_steps"] == (1, 1)
+    old = {k: v for k, v in ours.items() if k != "without_side"}
+    got = steps_score.per_file({"file": "x.mpd", "parts": 2, "orders": {"author": old, "ours": old}})
+    assert got["ours"]["floating_no_side"] == got["ours"]["floating_pieces"] == (1, 2)
+
+
+def test_the_table_and_the_floor_have_rows_of_their_own():
+    # A car body before its wheels: on the table under the model as it
+    # stands, held; on the floor under the finished car, floating. And the
+    # build check asked both ways. A run from before has only the floor.
+    ours = {"rank": [0, 1], "sizes": [1, 1], "kinds": [1, 1], "copies": [], "items": 2,
+            "hidden": 0, "hidden_steps": 0, "blocked": 0, "floating": 1, "floating_steps": 1,
+            "measured": 2, "floating_pieces": 1, "floating_pieces_steps": 1,
+            "measured_pieces": 2, "floating_table": 0, "floating_table_steps": 0}
+    row = {"file": "x.mpd", "parts": 2, "orders": {"author": ours, "ours": ours},
+           "checked": {"ours": {"cuts": 1, "parts": 4, "floating": 0, "steps_floating": 0,
+                                "floating_floor": 3, "steps_floating_floor": 1}}}
+    got = steps_score.per_file(row)["ours"]
+    assert got["floating_table"] == (0, 2)
+    assert got["floating_table_steps"] == (0, 2)
+    assert got["floating_pieces"] == (1, 2)
+    assert got["checked"] == (0, 4)
+    assert got["checked_floor"] == (3, 4)
+    old = {k: v for k, v in ours.items() if not k.startswith("floating_table")}
+    row = {"file": "x.mpd", "parts": 2, "orders": {"author": old, "ours": old},
+           "checked": {"ours": {"cuts": 1, "parts": 4, "floating": 3, "steps_floating": 1}}}
+    got = steps_score.per_file(row)["ours"]
+    assert got["floating_table"] == got["floating_pieces"] == (1, 2)
+    assert got["checked_floor"] == got["checked"] == (3, 4)

@@ -15,6 +15,22 @@
 // Ctrl-A; Delete; Ctrl-Z; B and Right. Writes DIR/web_frames.json and a
 // picture of each model. Judges nothing: SwiftShader on a shared box is not
 // a phone or a graphics card, so the report says these as this box's.
+//
+// --gate: and then judges the app's own work, the frame less its time in
+// WebGL (never the page's wait on SwiftShader's drawing), against bars a
+// release must keep: each press of the timeline's Next in its worst frame
+// (--step-ms, 200), an orbit's drawn frames at their 95th percentile
+// (--orbit-ms, 200), and select all in its worst frame (--select-ms, 400:
+// a good build's read 114 to 190 ms here, one frame doing all the work of
+// selecting 922 parts, and a bar it sits under by a tenth holds releases on
+// the box's load, not on the app).
+// The release's preview check (tools/release/preview_checks.sh, frames) on
+// 75969-1, 925 parts. No check held a frame's cost: a feature that found its
+// drag handles twice a second in every browser took each step of 75969-1's
+// timeline from 18-75 ms of its own work to 5.7-6.7 s, and steps_flow, which
+// checks what a step shows, passed (docs/CADTASK.md, section 6).
+//   node tools/web/cad_frames.mjs --url=URL/app --bypass=X --gate --arrive=300 \
+//     --only=orbit,select_all,step --out=DIR vendor/omr/files/75969-1.mpd
 import { launch, openColumnFor } from "./browser.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
@@ -25,6 +41,12 @@ const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith
 }));
 const models = process.argv.slice(2).filter((a) => !a.startsWith("--")).map((m) => resolve(m));
 const url = args.url || "http://127.0.0.1:8862/";
+// A preview behind Vercel's protection: the bypass in the first address,
+// which sets its cookie for the rest.
+const bypass = args.bypass && args.bypass !== true ? args.bypass : (process.env.BW_BYPASS || "");
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/cad_frames";
 mkdirSync(out, { recursive: true });
 // --only=step,undo: those acts alone, each model opened first, written over
@@ -77,7 +99,7 @@ const choosers = [];
 page.on("filechooser", (chooser) => choosers.push(chooser));
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 
 const state = () => page.evaluate(() => window.brickworksState || {});
 const controls = () => page.evaluate(() => window.brickworksControls || {});
@@ -347,3 +369,41 @@ for (const model of models) {
 }
 console.log(`frames: ${rows.length} models written to ${out}/web_frames.json`);
 await browser.close();
+
+// --gate: the app's own work held to its bars, each said, and the exit code.
+if (args.gate) {
+  const bar = (name, fallback) => Number(args[name] && args[name] !== true ? args[name] : fallback);
+  const stepMs = bar("step-ms", 200);
+  const orbitMs = bar("orbit-ms", 200);
+  const selectMs = bar("select-ms", 400);
+  let failed = 0;
+  const say = (passed, line) => {
+    console.log(`  ${passed ? "ok  " : "FAIL"}  ${line}`);
+    if (!passed) failed += 1;
+  };
+  if (rows.length < models.length) say(false, `opened ${rows.length} of ${models.length} models`);
+  for (const row of rows) {
+    say((row.open || {}).placed > 0, `${row.file}: opened, ${(row.open || {}).placed || 0} parts`);
+    if (wanted("orbit")) {
+      const o = row.orbit || {};
+      say(o.drawn > 0 && o.drawn_own_p95_ms <= orbitMs, `${row.file}: an orbit's drawn frames, `
+        + `the app's own work at the 95th percentile ${o.drawn_own_p95_ms} ms of ${orbitMs} `
+        + `(median ${o.drawn_own_median_ms}, worst ${o.own_max_ms}; ${o.drawn || 0} drawn)`);
+    }
+    if (wanted("select_all")) {
+      const a = row.select_all || {};
+      say(a.done && a.selected > 0 && a.own_max_ms <= selectMs, `${row.file}: select all `
+        + `(${a.selected || 0} selected), its worst frame's own work ${a.own_max_ms} ms of ${selectMs}`);
+    }
+    if (wanted("step")) {
+      const each = (row.step || {}).each || [];
+      say(each.length === 5, `${row.file}: the timeline stepped by Next ${each.length} times of 5`);
+      each.forEach((one, k) => say(one.done && one.own_max_ms <= stepMs,
+        `${row.file}: Next #${k + 1}${one.done ? "" : " (did not step)"}, its worst frame's own `
+        + `work ${one.own_max_ms} ms of ${stepMs} (the page's wait ${one.max_ms} ms)`));
+    }
+  }
+  if (errors.length) say(false, `errors on the page: ${errors.slice(0, 3).join(" | ")}`);
+  console.log(`frames: ${failed === 0 ? "every check passed" : `${failed} FAILED`}`);
+  process.exit(failed === 0 ? 0 : 1);
+}
