@@ -132,9 +132,56 @@ func _run() -> void:
 	if paths.is_empty():
 		_judge(rows[0], rows[1])
 		_judge_open(sets)
+		await _open_mid_weigh()
 		print("bigmodel: %s" % ("every act grows no faster than the model"
 			if _failures == 0 else "%d acts grow faster than the model" % _failures))
 	await _quit_mid_weigh()
+
+
+## The next file opened at once, while the last is weighed on a worker
+## (Main._weigh, 600 parts or more), as a person opens one file after
+## another: 8202-1, whose hose is a part new to the library, after 42082-1.
+## The library adds no part while a worker reads it, and until 2026-10-17
+## the open waited out the weighing, 10.7 s of its 15.4 s. The weighing
+## gives way (PartLibrary.reading_in's stop): the open takes a fraction of
+## a whole weighing of the model before it, both timed here, and the model
+## it opened is weighed.
+func _open_mid_weigh() -> void:
+	const NEXT := "res://vendor/omr/files/8202-1.mpd"
+	if not FileAccess.file_exists(NEXT) or _world.brick_count() < 600:
+		print("  ----  8202-1 is not in this checkout, or no big model is up: the open "
+			+ "while a model is weighed was not judged")
+		return
+	var weighed: String = _store.title
+	var whole: int = -1
+	for weighing: int in 2:
+		_main.set("_stability_revision", -1)
+		_main.set("_stability_at", 0)
+		for _n: int in 300:
+			if bool(_main.get("_weighing")):
+				break
+			await process_frame
+		if not bool(_main.get("_weighing")):
+			_check("%s was weighed on a worker" % weighed, false)
+			return
+		var began: int = Time.get_ticks_msec()
+		if weighing == 0:
+			while bool(_main.get("_weighing")) and Time.get_ticks_msec() - began < 300000:
+				await process_frame
+			whole = Time.get_ticks_msec() - began
+			continue
+		var result: Dictionary = _store.open_text(FileAccess.get_file_as_string(NEXT), "8202-1")
+		(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
+		var took: int = Time.get_ticks_msec() - began
+		_check("8202-1 opened while %s was weighed, in %d ms: not waiting for the weighing, "
+			% [weighed, took] + "%d ms whole" % whole, took * 3 < whole)
+	for _n: int in 300:
+		if not bool(_main.get("_weighing")) and int(_main.get("_stability_revision")) \
+				== _world.revision:
+			break
+		await process_frame
+	var said: String = str(_main.get("_stability_text"))
+	_check("and 8202-1 was weighed after: \"%s\"" % said, not said.is_empty())
 
 
 ## Quit as a person closes the window after a big model: at once, the model

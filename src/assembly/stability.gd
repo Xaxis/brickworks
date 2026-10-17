@@ -111,6 +111,9 @@ var lattice: BrickLattice
 ## Bricks that are the floor and not the model: the baseplate under it.
 ## Left out of whether it tips over.
 var floor_ids: Dictionary = {}
+## Set on the main thread to end a [method check] on a worker early, which
+## then returns null (Main._weigh, PartLibrary.reading_in).
+var stopped: bool = false
 
 
 ## Check a model. Returns the joints that would fail, weakest first.
@@ -131,6 +134,8 @@ func check(world: BrickWorld) -> Report:
 		report.total_grams += mass[brick.id]
 
 	var graph: Dictionary = contacts(bricks)
+	if stopped:
+		return null
 	var above: Dictionary = graph["above"]
 	var below: Dictionary = graph["below"]
 	var boxes_of: Dictionary = graph["boxes"]
@@ -179,6 +184,8 @@ func check(world: BrickWorld) -> Report:
 				load_centre.get(supporter_id, Vector3.ZERO) + centre * share)
 
 	for item: Variant in bricks:
+		if stopped:
+			return null
 		var brick: BrickWorld.Brick = item
 		if not above.has(brick.id):
 			continue
@@ -193,6 +200,8 @@ func check(world: BrickWorld) -> Report:
 			report.risks.append(risk)
 
 	_check_levels(world, mass, boxes_of, report)
+	if stopped:
+		return null
 	_check_tipping(bricks, mass, boxes_of, report)
 
 	report.risks.sort_custom(func(a: Risk, b: Risk) -> bool:
@@ -265,6 +274,8 @@ func contacts(bricks: Array) -> Dictionary:
 	var above: Dictionary = {}         ## id -> { id: shared cell count }
 	var below: Dictionary = {}
 	for item: Variant in bricks:
+		if stopped:
+			break
 		var brick: BrickWorld.Brick = item
 		var mine: PackedInt32Array = _boxes(brick)
 		boxes_of[brick.id] = mine

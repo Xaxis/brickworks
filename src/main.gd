@@ -4414,7 +4414,7 @@ func _weigh() -> void:
 		_library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
 			weighed[0] = judge.check(still), false, "weigh the model")
-		_library.reading_in(task)
+		_library.reading_in(task, func() -> void: judge.stopped = true)
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
 		WorkerTasks.collect(task)
@@ -4423,6 +4423,9 @@ func _weigh() -> void:
 		_weighing = false
 		report = weighed[0]
 		if report == null:
+			if judge.stopped:
+				# For a part the library had to add: weighed again.
+				_stability_revision = -1
 			return
 	for id: int in scenery:
 		var plate: BrickWorld.Brick = _world.get_brick(id)
