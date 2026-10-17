@@ -597,112 +597,67 @@ def holes(connections: list[Connection]) -> list[Hole]:
 ## A bore wider than this, in LDU, is wider than any pin's hole: a tyre's,
 ## round the rim that fills it.
 WIDE_BORE = 7.0
-## How far inside a wide bore's round a cell's middle may lie and the bore
-## still be the part's innermost there, in LDU: under a cell's half diagonal.
+## How far inside a wide bore's round a cell's middle may lie and nothing of
+## the part be inside it, in LDU: under a cell's half diagonal.
 WIDE_SLACK = 1.5
 
 
 def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole]:
-    """Every tyre's hole: a bore wider than a pin's, all the way round,
-    across the stud axis, with nothing of the part inside it along its
-    length but a cell at either end, where the part's own faces meet it.
+    """Every tyre's hole: the line of a bore wider than a pin's, all the way
+    round, across the stud axis and square to the part, that nothing of the
+    part comes inside anywhere along it, from one face of the part to the
+    other. At the narrowest of the bores on the line, whole.
 
     Its cover keeps it open ([to_boxes]), as it keeps a Technic hole open.
     A tyre is a ring, so its convex hull is a disc, and a tyre past the box
     limit was covered at a coarser grain inside that hull: its hole was
-    filled. 18450's, 41893's and 23798's held tens of thousands of cells, so
-    no rim could go in. A round brick's hollow is along the stud axis and a
-    hub's bore has the hub's axle in it, so neither is one.
+    filled. 18450's and 41893's held tens of thousands of cells, so no rim
+    could go in.
 
-    Each bore is one, and the bores on one line are one more, from the first
-    one's start to the last one's end at the narrowest of them: a tyre's
-    hole is often two bores at its shoulders and a narrower one between,
-    joined by cones that are no bore (50951's: 14, 12 and 14 LDU).
-
-    Only a hole through the part, square to it: the bores on its line reach
-    from one face of the part to the other, to within WIDE_FACE. A shell's
-    round hollow is a bore and nothing is inside it, but it is no hole a rim
-    goes through: carved from 30117's cover, a quarter saucer, it was 1,256
-    boxes where it had been one.
+    Through the part, not along the bores alone: 18450 draws bores at its
+    shoulders only. And not a hollow a line runs into: a shell's round
+    hollow is a bore with nothing in it, but its line meets the shell, and
+    30117, a quarter saucer, carved along its bore, was 1,256 boxes where it
+    had been one. A hub's bore has the hub's axle in it, and a round brick's
+    hollow is along the stud axis.
     """
     if occupancy.cell_count == 0:
         return []
-    grid = occupancy.to_grid()
-    out: list[Hole] = []
+    lines: list[Hole] = []
     for c in connections:
         if (c.kind is not ConnectorKind.BORE or c.radius <= WIDE_BORE
                 or c.arc < 1.0 - 1e-6 or abs(c.axis.y) >= 0.99 or c.length <= 0.0):
             continue
         axis = np.array([c.axis.x, -c.axis.y, -c.axis.z])
         length = float(np.linalg.norm(axis))
-        if length < 1e-9:
+        if length < 1e-9 or float(np.abs(axis).max()) / length < 0.999:
             continue
-        hole = Hole(point=np.array([c.position.x, -c.position.y, -c.position.z]),
-                    axis=axis / length, span=(0.0, c.length), radius=c.radius)
-        if _filled_inside(occupancy, grid, hole):
-            continue
-        out.append(hole)
-    # The bores on one line, as one at the narrowest of them.
-    lines: list[Hole] = []
-    for hole in out:
+        axis = axis / length
+        point = np.array([c.position.x, -c.position.y, -c.position.z])
         for line in lines:
-            if abs(float(line.axis @ hole.axis)) < 0.999:
-                continue
-            gap = hole.point - line.point
-            if np.linalg.norm(gap - line.axis * float(gap @ line.axis)) > 1.5:
-                continue
-            a = float(gap @ line.axis)
-            b = a + (hole.span[1] - hole.span[0]) * float(hole.axis @ line.axis)
-            assert line.span is not None
-            line.span = (min(line.span[0], a, b), max(line.span[1], a, b))
-            line.radius = min(line.radius, hole.radius)
-            break
+            if _on_line(point, axis, line):
+                line.radius = min(line.radius, c.radius)
+                break
         else:
-            lines.append(Hole(point=hole.point.copy(), axis=hole.axis.copy(),
-                              span=hole.span, radius=hole.radius))
-    through = [line for line in lines if _through(occupancy, grid, line)]
-    kept = [hole for hole in out if any(_on_line(hole, line) for line in through)]
-    return kept + [line for line in through if not _filled_inside(occupancy, grid, line)]
+            lines.append(Hole(point=point, axis=axis, span=None, radius=c.radius))
+    grid = occupancy.to_grid()
+    return [line for line in lines if not _filled_near(occupancy, grid, line)]
 
 
-## How far in from a face of the part a hole through it may start, in LDU:
-## a tyre's sidewall is drawn as a ring at its face, its bores from there.
-WIDE_FACE = 2.0 * CELL
-
-
-def _through(occupancy: Occupancy, grid: np.ndarray, line: Hole) -> bool:
-    """Whether the bores on a line reach through the part, square to it."""
-    square = [n for n in range(3) if abs(line.axis[n]) > 0.999]
-    if not square or line.span is None:
+def _on_line(point: np.ndarray, axis: np.ndarray, line: Hole) -> bool:
+    """Whether a bore at [point] going [axis] is on a line's."""
+    if abs(float(line.axis @ axis)) < 0.999:
         return False
-    n = square[0]
-    filled = np.nonzero(grid.any(axis=tuple(a for a in range(3) if a != n)))[0]
-    if filled.size == 0:
-        return False
-    low = (occupancy.origin[n] + int(filled[0])) * CELL
-    high = (occupancy.origin[n] + int(filled[-1]) + 1) * CELL
-    ends = [line.point[n] + line.axis[n] * s for s in line.span]
-    return min(ends) <= low + WIDE_FACE and max(ends) >= high - WIDE_FACE
-
-
-def _on_line(hole: Hole, line: Hole) -> bool:
-    """Whether a bore is one of a line's."""
-    if abs(float(line.axis @ hole.axis)) < 0.999:
-        return False
-    gap = hole.point - line.point
+    gap = point - line.point
     return bool(np.linalg.norm(gap - line.axis * float(gap @ line.axis)) <= 1.5)
 
 
-def _filled_inside(occupancy: Occupancy, grid: np.ndarray, hole: Hole) -> bool:
-    """Whether any cell of the part is inside a wide bore, a cell in from
-    either end of it and WIDE_SLACK in from its round."""
-    assert hole.span is not None
-    low, high = hole.span[0] + CELL, hole.span[1] - CELL
-    if high <= low:
-        return False
-    inner = Hole(point=hole.point, axis=hole.axis, span=(low, high),
-                 radius=hole.radius - WIDE_SLACK)
-    return bool((_bore(occupancy, [inner], whole_line=False) & grid).any())
+def _filled_near(occupancy: Occupancy, grid: np.ndarray, line: Hole) -> bool:
+    """Whether any cell of the part is inside a line's round, WIDE_SLACK in
+    from it, anywhere along it."""
+    inner = Hole(point=line.point, axis=line.axis, span=None,
+                 radius=line.radius - WIDE_SLACK)
+    return bool((_bore(occupancy, [inner], whole_line=True) & grid).any())
 
 
 def _fills(shaft: Connection, bore: Connection) -> bool:

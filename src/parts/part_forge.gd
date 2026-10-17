@@ -1823,117 +1823,57 @@ static func _holes(connectors: Array) -> Array:
 
 
 ## occupancy.WIDE_BORE: a bore wider than any pin's hole, LDU, and
-## occupancy.WIDE_SLACK: how far inside one a cell's middle may lie and the
-## bore still be the part's innermost there.
+## occupancy.WIDE_SLACK: how far inside one a cell's middle may lie and
+## nothing of the part be inside it.
 const WIDE_BORE := 7.0
 const WIDE_SLACK := 1.5
 
 
-## occupancy.wide_bores: every tyre's hole, as [point, unit axis, span,
-## radius] in the app's axes: a bore wider than a pin's, all the way round,
-## across the stud axis, with nothing of the part inside it along its
-## length but a cell at either end; and the bores on one line as one more,
-## from the first's start to the last's end at the narrowest of them.
+## occupancy.wide_bores: every tyre's hole, as [point, unit axis, [] (the
+## whole line), radius] in the app's axes: the line of a bore wider than a
+## pin's, all the way round, across the stud axis and square to the part,
+## that nothing of the part comes inside anywhere along it, at the
+## narrowest of the bores on the line.
 static func _wide_bores(grid: Grid, connectors: Array) -> Array:
-	var out: Array = []
+	var lines: Array = []
 	if grid.count() == 0:
-		return out
+		return lines
 	for c: Array in connectors:
 		if c[0] != "bore" or float(c[9]) <= WIDE_BORE or _arc(c) < 1.0 - 1e-6 \
 				or absf(float(c[6])) >= 0.99 or float(c[8]) <= 0.0:
 			continue
 		var axis := PackedFloat64Array([float(c[5]), -float(c[6]), -float(c[7])])
 		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
-		if length < 1e-9:
+		if length < 1e-9 or maxf(absf(axis[0]), maxf(absf(axis[1]), absf(axis[2]))) / length < 0.999:
 			continue
-		var hole: Array = [PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])]),
-			PackedFloat64Array([axis[0] / length, axis[1] / length, axis[2] / length]),
-			[0.0, float(c[8])], float(c[9])]
-		if not _filled_inside(grid, hole):
-			out.append(hole)
-	var lines: Array = []
-	for hole: Array in out:
+		axis = PackedFloat64Array([axis[0] / length, axis[1] / length, axis[2] / length])
+		var point := PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])])
 		var joined: bool = false
 		for line: Array in lines:
-			var way: PackedFloat64Array = line[1]
-			if absf(_dot(way, hole[1])) < 0.999:
-				continue
-			var gap: PackedFloat64Array = _sub(hole[0], line[0])
-			if _length(_sub(gap, _scaled(way, _dot(gap, way)))) > 1.5:
-				continue
-			var a: float = _dot(gap, way)
-			var b: float = a + (float(hole[2][1]) - float(hole[2][0])) * _dot(hole[1], way)
-			line[2] = [minf(float(line[2][0]), minf(a, b)), maxf(float(line[2][1]), maxf(a, b))]
-			line[3] = minf(float(line[3]), float(hole[3]))
-			joined = true
-			break
+			if _on_line(point, axis, line):
+				line[3] = minf(float(line[3]), float(c[9]))
+				joined = true
+				break
 		if not joined:
-			lines.append([hole[0], hole[1], hole[2], hole[3]])
-	var through: Array = lines.filter(func(line: Array) -> bool: return _through(grid, line))
-	var kept: Array = out.filter(func(hole: Array) -> bool:
-		return through.any(func(line: Array) -> bool: return _on_line(hole, line)))
-	for line: Array in through:
-		if not _filled_inside(grid, line):
-			kept.append(line)
-	return kept
+			lines.append([point, axis, [], float(c[9])])
+	return lines.filter(func(line: Array) -> bool: return not _filled_near(grid, line))
 
 
-## occupancy.WIDE_FACE: how far in from a face of the part a hole through it
-## may start, LDU.
-const WIDE_FACE := 2.0 * CELL
-
-
-## occupancy._through: whether the bores on a line reach through the part,
-## square to it.
-static func _through(grid: Grid, line: Array) -> bool:
-	var axis: PackedFloat64Array = line[1]
-	var n: int = -1
-	for k: int in 3:
-		if absf(axis[k]) > 0.999:
-			n = k
-			break
-	if n < 0:
-		return false
-	var s: Vector3i = grid.shape
-	var first: int = -1
-	var last: int = -1
-	for x: int in s.x:
-		for y: int in s.y:
-			for z: int in s.z:
-				if grid.bits[(x * s.y + y) * s.z + z] == 0:
-					continue
-				var at: int = [x, y, z][n]
-				first = at if first < 0 else mini(first, at)
-				last = maxi(last, at)
-	if first < 0:
-		return false
-	var low: float = float(grid.origin[n] + first) * CELL
-	var high: float = float(grid.origin[n] + last + 1) * CELL
-	var point: PackedFloat64Array = line[0]
-	var span: Array = line[2]
-	var a: float = point[n] + axis[n] * float(span[0])
-	var b: float = point[n] + axis[n] * float(span[1])
-	return minf(a, b) <= low + WIDE_FACE and maxf(a, b) >= high - WIDE_FACE
-
-
-## occupancy._on_line: whether a bore is one of a line's.
-static func _on_line(hole: Array, line: Array) -> bool:
+## occupancy._on_line: whether a bore at [param point] going [param axis] is
+## on a line's.
+static func _on_line(point: PackedFloat64Array, axis: PackedFloat64Array, line: Array) -> bool:
 	var way: PackedFloat64Array = line[1]
-	if absf(_dot(way, hole[1])) < 0.999:
+	if absf(_dot(way, axis)) < 0.999:
 		return false
-	var gap: PackedFloat64Array = _sub(hole[0], line[0])
+	var gap: PackedFloat64Array = _sub(point, line[0])
 	return _length(_sub(gap, _scaled(way, _dot(gap, way)))) <= 1.5
 
 
-## occupancy._filled_inside: whether any cell of the part is inside a wide
-## bore, a cell in from either end of it and WIDE_SLACK in from its round.
-static func _filled_inside(grid: Grid, hole: Array) -> bool:
-	var low: float = float(hole[2][0]) + CELL
-	var high: float = float(hole[2][1]) - CELL
-	if high <= low:
-		return false
-	var inner: PackedByteArray = _bore(grid, [[hole[0], hole[1], [low, high],
-		float(hole[3]) - WIDE_SLACK]], false)
+## occupancy._filled_near: whether any cell of the part is inside a line's
+## round, WIDE_SLACK in from it, anywhere along it.
+static func _filled_near(grid: Grid, line: Array) -> bool:
+	var inner: PackedByteArray = _bore(grid, [[line[0], line[1], [],
+		float(line[3]) - WIDE_SLACK]], true)
 	for n: int in inner.size():
 		if inner[n] == 1 and grid.bits[n] == 1:
 			return true
