@@ -142,7 +142,11 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   then what is still apart, floating or unheld (the exact check's `unheld`)
   taken out together and said, never the body. Weighed again: given a stand
   after all if it would tip or all but (`needs_help`), and a joint past its
-  working load propped (`_prop`) if that leaves fewer.
+  working load propped (`_prop`) if that leaves fewer: a pillar under the
+  piece beyond the joint, near its centre of mass, onto the model
+  (`_beyond`, `_prop_under`), else under the part beyond the joint; with
+  sides turned, slivers of three parts or fewer at the core's top taken out
+  before the check (`Plan.caps_apart`).
   The report: `coverage`, `lost` (regions of the model no part fills, a
   hundredth of it or more, each said where it is), `left_out`, `joined`,
   `tied`, `propped`, `stand`, `balance`. `Brickify.said` puts it in words for the panel

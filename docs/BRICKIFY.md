@@ -2344,6 +2344,73 @@ under the heavy piece a weak column carries, at its centre of mass, where
 `_prop` now props each joint of the column under the column itself; and
 the pieces the shells leave apart at a model's top found before the check.
 
+### Third round: propped where the weight is
+
+**What changed.**
+1. **A pillar under the weight** (`Brickify._prop`, `_beyond`,
+   `_prop_under`). For each stud joint past its working load, worst first,
+   the piece beyond it, what its studs alone hold up, is found on the graph
+   of parts on parts, and the shortest pillar of 1 x 1s is laid from under
+   the parts of it nearest its centre of mass, those with nothing of the
+   piece under them first, down onto a stud of the rest of the model (not
+   the ground: a pillar from the figure's arm to the floor held it, and its
+   side views went from 0.71 to 1.84 studs); failing that, under the part
+   beyond the joint, as before. Kept only if fewer joints are past their
+   load, as before. It is the same for a build with its sides upright.
+2. **No sliver at the core's top left for the mend** (`Plan.caps_apart`):
+   with sides turned, a piece of the core of three parts or fewer apart from
+   the rest, with nothing its studs could hold over it (air, a shell, or a
+   tile's smooth top), goes before the check. The avocado at 48 studs is
+   checked once, from twice.
+
+**Joints past their load**, at 48 studs (none at 24, before or after),
+the branch at `c7cdd00`:
+
+| Model | `main` | Second round | Third round |
+|---|---|---|---|
+| Bob | 1 | 0 | 0 |
+| the figure | 4 | 2 | 0 |
+| the fox | 2 | 2 | 2 |
+| the toy car | 0 | 6 | 0 |
+| the temple (`main`'s build) | 35 | 35 | 35 |
+| All | 42 | 45 | 37 |
+
+The toy car's column now has a pillar under the fender's weight, and the
+car stands with none past its load; standing with no joint past its load,
+12 of 14 at 48 studs from 10.
+
+**The bench again, third round** (`c7cdd00`):
+
+| Studs | Run | Steep faces (°) | Nearest on its side | There (°) | Sides, Hausdorff95 | Hausdorff95 | Whole | One piece | Standing | Joints past load | Parts | ΔE2000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 6% | 41.1 | 0.73 | 0.77 | 14/14 | 14/14 | 14/14 | 0 | 10,975 | 11.04 |
+| 24 | after | 39.3 | 14% | 34.2 | 0.72 | 0.77 | 14/14 | 14/14 | 14/14 | 0 | 11,558 | 11.08 |
+| 48 | `main` | 36.4 | 13% | 36.3 | 0.84 | 0.96 | 14/14 | 14/14 | 10/14 | 42 | 51,531 | 9.17 |
+| 48 | after | 35.0 | 28% | 29.3 | 0.86 | 0.95 | 14/14 | 14/14 | 12/14 | 37 | 55,365 | 9.21 |
+
+Parts 5.3% and 7.4% more; 1 x 1s 39.4% and 33.1%, seams bridged 40.7%
+and 38.9%, weak points 31.2% and 25.4%.
+
+**Time**, laid four times each side by side (`brickify_phases.gd`, two
+processes each in turn, medians; `c7cdd00`):
+
+| Run | `main` (s) | Branch (s) | Times |
+|---|---|---|---|
+| the avocado at 48 | 18.4 | 25.1 | 1.37 |
+| the Bell X-1 at 48 | 9.5 | 14.4 | 1.51 |
+
+The avocado is checked once now (from twice), but its shells take 1.4 to
+2.6 s and its stitch 2.8 to 6.0 s where `main`'s takes 0.8 to 1.6. The X-1
+at 48 is laid twice: with its sides turned it leaves a region out, and is
+laid again unbonded and by the flag, where `main` lays it once. The
+forty-stud bunny is 1.00 times (second round; the prop step changes nothing
+of a build with no joint past its load). The bar of 1.3 times is missed on
+these two. What would meet it: for the X-1, finding the region a shell
+loses before the core is laid (a cube given back where its model is thinner
+than the shell's rows) so it is laid once; for the avocado, the stitch told
+which pieces a shell made, so it does not try to join pieces the shells
+will hold.
+
 ### Proof
 
 The second round's runs (`b63bcf8`): `brickify_probe` 84 of 84, the
