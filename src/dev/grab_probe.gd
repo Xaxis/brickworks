@@ -113,7 +113,9 @@ func _run() -> void:
 		for loop: Array in LOOPS:
 			if only.is_empty() or only == "loops" or only == loop[2]:
 				await _loop_case(loop[0], loop[1], loop[2])
-	if only.is_empty() or only == "tipping":
+	if only.is_empty() or only == "falling":
+		await _made_fall()
+	if only == "tipping":
 		var asked: Array = []
 		for arg: String in args:
 			if arg.ends_with(".mpd") or arg.ends_with(".ldr"):
@@ -1074,6 +1076,269 @@ func _settle_case(paths: Array) -> void:
 			return
 	print("\n(settling inside: none of the sets has a free joint inside a section that swings: %d tried)"
 		% paths.size())
+
+
+## A made model that tips when posed: a tall arm of 1x2 bricks on a hinge
+## (3937 and 3938, placed as LDraw pairs them) on a tower of four 2x2 bricks,
+## nothing under the arm's far end, on no floor. LDraw's own units, y down.
+const MADE_CRANE := """0 A tall arm on a hinge on a 2x2 tower
+0 Name: made_crane.ldr
+0 !BRICKWORKS FLOOR NONE
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -120 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 0 -120 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 0 -144 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -168 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -192 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -216 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -240 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 14 0 -248 10 1 0 0 0 1 0 0 0 1 3023.dat
+"""
+
+
+## The made crane posed past its edge by a drag, on no floor: let go, it
+## falls about its support's edge until the arm's far end reaches the floor,
+## at the angle a hand works out from the posed corners (atan2 of a corner's
+## height over its reach past the edge, the least of them), with that corner
+## on the floor; one undo step, said in words. Then on a baseplate's studs
+## the same drag leaves it standing, and it says why.
+func _made_fall() -> void:
+	print("\nfalling: a made crane, a tall arm on a 2x2 tower, on no floor")
+	var path: String = OUT.path_join("made_crane.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(MADE_CRANE)
+	file.close()
+	if not await _open(path):
+		_check("falling: the made crane opens", false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var hinge: Bodies.Link = null
+	for link: Bodies.Link in bodies.links:
+		if link.kind == "hinge":
+			hinge = link
+	if hinge == null:
+		_check("falling: the made crane's arm is on its hinge", false)
+		return
+	var arm: int = hinge.b if bodies.parent_link.get(hinge.b) == hinge else hinge.a
+	print("    the arm: %s on its hinge at %s, the anchor %s" % [bodies.named([arm]), hinge.point,
+		bodies.named(bodies.anchors.keys())])
+	var floor_y: float = _lowest()
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	_camera.look_from(Vector3(1.0, 0.45, 0.25).normalized())
+	_frame_on(PackedInt64Array())
+	await _frames(15)
+	if _windowed:
+		await _shot("falling", "1_before")
+	var press: Dictionary = _press_point(bodies.members[arm], bodies)
+	if press.is_empty():
+		_check("falling: the arm is under the pointer", false)
+		return
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	_check("falling: a drag on the arm turns it on its hinge (%s)" % (grab.said if grab != null
+		else _grab.last_words), grab != null and grab.state == "moves")
+	if grab == null:
+		await _button(screen, false)
+		return
+	# Outward: the way that carries the arm's weight past the tower's edge.
+	var way: float = 1.0
+	var out_plus: Vector3 = _centre_of(grab.transforms_at(60.0))
+	var out_minus: Vector3 = _centre_of(grab.transforms_at(-60.0))
+	var base_centre: Vector3 = _centre_of({})
+	if Vector2(out_minus.x - base_centre.x, out_minus.z - base_centre.z).length() \
+			> Vector2(out_plus.x - base_centre.x, out_plus.z - base_centre.z).length():
+		way = -1.0
+	var hold: Vector3 = grab._hold
+	for n: int in range(1, 19):
+		var turned: Vector3 = _about(grab.pivot, grab.axis, way * 5.0 * n) * hold
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+		if _windowed and n == 12:
+			await _shot("falling", "2_mid_drag")
+	# Held there a moment: it is weighed every 50 ms.
+	await create_timer(0.08).timeout
+	await _move(_last_screen + Vector2(0.5, 0), MOUSE_BUTTON_MASK_LEFT)
+	var posed: float = grab.angle
+	print("    posed to %.1f° (asked %.0f°)%s" % [posed, way * 90.0, " — stopped by the model" if grab.stopped else ""])
+	_check("falling: dragged out to %.0f°, the model leans over its edge (%s)" % [posed, _grab._said],
+		_grab.is_leaning())
+	# By hand, from the pose: every part's box corners where the drag put
+	# them; the edge the centre of mass is past; the least atan2(h, u).
+	var placed: Dictionary = grab.placed.duplicate()
+	var hand: Dictionary = _fall_by_hand(placed)
+	print("    by hand: past the %s edge by %.1f LDU; the first corner down is %s, %.1f LDU out and %.1f up: %.2f°"
+		% [hand["edge"], hand["past"], hand["corner"], hand["u"], hand["h"], hand["angle"]])
+	await _button(_last_screen, false)
+	# Half a second of falling, a picture half way.
+	var released: int = Time.get_ticks_msec()
+	var falling_shot: bool = false
+	while _grab.is_falling() and Time.get_ticks_msec() - released < 3000:
+		if _windowed and not falling_shot and Time.get_ticks_msec() - released > 250:
+			falling_shot = true
+			await _shot("falling", "3_falling")
+		await process_frame
+	await _frames(3)
+	print("    said: %s" % _grab.last_words)
+	_check("falling: let go past its edge it falls, and says how it lies (%s)" % _grab.last_words,
+		_grab.last_words.contains("tipped over to the"))
+	# The angle it fell: a base brick's up turned.
+	var base_key: int = int((bodies.members[int(bodies.anchors.keys()[0])] as PackedInt64Array)[0])
+	var up_before: Vector3 = (placed.get(base_key, before[base_key]) as Transform3D).basis.y.normalized()
+	var up_after: Vector3 = _world.get_brick(base_key).transform.basis.y.normalized()
+	var fell: float = rad_to_deg(up_before.angle_to(up_after))
+	_check("falling: it turned %.2f° about its edge, as the hand works out (%.2f°)" % [fell, hand["angle"]],
+		absf(fell - float(hand["angle"])) < 1.5)
+	# The contact: the corner found by hand is on the floor, and so is the edge.
+	var lowest: float = _lowest()
+	var corner_now: Vector3 = _corner_now(int(hand["key"]), int(hand["index"]))
+	_check("falling: that point is on the floor (%.2f LDU above it) and nothing is under it (lowest %.2f)"
+		% [corner_now.y - floor_y, lowest - floor_y], absf(corner_now.y - floor_y) <= 2.0
+		and lowest >= floor_y - 2.0)
+	var fresh := Balance.new()
+	fresh.library = _library
+	fresh.lattice = _builder.lattice
+	fresh.floor_ids = _store.scenery
+	var now: Balance.Report = fresh.measure(_world.bricks())
+	_check("falling: where it lies, it rests: its centre of mass %s studs inside what it lies on"
+		% Balance.studs(now.margin), now.margin >= -0.1)
+	_check("falling: the pose and the fall are one step to undo (%s)" % (_builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+	if _windowed:
+		_frame_on(PackedInt64Array())
+		await _frames(10)
+		await _shot("falling", "4_fallen")
+	_builder.undo()
+	await _frames(3)
+	_check("falling: one undo stands it up again exactly (%s)" % _differs(before),
+		_differs(before) == "none differs")
+	# On a baseplate's studs it stays standing, and says why.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	await tools.run("set_floor", {"kind": "baseplate", "across": 16})
+	await _frames(10)
+	_builder.forget_history()
+	_grab._ready_now()
+	_check("falling: on a baseplate the tower stands on its studs (%d parts)" % _grab._bodies._standing.size(),
+		not _grab._bodies._standing.is_empty())
+	_frame_on(PackedInt64Array())
+	await _frames(10)
+	var on_plate: Dictionary = _snapshot()
+	press = _press_point(_grab._bodies.members[int(_grab._bodies.body_of[int((bodies.members[arm] as PackedInt64Array)[0])])], _grab._bodies)
+	if press.is_empty():
+		_check("falling: the arm is under the pointer on the baseplate", false)
+		return
+	screen = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	grab = _grab.grab
+	if grab == null:
+		_check("falling: on the baseplate a drag on the arm turns it", false)
+		await _button(screen, false)
+		return
+	hold = grab._hold
+	for n: int in range(1, 19):
+		var turned: Vector3 = _about(grab.pivot, grab.axis, way * 5.0 * n) * hold
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+	await _button(_last_screen, false)
+	await _frames(5)
+	await _settled()
+	print("    on a baseplate: %s" % _grab.last_words)
+	var base_still: bool = (_world.get_brick(base_key).transform as Transform3D).is_equal_approx(on_plate[base_key])
+	_check("falling: on the baseplate's studs it does not fall, and says why", base_still
+		and not _grab.last_words.contains("tipped over") and _grab.last_words.contains("baseplate's studs"))
+	if _windowed:
+		await _shot("falling", "5_on_baseplate")
+	_builder.undo()
+	await _frames(3)
+
+
+## The centre of mass of the model with [param placed] where it says.
+func _centre_of(placed: Dictionary) -> Vector3:
+	var sum := Vector3.ZERO
+	var weight: float = 0.0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var g: float = Stability.grams(info)
+		sum += ((placed.get(brick.id, brick.transform) as Transform3D) * info.bounds.get_center()) * g
+		weight += g
+	return sum / maxf(weight, 0.000001)
+
+
+## How the model posed as [param placed] falls, worked by hand from its
+## parts' drawn shapes, every vertex (not Topple's 2 LDU covers): the
+## support is the points on the floor; the edge the centre of mass is past;
+## each point u out past it and h above the floor comes down at atan2(h, u);
+## the least.
+func _fall_by_hand(placed: Dictionary) -> Dictionary:
+	var corners: Array = []   ## [key, index, point]
+	var low: float = INF
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		var at: Transform3D = placed.get(brick.id, brick.transform)
+		var index: int = 0
+		for surface: ArrayMesh in mesh.surfaces:
+			for s: int in surface.get_surface_count():
+				var points: PackedVector3Array = surface.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+				for v: Vector3 in points:
+					var p: Vector3 = at * v
+					corners.append([brick.id, index, p])
+					low = minf(low, p.y)
+					index += 1
+	var support := PackedVector2Array()
+	for c: Array in corners:
+		if (c[2] as Vector3).y <= low + 1.0:
+			support.append(Vector2((c[2] as Vector3).x, (c[2] as Vector3).z))
+	var hull: PackedVector2Array = Geometry2D.convex_hull(support)
+	hull.resize(hull.size() - 1)
+	var centre: Vector3 = _centre_of(placed)
+	var standing: Dictionary = Balance.margin_in(hull, Vector2(centre.x, centre.z))
+	var ends: PackedVector2Array = standing["ends"]
+	var out2: Vector2 = standing["way"]
+	var out := Vector3(out2.x, 0.0, out2.y)
+	var a := Vector3(ends[0].x, low, ends[0].y)
+	var best: Dictionary = {"angle": 180.0}
+	for c: Array in corners:
+		var q: Vector3 = (c[2] as Vector3) - a
+		var u: float = q.dot(out)
+		var h: float = q.y
+		if h <= 1.0 and absf(u) <= 2.0:
+			continue
+		var angle: float = rad_to_deg(atan2(h, u))
+		if angle > 0.01 and angle < float(best["angle"]):
+			best = {"angle": angle, "u": u, "h": h, "key": c[0], "index": c[1],
+				"corner": "a point of %s" % _world.get_brick(int(c[0])).part_id}
+	best["edge"] = str(standing["edge"])
+	best["past"] = -float(standing["margin"])
+	return best
+
+
+## Where vertex [param index] of [param key]'s drawn shape stands now.
+func _corner_now(key: int, index: int) -> Vector3:
+	var brick: BrickWorld.Brick = _world.get_brick(key)
+	var at: int = 0
+	for surface: ArrayMesh in _library.mesh_for(brick.part_id).surfaces:
+		for s: int in surface.get_surface_count():
+			var points: PackedVector3Array = surface.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+			if index < at + points.size():
+				return brick.transform * points[index - at]
+			at += points.size()
+	return brick.transform.origin
 
 
 ## The model's lowest point, LDU, by its parts' covers.

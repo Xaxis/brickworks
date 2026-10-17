@@ -327,13 +327,15 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 				# Shown falling, then kept with the pose as one step.
 				_falling = {"start": Time.get_ticks_msec(), "steps": fell["steps"],
 					"turn": fell["turn"], "from": _standing_now(), "depth": depth,
-					"words": "%s; then it %s" % [words, fell["words"]]}
+					"words": "%s; then it %s" % [words, fell["words"]],
+					"step": "then it %s" % fell["words"]}
 				last_words = _falling["words"]
 				say.call("%s…" % _capital(str(fell["words"])))
 				return last_words
-			words += ". " + _standing_words(last_report, false)
+			# Held by the baseplate's studs it would tip, and does not.
+			words += ". " + _capital(_standing_words(last_report, fell.has("why_not")))
 			if fell.has("why_not"):
-				words += " " + str(fell["why_not"])
+				words += ". " + str(fell["why_not"])
 			_show(last_report, false)
 		clock = Time.get_ticks_usec()
 		edited.call()
@@ -434,7 +436,8 @@ func _fall_frame() -> void:
 	var fell: Dictionary = _falling
 	_falling = {}
 	world.set_drawn({})
-	var words: String = _lay_fallen(fell["from"], fell["turn"], int(fell["depth"]), str(fell["words"]))
+	_lay_fallen(fell["from"], fell["turn"], int(fell["depth"]), str(fell["step"]))
+	var words: String = _capital(str(fell["words"]))
 	last_words = words
 	say.call(words)
 	edited.call()
@@ -671,13 +674,12 @@ func for_session(input: Dictionary) -> String:
 		last_report = after
 		var fell: Dictionary = _fall_of(held.placed, after)
 		if fell.has("turn"):
-			_lay_fallen(_standing_now(), fell["turn"], depth, "%s; then it %s" % [held.step_words(),
-				fell["words"]])
+			_lay_fallen(_standing_now(), fell["turn"], depth, "then it %s" % fell["words"])
 			lines.append("Then it %s: its centre of mass was %s studs past its %s edge, and it turned "
 				% [fell["words"], Balance.studs(-after.margin), after.edge]
 				+ "about that edge until the floor stopped it.")
 		else:
-			lines.append("Now: %s.%s" % [_standing_words(after, false),
+			lines.append("Now: %s.%s" % [_standing_words(after, fell.has("why_not")),
 				" " + str(fell["why_not"]) if fell.has("why_not") else ""])
 		var numbers: String = after.said(func(id: int) -> String:
 			var brick: BrickWorld.Brick = world.get_brick(id)

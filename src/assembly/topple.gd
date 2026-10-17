@@ -146,8 +146,11 @@ static func words(falls: Array, turn: Transform3D, rests: bool) -> String:
 	var first: String = str(falls[0][0])
 	var up: Vector3 = turn.basis * Vector3.UP
 	var lies: String
-	if up.y > 0.7:
+	var leaning: float = rad_to_deg(acos(clampf(up.y, -1.0, 1.0)))
+	if leaning < 15.0:
 		lies = "comes to rest still upright"
+	elif leaning < 60.0:
+		lies = "rests leaning %d°, its far end on the floor" % roundi(leaning)
 	elif up.y < -0.7:
 		lies = "lies upside down"
 	elif first.contains("front"):
