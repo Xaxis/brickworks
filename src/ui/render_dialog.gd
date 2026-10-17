@@ -91,6 +91,42 @@ func _ready() -> void:
 	settings.view = "current"
 	_build()
 	_add_scrim.call_deferred()
+	get_tree().root.window_input.connect(func(_event: InputEvent) -> void:
+		_touched_ms = Time.get_ticks_msec())
+
+
+## When anything last reached the window, and when it last drew a frame: the
+## renderer is made ready ahead of time once both are WARM_IDLE_MS ago (see
+## [method _warm_when_idle]).
+var _touched_ms: int = 0
+var _drawn_ms: int = 0
+var _drawn_frames: int = -1
+var _warm_asked: bool = false
+const WARM_IDLE_MS := 3000
+
+
+## The renderer made ready the first time nobody has touched the window for a
+## few seconds and nothing on it has changed (StudioRender.warm_up): the
+## set's viewports, and its two shaders of its own, the sweep's and the
+## contact shadow's, drawn once. In a browser their first draw built six
+## programs and five in a frame each of Render's first open. Nothing on the
+## screen moves while it goes on, anyone who starts using the window
+## meanwhile has it wait for them, and it is never done while nobody can see
+## the window.
+func _warm_when_idle() -> void:
+	if _warm_asked:
+		return
+	var now: int = Time.get_ticks_msec()
+	if Engine.get_frames_drawn() != _drawn_frames:
+		_drawn_frames = Engine.get_frames_drawn()
+		_drawn_ms = now
+	if now - _drawn_ms < WARM_IDLE_MS or now - _touched_ms < WARM_IDLE_MS:
+		return
+	if not StudioRender.possible() or world == null or _nobody_looking():
+		return
+	_warm_asked = true
+	_make_renderer()
+	renderer.warm_up(func() -> bool: return Time.get_ticks_msec() - _touched_ms >= WARM_IDLE_MS)
 
 
 ## A dark veil over the window behind the panel, which stops clicks reaching
@@ -220,6 +256,7 @@ func _unhandled_key_input(_event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if not visible:
+		_warm_when_idle()
 		return
 	# Main turns the window's drawing back on when the tab comes back into
 	# view, which it does not know is behind the panel.

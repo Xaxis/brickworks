@@ -22,9 +22,18 @@
 //
 // Fails when a frame of the first open is over --budget ms (250), when the
 // draft never comes, or when a script error reaches the console. Prints the
-// second open's longest frame beside it, and with --programs every program
-// linked and the frame it was linked in. Leaves open.json and pictures of
+// second open's longest frame beside it, with --programs every program
+// linked and the frame it was linked in, and with --before=N the longest
+// frames of the N s before the press. Leaves open.json and pictures of
 // both opens in --out (shots/render_open).
+//
+// The press comes once the page has gone quiet, and by then the panel has
+// made its renderer ready (RenderDialog._warm_when_idle): its viewports, and
+// the sweep's and the contact shadow's shaders built while nobody was using
+// the window. Before that (2026-10-17) the sweep's first draw built six
+// programs in one frame of the open, the slowest, 136-140 ms here at a light
+// load; now each frame of the open builds one at most, and the longest was
+// 88-91 ms.
 import { launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -209,6 +218,16 @@ await page.waitForTimeout(Number(args.after || 5000));
 const before = await programs(0);
 console.log(`  ${before.length} programs linked before the dialog was opened, `
   + `${(before.reduce((s, p) => s + p[1], 0) / 1000).toFixed(1)} s of it`);
+// With --before=N, the longest frames of the N s before the press: what the
+// page cost while it sat there, the panel making its renderer ready included.
+if (args.before) {
+  const t = await now();
+  const sat = (await frames(t - Number(args.before) * 1000)).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  for (const [at, ms, , draws, n, linkMs] of sat) {
+    console.log(`    ${String(Math.round(ms)).padStart(5)} ms at ${String(Math.round(at - t)).padStart(7)}: `
+      + `${draws} draws, ${n} linked (${Math.round(linkMs)} ms)`);
+  }
+}
 
 // Press Render; time every frame until the draft is shown and the page
 // has gone quiet after it.

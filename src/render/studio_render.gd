@@ -530,6 +530,52 @@ func _build() -> void:
 	_resolve_material.set_shader_parameter("floats", _floats)
 
 
+## Whether [method warm_up] is under way; whether nobody is using the window
+## (its argument), and whether a render is waiting for it.
+var _warming: bool = false
+var _idle: Callable
+var _wanted: bool = false
+
+
+## The set made ready ahead of the first render, the window's first open of
+## Render included: its viewports made, and the sweep and the contact shadow
+## drawn once, on a frame of their own.
+##
+## Under Compatibility (every browser) a shader is built in the frame that
+## first draws it, and one the engine has never drawn is built four ways at
+## once the first time it is drawn at all, whatever it is drawn for (its
+## colour and depth passes, instanced and not), and then the way it is being
+## drawn: the sweep's first draw was six programs in one frame of the first
+## open, its slowest (136-140 ms on a lightly loaded box, 2026-10-17,
+## tools/web/render_open_check.mjs), and the contact shadow's five.
+## Drawn here first, each alone and the card left to finish each (see
+## [method _warm]), the open has one program left to build for each, the
+## way the render lights it. On the desktop (Forward+) the set's shaders are
+## compiled the first time they are used, which on a machine that has never
+## rendered held the open's first frame 90-133 ms.
+##
+## The dialog asks for this once nobody has touched the window for a while
+## and nothing on it has changed (RenderDialog._warm_when_idle), and
+## [param idle] says whether that is still so: each step waits until it is.
+func warm_up(idle: Callable) -> void:
+	if not possible() or _busy or _built or _warming:
+		return
+	_warming = true
+	_idle = idle
+	await _build()
+	# Their shapes as a render makes them (see _dress and _contact_shadow),
+	# taken away again after: a mesh left on the contact shadow is the
+	# shadow of a model already drawn.
+	_backdrop.mesh = _sweep(100.0, 160.0, 1000.0)
+	_contact.mesh = PlaneMesh.new()
+	await _draw([_scene])
+	_backdrop.mesh = null
+	_contact.mesh = null
+	_step = ""
+	_warming = false
+	_wanted = false
+
+
 func _view(transparent: bool, floats: bool) -> SubViewport:
 	var view := SubViewport.new()
 	view.transparent_bg = transparent
@@ -706,6 +752,11 @@ static func _kind(thing: GeometryInstance3D) -> String:
 
 
 func _draw_now(views: Array) -> bool:
+	# Made ready ahead of time only while nobody is using the window: one
+	# who starts to meanwhile is not given its frames, unless a render is
+	# waiting on it.
+	while _warming and not _wanted and not _idle.call():
+		await get_tree().process_frame
 	var names := PackedStringArray()
 	for view: SubViewport in views:
 		names.append(str(view.name))
@@ -771,6 +822,12 @@ static func _hidden_hash(world: BrickWorld) -> int:
 func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> bool:
 	if library == null:
 		library = world.library
+	# Asked for while the set is being made ready ahead of time: it is a
+	# few frames from done.
+	if _warming:
+		_wanted = true
+		while _warming:
+			await get_tree().process_frame
 	if not _built:
 		await _build()
 	_stage.library = library
