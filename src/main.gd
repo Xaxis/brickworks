@@ -373,6 +373,18 @@ func _page_assemblies() -> Array:
 var _page_tree: Array = []
 
 
+## The kinds of end the part in hand joins by, each once, or [] when nothing
+## is in hand (JointSnap.ends_of, worked out once a part).
+func _held_ends() -> Array:
+	var out: Array = []
+	if _builder == null or _builder.held_part.is_empty():
+		return out
+	for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for(_builder.held_part)):
+		if not out.has(end.kind):
+			out.append(end.kind)
+	return out
+
+
 ## The ghost's whole pose, place and turn, or null while there is none:
 ## twelve numbers, the place then the basis by columns, to a thousandth.
 ## tools/web/placing_flow.mjs compares it with where a click put the part.
@@ -560,6 +572,10 @@ func _tell_page() -> void:
 		"scenery": _store.scenery.size(),
 		"own_plate": _floor != null and _floor.has_own_plate(),
 		"held": _builder.held_part,
+		# ...the kinds of end it joins by (JointSnap.ends_of: pin, pin_hole,
+		# tyre...), so tools/web/cad_task_flow.mjs aims a pin at a hole and a
+		# tyre at a rim, as a person aims a part by what it goes on...
+		"held_ends": _held_ends(),
 		# ...and its colour, as the note under the palette names it
 		# (tools/web/cad_task_flow.mjs reads which swatch a click took).
 		"colour": _builder.held_color,

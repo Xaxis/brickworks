@@ -1,7 +1,8 @@
 ## Where the part in hand goes when it is aimed at a connector of a part
 ## already down: a pin into a pin hole, an axle into an axle hole or a
 ## round one, a beam's hole onto a pin or an axle, a clip onto a bar and a
-## bar into a clip. BrickLink Studio does this. Until it was done here a
+## bar into a clip, and a tyre round a rim (and a rim into a tyre). BrickLink
+## Studio does this. Until it was done here a
 ## part by hand went on studs or against a face, so a pin could not be put
 ## into a hole at all, and nothing Technic could be built by hand.
 ##
@@ -42,27 +43,43 @@ const TAKES: Dictionary = {
 	"axle_hole": ["axle"],
 	"shaft": ["bore"],
 	"bore": ["shaft"],
+	"tyre": ["rim"],
+	"rim": ["tyre"],
 }
 
 ## What the words for each kind of end are, as a person says them.
 const SAID: Dictionary = {
 	"pin": "pin", "axle": "axle", "pin_hole": "pin hole",
 	"axle_hole": "axle hole", "shaft": "bar", "bore": "clip",
+	"tyre": "tyre", "rim": "rim",
 }
+
+## A round wider than this, in LDU, is a tyre's inside or a rim's outside:
+## narrower ones are a pin's, a hole's or a bar's, matched by their own.
+const WIDE := 7.0
+## How far a cover's box may come inside a tyre's round, or reach outside a
+## rim's, and the round still be the part's innermost or outermost, in LDU:
+## a cell's half diagonal and a little, which is how far an exact cover
+## stands past the curve it follows.
+const WRAP_SLACK := 2.0
 
 
 ## One end a part joins by.
 class End extends RefCounted:
-	## pin, axle, pin_hole, axle_hole, shaft (a bar) or bore (a clip).
+	## pin, axle, pin_hole, axle_hole, shaft (a bar), bore (a clip), tyre
+	## (the inside of a part that goes round a round: a tyre's) or rim (the
+	## outside of one that goes into a round: a rim's barrel).
 	var kind: String
 	## A pin or an axle: where its connector is, a collar or a tip. A
-	## hole: its middle. A bar or a clip: where it starts.
+	## hole: its middle. A bar or a clip: where it starts. A tyre or a rim:
+	## the middle of its round, on its axis.
 	var at: Vector3
 	## Unit. A pin or an axle: out of the part. A bar or a clip: the way
-	## it runs from [member at].
+	## it runs from [member at]. A tyre or a rim: along its axis.
 	var axis: Vector3
 	## A pin or an axle: how far the part goes on past [member at] along
 	## [member axis]. A hole: half its depth. A bar or a clip: its length.
+	## A tyre or a rim: half its round's length.
 	var reach: float = 0.0
 	var radius: float = 0.0
 	## The brick it belongs to, for an end on a part already down.
@@ -76,6 +93,11 @@ class End extends RefCounted:
 
 	func is_round() -> bool:
 		return kind == "shaft" or kind == "bore"
+
+	## A tyre's inside or a rim's outside: one goes round the other, their
+	## middles together.
+	func is_wrap() -> bool:
+		return kind == "tyre" or kind == "rim"
 
 	## The same end on a part placed at [param where].
 	func placed(where: Transform3D, brick_id: int) -> End:
@@ -92,6 +114,8 @@ class End extends RefCounted:
 	## a pin or an axle has left to go into something, a bar's or a
 	## clip's middle.
 	func middle() -> Vector3:
+		if is_wrap():
+			return at
 		if is_round():
 			return at + axis * (reach * 0.5)
 		return aimed(Vector3.ZERO, Vector3.FORWARD)
@@ -101,7 +125,7 @@ class End extends RefCounted:
 	## or where along a bar the line [param from] → [param way] passes
 	## nearest.
 	func aimed(from: Vector3, way: Vector3) -> Vector3:
-		if is_hole():
+		if is_hole() or is_wrap():
 			return at
 		if is_male():
 			if reach >= COLLAR:
@@ -185,8 +209,100 @@ static func ends_of(part: Lbm.PartMesh) -> Array:
 		end.reach = deep * 0.5 + COUNTERBORE
 		if not _repeats(out, end):
 			out.append(end)
+	out.append_array(_wraps(part))
 	_ends[key] = out
 	return out
+
+
+## A part's tyres and rims: the rounds wider than a pin across the stud axis
+## that are the part's innermost (a bore nothing of the part comes inside,
+## along its length: a tyre's hole) or its outermost (a shaft nothing
+## reaches outside: a rim's barrel), each set of them on one line at one
+## size as one end, from the first's start to the last's end. 50951 is
+## three bores, two at 14 LDU and one at 12 between them, and 51719 three
+## shafts the same; a tyre goes on a rim whose barrel is its hole's size.
+## A wheel with its tyre on has neither: its rim's barrel has the tyre
+## round it.
+static func _wraps(part: Lbm.PartMesh) -> Array:
+	var groups: Array = []   ## [kind, point, axis, low, high, radius]
+	for connector: Lbm.Connector in part.connectors:
+		if (connector.kind != "bore" and connector.kind != "shaft") \
+				or connector.radius <= WIDE or connector.length < 1.0:
+			continue
+		var axis: Vector3 = connector.axis.normalized()
+		var square: int = _square_axis(axis)
+		if square < 0 or square == 1:
+			continue
+		var kind: String = "tyre" if connector.kind == "bore" else "rim"
+		if not _bare(part, connector, square, kind == "tyre"):
+			continue
+		var joined: bool = false
+		for group: Array in groups:
+			if group[0] != kind or absf(float(group[5]) - connector.radius) > 0.5 \
+					or absf((group[2] as Vector3).dot(axis)) < 0.999:
+				continue
+			var way: Vector3 = group[2]
+			var gap: Vector3 = connector.position - (group[1] as Vector3)
+			if (gap - way * gap.dot(way)).length() > Joints.ROUND_OFF_AXIS:
+				continue
+			var a: float = gap.dot(way)
+			var b: float = a + connector.length * axis.dot(way)
+			group[3] = minf(float(group[3]), minf(a, b))
+			group[4] = maxf(float(group[4]), maxf(a, b))
+			group[5] = maxf(float(group[5]), connector.radius)
+			joined = true
+			break
+		if not joined:
+			groups.append([kind, connector.position, axis, 0.0, connector.length,
+				connector.radius])
+	var out: Array = []
+	for group: Array in groups:
+		var end := End.new()
+		end.kind = group[0]
+		end.axis = group[2]
+		end.at = (group[1] as Vector3) + end.axis * (float(group[3]) + float(group[4])) * 0.5
+		end.reach = (float(group[4]) - float(group[3])) * 0.5
+		end.radius = group[5]
+		out.append(end)
+	return out
+
+
+## Which of the part's own axes [param axis] runs along, or -1 when it is
+## square to none of them.
+static func _square_axis(axis: Vector3) -> int:
+	for n: int in 3:
+		if absf(axis[n]) > 0.999:
+			return n
+	return -1
+
+
+## Whether nothing of the part's cover comes inside a bore's round along its
+## length ([param inside]), or reaches outside a shaft's: from a cell in
+## from either end of it, where the part's own faces meet it.
+static func _bare(part: Lbm.PartMesh, round: Lbm.Connector, along: int, inside: bool) -> bool:
+	var a: float = round.position[along]
+	var b: float = a + round.length * round.axis.normalized()[along]
+	var low: float = minf(a, b) + part.cell_ldu
+	var high: float = maxf(a, b) - part.cell_ldu
+	var u: int = (along + 1) % 3
+	var v: int = (along + 2) % 3
+	var cu: float = round.position[u]
+	var cv: float = round.position[v]
+	for cells: AABB in part.boxes:
+		var box := AABB(cells.position * part.cell_ldu, cells.size * part.cell_ldu)
+		if box.end[along] <= low or box.position[along] >= high:
+			continue
+		if inside:
+			var du: float = maxf(0.0, maxf(box.position[u] - cu, cu - box.end[u]))
+			var dv: float = maxf(0.0, maxf(box.position[v] - cv, cv - box.end[v]))
+			if sqrt(du * du + dv * dv) < round.radius - WRAP_SLACK:
+				return false
+		else:
+			var fu: float = maxf(absf(box.position[u] - cu), absf(box.end[u] - cu))
+			var fv: float = maxf(absf(box.position[v] - cv), absf(box.end[v] - cv))
+			if sqrt(fu * fu + fv * fv) > round.radius + WRAP_SLACK:
+				return false
+	return true
 
 
 ## The radius of a pin, and of a round hole one goes through, in LDU.
@@ -262,7 +378,7 @@ static func _hole_span(part: Lbm.PartMesh, at: Vector3, axis: Vector3) -> Vector
 static func mates(held: End, site: End) -> bool:
 	if not (TAKES.get(held.kind, []) as Array).has(site.kind):
 		return false
-	if held.is_round():
+	if held.is_round() or held.is_wrap():
 		return absf(held.radius - site.radius) <= Joints.ROUND_FIT
 	return true
 
@@ -290,7 +406,7 @@ static func ways(held: End, site: End, from: Vector3, way: Vector3) -> Array:
 	var near: int = 1 if site.axis.dot(from - middle) >= 0.0 else -1
 	if held.is_male():
 		return [[near, 0.0], [-near, 0.0]]
-	if held.is_hole():
+	if held.is_hole() or held.is_wrap():
 		return [[1, 0.0], [-1, 0.0]]
 	var length: float = held.reach
 	var room: float = site.reach
@@ -339,6 +455,11 @@ static func pose(held: End, site: End, side: int, slide: float, roll: float,
 		facing = along * side
 		target = site.at + site.axis * held.reach if site.reach >= COLLAR \
 			else site.at - site.axis * held.reach
+	elif held.is_wrap():
+		# A tyre round a rim, or a rim into a tyre: the middles of their
+		# rounds together, either way round.
+		facing = along * side
+		target = site.at
 	else:
 		facing = along * side
 		anchor = held.at + held.axis * (held.reach * 0.5)
