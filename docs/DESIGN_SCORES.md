@@ -467,6 +467,37 @@ Results: `bench/results/realset-2026-10-16-faces/` (both halves),
 `realset-2026-10-16-technique-base-vs-faces/` and
 `realset-2026-10-16-armature-vs-faces/`.
 
+### Characters: faces and a lean in the figure pattern (2026-10-16, `ccab190`)
+
+The figure pattern's heads now have printed eyes, an animal's look out of its
+sides, its joint plates are covered and its torso leans (docs/BRICKBENCH.md,
+"faces, a lean, and joints in their colours"). Its arm (`figfaces`) ran the
+proof half's three characters once each, on the GPU, against the armature
+arm's designs, also drawn on the GPU.
+
+| dimension | armature preferred to the set | figfaces preferred to the set | armature minus figfaces, paired (95%) | figfaces preferred to armature, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 50% (13-87) | 33% (6-79) | +17 (-50, +100) | 67% (21-94) |
+| surface | 67% (21-94) | 50% (13-87) | +17 (-50, +100) | 50% (13-87) |
+| colour | 67% (21-94) | 33% (6-79) | +33 (0, +100) | 67% (21-94) |
+| technique | 33% (6-79) | 17% (2-69) | +17 (-50, +100) | 67% (21-94) |
+| creativity | 50% (13-87) | 50% (13-87) | 0 (0, 0) | 50% (13-87) |
+| overall | 50% (13-87) | 33% (6-79) | +17 (-50, +100) | 67% (21-94) |
+
+- **The test cannot see the change.** None of the six sessions, either arm,
+  laid the figure pattern or was sent back for a statue (read in their
+  transcripts): a BrickHeadz brief is built by hand as a big square head with
+  its own eyes. What differs is the sessions. Steve & Creeper won
+  five dimensions of six both ways against its set; the bee lost all of them,
+  where armature's won all but creativity.
+- Three subjects are few: every interval holds a tie, colour's only just.
+- So the real-set character half says nothing about faces yet. A pattern a
+  BrickHeadz session would lay (a head as wide as the body) is what would
+  reach it.
+
+Results: `bench/results/realset-2026-10-16-figfaces/` and
+`realset-2026-10-16-armature-vs-figfaces/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

@@ -1634,6 +1634,96 @@ the next things a session should not have to build by hand. Two designs a prompt
 and more held-out characters, would say whether the surface gain carries to the
 overall verdict.
 
+## 2026-10-16, later: faces, a lean, and joints in their colours
+
+The armature round's views listed what still read wrong in what the figure
+pattern lays: heads had no face, an animal's eyes sat on top of its head, the
+grey joint plates showed, no torso could lean, and "to chin" and "on knee" did
+not reach. This round fixes four of the five, built the way real character sets
+build them. Looked at first: BrickHeadz (40349 Puppy, 41608 Han Solo, 40271
+Bunny, 41634 Emmet) put two printed round eyes a stud apart on side studs;
+Creator animals (30285 Tiger, 30026 Panda, 4903 Lion) put a printed eye tile or
+a round plate on each side of the head and a nose on the muzzle.
+
+- **A face on every head.** A person's head, and a head on a neck, is a round
+  brick with a course over it: a brick with two studs on its front (11211)
+  carrying two printed eye tiles (98138p07, white, the eye and its highlight
+  printed), the back of the head in the hair's colour, the hair over both. The
+  eyes face the way the head is turned. An animal's head carries a brick with
+  studs on two opposite sides (47905), an eye out of each side, and a black
+  round tile for a nose on its muzzle. `"face": false` leaves it to the
+  session. A person has no mouth: the round brick under the eyes turns on the
+  jumper and has no stud for one, and a BrickHeadz face is its eyes.
+- **Joints in the body's colours.** The ball parts are sold in greys only
+  (14417, 14419 and 22890 dark bluish grey, 14418 light), so they are covered:
+  a tile in the sleeve's colour on each shoulder plate, one in the body's colour
+  on an animal's neck plate. Its tail's bar plate (60478) is sold in 25 colours
+  and takes the body's.
+- **A lean.** `"lean": "forward"` (25°), `"back"` (15°), `"left"` or
+  `"right"` (10°), or degrees. The torso's first course becomes hinge bricks
+  (3937) with their tops (3938), and the torso is built up on the tops by its
+  connectors, so the chest, the arms and the head lean as one. A hinge top
+  turns one way off its base before meeting it, so the base is turned to the
+  lean and the torso set on the top turned back square, at the corner the top's
+  stud was measured to be at each turn. Leaning to a side, an arm hanging on the
+  side that rises keeps its pose to the torso. All 180 leans tried (six words,
+  five heights, standing and seated, three pairs of arm poses) pass the check.
+- **Not done: reaches.** Solved to put a hand under the chin or on the knee,
+  the arm runs into itself. Searched against the real clash check, 980 poses at
+  30 plates put a hand under the chin and none keeps the upper arm's socket out
+  of its shoulder plate by 1 LDU (the nearest 1.35 in); of 1,584 for a seated
+  hand on the knee the nearest is 1.05 LDU in, 5.6 LDU from the knee, and 1.11
+  leaned 25°. A reach needs a shoulder other than 14417's ball on the chest's
+  side. The words still say bent and forward.
+
+`src/dev/armature_probe.gd` proves it (106 checks, 0 failed): each kind's eyes
+within a degree of the way its head faces, an animal's square to the way it
+looks and its nose 20 LDU ahead, the covers in their colours, the chest tipped
+by each lean's degrees and passed at 30 and 42 plates with every arm pose, and
+the head re-posed by an edit with its eyes on it. `figure_joints_probe` is
+unchanged and passes (43). The views of every kind, front and corner, on the
+GPU, before beside after: `bench/results/faces-2026-10-16/sheet_before_after.png`
+and `sheet_leans.png`. Each head now reads as a face from across the room; the
+animal's eyes look out of its sides as the Creator tiger's do; the seated
+figure hunches. The eyes stand a plate and a half proud, more cartoon than a
+BrickHeadz face, and the grey edges of the shoulder plates and the animal's jaw
+still show under their covers.
+
+**BrickBench, once, as an outside check.** The same six character prompts as
+the armature round, one design each, the arm `figfaces` (`ccab190`: faces,
+covers and the forward lean; back and sideways came after) against that
+round's `armature` designs and BrickAgent's, our judge both orders twice: 72
+verdicts (`bench/results/brickbench-2026-10-16-armature`,
+`faces-2026-10-16/compare-armature-figfaces.md`; the round's own `compare.md`
+kept).
+
+| head to head | verdicts for figfaces | 95% | prompts won every time / split / lost |
+|---|---|---|---|
+| figfaces vs armature, overall | 13 of 24 (54%) | 35-72% | 2 / 3 / 1 |
+| ...likeness | 16 of 24 (67%) | 47-82% | 3 / 2 / 1 |
+| ...surface | 12 of 24 (50%) | 31-69% | 3 / 0 / 3 |
+| ...technique | 12 of 24 (50%) | 31-69% | 2 / 2 / 2 |
+| figfaces vs BrickAgent, overall | 2 of 24 (8%) | 2-26% | 0 / 1 / 5 |
+| armature vs BrickAgent, overall | 0 of 24 (0%) | 0-14% | 0 / 0 / 6 |
+
+All six valid by verify.py. By ELO the arms overlap on every dimension;
+buildability leans to armature (1061, 969-1238, against 888, 449-1048) and
+likeness to figfaces (895, 674-1045, against 759, 588-844). A tie, as the last
+round's was.
+
+**Uptake.** Five of six were sent back once and five laid the pattern (the
+balloon dog, the toilet's head, the statue, the rabbit, the boy; the armature
+round, three). Two kept it to the end: the boy, its body, eyes and all, and the
+rabbit, ball arms of its own. The statue laid itself seated and leaning
+forward and was built, then aimed its arms by hand to reach the chin and the
+knee, was refused four times for an arm running into the body, and rebuilt
+itself stacked: the reach gap, met by a session.
+
+**What is left.** The arms' reach, which needs another shoulder. A head as
+wide as its body, which is how a BrickHeadz brief is built: the real-set test's
+three characters never laid the pattern in either arm (docs/DESIGN_SCORES.md),
+so faces cannot reach them until it can say one.
+
 ## Repeat it
 
 The recipe, with the setup of BrickAgent, its colliders and a venv, is
@@ -1668,6 +1758,13 @@ characters' rows copied from the joints round's, and model-078 and model-080 by
 `first_tasks(tasks_json, 1, start)`; then `--arm m32` (`--app` a detached
 worktree at main) and `--arm armature` (`--app` the branch's worktree), `--runs 1`,
 views on the GPU, `pairs --repeat 2`, `compare --arms m32,armature --runs 1`.
+
+The faces round (2026-10-16) ran in the armature round's folder: `design --date
+2026-10-16-armature --arm figfaces --runs 1 --app` the branch's worktree (in one
+`gpu` lease with the real-set run), `export` and `verify` for that arm, then
+`views`, `pairs --repeat 2` and `compare` with `--arms armature,figfaces`; the
+round's `compare.md` was copied aside first and put back. The transcripts were
+read with `bench/results/armature-2026-10-16/scripts/uptake.py`.
 
 The comparison of arms is the same tool with `--start`, `--arm`, `--runs`,
 `--app`, `--arms` and `compare`. The recipe is under "BrickBench" in the

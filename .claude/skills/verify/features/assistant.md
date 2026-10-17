@@ -57,10 +57,16 @@ fixing what it got wrong.
   by `Assistant._with_figures` ahead of a design's own bricks. One entry of
   submit_design's or check_design's patterns, `{"pattern": "figure", "kind":
   "person" | "animal" | "head", "at", "height" | "length", "color", "colors",
-  "pose"}`, lays a person (arms on ball shoulders posed by words, a head on a
-  jumper's stud, seated on a block of its own if said), a four-legged animal (head
-  on a ball neck, tail on a bar) or a head on a neck, as named bricks with
-  attaches, the larger size from 34 plates or 7 studs. A figure or creature
+  "pose", "face"}`, lays a person (arms on ball shoulders posed by words, a head
+  on a jumper's stud with two printed eyes (98138p07) on side studs facing the way
+  it faces, seated on a block of its own if said, its torso on a waist hinge
+  (3937, 3938) when "lean" says forward, back, left or right), a four-legged
+  animal (head on a ball neck with an eye out of each side and a nose, tail on a
+  bar) or a head on a neck, with its face, as named bricks with attaches, the
+  larger size from 34 plates or 7 studs. The grey joint plates a set hides are
+  covered: tiles in the sleeve's colour on a person's shoulder plates, in the
+  body's on an animal's neck plate, its tail bar in the body's colour. "face":
+  false leaves the face to the session. A figure or creature
   submitted with nothing on a joint is sent back once (`_unjointed_refusal`) with
   that entry written out for its box and colour (`_figure_call`); the subject is
   read as for the joints' advice, and a fresh brief (`heard`) or a model cleared or
@@ -2419,10 +2425,18 @@ every other by 1 LDU and passed by the check on a bare floor; each arm pose word
 (down, bent, forward, raised, out) at both sizes is joined and passed, its hand where
 the word says against the shoulder and its upper arm turned on its ball; the head
 turns on its jumper by the degrees said, an animal's head nods and looks aside on its
-ball neck and its tail swings 60 degrees on its bar, the part it is on unmoved;
+ball neck and its tail swings 60 degrees on its bar, the part it is on unmoved; a
+person's and a head's two eyes are printed tiles a stud apart on the front of the
+head, facing within a degree of the way it is turned, an animal's look out of each
+side of its head (square to the way it looks, not up) with a nose 20 LDU ahead of
+them, the animal's neck plate is tiled and its tail bar coloured as its body, a
+person's shoulder plates are tiled in the sleeve's colour; "lean": "forward" tips the
+chest 25° on the waist hinge with the head 47 LDU further forward than upright, and
+back (15°), left and right (10°) tip it that way at 30 and 42 plates, standing and
+seated, with every arm pose, joined and passed; a lean it does not know is said back;
 submitted, a later edit leaves every posed part where it stood, and an arm raised and
-a head turned again by an edit (parts off, put on again by the names standing) stand
-where that pose puts them; a statue stacked square is sent back once with a person's
+a head turned again by an edit (parts off, put on again by the names standing, its
+eyes and the back of the head among them) stand where that pose puts them; a statue stacked square is sent back once with a person's
 entry that builds as it is, built when it comes again, and not sent back a second
 time; a balloon dog is sent back with an animal's; a fire engine with a firefighter,
 a Porsche at minifigure scale and a lighthouse never are; and with no brief (the
@@ -2436,6 +2450,12 @@ dragon, Jungle River with its crocodile, Dino Explorer twice with its baby T-rex
 never sent back, and the bench's characters (model-043, 044, 049, 078, 080, as their
 sessions named them) still are, once; the potato toy (042), a thing with a face, never
 was. Before `Style.in_a_scene` (m35) each of the four was sent back.
+
+"to chin" and "on knee" are still said as bent and forward. Searched against the
+real clash check (2026-10-16), 980 arm poses at 30 plates put a hand under the chin
+and none keeps the upper arm's socket out of its shoulder plate by 1 LDU (nearest
+1.35); of 1,584 for a seated hand on the knee the nearest is 1.05 LDU in, 5.6 LDU
+from the knee. A reach needs another shoulder than 14417's ball on the side.
 
 ### BrickBench: the designer on an outside ruler
 
