@@ -560,7 +560,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# studs left seven such, and its mend checked it three times over; a milk
 	# truck's strip a stud wide under its flank was 29 parts in three pieces.
 	if not plan.cubes.is_empty() and not shells.is_empty():
-		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off()
+		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off() + plan.caps_apart()
 	# What each screen laid, or why it laid none; and a steep front of a raised
 	# solid said with no screen, which is how a session says a cabin.
 	said.append_array(plan.screens_said)
@@ -3293,6 +3293,50 @@ class Plan extends RefCounted:
 					left.append(made[n])
 			made = left
 		return gone.size()
+
+	## The pieces of the core apart from the rest of three parts or fewer, each
+	## at the core's top (nothing of it, or a shell, over any of its parts), that
+	## the stitch could not join: taken out of [member made]. Left to the mend,
+	## which took them out too, an avocado's 1 x 1 plates and tile at its top
+	## sent it to a second check, a fifth of its time. How many parts.
+	func caps_apart() -> int:
+		if cubes.is_empty() or shelled.is_empty():
+			return 0
+		var gone: Dictionary = {}
+		for piece: Array in pieces().slice(1):
+			if piece.size() > 3:
+				continue
+			# Capped: nothing over any part of it that its studs could reach,
+			# the shape's air, a shell, or a tile's smooth top.
+			var capped: bool = true
+			for n: int in piece:
+				var one: Dictionary = made[n]
+				if (one.get("_studs", []) as Array).is_empty():
+					continue
+				var top: int = roundi(float(one["y"])) + int(one.get("_h", 1))
+				for cell: Vector2i in one.get("_cells", []):
+					var above: Vector3i = Vector3i(cell.x, top, cell.y)
+					capped = capped and (at(cell, top) < 0 or shelled.has(above) or _over_tile(above, piece))
+			if capped:
+				for n: int in piece:
+					gone[n] = true
+		if not gone.is_empty():
+			var left: Array = []
+			for n: int in made.size():
+				if not gone.has(n):
+					left.append(made[n])
+			made = left
+		return gone.size()
+
+	## Whether plate [param at_] is in a part of [param piece] itself.
+	func _over_tile(at_: Vector3i, piece: Array) -> bool:
+		for n: int in piece:
+			var one: Dictionary = made[n]
+			var y: int = roundi(float(one["y"]))
+			if at_.y >= y and at_.y < y + int(one.get("_h", 1)) \
+					and (one.get("_cells", []) as Array).has(Vector2i(at_.x, at_.z)):
+				return true
+		return false
 
 	## Whether a part of the core touches a plate a shell has taken, beside,
 	## over or under it.

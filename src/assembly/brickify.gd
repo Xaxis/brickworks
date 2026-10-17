@@ -1924,26 +1924,114 @@ static func _again(later: Dictionary, earlier: Dictionary) -> Dictionary:
 	return later
 
 
-## Props under the parts beyond each stud joint past its working load,
-## worst first: the shortest pillar of 1 x 1s from under the part down onto
-## a stud of anything else, or the ground. How many parts went in.
+## Props under each stud joint past its working load, worst first, where the
+## weight it carries is: the piece beyond the joint (what its studs alone
+## hold up) found, and the shortest pillar of 1 x 1s from under the parts of
+## it nearest its centre of mass down onto a stud of anything else, or the
+## ground; failing those, under the part beyond the joint itself. A column a
+## stud across under a toy car's 225 g fender had six joints past their load,
+## each propped under the column itself. How many parts went in.
 static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report) -> int:
 	var before: int = model.placements.size()
 	var room := Laid.new(model, checker)
+	# Parts on parts by their studs, as Balance reads them.
+	var joined: Dictionary = {}    ## index -> {index: true}
+	for cell: Variant in room.studs:
+		var below: int = int(room.studs[cell])
+		var above: int = int(room.owner.get(cell, -1))
+		if above < 0 or above == below:
+			continue
+		if not joined.has(below):
+			joined[below] = {}
+		if not joined.has(above):
+			joined[above] = {}
+		(joined[below] as Dictionary)[above] = true
+		(joined[above] as Dictionary)[below] = true
 	var done: Dictionary = {}
 	for one: Balance.JointLoad in balance.joints.slice(0, 16):
 		if one.ratio <= 1.0:
 			break
 		var index: int = one.beyond - 1
+		var held: int = one.held_by - 1
 		if index < 0 or index >= before or done.has(index):
 			continue
 		done[index] = true
+		var piece: Dictionary = _beyond(joined, index, held, before / 2)
 		var rest: Dictionary = {}
+		for n: int in model.placements.size():
+			if not piece.has(n):
+				rest[n] = true
+		if piece.size() > 1 and _prop_under(room, piece, rest):
+			for n: Variant in piece:
+				done[n] = true
+			continue
+		rest = {}
 		for n: int in model.placements.size():
 			if n != index:
 				rest[n] = true
 		room.pillar([index], rest, true, 24)
 	return model.placements.size() - before
+
+
+## The parts reached from [param from] by studs without crossing to
+## [param held], as indices; empty where that is more than [param most] (the
+## joint is not what holds them all).
+static func _beyond(joined: Dictionary, from: int, held: int, most: int) -> Dictionary:
+	var piece: Dictionary = {from: true}
+	var stack: Array[int] = [from]
+	while not stack.is_empty():
+		var n: int = stack.pop_back()
+		for m: Variant in joined.get(n, {}):
+			if int(m) == held and n == from or piece.has(m):
+				continue
+			if int(m) == held:
+				return {}
+			piece[m] = true
+			stack.append(int(m))
+			if piece.size() > most:
+				return {}
+	return piece
+
+
+## A pillar under [param piece] where its weight is: from under the parts of
+## it nearest its centre of mass (by the plates they fill), the nearest first.
+static func _prop_under(room: Laid, piece: Dictionary, rest: Dictionary) -> bool:
+	var mass := Vector2.ZERO
+	var cells: int = 0
+	for n: Variant in piece:
+		for cell: Vector3i in room.cells_of.get(int(n), []):
+			mass += Vector2(cell.x + 0.5, cell.z + 0.5)
+			cells += 1
+	if cells == 0:
+		return false
+	mass /= cells
+	var order: Array = piece.keys()
+	order.sort_custom(func(a: Variant, b: Variant) -> bool:
+		return _reach_of(room, int(a), mass) < _reach_of(room, int(b), mass))
+	# Those with nothing of the piece under them first: a part inside it has
+	# no way down.
+	var tried: int = 0
+	for n: Variant in order:
+		var open: bool = false
+		for cell: Vector3i in room.cells_of.get(int(n), []):
+			open = open or cell.y == int(room.low_of[int(n)]) and not piece.has(
+				int(room.owner.get(cell - Vector3i(0, 1, 0), -1)))
+		if not open:
+			continue
+		tried += 1
+		if room.pillar([int(n)], rest, true, 24):
+			return true
+		if tried >= 24:
+			break
+	return false
+
+
+## How far [param index]'s nearest stud is from [param at], studs.
+static func _reach_of(room: Laid, index: int, at: Vector2) -> float:
+	var best: float = INF
+	for cell: Vector3i in room.cells_of.get(index, []):
+		best = minf(best, at.distance_to(Vector2(cell.x + 0.5, cell.z + 0.5)))
+	return best
 
 
 ## Why nothing was laid, and the smallest size tried that lays it whole:
