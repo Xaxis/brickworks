@@ -63,10 +63,12 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   `Plan.shows`, `Plan.shown_colour`, `Plan._bonded`, `Plan.merge`): only
   what shows of a brick is laid in its colour and what is hidden in any (a
   brick none of which shows in the model's main colour), so three plates of
-  the body are a brick whatever colour the measuring gave the hidden ones;
-  each course's studs, fewest free beside them first, under the first brick
-  that fits in one colour where it shows; and once stitched, two plain
-  parts side by side that make a part we lay, and three plates of one
+  the body are a brick whatever colour the measuring gave the hidden ones
+  (but in a thin part's columns, `plain_at`, as measured); each course's
+  studs, fewest free beside them first, under the first brick that fits in
+  one colour where it shows and is sold in it (`Plan._made`); a shape that is
+  its own mirror keeps its strip and mirrored halves; and once stitched, two
+  plain parts side by side that make a part we lay, and three plates of one
   footprint stacked, merged (a merge only joins, so never more pieces);
   every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
@@ -206,6 +208,15 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   unit 2b branch at a load of 15 to 45: 60 ok; hollow sphere 1,670 parts against
 #   the solid's 1,606; forty-stud bunny 2,062 parts, one check, 12.0 s (median of six)
 #   against main's 14.6 in one job (brickify_phases), 0.82 times.
+#   Then unit 3, "bonded as a builder bonds": a block red only where nothing shows
+#   laid as two courses of white bricks (4 parts; by the colours measured, 15); three
+#   plates of one footprint merged into a brick and two side by side into one plate;
+#   the forty-stud bunny's hidden core bricks, plates at most half as many (on main
+#   a1d1998 203 bricks and 159 plates; the branch 280 and 118); and the sphere, the
+#   plain sphere and the forty-stud bunny in fewer parts and 1 x 1s than main's, seams
+#   bridged and weak points within two points of main's, measured as the bench
+#   measures them (_bond). 2026-10-17 on the unit 3 branch: 66 ok; sphere 1,548 parts
+#   (main 1,606), plain 1,218 (1,266), forty-stud bunny 2,027 (2,062) in 9.7 s.
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
@@ -255,6 +266,12 @@ S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare -
 XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
+#   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
+#   48 studs 51,014 parts from 59,156 (2.36 times the greedy stack's from 2.74), 1x1s
+#   35.0% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.1% from 25.9%,
+#   joints past their load 14 from 48; likeness and ΔE2000 unchanged but the temple at
+#   48 smooth, which lost its moon (whole 27 of 28 from 28). `bond OUT` gives the bond
+#   figures without ray casting; `pictures --cut` draws each build cut in half.
 #   2026-10-16 after unit 2 (docs/BRICKIFY.md section 6), against 2789cd0: ΔE2000
 #   on the 10 coloured models 1.28 times the floor at 48 studs (from 1.54), 1.54 at
 #   24 (from 2.00); Spot's neutral surface laid in a colour 0% (from 40%), the
@@ -290,9 +307,17 @@ python3 tools/bench/brickify_bench.py report $S/run
   25% grey is nearer Reddish Brown than Black, so a cow's black patches came
   out brown; CIEDE2000 (`Brickify.de2000`) keeps greys grey. A surface buried
   in another part of the model (a head under hair) colours nothing.
-- **The interior is one colour.** Two cells in from the surface take its colour;
-  further in, the colour most of the model is, so the hidden core is a few large
-  bricks rather than a patchwork.
+- **The interior is one colour where nothing shows.** Two cells in from the
+  surface take its colour; further in, the colour most of the model is. Laid by
+  those colours, a course was three plates wherever two met out of sight, so
+  Shapes' `bond` lets only what shows of a brick decide its colour (`Plan.shows`)
+  and lays a brick none of which shows in the main colour. A longer brick is
+  laid or merged only in a colour it is sold in (`Plan._made`): a 1 x 8 in Bright
+  Green was recoloured Green by `made_colours`, and an avocado's flesh changed.
+- **Most of smooth's parts show.** At 48 studs, three quarters of them are the
+  plate staircase under each stud's slope and the slopes and tiles themselves;
+  refining the hidden core took the bench from 2.74 to 2.36 times the greedy
+  stack's parts, and no core layout reaches 1.6.
 - **A worker never loads a part.** Every part Shapes may lay
   (`Brickify.parts_needed()`, 80) is loaded — fetched, on the web — before the
   worker starts, and the tables filled on first use are filled first
