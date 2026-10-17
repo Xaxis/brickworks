@@ -28,6 +28,10 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
 
 ### Added
 
+- A part on a round joint swings to join the part its other end meets,
+  as Studio turns a part to fit: R steps through it and T lands on it, so
+  a Technic link at 66 degrees goes where the set has it.
+
 - Building from a booklet takes fewer actions. E makes the parts put down
   since the last step into a step of their own, one undo. Shift-C opens a
   colour field: type a name or a number and the line above the palette
@@ -226,6 +230,10 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
 
 ### Changed
 
+- Brickify lays the whole model again, and quicker: all 28 test models
+  whole in the smooth style, and the 40-stud bunny in about four fifths
+  of the time it took.
+
 - A file another program wrote comes back as it went in. Of 48 real sets'
   files from LDraw's model repository, every one is saved and reopened
   exactly: its author and licence, its part numbers as written, its
@@ -315,6 +323,19 @@ joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
   (docs/TRADEMARKS.md).
 
 ### Fixed
+
+- In a browser, a click puts the part where its ghost stood. Across a
+  plate's edge 16 of 35 clicks used to land a stud forward or 2 LDU up;
+  now none do.
+- A scene with a character in it, a pyramid with its statues or a river
+  with its creatures, is no longer sent back as a figure without joints.
+- When Claude's call takes long enough to become a job, its answer keeps
+  the picture and the 3D card, and the window no longer redraws a ticking
+  clock while it waits.
+- A mirrored copy of a sub-assembly reopens as the copy it was, not as
+  the original.
+- With a graphics card, the ground under a model with no floor is the
+  background's grey, not a pale disc.
 
 - Clip plates seat by their sockets, where their box used to put them a
   stud off.
