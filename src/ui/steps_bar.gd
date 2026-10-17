@@ -82,7 +82,7 @@ var _authored: bool = false
 ## The row of step edits, shown in the author's steps.
 var _edits: HBoxContainer
 ## How the booklet prints the step showing (BookletLooks): its own row.
-var _looks: HBoxContainer
+var _looks: HFlowContainer
 var _look_said: Label
 var _look_toggles: Dictionary = {}
 var _per_page: Button
@@ -260,8 +260,12 @@ func _build() -> void:
 	# How the booklet prints the step showing, as Studio's Instruction Maker
 	# sets a step's view and page beside its step list: the step showing is
 	# the one changed, and the line at the end says how it is set.
-	_looks = HBoxContainer.new()
-	_looks.add_theme_constant_override("separation", 6)
+	# Wrapping onto a second line where the window is narrow: in one line it
+	# was wider than the timeline at 1280 x 800, and pushed the bar's own
+	# Instructions and Done off the window.
+	_looks = HFlowContainer.new()
+	_looks.add_theme_constant_override("h_separation", 6)
+	_looks.add_theme_constant_override("v_separation", 4)
 	_looks.visible = false
 	column.add_child(_looks)
 	var title := Label.new()
@@ -303,6 +307,8 @@ func _build() -> void:
 	_look_said.add_theme_font_size_override("font_size", 11)
 	_look_said.modulate = Color(1, 1, 1, 0.72)
 	_look_said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_look_said.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_look_said.custom_minimum_size = Vector2(160, 0)
 	_look_said.clip_text = true
 	_look_said.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_looks.add_child(_look_said)

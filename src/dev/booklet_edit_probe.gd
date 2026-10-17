@@ -73,6 +73,38 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
+## A click where a person clicks, in the window's own pixels.
+func _click(at: Vector2) -> void:
+	var scale: Vector2 = Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size
+	var moved := InputEventMouseMotion.new()
+	moved.position = at * scale
+	moved.global_position = moved.position
+	Input.parse_input_event(moved)
+	await _frames(3)
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = down
+		event.position = at * scale
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(3)
+	await _frames(3)
+
+
+func _key(code: Key, command: bool = false, shift: bool = false) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = down
+		event.ctrl_pressed = command
+		event.shift_pressed = shift
+		Input.parse_input_event(event)
+		await process_frame
+	await _frames(4)
+
+
 func _run() -> void:
 	await process_frame
 	for arg: String in OS.get_cmdline_user_args():
@@ -477,8 +509,29 @@ func _all_looks(name: String, before: Dictionary) -> void:
 	_shell.change_look("turn_right", _go(int(picks["turn"])))
 	_shell.change_look("turn_right", _go(int(picks["turn"])))
 	_shell.change_look("tilt_up", _go(int(picks["turn"])))
-	_shell.change_look("zoom_in", _go(int(picks["zoom"])))
-	_shell.change_look("zoom_in", _go(int(picks["zoom"])))
+	# Zoom by the row's own button, clicked, twice; and Ctrl-Z, Ctrl-Shift-Z.
+	_go(int(picks["zoom"]))
+	await _frames(6)
+	var zoom: Button = _steps.controls_by_name().get("booklet_zoom_in")
+	if zoom != null and zoom.is_visible_in_tree():
+		await _click(zoom.get_global_rect().get_center())
+		await _click(zoom.get_global_rect().get_center())
+		var said: String = str(_steps.page_state().get("look", ""))
+		_check("Zoom in on the Booklet row, clicked twice: \"%s\"" % said,
+			said.contains("zoom 1.5x"))
+		await _key(KEY_Z, true)
+		var undone: String = str(_steps.page_state().get("look", ""))
+		await _key(KEY_Z, true, true)
+		var redone: String = str(_steps.page_state().get("look", ""))
+		_check("...Ctrl-Z one zoom back (\"%s\"), Ctrl-Shift-Z again (\"%s\")" % [undone, redone],
+			undone.contains("zoom 1.25x") and redone.contains("zoom 1.5x"))
+		var picture: Image = root.get_texture().get_image()
+		if picture != null:
+			picture.save_png(_out.path_join("%s_window.png" % name))
+	else:
+		_check("the Booklet row's Zoom in is on screen", false)
+		_shell.change_look("zoom_in", _go(int(picks["zoom"])))
+		_shell.change_look("zoom_in", _go(int(picks["zoom"])))
 	_shell.change_look("new_page", _go(int(picks["new"])))
 	_shell.change_look("alone", _go(int(picks["alone"])))
 	_shell.change_look("parts", _go(int(picks["parts"])))
