@@ -498,19 +498,16 @@ key, a fetched part or a closed box (`Main._pointer`, `Main._pointed`).
 Nothing else computes a put-down apart from its ghost: `Builder.place`,
 the carried group's and the minifigure's put the transform the ghost shows.
 
-**And a ghost left behind.** Every run's first aim after a part was taken
-from its tile read a ghost hundreds of LDU from the pointer (the "540 to 560
-LDU" of section 3's failed runs, and the first of the 35 clicks above). A
-ghost re-aimed with no event of its own, as when the part's shape arrives
-after the pointer has moved onto the model, was aimed at the system's
-pointer: in the browser it stood where the first of two moves had been
-and stayed there until the next move, while a click put the part under the
-pointer; on the desktop, with a probe's events, wherever the real pointer was
-left. Now it is aimed where the app last saw the pointer move or press,
-unless the system's pointer has moved since over a window of the app's own
-(`Main._pointer`). `placing_probe` takes 3022 and 3023 from their tiles and
-moves onto the model in one move and in two: the first case failed before
-(its ghost 255 pixels from the pointer) and all four pass.
+**And a ghost left behind, on the desktop.** A ghost re-aimed with no
+event of its own, as when the part's shape arrives after the pointer has
+moved onto the model, was aimed at the system's pointer, which with a
+probe's events is wherever the real pointer was left. Now it is aimed where
+the app last saw the pointer move or press, unless the system's pointer has
+moved since over a window of the app's own (`Main._pointer`).
+`placing_probe` takes 3022 and 3023 from their tiles and moves onto the
+model in one move and in two: the first case failed before (its ghost 260
+pixels from the pointer) and all four pass. The browser's like case is not
+this one (below).
 
 **Parts off the 24 turns** (`Builder._closings`). A part on something round
 in something round is turned about it to where another of its ends comes
@@ -534,6 +531,38 @@ In a browser by `tools/web/placing_flow.mjs`: the plane's two clip plates
 put where their ghosts stood and as the file has them; 8841-1's file opened
 up to its plates, each 4262 aimed at its pin as the page says the pin is,
 and put where its ghost stood and as the file has it (after one `T` and two).
+
+**Not yet in the browser: the first aim after a part is taken from its
+tile.** The flow's other seven parts (a bar in a clip, a hinge, slopes, a
+Technic brick and a pin) were each taken from the search, the pointer moved
+onto the model in one jump, and the ghost read: every one still stood
+where the part had been taken, 500 LDU and more off, behind the bin, and a
+click put the part under the pointer. A second move puts the ghost under
+the pointer (the edge's 34 later clicks, and every aim the build flow
+corrects; this is the "540 to 560 LDU" of section 3's failed runs).
+`Main._pointer` did not change it: in the browser the last of the jump's
+moves does not move the ghost, though the page receives it (a capture of
+the page's own pointer events, `bench/results/placing-2026-10-16/diag`),
+and why was not found in the time. A hand moves in many small moves, so a
+person sees the ghost follow; but until the pointer moves again the ghost
+is shown somewhere other than where a click puts the part.
+
+**The whole plane again** (`cadtask.py build --only 5762-1 --most 0
+--minutes 40`, its flow on an export with the click's fix,
+`bench/results/placing-2026-10-16/plane`), against the run before:
+
+| | tried | put down | exact | steps kept | actions a part | seconds a part |
+|---|---|---|---|---|---|---|
+| before (`buildux-2026-10-16/whole`) | 35 | 16 | 11 | 8 of 8 | 15.7 | 27.2 |
+| after | **52 of 52** | **29** | **29** | 12 of 12 | 15.8 | 47.6 (the box at load 40 to 70) |
+
+Both clip plates and both 1 x 6 plates that then had no room went where the
+file has them, and every part put down is exact. The 23 parts still not
+put down are places off the 2 LDU lattice (6141s at z 63 and 72, 2421 at
+y 35; whole LDU, not even), parts that stand on one of those, 54383/4 and
+41769 the wedge plates of step 5, whose ghosts would not come to their
+place in eight aims, and the propeller (50746) on its 4286. Off-lattice
+places and the wedge plates are the next gaps.
 
 ## The gaps, by how much a builder would feel them
 

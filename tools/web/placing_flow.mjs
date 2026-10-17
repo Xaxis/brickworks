@@ -17,6 +17,12 @@
 //        hinges, a slope, a Technic plate swung on a pin by the Turn setting
 //        (8841-1's 4262), each compared ghost against put-down.
 //
+// balance 8841-1's file opened up to its Technic plates (4262), and each put
+//        on its pin, swung onto the axle (Builder._closings).
+//
+// --approach moves onto the model and a pixel along after each part is
+// taken, before aiming, as a hand comes: without it the parts section
+// measures the first aim after a take, which the browser leaves behind.
 // Pictures of each put-down go to --out for a person to look at.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -245,6 +251,15 @@ async function hold(id) {
   if (inHand === id) return true;
   const ok = await take(id);
   inHand = ok ? id : "";
+  // --approach: onto the model and a pixel along before aiming, as a hand
+  // comes, since the browser drops the ghost's first jump after a take
+  // (docs/CADTASK.md section 5).
+  if (ok && args.approach) {
+    await page.mouse.move(rect[0] + rect[2] / 2, rect[1] + rect[3] / 2, { steps: 2 });
+    await page.waitForTimeout(400);
+    await page.mouse.move(rect[0] + rect[2] / 2 + 1, rect[1] + rect[3] / 2, { steps: 1 });
+    await settled();
+  }
   return ok;
 }
 

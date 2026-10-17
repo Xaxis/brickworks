@@ -4617,12 +4617,12 @@ func _css_pixel() -> float:
 ## seeing it, over a window of its own (a menu, a dialog).
 ##
 ## A ghost aimed with no event of its own (the part's shape arrived, a
-## colour or a key) was aimed at the system's pointer, which is not where
-## the app last saw the pointer: on the desktop with events sent by a
-## probe it is wherever the real pointer was left, and in a browser a part
-## fetched after the pointer had moved onto the model put its ghost back
-## where the first of the moves had been, and kept it there until the next
-## move, while a click put the part under the pointer (2026-10-16).
+## colour or a key) was aimed at the system's pointer, which is not always
+## where the app last saw the pointer: with a probe's events it is wherever
+## the real pointer was left, so a part whose shape arrived after the move
+## onto the model had its ghost put back there, 260 pixels off, while a
+## click put the part under the pointer (placing_probe, 2026-10-16); in a
+## browser it is the press's whole pixel (_true_point).
 func _pointer() -> Vector2:
 	var system: Vector2 = get_viewport().get_mouse_position()
 	if _pointer_at.x > -INF and system.distance_to(_system_at) <= _css_pixel() * 1.5:
