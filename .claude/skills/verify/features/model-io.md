@@ -113,19 +113,24 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (Supabase answers 400, a server 404) or a web page is not taken, and the
   part is said not shown with why (`CustomParts._with_why`; the flow prints
   the console's "could not fetch" lines). A carried print gets the file's
-  subparts too (`PartPrints.build`'s others). The desktop, and a file that
+  subparts too (`PartPrints.build`'s others). A carried part the web kept
+  (`CustomParts.dir`) that needs such files is built at start-up once they
+  come (`load_all` defers it to `_load_later`). The desktop, and a file that
   carries nothing, wait for no frame. `tools/storage_ldraw.py` put the library's parts/
   (34,122 files, 495 MB) in the bucket, additive only; run it after
   `tools/fetch_data.sh` brings a newer library. `carried_fetch_probe`
   proves it with the library withheld (`PartForge.withheld`) and served by
   python's http.server on 8841: each file's carried parts as the desktop
   builds them, answers heard in any order, two files in one session,
-  the start-up restore, nothing fetched twice, 404 and HTML refused;
+  the start-up restore, a kept part at start-up, nothing fetched twice, 404
+  and HTML refused;
   `-- --timing FILE` says what looking costs a file that needs nothing; `-- --census
   OUT.json` counts what every file in vendor/omr needs.
   `tools/web/carried_flow.mjs` opens files in a browser from a local export
   served by `tools/web/serve.py DIR PORT --parts-url "$PARTS_URL"` (the real
-  bucket) and fails on a carried part said not shown or a script error.
+  bucket) and fails on a carried part said not shown, a console line saying
+  one did not build, or a script error; `--reload` reloads after the last
+  file and checks it, put back at start-up, builds again.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
   tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
   read from — goes out as an `.mpd` with one sub-model per group, titled as the
