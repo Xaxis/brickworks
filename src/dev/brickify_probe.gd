@@ -310,6 +310,10 @@ func _run() -> void:
 	print("  bonded as a builder bonds")
 	_bonded(round, plain, big)
 
+	print("")
+	print("  the surface fitted by distance")
+	await _fitted(out_dir)
+
 	# The stitch ends because nothing more joins, not because its rounds ran
 	# out: kept unchecked, its first ways laid the same pair again and again,
 	# on most of the bench's models, until all 96 were spent and the rejoin
@@ -388,6 +392,100 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		_builder.lattice.clear()
 		_checker.forget_built()
 	return result
+
+
+## The surface laid by how near each part puts it to the model (Shapes'
+## _fit_near): a ramp in slopes as long as it is, not a cheese slope a stud;
+## a face at 64 degrees in 65 degree slopes, which the flat-or-curved flag
+## never laid; and every slope in a colour it is sold in.
+func _fitted(out_dir: String) -> void:
+	var slopes: int = 0
+	var unsold: Array = []
+	var ids: Dictionary = {}
+	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
+		for entry: Array in table:
+			for id: Variant in [entry[3], entry[4]]:
+				if not str(id).is_empty():
+					ids[str(id)] = true
+	for model: Assistant.Model in _laid:
+		for placement: Assistant.Placement in model.placements:
+			if ids.has(placement.part):
+				slopes += 1
+				if _library.element_for(placement.part, placement.color).is_empty():
+					unsold.append("%s in %d" % [placement.part, placement.color])
+	_check("every one of the %d slopes laid is sold in its colour: not %s" % [slopes, unsold],
+		slopes > 0 and unsold.is_empty())
+	# A ramp falling at 18 degrees, twelve units long and four wide: at 24
+	# studs, 0.8 of a plate a stud.
+	var options := Brickify.Options.new()
+	options.studs = 24
+	# A plateau whose edge falls a plate over one stud, then five and a half
+	# over the next (65 degrees), a stud to the unit: a 65 degree slope's flat
+	# top on the first and its face on the second. On a face falling five
+	# plates a stud all the way down nothing beats the plates: each 65 degree
+	# slope is a stud flat and a stud sloped.
+	var edge: Array[Vector2] = [Vector2(0, 0), Vector2(24, 0), Vector2(24, 3.4), Vector2(23, 3.4),
+		Vector2(22, 5.6), Vector2(21, 6.0), Vector2(0, 6.0)]
+	var ledge: MeshFile = _prism(edge)
+	var steep: Dictionary = await _brickify("ledge", ledge, options, out_dir)
+	if not steep.is_empty():
+		var parts: Dictionary = {}
+		for placement: Assistant.Placement in (steep["model"] as Assistant.Model).placements:
+			if ids.has(placement.part):
+				parts[placement.part] = int(parts.get(placement.part, 0)) + 1
+		_check("a ledge falling 65 degrees over a stud in 65 degree slopes: %s" % parts,
+			int(parts.get("60481a", 0)) + int(parts.get("3678b", 0)) >= 2)
+	var laid: Dictionary = await _brickify("ramp", _ramp(12.0, 4.4, 0.5), options, out_dir)
+	if laid.is_empty():
+		return
+	var long_ones: int = 0
+	var cheese: int = 0
+	var made: Dictionary = {}
+	for placement: Assistant.Placement in (laid["model"] as Assistant.Model).placements:
+		if placement.part in ["60477", "30363", "4286", "3298", "61678", "93606", "50950", "24309"]:
+			long_ones += 1
+		elif placement.part in ["54200", "85984"]:
+			cheese += 1
+		if ids.has(placement.part):
+			made[placement.part] = int(made.get(placement.part, 0)) + 1
+	_check("the ramp in slopes three and four studs long, not a cheese slope a stud: %d long, %d cheese: %s"
+		% [long_ones, cheese, made], long_ones >= 8 and cheese * 4 <= long_ones)
+
+
+## A wedge [param length] units long and four wide, falling from
+## [param high] to [param low] units tall: 12, 4.4 and 0.5 is 18 degrees.
+func _ramp(length: float, high: float, low: float) -> MeshFile:
+	var outline: Array[Vector2] = [Vector2(0, 0), Vector2(length, 0), Vector2(length, low),
+		Vector2(0, high)]
+	return _prism(outline)
+
+
+## An outline anticlockwise in x and y (y up), every corner of it in sight
+## of its first, four units deep in z.
+func _prism(outline: Array[Vector2]) -> MeshFile:
+	var mesh := MeshFile.new()
+	mesh.name = "prism"
+	mesh.up = "+Y"
+	var triangles: Array = []
+	for n: int in range(1, outline.size() - 1):
+		triangles.append([Vector3(outline[0].x, outline[0].y, 4), Vector3(outline[n].x, outline[n].y, 4),
+			Vector3(outline[n + 1].x, outline[n + 1].y, 4)])
+		triangles.append([Vector3(outline[0].x, outline[0].y, 0), Vector3(outline[n + 1].x, outline[n + 1].y, 0),
+			Vector3(outline[n].x, outline[n].y, 0)])
+	for n: int in outline.size():
+		var a: Vector2 = outline[n]
+		var b: Vector2 = outline[(n + 1) % outline.size()]
+		triangles.append([Vector3(a.x, a.y, 0), Vector3(b.x, b.y, 0), Vector3(b.x, b.y, 4)])
+		triangles.append([Vector3(a.x, a.y, 0), Vector3(b.x, b.y, 4), Vector3(a.x, a.y, 4)])
+	for corners: Array in triangles:
+		var normal: Vector3 = ((corners[1] as Vector3) - corners[0]).cross((corners[2] as Vector3) - corners[0]).normalized()
+		for corner: Vector3 in corners:
+			mesh.positions.append(corner)
+			mesh.normals.append(normal)
+			mesh.colours.append(Color.WHITE)
+			mesh.uvs.append(Vector2.ZERO)
+		mesh.texture_of.append(-1)
+	return mesh
 
 
 ## Colour matched as an eye judges it, and every part in a colour it is made

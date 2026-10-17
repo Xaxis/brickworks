@@ -91,6 +91,11 @@ studs, against a greedy stack of standard bricks and legolization:
    bridged 45% from 42%; three quarters of the parts show, so 1.6 times
    needs unit 4's surface.*
 4. **Fit the surface by distance**, with the slope angles it lacks.
+   *2026-10-17, section 9: each slope chosen by how near it lays the
+   model, a quarter fewer of them, every one in a colour it is sold in;
+   smooth 4.6% nearer the model than plain at 48 studs and turned 3.8%
+   less, short of 20% and 30%: half of what is seen faces out, where only
+   SNOT reaches.*
 5. **SNOT that holds**: Lambrecht's turned cubes, tied to the core.
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
@@ -1766,6 +1771,258 @@ the moon on its stick; laid again by the colours measured, it keeps it, as
   stud.
 - **Mirror shapes** keep the old courses, and so fewer of the gains.
 
+## 9. Unit 4: fit the surface by distance (2026-10-17)
+
+Unit 4 of the plan. On `main` today (`d55251d`), smooth is no nearer the
+model than plain (Chamfer 0.263 against 0.265 studs at 48 studs) and turns
+from it about as much (normal error 37.3° against 38.3°): each stud's
+slope is chosen by a flag that says whether the model is flat or curved
+there, against the height of the stud's middle in whole plates. Branch
+`worktree-agent-a1f62b437d9f19743`, from `main` at `5e082bd` with the m43
+and m44 releases (`d55251d`) merged.
+
+**In short.** The bar is missed by far. Smooth is now 4.6% nearer the model
+than plain at 48 studs and 2.5% at 24 (the bar: 20%), and turns from it
+3.8% and 2.6% less (the bar: 30%); it is further from the model or turned
+more than plain on 13 of the 28 runs, from 21. Half of what the bench sees
+of a model faces out, within 30 degrees of level, and there no part this
+unit lays reaches: smooth and plain turn from it by the same 36°. Were
+every surface facing up laid perfectly, the normal error at 48 studs would
+still be about 29°, 24% under plain's. What did change: the surface parts
+are chosen by how near they lay the model, a quarter fewer of them at 48
+studs (3,430 from 4,492), a quarter fewer cheese slopes, every one in a
+colour it is sold in, and ΔE2000 at 48 studs 1.23 times the floor from 1.27.
+The rest holds: smooth whole in 28 of 28 and the temple's moon kept, every
+run one piece with its check passing, standing in 24 of 28 from 20, the
+bond's figures within a point and a half of unit 3's, the stops.
+
+**Where the error is.** The model's visible points sorted by which way
+their surface faces (`brickify_bench.py faces`, the means of the 14
+models): normal error in degrees, and the distance from the model to the
+build in studs.
+
+| 48 studs | Up | Up and out | Out | Down and out | Down |
+|---|---|---|---|---|---|
+| Share of what is seen | 8% | 16% | 53% | 13% | 10% |
+| Plain, normal | 27.6 | 47.9 | 35.4 | 50.2 | 35.5 |
+| Smooth before, normal | 21.1 | 38.9 | 36.6 | 48.0 | 38.0 |
+| Smooth after, normal | 20.5 | 38.1 | 36.4 | 48.9 | 35.2 |
+| Plain, distance | 0.15 | 0.17 | 0.30 | 0.19 | 0.16 |
+| Smooth before, distance | 0.16 | 0.19 | 0.24 | 0.21 | 0.17 |
+| Smooth after, distance | 0.14 | 0.16 | 0.24 | 0.19 | 0.16 |
+
+At 24 studs the shares are the same and the out faces' normal error 40.4°
+after, 40.5° before, 39.8° plain. The slopes and tiles do their work on
+the quarter that faces up; the sides are one-stud staircases in every arm,
+and the overhangs' inverted slopes turn from the model by 48° to 51°
+whichever way they are chosen.
+
+**What changed** ([shapes.gd](../src/ai/shapes.gd),
+[brickify.gd](../src/assembly/brickify.gd); a design's shapes lay as
+before):
+
+1. **The model's own surface at thirds of a stud** (`Grid.fine`). Brickify
+   already casts a ray up through every third of a stud; each stud now
+   hands Shapes the nine heights where those rays leave the model nearest
+   its top (or enter it nearest its foot), in plates, not rounded.
+2. **Each surface part read off its own mesh** (`Plan.SLOPES` and
+   `Plan.INVERTED`, the last column): its top at each third of a stud along
+   its fall, studs and all. The heights written by hand for the stud's
+   middle were a plate out in places: the curved 4 x 1 is 2.9 plates over
+   its second stud, not 2.2, and an inverted slope's deep end is hollow.
+3. **Fitted by distance** (`Plan._fit_near`). At each place a slope could
+   start, every slope, curved slope and inverted one, in every turn and at
+   every height that stands on the shape, is laid against the model's
+   surface at the thirds of a stud it covers: how far its surface is from
+   the model's, in studs, and how far it turns from it, at 0.004 studs a
+   degree. The nearest is kept, or the longest within 0.12 studs of it, and
+   only if it is nearer than the plates it would take the place of. The flag
+   is not asked.
+4. **Only in a colour it is sold in** (unit 3's `_made`, asked of each
+   surface part as it is fitted): a slope not made in the colour it shows
+   is not laid there. It used to be laid and recoloured after, the nearest
+   colour it is made in: a grey hull's inverted slopes came out Sand Green.
+5. **The angles it lacked**: the 65 degree slope 2 x 1 x 2 (60481a) and
+   2 x 2 x 2 (3678b), and the curved top 1 x 3 x 2 (33243), each fitted
+   only this way.
+6. **A build that leaves a region out** is laid again as `main` lays it,
+   unbonded and its slopes by the flag (`Options.near`), and the fuller
+   kept (unit 3's rule, a step further). Fitted by distance, the temple at
+   48 studs lost its moon bonded and again unbonded (Chamfer 0.61 studs
+   from 0.39); now it is `main`'s build, as in unit 3.
+
+**Tried and taken out.** Measured on Spot and the Stanford bunny at 48
+studs (200 x 200 views, the means of the two), and the probe's own sphere
+and forty-stud bunny; the bench's figures above are the final build's.
+
+| On Spot and the bunny at 48 | Normal (°) | Chamfer (studs) | Seams bridged | Probe's sphere: seams bridged (`main` 53.9%) |
+|---|---|---|---|---|
+| `main` | 40.0 | 0.229 | 50.5% | |
+| Fitted by distance, longer preferred by 0.10 studs | 39.7 | 0.214 | 51.4% | 53.1% |
+| And the 65 degree slopes, by 0.12 (the final build) | 39.6 | 0.213 | 51.3% | 52.9% |
+| And the 75 degree slopes, by 0.10 | 39.1 | 0.211 | 48.8% | 49.3% |
+| And stacked as a roof is, by 0.10 | 38.1 | 0.206 | 45.5% | 48.4% (the brick-tall slopes alone stacked) |
+
+- *Stacked as a roof is*: a straight slope's flat top under the last stud
+  of the slope above, so a flank is one face and not a stud flat and a stud
+  sloped all the way down; under an overhang, the next inverted slope out
+  on the last stud of the one deeper. The nearest of all, but the slope
+  underneath takes the place of the core's plates that bridged its
+  neighbours: the probe's sphere took 1,697 parts to `main`'s 1,606, and
+  the forty-stud bunny's hidden plates rose from 98 to 145. Without
+  stacking, a 65 degree slope is a stud flat and a stud at 65 degrees, and
+  on a face falling five plates a stud all the way down nothing beats the
+  plates; it is laid where a flank's edge steps down a plate and then falls
+  (128 times at 48 studs).
+- *75 degree slopes* (4460b, and 2449 inverted), three bricks tall on a
+  stud: nothing beside them is bridged to them. The sphere's seams bridged
+  fell to 49.3% and the forty-stud bunny's to 47.3% (`main` 49.7%). The top
+  one was hardly laid unless stacked; the inverted one 50 to 75 times a
+  model, and the overhangs turned from the model no less.
+- *Preferring longer* by 0.04 studs: the bunny at 48 studs had 276 cheese
+  slopes 1 x 1 (`main` 320); by 0.10, 201, as near. At 0.10 the probe's sphere took 5 parts
+  more than `main`'s; at 0.15 and 0.20 a point fewer of its seams were
+  bridged than `main`'s, and fewer of its tops curved. 0.12 holds both.
+- *Twice the weight on turning* (0.008 studs a degree): within 0.2° and
+  0.002 studs of 0.004.
+- *A slope only where it beats the plates by 0.02 studs*: the same sphere,
+  5 parts too many.
+- *A straight slope's flat top flush with the stud above it* (a slope
+  starting on the plateau's edge, not the first stud lower): a stud on
+  top where there was a tile; Spot and the bunny turned 0.1° more.
+
+**Not done.** Double curves (93273, 1762), round 2 x 2 bricks and domes
+(3941, 30367), wedge slopes (43720, 43721, 42862) and quarter tiles were on
+the list. A double curve falls both ways, so Shapes reads no fall off its
+mesh and has no turn to lay it in; a round brick or a dome caps a round
+column, not a fall; a wedge slope falls across the diagonal. Each needs a
+fit of its own, in two directions, and none was started.
+
+### The bench again
+
+The same 14 models at 24 and 48 studs, smooth and plain, `main`
+(`d55251d`) laid in its own checkout and the branch in this one, each in
+two processes, the box calm (a load of 2 to 24), both measured by
+`brickify_bench.py`.
+
+**Likeness**, the means of every model.
+
+| Studs | Run | Chamfer, smooth | Chamfer, plain | Smooth against plain | Normal, smooth (°) | Normal, plain (°) | Smooth against plain | IoU, smooth | F@0.5, smooth |
+|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 0.236 | 0.238 | −0.7% | 41.0 | 41.8 | −1.9% | 0.877 | 0.915 |
+| 24 | after | 0.232 | 0.238 | −2.5% | 40.7 | 41.8 | −2.6% | 0.879 | 0.919 |
+| 48 | `main` | 0.263 | 0.265 | −0.7% | 37.3 | 38.3 | −2.6% | 0.927 | 0.906 |
+| 48 | after | 0.253 | 0.265 | −4.6% | 36.9 | 38.3 | −3.8% | 0.931 | 0.913 |
+| | the bar | | | −20% | | | −30% | | |
+
+Plain lays no surface part and is the same build before and after. Smooth
+is nearer the model than before on 21 of the 28 runs and turns less on 20;
+Bob at 48 turns 1.3° more. It is still further from the model, or turned
+more, than plain on 13: the avocado, 3DBenchy, the fox and the milk truck
+at both sizes, the figure and the teapot at 24, and the Hayes bust, Spot
+and the toy car at 48 (Spot 0.203 against 0.201 studs). The most is 0.03
+studs (the avocado and the milk truck at 48) and 3° (the milk truck at 24,
+whose flat roof and sides plain lays as well).
+
+**Whole, standing, the bond, colour.**
+
+| Studs | Run | Whole | Standing, no joint past its load | Joints past their load | Parts | Times greedy's | 1x1 share | Seams bridged | Weak points | ΔE2000 | Times the floor |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 14/14 | 11/14 | 3 | 11,353 | 2.86 | 42.4% | 44.6% | 32.8% | 11.07 | 1.49 |
+| 24 | after | 14/14 | 14/14 | 0 | 10,975 | 2.76 | 40.7% | 43.3% | 33.0% | 11.04 | 1.49 |
+| 48 | `main` | 14/14 | 9/14 | 48 | 52,160 | 2.42 | 35.1% | 44.9% | 27.2% | 9.47 | 1.27 |
+| 48 | after | 14/14 | 10/14 | 42 | 51,531 | 2.39 | 34.1% | 45.4% | 27.8% | 9.17 | 1.23 |
+
+Every run is laid, in one piece, its check passing; plain is whole in 27
+of 28 as before (the temple at 48 loses its moon). The temple at 48 smooth
+is `main`'s build part for part, its 35 joints past their load with it.
+
+**The surface parts**, all 14 models at 48 studs, smooth (24 studs in
+brackets).
+
+| Part | `main` | After |
+|---|---|---|
+| 65° 2 x 1 x 2 and 2 x 2 x 2 (60481a, 3678b) | 0 (0) | 128 (42) |
+| Curved top 1 x 3 x 2 (33243) | 0 (0) | 16 (9) |
+| 45°, 33° and 18° slopes | 407 (51) | 322 (68) |
+| Curved slopes, 2, 3 and 4 long | 316 (30) | 570 (95) |
+| Cheese slopes 1 x 1 and 1 x 2 | 2,959 (880) | 2,174 (473) |
+| Inverted slopes | 810 (111) | 220 (30) |
+| All surface slopes | 4,492 (1,072) | 3,430 (717) |
+
+The inverted slopes that went were further from the model than the plates,
+or not made in the colour they show: 4287a is sold in 7 of the palette's
+41 colours, none of them white, grey or black.
+
+**Time.** The forty-stud bunny laid three times by `main` and by the
+branch side by side, twice in turn (`brickify_phases.gd`, medians of the
+six): 5.41 s for `main` (5.25 to 5.73) and 5.12 s for the branch (5.00 to
+5.42), 0.95 times. The fit takes 0.07 s where the flag took 0.03; the
+stitch is 0.2 s quicker on 84 fewer parts (1,943 from 2,027). On the
+bench, smooth averaged 38 s at 48 studs from 52 and 4.2 s at 24 from 6.8,
+`main` and the branch an hour apart on a box at a load of 2 to 24: read
+the bunny's ratio, not these.
+
+**Pictures.** Spot, 3DBenchy, Bob, the avocado, the milk truck and the
+Stanford bunny at 48 studs, drawn on the GPU by the app's own camera
+(`bench_views.gd`), `main` beside the branch (in
+`bench/results/brickify5-2026-10-17/renders`, not committed). Spot's back
+and Bob's tube read rounder: curved slopes two and three studs long where
+cheese slopes stepped a plate a stud. The pieces in a colour the model
+does not have are gone: Spot's tan at the chest and legs, the avocado's
+dark red under its seed and olive under its foot, 3DBenchy's Sand Green
+under its bow, each an inverted slope recoloured to one it is sold in.
+Under 3DBenchy's bow there are plain plates there now, and a pillar of
+1 x 1 bricks to the ground props them, where the slopes had no joint past
+their load. The sides are the staircases they were. The milk truck is the
+same build but for its bonnet's front edge.
+
+Spot at 48 studs (Keenan Crane, CC0), the model, then smooth before and
+after:
+
+![Spot at 48 studs: the model, then smooth before and after](brickify/unit4-spot-48.jpg)
+
+3DBenchy at 48 studs (Creative Tools, CC0): no Sand Green under the bow,
+and the pillar that props it.
+
+![3DBenchy at 48 studs: the model, then smooth before and after](brickify/unit4-benchy-48.jpg)
+
+### Proof
+
+- `brickify_probe` (headless): all 73 checks pass, seven of them new, in a
+  section "the surface fitted by distance": every one of the 1,379 slopes
+  laid in the probe's builds is sold in its colour; a ledge whose edge
+  steps down a plate and then falls 65 degrees over a stud is laid with
+  65 degree slopes; a ramp at 18 degrees in slopes three and four studs
+  long (24 of them), not a cheese slope. Unit 3's bond checks hold: the
+  sphere in 1,589 parts (`main` 1,606), 52.9% of its seams bridged
+  (53.9%), 30.9% weak points (30.9%); the forty-stud bunny's hidden core
+  242 bricks and 98 plates.
+- `shapes_probe`: all pass; a design's shapes do not hand Shapes a model's
+  surface, so they keep the flag and lay as they did.
+- `brickify_ui_probe` in a window on the GPU: all pass; the bunny lands as
+  1,214 parts and the hollow sphere as 1,058.
+- `quit_probe --only=brickify`: the app gone 0.4 s after the window closed
+  mid-run. The fit asks the run's stop every 256 studs.
+- `featuremap affected` names only `lib:brickify`.
+- `tools/web/brickify_flow.mjs` (`brickify`, `brickify_fox` in the preview
+  checks) needs a preview, and was not run.
+
+### What is left
+
+- **The sides.** Half of what the bench sees faces out, and both arms turn
+  from it by 36° at 48 studs; the bar's 30% cannot be had from the top.
+  Unit 5 (SNOT) is there: a flank in plates and tiles turned to face it.
+- **The overhangs** turn from the model by 48° to 51° with inverted slopes
+  or without. Most inverted slopes are sold in few colours, and the 75
+  degree one costs the bond.
+- **Stacked slopes** were the nearest of all and are out for the bond. A
+  stack whose lower slope stands on a plate reaching under its neighbours
+  would keep both; the core is laid after the surface and does not know to.
+- **Plan diagonals**: every slope falls along x or z. A flank facing 45
+  degrees between them is laid as two staircases at right angles; corner
+  and wedge slopes would follow it.
+
 ## Repeat it
 
 The models are not in the repository (two are Stanford's, for research use
@@ -1808,6 +2065,13 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --in
 $S/venv/bin/python -I tools/bench/brickify_bench.py bond $S/after
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py pictures $S/after --into $S/pictures \
     --arms smooth --before $S/main --cut
+# unit 4: where the normal error and the distance are, the model's visible points sorted by which
+# way their surface faces, each arm, into $S/after/faces.json (200 x 200 views):
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/after
+# and each build drawn on the GPU by the app's own camera, corner and front:
+gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path $W --resolution 1600x900 \
+    --script src/dev/bench_views.gd -- --model=$S/after/spot/48/smooth.ldr --views_out=$S/spot \
+    --views=corner,front
 ```
 
 The run behind sections 3 and 4 used the app at `7a55e86` (main), on
@@ -1815,7 +2079,8 @@ The run behind sections 3 and 4 used the app at `7a55e86` (main), on
 threads; section 6's, `2789cd0` and the branch on 2026-10-16, at a load of
 10 to 60; section 7's, `69a0d1d` with unit 2 and the branch, the same day,
 at a load of 15 to 45; section 8's, `a1d1998` and the branch on 2026-10-16
-and 17, at a load of 25 to 45.
+and 17, at a load of 25 to 45; section 9's, `d55251d` and the branch on
+2026-10-17, at a load of 2 to 24.
 
 ## Each model, every arm
 
