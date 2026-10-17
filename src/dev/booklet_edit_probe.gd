@@ -212,6 +212,10 @@ func _one_set(path: String, name: String) -> void:
 		await _move(base)
 		await _looks_one_by_one(base, name)
 		await _over_mcp(base)
+		await _page_by_hand(base)
+		await _page_over_mcp(base)
+		# 30050-1 turns its sub-models with ROTSTEPs of its own.
+		_step_player("as opened", name == "30050-1")
 	else:
 		await _first_look_adopts(base)
 	await _all_looks(name, before)
@@ -499,6 +503,226 @@ static func _line_with(text: String, part: String) -> String:
 	return ""
 
 
+## The page by hand, in Lay out the page (PageEditor): the page's first
+## step's picture dragged by the mouse and let go a millimetre and a half
+## off the page's top margin, which it snaps onto; its parts list widened by
+## its corner; its number moved; words and a picture added; the new parts'
+## outline turned off. Each one undo step, the file gaining exactly the
+## line that says it (the picture its !DATA too), and one undo giving the
+## file back byte for byte.
+func _page_by_hand(base: String) -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	var own: Array[Instructions.Step] = _own_steps(2)
+	var pick: Instructions.Step = own[mini(1, own.size() - 1)]
+	_go(pick.number)
+	await editor.open()
+	await _frames(4)
+	var state: Dictionary = editor.page_state()
+	var first: int = int((state.get("steps", [0]) as Array)[0])
+	var items: Dictionary = state.get("items", {})
+	_check("Lay out the page on step %d: page %d, steps %s, %d items (%s)" % [pick.number,
+		int(state.get("page", 0)), str(state.get("steps", [])), items.size(),
+		", ".join(PackedStringArray(items.keys())).left(120)],
+		items.has("page_picture_%d" % first) and _history() >= 0)
+	var mouse: bool = DisplayServer.get_name() != "headless"
+	# The picture, dragged.
+	var history: int = _history()
+	var name: String = "page_picture_%d" % first
+	var at: int = editor.item_named(name)
+	var was: Rect2 = editor._items[at]["rect"]
+	var by := Vector2(30.0, Booklet.MARGIN + 1.5 - was.position.y)
+	var others: Array = []
+	for n: int in editor._items.size():
+		if n != at:
+			others.append(editor._items[n]["rect"])
+	var want: Rect2 = Booklet.snapped_to(Rect2(was.position + by, was.size), others)["rect"]
+	if mouse:
+		var control: Control = editor._items[at]["control"]
+		var from: Vector2 = control.get_global_rect().get_center()
+		var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+		await _drag_mouse(from, from + by * k)
+	else:
+		await editor.place(at, want)
+	await _until_laid(editor)
+	var placed: Array = editor.page_state().get("items", {}).get(name, [])
+	var diff: Array = _edited("%s %s from %s by %s to %s" % ["dragged by the mouse" if mouse
+		else "placed", name, _mm(was), by, str(placed)], base, history)
+	_check("...snapped onto the top margin (y %s, want %s), where the snapping rule puts it (%s)"
+		% [str(placed[1]) if not placed.is_empty() else "?", Booklet.MARGIN, _mm(want)],
+		not placed.is_empty() and is_equal_approx(float(placed[1]), Booklet.MARGIN)
+		and absf(float(placed[0]) - want.position.x) < 0.6)
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE PICTURE "), base)
+	await _until_laid(editor)
+	# The parts list, widened by its corner.
+	name = "page_parts_%d" % first
+	at = editor.item_named(name)
+	if at >= 0:
+		history = _history()
+		was = editor._items[at]["rect"]
+		if mouse:
+			await _click((editor._items[at]["control"] as Control).get_global_rect().get_center())
+			await _frames(3)
+			var corner: Vector2 = editor._handle.get_global_rect().get_center()
+			var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+			await _drag_mouse(corner, corner + Vector2(24.0, 0.0) * k)
+		else:
+			await editor.place(at, Rect2(was.position, was.size + Vector2(24.0, 0.0)))
+		await _until_laid(editor)
+		var wide: Array = editor.page_state().get("items", {}).get(name, [])
+		diff = _edited("%s the parts list's corner by 24 mm: %s to %s" % ["dragged" if mouse else "moved",
+			_mm(was), str(wide)], base, history)
+		await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+			and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE PARTS "), base)
+		await _until_laid(editor)
+	else:
+		print("  (step %d has no parts list on its page)" % first)
+	# The number, moved.
+	name = "page_number_%d" % first
+	at = editor.item_named(name)
+	history = _history()
+	was = editor._items[at]["rect"]
+	await editor.place(at, Rect2(was.position + Vector2(0.0, 40.0), was.size))
+	diff = _edited("step %d's number moved 40 mm down" % first, base, history)
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE NUMBER "), base)
+	await _until_laid(editor)
+	# Words, added by the page's own button and typed over.
+	history = _history()
+	var said: String = await editor.add_text("Build two of these", Rect2(150, 160, 90, 14), 5.0)
+	diff = _edited("Add words (\"%s\")" % said, base, history)
+	_check("...shown on the page: %s" % str(editor.page_state().get("items", {}).keys().filter(
+		func(item: String) -> bool: return item.begins_with("page_text"))),
+		editor.page_state().get("items", {}).has("page_text_%d_0" % first))
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TEXT 150 160 90 14 5 Build two of these",
+		base)
+	await _until_laid(editor)
+	# A picture of the designer's.
+	history = _history()
+	var picture := Image.create(64, 48, false, Image.FORMAT_RGB8)
+	picture.fill(Color(0.85, 0.2, 0.15))
+	picture.fill_rect(Rect2i(8, 8, 24, 24), Color(1, 1, 1))
+	said = await editor.add_image(picture)
+	diff = _edited("Add a picture (\"%s\")" % said, base, history)
+	var put: Array = diff[1]
+	var image_line: bool = put.any(func(line: Variant) -> bool:
+		return str(line).strip_edges().begins_with("0 !BRICKWORKS IMAGE ") \
+			and str(line).strip_edges().ends_with(BookletLooks.IMAGE_PREFIX + "1.jpg"))
+	var data_line: bool = put.any(func(line: Variant) -> bool:
+		return str(line).strip_edges() == "0 !DATA " + BookletLooks.IMAGE_PREFIX + "1.jpg")
+	var rest: Array = put.filter(func(line: Variant) -> bool:
+		return not str(line).begins_with("0 !: ") and not str(line).strip_edges().is_empty())
+	await _judge(diff, (diff[0] as Array).is_empty() and image_line and data_line and rest.size() == 2,
+		base)
+	await _until_laid(editor)
+	# The new parts' outline, off for the booklet.
+	history = _history()
+	said = _shell.change_look("highlight", _go(pick.number))
+	diff = _edited("Outline new parts off (\"%s\")" % said, base, history)
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS HIGHLIGHT OFF", base)
+	await _until_laid(editor)
+	if mouse:
+		var picture_path: String = _out.path_join("%s_page_editor.png" % _name)
+		var shot: Image = root.get_texture().get_image()
+		if shot != null:
+			shot.save_png(picture_path)
+	editor.close()
+
+
+## The same over MCP: edit_booklet's place= and text=, one undo each and
+## the line that says it; booklet_layout says where each is.
+func _page_over_mcp(base: String) -> void:
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var own: Array[Instructions.Step] = _own_steps(2)
+	var pick: Instructions.Step = own[mini(1, own.size() - 1)]
+	var history: int = _history()
+	var said: String = str(await tools.run("edit_booklet", {"step": pick.number,
+		"place": {"item": "picture", "x": 60, "y": 30, "w": 150, "h": 110}}))
+	var diff: Array = _edited("edit_booklet place picture at 60, 30, 150 x 110 (\"%s\")" % said.left(80),
+		base, history)
+	var layout: String = str(await tools.run("booklet_layout", {}))
+	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
+		_line_with(layout, "%d (" % pick.number).contains("picture at 60, 30 mm (150 wide, 110 high)"))
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS PLACE PICTURE 60 30 150 110", base)
+	history = _history()
+	said = str(await tools.run("edit_booklet", {"step": pick.number,
+		"text": {"words": "Turn the model round", "x": 20, "y": 170, "w": 70, "h": 10, "size": 4.5}}))
+	diff = _edited("edit_booklet text \"Turn the model round\" (\"%s\")" % said.left(80), base, history)
+	layout = str(await tools.run("booklet_layout", {}))
+	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
+		_line_with(layout, "%d (" % pick.number).contains("text \"Turn the model round\" at 20, 170 mm"))
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TEXT 20 170 70 10 4.5 Turn the model round",
+		base)
+	history = _history()
+	said = str(await tools.run("edit_booklet", {"step": pick.number, "place": {"item": "picture",
+		"x": 60}}))
+	_check("edit_booklet place without y refuses, no undo step (\"%s\")" % said.left(70),
+		said.contains("needs x and y") and _history() == history)
+
+
+## The step player (Build it, a shared link) sees each step from where its
+## designer turned it, as the booklet draws it (BuildSteps.view).
+func _step_player(when: String, need: bool = true) -> void:
+	var made: Array[Instructions.Step] = _steps.steps()
+	var pages: BuildSteps = BuildSteps.of(_world, _library, made, _store.scenery)
+	var turned: int = 0
+	var wrong: Array = []
+	for page: int in range(1, pages.last() + 1):
+		var step: Instructions.Step = pages.step_of(page)
+		if step == null or step.authored_step < 0:
+			continue
+		var turn: Dictionary = BookletLooks.turn_at(_world, step.authored_in, step.authored_step)
+		if turn.is_empty():
+			continue
+		turned += 1
+		var from: Vector3 = pages.view(page)["from"]
+		if (from - BookletLooks.direction(turn)).length() > 0.001:
+			wrong.append(page)
+	_check("the step player, %s: %d of %d pages turned as the designer turned them%s" % [when,
+		turned - wrong.size(), turned, (", not %s" % str(wrong.slice(0, 5))) if not wrong.is_empty()
+		else ""], (turned > 0 or not need) and wrong.is_empty())
+
+
+func _until_laid(editor: PageEditor) -> void:
+	for _n: int in 600:
+		if not bool(editor.page_state().get("laying", false)):
+			break
+		await process_frame
+	await _frames(3)
+
+
+## The pixels of the outline's orange (booklet_ink's new_colour) in the
+## first eight steps' pictures of [param entries] (number -> [entry, page]).
+static func _orange(entries: Dictionary) -> int:
+	var count: int = 0
+	var numbers: Array = entries.keys()
+	numbers.sort()
+	for number: Variant in numbers.slice(0, 8):
+		var entry: Booklet.Entry = entries[number][0]
+		var uri: String = entry.image
+		if not uri.begins_with("data:image/jpeg;base64,"):
+			continue
+		var image := Image.new()
+		if image.load_jpg_from_buffer(Marshalls.base64_to_raw(uri.get_slice(",", 1))) != OK:
+			continue
+		var data: PackedByteArray = image.get_data()
+		var channels: int = 4 if image.get_format() == Image.FORMAT_RGBA8 else 3
+		for at: int in range(0, data.size() - channels, channels * 2):
+			if data[at] > 225 and data[at + 1] > 100 and data[at + 1] < 165 and data[at + 2] < 70:
+				count += 1
+	return count
+
+
+static func _mm(rect: Rect2) -> String:
+	return "[%.1f, %.1f, %.1f, %.1f]" % [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
+
+
 ## A model with no steps of its own given a look: the worked-out steps
 ## taken in the same undo, and that undo takes both back.
 func _first_look_adopts(base: String) -> void:
@@ -584,6 +808,27 @@ func _all_looks(name: String, before: Dictionary) -> void:
 			break
 	_check("every look set, each its own undo step (%d)" % (_history() - history),
 		_history() - history == 11 + (0 if off.is_empty() else 1))
+	# And the page by hand, on the page step "new" heads: its picture, parts
+	# list and number placed, words and a picture of the designer's on it;
+	# 30050-1's booklet with the new parts not outlined.
+	history = _history()
+	var heads: Instructions.Step = _go(int(picks["new"]))
+	var placed: Dictionary = {"picture": [120, 40, 130, 120], "parts": [12, 30, 70],
+		"number": [12, 14]}
+	for item: String in placed:
+		_shell.change_look("place", heads, {"item": item, "at": placed[item]})
+	_shell.change_look("text", heads, {"text": "Build the wheels first,\nthen the frame",
+		"at": [12, 150, 90, 20], "size": 5.0})
+	var picture := Image.create(96, 64, false, Image.FORMAT_RGBA8)
+	picture.fill(Color(0.1, 0.45, 0.85, 1.0))
+	picture.fill_rect(Rect2i(10, 10, 40, 40), Color(1.0, 0.85, 0.1, 0.0))
+	_shell.change_look("image", heads, {"data": Marshalls.raw_to_base64(picture.save_png_to_buffer()),
+		"kind": "png", "at": [200, 150, 48, 32]})
+	var outlined: bool = name != "30050-1"
+	if not outlined:
+		_shell.change_look("highlight", heads)
+	_check("...and the page by hand, each its own undo step (%d)" % (_history() - history),
+		_history() - history == 5 + (0 if outlined else 1))
 	var looks: Dictionary = _world.step_looks.duplicate(true)
 	var saved: String = _save()
 	var timeline: Array = _captions()
@@ -602,25 +847,89 @@ func _all_looks(name: String, before: Dictionary) -> void:
 		if now[at] != timeline[at]:
 			differ = ": first apart at %s, was %s" % [now[at], timeline[at]]
 			break
-	# A model given the worked-out steps has each copy of a sub-model built
-	# in its own order, and a file writes a sub-model once: reopened, every
-	# copy is built as the first (10016-1's second wheels). Said, and only
-	# the count judged there.
-	if adopted:
-		_check("...as many steps (%d, now %d%s)" % [timeline.size(), now.size(), differ],
-			now.size() == timeline.size())
-	else:
-		_check("...the timeline's steps the same (%d, now %d%s)" % [timeline.size(), now.size(),
-			differ], now == timeline)
+	# A model given the worked-out steps steps every copy of a sub-model as
+	# its first, the copy a file writes: reopened, 10016-1's second wheels
+	# build as they did before (AuthorSteps._copies_alike).
+	_check("...the timeline's steps the same%s (%d, now %d%s)" % [
+		", the worked-out steps taken" if adopted else "", timeline.size(), now.size(),
+		differ], now == timeline)
 	var again: String = _save()
 	var drift: Array = _diff(saved, again)
 	_check("...and saved again, the same file (%d out, %d in)" % [(drift[0] as Array).size(),
 		(drift[1] as Array).size()], again == saved)
+	_check("...the file says the page by hand: PLACE, TEXT, IMAGE and its !DATA%s"
+		% ("" if outlined else ", HIGHLIGHT OFF"),
+		saved.contains("0 !BRICKWORKS PLACE PICTURE 120 40 130 120")
+		and saved.contains("0 !BRICKWORKS PLACE PARTS 12 30 70")
+		and saved.contains("0 !BRICKWORKS PLACE NUMBER 12 14")
+		and saved.contains("0 !BRICKWORKS TEXT 12 150 90 20 5 Build the wheels first,\\nthen the frame")
+		and saved.contains("0 !BRICKWORKS IMAGE 200 150 48 32 " + BookletLooks.IMAGE_PREFIX + "1.png")
+		and saved.contains("0 !DATA " + BookletLooks.IMAGE_PREFIX + "1.png")
+		and (outlined or saved.contains("0 !BRICKWORKS HIGHLIGHT OFF")))
+	_step_player("after the turn, saved and opened again")
+	# Laid out without pictures: the page by hand where it was put, and the
+	# step alone filling its page.
+	var laying := BookletMaker.new()
+	laying.library = _library
+	_main.add_child(laying)
+	var laid: Array[Booklet.Page] = await laying.lay_out_only(_world, _store.scenery, name)
+	laying.queue_free()
+	var by_number: Dictionary = {}
+	for page: Booklet.Page in laid:
+		for entry: Booklet.Entry in page.entries:
+			if page.kind == "steps":
+				by_number[entry.number] = [entry, page]
+	var head: Array = by_number.get(int(picks["new"]), [])
+	var head_entry: Booklet.Entry = head[0] if not head.is_empty() else null
+	_check("...laid out: step %d's picture at %s, parts list at %s, number at %s, %d notes" % [
+		int(picks["new"]), _mm(head_entry.rect) if head_entry != null else "?",
+		str(head_entry.parts_rect.position) if head_entry != null else "?",
+		str(head_entry.number_at) if head_entry != null else "?",
+		head_entry.notes.size() if head_entry != null else 0],
+		head_entry != null and head_entry.rect.is_equal_approx(Rect2(120, 40, 130, 120))
+		and (head_entry.lots.is_empty() or head_entry.parts_rect.position.is_equal_approx(Vector2(12, 30))
+			and is_equal_approx(head_entry.parts_width, 70.0))
+		and head_entry.number_at.is_equal_approx(Vector2(12, 14)) and head_entry.notes.size() == 2)
+	var alone: Array = by_number.get(int(picks["alone"]), [])
+	if not alone.is_empty():
+		var entry: Booklet.Entry = alone[0]
+		var area: Rect2 = Booklet.content()
+		var fill: float = maxf(entry.subject.size.x * entry.scale / area.size.x,
+			entry.subject.size.y * entry.scale / area.size.y)
+		var most: float = Booklet.MOST_SCALE * Booklet.ALONE_MOST * Booklet._grown(entry)
+		_check("...step %d alone fills its page: %.0f%% of it across, at %.2f mm an LDU (%.2f the most for a step not alone)"
+			% [entry.number, fill * 100.0, entry.scale, Booklet.MOST_SCALE],
+			fill > 0.75 or is_equal_approx(entry.scale, most))
 	if not _booklets:
 		return
 	var made: Dictionary = await _booklet("after")
 	var pages: Array = made["pages"]
 	var document: Booklet.Document = made["document"]
+	# The page by hand, as printed: the picture where it was put, the words
+	# and the picture on the page, and the new parts outlined or not.
+	var drawn_head: Array = (made["entries"] as Dictionary).get(int(picks["new"]), [])
+	var html: String = FileAccess.get_file_as_string(_out.path_join("%s_after.html" % name))
+	var section: String = ""
+	if not drawn_head.is_empty():
+		var page_number: int = (drawn_head[1] as Booklet.Page).number
+		var from: int = html.find("id=\"page-%d\"" % page_number)
+		section = html.substr(from, html.find("</section>", from) - from) if from >= 0 else ""
+	_check("the booklet's page %s: step %d's picture at %s, the words and the picture on it" % [
+		str((drawn_head[1] as Booklet.Page).number) if not drawn_head.is_empty() else "?",
+		int(picks["new"]), _mm((drawn_head[0] as Booklet.Entry).rect) if not drawn_head.is_empty() else "?"],
+		not drawn_head.is_empty()
+		and (drawn_head[0] as Booklet.Entry).rect.is_equal_approx(Rect2(120, 40, 130, 120))
+		and section.contains("--x:120;--y:40;--w:130;--h:120")
+		and section.contains("Build the wheels first,<br>then the frame")
+		and section.contains("--x:200;--y:150;--w:48;--h:32") and section.contains("data:image/png;base64,"))
+	var orange_before: int = _orange(before.get("entries", {}))
+	var orange_after: int = _orange(made["entries"])
+	if outlined:
+		_check("...the new parts outlined in orange, before and after (%d and %d pixels)"
+			% [orange_before, orange_after], orange_before > 200 and orange_after > 200)
+	else:
+		_check("...the new parts outlined by default (%d pixels) and not once turned off (%d)"
+			% [orange_before, orange_after], orange_before > 200 and orange_after * 5 < orange_before)
 	var entries: Dictionary = {}
 	for page: Booklet.Page in pages:
 		for entry: Booklet.Entry in page.entries:

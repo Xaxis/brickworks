@@ -654,16 +654,22 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 					and pictures.has(str(note["image"])):
 				shown[str(note["image"])] = true
 	if not shown.is_empty():
-		while not out.is_empty() and out[out.size() - 1].strip_edges().is_empty():
-			out.remove_at(out.size() - 1)
+		# Before the blank lines the file ends with, as they were.
+		var end: int = out.size()
+		while end > 0 and out[end - 1].strip_edges().is_empty():
+			end -= 1
+		var block := PackedStringArray()
 		var kept: Array = shown.keys()
 		kept.sort()
 		for name: String in kept:
-			out.append("0 !DATA " + name + eol)
+			block.append("0 !DATA " + name + eol)
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
-				out.append("0 !: " + encoded.substr(at, 76) + eol)
-		out.append("")
+				block.append("0 !: " + encoded.substr(at, 76) + eol)
+		for n: int in block.size():
+			out.insert(end + n, block[n])
+		if end + block.size() == out.size():
+			out.append("")
 	return "\n".join(out)
 
 

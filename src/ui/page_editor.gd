@@ -434,6 +434,9 @@ func _picture(name: String) -> Texture2D:
 	if _pictures.has(name):
 		return _pictures[name]
 	var data: String = str(BookletLooks.images(_world).get(name, ""))
+	if data.is_empty():
+		# Undone a moment ago, before the page was laid out again.
+		return null
 	var image := Image.new()
 	var bytes: PackedByteArray = Marshalls.base64_to_raw(data)
 	var failed: int = image.load_png_from_buffer(bytes) if name.ends_with(".png") \

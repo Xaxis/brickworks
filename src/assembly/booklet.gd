@@ -447,6 +447,8 @@ static func _by_hand(entry: Entry) -> void:
 		var at: Rect2 = BookletLooks.rect_of(entry.place["parts"])
 		entry.parts_width = maxf(at.size.x, 12.0)
 		var parts: Vector2 = _parts_size(entry.lots, entry.parts_width)
+		# As wide as it was made, and wider where a part needs it.
+		parts.x = maxf(parts.x, entry.parts_width)
 		entry.parts_rect = _on_page(Rect2(at.position, parts), parts)
 		entry.number_at = entry.parts_rect.position + Vector2(0.4, parts.y + 1.6)
 	if entry.place.has("number"):
