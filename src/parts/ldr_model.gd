@@ -137,6 +137,13 @@ var marked_worked: bool = false
 ## wing built first came back as the wing and the original as its copy
 ## (assembly_flow.mjs, 2026-10-16).
 const COPY_META := "0 !BRICKWORKS COPY"
+## Every FILE section's text but the model's own, by its FILE name in lower
+## case: what a part drawn from the file's sections is built from
+## (CustomParts.begin_skins), LDCad's donor sections among them.
+var section_texts: Dictionary = {}
+## The sub-models LDCad generated a flexible part's skin into: sub-model key
+## -> [the line of its first `0 !LDCAD GENERATED`, the step it is in].
+var generated: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -254,6 +261,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
 					and tokens[2] == COPY_META.get_slice(" ", 2):
 				copy_next = maxi(tokens[3].to_int(), 0)
+			elif keyword == "!LDCAD" and tokens.size() > 2 and tokens[2] == "GENERATED" \
+					and not model.generated.has(_key(current.name)):
+				model.generated[_key(current.name)] = [index, step]
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -299,6 +309,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if file_name == model.main.name.to_lower():
 			continue
 		var body: String = "\n".join(lines).strip_edges() + "\n"
+		model.section_texts[file_name] = body
 		var key: String = file_name if file_name.ends_with(".dat") else file_name + ".dat"
 		if declares_library_file(lines):
 			var named: String = key.replace("\\", "/")

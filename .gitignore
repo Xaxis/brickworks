@@ -10,6 +10,9 @@ dist/
 # tools/build_meshes.py writes generated/, tools/web_pack.py selects web/.
 assets/generated/
 assets/web/
+# LDraw's primitives, copied from vendor/ldraw/p by tools/export.sh into
+# every build (PartForge.SHIPPED).
+assets/ldraw/p/
 godot/assets/parts/
 *.pck
 *.wasm

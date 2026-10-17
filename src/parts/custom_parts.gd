@@ -96,8 +96,14 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 	var info: PartLibrary.PartInfo = info_for(built)
 	# Prints and stickers in bins of their own, as the bin shows them.
 	info.category = PartPrints.bin_for(text)
+	var skin: bool = is_skin_text(text)
+	if skin:
+		# A file's hose, not a part to pick from the bin, and not kept.
+		info.category = SKIN_CATEGORY
+		info.reachable = false
+		info.keywords = PackedStringArray(["flexible", "ldcad"])
 	library.add_custom(info, built.mesh, text)
-	if keep:
+	if keep and not skin:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var file: FileAccess = FileAccess.open(dir + id + ".dat", FileAccess.WRITE)
 		if file == null:
@@ -133,6 +139,8 @@ static func _built(library: PartLibrary, text: String, id: String,
 			if pictures.has(name.to_lower()):
 				pictures[name] = pictures[name.to_lower()]
 		built = PartPrints.build(text, id, pictures, library)
+	elif is_skin_text(text):
+		built = PartForge.build_skin(text, id, sources)
 	else:
 		built = PartForge.build(text, id, sources)
 	return built
@@ -197,6 +205,9 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	carried.merge(model.embedded_sources)
 	carried.merge(model.embedded_data)
 	var wanted: PackedStringArray = PackedStringArray()
+	# LDCad's skins first, each on a thread of its own: built while the parts
+	# the file carries are built here, and in the model before it opens.
+	var skins_begun: Array = begin_skins(library, model, problems)
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
 		var text: String = model.embedded_parts[file_name]
@@ -226,7 +237,270 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 			drawn_from[id] = needs(text, model.embedded_sources)
 		else:
 			problems.append("%s: %s" % [id, result["problem"]])
-	return {"added": added, "problems": problems}
+	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
+	return {"added": added, "problems": problems, "skins": flexible}
+
+
+# -- LDCad's flexible parts --------------------------------------------------
+#
+# LDCad keeps the path a hose, a band, a rope or a string follows in meta
+# lines, and writes what it draws along it below them, after a line `0
+# !LDCAD GENERATED`: primitives bent along the path a segment at a time
+# (`4-4cyli.dat` 886 times for 42082's rope), pieces of a donor section the
+# file carries, or the polygons themselves; and the parts at its ends (a
+# pneumatic tube's 165, a string's 572a) as parts. None of the skin is a
+# part, so none of it was drawn: 225 of the repository's 1,576 files have
+# one, and a builder opening a Technic set saw its hoses missing
+# (docs/CADTASK.md).
+#
+# Each such sub-model's skin is made here one part of its own, drawn as the
+# file has it (its primitives and its colours, where it puts them), built on
+# another thread while the file's carried parts are, and put in the
+# sub-model as one piece, where its GENERATED line is: one piece
+# a copy of the sub-model, to select, hide and see in its step. The parts at
+# its ends stay parts. The file is not changed: the piece is paired with that
+# meta line (SourceFile), so a save writes the section as it was, and a
+# change to the piece writes the model whole, the skin carried as a part.
+
+
+## Skin part id -> the key of the sub-model it is the skin of.
+static var skins: Dictionary = {}
+## A generated sub-model's text -> [its skin's id, the skin's text], or
+## ["", ""] for one that draws only parts: what begin_skins made of it.
+static var _skins_of_body: Dictionary = {}
+
+
+## Whether [param part_id] is a flexible part's skin built from a file.
+static func is_skin(part_id: String) -> bool:
+	return skins.has(part_id)
+
+
+## Start building each flexible part's skin [param model] carries (see
+## above): one entry for [method end_skins] each, its build on a worker
+## thread when the library has not got it built already. A skin that draws
+## on a file this build has not got is left as it was, kept in the file and
+## said, with why in [param problems].
+##
+## On a thread because a skin is new work at every first open: 42082's four
+## took a second, and on a small model that was a third more than its open.
+## Begun before the parts the file carries are built (take_from builds
+## those here, seconds of a big set's first open), it is mostly done by the
+## time it is wanted.
+static func begin_skins(library: PartLibrary, model: LdrModel,
+		problems: PackedStringArray) -> Array:
+	var begun: Array = []
+	if model.generated.is_empty():
+		return begun
+	var sources: Dictionary = {}
+	var pieces: Dictionary = {}     ## reference key -> whether it is a piece
+	for key: String in model.generated:
+		var sub: LdrModel.SubModel = model.submodels.get(key)
+		if sub == null:
+			continue
+		var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+		# A sub-model seen before this session is not read again: its skin,
+		# or that it has none (42058's hose is 15,760 lines: read again on
+		# every open, 40 ms of a 150 ms one).
+		var seen: Array = _skins_of_body.get(body, [])
+		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.parts.has(seen[0])
+				and library.custom_source(seen[0]) == str(seen[1]))):
+			if not str(seen[0]).is_empty():
+				begun.append({"key": key, "sub": sub, "id": seen[0], "text": seen[1],
+					"sources": {}, "pieces": pieces, "task": -1, "built": [null]})
+			continue
+		var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
+		if made_of.is_empty():
+			_skins_of_body[body] = ["", ""]
+			continue
+		if sources.is_empty():
+			sources = model.section_texts.duplicate()
+			sources.merge(model.embedded_sources)
+		var text: String = made_of["text"]
+		var id: String = _skin_id(library, key, text)
+		_skins_of_body[body] = [id, text]
+		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
+			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
+		if not (library.parts.has(id) and library.custom_source(id) == text):
+			var unreached: PackedStringArray = PartForge.unreached(text, sources)
+			if not unreached.is_empty():
+				problems.append("%s (flexible): it uses files this build does not have: %s"
+					% [sub.name, ", ".join(unreached)])
+				continue
+			# Its own copy of what it reads, and nothing it shares
+			# (PartForge.build_skin): it is read on another thread.
+			var given: Dictionary = sources.duplicate()
+			var built: Array = entry["built"]
+			var build: Callable = func() -> void:
+				built[0] = PartForge.build_skin(text, id, given, true, false)
+			if OS.has_feature("web") and not OS.has_feature("threads"):
+				build.call()
+			else:
+				# The pool's high side, as the carried parts are built
+				# (_built_at_once): the app's own checks of the last model
+				# keep its low side busy for seconds.
+				entry["task"] = WorkerThreadPool.add_task(build, true, "build a flexible part")
+		begun.append(entry)
+	return begun
+
+
+## The skins [method begin_skins] began, waited for, added to the library and
+## put in their sub-models: one piece a copy, where the GENERATED line is,
+## and the skin's own references out of the sub-model (each was a part the
+## library has not got). Returns the skins' ids.
+static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
+		problems: PackedStringArray) -> PackedStringArray:
+	var made := PackedStringArray()
+	for entry: Dictionary in begun:
+		if int(entry["task"]) >= 0:
+			WorkerThreadPool.wait_for_task_completion(int(entry["task"]))
+		var sub: LdrModel.SubModel = entry["sub"]
+		var id: String = entry["id"]
+		var text: String = entry["text"]
+		var built: PartForge.Result = (entry["built"] as Array)[0]
+		if built != null:
+			built = PartForge.with_mesh(built)
+			if not built.problem.is_empty():
+				problems.append("%s (flexible): %s" % [sub.name, built.problem])
+				continue
+			var info: PartLibrary.PartInfo = info_for(built)
+			info.category = SKIN_CATEGORY
+			info.reachable = false
+			info.keywords = PackedStringArray(["flexible", "ldcad"])
+			library.add_custom(info, built.mesh, text)
+		var key: String = entry["key"]
+		skins[id] = key
+		if not drawn_from.has(id) or not (entry["sources"] as Dictionary).is_empty():
+			drawn_from[id] = needs(text, entry["sources"])
+		var kept: Array[LdrModel.Placement] = []
+		for placement: LdrModel.Placement in sub.placements:
+			if _is_piece(library, model, LdrModel._key(placement.part_id), entry["pieces"]):
+				kept.append(placement)
+		var at: Array = model.generated[key]
+		var piece := LdrModel.Placement.new(id, 16, Transform3D.IDENTITY, int(at[1]))
+		piece.line = int(at[0])
+		kept.append(piece)
+		sub.placements = kept
+		made.append(id)
+	return made
+
+
+## The part file a sub-model's skin is: its own lines without the parts and
+## sub-models in it (its ends, its other skins), under a header that says it
+## is a part. With the path's meta lines where nothing but the skin is in
+## it, so a file written whole keeps the path LDCad can open again. {"text"}
+## or {} when it draws nothing.
+static func _skin_text(library: PartLibrary, model: LdrModel, sub: LdrModel.SubModel,
+		body: String, pieces: Dictionary) -> Dictionary:
+	var kept := PackedStringArray()
+	var faces: int = 0
+	var with_pieces: bool = false
+	var author: String = model.author
+	var licence: String = ""
+	var first: bool = true
+	# By each line's first character, split only where a reference is read:
+	# 42058's hose is 15,760 lines, and reading every one a character at a
+	# time (LdrModel._fields) took a second of every open.
+	for raw: String in body.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty():
+			continue
+		var kind: String = line.left(1) if line.length() == 1 or line[1] == " " \
+			or line[1] == "\t" else ""
+		if kind == "0":
+			var said: String = line.substr(1).strip_edges()
+			var lower: String = said.to_lower()
+			var title_line: bool = first and not said.begins_with("!") \
+				and not said.begins_with("//") and not lower.begins_with("name:")
+			first = false
+			if lower.begins_with("author:"):
+				author = said.substr(7).strip_edges()
+				continue
+			if said.begins_with("!LICENSE"):
+				licence = line
+				continue
+			if title_line or lower.begins_with("name:") or said.begins_with("!LDRAW_ORG") \
+					or said.begins_with("!CATEGORY"):
+				continue
+			kept.append(line)
+			continue
+		first = false
+		if kind == "1":
+			var words: PackedStringArray = line.replace("\t", " ").split(" ", false)
+			if words.size() < 15:
+				continue
+			if _is_piece(library, model, LdrModel._key(" ".join(words.slice(14))), pieces):
+				with_pieces = true
+				# An INVERTNEXT goes with the reference it stood before.
+				if not kept.is_empty() and kept[kept.size() - 1].to_upper() \
+						.replace("\t", " ").begins_with("0 BFC INVERTNEXT"):
+					kept.remove_at(kept.size() - 1)
+				continue
+			faces += 1
+		elif kind == "3" or kind == "4":
+			faces += 1
+		kept.append(line)
+	if faces == 0:
+		return {}
+	if with_pieces:
+		# The path is the whole flexible part's, its ends with it: not this.
+		kept = PackedStringArray(Array(kept).filter(func(l: String) -> bool:
+			return not l.begins_with("0 !LDCAD")))
+	var title: String = sub.title if not sub.title.is_empty() else LdrModel._key(sub.name)
+	var head := PackedStringArray([
+		"0 %s (flexible)" % title,
+		"0 Name: %s-flex.dat" % LdrModel._key(sub.name),
+		"0 Author: %s" % (author if not author.is_empty() else "LDCad"),
+		"0 !LDRAW_ORG Unofficial_Part"])
+	if not licence.is_empty():
+		head.append(licence)
+	head.append(SKIN_MARK)
+	return {"text": "\n".join(head + kept) + "\n"}
+
+
+## The line a skin's part file says what it is by: opened again from a file
+## a skin was written whole into, it is built as a skin, not voxelised.
+const SKIN_MARK := "0 !CATEGORY Flexible"
+const SKIN_CATEGORY := "Flexible"
+
+
+## Whether a part's text is a flexible part's skin ([method _skin_text]).
+static func is_skin_text(text: String) -> bool:
+	return text.contains("\n" + SKIN_MARK + "\n")
+
+
+## An id for a sub-model's skin no other part has, unless it is this very
+## skin: its key and "-flex".
+static func _skin_id(library: PartLibrary, key: String, text: String) -> String:
+	var base: String = key + "-flex"
+	var id: String = base
+	var n: int = 1
+	while library.parts.has(id) and library.custom_source(id) != text:
+		n += 1
+		id = "%s-%d" % [base, n]
+	return id
+
+
+## Whether a reference in a flexible part's sub-model is a piece of its own
+## rather than skin: a part (the library's, or one the file carries), a
+## sub-model with a part in it, or another skin. A primitive, a donor
+## section of nothing but drawing, or a file nobody has, is skin.
+static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
+		pieces: Dictionary, depth: int = 0) -> bool:
+	if pieces.has(key):
+		return pieces[key]
+	var piece: bool = false
+	if library.parts.has(key) or model.embedded_parts.has(key + ".dat"):
+		piece = true
+	elif model.generated.has(key) and model.submodels.has(key):
+		piece = true
+	elif model.submodels.has(key) and depth < 16:
+		pieces[key] = false     # a section that refers to itself
+		for placement: LdrModel.Placement in (model.submodels[key] as LdrModel.SubModel).placements:
+			if _is_piece(library, model, LdrModel._key(placement.part_id), pieces, depth + 1):
+				piece = true
+				break
+	pieces[key] = piece
+	return piece
 
 
 ## The parts [param texts] holds (file name -> LDraw text), drawn from
@@ -283,7 +557,12 @@ static func needs(text: String, carried: Dictionary) -> Dictionary:
 	var todo: Array = [text]
 	while not todo.is_empty():
 		for raw: String in str(todo.pop_back()).split("\n"):
-			var words: PackedStringArray = LdrModel._fields(raw.strip_edges())
+			var line: String = raw.strip_edges()
+			# Only a reference names a file: the rest unread (a skin's
+			# polygons are thousands of lines).
+			if not line.begins_with("1 ") and not line.begins_with("1\t"):
+				continue
+			var words: PackedStringArray = LdrModel._fields(line)
 			if words.size() < 15 or words[0] != "1":
 				continue
 			var named: String = " ".join(words.slice(14))

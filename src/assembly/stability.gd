@@ -513,6 +513,13 @@ func _check_levels(
 ## Balance and Stability compare a model with itself, so an error that
 ## biases the whole model the same way mostly cancels.
 static func grams(info: PartLibrary.PartInfo) -> float:
+	# A flexible part's skin (CustomParts.begin_skins) runs across the model,
+	# and its box is most of the model's: weighed as a shell of that box,
+	# 42082's rope came to 1.3 kg. By its cover instead, a block of 4 LDU a
+	# side for each of its boxes, a third of it plastic: the rope 1.5 g.
+	if info.category == CustomParts.SKIN_CATEGORY:
+		return info.box_count * pow(BrickLattice.CELL * PartForge.SKIN_BLOCK, 3.0) / 3.0 \
+			/ CUBIC_LDU_PER_CM3 * DENSITY_G_PER_CM3
 	# The body, without the studs standing proud of it.
 	var width: float = info.size.x
 	var depth: float = info.size.z

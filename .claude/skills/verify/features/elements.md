@@ -42,9 +42,14 @@ connectors and collision the library's own parts have.
   studs, fill cavities (clearing a Technic hole's bore), boxes, sockets, and
   a hole's two faces merged into one hole — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
-  Primitives: the eleven in `assets/ldraw/` (shipped in every export;
-  `peghole` and `4-4ndis` came with the Technic brick) and `vendor/ldraw`
-  when present. Measured at load 70: 2 x 7 brick 0.14 s,
+  Primitives: the eleven in `assets/ldraw/` (committed, in every export;
+  `peghole` and `4-4ndis` came with the Technic brick), `vendor/ldraw`
+  when present, and in an export every primitive (`assets/ldraw/p/`,
+  `PartForge.SHIPPED`, copied there by tools/export.sh and ignored by git),
+  so a part a model file carries builds on the web unless it is drawn from
+  an official part or subpart. `build_skin` builds an LDCad flexible part's
+  skin (model-io, `flexible parts drawn`): the same flattening, one-pass
+  normals, no connectors, and a cover of 4-LDU blocks, not a voxelised one. Measured at load 70: 2 x 7 brick 0.14 s,
   8 x 8 plate 0.8 s, 16 x 16 plate about 2.2 s (normals are the largest
   stage), 32 x 32 about 10 s — hence the cap, and the dialog saying
   "Building the part…" before anything over 48 studs.

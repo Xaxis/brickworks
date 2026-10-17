@@ -463,6 +463,9 @@ func _tell_page() -> void:
 		# The parts the model is made of, by number: a printed version swapped
 		# in (tools/web/decor_flow.mjs) is one the canvas cannot name.
 		"parts": _part_ids_now(),
+		# ...and the pieces of LDCad skin among them, a file's flexible
+		# parts drawn (tools/web/flex_skin_flow.mjs), however many parts.
+		"skins": _skins_now(),
 		# The tool in use and what is selected, so a browser check can
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
@@ -746,6 +749,29 @@ func _part_ids_now() -> Array:
 
 var _part_ids: Array = []
 var _part_ids_at: int = -1
+
+
+## The flexible parts' skins on the baseplate (CustomParts.begin_skins), by
+## part number, once each.
+func _skins_now() -> Array:
+	if _world.revision != _skins_at:
+		_skins_at = _world.revision
+		# The few made parts first: a model with no skin walks no bricks.
+		var made: Dictionary = {}
+		for id: String in _library.custom:
+			if (_library.parts[id] as PartLibrary.PartInfo).category == CustomParts.SKIN_CATEGORY:
+				made[id] = true
+		var seen: Dictionary = {}
+		if not made.is_empty():
+			for item: Variant in _world.bricks():
+				if made.has((item as BrickWorld.Brick).part_id):
+					seen[(item as BrickWorld.Brick).part_id] = true
+		_skins = seen.keys()
+	return _skins
+
+
+var _skins: Array = []
+var _skins_at: int = -1
 
 
 ## Every word the window shows a person: each control's text, its
