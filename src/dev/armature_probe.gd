@@ -20,7 +20,9 @@
 ##     them, still joined;
 ##   - send a figure or a creature with nothing on a joint back once, with an
 ##     entry that builds when submitted as it is; build it when it comes again;
-##     and never send back a vehicle with its crew, a toy car or a tower.
+##     and never send back a vehicle with its crew, a toy car, a tower, or a
+##     scene a character is in (a pyramid with statues, a river with a
+##     crocodile), while the bench's characters still are.
 ##
 ## --out=DIR writes each laid kind as DIR/<kind>.ldr, for BrickBench's verify.py.
 extends SceneTree
@@ -467,6 +469,18 @@ func _refusals() -> void:
 			"description": str(pair[0]).to_lower(), "floor": "none", "bricks": _stacked()}))
 		_ok(built.begins_with("Built"), "%s: never sent back: %s" % [pair[1], built.left(80)])
 
+	# Scenes with a character in them, as the real-set test's sessions named
+	# and described them: each was sent back as a figure or a creature, and the
+	# pyramid dropped its body for it (2026-10-16).
+	for scene: Array in SCENES:
+		await _sent_back_or_not(scene, false)
+	# The bench's characters, as their sessions named and described them, are
+	# still sent back once. The potato toy is a thing with a face, which no
+	# figure entry fits: it never was.
+	for character: Array in CHARACTERS:
+		await _sent_back_or_not(character, true)
+	await _sent_back_or_not(POTATO, false)
+
 	# Over the connector no brief is said: the model cleared starts a new
 	# subject, and the statue built before is not what the lighthouse is.
 	_world.clear()
@@ -480,6 +494,86 @@ func _refusals() -> void:
 		"description": "a lighthouse on a rock", "floor": "none", "bricks": _stacked()}))
 	_ok(stood.begins_with("Built") and not tower.contains("on a joint"),
 		"a statue built, the model cleared: a lighthouse is told nothing of joints")
+
+
+## [brief, a subject asked about, name, description]: the real-set test's
+## scenes, each sent back once as a character before.
+const SCENES: Array = [
+	["Scorpion Pyramid, in the style of LEGO® Pharaoh's Quest sets: fitting in about "
+		+ "48 x 59 studs, 630 to 1040 pieces.", "pyramid", "Scorpion Pyramid",
+		"A Pharaoh's Quest-style Scorpion Pyramid: a 32-stud pyramid of tan slopes with a "
+		+ "pearl-gold capstone, a pillared portal flanked by two scorpion statues, a "
+		+ "courtyard with obelisks and palms on a sand base of plates."],
+	["Micro World - The End, in the style of LEGO® Minecraft sets: fitting in about 13 x 17 "
+		+ "studs, 320 to 540 pieces.", "Minecraft micro world", "Micro World - The End",
+		"A Minecraft-style micro world of The End: a floating end stone island stepping in "
+		+ "underneath, the bedrock exit portal with its pillar and dragon egg, four obsidian "
+		+ "pillars, the Ender Dragon flying on a clear stand, two endermen and chorus plants."],
+	["Jungle River, in the style of LEGO® Adventurers sets: fitting in about 13 x 17 studs, "
+		+ "70 to 110 pieces.", "jungle", "Jungle River",
+		"A small LEGO® Adventurers-style jungle river vignette, 12 x 16 studs: a blue river "
+		+ "across the middle with a crocodile, a raised plank bridge, a pointed tan ruin arch "
+		+ "and a grey crag on the far bank, a jungle tree, bamboo and a treasure chest."],
+	["Dino Explorer, in the style of LEGO® Adventurers sets: fitting in about 21 x 21 studs, "
+		+ "80 to 130 pieces.", "dinosaur expedition jungle", "Dino Explorer",
+		"A jungle clearing in the style of the 2000 LEGO® Adventurers Dino Island sets: a grey "
+		+ "rock outcrop, a reddish-brown lookout tower with a peaked roof, a dinosaur nest with "
+		+ "eggs and a baby T-rex, and the explorers' camp with a campfire and a chest."],
+	["Dino Explorer, in the style of LEGO® Adventurers sets: fitting in about 21 x 21 studs, "
+		+ "80 to 130 pieces.", "dinosaur explorer camp", "Dino Explorer",
+		"A jungle camp in the style of the LEGO® Adventurers Dino Island sets. A baby T-rex "
+		+ "hatches on a rocky outcrop while an explorer photographs it."],
+]
+## The bench's characters (docs/BRICKBENCH.md, 2026-10-16), as above.
+const CHARACTERS: Array = [
+	["A bright-blue balloon-dog sculpture stands on a white plinth. Its rounded segments pinch "
+		+ "together at the joints, with a long muzzle, two upright ears, and a raised tail. Use "
+		+ "at most 400 pieces.", "balloon dog sculpture", "Balloon Dog",
+		"A bright-blue balloon-dog sculpture on a white plinth: sausage-balloon segments as "
+		+ "ellipsoids pinched where they meet."],
+	["A white toilet with a long neck and grinning human head emerging from the bowl. Use at "
+		+ "most 400 pieces.", "toilet", "Toilet Head",
+		"A white toilet — pedestal, rounded bowl, cistern behind — with a long skin-toned neck "
+		+ "rising from the bowl to a big grinning head."],
+	["A dark-brown statue of a man sits hunched forward on a rough block. His chin presses into "
+		+ "one fist, with that elbow resting across his body on the opposite knee. Use at most "
+		+ "400 pieces.", "seated thinker statue", "The Thinker",
+		"A dark-brown bronze-style statue of a seated man, hunched forward on a rough grey stone "
+		+ "block."],
+	["An enormously fat gray rabbit stands upright with a huge white belly drooping between its "
+		+ "short legs. Its arms hang loosely beside its oversized torso. Use at most 400 pieces.",
+		"rabbit", "Fat Grey Rabbit",
+		"An enormously fat grey rabbit standing upright: a big round body with a drooping white "
+		+ "belly, short legs on broad feet."],
+	["A boy with spiky brown hair and a toothy grin stands with one silver-gloved fist extended "
+		+ "forward. Both armored boots stand on a small base. Use at most 400 pieces.",
+		"boy in shark armour", "Shark Armour Boy",
+		"A brick-built boy in silver shark armour on a small dark grey base: spiky brown hair, "
+		+ "toothy grin."],
+]
+const POTATO: Array = ["A brown potato-shaped toy wears a black hat and blue shoes. It has white "
+	+ "eyes, an orange nose, and a mustache. Use at most 400 pieces.", "potato toy",
+	"Potato Toy", "A brown potato-shaped toy standing on blue shoes, a black hat on top, white "
+	+ "eyes, orange nose, a mustache."]
+
+
+## One subject [brief, asked about, name, description] submitted stacked square
+## as a new session's design: sent back once and built when it comes again, or
+## built at once.
+func _sent_back_or_not(subject: Array, once: bool) -> void:
+	_world.clear()
+	_assistant.forget_built()
+	_assistant.heard(str(subject[0]), true)
+	_assistant.heard(str(subject[1]))
+	var design: Dictionary = {"name": subject[2], "description": subject[3], "floor": "none",
+		"bricks": _stacked()}
+	var first: String = _text(await _assistant.use_tool("submit_design", design))
+	if not once:
+		_ok(first.begins_with("Built"), "%s: never sent back: %s" % [subject[2], first.left(70)])
+		return
+	var again: String = _text(await _assistant.use_tool("submit_design", design))
+	_ok(first.begins_with("Not applied, this once") and again.begins_with("Built"),
+		"%s: sent back once, then built: %s / %s" % [subject[2], first.left(60), again.left(40)])
 
 
 ## The figure entry a refusal hands over, read back as the session would copy it.

@@ -64,7 +64,11 @@ fixing what it got wrong.
   submitted with nothing on a joint is sent back once (`_unjointed_refusal`) with
   that entry written out for its box and colour (`_figure_call`); the subject is
   read as for the joints' advice, and a fresh brief (`heard`) or a model cleared or
-  opened (`forget_built`) forgets the last design's name. Recipe under How to
+  opened (`forget_built`) forgets the last design's name. Only when the character
+  is the subject: a scene it is in is never sent back (`Style.in_a_scene`: the
+  brief's first words, the design's name or its description headed by a place, a
+  building or a vehicle, as "Scorpion Pyramid" is a pyramid, or a place named before
+  any person or creature), though it is still told of joints. Recipe under How to
   check it, "Characters laid on joints".
 - `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
   `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
@@ -2421,7 +2425,12 @@ connector), a lighthouse checked after a statue was built and the model cleared 
 told nothing of joints. Before a fresh brief or a cleared model forgot the last
 design's name (armature, 2026-10-16), the balloon dog was handed a person's entry and
 the three vehicles and the tower were sent back: the statue's name, kept as the brief,
-made each of them a figure.
+made each of them a figure. Four scenes of the real-set test, as their sessions named
+and described them (Scorpion Pyramid with its statues, Micro World - The End with its
+dragon, Jungle River with its crocodile, Dino Explorer twice with its baby T-rex), are
+never sent back, and the bench's characters (model-043, 044, 049, 078, 080, as their
+sessions named them) still are, once; the potato toy (042), a thing with a face, never
+was. Before `Style.in_a_scene` (m35) each of the four was sent back.
 
 ### BrickBench: the designer on an outside ruler
 

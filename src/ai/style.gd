@@ -435,6 +435,63 @@ static func character_of(about: String) -> String:
 	return ""
 
 
+## Where a character stands, rather than what one is: with a building
+## (SurfacePass.BUILT_WORDS) or a tower (TOWER_WORDS), a place a set is a
+## scene of.
+const PLACE_WORDS: Array = ["pyramid", "river", "jungle", "world", "island", "village",
+	"town", "city", "street", "camp", "ruins", "cave", "forest", "garden", "park", "farm",
+	"harbour", "harbor", "room", "office", "scene", "diorama", "vignette", "clearing",
+	"skyline", "stage", "studio", "spa", "beach", "desert", "landscape", "yard", "market",
+	"arena", "lair", "swamp", "valley", "mountain", "lake"]
+## Where a phrase's first noun phrase ends: what its head noun is the last word before.
+const PHRASE_ENDS: Array = [" in ", " of ", " with ", " on ", " at ", " for ", " from ",
+	" that ", " which ", " who ", " where ", " beside ", " by ", " under ", " over ",
+	" near ", " inside ", " and "]
+
+
+## The word a name or a description is headed by, as English heads one: the
+## last noun of its first noun phrase. "Scorpion Pyramid" is a pyramid,
+## "Micro World - The End" a world, "A jungle camp in the style of..." a camp.
+static func head_noun(phrase: String) -> String:
+	var text: String = RegEx.create_from_string("\\b(?:\\w+-)+(\\w+)\\b").sub(
+		phrase.to_lower(), "$1", true)
+	for stop: String in [",", ":", ";", ".", "(", " - ", " – ", " — ", "!", "?"]:
+		var at: int = text.find(stop)
+		if at >= 0:
+			text = text.left(at)
+	text = " %s " % text
+	for end: String in PHRASE_ENDS:
+		var at: int = text.find(end)
+		if at >= 0:
+			text = text.left(at)
+	var words: PackedStringArray = SubjectWords.of(text)
+	return words[words.size() - 1] if not words.is_empty() else ""
+
+
+## Whether the character [param about] names is in a scene, or on a vehicle,
+## rather than the subject: a name or a description of it ([param titles])
+## headed by a place, a building or a vehicle, or a place or a building named
+## in [param about] before any person or creature. A scene with a statue in it
+## was sent back as a figure, and dropped its body (Scorpion Pyramid, Jungle
+## River, Micro World - The End, Dino Explorer; the real-set test, 2026-10-16).
+static func in_a_scene(about: String, titles: Array) -> bool:
+	var places: Array = PLACE_WORDS + SurfacePass.BUILT_WORDS + TOWER_WORDS
+	var settings: Dictionary = {}
+	for word: Variant in places + (TRAITS["vehicle"] as Array):
+		settings[str(word)] = true
+	for title: Variant in titles:
+		var head: String = head_noun(str(title))
+		if not head.is_empty() and not SubjectWords.kind_of_word(head, settings).is_empty():
+			return true
+	var said: PackedStringArray = SubjectWords.of(RegEx.create_from_string(
+		"\\b(?:\\w+-)+(\\w+)\\b").sub(about.to_lower(), "$1", true))
+	var creatures: Array = (TRAITS["living"] as Array).filter(func(word: Variant) -> bool:
+		return not PLANTS.has(word) and str(word) != "bust")
+	var place: int = _first_at(said, places)
+	var who: int = _first_at(said, (TRAITS["figure"] as Array) + creatures)
+	return place >= 0 and (who < 0 or place < who)
+
+
 ## Where in [param said] (a brief's words) a word or phrase of [param
 ## vocabulary] first comes, as SubjectWords names it; -1 for nowhere.
 static func _first_at(said: PackedStringArray, vocabulary: Array) -> int:

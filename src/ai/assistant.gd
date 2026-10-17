@@ -5793,7 +5793,11 @@ func _unjointed_refusal(design: Model) -> String:
 		return ""
 	var kind: String = Style.character_of(_subject_of(design))
 	var call: String = _figure_call(design, kind)
-	if call.is_empty():
+	# Sent back only when the character is the subject. One in a scene is
+	# still told of its joints (_on_joints_said): people in scenes posed more
+	# for it (docs/BRICKBENCH.md, "figures on joints").
+	if call.is_empty() or Style.in_a_scene(_subject_of(design),
+			[_heard_fresh, design.name, design.description]):
 		return ""
 	_joints_refused = true
 	var what: String = "figure" if kind == "figure" else "creature"
