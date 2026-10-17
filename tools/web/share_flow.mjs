@@ -172,6 +172,8 @@ async function fetchText(url) {
 
 /// The gallery as a stranger sees it, in a browser: the cards it draws.
 /// The gallery as a stranger sees it, in a browser: the cards it draws.
+/// Asked with tests=1: the flow signs in at a test address, so its model is
+/// a test, which the gallery shows nobody who does not ask (api/share.js).
 /// [settled] says when what it shows is what was just done: the CDN keeps
 /// the list for up to a minute (api/share.js SHARED_CACHE), so the page is
 /// loaded again until it is, for two minutes at most, as a person would.
@@ -182,7 +184,7 @@ async function galleryCards(name, query = "", settled = () => true) {
   let cards = [];
   const end = Date.now() + 120000;
   for (;;) {
-    await page.goto(`${site}/gallery${query}`, { waitUntil: "load", timeout: 120000 });
+    await page.goto(`${site}/gallery?tests=1${query.replace(/^\?/, "&")}`, { waitUntil: "load", timeout: 120000 });
     await until(page, () => document.documentElement.dataset.gallery === "ready"
       || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
     await page.evaluate(async () => {

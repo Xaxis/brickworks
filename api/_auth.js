@@ -154,3 +154,12 @@ export function isMaster(claims) {
   if (claims?.email_verified === false) return false;
   return email !== "" && email === master;
 }
+
+/// Whether the session is a test's: signed in at a Resend test address,
+/// as every probe and flow is (tools/web/session.mjs, SignInHelper). Mail
+/// to resend.dev reaches nobody, so no person can sign in at one. What
+/// such an account publishes is marked a test and kept out of every public
+/// list (api/share.js, supabase/test_models.sql).
+export function isTestAccount(claims) {
+  return /@resend\.dev$/i.test(String(claims?.email || "").trim());
+}

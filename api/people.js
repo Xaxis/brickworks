@@ -32,6 +32,10 @@
 // thing a person does is counted, so many an hour and a day (may_act); and
 // an account the site's owner took out has no profile and no public list.
 //
+// A test account's models (api/share.js) are left out of a profile, a list
+// and their counts unless asked for with tests=1, as the gallery's are; such
+// an answer is never kept by the CDN (supabase/test_models.sql).
+//
 // A profile is by a name its owner chooses, never one made from their
 // address, and lists only the models they listed and chose to be credited
 // for: a model shared without a name is not tied to anybody here. Likes
@@ -44,7 +48,9 @@ import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
-import { Unacceptable, cardOf, count, escapeHtml, siteChrome, visitorKey } from "./_directory.js";
+import {
+  TESTS_CACHE, Unacceptable, cardOf, count, escapeHtml, siteChrome, testsAsked, visitorKey,
+} from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -193,13 +199,14 @@ async function saveProfile(request, response) {
 
 async function profile(request, response) {
   const handle = String(request.query?.handle || "").toLowerCase();
+  const tests = testsAsked(request.query);
   const person = await personOf(handle);
-  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
   const [page, about] = await Promise.all([
-    models(origin, { owner: person.account }, pageOf(request.query || {})),
-    db("rpc/profile_page", { method: "POST", body: { wanted: handle } }),
+    models(origin, { owner: person.account, tests }, pageOf(request.query || {})),
+    db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
   ]);
   return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
@@ -258,10 +265,11 @@ async function favourites(request, response) {
 }
 
 /// A list, as its owner or anybody may see it: {id, name, description,
-/// public, owner, by, count, all}, or null when the asker may not.
-async function listFor(id, account) {
+/// public, owner, by, count, all}, or null when the asker may not. Its
+/// counts have test models in them only when asked for (tests).
+async function listFor(id, account, tests = false) {
   if (!ID.test(id || "")) return null;
-  const list = await db("rpc/collection_page", { method: "POST", body: { list: id } });
+  const list = await db("rpc/collection_page", { method: "POST", body: { list: id, tests } });
   if (!list || typeof list !== "object") return null;
   if (!list.public && list.owner !== account) return null;
   return list;
@@ -339,13 +347,15 @@ async function collect(request, response) {
 async function collection(request, response) {
   let account = null;
   if (bearer(request)) account = await signedIn(request);
-  response.setHeader("Cache-Control", account ? "private, no-store" : "no-cache");
+  const tests = testsAsked(request.query);
+  response.setHeader("Cache-Control", account ? "private, no-store" : tests ? TESTS_CACHE : "no-cache");
   const id = String(request.query?.id || "");
-  const list = await listFor(id, account);
+  const list = await listFor(id, account, tests);
   if (!list) return response.status(404).json({ error: "there is no list at that id" });
   const mine = list.owner === account;
   const origin = originOf(request);
-  const page = await models(origin, { collection: id, private: mine, sort: "added" }, pageOf(request.query || {}));
+  const page = await models(origin, { collection: id, private: mine, sort: "added", tests },
+    pageOf(request.query || {}));
   return response.status(200).json({ id, name: list.name, description: list.description, public: list.public,
     by: list.by, count: mine ? list.all : list.count, mine, url: `${origin}/c/${id}`, ...page });
 }
@@ -404,13 +414,14 @@ function pageCsp() {
     + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
 
-function html(response, status, body) {
+function html(response, status, body, { tests = false } = {}) {
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  // Kept briefly by the CDN, as a model's page is (api/share.js SHARED_CACHE).
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  // Kept briefly by the CDN, as a model's page is (api/share.js SHARED_CACHE);
+  // never a page with test models on it.
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
   return response.status(status).end(body);
 }
 
@@ -487,11 +498,12 @@ const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric",
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
+  const tests = testsAsked(request.query);
   const person = await personOf(handle);
-  if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"));
+  if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
   const [shown, about] = await Promise.all([
-    models(origin, { owner: person.account }, 1),
-    db("rpc/profile_page", { method: "POST", body: { wanted: handle } }),
+    models(origin, { owner: person.account, tests }, 1),
+    db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
   ]);
   const url = `${origin}/u/${person.handle}`;
   const lists = (about?.collections || []).map((list) =>
@@ -519,7 +531,7 @@ async function profilePage(request, response) {
     about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160)
       : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`,
     url, image: first && first.image ? first.image : "", main,
-  }));
+  }), { tests });
 }
 
 /// /c/X: a public list's page. A private one is not shown here to anybody;
@@ -527,9 +539,10 @@ async function profilePage(request, response) {
 async function listPage(request, response) {
   const origin = originOf(request);
   const id = String(request.query?.id || "");
-  const list = await listFor(id, null);
-  if (!list) return html(response, 404, missingPage(origin, "There is no collection here"));
-  const shown = await models(origin, { collection: id, sort: "added" }, 1);
+  const tests = testsAsked(request.query);
+  const list = await listFor(id, null, tests);
+  if (!list) return html(response, 404, missingPage(origin, "There is no collection here"), { tests });
+  const shown = await models(origin, { collection: id, sort: "added", tests }, 1);
   const url = `${origin}/c/${id}`;
   const by = list.by ? `<a href="/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : "a Brickworks builder";
   const first = shown.models[0];
@@ -548,7 +561,7 @@ async function listPage(request, response) {
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
       : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
     url, image: first && first.image ? first.image : "", main,
-  }));
+  }), { tests });
 }
 
 export default async function handler(request, response) {

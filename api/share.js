@@ -20,7 +20,8 @@
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
 //                            instructions, technic, tag) and sorted (sort:
-//                            newest, views, likes, remixes)
+//                            newest, views, likes, remixes); with tests=1,
+//                            test models too, which nobody else is shown
 //   POST                     publish, with the session: {name, author?,
 //                            model, image?, thumb?, id?, listed?,
 //                            remixed_from?, description?, tags?, kind?,
@@ -54,6 +55,13 @@
 // it; listing is counted (may_list) on top of publishing; and the site's
 // owner can take any model out of it for good (api/admin.js).
 //
+// A test account's models (one signed in at a Resend test address, as
+// every probe is: api/_auth.js isTestAccount) are marked a test when they
+// are published, and no public list shows them (supabase/test_models.sql):
+// the probes ran against the live site and their models were in its
+// gallery, newest first, while they ran (2026-10-17). A probe asks with
+// tests=1 to see them; such an answer is never kept by the CDN.
+//
 // The directory (2026-10-13, supabase/directory.sql, api/_directory.js)
 // searches, filters and sorts the gallery, and gives each model a page of
 // its own at /m/X: what its owner wrote about it, its tags, its kind and
@@ -66,13 +74,13 @@
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { AuthError, bearer, verify } from "./_auth.js";
+import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, NOTICE, SIZES, SORTS, Unacceptable, cardOf, cleanDescription, cleanKind,
-  cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel, listQuery, looksLikePerson,
-  modelHash, partFacts, siteChrome, visitorKey,
+  KINDS, LICENCES, NOTICE, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf, cleanDescription,
+  cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel, listQuery,
+  looksLikePerson, modelHash, partFacts, siteChrome, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 
@@ -90,8 +98,8 @@ const bucketOf = (name) => (name.endsWith(".webp") ? THUMBS : BUCKET);
 const ID = /^[A-Za-z0-9]{10}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 // What a visitor's key may read: the columns supabase/shared_models.sql
-// and supabase/gallery.sql grant, which are all of them but the owner and
-// barred.
+// and supabase/gallery.sql grant, which are all of them but the owner,
+// barred and test.
 const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at,listed,remixed_from,"
   + "description,tags,licence,kind,has_thumb";
 export const PER_PAGE = 24;
@@ -918,8 +926,8 @@ async function gallery(request, response, origin) {
   const { asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES);
   const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
   // Kept briefly by the CDN, like the pages: the same question asked by
-  // a hundred phones is one call to the database.
-  response.setHeader("Cache-Control", SHARED_CACHE);
+  // a hundred phones is one call to the database. Never with test models.
+  response.setHeader("Cache-Control", said.tests ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
     ...said,
     per_page: PER_PAGE,
@@ -975,7 +983,8 @@ function saidAbout(body) {
 }
 
 async function publish(request, response) {
-  const owner = await signedIn(request);
+  const claims = await verify(bearer(request));
+  const owner = claims.sub;
   const body = request.body && typeof request.body === "object" ? request.body : {};
 
   // Everything about the upload is checked before anything is counted
@@ -1065,7 +1074,8 @@ async function publish(request, response) {
   const now = new Date().toISOString();
   const row = { name, author, parts, bytes, has_image: Boolean(picture), has_thumb: Boolean(thumb),
     published: true, updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
-    remixed_from: remixedFrom, description, tags, kind, licence, steps, own_steps: ownSteps, technic };
+    remixed_from: remixedFrom, description, tags, kind, licence, steps, own_steps: ownSteps, technic,
+    test: isTestAccount(claims) };
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {

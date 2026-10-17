@@ -31,6 +31,12 @@ whole cycle.
   42082 waited 12 s for the status bar to finish weighing 42082; it now
   opens in 1.5 s, and the new model is weighed after.
 
+### Fixed
+
+- The gallery no longer shows the models Brickworks's own checks share
+  while they run, and neither do profiles, collections or the sitemap.
+  Each is still at its own link.
+
 ## [0.3.0] - 2026-10-16
 
 A release about the whole craft. A model can be rendered, shared by
