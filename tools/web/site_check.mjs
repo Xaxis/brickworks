@@ -418,6 +418,27 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
 }
 await browser.close();
 
+// The visit counter itself, loaded once from its own server as a visitor's
+// browser loads it: the pages above had it answered here (browser.mjs,
+// quietCounter), so a burst of checks never trips its server's limit.
+// Under the site's isolation it must come with its own resource policy, or
+// the browser blocks it and nothing is counted.
+{
+  const real = await launch({ signedOut: true, realCounter: true });
+  const context = await real.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 160)); });
+  const counter = page.waitForResponse((r) => r.url() === "https://overlook.technology/s.js", { timeout: 30000 }).catch(() => null);
+  await page.goto(base + "/", { waitUntil: "load", timeout: 60000 }).catch(() => {});
+  const answer = await counter;
+  if (!answer || answer.status() !== 200) fail(`the visit counter did not load: ${answer ? answer.status() : "no answer"}`);
+  else if (answer.headers()["cross-origin-resource-policy"] !== "cross-origin") fail("the visit counter has no Cross-Origin-Resource-Policy, so isolation blocks it");
+  else if (errors.length) fail(`the page with the real visit counter logged: ${errors[0]}`);
+  else ok("the visit counter loads from its own server, past the page's isolation");
+  await real.close();
+}
+
 // The app, signed in as anyone using it is, at its own address.
 if (sha && args["no-app"] === undefined) {
   const appBrowser = await launch();

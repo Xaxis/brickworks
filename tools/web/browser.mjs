@@ -51,10 +51,25 @@ const RATIO = Number(process.env.BW_RATIO || 0);
 const withRatio = (options = {}) =>
   RATIO > 0 && options.deviceScaleFactor === undefined ? { ...options, deviceScaleFactor: RATIO } : options;
 
+/// The visit counter (Overlook) answered from here in a check, not from its
+/// own server: the server answers a burst of loads from one address with a
+/// 403 that carries no Cross-Origin-Resource-Policy, which the site's
+/// isolation then blocks and the page logs, so site_check failed m35 on
+/// its 21st page (2026-10-16). A check is not a visit; site_check loads the
+/// real one once, on purpose ({ realCounter: true }).
+const COUNTER = "https://overlook.technology/**";
+export async function quietCounter(context) {
+  await context.route(COUNTER, (route) => route.fulfill({ status: 200,
+    contentType: "application/javascript", body: "",
+    headers: { "cross-origin-resource-policy": "cross-origin", "access-control-allow-origin": "*" } }));
+  return context;
+}
+
 export async function launch(options = {}) {
-  const { signedOut = false, ...rest } = options;
+  const { signedOut = false, realCounter = false, ...rest } = options;
   const browser = await chromium.launch({ ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
-  const newContext = browser.newContext.bind(browser);
+  const bare = browser.newContext.bind(browser);
+  const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);
     browser.newContext = (contextOptions) => newContext(withRatio(contextOptions));
