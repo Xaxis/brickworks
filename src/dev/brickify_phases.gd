@@ -3,7 +3,7 @@ extends SceneTree
 ## times, and any models named, each with its phases, and what one check
 ## costs alone and weighed.
 ##
-##   godot --headless --path . --script src/dev/brickify_phases.gd -- ROUNDS [FILE:STUDS:UP ...]
+##   godot --headless --path . --script src/dev/brickify_phases.gd -- ROUNDS [FILE:STUDS:UP[:plain] ...]
 
 var _library: PartLibrary
 var _checker: Assistant
@@ -35,25 +35,30 @@ func _run() -> void:
 	await process_frame
 	for id: String in Brickify.parts_needed(_library):
 		_library.mesh_for(id)
-	var models: Array = [["bunny-40", BrickifySamples.bunny(), 40, "+Y", rounds]]
+	var models: Array = [["bunny-40", BrickifySamples.bunny(), 40, "+Y", rounds, true]]
 	for n: int in range(1, args.size()):
 		var bits: PackedStringArray = args[n].split(":")
-		models.append([bits[0].get_file().get_basename() + "-" + bits[1], _read(bits[0]),
-			int(bits[1]), bits[2], 1])
+		var plain: bool = bits.size() > 3 and bits[3] == "plain"
+		models.append([bits[0].get_file().get_basename() + "-" + bits[1] + ("-plain" if plain else ""),
+			_read(bits[0]), int(bits[1]), bits[2], 1, not plain])
 	for one: Array in models:
 		var result: Dictionary = {}
 		for r: int in int(one[4]):
 			var options := Brickify.Options.new()
 			options.studs = int(one[2])
 			options.up = str(one[3])
+			options.smooth = bool(one[5])
 			var t0: int = Time.get_ticks_msec()
 			result = Brickify.build(one[1], options, _checker)
 			var took: int = Time.get_ticks_msec() - t0
 			if result.has("error"):
 				print("PHASES %s: %s" % [one[0], result["error"]])
 				break
+			var report: Dictionary = result["report"]
 			print("PHASES %s" % JSON.stringify({"model": one[0], "round": r, "ms": took,
 				"parts": (result["model"] as Assistant.Model).placements.size(),
+				"mended": int(report.get("mended", 0)), "tied": int(report.get("tied", 0)),
+				"left_out": str(report.get("left_out", [])),
 				"phases": result["ms"]}))
 		if result.has("model"):
 			var model: Assistant.Model = result["model"]

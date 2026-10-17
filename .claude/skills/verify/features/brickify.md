@@ -61,9 +61,16 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   kept the feet), tiles on top, studs-sideways
   panels on a flat side; every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
-  once a round for it, not once a piece tried), the plates and
-  then the slopes about each joint laid again as plates crossing it
-  (`rejoin`, each way kept only if it leaves fewer pieces); the columns of
+  once a round for it, not once a piece tried; its first ways, kept
+  unchecked, taken back to the plan at its fewest pieces once a round's
+  pieces apart are ones seen before, or after `Plan.STALLED` rounds that
+  leave no fewer, and checked with the rejoin's from then on: they once
+  laid the same pair until all 96 rounds ran out), the plates and
+  then the slopes about each joint laid again as plates crossing it, and
+  last a plate across a colour's edge laying the fewest studs in the other
+  colour (`_pair_across` with colours) (`rejoin`, each way kept only if it
+  leaves fewer pieces; the parts it may lay again mapped once a round; the
+  pieces counted in packed arrays, in the same order); the columns of
   thin cells laid plain (`plain_at`: no slope, wedge or top tile); and every
   number laid the one LDraw gives the part today
   (`Shapes.current`, from the catalogue's stubs: 3023 is laid as 3023b), in a
@@ -78,6 +85,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   model does not stand, black). Then `Assistant._check` as check_design runs
   it, weighed by Balance once it passes in one piece (`weigh_whole`; a check
   that fails is not weighed, and a mend that ends failing weighs its last),
+  without its advice (`advise` false; the faults are the same), the check
+  again without dressing that gave way asked the same (`_without_dressing`,
+  which dropped both, so the first check came back unweighed and the mend
+  checked a third time),
   and mended (`Brickify.mend`, in few checks): what
   collides (the lattice, or the exact check's `colliding`) out in one round;
   then join (`_tie`, a 1 x 2 plate under or over a joint, or the shortest
@@ -177,6 +188,15 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   (measure 1.2, lay 7.6, check 8.4: its mend takes 3 parts out and checks
 #   twice, where main's passes at once). Main beside it in one job (brickify_phases): 15.8 s, the
 #   branch 17.7 s; the lay 2.0 s faster, the second check 3 s slower.
+#   Then unit 2b: every stitch ends before its 96 rounds run out (the first ways,
+#   kept unchecked, once laid the same pair until they did); the fox laid plain is
+#   whole too (it lost 21 parts); two plates of two colours side by side are joined
+#   by a plate across the edge, each side keeping its colour but a stud; the hollow
+#   sphere is less plastic with nothing taken out and at most a tenth more parts
+#   (it met "no more parts" once only by its mend taking 45 out). 2026-10-16 on the
+#   unit 2b branch at a load of 15 to 45: 60 ok; hollow sphere 1,670 parts against
+#   the solid's 1,606; forty-stud bunny 2,062 parts, one check, 12.0 s (median of six)
+#   against main's 14.6 in one job (brickify_phases), 0.82 times.
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and

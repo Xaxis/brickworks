@@ -11804,9 +11804,10 @@ func _others_standing(alone: bool) -> Array:
 ## "balance" (Balance.Report): check_design's, which a session reads.
 ## ``weigh_whole`` asks it only of a model that passes in one piece: what a
 ## mend checks again and again until it does, a second of weighing each on
-## a forty-stud scan, wants only the last.
+## a forty-stud scan, wants only the last. Without ``advise`` it says only
+## the faults, none of the advice (Brickify reads no more).
 func _check(model: Model, alone: bool = false, weigh: bool = false,
-		weigh_whole: bool = false) -> Dictionary:
+		weigh_whole: bool = false, advise: bool = true) -> Dictionary:
 	var lattice := BrickLattice.new()
 	# Nothing here asks where a brick would come to rest, which is the
 	# only thing the column index is for, and keeping it is a third of
@@ -12229,7 +12230,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
 	if not gave_way.is_empty():
-		return _without_dressing(model, gave_way, alone, weigh)
+		return _without_dressing(model, gave_way, alone, weigh, weigh_whole, advise)
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -12324,82 +12325,86 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	# back. A real run said so on every call after it: "the brickworks
 	# server has stopped responding". This is advice. A check must not
 	# spend minutes on advice.
-	var hints_until: float = Time.get_unix_time_from_system() + HINTS_WITHIN
-	for group: String in _sections_present(model, cells_of):
-		if group.is_empty():
-			continue
-		if not crowded.has(group) and not stuck.has(group):
-			continue
-		var fits: String = _where_it_would_meet(model, group, lattice,
-			part_of, hints_until)
-		if not fits.is_empty():
-			advice.append("Section '%s':%s" % [group, fits])
+	# Advice, which a caller that reads only the faults goes without: Brickify's
+	# mend checks a forty-stud scan again and again, and advice was a quarter of
+	# each check.
+	if advise:
+		var hints_until: float = Time.get_unix_time_from_system() + HINTS_WITHIN
+		for group: String in _sections_present(model, cells_of):
+			if group.is_empty():
+				continue
+			if not crowded.has(group) and not stuck.has(group):
+				continue
+			var fits: String = _where_it_would_meet(model, group, lattice,
+				part_of, hints_until)
+			if not fits.is_empty():
+				advice.append("Section '%s':%s" % [group, fits])
 
-	# And whether it is made of enough different things to read as a set.
-	var thin: String = _variety(model)
-	if not thin.is_empty():
-		advice.append(thin)
+		# And whether it is made of enough different things to read as a set.
+		var thin: String = _variety(model)
+		if not thin.is_empty():
+			advice.append(thin)
 
-	# And whether it is built the way real sets of its kind are: on its
-	# side, at an angle, curved, and mirrored only where they are.
-	var square: String = _style(model)
-	if not square.is_empty():
-		advice.append(square)
+		# And whether it is built the way real sets of its kind are: on its
+		# side, at an angle, curved, and mirrored only where they are.
+		var square: String = _style(model)
+		if not square.is_empty():
+			advice.append(square)
 
-	# What to use instead of a colour that does not exist, said once.
-	if issues.has("no such colour"):
-		advice.append(_colour_advice())
+		# What to use instead of a colour that does not exist, said once.
+		if issues.has("no such colour"):
+			advice.append(_colour_advice())
 
-	# And whether anything is specified in a colour it was never made in.
-	var unmade: String = _never_made(model)
-	if not unmade.is_empty():
-		advice.append(unmade)
+		# And whether anything is specified in a colour it was never made in.
+		var unmade: String = _never_made(model)
+		if not unmade.is_empty():
+			advice.append(unmade)
 
-	# And whether the outline is a staircase where it could be an edge.
-	var stepped: String = _stepped_outline(cells_of, box_of)
-	if not stepped.is_empty():
-		advice.append(stepped)
+		# And whether the outline is a staircase where it could be an edge.
+		var stepped: String = _stepped_outline(cells_of, box_of)
+		if not stepped.is_empty():
+			advice.append(stepped)
 
-	# And whether there is a line it would come apart along. Not between
-	# round parts: two cylinder halves back to back, four corner rounds of a
-	# ring and a booster beside its core are how a set builds a round, each
-	# column tied by a round plate, and a rocket was told to stagger them.
-	var walls: Dictionary = {}
-	for index: int in box_of:
-		if not Style.kinds_of(model.placements[index].part).contains("c"):
-			walls[index] = box_of[index]
-	var seam: String = _unbonded_seam(walls)
-	if not seam.is_empty():
-		advice.append(seam)
+		# And whether there is a line it would come apart along. Not between
+		# round parts: two cylinder halves back to back, four corner rounds of a
+		# ring and a booster beside its core are how a set builds a round, each
+		# column tied by a round plate, and a rocket was told to stagger them.
+		var walls: Dictionary = {}
+		for index: int in box_of:
+			if not Style.kinds_of(model.placements[index].part).contains("c"):
+				walls[index] = box_of[index]
+		var seam: String = _unbonded_seam(walls)
+		if not seam.is_empty():
+			advice.append(seam)
 
-	# And whether the whole thing is one colour.
-	var plain: String = _all_one_colour(model)
-	if not plain.is_empty():
-		advice.append(plain)
+		# And whether the whole thing is one colour.
+		var plain: String = _all_one_colour(model)
+		if not plain.is_empty():
+			advice.append(plain)
 
-	# And whether it is all structure and no detail.
-	var coarse: String = _mostly_big_plates(model)
-	if not coarse.is_empty():
-		advice.append(coarse)
+		# And whether it is all structure and no detail.
+		var coarse: String = _mostly_big_plates(model)
+		if not coarse.is_empty():
+			advice.append(coarse)
 
-	# And whether it has a touch nobody asked for.
-	var touches: String = _touches(model)
-	if not touches.is_empty():
-		advice.append(touches)
+		# And whether it has a touch nobody asked for.
+		var touches: String = _touches(model)
+		if not touches.is_empty():
+			advice.append(touches)
 
-	# And the three things that made the homepage's Orthanc "the ugliest
-	# piece of shit I've ever seen", each a fault of any subject: windows
-	# in a grid, a dark face of plain bricks, a tall thing with no profile.
-	for said: String in [_window_grid(model), _dark_and_plain(model),
-			_straight_shaft(model, box_of), _speckle(model), _daylight(model),
-			_wide_yard(model, box_of)]:
-		if not said.is_empty():
-			advice.append(said)
+		# And the three things that made the homepage's Orthanc "the ugliest
+		# piece of shit I've ever seen", each a fault of any subject: windows
+		# in a grid, a dark face of plain bricks, a tall thing with no profile.
+		for said: String in [_window_grid(model), _dark_and_plain(model),
+				_straight_shaft(model, box_of), _speckle(model), _daylight(model),
+				_wide_yard(model, box_of)]:
+			if not said.is_empty():
+				advice.append(said)
 
-	# And whether a nearly-symmetric model has a brick on one side only.
-	var lopsided: String = _lopsided(model, box_of, lattice)
-	if not lopsided.is_empty():
-		advice.append(lopsided)
+		# And whether a nearly-symmetric model has a brick on one side only.
+		var lopsided: String = _lopsided(model, box_of, lattice)
+		if not lopsided.is_empty():
+			advice.append(lopsided)
 
 	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
 	var pieces: int = each_piece.size()
@@ -13012,16 +13017,19 @@ static func _give_way(blockers: PackedInt64Array, placement: Placement,
 	return solid
 
 
-## The design without the dressing that gave way, checked again, and
-## saying how much was left out.
+## The design without the dressing that gave way, checked again as it was
+## asked to be, and saying how much was left out. Checked again with only
+## the first two asks, a Brickify scan's first check came back unweighed
+## and full of advice, and its mend checked it a third time to weigh it.
 func _without_dressing(model: Model, gave_way: Dictionary,
-		alone: bool, weigh: bool = false) -> Dictionary:
+		alone: bool, weigh: bool = false, weigh_whole: bool = false,
+		advise: bool = true) -> Dictionary:
 	var kept: Array[Placement] = []
 	for index: int in model.placements.size():
 		if not gave_way.has(index):
 			kept.append(model.placements[index])
 	model.placements = kept
-	var report: Dictionary = _check(model, alone, weigh)
+	var report: Dictionary = _check(model, alone, weigh, weigh_whole, advise)
 	var left: int = gave_way.size()
 	var said: String = ("%d finishing part%s (a tile on a side stud, a rim's wedge) would "
 		% [left, "" if left == 1 else "s"]
