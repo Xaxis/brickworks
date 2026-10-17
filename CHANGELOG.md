@@ -87,6 +87,10 @@ whole cycle.
 - Brickify stops when you cancel it, close its panel or quit. It used to
   run on to its end: quitting during a large run waited 25 s, and now
   takes under a second.
+- Quitting while a render is being saved keeps it. A picture already drawn
+  is written as the app closes, a turntable keeps the frames it has, and
+  the app's log says what was not finished. Before, a 4K picture being
+  saved as you quit was lost without a word.
 - In a browser, a part a file carries that is drawn from LDraw's own
   subparts or parts is built too. The files it needs are fetched as it
   opens, only those (42082-1: one, 3 KB), and kept for the visit. 190 of

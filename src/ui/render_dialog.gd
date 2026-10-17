@@ -239,6 +239,25 @@ func is_rendering() -> bool:
 	return _working == "picture" or _working == "turntable"
 
 
+## Where the render being drawn goes, while it is.
+var _output: RenderOutput = null
+
+
+## The app closing mid-render: a picture already drawn and being encoded is
+## written now, the frames of a turntable already drawn are kept, and what
+## was not finished is said, in the app's log, rather than lost without a
+## word: the render's coroutines go with the scene tree and never come back
+## to write anything.
+func _exit_tree() -> void:
+	if not is_rendering():
+		return
+	var lines: PackedStringArray = _output.close_now() if _output != null else PackedStringArray()
+	if lines.is_empty():
+		lines.append("the %s was not finished, so nothing was written" % _working)
+	for line: String in lines:
+		print("render, as the app closed: %s" % line)
+
+
 ## Escape cancels a render, or closes; every other key stops here while it
 ## is open, so the model's shortcuts do nothing to a model nobody can see.
 func _input(event: InputEvent) -> void:
@@ -752,6 +771,7 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	var chosen: RenderSettings = given if given != null else settings.copy()
 	var output := RenderOutput.new()
 	output.folder = folder
+	_output = output
 	var model: String = str(named.call())
 	var lines := PackedStringArray()
 	if kind == "picture":
@@ -791,6 +811,7 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 				"name": RenderOutput.file_name(model, "_turntable", "webp"), "output": output}
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 	_working = ""
+	_output = null
 	_set_working(false)
 	if lines.is_empty():
 		_status.text = "Cancelled." if not _status.text.begins_with("could not") else _status.text

@@ -175,6 +175,26 @@ picture the assistant is shown.
   outside, which on a bare Xvfb needs the atom made first (Godot asks for it
   only if it exists, as a window manager makes it): results for 2026-10-16
   in `bench/results/quitcrash-2026-10-16/` of the main checkout.
+  And with File, Render… at work (`RenderDialog._exit_tree`,
+  `RenderOutput.close_now`): the window closed during the draft of its first
+  open (`render`) and of its second (`render-again`) exits 0; a 4K picture
+  being encoded as it closes is written whole (`render-keep`; it used to be
+  lost without a word), a Good picture half drawn writes nothing and the
+  log says `render, as the app closed: the picture was not finished`
+  (`render-cut`), and a turntable keeps its frames drawn and says how many
+  (`render-turn`). The draft needs a display: `-- --windowed` under
+  `gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --headless … quit_probe.gd`
+  runs the app windowed; headless, `render` and `render-again` open and
+  close the panel with no draft, and the rest are left out. `--runs=N`
+  runs each way N times, closing the draft 0 to 55 frames in. Every render
+  way also lists what of the app's scripts is still on RenderingServer's
+  signals as the tree goes (`LEFT-ON-RENDERER`), which must be none: the
+  server outlives GDScript, and a lambda left on its `frame_pre_draw` (no
+  `self` in it, or a static function's) aborts the exit, exit 134, every
+  time. That was the abort quitting during a second open's draft once
+  (2026-10-17): a probe's own timing lambda, not the app; a node's method or
+  a lambda using `self` goes with the node. Results in
+  `bench/results/renderquit-2026-10-17/`.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'
