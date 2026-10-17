@@ -1146,7 +1146,7 @@ func _ready() -> void:
 		# meant to lift a brick. One that cannot be opened is kept, and said
 		# to be, before the sample's autosave can go over it (ModelStore.restore).
 		if not OS.get_cmdline_args().has("--script"):
-			placed = _store.restore()
+			placed = await _store.restore_fetched()
 		if placed == 0:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
@@ -1882,7 +1882,7 @@ func _view_shared() -> void:
 	var shared: Dictionary = answer["body"]
 	var name: String = str(shared.get("name", "A shared model"))
 	var author: String = str(shared["author"]) if shared.get("author") is String else ""
-	var result: Dictionary = _store.open_text(str(shared.get("model", "")), name)
+	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():
 		_share_view.failed("It could not be opened here: %s." % result["error"], _view_shared)
 		return
@@ -2107,7 +2107,7 @@ func _maybe_copy() -> void:
 	if not _sample_untouched and _store.has_unsaved_work():
 		_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
 			else "Untitled"))
-	var result: Dictionary = _store.open_text(str(shared.get("model", "")), name)
+	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():
 		_bar.say("could not open that model: %s" % result["error"])
 		return

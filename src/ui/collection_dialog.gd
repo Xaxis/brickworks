@@ -721,10 +721,10 @@ func _build_row(candidate: Dictionary, first: bool) -> Control:
 func _open_candidate(candidate: Dictionary) -> void:
 	var placed: int = 0
 	if candidate.has("path"):
-		placed = models.open(str(candidate["path"]))
+		placed = await models.open_fetched(str(candidate["path"]))
 	else:
 		var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/" + str(candidate["file"]))
-		placed = int(models.open_text(text, str(candidate["name"]))["placed"])
+		placed = int((await models.open_text_fetched(text, str(candidate["name"])))["placed"])
 	if bar != null:
 		bar.opened.emit(placed)
 	open("need")

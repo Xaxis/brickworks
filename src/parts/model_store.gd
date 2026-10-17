@@ -257,14 +257,30 @@ func write_now() -> String:
 ## with parts that cannot be opened is kept first, as it was, among the
 ## person's models ([method _keep_unopened]).
 func restore() -> int:
-	unrestored = ""
-	var path: String = autosave()
-	if not FileAccess.file_exists(path):
-		return 0
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = _autosaved()
+	return _restored(text, open_text(text, autosave().get_file())) if not text.is_empty() else 0
+
+
+## [method restore], once what the parts the model carries are drawn from has
+## been fetched, where this build has not got it (on the web: [method
+## open_text_fetched]). What the app does at start-up.
+func restore_fetched() -> int:
+	var text: String = _autosaved()
 	if text.is_empty():
 		return 0
-	var result: Dictionary = open_text(text, path.get_file())
+	return _restored(text, await open_text_fetched(text, autosave().get_file()))
+
+
+## The working model's text from the last session, or "".
+func _autosaved() -> String:
+	unrestored = ""
+	var path: String = autosave()
+	return FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+
+
+## How many parts of [param text], opened as [param result], came back, the
+## model kept first when none could be ([method restore]).
+func _restored(text: String, result: Dictionary) -> int:
 	# What is awaited is this model's only when it opened: one that did not
 	# leaves the last model's there.
 	var opened: bool = str(result["error"]).is_empty()
@@ -590,7 +606,19 @@ func open(path: String) -> int:
 	var text: String = FileAccess.get_file_as_string(path)
 	if text.is_empty():
 		return 0
-	var result: Dictionary = open_text(text, path.get_file())
+	return _opened_from(path, open_text(text, path.get_file()))
+
+
+## [method open], once what the parts the file carries are drawn from has
+## been fetched, where this build has not got it ([method open_text_fetched]).
+func open_fetched(path: String) -> int:
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return 0
+	return _opened_from(path, await open_text_fetched(text, path.get_file()))
+
+
+func _opened_from(path: String, result: Dictionary) -> int:
 	if int(result["placed"]) > 0:
 		example = path.begins_with(EXAMPLE_DIR)
 		if path.begins_with(SAVE_DIR):
@@ -615,7 +643,7 @@ func open_version(path: String, called: String = "") -> int:
 	if text.is_empty():
 		return 0
 	var name: String = called if not called.is_empty() else title
-	var result: Dictionary = open_text(text, name)
+	var result: Dictionary = await open_text_fetched(text, name)
 	if int(result["placed"]) <= 0 and awaited.is_empty():
 		return 0
 	# The name it is saved under, whatever its first line says.
@@ -674,10 +702,13 @@ static func title_in(text: String, file_name: String) -> String:
 ## than skipped in silence: an .ldr from elsewhere will use parts this
 ## does not carry, and "opened, 340 of 500 parts" is a true answer where
 ## "opened" is not.
-func open_text(text: String, name: String = "model") -> Dictionary:
+##
+## [param parsed]: the file already parsed, as [method open_text_fetched]
+## has it, so it is not parsed twice.
+func open_text(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
-	var model: LdrModel = LdrModel.parse(text, name)
+	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
 	if model == null:
 		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
@@ -840,6 +871,26 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null}
+
+
+## [method open_text], once the LDraw library's own files the parts the file
+## carries are drawn from, which this build has not got, have been fetched
+## (CustomParts.fetch_sources): on the web, the subparts and parts no build
+## ships. At once, with nothing fetched or waited for, on the desktop and for
+## a file that needs nothing.
+func open_text_fetched(text: String, name: String = "model") -> Dictionary:
+	var began: int = Time.get_ticks_usec()
+	var model: LdrModel = LdrModel.parse(text, name)
+	if model == null:
+		return open_text(text, name)
+	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
+	began = Time.get_ticks_usec()
+	await CustomParts.fetch_sources(library, model)
+	var fetched_in: float = (Time.get_ticks_usec() - began) / 1000.0
+	var result: Dictionary = open_text(text, name, model)
+	open_phases["parse"] = parsed_in
+	open_phases["fetch"] = fetched_in
+	return result
 
 
 ## What the last [method open_text] spent, phase by phase, in ms, in order:
