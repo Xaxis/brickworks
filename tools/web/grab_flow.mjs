@@ -443,6 +443,11 @@ try {
     timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
       worst_ms: rested && rested.swing_worst_ms, stall_ms: stall, simulated_s: rested && rested.swing_s,
       clock_s: rested && rested.swing_clock_s, page_frames: gaps };
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(2500);
+    const drawn = await swingOnce(true);
+    check(Boolean(drawn && drawn.rested), "swung again for its pictures, and at rest again");
+    await shot("9_pendulum_rest.png");
     // For reference, the page's frames while every frame is drawn anew and
     // nothing of the grab runs: the view turned by a right-drag, a move each
     // frame for three seconds.
@@ -460,11 +465,6 @@ try {
       + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms`);
     timings.view_turning_frames = turning;
     await page.waitForTimeout(1500);
-    await page.keyboard.press("Control+z");
-    await page.waitForTimeout(2500);
-    const drawn = await swingOnce(true);
-    check(Boolean(drawn && drawn.rested), "swung again for its pictures, and at rest again");
-    await shot("9_pendulum_rest.png");
   }
 } catch (trouble) {
   if (!args["only-big"]) {

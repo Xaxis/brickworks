@@ -1839,16 +1839,18 @@ moved since the last, carrying what a whole 1 ms step ran over: the beam's
 and the fall 0.199 s for its 0.197.
 
 In a browser (grab_flow: a beam 7 on a free pin beside the crane, the
-threaded web export drawn by SwiftShader on a box loaded 30 to 50) it swung
-as on the desktop, back and forth 14 times in 2.9 s, and came to rest at
-−1°; its own work was 4.6 ms a frame on average and 8.2 at worst. The page
-drew it slowly: a frame each 0.65 s (median), where turning the view with a
-right-drag drew one each 0.18 s, so the 2.98 s swing took 18.7 s on the
-clock in 24 frames. A frame steps the swing at most a quarter of a second
+threaded web export drawn by SwiftShader on a loaded box) it swung as on the
+desktop, back and forth 14 times in 2.9 s, and came to rest at −1°; its own
+work was 5.4 ms a frame on average and 8.1 at worst. The page drew it
+slowly: from the release to rest its frames came 0.58 s apart (median),
+where turning the view with a right-drag drew them 33 ms apart in the same
+run, so the 2.98 s swing took 10.7 s on the clock in 14 frames. A frame
+steps the swing at most a quarter of a second
 (`GrabDrag.SWING_MOST_FRAME_S`); at the first cap, a twentieth, the same
-swing was drawn fifteen times slower than it is. What the page spends
-drawing a swing's frame beyond what turning the view costs was not traced;
-the app's share of it is the 4.6 ms.
+swing was drawn fifteen times slower than it is. What the page spends on a
+swing's frame beyond the app's 5.4 ms was not traced; it is not the
+drawing alone, which turning the view does in 33 ms. A Chromium trace of a
+swing, as §13 took of a drag, is where to look.
 
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)
@@ -1871,4 +1873,6 @@ read from the pointer (a release now starts from rest). A joint swinging
 while the model falls. A big section's swing (over 40 parts its room tests
 cost more than a frame; it settles as before). Loops, balls and click hinges
 swinging. Friction in a free pin measured on the bench (§ What "accurate"
-can honestly mean), and how much a section bounces.
+can honestly mean), and how much a section bounces. Why a swing's frames in
+a browser drawing in software come 0.58 s apart when turning the view's
+come 33 ms apart (above).
