@@ -781,10 +781,16 @@ plan with Claude as the client.
   `Instructions.plan`'s; the parts are fetched for the whole model before
   the first page, not page by page; the first step waits for every step to
   be worked out (9 to 12 s after the first frame for 1,000 parts slowed
-  four times here, against a 3 s aim); and on 4,000 parts a turn that lands
-  in a frame where the page is told everything, or in another frame's
-  processing outside the turn, still takes 250 to 370 ms (see the share
-  steps flow below).
+  four times here, against a 3 s aim; 75 to 135 s for 4,000, all of it
+  the main thread's own work, not frames waiting on the drawing); on
+  4,000 parts some turns' frames still spend 180 to 460 ms in the frame's
+  processing outside the turn (`turn_frames[1]`) and outside Main's own
+  `_process` (`turn_frames[4]`, about 12 ms with the page told within it):
+  always in a frame that also told the page everything, never located yet;
+  and at 1,000 parts the jump to step 30 is 120 to 230 ms on screen of
+  which 30 to 150 ms is the WebGL calls (7,200 of them, 224 draws) of
+  drawing step 30 itself, slowed with everything else (see the share steps
+  flow below).
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
