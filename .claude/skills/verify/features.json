@@ -831,6 +831,14 @@
       "tests": []
     },
     {
+      "id": "cli:share pages probe",
+      "kind": "cli",
+      "entry": "src/dev/share_pages_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:share probe",
       "kind": "cli",
       "entry": "tools/web/share_probe.mjs",
@@ -1560,6 +1568,14 @@
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:steps carried with a shared model",
+      "kind": "lib",
+      "entry": "src/net/shared_pages.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd",
+      "area": "web",
       "tests": []
     },
     {

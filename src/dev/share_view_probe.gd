@@ -222,6 +222,16 @@ func _run() -> void:
 	_ok(_fingerprint(world) == before, "1 looks from the front, and nothing moves")
 
 	print("\nthe part under the pointer")
+	# The viewer tells the lattice of the parts once the model is up, a
+	# slice a frame (ModelStore.lattice_later): what is under a pointer
+	# is known a moment after the model is on screen.
+	var told_from: int = Time.get_ticks_msec()
+	while not (store.get("_unregistered") as Array).is_empty() \
+			and Time.get_ticks_msec() - told_from < 30000:
+		await process_frame
+	_ok(store.lattice_later and (store.get("_unregistered") as Array).is_empty(),
+		"the lattice is told of every part after the model is up (%.1f s)"
+		% ((Time.get_ticks_msec() - told_from) / 1000.0))
 	var target: BrickWorld.Brick = _a_visible_brick(world, store, library, camera, view_rect)
 	_ok(target != null, "a part of the model is on screen")
 	if target != null:
@@ -605,6 +615,9 @@ func _the_panel(text: String) -> void:
 	var model: String = str(sent.get("model", ""))
 	_ok(model.contains(".dat") and model.contains("0 !DATA") and not model.contains("!BRICKWORKS SHARE"),
 		"the model went as LDraw with its made part and print inside, and no link line")
+	_ok(model.count(SharedPages.HEAD) == 1 and model.contains(SharedPages.PAGE),
+		"...and with its build steps, worked out once for the link (SharedPages), %d of them"
+		% model.count(SharedPages.PAGE))
 	var picture := Image.new()
 	var png: PackedByteArray = Marshalls.base64_to_raw(str(sent.get("image", "")))
 	var read: int = picture.load_png_from_buffer(png) if not png.is_empty() else ERR_FILE_EOF

@@ -331,6 +331,26 @@ func start(world: BrickWorld, library: PartLibrary,
 	return true
 
 
+## [method start] with the steps already worked out, by whoever shared the
+## model (SharedPages): nothing worked out here, in [param mode].
+func start_from(steps: Array[Instructions.Step], mode: int, world: BrickWorld,
+		library: PartLibrary, scenery: Dictionary = {}) -> bool:
+	if _job != null or steps.is_empty():
+		return false
+	_library = library
+	_world = world
+	_scenery = scenery
+	if not world.reveal_ended.is_connected(_on_reveal_ended):
+		world.reveal_ended.connect(_on_reveal_ended)
+	_authored = mode == AUTHORS
+	_set_mode_quietly(mode)
+	_steps = steps
+	visible = true
+	_reorder()
+	_show(_step_ends[0] if not _step_ends.is_empty() else 1)
+	return true
+
+
 ## Whether the steps are being worked out: pressing Timeline again then
 ## cancels it.
 func is_starting() -> bool:

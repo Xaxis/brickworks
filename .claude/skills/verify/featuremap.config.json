@@ -2189,6 +2189,20 @@
       "entry": "assets/ldraw/gears.json",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator out and in; move_part a small actuator's input degrees=360)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "steps carried with a shared model",
+      "entry": "src/net/shared_pages.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share pages probe",
+      "entry": "src/dev/share_pages_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
+      "area": "web"
     }
   ]
 }

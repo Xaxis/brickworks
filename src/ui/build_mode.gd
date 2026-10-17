@@ -256,6 +256,38 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 	_told.text = _telling(at, lots)
 	_told.visible = not _told.text.is_empty()
 	_lay_strip()
+	_shown_at = Time.get_ticks_msec()
+	_pictures_ms = -1
+	set_process(true)
+
+
+## When the page went up, and how long after it every part's picture along
+## the bottom was drawn (-1 while one is still to come): a builder picks
+## the parts from them.
+var _shown_at: int = 0
+var _pictures_ms: int = -1
+
+
+func _process(_delta: float) -> void:
+	if not visible:
+		set_process(false)
+		return
+	if not pictures_done():
+		return
+	_pictures_ms = Time.get_ticks_msec() - _shown_at
+	set_process(false)
+	# Said to the page in the frame it happens, for a check to time it from
+	# the tap (tools/web/share_steps_flow.mjs).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksPicturesDrawn = [%d, performance.now()]" % page, true)
+
+
+## Whether every part on the page has its picture, or none to be had.
+func pictures_done() -> bool:
+	for tile: ThumbTile in _tiles:
+		if is_instance_valid(tile) and tile.state == ThumbTile.State.LOADING:
+			return false
+	return true
 
 
 func _telling(at: int, lots: Array[Dictionary]) -> String:
@@ -301,7 +333,23 @@ func _lay_strip() -> void:
 		_strip.add_child(cell)
 		_tiles.append(tile)
 	if thumbnails != null:
+		_watch_after_this_frame()
+
+
+## The parts' pictures asked for once the page itself is drawn: the frame a
+## page is turned in draws the model and the step, and the pictures (each a
+## little scene of its own, drawn and read back) come in the frames after.
+## Drawn in that same frame, on a slowed phone in software, they were half
+## its WebGL calls.
+func _watch_after_this_frame() -> void:
+	_strip_laid += 1
+	var laid: int = _strip_laid
+	await RenderingServer.frame_post_draw
+	if laid == _strip_laid and thumbnails != null:
 		thumbnails.watch(self, _tiles if visible else ([] as Array[ThumbTile]))
+
+
+var _strip_laid: int = 0
 
 
 func open() -> void:
@@ -414,6 +462,7 @@ func page_state() -> Dictionary:
 			sizes[name] = [roundi(button.size.x / _pt), roundi(button.size.y / _pt)]
 	return {"open": visible, "page": page, "last": last, "caption": _caption_text,
 		"note": _note.text if _note.visible else "", "told": _told.text if _told.visible else "",
+		"pictures_ms": _pictures_ms,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
 			return tile.state == ThumbTile.State.READY).size(),
 		"next": _next.text, "back_enabled": not _back.disabled, "points": sizes,

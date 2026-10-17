@@ -116,6 +116,12 @@ var _build_key: int = 0
 ## for (-1, where this device left it), taken up when they are.
 const NO_BUILD_WANTED := -2
 var _build_wanted: int = NO_BUILD_WANTED
+## Whether the link's steps came with it (SharedPages), not worked out here.
+var _steps_carried: bool = false
+## The viewer's way to its first look, phase by phase, in ms since it began:
+## the link fetched, the model opened (with ModelStore's own phases), the
+## steps in.
+var _view_phases: Dictionary = {}
 ## What was in sight before the player took the window, put back after.
 var _build_left: Dictionary = {}
 ## How long turning to the last page took, and the longest, in microseconds:
@@ -134,14 +140,53 @@ var _turn_marks := PackedInt64Array()
 var _told_this_frame_us: int = 0
 
 
+const TURN_MARKS: Array[String] = ["turned", "process_frame", "pre_draw", "post_draw"]
+
+
 func _turn_mark() -> void:
 	_turn_marks.append(Time.get_ticks_usec())
+	# Named in a browser's trace too (tools/web/share_steps_flow.mjs --trace).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.timeStamp('bw:%s')" % TURN_MARKS[_turn_marks.size() - 1], true)
 	if _turn_marks.size() == 4:
-		_turn_frames = [snappedf((_turn_marks[1] - _turn_marks[0]) / 1000.0, 0.1),
-			snappedf((_turn_marks[2] - _turn_marks[1]) / 1000.0, 0.1),
-			snappedf((_turn_marks[3] - _turn_marks[2]) / 1000.0, 0.1),
+		var ms := func(from: int, to: int) -> float:
+			return snappedf((to - from) / 1000.0, 0.1) if from > 0 and to > 0 else -1.0
+		_turn_frames = [ms.call(_turn_marks[0], _turn_marks[1]),
+			ms.call(_turn_marks[1], _turn_marks[2]), ms.call(_turn_marks[2], _turn_marks[3]),
 			snappedf(_told_this_frame_us / 1000.0, 0.1),
-			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1)]
+			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1),
+			ms.call(_turn_marks[1], _probe_first), ms.call(_probe_first, _probe_last),
+			ms.call(_probe_last, _turn_marks[2])]
+
+
+## The first and the last node to process in a frame (FrameProbe): in the
+## frame a page is turned, when every node's processing began and ended.
+var _probe_first: int = 0
+var _probe_last: int = 0
+
+
+class FrameProbe extends Node:
+	var seen: Callable
+
+	func _process(_delta: float) -> void:
+		seen.call()
+
+
+func _add_frame_probes() -> void:
+	for first: bool in [true, false]:
+		var probe := FrameProbe.new()
+		probe.name = "FirstToProcess" if first else "LastToProcess"
+		probe.process_priority = -1000000 if first else 1000000
+		probe.seen = func() -> void:
+			if _turn_marks.size() != 2:
+				return
+			if first:
+				_probe_first = Time.get_ticks_usec()
+				JavaScriptBridge.eval("console.timeStamp('bw:first_node')", true)
+			else:
+				_probe_last = Time.get_ticks_usec()
+				JavaScriptBridge.eval("console.timeStamp('bw:last_node')", true)
+		add_child(probe)
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -641,6 +686,10 @@ func _tell_page() -> void:
 		"view": _share_view.page_state() if _share_view != null else {},
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
+		"carried": _steps_carried,
+		# What opening the link's model cost, phase by phase, in ms
+		# (ModelStore.open_phases), and the viewer's own steps around it.
+		"opened": _view_phases,
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
@@ -1840,6 +1889,19 @@ func _enter_view() -> void:
 	_shell.read_only = true
 	# Somebody else's steps, to step through and not to change.
 	_steps.editable = false
+	# Nothing is taken hold of here: the grab's reading of the model's
+	# joints, and its telling the page twice a second where to take hold
+	# (every part of a body raycast for a handle), are not wanted. On 4,000
+	# parts of a slowed phone that was 260 to 460 ms of a frame every half
+	# second, and a page turned in such a frame waited for it
+	# (share_steps_flow --trace: the time was in the nodes' processing, not
+	# Main's).
+	if _grab_drag != null:
+		_grab_drag.set_process(false)
+	# The lattice is told of the parts once the model is up (what is under
+	# a pointer is all it is for here): over a second of a slowed phone's
+	# way to the first step on 4,000 parts.
+	_store.lattice_later = true
 	var column: Control = _bar.get_parent()
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
@@ -1873,6 +1935,8 @@ func _enter_view() -> void:
 	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
+	if OS.has_feature("web"):
+		_add_frame_probes()
 	_build_outline = SelectionOutline.new()
 	_build_outline.world = _world
 	_build_outline.library = _library
@@ -1947,7 +2011,10 @@ var _ahead_count: int = 0
 ## Fetch the shared model and open it, read-only.
 func _view_shared() -> void:
 	_share_view.loading()
+	var began: int = Time.get_ticks_msec()
+	_view_phases = {}
 	var answer: Dictionary = await _shared.fetch(_viewing)
+	_view_phases["fetched"] = Time.get_ticks_msec() - began
 	var code: int = int(answer["code"])
 	if code == 410 or code == 404:
 		var title: String = ("This model is no longer shared" if code == 410
@@ -1969,6 +2036,8 @@ func _view_shared() -> void:
 	if not str(result["error"]).is_empty():
 		_share_view.failed("It could not be opened here: %s." % result["error"], _view_shared)
 		return
+	_view_phases["opened"] = Time.get_ticks_msec() - began
+	_view_phases["open"] = _store.open_phases.duplicate()
 	_store.title = name
 	_store.share_id = ""
 	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")),
@@ -1979,6 +2048,7 @@ func _view_shared() -> void:
 	_shell.assemblies.enter("")
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+	_view_phases["drawn"] = Time.get_ticks_msec() - began
 	# On the web most parts are fetched as they are wanted; the steps are
 	# worked out from all of them, so they wait for the last.
 	var since: int = Time.get_ticks_msec()
@@ -1995,17 +2065,38 @@ func _view_shared() -> void:
 		_store.open_text(str(shared.get("model", "")), name)
 		_store.title = name
 		_store.share_id = ""
-	_lay_baseplate()
-	await get_tree().process_frame
-	_camera.frame(_built_bounds())
+		# Laid and framed again for the model opened again; with nothing
+		# waited for the world is as it was a frame ago, and that frame
+		# (a whole model drawn, in software most of a second) is not
+		# spent twice.
+		_lay_baseplate()
+		await get_tree().process_frame
+		_camera.frame(_built_bounds())
+	_view_phases["parts"] = Time.get_ticks_msec() - began
+	# The steps whoever shared it worked out, when they came with it and
+	# match what opened (SharedPages): a phone does not work them out. An
+	# old link, or one that does not match, has them worked out here.
+	var carried: Dictionary = SharedPages.read(str(shared.get("model", "")), _world, _store.scenery)
+	_steps_carried = not carried.is_empty()
 	_share_view.ready_to_look()
 	# The finished model, on a timeline to drag back through.
-	if await _steps.start(_world, _library, _store.scenery):
+	if _steps_carried and _steps.start_from(carried["steps"], int(carried["mode"]), _world,
+			_library, _store.scenery):
 		_steps.to_end()
+	elif await _steps.start(_world, _library, _store.scenery):
+		_steps.to_end()
+	_view_phases["steps"] = Time.get_ticks_msec() - began
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksStepsReady = performance.now()", true)
 	# Back where this device left it: a phone that slept mid-build opens on
 	# the page it was on.
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
+	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
+		_ready_the_pages()
+	# The lattice, for what is under a pointer, a slice a frame, once the
+	# first taps have had their frames.
+	get_tree().create_timer(2.0).timeout.connect(func() -> void: _store.register_later())
 	if _build_wanted != NO_BUILD_WANTED:
 		var wanted: int = _build_wanted
 		_build_wanted = NO_BUILD_WANTED
@@ -2051,13 +2142,7 @@ func _enter_build(page: int = -1) -> void:
 		_steps.to_end()
 		_steps.visible = false
 	if _build_pages == null:
-		_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
-		# The timeline's order, when the pages are its steps (they are,
-		# unless it is showing the order parts were put down in): the
-		# world is laid out in it already, and the cover costs nothing.
-		var timeline: Array = _steps.reveal_order()
-		_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
-			else -1000 - Time.get_ticks_msec()
+		_make_build_pages(made)
 	_share_view.show_bar(false)
 	_share_view.hover("", Vector2.ZERO)
 	_hovered = 0
@@ -2070,6 +2155,35 @@ func _enter_build(page: int = -1) -> void:
 	# A frame for the bars to be laid out, so the view is framed between them.
 	await get_tree().process_frame
 	_build_go(page)
+
+
+## The pages of [param made], and the order and key the world shows them by.
+func _make_build_pages(made: Array[Instructions.Step]) -> void:
+	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	# The timeline's order, when the pages are its steps (they are, unless
+	# it is showing the order parts were put down in): the world is laid
+	# out in it already, and the cover costs nothing.
+	var timeline: Array = _steps.reveal_order()
+	_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
+		else -1000 - Time.get_ticks_msec()
+
+
+## The pages made, and the first page's view worked out, in a frame of
+## their own once the steps are in: Build it and Start then cost their own
+## frames and no more. Every part's box goes on the view plane for the first
+## page's view, which on 4,000 parts of a slowed phone was a turn's worth.
+func _ready_the_pages() -> void:
+	await get_tree().process_frame
+	if _build_pages != null or _steps.steps().is_empty() or _build_mode.is_open():
+		return
+	_make_build_pages(_steps.steps())
+	await get_tree().process_frame
+	if _build_pages != null and _build_pages.last() >= 1:
+		_build_pages.view(1)
+		# And the line round a page's new parts, made once unseen.
+		await get_tree().process_frame
+		if _build_pages != null and not _build_mode.is_open():
+			_build_outline.warm(_build_pages.fresh(1))
 
 
 ## Put [param page] on screen: what is built by then, the rest out of
@@ -2118,6 +2232,7 @@ func _build_go(page: int) -> void:
 	lap = _lap(took, "page", lap)
 	BuildSteps.remember(_viewing, page, true)
 	_lap(took, "kept", lap)
+	_draw_ahead(page)
 	_build_turned_us = Time.get_ticks_usec() - started
 	if _build_turned_us > _build_turned_most_us:
 		_build_turned_most_us = _build_turned_us
@@ -2125,6 +2240,10 @@ func _build_go(page: int) -> void:
 	_build_turned_last = took
 	_turn_frames = []
 	_turn_marks = PackedInt64Array([Time.get_ticks_usec()])
+	_probe_first = 0
+	_probe_last = 0
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.timeStamp('bw:turned')", true)
 	_told_this_frame_us = 0
 	for done: Signal in [get_tree().process_frame, RenderingServer.frame_pre_draw,
 			RenderingServer.frame_post_draw]:
@@ -2138,6 +2257,81 @@ func _build_go(page: int) -> void:
 
 func _build_drawn() -> void:
 	JavaScriptBridge.eval("window.brickworksBuildDrawn = [%d, performance.now()]" % _build_page, true)
+
+
+## The parts' pictures of the pages to come, drawn while the page is idle:
+## once this page's own are in, the next few pages' and then every other
+## page's, a few at a time, each part in a colour once (PartThumbnails keeps
+## them by part and colour), so a page turned to has its pictures to hand.
+## Drawn only when a page asked, they came a picture at a time behind the
+## turn, and on a slowed phone in software a page's parts list was blank
+## tiles for seconds. A turn starts it again from the page turned to.
+func _draw_ahead(page: int) -> void:
+	_ahead_turn += 1
+	var turn: int = _ahead_turn
+	var still := func() -> bool:
+		return turn == _ahead_turn and _build_mode != null and _build_mode.is_open() \
+			and _build_pages != null and _thumbnails != null
+	# This page's own first: what is in sight is drawn before anything asked.
+	var since: int = Time.get_ticks_msec()
+	while still.call() and not _build_mode.pictures_done() and Time.get_ticks_msec() - since < 10000:
+		await get_tree().process_frame
+	# ...and the page left alone a moment: a batch of pictures is a frame of
+	# the whole window and a wait on the card, and begun at once it made the
+	# cover and Start wait seconds behind it on a slowed phone in software.
+	# On the cover longer: Start comes soon after it, and its frame waited
+	# seconds behind a batch begun a second after the cover went up.
+	since = Time.get_ticks_msec()
+	var quiet: int = AHEAD_AFTER_MS if page > 0 else AHEAD_ON_COVER_MS
+	while still.call() and Time.get_ticks_msec() - since < quiet:
+		await get_tree().process_frame
+	if not still.call():
+		return
+	var asked: Dictionary = {}
+	var pages: Array[int] = []
+	for n: int in range(page + 1, mini(page + AHEAD_FIRST, _build_pages.last()) + 1):
+		pages.append(n)
+	for n: int in range(1, _build_pages.last() + 1):
+		if n <= page or n > page + AHEAD_FIRST:
+			pages.append(n)
+	var waiting: Array = []
+	var pace := FramePace.new()
+	for n: int in pages:
+		if not still.call():
+			return
+		# A slice a frame: every page's parts asked after is the whole model.
+		if pace.due():
+			await pace.next()
+			if not still.call():
+				return
+		for lot: Dictionary in _build_pages.lots(n):
+			var key: String = PartThumbnails.key_for(str(lot["part"]), int(lot["colour"]))
+			if asked.has(key):
+				continue
+			asked[key] = true
+			if _thumbnails.request(str(lot["part"]), int(lot["colour"])) == null:
+				waiting.append([str(lot["part"]), int(lot["colour"])])
+		if waiting.size() < AHEAD_AT_ONCE:
+			continue
+		# A handful drawn, then the next: each is a frame of the whole
+		# window drawn, and a tap in the meantime has its frame.
+		since = Time.get_ticks_msec()
+		while still.call() and Time.get_ticks_msec() - since < 10000 and waiting.any(
+				func(one: Array) -> bool: return _thumbnails.peek(one[0], one[1]) == null):
+			await get_tree().process_frame
+		waiting.clear()
+
+
+var _ahead_turn: int = 0
+## Pages drawn ahead first, and pictures asked for at a time: as many as there
+## are stages, drawn in one frame of the whole window and one wait on the card,
+## where eight a time on a busy box left a jump to step 30 of 1,000 parts 25 s
+## without its pictures.
+const AHEAD_FIRST := 3
+## How long a page is left alone before the pictures of others are drawn.
+const AHEAD_AFTER_MS := 1000
+const AHEAD_ON_COVER_MS := 4000
+const AHEAD_AT_ONCE := PartThumbnails.STAGES
 
 
 ## Milliseconds since [param since], under [param name]; now.
@@ -2154,6 +2348,7 @@ func _leave_build() -> void:
 	if _build_mode == null or not _build_mode.is_open():
 		return
 	_build_mode.close()
+	_ahead_turn += 1
 	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0))):
 		_world.set_faded({})
 	_build_faded = 0
@@ -4530,6 +4725,10 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 ## change. The worker reads copies of the world and the lattice, made here
 ## in a few milliseconds, and the library holds new parts aside meanwhile.
 func _weigh() -> void:
+	# The viewer says nothing of whether it stands (its status bar shows
+	# only the work), and weighing a big model copied it whole first.
+	if not _viewing.is_empty():
+		return
 	if _stability == null or _world == null or _counts == null or _weighing \
 			or _world.revision == _stability_revision or _world.is_drawing_held():
 		return

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -685,7 +685,11 @@ plan with Claude as the client.
   itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
   likewise) — which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
-  read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
+  read-only, no second renderer: one GET of `/api/share?id=` — made by the
+  page itself the moment it loads (`src/boot/shell.html`,
+  `window.brickworksSharePrefetch`, 2026-10-17), while the engine downloads
+  and starts, and taken by `SharedModels.fetch` (on a preview it came 2.4 s
+  after the engine's first frame when the app asked) — (asked again, up
   to three times, when nothing at all comes back: on a preview a viewer said
   "Could not reach Brickworks" once in four runs, and the same link opened at
   the next try), the model opened
@@ -776,26 +780,56 @@ plan with Claude as the client.
   `brickworksShare.build` also has `turn_last`, `turn_frames` (the rest of
   the turn's frame) and `told_laps` (what telling the page cost, piece by
   piece), and the page hears which frame drew a page
-  (`window.brickworksBuildDrawn`). Not done: the author's own steps (`0 STEP`, item 1
+  (`window.brickworksBuildDrawn`). **The parts' pictures** along the bottom
+  are asked for once the page is drawn (`BuildMode._watch_after_this_frame`)
+  and drawn ahead while the page is left alone (`main._draw_ahead`: once the
+  page's own are in and a second has passed, the next three pages' parts and
+  then every other page's, a stage's worth (`PartThumbnails.STAGES`) at a
+  time, each part in a colour once, kept by `PartThumbnails`): drawn only
+  when a page asked, a picture took seconds behind the turn on a slowed
+  phone, and pictures of the player showed blank tiles. `pictures_ms` in
+  `brickworksShare.build`, and `window.brickworksPicturesDrawn` = [page,
+  when] the frame every picture of the page is in. Not done: the author's own steps (`0 STEP`, item 1
   of docs/COMPETITIVE.md) are not kept yet, so these are always
   `Instructions.plan`'s; the parts are fetched for the whole model before
-  the first page, not page by page; the first step waits for every step to
-  be worked out (9 to 12 s after the first frame for 1,000 parts slowed
-  four times here, against a 3 s aim; 75 to 135 s for 4,000, all of it
-  the main thread's own work, not frames waiting on the drawing); on
-  4,000 parts some turns' frames still spend 180 to 460 ms in the frame's
-  processing outside the turn (`turn_frames[1]`) and outside Main's own
-  `_process` (`turn_frames[4]`, about 12 ms with the page told within it):
-  always in a frame that also told the page everything, never located yet;
-  and at 1,000 parts the jump to step 30 is 120 to 230 ms on screen of
-  which 30 to 150 ms is the WebGL calls (7,200 of them, 224 draws) of
-  drawing step 30 itself, slowed with everything else (see the share steps
-  flow below).
+  the first page, not page by page; a link shared before steps were carried
+  (`SharedPages`, below) still has them worked out on the phone (9 to 12 s
+  after the first frame for 1,000 parts slowed four times, 75 to 135 s for
+  4,000). The grab's twice-a-second search for handles stalled turns on
+  4,000 parts by 180 to 460 ms (found by `share_steps_flow --trace`, in the
+  nodes' processing, not Main's); the viewer stops the grab
+  (`_grab_drag.set_process(false)`), and the stability weigh, and tells the
+  lattice of the parts after the model is up (`ModelStore.lattice_later`,
+  `register_later`). Left: on a box at load 30 to 50 a turn's frame now and
+  then waits hundreds of ms to seconds inside WebGL calls on SwiftShader
+  (the part pictures' fence, the outline's window-sized passes, step 30's
+  7,000 calls), however little the app did (see the share steps flow
+  below).
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
   "hold this one in place"), `view` — and `recall`/`remember` for the kept
   page, which reads a stored value of the wrong shape as none.
+- `steps carried with a shared model` (`src/net/shared_pages.gd`,
+  `SharedPages`, 2026-10-17): the Share panel works the model's build steps
+  out once ("Working out its steps for the link…") and writes them at the end
+  of the text it publishes: `0 !BRICKWORKS PAGES {v, model, order, parts,
+  mode, steps}` and a `0 !BRICKWORKS PAGE {i, n, b, …}` line a step, every
+  field of `Instructions.Step` with bricks as their place in the order the
+  viewer puts the text down. They are worked out on a world of their own put
+  down as `ModelStore.open_text` puts a file down (flattened, Studio parts,
+  unmirrored, resolved, the known parts in turn, lifted alike), by the same
+  `Instructions.plan_paced`. The viewer (`main._view_shared`) reads them with
+  `SharedPages.read` and starts the timeline from them (`StepsBar.start_from`)
+  only when `model` (the text's lines trimmed, blanks and these lines left
+  out, SHA-256) and `order` (the parts and colours in the order it put them
+  down) match, and works them out as before otherwise — an old link, a
+  model edited since, a catalogue that differs. No server or database
+  change: api/share.js takes them as LDraw meta lines; a file over 1.9 MB
+  with them goes without. `brickworksShare.carried` says which, and
+  `window.brickworksStepsReady` when the steps were in. A kept source file
+  drops them on save (`ModelStore._without_app_lines`). Proved by
+  `src/dev/share_pages_probe.gd` (below) and the share steps flow.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -1611,7 +1645,27 @@ page's view worked out in under 20 ms on the castle; the same file making the
 same pages twice (and, printed, that the reverse order does not — why the
 viewer opens a link again in its file's order); a part behind a wall looked
 at from the back; a tile on a big floor framed close; the kept page per link,
-and junk in its place read as none.
+and junk in its place read as none; and each turn's changes (`count`,
+`fading`) the same as the whole model asked, next, back and jumps.
+
+The steps carried with a shared model, headless, about a minute:
+
+```sh
+godot --headless --path . --script src/dev/share_pages_probe.gd
+```
+
+Proves it when it ends "a shared model's steps are carried with it and read
+back as the viewer would work them out" with no `FAIL`: on the house, the
+castle (436 steps, callouts and all) and Orthanc's lowest 1,000 parts, the
+steps written at the end of the text; the text opened as the viewer opens it
+(`ModelStore.open_text`, a baseplate laid under it as scenery) and the steps
+read back for it in milliseconds; and they are the very steps the viewer
+works out there itself (`Instructions.plan_paced`), every field step for
+step, and every page of Build it the same (caption, note, new parts, what is
+on the baseplate, the parts to pick up). Then never used: the text edited by
+one part, an old link with none, a part fewer in the world; and written
+twice, the second replaces the first. `-- --write IN OUT ...` writes each IN
+with its steps carried (the share steps flow shares those).
 
 The player in the real scene is the last part of `share_view_probe` above
 (`shots/share/9_build_cover.png` to `11_build_again.png`): Build it pressed on
@@ -1677,13 +1731,44 @@ app says which: `window.brickworksBuildDrawn` = [page, when]) and to the
 next frame's start, "on screen"; with `brickworksShare.build.turn_last` (the
 turn's own laps: world, outline, view, page, kept), `turn_frames` (the rest
 of that frame: to its processing, the processing, the drawing, and the page
-told all within it) and whether the page was told all in that frame. Proves
-it when it ends "a shared model's pages turn quickly on a slow phone, and its
-first step comes up quickly": each turn on screen under 100 ms at 300 and
-1,000 parts and under 200 ms at 4,000, the first step within 3 s of the first
-frame at 300 and 1,000. `--report-only` says it all and judges nothing (a
-build from before: no drawn mark, no tap on the bar, the turn read as the
-first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
+told all within it, Main's own processing, the nodes' processing between
+the first and the last to process) and whether the page was told all in
+that frame. The models are shared as the app shares them, their steps
+carried (written by `share_pages_probe.gd --write`, the Share panel's own
+`SharedPages.attach`; the Godot run uses `XDG_DATA_HOME`, the checkout's
+`.scratch-data` when unset); `--bare` shares the text alone, as a link from
+before carried steps, whose steps the phone works out. The first step is
+said as tapped by the flow and with each tap made at once — from the
+engine's first frame to the steps being in (`window.brickworksStepsReady`),
+plus the cover drawn after Build it and step 1 after Start: the page hears
+of a control half a second after it appears, which is the flow's time, not
+the app's — with `brickworksShare.carried` and the viewer's way there
+(`brickworksShare.opened`: fetched, opened with `ModelStore.open_phases`,
+drawn, parts, steps). `--trace=DIR` records a Chromium trace of the turns
+and says, for each turn's frame, what ran between the app's marks
+(`console.timeStamp` "bw:turned", "bw:process_frame", "bw:first_node",
+"bw:last_node", "bw:pre_draw", "bw:post_draw") and the garbage collection
+in it: how the grab's twice-a-second search for handles was found in the
+nodes' processing. Proves it when it ends "a shared model's pages turn
+quickly on a slow phone, and its first step comes up quickly": each turn on
+screen under 100 ms at 300 and 1,000 parts and under 200 ms at 4,000, the
+first step, each tap at once, within 3 s of the first frame at 300 and
+1,000 parts and 5 s at 4,000, and every turn's parts' pictures all drawn
+within 1 s of the tap (`window.brickworksPicturesDrawn`). On a box at load 30 to 50 a frame's WebGL
+calls wait seconds on SwiftShader now and then, and a turn with them misses
+however little the app did (the line says the WebGL time). Measured
+2026-10-17 at load 25 to 54 (bench/results/sharesteps-2026-10-17, r7 to
+r11, local and preview): the first step, taps at once, 0.25 to 3.2 s after
+the first frame with the steps carried, or 6 to 9 s when Start's frame
+waited on SwiftShader (9 to 12 s and 75 to 135 s worked out on the phone);
+a turn's own work 13 to 56 ms, one to three turns of five at each size over
+the bar on WebGL waits of 0.2 to 2.7 s; every turn's parts' pictures in 14
+to 130 ms of the tap, drawn ahead. Start's own pictures are drawn when the
+page asks if Start comes within the cover's 4 s (`AHEAD_ON_COVER_MS`): 15
+to 18 s on this box.
+`--report-only`
+says it all and judges nothing (a build from before: no drawn mark, no tap
+on the bar, the turn read as the first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
 `_step30`, `_step<last>` (at full speed), and `times.json`. In
 `tools/release/preview_checks.sh` as `share_steps`, run alone.
 

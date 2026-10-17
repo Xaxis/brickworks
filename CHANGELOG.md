@@ -95,6 +95,15 @@ whole cycle.
   second rather than every frame, and a big section drawn by its slide (an
   actuator's arm) is checked for room when you pause, as a turned one is,
   instead of holding the window: one such frame took 31 s.
+- A model you share carries its build steps, worked out once when you
+  share it, so a phone opening the link to build from works nothing out:
+  on 4,000 parts with the processor slowed four times the steps are in
+  about 3 s after the page first draws, where working them out took 75 to
+  135 s. Links shared before this work their steps out as they did. The
+  page also asks for the model while the app is still starting, the
+  step player no longer stalls twice a second on a big model, and the
+  parts' pictures of the pages to come are drawn while you build, so a
+  page's parts list is there when you turn to it.
 - With several tabs or windows open, a new Claude chat that has not chosen
   one asks before its first change, listing them. It used to build in the
   tab used last, which could be the one another chat was building in.
@@ -128,6 +137,8 @@ whole cycle.
   again in a browser. Since the faster page turns, they were sometimes
   drawn dark, in their own colours.
 
+- Build it in a browser now and then drew the parts of earlier steps in
+  their own colours where they should be faded.
 - A part a set's file carries, kept by the app, is kept with the pieces it
   is drawn from. It used to be missing after a restart, and a model saved
   then went out without them.
