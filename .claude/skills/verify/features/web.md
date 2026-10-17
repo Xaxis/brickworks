@@ -1293,6 +1293,22 @@ answered by the CDN (`x-vercel-cache` HIT or STALE). It removes what it made
 that does not go with its accounts (barred fingerprints, reports by handle,
 its accounts' counts). 304 checks with `--master`, about two minutes locally.
 
+Test models' part of it (since 2026-10-17, `supabase/test_models.sql`): every
+model it publishes is a test account's, so every list it checks (the gallery,
+a profile, a collection, the remix and search questions) is asked with
+`tests=1`, and beside them what a visitor gets: the row marked `test` (read
+with the secret key); the visitor's list, past the CDN and as the CDN gives
+it (the address `/gallery` asks), without the probe's listed models, twice;
+the `tests=1` answer `private, no-store` and, on a deployment, answered by
+the function a second time, never the CDN; `tests=maybe` 400; a profile's
+JSON and page without `tests=1` showing 0 models; a public collection's JSON
+and page without it showing none; the sitemap with none of the probe's
+models or profiles; `test` closed to the publishable key. 288 checks
+locally and 291 on a deployment, without `--master`. On preview
+brickworks-k5c2nla0r (2026-10-17) a watcher polling the public list every
+5 s through the run saw up to 15 test models listed and none shown to a
+visitor in 31 polls, nor in the sitemap.
+
 Reporting and acting on it, in a real browser on a deployment (one
 throwaway account; `MASTER_EMAIL` signed in as the tests are):
 
