@@ -136,8 +136,131 @@ func turned_on_axle(i: int, j: int) -> bool:
 	return false
 
 
+## The joints BrickNet's labels join items [param i] and [param j] by:
+## [kind, connector of i, connector of j] each, the kind "ball", "hinge"
+## (a turntable's too), "clip" (a bar in a clip), "pin" (a pin in its hole),
+## "axle" (an axle in a cross hole or a round one), "fixed" or "stud".
+func joints_between(i: int, j: int) -> Array:
+	var out: Array = []
+	if not _shaped(i) or not _shaped(j):
+		return out
+	for edge: Array in Exact.connections(items, PackedInt32Array([mini(i, j), maxi(i, j)])):
+		var mine: int = int(edge[1]) if int(edge[0]) == i else int(edge[3])
+		var theirs: int = int(edge[3]) if int(edge[0]) == i else int(edge[1])
+		out.append([_joint_kind((items[i] as Exact.Item).shape, mine,
+			(items[j] as Exact.Item).shape, theirs), mine, theirs])
+	return out
+
+
+## The round a joint's two parts are made to meet inside, by its kind: how
+## far from a ball's middle, or from the line a part turns on, an overlap of
+## the two is the joint, in LDU. Each is the part's own round with 1.5 LDU
+## over, as a cover's slack is (Joints.ROUND_SLACK): a Joint-8 ball or a
+## towball is 16 across; a bar 8, gripped by its clip (not its stop or a
+## sword's guard, 12 across, which rest against the clip and must not be in
+## it: model-010's sword through the hand, which verify.py refused); the mouth
+## of a Technic hole 16, which a pin's collar and an axle's stop sit in; a
+## hinge's knuckles and a lever's pivot 16.
+const JOINT_ROUND: Dictionary = {"ball": 9.5, "clip": 5.5, "pin": 9.5, "axle": 9.5,
+	"hinge": 9.5}
+
+## Whether items [param i] and [param j], which collide, collide only where
+## a joint joins them: the ball inside its socket, the bar inside its clip, a
+## pin in its hole, an axle in its hole, a hinge's knuckles in each other.
+## Every pair of their pieces that overlap must meet inside the round of one
+## of the joints BrickNet's labels join them by ([constant JOINT_ROUND]); an
+## overlap anywhere else (a socket's rim into the next plate's neck, a hinge
+## folded into its base) keeps the pair a collision. The joint's kind, or "".
+##
+## Real sets are built this way: their ball joints, clips, hinges and pins
+## meet by more than 1 LDU in BrickNet's convex pieces, which fill a socket's
+## mouth and a clip's jaws where the plastic is hollow (docs/DESIGN_SCORES.md,
+## "Technique: joints held by their real shapes"). BrickBench's verify.py
+## forgives none of it, so a run kept to its parts (PartsOnly) keeps every one
+## a collision.
+func at_joint(i: int, j: int) -> String:
+	if PartsOnly.active():
+		return ""
+	var reaches: Array = joint_reaches(i, j)
+	if reaches.is_empty():
+		return ""
+	var kind: String = ""
+	for hit: Array in reaches:
+		var inside: String = ""
+		for joint: Array in hit[1]:
+			if float(joint[1]) <= float(JOINT_ROUND[joint[0]]):
+				inside = joint[0]
+				break
+		if inside.is_empty():
+			return ""
+		kind = inside
+	return kind
+
+
+## For each pair of pieces of items [param i] and [param j] that overlap:
+## [depth, [[joint kind, how far the overlap can reach from that joint's
+## ball or line], ...]], over the joints of [constant JOINT_ROUND]'s kinds
+## that join the two; [] when none does.
+func joint_reaches(i: int, j: int) -> Array:
+	var loci: Array = []
+	for joint: Array in joints_between(i, j):
+		if JOINT_ROUND.has(joint[0]):
+			loci.append(_locus(i, j, joint))
+	if loci.is_empty():
+		return []
+	var a: Exact.Item = items[i]
+	var b: Exact.Item = items[j]
+	var out: Array = []
+	for hit: Array in Exact.overlaps(a, b):
+		var reaches: Array = []
+		for locus: Array in loci:
+			reaches.append([locus[0], Exact.overlap_reach(a, int(hit[1]), b, int(hit[2]),
+				locus[1], locus[2])])
+		out.append([float(hit[0]), reaches])
+	return out
+
+
+## Where a joint is: [kind, its point, its line or zero]. A ball's point is
+## the middle of the ball and its socket; anything else turns on the line of
+## the part that goes in (the bar, the pin, the axle), through its connector.
+## Seated as BrickNet joins them, within 3 LDU: real sets draw a towball 2.8
+## LDU off its socket's middle (10283's steering) and a handle 2.3 off its
+## clip's line (10315), and are built.
+func _locus(i: int, j: int, joint: Array) -> Array:
+	var a: Exact.Item = items[i]
+	var b: Exact.Item = items[j]
+	var fa: Transform3D = a.at * a.shape.frames[int(joint[1])]
+	var fb: Transform3D = b.at * b.shape.frames[int(joint[2])]
+	if joint[0] == "ball":
+		return [joint[0], (fa.origin + fb.origin) * 0.5, Vector3.ZERO]
+	var inner: Transform3D = fb if Exact.A_SIDE.has(a.shape.sub[int(joint[1])]) \
+		and a.shape.kind[int(joint[1])] == Exact.AXLE else fa
+	return [joint[0], inner.origin, (-inner.basis.y).normalized()]
+
+
+static func _joint_kind(a: Exact.Shape, ka: int, b: Exact.Shape, kb: int) -> String:
+	match a.kind[ka]:
+		Exact.BALL:
+			return "ball"
+		Exact.HINGE:
+			return "hinge"
+		Exact.FIXED:
+			return "fixed"
+		Exact.AXLE:
+			var subs: Array = [a.sub[ka], b.sub[kb]]
+			if subs.has(Exact.S_CLIP):
+				return "clip"
+			if subs.has(Exact.S_PIN):
+				return "pin"
+			return "axle"
+	return "stud"
+
+
 ## How two items meet: {} when their exact shapes are clear, the collision
-## otherwise, null when either has no shape to ask.
+## otherwise, null when either has no shape to ask. A collision at a joint is
+## still one here: a pin's collar inside its hole is slid out to the mouth by
+## it, and a hinge's top off its pivot stays the lattice's overlap; what the
+## check refuses leaves out the joint's own ([method at_joint]).
 func between(i: int, j: int) -> Variant:
 	if not _shaped(i) or not _shaped(j):
 		return null
@@ -605,6 +728,13 @@ func said(found: Dictionary, name: Callable) -> String:
 		return ("%s. %s is %s LDU off %s's %s, where it would seat: move it %s." % [head,
 			name.call(mover), _n(snappedf(float(mate["residual"]), 0.1)),
 			name.call(int(mate["onto"])), mate["connector"], _direction(mate["move"])])
+	var turned: Dictionary = _ball_turned(a, b)
+	if not turned.is_empty():
+		return ("%s: %s is bent %d degrees in its ball joint with %s, and past about %d "
+			% [head, name.call(b), int(turned["degrees"]), name.call(a), int(turned["clear"])]
+			+ "degrees that way its socket's rim meets the ball's neck. Keep the joint, and bend "
+			+ "it %d degrees or less that way, or another way: a socket of two jaws (a Joint-8 "
+			% int(turned["clear"]) + "plate's) bends far between its jaws and little against them.")
 	if _kind_in(a, Exact.HINGE) and _kind_in(b, Exact.HINGE):
 		return ("%s: the two halves of a hinge pass through each other. Its top turns about "
 			% head + "its base's hinge line, and one way only: hang the top on that line (a "
@@ -624,6 +754,47 @@ func said(found: Dictionary, name: Callable) -> String:
 			+ "or lower what is under it.")
 	return "%s. Move one clear of the other by %s LDU %s." % [head, _n(ceilf(depth)),
 		_direction(axis * depth)]
+
+
+## For items [param a] and [param b] joined by a ball, which collide away from
+## it: how far [param b] is bent in the joint (the line from the ball to its
+## middle, against where that line runs straight: its socket's frame on the
+## ball's, as attach lays it; a turn about its own line is not a bend), and how
+## far it may bend that way clear of [param a]: {degrees, clear}; {} when they
+## are not joined by a ball, or not bent, or collide at every bend back to
+## straight.
+func _ball_turned(a: int, b: int) -> Dictionary:
+	var ia: Exact.Item = items[a]
+	var ib: Exact.Item = items[b]
+	for joint: Array in joints_between(a, b):
+		if joint[0] != "ball":
+			continue
+		var fa: Transform3D = ia.at * ia.shape.frames[int(joint[1])]
+		var fb: Transform3D = ib.at * ib.shape.frames[int(joint[2])]
+		var pivot: Vector3 = (fa.origin + fb.origin) * 0.5
+		var now: Vector3 = ib.at * ((ib.shape.lo + ib.shape.hi) * 0.5) - pivot
+		var straight: Vector3 = (fa.basis.orthonormalized() * fb.basis.orthonormalized().inverse()) * now
+		var axis: Vector3 = now.cross(straight)
+		var bend: float = now.angle_to(straight)
+		if now.length() < 1.0 or axis.length() < 0.000001 or rad_to_deg(bend) < 2.0:
+			continue
+		axis = axis.normalized()
+		# Bent back towards straight by [param angle], about the ball.
+		var back: Callable = func(angle: float) -> Exact.Item:
+			return Exact.Item.new(ib.shape, Transform3D(Basis.IDENTITY, pivot)
+				* Transform3D(Basis(axis, angle), Vector3.ZERO)
+				* Transform3D(Basis.IDENTITY, -pivot) * ib.at)
+		# Straight is not always clear (a Joint-8 ball on a plate's side, its
+		# socket plate laid square on it), so back by 2 degrees at a time to
+		# the first bend that is.
+		var degrees: float = rad_to_deg(bend)
+		var clear: float = degrees - 2.0
+		while clear > 0.0 and not Exact.clash(ia, back.call(deg_to_rad(degrees - clear))).is_empty():
+			clear -= 2.0
+		if clear <= 0.0:
+			continue
+		return {"degrees": roundf(degrees), "clear": floorf(clear)}
+	return {}
 
 
 ## Where two parts at one point should be, or "".

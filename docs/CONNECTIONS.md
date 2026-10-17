@@ -152,6 +152,12 @@ or the reading's: a part read a little off where the file has it. The check
 excuses overlaps between parts already standing, and keeps them for this count
 (`Assistant._standing_overlaps`).
 
+Two parts a joint joins (a ball in its socket, a bar in its clip, a pin in its
+hole, a hinge's knuckles) meet inside the joint by their real shapes, and the
+check holds that to be the joint, not an overlap (`ExactCheck.at_joint`):
+`src/dev/joint_collisions.gd` counts those of real sets, and docs/DESIGN_SCORES.md
+("Technique: joints held by their real shapes") says what they were and are.
+
 - Overlapping pairs: 958,272, of them 645,108 with a part read off its place.
 - Files with none: 150 of 1,572.
 

@@ -12841,6 +12841,10 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 		# A wheel drawn spun on its axle: in plastic the axle turns with it.
 		if exact.turned_on_axle(a, b):
 			continue
+		# A ball in its socket, a bar in its clip, a pin in its hole: real sets
+		# meet so by their shapes, and are built (ExactCheck.at_joint).
+		if not exact.at_joint(a, b).is_empty():
+			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
 			if a < count and b < count and not already.has(Vector2i(a, b)):
