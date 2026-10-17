@@ -18,8 +18,20 @@ whole cycle.
 - LDCad's hoses, ropes, strings and bands are drawn: each as one piece,
   from the file's own lines, in its colour and step, to click and hide.
   They used to be kept in the file but left out of the view.
+- New chat for this tab, in Account and the assistant panel: Claude opens
+  on a new chat whose first message names the tab, in claude.ai, the
+  Claude app or Claude Code. That chat builds in this tab and no other.
+- Each window says which Claude chat is working in it, on the toolbar and
+  in Account. When two chats work in one, it says so, and Keep this one
+  moves the other off.
 
 ### Changed
+
+- With several tabs or windows open, a new Claude chat that has not chosen
+  one asks before its first change, listing them. It used to build in the
+  tab used last, which could be the one another chat was building in.
+- Claude finds a tab by its model's name as well as its id: "the castle
+  tab".
 
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is
