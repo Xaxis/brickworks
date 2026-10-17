@@ -186,14 +186,16 @@ picture the assistant is shown.
   `gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --headless … quit_probe.gd`
   runs the app windowed; headless, `render` and `render-again` open and
   close the panel with no draft, and the rest are left out. `--runs=N`
-  runs each way N times, closing the draft 0 to 55 frames in. Every render
-  way also lists what of the app's scripts is still on RenderingServer's
-  signals as the tree goes (`LEFT-ON-RENDERER`), which must be none: the
-  server outlives GDScript, and a lambda left on its `frame_pre_draw` (no
-  `self` in it, or a static function's) aborts the exit, exit 134, every
-  time. That was the abort quitting during a second open's draft once
-  (2026-10-17): a probe's own timing lambda, not the app; a node's method or
-  a lambda using `self` goes with the node. Results in
+  runs each way N times, closing the draft 0 to 7 frames in. Every render
+  way also lists what of the app's scripts is still on the signals of
+  RenderingServer and every other engine singleton as the tree goes
+  (`LEFT-ON-ENGINE`), which must be none: they outlive GDScript, and a
+  lambda left on `RenderingServer.frame_pre_draw` (no `self` in it, or a
+  static function's) aborts the exit, exit 134, every time. That was the
+  abort quitting during a second open's draft once (2026-10-17): a probe's
+  own timing lambda, not the app; a node's method or a lambda using `self`
+  goes with the node (planted, the check names the first and the run exits
+  134; it passes the second). Results in
   `bench/results/renderquit-2026-10-17/`.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every

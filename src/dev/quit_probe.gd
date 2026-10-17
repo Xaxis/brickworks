@@ -29,13 +29,14 @@
 ##                 the app says so;
 ##   render-turn   a turntable a few frames in: the frames drawn are kept,
 ##                 and the app says it was not finished.
-## Each exits 0, and nothing of the app's scripts is left on the renderer's
-## signals as the scene tree goes: RenderingServer outlives GDScript, and a
-## lambda left on its frame_pre_draw dumped core on the way out (SIGABRT,
-## exit 134), as a probe's timing left one during a draft once (2026-10-17).
+## Each exits 0, and nothing of the app's scripts is left on the signals of
+## RenderingServer or any engine singleton as the scene tree goes: they
+## outlive GDScript, and a lambda left on frame_pre_draw dumped core on the
+## way out (SIGABRT, exit 134), as a probe's timing left one during a draft
+## once (2026-10-17).
 ## A draft is drawn only with a display: run with -- --windowed under
 ## xvfb-run (on the GPU) for the drawing; headless, the first two open and
-## close Render with no draft, and the last two are left out. --runs=N runs
+## close Render with no draft, and the rest are left out. --runs=N runs
 ## each way N times, closing the draft a few frames later each time.
 extends SceneTree
 
@@ -44,8 +45,10 @@ const WAYS := ["close", "menu", "brickify", "render", "render-again", "render-ke
 	"render-turn"]
 const BRICKIFY_STUDS := 64
 const BRICKIFY_GONE := 8000
-## Frames after the draft starts that the window is closed, run by run.
-const DRAFT_DELAYS := [0, 1, 2, 3, 5, 8, 12, 17, 23, 30, 40, 55]
+
+## Frames after the draft starts that the window is closed, run by run: a
+## draft on the card is 9-18 frames, so each lands somewhere in it.
+const DRAFT_DELAYS := [0, 1, 2, 3, 4, 5, 6, 7]
 
 var _failures: int = 0
 
@@ -123,14 +126,14 @@ func _parent() -> void:
 ## What a run that closed the window with Render at work said, judged.
 func _judge_render(way: String, code: int, output: String, windowed: bool) -> void:
 	var doing: String = _said(output, "DOING ")
-	var left: String = _said(output, "LEFT-ON-RENDERER ")
+	var left: String = _said(output, "LEFT-ON-ENGINE ")
 	if windowed:
 		_check("%s: the window closed with Render at work (%s)" % [way, doing],
 			doing.begins_with("true"))
 	else:
 		_check("%s: the window closed with Render open (headless: no draft is drawn)" % way,
 			_said(output, "OPEN ") == "true")
-	_check("%s: nothing of the app's scripts was left on the renderer's signals (%s)"
+	_check("%s: nothing of the app's scripts was left on the engine's signals (%s)"
 		% [way, left if not left.is_empty() else "not said"], left == "none")
 	_check("%s: and exited 0 (%d)" % [way, code], code == 0)
 	var lines := PackedStringArray()
@@ -279,7 +282,7 @@ func _render_then_close(main: Node, way: String) -> void:
 		DirAccess.remove_absolute(folder.path_join(name))
 	dialog.folder = folder
 	print("RENDER-FOLDER %s" % folder)
-	root.tree_exiting.connect(_left_on_renderer)
+	root.tree_exiting.connect(_left_on_engine)
 	shell.run("render")
 	var drawing: bool = StudioRender.possible()
 	if way != "render" and drawing:
@@ -327,7 +330,10 @@ func _render_then_close(main: Node, way: String) -> void:
 		busy = output != null and output.writing()
 		doing = "writing the picture" if busy else "not writing"
 	print("OPEN %s" % dialog.visible)
-	print("DOING %s, %s, %s" % [busy, doing, (dialog.get("_status") as Label).text])
+	# What the renderer did in the frame before (StudioRender._doing).
+	var step: String = str(dialog.renderer.get("_step")) if dialog.renderer != null else ""
+	print("DOING %s, %s, %s%s" % [busy, doing, (dialog.get("_status") as Label).text,
+		", " + step if not step.is_empty() else ""])
 	root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 	root.close_requested.emit()
 	for _n: int in 600:
@@ -351,23 +357,31 @@ static func _drafted(dialog: RenderDialog) -> bool:
 
 
 ## As the scene tree goes, last of all: anything of the app's scripts still
-## on RenderingServer's signals. It outlives GDScript, and a lambda (or a
-## callable bound to an object of a script) left there is freed after
-## GDScript has gone, which aborts the exit (SIGABRT). A node's own method
-## or lambda goes with the node, and a coroutine waiting on a signal is let
-## go of as GDScript ends.
-func _left_on_renderer() -> void:
+## on the signals of RenderingServer, or of any of the engine's singletons.
+## They outlive GDScript, and a lambda (or a callable bound to an object of
+## a script) left there is freed after GDScript has gone, which aborts the
+## exit (SIGABRT). A node's (or the tree's) own method or lambda goes with
+## it, and a coroutine waiting on a signal is let go of as GDScript ends.
+func _left_on_engine() -> void:
 	var left := PackedStringArray()
-	for signal_info: Dictionary in RenderingServer.get_signal_list():
-		var name: String = signal_info["name"]
-		for connection: Dictionary in RenderingServer.get_signal_connection_list(name):
-			var callable: Callable = connection["callable"]
-			var target: Object = callable.get_object()
-			if not callable.is_custom() or target is Node \
-					or (target != null and target.get_class() == "GDScriptFunctionState"):
-				continue
-			left.append("%s on %s" % [str(callable), name])
-	print("LEFT-ON-RENDERER %s" % (", ".join(left) if not left.is_empty() else "none"))
+	for singleton: String in Engine.get_singleton_list():
+		var holder: Object = Engine.get_singleton(singleton)
+		if holder == null:
+			continue
+		for signal_info: Dictionary in holder.get_signal_list():
+			var name: String = signal_info["name"]
+			for connection: Dictionary in holder.get_signal_connection_list(name):
+				# A lambda's object is its script, or the object of a script
+				# it runs on; the engine's own are objects with no script, or
+				# none (its static functions).
+				var callable: Callable = connection["callable"]
+				var target: Object = callable.get_object()
+				if not callable.is_custom() or target == null or target is Node \
+						or target is SceneTree \
+						or (not target is Script and target.get_script() == null):
+					continue
+				left.append("%s on %s.%s" % [str(callable), singleton, name])
+	print("LEFT-ON-ENGINE %s" % (", ".join(left) if not left.is_empty() else "none"))
 
 
 static func _said(output: String, key: String) -> String:
