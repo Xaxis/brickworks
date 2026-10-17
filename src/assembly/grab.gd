@@ -308,6 +308,9 @@ func _chosen() -> String:
 	pivot = link.point
 	axis = link.axis.normalized()
 	mode = "ball" if axis == Vector3.ZERO else "turn"
+	if linkage != null and linkage.is_slide():
+		# Its loop lets it slide and not turn: a scissor lift's foot.
+		mode = "slide"
 	# An axle or a pin on the joint's own line sweeps only the holes it is in,
 	# and a part whose whole sweep round the line meets nothing but what it
 	# may press on can never meet anything: neither is tested again.

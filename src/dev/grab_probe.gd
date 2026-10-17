@@ -120,6 +120,8 @@ func _run() -> void:
 				asked_racks.append(["rack and pinion: %s" % arg.get_file(), "res://" + arg.trim_prefix("--rack-set=")])
 		for one: Array in (RACKS if asked_racks.is_empty() else asked_racks):
 			await _rack_case(one[0], one[1])
+	if only.is_empty() or only == "scissor":
+		await _scissor_case()
 	if only.is_empty() or only == "falling":
 		await _made_fall()
 	if only.is_empty() or only == "follow":
@@ -1316,6 +1318,206 @@ func _steer_by_hand(near_king: Bodies.Link, far_king: Bodies.Link, near_pin: Bod
 	form["phi"] = phi
 	form["far"] = found[2]
 	return {"near": phi, "far": float(found[1])}
+
+
+# -- a scissor lift ----------------------------------------------------------------------
+
+## A scissor lift of two stages, made here: four Technic beams 9 (40490) crossed
+## and pinned at their middles and ends (pins with friction, 2780), one foot
+## pinned to a beam 15 on the floor, the other on a cross block (6536)
+## that slides along an axle 8 (3707) held at its ends by two more cross
+## blocks pinned to a second beam 15; the two beams 15 held apart by three
+## beams 5 between them, each pinned to the next by two pins. Its links
+## stand at 45° to the floor: each stage is 160 LDU across its pins (beam
+## 9's end holes) and 113.1 high.
+const SCISSOR_LINK := 160.0
+const SCISSOR_ANGLE := 45.0
+
+
+## The made lift as an LDraw file: y down, the lift in the x-y plane, its
+## fixed foot at the origin. Positions worked out from the link and angle.
+static func _made_scissor() -> String:
+	var c: float = cos(deg_to_rad(SCISSOR_ANGLE))
+	var s: float = sin(deg_to_rad(SCISSOR_ANGLE))
+	var across: float = SCISSOR_LINK * c
+	var high: float = SCISSOR_LINK * s
+	var lines := PackedStringArray(["0 A scissor lift, made by grab_probe", "0 Name: made_scissor.ldr", ""])
+	var put := func(colour: int, at: Vector3, rows: Array, part: String) -> void:
+		lines.append("1 %d %s %s %s %s %s.dat" % [colour, _num(at.x), _num(at.y), _num(at.z),
+			" ".join(rows.map(func(v: float) -> String: return _num(v))), part])
+	# A beam along d in the x-y plane, its holes along z.
+	var beam := func(colour: int, middle: Vector3, d: Vector2, part: String) -> void:
+		put.call(colour, middle, [-d.y, 0.0, d.x, d.x, 0.0, d.y, 0.0, 1.0, 0.0], part)
+	var up_right := Vector2(c, -s)
+	var up_left := Vector2(-c, -s)
+	beam.call(4, Vector3(across / 2.0, -high / 2.0, 0.0), up_right, "40490")
+	beam.call(14, Vector3(across / 2.0, -high / 2.0, 20.0), up_left, "40490")
+	beam.call(4, Vector3(across / 2.0, -high * 1.5, 0.0), up_right, "40490")
+	beam.call(14, Vector3(across / 2.0, -high * 1.5, 20.0), up_left, "40490")
+	# Pins along z.
+	var along_z: Array = [0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0]
+	for at: Vector3 in [Vector3(across / 2.0, -high / 2.0, 10.0), Vector3(across / 2.0, -high * 1.5, 10.0),
+			Vector3(across, -high, 10.0), Vector3(0.0, -high, 10.0), Vector3(0.0, 0.0, -10.0),
+			Vector3(0.0, 0.0, 50.0), Vector3(140.0, 0.0, 50.0)]:
+		put.call(0, at, along_z, "2780")
+	# The floor: two beams 15 along x, three beams 5 between them at the far
+	# end, each layer pinned to the next twice.
+	var along_x_holes_z: Array = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+	put.call(71, Vector3(140.0, 0.0, -20.0), along_x_holes_z, "32278")
+	put.call(71, Vector3(140.0, 0.0, 60.0), along_x_holes_z, "32278")
+	for z: float in [0.0, 20.0, 40.0]:
+		put.call(71, Vector3(240.0, 0.0, z), along_x_holes_z, "32316")
+	for z: float in [-10.0, 10.0, 30.0, 50.0]:
+		for x: float in [220.0, 260.0]:
+			put.call(0, Vector3(x, 0.0, z), along_z, "2780")
+	# The rail, an axle 8 along x held by two cross blocks at its ends.
+	put.call(72, Vector3(80.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "3707")
+	put.call(1, Vector3(0.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "6536")
+	put.call(1, Vector3(140.0, -20.0, 40.0), [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], "6536")
+	# The sliding foot: a cross block on the rail by its pin hole, an axle 2
+	# in its axle hole through the beam's end.
+	put.call(2, Vector3(across, 0.0, 40.0), [0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 0.0], "6536")
+	put.call(72, Vector3(across, 0.0, 30.0), along_z, "3704")
+	return "\n".join(lines) + "\n"
+
+
+static func _num(v: float) -> String:
+	var out: String = "%.4f" % v
+	while out.contains(".") and (out.ends_with("0") or out.ends_with(".")):
+		out = out.substr(0, out.length() - 1)
+	return "0" if out == "-0" else out
+
+
+## Raise the made lift by sliding its foot along the rail with the pointer:
+## every frame the top stands 2·L·sin θ above the floor pin, θ where the
+## foot's distance from the fixed foot, L·cos θ, puts it (L = 160); by hand,
+## sqrt(L² − x²) a stage.
+func _scissor_case() -> void:
+	var name: String = "scissor lift"
+	print("\n%s: a made one, two stages of beams 9 at %.0f°" % [name, SCISSOR_ANGLE])
+	var path: String = OUT.path_join("made_scissor.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(_made_scissor())
+	file.close()
+	if not await _open(path):
+		_check("%s: the made lift opens" % name, false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var across: float = SCISSOR_LINK * cos(deg_to_rad(SCISSOR_ANGLE))
+	var high: float = SCISSOR_LINK * sin(deg_to_rad(SCISSOR_ANGLE))
+	# The foot that slides (the cross block at the beam's end), and the top
+	# link's top pin hole, in the app's axes (LDraw's y and z turned over).
+	# Opened, the model may stand elsewhere than the file put it: found from
+	# its one axle 8, at (80, 20, -40) in the file.
+	var shift := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3707":
+			shift = brick.transform.origin - Vector3(80.0, 20.0, -40.0)
+	var foot: int = 0
+	var top_link: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "6536" and brick.transform.origin.distance_to(shift + Vector3(across, 0.0, -40.0)) < 1.0:
+			foot = brick.id
+		if brick.part_id == "40490" and brick.transform.origin.distance_to(
+				shift + Vector3(across / 2.0, high * 1.5, 0.0)) < 1.0:
+			top_link = brick.id
+	if foot == 0 or top_link == 0:
+		_check("%s: the made lift has its sliding foot and its top link" % name, false)
+		return
+	var foot_body: int = int(bodies.body_of[foot])
+	var joint: Bodies.Link = bodies.parent_link.get(foot_body)
+	print("    the foot: %s %s, slides %s" % [bodies.named([foot_body]), joint.words() if joint != null else "?",
+		joint.slide if joint != null else Vector2.ZERO])
+	var top_at: Vector3 = shift + Vector3(across, high * 2.0, 0.0)
+	_camera.look_from(Vector3(0.35, 0.3, 1.0).normalized())
+	_frame_on(PackedInt64Array())
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(bodies.members[foot_body], bodies)
+	if press.is_empty():
+		_check("%s: the sliding foot is under the pointer" % name, false)
+		return
+	if _windowed:
+		await _shot("scissor_lift", "1_before")
+	var screen: Vector2 = press["screen"]
+	var rail := Vector3.RIGHT
+	var first: Vector2 = (_camera.unproject_position(_world.get_brick(foot).transform.origin - rail * 3.0)
+		- _camera.unproject_position(_world.get_brick(foot).transform.origin)).normalized() * 7.0
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + first, MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	_check("%s: a drag on the foot along its rail slides it, the lift's loops with it (%s)" % [name,
+		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
+		and grab.linkage != null and grab.mode == "slide")
+	if grab == null or grab.linkage == null or grab.mode != "slide":
+		await _button(screen, false)
+		return
+	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(), grab.moving.size()])
+	var hold: Vector3 = grab._hold
+	var way: float = signf(grab.axis.dot(rail))
+	var targets: Array = []
+	for n: int in range(1, 21):
+		targets.append(-4.0 * n)
+	for n: int in range(19, -2, -1):
+		targets.append(-4.0 * n)
+	var worst: float = 0.0
+	var followed: int = 0
+	var worst_follow: float = 0.0
+	var checked: int = 0
+	var frame_worst: float = 0.0
+	var mid_shot: bool = false
+	var table := PackedStringArray()
+	for target: float in targets:
+		var at_screen: Vector2 = _camera.unproject_position(hold + rail * target)
+		var began: int = Time.get_ticks_usec()
+		await _move(at_screen, MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		# Drawn: the foot's place along the rail and the top's height.
+		if not grab.stopped:
+			followed += 1
+			worst_follow = maxf(worst_follow, absf(grab.shift * grab.axis.dot(rail) - target))
+		var foot_now: Transform3D = grab.placed.get(foot, _world.get_brick(foot).transform)
+		var x: float = foot_now.origin.x - shift.x
+		var top_now: Transform3D = (grab.placed.get(top_link, _world.get_brick(top_link).transform) as Transform3D) \
+			* _world.get_brick(top_link).transform.affine_inverse()
+		var h: float = (top_now * top_at).y - shift.y
+		if absf(x) >= SCISSOR_LINK:
+			continue
+		var by_hand: float = 2.0 * sqrt(SCISSOR_LINK * SCISSOR_LINK - x * x)
+		worst = maxf(worst, absf(h - by_hand))
+		checked += 1
+		if absf(fmod(target, 20.0)) < 0.01:
+			table.append("      foot %6.2f LDU from the fixed one (%+6.2f): links at %5.2f°, top %7.2f LDU high; by hand 2·sqrt(160² − %.2f²) = %7.2f"
+				% [x, grab.shift, rad_to_deg(acos(x / SCISSOR_LINK)), h, x, by_hand])
+		if not mid_shot and _windowed and h > high * 2.0 + 60.0:
+			mid_shot = true
+			await _clean_shot("scissor_lift", "2_raised")
+	for row: String in table:
+		print(row)
+	_check("%s: the foot follows the pointer along its rail in %d frames, to %.2f LDU" % [name, followed,
+		worst_follow], followed >= 20 and worst_follow < 1.0)
+	_check("%s: in %d poses the top stands where the foot's place puts it, 2·sqrt(L² − x²), to %.3f LDU"
+		% [name, checked, worst], checked >= 20 and worst < 0.1)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst: %s), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, _grab.worst_follow_said, grab.linkage.solves])
+	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _clean_shot("scissor_lift", "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
 
 
 # -- a model that tips -------------------------------------------------------------------

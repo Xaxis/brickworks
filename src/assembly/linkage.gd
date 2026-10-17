@@ -685,6 +685,18 @@ func keep() -> void:
 ## or the other. A loop held rigid (a triangle of beams, a four-bar with a
 ## friction-free joint pinned twice) closes neither way.
 func can_move() -> bool:
+	if _moves():
+		return true
+	# Held from turning, but free to slide: a scissor lift's foot on its rail
+	# cannot turn about the rail, and slides along it. Driven by its slide.
+	if not is_slide() and drive_slide():
+		if _moves():
+			return true
+		driver_col = turn_col[0]
+	return false
+
+
+func _moves() -> bool:
 	var step: float = FREEDOM_SLIDE if is_slide() else FREEDOM_TURN
 	for way: float in [1.0, -1.0]:
 		var got: float = reach(kept_value() + way * step)
