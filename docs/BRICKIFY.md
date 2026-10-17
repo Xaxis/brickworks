@@ -2004,9 +2004,15 @@ and the pillar that props it.
   1,214 parts and the hollow sphere as 1,058.
 - `quit_probe --only=brickify`: the app gone 0.4 s after the window closed
   mid-run. The fit asks the run's stop every 256 studs.
-- `featuremap affected` names only `lib:brickify`.
+- `featuremap affected` names `lib:brickify` and the bench
+  (`brickify_bench.py faces`, run on both runs above; `pyright` clean).
 - `tools/web/brickify_flow.mjs` (`brickify`, `brickify_fox` in the preview
-  checks) needs a preview, and was not run.
+  checks), on a local export (`tools/export.sh web`, `tools/web/serve.py`),
+  not a preview: both pass, the bunny landing as 6,028 parts and the fox as
+  1,926. Neither ran at the size it typed: the box took 30 and 24 as 64
+  studs, so the fox stood on its own and its "stand" passed on "stands". On
+  `main`'s own export the fox flow does the same (1,953 parts at 64 studs):
+  the flow's typing, not this unit.
 
 ### What is left
 
