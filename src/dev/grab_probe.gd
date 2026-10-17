@@ -422,6 +422,10 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 						and not grab.has_room(grab.transforms_at(grab.angle + way * step))
 					stop_said = "room at %.1f°, none %s° on towards %.0f°" % [grab.angle,
 						Balance.tidy(step), target]
+					if grab.blocked_by.size() == 2:
+						stop_said += ": #%d %s meets #%d %s" % [int(grab.blocked_by[0]),
+							_world.get_brick(int(grab.blocked_by[0])).part_id, int(grab.blocked_by[1]),
+							_world.get_brick(int(grab.blocked_by[1])).part_id]
 		else:
 			var off: float = absf(grab.angle - _detented(grab, target))
 			if off > 10.0 and miss_said.is_empty():
