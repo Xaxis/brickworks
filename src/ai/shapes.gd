@@ -342,6 +342,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 					plan.studded[key] = true
 		if pattern.get("prefer") is Callable:
 			plan.prefer = pattern["prefer"]
+		if pattern.get("fine") is Callable:
+			plan.fine = pattern["fine"]
 		plan.sample = func(x: float, j: float, z: float) -> bool:
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands) >= 0
 		# Studs left showing on the studs named, [x, z] from at, for something to
@@ -1838,6 +1840,10 @@ class Plan extends RefCounted:
 	## "curved" or "straight": a sculpt says where it is round and where
 	## it is a flat facet, and a chamfered cube is not a sphere.
 	var prefer: Callable = Callable()
+	## The model's own surface over a stud at its nine thirds of a stud
+	## (Brickify.Grid.fine): with it, each surface part is chosen by how near
+	## it lays the surface (_fit), not by [member prefer].
+	var fine: Callable = Callable()
 	## The shape's colour at a point, as [member sample] says whether it is
 	## there: -1 outside.
 	var colour_at: Callable = Callable()
@@ -3415,14 +3421,28 @@ class Plan extends RefCounted:
 	## The slopes there are, as [kind, length in studs, height in plates, one
 	## wide, two wide, the height of the surface over the middle of each stud
 	## of it, from its high end]. Straight ones have a flat stud at the top.
+	## Then the surface at each third of a stud along it, the middle of the
+	## first stud across, read off its mesh (studs and all), what _fit_near
+	## lays against the model's own; and true for a part only it lays: the
+	## 65 degree slope and the 1 x 3 x 2 curved top, for a flank falling two
+	## bricks a stud. The 75 degree slopes (4460b, and 2449 inverted) were
+	## here too: three bricks tall on a stud, nothing beside them bridged to
+	## them, and the sphere's seams bridged fell from 53% to 49%.
 	const SLOPES: Array = [
-		["curved", 4, 3, "61678", "93606", [2.8, 2.2, 1.4, 0.5]],
-		["curved", 3, 3, "50950", "24309", [2.6, 1.6, 0.6]],
-		["curved", 2, 2, "11477", "15068", [1.6, 0.6]],
-		["straight", 4, 3, "60477", "30363", [3.0, 2.2, 1.4, 0.6]],
-		["straight", 3, 3, "4286", "3298", [3.0, 1.8, 0.7]],
-		["straight", 2, 3, "3040b", "3039", [3.0, 1.2]],
-		["cheese", 1, 2, "54200", "85984", [1.0]],
+		["curved", 4, 3, "61678", "93606", [2.8, 2.2, 1.4, 0.5],
+			[2.97, 2.92, 2.87, 2.78, 2.63, 2.47, 2.29, 2.02, 1.76, 1.46, 1.08, 0.69]],
+		["curved", 3, 3, "50950", "24309", [2.6, 1.6, 0.6],
+			[2.98, 2.93, 2.81, 2.66, 2.43, 2.14, 1.79, 1.35, 0.79]],
+		["curved", 2, 2, "11477", "15068", [1.6, 0.6], [1.98, 1.91, 1.76, 1.53, 1.21, 0.76]],
+		["straight", 4, 3, "60477", "30363", [3.0, 2.2, 1.4, 0.6],
+			[3.0, 3.5, 3.0, 2.86, 2.58, 2.31, 2.03, 1.75, 1.47, 1.19, 0.92, 0.64]],
+		["straight", 3, 3, "4286", "3298", [3.0, 1.8, 0.7],
+			[3.0, 3.5, 3.0, 2.79, 2.38, 1.96, 1.54, 1.13, 0.71]],
+		["straight", 2, 3, "3040b", "3039", [3.0, 1.2], [3.0, 3.5, 3.0, 2.58, 1.75, 0.92]],
+		["cheese", 1, 2, "54200", "85984", [1.0], [1.75, 1.25, 0.75]],
+		["straight", 2, 6, "60481a", "3678b", [6.0, 3.3], [6.0, 6.5, 6.0, 5.08, 3.25, 1.42], true],
+		["curved", 3, 6, "33243", "", [6.0, 5.5, 4.3],
+			[6.0, 6.0, 6.0, 5.97, 5.84, 5.54, 5.05, 4.29, 2.99], true],
 	]
 	## Under an overhang, the same by how high the underside is over the
 	## inverted slope's bottom at each stud, from its deep end.
@@ -3430,10 +3450,14 @@ class Plan extends RefCounted:
 	## (3665) runs into the plate over it, and the curved 2 x 1 and 2 x 2
 	## (24201, 32803) are not read as slopes off their meshes, so neither is
 	## here. A two-stud run under an overhang takes the 2 x 2 or nothing.
+	## Each read off its mesh as SLOPES are, its deep end's hollow under it
+	## taken as its foot.
 	const INVERTED: Array = [
-		["under", 4, 3, "13547", "", [0.3, 1.0, 1.8, 2.6]],
-		["under", 3, 3, "4287a", "3747b", [0.0, 1.2, 2.3]],
-		["under", 2, 3, "", "3660a", [0.0, 1.8]],
+		["under", 4, 3, "13547", "", [0.3, 1.0, 1.8, 2.6],
+			[0.0, 0.0, 0.0, 0.02, 0.1, 0.2, 0.34, 0.56, 0.86, 1.21, 1.65, 2.21]],
+		["under", 3, 3, "4287a", "3747b", [0.0, 1.2, 2.3],
+			[0.0, 0.0, 0.0, 0.21, 0.63, 1.04, 1.46, 1.88, 2.29]],
+		["under", 2, 3, "", "3660a", [0.0, 1.8], [0.0, 0.0, 0.0, 0.42, 1.25, 2.08]],
 	]
 
 	## The studs a windscreen stands over: no slope is fitted to them.
@@ -3730,8 +3754,12 @@ class Plan extends RefCounted:
 	## every stud, got cheese slopes and nothing else.
 	func surface(kind: String) -> void:
 		var picks: Array = []
-		_fit(picks, kind, false)
-		_fit(picks, kind, true)
+		if fine.is_valid():
+			_fit_near(picks, false)
+			_fit_near(picks, true)
+		else:
+			_fit(picks, kind, false)
+			_fit(picks, kind, true)
 		# A pick and its mirror together or neither: laid one at a time, a car's
 		# inverted slope went in on one side and its mirror found its place
 		# taken, and the check called the car lopsided.
@@ -3763,6 +3791,10 @@ class Plan extends RefCounted:
 					and int(entry[2]) == int(pick["tall"]):
 				var id: String = str(entry[2 + wide])
 				if id.is_empty() or not _sold(id):
+					return ""
+				# Fitted by distance, only in a colour it is sold in: two of the one
+				# wide where the two wide is not.
+				if fine.is_valid() and pick.has("colour") and not _made(id, int(pick["colour"])):
 					return ""
 				var shape: Dictionary = Shapes.part(library, id, bool(pick["under"]))
 				if shape.is_empty() or int(shape["w"]) != wide \
@@ -3824,6 +3856,9 @@ class Plan extends RefCounted:
 			return a.x < b.x or a.x == b.x and a.y < b.y)
 		var table: Array = []
 		for entry: Array in (INVERTED if under else SLOPES):
+			# The steep ones are fitted by distance only (_fit_near).
+			if entry.size() > 7 and bool(entry[7]):
+				continue
 			if under or entry[0] == "cheese" or entry[0] == kind or kind == "mixed":
 				table.append(entry)
 		for key: Variant in cells:
@@ -3933,6 +3968,216 @@ class Plan extends RefCounted:
 				var over: float = float(profile_of[n]) if n < profile_of.size() else 0.0
 				height[cell + (best["facing"] as Vector2i) * n] = int(best["y"]) + roundi(over)
 			picks.append(best)
+
+	## How much nearer the model, in studs, the best surface part at a place
+	## has to be than a longer one for the longer not to be taken: a slope
+	## three studs long where three cheese slopes are as near. At 0.04 the
+	## bunny at 48 studs had 276 cheese slopes 1 x 1; at 0.1, 201, and as
+	## near. At 0.1 the probe's sphere took 5 parts more than main's, at 0.15
+	## its seams bridged fell a point short of main's; at 0.12 both hold.
+	const LONGER := 0.12
+	## What a degree between a part's surface and the model's costs, in studs
+	## of distance: shading shows the turn, as Chamfer shows the gap.
+	const TURN := 0.004
+	## The longest surface part, in studs along its fall.
+	const LONGEST := 4
+
+	## [method _fit] by distance, where the plan has [member fine]: at each
+	## place a slope could start, every slope, curved slope and inverted one
+	## in every turn and at each height that stands on the shape is laid
+	## against the model's own surface at the thirds of a stud it covers, by
+	## how far its surface is from the model's and how far it turns from it;
+	## the nearest is kept, or the longest within [constant LONGER] of it, if
+	## it is nearer than the plates it takes the place of. Chosen per stud by
+	## a flat-or-curved flag, smooth was no nearer the model than plain bricks
+	## (Chamfer 0.263 against 0.265 studs at 48 studs; 0.253 fitted so).
+	## Stacking a straight slope's flat top under the slope above, as a roof
+	## is laid, was nearer still, but the slope under took the place of the
+	## core's plates that bridged its neighbours, and the sphere's seams
+	## bridged fell from 53% to 48%.
+	func _fit_near(picks: Array, under: bool) -> void:
+		var height: Dictionary = feet() if under else tops()
+		var first: Dictionary = height.duplicate()
+		var used: Dictionary = screened.duplicate()
+		var rows: Dictionary = {}
+		var cells: Array = height.keys()
+		cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+			var ha: int = height[a]
+			var hb: int = height[b]
+			if ha != hb:
+				return ha < hb if under else ha > hb
+			return a.x < b.x or a.x == b.x and a.y < b.y)
+		var table: Array = INVERTED if under else SLOPES
+		var asked: int = 0
+		for key: Variant in cells:
+			# A run's stop asked as the courses ask it: at 64 studs this is a
+			# second's work on a busy box.
+			asked += 1
+			if asked % 256 == 0 and stop.is_valid() and bool(stop.call()):
+				return
+			var cell: Vector2i = key
+			if used.has(cell):
+				continue
+			var found: Array = []
+			var least: float = INF
+			for o: int in Shapes.OUT.size():
+				var out: Vector2i = Shapes.OUT[o]
+				var inner: Vector2i = cell - out
+				if not height.has(inner):
+					continue
+				var top: int = height[inner]
+				var drop: int = (int(height[cell]) - top) if under else (top - int(height[cell]))
+				if drop < 1:
+					continue
+				# The model's surface over each stud a part here could cover.
+				var ahead: Array = []
+				for n: int in LONGEST:
+					var at_: Vector2i = cell + out * n
+					if not height.has(at_):
+						break
+					ahead.append(_row(rows, at_, o, first, under))
+				for entry: Array in table:
+					var length: int = entry[1]
+					var tall_: int = entry[2]
+					var near: Array = entry[6]
+					if length > ahead.size():
+						continue
+					# Its high end flush with the stud above, or as far under it as
+					# it is tall: a steep slope's flat top where the stud it covers
+					# is, not where the one above it is.
+					for drop_by: int in maxi(3, tall_ + 1):
+						var base: int = (top + drop_by) if under else (top - tall_ - drop_by)
+						if base < 0:
+							continue
+						var fits: bool = true
+						var gap: float = 0.0
+						var stair: float = 0.0
+						var turn: float = 0.0
+						var stair_turn: float = 0.0
+						var count: int = 0
+						var turns: int = 0
+						var was := Vector3(NAN, NAN, NAN)    ## model, part, plates, a third back
+						for n: int in length:
+							var at_: Vector2i = cell + out * n
+							if not height.has(at_) or used.has(at_) \
+									or not _stands_at(at_, int(height[at_]), base, tall_, under):
+								fits = false
+								break
+							var row: PackedFloat32Array = ahead[n]
+							var flat: float = float(first[at_])
+							for s: int in 3:
+								var m: float = row[s]
+								var p: float = base + float(near[3 * n + s])
+								if is_nan(m):
+									was = Vector3(NAN, NAN, NAN)
+									continue
+								gap += absf(m - p)
+								stair += absf(m - flat)
+								count += 1
+								if not is_nan(was.x):
+									# A third of a stud apart: a plate's rise is 1.2 studs a stud.
+									var model_angle: float = atan((m - was.x) * 1.2)
+									turn += absf(model_angle - atan((p - was.y) * 1.2))
+									stair_turn += absf(model_angle - atan((flat - was.z) * 1.2))
+									turns += 1
+								was = Vector3(m, p, flat)
+						if not fits or count < length * 2:
+							continue
+						var mean_gap: float = gap / count
+						if mean_gap > 1.0:
+							continue
+						var score: float = 0.4 * mean_gap + TURN * rad_to_deg(turn / maxi(turns, 1))
+						var plain: float = 0.4 * stair / count + TURN * rad_to_deg(stair_turn / maxi(turns, 1))
+						if score > plain:
+							continue
+						least = minf(least, score)
+						found.append([score, length, {"cell": cell, "facing": out, "length": length,
+							"tall": tall_, "y": base, "kind": entry[0], "under": under,
+							"score": score, "inner": inner, "top": top}])
+			if found.is_empty():
+				continue
+			# The longest as near as the nearest, then the nearest.
+			found.sort_custom(func(a: Array, b: Array) -> bool:
+				var a_near: bool = float(a[0]) <= least + LONGER
+				var b_near: bool = float(b[0]) <= least + LONGER
+				if a_near != b_near:
+					return a_near
+				if a_near and int(a[1]) != int(b[1]):
+					return int(a[1]) > int(b[1])
+				return float(a[0]) < float(b[0]))
+			var best: Dictionary = {}
+			for one: Array in found:
+				var pick: Dictionary = one[2]
+				var inner: Vector2i = pick["inner"]
+				var top: int = pick["top"]
+				var colour: int = at(inner, (top if under else top - 1))
+				if colour < 0:
+					colour = at(cell, int(height[cell]) - (0 if under else 1))
+				pick["colour"] = colour
+				if colour_shown:
+					pick["colour"] = _shown(pick)
+				# Only in a colour it is sold in, as the core's bricks are (_made).
+				if _made(_slope_id(pick), int(pick["colour"])):
+					best = pick
+					break
+			if best.is_empty():
+				continue
+			for n: int in int(best["length"]):
+				used[cell + (best["facing"] as Vector2i) * n] = true
+			var profile_of: Array = []
+			for entry: Array in table:
+				if entry[0] == best["kind"] and int(entry[1]) == int(best["length"]) \
+						and int(entry[2]) == int(best["tall"]):
+					profile_of = entry[5]
+			for n: int in int(best["length"]):
+				var over: float = float(profile_of[n]) if n < profile_of.size() else 0.0
+				height[cell + (best["facing"] as Vector2i) * n] = int(best["y"]) + roundi(over)
+			picks.append(best)
+
+	## Whether a surface part [param tall_] plates tall from [param base]
+	## stands at [param at_], whose top (or under an overhang, foot) is
+	## [param here]: within it, and on the shape's own plates (hung from them).
+	func _stands_at(at_: Vector2i, here: int, base: int, tall_: int, under: bool) -> bool:
+		if here < base or here > base + tall_:
+			return false
+		if under:
+			return at(at_, base + tall_) >= 0
+		if base > 0:
+			return at(at_, base - 1) >= 0 and not taken.has(Vector3i(at_.x, base - 1, at_.y))
+		return foot_on(at_)
+
+	## The model's surface over [param cell] at the three thirds of a stud
+	## along Shapes.OUT[[param o]] from the side it comes in by, each the mean
+	## across, in plates; NAN where none of the three has it.
+	func _row(rows: Dictionary, cell: Vector2i, o: int, first: Dictionary,
+			under: bool) -> PackedFloat32Array:
+		if not rows.has(cell):
+			var nine: PackedFloat32Array = fine.call(cell, float(first[cell]), under)
+			var out := PackedFloat32Array()
+			out.resize(12)
+			for way: int in 4:
+				var step: Vector2i = Shapes.OUT[way]
+				for s: int in 3:
+					var t: int = s if step.x + step.y > 0 else 2 - s
+					var sum: float = 0.0
+					var count: int = 0
+					for c: int in 3:
+						var v: float = nine[t * 3 + c] if step.x != 0 else nine[c * 3 + t]
+						if not is_nan(v):
+							sum += v
+							count += 1
+					out[way * 3 + s] = sum / count if count > 0 else NAN
+			rows[cell] = out
+		var all: PackedFloat32Array = rows[cell]
+		return all.slice(o * 3, o * 3 + 3)
+
+	## The one-wide part a pick is laid as, whatever it is turned.
+	func _slope_id(pick: Dictionary) -> String:
+		for entry: Array in (INVERTED if bool(pick["under"]) else SLOPES):
+			if entry[0] == pick["kind"] and int(entry[1]) == int(pick["length"]) \
+					and int(entry[2]) == int(pick["tall"]):
+				return str(entry[3]) if not str(entry[3]).is_empty() else str(entry[4])
+		return ""
 
 	## The colour a slope shows: the shape's own where the surface it stands
 	## for is, the top plate of each stud it covers (the lowest, under an

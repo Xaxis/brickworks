@@ -59,7 +59,18 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
-  panels on a flat side; the core bonded as a builder bonds it (`bond`,
+  panels on a flat side; each surface part fitted by distance (`fine`,
+  `Grid.fine`, `Plan._fit_near`): every slope, curved and inverted slope in
+  every turn and height that stands on the shape laid against the model's
+  own surface at thirds of a stud (each part's surface read off its mesh,
+  `Plan.SLOPES`/`INVERTED`' last column), the nearest kept or the longest
+  within `Plan.LONGER` of it, only where nearer than the plates, only in a
+  colour it is sold in; 65 degree slopes (60481a, 3678b) and the curved top
+  1 x 3 x 2 (33243) laid this way only (a design's shapes keep `_fit` and
+  the flag, `prefer`); a build that
+  leaves a region of the model out laid again unbonded and by the flag
+  (`Options.near` false), as `main` laid it, and the fuller kept;
+  the core bonded as a builder bonds it (`bond`,
   `Plan.shows`, `Plan.shown_colour`, `Plan._bonded`, `Plan.merge`): only
   what shows of a brick is laid in its colour and what is hidden in any (a
   brick none of which shows in the model's main colour), so three plates of

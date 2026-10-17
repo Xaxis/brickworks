@@ -103,6 +103,10 @@ class Options extends RefCounted:
 	## the colours measured, as [method build] lays it again where the
 	## bonded build leaves more of the model out.
 	var bond: bool = true
+	## Its slopes fitted by distance to the model's own surface (Shapes'
+	## "fine"); off, chosen by the flag as before, as [method build] lays it
+	## again where the build leaves a region of the model out.
+	var near: bool = true
 
 	func copied() -> Options:
 		var out := Options.new()
@@ -247,6 +251,27 @@ class Grid extends RefCounted:
 		if x < 0 or z < 0 or j < 0 or x >= across or z >= deep or j >= tall:
 			return -1
 		return 1 if state[index(x, j, z)] == 3 else -1
+
+	## The model's own surface over a stud, at each of its nine thirds of a
+	## stud (across, then along: x * FINE + z): where its rays come out (or
+	## with [param under], go in) nearest [param near] plates and within
+	## [param reach] of it, else NAN. What Shapes fits a surface part to.
+	func fine(cell: Vector2i, near: float, under: bool, reach: float = 6.0) -> PackedFloat32Array:
+		var out := PackedFloat32Array()
+		out.resize(FINE * FINE)
+		out.fill(NAN)
+		if cell.x < 0 or cell.y < 0 or cell.x >= across or cell.y >= deep:
+			return out
+		for i: int in FINE:
+			for k: int in FINE:
+				var span: PackedFloat32Array = spans[(cell.x * FINE + i) * deep * FINE + cell.y * FINE + k]
+				var gap: float = reach
+				for n: int in range(0 if under else 1, span.size(), 2):
+					var d: float = absf(span[n] - near)
+					if d <= gap:
+						gap = d
+						out[i * FINE + k] = span[n]
+		return out
 
 	## A flat facet takes straight slopes and a curve curved ones.
 	func prefer(cell: Vector2i) -> String:
@@ -1439,7 +1464,7 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 	if grid.hollowed > 0:
 		cuts.append({Shapes.GRID: {"from": [0, 0, 0], "size": size, "colour_at": grid.hollow_at,
 			"keep": true}})
-	return {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": grid.dominant,
+	var shape: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": grid.dominant,
 		"solids": [{Shapes.GRID: {"from": [0, 0, 0], "size": size, "colour_at": grid.colour_at}}],
 		"cuts": cuts,
 		"surface": "mixed" if options.smooth else "none",
@@ -1449,6 +1474,9 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"sold_in": options.palette,
 		"plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
+	if options.near:
+		shape["fine"] = grid.fine
+	return shape
 
 
 ## The columns a cell the measuring added stands in (a part thinner than a
@@ -1635,9 +1663,13 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# measured and the one that fills more of the model kept, the time of both
 	# counted. A temple scene at 48 studs, bonded, lost the moon on its stick,
 	# which its stitch could no longer join, where the colours measured kept it.
-	if options.bond and not (report["lost"]["regions"] as Array).is_empty():
+	# Laid again with its slopes by the flag too, as before both: unbonded with
+	# its slopes fitted by distance, the temple lost the moon again.
+	if (options.bond or options.near and options.smooth) \
+			and not (report["lost"]["regions"] as Array).is_empty():
 		var unbonded: Options = options.copied()
 		unbonded.bond = false
+		unbonded.near = false
 		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
 		if other.has("model"):
 			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])

@@ -4,6 +4,7 @@
     python3 tools/bench/brickify_bench.py jobs --models DIR --out JOBS.json [--sizes 24,48]
     heavy godot --headless --path . --script src/dev/brickify_bench.gd -- JOBS.json OUT
     heavy PY tools/bench/brickify_bench.py measure OUT
+    heavy PY tools/bench/brickify_bench.py faces OUT [--only a,b]
     PY tools/bench/brickify_bench.py pictures OUT --into docs/brickify [--only a,b]
     python3 tools/bench/brickify_bench.py report OUT
 
@@ -36,6 +37,10 @@ build's own LDU (src/dev/brickify_bench.gd writes the frame):
   count); and the parts whose removal parts the model (articulation points of
   the graph of parts on parts), Legolization's weak points.
 - *Parts.* How many are 1 x 1 in plan.
+
+**faces** sorts the model's visible points by which way their surface faces (up, up and
+out, out, down and out, down) and gives each arm's normal error and distance for each: where
+the error is, and what a surface part can reach.
 
 **pictures** draws the model and each build from the same corner, lit the
 same, and lays them side by side, one file a model and size.
@@ -754,6 +759,74 @@ def do_bond(args: argparse.Namespace) -> int:
     return 0
 
 
+FACES = (("up", 0.966, 1.01), ("up and out", 0.5, 0.966), ("out", -0.5, 0.5),
+         ("down and out", -0.966, -0.5), ("down", -1.01, -0.966))
+
+
+def do_faces(args: argparse.Namespace) -> int:
+    """Where the normal error and the distance are: the model's visible points sorted by which way
+    their surface faces (the up part of its outward normal: up, up and out, out within 30 degrees of
+    level, down and out, down), and each arm's mean normal error and mean distance from the model to
+    the build for each. Into OUT/faces.json, and printed."""
+    np = _np()
+    from scipy.spatial import cKDTree
+
+    out = Path(args.out)
+    lib = Library(out, load_colours())
+    only = set(args.only.split(",")) if args.only else None
+    target = out / "faces.json"
+    results = json.loads(target.read_text()) if target.exists() else {}
+    for model_dir in sorted(p for p in out.iterdir() if (p / "source.json").exists()):
+        if only and model_dir.name not in only:
+            continue
+        for size_dir in sorted((p for p in model_dir.iterdir() if (p / "frame.json").exists()),
+                               key=lambda p: int(p.name)):
+            frame = json.loads((size_dir / "frame.json").read_text())
+            src = source_mesh(model_dir, frame)
+            flat = src.reshape(-1, 3)
+            lo, hi = flat.min(axis=0), flat.max(axis=0)
+            centre = (lo + hi) / 2
+            radius = float(np.linalg.norm(hi - lo) / 2 * 1.08)
+            dirs = view_dirs()
+            sc = caster(src)
+            hits = [cast(sc, centre, radius, d, args.res) for d in dirs]
+            pts = np.concatenate([loc[hit] for hit, loc, _ in hits])
+            # facing() turns a normal toward the eye: for a closed surface seen from outside, outward.
+            nrm = np.concatenate([facing(sc.mesh.face_normals[tri[hit]], d) for d, (hit, _, tri) in zip(dirs, hits)])
+            bins = [(name, (nrm[:, 1] > a) & (nrm[:, 1] <= b)) for name, a, b in FACES]
+            row: dict = {"share": {name: float(m.mean()) for name, m in bins}}
+            for arm_name in ARMS:
+                path = size_dir / f"{arm_name}.json"
+                if not path.exists():
+                    continue
+                arm = json.loads(path.read_text())
+                if not arm.get("placed"):
+                    continue
+                tris, _ = build_mesh(arm, lib)
+                bc = caster(tris)
+                bp, bn = [], []
+                for d in dirs:
+                    hit, loc, tri = cast(bc, centre, radius, d, args.res)
+                    bp.append(loc[hit])
+                    bn.append(facing(bc.mesh.face_normals[tri[hit]], d))
+                bp, bn = np.concatenate(bp), np.concatenate(bn)
+                dist, near = cKDTree(bp).query(pts)
+                err = np.degrees(np.arccos(np.clip(np.abs((nrm * bn[near]).sum(axis=1)), 0, 1)))
+                row[arm_name] = {name: {"normal_deg": float(err[m].mean()) if m.any() else None,
+                                        "lost_studs": float(dist[m].mean() / STUD) if m.any() else None}
+                                 for name, m in bins}
+            key = f"{model_dir.name}/{size_dir.name}"
+            results[key] = row
+            print(key, " ".join(f"{name} {row['share'][name]:.0%}" for name, _, _ in FACES), flush=True)
+            for arm_name in ARMS:
+                if arm_name in row:
+                    print(f"  {arm_name:7s}", " | ".join(
+                        f"{name} {row[arm_name][name]['normal_deg'] or 0:4.1f}° {row[arm_name][name]['lost_studs'] or 0:.2f}"
+                        for name, _, _ in FACES), flush=True)
+            target.write_text(json.dumps(results, indent=1))
+    return 0
+
+
 def do_measure(args: argparse.Namespace) -> int:
     np = _np()
     out = Path(args.out)
@@ -1145,6 +1218,10 @@ def main() -> int:
     p.add_argument("--arms", default="", help="only these arms, the rest of the file kept")
     p = sub.add_parser("bond")
     p.add_argument("out")
+    p = sub.add_parser("faces")
+    p.add_argument("out")
+    p.add_argument("--only", default="")
+    p.add_argument("--res", type=int, default=200)
     p = sub.add_parser("pictures")
     p.add_argument("out")
     p.add_argument("--into", required=True)
@@ -1160,7 +1237,7 @@ def main() -> int:
     p.add_argument("--write", default="")
     args = parser.parse_args()
     return {"prepare": do_prepare, "outside": do_outside, "jobs": do_jobs, "measure": do_measure, "bond": do_bond,
-            "pictures": do_pictures, "report": do_report}[args.cmd](args)
+            "faces": do_faces, "pictures": do_pictures, "report": do_report}[args.cmd](args)
 
 
 if __name__ == "__main__":
