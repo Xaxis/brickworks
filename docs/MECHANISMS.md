@@ -1828,11 +1828,15 @@ with the drag when it comes to rest; a click catches it where it is ("caught
 by a press 0.18 s into its swing"), kept the same way; Escape puts it back.
 Over MCP, move_part runs it to rest at once and says how it swung and where
 it came to rest. On the windowed probe under xvfb the swing's own work
-(stepping, its room tests, setting what is drawn) was 0.24 ms a frame on
-average and 0.51 at worst for the beam let go 30° out (123 frames, 104 room
-tests, none over 0.03 ms), 0.42 and 1.21 from 75°, 0.89 and 3.28 for the
-double pendulum (448 frames), and 0.66 and 1.41 for the beam swinging as the
-crane landed: under a tenth of the 8 ms it may take.
+(stepping, its room tests, setting what is drawn) was 0.32 ms a frame on
+average and 0.72 at worst for the beam let go 30° out (94 frames, 104 room
+tests, none over 0.03 ms), 0.70 and 8.33 from 75°, 1.26 and 8.11 for the
+double pendulum (319 frames; the worst are frames catching up after the
+probe took a picture, stopped at the 8 ms budget), and 1.15 and 3.64 for the
+beam swinging as the crane landed. Each frame steps the time the clock has
+moved since the last, carrying what a whole 1 ms step ran over: the beam's
+1.44 s swing took 1.45 s on the clock, the double pendulum's 7.19 s 7.21,
+and the fall 0.199 s for its 0.197.
 
 In a browser (grab_flow: a beam 7 on a free pin beside the crane, the
 threaded web export drawn by SwiftShader on a box loaded 30 to 50) it swung

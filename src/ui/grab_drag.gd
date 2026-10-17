@@ -101,6 +101,12 @@ var _settling: Grab = null
 ## time and kept when it comes to rest, or when a press catches it.
 var _swinging: Grab = null
 var _swing_began: int = 0
+## The clock at the swing's last frame, usec: a frame steps the time since,
+## not the engine's delta, which counts the frame before the release too.
+var _swing_tick: int = 0
+## Simulated time the clock is owed (whole 1 ms steps run over by a part of
+## one, or a frame's budget ran out first), s.
+var _swing_owed: float = 0.0
 ## The model's revision when the swing began: an edit while it swings (an
 ## undo, a session's call) puts it back rather than keep it over the edit.
 var _swing_revision: int = -1
@@ -359,6 +365,8 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 				_swinging = held
 				_swing_revision = world.revision
 				_swing_began = Time.get_ticks_msec()
+				_swing_tick = Time.get_ticks_usec()
+				_swing_owed = 0.0
 				swing_frames = 0
 				swing_worst_ms = 0.0
 				swing_mean_ms = 0.0
@@ -576,6 +584,8 @@ func _land(timing: Dictionary, depth: int, words: String) -> bool:
 	_swinging = held
 	_swing_revision = world.revision
 	_swing_began = Time.get_ticks_msec()
+	_swing_tick = Time.get_ticks_usec()
+	_swing_owed = 0.0
 	swing_frames = 0
 	swing_worst_ms = 0.0
 	swing_mean_ms = 0.0
@@ -962,10 +972,10 @@ var _told_page: String = ""
 var _told_page_at: int = 0
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	_ready_ahead()
 	if _swinging != null:
-		_swing_frame(delta)
+		_swing_frame()
 	# The balance mark drawn once, unseen, while nothing is held, so its
 	# material is built before the first drag needs it (BalanceMark.warm).
 	if not _mark_warmed and grab == null and chain == null and camera != null and is_ready():
@@ -1047,14 +1057,16 @@ func is_swinging() -> bool:
 
 ## One frame of a swing: the frame's time stepped (Swing.advance, within
 ## its budget), drawn, and kept once it rests.
-func _swing_frame(delta: float) -> void:
+func _swing_frame() -> void:
 	if world.revision != _swing_revision:
 		cancel()
 		say.call("The model changed while it swung: the swing is put back")
 		return
 	var started: int = Time.get_ticks_usec()
+	_swing_owed = minf(_swing_owed + float(started - _swing_tick) / 1000000.0, SWING_MOST_FRAME_S)
+	_swing_tick = started
 	var held: Grab = _swinging
-	held.swing.advance(clampf(delta, 0.0, SWING_MOST_FRAME_S), SWING_BUDGET_MS)
+	_swing_owed -= held.swing.advance(maxf(_swing_owed, 0.0), SWING_BUDGET_MS)
 	held.swing_pose()
 	world.set_drawn(held.placed)
 	var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
