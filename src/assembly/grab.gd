@@ -908,11 +908,15 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 	for n: int in wanted.size():
 		var mesh: Lbm.PartMesh = wanted[n][0]
 		var basis: Basis = wanted[n][1]
-		tasks.append(WorkerTasks.add(func() -> void:
+		var job := func() -> void:
 			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(mesh.boxes, Vector3i.ZERO, basis)
 			writing.lock()
 			made[n] = shape
-			writing.unlock(), true, "a grabbed part's turned cover"))
+			writing.unlock()
+		# The first of the app's run here, before others run it at once
+		# (WorkerTasks.first_here).
+		if not WorkerTasks.first_here("a turned cover", job):
+			tasks.append(WorkerTasks.add(job, true, "a grabbed part's turned cover"))
 	for task: int in tasks:
 		WorkerTasks.collect(task)
 	for n: int in wanted.size():
