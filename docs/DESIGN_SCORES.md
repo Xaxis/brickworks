@@ -788,9 +788,8 @@ drawn on the GPU: every views_render.log names the RADV device):
 
 Small moves the same way on both halves, SNOT 3 points up on each against
 its start and shapes 1.5 to 2 a hundred, each within what two sessions of
-one code differ by. The build check read the tune half's designs: nothing
-floating. The proof half's reading was still queued behind the machine's
-load when this was written (`realset.py audit --which proof --arm bodies`).
+one code differ by. The build check read all twenty: a median 0% floating
+on both halves.
 
 **Taken out:** how_real_sets_build_this, the feature pass, the head and the
 tool list are `71da669`'s again. What is kept is above.
