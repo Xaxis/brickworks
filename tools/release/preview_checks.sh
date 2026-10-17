@@ -53,7 +53,7 @@ declare -A CMD=(
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=stand --out=$S/${TAG}_brickify_fox_web"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose progress share_probe site download"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)
