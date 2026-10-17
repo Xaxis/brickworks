@@ -40,6 +40,13 @@ var _yaw: SpinBox
 ## to the curve.
 var _tilt: SpinBox
 var _roll: SpinBox
+## How far the selection stands turned about the joint it hangs from, off
+## square: shown only when it hangs from one (Builder.hinge_angle). Studio's
+## hinge tool turns a part about its connection by an angle typed; here J
+## turned it 15 degrees at a press, and 8841-1's pan hangs at 66.4.
+var _hinge: SpinBox
+var _hinge_name: Label
+var _hinged: float = 0.0
 var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
@@ -174,6 +181,11 @@ func _ready() -> void:
 	_yaw.value_changed.connect(func(_value: float) -> void: _turned())
 	for spin: SpinBox in [_tilt, _roll]:
 		spin.value_changed.connect(func(_value: float) -> void: _tipped())
+	_hinge = _number("Hinge", "How far it is turned about the hinge, pin, axle or clip it "
+		+ "hangs from, in degrees off square: type an angle to swing it there")
+	_hinge_name = _place.get_child(_place.get_child_count() - 2)
+	_hinge.value_changed.connect(func(_value: float) -> void: _swung())
+	_show_hinge(null)
 
 	_facts = _text(12, 0.78)
 
@@ -221,6 +233,10 @@ func _number(words: String, says: String) -> SpinBox:
 	spin.select_all_on_focus = true
 	spin.add_theme_font_size_override("font_size", 12)
 	spin.get_line_edit().add_theme_font_size_override("font_size", 12)
+	# Enter takes the number and gives the keys back to the model: kept, the
+	# R, T and arrows a person pressed next were typed into the box.
+	var field: LineEdit = spin.get_line_edit()
+	field.text_submitted.connect(func(_text: String) -> void: field.release_focus.call_deferred())
 	_place.add_child(spin)
 	return spin
 
@@ -414,6 +430,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	_colour_row.visible = true
 	_set_place(brick.transform.origin, _yaw_of(brick.transform.basis),
 		_tilt_of(brick.transform.basis))
+	_show_hinge(shell.builder.hinge_angle())
 	# Counted up to a point: on a big model all of it is joined to all of it.
 	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
@@ -470,6 +487,7 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	# The corner the group is measured from: its lowest, leftmost,
 	# nearest, so typing a number moves the whole group by the difference.
 	_set_place(Vector3(box.position.x, box.position.y, box.position.z), 0.0)
+	_show_hinge(shell.builder.hinge_angle())
 	_yaw.editable = true
 	var facts := PackedStringArray()
 	facts.append("%s × %s studs, %s tall" % [_studs(box.size.x), _studs(box.size.z),
@@ -580,21 +598,55 @@ func _set_place(at: Vector3, facing: float, tilted := Vector2.ZERO) -> void:
 		spin.set_value_no_signal(snappedf(float(pair[1]), 0.1))
 
 
-## A number typed or stepped: the selection moved by the difference, in
-## whole lattice cells, or put back as it was and said why.
+## A number typed or stepped: the selection moved by the difference, to
+## the hundredth of an LDU (Builder.move_selection_by), or put back as it
+## was and said why. It moved by whole cells only, so a part a set has off
+## the 2 LDU lattice could not be typed to where the set has it.
 func _moved() -> void:
 	var by := Vector3(_x.value, _y.value, _z.value) - _at
-	var cells := Vector3i(roundi(by.x / BrickLattice.CELL), roundi(by.y / BrickLattice.CELL),
-		roundi(by.z / BrickLattice.CELL))
-	if cells == Vector3i.ZERO:
+	# A box shows its place to the hundredth: what is past that on the axes
+	# not typed is the showing's, not a move.
+	for n: int in 3:
+		if absf(by[n]) <= 0.0051:
+			by[n] = 0.0
+	if by.length() < 0.005:
 		_set_place(_at, _facing, _tilted)
 		return
-	if shell.builder.move_selection(cells) > 0:
+	if shell.builder.move_selection_by(by) > 0:
 		shell.verbs.edited.call()
-		shell.bar.say("moved to %d, %d, %d" % [roundi(_x.value), roundi(_y.value),
-			roundi(_z.value)])
+		shell.bar.say("moved to %s, %s, %s" % [_num(_x.value), _num(_y.value), _num(_z.value)])
 	else:
 		shell.bar.say("no room there")
+	_shown = ""
+	_refresh(true)
+
+
+static func _num(value: float) -> String:
+	return String.num(snappedf(value, 0.01), 2)
+
+
+## The Hinge shown, or hidden where the selection hangs from no joint.
+func _show_hinge(angle: Variant) -> void:
+	_hinge.visible = angle != null
+	_hinge_name.visible = angle != null
+	_hinged = float(angle) if angle != null else 0.0
+	_hinge.step = 0.01
+	_hinge.custom_arrow_step = shell.verbs.turn_step if shell != null else 15.0
+	_hinge.set_value_no_signal(snappedf(_hinged, 0.01))
+
+
+## An angle typed in Hinge: the selection swung about its joint by the
+## difference, as J swings it (Builder.swing_selection), or put back and
+## said why.
+func _swung() -> void:
+	var by: float = _hinge.value - _hinged
+	if absf(by) < 0.005:
+		return
+	if shell.builder.swing_selection(by) > 0:
+		shell.verbs.edited.call()
+		shell.bar.say("swung to %s° on its joint" % _num(_hinge.value))
+	else:
+		shell.bar.say("no room to swing it there, or it hangs from no joint")
 	_shown = ""
 	_refresh(true)
 
@@ -724,6 +776,8 @@ func controls_by_name() -> Dictionary:
 		out["prop_turn"] = _yaw
 		out["prop_tilt"] = _tilt
 		out["prop_roll"] = _roll
+		if _hinge.visible:
+			out["prop_hinge"] = _hinge
 	return out
 
 

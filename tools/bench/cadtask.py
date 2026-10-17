@@ -612,6 +612,10 @@ def _dotenv(path: Path) -> dict:
 
 
 def _free_port() -> int:
+    """CADTASK_PORT when set: agents sharing this box each serve on a range
+    of their own, and a port the system hands out can be in another's."""
+    if os.environ.get("CADTASK_PORT"):
+        return int(os.environ["CADTASK_PORT"])
     import socket
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))

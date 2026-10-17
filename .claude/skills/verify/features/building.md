@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls -->
 
 ## Sub-features
 
@@ -788,6 +788,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Technic hole's (`JointSnap.ends_of`, `COUNTERBORE`). Probe: `placing_probe
   -- only=balance`; in a browser, `placing_flow.mjs --only=balance` opens the
   set's file up to its plates and puts both through the interface.
+- `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
+  `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
+  selection by exactly the difference typed, to the hundredth of an LDU
+  (whole cells go through `move_selection`, which keeps each cover); they
+  moved by whole 2 LDU cells only. Hinge, shown only when the selection
+  hangs from a round joint (`Builder._joint_of`: a hinge's pin, a clip on a
+  bar, a pin or an axle in a round hole), is its turn about that joint in
+  degrees off square; a number typed swings it there (`swing_selection`, as
+  J does by 15). Enter in any of them gives the keys back to the model (a
+  field kept them, and the R, T and arrows pressed next were typed into
+  it). And a part aimed at the studs, the underside or the side of a part
+  that stands square but off the 2 LDU lattice is put in that part's frame
+  (`Builder._in_frame_of`: the part's place past its cell added to what
+  the lattice found, since its cover is counted from that cell), where it
+  went up to a cell off. Probe: `offgrid_probe` puts the 39 parts the CAD
+  task's three sets have off the grid through the interface, part by part:
+  8841-1's two pans (each 4262 onto the axle, Hinge typed to 23.58,
+  its slide along the axle typed; the pins, 3651s, plates and the second
+  4262 aimed and clicked), its axle 1 LDU along, 5762-1's lights and
+  propellers, 8643-1's wheels and tyres; each against the file to 0.05
+  LDU and 0.002 of its matrix, rows in `shots/offgrid/offgrid.json`.
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it
@@ -926,6 +947,11 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # its ghost. Pictures in shots/placing/ (-- only=edge|parts|balance)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/placing_probe.gd
+# every part the CAD task's three sets have off the grid (39) put where the
+# file has it through the interface: aimed and clicked, Hinge or X, Y, Z
+# typed in Properties where the pointer cannot say it (-- only=5762|8643|8841)
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/offgrid_probe.gd
 # ...and in a browser: the ghost's pose (brickworksState.ghost_pose) against
 # the part each click put down (.put); edge, parts, and 8841-1's file opened up
 # to its plates and both put through the interface
