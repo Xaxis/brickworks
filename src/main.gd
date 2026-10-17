@@ -5649,6 +5649,13 @@ func _input(event: InputEvent) -> void:
 		_pointer_at = (event as InputEventMouseMotion).position
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
+		# A part in hand on its joint follows the pointer over the menus and
+		# the toolbar too: there the controls took the moves, and 4096's boom,
+		# swung up past the top of the view, stopped at 60° for a pointer at 70.
+		if _grabbing and (event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT != 0:
+			_grab_drag.motion((event as InputEventMouseMotion).position)
+			get_viewport().set_input_as_handled()
+			return
 	elif event is InputEventMouseButton:
 		_pointer_at = _true_point((event as InputEventMouseButton).position)
 		_system_at = get_viewport().get_mouse_position()

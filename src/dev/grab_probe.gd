@@ -91,6 +91,8 @@ func _run() -> void:
 		return
 	var only: String = ""
 	for arg: String in args:
+		if arg.begins_with("--move-frames="):
+			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
 	for case: Array in CASES:
@@ -869,8 +871,8 @@ func _big() -> void:
 	await _button(_last_screen, false)
 	var settling: int = Time.get_ticks_msec()
 	await _settled()
-	print("    let go: checked and kept in %d ms, its worst frame %.1f ms" % [
-		Time.get_ticks_msec() - settling, _grab.worst_settle_ms])
+	print("    let go: checked and kept in %d ms, its worst frame %.1f ms; the keeping frame %.0f ms %s" % [
+		Time.get_ticks_msec() - settling, _grab.worst_settle_ms, _grab.keep_ms, str(_grab.keep_took)])
 	_timings["big"] = {"file": path.get_file(), "parts": _world.brick_count(),
 		"moving": grab.moving.size(), "frames": _grab.frames, "mean_ms": snappedf(_grab.mean_ms, 0.01),
 		"worst_ms": snappedf(_grab.worst_ms, 0.01), "first_grab_ms": snappedf(grabbed_ms, 0.1),
@@ -1076,6 +1078,8 @@ func _snapshot() -> Dictionary:
 
 
 var _names: Dictionary = {}
+## Frames each move is given before it is read (--move-frames=N).
+var _move_frames: int = 1
 
 
 static func _rounded(at: Transform3D) -> String:
@@ -1116,7 +1120,7 @@ func _move(at: Vector2, mask: int) -> void:
 	move.button_mask = mask
 	Input.parse_input_event(move)
 	_last_screen = at
-	await _frames(1)
+	await _frames(_move_frames)
 
 
 func _button(at: Vector2, down: bool) -> void:

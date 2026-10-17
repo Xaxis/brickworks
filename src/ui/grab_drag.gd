@@ -79,6 +79,9 @@ var _lay_keys: Array = []
 var _laid: Dictionary = {}
 ## The frame that kept the last big section, ms.
 var keep_ms: float = 0.0
+## What that frame spent, ms: making copies its own, the commit, what an
+## edit sets going (main's _on_model_edited).
+var keep_took: Dictionary = {}
 ## A grab let go while its turn was still being checked: kept once it is.
 var _settling: Grab = null
 
@@ -254,8 +257,12 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	world.set_drawn({})
 	_unlean()
 	var depth: int = builder.history_depth()
+	var clock: int = Time.get_ticks_usec()
 	var own: String = _own_copies(held)
+	keep_took["copies"] = (Time.get_ticks_usec() - clock) / 1000
+	clock = Time.get_ticks_usec()
 	var moved: int = held.commit(held.step_words(), cells)
+	keep_took["commit"] = (Time.get_ticks_usec() - clock) / 1000
 	# Making a copy its own and the pose: one step to undo.
 	builder.fold_since(depth)
 	var words: String
@@ -275,7 +282,9 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 			last_report = _judge.weigh_pose(held.placed)
 			words += ". " + _standing_words(last_report, false)
 			_show(last_report, false)
+		clock = Time.get_ticks_usec()
 		edited.call()
+		keep_took["edited"] = (Time.get_ticks_usec() - clock) / 1000
 	last_words = words
 	_said = ""
 	say.call(words)
