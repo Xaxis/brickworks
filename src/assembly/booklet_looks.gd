@@ -638,12 +638,14 @@ static func said(world: BrickWorld, section: String, step: int) -> String:
 	if not turn.is_empty():
 		var by: Vector3 = _vector(turn["turn"])
 		var bits := PackedStringArray()
-		if not is_zero_approx(by.y):
-			bits.append("turned %d°" % roundi(by.y))
-		if not is_zero_approx(by.x):
-			bits.append("tilted %d°" % roundi(by.x))
 		if str(turn.get("how", "REL")) == "ABS":
-			bits.append("from the front")
+			# Measured from straight in front, as LDraw's ABS is.
+			bits.append("seen from %d° round and %d° up" % [roundi(by.y), roundi(by.x)])
+		else:
+			if not is_zero_approx(by.y):
+				bits.append("turned %d°" % roundi(by.y))
+			if not is_zero_approx(by.x):
+				bits.append("tilted %d°" % roundi(by.x))
 		parts.append(", ".join(bits) + ("" if own.has("turn") else " (from before)"))
 	if own.has("zoom"):
 		parts.append("zoom %sx" % _number(float(own["zoom"])))

@@ -513,7 +513,11 @@ func _all_looks(name: String, before: Dictionary) -> void:
 	_go(int(picks["zoom"]))
 	await _frames(6)
 	var zoom: Button = _steps.controls_by_name().get("booklet_zoom_in")
-	if zoom != null and zoom.is_visible_in_tree():
+	# Headless there are no clicks to give: the commands themselves, there.
+	if DisplayServer.get_name() == "headless":
+		_shell.change_look("zoom_in", _go(int(picks["zoom"])))
+		_shell.change_look("zoom_in", _go(int(picks["zoom"])))
+	elif zoom != null and zoom.is_visible_in_tree():
 		await _click(zoom.get_global_rect().get_center())
 		await _click(zoom.get_global_rect().get_center())
 		var said: String = str(_steps.page_state().get("look", ""))
