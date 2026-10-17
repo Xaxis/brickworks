@@ -111,12 +111,59 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 				% FileAccess.get_open_error()}
 		file.store_string(text)
 		file.close()
+		_keep_needs(id, needs(text, others))
 		for name: String in built.mesh.print_files:
 			var picture: FileAccess = FileAccess.open(dir + name, FileAccess.WRITE)
 			if picture != null:
 				picture.store_buffer(built.mesh.print_files[name])
 				picture.close()
 	return {"id": id, "problem": ""}
+
+
+## Beside a kept part, the subparts and parts it is drawn from that the file
+## it came in carried ([method needs]), as one file of FILE sections; none
+## when it needs nothing of the file's. Kept as the part alone, it was not
+## built at the next start (the file was gone), and a model saved after
+## that went out without them: 19 of the sets' carried parts (2026-10-17).
+static func _keep_needs(id: String, needed: Dictionary) -> void:
+	var path: String = dir + id + NEEDS
+	if needed.is_empty():
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+		return
+	var out := PackedStringArray()
+	for name: String in needed:
+		out.append("0 FILE %s" % name)
+		out.append(str(needed[name]).strip_edges(false, true))
+		out.append("0 NOFILE")
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file != null:
+		file.store_string("\n".join(out) + "\n")
+		file.close()
+
+
+## What [method _keep_needs] kept for [param id]: name -> text, or {}.
+static func _kept_needs(id: String) -> Dictionary:
+	var path: String = dir + id + NEEDS
+	if not FileAccess.file_exists(path):
+		return {}
+	var out: Dictionary = {}
+	var name: String = ""
+	var lines := PackedStringArray()
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		if line.begins_with("0 FILE "):
+			name = line.trim_prefix("0 FILE ").strip_edges()
+			lines = PackedStringArray()
+		elif line.strip_edges() == "0 NOFILE" and not name.is_empty():
+			out[name] = "\n".join(lines) + "\n"
+			name = ""
+		elif not name.is_empty():
+			lines.append(line)
+	return out
+
+
+## The file beside a kept part that holds what it is drawn from.
+const NEEDS := ".needs.ldr"
 
 
 ## A part built from its LDraw text, as [method add] builds it.
@@ -180,18 +227,38 @@ static func load_all(library: PartLibrary) -> int:
 	if not DirAccess.dir_exists_absolute(dir):
 		return 0
 	var texts: Dictionary = {}
+	## file name -> what it was kept with (_keep_needs), for those kept so.
+	var sources: Dictionary = {}
 	for file_name: String in DirAccess.get_files_at(dir):
 		if file_name.ends_with(".dat"):
 			texts[file_name] = FileAccess.get_file_as_string(dir + file_name)
+			var needed: Dictionary = _kept_needs(file_name.get_basename())
+			if not needed.is_empty():
+				sources[file_name] = needed
+				drawn_from[file_name.get_basename()] = needed
 	var later: Dictionary = {}
 	if OS.has_feature("web") or not sources_from.is_empty():
 		for file_name: String in texts.keys():
-			if not PartForge.unreached(texts[file_name]).is_empty():
+			if not PartForge.unreached(texts[file_name], sources.get(file_name, {})).is_empty():
 				later[file_name] = texts[file_name]
 				texts.erase(file_name)
 	if not later.is_empty():
-		_load_later(library, later)
+		_load_later(library, later, sources)
+	# Those kept with sources are built each with its own: two files may
+	# carry a subpart of one name drawn two ways.
+	var alone: Dictionary = {}
+	for file_name: String in sources:
+		if texts.has(file_name):
+			alone[file_name] = texts[file_name]
+			texts.erase(file_name)
 	var built: Dictionary = _built_at_once(texts, {})
+	for file_name: String in alone:
+		var id: String = file_name.get_basename()
+		var result: Dictionary = add(library, alone[file_name], id, false, sources[file_name])
+		if str(result["problem"]).is_empty():
+			found += 1
+		else:
+			push_warning("custom part %s: %s" % [id, result["problem"]])
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
 		var result: Dictionary = add(library, texts[file_name], id, false, {},
@@ -205,18 +272,20 @@ static func load_all(library: PartLibrary) -> int:
 
 ## The kept parts [param texts] (file name -> text) draw on files of LDraw's
 ## own: fetched, once the deployment says where from, then built and added.
-static func _load_later(library: PartLibrary, texts: Dictionary) -> void:
+static func _load_later(library: PartLibrary, texts: Dictionary,
+		sources: Dictionary = {}) -> void:
 	await _fetch_until(library, func() -> PackedStringArray:
 		var named: Dictionary = {}
-		for text: String in texts.values():
-			for key: String in PartForge.unreached(text):
+		for file_name: String in texts:
+			for key: String in PartForge.unreached(texts[file_name], sources.get(file_name, {})):
 				named[key] = true
 		return PackedStringArray(named.keys()))
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
 		if library.parts.has(id):
 			continue
-		var result: Dictionary = add(library, texts[file_name], id, false)
+		var result: Dictionary = add(library, texts[file_name], id, false,
+			sources.get(file_name, {}))
 		if not str(result["problem"]).is_empty():
 			push_warning("custom part %s: %s" % [id, result["problem"]])
 
@@ -251,6 +320,12 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 		if str(result["problem"]).is_empty():
 			added.append(id)
 			drawn_from[id] = needs(text, model.embedded_sources)
+			# One kept before its sources were kept beside it gets them now,
+			# from the file it came in.
+			if keeps and not FileAccess.file_exists(dir + id + NEEDS) \
+					and FileAccess.file_exists(dir + id + ".dat") \
+					and FileAccess.get_file_as_string(dir + id + ".dat") == text:
+				_keep_needs(id, needs(text, carried))
 		else:
 			problems.append("%s: %s" % [id, _with_why(str(result["problem"]))])
 	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
