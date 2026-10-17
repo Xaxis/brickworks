@@ -259,6 +259,22 @@ const exact = await d.call("select_tab", { tab: "Castle" });
 check(`select_tab "Castle" takes the exact name: "${exact.words.split("\n").pop().slice(0, 120)}"`,
   !exact.error && exact.words.includes(`go to tab ${castle.id} now`));
 
+console.log("\n5. two chats on one connection, as claude.ai is reported to share one");
+// One Mcp-Session-Id, two conversations: nothing tells them apart here, so
+// each names its tab on every call, as select_tab's answer asks.
+const shared = await chat(token);
+const told = await shared.call("select_tab", { tab: castle.id });
+check(`select_tab asks for target on every call while tabs are open: "${told.words.split(". ").pop().slice(0, 110)}"`,
+  told.words.includes(`pass target: "${castle.id}" on every call`));
+await shared.call("select_tab", { tab: truck.id });
+const castleNow = castle.did.length;
+const truckNow = truck.did.length;
+const x = await shared.call("edit_model", { add: [], target: castle.id });
+const y = await shared.call("edit_model", { add: [], target: truck.id });
+check("each conversation's targeted change lands in its own tab, the shared pick notwithstanding",
+  x.words.startsWith(`Tab ${castle.id}`) && y.words.startsWith(`Tab ${truck.id}`)
+  && castle.did.length === castleNow + 1 && truck.did.length === truckNow + 1);
+
 for (const tab of [...tabs, fort]) await tab.close();
 await Promise.race([Promise.all([...loops, fortLoop]), wait(30000)]);
 async function removeAccount() {

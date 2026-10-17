@@ -387,7 +387,7 @@ func keep_chat(chat: String) -> int:
 	var body: Variant = JSON.parse_string((got[2] as PackedByteArray).get_string_from_utf8()) \
 		if got[0] == HTTPRequest.RESULT_SUCCESS else null
 	if body is Dictionary and (body as Dictionary).get("chats") is Array:
-		_set_chats((body as Dictionary)["chats"])
+		_set_chats((body as Dictionary)["chats"], true)
 	return int((body as Dictionary).get("moved", -1)) if body is Dictionary and int(got[1]) == 200 else -1
 
 
@@ -405,12 +405,24 @@ func refresh_chats() -> void:
 
 
 ## The relay's list, keeping the words this tab heard for a chat's last call.
-func _set_chats(given: Array) -> void:
+## The relay lists the chats that chose this tab; one that named it on its
+## calls instead (target) and called in the last two minutes stays shown,
+## unless [param whole]: the list after Keep this one is the whole of it.
+func _set_chats(given: Array, whole: bool = false) -> void:
 	var heard: Dictionary = {}
 	for one: Variant in chats:
 		if one is Dictionary:
 			heard[str((one as Dictionary).get("chat", ""))] = one
+	var listed: Dictionary = {}
+	for one: Variant in given:
+		if one is Dictionary:
+			listed[str((one as Dictionary).get("chat", ""))] = true
 	var now: Array = []
+	if not whole:
+		var at: int = int(Time.get_unix_time_from_system())
+		for chat: String in heard:
+			if not listed.has(chat) and at - _unix(str((heard[chat] as Dictionary).get("last", ""))) < 120:
+				now.append(heard[chat])
 	for one: Variant in given:
 		if not one is Dictionary:
 			continue

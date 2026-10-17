@@ -475,7 +475,8 @@ function notNamed(said, found, tabs, current, picks, key) {
 const TARGET = {
   type: "string",
   description: "Which Brickworks tab to do this in: its id (such as k7qd) or its model's name " +
-    "(such as castle). Leave it out to stay in the tab this chat works in.",
+    "(such as castle). With more than one tab open, pass it on every call: it keeps this chat " +
+    "in its own tab even when another chat shares this connection.",
 };
 const RELAY_TOOLS = [
   {
@@ -715,8 +716,16 @@ async function relayTool(where, message, response) {
   }
   await pick(where.key, where.owner, chosen.channel, picked ? picked.channel : null);
   return response.status(200).json(text(id, `${header(chosen, null, tabs, picks, where.key)} This chat's calls `
-    + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`));
+    + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`
+    + (live.length > 1 ? ` ${SAY_TARGET(chosen)}` : "")));
 }
+
+// Claude's apps can share one connection between chats (one Mcp-Session-Id
+// for two conversations is reported of claude.ai, claudeissues.com/issue/
+// 41836, 2026), and nothing then tells the two apart here. A chat that names
+// its tab on every call stays in it whatever another chat chooses.
+const SAY_TARGET = (tab) => `While more than one tab is open, pass target: "${idOf(tab)}" on every `
+  + "call in this chat too, so it stays here even if another chat shares this connection.";
 
 // A session's tab has closed: said once, with nothing done, and the
 // session let go of it, so its next call without a choice is treated as a
@@ -880,12 +889,14 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     } else {
       return await refuse(chooseFirst(tabs, picks, where.key));
     }
-    // The tab is told which chat this is, when it is the chat's own tab,
-    // and the chat's pick keeps its last call.
-    if (where.key && home && !viewerCall && tab && home.channel === tab.channel) {
+    // The tab is told which chat this is, in the chat's own tab or one it
+    // named, and the chat's pick keeps its last call in its own.
+    const own = Boolean(home && tab && home.channel === tab.channel);
+    if (where.key && !viewerCall && tab && (own || target)) {
       const meta = message.params._meta && typeof message.params._meta === "object" ? message.params._meta : {};
-      message.params._meta = { ...meta, "brickworks/chat": { chat: chatOf(where.key), since: home.picked_at } };
-      await noteCall(where.key, name);
+      message.params._meta = { ...meta,
+        "brickworks/chat": { chat: chatOf(where.key), since: own ? home.picked_at : new Date().toISOString() } };
+      if (own) await noteCall(where.key, name);
     }
   } else {
     // The handshake and the list from the tab this session works in, so the
