@@ -343,6 +343,30 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	return out
 
 
+## Sections (SectionsUi) for tools/web/sections_flow.mjs: what was
+## suggested, what is broken out, the exploded view, the last evaluation, and
+## where each suggestion's row and each sub-assembly's row is in the model
+## tree, to be clicked.
+func _sections_on_page(to_window: Transform2D, per_css: float) -> Dictionary:
+	if _shell == null or _shell.sections == null:
+		return {}
+	var said: Dictionary = _shell.sections.page_state()
+	var rows: Dictionary = {}
+	var metas: Array = []
+	for made: Sections.Suggestion in _shell.sections.sections.suggested:
+		metas.append(Outliner.SUGGESTION + str(made.number))
+	for path: String in _shell.assemblies.paths():
+		metas.append(path)
+	for meta: String in metas:
+		var rect: Variant = _shell.outliner.row_rect(meta)
+		if rect is Rect2:
+			var centre: Vector2 = to_window * (rect as Rect2).get_center() / per_css
+			rows[meta.trim_prefix(Outliner.SUGGESTION)] = {"x": roundi(centre.x),
+				"y": roundi(centre.y)}
+	said["rows"] = rows
+	return said
+
+
 ## Each sub-assembly's own parts, how high: path -> [lowest, highest], the
 ## heights of their origins in LDU.
 func _assembly_heights() -> Dictionary:
@@ -550,6 +574,8 @@ func _tell_page() -> void:
 		"brickified": _brickify.last_summary if _brickify != null else "",
 		# And the last picture laid in LEGO Art, for art_flow.mjs.
 		"art": _art_said,
+		# Sections suggested, broken out and evaluated, for sections_flow.mjs.
+		"sections": _sections_on_page(to_window, per_css),
 		# The cut-away and x-ray (SeeInside), for tools/web/see_inside_flow.mjs:
 		# where the plane is, and how many parts are drawn see-through.
 		"cut": {"on": _world.is_cut(), "axis": _shell.see_inside.axis,
@@ -3283,7 +3309,8 @@ func _turn_model(quarter_turns: int) -> void:
 ## pressed (a browser only lets a page open a tab in answer to a click,
 ## and the pictures take longer than that), and on the desktop into the
 ## Downloads folder and open in the browser, ready to print.
-func _export_booklet(to: String = "", job: Working.Job = null) -> String:
+func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = null,
+		called: String = "") -> String:
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -3302,8 +3329,10 @@ func _export_booklet(to: String = "", job: Working.Job = null) -> String:
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
-	var title: String = _bar.model_name()
-	var html: String = await maker.make(_world, _store.scenery, title)
+	# A section's own booklet (SectionsUi) leaves the rest of the model out.
+	var title: String = called if not called.is_empty() else _bar.model_name()
+	var html: String = await maker.make(_world,
+		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
 	if not to.is_empty():
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:

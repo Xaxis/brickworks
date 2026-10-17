@@ -853,6 +853,17 @@ refreshing them means the full mesh build: about 90 minutes, then
   release appear in `catalogue.json`.
 - A browser flow finds one of them in the bin and places it.
 
+## Sections: one at a time
+
+Builders build a section at a time, as a set's bags come. Studio has
+sub-models: made from a selection, edited in place or in a tab of their
+own [st-submodel]. Its help pages describe no way to suggest them, no view
+that pulls one away from the model or all of them apart, and no check of
+one on its own. Brickworks suggests sections from the booklet planner and
+the build check's joint graph, breaks one out and puts it back to the bit,
+draws them all apart, and weighs one alone: parts, weight, one piece,
+balance, the joints that hold it, its own booklet ([sections]).
+
 ## Considered and not ranked
 
 Each of these is real. Each was left out because it costs too much, the fix
@@ -888,6 +899,7 @@ lies outside this code, or the decision is the owner's.
 Brickworks' own claims link into this repository.
 
 [building]: ../.claude/skills/verify/features/building.md
+[sections]: SECTIONS.md
 [geometry]: ../.claude/skills/verify/features/geometry.md
 [parts]: ../.claude/skills/verify/features/parts.md
 [model-io]: ../.claude/skills/verify/features/model-io.md

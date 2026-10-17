@@ -52,6 +52,10 @@ asking for an API key.
   (File, Render), `export_model` (File, Export, and Instructions),
   `brickify` (Build, Brickify a 3D model…; File, Import, 3D model),
   `print_part` (Build, Print on a part… and Put a sticker on…),
+  `suggest_sections`, `make_sections`, `break_out_section` and
+  `evaluate_section` (Build, Suggest sections, the model tree's Accept,
+  Break out, Put back and Evaluate the section…; see [building](building.md)'s
+  `sections`; `src/dev/sections_probe.gd` calls each over `tools/call`),
   `make_unique` (Edit, Make this copy unique) and `colour_hidden_parts`
   (Tools, Colour the hidden parts…; `HiddenColoursPanel.for_session`, which
   previews unless `apply` and `agreed`, see [geometry](geometry.md)). Each

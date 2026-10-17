@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser -->
 
 ## Sub-features
 
@@ -515,6 +515,39 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   place, its eye and lock hide and lock it whole, and dragging a row onto
   another nests it there (onto Model, back to the top). Folded or open as it
   was left (`outliner_open`). Probe: `assembly_probe`.
+- `sections`: a model split as a builder builds it, one section at a time
+  (`src/assembly/sections.gd`, `src/ui/sections_ui.gd`). Build, Suggest
+  sections (or the model tree's Suggest sections) lists suggestions under
+  the tree's rows, numbered in build order, each with its part count: a
+  click selects its parts, a double-click or `F2` renames it, dragging one
+  onto another or Merge joins it to the one it is held to most, Split
+  parts it where it is held least, the tick or Accept makes it a
+  sub-assembly, Accept all makes every one in one undo step. How it
+  decides: the booklet planner's reading (`Instructions._survey`,
+  supports, `_find_assemblies`, `_find_bundles`) and the build check's
+  joint graph as Balance builds it (`Stability.contacts` studs, `Joints`
+  pins, axles, clips); a sub-model the file has that fits a section and the
+  planner's sub-builds stay whole; units are joined strongest first by
+  joint strength over size (w / sqrt(a·b)) up to 1.7 times the average,
+  about one section for every 90 parts (2 to 40); minifigures are a
+  section of their own. `Y` (Build, Break out the section, or the tree's
+  Break out) pulls the chosen sub-assembly up off the studs it stands on,
+  or out the side of the model it is on, two studs clear, by whole studs
+  and bricks, one undo step; `Y` again (or Edit, Put every section back)
+  puts each part back exactly. Where each stood is kept on the world
+  (`BrickWorld.broken_out`, carried by the history's `sectionout` step) and
+  a file is written with every section in place (`BrickWorld.home_of`,
+  `ModelStore`). `Shift+Y` (View or Build, Exploded view) draws every
+  section apart along its way off, over 0.6 s, and back
+  (`BrickWorld.set_drawn`: nothing of the model moves). Evaluate the
+  section… shows the chosen one alone: parts as the parts list counts
+  them, lots, weight, one piece by the joint graph and by the build check
+  on it alone (`Assistant._checked`), whether it stands on its own base
+  (Balance), the studs and pins that join it to the rest and what that
+  carries (80 g a stud, Stability), and its own steps; with its parts list,
+  BrickLink wanted list and booklet (`_export_booklet` with the rest left
+  out). All of it works with the assistant off. Probe: `sections_probe`;
+  in a browser, `tools/web/sections_flow.mjs`.
 - `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a
   bar, a turntable's disc: a shaft of a selected part in a bore of an
@@ -776,6 +809,20 @@ godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd
 # the model clear at every size and density, in a browser (fails on a build
 # whose panels float over the model)
 node tools/web/fit_check.mjs --url=<preview>/app --bypass=…
+# sections on four real sets (21016-1 one model, 31025-1 its author's
+# sub-models, 42093-1 Technic, 10179-1 big): suggestions cover the model,
+# each connected and one piece by the build check alone, parts and weight
+# adding up; accepted in one undo; broken out and put back to the bit, one
+# undo each, the file written meanwhile unchanged; the exploded view moving
+# nothing; suggest/evaluate/make/break out over MCP. --shots=DIR for the
+# GPU's pictures (windowed, under xvfb-run)
+godot --headless --path . --script src/dev/sections_probe.gd
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/sections_probe.gd -- --shots=shots/sections
+# ...and in a browser, by clicks and keys on 21016-1: suggested, renamed,
+# split, merged, accepted, evaluated, Y out and back, undone and redone,
+# Shift+Y apart and together
+node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/sections_web
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # where a brick lands when you point at a stud

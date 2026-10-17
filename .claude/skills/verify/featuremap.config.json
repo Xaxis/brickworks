@@ -743,6 +743,27 @@
     },
     {
       "kind": "ui",
+      "label": "sections",
+      "entry": "src/ui/sections_ui.gd",
+      "reach": "godot --path .  (Build, Suggest sections; the model tree's Accept, Merge, Split, Evaluate; Y breaks the selected sub-assembly out and puts it back; Shift+Y the exploded view)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "sections suggested",
+      "entry": "src/assembly/sections.gd",
+      "reach": "godot --headless --path . --script src/dev/sections_probe.gd",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "sections in a browser",
+      "entry": "tools/web/sections_flow.mjs",
+      "reach": "node tools/web/sections_flow.mjs --url=<preview>/app --bypass=…",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "sub-assemblies",
       "entry": "src/assembly/assemblies.gd",
       "reach": "godot --path .  (select, Ctrl-G, name it; a click takes it whole, a double-click edits inside, Esc leaves; Ctrl-D copies follow it)",
