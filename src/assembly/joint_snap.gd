@@ -161,8 +161,51 @@ static func ends_of(part: Lbm.PartMesh) -> Array:
 				continue
 		if not _repeats(out, end):
 			out.append(end)
+	# A round hole a pin's size that LDraw draws as a plain cylinder, not a
+	# Technic hole: the steering ends of 4262 (8841-1 hangs its pan from
+	# two), which a pin goes through as it goes through any hole. As deep
+	# as the part is there, from the hole's mouth, no more than a stud: the
+	# file has the plate's body against the pin's collar, past the end's
+	# thinner hole. And with no counterbore for the collar to sit in, its
+	# mouth is that much further out than a Technic hole's. Through a
+	# plate's thickness at most: a round brick's hollow is that radius too,
+	# and is no hole.
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind != "bore" or connector.length < 4.0 or connector.length > 8.0 \
+				or absf(connector.radius - PIN_ROUND) > 0.5:
+			continue
+		var end := End.new()
+		end.kind = "pin_hole"
+		end.axis = connector.axis.normalized()
+		if end.axis.length_squared() < 0.5 or _on_a_hole(out, connector.position, end.axis):
+			continue
+		var deep: float = clampf(_extent(part.bounds, connector.position, end.axis).y,
+			connector.length, BrickLattice.STUD)
+		end.at = connector.position + end.axis * deep * 0.5
+		end.reach = deep * 0.5 + COUNTERBORE
+		if not _repeats(out, end):
+			out.append(end)
 	_ends[key] = out
 	return out
+
+
+## The radius of a pin, and of a round hole one goes through, in LDU.
+const PIN_ROUND := 6.0
+## How deep a Technic hole's counterbore takes a pin's collar, in LDU: a
+## pin's connector is the middle of its collar, which sits half in.
+const COUNTERBORE := 2.0
+
+
+## Whether a hole already found runs along the line through [param at]
+## going [param axis]: a Technic hole's own bore is that hole.
+static func _on_a_hole(ends: Array, at: Vector3, axis: Vector3) -> bool:
+	for other: End in ends:
+		if not other.is_hole() or absf(other.axis.dot(axis)) < 0.999:
+			continue
+		var gap: Vector3 = at - other.at
+		if (gap - axis * gap.dot(axis)).length() <= Joints.ROUND_OFF_AXIS:
+			return true
+	return false
 
 
 ## Whether an end is already in the list: the same kind, the same way, at
