@@ -81,6 +81,11 @@ whole cycle.
   inverted slope is chosen by how near it lays the surface to the model's
   own, measured at thirds of a stud, the longest where it is as near, and
   only in a colour that part is sold in.
+- Brickify lays a steep side on its side. Where a model's surface is
+  steeper than about 70 degrees, it is laid in plates, slopes and tiles
+  turned to face out, held by bricks with studs on their side, in steps two
+  fifths of a stud deep instead of a stud. The build is still checked as
+  one piece, and takes about 8% more parts.
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is
   about 1.4 MB larger for it.

@@ -252,6 +252,13 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   bridged and weak points within two points of main's, measured as the bench
 #   measures them (_bond). 2026-10-17 on the unit 3 branch: 66 ok; sphere 1,548 parts
 #   (main 1,606), plain 1,218 (1,266), forty-stud bunny 2,027 (2,062) in 9.7 s.
+#   Then unit 5, "steep sides on their sides" (docs/BRICKIFY.md section 10): the sphere
+#   and the forty-stud bunny against themselves laid upright (Options.snot false; unit
+#   3's bond checks now run on those): 100 more parts on their sides or more, at most 25%
+#   and 15% more parts, 97% in a part; a block turned 30 degrees about its up, its sides
+#   on their sides with slopes facing out; the 65 degree ledge laid upright. 2026-10-17
+#   on the unit 5 branch: 84 ok; sphere 416 on their sides (44), 1,948 parts (1,589);
+#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81).
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
@@ -301,6 +308,12 @@ S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare -
 XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where the error is, by facing
+#   2026-10-17 after unit 5 (docs/BRICKIFY.md section 10), against d24d4d6: steep faces
+#   ("out" in faces) 34.9° from 36.4° at 48 studs (the bar was 30% less), 30% of them now
+#   nearest a part on its side at 29.0°; side views' Hausdorff95 ("sides") 0.86 from 0.84;
+#   28 of 28 whole and one piece, the temple's moon kept; parts 8.1% more at 48. faces
+#   splits the steep faces by the part nearest (out_on_side, out_upright).
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
 #   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s
 #   35.1% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.2% from 25.9%;
