@@ -589,8 +589,9 @@ func copy_for_reading() -> BrickWorld:
 ## The model's bricks where they stand in the model as built ([method
 ## home_of]), each with its sub-assembly and step: what a file is written
 ## from while a section is broken out (ModelStore), sub-models' frames and
-## all. Draws nothing and is in no tree; the caller frees it.
-func copy_at_home() -> BrickWorld:
+## all; with [param at_home] false, each where it stands, for a worker to
+## read (Sections). Draws nothing and is in no tree; the caller frees it.
+func copy_at_home(at_home: bool = true) -> BrickWorld:
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
@@ -599,7 +600,8 @@ func copy_at_home() -> BrickWorld:
 		if _ghosts.has(brick_id):
 			continue
 		var brick: Brick = _bricks[brick_id]
-		var twin := Brick.new(brick.id, brick.part_id, brick.color_code, home_of(brick))
+		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
+			home_of(brick) if at_home else brick.transform)
 		twin.group = brick.group
 		twin.unit = brick.unit
 		twin.step = brick.step
@@ -662,14 +664,14 @@ func drawn_as(bricks: Dictionary) -> Array:
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info != null:
-			var box: AABB = brick.transform * info.bounds
+			var box: AABB = drawn_at(brick) * info.bounds
 			bounds = bounds.merge(box) if any else box
 			any = true
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			var places: Array = taken.get(key, [])
 			if places.is_empty():
 				taken[key] = places
-			places.append(brick.transform)
+			places.append(drawn_at(brick))
 	var whole: Array[MultiMesh] = []
 	var loose: Dictionary = {}
 	var triangles: int = 0

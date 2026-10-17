@@ -364,6 +364,17 @@ func _sections_on_page(to_window: Transform2D, per_css: float) -> Dictionary:
 			rows[meta.trim_prefix(Outliner.SUGGESTION)] = {"x": roundi(centre.x),
 				"y": roundi(centre.y)}
 	said["rows"] = rows
+	# ...and, drawn apart, where on the page each section is drawn: its box's
+	# middle, for a check to click a section where it is seen.
+	var drawn: Dictionary = {}
+	if _shell.sections.is_exploded() and _camera != null:
+		for one: Dictionary in _shell.sections.sections.sections():
+			var box: AABB = _shell.sections.drawn_bounds(str(one["path"]))
+			if box.size == Vector3.ZERO or _camera.is_position_behind(box.get_center()):
+				continue
+			var at: Vector2 = to_window * _camera.unproject_position(box.get_center()) / per_css
+			drawn[str(one["path"])] = {"x": roundi(at.x), "y": roundi(at.y)}
+	said["drawn"] = drawn
 	return said
 
 

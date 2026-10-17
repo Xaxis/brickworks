@@ -41,9 +41,10 @@ func _ready() -> void:
 ## Suggest sections for the model (or the sub-assembly being edited), shown
 ## in the model tree. What the status bar says.
 func suggest() -> String:
-	var job: Working.Job = Working.begin("Suggesting sections…")
+	# Said and counted, with Cancel: a big model is read on a worker.
+	var job: Working.Job = Working.begin("Suggesting sections…", Sections.PHASES, true)
 	await job.shown()
-	var made: Array = sections.suggest()
+	var made: Array = await sections.suggest(job)
 	job.end()
 	if shell.outliner != null and not shell.outliner.is_open():
 		shell.outliner.set_open(true)
@@ -177,9 +178,6 @@ func toggle_explode() -> String:
 		shell.bar.say(none)
 		return none
 	var apart: Dictionary = sections.exploded(1.0, groups)
-	# The selection's outline is drawn where the parts stand, not where the
-	# view draws them apart.
-	shell.builder.clear_selection()
 	_shifts.clear()
 	for brick_id: int in apart:
 		var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
@@ -189,8 +187,9 @@ func toggle_explode() -> String:
 	_revision = shell.world.revision
 	_goal = 1.0
 	set_process(true)
-	var said: String = "%d sections apart — the model is as it was; X-ray, Cut and editing " \
-		% groups.size() + "see it whole. Shift+Y puts them back together"
+	_frame_apart(apart)
+	var said: String = "%d sections apart — click one to choose it; the model is as it was. " \
+		% groups.size() + "Shift+Y puts them back together"
 	shell.bar.say(said)
 	return said
 
@@ -204,6 +203,89 @@ func _close_explode() -> void:
 	_shifts.clear()
 	shell.world.set_drawn({})
 	set_process(false)
+	_frame_back()
+
+
+## Where the view was before it was framed on the sections apart:
+## [focus, distance, size]; [] when it was not.
+var _view_was: Array = []
+
+
+## The view framed on everything as it is drawn apart: lifted, Sungnyemun's
+## roof went off the top of the window.
+func _frame_apart(apart: Dictionary) -> void:
+	var camera: CadCamera = shell.camera
+	if camera == null:
+		return
+	var box := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in shell.world.bricks():
+		if shell.store.scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = shell.library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var at: Transform3D = apart.get(brick.id, brick.transform)
+		var drawn: AABB = at * info.bounds
+		box = drawn if first else box.merge(drawn)
+		first = false
+	if first:
+		return
+	if _view_was.is_empty():
+		_view_was = [camera._target_focus, camera._target_distance, camera.size]
+	camera.frame(box, 1.15)
+
+
+## And back to where it was, once together again.
+func _frame_back() -> void:
+	var camera: CadCamera = shell.camera
+	if camera == null or _view_was.is_empty():
+		return
+	camera._target_focus = _view_was[0]
+	camera._target_distance = _view_was[1]
+	camera.size = _view_was[2]
+	_view_was = []
+
+
+## The part drawn under a ray while the sections are apart, or -1 when they
+## are not: what a click picks (EditVerbs.brick_at), so a section is chosen
+## where it is seen. The lattice asked once for each way the sections were
+## moved, the ray moved back by it; the nearest part moved that way wins.
+func pick_drawn(origin: Vector3, normal: Vector3) -> int:
+	if not is_exploded() or _shifts.is_empty():
+		return -1
+	var eased: float = 1.0 - pow(1.0 - _share, 3.0)
+	var by_shift: Dictionary = {Vector3.ZERO: true}
+	for brick_id: int in _shifts:
+		by_shift[_shifts[brick_id]] = true
+	var best: int = 0
+	var nearest: float = INF
+	for shift: Vector3 in by_shift:
+		var hit: BrickLattice.Hit = shell.builder.lattice.raycast(origin - shift * eased, normal)
+		if not hit.is_valid() or hit.distance >= nearest:
+			continue
+		var moved: Vector3 = _shifts.get(hit.brick_id, Vector3.ZERO)
+		if moved.is_equal_approx(shift):
+			nearest = hit.distance
+			best = hit.brick_id
+	return best
+
+
+## Where the section at [param path] is drawn: its box, apart when the view
+## is apart. For the page (sections_flow) and a probe to point at.
+func drawn_bounds(path: String) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in shell.assemblies.ids_under(path):
+		var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
+		var info: PartLibrary.PartInfo = shell.library.parts.get(brick.part_id) \
+			if brick != null else null
+		if info == null:
+			continue
+		var drawn: AABB = shell.world.drawn_at(brick) * info.bounds
+		box = drawn if first else box.merge(drawn)
+		first = false
+	return box
 
 
 func _process(delta: float) -> void:
@@ -219,6 +301,7 @@ func _process(delta: float) -> void:
 		shell.world.set_drawn({})
 		_shifts.clear()
 		set_process(false)
+		_frame_back()
 		return
 	# Eased: quick away, slow to settle.
 	var eased: float = 1.0 - pow(1.0 - _share, 3.0)
@@ -240,6 +323,7 @@ func explode_now(apart: bool) -> void:
 		_shifts.clear()
 		shell.world.set_drawn({})
 		set_process(false)
+		_frame_back()
 		return
 	if not is_exploded():
 		toggle_explode()

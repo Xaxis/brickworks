@@ -15,6 +15,10 @@ var library: PartLibrary
 var say: Callable = func(_line: String) -> void: pass
 ## The model changed by somebody's own hand.
 var edited: Callable = func() -> void: pass
+## What is drawn under a ray while the view draws parts other than where
+## they stand (SectionsUi.pick_drawn, the sections apart): a brick id, or -1
+## when nothing is drawn moved.
+var drawn_pick: Callable = Callable()
 ## Aim the ghost where the pointer is, after what is held has changed.
 var aim_again: Callable = func() -> void: pass
 
@@ -970,6 +974,11 @@ func brick_at(at: Vector2) -> int:
 		return 0
 	var origin: Vector3 = camera.ray_origin(at)
 	var normal: Vector3 = camera.ray_normal(at)
+	# The sections drawn apart (SectionsUi): what is drawn under the pointer.
+	if drawn_pick.is_valid():
+		var drawn: int = int(drawn_pick.call(origin, normal))
+		if drawn >= 0:
+			return 0 if scenery.has(drawn) else drawn
 	var asked: Array = [origin, normal, builder.lattice.revision]
 	if asked == _asked:
 		return _found

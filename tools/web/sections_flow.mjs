@@ -241,6 +241,22 @@ s = await until((st) => (st.sections || {}).exploded >= 1, 30);
 check(`Shift+Y draws ${(s.sections || {}).apart} sections apart, the model unchanged`,
   (s.sections || {}).exploded >= 1 && (s.sections || {}).apart >= 2 && (s.sections || {}).pose === home);
 await shot("exploded");
+// A click picks what is drawn: the section drawn highest on the page.
+await wait(2500);
+const drawn = (await sections()).drawn || {};
+const highest = Object.entries(drawn).sort((a, b) => a[1].y - b[1].y)[0];
+if (highest) {
+  const [path, at] = highest;
+  const own = (((await state()).tree || {})[path] || "").split(",").filter((p) => p).length;
+  await click(at);
+  s = await until((st) => st.selected === own, 10);
+  check(`a click on ${path} where it is drawn apart chooses it (${s.selected} of its ${own} parts)`,
+    own > 0 && s.selected === own);
+  await shot("exploded_chosen");
+} else {
+  check("the page says where each section is drawn apart", false);
+}
+await key("Escape", 800);
 await key("Shift+y", 2500);
 s = await until((st) => (st.sections || {}).exploded === 0, 30);
 check("Shift+Y again puts them back together", (s.sections || {}).exploded === 0);

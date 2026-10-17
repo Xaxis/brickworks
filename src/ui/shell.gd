@@ -175,6 +175,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	sections.sections.assemblies = assemblies
 	sections.sections.scenery = store.scenery
 	add_child(sections)
+	verbs.drawn_pick = sections.pick_drawn
 	# A suggestion is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
 		replaced.connect(func() -> void: sections.sections.dismiss())

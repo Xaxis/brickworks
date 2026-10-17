@@ -279,22 +279,119 @@ func _held_otherwise(bricks: Array) -> Array:
 # -- suggesting -----------------------------------------------------------------
 
 
+## From this many parts a suggestion is worked out on a worker, the window
+## drawing and answering meanwhile: 10179-1's 5,266 parts held the window
+## 9 to 15 s in one frame (2026-10-17).
+const ON_A_WORKER_FROM := 600
+## The steps [method _cut] says it is at, for the Working bar's count.
+const PHASES := 8
+
+
 ## How a builder would split the model, or the sub-assembly being edited,
 ## into sections. Kept in [member suggested]; [member why_none] says why
-## there are none.
-func suggest() -> Array[Suggestion]:
+## there are none. A coroutine: a big model is read on a worker, said on
+## [param job] ("Suggesting sections… 3 of 8") and stopped by its Cancel.
+func suggest(job: Working.Job = null) -> Array[Suggestion]:
 	suggested = []
 	why_none = ""
+	laps.clear()
+	var began: int = Time.get_ticks_usec()
 	_made_in = world.generation()
 	level = _level()
 	var bricks: Array = _bricks_in(level)
+	_lap("its parts found", began)
 	if bricks.size() < SMALLEST:
 		why_none = ("%d parts is built in one go: nothing to split" % bricks.size()
 			if not bricks.is_empty() else "nothing built yet")
 		suggested_changed.emit()
 		return suggested
 	var count: int = bricks.size()
-	var cut: Dictionary = _cut(bricks, clampi(roundi(count / PER_SECTION), 2, MOST))
+	var wanted: int = clampi(roundi(count / PER_SECTION), 2, MOST)
+	var cut: Dictionary
+	if count < ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+		cut = _cut(bricks, wanted)
+	else:
+		cut = await _cut_on_a_worker(bricks, wanted, job)
+	if cut.is_empty():
+		why_none = "stopped before it was done"
+		suggested_changed.emit()
+		return suggested
+	await _suggest_from(bricks, cut)
+	return suggested
+
+
+## [method _cut] on a worker, as the build check runs on one
+## (Assistant._checked): what it reads made still first, a copy of the
+## model and of the lattice, every part's geometry loaded and the tables
+## filled on first use filled here; the library holding new arrivals aside
+## meanwhile. {} when the job was cancelled.
+## How long each piece of the last suggestion took on the window's own
+## thread, [what, ms]: what a probe reads to find a slow frame.
+var laps: Array = []
+
+
+func _lap(what: String, since: int) -> int:
+	var now: int = Time.get_ticks_usec()
+	laps.append([what, snappedf((now - since) / 1000.0, 0.1)])
+	return now
+
+
+func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionary:
+	await Minifig.index_paced(library)
+	var at: int = Time.get_ticks_usec()
+	Flex.kind_of_piece("")
+	var named: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		named[brick.part_id] = true
+	for part_id: String in named:
+		library.mesh_for(part_id)
+		Minifig.slot_for(library.parts.get(part_id))
+	at = _lap("parts and tables", at)
+	# The copies in a frame of their own, together, so they agree.
+	await Engine.get_main_loop().process_frame
+	at = Time.get_ticks_usec()
+	var still: BrickWorld = world.copy_at_home(false)
+	at = _lap("the model copied", at)
+	var lattice: BrickLattice = builder.lattice.copy_for_reading()
+	at = _lap("the lattice copied", at)
+	var ids := PackedInt64Array()
+	for brick: BrickWorld.Brick in bricks:
+		ids.append(brick.id)
+	var phase: Array = [0]
+	var stopped: Array = [false]
+	var out: Array = [{}]
+	library.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		var mine: Array = []
+		for brick_id: int in ids:
+			mine.append(still.get_brick(brick_id))
+		out[0] = _cut(mine, wanted, still, lattice,
+			func() -> bool: return bool(stopped[0]), phase), false, "suggest sections")
+	library.reading_in(task)
+	while not WorkerThreadPool.is_task_completed(task):
+		await Engine.get_main_loop().process_frame
+		if job != null:
+			job.count(int(phase[0]), PHASES)
+			if job.cancelled:
+				stopped[0] = true
+	at = Time.get_ticks_usec()
+	WorkerTasks.collect(task)
+	library.end_reading(task)
+	at = _lap("collected", at)
+	still.free()
+	at = _lap("the copy freed", at)
+	if job != null and job.cancelled:
+		return {}
+	return out[0]
+
+
+## The suggestion made of what [method _cut] found: numbered, named, what
+## joins each and which way it comes off. Paced: on a big model it is a
+## fifth of a second of the window's.
+func _suggest_from(bricks: Array, cut: Dictionary) -> void:
+	var pace := FramePace.new()
+	var began: int = Time.get_ticks_usec()
+	var count: int = bricks.size()
 	var index_of: Dictionary = cut["index_of"]
 	var graph: Dictionary = cut["graph"]
 	var groups: Array = cut["sections"]
@@ -347,8 +444,12 @@ func suggest() -> Array[Suggestion]:
 			else:
 				made.links += 1
 	for key: int in studs:
+		if pace.due():
+			await pace.next()
 		tally.call(key, true)
 	for key: int in links:
+		if pace.due():
+			await pace.next()
 		tally.call(key, false)
 	# What each is built onto: what its parts need first, as the planner has it.
 	var needs: Dictionary = cut["needs"]
@@ -412,6 +513,8 @@ func suggest() -> Array[Suggestion]:
 	groups = new_groups
 	onto = new_onto
 	for c: int in groups.size():
+		if pace.due():
+			await pace.next()
 		var made: Suggestion = suggested[c]
 		var box: AABB = _bounds_of_indices(bricks, groups[c])
 		made.way = _way(box.get_center() - model_box.get_center(), sits.has(-1 - c),
@@ -433,8 +536,9 @@ func suggest() -> Array[Suggestion]:
 		made.name = _unused(str(apart[1]), names_taken)
 		made.number = suggested.size() + 1
 		suggested.append(made)
+	var told: int = Time.get_ticks_usec()
 	suggested_changed.emit()
-	return suggested
+	_lap("the tree told", told)
 
 
 ## [param bricks] cut into about [param wanted] sections the way a set's bags
@@ -447,7 +551,16 @@ func suggest() -> Array[Suggestion]:
 ## sections can be built one after another. Cut where least holds the
 ## parts before to the parts after, near every bag's worth; each run is
 ## then its pieces, by the joint graph, so each section is one piece.
-func _cut(bricks: Array, wanted: int) -> Dictionary:
+func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLattice = null,
+		stop: Callable = Callable(), phase: Array = []) -> Dictionary:
+	if model == null:
+		model = world
+	if lattice == null:
+		lattice = builder.lattice
+	var at_phase := func(k: int) -> bool:
+		if not phase.is_empty():
+			phase[0] = k
+		return stop.is_valid() and bool(stop.call())
 	var count: int = bricks.size()
 	var index_of: Dictionary = {}
 	for n: int in count:
@@ -458,21 +571,37 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 	# The planner's reading of these parts alone, as Instructions.plan reads
 	# a model: what rests on what, what it builds on the side, and the order.
 	var skip: Dictionary = scenery.duplicate()
-	for brick: BrickWorld.Brick in world.bricks():
+	for brick: BrickWorld.Brick in model.bricks():
 		if not index_of.has(brick.id):
 			skip[brick.id] = true
-	var nodes: Array[Instructions.Node2] = Instructions._survey(world, library, skip)
-	Instructions._find_supports(nodes, world, library)
-	Instructions._find_joints(nodes, world, library)
+	if at_phase.call(1):
+		return {}
+	var nodes: Array[Instructions.Node2] = Instructions._survey(model, library, skip)
+	if at_phase.call(2):
+		return {}
+	Instructions._find_supports(nodes, model, library)
+	if at_phase.call(3):
+		return {}
+	Instructions._find_joints(nodes, model, library)
 	Instructions._tidy_needs(nodes)
 	Instructions._find_hangers(nodes)
-	var subs: Array[Instructions.Assembly] = Instructions._find_assemblies(nodes, world, library)
-	Instructions._find_bundles(nodes, world, library, subs)
-	Instructions._frame_turned(subs, world, library, null)
+	if at_phase.call(4):
+		return {}
+	var subs: Array[Instructions.Assembly] = Instructions._find_assemblies(nodes, model, library)
+	Instructions._find_bundles(nodes, model, library, subs)
+	Instructions._frame_turned(subs, model, library, null)
+	if at_phase.call(5):
+		for made: Instructions.Assembly in subs:
+			made.node = null
+		return {}
 	var built: Array[Instructions.Node2] = Instructions._contract(nodes, subs)
 	var named: bool = Instructions._assign_regions(built, {}, nodes.size())
 	var raw: Array = Instructions._sequence(built, named, Instructions._per_step(nodes.size()))
-	var steps: Array[Instructions.Step] = Instructions._expand(raw, world)
+	var steps: Array[Instructions.Step] = Instructions._expand(raw, model)
+	if at_phase.call(6):
+		for made: Instructions.Assembly in subs:
+			made.node = null
+		return {}
 	var position := PackedInt64Array()
 	position.resize(count)
 	position.fill(0x7FFFFFFF)
@@ -489,7 +618,11 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 				at += 1
 
 	# The joint graph, part to part.
-	var graph: Dictionary = joint_graph(bricks)
+	var graph: Dictionary = graph_of(bricks, library, lattice)
+	if at_phase.call(7):
+		for made: Instructions.Assembly in subs:
+			made.node = null
+		return {}
 	var held: Array = []               ## index -> {index: how much holds them}
 	held.resize(count)
 	for n: int in count:
