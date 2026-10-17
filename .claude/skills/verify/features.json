@@ -1039,6 +1039,14 @@
       "tests": []
     },
     {
+      "id": "lib:a model that tips falls",
+      "kind": "lib",
+      "entry": "src/assembly/topple.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "lib:a rebrickable account",
       "kind": "lib",
       "entry": "src/collection/rebrickable_account.gd",
@@ -1148,6 +1156,14 @@
       "entry": "src/ai/claude_step.gd",
       "reach": "godot --headless --path . --script src/dev/design_undo_probe.gd",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:closed loops of joints",
+      "kind": "lib",
+      "entry": "src/assembly/linkage.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=loops   (by hand: drag a steering arm of 8020-1_Jeep, or the rear wheel of 8218-1 and its engine turns)",
+      "area": "building",
       "tests": []
     },
     {

@@ -27,6 +27,11 @@ const LEAN := 4.0
 ## Weighed at most this often while dragging, ms: a big model's weighing is
 ## a few milliseconds and the frame comes first.
 const WEIGH_EVERY_MS := 50
+## A model that tips is shown falling over this long, ms.
+const FALL_MS := 500
+## A model standing on the baseplate's studs does not fall: they hold it, and
+## on a baseplate the plate is the floor. Off by default; a probe may set it.
+var topple_on_baseplate: bool = false
 ## The room test's share of a frame, ms: past it a big section is moved on
 ## trust and checked when the pointer pauses or lets go (Grab.verify_step).
 const FRAME_BUDGET_MS := 10.0
@@ -238,11 +243,35 @@ func release() -> String:
 	if held.state != "moves":
 		return held.why
 	if held.unchecked:
-		# Checked a frame at a time from here (_process), then kept.
+		# Checked from here, then kept: on a worker where there are threads,
+		# else a frame at a time (_process).
 		_settling = held
 		say.call("%s — checking where it stops…" % _capital(held.said))
+		if not OS.has_feature("nothreads"):
+			_verify_off_thread(held)
 		return "checking"
 	return _keep(held)
+
+
+## A big section let go: where it stops checked, and its swing under its own
+## weight found, on a worker, the window drawing it where it was let go
+## meanwhile. A frame at a time, one part's turned cover was one test and
+## the worst frame 160 ms. The lattice is only read; nothing edits the model
+## while a grab is being kept (is_settling).
+func _verify_off_thread(held: Grab) -> void:
+	world.set_drawn(held.placed.duplicate())
+	held.budget_ms = INF
+	_verify_task = WorkerTasks.add(func() -> void:
+		while not held.verify_step():
+			pass
+		if not held.settled:
+			held.settled = true
+			held.swung = held.settle()
+			while not held.verify_step():
+				pass, false, "check a section let go")
+
+
+var _verify_task: int = -1
 
 
 ## Keep a grab let go: settle what swings, one step to undo, and say how the
@@ -293,7 +322,18 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 			# (a turn on a joint moves no stud joint), the parts where the
 			# pose left them.
 			last_report = _judge.weigh_pose(held.placed)
+			var fell: Dictionary = _fall_of(held.placed, last_report)
+			if fell.has("turn"):
+				# Shown falling, then kept with the pose as one step.
+				_falling = {"start": Time.get_ticks_msec(), "steps": fell["steps"],
+					"turn": fell["turn"], "from": _standing_now(), "depth": depth,
+					"words": "%s; then it %s" % [words, fell["words"]]}
+				last_words = _falling["words"]
+				say.call("%s…" % _capital(str(fell["words"])))
+				return last_words
 			words += ". " + _standing_words(last_report, false)
+			if fell.has("why_not"):
+				words += " " + str(fell["why_not"])
 			_show(last_report, false)
 		clock = Time.get_ticks_usec()
 		edited.call()
@@ -341,8 +381,89 @@ func _own_copies(held: Grab) -> String:
 	return "; ".join(said)
 
 
+## A model let go past its edge falls over (Topple): {turn, steps, words},
+## or {why_not} when it would but does not, or {} when it stands. Not a
+## model standing on the baseplate's studs, which hold it (unless
+## [member topple_on_baseplate]); not one Balance reads as past its edge
+## where it stood too, whose support it cannot see.
+func _fall_of(placed: Dictionary, weighed: Balance.Report) -> Dictionary:
+	if weighed == null or weighed.empty or weighed.margin >= 0.0:
+		return {}
+	if _bodies != null and not _bodies._standing.is_empty() and not topple_on_baseplate:
+		return {"why_not": ("It does not fall: it stands on the baseplate's studs, which hold it "
+			+ "(on a baseplate the plate is the floor).")}
+	if _judge != null and _judge.weigh_pose({}).margin < 0.0:
+		return {}
+	var corners: PackedVector3Array = Topple.corners_of(world, library, placed, scenery)
+	var fell: Dictionary = Topple.fall(corners, weighed.centre, weighed.floor_y)
+	if (fell["falls"] as Array).is_empty():
+		return {}
+	return fell
+
+
+## Every part of the model where it stands now, not the baseplate.
+func _standing_now() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			out[brick.id] = brick.transform
+	return out
+
+
+## A fall shown: [member _falling] {start, steps, turn, from, depth, words}.
+var _falling: Dictionary = {}
+
+
+## Whether a model let go is being shown falling over.
+func is_falling() -> bool:
+	return not _falling.is_empty()
+
+
+## One frame of a fall: drawn part of the way, faster as it goes (as a thing
+## falling does), and at the end kept with the pose as one step.
+func _fall_frame() -> void:
+	var share: float = float(Time.get_ticks_msec() - int(_falling["start"])) / float(FALL_MS)
+	var from: Dictionary = _falling["from"]
+	if share < 1.0:
+		var turn: Transform3D = Topple.part_way(_falling["steps"], share * share)
+		var drawn: Dictionary = {}
+		for key: Variant in from:
+			drawn[key] = turn * (from[key] as Transform3D)
+		world.set_drawn(drawn)
+		return
+	var fell: Dictionary = _falling
+	_falling = {}
+	world.set_drawn({})
+	var words: String = _lay_fallen(fell["from"], fell["turn"], int(fell["depth"]), str(fell["words"]))
+	last_words = words
+	say.call(words)
+	edited.call()
+
+
+## Every part turned by [param turn] from [param from], kept as one step with
+## what came before it since [param depth]. Returns the words.
+func _lay_fallen(from: Dictionary, turn: Transform3D, depth: int, words: String) -> String:
+	var steps: Array = []
+	for key: Variant in from:
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		if brick == null:
+			continue
+		var to: Transform3D = turn * (from[key] as Transform3D)
+		steps.append({"undo": "move", "brick": int(key), "transform": brick.transform})
+		world.move_brick(int(key), to)
+		builder.lattice.release(int(key))
+		builder.lattice.occupy_boxes(int(key), builder.boxes_for(library.mesh_for(brick.part_id), to))
+	builder.record(steps, words)
+	builder.fold_since(depth)
+	_clear_marks()
+	return _capital(words)
+
+
 ## Escape, or the drag lost: everything back where it was, nothing kept.
 func cancel() -> void:
+	if _verify_task >= 0:
+		WorkerTasks.collect(_verify_task)
+		_verify_task = -1
 	_settling = null
 	_laying = null
 	if _lay_task >= 0:
@@ -466,6 +587,8 @@ func for_session(input: Dictionary) -> String:
 			+ "a sub-assembly's name.") % asked
 	if not is_ready():
 		_ready_now()
+	if input.has("to"):
+		return _chain_for_session(int(ids[0]), input["to"])
 	var held := Grab.new()
 	held.world = world
 	held.builder = builder
@@ -546,7 +669,16 @@ func for_session(input: Dictionary) -> String:
 	if weighs:
 		var after: Balance.Report = judge.weigh_pose(held.placed)
 		last_report = after
-		lines.append("Now: %s." % _standing_words(after, false))
+		var fell: Dictionary = _fall_of(held.placed, after)
+		if fell.has("turn"):
+			_lay_fallen(_standing_now(), fell["turn"], depth, "%s; then it %s" % [held.step_words(),
+				fell["words"]])
+			lines.append("Then it %s: its centre of mass was %s studs past its %s edge, and it turned "
+				% [fell["words"], Balance.studs(-after.margin), after.edge]
+				+ "about that edge until the floor stopped it.")
+		else:
+			lines.append("Now: %s.%s" % [_standing_words(after, false),
+				" " + str(fell["why_not"]) if fell.has("why_not") else ""])
 		var numbers: String = after.said(func(id: int) -> String:
 			var brick: BrickWorld.Brick = world.get_brick(id)
 			return "#%d %s" % [id, brick.part_id] if brick != null else "#%d" % id)
@@ -554,6 +686,43 @@ func for_session(input: Dictionary) -> String:
 			lines.append(numbers)
 	lines.append("One step: undo takes it back.")
 	edited.call()
+	last_words = "\n".join(lines)
+	return last_words
+
+
+## A session's move_part with to=: the part taken as the end of its chain
+## of joints back to the anchor (GrabChain) and drawn to the point, every
+## joint within the range it has alone, as a person's hold-then-drag does;
+## tested, eased back to the furthest that has room, one step to undo.
+func _chain_for_session(end: int, to: Variant) -> String:
+	var point: Array = to as Array if to is Array else []
+	if point.size() != 3:
+		return "to= is a point, [x, y, z] in studs, as move_part says where a joint is."
+	var target := Vector3(float(point[0]), float(point[1]), float(point[2])) * BrickLattice.STUD
+	var brick: BrickWorld.Brick = world.get_brick(end)
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+	var held_at: Vector3 = brick.transform * (info.bounds.get_center() if info != null else Vector3.ZERO)
+	var links := GrabChain.new()
+	links.world = world
+	links.builder = builder
+	links.library = library
+	links.bodies = _bodies
+	if links.begin(end, held_at) != "moves":
+		return "#%d has no chain of turning joints back to what stays: %s." % [end, links.why]
+	var off: float = links.reach(target)
+	var depth: int = builder.history_depth()
+	var words: String = links.finish()
+	builder.fold_since(depth)
+	var lines := PackedStringArray()
+	lines.append("%s; its middle is %s studs from the point%s." % [_capital(words),
+		Balance.studs(links.end_point().distance_to(target) / BrickLattice.STUD),
+		" (as near as its joints reach)" if off >= 2.0 else ""])
+	if builder.history_depth() > depth and _judge != null:
+		var after: Balance.Report = _judge.weigh_pose(links.placed)
+		last_report = after
+		lines.append("Now: %s." % _standing_words(after, false))
+		lines.append("One step: undo takes it back.")
+		edited.call()
 	last_words = "\n".join(lines)
 	return last_words
 
@@ -591,6 +760,8 @@ var _told_page_at: int = 0
 
 func _process(_delta: float) -> void:
 	_ready_ahead()
+	if not _falling.is_empty():
+		_fall_frame()
 	# A big section moved on trust: checked while the pointer rests, and,
 	# let go, before it is kept.
 	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
@@ -629,7 +800,17 @@ func _process(_delta: float) -> void:
 			_keep(held, _laid)
 			keep_ms = float(Time.get_ticks_usec() - kept_at) / 1000.0
 		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - began) / 1000.0)
-	if _settling != null:
+	if _settling != null and _verify_task >= 0:
+		var waiting: int = Time.get_ticks_usec()
+		if WorkerThreadPool.is_task_completed(_verify_task):
+			WorkerTasks.collect(_verify_task)
+			_verify_task = -1
+			var checked: Grab = _settling
+			_settling = null
+			world.set_drawn(checked.placed)
+			_keep(checked)
+		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - waiting) / 1000.0)
+	elif _settling != null:
 		var started: int = Time.get_ticks_usec()
 		var done: bool = _settling.verify_step()
 		worst_verify_ms = maxf(worst_verify_ms, float(Time.get_ticks_usec() - started) / 1000.0)
@@ -644,7 +825,7 @@ func _process(_delta: float) -> void:
 
 ## Whether a grab let go is still being checked before it is kept.
 func is_settling() -> bool:
-	return _settling != null or _laying != null
+	return _settling != null or _laying != null or not _falling.is_empty()
 
 
 # -- ready ahead of the press ------------------------------------------------------

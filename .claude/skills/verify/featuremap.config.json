@@ -763,6 +763,20 @@
       "area": "building"
     },
     {
+      "kind": "lib",
+      "label": "closed loops of joints",
+      "entry": "src/assembly/linkage.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=loops   (by hand: drag a steering arm of 8020-1_Jeep, or the rear wheel of 8218-1 and its engine turns)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "a model that tips falls",
+      "entry": "src/assembly/topple.gd",
+      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",
+      "area": "building"
+    },
+    {
       "kind": "cli",
       "label": "grab in a browser",
       "entry": "tools/web/grab_flow.mjs",

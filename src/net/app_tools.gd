@@ -300,7 +300,12 @@ func definitions() -> Array:
 				+ "slides it that many studs along a bar or an axle; it stops where it meets "
 				+ "the model, gears it drives turn by their teeth, a joint without friction "
 				+ "swings down under its own weight once let go, and the answer says what moved "
-				+ "and how the model stands then. One undo step."),
+				+ "and how the model stands then. A part held at both ends (a four-bar, a crank "
+				+ "with its rod and piston, a steering's arms) moves as its loop allows, and says "
+				+ "so where it locks. A model turned past its edge falls over and says how it lies, "
+				+ "unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws "
+				+ "the part to that point by its whole chain of joints back to what stays, each "
+				+ "within its range. One undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["part"], "properties": {
 				"part": {"type": "string", "description": "a part's number, or a sub-assembly's name"},
@@ -308,6 +313,8 @@ func definitions() -> Array:
 				"along": {"type": "number", "description": "studs to slide along its line"},
 				"axis": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
 					"description": "a ball's turn about this way (x y z), with degrees="},
+				"to": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
+					"description": "a point in studs (x y z, as move_part says where a joint is): the part drawn there by its chain of joints"},
 			}},
 		},
 		{
@@ -704,7 +711,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"set_floor", "pose_model":
 			return input.is_empty()
 		"move_part":
-			return not input.has("degrees") and not input.has("along")
+			return not input.has("degrees") and not input.has("along") and not input.has("to")
 		"simulate_mechanism":
 			return not bool(input.get("record", false))
 		"export_model":

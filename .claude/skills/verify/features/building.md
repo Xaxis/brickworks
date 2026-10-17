@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:a model that tips falls -->
 
 ## Sub-features
 
@@ -573,18 +573,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a click hinge on 22.5° clicks. Slide: a drag along the line of a clip on a
   bar or a hole on an axle (the first few pixels decide). Ball: every way.
   It stops at the last angle the lattice has room for (`Grab.turn_to`
-  bisects). A gear drives its train by the teeth (`Mechanism`, as Simulate). A
-  closed loop or a locked train is said, not moved. While dragging the model
+  bisects). A gear drives its train by the teeth (`Mechanism`, as Simulate),
+  and what hangs on a driven body by a joint of its own goes round with it
+  (`Grab._follow_driven`). A closed loop moves as it allows (`Linkage`, below);
+  a locked train or a loop with no freedom is said, not moved. While dragging the model
   is drawn moved (`BrickWorld.set_drawn`; revision, lattice and history
   untouched), weighed each 50 ms (`Balance.weigh_pose`): polygon and centre of
   mass on the floor, loaded stud joints tinted, the model leaning 4° when it
   would tip, a status line. Let go: a joint without friction (a pin without
   ridges, an axle, a turntable) swings down under its weight (`Grab.settle`),
-  one undo step ("turned the arm, 2 parts, on its hinge to 45°"), and the
-  status bar says how it stands. Escape puts it back. Past 40 moving parts a
-  frame's room test stops at 10 ms and the rest is checked on pauses and at
-  the release (`Grab.verify_step`, "checked when you pause"); a press on a
-  big model before its joints are read says so. Over MCP: `move_part`.
+  and so does every free joint inside what moved ("2 free joints inside it
+  swung down too"); one undo step ("turned the arm, 2 parts, on its hinge to
+  45°"), and the status bar says how it stands. A model then past its edge
+  falls over (`Topple`, below) in 0.5 s, in the same step. Escape puts it
+  back. Past 40 moving parts a frame's room test stops at 10 ms and the rest
+  is checked on pauses and, let go, on a worker (`Grab.verify_step`,
+  "checked when you pause"); a press on a big model before its joints are
+  read says so. Over MCP: `move_part` (degrees=, along=, or to= [x, y, z]
+  studs: the part drawn there by its chain, `GrabDrag._chain_for_session`).
   Headless gear check without a pointer: `grab_probe -- --gears` (8020's
   crank turns the sails 1 in 9).
   A copy of a shared sub-assembly posed is made its own first, in the same
@@ -613,6 +619,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the last pose with room), `follow` (the pointer's ray to an angle, a slide
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
+- `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
+  §11): a part held at both ends (Bodies' closing links) moves as its loop
+  allows: the loop's joint angles (and slides, and a ball's three turns)
+  solved by damped Gauss-Newton with exact derivatives, from the last pose,
+  in 5° steps. Stops at the nearest pose that closes ("its loop closes no
+  further that way"); "Locked: this loop has no freedom" when it closes
+  neither a degree one way nor the other. An engine's piston slides in its
+  cylinder and its rod's ball end sits in it (`Bodies._slide_within`,
+  `Bodies._bores_across`). `grab_probe -- --only=loops`: 8020-1_Jeep's
+  steering (a four-bar: the rocker against two circles meeting) and 8218-1's
+  engine (a crank-slider: the piston against the quadratic, the stroke twice
+  the throw); `-- --debug` prints the joints, residuals and the derivatives
+  against finite differences.
+- `a model that tips falls` (`src/assembly/topple.gd`, `Topple`): let go past
+  its edge, the model turns about that edge until another corner of its
+  cover reaches the floor, again while it still does not stand, drawn in
+  0.5 s (`GrabDrag._fall_frame`) and kept in the grab's undo step; "tipped
+  over to the left and lies on its side". Not on a baseplate's studs, which
+  hold it ("It does not fall: it stands on the baseplate's studs"), nor a
+  model Balance reads as past its edge where it stood.
+  `grab_probe -- --only=tipping` (headless; move_part on no floor).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z

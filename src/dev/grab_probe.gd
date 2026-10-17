@@ -113,6 +113,24 @@ func _run() -> void:
 		for loop: Array in LOOPS:
 			if only.is_empty() or only == "loops" or only == loop[2]:
 				await _loop_case(loop[0], loop[1], loop[2])
+	if only.is_empty() or only == "tipping":
+		var asked: Array = []
+		for arg: String in args:
+			if arg.ends_with(".mpd") or arg.ends_with(".ldr"):
+				asked.append(arg if arg.begins_with("res://") else "res://" + arg)
+			if arg.begins_with("--list="):
+				for line: String in FileAccess.get_file_as_string(arg.trim_prefix("--list=")).split("\n"):
+					if not line.strip_edges().is_empty():
+						asked.append("res://" + line.strip_edges())
+		await _topple_case(TIPPING if asked.is_empty() else asked)
+	if only == "settling":
+		var listed: Array = []
+		for arg: String in args:
+			if arg.begins_with("--list="):
+				for line: String in FileAccess.get_file_as_string(arg.trim_prefix("--list=")).split("\n"):
+					if not line.strip_edges().is_empty():
+						listed.append("res://" + line.strip_edges())
+		await _settle_case(SETTLING if listed.is_empty() else listed)
 	if only.is_empty() or only == "copies":
 		await _copies()
 	if only.is_empty() or only == "chain":
@@ -910,6 +928,166 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 	return absf(wrapf(got - want, -180.0, 180.0))
 
 
+# -- a model that tips -------------------------------------------------------------------
+
+## Sets with a free joint inside a section that swings.
+const SETTLING: Array = ["res://vendor/omr/files/8218-1.mpd", "res://vendor/omr/files/42045-1.mpd"]
+## Sets tried, on no floor, for a section that turned out tips the model.
+const TIPPING: Array = ["figure", "res://vendor/omr/files/4096-1_Crane.mpd", "res://vendor/omr/files/6630-1.mpd",
+	"res://vendor/omr/files/30181-1.mpd", "res://vendor/omr/files/4903-1.mpd"]
+
+
+## A model that tips falls: on no floor, a section turned out past the
+## model's edge by move_part, as a session moves it; the reply says it fell,
+## and then the model rests: its centre of mass over what it now stands on,
+## its lowest point on the floor it stood on, one undo puts it all back.
+## Then on a baseplate's studs it does not fall, and says why.
+func _topple_case(paths: Array = TIPPING) -> void:
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	for path: String in paths:
+		print("\ntipping: %s on no floor" % path.get_file())
+		if path == "figure":
+			# Two alike minifigures: a leg swung out from under one.
+			await _two_figures()
+		elif not await _open(path):
+			continue
+		await tools.run("set_floor", {"kind": "none"})
+		await _frames(5)
+		_builder.forget_history()
+		_grab._ready_now()
+		var bodies: Bodies = _grab._bodies
+		var tried: Array = []
+		for link: Bodies.Link in bodies.links:
+			var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
+			if bodies.parent_link.get(child) != link or link.axis == Vector3.ZERO:
+				continue
+			tried.append([bodies.parts_of(bodies.beyond(child)).size(), child])
+		tried.sort_custom(func(x: Array, y: Array) -> bool: return x[0] > y[0])
+		var floor_y: float = _lowest()
+		for entry: Array in tried.slice(0, 6):
+			var key: int = int((bodies.members[int(entry[1])] as PackedInt64Array)[0])
+			for degrees: float in [90.0, -90.0, 150.0, -150.0]:
+				var before: Dictionary = _snapshot()
+				var depth: int = _builder.history_depth()
+				var said: String = str(await tools.run("move_part", {"part": "#%d" % key, "degrees": degrees}))
+				await _frames(3)
+				if not said.contains("Then it tipped"):
+					if "--debug" in OS.get_cmdline_user_args():
+						print("    (#%d %s°: %s)" % [key, degrees, said.replace("\n", " | ").substr(0, 300)])
+					while _builder.history_depth() > depth:
+						_builder.undo()
+					await _frames(2)
+					continue
+				print("    move_part #%d %s° said: %s" % [key, Balance.tidy(degrees), said.replace("\n", " | ")])
+				_check("tipping: turned out past its edge, %s falls over, and says so" % path.get_file(),
+					said.contains("tipped over to the") and (said.contains("lies") or said.contains("rest")))
+				var fresh := Balance.new()
+				fresh.library = _library
+				fresh.lattice = _builder.lattice
+				fresh.floor_ids = _store.scenery
+				var now: Balance.Report = fresh.measure(_world.bricks())
+				_check("tipping: where it lies, it stands: its centre of mass %s studs inside its new support"
+					% Balance.studs(now.margin), now.margin >= 0.0)
+				var lowest: float = _lowest()
+				_check("tipping: it lies on the floor it stood on (lowest point %.1f LDU, the floor %.1f)"
+					% [lowest, floor_y], absf(lowest - floor_y) <= 2.0)
+				_check("tipping: the turn and the fall are one step to undo (%s)" % (_builder.history_words(1)[0]
+					if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+				if _windowed:
+					_frame_on(PackedInt64Array())
+					await _frames(10)
+					await _shot("tipping", "3_fallen")
+				_builder.undo()
+				await _frames(3)
+				_check("tipping: one undo stands it up again exactly (%s)" % _differs(before),
+					_differs(before) == "none differs")
+				# On a baseplate's studs the same turn does not fall, and says why.
+				await tools.run("set_floor", {"kind": "baseplate", "across": 32})
+				await _frames(5)
+				_builder.forget_history()
+				_grab._ready_now()
+				if not _grab._bodies._standing.is_empty():
+					var held: String = str(await tools.run("move_part", {"part": "#%d" % key,
+						"degrees": degrees}))
+					print("    on a baseplate: %s" % held.replace("\n", " | "))
+					_check("tipping: on the baseplate's studs it does not fall, and says why",
+						not held.contains("Then it tipped") and held.contains("baseplate's studs"))
+					_builder.undo()
+					await _frames(3)
+				else:
+					print("    (nothing of it stands on the baseplate's studs: not asked)")
+				return
+		print("    (no section of it turned out tips it)")
+	_check("tipping: some set tips when a section is turned out", false)
+
+
+## Every free joint inside what moves swings down on release, not only the
+## one turned: a section with a free joint inside it (a pin without
+## friction, an axle in a round hole, its load off its line) turned by
+## move_part; the reply names what swung, and each such joint's load then
+## hangs under its line or rests on the model.
+func _settle_case(paths: Array) -> void:
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	for path: String in paths:
+		if not await _open(path):
+			continue
+		_grab._ready_now()
+		var bodies: Bodies = _grab._bodies
+		for link: Bodies.Link in bodies.links:
+			var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
+			if bodies.parent_link.get(child) != link or link.axis == Vector3.ZERO \
+					or bodies.anchors.has(child):
+				continue
+			# A free joint inside it, across a line that is not upright.
+			var inner: Array = []
+			for one: int in bodies.beyond(child):
+				var joined: Bodies.Link = bodies.parent_link.get(one)
+				if one != child and joined != null and not joined.holds and joined.axis != Vector3.ZERO \
+						and absf(joined.axis.normalized().y) < 0.9:
+					inner.append(one)
+			if inner.is_empty():
+				continue
+			var key: int = int((bodies.members[child] as PackedInt64Array)[0])
+			var before: Dictionary = _snapshot()
+			var depth: int = _builder.history_depth()
+			var said: String = str(await tools.run("move_part", {"part": "#%d" % key, "degrees": 30}))
+			await _frames(2)
+			if not said.contains("swung down too"):
+				while _builder.history_depth() > depth:
+					_builder.undo()
+				await _frames(2)
+				continue
+			print("\nsettling inside: %s, #%d %s" % [path.get_file(), key, _world.get_brick(key).part_id])
+			print("    said: %s" % said.replace("\n", " | "))
+			_check("settling: a free joint inside what moved swung down too, and the reply says which",
+				said.contains("inside it swung down too"))
+			_check("settling: one step to undo (%s)" % (_builder.history_words(1)[0]
+				if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+			_builder.undo()
+			await _frames(2)
+			_check("settling: one undo puts it back exactly (%s)" % _differs(before),
+				_differs(before) == "none differs")
+			return
+	print("\n(settling inside: none of the sets has a free joint inside a section that swings: %d tried)"
+		% paths.size())
+
+
+## The model's lowest point, LDU, by its parts' covers.
+func _lowest() -> float:
+	var low: float = INF
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		if mesh != null:
+			low = minf(low, mesh.lowest_at(brick.transform))
+	return low
+
+
 # -- copies of one sub-assembly --------------------------------------------------------
 
 
@@ -1151,6 +1329,46 @@ func _session() -> void:
 	print("    moved: %s" % moved.replace("\n", " | "))
 	_check("move_part degrees=90 turns it, as one step, and says how it stands",
 		_builder.history_depth() == 1 and moved.contains("Moved") and moved.contains("Now:"))
+	_builder.undo()
+	await _frames(2)
+	_check("...and undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+	# A chain over MCP: the crane's end drawn to a point its joints reach,
+	# found as the chain probe finds one: each joint a third of its range.
+	_grab._ready_now()
+	var read_bodies: Bodies = _grab._bodies
+	var end_key: int = 0
+	var longest: int = 0
+	for body: int in read_bodies.members:
+		var turning: int = 0
+		for link: Bodies.Link in read_bodies.chain(body):
+			if link.axis != Vector3.ZERO:
+				turning += 1
+		if turning > longest:
+			longest = turning
+			end_key = int((read_bodies.members[body] as PackedInt64Array)[0])
+	var probe_chain := GrabChain.new()
+	probe_chain.world = _world
+	probe_chain.builder = _builder
+	probe_chain.library = _library
+	probe_chain.bodies = read_bodies
+	var brick: BrickWorld.Brick = _world.get_brick(end_key)
+	var middle: Vector3 = brick.transform * _library.parts[brick.part_id].bounds.get_center()
+	if probe_chain.begin(end_key, middle) != "moves":
+		_check("move_part to=: the crane has a chain to its end", false)
+		return
+	for n: int in probe_chain.joints.size():
+		var span: Vector2 = probe_chain.ranges[n]
+		probe_chain.angles[n] = span.y / 3.0 if span.y > -span.x else span.x / 3.0
+	var goal: Vector3 = probe_chain.end_point()
+	var depth: int = _builder.history_depth()
+	var chained: String = str(await tools.run("move_part", {"part": "#%d" % end_key,
+		"to": [goal.x / BrickLattice.STUD, goal.y / BrickLattice.STUD, goal.z / BrickLattice.STUD]}))
+	print("    chain: %s" % chained.replace("\n", " | "))
+	var now_middle: Vector3 = _world.get_brick(end_key).transform \
+		* _library.parts[brick.part_id].bounds.get_center()
+	_check("move_part to= draws the end along its chain to the point, %.2f LDU off, one step" % [
+		now_middle.distance_to(goal)], chained.contains("joints back to") and now_middle.distance_to(goal) < 2.0
+		and _builder.history_depth() == depth + 1)
 	_builder.undo()
 	await _frames(2)
 	_check("...and undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
