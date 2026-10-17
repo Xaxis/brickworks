@@ -516,6 +516,20 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 	var fv: int = grid.side_rows
 	var hits: Array = []
 	hits.resize(fu * fv)
+	# Only the rays through a cube facing this way are asked (Shapes fits a
+	# shell's slopes inside its cubes): a third of a stud round each.
+	var wanted := PackedByteArray()
+	wanted.resize(fu * fv)
+	for key: Variant in grid.cubes:
+		var way: Vector2i = grid.cubes[key]
+		if (way.x != 0) != along_x:
+			continue
+		var c: Vector3i = key
+		var across: int = c.z if along_x else c.x
+		for iu: int in range(maxi(0, across * CUBE_STUDS * FINE - 1), mini(fu, (across + 1) * CUBE_STUDS * FINE + 1)):
+			for iv: int in range(maxi(0, floori(c.y * CUBE_PLATES / PLATES * FINE) - 1),
+					mini(fv, ceili((c.y + 1) * CUBE_PLATES / PLATES * FINE) + 1)):
+				wanted[iu * fv + iv] = 1
 	const NUDGE_U := 0.0000613
 	const NUDGE_V := 0.0000287
 	for t: int in count:
@@ -546,6 +560,8 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 		for iu: int in range(u0, u1 + 1):
 			var pu: float = (iu + 0.5) / FINE + NUDGE_U
 			for iv: int in range(v0, v1 + 1):
+				if wanted[iu * fv + iv] == 0:
+					continue
 				var pv: float = (iv + 0.5) / FINE + NUDGE_V
 				var w1: float = ((pu - au) * (cv - av) - (cu - au) * (pv - av)) / d
 				if w1 < 0.0 or w1 > 1.0:
