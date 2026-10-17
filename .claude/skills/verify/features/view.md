@@ -1012,7 +1012,14 @@ picture the assistant is shown.
   (state, progress, what was downloaded, and the render's longest frame and
   what it was doing then, `StudioRender.worst_step`) for a browser check.
   While it is open a veil covers the window and the window's own model is
-  not drawn (`disable_3d`, put back as Main would have it on Close).
+  not drawn (`disable_3d`, put back as Main would have it on Close). Before
+  it is first opened, the first time nobody has touched the window for 3 s
+  and nothing on it has been drawn for as long, and never while nobody can
+  see it, the panel has its renderer made ready (`_warm_when_idle`,
+  `StudioRender.warm_up`), each step waiting while anyone is using the window:
+  a few frames drawn once, standing still. Not in a probe that does not ask
+  (`RenderDialog.warms_when_idle`), as IdleDraw leaves a probe be: idle_probe
+  counted them as 9 frames drawn in 5 s standing still.
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of
@@ -1054,7 +1061,10 @@ picture the assistant is shown.
   draws an animation the same way: before each frame it moves the staged
   copies of what moves (`_staged_ids`, world id -> stage id) and turns the
   pivot, frames the box they all sweep (`_reach`), and leaves the stage to be
-  copied again next time — the model itself is never touched.
+  copied again next time — the model itself is never touched. `warm_up`
+  makes the set ahead of the first render, on both renderers: the viewports,
+  and the sweep and the contact shadow drawn once, each alone (`_warm`); a
+  render asked for meanwhile waits the few frames left (`_prepare`).
 - `pose and animate` (Build, Pose and animate…; `src/ui/pose_panel.gd`, a
   panel over the model's left edge so the pose is seen as it is set): a
   slider per joint — every sub-assembly with a shaft of one of its parts in a
@@ -1091,7 +1101,13 @@ picture the assistant is shown.
   the press to the first draft timed in the page (the engine's frame
   callback, WebGL included, with the programs it linked counted apart), then
   a second open beside it. Fails past `--budget` ms (250) for a frame of the
-  first open, on no draft, or on a script error.
+  first open, on no draft, or on a script error. It presses Render after the
+  page has gone quiet, so the panel has made its renderer ready by then.
+  The desktop's half is `render_probe.gd -- --first-open`: the same open on
+  the sample car, every frame timed, fails past `--budget` ms (100); left
+  alone first as a person leaves it, or pressed `--at-once` before that, or
+  `--during` the making ready while it waits for someone using the window
+  (it must wait, and the press must not).
 
 ## How to reach it
 
@@ -1251,6 +1267,13 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # second open beside it. --programs lists each program linked, by its
 # #defines, and the frame it was linked in. A local export, served by it:
 node tools/web/render_open_check.mjs --dir=build/web --out=shots/render_open
+# The same on the desktop, on the card (Forward+): every frame from the press
+# to the draft under --budget ms (100), the draft left as
+# shots/render/first_draft_<renderer>.png. A fresh XDG_DATA_HOME is a machine
+# that has never rendered (no shader cache); --at-once presses before the
+# panel has made its renderer ready, --during while it is waiting for a touch.
+MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 \
+    --script src/dev/render_probe.gd -- --first-open
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
@@ -1369,6 +1392,28 @@ take, which is what made a design run give up on looking at itself.
   lights until the lights were put on that layer too; and a light's shadow
   takes in everything on its own cull mask whatever the camera sees, so the
   lights light and shadow the one thing while it is warmed.
+- **A shader the engine has never drawn is built four ways at once.** Under
+  Compatibility the first draw of a new shader, whatever it is drawn for,
+  links its four variants (colour and depth, instanced and not) at the
+  default specialisation, none of which a render then uses, and then the
+  way it is being drawn; no warming within the open can split that. The
+  sweep's first draw was six programs in one frame (four, its depth pass and
+  its lit colour pass), the open's slowest, 136-140 ms at loads of 4-8 here
+  (2026-10-17); the contact shadow's five in another. So the panel makes its
+  renderer ready before it is first opened, while nobody is using the window
+  (`RenderDialog._warm_when_idle`, `StudioRender.warm_up`): after it, the
+  first open links 6 programs instead of 18, one a frame at most, its
+  longest frame 88-91 ms, the draft 3.3 s instead of 3.8-4.3 s, and the
+  draft pixel for pixel the same; the 14 programs moved to before the press.
+  On the desktop the same warm-up takes the set's first-use shader compiles
+  (90-133 ms in the open's first frame on a machine that had never rendered,
+  41-66 ms once it had) out of the open: 19 ms, the warm-up's own frame 88 ms
+  while nobody was using the window (`render_probe.gd -- --first-open`).
+  Pressed before the warm-up (`--at-once`), an open is as it was.
+  Still to do: a second open's longest frame is a read-back, 170-800 ms
+  (`readPixels`, within half a second of the press), likely waiting for the
+  window's frames drawn after its fence while the press was answered
+  (`GpuFence.ANSWER_MS`); not yet measured apart.
 - **A render's steps must make the engine draw.** The app may draw only
   what changed (IdleDraw's low-processor mode), and each step waits for the
   frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a

@@ -66,6 +66,11 @@ whole cycle.
 - A file opened straight after a big one opens at once. Set 8202 after
   42082 waited 12 s for the status bar to finish weighing 42082; it now
   opens in 1.5 s, and the new model is weighed after.
+- Render opens smoothly the first time. Its renderer is made ready while
+  you are not using the window, so in a browser no frame of the first open
+  builds more than one shader: its longest frame went from 140 ms to 91 ms,
+  and the first draft comes half a second sooner. On the desktop the first
+  open's longest frame went from as much as 133 ms to 19 ms.
 
 ### Fixed
 

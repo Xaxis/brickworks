@@ -80,6 +80,10 @@ func _run() -> void:
 	var method: String = RenderingServer.get_current_rendering_method()
 	print("  renderer: %s" % method)
 	(_main.get("_builder") as Builder).hide_preview()
+	if OS.get_cmdline_user_args().has("--first-open"):
+		await _first_open(method)
+		quit(1 if _failures else 0)
+		return
 
 	_render = StudioRender.new()
 	_render.library = library
@@ -456,6 +460,82 @@ func _dialog(method: String) -> void:
 		not dialog.visible and not dialog.get_viewport().disable_3d)
 
 
+## Render's first open on the sample car, as a person opens it, every frame
+## timed from the press until its first draft is shown: the desktop's half
+## of tools/web/render_open_check.mjs. Fails past --budget ms (100) for any
+## frame. As the app runs, drawing only what changed (IdleDraw), and left
+## alone first as a person looking at the model leaves it, which is when the
+## dialog makes its renderer ready (RenderDialog._warm_when_idle); with
+## --at-once, pressed as soon as the car is in, before that; with --during,
+## pressed while that is under way and waiting for someone using the window,
+## which must not hold the draft up. Leaves the draft as
+## shots/render/first_draft_<renderer>.png.
+func _first_open(method: String) -> void:
+	var budget: float = float(_argument("--budget")) if not _argument("--budget").is_empty() \
+		else 100.0
+	var shell: Shell = _main.get("_shell")
+	var dialog: RenderDialog = _main.get("_render")
+	IdleDraw.begin()
+	RenderDialog.warms_when_idle = true
+	# The car and its parts in.
+	for _n: int in 120:
+		await process_frame
+	if OS.get_cmdline_user_args().has("--during"):
+		var until: int = Time.get_ticks_msec() + 30000
+		while Time.get_ticks_msec() < until and dialog.renderer == null:
+			await process_frame
+		# Somebody touches the window: the steps left wait for them.
+		dialog.set("_touched_ms", Time.get_ticks_msec())
+		for _n: int in 30:
+			await process_frame
+		_say("during: the renderer's making ready waits while the window is used",
+			dialog.renderer != null and bool(dialog.renderer.get("_warming")))
+	elif not OS.get_cmdline_user_args().has("--at-once"):
+		# And what that costs while nobody is looking for anything to happen.
+		var until: int = Time.get_ticks_msec() + 30000
+		var was: int = Time.get_ticks_usec()
+		var idle_worst: float = 0.0
+		while Time.get_ticks_msec() < until and (dialog.renderer == null
+				or bool(dialog.renderer.get("_warming"))):
+			await process_frame
+			var at: int = Time.get_ticks_usec()
+			if dialog.renderer != null:
+				idle_worst = maxf(idle_worst, float(at - was) / 1000.0)
+			was = at
+		print("    made ready while left alone: %s, its longest frame %.0f ms"
+			% [str(dialog.renderer != null), idle_worst])
+	var pressed: int = Time.get_ticks_usec()
+	var last: int = pressed
+	var frames: Array = []
+	shell.run("render")
+	var drafted: bool = false
+	while Time.get_ticks_usec() - pressed < 120_000_000:
+		await process_frame
+		var now: int = Time.get_ticks_usec()
+		frames.append([float(last - pressed) / 1000.0, float(now - last) / 1000.0])
+		last = now
+		if dialog.get("_working") == "" and (dialog.get("_preview") as TextureRect).texture != null \
+				and "Render draws" in (dialog.get("_status") as Label).text:
+			drafted = true
+			break
+	var took: float = float(Time.get_ticks_usec() - pressed) / 1000.0
+	_say("first open: a draft is drawn (%.1f s, %d frames)" % [took / 1000.0, frames.size()],
+		drafted)
+	var longest: Array = frames.duplicate()
+	longest.sort_custom(func(a: Array, b: Array) -> bool: return a[1] > b[1])
+	for frame: Array in longest.slice(0, 6):
+		print("    %6.0f ms at %6.0f ms" % [frame[1], frame[0]])
+	var worst: float = longest[0][1] if not longest.is_empty() else 0.0
+	_say("first open: no frame over %.0f ms on %s (the longest %.0f ms)" % [budget, method, worst],
+		worst <= budget)
+	var preview: Texture2D = (dialog.get("_preview") as TextureRect).texture
+	if preview != null:
+		preview.get_image().save_png(OUT + "first_draft_%s.png" % method)
+	dialog.close()
+	for _n: int in 10:
+		await process_frame
+
+
 func _until_done(dialog: RenderDialog) -> void:
 	for _n: int in 3:
 		await process_frame
@@ -542,3 +622,4 @@ static func _argument(prefix: String) -> String:
 		if argument.begins_with(prefix + "="):
 			return argument.substr(prefix.length() + 1)
 	return ""
+
