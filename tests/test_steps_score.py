@@ -176,3 +176,27 @@ def test_a_file_scored_by_hand():
     assert summary["ours"]["steps_ratio"]["value"] == 2.0
     assert summary["ours"]["units"]["value"] == 1.0
     assert summary["author"]["units"]["value"] == 0.0
+
+
+def test_floating_read_without_side_studs_has_a_row_of_its_own():
+    # One step of two things: one floats by the graph as it now is, two read
+    # with no stud from the side holding (a tile on a side stud). A run made
+    # before the probe kept both has only the second, which is then both.
+    ours = {"rank": [0, 0], "sizes": [2], "kinds": [1], "copies": [], "items": 2,
+            "hidden": 0, "hidden_steps": 0, "blocked": 0, "floating": 1, "floating_steps": 1,
+            "measured": 2, "floating_pieces": 1, "floating_pieces_steps": 1,
+            "measured_pieces": 2,
+            "without_side": {"floating": 2, "floating_steps": 1, "measured": 2,
+                             "floating_pieces": 2, "floating_pieces_steps": 1,
+                             "measured_pieces": 2}}
+    author = dict(ours, without_side={"floating": 0, "floating_steps": 0, "measured": 2,
+                                      "floating_pieces": 0, "floating_pieces_steps": 0,
+                                      "measured_pieces": 2})
+    got = steps_score.per_file({"file": "x.mpd", "parts": 2, "orders": {"author": author,
+                                                                         "ours": ours}})
+    assert got["ours"]["floating_pieces"] == (1, 2)
+    assert got["ours"]["floating_no_side"] == (2, 2)
+    assert got["ours"]["floating_no_side_steps"] == (1, 1)
+    old = {k: v for k, v in ours.items() if k != "without_side"}
+    got = steps_score.per_file({"file": "x.mpd", "parts": 2, "orders": {"author": old, "ours": old}})
+    assert got["ours"]["floating_no_side"] == got["ours"]["floating_pieces"] == (1, 2)

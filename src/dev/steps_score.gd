@@ -102,6 +102,10 @@ class Geometry extends RefCounted:
 	var pixels: Array = []
 	var depths: Array = []
 	var area: int = 0
+	## The same model read as before 2026-10-17, with no stud from the side
+	## holding anything (near, held, piece and piece_size its own), for the
+	## rows said "as before".
+	var without_side: Geometry = null
 
 
 func _initialize() -> void:
@@ -263,6 +267,14 @@ func _score(path: String, shuffle_seed: int) -> Dictionary:
 	for name: String in plans:
 		clock = Time.get_ticks_msec()
 		scored[name] = _measure(plans[name], geometry)
+		# Floating again with no stud from the side holding, as it was read
+		# before 2026-10-17.
+		var before: Dictionary = _measure(plans[name], geometry.without_side)
+		var kept: Dictionary = {}
+		for key: String in ["floating", "floating_steps", "measured", "floating_pieces",
+				"floating_pieces_steps", "measured_pieces"]:
+			kept[key] = before[key]
+		scored[name]["without_side"] = kept
 		laps["measure " + name] = Time.get_ticks_msec() - clock
 	row["orders"] = scored
 	if _checking and bricks.size() <= CHECKED_MOST:
@@ -715,6 +727,20 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 	for one: Variant in otherwise:
 		for other: Variant in (otherwise[one] as Dictionary):
 			link.call(one, other)
+	# Kept as it stands, for the rows as before.
+	var before: Array = []
+	for index: int in g.count:
+		before.append(PackedInt32Array((near[index] as Dictionary).keys()))
+	# And a stud from the side, which the build check holds by as it holds any
+	# stud (Assistant._studs_reaching_in, Joints.studs_in, on its lattice): one
+	# reaching up or down is a contact of the covers already, one from the side
+	# was nothing here, and a tile on a headlight brick's side stud floated
+	# until something rested on it.
+	var lattice: BrickLattice = _builder.lattice
+	for stud: Array in Joints.studs_in(entries, func(tip: Vector3, key: Variant) -> Variant:
+			var at: int = lattice.brick_at(BrickLattice.to_cell(tip))
+			return at if at != 0 and at != int(key) else null):
+		link.call(stud[0], stud[1])
 
 	for index: int in g.count:
 		g.near.append(PackedInt32Array((near[index] as Dictionary).keys()))
@@ -724,7 +750,21 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 				resting.append(over)
 		g.above.append(resting)
 
-	# Held in the finished model: out from the ground.
+	_hold(g)
+	_pictures(g, covers)
+	var old_way := Geometry.new()
+	for field: String in ["count", "part", "bottom", "floor_cell", "above", "pixels", "depths",
+			"area"]:
+		old_way.set(field, g.get(field))
+	old_way.near = before
+	_hold(old_way)
+	g.without_side = old_way
+	return g
+
+
+## What the finished model holds to the ground, and its pieces, through
+## [member Geometry.near].
+static func _hold(g: Geometry) -> void:
 	var held := PackedByteArray()
 	held.resize(g.count)
 	var queue: Array[int] = []
@@ -761,9 +801,6 @@ func _geometry(bricks: Array, index_of: Dictionary) -> Geometry:
 					pending.append(next)
 	g.piece = piece
 	g.piece_size = sizes
-
-	_pictures(g, covers)
-	return g
 
 
 static func _grounded(g: Geometry, index: int, floor_cell: int) -> bool:
@@ -1313,6 +1350,20 @@ func _selftest() -> void:
 		int(stood["floating"]), int(stood["floating_pieces"])],
 		int(stood["floating"]) == 0 and int(stood["floating_pieces"]) == 0)
 
+	# A plate on a brick's side stud is held by it, as the build check holds
+	# it; read as before, with no stud from the side, it was held by nothing.
+	var studded: Array = _toy_side_stud()
+	_assert("a brick with a stud on its side is in the library", studded[0] != null)
+	if studded[0] != null:
+		g = studded[0]
+		_assert("a plate on a side stud is held (%d of 2)" % Array(g.held).count(1),
+			g.held[int(studded[1])] == 1)
+		_assert("...and was not, read with no stud from the side (%d of 2)"
+			% Array(g.without_side.held).count(1), g.without_side.held[int(studded[1])] == 0)
+		var sideways: Dictionary = _measure(_steps_of([[0], [1]], 2), g)
+		_assert("...and put on after the brick it floats nowhere (%d)"
+			% int(sideways["floating_pieces"]), int(sideways["floating_pieces"]) == 0)
+
 	# A 1 x 1 plate in a well: a ring of 1 x 1 bricks four high round a
 	# square two studs across. Put in after the ring, it cannot be seen
 	# from the front or the back; put in first, it can.
@@ -1331,6 +1382,34 @@ func _selftest() -> void:
 		int(early["hidden"]) == 0)
 	_assert("...nor is it blocked or floating (%d, %d)" % [int(late["blocked"]),
 		int(late["floating"])], int(late["blocked"]) == 0 and int(late["floating"]) == 0)
+
+
+## A 1 x 1 brick with a stud on its side, standing on the ground, and a
+## 1 x 1 plate on that stud: [the geometry, the plate's index].
+func _toy_side_stud() -> Array:
+	_world.clear()
+	_builder.lattice.clear()
+	var bricks: Array = []
+	var index_of: Dictionary = {}
+	var at := Transform3D.IDENTITY
+	var id: int = _world.add_brick("87087", 4, at)
+	_builder.register(id, "87087", at)
+	index_of[id] = 0
+	bricks.append(_world.get_brick(id))
+	var side: Lbm.Connector = null
+	for connector: Lbm.Connector in _library.mesh_for("87087").connectors:
+		if connector.kind == "stud" and connector.gender == "male" and absf(connector.axis.y) < 0.5:
+			side = connector
+	if side == null:
+		return [null, -1]
+	var way: Vector3 = side.axis.normalized()
+	var turn := Basis(Vector3.UP.cross(way).normalized(), PI / 2.0)
+	var plate_at := Transform3D(turn, side.position + way * 8.0)
+	id = _world.add_brick("3024", 14, plate_at)
+	_builder.register(id, "3024", plate_at)
+	index_of[id] = 1
+	bricks.append(_world.get_brick(id))
+	return [_geometry(bricks, index_of), 1]
 
 
 func _toy_stack() -> Geometry:

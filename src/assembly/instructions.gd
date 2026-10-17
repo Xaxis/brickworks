@@ -48,9 +48,13 @@ const ATTACH_TAKES_PARTS := true
 ## touches nothing built yet: see [method _best].
 const WHEELS_LATER := 1.0e9
 const UNJOINED_LATER := 3.0e8
+## A wheel goes on with the holder its pin is in ([method _hung_under]).
+const WHEELS_WITH_HOLDER := false
 ## A step begun with a part that touches nothing standing looks elsewhere
 ## first for one that does ([method _steadier]).
 const STEADIER_FIRST := true
+## ...in another region too, not only one this region waits on.
+const STEADIER_MOVES := false
 
 ## How far apart two of one part at one height can be and still go in one
 ## step: twelve studs, a row of tiles or a ring of 1 x 1s round a rim, as a
@@ -273,17 +277,23 @@ class Covers extends RefCounted:
 		return null
 
 
-## What a step's picture shows, by the parts' boxes: the nearest thing at
-## each pixel from the front and from the back, the two ways a booklet looks
-## (BookletStudio.FRONT, BACK), drawn as the steps score draws covers
-## (src/dev/steps_score.gd _pictures): the faces of each box that look
-## towards the eye, as points a pixel apart.
+## What a step's picture shows of its own parts, by their boxes, from the
+## front and from the back, the two ways a booklet looks (BookletStudio.FRONT,
+## BACK): the faces of each box that look towards the eye, as points a pixel
+## apart, as the steps score draws covers (src/dev/steps_score.gd
+## _pictures).
 ##
 ## A step filled with whatever was ready and near hid its own parts: in 100
 ## real sets, 1,128 of the 1,535 steps of ours with a new thing hidden front
 ## and back hid it behind a part of the same step, a brick put on the plate
 ## it went in with (docs/INSTRUCTIONS.md). A part that would hide one the
 ## step already holds waits for the next step, where the first is built.
+##
+## Only the step's own parts are drawn, and of those only the ones whose
+## pictures meet from both sides: drawing the whole build so far, to know
+## what each new part already showed, was half of the time the order took
+## (Orthanc's 5.1 s of 8.2), and two parts that do not meet from one side
+## cannot hide each other from both.
 class Pictures extends RefCounted:
 	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
 	const PIXEL := 10.0
@@ -291,15 +301,37 @@ class Pictures extends RefCounted:
 	## other: the steps score's SEEN.
 	const SEEN := 0.1
 	var _frames: Array = []          ## [view, right, up] per view
-	var _depth: Array = [{}, {}]     ## per view: pixel -> nearest depth
-	var _owner: Array = [{}, {}]     ## per view: pixel -> node id
 	var _own: Dictionary = {}        ## node id -> [{pixel: depth}, {pixel: depth}]
-	var _seen: Dictionary = {}       ## node id -> [pixels it owns in each view]
+	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2], in pixels
 
 	func _init() -> void:
 		for view: Vector3 in [BookletStudio.FRONT.normalized(), BookletStudio.BACK.normalized()]:
 			var right: Vector3 = Vector3.UP.cross(view).normalized()
 			_frames.append([view, right, view.cross(right).normalized()])
+
+	## Where [param node]'s box lands in each picture, as a rectangle.
+	func span_of(node: Node2) -> Array:
+		if _span.has(node.id):
+			return _span[node.id]
+		var out: Array = []
+		for frame: Array in _frames:
+			var low := Vector2(INF, INF)
+			var high := Vector2(-INF, -INF)
+			for corner: int in 8:
+				var point: Vector3 = node.box.get_endpoint(corner)
+				var flat := Vector2(point.dot(frame[1]), point.dot(frame[2])) / PIXEL
+				low = low.min(flat)
+				high = high.max(flat)
+			out.append(Rect2(low, high - low))
+		_span[node.id] = out
+		return out
+
+	## Whether [param one] and [param other] land on each other in both
+	## pictures.
+	func meet(one: Node2, other: Node2) -> bool:
+		var a: Array = span_of(one)
+		var b: Array = span_of(other)
+		return (a[0] as Rect2).intersects(b[0]) and (a[1] as Rect2).intersects(b[1])
 
 	## The pixels [param node]'s box covers from each view, and how near.
 	func pixels_of(node: Node2) -> Array:
@@ -335,54 +367,39 @@ class Pictures extends RefCounted:
 		_own[node.id] = out
 		return out
 
-	func draw(node: Node2) -> void:
+	## How much of [param node] shows in front of [param others], the better
+	## of the two views.
+	func shown(node: Node2, others: Array) -> float:
 		var mine: Array = pixels_of(node)
-		var counts: Array = [0, 0]
-		for v: int in 2:
-			var depth: Dictionary = _depth[v]
-			var owner: Dictionary = _owner[v]
-			var nearest: Dictionary = mine[v]
-			for pixel: int in nearest:
-				if float(nearest[pixel]) > float(depth.get(pixel, -INF)):
-					var was: int = owner.get(pixel, 0)
-					if was != 0 and _seen.has(was):
-						(_seen[was] as Array)[v] = int(_seen[was][v]) - 1
-					depth[pixel] = nearest[pixel]
-					owner[pixel] = node.id
-					counts[v] += 1
-		_seen[node.id] = counts
-
-	## How much of [param node] shows, the better of the two views, as
-	## drawn so far, less [param taken] pixels of each view.
-	func shown(node: Node2, taken: Array = [0, 0]) -> float:
-		var mine: Array = pixels_of(node)
-		var seen: Array = _seen.get(node.id, [0, 0])
+		var theirs: Array = others.map(func(other: Node2) -> Array: return pixels_of(other))
 		var best: float = 0.0
 		for v: int in 2:
-			var total: int = (mine[v] as Dictionary).size()
-			if total == 0:
+			var nearest: Dictionary = mine[v]
+			if nearest.is_empty():
 				return 1.0
-			best = maxf(best, float(int(seen[v]) - int(taken[v])) / float(total))
+			var seen: int = 0
+			for pixel: int in nearest:
+				var depth: float = nearest[pixel]
+				var covered: bool = false
+				for other: Array in theirs:
+					var at: Dictionary = other[v]
+					if at.has(pixel) and float(at[pixel]) > depth:
+						covered = true
+						break
+				if not covered:
+					seen += 1
+			best = maxf(best, float(seen) / float(nearest.size()))
 		return best
 
-	## Whether drawing [param node] would hide one of [param step], the parts
-	## a step holds already, that shows now.
+	## Whether [param node] would hide one of [param step], the parts a step
+	## holds already, that shows among the others now.
 	func would_hide(node: Node2, step: Array) -> bool:
-		var in_step: Dictionary = {}
 		for other: Node2 in step:
-			in_step[other.id] = [0, 0]
-		var mine: Array = pixels_of(node)
-		for v: int in 2:
-			var depth: Dictionary = _depth[v]
-			var owner: Dictionary = _owner[v]
-			var nearest: Dictionary = mine[v]
-			for pixel: int in nearest:
-				var was: int = owner.get(pixel, 0)
-				if was != 0 and in_step.has(was) \
-						and float(nearest[pixel]) > float(depth[pixel]):
-					(in_step[was] as Array)[v] = int(in_step[was][v]) + 1
-		for other: Node2 in step:
-			if shown(other) >= SEEN and shown(other, in_step[other.id]) < SEEN:
+			if not meet(node, other):
+				continue
+			var near: Array = step.filter(func(one: Node2) -> bool:
+				return one != other and meet(one, other))
+			if shown(other, near) >= SEEN and shown(other, near + [node]) < SEEN:
 				return true
 		return false
 
@@ -1084,10 +1101,27 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 ## Not in the model's first step, which is the chassis: the example car
 ## began with its wheels standing on the table. They go on in the next.
 static func _hung_under(nodes: Array[Node2]) -> void:
+	var by_id: Dictionary = {}
+	for node: Node2 in nodes:
+		by_id[node.id] = node
 	for node: Node2 in nodes:
 		for need: int in node.needs:
-			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need) \
-					and not node.hung.has(need):
+			var other: Node2 = by_id.get(need)
+			if other == null or node.joined.has(need) or node.under.has(need) \
+					or node.hung.has(need):
+				continue
+			# A wheel on the holder its pin is in, and a tyre on its wheel,
+			# whichever way their covers meet.
+			if node.wheel > 0:
+				if WHEELS_WITH_HOLDER and (other.wheel == 0 or node.wheel == 2 and other.wheel == 1):
+					node.hung.append(need)
+				continue
+			# Hanging: held from the side or by what it touches, and the other
+			# rests on it. Not a part on the other's studs: two parts a stud
+			# joins reach into each other, so each cover meets the other's
+			# lifted, and read that way every part of a stack hung from the one
+			# on top of it: 30300's first step took fourteen parts.
+			if (node.weak.has(need) or node.held_by.has(need)) and node.over.has(need):
 				node.hung.append(need)
 
 
@@ -2301,7 +2335,6 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 				remaining.erase(here.id)
 				ready.erase(here.id)
 				picked.append(here)
-				pictures.draw(here)
 				piece[here.id] = here.id
 				if steps.is_empty() or not in_hand and here.box.position.y <= floor_y + 2.0:
 					stands[here.id] = true
@@ -2451,6 +2484,8 @@ static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3
 		func(node: Node2) -> bool: return wanted.has(node.id) and held.call(node), false, joins)
 	if borrowed != null:
 		return [borrowed, BORROWED]
+	if not STEADIER_MOVES:
+		return []
 	var moved: Node2 = _best(ready, last_at, have_last, false, held, true, joins)
 	if moved != null:
 		return [moved, MOVED]
@@ -2507,6 +2542,13 @@ static func _root_of(piece: Dictionary, id: int) -> int:
 	var at: int = id
 	while int(piece[at]) != at:
 		at = piece[at]
+	# Every part on the way points at the root from now on: a union walked
+	# from its newest part to its oldest was a list as long as the build.
+	var on: int = id
+	while on != at:
+		var next: int = piece[on]
+		piece[on] = at
+		on = next
 	return at
 
 
@@ -2575,6 +2617,7 @@ static func _touching(nodes: Array[Node2], parts_of: Dictionary = {}) -> Diction
 ## Number the steps and open each sub-assembly into its callout: its own
 ## steps, then the step that puts it on.
 static func _expand(raw: Array, world: BrickWorld) -> Array[Step]:
+	_fold_lone_sections(raw)
 	var out: Array[Step] = []
 	var number: int = 0
 	var callouts: int = 0
@@ -2660,6 +2703,27 @@ static func _expand(raw: Array, world: BrickWorld) -> Array[Step]:
 	for index: int in out.size():
 		out[index].index = index + 1
 	return out
+
+
+## A section of one step is no section: it goes under the banner of the
+## section after it, or before it when it is the last. 8032's steering
+## knuckle, a sub-model built in place, was "Cabrio Sub 6a" for one step and
+## then "the rest", two banners on one page.
+static func _fold_lone_sections(raw: Array) -> void:
+	var runs: Array = []      ## [first entry, last entry] of each section's run
+	for at: int in raw.size():
+		if runs.is_empty() or str(raw[at]["section"]) != str(raw[(runs[-1] as Array)[1]]["section"]):
+			runs.append([at, at])
+		else:
+			(runs[-1] as Array)[1] = at
+	if runs.size() < 2:
+		return
+	for k: int in runs.size():
+		var run: Array = runs[k]
+		if int(run[0]) != int(run[1]) or str(raw[run[0]]["section"]).is_empty():
+			continue
+		var into: Array = runs[k + 1] if k + 1 < runs.size() else runs[k - 1]
+		raw[run[0]]["section"] = raw[into[0]]["section"]
 
 
 static func _add(step: Step, node: Node2) -> void:

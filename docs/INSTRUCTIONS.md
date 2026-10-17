@@ -168,8 +168,14 @@ top down: by the old rule two things float, by the new one one.
 **Held** is the probe's own graph, so the planner is not marked by its own
 rules: what rests on what by the parts' covers (`Stability.contacts`), and
 every joint the build check reads (pins and axles, axles through holes,
-clips, bars, hinges, turntables, balls, what is held otherwise). A thing the
-graph does not hold even in the finished build is not counted either way.
+clips, bars, hinges, turntables, balls, what is held otherwise, and since
+2026-10-17 a stud from the side, `Joints.studs_in` on the check's lattice).
+A thing the graph does not hold even in the finished build is not counted
+either way. Until 2026-10-17 a stud from the side held nothing here, though
+the build check holds by it as by any stud: a tile on a headlight brick's
+side stud floated until something rested on it. The tables keep that reading
+as a row of its own, "no stud from the side holding, as before"; the
+self-test puts a 1 x 1 plate on a side stud, held now and not before.
 
 **The measures check themselves.** Every run first builds models whose
 answers are known and refuses to score if one is wrong: three bricks built

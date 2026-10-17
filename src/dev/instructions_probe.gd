@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_on_its_edge(world, library)
 	_in_sight(world, library)
 	_like_parts_together(world, library)
+	_lone_sections()
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -515,6 +516,18 @@ func _pressed_up(world: BrickWorld, library: PartLibrary) -> void:
 	print("\n  a plate pressed up under a bridge")
 	_assert("it goes in with the bridge (steps %d and %d)" % [int(step_of.get(under, -1)),
 		int(step_of.get(bridge, -1))], step_of.get(under, -1) == step_of.get(bridge, -2))
+
+
+## A section of one step goes under its neighbour's banner: 8032's
+## steering knuckle was "Cabrio Sub 6a" for one step, then "the rest".
+func _lone_sections() -> void:
+	var raw: Array = [{"section": "knuckle"}, {"section": "the rest"}, {"section": "the rest"},
+		{"section": "frame"}, {"section": "frame"}, {"section": "seat"}]
+	Instructions._fold_lone_sections(raw)
+	var said: Array = raw.map(func(entry: Dictionary) -> String: return entry["section"])
+	print("\n  sections of one step")
+	_assert("one at the start goes with the next, one at the end with the one before (%s)"
+		% ", ".join(said), said == ["the rest", "the rest", "the rest", "frame", "frame", "frame"])
 
 
 ## A step's own parts are in its picture. A 1 x 1 plate with a 3 x 3 plate
