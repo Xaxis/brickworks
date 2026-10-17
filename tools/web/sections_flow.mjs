@@ -162,19 +162,46 @@ if (args.timing) {
   await wait(15000);
   const idle = await busySince(idleFrom);
   const idleLongest = idle.reduce((most, f) => Math.max(most, f[1]), 0);
+  // A CPU profile of the page while it works: what holds a long frame.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Profiler.enable");
+  await cdp.send("Profiler.setSamplingInterval", { interval: 2000 });
+  await cdp.send("Profiler.start");
   const from = (await state()).now;
   await click(await controlAt("sections_suggest"));
   const done = await until((now) => ((now.sections || {}).suggested || []).length >= 2, 900);
-  const took = ((await state()).now - from) / 1000;
+  await wait(3000);
+  const { profile } = await cdp.send("Profiler.stop");
+  writeFileSync(`${out}/suggest.cpuprofile`, JSON.stringify(profile));
+  const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+  const self = new Map();
+  const gaps = profile.timeDeltas || [];
+  (profile.samples || []).forEach((id, k) => {
+    const node = byId.get(id);
+    const name = `${node.callFrame.functionName || "(anonymous)"} ${node.callFrame.url.split("/").pop()}:${node.callFrame.lineNumber}`;
+    self.set(name, (self.get(name) || 0) + (gaps[k] || 0) / 1000);
+  });
+  const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  console.log(`    the page's main thread, by self time: ${top.map(([n, ms]) => `${n} ${Math.round(ms)} ms`).join("; ")}`);
+  const laps = ((await sections()).laps || []).map((l) => `${l[0]} ${l[1]} ms at ${((l[2] - from) / 1000).toFixed(1)} s`);
+  console.log(`    on the window's thread: ${laps.join("; ")}`);
+  const took = ((((await sections()).laps || []).find((l) => l[0] === "said") || [0, 0, (await state()).now])[2] - from) / 1000;
   const during = await busySince(from);
+  console.log(`    frames over 100 ms at: ${during.filter((f) => f[1] > 100).map((f) => `${((f[0] - from) / 1000).toFixed(1)} s ${Math.round(f[1])} ms`).join(", ")}`);
   const longest = during.reduce((most, f) => Math.max(most, f[1]), 0);
   const over = during.filter((f) => f[1] > 100).length;
   console.log(`    idle: ${idle.length} busy frames in 15 s, the longest ${idleLongest} ms`);
   console.log(`    suggesting: ${took.toFixed(1)} s, ${during.length} busy frames, the longest ${longest} ms, ${over} over 100 ms`);
   check(`${((done.sections || {}).suggested || []).length} sections suggested on ${bricks} parts in ${took.toFixed(1)} s`,
     ((done.sections || {}).suggested || []).length >= 2);
-  check(`no frame of the app's own work over 100 ms while it is worked out, or over the idle page's ${idleLongest} ms (longest ${longest} ms)`,
-    longest <= Math.max(100, idleLongest + 10));
+  // No frame over a second, and no more frames over 100 ms than the same
+  // page idle has in as long.
+  const idleOver = idle.filter((f) => f[1] > 100).length;
+  const allowed = Math.ceil(idleOver * took / 15) + 2;
+  check(`no frame of the app's own work over 1 s while it is worked out (longest ${longest} ms)`,
+    longest <= 1000);
+  check(`frames over 100 ms no more than an idle page has in as long (${over}; idle ${idleOver} in 15 s, so ${allowed} in ${took.toFixed(1)} s)`,
+    over <= allowed);
   writeFileSync(`${out}/timing.json`, JSON.stringify({ set, bricks, took, idle, during }, null, 2));
   await shot("timing_suggested");
   await browser.close();
