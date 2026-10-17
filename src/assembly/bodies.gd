@@ -255,6 +255,11 @@ func _read() -> void:
 			var slide_and_shaft: Array = [Vector2.ZERO, 0]
 			if names.contains("clip") or names.contains("minifig hand"):
 				slide_and_shaft = _slide_on(a, b, zone)
+			elif names.contains("piston"):
+				# An engine's piston slides up and down its cylinder, and nothing
+				# holds it there: its crank does (2851 in 2850a).
+				slide_and_shaft = _slide_within(a, b, zone)
+				holds = false
 			candidates.append([a, b, kind, zone[0], (zone[1] as Vector3).normalized(), holds,
 				detent, slide_and_shaft[0], slide_and_shaft[1]])
 
@@ -271,6 +276,34 @@ func _read() -> void:
 			seen_balls[pair] = true
 			candidates.append([a, b, "ball", _ball_middle(a, b), Vector3.ZERO, true, 0.0,
 				Vector2.ZERO, 0])
+	# A ball held between another part's two bores is in a socket the
+	# connectors do not name: an engine's connecting rod's ball end snapped
+	# into its piston (2852 in 2851). It turns every way, freely: the crank
+	# holds the piston, not the joint. The piston has no socket connector,
+	# and the rod hung loose from its crank.
+	var boxes: Array[AABB] = []
+	for entry: Array in entries:
+		var mesh: Lbm.PartMesh = entry[2]
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "ball":
+				continue
+			if boxes.is_empty():
+				for other: Array in entries:
+					boxes.append(((other[1] as Transform3D) * (other[2] as Lbm.PartMesh).bounds).grow(1.0))
+			var middle: Vector3 = (entry[1] as Transform3D) * connector.position
+			for n: int in entries.size():
+				var other: Array = entries[n]
+				if int(other[0]) == int(entry[0]) or not boxes[n].has_point(middle):
+					continue
+				var pair := Vector2i(mini(int(entry[0]), int(other[0])), maxi(int(entry[0]), int(other[0])))
+				if seen_balls.has(pair):
+					continue
+				var line: Vector3 = Bodies._bores_across(other[1], other[2], middle)
+				if line == Vector3.ZERO:
+					continue
+				seen_balls[pair] = true
+				candidates.append([int(entry[0]), int(other[0]), "ball", middle, Vector3.ZERO, false,
+					0.0, Vector2.ZERO, 0])
 
 	# Studs: two or more between two parts hold them; one alone turns when
 	# either is a single stud across.
@@ -674,6 +707,78 @@ func _slide_on(a: int, b: int, zone: Array) -> Array:
 		if back + on > 4.0:
 			return [Vector2(back, on), pair[0]]
 	return [Vector2.ZERO, 0]
+
+
+## How far a short shaft may slide inside a longer bore of the same round on
+## [param zone]'s line, staying all inside it: a piston in its cylinder.
+## [Vector2(back, on) the bore may move against the shaft, the shaft's
+## part], as [method _slide_on] gives them.
+func _slide_within(a: int, b: int, zone: Array) -> Array:
+	var point: Vector3 = zone[0]
+	var way: Vector3 = (zone[1] as Vector3).normalized()
+	var rounds: Dictionary = {}   ## key -> Array of [kind, span, radius]
+	for key: int in [a, b]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var mine: Array = []
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "shaft" and connector.kind != "bore":
+				continue
+			var start: Vector3 = brick.transform * connector.position
+			var end: Vector3 = brick.transform * (connector.position + connector.axis * connector.length)
+			if not _same_line(start, (end - start).normalized(), point, way):
+				continue
+			var s: float = (start - point).dot(way)
+			var e: float = (end - point).dot(way)
+			mine.append([connector.kind, Vector2(minf(s, e), maxf(s, e)), connector.radius])
+		rounds[key] = mine
+	for pair: Array in [[a, b], [b, a]]:
+		for shaft: Array in rounds[pair[0]]:
+			if shaft[0] != "shaft":
+				continue
+			for bore: Array in rounds[pair[1]]:
+				if bore[0] != "bore" or absf(float(shaft[2]) - float(bore[2])) > Joints.ROUND_FIT:
+					continue
+				# Every shaft of that round on the line, as one.
+				var s: Vector2 = shaft[1]
+				for more: Array in rounds[pair[0]]:
+					if more[0] == "shaft" and absf(float(more[2]) - float(shaft[2])) <= Joints.ROUND_FIT:
+						s = Vector2(minf(s.x, (more[1] as Vector2).x), maxf(s.y, (more[1] as Vector2).y))
+				var o: Vector2 = bore[1]
+				if o.y - o.x <= s.y - s.x:
+					continue
+				var back: float = maxf(o.y - s.y, 0.0)
+				var on: float = maxf(s.x - o.x, 0.0)
+				if back + on > 4.0:
+					return [Vector2(back, on), pair[0]]
+	return [Vector2.ZERO, 0]
+
+
+## The line of two bores of [param mesh] at [param at] that [param middle]
+## lies on and between, each no wider than a pin's: a piston's slots for its
+## connecting rod. ZERO when none.
+static func _bores_across(at: Transform3D, mesh: Lbm.PartMesh, middle: Vector3) -> Vector3:
+	var spans: Array = []   ## [way, lo, hi]
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "bore" or connector.radius > 4.0:
+			continue
+		var start: Vector3 = at * connector.position
+		var way: Vector3 = (at.basis * connector.axis).normalized()
+		var gap: Vector3 = middle - start
+		if (gap - way * gap.dot(way)).length() > Joints.ROUND_OFF_AXIS:
+			continue
+		var s: float = (start - middle).dot(way)
+		var e: float = s + connector.length
+		spans.append([way, minf(s, e), maxf(s, e)])
+	for one: Array in spans:
+		if float(one[1]) <= 0.0 and float(one[2]) >= 0.0:
+			return one[0]
+		for other: Array in spans:
+			if absf((one[0] as Vector3).dot(other[0])) > 0.99 \
+					and float(one[2]) <= 0.5 and float(other[1]) >= -0.5 \
+					and ((one[0] as Vector3).dot(other[0]) > 0.0):
+				return one[0]
+	return Vector3.ZERO
 
 
 ## Which of [param ids] a stud at [param foot] pointing [param way] is in:

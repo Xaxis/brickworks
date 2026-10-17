@@ -49,6 +49,9 @@ const ON_THE_LINE := 6.5
 ## A part may sink this far below the floor the model stands on, LDU, as
 ## Balance lets a pose: half a plate.
 const BELOW_FLOOR := 4.0
+## Two parts whose turned boxes are into each other by no more than this
+## only touch, LDU: under a cell of the cover, 0.4 mm.
+const TOUCHING := 1.0
 ## A drag along a joint's line this much more than across it slides.
 const SLIDE_BIAS := 1.6
 ## Degrees a pixel when the joint's plane is edge on to the eye.
@@ -94,6 +97,16 @@ var twist := Basis.IDENTITY
 var placed: Dictionary = {}
 ## Gears the grabbed one turns, and what they turn on: brick id -> true.
 var coupled: Dictionary = {}
+## What hangs on a driven gear's body by a joint of its own (an arm on its
+## axle, a tyre on its hub), each with the coupled part that carries it:
+## brick id -> carrier's id.
+var followers: Dictionary = {}
+## A closed loop the grabbed joint is in, solved as it moves; null for none.
+var linkage: Linkage = null
+## The loop stopped it short of where the pointer asked.
+var loop_short: bool = false
+## Free joints inside what moved that swung down too, said.
+var inner_swung := PackedStringArray()
 var mechanism: Mechanism
 ## The model's gear trains read ahead (GrabDrag), the anchors their ground;
 ## read here for the piece grabbed when not.
@@ -180,6 +193,13 @@ func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
 	body = child
 	part = int((bodies.members[child] as PackedInt64Array)[0])
 	moving_bodies = bodies.beyond(child)
+	# A joint of a closed loop is not one link of a chain: the loop moves
+	# only as a whole (Linkage), and a chain's turns are each a joint's alone.
+	var ours: Dictionary = {}
+	for one: int in moving_bodies:
+		ours[one] = true
+	if not bodies.loops_out(ours, joined).is_empty():
+		return _refuse("loop", "that joint is in a closed loop")
 	state = "moves"
 	return _chosen()
 
@@ -198,12 +218,31 @@ func _chosen() -> String:
 	for one: int in moving_bodies:
 		ours[one] = true
 	var held: Array[Bodies.Link] = bodies.loops_out(ours, link)
+	linkage = null
 	if not held.is_empty():
+		# Held at both ends: a closed loop, moved as it allows (Linkage).
 		var other: Bodies.Link = held[0]
-		return _refuse("loop", ("%s is held at both ends: %s and %s (a closed loop). "
-			+ "Moving a loop is not built yet (docs/MECHANISMS.md, phase P2).") % [
-			bodies.named(moving_bodies), link.words().trim_prefix("on "),
-			other.words().trim_prefix("on ")])
+		if link.axis == Vector3.ZERO:
+			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
+				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
+		var loop := Linkage.read(bodies, link, body)
+		if not loop.why.is_empty():
+			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
+				bodies.named(moving_bodies), link.words().trim_prefix("on "),
+				other.words().trim_prefix("on "), loop.why])
+		if not loop.can_move():
+			return _refuse("locked", ("Locked: this loop has no freedom. %s is held at both ends, "
+				+ "%s and %s, and %s closes neither a degree one way nor the other.") % [
+				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "),
+				other.words().trim_prefix("on "), loop.said()])
+		linkage = loop
+		moving_bodies = loop.moved
+		ours.clear()
+		moving.clear()
+		for one: int in moving_bodies:
+			ours[one] = true
+		for key: int in bodies.parts_of(moving_bodies):
+			moving[key] = true
 	skip = moving.duplicate()
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
@@ -266,7 +305,7 @@ func _chosen() -> String:
 		_never_meet()
 	begin_took["sweeps"] = (Time.get_ticks_usec() - clock) / 1000
 	clock = Time.get_ticks_usec()
-	if mode == "turn":
+	if mode == "turn" and linkage == null:
 		for key: int in moving:
 			var brick: BrickWorld.Brick = world.get_brick(key)
 			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -276,15 +315,30 @@ func _chosen() -> String:
 			for corner: int in 8:
 				var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - pivot
 				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
-			if furthest <= ON_THE_LINE * 1.42:
+			if furthest <= ON_THE_LINE * 1.42 or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
+	if linkage != null:
+		for n: int in linkage.links.size():
+			var joined: Bodies.Link = linkage.links[n]
+			if joined.axis == Vector3.ZERO or linkage.moved.has(linkage.parent_of[n]):
+				continue
+			for key: int in bodies.members.get(linkage.child_of[n], PackedInt64Array()):
+				if _round_on(key, joined.point, joined.axis.normalized()):
+					_on_the_line[key] = true
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
-	_gears()
+	if linkage == null:
+		_gears()
 	begin_took["gears"] = (Time.get_ticks_usec() - clock) / 1000
 	placed = rest.duplicate()
 	said = "%s %s" % [bodies.named(moving_bodies), link.words()]
+	if linkage != null:
+		said += ", in %s" % linkage.said()
 	return state
+
+
+static func _capital(words: String) -> String:
+	return words.substr(0, 1).to_upper() + words.substr(1) if not words.is_empty() else words
 
 
 func _refuse(kind: String, words: String) -> String:
@@ -414,6 +468,49 @@ func _gears() -> void:
 			coupled[key] = true
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
+	_follow_driven()
+
+
+## What hangs on a driven body by a joint the gear reading does not read (a
+## clip, a hinge, a tyre on its hub, an arm pinned to the gear) goes round
+## with it: every part of the driven body's rigid body in [Bodies] and of
+## everything beyond it there, each carried by a driven part of its own body
+## or the nearest one in from it. Tested for room as the section is.
+var follower_bodies: Array = []
+
+
+func _follow_driven() -> void:
+	followers.clear()
+	follower_bodies.clear()
+	var carrier_of: Dictionary = {}   ## Bodies body -> a driven part in it
+	for key: int in coupled:
+		var one: int = int(bodies.body_of.get(key, -1))
+		if one >= 0 and not carrier_of.has(one):
+			carrier_of[one] = key
+	var ours: Dictionary = {}
+	for one: int in moving_bodies:
+		ours[one] = true
+	for one: int in carrier_of:
+		var carrier: int = carrier_of[one]
+		var stack: Array = [one]
+		while not stack.is_empty():
+			var at: int = stack.pop_back()
+			if at != one:
+				follower_bodies.append(at)
+			for key: int in bodies.members.get(at, PackedInt64Array()):
+				if coupled.has(key) or moving.has(key) or followers.has(key):
+					continue
+				followers[key] = carrier
+				skip[key] = true
+				rest[key] = world.get_brick(key).transform
+			for kid: int in bodies.children.get(at, []):
+				if carrier_of.has(kid) or ours.has(kid):
+					continue
+				# What it is joined by may press on what carries it.
+				for pair: Array in (bodies.parent_link[kid] as Bodies.Link).pairs:
+					for key: int in pair:
+						skip[key] = true
+				stack.append(kid)
 
 
 ## Every part in the piece of the model [param from] is in.
@@ -444,6 +541,10 @@ static func _same(a: Transform3D, b: Transform3D) -> bool:
 ## Where every part that moves stands with the joint at [param degrees]
 ## (turn), [param along] (slide) or [param turned] (ball).
 func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDENTITY) -> Dictionary:
+	if linkage != null:
+		# The loop closed with its driver there, from the pose last kept.
+		linkage.reach(along if linkage.is_slide() else deg_to_rad(degrees))
+		return linkage.transforms(rest)
 	var move := Transform3D.IDENTITY
 	if mode == "ball":
 		move = Transform3D(Basis.IDENTITY, pivot) * Transform3D(turned, Vector3.ZERO) \
@@ -460,6 +561,11 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 		var driven: Dictionary = mechanism.pose_of(deg_to_rad(degrees) * _drive_sign, coupled)
 		for key: int in coupled:
 			out[key] = driven[key]
+		# What hangs on a driven body goes round with it.
+		for key: int in followers:
+			var carrier: int = followers[key]
+			out[key] = ((out[carrier] as Transform3D) * (rest[carrier] as Transform3D).affine_inverse()) \
+				* (rest[key] as Transform3D)
 	return out
 
 
@@ -476,6 +582,8 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	var started: int = Time.get_ticks_usec()
 	tests += 1
 	var keys: Array = moving.keys()
+	if not followers.is_empty():
+		keys.append_array(followers.keys())
 	var result: int = 1
 	var n: int = from
 	while n < keys.size():
@@ -501,18 +609,150 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		if not _near_anything(box):
 			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
-		var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
-		# What it overlapped where it stood is not in its way: forgiven and
-		# asked again.
-		while not hit.is_empty() and _overlapped_at_rest(int(hit[0])):
-			skip[int(hit[0])] = true
-			hit = builder.lattice.blockers_boxes(packed, 0, skip)
+		var hit: PackedInt64Array = _blocked(key, mesh, to, packed)
 		if not hit.is_empty():
 			blocked_by = [key, int(hit[0])]
 			result = 0
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
 	return Vector2i(result, n if result == -1 else 0)
+
+
+## What [param key], its cover [param packed] at [param to], meets: nothing
+## but what the moving side may press on. What it overlapped where it stood
+## is forgiven for good; what it slides over across a face square to the
+## line it turns on, for this part alone ([method _slides_over]).
+func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32Array) -> PackedInt64Array:
+	var forgiven: Array = []
+	var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
+	while not hit.is_empty():
+		var other: int = int(hit[0])
+		if _overlapped_at_rest(other):
+			skip[other] = true
+		elif _slides_over(key, mesh, to, other) or _touching(mesh, to, other):
+			skip[other] = true
+			forgiven.append(other)
+		else:
+			break
+		hit = builder.lattice.blockers_boxes(packed, 0, skip)
+	for other: int in forgiven:
+		skip.erase(other)
+	return hit
+
+
+## Whether [param key] at [param to] only slides over [param other] across a
+## face square to the line the section turns on: its reach along that line
+## is what it was where it stood, and there it met [param other] end to end
+## along the line, by no more than a stud's height (a steering arm turning on
+## the brick it sits on, a turntable's top on its base). A turn about the
+## line keeps every point's place along it, so the two meet no more than
+## they did; the 2 LDU cells of a turned part's cover cannot tell. The
+## cover counted them as one, and the arm would not turn at all.
+func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int) -> bool:
+	if mode == "ball" or axis == Vector3.ZERO or not rest.has(key):
+		return false
+	var them: BrickWorld.Brick = world.get_brick(other)
+	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+	if their_mesh == null:
+		return false
+	var now: Vector2 = Grab._reach_along(to, mesh.bounds, axis)
+	var was: Vector2 = Grab._reach_along(rest[key], mesh.bounds, axis)
+	if absf(now.x - was.x) > 0.5 or absf(now.y - was.y) > 0.5:
+		return false
+	var theirs: Vector2 = Grab._reach_along(them.transform, their_mesh.bounds, axis)
+	var end_on: float = Joints.STUD_REACH + 0.5
+	return theirs.y - was.x <= end_on or was.y - theirs.x <= end_on
+
+
+## Whether the part [param mesh] at [param to] and [param other] only touch:
+## their boxes, each turned as it stands, are apart or into each other by no
+## more than [constant TOUCHING] along some line (the separating axis test:
+## each box's three edges and the nine lines square to a pair of them). A
+## steering arm turned 3° beside the brick it was built flush against met it
+## by one of its turned cover's 2 LDU cells, and at 10° not at all.
+func _touching(mesh: Lbm.PartMesh, to: Transform3D, other: int) -> bool:
+	var them: BrickWorld.Brick = world.get_brick(other)
+	var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+	if their_mesh == null:
+		return false
+	return Grab.box_depth(to, mesh.bounds, them.transform, their_mesh.bounds) <= TOUCHING
+
+
+## How far two boxes, each at its own transform, are into each other: the
+## least overlap of their shadows on the fifteen lines of the separating
+## axis test, LDU; below zero they are apart.
+static func box_depth(a_at: Transform3D, a_box: AABB, b_at: Transform3D, b_box: AABB) -> float:
+	var a_corners: Array[Vector3] = []
+	var b_corners: Array[Vector3] = []
+	for corner: int in 8:
+		a_corners.append(a_at * a_box.get_endpoint(corner))
+		b_corners.append(b_at * b_box.get_endpoint(corner))
+	var lines: Array[Vector3] = []
+	for k: int in 3:
+		lines.append(a_at.basis[k].normalized())
+		lines.append(b_at.basis[k].normalized())
+	for i: int in 3:
+		for j: int in 3:
+			var across: Vector3 = a_at.basis[i].normalized().cross(b_at.basis[j].normalized())
+			if across.length() > 0.001:
+				lines.append(across.normalized())
+	var least: float = INF
+	for way: Vector3 in lines:
+		var a_lo: float = INF
+		var a_hi: float = -INF
+		var b_lo: float = INF
+		var b_hi: float = -INF
+		for p: Vector3 in a_corners:
+			a_lo = minf(a_lo, p.dot(way))
+			a_hi = maxf(a_hi, p.dot(way))
+		for p: Vector3 in b_corners:
+			b_lo = minf(b_lo, p.dot(way))
+			b_hi = maxf(b_hi, p.dot(way))
+		least = minf(least, minf(a_hi, b_hi) - maxf(a_lo, b_lo))
+	return least
+
+
+## How far [param box] at [param at] reaches along [param way]: (lo, hi).
+static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
+	var lo: float = INF
+	var hi: float = -INF
+	for corner: int in 8:
+		var along: float = (at * box.get_endpoint(corner)).dot(way)
+		lo = minf(lo, along)
+		hi = maxf(hi, along)
+	return Vector2(lo, hi)
+
+
+## Whether [param key] is round about the line through [param point] along
+## [param way] and centred on it: a wheel, a tyre, a gear, a pulley, a round
+## plate on its axle. Turning on that line it sweeps only where it is, so it
+## is never tested (a tyre resting on the floor, turned with its axle, met
+## the floor by its turned cover's cells).
+func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	if info == null:
+		return false
+	var name: String = info.name.to_lower()
+	var round_name: bool = false
+	for word: String in ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round", "bush", "disk"]:
+		if name.contains(word):
+			round_name = true
+			break
+	if not round_name:
+		return false
+	var centre: Vector3 = brick.transform * info.bounds.get_center()
+	var off: Vector3 = centre - point
+	if (off - way * off.dot(way)).length() > 2.0:
+		return false
+	var local: Vector3 = (brick.transform.basis.inverse() * way).normalized()
+	var size: Vector3 = info.bounds.size
+	for k: int in 3:
+		if absf(local[k]) > 0.999:
+			var a: float = size[(k + 1) % 3]
+			var b: float = size[(k + 2) % 3]
+			return absf(a - b) <= 2.0
+	return false
 
 
 ## Whether [param other] overlapped any part of the moving side where they
@@ -526,7 +766,7 @@ func _overlapped_at_rest(other: int) -> bool:
 	var boxes: PackedInt32Array = builder.lattice.boxes_of(other)
 	if not boxes.is_empty():
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
-			if moving.has(key):
+			if moving.has(key) or followers.has(key):
 				touching = true
 				break
 	_rest_overlap[other] = touching
@@ -599,6 +839,13 @@ func turn_to(degrees: float) -> float:
 		stopped = true
 		return angle
 	_wall = NAN
+	loop_short = false
+	if linkage != null and not linkage.is_slide():
+		# As far as the loop closes towards it.
+		var reached: float = rad_to_deg(linkage.reach(deg_to_rad(wanted)))
+		if absf(reached - wanted) > 0.01:
+			loop_short = true
+			wanted = reached
 	var at: Dictionary = transforms_at(wanted)
 	var room: int = _test(at, 0, budget_ms).x
 	if room != 0:
@@ -611,7 +858,8 @@ func turn_to(degrees: float) -> float:
 			unchecked = true
 		angle = wanted
 		placed = at
-		stopped = false
+		_keep_loop()
+		stopped = loop_short
 		return angle
 	if budget_ms < INF:
 		# Met something, on a section too big to bisect in a frame: it stays
@@ -644,6 +892,7 @@ func turn_to(degrees: float) -> float:
 	_wall = high
 	angle = low
 	placed = transforms_at(angle)
+	_keep_loop()
 	stopped = true
 	return angle
 
@@ -672,6 +921,7 @@ func verify_step() -> bool:
 	if absf(hi - _verifying_lo) < STOP_TO:
 		angle = _verifying_lo
 		placed = transforms_at(angle)
+		_keep_loop()
 		_wall = hi
 		_verifying_hi = null
 		unchecked = false
@@ -690,6 +940,7 @@ func verify_step() -> bool:
 		_verifying_hi = middle
 	angle = _verifying_lo
 	placed = transforms_at(angle)
+	_keep_loop()
 	stopped = true
 	return false
 
@@ -700,11 +951,15 @@ func slide_to(along: float) -> float:
 	if state != "moves" or mode != "slide":
 		return shift
 	var wanted: float = clampf(along, _range.x, _range.y)
+	if linkage != null:
+		# A slide in a loop goes as far as the loop takes it.
+		wanted = linkage.reach(along)
 	stopped = not is_equal_approx(wanted, along)
 	var at: Dictionary = transforms_at(angle, wanted)
 	if has_room(at):
 		shift = wanted
 		placed = at
+		_keep_loop()
 		return shift
 	var low: float = shift
 	var high: float = wanted
@@ -716,6 +971,7 @@ func slide_to(along: float) -> float:
 			high = middle
 	shift = low
 	placed = transforms_at(angle, shift)
+	_keep_loop()
 	stopped = true
 	return shift
 
@@ -760,12 +1016,28 @@ func ball_to(turned: Basis) -> Basis:
 	return twist
 
 
+## The loop's pose as it now stands is where its next move starts.
+func _keep_loop() -> void:
+	if linkage != null:
+		linkage.keep()
+
+
+## Slide it along its joint's line rather than turn it: a drag along the
+## line, or move_part's along=.
+func use_slide() -> void:
+	mode = "slide"
+	if linkage != null:
+		linkage.drive_slide()
+
+
 ## The range a slide has, LDU from where it was grabbed.
 func slide_range() -> Vector2:
 	return _range
 
 
 func can_slide() -> bool:
+	if linkage != null:
+		return linkage.slide_col[0] >= 0
 	return mode != "ball" and _range.y - _range.x > 4.0
 
 
@@ -795,10 +1067,13 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 				var along: float = absf(moved.dot(line.normalized()))
 				var across: float = absf(moved.cross(line.normalized()))
 				if along > across * SLIDE_BIAS:
-					mode = "slide"
+					use_slide()
 	match mode:
 		"turn":
-			turn_to(_pointer_angle(origin, direction, screen, eye))
+			if linkage != null and not linkage.driver_fixed() and eye != null:
+				turn_to(_pointer_loop(screen, eye))
+			else:
+				turn_to(_pointer_angle(origin, direction, screen, eye))
 		"slide":
 			slide_to(_pointer_along(origin, direction))
 		"ball":
@@ -863,6 +1138,43 @@ func _pointer_angle(origin: Vector3, direction: Vector3, screen: Vector2,
 	return _unwrapped
 
 
+## Where the pointer says a loop's driver is turned, when its joint is
+## carried by the loop itself (a coupler grabbed, its pivot on the crank):
+## the turn that brings the point held nearest the pointer on the screen,
+## stepped along the way the loop moves it (three steps of Newton's method
+## on the screen distance, each from two solves of the loop).
+func _pointer_loop(screen: Vector2, eye: Camera3D) -> float:
+	var t: float = angle
+	var probe: float = 0.5
+	for _step: int in 3:
+		var here: Variant = _held_on_screen(t, eye)
+		var there: Variant = _held_on_screen(t + probe, eye)
+		if here == null or there == null:
+			break
+		var way: Vector2 = ((there as Vector2) - (here as Vector2)) / probe
+		if way.length_squared() < 1e-6:
+			break
+		var dt: float = (screen - (here as Vector2)).dot(way) / way.length_squared()
+		t += clampf(dt, -15.0, 15.0)
+		if absf(dt) < 0.05:
+			break
+	return t
+
+
+## Where the point held is drawn with the loop's driver at [param degrees];
+## null where the loop does not close there.
+func _held_on_screen(degrees: float, eye: Camera3D) -> Variant:
+	var got: float = rad_to_deg(linkage.reach(deg_to_rad(degrees)))
+	if absf(got - degrees) > 0.01:
+		return null
+	var at: Dictionary = linkage.places()
+	var move: Transform3D = at.get(body, Transform3D.IDENTITY)
+	var point: Vector3 = move * _hold
+	if eye.is_position_behind(point):
+		return null
+	return eye.unproject_position(point)
+
+
 ## Where the pointer says a slide has gone: the point of the joint's line
 ## nearest the pointer's ray, against where it was held.
 func _pointer_along(origin: Vector3, direction: Vector3) -> float:
@@ -907,6 +1219,20 @@ func _pointer_twist(origin: Vector3, direction: Vector3) -> Basis:
 ## lowest, as far as it has room for. Quasi-static: no swing past it and
 ## back. Returns words, or "" when it stays where it was put.
 func settle() -> String:
+	if linkage != null:
+		return _settle_loop()
+	var words: String = _settle_joint()
+	_settle_inside()
+	if not inner_swung.is_empty():
+		var more: String = "%s inside it swung down too (%s)" % [
+			"a free joint" if inner_swung.size() == 1 else "%d free joints" % inner_swung.size(),
+			", ".join(inner_swung)]
+		words = more if words.is_empty() else "%s; %s" % [words, more]
+	return words
+
+
+## The grabbed joint's own swing under its weight, when it does not hold.
+func _settle_joint() -> String:
 	if state != "moves" or mode != "turn" or link.holds or grams <= 0.0:
 		return ""
 	var turned: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
@@ -930,6 +1256,160 @@ func settle() -> String:
 		return "swung %d° under its own weight until it met the model" % roundi(absf(swung))
 	return "swung %d° down under its own weight: %s turns freely" % [roundi(absf(swung)),
 		link.words().trim_prefix("on ")]
+
+
+## Every joint inside what moved that does not hold by friction swings down
+## under the weight of what it carries too, innermost first and then again
+## (a pendulum on a pendulum), each turned as far as it has room against the
+## model that stands. Quasi-static, as [method settle]: no swing past it and
+## back. What swung is said in [member inner_swung].
+func _settle_inside() -> void:
+	inner_swung.clear()
+	if state != "moves" or mode == "ball":
+		return
+	var inner: Array = []   ## [child body, link]
+	var ours: Dictionary = {}
+	for one: int in moving_bodies:
+		ours[one] = true
+	for one: int in follower_bodies:
+		ours[one] = true
+	for one: int in ours:
+		var joined: Bodies.Link = bodies.parent_link.get(one)
+		if joined == null or joined == link or joined.holds or joined.axis == Vector3.ZERO:
+			continue
+		if not ours.has(int(bodies.parent_of[one])) and not follower_bodies.has(one):
+			continue
+		inner.append([one, joined])
+	if inner.is_empty():
+		return
+	var swung: Dictionary = {}   ## child body -> degrees
+	for _pass: int in 3:
+		var any: bool = false
+		for entry: Array in inner:
+			var turned: float = _swing_inner(int(entry[0]), entry[1])
+			if absf(turned) >= 0.5:
+				swung[int(entry[0])] = float(swung.get(int(entry[0]), 0.0)) + turned
+				any = true
+		if not any:
+			break
+	for one: int in swung:
+		if absf(float(swung[one])) >= 0.5:
+			inner_swung.append("%s %d°" % [bodies.named(bodies.beyond(one)).get_slice(",", 0),
+				roundi(absf(float(swung[one])))])
+
+
+## Turn the joint [param joined] above [param child] so the centre of mass of
+## everything beyond it comes under its line, as far as it has room. Returns
+## the degrees it turned.
+func _swing_inner(child: int, joined: Bodies.Link) -> float:
+	var parts: PackedInt64Array = bodies.parts_of(bodies.beyond(child))
+	# Its line and point where what carries it now stands.
+	var carrier: int = int(bodies.parent_of[child])
+	var carrier_key: int = int((bodies.members[carrier] as PackedInt64Array)[0])
+	var carried: Transform3D = (placed[carrier_key] as Transform3D) \
+		* (rest[carrier_key] as Transform3D).affine_inverse()
+	var turn_point: Vector3 = carried * joined.point
+	var way: Vector3 = (carried.basis * joined.axis).normalized()
+	var weight: float = 0.0
+	var sum := Vector3.ZERO
+	for key: int in parts:
+		var info: PartLibrary.PartInfo = library.parts.get(world.get_brick(key).part_id)
+		if info == null or not placed.has(key):
+			continue
+		var g: float = Stability.grams(info)
+		weight += g
+		sum += ((placed[key] as Transform3D) * info.bounds.get_center()) * g
+	if weight <= 0.0:
+		return 0.0
+	var out: Vector3 = sum / weight - turn_point
+	out -= way * out.dot(way)
+	var down: Vector3 = Vector3.DOWN - way * Vector3.DOWN.dot(way)
+	if out.length() < 0.5 or down.length() < 0.05:
+		return 0.0
+	var to_bottom: float = rad_to_deg(atan2(way.dot(out.cross(down)), out.dot(down)))
+	if absf(to_bottom) < 0.5:
+		return 0.0
+	var at_turn := func(degrees: float) -> Dictionary:
+		var move: Transform3D = Transform3D(Basis.IDENTITY, turn_point) \
+			* Transform3D(Basis(way, deg_to_rad(degrees)), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -turn_point)
+		var out_at: Dictionary = {}
+		for key: int in parts:
+			if placed.has(key):
+				out_at[key] = move * (placed[key] as Transform3D)
+		return out_at
+	var low: float = 0.0
+	var high: float = to_bottom
+	if not _room_for(at_turn.call(high)):
+		for _round: int in ROUNDS:
+			var middle: float = (low + high) * 0.5
+			if _room_for(at_turn.call(middle)):
+				low = middle
+			else:
+				high = middle
+		high = low
+	if absf(high) < 0.5:
+		return 0.0
+	var moved_to: Dictionary = at_turn.call(high)
+	for key: Variant in moved_to:
+		placed[key] = moved_to[key]
+	return high
+
+
+## Whether the parts [param at] names have room there against the model
+## that stands: nothing in the way but what moves with the grab or is
+## joined to it, and not through the floor.
+func _room_for(at: Dictionary) -> bool:
+	for key: Variant in at:
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var to: Transform3D = at[key]
+		var box: AABB = to * mesh.bounds
+		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
+			return false
+		if not _near_anything(box):
+			continue
+		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
+		if not _blocked(int(key), mesh, to, packed).is_empty():
+			return false
+	return true
+
+
+## A loop that no friction holds turns down under its weight: its driver
+## stepped downhill while the centre of mass of what it moves comes lower and
+## it has room, the step halved where it does not.
+func _settle_loop() -> String:
+	if state != "moves" or mode != "turn" or linkage.holds() or grams <= 0.0:
+		return ""
+	var from: float = angle
+	transforms_at(angle)
+	var best: float = linkage.centre_y()
+	var step: float = 8.0
+	var rounds: int = 0
+	while step >= 0.25 and rounds < 200:
+		rounds += 1
+		var better: bool = false
+		for way: float in [1.0, -1.0]:
+			var trial: float = angle + way * step
+			var got: float = rad_to_deg(linkage.reach(deg_to_rad(trial)))
+			if absf(got - trial) > 0.01:
+				continue
+			var lower: float = linkage.centre_y()
+			if lower < best - 0.01 and has_room(linkage.transforms(rest)):
+				best = lower
+				angle = trial
+				placed = linkage.transforms(rest)
+				_keep_loop()
+				better = true
+				break
+		if not better:
+			step *= 0.5
+	if absf(angle - from) < 0.5:
+		return ""
+	return "the loop turned %d° under its own weight: no joint in it holds by friction" % roundi(
+		absf(angle - from))
 
 
 ## Put every part that moved where it now stands, as one step to undo,

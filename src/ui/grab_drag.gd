@@ -187,6 +187,8 @@ func motion(screen: Vector2) -> void:
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
 	if grab.unchecked:
 		line += " — too big to test every frame: checked when you pause"
+	elif grab.loop_short:
+		line += " — stopped: its loop closes no further that way"
 	elif grab.stopped:
 		line += " — stopped: it meets the model"
 	if report != null and not report.empty:
@@ -510,7 +512,7 @@ func for_session(input: Dictionary) -> String:
 	if input.has("along"):
 		if not held.can_slide():
 			return "%s\nIt does not slide: nothing it is on is longer than the hole it is in." % lines[0]
-		held.mode = "slide"
+		held.use_slide()
 		var wanted: float = float(input["along"]) * BrickLattice.STUD
 		held.slide_to(wanted)
 		asked_for = "%s studs" % Balance.studs(float(input["along"]))

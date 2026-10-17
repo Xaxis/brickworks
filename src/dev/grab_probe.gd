@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab2-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -30,6 +30,16 @@ const CASES: Array = [
 	["minifigure", "res://vendor/omr/files/6627-1.mpd", "figure", 0.0],
 	["ball joint", "res://vendor/omr/files/30472-1.mpd", "ball", 0.0],
 	["slider", "res://vendor/omr/files/6630-1.mpd", "slide", 0.0],
+]
+
+## Closed loops on real sets (Linkage), each against its closed form: a
+## steering's arms and track rod (a four-bar: the rocker's turn from the
+## circles its pins move on) and an engine's crank, rod and piston (a
+## crank-slider: the piston's travel from the rod's length and the crank's
+## throw).
+const LOOPS: Array = [
+	["four-bar: a steering's arms and track rod", "res://vendor/omr/files/8020-1_Jeep.mpd", "fourbar"],
+	["crank and piston: an engine", "res://vendor/omr/files/8218-1.mpd", "engine"],
 ]
 
 var _failures: int = 0
@@ -99,6 +109,10 @@ func _run() -> void:
 		if not only.is_empty() and not str(case[0]).contains(only):
 			continue
 		await _case(case[0], case[1], case[2])
+	if only.is_empty() or only == "loops" or only == "fourbar" or only == "engine":
+		for loop: Array in LOOPS:
+			if only.is_empty() or only == "loops" or only == loop[2]:
+				await _loop_case(loop[0], loop[1], loop[2])
 	if only.is_empty() or only == "copies":
 		await _copies()
 	if only.is_empty() or only == "chain":
@@ -177,9 +191,33 @@ func _survey(path: String) -> void:
 	for link: Bodies.Link in bodies.links:
 		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
 		var moved: Array = bodies.beyond(child)
-		print("    %-9s %s holds=%s slide=%s detent=%s moves %s" % [link.kind,
+		print("    %-9s %s holds=%s slide=%s detent=%s %s at %s way %s" % [link.kind,
 			_parts_said(bodies, link), link.holds, link.slide, link.detent,
-			bodies.named(moved)])
+			"CLOSES A LOOP" if bodies.closing.has(link) else "moves " + bodies.named(moved),
+			link.point.snapped(Vector3.ONE * 0.1), link.axis.snapped(Vector3.ONE * 0.01)])
+	if "--connectors" in OS.get_cmdline_user_args():
+		var shown: Dictionary = {}
+		var asked: Array = []
+		for arg: String in OS.get_cmdline_user_args():
+			if arg.begins_with("--parts="):
+				for part: String in arg.trim_prefix("--parts=").split(","):
+					for brick: BrickWorld.Brick in _world.bricks():
+						if brick.part_id == part:
+							asked.append([brick.id])
+							print("    #%d %s at %s" % [brick.id, part, brick.transform])
+		for link: Bodies.Link in bodies.closing:
+			asked.append_array(link.pairs)
+		for pair: Array in asked:
+				for key: int in pair:
+					var part: String = _world.get_brick(key).part_id
+					if shown.has(part):
+						continue
+					shown[part] = true
+					var mesh: Lbm.PartMesh = _library.mesh_for(part)
+					print("    %s %s:" % [part, _library.parts[part].name])
+					for c: Lbm.Connector in mesh.connectors:
+						print("      %s %s at %s way %s len %s r %s" % [c.kind, c.gender, c.position,
+							c.axis, c.length, c.radius])
 
 
 func _parts_said(bodies: Bodies, link: Bodies.Link) -> String:
@@ -558,6 +596,318 @@ func _gears_headless() -> void:
 	_check("gears: the crank's drag drives %d parts" % grab.coupled.size(), not grab.coupled.is_empty())
 	if not grab.coupled.is_empty():
 		_gear_check("gears", grab)
+
+
+# -- closed loops ----------------------------------------------------------------------
+
+
+## The joint between bodies [param x] and [param y], or null.
+static func _link_between(bodies: Bodies, x: int, y: int) -> Bodies.Link:
+	for link: Bodies.Link in bodies.touching.get(x, []):
+		if link.other(x) == y:
+			return link
+	return null
+
+
+## Open [param path], find its loop of [param kind], grab the loop's driver
+## with the pointer and turn it: every frame the loop's other joints stand
+## where its closed form puts them.
+func _loop_case(name: String, path: String, kind: String) -> void:
+	print("\n%s: %s" % [name, path.get_file()])
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	# The four bodies round the loop: ground, crank (driven), coupler,
+	# rocker or piston.
+	var found: Dictionary = _find_loop(bodies, kind)
+	if found.is_empty():
+		_check("%s: the set has the loop" % name, false)
+		return
+	var crank: int = found["crank"]
+	var coupler: int = found["coupler"]
+	var last: int = found["last"]
+	var driver: Bodies.Link = bodies.parent_link[crank]
+	var crank_pin: Bodies.Link = _link_between(bodies, crank, coupler)
+	var far_pin: Bodies.Link = _link_between(bodies, coupler, last)
+	var far_joint: Bodies.Link = found["far_joint"]
+	print("    crank %s %s at %s; coupler %s; %s %s on %s" % [bodies.named([crank]), driver.kind,
+		driver.point, bodies.named([coupler]), "piston" if kind == "engine" else "rocker",
+		bodies.named([last]), far_joint.kind])
+	_frame_on(bodies.parts_of([crank, coupler, last]))
+	await _frames(20)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var press: Dictionary = _press_point(bodies.members[crank], bodies)
+	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
+			Vector3(-1, 0.6, -1)]:
+		if not press.is_empty():
+			break
+		_camera.look_from(side.normalized())
+		_frame_on(bodies.parts_of([crank, coupler, last]))
+		await _frames(10)
+		press = _press_point(bodies.members[crank], bodies)
+	if press.is_empty():
+		_check("%s: the crank is under the pointer somewhere" % name, false)
+		return
+	if _windowed:
+		await _shot(name.get_slice(":", 0), "1_before")
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null:
+		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s chain=%s)" % [
+			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(),
+			_main.get("_press_brick"), _verbs.mode, _grab.chain != null])
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		print("    (Grab.begin on #%d %s directly: %s %s)" % [int(press["brick"]),
+			_world.get_brick(int(press["brick"])).part_id,
+			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin),
+			trial.why])
+	_check("%s: a drag on the crank takes the loop (%s)" % [name, _grab.last_words if grab == null
+		else grab.said], grab != null and grab.state == "moves" and grab.linkage != null)
+	if grab == null or grab.linkage == null:
+		await _button(screen, false)
+		return
+	var linkage: Linkage = grab.linkage
+	print("    %s; %d joints, %d closing, moving %d parts" % [linkage.said(), linkage.links.size(),
+		linkage.closing.size(), grab.moving.size()])
+	if "--debug" in OS.get_cmdline_user_args():
+		for n: int in linkage.links.size():
+			var one: Bodies.Link = linkage.links[n]
+			print("    (joint %d: %s %s at %s way %s, turn col %d, slide col %d)" % [n, one.kind,
+				_parts_said(bodies, one), one.point, one.axis, linkage.turn_col[n], linkage.slide_col[n]])
+		for one: Bodies.Link in linkage.closing:
+			print("    (closing: %s %s at %s way %s slide %s)" % [one.kind, _parts_said(bodies, one),
+				one.point, one.axis, one.slide])
+		for want: float in [3.0, 10.0]:
+			var reached: float = rad_to_deg(linkage.reach(deg_to_rad(want)))
+			print("    (loop to %.0f°: reached %.2f°, residual %.4f after %d iterations; q %s; derivatives off by %.6f)"
+				% [want, reached, linkage.residual, linkage.iterations, str(linkage.q),
+				linkage.jacobian_error()])
+			print("    (%s; residual %s)" % [linkage.jacobian_said(), str(linkage.last_residual)])
+			var at: Dictionary = linkage.transforms(grab.rest)
+			print("    (room there: %s, met %s)" % [grab.has_room(at), str(grab.blocked_by.map(
+				func(k: int) -> String: return "#%d %s" % [k, _world.get_brick(k).part_id]))])
+	# By the pointer: round as far as it goes, each frame against the closed
+	# form.
+	var targets: Array = []
+	var span: float = 360.0 if kind == "engine" else 40.0
+	var step: float = 6.0 if kind == "engine" else 2.0
+	var n: int = 1
+	while step * n <= span:
+		targets.append(step * n)
+		n += 1
+	if kind != "engine":
+		for k: int in range(n - 2, -n, -1):
+			targets.append(step * k)
+	var hold: Vector3 = grab._hold
+	var followed: int = 0
+	var worst_follow: float = 0.0
+	var worst_form: float = 0.0
+	var checked: int = 0
+	var low_s: float = INF
+	var high_s: float = -INF
+	var stops: int = 0
+	var mid_shot: bool = false
+	var form := {"prev": NAN}
+	var frame_worst: float = 0.0
+	for target: float in targets:
+		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
+		var began: int = Time.get_ticks_usec()
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		if grab.stopped:
+			stops += 1
+		else:
+			worst_follow = maxf(worst_follow, absf(wrapf(grab.angle - target, -180.0, 180.0)))
+			followed += 1
+		var off: float = _closed_form(kind, grab, driver, crank_pin, far_pin, far_joint, last, form)
+		if not is_nan(off):
+			worst_form = maxf(worst_form, off)
+			checked += 1
+		if kind == "engine":
+			low_s = minf(low_s, float(form["s"]))
+			high_s = maxf(high_s, float(form["s"]))
+		if not mid_shot and _windowed and absf(grab.angle) > (100.0 if kind == "engine" else 15.0):
+			mid_shot = true
+			await _shot(name.get_slice(":", 0), "2_mid")
+	_check("%s: the crank follows the pointer in %d frames, to %.2f° (%d stopped by the model or the loop)"
+		% [name, followed, worst_follow, stops], followed >= 6 and worst_follow <= 1.5)
+	var unit: String = "LDU" if kind == "engine" else "°"
+	_check("%s: in %d poses the loop's far joint stands where its closed form says, to %.3f %s" % [name,
+		checked, worst_form, unit], checked >= 6 and worst_form < (0.1 if kind == "engine" else 0.1))
+	if kind == "engine":
+		var throw: float = float(form["throw"])
+		_check("%s: the piston's stroke over a turn is twice the crank's throw (%.2f LDU, 2 x %.2f)" % [
+			name, high_s - low_s, throw], absf((high_s - low_s) - 2.0 * throw) < 0.2)
+	print("    drag frames: worst %.1f ms whole (following %.2f ms worst), %d solves" % [frame_worst,
+		_grab.worst_follow_ms, linkage.solves])
+	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
+		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
+		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	# Set to a pose by hand, the far joint's turn against the form, printed.
+	await _button(_last_screen, false)
+	await _frames(3)
+	await _settled()
+	print("    said: %s" % _grab.last_words)
+	_check("%s: let go, it is one step to undo (%s)" % [name, _builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
+	if _windowed:
+		await _shot(name.get_slice(":", 0), "3_after")
+	_builder.undo()
+	await _frames(3)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+
+
+## The loop round [param kind]: {crank, coupler, last, far_joint}. A
+## four-bar: a closing joint whose loop is four turning joints on parallel
+## lines, two of them on the anchor. An engine: the loop through a piston.
+func _find_loop(bodies: Bodies, kind: String) -> Dictionary:
+	for loop: Bodies.Link in bodies.closing:
+		var up_a: Array = [loop.a]
+		while bodies.parent_link.has(up_a[-1]):
+			up_a.append(int(bodies.parent_of[up_a[-1]]))
+		var up_b: Array = [loop.b]
+		while bodies.parent_link.has(up_b[-1]):
+			up_b.append(int(bodies.parent_of[up_b[-1]]))
+		var top: int = -1
+		for one: int in up_a:
+			if up_b.has(one):
+				top = one
+				break
+		if top < 0:
+			continue
+		# Round the loop from where its two ways meet: down to b, across the
+		# closing joint to a, up again.
+		var down: Array = up_b.slice(0, up_b.find(top))
+		down.reverse()
+		var ring: Array = [top] + down + up_a.slice(0, up_a.find(top))
+		if ring.size() != 4:
+			continue
+		var has_piston: bool = false
+		for one: int in ring:
+			for key: int in bodies.members[one]:
+				if _world.get_brick(key).part_id.begins_with("2851"):
+					has_piston = true
+		if (kind == "engine") != has_piston:
+			continue
+		var ground: int = ring[0]
+		# The crank: the ground's neighbour whose joint turns and does not slide
+		# in a cylinder; the far joint: the other's.
+		var first: int = ring[1]
+		var other_end: int = ring[3]
+		var crank: int = first
+		var last: int = other_end
+		if kind == "engine":
+			for one: int in [first, other_end]:
+				var piston: bool = false
+				for key: int in bodies.members[one]:
+					if _world.get_brick(key).part_id.begins_with("2851"):
+						piston = true
+				if piston:
+					last = one
+				else:
+					crank = one
+		var coupler: int = ring[2]
+		var far_joint: Bodies.Link = _link_between(bodies, ground, last)
+		if bodies.parent_link.get(crank) == null or bodies.parent_of.get(crank) != ground:
+			# The crank must hang from the ground for the pointer to turn it.
+			var swap: int = crank
+			crank = last
+			last = swap
+			far_joint = _link_between(bodies, ground, last)
+		if bodies.parent_of.get(crank) != ground or far_joint == null:
+			continue
+		if kind == "fourbar":
+			var ways: Array = []
+			for pair: Array in [[ground, crank], [crank, coupler], [coupler, last], [last, ground]]:
+				var one: Bodies.Link = _link_between(bodies, pair[0], pair[1])
+				if one == null or one.axis == Vector3.ZERO:
+					ways = []
+					break
+				ways.append(one.axis.normalized())
+			if ways.size() != 4 or absf((ways[0] as Vector3).dot(ways[1])) < 0.99 \
+					or absf((ways[0] as Vector3).dot(ways[2])) < 0.99 \
+					or absf((ways[0] as Vector3).dot(ways[3])) < 0.99:
+				continue
+		return {"crank": crank, "coupler": coupler, "last": last, "far_joint": far_joint}
+	return {}
+
+
+## How far the loop's far joint stands from where its closed form puts it,
+## with the crank at the grab's angle: a four-bar's rocker turn, degrees
+## (the coupler's far pin on the circle about the rocker's pivot at the
+## coupler's length from its near pin: two circles meeting); an engine's
+## piston travel along its cylinder, LDU (the wrist pin on the cylinder's
+## line at the rod's length from the crank pin: a quadratic). NAN when the
+## form has no answer there. [param form] carries the last answer, to pick
+## the root the loop is on.
+func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodies.Link,
+		far_pin: Bodies.Link, far_joint: Bodies.Link, last: int, form: Dictionary) -> float:
+	var axis: Vector3 = driver.axis.normalized()
+	var o: Vector3 = driver.point
+	var about := func(p: Vector3, degrees: float) -> Vector3:
+		return _about(o, axis, degrees) * p
+	# The crank pin where the crank's turn puts it; the far pin where it was.
+	var pin_now: Vector3 = about.call(crank_pin.point, grab.angle)
+	var last_key: int = int((_grab._bodies.members[last] as PackedInt64Array)[0])
+	var moved: Transform3D = (grab.placed[last_key] as Transform3D) \
+		* (grab.rest[last_key] as Transform3D).affine_inverse()
+	# Distances in the plane square to the crank's line: the rod and the
+	# track rod may slide along their pins, which the forms do not need.
+	var flat := func(v: Vector3) -> Vector3:
+		return v - axis * v.dot(axis)
+	var length: float = (flat.call(far_pin.point - crank_pin.point) as Vector3).length()
+	if kind == "engine":
+		var u: Vector3 = far_joint.axis.normalized()
+		var w0: Vector3 = far_pin.point
+		var gap: Vector3 = flat.call(w0 - pin_now)
+		var b: float = u.dot(gap)
+		var c: float = gap.length_squared() - length * length
+		var disc: float = b * b - c
+		if disc < 0.0:
+			return NAN
+		var roots: Array = [-b + sqrt(disc), -b - sqrt(disc)]
+		var prev: float = 0.0 if is_nan(float(form["prev"])) else float(form["prev"])
+		var s: float = roots[0] if absf(float(roots[0]) - prev) < absf(float(roots[1]) - prev) else roots[1]
+		form["prev"] = s
+		form["s"] = s
+		form["throw"] = (flat.call(crank_pin.point - o) as Vector3).length()
+		var travelled: float = (moved * w0 - w0).dot(u)
+		return absf(travelled - s)
+	# Four-bar: in the plane, the far pin on two circles.
+	var b0: Vector3 = far_joint.point
+	var radius: float = (flat.call(far_pin.point - b0) as Vector3).length()
+	var centre: Vector3 = b0 + axis * axis.dot(pin_now - b0)
+	var d_vec: Vector3 = flat.call(pin_now - b0)
+	var d: float = d_vec.length()
+	if d < 0.001 or d > radius + length or d < absf(radius - length):
+		return NAN
+	var along: float = (radius * radius - length * length + d * d) / (2.0 * d)
+	var high: float = sqrt(maxf(radius * radius - along * along, 0.0))
+	var ex: Vector3 = d_vec / d
+	var ey: Vector3 = axis.cross(ex)
+	var first: Vector3 = centre + ex * along + ey * high
+	var second: Vector3 = centre + ex * along - ey * high
+	var prev_point: Vector3 = form.get("point", far_pin.point)
+	var expected: Vector3 = first if first.distance_to(prev_point) < second.distance_to(prev_point) else second
+	form["point"] = expected
+	var from: Vector3 = flat.call(far_pin.point - b0)
+	var to: Vector3 = flat.call(expected - b0)
+	var want: float = rad_to_deg(atan2(axis.dot(from.cross(to)), from.dot(to)))
+	var got_vec: Vector3 = flat.call(moved * far_pin.point - b0)
+	var got: float = rad_to_deg(atan2(axis.dot(from.cross(got_vec)), from.dot(got_vec)))
+	form["s"] = got
+	return absf(wrapf(got - want, -180.0, 180.0))
 
 
 # -- copies of one sub-assembly --------------------------------------------------------
