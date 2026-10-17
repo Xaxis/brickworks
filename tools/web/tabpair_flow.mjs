@@ -23,8 +23,9 @@
 //      the id its tab's first message gave; each change lands in its own
 //      tab and not the other. Each tab then shows a chat working in it.
 //   5. Chat C chooses the castle too: the castle's tab says two chats are
-//      working in it; Keep this one beside A moves C off; C's next call is
-//      told so and changes nothing, and A builds on.
+//      working in it; C's undo leaves A's change standing; Keep this one
+//      beside A moves C off; C's next call is told so and changes nothing,
+//      and A builds on.
 //
 // Pictures: 1_castle.png and 1_truck.png (each tab with Account open, its
 // chat named), 2_two_chats.png, 3_kept.png.
@@ -327,6 +328,11 @@ check(`the castle's toolbar and Account say two chats are working in it: "${twoS
 await castle.page.screenshot({ path: `${out}/2_two_chats.png` });
 check(`...while the truck's still says one: "${(await claude(truck.page)).badge}"`,
   (await claude(truck.page)).badge === `Claude working · tab ${truck.id}`);
+// Undo per chat: C's undo does not take back A's change.
+const theirs = await c.call("undo");
+await wait(2000);
+check(`C's undo leaves A's change standing: "${theirs.words.split("\n").slice(1).join(" ").slice(0, 160)}"`,
+  theirs.words.includes("was made by another Claude chat") && (await state(castle.page)).bricks === castle.bricks);
 const keepA = (twoSaid.chats || []).findIndex((one) => one.chat === a.chat);
 check(`A is among the castle's chats (row ${keepA})`, keepA >= 0);
 await press(castle.page, `account_keep_chat_${Math.max(0, keepA)}`);

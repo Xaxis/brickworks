@@ -32,6 +32,9 @@ var assistant: Assistant
 ## Whether a link to this computer may be fetched (_fetch): a probe serves
 ## its own files from here.
 var fetch_near: bool = false
+## The Claude chat whose call is running, as the relay names it, or "":
+## set by CommandSocket around each call (undo keeps to its own changes).
+var chat: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
 
@@ -960,13 +963,24 @@ func _undo(input: Dictionary) -> String:
 	var again: bool = bool(input.get("redo", false))
 	var count: int = clampi(int(input.get("steps", 1)), 1, 25)
 	var done := PackedStringArray()
+	var others: String = ""
 	for _n: int in count:
 		var words: String = builder.redo_words() if again else (
 			builder.history_words(1)[0] if builder.history_depth() > 0 else "")
 		if words.is_empty():
 			break
+		# Another Claude chat's change, in a tab two chats work in: not this
+		# chat's to take back (CommandSocket.CHAT_KEY).
+		var by: String = str(builder.last_step().get("by", "")) if not again else ""
+		if not chat.is_empty() and not by.is_empty() and by != chat:
+			others = words
+			break
 		await verbs.press("redo" if again else "undo")
 		done.append(words)
+	if not others.is_empty():
+		return ("%sThe next change back, %s, was made by another Claude chat working in this "
+			+ "tab, so it was left. Ask the person before changing that chat's work.") % [
+				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")
 	var left: String = ("Next to undo: %s." % builder.history_words(1)[0]) \
