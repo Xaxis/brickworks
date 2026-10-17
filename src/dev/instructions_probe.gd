@@ -38,6 +38,8 @@ func _initialize() -> void:
 	_pressed_up(world, library)
 	_turned_section(world, library)
 	_on_its_edge(world, library)
+	_in_sight(world, library)
+	_like_parts_together(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -477,6 +479,52 @@ func _pressed_up(world: BrickWorld, library: PartLibrary) -> void:
 	print("\n  a plate pressed up under a bridge")
 	_assert("it goes in with the bridge (steps %d and %d)" % [int(step_of.get(under, -1)),
 		int(step_of.get(bridge, -1))], step_of.get(under, -1) == step_of.get(bridge, -2))
+
+
+## A step's own parts are in its picture. A 1 x 1 plate with a 3 x 3 plate
+## on its stud, filled into one step as both were ready and near, was
+## hidden under it from the front and the back: in 100 real sets most of the
+## steps of ours that hid a new thing hid it behind a part of the same step
+## (docs/INSTRUCTIONS.md). The 3 x 3 goes in the step after.
+func _in_sight(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	world.add_brick("3958", 7, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)))
+	var small: int = world.add_brick("3024", 4, Transform3D(Basis.IDENTITY,
+		Vector3(10.0, 8.0, 10.0)))
+	var over: int = world.add_brick("11212", 1, Transform3D(Basis.IDENTITY,
+		Vector3(10.0, 16.0, 10.0)))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a plate under a wider one", steps, world, library)
+	var step_of: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			step_of[brick_id] = step.index
+	print("\n  a 1 x 1 plate under a 3 x 3")
+	_assert("the 3 x 3 goes in after the step of the plate it covers (steps %d and %d)" % [
+		int(step_of.get(small, -1)), int(step_of.get(over, -1))],
+		int(step_of.get(over, -1)) > int(step_of.get(small, 99)))
+
+
+## Like parts that go on together go in one step: three 1 x 2 tiles in a
+## row along a plate, five studs apart. Reached only from the part put in last,
+## a step ended at the first gap wider than four studs, and each tile was a
+## step of its own.
+func _like_parts_together(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	world.add_brick("2445", 7, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)))
+	var tiles: Array[int] = []
+	for at: float in [-100.0, 0.0, 100.0]:
+		tiles.append(world.add_brick("3069b", 1, Transform3D(Basis.IDENTITY,
+			Vector3(at, 8.0, 10.0))))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a row of tiles", steps, world, library)
+	var holding: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			if tiles.has(brick_id):
+				holding[step.index] = true
+	print("\n  three tiles in a row, five studs apart")
+	_assert("they go in in one step (%d steps hold them)" % holding.size(), holding.size() == 1)
 
 
 ## A section the file puts on at an angle, too big for a callout by size, is
