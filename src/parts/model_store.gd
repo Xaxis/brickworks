@@ -809,7 +809,9 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	# A turned part's cover is the slow half of putting it down, and depends
 	# on nothing but the part and its turn: all of them set going at once,
 	# first, and worked out while the parts are drawn.
-	builder.prepare_covers(known)
+	_unregistered = []
+	if not lattice_later:
+		builder.prepare_covers(known)
 	_phase("covers")
 	var placed: int = 0
 	var down: Array[int] = []
@@ -831,12 +833,16 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 		placed += 1
 	_phase("draw")
 	# Then the lattice told of each, in the same order, once the covers are in.
-	builder.finish_covers()
+	if not lattice_later:
+		builder.finish_covers()
 	_phase("covered")
 	for n: int in known.size():
 		if down[n] != 0:
 			var placement: LdrModel.Placement = known[n]
-			builder.register(down[n], placement.part_id, placement.transform)
+			if lattice_later:
+				_unregistered.append([down[n], placement.part_id, placement.transform])
+			else:
+				builder.register(down[n], placement.part_id, placement.transform)
 	_awaited_in = world.generation()
 	_phase("place")
 
@@ -871,6 +877,28 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null}
+
+
+## The lattice told of a model's parts after it is on screen, a slice at a
+## time (register_later), not as it opens: the shared model's viewer, whose
+## parts are only looked at. It is what is under a pointer there, nothing
+## more, and on 4,000 parts of a slowed phone it was over a second before
+## the model was up.
+var lattice_later: bool = false
+var _unregistered: Array = []
+
+
+## The parts open_text left the lattice to be told of, told now, a slice a
+## frame. A model opened again meanwhile starts its own list.
+func register_later() -> void:
+	var pace := FramePace.new()
+	var list: Array = _unregistered
+	while not list.is_empty() and is_same(list, _unregistered):
+		var item: Array = list.pop_back()
+		if world.get_brick(int(item[0])) != null:
+			builder.register(int(item[0]), str(item[1]), item[2])
+		if pace.due():
+			await pace.next()
 
 
 ## [method open_text], once the LDraw library's own files the parts the file

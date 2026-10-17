@@ -1896,6 +1896,10 @@ func _enter_view() -> void:
 	# Main's).
 	if _grab_drag != null:
 		_grab_drag.set_process(false)
+	# The lattice is told of the parts once the model is up (what is under
+	# a pointer is all it is for here): over a second of a slowed phone's
+	# way to the first step on 4,000 parts.
+	_store.lattice_later = true
 	var column: Control = _bar.get_parent()
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
@@ -2088,6 +2092,9 @@ func _view_shared() -> void:
 	var kept: Dictionary = BuildSteps.recall(_viewing)
 	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
 		_ready_the_pages()
+	# The lattice, for what is under a pointer, a slice a frame, once the
+	# first taps have had their frames.
+	get_tree().create_timer(2.0).timeout.connect(func() -> void: _store.register_later())
 	if _build_wanted != NO_BUILD_WANTED:
 		var wanted: int = _build_wanted
 		_build_wanted = NO_BUILD_WANTED
@@ -4635,6 +4642,10 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 ## change. The worker reads copies of the world and the lattice, made here
 ## in a few milliseconds, and the library holds new parts aside meanwhile.
 func _weigh() -> void:
+	# The viewer says nothing of whether it stands (its status bar shows
+	# only the work), and weighing a big model copied it whole first.
+	if not _viewing.is_empty():
+		return
 	if _stability == null or _world == null or _counts == null or _weighing \
 			or _world.revision == _stability_revision or _world.is_drawing_held():
 		return
