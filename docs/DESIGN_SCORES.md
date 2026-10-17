@@ -467,6 +467,156 @@ Results: `bench/results/realset-2026-10-16-faces/` (both halves),
 `realset-2026-10-16-technique-base-vs-faces/` and
 `realset-2026-10-16-armature-vs-faces/`.
 
+### Technique: joints held by their real shapes (2026-10-16)
+
+The judge's reasons for the sets name legs on joints, lamps on clips, arches
+and a boom on gears, and the one session that built a body on joints had it
+refused seven times by our own build check. A designer punished for angling
+a body will keep stacking. So the check was measured where it must pass:
+the jointed parts of real sets, which are built.
+
+**Measured.** `src/dev/joint_collisions.gd` opens each of the model
+repository's 1,576 files as File, Open does, stands each part where the check
+reads it, and puts every pair whose BrickNet pieces overlap by more than 1 LDU
+down to the joint BrickNet's labels join the two by. Gears in mesh and a wheel
+turned on its axle the check already excused; they are left out. Each pair
+joined by a joint is a false refusal, and the one a design on joints meets.
+Before, 3,361 of them in 462 files; now 440:
+
+| joint (BrickNet's label) | pairs refused before | refused now |
+|---|---:|---:|
+| ball and socket (towballs among them) | 133 | 8 |
+| hinge (click hinges, levers, a minifigure's arms and hands) | 757 | 111 |
+| clip on a bar (and a bar under a 1-wide plate) | 810 | 297 |
+| Technic pin in its hole | 649 | 6 |
+| axle in its hole | 864 | 4 |
+| turntable | 3 | 3 |
+| two kinds at once | 145 | 11 |
+| all | 3,361 | 440 |
+
+Each of the 462 files was measured twice, on the code before the fix and on
+the code after, and the two runs found the same pairs in every one; what the
+fix lets be is read off the second, which records how far each overlap
+reaches from its joint.
+
+**The cause.** A convex piece cannot be hollow. BrickNet's colliders fill a
+socket's mouth, a clip's jaws, the collar ring of a pin hole and a hinge's
+knuckles with convex pieces, and the ball, bar, pin or knuckle seated in them
+overlaps those pieces by 1 to 2.5 LDU: 31088's whale's Joint-8 ball in its
+socket by 1.0, 10283's towball in its steering arm by 2.5, 10315's mechanical
+arm's clip on a handle by 2.3, 10246's lever on its base by 2.0, 10276's
+pin in its beam by 1.8. The check, as strict as BrickBench's verify.py,
+refused every one.
+
+**The fix** (`ExactCheck.at_joint`, asked where the check refuses a pair by
+its shapes, `Assistant._exact_collisions`): two parts BrickNet's labels join
+by a ball, a clip on a bar, a hinge (a turntable's too), a pin or an axle,
+whose every overlapping pair of pieces
+meets inside the joint's own round, are the joint and not a collision. The
+round is the joint's own size with 1.5 LDU over, as a cover's slack is: 9.5
+LDU from a ball's middle (a Joint-8 ball and a towball are 16 across); 5.5
+from a bar's line (8 across; not its stop or a sword's guard, which rest
+against the clip and must not be in it: 7.5 let model-010's sword through
+its hand, which verify.py refused); 9.5 from a pin's or an axle's (the mouth
+of a Technic hole, 16 across, where a pin's collar and an axle's stop sit);
+9.5 from a hinge's (its knuckles, a lever's pivot). How far an overlap can
+reach is bounded from the two pieces (`Exact.overlap_reach`: the least of
+how far either reaches and of their common extent along 128 directions round
+a ball, 24 round a line), so an overlap is held to be the joint only where
+it must lie inside the round. Anything else stays a collision: a socket's
+rim into the next plate's neck, a hinge folded into its base, a ball pushed
+through its socket. In a run kept to BrickBench's parts (`PartsOnly`, the
+bench) none of it is excused, because verify.py excuses none. Only the
+refusal leaves the joint out: asked first of every pair the shapes decide
+(`ExactCheck.between`), it let a pin's collar stay inside its hole, which the
+check slides out to the mouth (`axle_probe`), and a hinge's top 2 LDU off its
+pivot through, which the lattice refuses (`joints_probe`); both fail on that
+and pass on this.
+
+**What is left, named.** 440 jointed pairs, none of them proven to be the
+joint: each has an overlap the bound cannot put inside the joint's round.
+149 of them reach no more than 2 LDU past it (most of them bars: a half pin's
+end or a bar's thick stop against the clip or the plate it is under), 190
+reach 2 to 10 LDU past, 101 further. By kind:
+
+- **Clip, 297:** half pins and bars under 1-wide plates, which BrickNet
+  labels a clip (4274 with 3666, 88072), a bar's thick stop at its clip or
+  hollow stud (63965 with 4274, 3062b, 60897), and clip tiles on a part's
+  edge (2555 with 30375 and 30031): the holder's body against the clip, not
+  the bar in it.
+- **Hinge, 111:** a pane against its hinged frame (2348a and 2348b in 2349a,
+  29 pairs), shutters and doors on their frames (3853 with 3856 and 3855a,
+  4132 with 4133), 2495 with 2496, old finger hinges (4275b with 4276b) and a
+  minifigure's arm against its torso (973 with 3818): overlaps away from the
+  hinge's line.
+- **Ball, 8:** a towball's axle stem in the mouth of a socket (2736 in 2739a
+  and 14418), 6628 in 2739a and 15459, one 14417 in a 14704: past the ball.
+- **Pin 6, axle 4:** overlaps 2 LDU and more past the hole's mouth (4730 with
+  2515a, 22969 with 32496; 2853a with 32184 and 3703). **Two kinds at once,
+  11:** 3937 with 3938 and 6134 with 3937, hinge and clip.
+- **Turntable, 3:** 3680's ring with 3679, past a hinge's round.
+
+**Shelob's legs.** `src/dev/replay_calls.gd` makes a session's calls again
+on this checkout: on the base code it repeats the base round's fourteen leg
+calls (realset-2026-10-16-technique-base, 9470-1) to the collision, eleven
+refused as the session was. The seven ball-joint refusals are Joint-8 plates,
+14419 on 14419 bent 43 to 67 degrees from straight and 14419 on a 14417's side
+ball, and each pair overlaps out to 10.5 to 15.5 LDU from the ball's middle,
+outside the ball (8): a 14419's socket is two jaws, and by BrickNet's shapes
+it bends 70 degrees up or down with nothing touching but meets the next
+plate's neck at 38 to 50 degrees sideways (a sweep of one joint: clear to 40,
+1.2 LDU in at 45). Real sets never bend one that far: of the 43 repository
+files with Joint-8 plates, the most a 14419 joint bends is 21 degrees
+(21311's; 10276's 8, 21318's 15). So these refusals stand: not proven false,
+and Shelob's legs as that session bent them are still refused. What changed is what the session is
+told. It was "move one clear of the other by 2 LDU 1.1 LDU -x", and it
+guessed "bent too sharply"; now (`ExactCheck._ball_turned`) it is "brick 18
+is bent 49 degrees in its ball joint with brick 17, and past about 41
+degrees that way its socket's rim meets the ball's neck. Keep the joint,
+and bend it 41 degrees or less that way, or another way". The legs it did
+build, bent about 40 degrees, passed before and pass now.
+
+**BrickBench stays as strict.** verify.py passes the armature round's twelve
+submissions as it did (12 of 12, run again into this round's folder). Our
+check over every BrickBench build there is (the 2026-10-14 round's ten and
+BrickAgent's ten, the armature round's twelve and BrickAgent's six) finds the
+46 colliding pairs verify.py found, and in a run kept to BrickNet's parts
+lets none of them be. Without the gate it would let 4 be: model-002's axle
+through four horns, the axle in their holes by BrickNet's shapes, which
+verify.py refuses. That is what the gate is for.
+
+**What else was checked.** The connection audit over its sample (every 25th
+file, 64 files, 29,931 parts): 94.06% held before and after (1,778 floating
+either way), overlapping pairs 3,209 to 3,115. `exact_probe` 29 of 29,
+`by_connector_probe` 43 of 43 (the hinge folded the way it does not open
+still refused as the hinge), `figure_joints` 43 and `armature` 82, and
+`joints`, `axle`, `section`, `clutch`, `techniques`, `attach`, `turned` and
+`technic` with no failure; `exact_cost_probe` an edit to Orthanc spending 100
+ms in the exact check (budget 3 s). `src/dev/joint_check_probe.gd` holds
+it, 19 checks: each real set's pair above passes, at the joint it is; a leg
+of three Joint-8 plates on a body, bent about 40 degrees each, passes; a
+Joint-8 plate bent 50 degrees sideways is refused as bent, a ball pushed 5
+LDU through its socket and a hinge folded into its base are refused, and a
+real set's clip on its bar is refused in a run kept to BrickBench's parts.
+
+**The tune half, run once** (arm `jointcheck`, ten designs on the GPU,
+19:40 to 20:52, on this worktree while it was still being changed: the
+rounds, the bent-joint message and where the joint is excused changed under
+the first nine designs, and Shelob's alone ran on the code committed here):
+technique preferred to the set 0 of 20
+verdicts (0-28%), against the start code's 1 of 20; overall 20% (6-51%)
+against 30%; likeness 20% against 30%. Nothing moved beyond the noise of
+ten subjects, and nothing says sessions now keep jointed bodies: none met a
+joint refused at its joint, none was told a ball joint was bent too far,
+and this time Shelob's session built her legs of clips on bars rather than
+ball joints. Parts at an angle stay rare (a median 0% against the sets'
+7%). The check no longer turns a jointed body away for its joints; whether
+sessions build one is the designer's, not the check's.
+
+Results: `bench/results/jointcheck-2026-10-16/` (the measure before and
+after, `before-*.jsonl` and `after-*.jsonl`; the replays; the BrickBench
+runs; the audit's sample) and `realset-2026-10-16-jointcheck/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
