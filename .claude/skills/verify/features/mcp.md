@@ -119,7 +119,10 @@ asking for an API key.
   waited behind the frames queued. Both now move with Claude's calls
   (`ChatPanel`, `ConnectorForm._tick`; `chat_probe` checks nothing runs on a
   timer between calls). After: nothing drawn standing still after Claude's
-  calls (0 frames in 20 s, 12 to 14 before); on the station `look_at_model`
+  calls (0 frames in 20 s, 12 to 14 before); on 6 parts (the `model_view`
+  check's tower) `look_at_model` 1.5 to 2.1 s (9 to 10 before) and
+  `view_model` 4.6 to 5.8 s, 25 to 32 CPU-seconds of SwiftShader each, after
+  a first of 13.3 s (7.7 to 23.9 s before); on the station `look_at_model`
   2.3 to 2.6 s (21 and 32 before), `view_model` 9 to 16 s once the first
   picture of the session has built its viewport (37.7 s, still a job), 22 to
   53 s before. What is left is SwiftShader under load: on the RX 6700 XT the
