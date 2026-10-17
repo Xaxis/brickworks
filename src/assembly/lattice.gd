@@ -1446,29 +1446,34 @@ func rise_onto(packed: PackedInt32Array, floor_cell: int, by_x: int = 0,
 	if lowest.is_empty():
 		return 0
 	var rise: int = floor_cell - low
-	# The parts whose bounds meet those columns, each once, by the top of
-	# their bound, highest first.
+	# The parts in the columns under them (the buckets each box reaches, not
+	# all between them: a copy of two parts at either end of a model is not
+	# the model), each once, by the top of their bound, highest first.
+	var buckets: Dictionary = {}
+	for key: Vector4i in lowest:
+		for bx: int in range(_floor_div(key.x, BUCKET), _floor_div(key.z - 1, BUCKET) + 1):
+			for bz: int in range(_floor_div(key.y, BUCKET), _floor_div(key.w - 1, BUCKET) + 1):
+				buckets[Vector2i(bx, bz)] = true
 	var near := PackedInt64Array()
 	var ids := PackedInt64Array()
 	var seen: Dictionary = {}
-	for bx: int in range(_floor_div(lo_x, BUCKET), _floor_div(hi_x - 1, BUCKET) + 1):
-		for bz: int in range(_floor_div(lo_z, BUCKET), _floor_div(hi_z - 1, BUCKET) + 1):
-			var here: Variant = _column_bucket.get(Vector2i(bx, bz))
-			if here == null:
+	for column: Vector2i in buckets:
+		var here: Variant = _column_bucket.get(column)
+		if here == null:
+			continue
+		for brick_id: int in here:
+			if seen.has(brick_id):
 				continue
-			for brick_id: int in here:
-				if seen.has(brick_id):
+			seen[brick_id] = true
+			var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+			var top: int = 1 << 29
+			if bound.size() == 6:
+				if bound[0] >= hi_x or lo_x >= bound[3] or bound[2] >= hi_z \
+						or lo_z >= bound[5]:
 					continue
-				seen[brick_id] = true
-				var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
-				var top: int = 1 << 29
-				if bound.size() == 6:
-					if bound[0] >= hi_x or lo_x >= bound[3] or bound[2] >= hi_z \
-							or lo_z >= bound[5]:
-						continue
-					top = bound[4]
-				near.append(((top + (1 << 30)) << 31) | ids.size())
-				ids.append(brick_id)
+				top = bound[4]
+			near.append(((top + (1 << 30)) << 31) | ids.size())
+			ids.append(brick_id)
 	near.sort()
 	var under: Array = lowest.keys()
 	for k: int in range(near.size() - 1, -1, -1):
