@@ -20,6 +20,8 @@ so the two are like for like, and then measured.
 | A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact. *Since (the same day): 48 of 48, and the six 6 of 6, the saved file the author's own but for one line of the app's* | not measured |
 | ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said; and LDCad's flexible parts are drawn, on the desktop and in a browser (flexdraw, section 1)* | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts) | not measured |
+| ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said* | not measured |
+| Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts). Since "A part in hand over a big model": a part, a pin, a copy, a figure or a sticker in hand moves over 4,139 parts as over 92 | not measured |
 | A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
 | ...seconds a part | modelled 8.3 to 9.2, or 9.8 to 11.4 with the steps marked | modelled 10.1 to 10.6, or 10.3 to 11.3 |
@@ -39,8 +41,10 @@ ghost stood: rebuilding the plane by hand, 29 of the 52 parts tried went
 down, every one exact (sections 4 and 5). The 4,139-part crane opens in 3.3 seconds, not
 13.7, and selecting all of it, undoing a move of all of it and stepping its
 timeline take a tenth, a half and a thirtieth of a second (section 2, and
-"Big files open in seconds"). Still behind: a part in hand swept over a big
-model, places off the 2 LDU lattice, and Studio itself never run beside it.
+"Big files open in seconds"). A part in hand moves over it as over a
+92-part model: a 2 x 4 brick's aiming 0.9 ms a move headless and its worst
+place 2 ms, not 747 ("A part in hand over a big model"). Still behind:
+places off the 2 LDU lattice, and Studio itself never run beside it.
 
 ## 1. Files opened, saved and opened again
 
@@ -492,6 +496,7 @@ everything selected), so main has none here; headless above, they were 13 s,
 | Delete of everything | 85 → 97 | 275 → 113 | 1,584 → 703 |
 | Ctrl-Z of that | 147 → 147 | 418 → 116 | 3,380 → 297 |
 | a step (Next), the worst of five | 200 → 37 | 76 → 54 | 323 → 35 |
+| a part in hand, a move at its worst (since: "A part in hand over a big model") | 47 → 32 | 616 → 30 | 1,177 → 42 |
 
 The scripts alone (a frame's own work from process to drawing, which the
 page now lists for every frame over 8 ms, `brickworksState.busy`), worst
@@ -541,7 +546,9 @@ The click now takes parts not yet taken: 92, 124 and 100 selected (75969-1's
 clicks take whole sub-assemblies), Delete took them all and Ctrl-Z put them
 back, and Right stepped the timeline at every size. A part held over the
 4,139-part model still has worst frames of a second; where that goes was not
-measured here, and it is left.
+measured here, and it is left. *Since: it was the part's resting height asked
+column by column over the crane's tower, 663 ms a frame → 30 ("A part in hand
+over a big model").*
 
 The probe is in `tools/check.sh` (`bigmodel`): it makes the two models,
 measures each act twice and keeps the quicker, and holds ratios, never
@@ -656,6 +663,140 @@ and the app writes the working model as it closes: an edit made in the 2.5 s
 before was lost too. The check opens the sets in its own run again and
 quits with the weigh on a worker, so a crash on the way out fails it;
 `quit_probe` quits by the close request and File, Quit after an edit.
+
+### A part in hand over a big model (2026-10-16, later)
+
+"Big models, after" left a part in hand: swept over 42082-1 on the desktop's
+graphics card it still had frames of a second, and in a browser a move's own
+work was 355 ms at 925 parts and 1.1 s at 5,025. A builder sweeps parts over
+the model all day.
+
+**Where a move went.** `bigmodel_probe.gd -- --sweep --profile` takes each
+of five things into hand as a person does (a 2 x 4 brick and a Technic pin
+by their tiles, a copy of eight parts by Copy and Paste, a figure from the
+figure builder, a sticker), sweeps it across the model 40 moves, a step a
+frame, then aims again at each place alone (`Main._refresh_preview`) and in
+its pieces, and at every place on a 32 x 20 grid over the model: one line
+across a model misses where aiming is dear. On 42082-1's 4,139 parts, main:
+
+- **A part's resting height was asked column by column** (`Builder._settle`,
+  `BrickLattice.resting_height`): a 2 x 4 brick stands on 800 columns of
+  2 LDU, and each column read every part in its 40-LDU column bucket box by
+  box. Over the crane's tower, where a bucket holds hundreds of Technic parts
+  of 74 boxes each, one aim took 747 ms headless and 921 ms on the desktop.
+  A copy held asked it for each of its boxes (364 and 743 ms), a figure for
+  its feet (198 and 297 ms).
+- **A Technic pin asked every connector of every part** which one it was
+  aimed at (`JointSnap.aimed_at` over all 14,108): 12.7 ms every move, wherever
+  it was.
+- **A sticker asked every part** whether the line met its box
+  (`Stickers.face_at`): 9 to 13 ms every move, and then the triangles of every
+  part whose box it met, in the world's order.
+- The page's state, the hover outline, the cursor and the moment told at once
+  cost nothing a move (0.02 ms together). In a browser the frames' own work
+  from process to drawing (`brickworksState.busy`) stayed under 30 ms in every
+  move even where the move took 1.2 s: the aiming is the pointer's own
+  handling, done before the frame's process, and the page's timing missed it.
+  A move is read from the drawn frame less its WebGL (`drawn_own_*`).
+
+**What changed**, each placing exactly where it did:
+
+- A footprint rests in one pass over the parts under it
+  (`BrickLattice.rise_onto`, which `surface_under` is now one box of): each
+  part in the buckets the boxes reach asked once, by its bound first, the
+  highest first, and none after the first whose top cannot lift them more.
+  `_settle`, `settle_figure` and a held group's every box (`Carry.aim`) use
+  it; `resting_height` is gone.
+- The connectors and the parts' drawn boxes are kept by where they are
+  (`BrickGrid`, 40-LDU cells), part by part as the model changes: a line
+  from the eye asks only the parts whose cells it crosses, in the world's
+  order, so the end aimed at (`JointSnap.site_grid`, `near`) and the parts
+  a sticker's line meets (`Stickers._along`) are what asking every one
+  found. `Builder.joint_sites` is read from the same kept ends.
+- A sticker's faces are asked nearest part first, and a part whose box
+  begins past a face already struck is not asked; its flat faces are read
+  from the triangles kept for aiming, not fetched back from the drawing at
+  every move.
+
+Headless (the app's own work, nothing drawn), the aiming alone, median of
+the sweep's 40 moves and the worst place of the 640, in ms, main → this
+branch; a frame of the sweep is the engine's 7 ms at every size on both but
+for the pin on 42082-1 (11.4 → 6.9):
+
+| in hand | 4883-1 (92) | 75969-1 (925) | 42082-1 (4,139) |
+|---|---|---|---|
+| a 2 x 4 brick | 1.3, 15 → 0.3, 1.6 | 1.4, 419 → 0.5, 1.4 | 1.5, 747 → 0.9, 2.2 |
+| a Technic pin | 0.7, 12 → 0.6, 15 | 1.4, 124 → 0.6, 91 | 12.7, 141 → 1.3, 81 |
+| a copy of eight parts | 0.5, 4 → 0.4, 4 | 0.7, 51 → 0.7, 1.5 | 1.8, 364 → 1.7, 71 |
+| a figure | 1.3, 8 → 1.0, 1.4 | 1.2, 138 → 1.0, 2.2 | 1.7, 198 → 1.5, 2.8 |
+| a sticker | 23, 55 → 23, 39 | 1.6, 45 → 0.03, 37 | 9.3, 54 → 0.04, 35 |
+
+On the desktop, windowed under xvfb on the box's graphics card (a frame
+copied to xvfb is most of 15 ms here), the sweep's median and worst frame,
+in ms, main → this branch:
+
+| in hand | 92 parts | 925 parts | 4,139 parts |
+|---|---|---|---|
+| a 2 x 4 brick | 19, 41 → 13, 15 | 18, 354 → 16, 23 | 29, 663 → 22, 30 |
+| a Technic pin | 16, 33 → 15, 28 | 18, 105 → 16, 31 | 51, 124 → 22, 91 |
+| a copy of eight parts | 16, 24 → 14, 19 | 17, 28 → 18, 23 | 25, 364 → 23, 42 |
+| a figure | 17, 36 → 16, 26 | 18, 95 → 17, 24 | 26, 331 → 22, 31 |
+| a sticker | 42, 87 → 20, 84 | 19, 55 → 17, 24 | 38, 130 → 23, 86 |
+
+In a browser on SwiftShader (`cad_frames.mjs --only=place --arrive=900`:
+the parts a model fetches as it opens all arrived first, each build served
+on a port of its own), a 2 x 4 brick swept 40 moves, each drawn frame's own
+work less its WebGL, median, 95th percentile and worst, in ms:
+
+| | 4883-1 (92) | 75969-1 (901 here) | 42082-1 (3,973 here) |
+|---|---|---|---|
+| main | 29, 45, 47 | 30, 445, 616 | 31, 958, 1,177 |
+| this branch | 15, 22, 32 | 22, 27, 30 | 23, 34, 42 |
+
+The worst moves on main are the brick over the dense middle of each model,
+as on the desktop. The browser leaves out the parts these files carry
+(section 1's gap 5), so 75969-1 and 42082-1 are fewer parts here; both
+builds opened the same counts. One move at 5,025 parts is over 33 ms at the
+95th percentile (34) and the worst (42), on a box at load 30 to 40.
+
+Every ghost where it was: the 600 moves of the desktop sweeps (548 with a
+ghost; the sticker's faces are drawn there) put each ghost in the same place
+to 0.01 LDU, the same turn and the same can-go-down on main and this branch
+(`windowed-*.json`), and at every move of every sweep the near ones asked
+found what asking every one found (the check below). `placing_probe`: 35 of
+35 clicks across the plate's edge where the ghost stood, and every part
+after; `handbuild_probe` 352 checks, `feel_probe` 48, and the headless
+probes the change reaches pass but `technic_hand`, whose two failures (the
+design check seats a bar and a clip put 2 LDU off, where the probe wants
+them refused) are the same on 01ccd68 without this change. In a browser,
+`placing_flow.mjs` on this branch's export: 35 clicks across the edge, 0 off
+the ghost; 8 of 11 parts where their ghosts stood and 4 of 4 as the file has
+them, the hinge base, the hinge top and the 3040b off exactly as in m38's
+preview run, place for place.
+
+**The check.** `bigmodel` (`tools/check.sh`) sweeps the five over its made
+models of 1,000 and 5,000 parts (one size of their four bricks now a Technic
+brick with holes, so a pin has holes to find) and holds each move flat: the
+sweep's frame at most 3x, and the aiming alone at most 3x with a 1 ms floor.
+Main fails two: a pin 3.8x (2.2 → 8.3 ms) and a sticker 5.3x (2.5 → 13.0 ms).
+And it holds that the connectors the builder keeps are `sites_in`'s in its
+order, that the end aimed at is the same with and without the grid at every
+move, that every part a sticker's line meets is in `_along` in order, and
+(windowed) that the part a sticker goes on is the one every part's faces
+asked in order strike first. The tower's columns are not in the made
+models, which grow wider and not denser: the column-by-column cost was
+density, not size, and is shown by the real set above, not held by the check.
+
+**Left.** A pin's first aim at a joint it was not on searches the ways onto
+it (`Builder._best_on_joint`: up to 64 poses, each asked for room and the
+joins it makes): 60 to 140 ms on 925 and 4,139 parts, on main the same; it is
+the parts round the joint, not the model's size. A sticker over 4883-1's
+detailed parts asks the triangles of the part it lies on: 20 to 40 ms a
+move, main too. A held copy's collision test over the densest place, 71 ms at
+one place of 640. The first move after a change with a pin or a sticker in
+hand walks the model for what changed (`BrickGrid.follow`): 2 ms at 925 parts
+and 8 to 16 at 4,139, against reading every connector again, 24 to 63 ms;
+the first ever keeps every part, 58 to 113 ms.
 
 ## 3. Building a real set from its steps
 
@@ -975,6 +1116,11 @@ plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
    "Big models, after" (section 2) a turn, select all, a move of everything
    with its undo and redo, Delete and its undo and a step no longer walk
    the model where they should not; a part swept in hand still does.
+   *Since "A part in hand over a big model" (section 2): a move's own work
+   in a browser at 5,025 parts is 23 ms median and 34 at the 95th
+   percentile, against 31 and 958 (1.2 s worst); headless and on the desktop a
+   move no longer grows with the model, a brick, a pin, a copy, a figure or
+   a sticker.*
 4. **Some parts cannot be put where the set has them through the
    interface** (*the clip plates fixed, section 4; turns off the 24 not*): both 1 x 1 clip plates of the plane's step 4 (the ghost stood
    10 LDU off and came no nearer), and parts at angles off the 24 turns or at

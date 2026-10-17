@@ -72,7 +72,13 @@ static func face_at(world: BrickWorld, library: PartLibrary, origin: Vector3, di
 	var struck: BrickWorld.Brick = null
 	var struck_at := Vector3.ZERO
 	var struck_normal := Vector3.ZERO
-	for item: Variant in world.bricks():
+	# The parts whose box the line meets, the nearest box first: a part whose
+	# box begins further off than a face already struck has no face nearer,
+	# and its triangles (thousands, milliseconds a part) are not asked. The
+	# nearest face wins, and of two as near the one the world has first, as
+	# when every part was asked in the world's order.
+	var met: Array = []
+	for item: Variant in _along(world, library, origin, dir):
 		var brick: BrickWorld.Brick = item
 		# Not onto another film: a sticker goes on the part, not on a sticker.
 		if sticks(library, brick.part_id):
@@ -80,9 +86,19 @@ static func face_at(world: BrickWorld, library: PartLibrary, origin: Vector3, di
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
-		var box: AABB = brick.transform * mesh.bounds
-		if not box.grow(0.5).intersects_ray(origin, dir):
+		var box: AABB = (brick.transform * mesh.bounds).grow(0.5)
+		var entry: Variant = box.intersects_ray(origin, dir)
+		if entry == null:
 			continue
+		met.append([0.0 if box.has_point(origin) else origin.distance_to(entry), met.size(),
+			brick])
+	met.sort_custom(func(a: Array, b: Array) -> bool:
+		return float(a[0]) < float(b[0]) or (float(a[0]) == float(b[0]) and int(a[1]) < int(b[1])))
+	var struck_order: int = -1
+	for one: Array in met:
+		if float(one[0]) > best:
+			break
+		var brick: BrickWorld.Brick = one[2]
 		var back: Transform3D = brick.transform.affine_inverse()
 		var hit: Dictionary = Rays.nearest(_faces_of(library, brick.part_id), back * origin,
 			(back.basis * dir).normalized())
@@ -90,9 +106,10 @@ static func face_at(world: BrickWorld, library: PartLibrary, origin: Vector3, di
 			continue
 		var at: Vector3 = brick.transform * (hit["position"] as Vector3)
 		var d: float = origin.distance_to(at)
-		if d < best:
+		if d < best or (d == best and int(one[1]) < struck_order):
 			best = d
 			struck = brick
+			struck_order = int(one[1])
 			struck_at = at
 			struck_normal = (brick.transform.basis * (hit["normal"] as Vector3)).normalized()
 	if struck == null:
@@ -167,26 +184,26 @@ static func _faces_of(library: PartLibrary, part_id: String) -> PackedVector3Arr
 
 ## A brick's triangles lying flat in the plane, turned the plane's way, in
 ## the world: those of the face containing [param near], or all of them
-## when it is [constant Vector3.INF].
+## when it is [constant Vector3.INF]. From the part's triangles kept once
+## (_faces_of): read from its meshes at every move, each read was the
+## drawing's copy of them fetched back, with a sticker in hand.
 static func _flat(library: PartLibrary, brick: BrickWorld.Brick, normal: Vector3, plane: float,
 		near: Vector3) -> Array:
 	var out: Array = []
-	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-	for surface: ArrayMesh in mesh.surfaces:
-		var corners: PackedVector3Array = surface.get_faces()
-		for t: int in corners.size() / 3:
-			var a: Vector3 = brick.transform * corners[t * 3]
-			var b: Vector3 = brick.transform * corners[t * 3 + 1]
-			var c: Vector3 = brick.transform * corners[t * 3 + 2]
-			var n: Vector3 = (b - a).cross(c - a)
-			if n.length() < 1e-6:
-				continue
-			if absf(n.normalized().dot(normal)) < 0.99:
-				continue
-			if absf(normal.dot(a) - plane) > 0.3 or absf(normal.dot(b) - plane) > 0.3 \
-					or absf(normal.dot(c) - plane) > 0.3:
-				continue
-			out.append([a, b, c])
+	var corners: PackedVector3Array = _faces_of(library, brick.part_id)
+	for t: int in corners.size() / 3:
+		var a: Vector3 = brick.transform * corners[t * 3]
+		var b: Vector3 = brick.transform * corners[t * 3 + 1]
+		var c: Vector3 = brick.transform * corners[t * 3 + 2]
+		var n: Vector3 = (b - a).cross(c - a)
+		if n.length() < 1e-6:
+			continue
+		if absf(n.normalized().dot(normal)) < 0.99:
+			continue
+		if absf(normal.dot(a) - plane) > 0.3 or absf(normal.dot(b) - plane) > 0.3 \
+				or absf(normal.dot(c) - plane) > 0.3:
+			continue
+		out.append([a, b, c])
 	return out
 
 
@@ -199,6 +216,28 @@ static func _rect(triangles: Array, face: Face) -> Rect2:
 			lo = lo.min(at)
 			hi = hi.max(at)
 	return Rect2(lo, hi - lo)
+
+
+## The world's parts by their drawn boxes (BrickGrid), as face_at grows
+## them, kept part by part as the model changes.
+static var _drawn: BrickGrid = null
+
+
+## The parts whose drawn box the line from [param origin] going [param dir]
+## may meet, in the order the world gives them: every one face_at would
+## have found by asking each part, without asking each. A sticker in hand
+## asked every part of the model at every move, 14 ms a move on a
+## 4,139-part set. A part whose shape has not arrived is asked every time,
+## as it was.
+static func _along(world: BrickWorld, library: PartLibrary, origin: Vector3,
+		dir: Vector3) -> Array:
+	if _drawn == null or _drawn._library != library:
+		_drawn = BrickGrid.new(library, func(brick: BrickWorld.Brick, mesh: Lbm.PartMesh) -> Array:
+			if mesh == null:
+				return [null, null, true]
+			return [(brick.transform * mesh.bounds).grow(0.5), null, false])
+	_drawn.follow(world)
+	return _drawn.along(origin, dir)
 
 
 # -- the sticker itself --------------------------------------------------------------

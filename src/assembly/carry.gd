@@ -222,17 +222,7 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 		roundi((at.x - _reference.x) / BrickLattice.CELL), 0,
 		roundi((at.z - _reference.z) / BrickLattice.CELL))
 	# Down onto whatever is highest under any of its parts.
-	var rise: int = Builder.GROUND_CELL - _lowest(whole)
-	var item_covers: Array = covers[0]
-	for packed: PackedInt32Array in item_covers:
-		var n: int = 0
-		while n < packed.size():
-			var under: int = lattice.surface_under(
-				packed[n] + shift.x, packed[n + 2] + shift.z,
-				packed[n + 3] + shift.x, packed[n + 5] + shift.z,
-				Builder.GROUND_CELL)
-			rise = maxi(rise, under - packed[n + 1])
-			n += 6
+	var rise: int = lattice.rise_onto(whole, Builder.GROUND_CELL, shift.x, shift.z)
 	# A side face keeps the height it implies, as a single part does, to
 	# the plate: a whole group two LDU off every course reads as a fault.
 	if hit.is_valid() and hit.normal.y == 0:
