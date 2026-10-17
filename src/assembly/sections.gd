@@ -469,9 +469,9 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 			held[a][b] = float(held[a].get(b, 0.0)) + much
 			held[b][a] = float(held[b].get(a, 0.0)) + much
 
-	# What the planner says each part rests on or needs, guesses and all:
-	# what a piece the joint graph holds to nothing is put with (a tile
-	# held by its clips, a part the graph does not read).
+	# What the planner says each part rests on for certain: what a part or
+	# two the joint graph holds to nothing is put with (a tile in clips, a
+	# part whose joint the graph does not read).
 	var leans: Array = []
 	leans.resize(count)
 	for n: int in count:
@@ -480,10 +480,10 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 		if not index_of.has(node.id):
 			continue
 		var n: int = index_of[node.id]
+		# What it rests on for certain: not a guess from a box touching.
 		for need: int in node.needs:
-			if index_of.has(need) and int(index_of[need]) != n:
+			if index_of.has(need) and int(index_of[need]) != n and not need in node.weak:
 				(leans[n] as Array).append(int(index_of[need]))
-				(leans[int(index_of[need])] as Array).append(n)
 
 	# Units: what never parts. A sub-assembly the model has, when it fits in
 	# a section and is one piece; the planner's sub-builds, figures and hoses.
@@ -515,6 +515,17 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 				unit.join(members[0], n)
 	var figure_part: Dictionary = {}
 	for made: Instructions.Assembly in subs:
+		# A sub-build the planner keeps whole by its boxes touching is kept
+		# whole here when the joint graph has it in one piece too, or it is
+		# a figure or a hose: in 10179-1 such sections were two pieces to
+		# the build check (2026-10-17).
+		var indices: Array = []
+		for member: Instructions.Node2 in made.members:
+			if index_of.has(member.id):
+				indices.append(int(index_of[member.id]))
+		if not made.figure and not made.whole and not _one_piece(indices, held):
+			made.node = null
+			continue
 		var first: int = -1
 		for member: Instructions.Node2 in made.members:
 			if not index_of.has(member.id):
@@ -662,9 +673,10 @@ func _cut(bricks: Array, wanted: int) -> Dictionary:
 				if q != p:
 					pull[q] = float(pull.get(q, 0.0)) + float(held[a][b])
 		# A part or two held by nothing the graph reads (a tile in clips, a
-		# part whose joint it does not know): with what it rests on or
-		# carries. Bigger ones stay loose: put with a section by a guess,
-		# the build check found it in two pieces (10179-1, 2026-10-17).
+		# part whose joint it does not know): with what it rests on for
+		# certain. Bigger ones, and any by a guess, stay loose: put with a
+		# section by what their boxes touched, the build check found five of
+		# 10179-1's in two pieces (2026-10-17).
 		if pull.is_empty() and int(parts_in[p]) <= 2:
 			for a: int in count:
 				var ra: Variant = rank.get(unit.top(a))

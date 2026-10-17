@@ -11,7 +11,7 @@
 // (window.brickworksControls, and brickworksState.sections.rows for the
 // model tree's rows), and every result is read back off the app
 // (window.brickworksState.sections, .tree, .bricks).
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -41,6 +41,16 @@ async function controlAt(name, seconds = 400) {
   for (let n = 0; n < seconds * 2; n++) {
     const where = await controls();
     if (where[name]) return where[name];
+    // The tree's buttons are in the parts column, under the model tree, which
+    // a first visit has folded: its column opened and its header clicked.
+    if (n % 10 === 9) {
+      await openColumnFor(page, name);
+      const now = await controls();
+      if (name.startsWith("sections_") && now.outliner && !now.outliner_tree) {
+        await page.mouse.click(now.outliner.x, now.outliner.y);
+        await page.waitForTimeout(1500);
+      }
+    }
     await page.waitForTimeout(500);
   }
   throw new Error(`the app never showed "${name}"`);
@@ -115,6 +125,8 @@ await wait(8000);
 check(`opened ${set}`, await openFile(set));
 const opened = await until((s) => /^opened \d+ parts/.test(s.said || ""), 300);
 console.log(`    "${opened.said}"`);
+// Parts fetched on demand still on their way (ModelStore.awaited): none left.
+await until((s) => (s.awaited || 0) === 0 && s.bricks > 0, 300);
 await wait(4000);
 const bricks = (await state()).bricks;
 check(`the set is on the baseplate (${bricks} parts)`, bricks > 300);
