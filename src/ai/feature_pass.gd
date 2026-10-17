@@ -210,15 +210,8 @@ func spot_for(name: String) -> Dictionary:
 		"z": snappedf(at.z / STUD, 0.5), "facing": facing, "guessed": true}
 
 
-## The real pieces for a feature that lay whole, best first: the pieces of
-## the brief's own line that the feature's words find (RealSnippets.line_of),
-## then the subject's own sets (RealSnippets.search), then any.
-##
-## The line first because it was missing: of 76 pieces the app laid for
-## realset briefs and the designs rejected, 68 were of another line than the
-## brief's (a Tower Bridge pinnacle for a Technic engine grille, a Batmobile's
-## eye for a Friends mirror), and 60 of 77 rejections said it was the wrong
-## thing; the Technic line had grilles and beacons for the same words.
+## The real pieces for a feature that lay whole, best first: the subject's
+## own sets first (RealSnippets.search), then any.
 func candidates_for(name: String) -> Array:
 	var subject: String = Assistant._subject_words(assistant._brief)
 	var query: String = ("%s %s" % [subject, name]).strip_edges()
@@ -227,23 +220,12 @@ func candidates_for(name: String) -> Array:
 	var most: float = maxf(4.0, widest * 0.6)
 	var out: Array = []
 	var seen: Dictionary = {}
-	var found: Array = []
-	var line: String = RealSnippets.line_of("%s %s" % [assistant._heard, assistant._brief])
-	if not line.is_empty():
-		found.append(RealSnippets.bodies(line, name, LOOKED_AT, 2, 1, true))
 	for asked: String in [query, name]:
-		var rows: Array = []
 		for row: Variant in RealSnippets.search(asked, most, [], LOOKED_AT, 2):
-			rows.append((row as Array)[1])
-		found.append(rows)
-	for rows: Array in found:
-		for raw: Variant in rows:
-			var entry: Dictionary = raw
-			var size: Array = entry["size"]
+			var entry: Dictionary = (row as Array)[1]
 			if seen.has(entry["id"]) or not bool(entry.get("lays", false)) \
 					or not bool(entry.get("square", true)) \
-					or int(entry.get("parts", 0)) > MOST_PARTS \
-					or maxf(float(size[0]), float(size[2])) > most:
+					or int(entry.get("parts", 0)) > MOST_PARTS:
 				continue
 			seen[entry["id"]] = true
 			out.append(entry)

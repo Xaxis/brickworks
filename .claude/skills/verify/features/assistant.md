@@ -1787,19 +1787,6 @@ fixing what it got wrong.
   four parts), and one picture of them side by side, 200 pixels a piece
   (`_snippet_picture`, headless: text only) — five with whole parts lists
   and a 1,600-pixel sheet was a long read a run made once.
-  How real sets build its body (2026-10-16): `how_real_sets_build_this`, the
-  call every session opens with, answers first with `_real_bodies`: the line
-  the brief names (`RealSnippets.line_of`: every word of a theme's top level in
-  what was heard, the one named first; not `NOT_A_LINE`, the ways of selling
-  sets), its biggest sub-assemblies of `BODY_PARTS` 12 parts or more, those
-  built other than stacked square first (`bodies`, `how_built`: on hinges or
-  clips, at an angle, studs sideways, on brackets, of slopes, of curves), at
-  most two a set, six, each in `_piece_line`'s two lines with how it is built;
-  for each mass in its new `assemblies` input the nearest two of the line, or
-  of any set; and a picture of them. A brief of no line the index has gets
-  sets about the subject. The app's own loop opens with the same words
-  (`opening_for`), a revision that names neither gets none.
-  `real_bodies_probe` checks it.
   Features, one at a time, driven by the app (`src/ai/feature_pass.gd`,
   2026-10-13): `submit_design` takes `features` (required in the schema: what
   the subject is known by, each `{"name", "x", "y", "z", "facing"}` — where
@@ -1808,10 +1795,6 @@ fixing what it got wrong.
   the whole look is for the silhouette, then each feature comes back before
   the assemblies (`_queue_features`, `TURNS_PER_FEATURE` 4). For each, the
   app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
-  takes first the pieces of the brief's own line that the feature's words find
-  (`RealSnippets.line_of` over what was heard and the brief, `bodies(...,
-  matched_only)`: a Technic brief's engine grille from a Technic set, where 68
-  of 76 pieces laid for realset briefs and rejected were of another line), then
   searches the index for the subject word and the feature (`_subject_words`,
   "owl eyes"), then the feature alone, and keeps up to six pieces that lay
   whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model);
@@ -2144,7 +2127,6 @@ godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand b
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --headless --path . --script src/dev/snippets_probe.gd    # real sets' pieces found by what they are, credited, laid whole and joined
-godot --headless --path . --script src/dev/real_bodies_probe.gd # the brief's line: its built bodies in the opening answer, each mass's nearest, a feature's piece from it first
 python3 tools/minitest.py tests/test_snippets.py                # the search on a hand-made index: subject first, plurals, filters
 godot --headless --path . --script src/dev/design_memory_probe.gd  # our scored designs found by subject, the judge's faults handed over
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=speed_champions  # ...and never the subject under test

@@ -647,6 +647,177 @@ Results: `bench/results/jointcheck-2026-10-16/` (the measure before and
 after, `before-*.jsonl` and `after-*.jsonl`; the replays; the BrickBench
 runs; the audit's sample) and `realset-2026-10-16-jointcheck/`.
 
+### Technique: the body's build shown before the first brick (2026-10-16, tried and taken out)
+
+The last three levers came after the body was settled: a send-back, a face
+laid sideways, a check that lets joints be. This one went where the body is
+settled, the session's opening, and showed it how real sets of the brief's
+line build a body. Sessions read it and built as before.
+
+**The first plan.** Read in the twenty tune transcripts of the start code and
+the jointcheck arm, up to the first submission (only calls and words are
+kept, not a session's thinking):
+
+- Every session opened with how_real_sets_build_this, 20 of 20. It said
+  nothing of how a body is built. Fifteen first calls found no kind of set
+  ("concert stage", "telehandler", "architecture skyline", "brickheadz",
+  "pyramid", "wolf creature"). Ten sessions got nothing from it at all. Ten
+  got parts by how much more often sets of a kind use them (doors, windows,
+  plant stems), and colours.
+- Eleven asked the real-set index before the first brick, most for the body.
+  Five got the wrong thing: Spider-Man's BrickHeadz for "giant spider legs"
+  (the word "spider"), Tokyo's rooftop garden for "pyramid scorpion", The
+  Cave's spider for "minecraft ender dragon micro", a giraffe's head for
+  "wolf legend beast head". Four got a detail of the right kind: a five-part
+  boom pivot, a sheep set's plate work held from outside it. All nine were
+  set aside.
+- The one whole body that fitted, a BrickHeadz frame for Robin, was laid
+  and built on, both times.
+- So "stacked" is chosen at the first submission, from memory. 14 of 20
+  first bodies were placed by hand (37 to 117 parts; a pattern for a rock or
+  an island in some), four were a pattern (the pyramid's shape, the wolf's
+  figure), two a real set's frame. Only Technic sections, Shelob's legs on
+  clips or balls, the figure and the frame were off the square there.
+
+**Why real pieces were "the wrong thing".** Every rejection in the realset
+logs, 77 over all arms, traced to the piece the app laid: 60 the wrong kind
+of thing, 7 the wrong size, 6 the wrong place, 1 the wrong colour, 3 other.
+68 of the 76 pieces laid were of another line than the brief's: a Tower
+Bridge pinnacle for a Technic engine grille, a Batmobile's eye for a Friends
+vanity mirror, Cafe Corner's hotel sign for an Architecture nameplate. The 17
+kept were no better, 2 of the line. The ranking did it. A subject word from
+the session's own description (tower, hotel, dragon) put another line's sets
+first for 30, a word's other sense (light grey, a mirrored copy) for 32, and
+the line was never asked. Size did not tell rejected from kept (the long side
+a median 0.12 and 0.13 of the plan's), and 74 of 76 were laid as built.
+
+**The lever** (`543c726`): the brief's line, in the retrieval the plan is
+made with.
+
+- how_real_sets_build_this answers first with how the line builds a body:
+  the line the brief names (every word of a theme the real-set index holds,
+  the one named first), its six biggest sub-assemblies of 12 parts or more,
+  those built other than stacked square first, each with how it is built (on
+  hinges or clips, at an angle, studs sideways, on brackets, of slopes, of
+  curves), a picture of them, and the nearest two to each mass the session
+  names in a new `assemblies` input. A brief of no line gets sets about its
+  subject. Step 1 of the head asks for the masses.
+- A feature's piece comes from the brief's line first, where the feature's
+  own words find one.
+- `real_bodies_probe` held it, 26 checks; it went out with the lever.
+
+**The tune half,** one design a subject, on the GPU (one lease, five at a
+time, 29 minutes), against the sets and head to head with the start code
+(`technique-base`) and the jointcheck arm:
+
+| dimension | start preferred to the set | jointcheck | bodies | start minus bodies, paired (95%) | jointcheck minus bodies | bodies preferred to start, head to head | bodies preferred to jointcheck |
+|---|---|---|---|---|---|---|---|
+| likeness | 30% (11-60) | 20% (6-51) | 30% (11-60) | 0 (-15, +15) | -10 (-40, +20) | 40% (17-69) | 75% (44-92) |
+| surface | 40% (17-69) | 35% (14-65) | 35% (14-65) | +5 (-20, +30) | 0 (-30, +25) | 45% (20-73) | 65% (35-86) |
+| colour | 35% (14-65) | 25% (8-56) | 30% (11-60) | +5 (0, +15) | -5 (-15, 0) | 35% (14-65) | 50% (24-76) |
+| technique | 5% (1-34) | 0% (0-28) | 10% (2-40) | -5 (-15, 0) | -10 (-25, 0) | 60% (31-83) | 75% (44-92) |
+| creativity | 25% (8-56) | 25% (8-56) | 25% (8-56) | 0 (-15, +15) | 0 (-15, +15) | 55% (27-80) | 35% (14-65) |
+| overall | 30% (11-60) | 20% (6-51) | 25% (8-56) | +5 (0, +15) | -5 (-20, +10) | 35% (14-65) | 80% (49-94) |
+
+- Technique against the sets: 2 verdicts of 20 (The End's island tapered
+  with slopes, the Jungle River's arch and angled palm), against 1 and 0.
+  Head to head the judge leaned to the lever over jointcheck on all but
+  colour (even) and creativity, and to the start over the lever on all but
+  technique and creativity. The two bases differ more than the lever does.
+
+**What the sessions did with it.** All ten named their masses at the first
+call, four to six each. None laid a piece it was shown, before the first
+submission or after. The first bodies were built as before: the pyramid a
+stepped fill, shown the line's temple of 75-degree slopes for its "stepped
+pyramid wall"; Tokyo stacked towers, shown Architecture's towers of side-stud
+tiles and slopes. Where the line had nothing of the mass, its words found the
+wrong thing again: "giant spider" a skull and a Giant Truck's chassis,
+"exit portal" a Unimog's rear hub. Two real pieces were laid whole all run,
+both palm trees each session searched for itself. The judge's reasons for the
+sets were the same as ever: "the Tokyo Tower's legs as angled sub-assemblies",
+"legs from several angled joint segments", "a worm-gear lift for the boom".
+Ours: "almost entirely bricks stacked straight up".
+
+The line did change what the feature pass laid, not whether it was kept: 8
+of the 21 pieces it laid were of the brief's line (before, 10 of 93 laid on
+all arms), and 1 was kept, 9 rejected, 21 features built by hand (the start:
+1, 8, 19). The Telehandler's headlamps, mirrors, mudguards and rear lights
+were Technic pieces now, and were rejected for where they sat ("sat on top
+of the beacon", "lies flat on the deck between the wheels"), not for what
+they were. Where the line had no such piece, the old faults came back: the
+Batmobile's eye for the eyes of a sheep, a wolf and Shelob.
+
+**The proof half,** run once on `543c726`, against the armature arm (both
+drawn on the GPU: every views_render.log names the RADV device):
+
+| dimension | armature preferred to the set | bodies preferred to the set | armature minus bodies, paired (95%) | bodies preferred to armature, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 30% (11-60) | 0 (-20, +20) | 35% (14-65) |
+| surface | 40% (17-69) | 35% (14-65) | +5 (0, +15) | 35% (14-65) |
+| colour | 30% (11-60) | 15% (4-46) | +15 (-10, +40) | 40% (17-69) |
+| technique | 15% (4-46) | 5% (1-34) | +10 (0, +30) | 40% (17-69) |
+| creativity | 45% (20-73) | 45% (20-73) | 0 (-20, +20) | 55% (27-80) |
+| overall | 25% (8-56) | 25% (8-56) | 0 (-20, +25) | 30% (11-60) |
+
+- **Technique against the sets did not rise:** one verdict in twenty (Emma's
+  studio: dress forms of cones, the sign a raised sub-assembly), as m32's,
+  the send-back's and the faces' proof halves; the armature arm had three.
+  No dimension rose. None fell beyond noise, though technique's and
+  surface's intervals only just hold a tie.
+- **One session of ten laid what it was shown:** Jack Skellington & Sally,
+  on the BrickHeadz frames of Venom and Spider-Man. It lost technique both
+  ways ("grille tiles awkwardly placed as mouths"). Steve & Creeper was shown
+  the same frames and built its own. The sets' reasons were the same as
+  ever: "a rack-driven telescoping boom", "SNOT-mounted round eyes", "hinged
+  and clipped sub-assemblies at angles for the head".
+- Features: 12 of the 19 pieces laid were of the brief's line; 2 kept
+  (Naida's waterfall and flowers, of other lines, as the armature and faces
+  arms kept), 7 rejected, 20 built by hand (armature: 3, 8, 24).
+
+**What they are made of** (medians, ours against the sets):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 |
+|---|---|---|---|---|
+| tune, start | 22.4 | 8% | 1% | 30% |
+| tune, jointcheck | 23.7 | 6% | 0% | 36% |
+| tune, bodies | 24.6 | 11% | 1% | 26% |
+| tune, the sets | 29.2 | 35% | 7% | 19% |
+| proof, armature | 16 | 4% | 0% | 23% |
+| proof, bodies | 17.5 | 7% | 1% | 24% |
+| proof, the sets | 28.4 | 25% | 3% | 13% |
+
+Small moves the same way on both halves, SNOT 3 points up on each against
+its start and shapes 1.5 to 2 a hundred, each within what two sessions of
+one code differ by. The build check read the tune half's designs: nothing
+floating. The proof half's reading was still queued behind the machine's
+load when this was written (`realset.py audit --which proof --arm bodies`).
+
+**Taken out:** how_real_sets_build_this, the feature pass, the head and the
+tool list are `71da669`'s again. What is kept is above.
+
+**What it says.** Shown where the plan is made, in the call every session
+makes, with a picture and an id to lay, the line's built bodies were read
+and not used: 1 session of 20 laid one. The masses the sessions named in that
+call were already their own ("stepped pyramid wall", "giant spider",
+"woolly body"), and the first submission built them as named, from memory.
+So a choice offered, however early, is advice, and advice does not reach the
+body. The lever that can is the app building the technique itself, as the
+figure pattern lays a character on joints: a leg of jointed segments, a wall
+of slopes on hinges, a face built sideways whole, laid by the call that lays
+the mass. The line is worth having for that, and for the feature pass: where
+the line has the kind of thing, its pieces were the right kind (the
+Telehandler's Technic lamps and mudguards), and what sent them back was the
+seat.
+
+Results: `bench/results/realset-2026-10-16-bodies/` (both halves; the tune
+arm ran on `7b2943b`, whose head said step 1 at greater length, the rest as
+`543c726`), `realset-2026-10-16-jointcheck-vs-bodies/`,
+`realset-2026-10-16-technique-base-vs-bodies/`,
+`realset-2026-10-16-armature-vs-bodies/`, and in
+`realset-2026-10-16-bodies/diagnosis/` the sessions' digests (start,
+jointcheck and this arm) and every realset rejection traced to its piece
+(`labels.tsv`, `realset_pieces.tsv`).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

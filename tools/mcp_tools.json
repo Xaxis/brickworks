@@ -1076,17 +1076,10 @@
       "readOnlyHint": true,
       "title": "What real sets of its kind use"
     },
-    "description": "What real LEGO® sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what the LEGO Group's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.\n\nFirst comes how real sets of its line build a body: their biggest sub-assemblies, how each is built (on hinges, at an angle, studs sideways, of slopes) and the nearest to each mass you name in assemblies, with a picture and an id to lay one whole. Decide there how each mass is built, before the first brick.\n\nWith it comes our own best design of the nearest subject, as the design bench's judge scored it: how it was built, what it did best, and the faults to design out before you build.",
+    "description": "What real LEGO® sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what the LEGO Group's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.\n\nWith it comes our own best design of the nearest subject, as the design bench's judge scored it: how it was built, what it did best, and the faults to design out before you build.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
-        "assemblies": {
-          "description": "the main masses you plan, a few words each — \"tower\", \"leg\", \"boom\", \"wing\", \"sloped wall\", \"roof\": each comes back with the nearest real sub-assemblies, to build that way or lay whole",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
         "subject": {
           "description": "the kind of thing being built, in plain words — \"fire station\", \"medieval castle\", \"spaceship\"",
           "type": "string"
