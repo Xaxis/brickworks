@@ -131,7 +131,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		return _forget_all()
 	_subjects(entries)
 
-	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2)
+	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
+		int(BookletLooks.booklet(world).get("per_page", 0)))
 	var drawn: int = 0
 	var total: int = 0
 	for page: Booklet.Page in pages:
@@ -392,6 +393,7 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 				entry.marks.append(mark)
 		if step.unsupported:
 			entry.note = "Hold this in place: it rests on nothing until the next step."
+		var own: Dictionary = _look(entry, step)
 		if step.attaches():
 			var first: int = int(_ranks[index - pending.size()][0]) if not pending.is_empty() else from
 			_ranks[index] = [first, rank]
@@ -410,8 +412,29 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			entry.lots = _lots_of(step.brick_ids, lots)
 			if not marks.is_empty():
 				entry.marks.append_array(_marks_in(step.brick_ids, _marked))
+		if own.has("parts") and not bool(own["parts"]):
+			entry.lots.clear()
 		entries.append(entry)
 	return entries
+
+
+## The look its designer gave [param step] (BookletLooks), put on [param
+## entry]: the view, the zoom, the size and the page. Returns the step's
+## own look, {} for a step worked out here.
+func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
+	if step.authored_step < 0:
+		return {}
+	var section: String = step.authored_in
+	var own: Dictionary = BookletLooks.of(_world, section, step.authored_step)
+	entry.look = BookletLooks.key(BookletLooks.definition_of(section), step.authored_step)
+	entry.zoom = clampf(float(own.get("zoom", 1.0)), 0.25, 4.0)
+	entry.size = clampf(float(own.get("size", 1.0)), 0.4, 3.0)
+	entry.page_break = str(own.get("page", ""))
+	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
+	if not turn.is_empty():
+		entry.fixed = true
+		entry.from = BookletLooks.direction(turn)
+	return own
 
 
 ## The groups whose hidden colour has gone in by now, by label, and the
@@ -447,6 +470,8 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 	var callout := Booklet.Callout.new()
 	callout.name = attach.assembly
 	callout.times = attach.times
+	var unit: String = BookletLooks.attached(_world, attach, attach.authored_in)
+	callout.own_pages = not unit.is_empty() and not BookletLooks.callout_on(_world, unit)
 	var order: Array = []
 	var spans: Array = []
 	for step: Instructions.Step in built:
@@ -498,12 +523,22 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	var keep: int = _studio.supersample
 	_studio.supersample = 1
 	var count: int = 0
+	var before: Vector3 = BookletStudio.FRONT
 	for entry: Booklet.Entry in entries:
 		count += 1
 		if count % 10 == 1:
 			_say("Choosing how each step is seen…", entries.size(), count - 1)
 		if _stopped():
 			return
+		# Seen the way its designer set it: turned where the turn is more
+		# than a glance round from the step before.
+		if entry.fixed:
+			entry.turned = _round_from(before, entry.from)
+			before = entry.from
+			facing = BookletStudio.FRONT
+			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
+				"other": -1.0, "turned": entry.turned, "fixed": true})
+			continue
 		var span: Array = _where(entry)
 		var here: float = await _seen(span, facing)
 		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
@@ -524,7 +559,20 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 			facing = other
 			entry.turned = true
 		entry.from = facing
+		if not turn:
+			entry.turned = _round_from(before, entry.from)
+		before = entry.from
 	_studio.supersample = keep
+
+
+## Whether a step seen from [param to] after one seen from [param from] is
+## the model turned round: more than 60 degrees of it.
+static func _round_from(from: Vector3, to: Vector3) -> bool:
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	if a.length() < 0.01 or b.length() < 0.01:
+		return false
+	return absf(a.angle_to(b)) > deg_to_rad(60.0)
 
 
 ## How much of a step's new parts [param from] shows: [param where] as
@@ -639,6 +687,28 @@ func _subjects(entries: Array[Booklet.Entry]) -> void:
 			entry.subject = BookletStudio.extent(
 				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
 			entry.cropped = false
+		_zoomed(entry)
+
+
+## A step its designer zoomed: in, framed on what it adds, the rest of the
+## model running off the picture and faded; out, more of the page round it.
+func _zoomed(entry: Booklet.Entry) -> void:
+	if is_equal_approx(entry.zoom, 1.0):
+		return
+	var where: Array = _where(entry)
+	var stage: BookletStudio.Stage = where[0]
+	var fresh: Rect2 = BookletStudio.extent(stage.boxes.slice(int(where[1]) - 1, int(where[2])),
+		entry.from)
+	var whole: Rect2 = entry.subject
+	var size: Vector2 = whole.size / entry.zoom
+	var centre: Vector2 = whole.get_center()
+	if entry.zoom > 1.0:
+		if fresh.size.length() > 0.0:
+			centre = fresh.get_center()
+		centre.x = clampf(centre.x, whole.position.x + size.x * 0.5, whole.end.x - size.x * 0.5)
+		centre.y = clampf(centre.y, whole.position.y + size.y * 0.5, whole.end.y - size.y * 0.5)
+		entry.cropped = true
+	entry.subject = Rect2(centre - size * 0.5, size)
 
 
 # -- pictures ------------------------------------------------------------------

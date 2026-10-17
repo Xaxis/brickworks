@@ -73,6 +73,8 @@ var copies: Dictionary = {}
 ## are its author's.
 var unit_steps: Dictionary = {}
 var authored: bool = false
+## Unit path -> the line that places that copy (LdrModel.unit_lines).
+var unit_lines: Dictionary = {}
 ## Sections that are a flexible part LDCad drew (a hose, a band, a string):
 ## a path and the skin it generated of primitives, which are not parts.
 var flexible: Dictionary = {}
@@ -98,6 +100,7 @@ static func make(text: String, model: LdrModel, placements: Array,
 	source.unit_sections = model.unit_sections.duplicate()
 	source.unit_colours = model.unit_colours.duplicate()
 	source.unit_steps = model.unit_steps.duplicate()
+	source.unit_lines = model.unit_lines.duplicate()
 	source.authored = authored_steps
 	source._read_sections()
 	for item: Variant in placements:
@@ -318,10 +321,17 @@ func header() -> PackedStringArray:
 ## is.
 func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
 		unit_steps_now: Dictionary) -> Variant:
-	# A copy put in another step, or steps given to a model that had none.
+	# A copy the file never placed, or steps given to a model that had none.
+	# A copy put in another step is written with the rest of the steps of
+	# the sub-model that places it (_restep).
+	var restepped: Dictionary = {}      ## section key -> true
 	for unit: String in unit_steps_now:
-		if not unit_steps.has(unit) or int(unit_steps[unit]) != int(unit_steps_now[unit]):
+		if not unit_steps.has(unit):
 			return null
+		if int(unit_steps[unit]) != int(unit_steps_now[unit]):
+			if not unit_lines.has(unit):
+				return null
+			restepped[_section_of(Assemblies.parent_of(unit))] = true
 	if not authored:
 		for item: Variant in bricks:
 			if (item as BrickWorld.Brick).step >= 0:
@@ -397,6 +407,12 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if left.is_empty() or gone.is_empty():
 				break
 
+	# A section whose parts' steps changed is written again a step at a time.
+	for line: int in by_line:
+		for origin: Read in by_line[line]:
+			if paired.has(origin) and (paired[origin][0] as BrickWorld.Brick).step != origin.step:
+				restepped[_section_of(origin.unit)] = true
+
 	# Each line: as it was, rewritten, or taken out.
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
 	var inserts: Dictionary = {}    ## line -> [lines to go before it]
@@ -415,7 +431,8 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			var now: Array = paired[origin]
 			var brick: BrickWorld.Brick = now[0]
 			if brick.part_id != origin.part_id or brick.color_code != origin.colour \
-					or brick.step != origin.step or not _same(origin.at, now[1]):
+					or not _same(origin.at, now[1]) \
+					or brick.step != origin.step and not restepped.has(_section_of(origin.unit)):
 				changed = true
 		if removed == live.size() and live.size() == origins.size():
 			# A flexible part's skin stands for its GENERATED line and the
@@ -435,7 +452,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return null
 		var first: Read = live[0]
 		var brick: BrickWorld.Brick = (paired[first] as Array)[0]
-		if brick.step != first.step:
+		if brick.step != first.step and not restepped.has(_section_of(first.unit)):
 			# Into another step of its section: out of here, in there.
 			replace[line] = ""
 			var to: Variant = _step_end(_section_of(first.unit), brick.step)
@@ -446,6 +463,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			replace[line] = written
 
 	# Parts added: at the end of their step, in their copy's sub-model.
+	var added: Dictionary = {}      ## restepped section -> [[step, line]]
 	for entry: Array in left:
 		var brick: BrickWorld.Brick = entry[0]
 		var at: Transform3D = entry[1]
@@ -464,14 +482,25 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		if frame.basis.determinant() < 0.0:
 			return null
 		var local: Transform3D = frame.affine_inverse() * at
+		var said: String = "1 %s %s %s.dat" % [_colour_token(brick.color_code),
+			LdrModel._line_numbers(local), brick.part_id]
+		if restepped.has(section):
+			if not added.has(section):
+				added[section] = []
+			(added[section] as Array).append([brick.step, said])
+			continue
 		var to: Variant = _step_end(section, brick.step)
 		if to == null:
 			return null
-		_insert(inserts, to, _step_lines(section, brick.step)
-			+ ["1 %s %s %s.dat" % [_colour_token(brick.color_code),
-				LdrModel._line_numbers(local), brick.part_id]])
+		_insert(inserts, to, _step_lines(section, brick.step) + [said])
 
 	_drop_emptied(replace, left)
+
+	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	for section: String in restepped:
+		if not _restep(section, replace, inserts, added.get(section, []), paired,
+				unit_steps_now, eol_now):
+			return null
 
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
@@ -487,6 +516,146 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for extra: String in inserts.get(lines.size(), []):
 		out.append(extra + eol)
 	return "\n".join(out)
+
+
+## A section whose steps changed, written again a step at a time: each
+## line in the step its part, or the copy of a sub-model it places, is in
+## now, and the notes between them with the step most of theirs went to;
+## each step ended by the line that ended the last of the file's steps
+## that went into it, so a merge takes one STEP line out, a split puts one
+## in, a reorder moves whole steps with their ROTSTEP, and every line
+## nobody changed is the file's, byte for byte. False when a line's copies
+## are now in different steps: one line cannot be in two.
+func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: Array,
+		paired: Dictionary, unit_steps_now: Dictionary, eol: String) -> bool:
+	if not sections.has(section):
+		return false
+	var span: Array = sections[section]
+	var start: int = int(span[0])
+	var stop: int = int(span[1])
+	var head_end: int = start
+	while head_end < stop:
+		var words: PackedStringArray = LdrModel._fields(lines[head_end].strip_edges())
+		if not words.is_empty() and words[0] == "1" or _is_step(lines[head_end]):
+			break
+		head_end += 1
+	var tail: int = stop
+	while tail > head_end and lines[tail - 1].strip_edges().is_empty():
+		tail -= 1
+	# The copies each line places, by line.
+	var placing: Dictionary = {}
+	for unit: String in unit_lines:
+		if _section_of(Assemblies.parent_of(unit)) != section:
+			continue
+		var at: int = int(unit_lines[unit])
+		if not placing.has(at):
+			placing[at] = []
+		(placing[at] as Array).append(unit)
+	# The steps as the file had them, and the line ending each.
+	var blocks: Array = [[]]
+	var ends: Array = [-1]
+	for n: int in range(head_end, tail):
+		if _is_step(lines[n]):
+			ends[ends.size() - 1] = n
+			blocks.append([])
+			ends.append(-1)
+		else:
+			(blocks[blocks.size() - 1] as Array).append(n)
+	if blocks.size() > 1 and (blocks[blocks.size() - 1] as Array).is_empty():
+		blocks.pop_back()
+		ends.pop_back()
+	# Where each part and copy is now.
+	var line_step: Dictionary = {}
+	var latest: int = 0
+	for block: Array in blocks:
+		for n: int in block:
+			var now: int = -2
+			for origin: Read in by_line.get(n, []):
+				if not paired.has(origin):
+					continue
+				var step: int = (paired[origin][0] as BrickWorld.Brick).step
+				if now != -2 and now != step:
+					return false
+				now = step
+			for unit: String in placing.get(n, []):
+				var step: int = int(unit_steps_now.get(unit, unit_steps.get(unit, -1)))
+				if now != -2 and now != step:
+					return false
+				now = step
+			if now >= 0:
+				line_step[n] = now
+				latest = maxi(latest, now)
+	for entry: Array in added:
+		latest = maxi(latest, int(entry[0]))
+	for n: int in line_step:
+		if int(line_step[n]) < 0:
+			line_step[n] = latest
+	# The rest of each step's lines go with most of its parts.
+	var block_step: Array = []
+	var before: int = 0
+	for block: Array in blocks:
+		var votes: Dictionary = {}
+		for n: int in block:
+			if line_step.has(n):
+				votes[line_step[n]] = int(votes.get(line_step[n], 0)) + 1
+		var best: int = -1
+		for step: int in votes:
+			if best < 0 or int(votes[step]) > int(votes[best]) \
+					or int(votes[step]) == int(votes[best]) and step < best:
+				best = step
+		if best < 0:
+			best = before
+		block_step.append(best)
+		before = best
+	var into: Dictionary = {}       ## step -> [[order, text]]
+	var ending: Dictionary = {}     ## step -> the line ending it, or "" for none
+	for k: int in blocks.size():
+		for n: int in blocks[k]:
+			var text: String = lines[n].trim_suffix("\r")
+			if replace.has(n):
+				text = str(replace[n])
+				if text.is_empty():
+					continue
+			var step: int = int(line_step.get(n, block_step[k]))
+			if not into.has(step):
+				into[step] = []
+			(into[step] as Array).append([float(n), text])
+		ending[block_step[k]] = lines[int(ends[k])].trim_suffix("\r") if int(ends[k]) >= 0 else ""
+	for entry: Array in added:
+		var step: int = int(entry[0]) if int(entry[0]) >= 0 else latest
+		if not into.has(step):
+			into[step] = []
+		(into[step] as Array).append([float(tail) + 0.5, str(entry[1])])
+	var order: Dictionary = {}
+	for step: int in into:
+		order[step] = true
+	for step: int in ending:
+		if into.has(step) or not str(ending[step]).is_empty():
+			order[step] = true
+	var steps: Array = order.keys()
+	steps.sort()
+	var out := PackedStringArray()
+	for index: int in steps.size():
+		var step: int = steps[index]
+		var made: Array = into.get(step, [])
+		made.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		for item: Array in made:
+			out.append(str(item[1]))
+		var ended: String = str(ending.get(step, ""))
+		if not ended.is_empty():
+			out.append(ended)
+		elif index < steps.size() - 1:
+			out.append("0 STEP")
+	for n: int in range(head_end, tail):
+		replace[n] = ""
+	if out.is_empty():
+		return true
+	var joined: String = (eol + "\n").join(out)
+	if head_end < tail:
+		replace[head_end] = joined
+	else:
+		_insert(inserts, tail, [joined])
+	return true
 
 
 ## A sub-model whose every part was taken out goes with them: its FILE

@@ -485,6 +485,13 @@ func _apply(step: Dictionary) -> Dictionary:
 			world.broken_out.erase(section)
 		return {"undo": "sectionout", "path": section, "record": had}
 
+	# How the booklet shows its steps (BookletLooks): the whole table as it
+	# was, its own reverse.
+	if step.get("undo", "") == "steplooks":
+		var looked: Dictionary = world.step_looks.duplicate(true)
+		world.step_looks = (step["looks"] as Dictionary).duplicate(true)
+		return {"undo": "steplooks", "looks": looked}
+
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
 		var held: int = int(world.unit_steps.get(unit, -1))

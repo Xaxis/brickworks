@@ -802,6 +802,10 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
+		# And how its booklet shows them: ROTSTEP's turns and the app's own
+		# lines (BookletLooks).
+		world.step_looks = BookletLooks.read(text, model._assembly_names(),
+			LdrModel._key(model.main.name))
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, model.author.strip_edges() != "Brickworks")
@@ -1266,6 +1270,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		var kept: String = str(from_source)
 		kept = model_floor.written_into(kept) if model_floor != null else kept
 		kept = HiddenColours.written_into(kept, hidden_scheme)
+		kept = _with_looks(kept)
 		made.append(kept if set_in(kept) == from_set else with_set(kept, from_set))
 		return
 	# A section broken out is written where it was pulled from: the whole
@@ -1363,9 +1368,23 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
+	text = _with_looks(text)
 	if model != world:
 		model.free()
 	made.append(with_set(text, from_set))
+
+
+## [param text] with how the booklet shows each step written into it
+## (BookletLooks): ROTSTEP for a turn, the app's own lines for the rest. A
+## model with no steps of its own is left alone.
+func _with_looks(text: String) -> String:
+	if world.step_looks.is_empty() and not AuthorSteps.any(world, scenery):
+		return text
+	if world.step_looks.is_empty() and not BookletLooks._written_in(text):
+		return text
+	var parsed: LdrModel = LdrModel.parse(text, "model")
+	return BookletLooks.written_into(text, world.step_looks, parsed._assembly_names(),
+		LdrModel._key(parsed.main.name))
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)
