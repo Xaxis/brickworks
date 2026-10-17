@@ -97,6 +97,7 @@ func _run() -> void:
 		await _fetched_as_the_web_does(path)
 	await _one_session(PackedStringArray([SET, "res://vendor/omr/files/42115-1.mpd"]))
 	await _restored()
+	await _kept()
 	await _not_there()
 	_web_page()
 	OS.kill(_server)
@@ -335,6 +336,30 @@ func _restored() -> void:
 	_expect(placed > 0 and out.is_empty() and not PartForge._fetched.is_empty(),
 		"21321-1 restored with every part it carries: %d parts, %d files fetched, not shown %s"
 			% [placed, PartForge._fetched.size(), out])
+	DirAccess.remove_absolute(path)
+	PartForge.withheld = false
+	CustomParts.sources_from = ""
+
+
+## A carried part kept from a file (CustomParts.dir), drawn from a library
+## subpart: built at start-up once that is fetched, not said not to build.
+func _kept() -> void:
+	print("carriedfetch: a part kept from a file, at start-up")
+	_fresh()
+	PartForge.withheld = true
+	CustomParts.sources_from = _root()
+	DirAccess.make_dir_recursive_absolute(CustomParts.dir)
+	var path: String = CustomParts.dir + "probe-wall.dat"
+	var model: LdrModel = LdrModel.parse(WALL, "wall")
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(str(model.embedded_parts["probe-wall.dat"]))
+	file.close()
+	CustomParts.load_all(_library)
+	var began: int = Time.get_ticks_msec()
+	while not _library.parts.has("probe-wall") and Time.get_ticks_msec() - began < 20000:
+		await process_frame
+	_expect(_library.parts.has("probe-wall") and not PartForge.fetched("s/3001s01.dat").is_empty(),
+		"built once its subpart came, in %d ms" % (Time.get_ticks_msec() - began))
 	DirAccess.remove_absolute(path)
 	PartForge.withheld = false
 	CustomParts.sources_from = ""

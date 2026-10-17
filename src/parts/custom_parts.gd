@@ -172,6 +172,9 @@ static func info_for(built: PartForge.Result) -> PartLibrary.PartInfo:
 
 
 ## Every part kept in [member dir], built and added. Returns how many.
+## On the web one drawn from LDraw's own files is built once they are
+## fetched ([method _load_later]): a carried part a file brought, kept, was
+## said at every start not to build.
 static func load_all(library: PartLibrary) -> int:
 	var found: int = 0
 	if not DirAccess.dir_exists_absolute(dir):
@@ -180,6 +183,14 @@ static func load_all(library: PartLibrary) -> int:
 	for file_name: String in DirAccess.get_files_at(dir):
 		if file_name.ends_with(".dat"):
 			texts[file_name] = FileAccess.get_file_as_string(dir + file_name)
+	var later: Dictionary = {}
+	if OS.has_feature("web") or not sources_from.is_empty():
+		for file_name: String in texts.keys():
+			if not PartForge.unreached(texts[file_name]).is_empty():
+				later[file_name] = texts[file_name]
+				texts.erase(file_name)
+	if not later.is_empty():
+		_load_later(library, later)
 	var built: Dictionary = _built_at_once(texts, {})
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
@@ -190,6 +201,24 @@ static func load_all(library: PartLibrary) -> int:
 		else:
 			push_warning("custom part %s: %s" % [id, result["problem"]])
 	return found
+
+
+## The kept parts [param texts] (file name -> text) draw on files of LDraw's
+## own: fetched, once the deployment says where from, then built and added.
+static func _load_later(library: PartLibrary, texts: Dictionary) -> void:
+	await _fetch_until(library, func() -> PackedStringArray:
+		var named: Dictionary = {}
+		for text: String in texts.values():
+			for key: String in PartForge.unreached(text):
+				named[key] = true
+		return PackedStringArray(named.keys()))
+	for file_name: String in texts:
+		var id: String = file_name.get_basename()
+		if library.parts.has(id):
+			continue
+		var result: Dictionary = add(library, texts[file_name], id, false)
+		if not str(result["problem"]).is_empty():
+			push_warning("custom part %s: %s" % [id, result["problem"]])
 
 
 ## The parts a model file carries, added to the library so the model can
@@ -336,6 +365,14 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 	if model == null or (model.embedded_parts.is_empty() and model.generated.is_empty()):
 		return
+	await _fetch_until(library, func() -> PackedStringArray:
+		return unreached_by(library, model))
+
+
+## Fetch what [param named] (a callable giving the names still unreached)
+## names, until it names nothing that can be had: [method fetch_sources]'s
+## loop, for a file or for kept parts.
+static func _fetch_until(library: PartLibrary, named: Callable) -> void:
 	if not OS.has_feature("web") and sources_from.is_empty():
 		return
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -352,13 +389,13 @@ static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 	# reference that loops would not be.
 	for _pass: int in 32:
 		var wanted := PackedStringArray()
-		for key: String in unreached_by(library, model):
+		for key: String in named.call():
 			if not _unfetched.has(key):
 				wanted.append(key)
 		if wanted.is_empty():
 			break
 		if job == null:
-			job = Working.begin("Fetching the LDraw files the parts it carries are drawn from…")
+			job = Working.begin("Fetching the LDraw files carried parts are drawn from…")
 		# At start-up the deployment may not have said where yet.
 		while fetch_root(library).is_empty() \
 				and Time.get_ticks_msec() - waited_from < DEPLOYMENT_WAIT_MS:
@@ -393,7 +430,7 @@ static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray,
 		asked[key] = true
 	var say: Callable = func() -> void:
 		if job != null:
-			job.say("Fetching %d LDraw %s the parts it carries are drawn from…"
+			job.say("Fetching %d LDraw %s carried parts are drawn from…"
 				% [asked.size(), "file" if asked.size() == 1 else "files"])
 	say.call()
 	while not todo.is_empty() or int(going[0]) > 0:

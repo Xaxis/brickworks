@@ -12,6 +12,9 @@
 // them the app built is said (window.brickworksState.custom). Says how long the open took (the file handed over to
 // "opened N parts"), which LDraw files were fetched and how they answered, and
 // takes a picture of each. --label names the run in the JSON (before, after).
+// --reload then reloads the page: the last file, put back at start-up as the
+// working model, must have every part it carries built again (the fetch is
+// for the visit, so it is fetched again).
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
@@ -64,7 +67,7 @@ const why = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => {
   if (/SCRIPT ERROR|USER ERROR|Parse Error/i.test(m.text())) errors.push(m.text().slice(0, 300));
-  if (/could not (build a part|fetch the LDraw)/.test(m.text())) why.push(m.text().split("\n")[0].slice(0, 300));
+  if (/could not (build a part|fetch the LDraw)|custom part .*: /.test(m.text())) why.push(m.text().split("\n")[0].slice(0, 300));
 });
 // Every LDraw file asked for, and how it answered.
 const fetched = [];
@@ -176,6 +179,27 @@ for (const model of models) {
   await page.keyboard.press("Escape");
   await page.waitForTimeout(4000);
   await shot(`${label}_${name}.png`);
+}
+if (args.reload && models.length) {
+  const last = models[models.length - 1];
+  const carried = carriedIn(readFileSync(last, "utf8"));
+  const wanted = rows.length ? carried.filter((id) => !rows[rows.length - 1].carried_not_shown.includes(id)) : carried;
+  console.log(`carried web (${label}): reloaded, ${basename(last)} put back at start-up`);
+  fetched.length = 0;
+  why.length = 0;
+  await page.waitForTimeout(8000);   // the autosave, a few seconds after a change settles
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
+  await where("open");
+  const s = await settled(Number(args.settle || 20000));
+  const built = new Set(s.custom || []);
+  const back = wanted.filter((id) => built.has(id));
+  console.log(`        ${s.bricks} parts; ${back.length} of the ${wanted.length} parts it carries that it showed built again; `
+    + `LDraw files fetched: ${fetched.length} (${fetched.slice(0, 6).map((f) => `${f.url} ${f.status}`).join(", ")})`);
+  for (const line of why.slice(0, 6)) console.log(`        why: ${line}`);
+  rows.push({ label, file: basename(last), reloaded: true, bricks: s.bricks, built_again: back.length,
+    of: wanted.length, fetched: [...fetched], why: [...why] });
+  ok(why.length === 0, `reloaded: no carried part said not built${why.length ? ": " + why[0] : ""}`);
+  await shot(`${label}_reloaded.png`);
 }
 ok(errors.length === 0, `no script errors${errors.length ? ": " + errors.slice(0, 3).join(" | ") : ""}`);
 writeFileSync(`${out}/carried_web_${label}.json`, JSON.stringify({ rows, errors }, null, 1));

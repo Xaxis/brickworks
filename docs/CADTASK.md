@@ -339,8 +339,9 @@ files and 6 KB, at most 26 files and 563 KB (41075-1). 42082-1 needs one,
 a file opens on the web, `CustomParts.unreached_by` asks what its carried
 parts and skins name that the build cannot read (`PartForge.unreached`), and
 `fetch_sources` fetches those six at a time, and what each names as it
-arrives, the status bar saying "Fetching 4 LDraw files the parts it carries
-are drawn from…".
+arrives, the status bar saying "Fetching 4 LDraw files carried parts are
+drawn from…". A part a file brought and the app kept is built at start-up
+once what it needs has come (`CustomParts._load_later`).
 They are kept for the visit (`PartForge.keep_fetched`) and read as the
 desktop reads its library. Every way a file opens goes through it: the file
 picker, a saved model, an example, a version, the working model at start-up,
