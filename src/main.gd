@@ -2230,6 +2230,7 @@ func _build_go(page: int) -> void:
 	lap = _lap(took, "page", lap)
 	BuildSteps.remember(_viewing, page, true)
 	_lap(took, "kept", lap)
+	_draw_ahead(page)
 	_build_turned_us = Time.get_ticks_usec() - started
 	if _build_turned_us > _build_turned_most_us:
 		_build_turned_most_us = _build_turned_us
@@ -2256,6 +2257,64 @@ func _build_drawn() -> void:
 	JavaScriptBridge.eval("window.brickworksBuildDrawn = [%d, performance.now()]" % _build_page, true)
 
 
+## The parts' pictures of the pages to come, drawn while the page is idle:
+## once this page's own are in, the next few pages' and then every other
+## page's, a few at a time, each part in a colour once (PartThumbnails keeps
+## them by part and colour), so a page turned to has its pictures to hand.
+## Drawn only when a page asked, they came a picture at a time behind the
+## turn, and on a slowed phone in software a page's parts list was blank
+## tiles for seconds. A turn starts it again from the page turned to.
+func _draw_ahead(page: int) -> void:
+	_ahead_turn += 1
+	var turn: int = _ahead_turn
+	var still := func() -> bool:
+		return turn == _ahead_turn and _build_mode != null and _build_mode.is_open() \
+			and _build_pages != null and _thumbnails != null
+	# This page's own first: what is in sight is drawn before anything asked.
+	var since: int = Time.get_ticks_msec()
+	while still.call() and not _build_mode.pictures_done() and Time.get_ticks_msec() - since < 10000:
+		await get_tree().process_frame
+	var asked: Dictionary = {}
+	var pages: Array[int] = []
+	for n: int in range(page + 1, mini(page + AHEAD_FIRST, _build_pages.last()) + 1):
+		pages.append(n)
+	for n: int in range(1, _build_pages.last() + 1):
+		if n <= page or n > page + AHEAD_FIRST:
+			pages.append(n)
+	var waiting: Array = []
+	var pace := FramePace.new()
+	for n: int in pages:
+		if not still.call():
+			return
+		# A slice a frame: every page's parts asked after is the whole model.
+		if pace.due():
+			await pace.next()
+			if not still.call():
+				return
+		for lot: Dictionary in _build_pages.lots(n):
+			var key: String = PartThumbnails.key_for(str(lot["part"]), int(lot["colour"]))
+			if asked.has(key):
+				continue
+			asked[key] = true
+			if _thumbnails.request(str(lot["part"]), int(lot["colour"])) == null:
+				waiting.append([str(lot["part"]), int(lot["colour"])])
+		if waiting.size() < AHEAD_AT_ONCE:
+			continue
+		# A handful drawn, then the next: each is a frame of the whole
+		# window drawn, and a tap in the meantime has its frame.
+		since = Time.get_ticks_msec()
+		while still.call() and Time.get_ticks_msec() - since < 10000 and waiting.any(
+				func(one: Array) -> bool: return _thumbnails.peek(one[0], one[1]) == null):
+			await get_tree().process_frame
+		waiting.clear()
+
+
+var _ahead_turn: int = 0
+## Pages drawn ahead first, and pictures asked for at a time.
+const AHEAD_FIRST := 3
+const AHEAD_AT_ONCE := 8
+
+
 ## Milliseconds since [param since], under [param name]; now.
 static func _lap(took: Dictionary, name: String, since: int) -> int:
 	var now: int = Time.get_ticks_usec()
@@ -2270,6 +2329,7 @@ func _leave_build() -> void:
 	if _build_mode == null or not _build_mode.is_open():
 		return
 	_build_mode.close()
+	_ahead_turn += 1
 	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0))):
 		_world.set_faded({})
 	_build_faded = 0

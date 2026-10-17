@@ -63,6 +63,7 @@ const JUMP = Number(args.jump || 30);
 const BAR = (parts) => (parts > 1000 ? 200 : 100);
 const FIRST_BAR = 3000;
 const FIRST_BAR_BIG = 5000;
+const PICTURES_BAR = 1000;
 
 let failed = 0;
 const check = (what, ok) => {
@@ -277,6 +278,12 @@ async function timedTap(page, at, wanted) {
     if (!(marked || b.page === page) || after.length < 2) return null;
     return { tap, after: after.slice(0, 12), mark: marked ? mark[1] : null };
   }, `page ${wanted}`, 60, [wanted, before[0], before[1]], 50);
+  // ...and the parts' pictures along the bottom, every one drawn (the app
+  // says when: window.brickworksPicturesDrawn = [page, when]).
+  const pictures = await until(page, ([wanted, tap]) => {
+    const mark = window.brickworksPicturesDrawn;
+    return mark && mark[0] === wanted && mark[1] >= tap ? mark[1] : null;
+  }, "the parts' pictures", 30, [wanted, done.tap], 50).catch(() => null);
   const first = done.after[0];
   const handled = first[0] + first[1];
   const shown = done.after[1][0];
@@ -292,6 +299,7 @@ async function timedTap(page, at, wanted) {
     drawn: Math.round(drawn - done.tap),
     shown: Math.round(Math.max(next[0], shown) - done.tap),
     marked: done.mark !== null,
+    pictures: pictures !== null ? Math.round(pictures - done.tap) : null,
     told: await page.evaluate(([from, to]) => window.stepFrames.tells.some((t) => t >= from && t <= to),
       [first[0], handled]),
   };
@@ -531,6 +539,10 @@ try {
         + (turn.laps ? ` ${JSON.stringify(turn.laps)}` : "");
       if (turn.what === "end (key)" || reportOnly) say(line);
       else check(`${line} under ${BAR(n)} ms`, turn.shown <= BAR(n));
+      if (turn.what !== "end (key)" && !reportOnly) {
+        check(`...and every part's picture along the bottom within ${PICTURES_BAR} ms of the tap `
+          + `(${turn.pictures ?? "never, in 30 s"})`, turn.pictures !== null && turn.pictures <= PICTURES_BAR);
+      }
     }
     say(`the page's own work in its slowest turn: ${JSON.stringify(s.turn_most)}; `
       + `telling the page up to ${record.told_most_ms} ms a frame`);
