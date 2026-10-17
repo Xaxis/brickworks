@@ -624,6 +624,27 @@ picture the assistant is shown.
   the table; 14.9% to 12.7% by the old rule), the 7 Technic files 31.5% to
   24.0%, hidden steps 13.8% to 14.3% and tau 0.31 within noise, planning 1.09
   times, the Snowspeeder 0.33 s.
+  Then steps a builder can follow (2026-10-17): a step is drawn as it is
+  filled, front and back, by the parts' boxes (`Instructions.Pictures`), and
+  a part that would hide one the step holds waits for the next step; a step
+  takes what is near any of its parts, and one more of a part it holds at
+  that height from twelve studs (`_near_step`, `LIKE_REACH`); a step that puts
+  a sub-assembly on takes the parts beside it (`ATTACH_TAKES_PARTS`, and the
+  step player lists them on that page, `BuildSteps.lots`); what rests on what
+  is read off the covers too (`_contacts_of`: a part no stud seats rests on
+  what its cover rests on, a hanging part hangs from what its cover touches);
+  a part hanging under one resting on it goes in that one's step on the model
+  (`_hung_under`); and a ready part that joins no standing piece of the build
+  so far goes after one that does (`_touching`, `UNJOINED_LATER`,
+  `_steadier`). A step of wheels is wheels. `instructions_probe` checks a 3 x 3
+  plate on a 1 x 1 goes in the step after it, three tiles five studs apart in
+  one step, and that a page putting a sub-assembly on lists exactly its loose
+  parts. On the held-out steps-score sample (2026-10-17, against d24d4d6):
+  steps with a hidden new thing 14.5% to 11.7%, steps with a floating thing
+  11.2% to 8.5%, things put in under 6.3% to 5.5%, parts the build check
+  calls floating 17.3% to 4.0%, steps of one thing 23.3% to 19.6%, and tau
+  0.30 to 0.26, a loss (docs/INSTRUCTIONS.md). A wheel whose name LDraw
+  marks as an alias ("=Wheel Rim") is a wheel.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
@@ -694,7 +715,13 @@ picture the assistant is shown.
   with known answers (a stack built from the top floats twice; a plate in a
   deep well is hidden; a second tower begun from its top floats once when a
   piece begins on the table, twice by the model's first parts alone) and
-  scores nothing if one is wrong; the maths is pinned
+  scores nothing if one is wrong; `--explain` prints, for ours, each
+  floating, hidden and put-in-under thing with what the planner had it need
+  and what the measure's graph holds it to, and a `CLASS` line saying whether
+  a floating one floated on its own (a root) or went on one, and why the
+  planner thought it held; each hidden thing found says whether earlier steps
+  hid it or only its own step's parts, and each floating one how many steps
+  it waited to be held; the maths is pinned
   by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
   against the definition).
 - `cad task frames` and `cad task frames in a browser`

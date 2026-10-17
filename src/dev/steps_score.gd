@@ -73,6 +73,9 @@ var _other: BrickWorld
 ## The design check, for --check (Assistant._check, only the ground holding).
 var _assistant: Assistant
 var _checking: bool = false
+## --explain: say, for ours, what each floating, hidden and blocked thing is,
+## what the planner had it need, and what the measure's graph holds it to.
+var _explaining: bool = false
 var _failures: int = 0
 
 
@@ -117,6 +120,8 @@ func _run() -> void:
 			shuffle_seed = int(argument.trim_prefix("--seed="))
 		elif argument == "--check":
 			_checking = true
+		elif argument == "--explain":
+			_explaining = true
 		elif argument == "--selftest":
 			selftest = true
 		else:
@@ -232,6 +237,8 @@ func _score(path: String, shuffle_seed: int) -> Dictionary:
 		var back: Dictionary = _restaged(bricks, shuffled, variant == "ours")
 		plans[variant] = _from_plan(Instructions.plan(_other, _library), back, bricks.size())
 		laps[variant] = Time.get_ticks_msec() - clock
+		if _explaining and variant == "ours":
+			_explain(plans[variant], back, bricks, geometry)
 		_other.clear()
 
 	var per: int = Instructions._per_step(bricks.size())
@@ -267,6 +274,82 @@ func _score(path: String, shuffle_seed: int) -> Dictionary:
 	row["laps"] = laps
 	row["seconds"] = float(Time.get_ticks_msec() - started) / 1000.0
 	return row
+
+
+## What the planner believed of each thing ours leaves floating, hidden or
+## put in under, against what the measure's graph holds it to: printed.
+func _explain(build: Dictionary, back: Dictionary, bricks: Array, g: Geometry) -> void:
+	var scored: Dictionary = _measure(build, g)
+	var rank: PackedInt32Array = scored["rank"]
+	var id_of: Dictionary = {}
+	for id: int in back:
+		id_of[int(back[id])] = id
+	var nodes: Array[Instructions.Node2] = Instructions._survey(_other, _library, {})
+	Instructions._find_supports(nodes, _other, _library)
+	Instructions._find_joints(nodes, _other, _library)
+	Instructions._tidy_needs(nodes)
+	Instructions._find_hangers(nodes)
+	var node_of: Dictionary = {}
+	for node: Instructions.Node2 in nodes:
+		node_of[int(back.get(node.id, -1))] = node
+	var types: String = scored["types"]
+	var name_of := func(index: int) -> String:
+		var info: PartLibrary.PartInfo = _library.parts.get(g.part[index])
+		return "%s %s" % [g.part[index], info.name.strip_edges().replace("  ", " ") if info else "?"]
+	var steps_of := func(ids: PackedInt64Array) -> String:
+		var out := PackedStringArray()
+		for id: int in ids:
+			var index: int = int(back.get(id, -1))
+			out.append("%d@%d" % [index, rank[index] if index >= 0 else -9])
+		return ",".join(out)
+	for what: String in ["floating_pieces", "hidden", "blocked"]:
+		print("== %s %d" % [what, (scored["which"][what] as Array).size()])
+		for entry: Array in scored["which"][what]:
+			var k: int = entry[0]
+			var index: int = entry[1]
+			if int(entry[2]) > 1:
+				print("  step %d (%s) a sub-assembly of %d from %d" % [k, types[k], int(entry[2]), index])
+				continue
+			var node: Instructions.Node2 = node_of.get(index)
+			var near := PackedStringArray()
+			for other: int in g.near[index]:
+				near.append("%d@%d" % [other, rank[other]])
+			if what == "floating_pieces":
+				var root: bool = true
+				for other: int in g.near[index]:
+					if rank[other] >= 0 and rank[other] <= k:
+						root = false
+				var cls: String = "no node"
+				if node != null:
+					var touching: bool = false
+					for need: int in node.needs:
+						if g.near[index].has(int(back.get(need, -1))):
+							touching = true
+					if node.needs.is_empty():
+						cls = "needs nothing"
+					elif touching:
+						cls = "a need touches it"
+					elif node.seated:
+						cls = "seated, needs do not touch"
+					elif not node.boxed.is_empty():
+						cls = "boxed, needs do not touch"
+					elif not node.weak.is_empty():
+						cls = "hung, needs do not touch"
+					elif not node.held_by.is_empty():
+						cls = "side stud, needs do not touch"
+					else:
+						cls = "joint, needs do not touch"
+				print("CLASS %s %s %s" % [types[k], "root" if root else "cascade", cls])
+			var said: String = "  step %d (%s) #%d %s at %s" % [k, types[k], index, name_of.call(index),
+				str((bricks[index] as BrickWorld.Brick).transform.origin.round())]
+			if entry.size() > 3:
+				said += " extra=%d" % int(entry[3])
+			print(said)
+			print("      measure holds it to: %s" % ",".join(near))
+			if node != null:
+				print("      planner needs %s boxed %s weak %s held_by %s seated=%s under %s" % [
+					steps_of.call(node.needs), steps_of.call(node.boxed), steps_of.call(node.weak),
+					steps_of.call(node.held_by), node.seated, steps_of.call(node.under)])
 
 
 ## Files up to this size get --check: a check of a few hundred parts is a
@@ -846,6 +929,11 @@ class Sight extends RefCounted:
 			return owner[pixel]
 		return int((sparse.get(pixel, [0.0, -1]) as Array)[1])
 
+	func depth_at(pixel: int) -> float:
+		if dense:
+			return depth[pixel]
+		return float((sparse.get(pixel, [-INF, -1]) as Array)[0])
+
 
 ## Somewhere things are built, as the build goes: the step each part was
 ## put there in, what holds what, and what can be seen from each side.
@@ -941,6 +1029,10 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 	var starts_big: Dictionary = {"first": 0, "hand": 0, "ground": 0, "air": 0}
 	## Every thing, with where it is built, to count those the graph holds.
 	var all_things: Array = []
+	## Floating things not yet held, by their place in floating_apart, and
+	## the steps each waited (-1, never in its build).
+	var pending_float: Array[int] = []
+	var float_delay: Dictionary = {}
 
 	for k: int in steps.size():
 		var step: Dictionary = steps[k]
@@ -1026,6 +1118,29 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 				if g.piece_size[which] >= 10:
 					starts_big[how] = int(starts_big[how]) + 1
 
+		# Whether each new thing could be seen against what earlier steps
+		# built alone, before this step's own parts are drawn: hidden by
+		# those, or only by parts of its own step. Said with each hidden one.
+		var by_earlier: Array = []
+		for thing: PackedInt32Array in things:
+			var seen_before: float = 0.0
+			for v: int in 2:
+				var mine: Dictionary = {}
+				for index: int in thing:
+					var pixels: PackedInt32Array = (g.pixels[v] as Array)[index]
+					var depths: PackedFloat32Array = (g.depths[v] as Array)[index]
+					for n: int in pixels.size():
+						mine[pixels[n]] = maxf(float(mine.get(pixels[n], -INF)), depths[n])
+				if mine.is_empty():
+					seen_before = 1.0
+					break
+				var clear: int = 0
+				for pixel: int in mine:
+					if float(mine[pixel]) >= place.sights[v].depth_at(pixel):
+						clear += 1
+				seen_before = maxf(seen_before, float(clear) / float(mine.size()))
+			by_earlier.append(seen_before < SEEN)
+
 		# Placed, and joined to what is there.
 		_put(place, placed, k, g)
 		for thing: PackedInt32Array in things:
@@ -1035,6 +1150,13 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 			if not Array(thing).any(func(index: int) -> bool:
 					return place.pieces.reaches_apart(index)):
 				floating_apart.append([place, thing, k])
+				pending_float.append(floating_apart.size() - 1)
+		# How many steps each floating thing waits to be held.
+		for n: int in range(pending_float.size() - 1, -1, -1):
+			var entry: Array = floating_apart[pending_float[n]]
+			if (entry[0] as Place).pieces.reaches_apart((entry[1] as PackedInt32Array)[0]):
+				float_delay[pending_float[n]] = k - int(entry[2])
+				pending_float.remove_at(n)
 
 		# Seen: drawn into the picture so far, then how much of each new
 		# thing is its own.
@@ -1044,7 +1166,8 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 			for index: int in placed:
 				place.sights[v].draw(pixels_of[index], depths_of[index], index)
 		var hidden_here: bool = false
-		for thing: PackedInt32Array in things:
+		for at_thing: int in things.size():
+			var thing: PackedInt32Array = things[at_thing]
 			var own: Dictionary = {}
 			for index: int in thing:
 				own[index] = true
@@ -1065,7 +1188,8 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 			items += 1
 			if best < SEEN:
 				hidden_items += 1
-				(said["hidden"] as Array).append([k, thing[0], thing.size()])
+				(said["hidden"] as Array).append([k, thing[0], thing.size(),
+					1 if by_earlier[at_thing] else 0])
 				hidden_here = true
 		if hidden_here:
 			hidden_steps += 1
@@ -1090,11 +1214,13 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 	var apart_items: int = 0
 	var apart_steps: Dictionary = {}
 	said["floating_pieces"] = []
-	for entry: Array in floating_apart:
+	for at_entry: int in floating_apart.size():
+		var entry: Array = floating_apart[at_entry]
 		if held_apart.call(entry):
 			apart_items += 1
 			(said["floating_pieces"] as Array).append([int(entry[2]),
-				(entry[1] as PackedInt32Array)[0], (entry[1] as PackedInt32Array).size()])
+				(entry[1] as PackedInt32Array)[0], (entry[1] as PackedInt32Array).size(),
+				int(float_delay.get(at_entry, -1))])
 			apart_steps[int(entry[2])] = true
 	return {"rank": rank, "sizes": sizes, "kinds": kinds, "types": types,
 		"copies": copies_out, "items": items, "hidden": hidden_items,

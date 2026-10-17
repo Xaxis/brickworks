@@ -222,13 +222,16 @@ func faded(page: int) -> Dictionary:
 ## The parts to pick up for [param page], as a booklet's callout lists
 ## them: one entry a part in a colour, the most of them first, each
 ## {"part", "colour", "count", "name", "colour_name"}. A hose laid in a bend
-## is the one hose (Inventory.key_of). None on the cover, or on a page
-## that puts a finished sub-assembly on.
+## is the one hose (Inventory.key_of). None on the cover. On a page that
+## puts a finished sub-assembly on, the parts that go on beside it: the
+## sub-assembly itself was picked up on its callout's pages.
 func lots(page: int) -> Array[Dictionary]:
 	page = clamped(page)
 	var counts: Dictionary = {}
 	var step: Instructions.Step = step_of(page)
-	if step == null or step.attaches():
+	# An attach step carries the loose parts that go on beside the
+	# sub-assembly, as an author's step does (Instructions.ATTACH_TAKES_PARTS).
+	if step == null:
 		return []
 	for brick_id: int in step.brick_ids:
 		if int(_rank.get(brick_id, -1)) != page:

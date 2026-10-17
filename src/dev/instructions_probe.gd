@@ -38,6 +38,8 @@ func _initialize() -> void:
 	_pressed_up(world, library)
 	_turned_section(world, library)
 	_on_its_edge(world, library)
+	_in_sight(world, library)
+	_like_parts_together(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -311,7 +313,8 @@ func _built_on_the_side(world: BrickWorld, library: PartLibrary) -> void:
 	_assert("...and then both go on in one step, after it",
 		attach != null and attach.copies.size() == 2
 		and attach.index > (windows[-1] as Instructions.Step).index
-		and attach.number == window.number and attach.brick_ids.is_empty())
+		and attach.number == window.number)
+	_attach_pages("shed", steps, world, library)
 
 	var figure: Array = steps.filter(func(step: Instructions.Step) -> bool:
 		return step.in_callout() and step.figure)
@@ -363,6 +366,41 @@ func _a_published_model(world: BrickWorld, library: PartLibrary) -> void:
 		callouts.has("Window") and callouts.has("Table") and callouts.has("Chair")
 		and callouts.has("Skateboard") and callouts.has("MiniFig1"))
 	_assert("...and a window is built once for two (%dx)" % most, most >= 2)
+	var carrying: int = _attach_pages("31009", steps, world, library)
+	_assert("a step that puts one on puts on the parts beside it too (%d steps do)" % carrying,
+		carrying > 0)
+
+
+## The steps that put a sub-assembly on: each one's loose parts (brick_ids)
+## are none of its copies', and the step player lists exactly them on its
+## page (BuildSteps.lots), the sub-assembly having been picked up on its
+## callout's pages. Returns how many carry loose parts.
+func _attach_pages(what: String, steps: Array[Instructions.Step], world: BrickWorld,
+		library: PartLibrary) -> int:
+	var pages: BuildSteps = BuildSteps.of(world, library, steps)
+	var carrying: int = 0
+	var wrong: int = 0
+	for step: Instructions.Step in steps:
+		if not step.attaches():
+			continue
+		var counted: Dictionary = {}
+		for brick_id: int in step.brick_ids:
+			for copy: PackedInt64Array in step.copies:
+				if copy.has(brick_id):
+					wrong += 1
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+			counted[key] = int(counted.get(key, 0)) + 1
+		var listed: Dictionary = {}
+		for lot: Dictionary in pages.lots(step.index):
+			listed["%s:%d" % [lot["part"], lot["colour"]]] = int(lot["count"])
+		if listed != counted:
+			wrong += 1
+		if not step.brick_ids.is_empty():
+			carrying += 1
+	_assert("%s: a page that puts a sub-assembly on lists exactly its loose parts (%d wrong)"
+		% [what, wrong], wrong == 0)
+	return carrying
 
 
 ## The example car a first visit opens: its booklet began with four
@@ -477,6 +515,52 @@ func _pressed_up(world: BrickWorld, library: PartLibrary) -> void:
 	print("\n  a plate pressed up under a bridge")
 	_assert("it goes in with the bridge (steps %d and %d)" % [int(step_of.get(under, -1)),
 		int(step_of.get(bridge, -1))], step_of.get(under, -1) == step_of.get(bridge, -2))
+
+
+## A step's own parts are in its picture. A 1 x 1 plate with a 3 x 3 plate
+## on its stud, filled into one step as both were ready and near, was
+## hidden under it from the front and the back: in 100 real sets most of the
+## steps of ours that hid a new thing hid it behind a part of the same step
+## (docs/INSTRUCTIONS.md). The 3 x 3 goes in the step after.
+func _in_sight(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	world.add_brick("3958", 7, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)))
+	var small: int = world.add_brick("3024", 4, Transform3D(Basis.IDENTITY,
+		Vector3(10.0, 8.0, 10.0)))
+	var over: int = world.add_brick("11212", 1, Transform3D(Basis.IDENTITY,
+		Vector3(10.0, 16.0, 10.0)))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a plate under a wider one", steps, world, library)
+	var step_of: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			step_of[brick_id] = step.index
+	print("\n  a 1 x 1 plate under a 3 x 3")
+	_assert("the 3 x 3 goes in after the step of the plate it covers (steps %d and %d)" % [
+		int(step_of.get(small, -1)), int(step_of.get(over, -1))],
+		int(step_of.get(over, -1)) > int(step_of.get(small, 99)))
+
+
+## Like parts that go on together go in one step: three 1 x 2 tiles in a
+## row along a plate, five studs apart. Reached only from the part put in last,
+## a step ended at the first gap wider than four studs, and each tile was a
+## step of its own.
+func _like_parts_together(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	world.add_brick("2445", 7, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)))
+	var tiles: Array[int] = []
+	for at: float in [-100.0, 0.0, 100.0]:
+		tiles.append(world.add_brick("3069b", 1, Transform3D(Basis.IDENTITY,
+			Vector3(at, 8.0, 10.0))))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_follow("a row of tiles", steps, world, library)
+	var holding: Dictionary = {}
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			if tiles.has(brick_id):
+				holding[step.index] = true
+	print("\n  three tiles in a row, five studs apart")
+	_assert("they go in in one step (%d steps hold them)" % holding.size(), holding.size() == 1)
 
 
 ## A section the file puts on at an angle, too big for a callout by size, is

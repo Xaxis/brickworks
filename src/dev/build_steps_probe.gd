@@ -115,33 +115,34 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 		for brick_id: int in shown:
 			if not fresh.has(brick_id) and not faded.has(brick_id):
 				bad_fade += 1
+		# A page that puts a sub-assembly on shows the whole of it new, and
+		# picks up the loose parts that go on beside it, as any page does.
 		if step.attaches():
 			attached += 1
 			var copies: int = 0
 			for copy: PackedInt64Array in step.copies:
 				copies += copy.size()
-			if fresh.size() != copies or not pages.lots(page).is_empty() \
+			if fresh.size() != copies + step.brick_ids.size() \
 					or not pages.note(page).begins_with("Put"):
 				bad_lots += 1
-		else:
-			# Picked up here: this page's own new parts, each once.
-			var counted: Dictionary = {}
-			for brick_id: int in step.brick_ids:
-				if picked.has(brick_id):
-					twice += 1
-				picked[brick_id] = page
-				var brick: BrickWorld.Brick = world.get_brick(brick_id)
-				var key: String = "%s:%d" % [brick.part_id, brick.color_code]
-				counted[key] = int(counted.get(key, 0)) + 1
-			var listed: Dictionary = {}
-			var last_count: int = 1 << 30
-			for lot: Dictionary in pages.lots(page):
-				listed["%s:%d" % [lot["part"], lot["colour"]]] = int(lot["count"])
-				if int(lot["count"]) > last_count:
-					unsorted += 1
-				last_count = int(lot["count"])
-			if listed != counted or pages.pieces(page) != step.brick_ids.size():
-				bad_lots += 1
+		# Picked up here: this page's own new parts, each once.
+		var counted: Dictionary = {}
+		for brick_id: int in step.brick_ids:
+			if picked.has(brick_id):
+				twice += 1
+			picked[brick_id] = page
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+			counted[key] = int(counted.get(key, 0)) + 1
+		var listed: Dictionary = {}
+		var last_count: int = 1 << 30
+		for lot: Dictionary in pages.lots(page):
+			listed["%s:%d" % [lot["part"], lot["colour"]]] = int(lot["count"])
+			if int(lot["count"]) > last_count:
+				unsorted += 1
+			last_count = int(lot["count"])
+		if listed != counted or pages.pieces(page) != step.brick_ids.size():
+			bad_lots += 1
 		if pages.caption(page) != step.caption(steps[-1].number) \
 				or not pages.caption(page).begins_with("Step %d of " % step.number):
 			bad_caption += 1
