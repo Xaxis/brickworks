@@ -112,6 +112,7 @@ func _run() -> void:
 
 	_untouched()
 	_edits()
+	_emptied()
 	_copies_apart()
 	_named()
 	for path: String in OS.get_cmdline_user_args():
@@ -248,6 +249,34 @@ func _edits() -> void:
 	_expect((changed[0] as Array).size() == 4 and (changed[1] as Array).size() == 4,
 		"nothing else changed: 4 lines out (3 rewritten, 1 taken away), 4 in (3 rewritten, "
 		+ "1 added): %d out, %d in" % [(changed[0] as Array).size(), (changed[1] as Array).size()])
+	_open(saved)
+	_expect(_model() == model, "opened again, the model as edited")
+
+
+## Every part of the sub-model placed once taken away: the sub-model goes
+## with them, its block and the line placing it, and nothing else changes.
+## It used to stay in the file, empty and still placed.
+func _emptied() -> void:
+	print("fidelity: a sub-model emptied")
+	_open(FILE)
+	var gone: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3003":
+			gone.append(brick.id)
+	_expect(gone.size() == 2, "found the sub-model's two parts (%d)" % gone.size())
+	for id: int in gone:
+		_builder.remove_brick_id(id)
+	var model: PackedStringArray = _model()
+	var saved: String = _store.to_text(_store.title, true)
+	var changed: Array = _changed(FILE, saved)
+	_expect(not saved.contains("fidelity - once.ldr"),
+		"neither the sub-model nor the line placing it is left")
+	_expect(saved.contains("0 FILE fidelity - twice.ldr") and saved.contains("0 FILE fidelity - band.ldr")
+		and not saved.contains("0 NOFILE\n0 NOFILE"),
+		"the other sub-models kept, no stray end left between them")
+	_expect((changed[0] as Array).size() == 9 and (changed[1] as Array).size() == 0,
+		"nothing else changed: 9 lines out (the placing line, the block and its end), none in: "
+		+ "%d out, %d in" % [(changed[0] as Array).size(), (changed[1] as Array).size()])
 	_open(saved)
 	_expect(_model() == model, "opened again, the model as edited")
 

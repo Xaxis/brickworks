@@ -462,6 +462,8 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			+ ["1 %s %s %s.dat" % [_colour_token(brick.color_code),
 				LdrModel._line_numbers(local), brick.part_id]])
 
+	_drop_emptied(replace, left)
+
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	var out := PackedStringArray()
@@ -476,6 +478,60 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for extra: String in inserts.get(lines.size(), []):
 		out.append(extra + eol)
 	return "\n".join(out)
+
+
+## A sub-model whose every part was taken out goes with them: its FILE
+## block, and each line that places it. Left in, the saved file kept an
+## empty sub-model, still placed where the assembly had been, which another
+## program's list of sub-models shows (2026-10-16). A sub-model is kept while
+## anything stays in it: a part not taken out, one the app cannot show, a
+## part added here ([param left]), a sub-model of its own still in use, or
+## an LDCad flexible part's skin.
+func _drop_emptied(replace: Dictionary, left: Array) -> void:
+	var kept: Dictionary = {}
+	for entry: Array in left:
+		kept[_section_of((entry[0] as BrickWorld.Brick).unit)] = true
+	var emptied: Dictionary = {}
+	var more: bool = true
+	while more:
+		more = false
+		for key: String in sections:
+			if key == main_key or emptied.has(key) or kept.has(key) or flexible.has(key):
+				continue
+			var span: Array = sections[key]
+			var placed_any: bool = false
+			var all_gone: bool = true
+			for n: int in range(int(span[0]), int(span[1])):
+				var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+				if words.size() < 15 or words[0] != "1":
+					continue
+				placed_any = true
+				var named: String = LdrModel._key(" ".join(words.slice(14)))
+				if sections.has(named):
+					if not emptied.has(named):
+						all_gone = false
+						break
+				elif not (replace.has(n) and str(replace[n]).is_empty()):
+					all_gone = false
+					break
+			if placed_any and all_gone:
+				emptied[key] = true
+				more = true
+	if emptied.is_empty():
+		return
+	for key: String in sections:
+		var span: Array = sections[key]
+		if emptied.has(key) and int(span[1]) < lines.size() \
+				and lines[int(span[1])].strip_edges().to_upper().begins_with("0 NOFILE"):
+			replace[int(span[1])] = ""
+		for n: int in range(int(span[0]), int(span[1])):
+			if emptied.has(key):
+				replace[n] = ""
+				continue
+			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+			if words.size() >= 15 and words[0] == "1" \
+					and emptied.has(LdrModel._key(" ".join(words.slice(14)))):
+				replace[n] = ""
 
 
 ## The line for a part changed in every copy alike, or null when the copies
