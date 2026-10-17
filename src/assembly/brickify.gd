@@ -1851,13 +1851,23 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# counted. A temple scene at 48 studs, bonded, lost the moon on its stick,
 	# which its stitch could no longer join, where the colours measured kept it.
 	# Laid again with its slopes by the flag too, as before both: unbonded with
-	# its slopes fitted by distance, the temple lost the moon again.
+	# its slopes fitted by distance, the temple lost the moon again. A build
+	# with its sides turned out is laid first with them upright, as unit 4
+	# laid it, which lays itself again the same way where it leaves a region
+	# out: a blue bunny with its sides on their sides lost a region, and laid
+	# again unbonded by the flag, came back with inverted slopes no one sells
+	# in blue.
 	if (options.bond or (options.near or options.snot) and options.smooth) \
 			and not (report["lost"]["regions"] as Array).is_empty():
 		var unbonded: Options = options.copied()
-		unbonded.bond = false
-		unbonded.near = false
-		unbonded.snot = false
+		var again: String = "laid again with its sides upright"
+		if options.snot and options.smooth and not grid.cubes.is_empty():
+			unbonded.snot = false
+		else:
+			unbonded.bond = false
+			unbonded.near = false
+			unbonded.snot = false
+			again = "laid again unbonded"
 		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
 		if other.has("model"):
 			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])
@@ -1865,7 +1875,10 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			var spent: Dictionary = other["ms"] if bonded else times
 			for step: String in ["measure", "lay", "check"]:
 				kept["ms"][step] = int(kept["ms"].get(step, 0)) + int(spent.get(step, 0))
-			kept["report"]["bond"] = "bonded" if bonded else "laid again unbonded"
+			if bonded:
+				kept["report"]["bond"] = "bonded"
+			elif not str(kept["report"].get("bond", "")).begins_with("laid again"):
+				kept["report"]["bond"] = again
 			out = kept
 			report = out["report"]
 	# What it lost is said; and where most of it went, a size that keeps it.
