@@ -1597,7 +1597,10 @@ of the boom meeting an axle of the turret by the room test. 42080-1's
 pneumatic cylinders are not read sliding: their rod and body are in one
 body of 458 parts, held to the turret by more than the cylinder.
 
-A section this big moved by its slide was bisected where it stopped by
+These loops are big, and their drag is slow: 42081-1's 25 joints and 262
+parts cost 174 ms a frame on average, 42024-1's 36 joints 137 ms, solving
+and testing for room together; a person sees the arm follow in steps. A
+section this big moved by its slide was bisected where it stopped by
 whole room tests: 42081-1's arm, 262 parts, held one frame 31 s at the end
 of its stroke (164 tests). A slide is now tested within the frame's share
 and its stop found on pauses and at the release, as a turn's is
@@ -1678,7 +1681,7 @@ rack's beam runs in), which the connectors do not give.
 **Left for later.** Racks in guides (above); a universal joint passing a turn
 on (8062-1's crane winch); a worm's hand, read from its thread; 42080-1's
 pneumatic cylinders, held to their turret by more than the cylinder; the
-8 x 2 x 2 actuator's input, drawn inside its body's part; a big section's
-worst frame (42081-1's 262-part arm drawn by its actuator held one frame
-2.7 s, not yet taken apart); the room test's false meetings that stop 42006-1's boom and
+8 x 2 x 2 actuator's input, drawn inside its body's part; a big loop's drag
+(an actuator's arm in a loop of 25 to 36 joints, 137 to 174 ms a frame, and
+42081-1's held one frame 1.9 to 2.7 s, not yet taken apart); the room test's false meetings that stop 42006-1's boom and
 42024-1's small actuator short of their ends; dynamics (S2, P3).

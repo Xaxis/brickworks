@@ -74,9 +74,9 @@ whole cycle.
   with it; turn a small actuator's input (or move_part it) and the rod goes
   out a turn's worth of its screw. The boom itself is held by the actuator's
   screw, and says so.
-- A steering wheel whose column rides on joints that move turns its pinion
-  through the column's gears as exactly as a column that stands still, and
-  the cab it rides in stays put while it turns.
+- A steering column that rides on joints that move, in a cab on hinges,
+  turns its pinion through its gears as exactly as a column that stands
+  still, and the cab stays put while it turns.
 
 ### Changed
 

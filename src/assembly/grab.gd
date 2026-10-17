@@ -1311,6 +1311,9 @@ func _set_value(value: float) -> void:
 func slide_to(along: float) -> float:
 	if state != "moves" or mode != "slide":
 		return shift
+	frame_solve_ms = 0.0
+	frame_test_ms = 0.0
+	frame_tests = 0
 	var wanted: float = clampf(along, _range.x, _range.y)
 	if linkage != null:
 		# A slide in a loop goes as far as the loop takes it.
