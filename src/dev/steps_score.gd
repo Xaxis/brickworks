@@ -1035,9 +1035,11 @@ class Place extends RefCounted:
 	var floor_cell: int = 0
 	var in_hand: bool = false
 	var begun: bool = false
-	## The lowest cell of what is built here so far: the table the model as it
-	## stands rests on, at its own lowest point.
-	var table: int = 0x7FFFFFFF
+	## The lowest cell of what is built here so far of each piece of the
+	## finished model (Geometry.piece): the table that piece, as it stands,
+	## rests on at its own lowest point. A second vehicle stands on the table
+	## beside the first.
+	var table: Dictionary = {}
 	## The pieces of the finished model begun here: piece -> true.
 	var pieces_begun: Dictionary = {}
 
@@ -1071,7 +1073,8 @@ static func _put(place: Place, parts: PackedInt32Array, k: int, g: Geometry) -> 
 	for index: int in parts:
 		if g.bottom[index] != 0x7FFFFFFF:
 			place.pieces.lowest(index, g.bottom[index])
-			place.table = mini(place.table, g.bottom[index])
+			place.table[g.piece[index]] = mini(int(place.table.get(g.piece[index], 0x7FFFFFFF)),
+				g.bottom[index])
 	for index: int in parts:
 		place.at[index] = k
 		if first or not place.in_hand and g.bottom[index] != 0x7FFFFFFF \
@@ -1246,7 +1249,8 @@ func _measure(build: Dictionary, g: Geometry) -> Dictionary:
 			# In the hand, its first parts as before.
 			if not Array(thing).any(func(index: int) -> bool:
 					return place.pieces.reaches(index) if place.in_hand \
-						else place.pieces.on_table(index, place.table)):
+						else place.pieces.on_table(index, int(place.table.get(g.piece[index],
+							0x7FFFFFFF)))):
 				floating_table.append([place, thing, k])
 		# How many steps each floating thing waits to be held.
 		for n: int in range(pending_float.size() - 1, -1, -1):
@@ -1413,8 +1417,8 @@ func _selftest() -> void:
 		% int(two["floating"]), int(two["floating"]) == 2)
 	_assert("...and one when a piece is begun on the table (%d)" % int(two["floating_pieces"]),
 		int(two["floating_pieces"]) == 1)
-	_assert("...and two on the table the model as it stands rests on, its own lowest point (%d)"
-		% int(two["floating_table"]), int(two["floating_table"]) == 2)
+	_assert("...and none when each piece rests on the table at its own lowest point (%d)"
+		% int(two["floating_table"]), int(two["floating_table"]) == 0)
 	_assert("bottom, top, middle of a stack: the top floats on that table too (%d), built from"
 		% int(gap["floating_table"]) + " the top nothing does (%d)" % int(down["floating_table"]),
 		int(gap["floating_table"]) == 1 and int(down["floating_table"]) == 0)
