@@ -140,12 +140,14 @@ whole cycle.
   together in one (a row of tiles, the 1 x 1s round a rim), and puts on the
   parts beside a sub-assembly in the step that puts it on; a part goes in
   once what it touches stands, reading what rests on what off the parts'
-  shapes, and a wheel goes on with the holder its pin is in. On 100 real
-  sets nobody tuned on, steps with a hidden new part went from 14.5% to
-  11.7%, steps leaving a part floating from 11.2% to 8.5%, parts the build
-  check calls floating from 17.3% to 4.0%, and steps of one part from 23.3%
-  to 19.6%. The order agrees less with the sets' own (Kendall tau 0.30 to
-  0.26), and working the steps out takes two to three times as long.
+  shapes; wheels go on last, as the sets' own booklets put them; and a
+  section of one step has no banner of its own. On 100 real sets nobody
+  tuned on, steps with a hidden new part went from 14.5% to 12.1%, steps
+  leaving a part floating from 10.3% to 7.5%, parts the build check calls
+  floating from 12.2% to 8.0% (each with a half-built model on the table at
+  its own lowest point), and steps of one part from 23.3% to 19.5%; the
+  order agrees with the sets' own about as well (Kendall tau 0.30 to 0.28,
+  within its noise). Working the steps out takes about twice as long.
 
 ### Fixed
 

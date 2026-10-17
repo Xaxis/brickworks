@@ -45,6 +45,11 @@ var parts: PackedStringArray = PackedStringArray()
 ## Lattice key of a brick standing (negative) -> its index in items.
 var standing_at: Dictionary = {}
 var placements: int = 0
+## Where the ground is, in LDU up from the floor: 0 for a model standing on
+## the floor, as every design here does. A booklet's half-built model rests
+## at its own lowest point (src/dev/steps_score.gd, the build check at a
+## step: a car without its wheels lies on the table on its chassis).
+var ground: float = 0.0
 ## Pairs the exact shapes cleared or found colliding, "a,b" -> found or {}.
 var _asked: Dictionary = {}
 ## What asking it has cost this check, in microseconds: the report says it.
@@ -359,7 +364,7 @@ func pieces(extra: Array, among: Dictionary = {}) -> PackedInt32Array:
 ## a piece is held by it; [param within] 0.5 asks whether a part stands on
 ## it, which a seat never moves off it.
 func on_ground(i: int, within: float = ON_GROUND) -> bool:
-	return items[i] != null and (items[i] as Exact.Item).lo.y <= within
+	return items[i] != null and (items[i] as Exact.Item).lo.y - ground <= within
 
 
 ## Whether a piece of [param members] that nothing joins stands where it is,
