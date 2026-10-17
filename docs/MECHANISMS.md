@@ -1180,18 +1180,36 @@ in the status bar. The model, its lattice, its history and its revision are
 untouched until the button comes up (`BrickWorld.set_drawn`); then the pose
 is one undo step. Escape puts it back.
 
+**Copies.** A sub-assembly with other copies follows an edit of any one of
+them (Assemblies.after_edit), so posing one of two alike minifigures' arm
+moved both. Before a pose is kept, each sub-assembly round what moves that
+has other copies and does not move whole is made a copy of its own
+(Assemblies.make_unique), innermost first, in the same undo step; the status
+bar says "this copy of Figure is now its own; the other one stays as it
+was", and so does move_part. One undo puts back the pose and the copy.
+
+**By the chain.** A press held still 0.4 s on a part, then dragged, takes it
+by its chain of joints back to the anchor (`src/assembly/grab_chain.gd`):
+the status bar says "chain". Each joint's range is read once, turning it
+alone through the lattice in 10° steps and bisecting the last (a minifigure's
+two joints in 0.4 s, the crane's four in 0.25 s); each frame the end is drawn
+to the pointer's ray within those ranges by cyclic coordinate descent, a dozen
+rounds from the end inwards, started again from eight other turns when it
+sticks where the reach curves away (a hand on its wrist and shoulder did).
+Let go, every part that moved is tested against the rest of the model; if
+anything is in the way the turns are eased back together to the furthest
+that has room. On a minifigure the hand reached its point to 1.9 px on two
+joints; on 4096 the crane's end to 1.4 px on four. Balls and slides in a
+chain stay as they are.
+
 **Over MCP**, `move_part`: part= a part's number or a sub-assembly's name.
 Alone it changes nothing and says what would move, on what joint, whether it
 holds or swings, and how the model stands. degrees= or along= move it as a
 drag does and answer with what moved and the balance after.
 
-**Left for later.** Inverse kinematics along a chain of joints (an arm's
-shoulder, elbow and wrist dragged by the hand). Every modifier on a left drag
-is the view's already (Alt turns, Shift slides, Ctrl draws a box or copies),
-so the proposal is a press held still on the end part for 0.4 s before it is
-dragged, or a Chain toggle on the hint strip; each joint's range is the
-lattice's, so an IK step costs a room test per joint, which the box-first test
-now makes cheap. Closed loops (P2); what hangs
+**Left for later.** A chain over MCP; a chain's ranges read with the other
+joints turned (each is read alone, from where the model stands); closed
+loops (P2); what hangs
 on a driven gear following it; a free joint inside what moves settling too
 (only the grabbed joint settles); dynamics (S2, P3); the click step measured
 on real parts rather than read from retailers; settling a model that tips
