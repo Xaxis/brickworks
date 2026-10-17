@@ -584,6 +584,7 @@ const HINTS := {
 	"edit_steps": ["Edit the build steps", "add"],
 	"lay_flex": ["Lay a hose, tube or chain", "add"],
 	"pose_model": ["Pose a joint", "add", "again"],
+	"move_part": ["Move a part on its joint", "add", "again"],
 	"animate_model": ["Animate the model", "add"],
 	"simulate_mechanism": ["Simulate the mechanism", "file"],
 	"undo": ["Undo or redo", "remove"],

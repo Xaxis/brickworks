@@ -133,6 +133,9 @@ by number, or round two sprockets; item= lays an existing one again.
 or a clip) and swings one to an angle, as far as it has room. \
 animate_model: poses at moments, played smoothly between and rendered as \
 an animation.
+ - move_part: moves a part on its joint as the person's drag does, \
+with everything built on it, the gears it drives, and the balance after; \
+with only part= it says what would move and changes nothing.
  - simulate_mechanism: turns a gear train from its driver (a crank, an \
 axle, a sub-assembly named Crank or Motor) as Tools, Simulate does: each \
 arm's turns per driver turn, its period in a reference's turns (Earth \
@@ -262,6 +265,29 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"joint": {"type": "string", "description": "its number or name in the list"},
 				"degrees": {"type": "number"},
+			}},
+		},
+		{
+			"name": "move_part",
+			"description": ("Move a part about its joint as the person's drag on it does: its "
+				+ "whole rigid body and everything beyond it turn on the joint between it and "
+				+ "what stays (a locked part, what stands on the baseplate, else the heaviest "
+				+ "body): a hinge, a clip on a bar, a turntable, a pin or an axle in a round "
+				+ "hole, a ball, a 1x1 round part on one stud. part= a part's number "
+				+ "(look_at_model) or a sub-assembly's name. With nothing else it changes "
+				+ "nothing and says what would move, on what, and how the model stands. "
+				+ "degrees= turns it that far from where it is (a ball: about axis=), along= "
+				+ "slides it that many studs along a bar or an axle; it stops where it meets "
+				+ "the model, gears it drives turn by their teeth, a joint without friction "
+				+ "swings down under its own weight once let go, and the answer says what moved "
+				+ "and how the model stands then. One undo step."),
+			"input_schema": {"type": "object", "additionalProperties": false,
+				"required": ["part"], "properties": {
+				"part": {"type": "string", "description": "a part's number, or a sub-assembly's name"},
+				"degrees": {"type": "number", "description": "turn from where it is now"},
+				"along": {"type": "number", "description": "studs to slide along its line"},
+				"axis": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
+					"description": "a ball's turn about this way (x y z), with degrees="},
 			}},
 		},
 		{
@@ -514,6 +540,11 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _lay_flex(input)
 		"pose_model":
 			return _pose(input)
+		"move_part":
+			var grabbing: GrabDrag = app.get("_grab_drag")
+			if grabbing == null:
+				return "This app cannot move parts on their joints."
+			return grabbing.for_session(input)
 		"simulate_mechanism":
 			return await _simulate(input, work)
 		"animate_model":
@@ -569,7 +600,7 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 
 ## The tools that change the model.
-const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "undo",
+const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "move_part", "undo",
 	"open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts"]
 
 
@@ -585,6 +616,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return str(input.get("op", "list")) == "list"
 		"set_floor", "pose_model":
 			return input.is_empty()
+		"move_part":
+			return not input.has("degrees") and not input.has("along")
 		"simulate_mechanism":
 			return not bool(input.get("record", false))
 		"export_model":

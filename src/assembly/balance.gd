@@ -339,28 +339,11 @@ var _floor_y: float = 0.0
 ## check does); found here otherwise.
 func measure(bricks: Array, poses: Array = [], links: Variant = null) -> Report:
 	var report := Report.new()
-	_read(bricks)
-	if _ids.is_empty():
-		return report
-	var judge := Stability.new()
-	judge.library = library
-	judge.lattice = lattice
-	var model: Array = []
-	for item: Variant in bricks:
-		var brick: BrickWorld.Brick = item
-		if _index_of.has(brick.id):
-			model.append(brick)
-	var graph: Dictionary = judge.contacts(model)
-	var boxes: Dictionary = graph["boxes"]
-	_ground(boxes)
-	if _hull.size() < 3:
+	if not prepare(bricks, links):
 		return report
 	report.empty = false
 	report.support = _hull
 	report.floor_y = _floor_y
-	_join(graph["above"], links if links != null else _links())
-	_grow()
-	_find_bridges(boxes)
 
 	for n: int in _mass.size():
 		report.grams += _mass[n]
@@ -405,6 +388,65 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null) -> Report:
 
 	if report.margin < SPARE:
 		_advise(report, weighed, worst)
+	return report
+
+
+## Read [param bricks] and the joints between them once, so that poses can
+## then be weighed one at a time as they come ([method weigh_pose]): a part
+## being dragged about its joint (GrabDrag), weighed every frame. False for a
+## model with nothing to stand on.
+func prepare(bricks: Array, links: Variant = null) -> bool:
+	_read(bricks)
+	if _ids.is_empty():
+		return false
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = lattice
+	var model: Array = []
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if _index_of.has(brick.id):
+			model.append(brick)
+	var graph: Dictionary = judge.contacts(model)
+	var boxes: Dictionary = graph["boxes"]
+	_ground(boxes)
+	if _hull.size() < 3:
+		return false
+	_join(graph["above"], links if links != null else _links())
+	_grow()
+	_find_bridges(boxes)
+	return true
+
+
+## One pose weighed against what [method prepare] read: the parts [param
+## placed] names (brick id -> Transform3D) where it puts them, the rest
+## where they stand. The margin, the edge and each stud joint's load in that
+## pose alone; no advice, which is for a whole motion.
+func weigh_pose(placed: Dictionary, label: String = "") -> Report:
+	var report := Report.new()
+	if _ids.is_empty() or _hull.size() < 3:
+		return report
+	report.empty = false
+	report.support = _hull
+	report.floor_y = _floor_y
+	for n: int in _mass.size():
+		report.grams += _mass[n]
+	var worst_at: Dictionary = {}
+	var here: Dictionary = _weigh(placed, label, worst_at)
+	report.centre = here["centre"]
+	report.rest_centre = here["centre"]
+	report.margin = float(here["margin"]) / BrickLattice.STUD
+	report.rest_margin = report.margin
+	report.edge = here["edge"]
+	report.edge_ends = here["ends"]
+	report.tilt = here["tilt"]
+	for one: Variant in worst_at.values():
+		report.joints.append(one)
+	report.joints.sort_custom(func(a: JointLoad, b: JointLoad) -> bool:
+		return a.ratio > b.ratio)
+	for one: JointLoad in report.joints:
+		if one.ratio > 1.0:
+			report.over += 1
 	return report
 
 
