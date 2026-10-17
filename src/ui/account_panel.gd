@@ -164,6 +164,9 @@ func _keep_centred() -> void:
 	var tall: float = maxf(minf(TALL, room), get_combined_minimum_size().y)
 	offset_top = -tall * 0.5
 	offset_bottom = tall * 0.5
+
+
+func open() -> void:
 	_follow()
 	_kept.text = StorageKeep.words()
 	visible = not visible
