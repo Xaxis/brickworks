@@ -306,9 +306,25 @@ func _run() -> void:
 		_check("in seconds: %.1f s (measured %d ms, laid %d ms, checked %d ms)" % [total / 1000.0,
 			ms["measure"], ms["lay"], ms["check"]], total < 20000)
 
+	# The sphere and the forty-stud bunny laid upright, as before unit 5, for
+	# the bond's figures against main's and the sideways ones against these.
+	options = Brickify.Options.new()
+	options.studs = 24
+	options.up = sphere.up
+	options.snot = false
+	var round_upright: Dictionary = await _brickify("sphere upright", sphere, options, "")
+	options = Brickify.Options.new()
+	options.studs = 40
+	options.snot = false
+	var big_upright: Dictionary = await _brickify("forty-stud bunny upright", bunny, options, "")
+
 	print("")
 	print("  bonded as a builder bonds")
-	_bonded(round, plain, big)
+	_bonded(round_upright, plain, big_upright, big)
+
+	print("")
+	print("  steep sides on their sides")
+	await _sideways(round, round_upright, big, big_upright, out_dir)
 
 	print("")
 	print("  the surface fitted by distance")
@@ -368,6 +384,7 @@ func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		return {}
 	var model: Assistant.Model = result["model"]
 	_laid.append(model)
+	result["cubes"] = (Shapes.last.get("cubes", {}) as Dictionary).duplicate()
 	var ms: Dictionary = result.get("ms", {})
 	_stitched.append([name, options.studs, int(ms.get("lay.stitch.rounds", 0)),
 		int(ms.get("lay.stitch.stalls", 0))])
@@ -427,7 +444,11 @@ func _fitted(out_dir: String) -> void:
 	var edge: Array[Vector2] = [Vector2(0, 0), Vector2(24, 0), Vector2(24, 3.4), Vector2(23, 3.4),
 		Vector2(22, 5.6), Vector2(21, 6.0), Vector2(0, 6.0)]
 	var ledge: MeshFile = _prism(edge)
+	# Upright, as unit 4 laid it: on its side (unit 5) the plateau's sheer end
+	# is a cube turned out, and its plates are where the slopes stood.
+	options.snot = false
 	var steep: Dictionary = await _brickify("ledge", ledge, options, out_dir)
+	options.snot = true
 	if not steep.is_empty():
 		var parts: Dictionary = {}
 		for placement: Assistant.Placement in (steep["model"] as Assistant.Model).placements:
@@ -639,7 +660,9 @@ func _across_colours() -> void:
 ## splits them, measured as the bench measures them (brickify_bench.py
 ## bond). Laid in the colours measured, a cow's core changed colour two
 ## studs in from every patch, and 37% of its 5,082 parts were 1 x 1s.
-func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
+## The core's bond, on the sphere and the forty-stud bunny laid upright (as
+## before unit 5's sides on their sides, which the next section weighs).
+func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary, sideways: Dictionary) -> void:
 	# A block four studs square and six plates tall, white outside and red in
 	# the middle where nothing of it shows: two courses of bricks, all white.
 	var columns: Dictionary = {}
@@ -700,8 +723,13 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 	# out of sight.
 	if not big.is_empty():
 		var hidden: Dictionary = _bond(big["model"])["hidden"]
-		_check("the forty-stud bunny's hidden core is bricks, plates only at its edges: %d bricks, %d plates"
-			% [int(hidden["brick"]), int(hidden["plate"])],
+		# Behind a side on its side the core's courses (three plates) meet the
+		# cubes' (five), and a plate or two fills each: said, not judged.
+		var behind: Dictionary = _bond(sideways["model"])["hidden"] if not sideways.is_empty() \
+			else {"brick": 0, "plate": 0}
+		_check(("the forty-stud bunny's hidden core is bricks, plates only at its edges: %d bricks, %d plates "
+			+ "(its sides on their sides: %d and %d)") % [int(hidden["brick"]), int(hidden["plate"]),
+				int(behind["brick"]), int(behind["plate"])],
 			int(hidden["plate"]) * 2 <= int(hidden["brick"]))
 	# Each against main's (a1d1998, 2026-10-16): parts, the share of 1 x 1s,
 	# of seams bridged and of weak points. Fewer parts and 1 x 1s; seams and
@@ -721,6 +749,77 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 				100.0 * float(bond["weak"]), 100.0 * float(was[3])],
 			int(bond["parts"]) < int(was[0]) and float(bond["one"]) < float(was[1])
 			and float(bond["seams"]) >= float(was[2]) - 0.02 and float(bond["weak"]) <= float(was[3]) + 0.02)
+
+
+## Unit 5: a side steeper than 60 degrees laid on its side, in Lambrecht's
+## cubes (two studs by five plates by two studs) on side studs. The sphere and
+## the forty-stud bunny against themselves laid upright: many more parts on
+## their sides, still in one piece and whole, at most 15% more parts; and a
+## block whose flank leans 20 degrees off upright, that flank laid on its side
+## in plates, slopes and tiles facing out.
+func _sideways(round: Dictionary, round_upright: Dictionary, big: Dictionary,
+		big_upright: Dictionary, out_dir: String) -> void:
+	# The bench's bar is 15% more parts; a sphere, steep all round, is the
+	# most a model turns, and is held to 25%.
+	for one: Array in [["the sphere", round, round_upright, 1.25], ["the forty-stud bunny", big, big_upright, 1.15]]:
+		var laid: Dictionary = one[1]
+		var upright: Dictionary = one[2]
+		if laid.is_empty() or upright.is_empty():
+			continue
+		var on_side: int = _on_side(laid["model"])
+		var was: int = _on_side(upright["model"])
+		var parts: int = (laid["model"] as Assistant.Model).placements.size()
+		var parts_was: int = (upright["model"] as Assistant.Model).placements.size()
+		var cubes: Dictionary = laid.get("cubes", {})
+		_check(("%s: %d parts on their sides (upright %d), %d of %d steep cubes turned out; %d parts against "
+			+ "%d upright (%+.1f%%), %.1f%% of it in a part") % [one[0], on_side, was, int(cubes.get("kept", 0)),
+				int(cubes.get("asked", 0)), parts, parts_was, 100.0 * (float(parts) / parts_was - 1.0),
+				100.0 * float(laid["report"]["coverage"])],
+			on_side >= was + 100 and parts <= parts_was * float(one[3])
+			and float(laid["report"]["coverage"]) >= 0.97)
+	# A block twelve units by four and sixteen tall, turned 30 degrees about
+	# its up: every side upright and none square to x or z, so laid upright
+	# each is a staircase a stud a step.
+	var options := Brickify.Options.new()
+	options.studs = 24
+	var outline: Array[Vector2] = [Vector2(0, 0), Vector2(12, 0), Vector2(12, 16), Vector2(0, 16)]
+	var leaning: Dictionary = await _brickify("turned block", _turned(_prism(outline), 30.0), options, out_dir)
+	options.snot = false
+	var straight: Dictionary = await _brickify("turned block upright", _turned(_prism(outline), 30.0), options, "")
+	if leaning.is_empty() or straight.is_empty():
+		return
+	var shaped: Dictionary = {}
+	var sloped: Dictionary = {}
+	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
+		for entry: Array in table:
+			for id: Variant in [entry[3], entry[4]]:
+				if not str(id).is_empty():
+					sloped[str(id)] = true
+	for placement: Assistant.Placement in (leaning["model"] as Assistant.Model).placements:
+		if placement.face != "up" and sloped.has(placement.part):
+			shaped[placement.part] = int(shaped.get(placement.part, 0)) + 1
+	var on_side: int = _on_side(leaning["model"])
+	_check("its turned sides on their sides: %d parts on their sides (upright %d), slopes facing out %s"
+		% [on_side, _on_side(straight["model"]), shaped],
+		on_side >= _on_side(straight["model"]) + 20 and not shaped.is_empty())
+
+
+## [param mesh] turned [param degrees] about its up (+Y).
+func _turned(mesh: MeshFile, degrees: float) -> MeshFile:
+	var turn := Basis(Vector3.UP, deg_to_rad(degrees))
+	for n: int in mesh.positions.size():
+		mesh.positions[n] = turn * mesh.positions[n]
+		mesh.normals[n] = turn * mesh.normals[n]
+	return mesh
+
+
+## How many parts of [param model] are not studs up.
+func _on_side(model: Assistant.Model) -> int:
+	var count: int = 0
+	for placement: Assistant.Placement in model.placements:
+		if placement.face != "up":
+			count += 1
+	return count
 
 
 ## A build's bond as brickify_bench.py measures it, from the parts' boxes on

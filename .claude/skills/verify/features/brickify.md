@@ -59,7 +59,27 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   pieces is laid again in plain parts so the stitch can join them — at 20
   studs the bunny's feet otherwise stood apart from its body and the prune
   kept the feet), tiles on top, studs-sideways
-  panels on a flat side; each surface part fitted by distance (`fine`,
+  panels on a flat side; steep sides on their sides (`Options.snot`,
+  Shapes' `cubes`): the model's surface summed by area and the way it faces
+  into cubes two studs by five plates by two studs (`Brickify._cubes`,
+  Lambrecht's), a cube steeper than about 69 degrees facing out along x or z;
+  the cubes facing one way at one depth one shell (`Plan._cube_shells`,
+  `_cube_shell`), each cube the side's outermost with the core three studs
+  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it, laid as a design's
+  curved side is (`lay_shell`, its up turned out) and held by bricks with side
+  studs (30414, 11211, 87087) in the core's wall behind each cube's top row
+  (`_anchored`; first tier only); its slopes fitted by distance to the side
+  (`Grid.side`, rays along x and z at thirds of a stud), one on the core's
+  face only where a side stud grips it; a cube its shell covers under
+  `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
+  trial kept where the core kept its side studs); a piece of the core of 16
+  parts or fewer a shell cuts off taken out before the check (`Plan.cut_off`,
+  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`);
+  the rays across cast only through cubes facing that way; a build that
+  leaves a region out laid again unbonded and by the flag with its sides
+  upright, two lays at most as on `main`; one colour asked for keeps its
+  slopes to colours they are sold in on every path (`sold_only`);
+  each surface part fitted by distance (`fine`,
   `Grid.fine`, `Plan._fit_near`): every slope, curved and inverted slope in
   every turn and height that stands on the shape laid against the model's
   own surface at thirds of a stud (each part's surface read off its mesh,
@@ -122,7 +142,11 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   then what is still apart, floating or unheld (the exact check's `unheld`)
   taken out together and said, never the body. Weighed again: given a stand
   after all if it would tip or all but (`needs_help`), and a joint past its
-  working load propped (`_prop`) if that leaves fewer.
+  working load propped (`_prop`) if that leaves fewer: a pillar under the
+  piece beyond the joint, near its centre of mass, onto the model
+  (`_beyond`, `_prop_under`), else under the part beyond the joint; with
+  sides turned, slivers of three parts or fewer at the core's top taken out
+  before the check (`Plan.caps_apart`).
   The report: `coverage`, `lost` (regions of the model no part fills, a
   hundredth of it or more, each said where it is), `left_out`, `joined`,
   `tied`, `propped`, `stand`, `balance`. `Brickify.said` puts it in words for the panel
@@ -235,6 +259,13 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   bridged and weak points within two points of main's, measured as the bench
 #   measures them (_bond). 2026-10-17 on the unit 3 branch: 66 ok; sphere 1,548 parts
 #   (main 1,606), plain 1,218 (1,266), forty-stud bunny 2,027 (2,062) in 9.7 s.
+#   Then unit 5, "steep sides on their sides" (docs/BRICKIFY.md section 10): the sphere
+#   and the forty-stud bunny against themselves laid upright (Options.snot false; unit
+#   3's bond checks now run on those): 100 more parts on their sides or more, at most 25%
+#   and 15% more parts, 97% in a part; a block turned 30 degrees about its up, its sides
+#   on their sides with slopes facing out; the 65 degree ledge laid upright. 2026-10-17
+#   on the unit 5 branch: 84 ok; sphere 416 on their sides (44), 1,948 parts (1,589);
+#   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81).
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
@@ -284,6 +315,12 @@ S=<scratch>; heavy $S/venv/bin/python -I tools/bench/brickify_bench.py prepare -
 XDG_DATA_HOME=$PWD/.scratch-data heavy godot --headless --path . --script src/dev/brickify_bench.gd -- $S/prepared/jobs.json $S/run
 heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/run
 python3 tools/bench/brickify_bench.py report $S/run
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where the error is, by facing
+#   2026-10-17 after unit 5 (docs/BRICKIFY.md section 10), against d24d4d6: steep faces
+#   ("out" in faces) 34.9° from 36.4° at 48 studs (the bar was 30% less), 30% of them now
+#   nearest a part on its side at 29.0°; side views' Hausdorff95 ("sides") 0.86 from 0.84;
+#   28 of 28 whole and one piece, the temple's moon kept; parts 8.1% more at 48. faces
+#   splits the steep faces by the part nearest (out_on_side, out_upright).
 #   2026-10-17 after unit 3 (docs/BRICKIFY.md section 8), against a1d1998: smooth at
 #   48 studs 52,160 parts from 59,156 (2.42 times the greedy stack's from 2.74), 1x1s
 #   35.1% from 37.8%, seams bridged 44.9% from 42.1%, weak points 27.2% from 25.9%;

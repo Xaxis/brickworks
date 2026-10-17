@@ -97,6 +97,10 @@ studs, against a greedy stack of standard bricks and legolization:
    less, short of 20% and 30%: half of what is seen faces out, where only
    SNOT reaches.*
 5. **SNOT that holds**: Lambrecht's turned cubes, tied to the core.
+   *2026-10-17, section 10: steep sides laid on their sides on side studs,
+   every build still whole and one piece in 8% more parts; where turned, a
+   side turns from the model 10° less, but that is 30% of the steep faces,
+   and over them all 4.1% less, short of 30%.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -2029,7 +2033,440 @@ and the pillar that props it.
   degrees between them is laid as two staircases at right angles; corner
   and wedge slopes would follow it.
 
-## Repeat it
+## 10. Unit 5: steep sides on their sides (2026-10-17)
+
+Unit 5 of the plan. On `main` today (`d24d4d6`), a side steeper than 60
+degrees is laid upright in every arm: a staircase a stud a step, its studs
+up, with tiles on studs-sideways panels only where a flank is flat. Those
+steep faces are 53% of what the bench sees, and at 48 studs smooth turns
+from them by 36.4°. Branch `worktree-agent-a3af909f3f0a35703`, from `main`
+at `c7ebe80` with the m52 to m54 releases (`d24d4d6`) merged.
+
+**In short.** The bar is missed by far. Steep faces turn from the model
+4.1% less at 48 studs (34.9° from 36.4°) and 3.0% less at 24 (39.2° from
+40.4°); the bar was 30%. Seen from the four sides, the build is no nearer
+the model: Hausdorff95 0.86 studs from 0.84 at 48 and 0.74 from 0.73 at 24,
+down on 3 of the 14 models at 48, up on 5. What turning does where it
+reaches: 30% of the steep faces at 48 studs are now nearest a part on its
+side, and there they turn from the model by 29.0°, where the rest, upright,
+turn 38.7°. Everything units 3 and 4 made true holds: every run whole (28
+of 28, the temple's moon kept), every run one piece with its check
+passing, standing in 24 of 28 as before, ΔE2000 within 0.06, every slope
+in a colour it is sold in, the stops. Parts are 8.1% more at 48 studs and
+6.5% at 24 (the bar: 15%). The forty-stud bunny takes 1.06 times `main`'s
+time.
+
+**Why a staircase on its side is no better.** A staircase's faces point
+along the axes whatever the size of its steps, so a side laid as plates on
+their sides, two fifths of a stud a step, turns from the model as much as
+the same side in studs: on a wall leaning 20 degrees, both are, by area,
+73% faces 20 degrees off and 27% faces 70 degrees off. Only parts that tilt
+(slopes, curved slopes, a tile turned to face the side) take the error
+down, and on its side a cube's surface is a top 0 to 45 degrees off its
+face, where unit 4 found slopes leave 20° to 38°. What the smaller step
+does change is the distance.
+
+**What changed** ([brickify.gd](../src/assembly/brickify.gd),
+[shapes.gd](../src/ai/shapes.gd); a design's shapes lay as before):
+
+1. **The cubes** (`Brickify._cubes`). The model's triangles, each cut into
+   pieces a stud or less across, are summed into the cubes they lie in, two
+   studs by five plates by two studs (40 LDU every way, as Lambrecht's are
+   [lambrecht]), by area and the way each faces, half a stud inside the
+   surface. A cube faces out where the sum is within 21 degrees of level (a
+   side steeper than 69 degrees), covers a square stud or more and mostly
+   agrees; its way out is x or z, whichever the sum leans to more.
+2. **A shell for each depth** (`Plan._cube_shells`, `_cube_shell`). The
+   cubes facing one way at one depth are one shell, laid as a design's
+   curved side is (`lay_shell`): a plan of its own, a stud along the side by
+   a plate out by a row down, its parts then turned so their up points out.
+   A cube goes in where it is the side's outermost (where the model reaches
+   into the cube past it, that one is taken instead), the core is behind it
+   two studs deep, it has four of the model's plates or more, and no cap or
+   ledge of the core a plate or two thick stands on it or hangs from it.
+3. **Held by side studs, first tier only** (`Plan._anchored`, as a design's
+   shell is held). In the core's wall behind each cube's top row, a 1 x 4,
+   1 x 2 or 1 x 1 brick with studs on its side (30414, 11211, 87087), its
+   stud at the row's middle. Every joint is a stud in a plate's underside.
+4. **Fitted by distance on its side** (`Brickify.Grid.side`). Rays are cast
+   across the model along x and along z through every third of a stud, as
+   they are cast up; each shell fits its slopes, curved slopes and tiles by
+   how near they lay its side (unit 4's `_fit_near`), and one on the core's
+   face only where a side stud grips it.
+5. **Kept where held** (`CUBE_KEEPS`, `_give_back`). Each shell is tried
+   before the core is laid. A cube its kept parts cover under 60% of goes
+   back to the core and the shell is cut again; then what of a kept cube no
+   part of the shell reaches, in that row and lane at any depth, goes back
+   too, and the core lays it upright. Laid after the core where the core kept
+   every side stud, the shell is the one tried, not laid again.
+6. **Nothing in the way** (`Plan.cut_off`, `_stands_at`, `lay_shell`). A
+   piece of the core of 16 parts or fewer that a shell cuts off is taken out
+   before the check, as the mend would take it out, so the check is asked
+   once; one whose every part touches a shell goes before the stitch, which
+   on a bunny at 48 studs tried 86 joins for them where it had tried 27. No
+   slope of the core is laid under a shell, where its studs ran into the
+   plate on its side over it, and nothing of a shell over a side-stud
+   brick's top studs.
+7. **Laid again without** (`Options.snot`). A build with its sides turned
+   that leaves a region of the model out is laid again with them upright,
+   which is unit 4's build, and that lays itself again unbonded and by the
+   flag where it too leaves a region out (unit 3's rule): the fuller kept,
+   the time of each counted. A blue bunny, laid straight to unbonded and by
+   the flag, came back with inverted slopes no one sells in blue; checking
+   the colour on the flag's path instead changed the temple's fallback, and
+   it lost its moon.
+8. **The bench** (`faces`): the steep faces split by whether the part
+   nearest each lies on its side, and the Hausdorff95 seen from the four
+   sides alone.
+
+**Tried and taken out.** Spot and the Stanford bunny at 48 studs, and in
+brackets the milk truck at 24 and 48: the steep faces' normal error, the
+side views' Hausdorff95, and the parts. Each row against the one it names.
+
+| Spot, Stanford bunny at 48 (milk truck at 24, 48) | Steep faces (°) | Sides, Hausdorff95 (studs) | Parts |
+|---|---|---|---|
+| `main` | 38.6, 40.0 (18.3, 19.3) | 0.54, 0.55 (0.48, 0.65) | 4,227, 5,137 (805, 3,117) |
+| A first build, a shell's slopes by the flag | 35.8, 39.0 | 0.56, 0.58 | 4,839, 5,968 |
+| The same, its slopes fitted by distance | 34.8, 38.0 | 0.53, 0.58 | 4,811, 6,040 |
+| Later rules: from 60 degrees, a cap of one plate turned, bonded on its side (A) | 35.9, 38.0 | 0.56, 0.59 | 4,783, 5,998 |
+| A, but a side square to x or z left upright | 36.8, 38.6 | 0.56, 0.59 | 4,779, 6,091 |
+| that, and no cube moved out to the side's outermost | 37.6, 38.6 | 0.56, 0.59 | 4,662, 6,057 |
+| that, measured a quarter stud inside, not half | 37.1, 39.0 | 0.56, 0.59 | 4,788, 6,013 |
+| A, a cap of one plate left upright (kept) | 34.5, 38.2 | 0.55, 0.58 | 4,845, 5,942 |
+| A, not bonded or merged on its side (kept) | 35.0, 37.8 | 0.54, 0.58 | 4,761, 6,020 |
+| A, from 69 degrees (kept) | 35.1, 38.1 | 0.53, 0.57 | 4,806, 6,001 |
+| A, nothing cut off taken out before the check | 35.9, 37.9 | 0.55, 0.58 | 4,788, 6,006, the mend taking out 12 and 4 in 43 s and 70 s, from 9 and 2 in 23 s and 48 s |
+| The kept rules together (B) | 35.1, 38.0 (13.3, 14.4) | 0.53, 0.57 (1.02, 0.63) | 4,785, 5,982 (952, 3,688) |
+| B, a cube kept only where 90% covered | 35.7, 38.5 (13.2, 16.2) | 0.52, 0.55 (0.49, 0.65) | 4,701, 5,680 (982, 3,456) |
+| B, what no part reaches given back (kept) | 35.2, 37.9 (11.3, 13.6) | 0.52, 0.55 (0.48, 0.52) | 4,857, 6,068 (1,003, 3,684) |
+| that, and 80% covered | 35.5, 38.9 (12.5, 13.5) | 0.52, 0.54 (0.49, 0.51) | 4,762, 5,712 (1,021, 3,685) |
+
+- *Square sides upright*: a side within 10 degrees of facing along x or z
+  is flat laid upright, but Spot's flanks turned 0.9° more left so.
+- *A cap of one plate turned*: the tile over the shell's edge is held by
+  nothing and goes with what is cut off; Spot turned 1.4° more for it.
+- *Bonded and merged on its side*, as the core is: more parts and a turn
+  more, not fewer.
+- *From 60 degrees*: between 60 and 69 the 65 degree slopes laid upright
+  do as well (unit 4); turned, the sides stood further off.
+- *What no part reaches left out*: the milk truck's flat side had holes to
+  the core a stud in, and its side views' Hausdorff95 at 24 studs went from
+  0.48 to 1.02. Given back first, a 1 x 4 with studs on its side ran into
+  the plates given back in front of its open studs, and the bunny lost 16
+  parts to the mend: the rows and lanes with a side stud are the shell's.
+
+**Where the error is now**, the means of the 14 models (`faces`):
+
+| Studs | Run | Steep faces (°) | Of them nearest a part on its side | There (°) | The rest (°) | Steep faces' distance (studs) |
+|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 6% | 41.1 | 40.0 | 0.220 |
+| 24 | after | 39.2 | 15% | 32.6 | 41.1 | 0.225 |
+| 48 | `main` | 36.4 | 13% | 36.3 | 36.5 | 0.241 |
+| 48 | after | 34.9 | 30% | 29.0 | 38.7 | 0.228 |
+
+On `main` the parts on their sides are the panels' tiles on flat flanks.
+Turned, a cube's side turns from the model 10° less than the upright rest;
+but 70% of the steep faces are still nearest an upright part. Some lie in
+no cube that faces out (its surface mixed, or under a square stud), and
+about half the cubes that do are left upright (`Shapes.last["cubes"]`: on
+Spot at 48 studs 279 of 519 turned; left upright, counted each time a
+shell is cut, 110 under or over a cap or ledge of the core, 56 with the
+model past them, 37 with too little of it, 36 their shell did not cover,
+27 no side stud held). The faces left upright are the harder ones, 38.7°
+where all of them were 36.5°.
+
+### The bench again
+
+The same 14 models at 24 and 48 studs, smooth, `main` (`d24d4d6`) laid in
+its own checkout and the branch (`ea6dc87`; the stops added since change
+nothing laid) in another, each half of the models a process; the greedy
+stack laid with `main`; both measured by `brickify_bench.py`. Plain lays
+no part on its side and is `main`'s build.
+
+**Likeness**, the means of every model.
+
+| Studs | Run | Steep faces (°) | Sides, Hausdorff95 (studs) | Normal, all (°) | Hausdorff95 (studs) | Chamfer (studs) | IoU |
+|---|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 0.73 | 40.7 | 0.77 | 0.232 | 0.879 |
+| 24 | after | 39.2 | 0.74 | 39.9 | 0.78 | 0.235 | 0.879 |
+| 48 | `main` | 36.4 | 0.84 | 36.9 | 0.96 | 0.253 | 0.931 |
+| 48 | after | 34.9 | 0.86 | 36.1 | 0.94 | 0.244 | 0.932 |
+| | the bar | −30% | lower | | | | |
+
+Model by model at 48 studs, the steep faces turn less on 11 of 14: the milk
+truck 13.5° from 19.3°, the fox 31.4° from 36.1°, Spot 35.0° from 38.6°, the
+Stanford bunny 37.7° from 40.0°, Bob 40.5° from 42.7°; more on the figure
+(32.1° from 31.3°) and the Bell X-1 (35.1° from 34.4°); the temple is
+`main`'s build. The side views are nearer on the milk truck (0.54 from 0.65
+studs), Spot (0.51 from 0.54) and Bob, and further on the Bell X-1 (1.90
+from 1.54: 16 parts of props to the ground where `main` had 10, each a
+pillar the model does not have), the figure (0.76 from 0.71), the fox (0.54
+from 0.50), and the avocado and the toy car by 0.01.
+
+**Whole, standing, the bond, colour.**
+
+| Studs | Run | Whole | One piece, passes | Standing, no joint past its load | Joints past their load | Parts | Times greedy's (median) | On their sides | 1x1 share | Seams bridged | Weak points | ΔE2000 | Times the floor |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 14/14 | 14/14 | 14/14 | 0 | 10,975 | 2.76 (2.93) | 209 | 40.7% | 43.3% | 33.0% | 11.04 | 1.48 |
+| 24 | after | 14/14 | 14/14 | 14/14 | 0 | 11,685 | 2.94 (3.09) | 1,112 | 39.2% | 40.9% | 31.3% | 11.06 | 1.49 |
+| 48 | `main` | 14/14 | 14/14 | 10/14 | 42 | 51,531 | 2.39 (2.45) | 1,626 | 34.1% | 45.4% | 27.8% | 9.17 | 1.23 |
+| 48 | after | 14/14 | 14/14 | 10/14 | 47 | 55,696 | 2.58 (2.71) | 5,949 | 32.9% | 38.9% | 25.4% | 9.23 | 1.24 |
+
+Parts are 6.5% and 8.1% more (the bar: 15%); model by model up to 24%
+(the milk truck at 24, 805 to 1,001), and at 48 studs the milk truck 18%,
+the Stanford bunny and the fox 16%, Spot 14%. Seams
+bridged and weak points read the parts' boxes on the stud grid, and a plate
+on its side is two fifths of a stud thick: it falls between the grid's
+cells, counts as no seam and is no one's weak point. So both fall, and
+neither says the bond is better: each cube's shell hangs on the side studs
+of one row, and every such brick is a joint the shell's parts all hang
+from. Balance does not model side studs either ("no stability solver models
+side studs" [stablelego]): stud joints past their load are 47 at 48 studs
+from 42 (the toy car 6 from none, the fox 4 from 2, the figure 2 from 4,
+Bob none from 1, the temple's 35 as on `main`), and the props under such
+joints more (the Bell X-1 16 parts from 10).
+
+**Time.** The forty-stud bunny laid three times by `main` and by the branch
+side by side, twice in turn (`brickify_phases.gd`, medians of the six):
+8.27 s for `main` (6.12 to 9.10) and 8.76 s for the branch (5.46 to 9.45),
+1.06 times, in 2,146 parts from 1,943. The shells take 0.46 s, the check
+0.7 s less. On the bench, the temple at 48 studs is laid three times (with
+its sides turned it loses its moon; upright, by unit 4's rules, again; then
+unbonded and by the flag it keeps it) and took 538 s where `main` took 267;
+the bench's means, the box at a load of 10 to 35, are not a fair ratio.
+
+**Pictures.** Spot, the Stanford bunny, the milk truck, 3DBenchy, Bob and
+the avocado at 48 studs, drawn on the GPU by the app's own camera
+(`bench_views.gd`), `main` beside the branch (in
+`bench/results/brickify6-2026-10-17/renders`, not committed). The milk
+truck's flat side is a skin of plates on their sides with its logo laid
+in them, where `main` had panels of tiles standing proud of it and rows of
+studs at the door; its grille is laid on its side too, and a white 1 x 1
+tile on a side stud the shell left open shows on the logo. Spot's rear and
+chest and the bunny's chest show curved slopes on their sides facing out,
+and the dark slots in the bunny's haunch are gone. 3DBenchy's hull and
+cabin read as before, a few curved slopes on their sides at the bow; Bob
+and the avocado change little to the eye.
+
+The milk truck at 48 studs (Cesium, CC-BY 4.0), `main` and the branch:
+
+![The milk truck at 48 studs: main, then its sides on their sides](brickify/unit5-milk-truck-48.jpg)
+
+Spot at 48 studs (Keenan Crane, CC0), from behind:
+
+![Spot at 48 studs from behind: main, then its sides on their sides](brickify/unit5-spot-48.jpg)
+
+### Second round: no slower, and the joints
+
+Asked of the first round: no stud joint past its load that `main` does not
+have (42 at 48 studs, 47 after it), and no model more than 1.3 times
+`main`'s time (the temple was twice it, laid three times), the forty-stud
+bunny at most 1.1 times.
+
+**What changed.**
+1. **Two lays at most.** A build that leaves a region out is laid again
+   unbonded and by the flag at once, as `main` lays it again, not first
+   upright and bonded: the temple, which loses its moon either way it is
+   bonded, was laid three times.
+2. **One colour asked for keeps its slopes to that colour on every path**
+   (Shapes' `sold_only`): `made_colours` does not recolour it, and laid again
+   by the flag the blue bunny had inverted slopes no one sells in blue.
+   Checked so for every sculpt instead, the temple's fallback changed and it
+   lost its moon.
+3. **The core three studs deep behind a turned cube** (`CUBE_BACK`, and not
+   another shell's): the fox at 48 studs, two deep, hung its head on 4
+   joints past their load, `main`'s 2; three deep, 2. Spot and the Stanford
+   bunny lay as before (34.9° and 37.7°).
+4. **Rays across only through a cube facing that way**: the rest were most
+   of measuring the cubes (0.76 s of a 24-stud bust's 7 s). The fox lays the
+   same 972 parts.
+
+Tried and taken out: a shell beside a piece of the core that the shells
+cut off (face to face) given back. On the toy car it gave back none; its
+weak column has no part on its side within four studs of it.
+
+**Joints past their load**, each run at 48 studs that has any (none at 24,
+before or after), the branch at `8c627ca`:
+
+| Model | `main` | After | Steep faces (°), `main` → after | Parts |
+|---|---|---|---|---|
+| Bob | 1 | 0 | 42.7 → 40.6 | 3,423 → 3,737 |
+| the figure | 4 | 2 | 31.3 → 32.5 | 2,377 → 2,598 |
+| the fox | 2 | 2 | 36.1 → 31.5 | 853 → 972 |
+| the toy car | 0 | 6 | 35.8 → 34.9 | 3,020 → 3,090 |
+| the temple (`main`'s build) | 35 | 35 | 39.8 → 39.8 | 10,867 → 10,867 |
+| All | 42 | 45 | | |
+
+The toy car's 6 are one column of 1 x 1s a stud across under a piece of
+225 g, each joint of it 26 times past its load. No part on its side is
+within four studs of it; laid upright (`Options.snot` false) the car has
+none, and its 5 shells buy 0.9° on its steep faces. The trade is that car's
+6 against the figure's and Bob's 3 fewer.
+
+**Time**, each model laid by `main` and by the branch one after the other
+(the box shared, at a load of 10 to 46): over all 28 runs 864 s for `main`
+and 859 s for the branch; the temple at 48 studs 391 s and 349 s. The six
+runs over 1.3 times, each laid again four times by each (two processes
+each, in turn, `brickify_phases.gd`; medians, `b63bcf8`):
+
+| Run | `main` (s) | Branch (s) | Times |
+|---|---|---|---|
+| the Hayes bust at 24 | 14.5 | 11.1 | 0.77 |
+| the toy car at 24 | 8.0 | 8.2 | 1.02 |
+| the Bell X-1 at 24 | 3.2 | 3.3 | 1.04 |
+| 3DBenchy at 48 | 19.3 | 21.8 | 1.13 |
+| the temple at 24 | 16.3 | 21.7 | 1.33 |
+| the avocado at 48 | 20.2 | 28.7 | 1.42 |
+
+The temple at 24 turns 5 to 13 ms of shells; the rest is its stitch, which
+took 7 to 19 s run to run on the same build, the box at a load near 46. The
+avocado at 48 is real: its shells take 1.5 s, its stitch 3 s more, and a
+1 x 1 plate and a tile left apart at its top (on `main`, none) send its
+mend to a second check, 4 to 6 s. The forty-stud bunny, six each side by
+side: 5.60 s for `main` (5.44 to 6.22) and 5.59 s for the branch (4.79 to
+6.44), 1.00 times, in 2,143 parts.
+
+**The bench again, second round** (`8c627ca`, the same models and sizes):
+
+| Studs | Run | Steep faces (°) | Nearest on its side | There (°) | Sides, Hausdorff95 | Whole | One piece | Standing | Joints past load | Parts | ΔE2000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 6% | 41.1 | 0.73 | 14/14 | 14/14 | 14/14 | 0 | 10,975 | 11.04 |
+| 24 | after | 39.3 | 14% | 34.2 | 0.73 | 14/14 | 14/14 | 14/14 | 0 | 11,647 | 11.04 |
+| 48 | `main` | 36.4 | 13% | 36.3 | 0.84 | 14/14 | 14/14 | 10/14 | 42 | 51,531 | 9.17 |
+| 48 | after | 35.0 | 29% | 29.5 | 0.87 | 14/14 | 14/14 | 10/14 | 45 | 55,460 | 9.22 |
+
+Parts 6.1% and 7.6% more; 1 x 1s 39.4% and 33.0%, seams bridged 40.8% and
+39.1%, weak points 31.4% and 25.6% (read as above).
+
+Neither ask is met in full: the toy car's 6 joints (the trade above), and
+the avocado at 48 studs at 1.42 times. What would close them: a pillar
+under the heavy piece a weak column carries, at its centre of mass, where
+`_prop` now props each joint of the column under the column itself; and
+the pieces the shells leave apart at a model's top found before the check.
+
+### Third round: propped where the weight is
+
+**What changed.**
+1. **A pillar under the weight** (`Brickify._prop`, `_beyond`,
+   `_prop_under`). For each stud joint past its working load, worst first,
+   the piece beyond it, what its studs alone hold up, is found on the graph
+   of parts on parts, and the shortest pillar of 1 x 1s is laid from under
+   the parts of it nearest its centre of mass, those with nothing of the
+   piece under them first, down onto a stud of the rest of the model (not
+   the ground: a pillar from the figure's arm to the floor held it, and its
+   side views went from 0.71 to 1.84 studs); failing that, under the part
+   beyond the joint, as before. Kept only if fewer joints are past their
+   load, as before. It is the same for a build with its sides upright.
+2. **No sliver at the core's top left for the mend** (`Plan.caps_apart`):
+   with sides turned, a piece of the core of three parts or fewer apart from
+   the rest, with nothing its studs could hold over it (air, a shell, or a
+   tile's smooth top), goes before the check. The avocado at 48 studs is
+   checked once, from twice.
+
+**Joints past their load**, at 48 studs (none at 24, before or after),
+the branch at `c7cdd00`:
+
+| Model | `main` | Second round | Third round |
+|---|---|---|---|
+| Bob | 1 | 0 | 0 |
+| the figure | 4 | 2 | 0 |
+| the fox | 2 | 2 | 2 |
+| the toy car | 0 | 6 | 0 |
+| the temple (`main`'s build) | 35 | 35 | 35 |
+| All | 42 | 45 | 37 |
+
+The toy car's column now has a pillar under the fender's weight, and the
+car stands with none past its load; standing with no joint past its load,
+12 of 14 at 48 studs from 10.
+
+**The bench again, third round** (`c7cdd00`):
+
+| Studs | Run | Steep faces (°) | Nearest on its side | There (°) | Sides, Hausdorff95 | Hausdorff95 | Whole | One piece | Standing | Joints past load | Parts | ΔE2000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 24 | `main` | 40.4 | 6% | 41.1 | 0.73 | 0.77 | 14/14 | 14/14 | 14/14 | 0 | 10,975 | 11.04 |
+| 24 | after | 39.3 | 14% | 34.2 | 0.72 | 0.77 | 14/14 | 14/14 | 14/14 | 0 | 11,558 | 11.08 |
+| 48 | `main` | 36.4 | 13% | 36.3 | 0.84 | 0.96 | 14/14 | 14/14 | 10/14 | 42 | 51,531 | 9.17 |
+| 48 | after | 35.0 | 28% | 29.3 | 0.86 | 0.95 | 14/14 | 14/14 | 12/14 | 37 | 55,365 | 9.21 |
+
+Parts 5.3% and 7.4% more; 1 x 1s 39.4% and 33.1%, seams bridged 40.7%
+and 38.9%, weak points 31.2% and 25.4%.
+
+**Time**, laid four times each side by side (`brickify_phases.gd`, two
+processes each in turn, medians; `c7cdd00`):
+
+| Run | `main` (s) | Branch (s) | Times |
+|---|---|---|---|
+| the avocado at 48 | 18.4 | 25.1 | 1.37 |
+| the Bell X-1 at 48 | 9.5 | 14.4 | 1.51 |
+
+The avocado is checked once now (from twice), but its shells take 1.4 to
+2.6 s and its stitch 2.8 to 6.0 s where `main`'s takes 0.8 to 1.6. The X-1
+at 48 is laid twice: with its sides turned it leaves a region out, and is
+laid again unbonded and by the flag, where `main` lays it once. The
+forty-stud bunny is 1.00 times (second round; the prop step changes nothing
+of a build with no joint past its load). The bar of 1.3 times is missed on
+these two. What would meet it: for the X-1, finding the region a shell
+loses before the core is laid (a cube given back where its model is thinner
+than the shell's rows) so it is laid once; for the avocado, the stitch told
+which pieces a shell made, so it does not try to join pieces the shells
+will hold.
+
+### Proof
+
+The second round's runs (`b63bcf8`): `brickify_probe` 84 of 84, the
+forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
+`brickify_ui_probe` (GPU) 14, the bunny 1,266 parts; `quit_probe
+--only=brickify` gone 0.5 s after the window closed.
+
+- `brickify_probe` (headless): all 84 checks pass, in a new section
+  "steep sides on their sides": the sphere at 24 studs with 416 parts on
+  their sides (upright 44), 112 of its 168 steep cubes turned, in 22.6% more
+  parts, held to 25% as the most a model turns; the forty-stud bunny 286 on
+  their sides (53), 90 of 173 cubes, 10.4% more parts, 99.2% of it in a
+  part; a block turned 30 degrees about its up, 357 on their sides (81),
+  with slopes, curved slopes and cheese slopes facing out, 98.2% of it in a
+  part (upright, 100%). Unit 3's bond checks are run on the sphere and the
+  bunny laid upright, as they were made (the bunny's hidden core 242 bricks
+  and 98 plates; with its sides turned, 256 and 171: behind a turned cube
+  the core's courses of three plates meet the cubes' five); the 65 degree
+  ledge is laid upright (turned, the plateau's sheer end is a cube on its
+  side where the slopes stood); every one of 2,167 slopes laid is sold in
+  its colour.
+- `shapes_probe`: all 78 pass; a design's shapes keep their shells as they
+  were.
+- `brickify_ui_probe` in a window on the GPU: all 14 pass; the bunny lands
+  as 1,266 parts (1,214 before) and the hollow sphere as 1,226.
+- `quit_probe --only=brickify`: the app gone 1.8 s after the window closed
+  while measuring (at most 8 s); the cubes and the rays across ask the stop
+  every 4,096 triangles, the shells every 8, and the shells' lay between each.
+- `featuremap affected --since d24d4d6` names `lib:brickify` and the bench
+  (`brickify_bench.py faces`, run on both runs above; `pyright` no errors).
+  `shapes.gd` is the assistant's too: `shapes_probe` above.
+- `tools/web/brickify_flow.mjs` (`brickify`, `brickify_fox` in the preview
+  checks) needs a preview, and was not run.
+
+### What is left
+
+- **The bar.** To take the steep faces' error down 30% the turned share has
+  to reach most of the side and do better there. Half the cubes facing out
+  are not turned: a cap or ledge a plate or two thick over or under a cube
+  (a leaning wall makes one at each step) needs laying with the shell, and a
+  cube whose top row has no model at its face needs a side stud lower down
+  (a headlight brick's or a bracket's, which sit half a plate off a
+  brick's). Where turned, 29°: the slopes fall along x or z only, so a side
+  facing 30 to 45 degrees between them is a staircase on its side too, and
+  a shell ends at its cube's depth, so no slope runs further than two
+  studs out. Corner and wedge slopes on their sides, and a shell that runs
+  across depths, are the next steps.
+- **The side views** are no nearer: the props under joints past their
+  load (Balance cannot see side studs) and the figure's and the fox's thin
+  parts. A stability check that models side studs would also say which
+  shells hold.
+- **The bond's figures** do not read plates on their sides. Counting each
+  shell's side-stud bricks as its joints would.
+- **The temple at 48 studs** was laid three times; after the second round,
+  twice, as on `main`.
+
 
 The models are not in the repository (two are Stanford's, for research use
 only). `LICENCE.json` beside each records its source and licence; the table
@@ -2078,6 +2515,11 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/after
 gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path $W --resolution 1600x900 \
     --script src/dev/bench_views.gd -- --model=$S/after/spot/48/smooth.ldr --views_out=$S/spot \
     --views=corner,front
+# unit 5: faces now also gives, each arm, the steep ("out") faces split by whether the part
+# nearest each lies on its side ("out_on_side", "out_upright": share, normal, distance) and the
+# Hausdorff95 seen from the four sides alone ("sides"); the arm with its sides upright is
+# Brickify.Options.snot = false. Each half of the models a process, measured into its own file:
+heavy $S/venv/bin/python -I tools/bench/brickify_bench.py measure $S/after --only spot,bob --file measures-a.json
 ```
 
 The run behind sections 3 and 4 used the app at `7a55e86` (main), on
@@ -2086,7 +2528,8 @@ threads; section 6's, `2789cd0` and the branch on 2026-10-16, at a load of
 10 to 60; section 7's, `69a0d1d` with unit 2 and the branch, the same day,
 at a load of 15 to 45; section 8's, `a1d1998` and the branch on 2026-10-16
 and 17, at a load of 25 to 45; section 9's, `d55251d` and the branch on
-2026-10-17, at a load of 2 to 24.
+2026-10-17, at a load of 2 to 24; section 10's, `d24d4d6` and the branch on
+2026-10-17, at a load of 10 to 35.
 
 ## Each model, every arm
 
