@@ -2660,6 +2660,66 @@ static func _bottom_sockets(grid: Grid) -> Array:
 # -- the whole of it -----------------------------------------------------------
 
 
+## A part, a subpart it carries and a skin, of what every build ships
+## (assets/ldraw/), for [method warm]: every kind of line, the words of BFC
+## the walk reads, a mirrored reference, studs, a tube, pin holes, and a long
+## thin face in the skin.
+const WARM_PART := """0 Brickworks warm-up brick 1 x 2 with hole
+0 Name: brickworks-warm.dat
+0 !CATEGORY Technic
+0 BFC CERTIFY CCW
+1 16 0 0 0 20 0 0 0 24 0 0 0 10 box5.dat
+0 BFC INVERTNEXT
+1 16 0 4 0 16 0 0 0 20 0 0 0 6 box5.dat
+4 16 20 24 10 16 24 6 -16 24 6 -20 24 10
+4 16 -20 24 -10 -16 24 -6 16 24 -6 20 24 -10
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 0 24 0 1 0 0 0 -5 0 0 0 1 stud3.dat
+1 16 0 10 10 1 0 0 0 0 1 0 -1 0 peghole.dat
+1 16 0 10 -10 1 0 0 0 0 1 0 1 0 peghole.dat
+0 BFC INVERTNEXT
+1 16 0 10 8 6 0 0 0 0 6 0 -16 0 4-4cyli.dat
+1 16 0 10 10 8 0 0 0 0 8 0 -1 0 4-4ndis.dat
+1 16 0 10 10 6 0 0 0 0 6 0 -1 0 4-4edge.dat
+1 16 0 24 0 4 0 0 0 1 0 0 0 4 4-4disc.dat
+1 16 0 24 0 2 0 0 0 1 0 0 0 2 4-4ring3.dat
+1 16 0 12 0 1 0 0 0 1 0 0 0 1 s\\brickworks-warm-s01.dat
+2 24 20 24 10 -20 24 10
+5 24 20 0 10 20 24 10 20 0 -10 16 4 6
+"""
+const WARM_SUB := """0 ~Brickworks warm-up subpart
+0 Name: s\\brickworks-warm-s01.dat
+0 BFC CERTIFY CW
+3 16 -16 0 -6 16 0 -6 16 0 6
+0 BFC NOCLIP
+3 16 -16 0 -6 16 0 6 -16 0 6
+0 BFC CLIP
+0 BFC CCW
+1 16 0 4 0 -4 0 0 0 1 0 0 0 4 box4.dat
+2 24 -16 0 -6 16 0 -6
+"""
+const WARM_SKIN := """0 Brickworks warm-up skin
+0 Name: brickworks-warm-skin.dat
+0 BFC CERTIFY CCW
+1 16 0 0 0 4 0 0 0 1 0 0 0 4 4-4cyli.dat
+1 16 0 -1 0 4 0.25 0 0 1 0 0 0 4 4-4cyli.dat
+4 16 -6 -60 -6 6 -60 -6 6 -60 6 -6 -60 6
+3 16 0 -100 0 400 -100 0 0 -97 0
+"""
+
+
+## Build [constant WARM_PART] and [constant WARM_SKIN] here, as a worker
+## builds a part a file carries and a hose, and let them go: what this
+## script runs, run once on one thread before it runs on several at once
+## (WorkerTasks.first_here says why). Returns them, for the probe to see
+## they went all the way through.
+static func warm() -> Array[Result]:
+	return [build(WARM_PART, "brickworks-warm", {"s\\brickworks-warm-s01.dat": WARM_SUB},
+			false, null, false),
+		build_skin(WARM_SKIN, "brickworks-warm-skin", {}, false, false)]
+
+
 ## Build a part from its text. [param others] holds files it may reference
 ## that are neither bundled nor in the library: the rest of a model file.
 ## [param library] lets references resolve into vendor/ldraw where a

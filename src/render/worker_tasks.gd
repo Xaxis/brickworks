@@ -27,6 +27,39 @@ extends RefCounted
 static var _out: Dictionary = {}
 static var _lock := Mutex.new()
 static var _watching: bool = false
+## Kinds of work [method first_here] has run: kind -> true.
+static var _run_here: Dictionary = {}
+static var _first_lock := Mutex.new()
+
+
+## Run [param work] here and now, on this thread, if nothing of [param kind]
+## has run yet in this run of the app, and say whether it did. Work that is
+## about to run on several workers at once asks first, and starts the rest
+## on workers after.
+##
+## The engine crashes when two threads run a GDScript operator for its first
+## time at once. Godot 4.7.2 keeps, in the function's own bytecode, what an
+## operator on a value of no fixed type turned out to take (an untyped
+## Array's element, an object compared with null), and writes it there the
+## first time the operator runs: the operand types first, the function that
+## does it last (modules/gdscript/gdscript_vm.cpp:805-809). A thread at the
+## same operator in between reads the types, takes the function, finds
+## nothing and calls address 0. The app was gone the moment it started with
+## parts kept from files (CustomParts.load_all), every worker building one
+## at the same line of PartForge at once; the worker's GDScript backtrace
+## ended at the operator, its C++ one at the signal, and the crash handler,
+## running on the worker, said the root node cannot be told from it
+## (crashfind, 2026-10-17). An operator that has run once on one thread is
+## never written again, so what this runs first is safe on any number after.
+static func first_here(kind: String, work: Callable) -> bool:
+	_first_lock.lock()
+	var first: bool = not _run_here.has(kind)
+	if first:
+		# Held while it runs: a second thread asking waits until it is done.
+		work.call()
+		_run_here[kind] = true
+	_first_lock.unlock()
+	return first
 
 
 ## [method WorkerThreadPool.add_task], kept until [method collect].

@@ -139,6 +139,12 @@ whole cycle.
 
 - Build it in a browser now and then drew the parts of earlier steps in
   their own colours where they should be faded.
+- The app no longer crashes, now and then, as it starts with parts kept from
+  set files, or as it opens a file with parts or hoses of its own. Godot
+  crashes when several threads run a piece of script for the first time at
+  once, and the parts were built on every thread at once. The first build now
+  runs on one thread before the rest.
+
 - A part a set's file carries, kept by the app, is kept with the pieces it
   is drawn from. It used to be missing after a restart, and a model saved
   then went out without them.

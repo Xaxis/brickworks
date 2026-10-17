@@ -2203,6 +2203,20 @@
       "entry": "src/dev/share_pages_probe.gd",
       "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "carried parts at once",
+      "entry": "src/dev/carried_at_once_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/carried_at_once_probe.gd [-- rounds=N] [-- dir=PATH] [-- FILE ...]   (the parts files carry built on every worker at once, round after round, each the same to the byte as built alone on the main thread; dir= builds a folder's .dat files as load_all builds those kept; with nothing given 42129-1, 10261-1 and 60216-1; a crash is the run ending on signal 11)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "worker first run",
+      "entry": "src/dev/worker_first_run_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/worker_first_run_probe.gd [-- rounds=N] [-- cold]   (operators run for the first time on every worker at once, through WorkerTasks.first_here, every round right and the engine still up; PartForge.warm's part and skin built all the way; the first carried parts built at once run the forge here first. -- cold skips first_here: the engine as it is, which crashes, rip 0x0)",
+      "area": "model-io"
     }
   ]
 }

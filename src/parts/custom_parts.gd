@@ -678,7 +678,10 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 			else:
 				# The pool's high side, as the carried parts are built
 				# (_built_at_once): the app's own checks of the last model
-				# keep its low side busy for seconds.
+				# keep its low side busy for seconds. The forge run once here
+				# first, as there (WorkerTasks.first_here): the skins of a
+				# file all start it at once, and the carried parts with them.
+				WorkerTasks.first_here("the forge", PartForge.warm)
 				entry["task"] = WorkerThreadPool.add_task(build, true, "build a flexible part")
 		begun.append(entry)
 	return begun
@@ -869,6 +872,9 @@ static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
 	var made: Array = []
 	made.resize(plain.size())
 	var writing := Mutex.new()
+	# The forge run once here first: every worker starting it at once, the
+	# first time it ran, crashed the app (WorkerTasks.first_here).
+	WorkerTasks.first_here("the forge", PartForge.warm)
 	var task: int = WorkerThreadPool.add_group_task(func(n: int) -> void:
 		var result: PartForge.Result = PartForge.build(texts[plain[n]],
 			plain[n].get_basename(), sources, true, null, false)

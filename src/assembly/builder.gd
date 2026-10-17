@@ -2502,11 +2502,15 @@ func prepare_covers(placements: Array) -> void:
 		else:
 			continue
 		var n: int = jobs.size() - 1
-		tasks.append(WorkerTasks.add(func() -> void:
+		var job := func() -> void:
 			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(boxes, Vector3i.ZERO, turn)
 			writing.lock()
 			made[n] = shape
-			writing.unlock(), true, "a turned cover"))
+			writing.unlock()
+		# The first of the app's run here, before others run it at once
+		# (WorkerTasks.first_here).
+		if not WorkerTasks.first_here("a turned cover", job):
+			tasks.append(WorkerTasks.add(job, true, "a turned cover"))
 	if not jobs.is_empty():
 		_preparing = [jobs, tasks, made, writing]
 

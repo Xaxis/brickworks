@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts in a browser, cli:LDraw files in storage -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:keep browser flow, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:carried parts in a browser, cli:LDraw files in storage -->
 
 ## Sub-features
 
@@ -97,6 +97,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `flex_skin_probe` proves the fixture and, given files, that every
   flexible part of each is drawn and the file saves as itself;
   `tools/web/flex_skin_flow.mjs` the same in a browser.
+- `carried parts at once` and `worker first run` (`CustomParts._built_at_once`,
+  `begin_skins`, `PartForge.warm`, `WorkerTasks.first_here`): the parts a
+  file carries, and those kept in `user://custom_parts` at start-up, are
+  built on every worker at once, and a file's skins each on a worker of
+  its own. Godot 4.7.2 crashes when two threads run a GDScript operator on a
+  value of no fixed type for its first time at once: it writes what the
+  operator takes into the bytecode as it runs, the operand types before the
+  function (`modules/gdscript/gdscript_vm.cpp:805-809`), and a thread in
+  between calls address 0. The app went the moment it started with parts
+  kept from files (a worker's GDScript backtrace at `PartForge._walk`'s
+  `if source == null:`, and the crash handler, on the worker, saying `/root`
+  cannot be told from it). So work about to run on several threads asks
+  `WorkerTasks.first_here(kind, work)` first, which runs it once on the
+  asking thread the first time in a run: the forge's part and skin
+  (`PartForge.warm`, 60 ms once) before the carried parts and the skins, the
+  first turned cover before the rest (`Builder.prepare_covers`,
+  `Grab`'s grabbed parts). `carried_at_once_probe` builds files' carried
+  parts at once round after round, each the same to the byte as built alone;
+  `worker_first_run_probe` runs fresh scripts' cold operators on every worker
+  at the same instant through first_here (and, with `-- cold`, without: the
+  engine's crash, which it shows within ~4,000 rounds), and checks the warm-up
+  goes all the way and that the carried parts ask for it.
 - `carried parts fetched` (`CustomParts.fetch_sources`, `unreached_by`,
   `PartForge.keep_fetched`): a part a file carries, or a skin, may be drawn
   from LDraw's own subparts and parts, which the desktop reads from
@@ -557,6 +579,10 @@ godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/file
 node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin vendor/omr/files/42082-1.mpd
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   # carried parts built from LDraw files fetched over HTTP, the library withheld
 godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census bench/results/census.json   # which of vendor/omr's files need the library's files, and which
+godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12   # files' carried parts built on every worker at once, each as built alone
+godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them
+godot --headless --path . --script src/dev/worker_first_run_probe.gd   # cold operators on every worker at once, through first_here: none wrong, no crash (~70 s)
+godot --headless --path . --script src/dev/worker_first_run_probe.gd -- cold rounds=8000   # the engine as it is: ends on SIGSEGV, rip 0x0 (expected; under gdb to see it)
 python3 tools/web/serve.py build/web 8840 --parts-url "$PARTS_URL" &   # a local export reading the real parts bucket
 node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried vendor/omr/files/42082-1.mpd vendor/omr/files/21321-1.mpd
 godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
