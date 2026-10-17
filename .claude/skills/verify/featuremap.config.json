@@ -1407,6 +1407,20 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "steps carried with a shared model",
+      "entry": "src/net/shared_pages.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share pages probe",
+      "entry": "src/dev/share_pages_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/share_pages_probe.gd   (-- --write IN OUT ... writes each IN with its steps carried to OUT)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "share steps browser flow",
       "entry": "tools/web/share_steps_flow.mjs",

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -796,6 +796,26 @@ plan with Claude as the client.
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
   "hold this one in place"), `view` — and `recall`/`remember` for the kept
   page, which reads a stored value of the wrong shape as none.
+- `steps carried with a shared model` (`src/net/shared_pages.gd`,
+  `SharedPages`, 2026-10-17): the Share panel works the model's build steps
+  out once ("Working out its steps for the link…") and writes them at the end
+  of the text it publishes: `0 !BRICKWORKS PAGES {v, model, order, parts,
+  mode, steps}` and a `0 !BRICKWORKS PAGE {i, n, b, …}` line a step, every
+  field of `Instructions.Step` with bricks as their place in the order the
+  viewer puts the text down. They are worked out on a world of their own put
+  down as `ModelStore.open_text` puts a file down (flattened, Studio parts,
+  unmirrored, resolved, the known parts in turn, lifted alike), by the same
+  `Instructions.plan_paced`. The viewer (`main._view_shared`) reads them with
+  `SharedPages.read` and starts the timeline from them (`StepsBar.start_from`)
+  only when `model` (the text's lines trimmed, blanks and these lines left
+  out, SHA-256) and `order` (the parts and colours in the order it put them
+  down) match, and works them out as before otherwise — an old link, a
+  model edited since, a catalogue that differs. No server or database
+  change: api/share.js takes them as LDraw meta lines; a file over 1.9 MB
+  with them goes without. `brickworksShare.carried` says which, and
+  `window.brickworksStepsReady` when the steps were in. A kept source file
+  drops them on save (`ModelStore._without_app_lines`). Proved by
+  `src/dev/share_pages_probe.gd` (below) and the share steps flow.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -1611,7 +1631,27 @@ page's view worked out in under 20 ms on the castle; the same file making the
 same pages twice (and, printed, that the reverse order does not — why the
 viewer opens a link again in its file's order); a part behind a wall looked
 at from the back; a tile on a big floor framed close; the kept page per link,
-and junk in its place read as none.
+and junk in its place read as none; and each turn's changes (`count`,
+`fading`) the same as the whole model asked, next, back and jumps.
+
+The steps carried with a shared model, headless, about a minute:
+
+```sh
+godot --headless --path . --script src/dev/share_pages_probe.gd
+```
+
+Proves it when it ends "a shared model's steps are carried with it and read
+back as the viewer would work them out" with no `FAIL`: on the house, the
+castle (436 steps, callouts and all) and Orthanc's lowest 1,000 parts, the
+steps written at the end of the text; the text opened as the viewer opens it
+(`ModelStore.open_text`, a baseplate laid under it as scenery) and the steps
+read back for it in milliseconds; and they are the very steps the viewer
+works out there itself (`Instructions.plan_paced`), every field step for
+step, and every page of Build it the same (caption, note, new parts, what is
+on the baseplate, the parts to pick up). Then never used: the text edited by
+one part, an old link with none, a part fewer in the world; and written
+twice, the second replaces the first. `-- --write IN OUT ...` writes each IN
+with its steps carried (the share steps flow shares those).
 
 The player in the real scene is the last part of `share_view_probe` above
 (`shots/share/9_build_cover.png` to `11_build_again.png`): Build it pressed on
