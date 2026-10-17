@@ -17,10 +17,16 @@
 // four-bar lies flat, two cranks pinned to a beam 15 and a coupler across
 // their ends: a crank dragged round turns the other one by the loop (Linkage),
 // as a steering's arms turn. Fails if
-// nothing turns, the arm does not come back on undo, the page stops answering
-// for longer than --stall ms (default 250) during a drag, or a script error
-// reaches the console. Pictures of each step in OUT, and the app's own frame
-// costs for a drag.
+// nothing turns, the arm does not come back on undo, the app's own work in a
+// drag frame passes --work ms (33), the page stops answering for longer than
+// --stall ms (5000: a hang), or a script error reaches the console. Pictures
+// of each step in OUT, and the page's longest wait in each drag, said.
+//
+// The page's wait was the gate until 2026-10-17, at 250 ms. It is mostly
+// SwiftShader drawing on this box's CPU, not the app: five runs each of the
+// live build and m54 both waited 300-800 ms on the first drag at load 30-43,
+// while the app's own drag frames never passed 7.3 ms, and it held m54's
+// turntable fix three times.
 import { launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -31,7 +37,8 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const url = args.url || "https://brickworks.diy/app";
 const out = args.out || "shots/grab_web";
-const stallLimit = Number(args.stall || 250);
+const stallLimit = Number(args.stall || 5000);
+const workLimit = Number(args.work || 33);
 const first = args.bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
   : url;
@@ -192,7 +199,9 @@ try {
   const after = await until(grab, (g) => !g.grabbing && g.revision !== revision, 10);
   check(Boolean(after) && /hinge/.test(after.said || ""),
     `let go, it is kept and said: "${after && after.said}"`);
-  check(up.stall <= stallLimit, `the page answered throughout the drag: its longest wait ${up.stall} ms`);
+  check(Boolean(after) && Number(after.worst_ms) <= workLimit,
+    `the app's own work in a drag frame stays under ${workLimit} ms: worst ${after && after.worst_ms} ms`);
+  check(up.stall <= stallLimit, `the page did not hang in the drag: its longest wait ${up.stall} ms`);
   timings.arm = { frames: after && after.frames, mean_ms: after && after.mean_ms,
     worst_ms: after && after.worst_ms, stall_ms: up.stall };
   console.log(`      the app's own cost of a drag frame: mean ${after && after.mean_ms} ms, worst `
@@ -242,7 +251,9 @@ try {
       `the crank turns and takes its loop: ${loop.mid && loop.mid.angle}° (${loop.mid && loop.mid.what})`);
     const kept = await until(grab, (g) => !g.grabbing && /loop/.test(g.said || ""), 10);
     check(Boolean(kept), `and is kept: "${kept && kept.said}"`);
-    check(loop.stall <= stallLimit, `the page answered throughout the four-bar's drag: its longest wait ${loop.stall} ms`);
+    check(Boolean(kept) && Number(kept.worst_ms) <= workLimit,
+      `the app's own work in a four-bar frame stays under ${workLimit} ms: worst ${kept && kept.worst_ms} ms`);
+    check(loop.stall <= stallLimit, `the page did not hang in the four-bar's drag: its longest wait ${loop.stall} ms`);
     timings.fourbar = { frames: kept && kept.frames, mean_ms: kept && kept.mean_ms,
       worst_ms: kept && kept.worst_ms, stall_ms: loop.stall };
     console.log(`      the app's own cost of a four-bar frame: mean ${kept && kept.mean_ms} ms, worst `
