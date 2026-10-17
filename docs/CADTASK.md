@@ -372,7 +372,7 @@ over to the status bar's "opened N parts", read every quarter second.
 |---|---|---|---|
 | 42082-1 (crane) | 3 (13971 ×3) | 0; 1, 3 KB | 12.9 s, 6.5 s → 8.7 s, 6.0 s, 8.6 s |
 | 21321-1 (space station) | 50 (3 printed parts, 46 of them the solar panels' 30350cp01) | 0; 4 | 3.1 s, 3.1 s → 5.6 s, 2.6 s |
-| 42115-1 (sports car) | 54 (5 printed parts and 4 flexible axles) | 0; 6 | second in a session: 83.4 s → 109.2 s; first: 12.8 s after |
+| 42115-1 (sports car) | 54 (5 printed parts and 4 flexible axles) | 0; 6 | first in a session 8.8 s → 12.8 s; second, after 42082-1, 83.4 s → 109.2 s |
 | 42058-1 (stunt bike) | 1 (28884c01, the print) | 0; none | 3.9 s, 5.2 s → 4.2 s (before the print was mended) |
 | 10002-1 (carries nothing) | 0 | 0; none | 0.3 s, 0.3 s, 0.6 s → 0.5 s, 0.9 s, 0.7 s |
 
@@ -385,8 +385,10 @@ All four sets opened one after another in one session (`shotsE/`, the flow's
 last run) with nothing carried said not shown and no script error.
 
 **The misses.** A file that needs files fetched opens later by the round
-trips, a frame or more each: 21321-1 took 5.6 s where it took 3.1 s, its
-fourth file named by one of the first three and asked for after them. In
+trips, a frame or more each, and by building what it left out: 42115-1
+took 12.8 s where it took 8.8 s (six files in one batch, then five prints
+and four axles built), 21321-1 5.6 s where it took 3.1 s, its fourth file
+named by one of the first three and asked for after them. In
 software, with a big model already on screen, a frame takes seconds and so
 does each round trip: 21321-1 opened third in one session took 181 s,
 against 5.6 s first (the before side had no fetch there to compare, and
