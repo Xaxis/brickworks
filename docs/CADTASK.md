@@ -317,6 +317,97 @@ same shapes up to the lift, 52 of 54 where it was 47. The judge reads a piece
 of skin as the lines of its copy it stands for (`cadtask.skins_apart`), or it
 calls the piece added and every primitive lost.
 
+### Since: carried parts drawn from LDraw's own files, in a browser (the webcarry unit, 2026-10-17)
+
+**What was left.** After flexdraw a browser still could not build a carried
+part drawn from one of LDraw's own subparts or parts. Those are the
+library's `parts/` (34,122 files, 495 MB), which the desktop reads from
+`vendor/ldraw` and no build ships. `carried_fetch_probe -- --census` read
+all 1,576 files as a build reads them (the library withheld but for the
+primitives): 190 files carry 536 parts and 38 flexible parts that could not
+be built, 951 copies in all. They name 132 official subparts, 35 official
+parts (36 files need one of those, so subparts alone would not do), and 2
+files nobody has (6919-1's two spring meshes, which the desktop cannot draw
+either). Fetching what each file needs, each on its own: a median of 2
+files and 6 KB, at most 26 files and 563 KB (41075-1). 42082-1 needs one,
+3 KB: `s\55981s01.dat`, which its three 13971 rims are drawn from
+(`census.json` in `bench/results/webcarry-2026-10-17/`).
+
+**What changed.** The library's `parts/` is in the parts bucket under
+`ldraw/parts/` (`tools/storage_ldraw.py`: additive, no upsert, 8.9 min at
+64 files a second; the bucket takes only `application/octet-stream`). Before
+a file opens on the web, `CustomParts.unreached_by` asks what its carried
+parts and skins name that the build cannot read (`PartForge.unreached`), and
+`fetch_sources` fetches those six at a time, and what each names as it
+arrives, the status bar saying "Fetching 4 LDraw files the parts it carries
+are drawn from…".
+They are kept for the visit (`PartForge.keep_fetched`) and read as the
+desktop reads its library. Every way a file opens goes through it: the file
+picker, a saved model, an example, a version, the working model at start-up,
+a shared model, MCP's open. A file not there, or a web page, is not taken,
+and the part is said not shown as before, the console saying why. The
+desktop reads `vendor/ldraw` as before and waits for nothing, and so does a
+file that carries nothing.
+
+Two things the browser found that the first probe did not. Answers come in
+any order: awaited one after another, an answer that came while an earlier
+one was awaited was never heard, and 21321-1 never opened. And a request is
+polled once a frame: with 42082-1 on screen, drawn in software, 42115-1's
+six files arrived and were given up on by a 30 s limit (none now, as the
+geometry's fetches have none). The probe now asks for a 1.9 MB file first
+and three small ones after (the old code heard one of four), and opens
+42082-1 and 42115-1 one after the other. And one carried part neither the
+desktop nor the web drew: 42058-1's 28884c01 is a print whose faces are all
+in the subparts the file carries, and a print was built without them
+(`PartPrints.build` now takes them).
+
+**In a browser.** Local exports of the release before (`1482918`) and of
+this branch, served by `tools/web/serve.py --parts-url` so each reads the
+real bucket, in Chromium on SwiftShader, on a box at load 25 to 40
+(`tools/web/carried_flow.mjs`; logs and pictures in
+`bench/results/webcarry-2026-10-17/`). "Opened in" is from the file handed
+over to the status bar's "opened N parts", read every quarter second.
+
+| file | before: not shown | after: not shown; LDraw files fetched | opened in, before → after |
+|---|---|---|---|
+| 42082-1 (crane) | 3 (13971 ×3) | 0; 1, 3 KB | 12.9 s, 6.5 s → 8.7 s, 6.0 s, 8.6 s |
+| 21321-1 (space station) | 50 (3 printed parts, 46 of them the solar panels' 30350cp01) | 0; 4 | 3.1 s, 3.1 s → 5.6 s, 2.6 s |
+| 42115-1 (sports car) | 54 (5 printed parts and 4 flexible axles) | 0; 6 | second in a session: 83.4 s → 109.2 s; first: 12.8 s after |
+| 42058-1 (stunt bike) | 1 (28884c01, the print) | 0; none | 3.9 s, 5.2 s → 4.2 s (before the print was mended) |
+| 10002-1 (carries nothing) | 0 | 0; none | 0.3 s, 0.3 s, 0.6 s → 0.5 s, 0.9 s, 0.7 s |
+
+In the pictures the space station's solar panels are blue where they were
+orange (`shotsA/before_21321-1.png`, `shotsA/after_21321-1.png`). The crane's
+three rims and the car's printed tiles and flexible axles are too small to
+tell apart in a picture of the whole model; the status bar, which named
+them not shown before, names none of them after.
+All four sets opened one after another in one session (`shotsE/`, the flow's
+last run) with nothing carried said not shown and no script error.
+
+**The misses.** A file that needs files fetched opens later by the round
+trips, a frame or more each: 21321-1 took 5.6 s where it took 3.1 s, its
+fourth file named by one of the first three and asked for after them. In
+software, with a big model already on screen, a frame takes seconds and so
+does each round trip: 21321-1 opened third in one session took 181 s,
+against 5.6 s first (the before side had no fetch there to compare, and
+took 83 s to open 42115-1 second). So what a fetched file names is now
+asked for as it arrives, in the same batch (`_fetch_each`): 21321-1 then
+opened in 2.6 s, on a calmer box (load 4). Not measured since: 21321-1
+third in a session.
+
+**A file that needs nothing fetched** is not slower. One that carries
+nothing does no more than before (`fetch_sources` returns before it looks).
+One that carries parts looks first, and what it reads to look (a skin's text
+and what it names) is what `begin_skins` would read, kept for it
+(`LdrModel.skin_texts`). `carried_fetch_probe -- --timing` opens each five
+times each way, alternately, from a fresh session with the library
+withheld: 10002-1 (carries nothing) 38 ms and 38 ms, looking 0.0 ms;
+42058-1 (five carried parts and a hose) 2,474 ms looking first and 2,491 ms
+not, looking 23 ms. In the browser, read to a quarter second, three files
+that carry nothing opened one after another on each build took 0.6, 0.3
+and 0.3 s before and 0.7, 0.3 and 0.4 s after (10002-1, 10022-1's dining
+car, 10183-1's diesel).
+
 ## 2. The frames a builder feels
 
 **What was run.** Three real sets' files, the first in hash order within 10%
@@ -1129,7 +1220,9 @@ plates), 6 and 12 were fixed after (section 4), 3 had its own (section 2,
    *Since:* none is dropped. What the app cannot draw stays in the file and is
    saved back, and File, Open names it. *And since flexdraw, a browser builds
    them too (every build ships LDraw's primitives): 42082-1 in a browser
-   leaves out 3, copies of one part drawn from an official subpart, where it left out 167.*
+   leaves out 3, copies of one part drawn from an official subpart, where it left out 167.
+   And since webcarry, none: what a carried part is drawn from of LDraw's own
+   is fetched as the file opens (section 1).*
 6. **Colours are found by look in a palette of 320** (*fixed: `Shift-C`,
    a colour by its name or number, section 4*): the old greys (7 and
    8), all over older sets, show only after All, and Black and Rubber Black

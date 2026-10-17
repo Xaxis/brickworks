@@ -105,17 +105,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `open_version`; the file picker, a saved model, an example, the start-up
   restore, a shared model, MCP's open) first asks `PartForge.unreached` what
   its carried parts and skins name that this build cannot read, and fetches
-  those from `<PARTS_URL>ldraw/parts/<name>` six at a time, then what they
-  name, the status bar's Working line saying "Fetching N LDraw files…".
-  Kept for the session; a file not there (Supabase answers 400, a server
-  404) or a web page is not taken, and the part is said not shown with why
-  (`CustomParts._with_why`). The desktop, and a file that carries nothing,
-  wait for no frame. `tools/storage_ldraw.py` put the library's parts/
+  those from `<PARTS_URL>ldraw/parts/<name>` six at a time, and what each
+  names as it arrives (`_fetch_each`: every answer heard by a callable of
+  its own, in any order; no time limit, as a mesh fetch has none, since a
+  request is polled once a frame), the status bar's Working line saying
+  "Fetching N LDraw files…". Kept for the session; a file not there
+  (Supabase answers 400, a server 404) or a web page is not taken, and the
+  part is said not shown with why (`CustomParts._with_why`; the flow prints
+  the console's "could not fetch" lines). A carried print gets the file's
+  subparts too (`PartPrints.build`'s others). The desktop, and a file that
+  carries nothing, wait for no frame. `tools/storage_ldraw.py` put the library's parts/
   (34,122 files, 495 MB) in the bucket, additive only; run it after
   `tools/fetch_data.sh` brings a newer library. `carried_fetch_probe`
   proves it with the library withheld (`PartForge.withheld`) and served by
   python's http.server on 8841: each file's carried parts as the desktop
-  builds them, nothing fetched twice, 404 and HTML refused; `-- --census
+  builds them, answers heard in any order, two files in one session,
+  the start-up restore, nothing fetched twice, 404 and HTML refused;
+  `-- --timing FILE` says what looking costs a file that needs nothing; `-- --census
   OUT.json` counts what every file in vendor/omr needs.
   `tools/web/carried_flow.mjs` opens files in a browser from a local export
   served by `tools/web/serve.py DIR PORT --parts-url "$PARTS_URL"` (the real

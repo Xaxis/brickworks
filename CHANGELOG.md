@@ -24,6 +24,11 @@ whole cycle.
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is
   about 1.4 MB larger for it.
+- In a browser, a part a file carries that is drawn from LDraw's own
+  subparts or parts is built too. The files it needs are fetched as it
+  opens, only those (42082-1: one, 3 KB), and kept for the visit. 190 of
+  the 1,576 real sets' files left parts out for want of them; they now
+  open with the same parts as on the desktop.
 
 ## [0.3.0] - 2026-10-16
 
