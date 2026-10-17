@@ -1102,7 +1102,9 @@ picture the assistant is shown.
   page has gone quiet, so the panel has made its renderer ready by then.
   The desktop's half is `render_probe.gd -- --first-open`: the same open on
   the sample car, every frame timed, fails past `--budget` ms (100); left
-  alone first as a person leaves it, or pressed `--at-once` before that.
+  alone first as a person leaves it, or pressed `--at-once` before that, or
+  `--during` the making ready while it waits for someone using the window
+  (it must wait, and the press must not).
 
 ## How to reach it
 
@@ -1266,7 +1268,7 @@ node tools/web/render_open_check.mjs --dir=build/web --out=shots/render_open
 # to the draft under --budget ms (100), the draft left as
 # shots/render/first_draft_<renderer>.png. A fresh XDG_DATA_HOME is a machine
 # that has never rendered (no shader cache); --at-once presses before the
-# panel has made its renderer ready.
+# panel has made its renderer ready, --during while it is waiting for a touch.
 MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 \
     --script src/dev/render_probe.gd -- --first-open
 ```

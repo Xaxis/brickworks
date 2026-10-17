@@ -466,8 +466,10 @@ func _dialog(method: String) -> void:
 ## frame. As the app runs, drawing only what changed (IdleDraw), and left
 ## alone first as a person looking at the model leaves it, which is when the
 ## dialog makes its renderer ready (RenderDialog._warm_when_idle); with
-## --at-once, pressed as soon as the car is in, before that. Leaves the
-## draft as shots/render/first_draft_<renderer>.png.
+## --at-once, pressed as soon as the car is in, before that; with --during,
+## pressed while that is under way and waiting for someone using the window,
+## which must not hold the draft up. Leaves the draft as
+## shots/render/first_draft_<renderer>.png.
 func _first_open(method: String) -> void:
 	var budget: float = float(_argument("--budget")) if not _argument("--budget").is_empty() \
 		else 100.0
@@ -477,7 +479,17 @@ func _first_open(method: String) -> void:
 	# The car and its parts in.
 	for _n: int in 120:
 		await process_frame
-	if not OS.get_cmdline_user_args().has("--at-once"):
+	if OS.get_cmdline_user_args().has("--during"):
+		var until: int = Time.get_ticks_msec() + 30000
+		while Time.get_ticks_msec() < until and dialog.renderer == null:
+			await process_frame
+		# Somebody touches the window: the steps left wait for them.
+		dialog.set("_touched_ms", Time.get_ticks_msec())
+		for _n: int in 30:
+			await process_frame
+		_say("during: the renderer's making ready waits while the window is used",
+			dialog.renderer != null and bool(dialog.renderer.get("_warming")))
+	elif not OS.get_cmdline_user_args().has("--at-once"):
 		# And what that costs while nobody is looking for anything to happen.
 		var until: int = Time.get_ticks_msec() + 30000
 		var was: int = Time.get_ticks_usec()
