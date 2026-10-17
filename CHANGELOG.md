@@ -18,6 +18,14 @@ whole cycle.
 - LDCad's hoses, ropes, strings and bands are drawn: each as one piece,
   from the file's own lines, in its colour and step, to click and hide.
   They used to be kept in the file but left out of the view.
+- A part on a joint can be taken hold of and moved as the real one moves.
+  With Select, drag a hinge's leaf, a clip on a bar, a turntable's top, a
+  wheel or a gear, a minifigure's arm or a ball joint: everything built on
+  it comes along, it stops where it meets the model, and the gears it
+  drives turn by their teeth. The model's balance and its loaded joints
+  show while it moves. A pin without friction ridges swings down when let
+  go. Each drag is one undo step. A Claude session does the same with
+  move_part.
 
 ### Changed
 

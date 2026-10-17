@@ -50,6 +50,7 @@ var frames: int = 0
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
 var _judge: Balance = null
+var _judge_revision: int = -1
 var _mark: BalanceMark = null
 var _weighed_at: int = 0
 var _said: String = ""
@@ -83,12 +84,15 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}) -> bool:
 		say.call(grab.why)
 		last_words = grab.why
 		return true
-	_judge = Balance.new()
-	_judge.library = library
-	_judge.lattice = builder.lattice
-	_judge.floor_ids = scenery
-	if not _judge.prepare(world.bricks()):
-		_judge = null
+	# The graph Balance weighs read once a model revision, as the bodies are.
+	if _judge_revision != world.revision:
+		_judge = Balance.new()
+		_judge.library = library
+		_judge.lattice = builder.lattice
+		_judge.floor_ids = scenery
+		_judge_revision = world.revision
+		if not _judge.prepare(world.bricks()):
+			_judge = null
 	worst_ms = 0.0
 	_total_ms = 0.0
 	frames = 0
@@ -389,3 +393,81 @@ func _named_parts(asked: String) -> Array:
 					out.append(brick.id)
 					break
 	return out
+
+
+# -- for a browser test ---------------------------------------------------------------
+
+var _told_page: String = ""
+var _told_page_at: int = 0
+
+
+func _process(_delta: float) -> void:
+	_tell_page()
+
+
+## What a drag is doing, for a browser test: window.brickworksGrab, with a
+## place on the page over a part of each of the first few bodies that turn
+## on a joint, so a mouse can take hold of it as a person's would. Web
+## builds only.
+func _tell_page() -> void:
+	if not OS.has_feature("web") or world == null or camera == null:
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _told_page_at < 500:
+		return
+	_told_page_at = now
+	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
+	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
+	var to_window: Transform2D = get_viewport().get_final_transform()
+	var handles: Array = []
+	if grab == null:
+		if _bodies == null or _bodies.revision != world.revision:
+			_bodies = Bodies.read(world, library, builder.lattice, scenery, builder.locked)
+		for body: Variant in _bodies.parent_link:
+			if handles.size() >= 4:
+				break
+			var spot: Variant = _handle(int(body), _bodies.parent_link[body])
+			if spot != null:
+				var at: Vector2 = to_window * (spot["screen"] as Vector2) / per_css
+				spot.erase("screen")
+				spot["x"] = roundi(at.x)
+				spot["y"] = roundi(at.y)
+				handles.append(spot)
+	var state: Dictionary = {"grabbing": grab != null, "handles": handles,
+		"said": last_words, "frames": frames, "worst_ms": snappedf(worst_ms, 0.01),
+		"mean_ms": snappedf(mean_ms, 0.01), "revision": world.revision}
+	if grab != null:
+		state["what"] = grab.said
+		state["angle"] = snappedf(grab.angle, 0.1)
+		state["stopped"] = grab.stopped
+	var said: String = JSON.stringify(state)
+	if said == _told_page:
+		return
+	_told_page = said
+	JavaScriptBridge.eval("window.brickworksGrab = %s" % said, true)
+
+
+## A point on the screen over a part of [param body], the one furthest from
+## its joint's line that the pointer lands on: {screen, part, kind, id}.
+func _handle(body: int, link: Bodies.Link) -> Variant:
+	var best: Variant = null
+	var furthest: float = -1.0
+	for key: int in _bodies.members.get(body, PackedInt64Array()):
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+		if info == null:
+			continue
+		var centre: Vector3 = brick.transform * info.bounds.get_center()
+		var off: Vector3 = centre - link.point
+		if link.axis != Vector3.ZERO:
+			off -= link.axis * off.dot(link.axis)
+		if off.length() <= furthest or camera.is_position_behind(centre):
+			continue
+		var screen: Vector2 = camera.unproject_position(centre)
+		var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
+			camera.ray_normal(screen))
+		if not hit.is_valid() or hit.brick_id != key:
+			continue
+		furthest = off.length()
+		best = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+	return best

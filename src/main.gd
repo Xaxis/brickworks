@@ -5071,7 +5071,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# again.
 	var ending_a_box: bool = (button.button_index == MOUSE_BUTTON_LEFT
 		and not button.pressed and _marquee.is_drawing())
-	if _over_panel_at(button.position) and not ending_a_box:
+	# A grab's release is its own wherever the pointer has got to, as a box's.
+	var ending_a_grab: bool = _grabbing and button.button_index == MOUSE_BUTTON_LEFT \
+		and not button.pressed
+	if _over_panel_at(button.position) and not ending_a_box and not ending_a_grab:
 		return
 
 	# The right button acts on release, not on press.

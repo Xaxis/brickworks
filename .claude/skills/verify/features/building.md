@@ -521,6 +521,34 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   unselected one (`Joints.rounds`). It may press only on the part it is joined
   to; anything else refuses it. The parts stand off the grid afterwards, held
   as turned covers (`Builder.swing_selection`).
+- `grab and move on a joint` (`src/ui/grab_drag.gd` over `src/assembly/grab.gd`;
+  owner, 2026-10-17): with the Select tool a drag on a part that hangs on a
+  joint moves its whole rigid body and everything beyond it about that joint,
+  as the real thing moves; no tool or panel first. A click still selects; a
+  drag on a part held rigidly to what stays still carries it (`EditVerbs.
+  drag_start`), as does Ctrl's copy-drag and a locked part. Turn: a hinge, a
+  clip, a turntable, a pin or an axle in a round hole, a 1x1 part on one stud;
+  a click hinge on 22.5° clicks. Slide: a drag along the line of a clip on a
+  bar or a hole on an axle (the first few pixels decide). Ball: every way.
+  It stops at the last angle the lattice has room for (`Grab.turn_to`
+  bisects). A gear drives its train by the teeth (`Mechanism`, as Simulate). A
+  closed loop or a locked train is said, not moved. While dragging the model
+  is drawn moved (`BrickWorld.set_drawn`; revision, lattice and history
+  untouched), weighed each 50 ms (`Balance.weigh_pose`): polygon and centre of
+  mass on the floor, loaded stud joints tinted, the model leaning 4° when it
+  would tip, a status line. Let go: a joint without friction (a pin without
+  ridges, an axle, a turntable) swings down under its weight (`Grab.settle`),
+  one undo step ("turned the arm, 2 parts, on its hinge to 45°"), and the
+  status bar says how it stands. Escape puts it back. Over MCP: `move_part`.
+  Probe: `grab_probe` (real sets, simulated pointer events); browser:
+  `tools/web/grab_flow.mjs`.
+- `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
+  bodies (two studs or more, an axle in an axle hole, glue: one body; two
+  joints on different lines between two bodies: one body) and the joints
+  between them, from `Joints`' rules (studs_in, through, rounds, balls,
+  held_otherwise). Resting with no stud in it holds nothing. Each piece's
+  anchor: a locked part's body, else what stands on the baseplate, else the
+  heaviest body. `grab_probe -- --survey FILE` prints it.
 - `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
   as BrickLink Studio does it. With a part in hand that has a Technic or a
   bar end, aimed at a connector it fits, the ghost goes onto it: a pin into a

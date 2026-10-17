@@ -28,6 +28,7 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   [flex_pose]="tools/web/flex_pose_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_pose_web"
+  [grab]="tools/web/grab_flow.mjs --url=$P/app $B --out=$S/${TAG}_grab_web"
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"

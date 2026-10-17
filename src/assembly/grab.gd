@@ -99,6 +99,8 @@ var _hold_screen := Vector2.ZERO
 var _last_raw: float = 0.0
 var _unwrapped: float = 0.0
 var _decided: bool = false
+## Where the last stop was met, degrees; NAN for none.
+var _wall: float = NAN
 ## How long the last test for room took, ms, and how many tests a drag ran.
 var test_ms: float = 0.0
 var tests: int = 0
@@ -355,6 +357,13 @@ func turn_to(degrees: float) -> float:
 		wanted = roundf(wanted / link.detent) * link.detent
 	if is_equal_approx(wanted, angle):
 		return angle
+	# Past the wall it met last, the same way: still there, and not asked
+	# again, so a pointer pressed on past a stop costs nothing a frame.
+	if not is_nan(_wall) and (wanted - _wall) * (_wall - angle) >= 0.0 \
+			and absf(_wall - angle) < absf(wanted - angle) + 0.001:
+		stopped = true
+		return angle
+	_wall = NAN
 	var at: Dictionary = transforms_at(wanted)
 	if has_room(at):
 		angle = wanted
@@ -373,6 +382,7 @@ func turn_to(degrees: float) -> float:
 		# The last click short of what is in the way.
 		var clicks: float = (low - angle) / link.detent
 		low = angle + (floorf(clicks) if clicks >= 0.0 else ceilf(clicks)) * link.detent
+	_wall = high
 	angle = low
 	placed = transforms_at(angle)
 	stopped = true
