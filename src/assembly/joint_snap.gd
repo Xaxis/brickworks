@@ -390,6 +390,36 @@ static func sites_in(world: BrickWorld, library: PartLibrary) -> Array:
 	return out
 
 
+## Every part down kept with its ends, placed (as sites_in places them), by
+## where they could be aimed at from (BrickGrid): the point
+## [method End.aimed] gives (along a bar or a clip, anywhere on it), and as
+## far round it as aimed_at looks, REACH and its half-LDU of a tie. A part
+## with no ends is never asked.
+static func site_grid(library: PartLibrary) -> BrickGrid:
+	return BrickGrid.new(library, func(brick: BrickWorld.Brick, part: Lbm.PartMesh) -> Array:
+		var ends: Array = []
+		var box := AABB()
+		for end: End in ends_of(part):
+			var placed: End = end.placed(brick.transform, brick.id)
+			var room := AABB(placed.aimed(Vector3.ZERO, Vector3.FORWARD), Vector3.ZERO)
+			if placed.is_round():
+				room = AABB(placed.at, Vector3.ZERO).expand(placed.at + placed.axis * placed.reach)
+			box = room if ends.is_empty() else box.merge(room)
+			ends.append(placed)
+		return [box.grow(REACH + 0.5) if not ends.is_empty() else null, ends, false])
+
+
+## The ends of the parts in [param grid] (site_grid) that the line from
+## [param from] going [param way] may be aimed at, no further than
+## [param before]: of everything sites_in gives, in its order, every end
+## aimed_at could choose.
+static func near(grid: BrickGrid, from: Vector3, way: Vector3, before: float) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in grid.along(from, way, before):
+		out.append_array(grid.kept_with(brick.id))
+	return out
+
+
 ## The end of all [param sites] the pointer's line is aimed at, that
 ## [param held] has an end for: nearest the line, within [constant REACH],
 ## no further along it than [param before] (where it met something), and

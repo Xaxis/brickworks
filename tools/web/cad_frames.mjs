@@ -124,10 +124,16 @@ function stats(frames) {
   // nothing (IdleDraw) and costs a millisecond, and a median over those says
   // nothing about the ones a person sees.
   const drawn = frames.filter(([, , g]) => g > 1).map(([, d]) => d).sort((a, b) => a - b);
+  // ...and their own work, less WebGL: a part swept in hand is a move a
+  // drawn frame, so this is what a move costs the app, each in order too.
+  const drawnOwn = frames.filter(([, , g]) => g > 1).map(([, d, g]) => d - g);
+  const drawnOwnSorted = drawnOwn.slice().sort((a, b) => a - b);
   return { frames: frames.length, median_ms: r(at(whole, 0.5)), p95_ms: r(at(whole, 0.95)),
     max_ms: r(whole.length ? whole[whole.length - 1] : 0), own_median_ms: r(at(own, 0.5)),
     own_max_ms: r(own.length ? own[own.length - 1] : 0), drawn: drawn.length,
-    drawn_median_ms: r(at(drawn, 0.5)), drawn_p95_ms: r(at(drawn, 0.95)) };
+    drawn_median_ms: r(at(drawn, 0.5)), drawn_p95_ms: r(at(drawn, 0.95)),
+    drawn_own_median_ms: r(at(drawnOwnSorted, 0.5)), drawn_own_p95_ms: r(at(drawnOwnSorted, 0.95)),
+    drawn_own_each: drawnOwn.slice(0, 80).map(r) };
 }
 // The frames from [from] to now.
 async function since(from) {
@@ -147,8 +153,11 @@ async function scripts(engineFrom) {
   const busy = (s.busy || []).filter(([at]) => at >= engineFrom);
   const most = Math.max(slow.reduce((m, [, ms]) => Math.max(m, ms), 0),
     busy.reduce((m, [, ms]) => Math.max(m, ms), 0));
+  // ...and each of those frames' own work, in order.
+  const each = busy.map(([, ms]) => ms);
   return { scripts_max_ms: most, scripts_busy: busy.length, scripts_slow: slow.length,
-    scripts_kept: Array.isArray(s.busy), told_most_ms: s.told_most_ms || 0 };
+    scripts_kept: Array.isArray(s.busy), told_most_ms: s.told_most_ms || 0,
+    scripts_each: each.slice(0, 80), told_ms: s.told_ms || 0 };
 }
 async function engineNow() {
   const s = await state();
@@ -211,6 +220,17 @@ for (const model of models) {
   await quiet(3000, 300000);
   row.open = { ...stats(await since(opened)), placed: s.bricks, said: String(s.said || "").slice(0, 120),
     to_placed_ms: Math.round(placed - opened), to_quiet_ms: Math.round((await now()) - opened) };
+  // --arrive=SECONDS: the acts wait, up to that long, for the parts the
+  // model needs that are fetched as it opens (ModelStore.awaited), so they
+  // are measured on the whole model and not on one still arriving: each
+  // arrival is the model changing, and with a part in hand that read every
+  // connector of every part again.
+  if (args.arrive) {
+    const whole = await until((x) => (x.awaited || 0) === 0, Number(args.arrive));
+    await quiet(3000, 300000);
+    row.open.arrived = { bricks: whole.bricks, awaited: whole.awaited || 0,
+      ms: Math.round((await now()) - opened) };
+  }
   console.log(`  open: ${JSON.stringify(row.open)}`);
   // Keyboard focus on the model, not a field.
   await page.keyboard.press("Escape");

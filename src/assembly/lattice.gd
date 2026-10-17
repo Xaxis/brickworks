@@ -726,7 +726,7 @@ func blockers(cells: Array[Vector3i], ignore: int = 0) -> PackedInt64Array:
 	return blockers_boxes(compress(cells), ignore)
 
 
-## Whether to keep the column index that [method resting_height] reads.
+## Whether to keep the column index that [method surface_under] reads.
 ##
 ## Keeping it is two thirds of what it costs to occupy a brick — 2.5
 ## seconds of the 3.8 it takes to place four hundred of them, and a third
@@ -1399,12 +1399,57 @@ func surface_height(cell_x: int, cell_z: int, floor_cell: int = 0) -> int:
 
 
 ## The highest surface under a rectangle of columns, high corner
-## exclusive: [method surface_height] for a whole box at once. What
-## several parts held together drop onto, asked once per box rather than
-## once per column — a 2 x 4 brick is eight hundred columns.
+## exclusive: [method surface_height] for a whole box at once, and never
+## below [param floor_cell]. Where a part in hand rests, asked once for its
+## footprint rather than once per column — a 2 x 4 brick is eight hundred
+## columns.
 func surface_under(lo_x: int, lo_z: int, hi_x: int, hi_z: int,
 		floor_cell: int = 0) -> int:
-	var top: int = floor_cell
+	return floor_cell + rise_onto(PackedInt32Array([lo_x, floor_cell, lo_z, hi_x,
+		floor_cell + 1, hi_z]), floor_cell)
+
+
+## How far, in cells, boxes must rise for each to rest on whatever is under
+## its columns, and for none to be below [param floor_cell]: the most of
+## each box's highest surface under it less its bottom, and at least the
+## floor less the lowest bottom. [param by_x] and [param by_z] move them
+## across first. What several parts held together drop onto (Carry.aim).
+##
+## The parts under them are each asked once, by their bound first, the
+## highest first, and no further once none left could lift them more.
+## Asked box by box and every part in a column bucket box by box, a copy of
+## eight Technic parts over 42082-1's crane rescanned the parts in the
+## tower's columns for each of its hundreds of boxes: 320 ms a move, and a
+## 2 x 4 brick column by column 600 ms (sweep-2026-10-16).
+func rise_onto(packed: PackedInt32Array, floor_cell: int, by_x: int = 0,
+		by_z: int = 0) -> int:
+	# Boxes over the same columns rest by the lowest of them.
+	var lowest: Dictionary = {}
+	var low: int = 1 << 30
+	var lo_x: int = 1 << 30
+	var lo_z: int = 1 << 30
+	var hi_x: int = -(1 << 30)
+	var hi_z: int = -(1 << 30)
+	var n: int = 0
+	while n < packed.size():
+		var key := Vector4i(packed[n] + by_x, packed[n + 2] + by_z, packed[n + 3] + by_x,
+			packed[n + 5] + by_z)
+		var bottom: int = packed[n + 1]
+		if bottom < int(lowest.get(key, 1 << 30)):
+			lowest[key] = bottom
+		low = mini(low, bottom)
+		lo_x = mini(lo_x, key.x)
+		lo_z = mini(lo_z, key.y)
+		hi_x = maxi(hi_x, key.z)
+		hi_z = maxi(hi_z, key.w)
+		n += 6
+	if lowest.is_empty():
+		return 0
+	var rise: int = floor_cell - low
+	# The parts whose bounds meet those columns, each once, by the top of
+	# their bound, highest first.
+	var near := PackedInt64Array()
+	var ids := PackedInt64Array()
 	var seen: Dictionary = {}
 	for bx: int in range(_floor_div(lo_x, BUCKET), _floor_div(hi_x - 1, BUCKET) + 1):
 		for bz: int in range(_floor_div(lo_z, BUCKET), _floor_div(hi_z - 1, BUCKET) + 1):
@@ -1415,28 +1460,34 @@ func surface_under(lo_x: int, lo_z: int, hi_x: int, hi_z: int,
 				if seen.has(brick_id):
 					continue
 				seen[brick_id] = true
-				var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
-				var n: int = 0
-				while n < packed.size():
-					if packed[n] < hi_x and lo_x < packed[n + 3] \
-							and packed[n + 2] < hi_z and lo_z < packed[n + 5] \
-							and packed[n + 4] > top:
-						top = packed[n + 4]
-					n += 6
-	return top
-
-
-## The height a whole footprint would rest at: the highest surface under
-## any of its columns, so a part laid across a step sits on the step.
-func resting_height(
-	columns: Array[Vector2i], floor_cell: int = 0
-) -> int:
-	var best: int = floor_cell
-	for column: Vector2i in columns:
-		var height: int = surface_height(column.x, column.y, floor_cell)
-		if height > best:
-			best = height
-	return best
+				var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())
+				var top: int = 1 << 29
+				if bound.size() == 6:
+					if bound[0] >= hi_x or lo_x >= bound[3] or bound[2] >= hi_z \
+							or lo_z >= bound[5]:
+						continue
+					top = bound[4]
+				near.append(((top + (1 << 30)) << 31) | ids.size())
+				ids.append(brick_id)
+	near.sort()
+	var under: Array = lowest.keys()
+	for k: int in range(near.size() - 1, -1, -1):
+		if (near[k] >> 31) - (1 << 30) - low <= rise:
+			break
+		var theirs: PackedInt32Array = _boxes.get(ids[near[k] & ((1 << 31) - 1)],
+			PackedInt32Array())
+		var m: int = 0
+		while m < theirs.size():
+			var top: int = theirs[m + 4]
+			if top - low > rise and theirs[m] < hi_x and lo_x < theirs[m + 3] \
+					and theirs[m + 2] < hi_z and lo_z < theirs[m + 5]:
+				for key: Vector4i in under:
+					if top - int(lowest[key]) > rise and theirs[m] < key.z \
+							and key.x < theirs[m + 3] and theirs[m + 2] < key.w \
+							and key.y < theirs[m + 5]:
+						rise = top - int(lowest[key])
+			m += 6
+	return rise
 
 
 ## The six ways a part's studs can point.

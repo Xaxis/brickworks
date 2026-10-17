@@ -1715,6 +1715,9 @@ var _joint_last_fits: bool = false
 var _sites: Array = []
 var _sites_at: int = -1
 var _sites_world: BrickWorld = null
+## Every part down with its ends, by where they are (JointSnap.site_grid):
+## only the parts that changed are read again.
+var _site_grid: BrickGrid = null
 
 
 ## Whether the ghost is on a joint, where R turns the part about it.
@@ -1728,14 +1731,25 @@ func joint_words() -> String:
 	return _joint_words if _joint_site != null else ""
 
 
-## Every connector of every part down that a part could be put onto, read
-## again only when the model has changed.
+## Every connector of every part down that a part could be put onto, in
+## the order JointSnap.sites_in gives them, read again only for the parts
+## that changed.
 func joint_sites() -> Array:
 	if world != null and (_sites_at != world.revision or _sites_world != world):
-		_sites = JointSnap.sites_in(world, library)
+		var grid: BrickGrid = _joint_grid()
+		_sites = []
+		for brick: BrickWorld.Brick in world.bricks():
+			_sites.append_array(grid.kept_with(brick.id))
 		_sites_at = world.revision
 		_sites_world = world
 	return _sites
+
+
+func _joint_grid() -> BrickGrid:
+	if _site_grid == null:
+		_site_grid = JointSnap.site_grid(library)
+	_site_grid.follow(world)
+	return _site_grid
 
 
 ## Put the ghost on the joint the pointer is aimed at, if the part in hand
@@ -1747,12 +1761,12 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	var held: Array = JointSnap.ends_of(part)
 	if held.is_empty() or world == null:
 		return false
-	joint_sites()
 	# A little past what the line met: a hole's middle is inside the part
-	# whose face was struck.
+	# whose face was struck. Only the ends near the line are asked.
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
-	var site: JointSnap.End = JointSnap.aimed_at(_sites, held, origin, direction, before,
-		lattice.unseen)
+	var site: JointSnap.End = JointSnap.aimed_at(
+		JointSnap.near(_joint_grid(), origin, direction, before), held, origin, direction,
+		before, lattice.unseen)
 	if site == null:
 		return false
 	var options: Array = JointSnap.choices(held, site, origin, direction)
@@ -2070,15 +2084,13 @@ func _settle(
 
 	# Then drop it: the resting height is the highest surface under any
 	# column the part covers, so a part laid across a step sits on the step
-	# rather than sinking into it.
-	var columns: Array[Vector2i] = []
+	# rather than sinking into it. Asked of the rectangle at once: column
+	# by column, a 2 x 4 brick asked eight hundred of them at every move.
 	var from := BrickLattice.to_cell(Vector3(
 		snapped.x + box.position.x, 0.0, snapped.z + box.position.z))
 	var to := BrickLattice.to_cell(Vector3(
 		snapped.x + box.end.x, 0.0, snapped.z + box.end.z))
-	for x: int in range(from.x, maxi(to.x, from.x + 1)):
-		for z: int in range(from.z, maxi(to.z, from.z + 1)):
-			columns.append(Vector2i(x, z))
+	to = Vector3i(maxi(to.x, from.x + 1), 0, maxi(to.z, from.z + 1))
 
 	# Aimed at the underside of a part: hung under it, its top against
 	# that underside, the way a plate is pressed up under an overhang.
@@ -2089,7 +2101,7 @@ func _settle(
 	# can be.
 	if hit.is_valid() and hit.normal.y < 0:
 		# The struck cell is the lowest of the part above, and a box's
-		# cell n starts at n cells, as resting_height counts them.
+		# cell n starts at n cells, as surface_under counts them.
 		var top: float = hit.cell.y * BrickLattice.CELL
 		# Against the top of its body, not of its studs: the studs go up
 		# into the part above, as they do on a real one.
@@ -2106,7 +2118,7 @@ func _settle(
 		if hung + box.position.y >= GROUND_CELL * BrickLattice.CELL:
 			return Transform3D(basis, Vector3(snapped.x, hung, snapped.z))
 
-	var rest_cell: int = lattice.resting_height(columns, GROUND_CELL)
+	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies.
 	if hit.is_valid() and hit.normal.y == 0:
@@ -2688,11 +2700,7 @@ func settle_figure(target: Vector3, rotation: int,
 	var half := Vector3(footprint.x, 0.0, footprint.y) * (BrickLattice.STUD * 0.5)
 	var from: Vector3i = BrickLattice.to_cell(snapped - half)
 	var to: Vector3i = BrickLattice.to_cell(snapped + half)
-	var columns: Array[Vector2i] = []
-	for x: int in range(from.x, to.x):
-		for z: int in range(from.z, to.z):
-			columns.append(Vector2i(x, z))
-	var rest_cell: int = lattice.resting_height(columns, GROUND_CELL)
+	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	if hit != null and hit.is_valid() and hit.normal.y == 0:
 		rest_cell = maxi(rest_cell, hit.adjacent().y)
 	return Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL,

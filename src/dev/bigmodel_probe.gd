@@ -5,17 +5,28 @@
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --profile [--bigmodel-out=FILE.json] PATH ...
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --open [--times=N] [--dump=DIR] [--profile] PATH ...
+##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --sweep [--profile] [--bigmodel-out=FILE.json] [PATH ...]
 ##
 ## Bare, it is the check (tools/check.sh): two models made here, of 1,000
 ## and 5,000 parts in sub-models with author's steps, each opened as File,
 ## Open opens a file. On each, as a person makes them: a right-drag orbit,
-## Ctrl-A, D (the selection nudged), Ctrl-Z and Ctrl-Shift-Z, Delete and
-## Ctrl-Z, and the timeline's Next. What it holds is how each act grows
+## a part in hand swept across the model a step a frame (a 2 x 4 brick, a
+## Technic pin, a copy of eight parts, a figure and a sticker, each in
+## turn), Ctrl-A, D (the selection nudged), Ctrl-Z and Ctrl-Shift-Z, Delete
+## and Ctrl-Z, and the timeline's Next. What it holds is how each act grows
 ## from the small model to the big one, a ratio of two runs on the same
-## machine in the same minute, never a wall clock: an orbit frame and a
-## step of the timeline must not grow with the model, and select all, the
-## move, its undo and redo, Delete and its undo no faster than the model
-## (near-linear; quadratic is 25 times at five times the parts).
+## machine in the same minute, never a wall clock: an orbit frame, a move
+## with a part in hand (its frame, and the aiming alone) and a step of the
+## timeline must not grow with the model, and select all, the move, its
+## undo and redo, Delete and its undo no faster than the model (near-linear;
+## quadratic is 25 times at five times the parts). And that the parts the
+## aiming asks, found by where they are (BrickGrid), are every one asking
+## them all would have found.
+##
+## With --sweep, the models are opened and only swept, and judged so when
+## made here: with --profile, the aiming's pieces at each move, a grid of
+## places over the model each aimed at alone (_aim_map), and what the model
+## changing costs the parts kept by where they are.
 ##
 ## With PATHs (real sets' files), each is opened and timed the same way,
 ## nothing judged. --profile says where each act's time went: every
@@ -35,8 +46,9 @@
 ## (REAL_SETS), and holds the big one's open to near-linear in its parts.
 ##
 ## Measured at 5,025 parts in a browser (CADTASK.md, 2026-10-16) an
-## orbit frame's own work was 2.7 s, select all 65 s, and the undo of a
-## Delete of everything had not ended after 15 minutes.
+## orbit frame's own work was 2.7 s, select all 65 s, the undo of a Delete
+## of everything had not ended after 15 minutes, and a part swept in hand
+## was 1.1 s a move.
 extends SceneTree
 
 ## Two real sets the check opens, of 925 and 4,139 parts (the LDraw model
@@ -65,6 +77,12 @@ var _profile: bool = false
 var _open_only: bool = false
 var _times: int = 3
 var _dump: String = ""
+## --sweep: each model opened and only the sweeps made (_sweep).
+var _sweep_only: bool = false
+## --shots=DIR, windowed: a picture of each sweep halfway across, what the
+## person sees with the part in hand over the model.
+var _shots: String = ""
+var _model_name: String = ""
 ## Name -> [calls, total us, most us], while profiling.
 var _spent: Dictionary = {}
 
@@ -89,6 +107,10 @@ func _run() -> void:
 			_times = maxi(int(argument.trim_prefix("--times=")), 1)
 		elif argument.begins_with("--dump="):
 			_dump = argument.trim_prefix("--dump=")
+		elif argument == "--sweep":
+			_sweep_only = true
+		elif argument.begins_with("--shots="):
+			_shots = argument.trim_prefix("--shots=")
 		else:
 			paths.append(argument)
 	# Parts a file carries are built on its first open, as for a person
@@ -117,7 +139,8 @@ func _run() -> void:
 			rows.append(await _one("made %d" % size, _made(size)))
 		# And two real sets opened, where this checkout has them: each its
 		# first open, the parts the file carries built.
-		sets = await _real_sets()
+		if not _sweep_only:
+			sets = await _real_sets()
 	else:
 		for path: String in paths:
 			if _open_only:
@@ -129,7 +152,11 @@ func _run() -> void:
 		file.store_string(JSON.stringify({"models": rows}, " "))
 		file.close()
 		print("bigmodel: written to %s" % out_path)
-	if paths.is_empty():
+	if paths.is_empty() and _sweep_only:
+		_judge_sweeps(rows[0], rows[1])
+		print("bigmodel: %s" % ("a part in hand moves over the big model as over the small"
+			if _failures == 0 else "%d checks failed" % _failures))
+	elif paths.is_empty():
 		_judge(rows[0], rows[1])
 		_judge_open(sets)
 		print("bigmodel: %s" % ("every act grows no faster than the model"
@@ -155,9 +182,10 @@ func _quit_mid_weigh() -> void:
 
 ## A model of [param parts] parts as a file: towers of bricks of four
 ## sizes in eight colours, fifty to a sub-model, each sub-model its own
-## steps of ten, laid on a grid.
+## steps of ten, laid on a grid. One size in four is a Technic brick with
+## holes, so a pin in hand has connectors to be aimed at (_sweep).
 static func _made(parts: int) -> String:
-	const PARTS := ["3001.dat", "3003.dat", "3010.dat", "3004.dat"]
+	const PARTS := ["3001.dat", "3003.dat", "3701.dat", "3004.dat"]
 	const COLOURS := [4, 1, 14, 2, 15, 0, 71, 72]
 	const PER := 50
 	var subs: int = ceili(float(parts) / PER)
@@ -184,6 +212,7 @@ func _one(name: String, text: String) -> Dictionary:
 	await _frames(10)
 	_spent.clear()
 	var row: Dictionary = {"model": name}
+	_model_name = name.get_basename()
 	var began: int = Time.get_ticks_usec()
 	var result: Dictionary = _store.open_text(text, name.get_basename())
 	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
@@ -204,6 +233,20 @@ func _one(name: String, text: String) -> Dictionary:
 
 	row["idle"] = await _act("idle", func() -> void: pass, func() -> bool: return true, 10)
 
+	# A part in hand swept across the model, a step a frame, as a builder
+	# moves one over it looking for its place; and what else a hand holds.
+	# Before the orbit, so the view is the one the open framed and two
+	# builds' sweeps meet the model at the same places, ghost for ghost.
+	for kind: String in SWEEPS:
+		var swept: Dictionary = await _sweep(kind, middle, view)
+		if not swept.is_empty():
+			row["sweep" if kind == "brick" else "sweep_" + kind] = swept
+		_profiled(row, "sweep_" + kind)
+		await _quiet()
+	if _sweep_only:
+		print("  %s, %d parts: %s" % [name, row["parts"], JSON.stringify(_summary(row))])
+		return row
+
 	# orbit: a right-drag across the middle, a step a frame.
 	_move(middle, Vector2.ZERO, 0)
 	await _frames(3)
@@ -222,6 +265,7 @@ func _one(name: String, text: String) -> Dictionary:
 	_give_back(nodes)
 	_profiled(row, "orbit")
 	await _quiet()
+
 
 	var everything: int = row["parts"]
 	var sample: int = _a_part()
@@ -495,7 +539,7 @@ func _act(name: String, press: Callable, done: Callable, most: int = 1200) -> Di
 ## [param count] frames, calling [param each] with the frame's number
 ## before each: each frame's time. With [param nodes], their _process is
 ## called here, one at a time, timed.
-func _framed(count: int, each: Callable, nodes: Array = []) -> Dictionary:
+func _framed(count: int, each: Callable, nodes: Array = [], label: String = "orbit") -> Dictionary:
 	await process_frame
 	var last: int = Time.get_ticks_usec()
 	var frames: Array = []
@@ -518,8 +562,363 @@ func _framed(count: int, each: Callable, nodes: Array = []) -> Dictionary:
 	sorted.sort()
 	var out: Dictionary = {"median_ms": sorted[sorted.size() / 2], "worst_ms": sorted.back(),
 		"frames": frames.size()}
-	_said("orbit", out["median_ms"], out["worst_ms"])
+	_said(label, out["median_ms"], out["worst_ms"])
 	return out
+
+
+## What a hand holds while it sweeps (_sweep): a 2 x 4 brick, a Technic pin
+## (put onto the joints it is aimed at), a copy of eight parts carried, a
+## figure, and a sticker (laid on the face it is over).
+const SWEEPS := ["brick", "pin", "copy", "figure", "sticker"]
+const HELD := {"brick": "a 2 x 4 brick", "pin": "a Technic pin", "copy": "a copy of eight parts",
+	"figure": "a figure", "sticker": "a sticker"}
+## Aiming alone is a millisecond or two: under this it is read as this, so
+## a fraction of a millisecond's noise is not a ratio.
+const AIM_FLOOR_MS := 1.0
+## How many moves a sweep makes, one a frame.
+const SWEEP_MOVES := 40
+
+
+## [param kind] taken into hand (SWEEPS), the pointer swept across the
+## model's middle a step a frame, and put away: its frames, how many of
+## them had a ghost, and every ghost's place (rounded to a hundredth of an
+## LDU) with whether it could go down, so two builds' sweeps are compared.
+func _sweep(kind: String, middle: Vector2, view: Rect2) -> Dictionary:
+	if not await _take_in_hand(kind):
+		print("    sweep %-7s nothing of that kind to hold here" % kind)
+		return {}
+	var from: Vector2 = middle - Vector2(view.size.x * 0.35, 0.0)
+	var by := Vector2(view.size.x * 0.7 / SWEEP_MOVES, 0.0)
+	var at := func(n: int) -> Vector2:
+		return from + by * n + Vector2(0.0, view.size.y * 0.06 * sin(n * 0.5))
+	_move(at.call(0), Vector2.ZERO, 0)
+	await _quiet()
+	var ghosts: Array = []
+	var nodes: Array = _take_processing() if _profile else []
+	var out: Dictionary = await _framed(SWEEP_MOVES, func(n: int) -> void:
+		if n > 0:
+			ghosts.append(_ghost_now())
+		_move(at.call(n + 1), by, 0), nodes, "sweep " + kind)
+	ghosts.append(_ghost_now())
+	if not _shots.is_empty() and DisplayServer.get_name() != "headless":
+		# Back to halfway, a frame drawn there, and the picture.
+		_move(at.call(SWEEP_MOVES / 2), by, 0)
+		await _frames(3)
+		DirAccess.make_dir_recursive_absolute(_shots)
+		root.get_texture().get_image().save_png(_shots.path_join("%s-%s.png"
+			% [_model_name, kind]))
+	_give_back(nodes)
+	out["ghosts"] = ghosts
+	out["aimed"] = ghosts.filter(func(g: Array) -> bool: return not g.is_empty()).size()
+	var points: Array = []
+	for n: int in SWEEP_MOVES:
+		points.append(at.call(n + 1))
+	# What aiming costs a move, timed alone at each place the pointer was
+	# (Main._refresh_preview, all of it): the frames hold the engine's own
+	# few milliseconds as well, and a floor under them.
+	var aims: Array = []
+	for point: Vector2 in points:
+		var t0: int = Time.get_ticks_usec()
+		_main.call("_refresh_preview", point)
+		aims.append((Time.get_ticks_usec() - t0) / 1000.0)
+	aims.sort()
+	out["aim_ms"] = aims[aims.size() / 2]
+	out["aim_worst_ms"] = aims.back()
+	out["same"] = _found_as_by_all(points)
+	print("    sweep %-7s a ghost in %d of %d moves; aiming %.2f ms a move (worst %.2f)%s"
+		% [kind, out["aimed"], ghosts.size(), out["aim_ms"], out["aim_worst_ms"],
+		"" if out["same"] else "; NOT what asking every one finds"])
+	if _profile:
+		_sweep_sections(out, points)
+		_aim_map(out, view)
+	_put_away(kind)
+	return out
+
+
+## Aiming at every place on a grid over the model's part of the window,
+## each timed alone: one line across it misses where aiming is dear (the
+## desktop's sweep of 42082-1 had frames of a second over one side of it).
+## The worst five again, in their pieces.
+func _aim_map(row: Dictionary, view: Rect2) -> void:
+	var timed: Array = []
+	for i: int in 32:
+		for j: int in 20:
+			var point: Vector2 = view.position + view.size * Vector2((i + 0.5) / 32.0,
+				(j + 0.5) / 20.0)
+			var t0: int = Time.get_ticks_usec()
+			_main.call("_refresh_preview", point)
+			timed.append([(Time.get_ticks_usec() - t0) / 1000.0, point])
+	timed.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var at := func(q: float) -> float:
+		return float(timed[mini(timed.size() - 1, int(timed.size() * q))][0])
+	row["map"] = {"median_ms": at.call(0.5), "p95_ms": at.call(0.95), "p99_ms": at.call(0.99),
+		"worst_ms": float(timed.back()[0]), "points": timed.size()}
+	print("    aiming over a grid of %d places: median %.2f ms, 95th %.2f, 99th %.2f, worst %.2f"
+		% [timed.size(), row["map"]["median_ms"], row["map"]["p95_ms"], row["map"]["p99_ms"],
+		row["map"]["worst_ms"]])
+	var worst: Array = []
+	for n: int in range(timed.size() - 1, maxi(timed.size() - 6, -1), -1):
+		worst.append(timed[n][1])
+		print("      %.2f ms at %s" % [timed[n][0], timed[n][1]])
+	var pieces: Dictionary = {}
+	_sweep_sections(pieces, worst)
+	row["map"]["worst_pieces"] = pieces.get("sections", {})
+
+
+## At each of [param points], whether the near ones asked find what asking
+## every one found: the connector a part in hand is aimed at
+## (JointSnap.aimed_at with and without its grid), and every part whose box
+## the line meets for a sticker (Stickers._along against every part's).
+func _found_as_by_all(points: Array) -> bool:
+	var camera: CadCamera = _main.get("_camera")
+	var library: PartLibrary = _builder.library
+	var part: Lbm.PartMesh = library.mesh_for(_builder.held_part)
+	var held: Array = JointSnap.ends_of(part) if part != null else []
+	var sticker: bool = part != null and Stickers.sticks(library, _builder.held_part)
+	if _builder.is_carrying() or _builder.is_holding_figure() or (held.is_empty() and not sticker):
+		return true
+	# Read part by part (the builder's) and all at once (as it was): the same
+	# ends in the same order.
+	var sites: Array = JointSnap.sites_in(_world, library)
+	var kept: Array = _builder.joint_sites()
+	if kept.size() != sites.size():
+		print("    the builder keeps %d ends, the world has %d" % [kept.size(), sites.size()])
+		return false
+	for n: int in sites.size():
+		var one: JointSnap.End = sites[n]
+		var other: JointSnap.End = kept[n]
+		if one.brick != other.brick or one.kind != other.kind or one.at != other.at \
+				or one.axis != other.axis or one.reach != other.reach:
+			print("    end %d kept as %s of %d, read as %s of %d" % [n, other.at, other.brick,
+				one.at, one.brick])
+			return false
+	var grid: BrickGrid = JointSnap.site_grid(library)
+	grid.follow(_world)
+	for point: Vector2 in points:
+		var origin: Vector3 = camera.ray_origin(point)
+		var way: Vector3 = camera.ray_normal(point).normalized()
+		if not held.is_empty():
+			var hit: BrickLattice.Hit = _builder.lattice.raycast(origin, way)
+			for before: float in [INF, hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid()
+					else INF]:
+				var all: JointSnap.End = JointSnap.aimed_at(sites, held, origin, way, before,
+					_builder.lattice.unseen)
+				var near: JointSnap.End = JointSnap.aimed_at(
+					JointSnap.near(grid, origin, way, before), held, origin, way, before,
+					_builder.lattice.unseen)
+				# The same end, read twice: two objects, one connector.
+				if _end_words(all) != _end_words(near):
+					print("    at %s the grid found %s, asking every one %s" % [point,
+						_end_words(near), _end_words(all)])
+					return false
+		if sticker:
+			var near: Array = Stickers._along(_world, library, origin, way)
+			var wanted: Array = []
+			for brick: BrickWorld.Brick in _world.bricks():
+				var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+				if mesh == null or (brick.transform * mesh.bounds).grow(0.5).intersects_ray(
+						origin, way) != null:
+					wanted.append(brick)
+			# Every one asking all would have asked, in the same order.
+			var found: Array = near.filter(func(b: BrickWorld.Brick) -> bool:
+				return wanted.has(b))
+			if found != wanted:
+				print("    at %s the grid gave %d of the %d parts the line meets" % [point,
+					found.size(), wanted.size()])
+				return false
+			# And the part struck is the one every part's faces asked in the
+			# world's order strike first (no faces headless: none either way).
+			var face: Stickers.Face = Stickers.face_at(_world, library, origin, way, false)
+			var first: int = _struck_by_all(origin, way)
+			if face != null and face.bricks[0] != first:
+				print("    at %s the sticker went on part %d, every part asked strikes %d"
+					% [point, face.bricks[0], first])
+				return false
+	return true
+
+
+## The part a line strikes first, every part's faces asked in the world's
+## order, as Stickers.face_at asked them before it asked the near ones
+## nearest first: 0 for none.
+func _struck_by_all(origin: Vector3, way: Vector3) -> int:
+	var library: PartLibrary = _builder.library
+	var best: float = INF
+	var struck: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Stickers.sticks(library, brick.part_id):
+			continue
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null or (brick.transform * mesh.bounds).grow(0.5).intersects_ray(
+				origin, way) == null:
+			continue
+		var back: Transform3D = brick.transform.affine_inverse()
+		var hit: Dictionary = Rays.nearest(Stickers._faces_of(library, brick.part_id),
+			back * origin, (back.basis * way).normalized())
+		if hit.is_empty():
+			continue
+		var d: float = origin.distance_to(brick.transform * (hit["position"] as Vector3))
+		if d < best:
+			best = d
+			struck = brick.id
+	return struck
+
+
+## An end of a part down as what it is: whose, what kind, where and which
+## way; "" for none.
+static func _end_words(end: JointSnap.End) -> String:
+	if end == null:
+		return ""
+	return "%d %s %s %s %s" % [end.brick, end.kind, end.at, end.axis, end.reach]
+
+
+## The ghost as it stands: [x, y, z, its basis's x and z rows, valid], or []
+## when there is none.
+func _ghost_now() -> Array:
+	if not _builder.has_preview():
+		return []
+	var at: Transform3D = _builder.ghost_transform()
+	if _builder.is_carrying():
+		at = _builder.carrying.get("_frame")
+	var out: Array = []
+	for v: float in [at.origin.x, at.origin.y, at.origin.z, at.basis.x.x, at.basis.x.y,
+			at.basis.x.z, at.basis.z.x, at.basis.z.y, at.basis.z.z]:
+		out.append(snappedf(v, 0.01))
+	out.append(_builder.can_place())
+	return out
+
+
+## Take [param kind] into hand as a person does: a part by its tile, a copy
+## of parts by Ctrl-C and Ctrl-V, a figure from the figure builder.
+func _take_in_hand(kind: String) -> bool:
+	var library: PartLibrary = _builder.library
+	match kind:
+		"brick":
+			_main.call("_on_part_chosen", "3001")
+		"pin":
+			_main.call("_on_part_chosen", "2780")
+		"sticker":
+			var sticker: String = ""
+			for part_id: String in library.parts:
+				if Stickers.sticks(library, part_id) and library.mesh_for(part_id) != null:
+					sticker = part_id
+					break
+			if sticker.is_empty():
+				return false
+			_main.call("_on_part_chosen", sticker)
+		"copy":
+			var ids: Array = []
+			for brick: BrickWorld.Brick in _world.bricks():
+				if not _store.scenery.has(brick.id):
+					ids.append(brick.id)
+				if ids.size() >= 8:
+					break
+			# Edit, Copy then Paste: what Ctrl-C and Ctrl-V run.
+			_builder.clear_selection()
+			for brick_id: int in ids:
+				_builder.selection[brick_id] = true
+			_builder.copy_selection()
+			_builder.clear_selection()
+			(_main.get("_verbs") as EditVerbs).paste()
+		"figure":
+			_main.call("_hold_figure", Minifig.new())
+	await _quiet()
+	if kind == "copy":
+		return _builder.is_carrying()
+	if kind == "figure":
+		return _builder.is_holding_figure()
+	return library.mesh_for(_builder.held_part) != null
+
+
+func _put_away(kind: String) -> void:
+	match kind:
+		"copy":
+			_builder.cancel_carry()
+		"figure":
+			_builder.drop_figure()
+	_builder.held_part = "3001"
+	(_main.get("_verbs") as EditVerbs).set_mode("select")
+	_builder.hide_preview()
+
+
+## The sweep again, without frames: at each place the pointer was, what
+## aiming the ghost costs, whole and in its pieces, timed alone.
+func _sweep_sections(row: Dictionary, points: Array) -> void:
+	var camera: CadCamera = _main.get("_camera")
+	var part: Lbm.PartMesh = _builder.library.mesh_for(_builder.held_part)
+	var basis: Basis = BrickLattice.basis_for(_builder.held_face, _builder.held_rotation)
+	var spent: Dictionary = {}
+	var add := func(name: String, us: int) -> void:
+		spent[name] = int(spent.get(name, 0)) + us
+	for point: Vector2 in points:
+		var origin: Vector3 = camera.ray_origin(point)
+		var direction: Vector3 = camera.ray_normal(point)
+		var t0: int = Time.get_ticks_usec()
+		_main.call("_refresh_preview", point)
+		add.call("main._refresh_preview", Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		_builder.update_preview(origin, direction)
+		add.call("builder.update_preview", Time.get_ticks_usec() - t0)
+		if _builder.is_carrying() or _builder.is_holding_figure() or part == null:
+			continue
+		if Stickers.sticks(_builder.library, _builder.held_part):
+			t0 = Time.get_ticks_usec()
+			Stickers.face_at(_world, _builder.library, origin, direction, false)
+			add.call("Stickers.face_at", Time.get_ticks_usec() - t0)
+			continue
+		t0 = Time.get_ticks_usec()
+		var hit: BrickLattice.Hit = _builder.lattice.raycast(origin, direction)
+		add.call("lattice.raycast", Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		_builder.call("_onto_a_joint", part, origin, direction.normalized(), hit)
+		add.call("builder._onto_a_joint", Time.get_ticks_usec() - t0)
+		var target: Vector3 = BrickLattice.to_ldu(hit.adjacent()) if hit.is_valid() \
+			else origin
+		t0 = Time.get_ticks_usec()
+		var onto: Variant = _builder.call("_onto_side_studs", part, basis, hit, origin, direction)
+		add.call("builder._onto_side_studs", Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		var placed: Transform3D = _builder.call("_settle", part, basis, target, hit)
+		add.call("builder._settle", Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		_builder.room_for(_builder.held_part, placed if onto == null else onto)
+		add.call("builder.room_for", Time.get_ticks_usec() - t0)
+	for _point: Vector2 in points:
+		var t1: int = Time.get_ticks_usec()
+		_main.call("_select_hover")
+		add.call("main._select_hover", Time.get_ticks_usec() - t1)
+		t1 = Time.get_ticks_usec()
+		_main.call("_cursor_state")
+		add.call("main._cursor_state", Time.get_ticks_usec() - t1)
+		t1 = Time.get_ticks_usec()
+		_main.call("_page_moment")
+		add.call("main._page_moment", Time.get_ticks_usec() - t1)
+	var out: Dictionary = {}
+	for name: String in spent:
+		out[name] = snappedf(int(spent[name]) / 1000.0 / points.size(), 0.01)
+		print("        section %8.2f ms a move  %s" % [out[name], name])
+	# And what the model changing costs: every connector read at once (as
+	# it was, after every change), the parts with their ends kept by place
+	# the first time, and the walk that finds what changed after a part
+	# went down (one moved where it stands, which changes the model's
+	# revision and nothing else).
+	var t2: int = Time.get_ticks_usec()
+	var sites: Array = JointSnap.sites_in(_world, _builder.library)
+	var t3: int = Time.get_ticks_usec()
+	var grid: BrickGrid = JointSnap.site_grid(_builder.library)
+	grid.follow(_world)
+	var t4: int = Time.get_ticks_usec()
+	var one: BrickWorld.Brick = _world.get_brick(_a_part())
+	_world.move_brick(one.id, one.transform)
+	var t5: int = Time.get_ticks_usec()
+	grid.follow(_world)
+	var t6: int = Time.get_ticks_usec()
+	out["once: JointSnap.sites_in"] = snappedf((t3 - t2) / 1000.0, 0.01)
+	out["once: the ends kept by place, first"] = snappedf((t4 - t3) / 1000.0, 0.01)
+	out["after a change: the walk"] = snappedf((t6 - t5) / 1000.0, 0.01)
+	print("        %d connectors read at once %.1f ms; kept by place, first %.1f ms, "
+		% [sites.size(), (t3 - t2) / 1000.0, (t4 - t3) / 1000.0]
+		+ "after a change %.1f ms" % ((t6 - t5) / 1000.0))
+	row["sections"] = out
 
 
 ## The quicker of two runs of an act, with both times.
@@ -600,10 +999,34 @@ func _judge(small: Dictionary, big: Dictionary) -> void:
 		+ "the press (%d times in 30 frames)" % int(big["orbit"]["looked"]),
 		int(big["orbit"]["looked"]) <= 3)
 	_ratio("a step of the timeline", small["step"]["total_ms"], big["step"]["total_ms"], FLAT)
+	_judge_sweeps(small, big)
 	_ratio("ten steps of the timeline, alone", small["ten_steps_ms"], big["ten_steps_ms"], FLAT)
 	# With it, no faster.
 	for act: String in ["select_all", "move", "undo_move", "redo_move", "delete", "undo_delete"]:
 		_ratio(act, small[act]["total_ms"], big[act]["total_ms"], LINEAR)
+
+
+## Nor a part in hand moved over the model, whatever the hand holds: a
+## frame of the sweep, and the aiming alone, finer.
+func _judge_sweeps(small: Dictionary, big: Dictionary) -> void:
+	for kind: String in SWEEPS:
+		var key: String = "sweep" if kind == "brick" else "sweep_" + kind
+		if not small.has(key) or not big.has(key):
+			_check("%s taken into hand at both sizes" % HELD[kind], false)
+			continue
+		var one: Dictionary = small[key]
+		var other: Dictionary = big[key]
+		# Headless a part's faces are not to be had (no triangles without a
+		# renderer), so a sticker finds none to lie on: its search is timed.
+		if kind != "sticker":
+			_check("%s in hand stood under the pointer as it swept the model (%d and %d of %d)"
+				% [HELD[kind], one["aimed"], other["aimed"], SWEEP_MOVES],
+				int(one["aimed"]) >= SWEEP_MOVES / 2 and int(other["aimed"]) >= SWEEP_MOVES / 2)
+		_ratio("a move with %s in hand, its frame" % HELD[kind], one["median_ms"],
+			other["median_ms"], FLAT)
+		_ratio("aiming %s, alone" % HELD[kind], one["aim_ms"], other["aim_ms"], FLAT, AIM_FLOOR_MS)
+		_check("%s in hand: the near connectors and faces asked find what asking every one did"
+			% HELD[kind], bool(one["same"]) and bool(other["same"]))
 
 
 ## The real sets' first opens (_opened), each once, the parts the file
@@ -640,9 +1063,11 @@ func _judge_open(sets: Array) -> void:
 		small["open_settled_ms"], big["open_settled_ms"], LINEAR / (float(BIG) / SMALL) * grew)
 
 
-func _ratio(what: String, small_ms: float, big_ms: float, most: float) -> void:
-	var ratio: float = maxf(big_ms, FLOOR_MS) / maxf(small_ms, FLOOR_MS)
-	_check("%s grows %.1fx (%.0f ms -> %.0f ms; at most %.0fx)" % [what, ratio, small_ms, big_ms,
+func _ratio(what: String, small_ms: float, big_ms: float, most: float,
+		floor_ms: float = FLOOR_MS) -> void:
+	var ratio: float = maxf(big_ms, floor_ms) / maxf(small_ms, floor_ms)
+	var said: String = "%.0f ms -> %.0f ms" if floor_ms >= 5.0 else "%.2f ms -> %.2f ms"
+	_check("%s grows %.1fx (%s; at most %.0fx)" % [what, ratio, said % [small_ms, big_ms],
 		most], ratio <= most)
 
 
