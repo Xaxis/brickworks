@@ -28,7 +28,13 @@ What each one guards against, all learned the hard way on 2026-10-13:
   checks (idle, arrival, progress, cursor) run alone: beside a heavy flow,
   idle drew 4 frames for 7 moves, against 16 alone. An unknown name fails,
   where it used to run bare node and "pass". The script runs from a copy
-  of itself, so editing it mid-battery cannot break the run.
+  of itself, so editing it mid-battery cannot break the run. `frames`
+  (`cad_frames.mjs --gate`, alone too) holds what a frame costs the app on
+  75969-1: each press of the timeline's Next and an orbit's frames under
+  200 ms of the app's own work, select all under 400. No check held that:
+  the grab's drag
+  handles took a step from 75 ms to 6.7 s, and m61 shipped with it
+  (docs/CADTASK.md, section 6).
 - The merge scripts hold a lock (`.git/worktrees/<name>/merging`) until their
   last gate is done, and `ship.sh` refuses a worktree that has one. m26 was
   shipped as soon as its merge commit appeared, while the tool-list check

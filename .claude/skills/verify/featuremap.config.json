@@ -792,6 +792,13 @@
     },
     {
       "kind": "ui",
+      "label": "typed place and hinge",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "swing on a hinge",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
@@ -2033,7 +2040,7 @@
       "kind": "cli",
       "label": "cad task frames in a browser",
       "entry": "tools/web/cad_frames.mjs",
-      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web); --gate --arrive=300 --only=orbit,select_all,step on 75969-1 is the release's frames check: each step and an orbit's frames under 200 ms of the app's own work, select all under 400, exit 1 on a miss",
       "area": "view"
     },
     {
@@ -2070,6 +2077,13 @@
       "entry": "tools/web/flex_skin_flow.mjs",
       "reach": "node --env-file=.env tools/web/flex_skin_flow.mjs --url=http://127.0.0.1:8871/ --out=shots/flex_skin MODEL.mpd   (a local export served by tools/web/serve.py: each file opened through Open… > From a file, its flexible parts drawn, none said not shown, the carried parts built counted, a picture each)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "off-grid probe",
+      "entry": "src/dev/offgrid_probe.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
+      "area": "building"
     },
     {
       "kind": "cli",
