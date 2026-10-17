@@ -4796,6 +4796,108 @@
   },
   {
     "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Suggest sections"
+    },
+    "description": "How a builder would split the model into sections, as Build, Suggest sections does: the way a set splits into numbered bags and sub-builds. Each is connected and one piece, of a sensible size, joined to the rest by few joints, numbered in the order it is built, with the sections it is built onto and the way it comes off. Read from the booklet planner and the build check's joint graph. Changes nothing in the model; the suggestion is shown in the person's model tree. make_sections makes them sub-assemblies.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "suggest_sections"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make the sections"
+    },
+    "description": "Make the suggested sections (suggest_sections) sub-assemblies, as one undo step, as the model tree's Accept all does. With no sections= every suggestion as suggested; with sections= one sub-assembly for each entry: its name and the numbers of the suggestions it is made of (two or more merge them). Parts already in a sub-assembly go inside the new one.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "description": "suggestion numbers",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "name": "make_sections"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Break out a section"
+    },
+    "description": "Pull a section (a sub-assembly) away from the model the way it comes off, as Build, Break out the section does: up off the studs it stands on, or out to the side it is joined on, clear of the rest by two studs, by whole studs and bricks. One undo step. Work on it there with edit_model as anywhere. put_back=true puts it exactly where it was (one undo step); all=true puts every section back. Saved and exported files always have every section in place.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "description": "with put_back: every section",
+          "type": "boolean"
+        },
+        "put_back": {
+          "type": "boolean"
+        },
+        "section": {
+          "description": "its name or path, as the sub-assemblies are listed",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "break_out_section"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Evaluate a section"
+    },
+    "description": "A section on its own, as Build, Evaluate the section does: its parts and count, its parts list, weight, whether it holds together as a separate build (the build check on it alone), whether it stands on its own base (Balance), what joins it to the rest and whether those joints carry its load, and how many steps it takes alone. section= a sub-assembly's name or path, or suggestion= a suggest_sections number. Changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "evaluate_section"
+  },
+  {
+    "annotations": {
       "openWorldHint": true,
       "readOnlyHint": true,
       "title": "Search the gallery"

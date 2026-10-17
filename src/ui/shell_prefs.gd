@@ -25,7 +25,7 @@ const DEFAULTS: Dictionary = {
 	"outliner_open": false,
 	# The model tree's and the properties' heights in the left-hand
 	# column (PanelStack); the parts bin has what is left.
-	"tree_height": 170.0,
+	"tree_height": 210.0,
 	"properties_height": 230.0,
 	# In a window with room for one column beside the model, the one
 	# showing: "parts" (the bin, the tree and the properties), "assistant",

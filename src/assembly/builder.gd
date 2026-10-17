@@ -472,6 +472,19 @@ func _apply(step: Dictionary) -> Dictionary:
 		stepped.step = int(step["step"])
 		return {"undo": "restep", "brick": stepped.id, "step": had}
 
+	# A section broken out of the model or put back (Sections): which
+	# sections are out, and where each came from, set back to what the step
+	# kept; the record it replaced is the reverse.
+	if step.get("undo", "") == "sectionout":
+		var section: String = str(step["path"])
+		var had: Variant = world.broken_out.get(section)
+		var record: Variant = step.get("record")
+		if record is Dictionary:
+			world.broken_out[section] = record
+		else:
+			world.broken_out.erase(section)
+		return {"undo": "sectionout", "path": section, "record": had}
+
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
 		var held: int = int(world.unit_steps.get(unit, -1))

@@ -37,6 +37,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   battery that wrote no results holds the release. It used to look only for
   a failed line, so when the checks could not even start (a relative
   worktree path) m31 went on to deploy production unchecked (2026-10-15).
+- `RELEASE_OUT=<folder> ship_after.sh <prev-tag> <worktree> <tag> <check…>`
+  queues a release behind the one before it: it waits for that release's
+  result (`<prev>.done`, or the `exit=` line ending `<prev>_ship.log`),
+  ships only if it shipped, and writes its own. `-` for none before. A
+  waiter written by hand found the release before by its command line, its
+  own grep hid it, and m43's ship went at once (2026-10-17).
 - `SHIP_REUSE=1 ship.sh <worktree> <tag> <check…>` reuses the preview that
   tag made, only if it was made from the same commit (`<tag>_preview.sha`),
   and runs the named checks on it again; each must still pass. A timing

@@ -15,9 +15,26 @@ whole cycle.
 
 ### Added
 
+- Sections, as a builder builds one at a time. Build, Suggest sections
+  splits any model the way a set splits into bags: each section one
+  piece, of a sensible size, joined to the rest by few joints, numbered
+  in build order. The suggestions sit in the model tree to accept,
+  rename, merge or split; accepted, they are sub-assemblies, one undo.
+  `Y` breaks a section out of the model to work on and puts it back
+  exactly; `Shift+Y` draws every section apart. Evaluate the section
+  weighs one alone: its parts, weight, whether it holds together and
+  stands, what joins it and what that carries, and its own booklet.
+  Claude has the same as `suggest_sections`, `make_sections`,
+  `break_out_section` and `evaluate_section`.
 - LDCad's hoses, ropes, strings and bands are drawn: each as one piece,
   from the file's own lines, in its colour and step, to click and hide.
   They used to be kept in the file but left out of the view.
+- New chat for this tab, in Account and the assistant panel: Claude opens
+  on a new chat whose first message names the tab, in claude.ai, the
+  Claude app or Claude Code. That chat builds in this tab and no other.
+- Each window says which Claude chat is working in it, on the toolbar and
+  in Account. When two chats work in one, it says so, and Keep this one
+  moves the other off.
 - A part on a joint can be taken hold of and moved as the real one moves.
   With Select, drag a hinge's leaf, a clip on a bar, a turntable's top, a
   wheel or a gear, a minifigure's arm or a ball joint: everything built on
@@ -28,6 +45,14 @@ whole cycle.
   move_part.
 
 ### Changed
+
+- With several tabs or windows open, a new Claude chat that has not chosen
+  one asks before its first change, listing them. It used to build in the
+  tab used last, which could be the one another chat was building in.
+- Claude finds a tab by its model's name as well as its id: "the castle
+  tab".
+- With two chats in one tab, one chat's undo no longer takes back the
+  other's change.
 
 - In a browser, the parts a file carries are built and shown: the LEGO®
   Technic set 42082 leaves out 3 parts instead of 167. The download is
@@ -44,6 +69,12 @@ whole cycle.
 - The pictures the assistant judges its work by no longer draw dark tops
   white from one side. Its fill light caught the stud tops of the far rows,
   and a dark grey model could read as banded in white.
+- The gallery no longer shows the models Brickworks's own checks share
+  while they run, and neither do profiles, collections or the sitemap.
+  Each is still at its own link.
+- Brickify stops when you cancel it, close its panel or quit. It used to
+  run on to its end: quitting during a large run waited 25 s, and now
+  takes under a second.
 
 ## [0.3.0] - 2026-10-16
 

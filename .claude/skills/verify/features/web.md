@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -59,9 +59,11 @@ plan with Claude as the client.
   more argument (`toolsWithTabs`): `tabs` lists the open tabs (id, model, in
   view or not or paused, used how long ago, which one this session's calls go
   to); `select_tab` moves this session to another; `target` does one call in
-  the tab named. With no choice, a session's first call goes to the tab the
+  the tab named. With no choice, a session's first call went to the tab the
   person used most recently (the page counts presses and focus,
-  `brickworksUsedAgo`; the desktop, the window having focus) and the session
+  `brickworksUsedAgo`; the desktop, the window having focus); since
+  2026-10-17 that holds only with one tab open, and with several a change
+  waits for a choice ("Two chats, two tabs", below). Once chosen the session
   stays there (`relay_picks`, keyed by the `Mcp-Session-Id` handed out at
   initialize, or by the connection for a client that sends none, for two
   hours), so the person clicking into another tab while Claude works does not
@@ -189,6 +191,92 @@ plan with Claude as the client.
   and at once back in view; then a reload, after which the same address
   answers with nothing pressed. Against the build before the fix it fails all
   four out-of-view checks.
+- **Two chats, two tabs** (2026-10-17, `api/mcp.js` "Two chats, two tabs";
+  `docs/CONNECTING.md` "Several tabs"). A chat that has chosen no tab, with
+  several open, is answered "Nothing was done: 2 Brickworks tabs are open and
+  this chat has not chosen one" before its first change, with the tabs, which
+  chat holds each and for how long, and how to choose; a look (`readOnlyHint`
+  in the tab's list, or the viewer's own) goes ahead in the most recent tab no
+  other chat holds and says so, binding nothing. One tab open: it works there.
+  `select_tab` and `target` take an id or a model's name ("the castle tab":
+  `plain`, `named`; two matches are listed, never guessed), and a target binds
+  a chat that had not chosen. Each chat's pick keeps `called_at`, `did` and
+  `moved_at` (`relay_picks`, `supabase/relay.sql`, additive); a chat holds its
+  tab for 30 min after its last call (`HELD_MS`). The tab is told its chats
+  (`brickworks/chats`, sent when one chooses or leaves it; the chat on each
+  call's `_meta` as `brickworks/chat`; `op=chats` as it switches on), and
+  `op=keep&chat=` moves every other chat off: the other's next untargeted call
+  is answered "The person moved this chat off tab …", nothing done, until it
+  chooses. An answer in a tab another chat holds says "Careful: another chat
+  has been working in it…". With more than one tab open, `select_tab`'s answer
+  and `target`'s description ask Claude to pass `target` on every call
+  (`SAY_TARGET`): claude.ai is reported to reuse one `Mcp-Session-Id` across
+  chats, and two chats on one key are one chat here. Real Claude Code
+  (`claude -p` with `--mcp-config` naming the local relay and a token,
+  `--tools ""`, two at once, each told one stand-in tab's first message and to
+  add a brick) called `select_tab` with its tab's id, then targeted every
+  call, each building only in its own tab (2026-10-17; the run's log is in
+  `bench/results/tabpair-2026-10-17/claude_pair2`). Undo per chat: each step a
+  chat's call makes carries `by` (`CommandSocket.CHAT_KEY`, `_mark`), and the
+  `undo` tool stops at a step another chat made, saying so
+  (`AppTools._undo`, `AppTools.chat`).
+- `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
+  Claude part and the assistant panel's "Or with your Claude plan"; the
+  toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
+  "This tab is k7qd (“Castle”). Say it to Claude to work here."; "No Claude
+  chat is working in this tab." / "A Claude chat is working here: since 14:05,
+  last: changed the model, 2 min ago." / "2 Claude chats are working in this
+  tab…" with Keep this one beside each (`ClaudeConnector.keep_chat`). New chat
+  for this tab opens `https://claude.ai/new?q=` with
+  `ClaudeConnector.first_message` ("Use my Brickworks tab k7qd (“Castle”) for
+  this chat."), and copies it; the Claude app `claude://claude.ai/new?q=`
+  (followed in place on the web, so no empty tab is left); Claude Code
+  `claude-cli://open?q=` and the command line `claude "…"` to copy. The
+  toolbar reads `Tab k7qd`, `Claude working · tab k7qd` or `2 Claude chats ·
+  tab k7qd`, and opens Account. The page says it all in
+  `window.brickworksClaude` (`tab`, `chats`, `badge`, `account_says`,
+  `first_message`, `opened`).
+- `two chats probe` (`tools/web/tabpair_probe.mjs`, `--url=` a local relay or
+  a preview): two stand-in tabs (the relay's side of a tab only) and four
+  sessions; 26 checks: a new chat stopped before its first change with
+  neither tab asked anything, a look made and binding nothing, `select_tab
+  "the castle tab"`, a target by id binding chat B, chat C told "Careful" in
+  the held castle, the castle hearing two chats (`op=chats` and
+  `brickworks/chats`), `op=keep` moving C off and C told so twice with the
+  castle asked nothing, `select_tab "cast"` matching two and choosing
+  neither, and two chats on one session each landing in its own tab by
+  `target`. 29 checks, seconds; deletes its throwaway account.
+- `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
+  — two windows as two of the app's connectors in one process, each with its
+  own world and socket and a fresh `TabSession` id: the three links and the
+  command line name the window; a chat stopped, chat A in the castle by name
+  and chat B in the truck by id, each model alone growing; each connector
+  hears its chat and `ClaudeTabView.badge` says so; a third chat makes two,
+  `keep_chat` moves it off, its next call changes nothing. 19 checks.
+- `two chats browser flow` (`tools/web/tabpair_flow.mjs`): the app in two
+  Chromium tabs of one throwaway account (house renamed Pair Castle, kart
+  renamed Pair Truck), Claude signed in with OAuth, three sessions. Each
+  toolbar reads `Tab <id>`; chat A's first change is stopped and neither model
+  changes; Account's New chat for this tab in each tab opens
+  `claude.ai/new?q=` (claude.ai is routed to a stub page, so no test reaches
+  it) with that tab's first message, and the Claude app's and Claude Code's
+  links name it, the page staying put; A chooses "the pair castle tab", B
+  reads the truck's id off its first message and targets it, each change
+  landing in its own page alone; each tab's toolbar and Account then name its
+  one chat; C chooses the castle, whose toolbar says 2 Claude chats, C's
+  `undo` leaves A's change standing, Keep this one beside A is pressed in
+  Account, and C's next call is told it was moved
+  off with the castle unchanged, A building on. Pictures `1_castle.png`,
+  `1_truck.png`, `2_two_chats.png`, `3_kept.png`. In
+  `tools/release/preview_checks.sh` as `tabpair` and `tabpair_probe`; both
+  passed on preview brickworks-otcd0v1a2 (2026-10-17), with `tabs`,
+  `list_changed` and `oauth`. And by real Claude in real tabs: on that
+  preview, two tabs (Castle, Fire Truck) each pressed New chat for this tab,
+  and two `claude -p` sessions run at once were each given its tab's first
+  message and asked for a brick: each called `select_tab` with its own id,
+  targeted every call after, and built in its own model alone (71→72,
+  44→45), each toolbar reading `Claude working · tab <its id>`
+  (`bench/results/tabpair-2026-10-17/claude_tabs`).
 - `progress check` (`tools/web/progress_check.mjs`, 2026-10-12): presses each
   slow thing in Chromium on SwiftShader and times it against the press's own
   time in the page — how long before the status bar's bar (`Working`) was
@@ -314,6 +402,26 @@ plan with Claude as the client.
   one printable line of at most 80 characters (the table's own check too),
   escaped by every page that shows it and put in as text by `gallery.js` and
   the admin page.
+  **Test models** (2026-10-17, `supabase/test_models.sql`, applied to the live
+  project that day with `tools/apply_sql.mjs`, dry-run first; the project has
+  no migration table, so it is recorded here): column `test` boolean not null
+  default false, never granted to the publishable key. A publish from a session
+  at a Resend test address (`@resend.dev`, `isTestAccount` in `api/_auth.js`:
+  every probe and flow signs in at one, nobody else can) writes `test: true`.
+  No public list shows a test model: `directory_models` leaves them out
+  unless the query says `tests` (or `private`, an owner's own view);
+  `profile_page(wanted, tests)`, `collection_page(list, tests)` and
+  `collection_count(list, private, tests)` are new forms beside the old,
+  which are now those forms without tests; `sitemap_pages` never lists one,
+  nor a profile or a collection with nothing else; a model's page lists a
+  test remix only when it is a test itself (`directory_model`). `?tests=1` on
+  `?op=list`, `/api/people?op=profile|collection`, `/u/<handle>` and
+  `/c/<id>` (anything else but 0 or false: 400) shows them, answered
+  `private, no-store` so the CDN never keeps it; the parameter is in the
+  address the CDN keys on, so a visitor's list is never that answer. A test
+  model's own page and link work as any other. Rows from before the release
+  that marks them are all false: the live site shows that release's probe
+  models until it ships.
   **The directory** (2026-10-13, `supabase/directory.sql`, applied to the
   live project that day with `tools/apply_sql.mjs`, dry-run first with
   `--dry --try=FILE`, which rolls back): columns `description` (1 to 1000
@@ -464,7 +572,8 @@ plan with Claude as the client.
   its pictures, and profile and collection pages, for 30 s and serves them 30 s
   more while it asks again (`SHARED_CACHE`, `public, max-age=0, s-maxage=30,
   stale-while-revalidate=30`); a versioned small picture five minutes in a
-  browser; the viewer's JSON and everything signed in, never. A model taken
+  browser; the viewer's JSON, everything signed in and anything asked with
+  `tests=1` (`TESTS_CACHE`, `private, no-store`), never. A model taken
   down or out leaves within a minute rather than at once; the probes ask past
   the CDN with a query of their own, and the browser flows load a page again
   until it shows what was done, for two minutes at most.
@@ -518,7 +627,9 @@ plan with Claude as the client.
   so a search can be sent and a reload asks it again; an address asking for
   what the list does not know gets the whole gallery and its address put
   right; an answer to an older question is thrown away. A card shows the
-  small picture when there is one, and its views, likes and remixes.
+  small picture when there is one, and its views, likes and remixes. An
+  address with `tests=1` asks the list with it on every question, test
+  models in (share_flow opens `/gallery?tests=1`: its model is a test's).
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -1269,6 +1380,22 @@ key. On a deployment, also the list's and a model page's second asking
 answered by the CDN (`x-vercel-cache` HIT or STALE). It removes what it made
 that does not go with its accounts (barred fingerprints, reports by handle,
 its accounts' counts). 304 checks with `--master`, about two minutes locally.
+
+Test models' part of it (since 2026-10-17, `supabase/test_models.sql`): every
+model it publishes is a test account's, so every list it checks (the gallery,
+a profile, a collection, the remix and search questions) is asked with
+`tests=1`, and beside them what a visitor gets: the row marked `test` (read
+with the secret key); the visitor's list, past the CDN and as the CDN gives
+it (the address `/gallery` asks), without the probe's listed models, twice;
+the `tests=1` answer `private, no-store` and, on a deployment, answered by
+the function a second time, never the CDN; `tests=maybe` 400; a profile's
+JSON and page without `tests=1` showing 0 models; a public collection's JSON
+and page without it showing none; the sitemap with none of the probe's
+models or profiles; `test` closed to the publishable key. 288 checks
+locally and 291 on a deployment, without `--master`. On preview
+brickworks-k5c2nla0r (2026-10-17) a watcher polling the public list every
+5 s through the run saw up to 15 test models listed and none shown to a
+visitor in 31 polls, nor in the sitemap.
 
 Reporting and acting on it, in a real browser on a deployment (one
 throwaway account; `MASTER_EMAIL` signed in as the tests are):

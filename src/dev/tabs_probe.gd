@@ -117,14 +117,24 @@ func _run() -> void:
 	for tab: Tab in all:
 		_check(tabs_said.contains("%s: “%s”" % [tab.id, tab.name]),
 			"...listing %s with its model, %s" % [tab.id, tab.name])
-	_check(tabs_said.contains("its next call goes to %s" % castle.id),
-		"...and saying a first call goes to the one used last, %s" % castle.id)
+	_check(tabs_said.contains("This chat has not chosen a tab: its first change waits for one"),
+		"...and saying this chat has chosen none, so its first change waits for one")
 
-	print("\nwithout a choice: the tab used last, and the session stays there")
+	# Since 2026-10-17 ("Two chats, two tabs", api/mcp.js): with several tabs
+	# open, a look goes ahead in the tab used last and binds nothing, and a
+	# change waits for a choice; once chosen, the session stays there.
+	print("\nwithout a choice: a look in the tab used last, a change stopped")
 	var first: String = _text(await _call(token, session, "look_at_model", {}))
-	_check(first.begins_with("Tab %s, “Castle”." % castle.id),
-		"the first call goes to the castle and says so: %s" % first.get_slice("\n", 0))
+	_check(first.begins_with("Tab %s, “Castle”." % castle.id) and first.contains("this look was made in %s" % castle.id),
+		"a first look goes to the castle and says so: %s" % first.get_slice("\n", 0))
 	_check(first.contains("2 other tabs are open"), "...and says there are two others")
+	var unchosen: Array = _counts(all)
+	var waits: Dictionary = await _call(token, session, "edit_model", {
+		"add": [{"part": "3003", "color": 4, "x": 16, "y": 0, "z": 0, "rot": 0}]})
+	_check(_is_error(waits) and _text(waits).begins_with("Nothing was done") and _counts(all) == unchosen,
+		"a first change waits for a choice, nothing done anywhere: %s" % _text(waits).get_slice(":", 0))
+	var by_name: String = _text(await _call(token, session, "select_tab", {"tab": "the castle tab"}))
+	_check(by_name.contains("go to tab %s now" % castle.id), "select_tab by the model's name: %s" % by_name.get_slice("\n", 0))
 	await _used(house, 0)
 	var second: String = _text(await _call(token, session, "look_at_model", {}))
 	_check(second.begins_with("Tab %s, “Castle”." % castle.id),
@@ -191,13 +201,13 @@ func _run() -> void:
 	if _text(closed).is_empty():
 		print("        (answered %d after %d ms: %s)" % [int(asked[0]), Time.get_ticks_msec() - t0,
 			str(asked[3]).left(200)])
-	_check(_is_error(closed) and _text(closed).contains("The tab this session was working in, %s"
+	_check(_is_error(closed) and _text(closed).contains("The tab this chat was working in, %s"
 			% light.id) and _text(closed).contains("has closed, so nothing was done"),
 		"the next call says the lighthouse's tab has closed: %s" % _text(closed).get_slice(".", 0))
 	_check(_counts(all) == before_close, "...and nothing was done in any tab: %s" % str(_counts(all)))
 	var then: String = _text(await _call(token, session, "look_at_model", {}))
 	_check(then.begins_with("Tab %s" % house.id),
-		"told once, its next call goes to the tab used last, and names it: %s" % then.get_slice("\n", 0))
+		"told once, its next look goes to the tab used last, and names it: %s" % then.get_slice("\n", 0))
 	var still_listed: String = _text(await _call(token, session, "tabs", {}))
 	_check(still_listed.contains("2 Brickworks tabs are open") and not still_listed.contains(light.id),
 		"tabs no longer lists the closed one")

@@ -150,6 +150,20 @@ func setup(with_account: Account) -> void:
 
 	account.changed.connect(_follow)
 	_follow()
+	minimum_size_changed.connect(_keep_centred)
+
+
+## Taller than it was placed for (this tab's Claude chats, ClaudeTabView,
+## with two chats listed), it grew downwards from where it was put, and its
+## foot, Sign out and Done, ran off an 800-pixel window: centred on what it
+## holds now, and no shorter than it was placed (main's _inset).
+func _keep_centred() -> void:
+	if not is_inside_tree():
+		return
+	var room: float = get_viewport().get_visible_rect().size.y - 48.0
+	var tall: float = maxf(minf(TALL, room), get_combined_minimum_size().y)
+	offset_top = -tall * 0.5
+	offset_bottom = tall * 0.5
 
 
 func open() -> void:
@@ -182,6 +196,8 @@ func controls_by_name() -> Dictionary:
 		named["account_disconnect_claude"] = _claude_disconnect
 	if _claude_connect.is_visible_in_tree():
 		named["account_connect_claude"] = _claude_connect
+	if _tab_view != null:
+		named.merge(_tab_view.controls_by_name())
 	return named
 
 
@@ -190,12 +206,26 @@ func storage_words() -> String:
 	return _kept.text if _kept != null else ""
 
 
-## Claude's half: the connector whose connections this shows.
+## Claude's half: the connector whose connections this shows, and this tab
+## as Claude knows it, with the chats working in it (ClaudeTabView).
 func use_connector(with: ClaudeConnector) -> void:
 	connector = with
 	_claude_box.visible = claude_shown
+	_tab_view = ClaudeTabView.new()
+	_tab_view.prefix = "account_"
+	_claude_box.add_child(_tab_view)
+	_claude_box.move_child(_tab_view, _claude_state.get_index() + 1)
+	_tab_view.setup(connector)
 	connector.connections_changed.connect(func(_now: Array) -> void: _show_claude())
 	_show_claude()
+
+
+var _tab_view: ClaudeTabView = null
+
+
+## What this tab's Claude part says, for probes.
+func tab_words() -> String:
+	return _tab_view.words() if _tab_view != null and _tab_view.is_visible_in_tree() else ""
 
 
 ## Settings, Assistant (AI): off, nothing here speaks of Claude.

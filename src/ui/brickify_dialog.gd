@@ -43,6 +43,8 @@ var _busy: bool = false
 var _stopped: bool = false
 ## The run on its worker, or -1.
 var _task: int = -1
+## What tells the run to stop, while one is going.
+var _progress: Brickify.Progress = null
 ## A model's bounds in its own units, stood up as chosen, and its longest side.
 var _box := AABB()
 var _longest: float = 1.0
@@ -82,9 +84,11 @@ func _ready() -> void:
 	_build()
 
 
-## The app closing while a run is on its worker: the run ends first, since
-## it reads the checker (WorkerTasks).
+## The app closing while a run is on its worker: the run is told to stop
+## and ends at its next step, since it reads the checker (WorkerTasks).
+## Waited out, a 48-stud run held the quit for half a minute.
 func _exit_tree() -> void:
+	_stop()
 	WorkerTasks.collect(_task)
 	if _checker != null:
 		_checker.free()
@@ -404,12 +408,19 @@ func _faint(column: Control) -> Label:
 var _put_job: Working.Job = null
 
 
-## Put away, or stop: a run in progress is left to finish on its worker and
-## its result dropped.
+## Put away, or stop: a run in progress stops at its next step on its
+## worker, and nothing it laid is put down.
 func close() -> void:
 	if _busy:
-		_stopped = true
+		_stop()
 	visible = false
+
+
+## The run stopped, from Cancel, the panel closed or the app quitting.
+func _stop() -> void:
+	_stopped = true
+	if _progress != null:
+		_progress.stop()
 
 
 ## The controls a browser test presses, by name.
@@ -583,7 +594,7 @@ func brickify(job: Working.Job = null) -> void:
 	else:
 		job.say("Brickifying %s…" % _mesh.name)
 		job.can_cancel = true
-	job.cancel_wanted.connect(func() -> void: _stopped = true)
+	job.cancel_wanted.connect(_stop)
 	_status.text = "getting the parts ready…"
 	await job.shown()
 	var missing: PackedStringArray = await _ensure_parts()
@@ -595,6 +606,9 @@ func brickify(job: Working.Job = null) -> void:
 	job.say("Brickifying %s: getting its shapes ready…" % _mesh.name)
 	await _warm(job)
 	var progress := Brickify.Progress.new()
+	_progress = progress
+	if _stopped:
+		progress.stop()
 	var result: Dictionary = {}
 	var mesh: MeshFile = _mesh
 	var checker: Assistant = _checker
@@ -608,7 +622,10 @@ func brickify(job: Working.Job = null) -> void:
 		var task: int = WorkerTasks.add(func() -> void:
 			result.merge(Brickify.build(mesh, choice, checker, progress)), false, "brickify")
 		_task = task
-		library.reading_in(task)
+		# Stopped, rather than the window held until it ends, when the library
+		# must add a part: a file opened meanwhile, whose hose or carried part
+		# is new (PartLibrary.reading_in). Its bricks had nowhere to go then.
+		library.reading_in(task, _stop)
 		while not WorkerThreadPool.is_task_completed(task):
 			_status.text = "%s… %d s" % [progress.said(), (Time.get_ticks_msec() - began) / 1000]
 			job.say("Brickifying %s: %s…" % [mesh.name, progress.said()])
@@ -616,6 +633,7 @@ func brickify(job: Working.Job = null) -> void:
 		WorkerTasks.collect(task)
 		_task = -1
 		library.end_reading(task)
+	_progress = null
 	if _stopped:
 		_busy = false
 		_set_enabled(true)

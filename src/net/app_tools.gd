@@ -32,6 +32,9 @@ var assistant: Assistant
 ## Whether a link to this computer may be fetched (_fetch): a probe serves
 ## its own files from here.
 var fetch_near: bool = false
+## The Claude chat whose call is running, as the relay names it, or "":
+## set by CommandSocket around each call (undo keeps to its own changes).
+var chat: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
 
@@ -61,6 +64,8 @@ const COMMANDS: Dictionary = {
 	"brickify": "brickify", "import_mesh": "brickify", "print_part": "print_part",
 	"sticker": "print_part", "printed_versions": "print_part",
 	"make_unique": "make_unique",
+	"suggest_sections": "suggest_sections", "evaluate_section": "evaluate_section",
+	"break_out": "break_out_section", "put_back": "break_out_section",
 	"simulate": "simulate_mechanism",
 	"hidden_colours": "colour_hidden_parts",
 }
@@ -87,6 +92,7 @@ const WINDOW_ONLY: Dictionary = {
 	"view_*": "the person's camera; view_model from= looks from any side",
 	"mode_*": "what the person's mouse does; a session's changes are edit_model's",
 	"fit": "the person's camera; view_model frames what it looks at",
+	"explode": "what the person sees; a session weighs each section with evaluate_section and looks with view_model where=",
 	"fit_model": "the person's camera; view_model frames what it looks at",
 	"fit_selection": "the person's camera; view_model frames what it looks at",
 	"ortho": "the person's camera; view_model from= looks from any side",
@@ -169,6 +175,20 @@ version= one of the part's printed versions (versions= lists them), \
 sticker_part= a sticker LDraw has, stuck on a face.
  - make_unique: one copy of a sub-assembly cut loose from the others, so \
 changing it changes no other.
+ - suggest_sections: how a builder would split the model into sections, \
+as a set into numbered bags: each connected, one piece, a sensible size, \
+joined to the rest by few joints, in build order, with which way it comes \
+off. Read-only; it shows them in the person's model tree. make_sections \
+makes them sub-assemblies (all, or sections= each a name and the \
+suggestions it is made of, merging any), as one undo step.
+ - break_out_section: pulls a section (a sub-assembly) away from the model \
+the way it comes off, to work on, as one undo step; put_back=true puts it \
+exactly where it was; all=true puts every one back. A file is always \
+written with them back in place.
+ - evaluate_section: a section alone, read-only: its parts list, weight, \
+whether it holds together (the build check on it alone) and stands \
+(Balance), what joins it to the rest and what that carries, and its own \
+steps.
  - colour_hidden_parts: the parts nobody sees in the finished model, \
 coloured by section, build stage or side as big sets are inside, so a \
 builder finds their place; measured from every side, so nothing seen \
@@ -513,6 +533,64 @@ func definitions() -> Array:
 				"set_agreed": {"type": "boolean", "description": "the person said yes to recolouring a real set's own parts"},
 			}},
 		},
+		{
+			"name": "suggest_sections",
+			"description": ("How a builder would split the model into sections, as Build, "
+				+ "Suggest sections does: the way a set splits into numbered bags and "
+				+ "sub-builds. Each is connected and one piece, of a sensible size, joined to "
+				+ "the rest by few joints, numbered in the order it is built, with the "
+				+ "sections it is built onto and the way it comes off. Read from the booklet "
+				+ "planner and the build check's joint graph. Changes nothing in the model; "
+				+ "the suggestion is shown in the person's model tree. make_sections makes "
+				+ "them sub-assemblies."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {}},
+		},
+		{
+			"name": "make_sections",
+			"description": ("Make the suggested sections (suggest_sections) sub-assemblies, "
+				+ "as one undo step, as the model tree's Accept all does. With no sections= "
+				+ "every suggestion as suggested; with sections= one sub-assembly for each "
+				+ "entry: its name and the numbers of the suggestions it is made of (two or "
+				+ "more merge them). Parts already in a sub-assembly go inside the new one."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"sections": {"type": "array", "items": {"type": "object",
+					"additionalProperties": false, "required": ["from"], "properties": {
+						"name": {"type": "string"},
+						"from": {"type": "array", "items": {"type": "integer"},
+							"description": "suggestion numbers"},
+					}}},
+			}},
+		},
+		{
+			"name": "break_out_section",
+			"description": ("Pull a section (a sub-assembly) away from the model the way "
+				+ "it comes off, as Build, Break out the section does: up off the studs it "
+				+ "stands on, or out to the side it is joined on, clear of the rest by two "
+				+ "studs, by whole studs and bricks. One undo step. Work on it there with "
+				+ "edit_model as anywhere. put_back=true puts it exactly where it was (one "
+				+ "undo step); all=true puts every section back. Saved and exported files "
+				+ "always have every section in place."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"section": {"type": "string",
+					"description": "its name or path, as the sub-assemblies are listed"},
+				"put_back": {"type": "boolean"},
+				"all": {"type": "boolean", "description": "with put_back: every section"},
+			}},
+		},
+		{
+			"name": "evaluate_section",
+			"description": ("A section on its own, as Build, Evaluate the section does: its "
+				+ "parts and count, its parts list, weight, whether it holds together as a "
+				+ "separate build (the build check on it alone), whether it stands on its "
+				+ "own base (Balance), what joins it to the rest and whether those joints "
+				+ "carry its load, and how many steps it takes alone. section= a "
+				+ "sub-assembly's name or path, or suggestion= a suggest_sections number. "
+				+ "Changes nothing."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"section": {"type": "string"},
+				"suggestion": {"type": "integer"},
+			}},
+		},
 		GalleryTool.definition(),
 	]
 
@@ -565,6 +643,14 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _print_part(input)
 		"make_unique":
 			return _make_unique(input)
+		"suggest_sections":
+			return await _suggest_sections()
+		"make_sections":
+			return _make_sections(input)
+		"break_out_section":
+			return _break_out_section(input)
+		"evaluate_section":
+			return await _evaluate_section(input)
 		"colour_hidden_parts":
 			var panel: HiddenColoursPanel = app.get("_hidden_colours")
 			if panel == null:
@@ -601,7 +687,8 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 ## The tools that change the model.
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "move_part", "undo",
-	"open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts"]
+	"open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
+	"make_sections", "break_out_section"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -622,6 +709,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not bool(input.get("record", false))
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
+		"suggest_sections", "evaluate_section":
+			return true
 	return false
 
 
@@ -993,13 +1082,24 @@ func _undo(input: Dictionary) -> String:
 	var again: bool = bool(input.get("redo", false))
 	var count: int = clampi(int(input.get("steps", 1)), 1, 25)
 	var done := PackedStringArray()
+	var others: String = ""
 	for _n: int in count:
 		var words: String = builder.redo_words() if again else (
 			builder.history_words(1)[0] if builder.history_depth() > 0 else "")
 		if words.is_empty():
 			break
+		# Another Claude chat's change, in a tab two chats work in: not this
+		# chat's to take back (CommandSocket.CHAT_KEY).
+		var by: String = str(builder.last_step().get("by", "")) if not again else ""
+		if not chat.is_empty() and not by.is_empty() and by != chat:
+			others = words
+			break
 		await verbs.press("redo" if again else "undo")
 		done.append(words)
+	if not others.is_empty():
+		return ("%sThe next change back, %s, was made by another Claude chat working in this "
+			+ "tab, so it was left. Ask the person before changing that chat's work.") % [
+				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")
 	var left: String = ("Next to undo: %s." % builder.history_words(1)[0]) \
@@ -1459,6 +1559,144 @@ static func _sentence(words: String) -> String:
 		return said
 	said = said.left(1).to_upper() + said.substr(1)
 	return said if said.ends_with(".") or said.ends_with("?") else said + "."
+
+
+# -- sections -------------------------------------------------------------------------
+
+
+func _sections_ui() -> SectionsUi:
+	var shell: Shell = app.get("_shell")
+	return shell.sections if shell != null else null
+
+
+func _suggest_sections() -> String:
+	var ui: SectionsUi = _sections_ui()
+	if ui == null:
+		return "This app has no sections."
+	await ui.suggest()
+	var made: Array = ui.sections.suggested
+	if made.is_empty():
+		return "No sections suggested: %s." % ui.sections.why_none
+	var lines := PackedStringArray()
+	var level: String = ui.sections.level
+	lines.append("%d sections%s, in the order they are built (shown in the person's model "
+		% [made.size(), "" if level.is_empty() else " of %s" % Assemblies.label(level)]
+		+ "tree). Parts, joints to the rest, what each is built onto, the way it comes off:")
+	var total: int = 0
+	for one: Sections.Suggestion in made:
+		lines.append(" " + one.said())
+		total += one.ids.size()
+	lines.append("%d parts in all. make_sections makes them sub-assemblies (sections= to "
+		% total + "rename or merge); evaluate_section suggestion=N weighs one alone.")
+	return "\n".join(lines)
+
+
+func _make_sections(input: Dictionary) -> String:
+	var ui: SectionsUi = _sections_ui()
+	if ui == null:
+		return "This app has no sections."
+	var made: Array = ui.sections.suggested
+	if made.is_empty():
+		return "Nothing suggested: call suggest_sections first."
+	if input.has("sections"):
+		var asked: Array = input["sections"]
+		var by_number: Dictionary = {}
+		for one: Sections.Suggestion in made:
+			by_number[one.number] = one
+		var used: Dictionary = {}
+		var groups: Array = []
+		for entry: Variant in asked:
+			if not entry is Dictionary:
+				return "Each of sections= is {name, from: [numbers]}."
+			var from: Array = (entry as Dictionary).get("from", [])
+			var picked: Array = []
+			for n: Variant in from:
+				if not by_number.has(int(n)):
+					return "No suggestion %d: they are 1 to %d." % [int(n), made.size()]
+				if used.has(int(n)):
+					return "Suggestion %d is in two sections." % int(n)
+				used[int(n)] = true
+				picked.append(by_number[int(n)])
+			if picked.is_empty():
+				return "Each section needs from= the suggestions it is made of."
+			groups.append([str((entry as Dictionary).get("name", "")), picked])
+		# Merged and named as asked, then made, in one undo step.
+		var keep: Array = []
+		for group: Array in groups:
+			var picked: Array = group[1]
+			var first: Sections.Suggestion = picked[0]
+			for other: Sections.Suggestion in picked.slice(1):
+				first.ids.append_array(other.ids)
+				ui.sections.suggested.erase(other)
+			if not str(group[0]).strip_edges().is_empty():
+				first.name = str(group[0]).strip_edges().replace("/", "-").replace("#", "")
+			keep.append(first)
+		ui.sections._renumber()
+		var numbers: Array = []
+		for one: Sections.Suggestion in keep:
+			numbers.append(one.number)
+		var said_some: String = ui.accept(numbers)
+		return said_some.left(1).to_upper() + said_some.substr(1) + ". One step to undo."
+	var said: String = ui.accept()
+	return said.left(1).to_upper() + said.substr(1) + ". One step to undo."
+
+
+func _break_out_section(input: Dictionary) -> String:
+	var ui: SectionsUi = _sections_ui()
+	if ui == null:
+		return "This app has no sections."
+	var world: BrickWorld = app.get("_world")
+	if bool(input.get("all", false)):
+		if world.broken_out.is_empty():
+			return "No section is broken out."
+		var back: String = ui.put_back_all()
+		return back.left(1).to_upper() + back.substr(1) + "."
+	var asked: String = str(input.get("section", ""))
+	var path: String = ui.sections.find_section(asked)
+	if path.is_empty():
+		var have := PackedStringArray()
+		for one: Dictionary in ui.sections.sections():
+			have.append(Assemblies.label(str(one["path"])))
+		return ("Give section= a sub-assembly by name. %s" % ("There are: %s." % ", ".join(have)
+			if not have.is_empty() else "There are none: suggest_sections, then make_sections."))
+	var out: bool = not ui.sections.out_record(path).is_empty()
+	var put_back: bool = bool(input.get("put_back", false))
+	if put_back != out:
+		return "%s is %s." % [Assemblies.label(path), "not broken out" if put_back
+			else "broken out already: put_back=true puts it back"]
+	var said: String = ui.break_out_or_back(path)
+	if not put_back and not ui.sections.out_record(path).is_empty():
+		var offset: Vector3 = (ui.sections.out_record(path)[1] as Dictionary)["offset"]
+		said += (" (moved x %s, y %s plates, z %s studs; put_back=true puts it exactly back)"
+			% [Balance.studs(offset.x / BrickLattice.STUD), Balance.studs(offset.y
+			/ BrickLattice.PLATE), Balance.studs(offset.z / BrickLattice.STUD)])
+	return said.left(1).to_upper() + said.substr(1) + "."
+
+
+func _evaluate_section(input: Dictionary) -> String:
+	var ui: SectionsUi = _sections_ui()
+	if ui == null:
+		return "This app has no sections."
+	var made: Dictionary
+	if input.has("suggestion"):
+		made = await ui.evaluate("", int(input["suggestion"]))
+		if made.is_empty():
+			return "No suggestion %d: call suggest_sections first." % int(input["suggestion"])
+	else:
+		var path: String = ui.sections.find_section(str(input.get("section", "")))
+		if path.is_empty():
+			return "Give section= a sub-assembly by name, or suggestion= a suggest_sections number."
+		made = await ui.evaluate(path)
+	var lines := PackedStringArray([Sections.evaluation_words(made)])
+	var lots: Array = made.get("lots_list", [])
+	if not lots.is_empty():
+		var listed := PackedStringArray()
+		for lot: Dictionary in lots.slice(0, 40):
+			listed.append("%d x %s %s (%s)" % [int(lot["count"]), str(lot["part"]),
+				str(lot["name"]), str(lot["colour"])])
+		lines.append("Its parts: " + "; ".join(listed) + (" …and %d more lots." % (lots.size() - 40)
+			if lots.size() > 40 else "."))
+	return "\n".join(lines)
 
 
 # -- making a copy unique ---------------------------------------------------------------

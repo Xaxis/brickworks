@@ -343,6 +343,37 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	return out
 
 
+## Sections (SectionsUi) for tools/web/sections_flow.mjs: what was
+## suggested, what is broken out, the exploded view, the last evaluation, and
+## where each suggestion's row and each sub-assembly's row is in the model
+## tree, to be clicked.
+func _sections_on_page(to_window: Transform2D, per_css: float) -> Dictionary:
+	if _shell == null or _shell.sections == null:
+		return {}
+	var said: Dictionary = _shell.sections.page_state()
+	var rows: Dictionary = {}
+	var rects: Dictionary = _shell.outliner.row_rects()
+	for meta: String in rects:
+		if meta.is_empty() or meta == Outliner.SUGGESTED:
+			continue
+		var centre: Vector2 = to_window * (rects[meta] as Rect2).get_center() / per_css
+		rows[meta.trim_prefix(Outliner.SUGGESTION)] = {"x": roundi(centre.x),
+			"y": roundi(centre.y)}
+	said["rows"] = rows
+	# ...and, drawn apart, where on the page each section is drawn: its box's
+	# middle, for a check to click a section where it is seen.
+	var drawn: Dictionary = {}
+	if _shell.sections.is_exploded() and _camera != null:
+		for one: Dictionary in _shell.sections.sections.sections():
+			var box: AABB = _shell.sections.drawn_bounds(str(one["path"]))
+			if box.size == Vector3.ZERO or _camera.is_position_behind(box.get_center()):
+				continue
+			var at: Vector2 = to_window * _camera.unproject_position(box.get_center()) / per_css
+			drawn[str(one["path"])] = {"x": roundi(at.x), "y": roundi(at.y)}
+	said["drawn"] = drawn
+	return said
+
+
 ## Each sub-assembly's own parts, how high: path -> [lowest, highest], the
 ## heights of their origins in LDU.
 func _assembly_heights() -> Dictionary:
@@ -550,6 +581,8 @@ func _tell_page() -> void:
 		"brickified": _brickify.last_summary if _brickify != null else "",
 		# And the last picture laid in LEGO Art, for art_flow.mjs.
 		"art": _art_said,
+		# Sections suggested, broken out and evaluated, for sections_flow.mjs.
+		"sections": _sections_on_page(to_window, per_css),
 		# The cut-away and x-ray (SeeInside), for tools/web/see_inside_flow.mjs:
 		# where the plane is, and how many parts are drawn see-through.
 		"cut": {"on": _world.is_cut(), "axis": _shell.see_inside.axis,
@@ -597,6 +630,14 @@ func _tell_page() -> void:
 			"on": _connector.is_on(),
 			"connected": clients,
 			"status": _chat.connector_status(),
+			# This tab as Claude knows it, the chats working in it, and what
+			# the toolbar and Account say of them (ClaudeTabView).
+			"tab": _connector.tab(),
+			"chats": _connector.working(),
+			"badge": _bar.claude_tab_words() if _bar != null else "",
+			"account_says": _account_panel.tab_words() if _account_panel != null else "",
+			"first_message": _connector.first_message(),
+			"opened": _connector.last_opened,
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
@@ -2670,6 +2711,18 @@ func _build_ui() -> void:
 	_connector.held = not ShellPrefs.assistant_shown()
 	add_child(_connector)
 	_chat.use_connector(_connector)
+	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
+	# as the chats in it change, and twice a minute for their "2 min ago".
+	var badge := func() -> void:
+		if _bar != null:
+			_bar.show_claude_tab(ClaudeTabView.badge(_connector))
+	_connector.listening.connect(func(_on: bool, _address: String) -> void: badge.call())
+	_connector.chats_changed.connect(func(_now: Array) -> void: badge.call())
+	var badge_clock := Timer.new()
+	badge_clock.wait_time = 30.0
+	badge_clock.autostart = true
+	badge_clock.timeout.connect(badge)
+	add_child(badge_clock)
 	# On again with the same address if it was on last time, so the
 	# connector added to Claude keeps working from one visit to the next —
 	# once somebody is signed in, because a connector belongs to an
@@ -3284,7 +3337,8 @@ func _turn_model(quarter_turns: int) -> void:
 ## pressed (a browser only lets a page open a tab in answer to a click,
 ## and the pictures take longer than that), and on the desktop into the
 ## Downloads folder and open in the browser, ready to print.
-func _export_booklet(to: String = "", job: Working.Job = null) -> String:
+func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = null,
+		called: String = "") -> String:
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -3303,8 +3357,10 @@ func _export_booklet(to: String = "", job: Working.Job = null) -> String:
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void:
 		BookletMaker.tell_tab(job.line()))
-	var title: String = _bar.model_name()
-	var html: String = await maker.make(_world, _store.scenery, title)
+	# A section's own booklet (SectionsUi) leaves the rest of the model out.
+	var title: String = called if not called.is_empty() else _bar.model_name()
+	var html: String = await maker.make(_world,
+		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
 	if not to.is_empty():
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:

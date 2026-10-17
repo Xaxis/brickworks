@@ -51,6 +51,13 @@
 // the pages (on a deployment); and the new tables and functions closed to
 // the key every page has.
 //
+// And test models (supabase/test_models.sql): every model this publishes is
+// a test account's, so it is marked a test and no visitor is shown it — not
+// in the gallery, a profile, a collection or the sitemap, asked past the
+// CDN or through it — while its own link works. Every list this checks is
+// asked with tests=1, which nobody else asks, and that answer is never kept
+// by the CDN; the list a visitor gets is checked beside it.
+//
 // Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
@@ -188,6 +195,22 @@ async function anonRest(path, { method = "GET", body } = {}) {
   let json = null;
   try { json = JSON.parse(text); } catch { json = null; }
   return { status: reply.status, json };
+}
+
+/// Whether these rows are marked a test, read with the secret key: {id: test}.
+async function marked(ids) {
+  const answer = await fetch(`${SUPABASE}/rest/v1/shared_models?id=in.(${ids.join(",")})&select=id,test`,
+    { headers: { apikey: SECRET, authorization: `Bearer ${SECRET}` } });
+  return Object.fromEntries((await answer.json()).map((row) => [row.id, row.test]));
+}
+
+/// What a visitor's gallery holds of [ids], the first page newest first:
+/// asked past the CDN and as the CDN gives it (the address /gallery asks).
+async function visitorSees(ids) {
+  const past = await call("/api/share?op=list&page=1");
+  const kept = await call("/api/share?op=list&page=1", { cached: true });
+  const shown = [...(past.json?.models || []), ...(kept.json?.models || [])].map((m) => m.id);
+  return { past, kept, found: ids.filter((id) => shown.includes(id)) };
 }
 
 async function main() {
@@ -418,7 +441,7 @@ async function main() {
 /// site's owner taking one out, and the limit on listing.
 async function theGallery(tokenA, tokenB, unlistedId) {
   console.log("the gallery");
-  const list = () => call("/api/share?op=list&page=1");
+  const list = () => call("/api/share?op=list&page=1&tests=1");
   const inList = (l, id) => (l.json?.models || []).some((m) => m.id === id);
   const d = await mintSession(emailD);
   const tokenD = d.access_token;
@@ -437,18 +460,37 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   check(!("owner" in card) && l.json?.per_page === 24 && typeof l.json?.more === "boolean",
     "...no owner, and a page of 24 that says whether there is another");
   check(!inList(l, unlistedId), "a model shared without the box ticked is not in it");
+
+  // A test account's model: marked so, and no visitor is shown it.
+  console.log("test models");
+  const marks = await marked([listedId, unlistedId]);
+  check(marks[listedId] === true && marks[unlistedId] === true,
+    `published by a test account (a resend.dev address): marked a test (${JSON.stringify(marks)})`);
+  let seen = await visitorSees([listedId]);
+  check(seen.past.status === 200 && seen.kept.status === 200 && seen.found.length === 0,
+    `a visitor's list, past the CDN and through it, leaves it out (${seen.past.status}, ${seen.kept.status}, `
+    + `${(seen.past.json?.models || []).length} models, ${seen.found.length} of the probe's)`);
+  check(l.json?.tests === true && l.headers.get("cache-control") === "private, no-store",
+    `asked with tests=1, it is in the list, and that answer is never kept (${l.headers.get("cache-control")})`);
+  r = await call("/api/share?op=list&page=1&tests=maybe");
+  check(r.status === 400, `tests that is not 1: 400 (${r.status}) "${r.json?.error}"`);
   // Vercel's CDN keeps s-maxage for itself and hands a browser what is
   // left; on a deployment, the CDN answering a second asking is the proof.
   const local = /127\.0\.0\.1|localhost/.test(base);
-  const kept = l.headers.get("cache-control") || "";
+  const kept = seen.past.headers.get("cache-control") || "";
   check(/public/.test(kept) && /max-age=0/.test(kept) && (!local || /s-maxage=30/.test(kept)),
-    `the list is kept by the CDN for half a minute, not by a browser (${kept})`);
+    `a visitor's list is kept by the CDN for half a minute, not by a browser (${kept})`);
   if (!/127\.0\.0\.1|localhost/.test(base)) {
     const same = `/api/share?op=list&page=1&kind=castle&sort=views&cdn=${rand}`;
     await call(same, { cached: true });
     const again = await call(same, { cached: true });
     check(/HIT|STALE/.test(again.headers.get("x-vercel-cache") || ""),
       `the same question again is answered by the CDN (${again.headers.get("x-vercel-cache")})`);
+    const tested = `/api/share?op=list&page=1&tests=1&cdn=${rand}`;
+    await call(tested, { cached: true });
+    const testedAgain = await call(tested, { cached: true });
+    check(!/HIT|STALE/.test(testedAgain.headers.get("x-vercel-cache") || "") && inList(testedAgain, listedId),
+      `asked with tests=1 again, the function answers, not the CDN (${testedAgain.headers.get("x-vercel-cache")})`);
     const page = `/m/${listedId}`;
     await call(page, { cached: true });
     const pageAgain = await call(page, { cached: true });
@@ -470,6 +512,8 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   check(l.json?.models?.[0]?.id === markupId && l.json?.models?.[1]?.id === listedId,
     "newest first: one listed later is ahead of it");
   check(l.json?.models?.[0]?.name === MARKUP, "the list gives a name as the text it is, for the page to show as text");
+  seen = await visitorSees([markupId, listedId]);
+  check(seen.found.length === 0, `and a visitor's list has neither, past the CDN or through it (${seen.found.join(", ") || "none"})`);
   r = await call(`/m/${markupId}`);
   check(r.status === 200 && !r.text.includes("<img src=x")
     && r.text.includes("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;Probe &amp; &quot;Co&quot;"),
@@ -583,7 +627,7 @@ async function theDirectory(tokenA) {
   // A file of its own: the gallery's part, as the site's owner, took the
   // probe's model out, and with it that very file at any other link.
   const GATE = MODEL.replace("0 Probe Tower", `0 Probe Gate ${rand}`);
-  const list = (query = "") => call(`/api/share?op=list&page=1${query}`);
+  const list = (query = "") => call(`/api/share?op=list&page=1&tests=1${query}`);
   const ids = (l) => (l.json?.models || []).map((m) => m.id);
 
   // The kinds the gallery offers are the ones the Share panel guesses from.
@@ -802,6 +846,8 @@ async function theDirectory(tokenA) {
   check(d.status === 200 && d.json?.length === 1, `what a model says about itself is readable with the publishable key (${d.status})`);
   d = await anonRest(`shared_models?id=eq.${own}&select=search`);
   check(d.status === 401 || d.status === 403, `its search words are not (${d.status})`);
+  d = await anonRest(`shared_models?id=eq.${own}&select=test`);
+  check(d.status === 401 || d.status === 403, `nor whether it is a test (${d.status})`);
   for (const table of ["model_stats", "model_views"]) {
     d = await anonRest(`${table}?select=*`);
     check(d.status === 401 || d.status === 403, `${table} is closed (${d.status})`);
@@ -860,12 +906,19 @@ async function thePeople(tokenA, tokenB) {
   const credited = await publish({ name: "Probe Credited", author: "Probe Maker", listed: true, kind: "castle" });
   const nameless = await publish({ name: "Probe Nameless", listed: true });
   const byLink = await publish({ name: "Probe By Link", author: "Probe Maker" });
-  r = await call(`/api/people?op=profile&handle=${handle}`);
+  r = await call(`/api/people?op=profile&handle=${handle}&tests=1`);
   const shown = (r.json?.models || []).map((m) => m.id);
   check(r.status === 200 && r.json?.name === NAME && r.json?.models_count === 1 && shown.includes(credited)
     && !shown.includes(nameless) && !shown.includes(byLink) && !("account" in (r.json || {})),
     `its profile lists what it listed and is credited for, and nothing shared without a name or only by link (${shown.length})`);
+  check(r.headers.get("cache-control") === "private, no-store", `asked with tests=1, never kept (${r.headers.get("cache-control")})`);
+  r = await call(`/api/people?op=profile&handle=${handle}`);
+  check(r.status === 200 && r.json?.models_count === 0 && (r.json?.models || []).length === 0,
+    `as a visitor sees it, none of its models: they are tests (${r.json?.models_count}, ${(r.json?.models || []).length})`);
   r = await call(`/u/${handle}`);
+  check(r.status === 200 && !r.text.includes(`/m/${credited}`) && r.text.includes("0 models in the gallery"),
+    `and its page shows none (${r.status})`);
+  r = await call(`/u/${handle}?tests=1`);
   check(r.status === 200 && r.text.includes("&lt;b&gt;Probe&lt;/b&gt; &amp; &quot;Maker&quot;") && !r.text.includes("<b>Probe</b>")
     && r.text.includes(`href="/m/${credited}"`) && !r.text.includes(`/m/${nameless}`) && !r.text.includes(`/m/${byLink}`)
     && r.text.includes(`<link rel="canonical" href="${base}/u/${handle}">`) && r.text.includes('class="site-head"'),
@@ -876,7 +929,7 @@ async function thePeople(tokenA, tokenB) {
   check(r.text.includes(`Shared by <a href="/u/${handle}">&lt;b&gt;Probe&lt;/b&gt;`), "the credited model's page links its profile");
   r = await call(`/m/${nameless}`);
   check(!r.text.includes(`/u/${handle}`), "the one shared without a name does not");
-  let l = await call(`/api/share?op=list&page=1&q=probe%20credited`);
+  let l = await call(`/api/share?op=list&page=1&tests=1&q=probe%20credited`);
   const card = (l.json?.models || []).find((m) => m.id === credited) || {};
   check(card.by?.handle === handle && (l.json?.models || []).find((m) => m.id === nameless)?.by == null,
     "a card says who shared it, by handle, only when credited");
@@ -898,7 +951,7 @@ async function thePeople(tokenA, tokenB) {
   check(r.json?.likes === 1 && r.json?.liked === false, "unliked: 1");
   r = await call(`/m/${credited}`);
   check(r.text.includes('<span data-count="likes">1 like</span>'), "its page counts it");
-  l = await call("/api/share?op=list&page=1&sort=likes");
+  l = await call("/api/share?op=list&page=1&tests=1&sort=likes");
   const liked = (l.json?.models || []).map((m) => m.likes);
   check(liked.every((n, k) => k === 0 || n <= liked[k - 1]) && (l.json?.models || []).find((m) => m.id === credited)?.likes === 1,
     `most liked first (${liked.slice(0, 4).join(", ")})`);
@@ -934,12 +987,17 @@ async function thePeople(tokenA, tokenB) {
     "its owner sees both, the one shared by link too");
   r = await call("/api/people?op=collection", { method: "POST", token: tokenA, body: { id: list, name: "<i>Castles</i> I like", public: true } });
   check(r.status === 200 && r.json?.public === true, "made public");
-  r = await call(`/api/people?op=collection&id=${list}`);
+  r = await call(`/api/people?op=collection&id=${list}&tests=1`);
   check(r.status === 200 && r.json?.count === 1 && (r.json?.models || []).map((m) => m.id).join() === credited,
     "anybody now sees it, with only the listed model in it");
-  r = await call(`/c/${list}`);
+  r = await call(`/c/${list}?tests=1`);
   check(r.status === 200 && r.text.includes("&lt;i&gt;Castles&lt;/i&gt; I like") && r.text.includes(`href="/m/${credited}"`)
     && !r.text.includes(`/m/${byLink}`), `its page: its name escaped, the listed model and not the other (${r.status})`);
+  r = await call(`/api/people?op=collection&id=${list}`);
+  const page = await call(`/c/${list}`);
+  check(r.status === 200 && r.json?.count === 0 && (r.json?.models || []).length === 0 && page.status === 200
+    && !page.text.includes(`/m/${credited}`),
+    `as a visitor sees it and its page, without the test model (${r.json?.count}, ${page.status})`);
   r = await call(`/api/people?op=marks&id=${credited}`, { token: tokenA });
   check((r.json?.collections || []).some((c) => c.id === list && c.has === true), "the model's marks say which list has it");
   r = await call(`/api/people?op=uncollection&id=${list}`, { method: "POST", token: tokenB });
@@ -1074,11 +1132,11 @@ async function theModeration(tokenA) {
     r = await call(`/api/admin?op=bar&id=${second}`, { method: "POST", token: master, body: { reason: "probe" } });
     check(r.status === 200 && r.json?.barred === true && r.json?.unlisted >= 2,
       `the account taken out by one of its models: ${r.json?.unlisted} unlisted, ${r.json?.files_barred} files barred`);
-    let l = await call("/api/share?op=list&page=1&q=probe%20bad");
+    let l = await call("/api/share?op=list&page=1&tests=1&q=probe%20bad");
     check(![second, changed].some((id) => (l.json?.models || []).some((one) => one.id === id)), "every model of it out of the gallery");
-    r = await call(`/u/${handle}`);
+    r = await call(`/u/${handle}?tests=1`);
     check(r.status === 404, `its profile gone (${r.status})`);
-    r = await call(`/c/${badList}`);
+    r = await call(`/c/${badList}?tests=1`);
     check(r.status === 404, `its public collection gone (${r.status})`);
     r = await publish(tokenH, { name: "Probe New Link", author: "Bad Actor", model: SMALL.replace("3001", "3002"), listed: true });
     check(r.status === 409, `anything new it lists: 409 (${r.status}) "${r.json?.error}"`);
@@ -1126,6 +1184,9 @@ async function theModeration(tokenA) {
     `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`
     + ` [missing: ${listed.filter((one) => !locs.includes(`${base}/m/${one.id}`)).map((one) => `${one.id} ${one.name}`).join(", ") || "none"};`
     + ` taken out still there: ${locs.includes(`${base}/m/${bad}`)}; gallery: ${locs.some((loc) => loc.endsWith("/gallery"))}; takedown: ${locs.some((loc) => loc.endsWith("/takedown"))}; status ${r.status}]`);
+  const tests = [...published].filter((id) => locs.includes(`${base}/m/${id}`));
+  check(tests.length === 0 && !locs.some((loc) => /\/u\/(probe|bad-actor)-/.test(loc)),
+    `...and none of the probe's: a test model, or a profile with nothing else, is never in it (${tests.join(", ") || "none"})`);
 
   // The database, with the key every page has.
   for (const table of ["reports", "barred_accounts", "barred_models", "act_log"]) {

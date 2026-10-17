@@ -40,6 +40,9 @@
 //                             ten seconds and whenever it goes in or out of
 //                             view, whatever the app is busy with
 //   /api/mcp?t=T&op=close     the tab stops listening, or the page has gone
+//   /api/mcp?t=T&op=chats     which Claude chats work in this tab
+//   /api/mcp?t=T&op=keep&chat=C  the person keeps chat C in this tab; any
+//                             other chat working in it is moved off
 //
 // Every tab listens on its own token's channel, either way; a call for an
 // account is put on the channel of that account's tab.
@@ -56,14 +59,36 @@
 //   select_tab   another: this session's calls go to that tab from now on
 //   target       an argument every tool takes: this call, in that tab
 //
-// Without a choice a session's first call goes to the tab the person used
-// most recently, and the session stays with it (relay_picks, keyed by the
+// A session stays with the tab it chose (relay_picks, keyed by the
 // Mcp-Session-Id this hands out at initialize, or by the connection for a
 // client that sends none) — so the person clicking into another tab while
 // Claude works does not split the work between two models. If that tab
 // closes, the next call says so and does nothing, rather than carrying on
 // in another model. Every answer begins by naming the tab and model it
 // acted on (the tab says which in the answer's _meta).
+//
+// Two chats, two tabs (2026-10-17). The owner: "two brickworks studio tabs
+// open with separate projects, and two claude.ai tabs open, how does the
+// user map a given claude session to the right tab so they dont
+// interfere". A new chat's first call went to the tab used most recently,
+// which is often the tab another chat is building in (the person clicked
+// into it to watch), and the two chats then edited one model. Now:
+//
+//   - A chat that has not chosen, with one tab open, works in it (and is
+//     told when another chat works there too).
+//   - With several open, its first call that would change a model does
+//     nothing and is answered with the tabs, which chat holds each and
+//     since when, and how to choose. A call that only looks goes ahead in
+//     the most recent tab no other chat holds, says which, and binds
+//     nothing.
+//   - A tab is chosen by its id or its model's name ("the castle tab"):
+//     select_tab, or target on a call, which also binds a chat that had
+//     not chosen. A chat started from a tab (the app's "New chat for this
+//     tab") opens with a first message naming it, so its first call does.
+//   - The tab is told which chats work in it (brickworks/chats, and the
+//     chat on every call's _meta) and shows them; with two, the person
+//     keeps one (op=keep), and the other's next call is told it was moved
+//     off and does nothing until it chooses a tab again.
 //
 // A browser stops drawing a tab it is not showing, and the app runs on
 // drawing. While the connector is on the page now keeps the app running
@@ -143,6 +168,11 @@ const SESSION = /^[A-Za-z0-9_-]{16,128}$/;
 // only for so long: a client that sends no session id starts the next
 // conversation with the tab used most recently, not yesterday's.
 const CONNECTION_PICK_MS = 2 * 60 * 60 * 1000;
+// How long a chat that has said nothing still holds the tab it works in:
+// another chat is kept out of it unless chosen, and the tab shows it.
+const HELD_MS = 30 * 60 * 1000;
+// A chat's pick, as the tab and the lists read it.
+const PICK = "key,channel,picked_at,called_at,did,moved_at";
 // How long Claude's request waits for the tab, and how long the tab's ask
 // for work waits for Claude. Both well inside the function's 300 s.
 // Long, because a large submit_design is checked and built in the tab: three
@@ -341,50 +371,120 @@ function lastUsed(tabs) {
   return live[0] || null;
 }
 
-// The open tabs, one line each, newest use first.
-function listing(tabs, current) {
+// A chat, to the tab: a short name for its session that says nothing of it.
+function chatOf(key) {
+  return createHash("sha256").update(String(key)).digest("hex").slice(0, 8);
+}
+
+// When a chat last did anything in its tab: its last call, or its choice.
+function lastOf(pick) {
+  return Math.max(Date.parse(pick.called_at || "") || 0, Date.parse(pick.picked_at || "") || 0);
+}
+
+// A chat still working in its tab: not moved off it, and heard from lately.
+function holds(pick) {
+  return Boolean(pick && pick.channel && !pick.moved_at && Date.now() - lastOf(pick) < HELD_MS);
+}
+
+// The chats other than [key] working in [tab], most recent first.
+function heldBy(tab, picks, key) {
+  return (picks || []).filter((one) => one.channel === tab.channel && one.key !== key && holds(one))
+    .sort((a, b) => lastOf(b) - lastOf(a));
+}
+
+function minutes(since) {
+  const m = Math.max(0, Math.round((Date.now() - since) / 60000));
+  return m < 1 ? "under a minute" : m < 90 ? `${m} min` : `${Math.round(m / 60)} h`;
+}
+
+// Other chats in a tab, in words: "another chat has been working in it for
+// 25 min, last call 1 min ago".
+function heldWords(others) {
+  if (!others.length) return "";
+  const first = others[0];
+  const who = others.length === 1 ? "another chat has" : `${others.length} other chats have`;
+  return `${who} been working in it for ${minutes(Date.parse(first.picked_at) || lastOf(first))}, `
+    + `last call ${ago(lastOf(first))}`;
+}
+
+// The open tabs, one line each, newest use first, with which chat holds each.
+function listing(tabs, current, picks = [], key = null) {
   const live = tabs.filter((tab) => stateOf(tab) !== "closed")
     .sort((a, b) => usedAt(b) - usedAt(a));
   return live.map((tab) => {
     const where = stateOf(tab) === "hidden"
       ? "paused out of view by the browser"
       : tab.visible ? "in view" : "out of view";
-    const mine = current && tab.channel === current.channel ? " — this session's" : "";
-    return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}`;
+    const mine = current && tab.channel === current.channel ? " — this chat's" : "";
+    const held = heldWords(heldBy(tab, picks, key));
+    return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}${held ? ` — ${held}` : ""}`;
   }).join("\n");
 }
 
-// The line every answer starts with: which tab and model it acted on, and
-// that there are others when there are.
-function header(tab, answered, tabs) {
+// The line every answer starts with: which tab and model it acted on, that
+// there are others when there are, and that another chat works in this one.
+function header(tab, answered, tabs, picks = [], key = null) {
   const others = tabs.filter((one) => stateOf(one) !== "closed" && one.channel !== tab.channel).length;
+  const shared = heldBy(tab, picks, key);
   return `Tab ${idOf(tab)}, ${modelOf(tab, answered)}.`
-    + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "");
+    + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "")
+    + (shared.length ? ` Careful: ${heldWords(shared)}, on this same model; the tab shows both chats `
+      + "and the person can keep one." : "");
 }
 
-function withHeader(answer, tab, tabs) {
+function withHeader(answer, tab, tabs, picks = [], key = null, more = "") {
   const result = answer && answer.result;
   if (!result || typeof result !== "object") return answer;
   const meta = result._meta && typeof result._meta === "object" ? result._meta : {};
   const content = Array.isArray(result.content) ? result.content : [];
-  result.content = [{ type: "text", text: header(tab, meta["brickworks/model"], tabs) }, ...content];
+  const said = header(tab, meta["brickworks/model"], tabs, picks, key) + (more ? ` ${more}` : "");
+  result.content = [{ type: "text", text: said }, ...content];
   return answer;
+}
+
+// A tab named by a person or by Claude: its id, or its model's name ("the
+// castle tab", "Castle", "castle"). Exactly one open tab, or every one that
+// would do, for Claude to be shown.
+function plain(words) {
+  return String(words || "").toLowerCase().replace(/[“”"'‘’`]/g, " ")
+    .replace(/^\s*the\s+/, "").replace(/\s+tab\s*$/, "").replace(/\s+/g, " ").trim();
+}
+
+function named(tabs, said) {
+  const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  const wanted = plain(said);
+  if (!wanted) return { tab: null, matches: [] };
+  const byId = live.filter((tab) => idOf(tab) === wanted);
+  if (byId.length === 1) return { tab: byId[0], matches: byId };
+  const exact = live.filter((tab) => tab.model && plain(tab.model) === wanted);
+  if (exact.length) return { tab: exact.length === 1 ? exact[0] : null, matches: exact };
+  const part = wanted.length >= 2 ? live.filter((tab) => tab.model && plain(tab.model).includes(wanted)) : [];
+  return { tab: part.length === 1 ? part[0] : null, matches: part };
+}
+
+// Why a name chose no tab, in words, with the open ones.
+function notNamed(said, found, tabs, current, picks, key) {
+  const which = found.matches.length > 1
+    ? `${found.matches.length} open tabs match “${said}”, so nothing was done. Name one by its id:`
+    : `No open tab is called “${said}”, so nothing was done. Open now:`;
+  return `${which}\n${listing(found.matches.length > 1 ? found.matches : tabs, current, picks, key)}`;
 }
 
 // Tools the relay answers itself, about the tabs; and the argument every
 // tool of the app's gains, saying which tab to do it in.
 const TARGET = {
   type: "string",
-  description: "Which Brickworks tab to do this in, by the id tabs gives (such as k7qd). " +
-    "Leave it out to stay in the tab this session is working in.",
+  description: "Which Brickworks tab to do this in: its id (such as k7qd) or its model's name " +
+    "(such as castle). With more than one tab open, pass it on every call: it keeps this chat " +
+    "in its own tab even when another chat shares this connection.",
 };
 const RELAY_TOOLS = [
   {
     name: "tabs",
     description: "The Brickworks tabs open for this account, each with its id, its model's " +
-      "name, whether it is in view and when the person last used it, and which one this " +
-      "session's calls go to. Call it when the person has more than one tab open, or when " +
-      "an answer names a tab or model you did not expect.",
+      "name, whether it is in view, when the person last used it and whether another chat " +
+      "is working in it, and which one this chat's calls go to. Call it when the person has " +
+      "more than one tab open, or when an answer names a tab or model you did not expect.",
     inputSchema: { type: "object", properties: {} },
     // As the app's own tools carry theirs (CommandSocket.HINTS): neither of
     // these changes any model, or anything but which tab this session uses.
@@ -392,11 +492,13 @@ const RELAY_TOOLS = [
   },
   {
     name: "select_tab",
-    description: "Send this session's calls to another Brickworks tab from now on, by the id " +
-      "tabs gives. To do one call elsewhere, pass target on that call instead.",
+    description: "Work in this Brickworks tab from now on: its id (such as k7qd) or its " +
+      "model's name (such as castle), as tabs lists them. Call it first when the person names " +
+      "a tab or a model, or opens the chat with one. To do one call elsewhere, pass target on " +
+      "that call instead.",
     inputSchema: {
       type: "object",
-      properties: { tab: { type: "string", description: "The tab's id, from tabs." } },
+      properties: { tab: { type: "string", description: "The tab's id, or its model's name." } },
       required: ["tab"],
     },
     annotations: { title: "Work in another tab", readOnlyHint: true, openWorldHint: false },
@@ -420,24 +522,61 @@ function toolsWithTabs(tools, shows = false) {
 // and by select_tab; dropped once that tab has closed and it has been told.
 async function pickOf(key) {
   if (!key) return null;
-  const rows = await db(`relay_picks?key=eq.${encodeURIComponent(key)}&select=channel,picked_at`);
+  const rows = await db(`relay_picks?key=eq.${encodeURIComponent(key)}&select=${PICK}`);
   const row = rows && rows[0];
   if (!row) return null;
   if (key.startsWith("connection:") && Date.now() - Date.parse(row.picked_at) > CONNECTION_PICK_MS) return null;
   return row;
 }
 
-async function pick(key, owner, channel) {
+// Every chat's pick for an account, for the lists to say which chat holds
+// which tab.
+async function picksOf(owner) {
+  if (!owner) return [];
+  return await db(`relay_picks?owner=eq.${owner}&select=${PICK}&order=picked_at.desc&limit=50`) || [];
+}
+
+// [key] works in [channel] from now on, and both tabs it touches are told.
+async function pick(key, owner, channel, was = null) {
   if (!key) return;
   await db("relay_picks", {
     method: "POST",
-    body: { key, owner, channel, picked_at: new Date().toISOString() },
+    body: { key, owner, channel, picked_at: new Date().toISOString(), moved_at: null },
     prefer: "resolution=merge-duplicates",
   });
+  await tellChats(channel);
+  if (was && was !== channel) await tellChats(was);
 }
 
 async function unpick(key) {
   if (key) await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+
+// A chat's call, kept with its pick: when, and which tool.
+async function noteCall(key, name) {
+  if (!key || !name) return;
+  await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, {
+    method: "PATCH", body: { called_at: new Date().toISOString(), did: String(name).slice(0, 60) },
+  });
+}
+
+// The chats working in a tab, as the tab is shown them: a short name each,
+// since when, its last call and what that was. None of a session's own id.
+async function chatsIn(channel) {
+  const rows = await db(`relay_picks?channel=eq.${channel}&select=${PICK}&order=picked_at.asc&limit=20`) || [];
+  return rows.filter(holds).map((one) => ({
+    chat: chatOf(one.key), since: one.picked_at, last: new Date(lastOf(one)).toISOString(),
+    did: one.called_at ? one.did || "" : "",
+  }));
+}
+
+// Tells the tab which chats work in it now: a notification, which it shows.
+async function tellChats(channel) {
+  if (!channel) return;
+  await db("relay", {
+    method: "POST",
+    body: { channel, request: { jsonrpc: "2.0", method: "brickworks/chats", params: { chats: await chatsIn(channel) } } },
+  });
 }
 
 // Where Claude's requests go. Two ways in:
@@ -465,6 +604,7 @@ function oneTab(channel, session) {
     key: null,
     listKey: session ? `session:${session}` : `address:${channel}`,
     owner: null,
+    picks: async () => [],
     used: async () => {},
   };
 }
@@ -500,6 +640,7 @@ function accountTabs(grant, origin, session) {
     key: session ? `session:${session}` : `connection:${grant.id}`,
     listKey: session ? `session:${session}` : `connection:${grant.id}`,
     owner: grant.owner,
+    picks: async () => await picksOf(grant.owner),
     // What the account panel shows of the connection: when Claude last
     // used it, what it called itself, and the tab it builds in.
     async used(message, tab) {
@@ -545,48 +686,89 @@ async function relayTool(where, message, response) {
   const name = message.params?.name;
   const tabs = await where.tabs();
   const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  const picks = await where.picks();
   const picked = await pickOf(where.key);
-  const current = (picked && live.find((tab) => tab.channel === picked.channel)) || lastUsed(tabs);
+  const mine = picked && !picked.moved_at ? live.find((tab) => tab.channel === picked.channel) : null;
   if (!live.length) return response.status(200).json(text(id, where.notOpen, true));
   if (name === "tabs") {
     const count = live.length === 1 ? "One Brickworks tab is open" : `${live.length} Brickworks tabs are open`;
-    const goes = picked && current && picked.channel === current.channel
-      ? `This session's calls go to ${idOf(current)}.`
-      : `This session has not used one yet: its next call goes to ${idOf(current)}, the one used most recently.`;
-    return response.status(200).json(text(id, `${count}:\n${listing(tabs, current)}\n${goes} `
-      + (live.length > 1
-        ? "Pass target: \"<id>\" on a call to do it in another tab, or call select_tab to move this session there."
+    const moved = picked && picked.moved_at ? live.find((tab) => tab.channel === picked.channel) : null;
+    const goes = mine ? `This chat's calls go to ${idOf(mine)}.`
+      : moved ? `The person moved this chat off ${idOf(moved)} to keep another chat there; `
+        + "ask them which tab to work in, then call select_tab."
+      : live.length === 1 || !where.key ? `This chat's calls go to ${idOf(live[0])}, the only one open.`
+      : "This chat has not chosen a tab: its first change waits for one. Ask the person which, "
+        + "unless they have said, and call select_tab with its id or its model's name.";
+    return response.status(200).json(text(id, `${count}:\n${listing(tabs, mine, picks, where.key)}\n${goes}`
+      + (live.length > 1 && mine
+        ? " Pass target on a call to do it in another tab, or call select_tab to move this chat there."
         : "")));
   }
-  const wanted = String(message.params?.arguments?.tab || "").trim().toLowerCase();
-  const chosen = live.find((tab) => idOf(tab) === wanted);
+  const wanted = String(message.params?.arguments?.tab || "").trim();
+  const found = named(tabs, wanted);
+  const chosen = found.tab;
   if (!chosen) {
-    return response.status(200).json(text(id, `No open tab is called “${wanted}”. Open now:\n`
-      + listing(tabs, current), true));
+    return response.status(200).json(text(id, notNamed(wanted, found, tabs, mine, picks, where.key), true));
   }
   if (!where.key) {
     return response.status(200).json(text(id, `This connector's address reaches one tab, `
       + `${idOf(chosen)} (${modelOf(chosen)}), and its calls go there already.`));
   }
-  await pick(where.key, where.owner, chosen.channel);
-  return response.status(200).json(text(id, `${header(chosen, null, tabs)} This session's calls `
-    + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`));
+  await pick(where.key, where.owner, chosen.channel, picked ? picked.channel : null);
+  return response.status(200).json(text(id, `${header(chosen, null, tabs, picks, where.key)} This chat's calls `
+    + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`
+    + (live.length > 1 ? ` ${SAY_TARGET(chosen)}` : "")));
 }
 
+// Claude's apps can share one connection between chats (one Mcp-Session-Id
+// for two conversations is reported of claude.ai, claudeissues.com/issue/
+// 41836, 2026), and nothing then tells the two apart here. A chat that names
+// its tab on every call stays in it whatever another chat chooses.
+const SAY_TARGET = (tab) => `While more than one tab is open, pass target: "${idOf(tab)}" on every `
+  + "call in this chat too, so it stays here even if another chat shares this connection.";
+
 // A session's tab has closed: said once, with nothing done, and the
-// session let go of it, so its next call without a choice goes to the tab
-// used most recently, and is named.
+// session let go of it, so its next call without a choice is treated as a
+// new chat's: in the one tab left, or, with several, after it chooses.
 async function closedSaying(where, tab, tabs, taken = false) {
   await unpick(where.key);
-  const live = tabs.filter((one) => one.channel !== tab.channel);
-  const next = lastUsed(live);
-  return `The tab this session was working in, ${idOf(tab)}${tab.model ? ` (${modelOf(tab)})` : ""}, `
+  const live = tabs.filter((one) => one.channel !== tab.channel && stateOf(one) !== "closed");
+  return `The tab this chat was working in, ${idOf(tab)}${tab.model ? ` (${modelOf(tab)})` : ""}, `
     + (taken ? "closed before it answered, so whether it was done is not known. "
       : "has closed, so nothing was done. ")
-    + (next
-      ? `Open now:\n${listing(live, null)}\nCall select_tab, or pass target, to choose one; `
-        + `a call with neither goes to ${idOf(next)} (${modelOf(next)}), the one used most recently.`
-      : where.notOpen);
+    + (live.length > 1
+      ? `Open now:\n${listing(live, null, await where.picks(), where.key)}\nAsk the person which tab to `
+        + "work in, then call select_tab with its id or its model's name, or pass target."
+      : live.length === 1
+        ? `One tab is open: ${idOf(live[0])} (${modelOf(live[0])}); a call goes there unless you choose.`
+        : where.notOpen);
+}
+
+// A new chat with several tabs open and none chosen: nothing done, and how
+// to choose. The person may have said; else Claude asks.
+function chooseFirst(tabs, picks, key) {
+  const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  return `Nothing was done: ${live.length} Brickworks tabs are open and this chat has not chosen one. `
+    + `Open now:\n${listing(tabs, null, picks, key)}\n`
+    + "If the person named a tab or a model, call select_tab with its id or its model's name "
+    + "(such as select_tab \"castle\"), or pass target on this call; otherwise ask them which tab "
+    + "this chat is for. Then make this call again.";
+}
+
+// The person kept another chat in the tab this one worked in.
+function movedOff(tab, tabs, picks, key) {
+  return `The person moved this chat off tab ${idOf(tab)} (${modelOf(tab)}) to keep another chat `
+    + "working there, so nothing was done. Open now:\n"
+    + `${listing(tabs, null, picks, key)}\nAsk the person which tab this chat should work in `
+    + "(they can open a new one for it), then call select_tab with its id or its model's name.";
+}
+
+// Whether a tool only looks: the tab says so in its list (readOnlyHint).
+function looksOnly(hello, name) {
+  if (isViewerOnly(name)) return true;
+  const tools = hello && Array.isArray(hello.tools) ? hello.tools : [];
+  const tool = tools.find((one) => one && one.name === name);
+  return Boolean(tool && tool.annotations && tool.annotations.readOnlyHint === true);
 }
 
 // Claude's side: put the request in the queue and wait for the tab.
@@ -644,14 +826,20 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
   const tabs = await where.tabs();
   const live = tabs.filter((one) => stateOf(one) !== "closed");
 
-  // Which tab: the one named on this call, else the one this session is
-  // working in, else the one the person used most recently — which this
-  // session then stays with.
+  // Which tab: the one named on this call, else the one this chat works
+  // in, else — for a chat that has chosen none — the only one open, or,
+  // with several, none until it chooses (a look goes ahead in the most
+  // recent tab no other chat holds). See "Two chats, two tabs" above.
   let tab = null;
+  let picks = [];
+  // Said after the header: where a look went before this chat chose.
+  let note = "";
+  // The tab this chat works in, once this call is placed.
+  let home = null;
   if (calling) {
     const given = message.params?.arguments;
     const args = given && typeof given === "object" && !Array.isArray(given) ? { ...given } : {};
-    const target = typeof args.target === "string" ? args.target.trim().toLowerCase() : "";
+    const target = typeof args.target === "string" ? args.target.trim() : "";
     delete args.target;
     message = { ...message, params: { ...message.params, arguments: args } };
     // A client that shows the viewer: the tab adds what it shows, to the
@@ -660,27 +848,55 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       const meta = message.params._meta && typeof message.params._meta === "object" ? message.params._meta : {};
       message.params._meta = { ...meta, [ASK_VIEWS]: true };
     }
+    const picked = await pickOf(where.key);
+    picks = await where.picks();
+    home = picked && !picked.moved_at ? picked : null;
+    const refuse = async (words) => {
+      await where.used(message, null);
+      return response.status(200).json(text(id, words, true));
+    };
     if (target) {
-      tab = tabs.find((one) => idOf(one) === target && stateOf(one) !== "closed")
-        || tabs.find((one) => idOf(one) === target) || null;
+      const found = named(tabs, target);
+      tab = found.tab;
+      if (!tab) {
+        return await refuse(live.length ? notNamed(target, found, tabs, null, picks, where.key) : where.notOpen);
+      }
+      // Named, by a chat that had not chosen or was moved off: its tab now.
+      if (where.key && !viewerCall && !home) {
+        await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
+        home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
+      }
+    } else if (home) {
+      tab = tabs.find((one) => one.channel === home.channel) || await tabOf(home.channel);
       if (!tab || stateOf(tab) === "closed") {
-        await where.used(message, null);
-        return response.status(200).json(text(id, `No open tab is called “${target}”, so nothing was `
-          + `done. ${live.length ? `Open now:\n${listing(tabs, null)}` : where.notOpen}`, true));
+        return await refuse(await closedSaying(where, tab || { channel: home.channel }, tabs));
       }
+    } else if (picked && picked.moved_at && !viewerCall) {
+      const was = tabs.find((one) => one.channel === picked.channel) || { channel: picked.channel };
+      return await refuse(movedOff(was, tabs, picks, where.key));
+    } else if (!where.key || live.length <= 1) {
+      tab = lastUsed(tabs);
+      if (tab && where.key && !viewerCall) {
+        await pick(where.key, where.owner, tab.channel, picked ? picked.channel : null);
+        home = { key: where.key, channel: tab.channel, picked_at: new Date().toISOString() };
+      }
+    } else if (viewerCall || looksOnly(await where.hello(lastUsed(tabs)), name)) {
+      const free = live.filter((one) => !heldBy(one, picks, where.key).length);
+      tab = lastUsed(free.length ? free : live);
+      note = `This chat has not chosen a tab, so this look was made in ${idOf(tab)}, the tab used most `
+        + `recently${free.length ? " that no other chat is working in" : ""}. Before changing anything, `
+        + "call select_tab with a tab's id or its model's name.";
     } else {
-      const picked = await pickOf(where.key);
-      if (picked) {
-        tab = tabs.find((one) => one.channel === picked.channel) || await tabOf(picked.channel);
-        if (!tab || stateOf(tab) === "closed") {
-          await where.used(message, null);
-          return response.status(200).json(text(id,
-            await closedSaying(where, tab || { channel: picked.channel }, tabs), true));
-        }
-      } else {
-        tab = lastUsed(tabs);
-        if (tab) await pick(where.key, where.owner, tab.channel);
-      }
+      return await refuse(chooseFirst(tabs, picks, where.key));
+    }
+    // The tab is told which chat this is, in the chat's own tab or one it
+    // named, and the chat's pick keeps its last call in its own.
+    const own = Boolean(home && tab && home.channel === tab.channel);
+    if (where.key && !viewerCall && tab && (own || target)) {
+      const meta = message.params._meta && typeof message.params._meta === "object" ? message.params._meta : {};
+      message.params._meta = { ...meta,
+        "brickworks/chat": { chat: chatOf(where.key), since: own ? home.picked_at : new Date().toISOString() } };
+      if (own) await noteCall(where.key, name);
     }
   } else {
     // The handshake and the list from the tab this session works in, so the
@@ -783,7 +999,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     const [done] = await db(`relay?id=eq.${row.id}&select=response,taken_at`);
     if (done && done.response) {
       await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-      return send(calling && !viewerCall ? withHeader(done.response, tab, tabs) : done.response);
+      return send(calling && !viewerCall ? withHeader(done.response, tab, tabs, picks, where.key, note) : done.response);
     }
     // The page has said it is closing, or, not taken at all, has stopped
     // since: say so now rather than at the end of four minutes.
@@ -1016,6 +1232,28 @@ export default async function handler(request, response) {
         await db(`relay_tabs?channel=eq.${channel}`, { method: "PATCH", body: { model: named } });
       }
       return response.status(204).end();
+    }
+    // Which chats work in this tab, for it to show (also sent to it as
+    // brickworks/chats whenever a chat chooses it or leaves it).
+    if (op === "chats") {
+      return response.status(200).json({ chats: await chatsIn(channel) });
+    }
+    // The person keeps one chat in this tab: every other chat working in it
+    // is moved off, and its next call is told so and does nothing.
+    if (op === "keep") {
+      const kept = String(request.query?.chat || "");
+      if (!/^[0-9a-f]{8}$/.test(kept)) return response.status(400).json({ error: "keep which chat?" });
+      const rows = await db(`relay_picks?channel=eq.${channel}&select=${PICK}`) || [];
+      if (!rows.some((one) => chatOf(one.key) === kept && holds(one))) {
+        return response.status(404).json({ error: "that chat is not working in this tab", chats: await chatsIn(channel) });
+      }
+      const moved = rows.filter((one) => chatOf(one.key) !== kept && holds(one));
+      for (const one of moved) {
+        await db(`relay_picks?key=eq.${encodeURIComponent(one.key)}`, {
+          method: "PATCH", body: { moved_at: new Date().toISOString() },
+        });
+      }
+      return response.status(200).json({ moved: moved.length, chats: await chatsIn(channel) });
     }
     if (op === "close") {
       // Kept, for its hello: Claude can still list the tools, and a call

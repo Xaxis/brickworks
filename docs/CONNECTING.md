@@ -40,6 +40,63 @@ The private per-browser addresses that came before
 (`https://brickworks.diy/api/mcp?t=…`, pasted by hand) keep working for
 everyone who added one.
 
+## Several tabs
+
+A person often has two Brickworks tabs open on two models, and a Claude
+chat for each. Each chat has to stay in its own tab. Since 2026-10-17:
+
+1. **Each tab has a name to say.** The toolbar shows it while Claude can
+   reach the tab: `Tab k7qd`. Account says it in full: "This tab is k7qd
+   (“Castle”)". Claude takes either the id or the model's name: "work in
+   the castle tab".
+2. **Start the chat from the tab.** Account (and the assistant panel's
+   "Or with your Claude plan") has **New chat for this tab**. It opens
+   claude.ai on a new chat with the first message filled in: "Use my
+   Brickworks tab k7qd (“Castle”) for this chat." The person adds what to
+   build and sends it. Claude's first call chooses that tab. The same
+   message opens in the Claude app, or as a command line for Claude Code.
+   It is also copied, for when a link cannot fill it in.
+3. **A chat that has not chosen asks first.** With one tab open, a new
+   chat works in it. With several, its first call that would change a
+   model does nothing. Claude is shown the open tabs, which chat holds
+   each and for how long, and how to choose. A call that only looks goes
+   ahead in the most recent tab no other chat holds, and says which.
+4. **A chat stays in its tab.** Once chosen, every call goes there until
+   the chat chooses another. Clicking into another tab to watch changes
+   nothing. With more than one tab open, Claude is also asked to name the
+   tab on every call (`target`). That matters because claude.ai is
+   reported to reuse one connection across chats
+   (<https://claudeissues.com/issue/41836-no-session-conversation-identifier-sent-to-mcp-servers-cannot-distinguish-concur>);
+   the relay then cannot tell two chats apart, but a chat that names its
+   tab on each call stays in it. Claude Code sessions started from each
+   tab's first message did so in our test: `select_tab`, then every call
+   targeted.
+5. **The tab says who is working in it.** The toolbar shows "Claude
+   working · tab k7qd" while a chat works there (any call in the last 30
+   minutes). Account names the chat by when it started and what it did
+   last. If two chats work in one tab, both say so: the toolbar reads
+   "2 Claude chats", and Account has **Keep this one** beside each. The
+   other chat is moved off. Its next call does nothing and tells Claude to
+   ask which tab to work in.
+6. **Undo keeps to its own chat.** Each change a chat makes is one undo
+   step, marked with that chat. Claude's `undo` stops at a step another
+   chat made, and says so. The person's own Undo takes back any step, as
+   before.
+
+What is not possible: two chats that share one connection look like one
+chat to the relay, so the tab cannot show them as two or keep one. Naming
+the tab on every call (4) is what keeps them apart.
+
+The desktop app's windows are tabs here too: each window registers with
+the relay under its own id (`src/parts/tab_session.gd`), so two windows,
+or a window and a browser tab, follow the same rules.
+
+The rules are in `api/mcp.js` ("Two chats, two tabs"). What each chat
+holds is a row of `relay_picks` (`supabase/relay.sql`: `called_at`, `did`,
+`moved_at`). `tools/web/tabpair_probe.mjs` proves the relay's half in
+seconds; `tools/web/tabpair_flow.mjs` proves it with the app in two
+browser tabs and three chats.
+
 ## What Claude supports, with sources
 
 ### Adding a custom connector
@@ -92,6 +149,27 @@ What there is not:
   review (<https://claude.com/docs/connectors/directory>,
   <https://claude.com/docs/connectors/building/submission>). Not done; it is
   the owner's call.
+
+### A new chat with its first message filled in
+
+Researched 2026-10-17. Each of these fills the message in; none sends it.
+The person reads it and presses Enter.
+
+- **Claude app** (macOS, Windows, Linux): `claude://claude.ai/new?q=…`
+  "starts a new chat… the prompt field is prefilled so you can review and
+  send it"; `q` is cut at about 14,000 characters.
+  <https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link>
+- **Claude Code**: `claude-cli://open?q=…` opens a terminal with the
+  prompt "populated but not sent", at most 5,000 characters. It works once
+  Claude Code has run an interactive session on that computer.
+  <https://code.claude.com/docs/en/deep-links>. Or the command line
+  `claude "…"`, which Brickworks offers to copy.
+- **claude.ai in a browser**: `https://claude.ai/new?q=…` is not in
+  Anthropic's documentation. It is the same path as the app's documented
+  link, and is reported to fill the box in
+  (<https://www.oasis.security/blog/claude-ai-prompt-injection-data-exfiltration-vulnerability>,
+  March 2026). Brickworks uses it, and copies the message too, saying so
+  under the button: if the box is empty, paste.
 
 ### How Claude signs in to a connector
 
@@ -165,7 +243,7 @@ From <https://claude.com/docs/connectors/building/authentication> unless noted:
 | Tool annotations | every tool carries MCP's `annotations` — `title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` — from one table in the app (`CommandSocket.HINTS`; the relay's `tabs` and `select_tab` in `api/mcp.js`). Claude reads them in deciding what to ask about; the per-tool switches in Claude's own connector settings are Claude's, and the person's choices there stand |
 | Tokens | `/oauth/token`: S256 PKCE, exact return address (loopback: any port), resource checked; access an hour, refresh rotated, both kept only as SHA-256 |
 | Revocation | `/oauth/revoke` (RFC 7009), **Disconnect** in the app, or deleting the account |
-| Routing | each call goes to the account's open tab (`relay_tabs.owner`), whichever device |
+| Routing | each call goes to one of the account's open tabs (`relay_tabs.owner`), whichever device: the one the chat chose (`relay_picks`), by `select_tab` or `target` with an id or a model's name; with several open and none chosen, a change waits for a choice ("Several tabs", above) |
 | Long calls | Claude waits about three minutes for an answer, the relay four. A render, a booklet, a Studio file, Brick Art or a recording answers at once with "Started job N", and any other call still going after 20 s becomes one where it stands (`src/net/tool_jobs.gd`); the work goes on in the tab, on the bar the person sees. The `job` tool waits up to 10 s a call, and once the work is done one call of it gives the call's own answer, block for block: its words, its picture, and, for a client that shows pages, the `_meta` the card in Claude draws from (`brickworks/view`, with `brickworks/job` saying which job). The card beside a call that became a job follows it through the host and shows that answer. `/app?jobs-after=0` (`--jobs-after=0` on the desktop) makes every call in that tab a job, which is how `tools/web/model_view_check.mjs`, `viewer_tools_probe` and `tools/mcp_check.py` walk the path on a small model |
 | Tools that change | `listChanged: true`. A tab reloaded into a newer build says hello with its tools; each conversation's next call after that is answered as an event stream with `notifications/tools/list_changed` ahead of the answer, once (`relay_lists`). A client that takes JSON alone is told in words in that answer. The desktop's port and `tools/brickworks_mcp.py` do the same for an app updated and started again |
 

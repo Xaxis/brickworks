@@ -218,6 +218,13 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## The sections broken out of the model to be worked on (Sections.break_out):
+## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
+## "home": brick id -> the Transform3D it stood at}. Changed only by the
+## history's steps, so undo and redo carry it; and a file is written with
+## each put back where it was ([method home_of]), so a save never keeps a
+## section where it was pulled out to.
+var broken_out: Dictionary = {}
 var _generation: int = 0
 ## Enough for a long session's designs; past it the oldest go.
 const HISTORY_MOST := 60000
@@ -434,6 +441,7 @@ func clear() -> void:
 	_drawn.clear()
 	_next_id = 1
 	unit_steps.clear()
+	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
 
@@ -578,6 +586,31 @@ func copy_for_reading() -> BrickWorld:
 	return copy
 
 
+## The model's bricks where they stand in the model as built ([method
+## home_of]), each with its sub-assembly and step: what a file is written
+## from while a section is broken out (ModelStore), sub-models' frames and
+## all; with [param at_home] false, each where it stands, for a worker to
+## read (Sections). Draws nothing and is in no tree; the caller frees it.
+func copy_at_home(at_home: bool = true) -> BrickWorld:
+	var copy := BrickWorld.new()
+	copy.library = library
+	copy.keeps_history = false
+	copy.unit_steps = unit_steps.duplicate()
+	for brick_id: int in _bricks:
+		if _ghosts.has(brick_id):
+			continue
+		var brick: Brick = _bricks[brick_id]
+		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
+			home_of(brick) if at_home else brick.transform)
+		twin.group = brick.group
+		twin.unit = brick.unit
+		twin.step = brick.step
+		twin.hidden = brick.hidden
+		copy._bricks[brick_id] = twin
+	copy._next_id = _next_id
+	return copy
+
+
 ## A brick written into a world of that kind, which draws nothing and keeps
 ## no history: a model that is not on the baseplate, to be measured and
 ## photographed (ModelShot reads a world's bricks and nothing else). A
@@ -631,14 +664,14 @@ func drawn_as(bricks: Dictionary) -> Array:
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info != null:
-			var box: AABB = brick.transform * info.bounds
+			var box: AABB = drawn_at(brick) * info.bounds
 			bounds = bounds.merge(box) if any else box
 			any = true
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			var places: Array = taken.get(key, [])
 			if places.is_empty():
 				taken[key] = places
-			places.append(brick.transform)
+			places.append(drawn_at(brick))
 	var whole: Array[MultiMesh] = []
 	var loose: Dictionary = {}
 	var triangles: int = 0
@@ -1605,6 +1638,24 @@ func drawn_ids() -> Dictionary:
 ## its picture.
 func drawn_at(brick: Brick) -> Transform3D:
 	return _drawn.get(brick.id, brick.transform)
+
+
+## Where a brick stands in the model as built: where it is, unless it is in
+## a section broken out ([member broken_out]), whose parts are where they were
+## pulled from — exactly, for a part not moved since, by its offset taken
+## off for one put in or moved while it was out. What a file is written
+## with (ModelStore).
+func home_of(brick: Brick) -> Transform3D:
+	if broken_out.is_empty():
+		return brick.transform
+	var path: String = Assemblies.path_of(brick)
+	for section: String in broken_out:
+		var record: Dictionary = broken_out[section]
+		var home: Dictionary = record.get("home", {})
+		if not home.has(brick.id) and not Assemblies.within(path, section):
+			continue
+		return Sections.home_for(brick.transform, record, brick.id)
+	return brick.transform
 
 
 ## A colour as a faded brick is drawn in. Its alpha is kept: faded

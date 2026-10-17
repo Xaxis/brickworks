@@ -390,7 +390,7 @@ func answer_rpc(request: Dictionary) -> Variant:
 				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
 		var call := ToolJobs.Entry.new()
-		var called: Array = await _call(name, input, call)
+		var called: Array = await _call(name, input, call, chat_of(params))
 		if not bool(called[1]):
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
@@ -596,6 +596,11 @@ const HINTS := {
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],
 	"make_unique": ["Make a copy unique", "add"],
+	"suggest_sections": ["Suggest sections", "look"],
+	"make_sections": ["Make the sections", "add"],
+	# Moves a section's parts away from the model, or back; one step each.
+	"break_out_section": ["Break out a section", "add"],
+	"evaluate_section": ["Evaluate a section", "look"],
 	# Recolours parts nobody sees, after the person says yes; one step.
 	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],
@@ -760,7 +765,7 @@ var jobs := ToolJobs.new()
 ## known to be long at once, any other once it has run for 20 s. It keeps
 ## the app until the work ends. While a job holds the app every other call
 ## is told so at once, and [code]job[/code] says how it is going.
-func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null) -> Array:
+func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: String = "") -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
 	if entry == null:
@@ -783,7 +788,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null) -> Arr
 			_at_work += 1
 			var said: Variant = await _run_own(name, input)
 			_at_work -= 1
-			_one_step(name, before)
+			_one_step(name, before, chat)
 			return said, doing, entry), true]
 	if not await _take_a_turn():
 		holding = jobs.running()
@@ -798,7 +803,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null) -> Arr
 		# before it starts forgets it was told.
 		var answer: Variant = "Cancelled before it began: nothing was done."
 		if work == null or not work.cancelled:
-			answer = await _run(name, input, work)
+			answer = await _run(name, input, work, chat)
 		_hand_back()
 		return answer, doing, entry), true]
 
@@ -815,16 +820,18 @@ func _heard(note: String) -> void:
 ## A tool that takes the app's turn: the window's commands (AppTools), told
 ## the Working job it reports to when it is a job, or the assistant's. What
 ## it changes is one step of the history (see [method _one_step]).
-func _run(name: String, input: Dictionary, work: Working.Job) -> Variant:
+func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "") -> Variant:
 	var before: Dictionary = _before_change(name)
 	var answer: Variant
 	_at_work += 1
 	if _the_app_tools().has(name):
+		_the_app_tools().chat = chat
 		answer = await _the_app_tools().run(name, input, work)
+		_the_app_tools().chat = ""
 	else:
 		answer = await assistant.use_tool(name, input)
 	_at_work -= 1
-	_one_step(name, before)
+	_one_step(name, before, chat)
 	return answer
 
 
@@ -852,12 +859,13 @@ func _before_change(name: String) -> Dictionary:
 ## Claude's edit standing. A call that keeps its own history (the window's
 ## commands, an edit about a selection) has its steps folded into one; any
 ## other has the difference made one step.
-func _one_step(name: String, before: Dictionary) -> void:
+func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 	if before.is_empty():
 		return
 	var builder: Builder = assistant.builder
 	if builder.history_depth() > int(before["depth"]):
 		builder.fold_since(int(before["depth"]))
+		_mark(builder, chat)
 		return
 	var last: Dictionary = builder.last_step()
 	if not last.is_empty() and is_same(last, before["last"]) \
@@ -868,6 +876,27 @@ func _one_step(name: String, before: Dictionary) -> void:
 	if not steps.is_empty():
 		builder.record(steps, "Claude's %s (%s)" % [name.replace("_", " "),
 			SelectionScope.words_for(steps)])
+		_mark(builder, chat)
+
+
+## Which Claude chat made the newest step (the relay names the chat on a
+## call's _meta, api/mcp.js): with two chats in one tab, one chat's undo
+## does not take back the other's (AppTools._undo). Kept in the step
+## itself, which is the history's own record of it.
+const CHAT_KEY := "brickworks/chat"
+
+
+static func chat_of(params: Dictionary) -> String:
+	var meta: Variant = params.get("_meta")
+	if not meta is Dictionary or not (meta as Dictionary).get(CHAT_KEY) is Dictionary:
+		return ""
+	return str(((meta as Dictionary)[CHAT_KEY] as Dictionary).get("chat", ""))
+
+
+static func _mark(builder: Builder, chat: String) -> void:
+	var last: Dictionary = builder.last_step()
+	if not chat.is_empty() and not last.is_empty():
+		last["by"] = chat
 
 
 ## Wait until no other tool is running, then take the app.

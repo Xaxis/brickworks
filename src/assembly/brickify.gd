@@ -99,12 +99,24 @@ class Options extends RefCounted:
 	## A stand under it where it needs one (see [constant THIN_FOOT]);
 	## off, it is laid as it stands, and said if it would tip.
 	var stand: bool = true
+	## Its core bonded as a builder bonds it (Shapes' "bond"); off, laid by
+	## the colours measured, as [method build] lays it again where the
+	## bonded build leaves more of the model out.
+	var bond: bool = true
+
+	func copied() -> Options:
+		var out := Options.new()
+		for property: Dictionary in get_property_list():
+			if int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+				out.set(property["name"], get(property["name"]))
+		return out
 
 
 ## What a worker says it is doing, for the dialog to show.
 class Progress extends RefCounted:
 	var _lock := Mutex.new()
 	var _said: String = ""
+	var _stopped: bool = false
 
 	func say(what: String) -> void:
 		_lock.lock()
@@ -114,6 +126,19 @@ class Progress extends RefCounted:
 	func said() -> String:
 		_lock.lock()
 		var out: String = _said
+		_lock.unlock()
+		return out
+
+	## Asked on the main thread (Cancel, the panel closed, the app
+	## quitting): the run ends at its next step, with nothing laid.
+	func stop() -> void:
+		_lock.lock()
+		_stopped = true
+		_lock.unlock()
+
+	func stopped() -> bool:
+		_lock.lock()
+		var out: bool = _stopped
 		_lock.unlock()
 		return out
 
@@ -1420,7 +1445,8 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
 		"panels": options.smooth, "wedges": options.smooth,
-		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "sold_in": options.palette,
+		"stitch_first": true, "keep_pieces": true, "colour_shown": true, "bond": options.bond,
+		"sold_in": options.palette,
 		"plain_at": _plain_columns(grid),
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 
@@ -1484,20 +1510,28 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	var library: PartLibrary = checker.library
 	var times: Dictionary = {}
 	var t0: int = Time.get_ticks_msec()
-	if progress != null:
-		progress.say("measuring the model")
+	# A try at another size (_keeps_at) stops with the run, and says nothing
+	# over the run's own "trying it at".
+	var telling: Progress = progress if suggest else null
+	if telling != null:
+		telling.say("measuring the model")
 	var grid: Grid = voxelise(mesh, options, library)
 	times["measure"] = Time.get_ticks_msec() - t0
+	if _stopping(progress):
+		return _stopped_run()
 	for step: Variant in grid.ms:
 		times["measure." + str(step)] = grid.ms[step]
 	if grid.cells == 0:
 		return _cannot(mesh, options, checker, progress, suggest,
 			"at %d studs there is nothing of it to lay" % options.studs)
-	if progress != null:
-		progress.say("laying %s studs of it in bricks" % _comma(grid.cells))
+	if telling != null:
+		telling.say("laying %s studs of it in bricks" % _comma(grid.cells))
 	var t1: int = Time.get_ticks_msec()
 	var trouble: Array = []
-	var made: Array = Shapes.lay(pattern(grid, options), trouble, library)
+	var shape: Dictionary = pattern(grid, options)
+	if progress != null:
+		shape["stop"] = progress.stopped
+	var made: Array = Shapes.lay(shape, trouble, library)
 	var model := Assistant.Model.new()
 	model.name = mesh.name
 	for raw: Dictionary in made:
@@ -1519,11 +1553,13 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 		times["lay." + str(step)] = Shapes.last["ms"][step]
 	for step: Variant in (Shapes.last.get("stitch", {}) as Dictionary):
 		times["lay.stitch." + str(step)] = Shapes.last["stitch"][step]
+	if _stopping(progress):
+		return _stopped_run()
 	if model.placements.is_empty():
 		return _cannot(mesh, options, checker, progress, suggest, "at %d studs it came to no bricks%s"
 			% [options.studs, ": " + "; ".join(PackedStringArray(trouble)) if not trouble.is_empty() else ""])
-	if progress != null:
-		progress.say("checking %s parts hold together" % _comma(model.placements.size()))
+	if telling != null:
+		telling.say("checking %s parts hold together" % _comma(model.placements.size()))
 	var t2: int = Time.get_ticks_msec()
 	var stand: Dictionary = {}
 	if grid.stand.has_area():
@@ -1531,8 +1567,10 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			grid.stand_colour)
 	times["check.stand"] = Time.get_ticks_msec() - t2
 	var t3: int = Time.get_ticks_msec()
-	var report: Dictionary = mend(model, checker)
+	var report: Dictionary = mend(model, checker, progress)
 	times["check.mend"] = Time.get_ticks_msec() - t3
+	if _stopping(progress):
+		return _stopped_run()
 	var balance: Balance.Report = report.get("balance")
 	# Weighed, and it would tip after all, or all but (Balance's half a stud,
 	# as the grid was judged): stood on a stand under what it stands on and
@@ -1546,7 +1584,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 				+ "tip, its centre of mass %s studs inside what it stands on" % Balance.studs(
 					balance.margin))
 			stand = lay_stand(model, under, why, checker, options.smooth, grid.stand_colour)
-			report = _again(mend(model, checker), report)
+			report = _again(mend(model, checker, progress), report)
 			balance = report.get("balance")
 	# A stud joint past its working load, propped: a pillar under what it
 	# carries, down to whatever is under that or the ground, kept only if
@@ -1554,6 +1592,8 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	# a car's bumper hung under its body.
 	report["propped"] = 0
 	var t4: int = Time.get_ticks_msec()
+	if _stopping(progress):
+		return _stopped_run()
 	if balance != null and balance.over > 0:
 		var was: int = model.placements.size()
 		var props: int = _prop(model, checker, balance)
@@ -1590,10 +1630,38 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 			"at %d studs nothing of it held together" % options.studs)
 	var out: Dictionary = {"model": model, "report": report, "grid": grid, "trouble": trouble,
 		"ms": times}
+	# A bonded core is kept only if it keeps as much of the model. Where the
+	# bonded build leaves a region of it out, it is laid again by the colours
+	# measured and the one that fills more of the model kept, the time of both
+	# counted. A temple scene at 48 studs, bonded, lost the moon on its stick,
+	# which its stitch could no longer join, where the colours measured kept it.
+	if options.bond and not (report["lost"]["regions"] as Array).is_empty():
+		var unbonded: Options = options.copied()
+		unbonded.bond = false
+		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
+		if other.has("model"):
+			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])
+			var kept: Dictionary = out if bonded else other
+			var spent: Dictionary = other["ms"] if bonded else times
+			for step: String in ["measure", "lay", "check"]:
+				kept["ms"][step] = int(kept["ms"].get(step, 0)) + int(spent.get(step, 0))
+			kept["report"]["bond"] = "bonded" if bonded else "laid again unbonded"
+			out = kept
+			report = out["report"]
 	# What it lost is said; and where most of it went, a size that keeps it.
 	if suggest and float(report["coverage"]) < 0.75:
 		out["studs"] = _keeps_at(mesh, options, checker, progress)
 	return out
+
+
+## Whether [param progress] was told to stop.
+static func _stopping(progress: Progress) -> bool:
+	return progress != null and progress.stopped()
+
+
+## What a run stopped part way gives back: nothing laid.
+static func _stopped_run() -> Dictionary:
+	return {"error": "stopped", "stopped": true, "studs": 0}
 
 
 ## A later check's report carrying what an earlier mend did: the parts it took
@@ -1633,6 +1701,8 @@ static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.R
 ## {"error", "studs"}.
 static func _cannot(mesh: MeshFile, options: Options, checker: Assistant, progress: Progress,
 		suggest: bool, why: String) -> Dictionary:
+	if _stopping(progress):
+		return _stopped_run()
 	var studs: int = _keeps_at(mesh, options, checker, progress) if suggest else 0
 	var words: String = why
 	if studs > 0:
@@ -1649,6 +1719,8 @@ static func _keeps_at(mesh: MeshFile, options: Options, checker: Assistant,
 		progress: Progress) -> int:
 	var studs: int = options.studs
 	while studs < MOST_STUDS:
+		if _stopping(progress):
+			return 0
 		studs = mini(MOST_STUDS, maxi(studs + 4, ceili(studs * 1.5)))
 		if progress != null:
 			progress.say("trying it at %d studs" % studs)
@@ -1662,7 +1734,7 @@ static func _keeps_at(mesh: MeshFile, options: Options, checker: Assistant,
 		tried.limit = options.limit
 		tried.palette = options.palette
 		tried.stand = options.stand
-		var result: Dictionary = build(mesh, tried, checker, null, false)
+		var result: Dictionary = build(mesh, tried, checker, progress, false)
 		if result.has("model"):
 			var report: Dictionary = result["report"]
 			if float(report["coverage"]) >= 0.95 and (report["left_out"] as Array).is_empty():
@@ -2015,7 +2087,8 @@ static func said(result: Dictionary) -> String:
 ## time: what collides goes in one round, two rounds of joins at most, and
 ## then what is still apart and what floats go together. Twelve rounds of one
 ## kind at a time took a temple scene's check from 6 s to 290.
-static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
+static func mend(model: Assistant.Model, checker: Assistant,
+		progress: Progress = null) -> Dictionary:
 	var clock: Dictionary = {"checks": 0, "checks_ms": 0}
 	var report: Dictionary = _timed(model, checker, clock)
 	var taken_out: int = 0
@@ -2023,6 +2096,8 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 	var tying: int = 0
 	var left_out: Array = []
 	for _round: int in 8:
+		if _stopping(progress):
+			break
 		# A model with nothing in it comes back without a count of pieces.
 		if bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1:
 			break

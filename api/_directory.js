@@ -216,6 +216,22 @@ export function searchWords(given) {
 
 const YES = new Set(["1", "true", "yes", "on"]);
 
+/// Whether a list is asked for with test models in it (?tests=1): what a
+/// test account published, which no visitor is shown
+/// (supabase/test_models.sql). Only the probes ask.
+export function testsAsked(query) {
+  const value = String(query?.tests ?? "").toLowerCase();
+  if (!value || value === "0" || value === "false") return false;
+  if (!YES.has(value)) throw new Unacceptable("tests is 1 or left out");
+  return true;
+}
+
+/// What the CDN may keep of an answer with test models in it: nothing. The
+/// parameter is part of the address the CDN keeps an answer under, so a
+/// visitor's list is never one asked with it; and an answer that has test
+/// models in it is not kept at all.
+export const TESTS_CACHE = "private, no-store";
+
 /// The list's query string, checked: {asked, said}. asked is what
 /// directory_models takes; said is the query as understood, for the answer.
 export function listQuery(query, perPage, mostPages) {
@@ -258,6 +274,7 @@ export function listQuery(query, perPage, mostPages) {
   const sort = String(query.sort ?? "newest") || "newest";
   if (!(sort in SORTS)) throw new Unacceptable(`sort is one of ${Object.keys(SORTS).join(", ")}`);
   said.sort = asked.sort = sort;
+  if (testsAsked(query)) said.tests = asked.tests = true;
   return { asked, said };
 }
 

@@ -185,7 +185,16 @@ static func made_in_glass(library: PartLibrary, part: String, colour: int) -> bo
 
 
 ## Every brick of a shape, or a reason in [param trouble].
+## Whether a run's [param stop] (Brickify.Progress.stopped) says to stop.
+static func _halted(stop: Callable) -> bool:
+	return stop.is_valid() and bool(stop.call())
+
+
 static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Array:
+	# Asked between the steps, a run on a worker that was told to stop
+	# (Brickify.Progress) ends at the next: a 64-stud bunny's laying held
+	# the app's quit 18 s.
+	var stop: Callable = pattern.get("stop", Callable()) as Callable
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var origin := Vector3(float(at.get("x", 0.0)), float(at.get("y", 0.0)),
 		float(at.get("z", 0.0)))
@@ -253,6 +262,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				any = any or here >= 0
 			if any:
 				columns[Vector2i(x, z)] = column
+		if _halted(stop):
+			return []
 	# A plate of the shape with nothing of it above, below or beside is held
 	# by nothing, and a 1 x 1 laid there was reported floating on three of
 	# the four first bodies. Left out.
@@ -373,18 +384,25 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 							plan.taken[Vector3i(x, j, z)] = true
 		plan.colour_at = func(x: float, j: float, z: float) -> int:
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
+		plan.stop = stop
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
 		plan.rejoin = bool(pattern.get("rejoin", keep_pieces))
 		plan.colour_shown = bool(pattern.get("colour_shown", false))
+		plan.bond = bool(pattern.get("bond", false))
+		plan.core_colour = colour
 		plan.sold_in = PackedInt32Array(pattern.get("sold_in", []))
 		plan.faces = faces
 		plan.mirror_of()
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall,
 			"ms": {}}
 		var clock: int = Time.get_ticks_msec()
+		if _halted(stop):
+			return []
 		plan.round_runs()
 		last["ms"]["rounds"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		last["rounds"] = plan.round_made.size()
 		last["round_runs"] = plan.round_said
 		# Before the sides are turned out and the surface is sloped: the plates
@@ -452,13 +470,19 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 						roundi(100.0 * float(covered[facing]))])
 			shells = held
 			plan.under_shells(shells)
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		if surface != "none":
 			plan.surface(surface)
 		last["ms"]["surface"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		plan.lay()
 		last["ms"]["core"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		clock = Time.get_ticks_msec()
 		# A model standing on legs is pieces at its foot that meet the body above
 		# only side by side: pruned first from the foot, a bunny on its feet kept
@@ -467,6 +491,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		if stitched:
 			plan.stitch()
 		last["ms"]["stitch"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		# Pruned here, a teapot's spout and handle went without a word, and
 		# its coverage still read 98%.
 		if not keep_pieces:
@@ -475,10 +501,22 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan.made.append(one.duplicate(true))
 		# Stitched again only where something changed since: with every piece
 		# kept and nothing fixed added, it was the first stitch twice over.
+		if _halted(stop):
+			return []
 		if not (stitched and keep_pieces and fixed.is_empty()):
 			plan.stitch()
+		if _halted(stop):
+			return []
+		if plan.bond:
+			clock = Time.get_ticks_msec()
+			last["merged"] = plan.merge()
+			last["ms"]["merge"] = Time.get_ticks_msec() - clock
+		if _halted(stop):
+			return []
 		return [plan, shells]
 	var built: Array = build.call(bool(pattern.get("sideways", not gridded)))
+	if built.is_empty():
+		return []
 	var plan: Plan = built[0]
 	var shells: Array = built[1]
 	# Turning a side out must not cut the core in two: a car's arches left
@@ -489,6 +527,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	if not shells.is_empty() and (plan.pieces().size() > 1
 			or plan.screens_kept() < plan.screens_laid):
 		var upright: Array = build.call(false)
+		if upright.is_empty():
+			return []
 		var up: Plan = upright[0]
 		if up.pieces().size() < plan.pieces().size() \
 				or (up.pieces().size() == plan.pieces().size()
@@ -1852,6 +1892,22 @@ class Plan extends RefCounted:
 	var faces: Array = []
 	var faces_laid: Array = []
 	var faces_why: Dictionary = {}
+	## Bond as a builder does (a sculpt's grid, Brickify's): only what shows
+	## of a brick of the core is laid in its colour and what is hidden in any,
+	## so three plates of the body are a brick wherever they are, whatever
+	## colour the measuring gave the hidden ones ([method _bonded]); and once
+	## stitched, parts that make one part are merged ([method merge]). Laid
+	## with every hidden plate in its measured colour, a cow at 48 studs was
+	## 5,082 parts, 37% of them 1 x 1s, where a greedy stack of bricks was
+	## 1,882.
+	var bond: bool = false
+	## A run's stop (Brickify.Progress.stopped), asked each course of lay
+	## and each pass of merge: bonding made a course long enough that a quit
+	## waited 10 s for the laying.
+	var stop: Callable = Callable()
+	## The colour of a core part none of which shows: the model's main colour.
+	var core_colour: int = -1
+	var _made_in_colour: Dictionary = {}
 
 	func _init(given: Dictionary, height: int, tiles: bool, parts: PartLibrary) -> void:
 		columns = given
@@ -1890,15 +1946,49 @@ class Plan extends RefCounted:
 	func under_shell(cell: Vector2i, j: int) -> bool:
 		return at(cell, j) >= 0 and shelled.has(Vector3i(cell.x, j + 1, cell.y))
 
-	## Studs where course [param k] is whole, in one colour.
+	## Studs where course [param k] is whole, in one colour: with [member
+	## bond], in one colour where it shows, but in a thin part's columns
+	## ([member plain_at]) as measured, whose plates cross and hold it.
 	func full(k: int) -> Dictionary:
 		var out: Dictionary = {}
 		for key: Variant in columns:
 			var cell: Vector2i = key
 			var j: int = 3 * k
-			if body(cell, j) and body(cell, j + 1) and body(cell, j + 2) \
-					and at(cell, j) == at(cell, j + 1) and at(cell, j + 1) == at(cell, j + 2):
+			if not (body(cell, j) and body(cell, j + 1) and body(cell, j + 2)):
+				continue
+			if bond and not plain_at.has(cell) and shown_colour(cell, j, 3) != MIXED \
+					or at(cell, j) == at(cell, j + 1) and at(cell, j + 1) == at(cell, j + 2):
 				out[cell] = true
+		return out
+
+	## A part's colour that nothing decides: none of it shows.
+	const ANY := -2
+	## Plates that show in two colours: no one part.
+	const MIXED := -3
+
+	## Whether plate [param j] of [param cell] shows: the shape is not there
+	## on one of its six sides. A plate a stud in from the surface, under a
+	## slope or behind the side, is hidden.
+	func shows(cell: Vector2i, j: int) -> bool:
+		if at(cell, j - 1) < 0 or at(cell, j + 1) < 0:
+			return true
+		for step: Vector2i in Shapes.OUT:
+			if at(cell + step, j) < 0:
+				return true
+		return false
+
+	## The colour [param height] plates from [param j] up show: [constant ANY]
+	## where none shows, [constant MIXED] where they show two.
+	func shown_colour(cell: Vector2i, j: int, height: int) -> int:
+		var out: int = ANY
+		for n: int in height:
+			if not shows(cell, j + n):
+				continue
+			var c: int = at(cell, j + n)
+			if out == ANY:
+				out = c
+			elif c != out:
+				return MIXED
 		return out
 
 	## Whether the shape is its own mirror, about a plane across x or z: the
@@ -4048,6 +4138,8 @@ class Plan extends RefCounted:
 		made.append_array(round_made)
 		made.append_array(anchors)
 		for j: int in tall:
+			if stop.is_valid() and bool(stop.call()):
+				break
 			if j % 3 == 0:
 				var k: int = j / 3
 				var bricks: Dictionary = {}
@@ -4071,7 +4163,8 @@ class Plan extends RefCounted:
 						continue
 					if _free(covered, cell, j) and _free(covered, cell, j + 1) \
 							and _free(covered, cell, j + 2):
-						bricks[cell] = at(cell, j + 1)
+						var shown: int = shown_colour(cell, j, 3) if bond else ANY
+						bricks[cell] = shown if shown >= 0 else at(cell, j + 1)
 				# Wedge bricks where a course's plan edge runs on the diagonal: a
 				# hull's bow in bricks was a staircase where its plates had
 				# wedges.
@@ -5300,6 +5393,18 @@ class Plan extends RefCounted:
 	## One layer of the core: by colour, a strip across the middle tying the
 	## two halves, one half laid and the other its mirror.
 	func _layer(cells: Dictionary, j: int, given: Array, course: int) -> Array:
+		if bond and course >= 0:
+			if axis.is_empty():
+				return _bonded(cells, j, given, course)
+			# A shape that is its own mirror keeps its strip across the middle
+			# and its halves mirrored, whose joints move from course to course,
+			# but its hidden bricks in the core's colour: laid as the rest are, a
+			# plain sphere's seams bridged fell from 67% to 57%.
+			var shown: Dictionary = {}
+			for key: Variant in cells:
+				var c: int = shown_colour(key, j, 3)
+				shown[key] = c if c >= 0 else (core_colour if c == ANY else int(cells[key]))
+			cells = shown
 		var out: Array = []
 		var by_colour: Dictionary = {}
 		for key: Variant in cells:
@@ -5398,6 +5503,252 @@ class Plan extends RefCounted:
 			if not rest.is_empty():
 				out.append_array(_tile(_ordered(rest, j), j, int(c), tiles, {}, course))
 		return out
+
+	## A course of the core's bricks as a builder lays it ([member bond]):
+	## each stud, those with the fewest free beside them first, under the
+	## first brick that covers it in one colour where it shows. What is hidden
+	## is any colour, and a brick nothing of which shows is the core's. Laid by
+	## the colours measured, the plates the measuring coloured from the
+	## surface two studs in split a course where nothing of it shows: a cow's
+	## core came out in 1 x 1s at every change, and three plates where a
+	## brick would do.
+	func _bonded(cells: Dictionary, j: int, given: Array, course: int) -> Array:
+		var tiles: Array = Patterns._corners_turn(given, course)
+		var wanted: Dictionary = {}
+		for key: Variant in cells:
+			var shown: int = shown_colour(key, j, 3)
+			wanted[key] = int(cells[key]) if shown == MIXED else shown
+		var order: Array = _ordered(wanted, j).keys()
+		var rank: Dictionary = {}
+		for n: int in order.size():
+			var cell: Vector2i = order[n]
+			var free: int = 0
+			for step: Vector2i in Shapes.OUT:
+				if wanted.has(cell + step):
+					free += 1
+			rank[cell] = free * order.size() + n
+		order.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return int(rank[a]) < int(rank[b]))
+		var out: Array = []
+		for key: Variant in order:
+			var cell: Vector2i = key
+			if not wanted.has(cell):
+				continue
+			var placed: bool = false
+			for tile: Variant in tiles:
+				var one: Array = tile
+				var wide: int = one[0]
+				var deep: int = one[1]
+				for dx: int in wide:
+					for dz: int in deep:
+						var corner: Vector2i = cell - Vector2i(dx, dz)
+						var colour: int = _fits_any(wanted, corner, wide, deep)
+						if colour == MIXED:
+							continue
+						colour = colour if colour >= 0 else core_colour
+						if wide * deep > 1 and not _made(str(one[2]), colour):
+							continue
+						for i: int in wide:
+							for k: int in deep:
+								wanted.erase(corner + Vector2i(i, k))
+						out.append({"part": one[2], "color": colour, "x": corner.x, "y": j,
+							"z": corner.y, "rot": one[3]})
+						placed = true
+						break
+					if placed:
+						break
+				if placed:
+					break
+		return out
+
+	## Whether the LEGO Group sells [param part] in [param colour], by
+	## Rebrickable's elements, when colours are asked ([member sold_in]). A
+	## longer brick is not made in every colour its studs are: merged into a
+	## 1 x 8 brick, an avocado's Bright Green flesh came out Green, the
+	## nearest colour that brick is sold in.
+	func _made(part: String, colour: int) -> bool:
+		if sold_in.is_empty() or library == null:
+			return true
+		var key: String = "%s/%d" % [part, colour]
+		if not _made_in_colour.has(key):
+			_made_in_colour[key] = not library.element_for(Shapes.current(library, part), colour).is_empty()
+		return bool(_made_in_colour[key])
+
+	## Whether a part [param wide] by [param deep] at [param corner] fits the
+	## studs [param wanted] still has, and in what colour: [constant MIXED]
+	## where it does not fit, or would show two.
+	func _fits_any(wanted: Dictionary, corner: Vector2i, wide: int, deep: int) -> int:
+		var colour: int = ANY
+		for i: int in wide:
+			for k: int in deep:
+				var c: Variant = wanted.get(corner + Vector2i(i, k))
+				if c == null:
+					return MIXED
+				if int(c) == ANY:
+					continue
+				if colour == ANY:
+					colour = int(c)
+				elif int(c) != colour:
+					return MIXED
+		return colour
+
+	## The core's plain plates and bricks merged, once laid and stitched
+	## ([member bond]): two side by side in a course whose studs together are
+	## a part we lay, and three plates of one footprint stacked, a brick. Each
+	## in one colour where it shows. A merge only joins: whatever held either
+	## part holds the one, so the plan is in no more pieces. How many parts
+	## it saved.
+	func merge() -> int:
+		var before: int = made.size()
+		var plates: Dictionary = _sizes(Shapes.CORE_PLATES)
+		var bricks: Dictionary = _sizes(Shapes.CORE_BRICKS)
+		var changed: bool = true
+		var passes: int = 0
+		while changed and passes < 6:
+			if stop.is_valid() and bool(stop.call()):
+				break
+			changed = false
+			passes += 1
+			# Side by side.
+			var at_: Dictionary = {}    ## Vector3i(x, y, z) of a corner stud -> index
+			var plain: Dictionary = {}    ## index -> Rect2i
+			for n: int in made.size():
+				var rect: Rect2i = _plain_rect(made[n], plates, bricks)
+				if rect.has_area():
+					plain[n] = rect
+					at_[Vector3i(rect.position.x, int(made[n]["y"]), rect.position.y)] = n
+			var gone: Dictionary = {}
+			var touched: Dictionary = {}
+			for key: Variant in plain:
+				var n: int = key
+				if touched.has(n):
+					continue
+				var one: Dictionary = made[n]
+				var rect: Rect2i = plain[n]
+				var h: int = int(one["_h"])
+				# The part beside it along x, then along z, whose side is its side.
+				for along: Vector2i in [Vector2i(rect.size.x, 0), Vector2i(0, rect.size.y)]:
+					var m: int = int(at_.get(Vector3i(rect.position.x + along.x, int(one["y"]),
+						rect.position.y + along.y), -1))
+					if m < 0 or touched.has(m) or not plain.has(m):
+						continue
+					var other: Dictionary = made[m]
+					var r2: Rect2i = plain[m]
+					if int(other["_h"]) != h or (along.x > 0 and r2.size.y != rect.size.y) \
+							or (along.y > 0 and r2.size.x != rect.size.x):
+						continue
+					var whole: Rect2i = rect.merge(r2)
+					var table: Dictionary = bricks if h == 3 else plates
+					if not table.has(whole.size):
+						continue
+					var colour: int = _merged_colour([one, other])
+					if colour == MIXED or not _made(str(table[whole.size][2]), colour):
+						continue
+					made[n] = _merged(table[whole.size], whole, int(one["y"]), colour, h)
+					gone[m] = true
+					touched[n] = true
+					touched[m] = true
+					changed = true
+					break
+			if not gone.is_empty():
+				var kept: Array = []
+				for n: int in made.size():
+					if not gone.has(n):
+						kept.append(made[n])
+				made = kept
+			# Three plates of one footprint stacked: a brick.
+			var stack: Dictionary = {}    ## Vector3i(x, y, z) of a plate's corner -> index
+			for n: int in made.size():
+				var rect: Rect2i = _plain_rect(made[n], plates, bricks)
+				if rect.has_area() and int(made[n]["_h"]) == 1 and bricks.has(rect.size):
+					stack[Vector3i(rect.position.x, int(made[n]["y"]), rect.position.y)] = n
+			gone = {}
+			for key: Variant in stack:
+				var corner: Vector3i = key
+				var n: int = stack[key]
+				if gone.has(n):
+					continue
+				var mid: int = int(stack.get(corner + Vector3i(0, 1, 0), -1))
+				var top: int = int(stack.get(corner + Vector3i(0, 2, 0), -1))
+				if mid < 0 or top < 0 or gone.has(mid) or gone.has(top):
+					continue
+				var rect: Rect2i = _plain_rect(made[n], plates, bricks)
+				if _plain_rect(made[mid], plates, bricks) != rect \
+						or _plain_rect(made[top], plates, bricks) != rect:
+					continue
+				var colour: int = _merged_colour([made[n], made[mid], made[top]])
+				if colour == MIXED or not _made(str(bricks[rect.size][2]), colour):
+					continue
+				made[n] = _merged(bricks[rect.size], rect, corner.y, colour, 3)
+				gone[mid] = true
+				gone[top] = true
+				changed = true
+			if not gone.is_empty():
+				var kept: Array = []
+				for n: int in made.size():
+					if not gone.has(n):
+						kept.append(made[n])
+				made = kept
+		return before - made.size()
+
+	## A table of core parts by the studs they cover, across and along.
+	static func _sizes(table: Array) -> Dictionary:
+		var out: Dictionary = {}
+		for entry: Variant in table:
+			var one: Array = entry
+			var size := Vector2i(int(one[0]), int(one[1]))
+			if not out.has(size):
+				out[size] = one
+		return out
+
+	## The studs a plain plate or brick of the core covers, or an empty
+	## rectangle for anything else: a top's tile, a panel, a slope, a part
+	## turned out, dressing.
+	func _plain_rect(one: Dictionary, plates: Dictionary, bricks: Dictionary) -> Rect2i:
+		if one.has("panel") or bool(one.get("_top", false)) or bool(one.get("dressing", false)) \
+				or bool(one.get("_fixed", false)) or not one.has("_cells") or int(one.get("rot", 0)) > 1:
+			return Rect2i()
+		var h: int = int(one.get("_h", 0))
+		var table: Dictionary = bricks if h == 3 else plates if h == 1 else {}
+		var cells: Array = one["_cells"]
+		if cells.is_empty() or (one.get("_studs", []) as Array).size() != cells.size():
+			return Rect2i()
+		var low: Vector2i = cells[0]
+		var high: Vector2i = cells[0]
+		for cell: Vector2i in cells:
+			low = Vector2i(mini(low.x, cell.x), mini(low.y, cell.y))
+			high = Vector2i(maxi(high.x, cell.x), maxi(high.y, cell.y))
+		var rect := Rect2i(low, high - low + Vector2i.ONE)
+		if rect.get_area() != cells.size() or not table.has(rect.size):
+			return Rect2i()
+		var entry: Array = table[rect.size]
+		if str(entry[2]) != str(one["part"]) or int(entry[3]) != int(one["rot"]) \
+				or Vector2i(int(one["x"]), int(one["z"])) != low:
+			return Rect2i()
+		return rect
+
+	## The colour parts merged into one would be: the colour of what shows
+	## of them, [constant MIXED] where they show two, the first's where none
+	## shows.
+	func _merged_colour(parts: Array) -> int:
+		var out: int = ANY
+		for one: Dictionary in parts:
+			var y: int = int(one["y"])
+			var shown: bool = false
+			for cell: Vector2i in one["_cells"]:
+				for n: int in int(one["_h"]):
+					shown = shown or shows(cell, y + n)
+			if not shown:
+				continue
+			if out == ANY:
+				out = int(one["color"])
+			elif int(one["color"]) != out:
+				return MIXED
+		return out if out != ANY else int((parts[0] as Dictionary)["color"])
+
+	func _merged(entry: Array, rect: Rect2i, y: int, colour: int, h: int) -> Dictionary:
+		var one: Dictionary = {"part": entry[2], "color": colour, "x": rect.position.x, "y": y,
+			"z": rect.position.y, "rot": entry[3]}
+		return _annotated(one, Shapes.CORE_BRICKS if h == 3 else Shapes.CORE_PLATES, h, true)
 
 	## The studs a core part laid by [method _tile] covers.
 	func _studs_of(one: Dictionary, tiles: Array) -> Array[Vector2i]:
