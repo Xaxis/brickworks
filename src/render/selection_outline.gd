@@ -197,10 +197,13 @@ static func _pass_viewport() -> SubViewport:
 
 
 ## [method show_selection] drawn once into the mask and the passes but not
-## laid on the screen, then let go: the first selection's shaders and
-## targets made while nobody is waiting on them. The step player's first
-## page, on a slowed phone in software, spent most of a second making them.
-## Anything shown meanwhile is left as it is.
+## laid on the screen, then drawn no more, its targets kept: the first
+## selection's shaders and window-sized targets made while nobody is
+## waiting on them (a new target asks the card whether it is complete,
+## which in a browser waits for everything queued). The step player's
+## first page, on a slowed phone in software, spent seconds of WebGL there.
+## Anything shown meanwhile is left as it is; the next show_selection draws
+## as ever.
 func warm(selection: Dictionary) -> void:
 	show_selection(selection)
 	if _overlay == null:
@@ -208,8 +211,11 @@ func warm(selection: Dictionary) -> void:
 	_overlay.visible = false
 	var asked: int = _shown_count
 	await RenderingServer.frame_post_draw
-	if asked == _shown_count:
-		show_selection({})
+	if asked != _shown_count:
+		return
+	set_process(false)
+	for view: SubViewport in [_mask, _rows, _line]:
+		view.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 
 ## How many times something was shown: warm lets go only of its own.
