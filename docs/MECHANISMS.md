@@ -1311,7 +1311,11 @@ it stands on the baseplate's studs"). `GrabDrag.topple_on_baseplate` turns
 that off. A model Balance reads as past its edge where it stood does not fall
 either: Balance's support is the lowest cells, and 8218's smaller front tyres
 stand clear of them, so it reads as tipping at rest; a grab of its engine
-does not throw it on its nose.
+does not throw it on its nose. **Not yet seen to fall:** `grab_probe --
+--only=tipping` turned the six biggest sections of 64 sets on no floor (two
+minifigures, 4096, 6630, 30181, 4903 and 60 sets of 40 to 160 parts) by
+±90° and ±150° through move_part, and none was left past its edge, so the
+fall has run on no real model yet.
 
 **The release frame and a chain over MCP.** A big section let go is checked
 and swung down on a worker (`GrabDrag._verify_off_thread`), the window
@@ -1320,7 +1324,10 @@ the browser without threads. `move_part` takes `to=` [x, y, z] in studs, as
 it says where a joint is: the part drawn there by its whole chain back to
 the anchor (GrabChain, as a person's hold-then-drag), tested, eased back to
 the furthest that has room, one undo step. On 4096 the crane's end reached
-its point to 0.32 LDU along 4 joints.
+its point to 0.32 LDU along 4 joints. On 7191 the 131-part wing let go is
+now checked and kept in 8 s, its worst frame 69 ms (the commit 49 and what an
+edit sets going 17; the checking itself is off the window); it was 17 to
+20 s with a worst frame of 160 ms.
 
 **Left for later.** Racks and their pinions in a loop (Mechanism has no
 prismatic joint yet, §5), so a steering rack driven by its wheel and a
