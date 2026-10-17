@@ -31,9 +31,14 @@ uniform float fade = 0.0;
 // rim of a stud, the edge of a brick's top — found from how sharply the
 // lightness changes. 0 for none.
 uniform float crease = 0.0;
-// A line of its own colour round what this step adds, or nothing.
+// A band of its own colour round what this step adds, just outside the
+// ink line round it, or nothing: the new parts outlined, as Studio's
+// Instruction Maker and the LEGO app's steps outline them. The parts keep
+// their colours and their ink, so the band reads as a mark, not plastic.
 uniform bool mark_new = false;
-uniform vec3 new_colour = vec3(1.0, 0.78, 0.0);
+uniform vec3 new_colour = vec3(1.0, 0.52, 0.06);
+// How wide the band is, in pixels.
+uniform float halo = 6.0;
 
 bool differs(vec3 a, vec3 b) {
 	return any(greaterThan(abs(a - b), vec3(3.5 / 255.0)));
@@ -81,7 +86,6 @@ void fragment() {
 		colour.rgb = colour.rgb * (1.0 + 0.8 * dim) + vec3(0.045) * dim;
 		vec3 mine = texture(code_tex, UV).rgb;
 		float edge = 0.0;
-		bool fresh = is_brick(mine) && is_new(mine);
 		bool dark = is_brick(mine) && lightness(colour.rgb) < 0.16;
 		bool dark_other = true;
 		bool met_page = false;
@@ -94,9 +98,6 @@ void fragment() {
 				vec3 other = texture(code_tex, UV + offset).rgb;
 				if (differs(other, mine)) {
 					edge = 1.0;
-					if (is_brick(other) && is_new(other)) {
-						fresh = true;
-					}
 					if (!is_brick(other)) {
 						met_page = true;
 					} else if (lightness(texture(colour_tex, UV + offset).rgb) >= 0.16) {
@@ -123,8 +124,20 @@ void fragment() {
 			float faint = smoothstep(0.22, 0.45, g) * crease;
 			colour.rgb = mix(colour.rgb, dark ? ink_on_dark : colour.rgb * 0.35, faint);
 		}
-		if (mark_new && fresh) {
-			line = new_colour;
+		// Outside a new part, within the band of one: the band's colour.
+		bool banded = false;
+		if (mark_new && !(is_brick(mine) && is_new(mine)) && edge < 0.5) {
+			for (int ring = 1; ring <= 3 && !banded; ring++) {
+				float r = reach + halo * float(ring) / 3.0;
+				for (int n = 0; n < 12; n++) {
+					float a = float(n) * 0.5235988;
+					vec3 other = texture(code_tex, UV + vec2(cos(a), sin(a)) * r * pixel).rgb;
+					if (is_brick(other) && is_new(other)) {
+						banded = true;
+						break;
+					}
+				}
+			}
 		}
 		float keep = 1.0;
 		if (fade > 0.0) {
@@ -132,7 +145,9 @@ void fragment() {
 			vec2 near = min(at, size - at);
 			keep = smoothstep(0.0, fade, min(near.x, near.y));
 		}
-		if (!is_brick(mine)) {
+		if (banded) {
+			COLOR = vec4(new_colour, keep);
+		} else if (!is_brick(mine)) {
 			// The page round the model: only the outline is drawn on it.
 			COLOR = vec4(line, edge * keep);
 		} else {

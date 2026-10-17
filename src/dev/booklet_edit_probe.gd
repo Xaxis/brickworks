@@ -92,6 +92,39 @@ func _click(at: Vector2) -> void:
 	await _frames(3)
 
 
+## A press at [param from], the pointer moved to [param to] in steps, and a
+## release there: a drag as a person drags, in the window's own pixels.
+func _drag_mouse(from: Vector2, to: Vector2) -> void:
+	var scale: Vector2 = Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size
+	var moved := InputEventMouseMotion.new()
+	moved.position = from * scale
+	moved.global_position = moved.position
+	Input.parse_input_event(moved)
+	await _frames(3)
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = from * scale
+	down.global_position = down.position
+	Input.parse_input_event(down)
+	await _frames(3)
+	for n: int in range(1, 9):
+		var step := InputEventMouseMotion.new()
+		step.position = from.lerp(to, n / 8.0) * scale
+		step.global_position = step.position
+		step.button_mask = MOUSE_BUTTON_MASK_LEFT
+		step.relative = (to - from) / 8.0 * scale
+		Input.parse_input_event(step)
+		await _frames(2)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = to * scale
+	up.global_position = up.position
+	Input.parse_input_event(up)
+	await _frames(4)
+
+
 func _key(code: Key, command: bool = false, shift: bool = false) -> void:
 	for down: bool in [true, false]:
 		var event := InputEventKey.new()

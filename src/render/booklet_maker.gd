@@ -46,6 +46,9 @@ var job: Working.Job = null
 var marks: Dictionary = {}
 
 var _studio: BookletStudio
+## The steps the booklet was made from, as planned: an entry's "step" meta
+## is its index here (the page editor finds a page's steps by it).
+var plan: Array[Instructions.Step] = []
 ## Lay the pages out and draw nothing ([method lay_out_only]): which steps
 ## go on which page, read in a moment where the pictures take minutes.
 var dry: bool = false
@@ -113,6 +116,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		steps = Instructions.plan(world, library, scenery, {}, true)
 	if steps.is_empty() or _stopped():
 		return ""
+	plan = steps
 	_say("Setting out %d steps…" % steps.size(), 0)
 	for index: int in steps.size():
 		if steps[index].attaches():
@@ -130,6 +134,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	if not dry:
 		_studio = BookletStudio.new()
 		_studio.library = library
+		# The parts each step adds outlined, unless its designer said not.
+		_studio.mark_new = BookletLooks.highlight_on(world)
 		add_child(_studio)
 		await get_tree().process_frame
 
@@ -149,6 +155,10 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	document.credits = ("Part geometry from the LDraw™ Parts Library, © the LDraw community, "
 		+ "CC BY 2.0 and CC BY 4.0. Catalogue data: Rebrickable. LEGO® is a trademark of the LEGO Group of "
 		+ "companies which does not sponsor, authorize or endorse this booklet.")
+	var pictures: Dictionary = BookletLooks.images(world)
+	for name: String in pictures:
+		document.images[name] = "data:%s;base64,%s" % [
+			"image/png" if name.ends_with(".png") else "image/jpeg", str(pictures[name])]
 	_lap("staged")
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")
@@ -472,6 +482,8 @@ func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
 	entry.zoom = clampf(float(own.get("zoom", 1.0)), 0.25, 4.0)
 	entry.size = clampf(float(own.get("size", 1.0)), 0.4, 3.0)
 	entry.page_break = str(own.get("page", ""))
+	entry.place = own.get("place", {})
+	entry.notes = own.get("notes", [])
 	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
 	if not turn.is_empty():
 		entry.fixed = true

@@ -39,7 +39,8 @@ var library: PartLibrary
 ## of two numbers is a third), so the smooth line comes from drawing at
 ## twice the size. One on the web, where the GPU is whatever the visitor has.
 var supersample: int = 2
-## Ring this step's parts in a colour of their own; see Booklet.
+## Outline the parts a step adds in a band of their own colour (booklet_ink);
+## see Booklet.
 var mark_new: bool = false
 ## Fade the picture to the page over this many of its own pixels at the
 ## edges, for a picture whose model runs off them; 0 for none.
@@ -296,6 +297,8 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	# A third of a millimetre of ink at the booklet's resolution.
 	_ink_material.set_shader_parameter("ink", maxf(2.0, 1.5 * supersample))
 	_ink_material.set_shader_parameter("mark_new", mark_new and new_from <= upto)
+	# A band of about two thirds of a millimetre round the new parts.
+	_ink_material.set_shader_parameter("halo", maxf(3.0, 3.0 * supersample))
 	_ink_material.set_shader_parameter("fade", fade * supersample)
 	_ink_material.set_shader_parameter("crease", crease)
 

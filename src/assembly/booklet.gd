@@ -27,12 +27,18 @@
 ## spare, so one file prints on both. On screen the same millimetre is
 ## scaled to the window (--mm), so the page reads the same way.
 ##
-## The new parts are not highlighted. Modern booklets keep every colour
-## true and rely on the parts box, the step's place on the page and the
-## ink line round every part; a highlight colour on the model reads as a
-## colour of plastic, which a reader then goes looking for. The line round
-## each part (booklet_ink) is what makes the box enough: with it, the
-## brick the box shows can be found by its outline.
+## The new parts are outlined, as Studio's Instruction Maker and LEGO
+## booklets of the app era outline them: a band of orange just outside
+## what the step adds, past the ink line round it (booklet_ink), and the
+## parts inside keep their own colours, so the band reads as a mark and not
+## as plastic. Its designer can turn it off for the whole booklet
+## (BookletLooks "highlight"), for a booklet that relies on the parts box
+## and the ink line alone, as most printed ones do.
+##
+## A designer can also lay a page out by hand (BookletLooks "place" and
+## "notes"): a step's picture, its parts box, its callout and its number
+## where they were dragged to, and words and pictures of their own on the
+## page. What was not placed is laid out as below.
 ##
 ## Everything goes into one file — pictures as data, each part's picture
 ## once — because a booklet beside a folder of images is one that arrives
@@ -52,6 +58,11 @@ const BANNER := 11.0
 ## — ten millimetres a stud — or the first steps of a small model are a
 ## poster of two plates.
 const MOST_SCALE := 0.48
+## How much larger than that a step given a page alone may be drawn.
+const ALONE_MOST := 3.0
+## How near, in mm, an item dragged on the page snaps to a margin or to
+## another item's edge (BookletPlace).
+const SNAP := 2.5
 ## The least a page of four, or of two, may draw at before fewer steps
 ## go on the page: six and five millimetres a stud.
 const FOUR_UP := 0.3
@@ -112,6 +123,10 @@ class Entry extends RefCounted:
 	var page_break: String = ""
 	## The step's look's name (BookletLooks.key), "" for a worked-out step.
 	var look: String = ""
+	## Placed by hand (BookletLooks "place"): item -> [x, y, w, h] in page
+	## mm; and the words and pictures its designer put on its page.
+	var place: Dictionary = {}
+	var notes: Array = []
 
 	## Laid out: the panel on the page, the part of it the model is drawn
 	## in, and how big.
@@ -120,6 +135,8 @@ class Entry extends RefCounted:
 	var free: Rect2 = Rect2()
 	var scale: float = 0.0
 	var parts_rect: Rect2 = Rect2()
+	## How wide its parts box may be before a row wraps.
+	var parts_width: float = 0.0
 	var number_at: Vector2 = Vector2()
 	var number_size: float = NUMBER
 
@@ -211,6 +228,8 @@ class Document extends RefCounted:
 	var lots: Array[Lot] = []
 	## The legal line at the end.
 	var credits: String = ""
+	## The pictures a designer put on its pages: name -> data URI.
+	var images: Dictionary = {}
 
 
 # -- layout ----------------------------------------------------------------
@@ -332,11 +351,19 @@ static func _arrangements(count: int, area: Rect2) -> Array:
 ## the scales each fits at, so the model does not change size from one
 ## step to the next on the same page.
 static func _page_scale(group: Array, panels: Array) -> float:
-	var scale: float = MOST_SCALE
+	var scale: float = INF
 	for index: int in group.size():
 		var entry: Entry = group[index]
-		scale = minf(scale, _fit(entry, panels[index])[0] / _grown(entry))
+		scale = minf(scale, minf(_most(entry), _fit(entry, panels[index])[0] / _grown(entry)))
 	return scale
+
+
+## The largest [param entry] may be drawn, in mm an LDU: ten millimetres a
+## stud, or, for a step its designer gave a page alone, as large as fills
+## it up to three times that. A small model alone at ten millimetres a stud
+## sat small in the middle of its page.
+static func _most(entry: Entry) -> float:
+	return MOST_SCALE * (ALONE_MOST if entry.page_break == "alone" else 1.0)
 
 
 ## How much larger than the page's other steps its designer drew [param
@@ -375,7 +402,7 @@ static func _fit(entry: Entry, panel: Rect2) -> Array:
 		if scale > best_scale:
 			best_scale = scale
 			best = option
-	return [minf(best_scale, MOST_SCALE * _grown(entry)), best]
+	return [minf(best_scale, _most(entry) * _grown(entry)), best]
 
 
 static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
@@ -384,7 +411,8 @@ static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	entry.scale = minf(scale * _grown(entry), _fit(entry, panel)[0]) \
 		if not is_equal_approx(_grown(entry), 1.0) else scale
 	entry.number_size = _number_size(entry, panel)
-	var parts: Vector2 = _parts_size(entry.lots, _parts_width(entry, panel))
+	entry.parts_width = _parts_width(entry, panel)
+	var parts: Vector2 = _parts_size(entry.lots, entry.parts_width)
 	entry.parts_rect = Rect2(panel.position, parts) if not entry.lots.is_empty() else Rect2()
 	entry.number_at = panel.position + Vector2(0.4,
 		(parts.y + 1.6) if not entry.lots.is_empty() else 0.0)
@@ -399,6 +427,90 @@ static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	var free: Rect2 = entry.free
 	entry.free = Rect2(free.get_center() - need.min(free.size) * 0.5,
 		need.min(free.size))
+	_by_hand(entry)
+
+
+## What its designer placed by hand, where they placed it (BookletLooks
+## "place"), within the page: the picture filling the rect it was given,
+## the parts box as wide as it was made, the number under it unless it was
+## placed itself, the callout box's pictures fitted to its new size.
+static func _by_hand(entry: Entry) -> void:
+	if entry.place.is_empty():
+		return
+	if entry.place.has("picture"):
+		var at: Rect2 = _on_page(BookletLooks.rect_of(entry.place["picture"]), Vector2(8, 8))
+		entry.rect = at
+		var size: Vector2 = entry.subject.size.max(Vector2(1.0, 1.0))
+		entry.scale = minf(at.size.x * 0.94 / size.x, at.size.y * 0.94 / size.y)
+		entry.free = at
+	if entry.place.has("parts") and not entry.lots.is_empty():
+		var at: Rect2 = BookletLooks.rect_of(entry.place["parts"])
+		entry.parts_width = maxf(at.size.x, 12.0)
+		var parts: Vector2 = _parts_size(entry.lots, entry.parts_width)
+		entry.parts_rect = _on_page(Rect2(at.position, parts), parts)
+		entry.number_at = entry.parts_rect.position + Vector2(0.4, parts.y + 1.6)
+	if entry.place.has("number"):
+		var at: Rect2 = BookletLooks.rect_of(entry.place["number"])
+		var size := Vector2(entry.number_size * 0.62 * str(entry.number).length() + 1.0,
+			entry.number_size)
+		entry.number_at = _on_page(Rect2(at.position, size), size).position
+	if entry.callout != null and entry.place.has("callout"):
+		entry.callout.box = _on_page(BookletLooks.rect_of(entry.place["callout"]),
+			Vector2(12, 12))
+		_cells(entry.callout)
+
+
+## Where an item dragged on the page comes to rest: [param at] moved, or
+## with [param resize] its far corner moved, onto the nearest of the page's
+## margins and middle and the edges and middles of [param others] (Rect2s
+## in page mm) within SNAP mm, each way on its own. {"rect": Rect2, "lines":
+## [["x" or "y", mm]] for the guides it snapped to}.
+static func snapped_to(at: Rect2, others: Array, resize: bool = false) -> Dictionary:
+	var area: Rect2 = content()
+	var xs: Array = [area.position.x, area.end.x, PAGE.x * 0.5]
+	var ys: Array = [area.position.y, area.end.y, PAGE.y * 0.5]
+	for other: Variant in others:
+		var rect: Rect2 = other
+		xs.append_array([rect.position.x, rect.end.x, rect.get_center().x])
+		ys.append_array([rect.position.y, rect.end.y, rect.get_center().y])
+	var out: Rect2 = at
+	var lines: Array = []
+	var by_x: Array = _nearest([at.end.x] if resize
+		else [at.position.x, at.get_center().x, at.end.x], xs)
+	if not by_x.is_empty():
+		if resize:
+			out.size.x += float(by_x[0])
+		else:
+			out.position.x += float(by_x[0])
+		lines.append(["x", by_x[1]])
+	var by_y: Array = _nearest([at.end.y] if resize
+		else [at.position.y, at.get_center().y, at.end.y], ys)
+	if not by_y.is_empty():
+		if resize:
+			out.size.y += float(by_y[0])
+		else:
+			out.position.y += float(by_y[0])
+		lines.append(["y", by_y[1]])
+	return {"rect": out, "lines": lines}
+
+
+## The nearest of [param targets] to any of [param edges] within SNAP:
+## [how far to move, the target], or [].
+static func _nearest(edges: Array, targets: Array) -> Array:
+	var best: Array = []
+	for edge: Variant in edges:
+		for target: Variant in targets:
+			var gap: float = float(target) - float(edge)
+			if absf(gap) <= SNAP and (best.is_empty() or absf(gap) < absf(float(best[0]))):
+				best = [gap, float(target)]
+	return best
+
+
+## [param at] kept on the page, no smaller than [param least].
+static func _on_page(at: Rect2, least: Vector2) -> Rect2:
+	var size: Vector2 = at.size.max(least).min(PAGE)
+	var position: Vector2 = at.position.clamp(Vector2.ZERO, PAGE - size)
+	return Rect2(position, size)
 
 
 static func _number_size(entry: Entry, panel: Rect2) -> float:
@@ -653,6 +765,7 @@ img.a { display: block; }
 .ban { background: #23527c; color: #fff; border-radius: calc(2 * var(--mm)); }
 .note { background: #fff1d6; color: #7a4a00; border-radius: calc(1.4 * var(--mm));
   padding: calc(1 * var(--mm)) calc(1.6 * var(--mm)); white-space: normal; }
+.tx { white-space: pre-wrap; line-height: 1.2; overflow-wrap: break-word; }
 svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; overflow: visible; }
 .chip { display: inline-block; width: calc(2.4 * var(--mm)); height: calc(2.4 * var(--mm));
   border-radius: calc(.5 * var(--mm)); vertical-align: calc(-.3 * var(--mm));
@@ -712,6 +825,9 @@ static func _page(page: Page, document: Document) -> String:
 							"color:#fff;width:calc(61 * var(--mm));text-align:right"))
 			for entry: Entry in page.entries:
 				_entry(entry, document, out, svg, in_banner)
+			# What its designer put on the page, over the rest: pictures, then words.
+			for entry: Entry in page.entries:
+				_notes(entry, document, out)
 	# The foot: the page number at the outer corner, and how far through.
 	if page.kind != "cover":
 		var left: bool = page.number % 2 == 0
@@ -745,7 +861,7 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 	if not entry.lots.is_empty():
 		out.append(_div(entry.parts_rect, "box"))
 		var y: float = entry.parts_rect.position.y + PAD
-		for row: Array in _rows(entry.lots, _parts_width(entry, entry.rect)):
+		for row: Array in _rows(entry.lots, entry.parts_width):
 			var x: float = entry.parts_rect.position.x + PAD
 			var tallest: float = float(row[2])
 			for lot: Lot in row[0]:
@@ -791,6 +907,26 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		for arrow: Array in entry.arrows:
 			svg.append(_arrow(arrow[-2], arrow[-1], "#15191e", 0.45, 1.4,
 				arrow.slice(0, arrow.size() - 1)))
+
+
+## The words and pictures a designer put on [param entry]'s page
+## (BookletLooks "notes"), where they put them.
+static func _notes(entry: Entry, document: Document, out: PackedStringArray) -> void:
+	for kind: String in ["image", "text"]:
+		for note: Variant in entry.notes:
+			if not (note is Dictionary) or not (note as Dictionary).has(kind):
+				continue
+			var at: Rect2 = BookletLooks.rect_of(note.get("at", []))
+			if kind == "image":
+				var source: String = str(document.images.get(str(note["image"]), ""))
+				if not source.is_empty():
+					_image(out, source, at, "A picture of the designer's")
+				continue
+			var size: float = clampf(float(note.get("size", 4.0)), 1.5, 40.0)
+			var words: String = _escape(str(note["text"])).replace("\n", "<br>")
+			out.append("<div class=\"t tx\" style=\"--x:%s;--y:%s;--s:%s;width:calc(%s * var(--mm));min-height:calc(%s * var(--mm))\">%s</div>"
+				% [_n(at.position.x), _n(at.position.y), _n(size), _n(at.size.x), _n(at.size.y),
+					words])
 
 
 ## A hidden colour's chip and words: "■ Tower: Bright Green"; in its own

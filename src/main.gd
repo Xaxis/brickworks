@@ -103,6 +103,8 @@ var _share_view: ShareView
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
 var _build_mode: BuildMode
+## The booklet's page laid out by hand (Build, Booklet page, Lay out the page).
+var _page_editor: PageEditor
 var _build_pages: BuildSteps
 var _build_outline: SelectionOutline
 var _build_page: int = 0
@@ -585,6 +587,9 @@ func _tell_page() -> void:
 		# The timeline, while it is up: its order, caption and step's parts
 		# (tools/web/steps_flow.mjs).
 		"timeline": _steps.page_state() if _steps != null else {},
+		# The booklet's page being laid out by hand, its items in page mm
+		# (tools/web/booklet_edit_flow.mjs).
+		"page_editor": _page_editor.page_state() if _page_editor != null else {},
 		# What the renderer is drawing it with, and the frames this app's own
 		# work made slow, for tools/web/freeze_check.mjs: a browser's long
 		# tasks include drawing, which in software is most of a second a
@@ -795,6 +800,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_inventory.controls_by_name())
 	if _steps != null:
 		named.merge(_steps.controls_by_name())
+	if _page_editor != null:
+		named.merge(_page_editor.controls_by_name())
 	if _flex != null:
 		named.merge(_flex.controls_by_name())
 	# And the model's own part of the window, the column the box select
@@ -2384,8 +2391,11 @@ func build_state() -> Dictionary:
 	said["told_laps"] = _told_laps
 	# Counted by the pages, not by asking every brick twice a second.
 	said["shown"] = _build_pages.standing(_build_page) if _build_pages != null else 0
-	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
-		and _build_pages.view(_build_page)["from"] == BookletStudio.BACK else "front")
+	# ...and "turned" where the step's designer turned it (BuildSteps.view).
+	var from: Vector3 = _build_pages.view(_build_page)["from"] if _build_pages != null \
+		else BookletStudio.FRONT
+	said["from"] = "back" if from == BookletStudio.BACK \
+		else ("front" if from == BookletStudio.FRONT else "turned")
 	return said
 
 
@@ -2906,6 +2916,10 @@ func _build_ui() -> void:
 	# the step it is on.
 	_builder.place_step = _steps.place_step
 	middle.add_child(_steps)
+	# The booklet's page laid out by hand, over the whole window.
+	_page_editor = PageEditor.new()
+	_page_editor.app = self
+	$HUD.add_child(_page_editor)
 
 	# Room for two lines. The strip wraps rather than truncating when the
 	# window is narrow, and a clipped area would put the wrapped line

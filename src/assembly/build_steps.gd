@@ -292,8 +292,9 @@ func note(page: int) -> String:
 
 ## Which way to look at [param page] and what to frame: {"from": the
 ## direction from the model to the eye, "box": the box to fit}. From the
-## front, as every booklet step is drawn (BookletStudio.FRONT), unless the
-## step's new parts are hidden from there and the back shows them, as
+## front, as every booklet step is drawn (BookletStudio.FRONT), unless its
+## designer turned it (BookletLooks.turn_at, as the booklet draws it), or
+## the step's new parts are hidden from there and the back shows them, as
 ## BookletMaker turns a page round; framed on what is built so far, or
 ## close round the new parts when they are a speck of it.
 ##
@@ -306,7 +307,14 @@ func view(page: int) -> Dictionary:
 		return _views[page]
 	var from: Vector3 = BookletStudio.FRONT
 	var fresh_now: Dictionary = _fresh[page]
-	if page > 0 and not fresh_now.is_empty():
+	# Turned where its designer turned it (a ROTSTEP, the timeline's Booklet
+	# row), as the booklet draws the step.
+	var step: Instructions.Step = step_of(page)
+	var turn: Dictionary = BookletLooks.turn_at(_world, step.authored_in, step.authored_step) \
+		if step != null and step.authored_step >= 0 else {}
+	if not turn.is_empty():
+		from = BookletLooks.direction(turn)
+	elif page > 0 and not fresh_now.is_empty():
 		var here: float = seen(page, BookletStudio.FRONT)
 		if here < TURN_BELOW:
 			var there: float = seen(page, BookletStudio.BACK)
