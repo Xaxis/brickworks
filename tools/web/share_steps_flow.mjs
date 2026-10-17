@@ -441,6 +441,8 @@ try {
       + `after the first frame; the cover ${record.first.cover_ms} ms after Build it; step 1 on screen `
       + `${first.shown} ms after Start; with each tap at once, step 1 ${atOnce} ms after the first frame `
       + `(as tapped here, ${firstStep})`);
+    record.first.opened = (await share(page)).opened || {};
+    say(`the viewer's way there (ms from its start): ${JSON.stringify(record.first.opened)}`);
     if (!reportOnly) {
       const bar = n > 1000 ? FIRST_BAR_BIG : FIRST_BAR;
       check(`the first step is drawn within ${bar / 1000} s of the page's first frame, each tap made at once `

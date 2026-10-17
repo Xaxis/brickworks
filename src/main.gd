@@ -118,6 +118,10 @@ const NO_BUILD_WANTED := -2
 var _build_wanted: int = NO_BUILD_WANTED
 ## Whether the link's steps came with it (SharedPages), not worked out here.
 var _steps_carried: bool = false
+## The viewer's way to its first look, phase by phase, in ms since it began:
+## the link fetched, the model opened (with ModelStore's own phases), the
+## steps in.
+var _view_phases: Dictionary = {}
 ## What was in sight before the player took the window, put back after.
 var _build_left: Dictionary = {}
 ## How long turning to the last page took, and the longest, in microseconds:
@@ -681,6 +685,9 @@ func _tell_page() -> void:
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
 		"carried": _steps_carried,
+		# What opening the link's model cost, phase by phase, in ms
+		# (ModelStore.open_phases), and the viewer's own steps around it.
+		"opened": _view_phases,
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
@@ -1998,7 +2005,10 @@ var _ahead_count: int = 0
 ## Fetch the shared model and open it, read-only.
 func _view_shared() -> void:
 	_share_view.loading()
+	var began: int = Time.get_ticks_msec()
+	_view_phases = {}
 	var answer: Dictionary = await _shared.fetch(_viewing)
+	_view_phases["fetched"] = Time.get_ticks_msec() - began
 	var code: int = int(answer["code"])
 	if code == 410 or code == 404:
 		var title: String = ("This model is no longer shared" if code == 410
@@ -2020,6 +2030,8 @@ func _view_shared() -> void:
 	if not str(result["error"]).is_empty():
 		_share_view.failed("It could not be opened here: %s." % result["error"], _view_shared)
 		return
+	_view_phases["opened"] = Time.get_ticks_msec() - began
+	_view_phases["open"] = _store.open_phases.duplicate()
 	_store.title = name
 	_store.share_id = ""
 	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")),
@@ -2030,6 +2042,7 @@ func _view_shared() -> void:
 	_shell.assemblies.enter("")
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+	_view_phases["drawn"] = Time.get_ticks_msec() - began
 	# On the web most parts are fetched as they are wanted; the steps are
 	# worked out from all of them, so they wait for the last.
 	var since: int = Time.get_ticks_msec()
@@ -2046,9 +2059,14 @@ func _view_shared() -> void:
 		_store.open_text(str(shared.get("model", "")), name)
 		_store.title = name
 		_store.share_id = ""
-	_lay_baseplate()
-	await get_tree().process_frame
-	_camera.frame(_built_bounds())
+		# Laid and framed again for the model opened again; with nothing
+		# waited for the world is as it was a frame ago, and that frame
+		# (a whole model drawn, in software most of a second) is not
+		# spent twice.
+		_lay_baseplate()
+		await get_tree().process_frame
+		_camera.frame(_built_bounds())
+	_view_phases["parts"] = Time.get_ticks_msec() - began
 	# The steps whoever shared it worked out, when they came with it and
 	# match what opened (SharedPages): a phone does not work them out. An
 	# old link, or one that does not match, has them worked out here.
@@ -2061,12 +2079,15 @@ func _view_shared() -> void:
 		_steps.to_end()
 	elif await _steps.start(_world, _library, _store.scenery):
 		_steps.to_end()
+	_view_phases["steps"] = Time.get_ticks_msec() - began
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.brickworksStepsReady = performance.now()", true)
 	# Back where this device left it: a phone that slept mid-build opens on
 	# the page it was on.
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
+	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
+		_ready_the_pages()
 	if _build_wanted != NO_BUILD_WANTED:
 		var wanted: int = _build_wanted
 		_build_wanted = NO_BUILD_WANTED
@@ -2112,13 +2133,7 @@ func _enter_build(page: int = -1) -> void:
 		_steps.to_end()
 		_steps.visible = false
 	if _build_pages == null:
-		_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
-		# The timeline's order, when the pages are its steps (they are,
-		# unless it is showing the order parts were put down in): the
-		# world is laid out in it already, and the cover costs nothing.
-		var timeline: Array = _steps.reveal_order()
-		_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
-			else -1000 - Time.get_ticks_msec()
+		_make_build_pages(made)
 	_share_view.show_bar(false)
 	_share_view.hover("", Vector2.ZERO)
 	_hovered = 0
@@ -2131,6 +2146,31 @@ func _enter_build(page: int = -1) -> void:
 	# A frame for the bars to be laid out, so the view is framed between them.
 	await get_tree().process_frame
 	_build_go(page)
+
+
+## The pages of [param made], and the order and key the world shows them by.
+func _make_build_pages(made: Array[Instructions.Step]) -> void:
+	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	# The timeline's order, when the pages are its steps (they are, unless
+	# it is showing the order parts were put down in): the world is laid
+	# out in it already, and the cover costs nothing.
+	var timeline: Array = _steps.reveal_order()
+	_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
+		else -1000 - Time.get_ticks_msec()
+
+
+## The pages made, and the first page's view worked out, in a frame of
+## their own once the steps are in: Build it and Start then cost their own
+## frames and no more. Every part's box goes on the view plane for the first
+## page's view, which on 4,000 parts of a slowed phone was a turn's worth.
+func _ready_the_pages() -> void:
+	await get_tree().process_frame
+	if _build_pages != null or _steps.steps().is_empty() or _build_mode.is_open():
+		return
+	_make_build_pages(_steps.steps())
+	await get_tree().process_frame
+	if _build_pages != null and _build_pages.last() >= 1:
+		_build_pages.view(1)
 
 
 ## Put [param page] on screen: what is built by then, the rest out of
