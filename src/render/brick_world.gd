@@ -78,6 +78,13 @@ class Batch extends RefCounted:
 	var shown: int = 0
 	var ranks: PackedInt64Array = PackedInt64Array()
 	var revealed: int = 0
+	## ...and what it was written with, slot by slot in the MultiMesh's own
+	## layout (STRIDE floats: the transform's three rows, the colour, the
+	## custom data), and the colour code its surface keeps: so one brick's
+	## colour is changed by handing the batch this again, whole
+	## ([method set_faded_in_order]), with nothing read back.
+	var buffer: PackedFloat32Array = PackedFloat32Array()
+	var surface_color: int = Lbm.COLOR_INHERIT
 	## While x-ray is on (see [method set_xray]): the batch's ghosted
 	## bricks, drawn by a MultiMesh of their own under the batch's.
 	var xray: MultiMeshInstance3D = null
@@ -931,15 +938,63 @@ func _write_instance(batch: Batch, slot: int, brick: Brick,
 		surface_color: int, into: MultiMesh = null) -> void:
 	var multimesh: MultiMesh = into if into != null else batch.multimesh
 	multimesh.set_instance_transform(slot, drawn_at(brick))
-	# A surface moulded in a fixed colour ignores the brick's colour;
-	# that is what keeps a printed face black on a yellow head.
-	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
-	var color: PartLibrary.BrickColor = library.color(code)
+	var color: PartLibrary.BrickColor = _brick_colour(brick, surface_color)
+	multimesh.set_instance_color(slot, _shown_colour(brick, color))
+	multimesh.set_instance_custom_data(slot, color.instance_custom)
+
+
+## The colour a brick's surface is drawn in: a surface moulded in a fixed
+## colour ignores the brick's colour; that is what keeps a printed face
+## black on a yellow head.
+func _brick_colour(brick: Brick, surface_color: int) -> PartLibrary.BrickColor:
+	return library.color(brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color)
+
+
+## ...as it is drawn now: faded, tinted, or as it is.
+func _shown_colour(brick: Brick, color: PartLibrary.BrickColor) -> Color:
 	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
 	if _tinted.has(brick.id):
 		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
-	multimesh.set_instance_color(slot, shown)
-	multimesh.set_instance_custom_data(slot, color.instance_custom)
+	return shown
+
+
+## Floats a slot of a MultiMesh's buffer: a Transform3D's three rows, a
+## colour and the custom data.
+const STRIDE := 20
+
+
+## One brick into one slot of a buffer laid out as the MultiMesh lays out
+## its own (MultiMesh.buffer): what _write_instance writes, call by call.
+func _pack(buffer: PackedFloat32Array, slot: int, at: Transform3D, brick: Brick,
+		surface_color: int) -> void:
+	var o: int = slot * STRIDE
+	var b: Basis = at.basis
+	buffer[o] = b.x.x
+	buffer[o + 1] = b.y.x
+	buffer[o + 2] = b.z.x
+	buffer[o + 3] = at.origin.x
+	buffer[o + 4] = b.x.y
+	buffer[o + 5] = b.y.y
+	buffer[o + 6] = b.z.y
+	buffer[o + 7] = at.origin.y
+	buffer[o + 8] = b.x.z
+	buffer[o + 9] = b.y.z
+	buffer[o + 10] = b.z.z
+	buffer[o + 11] = at.origin.z
+	var color: PartLibrary.BrickColor = _brick_colour(brick, surface_color)
+	_pack_colour(buffer, o, _shown_colour(brick, color))
+	var custom: Color = color.instance_custom
+	buffer[o + 16] = custom.r
+	buffer[o + 17] = custom.g
+	buffer[o + 18] = custom.b
+	buffer[o + 19] = custom.a
+
+
+static func _pack_colour(buffer: PackedFloat32Array, o: int, colour: Color) -> void:
+	buffer[o + 12] = colour.r
+	buffer[o + 13] = colour.g
+	buffer[o + 14] = colour.b
+	buffer[o + 15] = colour.a
 
 
 func _surface_colour(batch: Batch, surface_index: int) -> int:
@@ -1141,6 +1196,7 @@ func _stop_reveal() -> void:
 		batch.ranks = PackedInt64Array()
 		batch.shown = 0
 		batch.revealed = 0
+		batch.buffer = PackedFloat32Array()
 	# Written whole for the reveal, x-ray's ghosts and all, and the cut not
 	# made: split again.
 	if not _xray.is_empty() or _cut_on:
@@ -1170,12 +1226,23 @@ func _write_in_order(batch: Batch, key: String) -> void:
 	_write_through(batch, [], surface_color)
 	batch.reaches = PackedFloat32Array()
 	batch.cut_slots = PackedInt32Array()
+	# Packed here and handed over in one call, and kept: a step of the step
+	# player changes a few bricks' colours in it and hands it over again
+	# (set_faded_in_order), where writing a slot in place is never drawn
+	# in a browser (_fresh_slots).
+	var buffer := PackedFloat32Array()
+	buffer.resize(count * STRIDE)
 	var bounds := AABB()
+	var mesh_box: AABB = batch.multimesh.mesh.get_aabb()
 	for slot: int in count:
 		var brick: Brick = _bricks[batch.brick_ids[slot]]
-		_write_instance(batch, slot, brick, surface_color)
-		var box: AABB = drawn_at(brick) * batch.multimesh.mesh.get_aabb()
+		var at: Transform3D = drawn_at(brick)
+		_pack(buffer, slot, at, brick, surface_color)
+		var box: AABB = at * mesh_box
 		bounds = box if slot == 0 else bounds.merge(box)
+	batch.multimesh.buffer = buffer
+	batch.buffer = buffer
+	batch.surface_color = surface_color
 	batch.multimesh.visible_instance_count = batch.shown
 	# Bounds for all of them, shown or to come, so the batch is not culled
 	# as it grows.
@@ -1567,6 +1634,50 @@ func set_faded(ids: Dictionary) -> void:
 		if batch != null:
 			_touching(batch)
 			_mark_dirty(key)
+
+
+## While the world shows an order a count at a time ([method reveal_upto]):
+## these bricks drawn faded (id -> true) or in their own colours (id ->
+## false), each written in its slot of the buffer its batch was written
+## with, and each batch that holds one handed that buffer again — nothing
+## else rewritten and the reveal going on. A page of the step player fades
+## the page before's parts, not the model: set_faded asked every brick and
+## rewrote every batch holding one that changed, the reveal ended. False,
+## with nothing changed, for a brick that is not in the order or a batch
+## not written in it: the caller then uses set_faded.
+func set_faded_in_order(changes: Dictionary) -> bool:
+	if _reveal_order.is_empty() or _rebuild_queued:
+		return false
+	for brick_id: int in changes:
+		if not _reveal_rank.has(brick_id):
+			return false
+		for key: String in _brick_batches.get(brick_id, NO_KEYS):
+			var batch: Batch = _batches.get(key)
+			if batch == null or batch.ranks.is_empty() \
+					or batch.buffer.size() != batch.brick_ids.size() * STRIDE:
+				return false
+	var touched: Dictionary = {}
+	for brick_id: int in changes:
+		var fade: bool = changes[brick_id]
+		if fade == _faded.has(brick_id):
+			continue
+		if fade:
+			_faded[brick_id] = true
+		else:
+			_faded.erase(brick_id)
+		var brick: Brick = _bricks[brick_id]
+		var rank: int = _reveal_rank[brick_id]
+		for key: String in _brick_batches.get(brick_id, NO_KEYS):
+			var batch: Batch = _batches[key]
+			# The batch's bricks of the order follow those shown from the
+			# start, by their place in it.
+			var slot: int = batch.shown + batch.ranks.bsearch(rank)
+			_pack_colour(batch.buffer, slot * STRIDE,
+				_shown_colour(brick, _brick_colour(brick, batch.surface_color)))
+			touched[batch] = true
+	for batch: Batch in touched:
+		batch.multimesh.buffer = batch.buffer
+	return true
 
 
 func faded_ids() -> Dictionary:

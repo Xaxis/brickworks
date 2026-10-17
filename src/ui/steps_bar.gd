@@ -480,6 +480,13 @@ func refresh(number: int = -1) -> void:
 
 
 ## How many places there are along the timeline.
+## The order the world is shown it in, a count at a time, and the key
+## it is shown by (BrickWorld.reveal_upto): the step player turns its pages
+## by the same order, so the world the timeline laid out is laid out for it.
+func reveal_order() -> Array:
+	return [_order_packed, _order_key]
+
+
 func _length() -> int:
 	return _events.size() if _mode == 2 else _order.size()
 

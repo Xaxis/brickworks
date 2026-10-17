@@ -169,6 +169,8 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 	_ok(pages.shown(pages.last()).size() == every.size() and pages.faded(pages.last()).size()
 		== every.size() - pages.fresh(pages.last()).size(),
 		"the last page is the whole model, all but its own parts faded")
+	_turns_change_only_the_step(pages, every.size())
+
 	# On the desktop, where the web on a phone is several times slower:
 	# the first page includes laying every part out on the view plane.
 	_ok(first_view < 20.0 and slowest_view < 20.0,
@@ -185,6 +187,50 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 		_ok(first_callout > 0 and pages.note(first_callout).begins_with("Build"),
 			"...and its first page says to build it on the side (%s)" % (
 				pages.note(first_callout) if first_callout > 0 else "none"))
+
+
+## A page turned as the player turns it: a count of the order, and only the
+## bricks whose fading changes faded or not (BuildSteps.count, fading) — the
+## same on screen as the whole model asked (shown, faded), next, back, and a
+## jump either way, the cover included.
+func _turns_change_only_the_step(pages: BuildSteps, every: int) -> void:
+	var wrong_count: int = 0
+	var wrong_fading: int = 0
+	var most: int = 0
+	var pairs: Array[Vector2i] = []
+	for page: int in range(0, pages.last()):
+		pairs.append(Vector2i(page, page + 1))
+		pairs.append(Vector2i(page + 1, page))
+	for jump: int in [0, 1, 3, 30, pages.last()]:
+		pairs.append(Vector2i(mini(2, pages.last()), mini(jump, pages.last())))
+		pairs.append(Vector2i(mini(jump, pages.last()), 0))
+	for pair: Vector2i in pairs:
+		var to: int = pair.y
+		# On screen at [to]: the first count(to) of the order, each once.
+		var seen: Dictionary = {}
+		for n: int in pages.count(to):
+			seen[pages.order[n]] = true
+		var shown: Dictionary = pages.shown(to)
+		if seen.size() != shown.size() or pages.standing(to) != shown.size():
+			wrong_count += 1
+		# Faded there: what was faded at [from], with the changes made.
+		var faded: Dictionary = pages.faded(pair.x).duplicate()
+		var changes: Dictionary = pages.fading(pair.x, to)
+		most = maxi(most, changes.size()) if absi(pair.x - to) == 1 else most
+		for brick_id: int in changes:
+			if changes[brick_id]:
+				faded[brick_id] = true
+			else:
+				faded.erase(brick_id)
+		var wanted: Dictionary = pages.faded(to)
+		if faded.size() != wanted.size() or not wanted.keys().all(func(id: int) -> bool:
+				return faded.has(id)):
+			wrong_fading += 1
+	_ok(wrong_count == 0, "a page is a count of the order: the same parts on the baseplate as "
+		+ "the whole model asked (%d of %d turns wrong)" % [wrong_count, pairs.size()])
+	_ok(wrong_fading == 0, "...and a turn fades only what changes, to the same page as the whole "
+		+ "model asked (%d wrong); a step's turn changes %d parts at most of %d" % [
+			wrong_fading, most, every])
 
 
 ## The steps break ties by the order the parts stand in, so the same file

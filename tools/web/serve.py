@@ -34,6 +34,10 @@ with nobody's account and no row in the database:
 
     tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 0 \\
         --share models/house.ldr
+
+Given as ID=FILE, and as often as wanted, each link plays its own file
+(share_steps_flow.mjs serves three sizes of one model at once); a plain
+FILE answers every other id.
 """
 
 from __future__ import annotations
@@ -60,6 +64,7 @@ class Handler(SimpleHTTPRequestHandler):
     parts_url: str = ""
     delay: float = 0.0
     share: Path | None = None
+    shares: dict[str, Path] = {}
 
     def end_headers(self) -> None:
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
@@ -69,7 +74,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - the name http.server calls
         path = self.path.split("?", 1)[0]
-        if self.share is not None and self._shared(path):
+        if (self.share is not None or self.shares) and self._shared(path):
             return
         if self.parts_url and path == "/api/account":
             self._send(200, "application/json",
@@ -94,7 +99,6 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _shared(self, path: str) -> bool:
         """The link's two addresses, played from --share's file. True if answered."""
-        assert self.share is not None
         link = re.fullmatch(r"/m/([A-Za-z0-9]{10})/?", path)
         if link:
             self.send_response(302)
@@ -106,14 +110,15 @@ class Handler(SimpleHTTPRequestHandler):
             return False
         query = parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
         shared_id = (query.get("id") or [""])[0]
-        if not re.fullmatch(r"[A-Za-z0-9]{10}", shared_id):
+        played = self.shares.get(shared_id, self.share)
+        if not re.fullmatch(r"[A-Za-z0-9]{10}", shared_id) or played is None:
             self._send(404, "application/json", b'{"error": "no such link"}')
             return True
-        text = self.share.read_text(encoding="utf-8", errors="replace")
+        text = played.read_text(encoding="utf-8", errors="replace")
         lines = text.splitlines()
         name = next((line[2:].strip() for line in lines
                      if line.startswith("0 ") and not line.startswith(("0 FILE", "0 !", "0 Name:"))),
-                    self.share.stem)
+                    played.stem)
         parts = sum(1 for line in lines if line.startswith("1 ") and line.lower().rstrip().endswith(".dat"))
         host = self.headers.get("Host", "127.0.0.1")
         body = {"id": shared_id, "name": name, "author": "Served Locally", "parts": parts,
@@ -141,13 +146,18 @@ def main() -> int:
     parser.add_argument("--parts", help="serve /parts/*.lbm from here, slowly")
     parser.add_argument("--parts-url", help="answer /api/account with this as where parts live")
     parser.add_argument("--delay", type=float, default=2500.0, help="milliseconds")
-    parser.add_argument("--share", help="answer /api/share?id= and /m/<id> with this model")
+    parser.add_argument("--share", action="append", default=[],
+                        help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
     args = parser.parse_args()
     if args.parts:
         Handler.parts = Path(args.parts).resolve()
         Handler.delay = args.delay / 1000.0
-    if args.share:
-        Handler.share = Path(args.share).resolve()
+    for given in args.share:
+        shared_id, _, file = given.rpartition("=")
+        if shared_id:
+            Handler.shares[shared_id] = Path(file).resolve()
+        else:
+            Handler.share = Path(file).resolve()
     if args.parts_url:
         Handler.parts_url = args.parts_url
     server = ThreadingHTTPServer(

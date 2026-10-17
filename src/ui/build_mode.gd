@@ -22,6 +22,8 @@ extends Control
 signal next_wanted
 signal back_wanted
 signal close_wanted
+## A page tapped on the progress bar: the steps lie along it.
+signal page_wanted(page: int)
 
 ## Points.
 const BUTTON := 60.0
@@ -43,6 +45,9 @@ var _close: Button
 var _caption: Label
 var _note: Label
 var _progress: ProgressBar
+## The bar's strip, a fingertip tall round the thin bar: a tap on it goes
+## to the step under the finger.
+var _scrub: Control
 var _bottom: PanelContainer
 var _callout: PanelContainer
 var _strip: HFlowContainer
@@ -99,10 +104,17 @@ func _build_top() -> void:
 	balance.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	balance.name = "Balance"
 	row.add_child(balance)
+	_scrub = Control.new()
+	_scrub.mouse_filter = Control.MOUSE_FILTER_STOP
+	_scrub.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_scrub.tooltip_text = "Tap to go to that step"
+	_scrub.gui_input.connect(_scrubbed)
+	column.add_child(_scrub)
 	_progress = ProgressBar.new()
 	_progress.show_percentage = false
 	_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(_progress)
+	_progress.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
+	_scrub.add_child(_progress)
 
 
 func _build_bottom() -> void:
@@ -202,7 +214,9 @@ func _fit() -> void:
 		button.custom_minimum_size = Vector2((88.0 if button == _close else 0.0) * pt, BUTTON * pt)
 	var balance: Control = _close.get_parent().get_node("Balance")
 	balance.custom_minimum_size = Vector2(88.0 * pt, 0.0)
-	_progress.custom_minimum_size = Vector2(0.0, 6.0 * pt)
+	_scrub.custom_minimum_size = Vector2(0.0, 24.0 * pt)
+	_progress.offset_top = -3.0 * pt
+	_progress.offset_bottom = 3.0 * pt
 	var track := StyleBoxFlat.new()
 	track.bg_color = Color(1, 1, 1, 0.14)
 	track.set_corner_radius_all(roundi(3.0 * pt))
@@ -377,11 +391,34 @@ func _swiped(event: InputEvent) -> void:
 		back_wanted.emit()
 
 
+## A finger lifted, or the mouse let go, on the progress bar: the step under
+## it, the bar being the steps from the first to the last, each its share.
+func _scrubbed(event: InputEvent) -> void:
+	var at: Vector2
+	if event is InputEventScreenTouch:
+		if (event as InputEventScreenTouch).pressed:
+			return
+		at = (event as InputEventScreenTouch).position
+	elif event is InputEventMouseButton:
+		var button: InputEventMouseButton = event
+		if button.pressed or button.device == InputEvent.DEVICE_ID_EMULATION \
+				or button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		at = button.position
+	else:
+		return
+	accept_event()
+	if last <= 0 or _scrub.size.x <= 0.0:
+		return
+	page_wanted.emit(clampi(ceili(at.x / _scrub.size.x * last), 1, last))
+
+
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"build_next": _next, "build_back": _back, "build_close": _close,
-		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom}
+		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
+		"build_progress": _scrub}
 
 
 ## What the page says, for a check to read.

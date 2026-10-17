@@ -1407,6 +1407,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "share steps browser flow",
+      "entry": "tools/web/share_steps_flow.mjs",
+      "reach": "node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR   (a local export; or --url=<preview> --publish with .env sourced)",
+      "area": "web"
+    },
+    {
       "kind": "lib",
       "label": "recall our own scored designs",
       "entry": "src/ai/design_memory.gd",
