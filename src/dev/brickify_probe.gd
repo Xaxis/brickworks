@@ -605,18 +605,24 @@ func _bonded(round: Dictionary, plain: Dictionary, big: Dictionary) -> void:
 		_check("the forty-stud bunny's hidden core is bricks, plates only at its edges: %d bricks, %d plates"
 			% [int(hidden["brick"]), int(hidden["plate"])],
 			int(hidden["plate"]) * 2 <= int(hidden["brick"]))
+	# Each against main's (a1d1998, 2026-10-16): parts, the share of 1 x 1s,
+	# of seams bridged and of weak points. Fewer parts and 1 x 1s; seams and
+	# weak points within two points of main's.
+	var main: Dictionary = {"the sphere": [1606, 0.352, 0.539, 0.309],
+		"the plain sphere": [1266, 0.384, 0.668, 0.363],
+		"the forty-stud bunny": [2062, 0.386, 0.497, 0.312]}
 	for one: Array in [["the sphere", round], ["the plain sphere", plain], ["the forty-stud bunny", big]]:
 		var laid: Dictionary = one[1]
 		if laid.is_empty():
 			continue
-		# On main 2026-10-16 (a1d1998): the sphere 1,606 parts, 35% of them 1 x 1s,
-		# plain 1,266 and 38%, the forty-stud bunny 2,062 and 39%; seams bridged
-		# 54%, 67% and 50%; weak points 31%, 36% and 31%.
+		var was: Array = main[one[0]]
 		var bond: Dictionary = _bond(laid["model"])
-		_check("%s: %d parts, %.0f%% of them 1 x 1, %.0f%% of %d seams bridged, %.0f%% weak points"
-			% [one[0], int(bond["parts"]), 100.0 * float(bond["one"]), 100.0 * float(bond["seams"]),
-				int(bond["pairs"]), 100.0 * float(bond["weak"])],
-			float(bond["one"]) <= 0.35 and float(bond["seams"]) >= 0.45 and float(bond["weak"]) <= 0.40)
+		_check("%s: %d parts (main %d), %.1f%% of them 1 x 1 (%.1f%%), %.1f%% of %d seams bridged (%.1f%%), %.1f%% weak points (%.1f%%)"
+			% [one[0], int(bond["parts"]), int(was[0]), 100.0 * float(bond["one"]), 100.0 * float(was[1]),
+				100.0 * float(bond["seams"]), int(bond["pairs"]), 100.0 * float(was[2]),
+				100.0 * float(bond["weak"]), 100.0 * float(was[3])],
+			int(bond["parts"]) < int(was[0]) and float(bond["one"]) < float(was[1])
+			and float(bond["seams"]) >= float(was[2]) - 0.02 and float(bond["weak"]) <= float(was[3]) + 0.02)
 
 
 ## A build's bond as brickify_bench.py measures it, from the parts' boxes on
