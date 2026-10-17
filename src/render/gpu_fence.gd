@@ -86,8 +86,16 @@ static func passed(n: int) -> bool:
 	return n <= 0 or bool(JavaScriptBridge.eval(_ASK % n, true))
 
 
-## Until the card has done what was asked of it before now. A coroutine:
-## await it.
+## Until the card has done what was asked of it before now, and of any
+## frame drawn meanwhile. A coroutine: await it.
+##
+## A frame drawn while this waits, to answer a person, is queued after the
+## fence, and a read once the fence has passed waited for it too, on the
+## page: Render's second open read its pictures within half a second of the
+## press that opened it, and two frames of it waited 170-800 ms in
+## readPixels, each for the frames drawn to answer the press (2026-10-17,
+## tools/web/render_open_check.mjs). So a fence that passes with frames
+## drawn after it is followed by another, until one passes with none.
 static func finished() -> void:
 	var fence: int = put()
 	if fence <= 0:
@@ -99,10 +107,15 @@ static func finished() -> void:
 		_held_from = Time.get_ticks_msec()
 	_holding += 1
 	RenderingServer.render_loop_enabled = _answering()
+	var drawn: int = Engine.get_frames_drawn()
 	while Time.get_ticks_msec() < until:
 		await tree.process_frame
-		if passed(fence):
+		if not passed(fence):
+			continue
+		if Engine.get_frames_drawn() == drawn:
 			break
+		fence = put()
+		drawn = Engine.get_frames_drawn()
 	_holding -= 1
 	if _holding == 0:
 		RenderingServer.render_loop_enabled = true

@@ -468,12 +468,12 @@ func _dialog(method: String) -> void:
 ## dialog makes its renderer ready (RenderDialog._warm_when_idle); with
 ## --at-once, pressed as soon as the car is in, before that; with --during,
 ## pressed while that is under way and waiting for someone using the window,
-## which must not hold the draft up. Leaves the draft as
-## shots/render/first_draft_<renderer>.png.
+## which must not hold the draft up. Then closed, and opened again, timed
+## the same against the same budget. Leaves the drafts as
+## shots/render/first_draft_<renderer>.png and second_draft_<renderer>.png.
 func _first_open(method: String) -> void:
 	var budget: float = float(_argument("--budget")) if not _argument("--budget").is_empty() \
 		else 100.0
-	var shell: Shell = _main.get("_shell")
 	var dialog: RenderDialog = _main.get("_render")
 	IdleDraw.begin()
 	RenderDialog.warms_when_idle = true
@@ -504,6 +504,29 @@ func _first_open(method: String) -> void:
 			was = at
 		print("    made ready while left alone: %s, its longest frame %.0f ms"
 			% [str(dialog.renderer != null), idle_worst])
+	await _timed_open("first open", budget, method)
+	var preview: Texture2D = (dialog.get("_preview") as TextureRect).texture
+	if preview != null:
+		preview.get_image().save_png(OUT + "first_draft_%s.png" % method)
+	dialog.close()
+	# And opened again once the window has settled, as the browser's check
+	# does: nothing is new, and what is left is the draft's own drawing and
+	# reading back.
+	for _n: int in 60:
+		await process_frame
+	await _timed_open("second open", budget, method)
+	preview = (dialog.get("_preview") as TextureRect).texture
+	if preview != null:
+		preview.get_image().save_png(OUT + "second_draft_%s.png" % method)
+	dialog.close()
+	for _n: int in 10:
+		await process_frame
+
+
+## Render pressed, and every frame timed until its draft is shown.
+func _timed_open(label: String, budget: float, method: String) -> void:
+	var shell: Shell = _main.get("_shell")
+	var dialog: RenderDialog = _main.get("_render")
 	var pressed: int = Time.get_ticks_usec()
 	var last: int = pressed
 	var frames: Array = []
@@ -519,21 +542,15 @@ func _first_open(method: String) -> void:
 			drafted = true
 			break
 	var took: float = float(Time.get_ticks_usec() - pressed) / 1000.0
-	_say("first open: a draft is drawn (%.1f s, %d frames)" % [took / 1000.0, frames.size()],
+	_say("%s: a draft is drawn (%.1f s, %d frames)" % [label, took / 1000.0, frames.size()],
 		drafted)
 	var longest: Array = frames.duplicate()
 	longest.sort_custom(func(a: Array, b: Array) -> bool: return a[1] > b[1])
 	for frame: Array in longest.slice(0, 6):
 		print("    %6.0f ms at %6.0f ms" % [frame[1], frame[0]])
 	var worst: float = longest[0][1] if not longest.is_empty() else 0.0
-	_say("first open: no frame over %.0f ms on %s (the longest %.0f ms)" % [budget, method, worst],
+	_say("%s: no frame over %.0f ms on %s (the longest %.0f ms)" % [label, budget, method, worst],
 		worst <= budget)
-	var preview: Texture2D = (dialog.get("_preview") as TextureRect).texture
-	if preview != null:
-		preview.get_image().save_png(OUT + "first_draft_%s.png" % method)
-	dialog.close()
-	for _n: int in 10:
-		await process_frame
 
 
 func _until_done(dialog: RenderDialog) -> void:

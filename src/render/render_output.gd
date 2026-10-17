@@ -36,24 +36,58 @@ static func file_name(model: String, suffix: String, extension: String) -> Strin
 	return "%s%s.%s" % [base, suffix, extension]
 
 
-## Run [param work] on a worker, or here where there are none, and wait.
-static func off_thread(work: Callable) -> void:
+## Keep a picture as a PNG, encoded on a worker. Returns the line to show.
+func keep_picture(image: Image, model: String) -> String:
+	var bytes: Array = [PackedByteArray()]
+	var name: String = file_name(model, "_render", "png")
+	var work := func() -> void: bytes[0] = image.save_png_to_buffer()
 	if OS.has_feature("nothreads"):
 		work.call()
-		return
+		return give(bytes[0], name, "image/png")
 	var task: int = WorkerTasks.add(work, false, "encode a render")
+	_keeping = [task, bytes, name]
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
 	WorkerTasks.collect(task)
+	_keeping = []
+	return give(bytes[0], name, "image/png")
 
 
-## Keep a picture as a PNG. Returns the line to show.
-func keep_picture(image: Image, model: String) -> String:
-	var bytes: Array = [PackedByteArray()]
-	await off_thread(func() -> void: bytes[0] = image.save_png_to_buffer())
-	var line: String = give(bytes[0], file_name(model, "_render", "png"), "image/png")
-	return line
+## A picture being encoded: [task, [bytes], file name], or empty.
+var _keeping: Array = []
+## ffmpeg making the MP4, while it is: its process and the file.
+var _mp4_pid: int = 0
+var _mp4_out: String = ""
+
+
+## Whether a picture or a turntable is still being written.
+func writing() -> bool:
+	return not _keeping.is_empty() or not _pending.is_empty() or _mp4_pid > 0
+
+
+## As the app closes, with a render still being written: what is done is
+## written now, here, and what cannot be is said. Its coroutines go with the
+## scene tree and never come back to write what their workers made, and a
+## picture encoded as the window closed was lost without a word. Returns
+## the lines to say.
+func close_now() -> PackedStringArray:
+	var lines := PackedStringArray()
+	if not _keeping.is_empty():
+		WorkerTasks.collect(int(_keeping[0]))
+		lines.append(give((_keeping[1] as Array)[0], str(_keeping[2]), "image/png"))
+		_keeping = []
+	if _webp != null:
+		for waiting: Array in _pending:
+			WorkerTasks.collect(int(waiting[0]))
+			_keep_frame(int(waiting[2]), waiting[1])
+		_pending.clear()
+		if _mp4_pid > 0 and OS.is_process_running(_mp4_pid):
+			lines.append("ffmpeg is still making %s and finishes it on its own" % _mp4_out)
+		elif _mp4_pid == 0 and _webp.frame_count() > 0:
+			lines.append("the turntable was not finished: %d frames kept%s, no WebP or MP4"
+				% [_webp.frame_count(), " in %s" % _frames_dir if not _frames_dir.is_empty() else ""])
+	return lines
 
 
 ## Hand bytes to the person: downloaded in a browser, written on the desktop.
@@ -198,9 +232,12 @@ func _mp4() -> String:
 	var pid: int = OS.create_process(tool, arguments)
 	if pid <= 0:
 		return "no MP4: ffmpeg would not start"
+	_mp4_pid = pid
+	_mp4_out = out
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while OS.is_process_running(pid):
 		await tree.process_frame
+	_mp4_pid = 0
 	var written: FileAccess = FileAccess.open(out, FileAccess.READ)
 	var length: int = written.get_length() if written != null else 0
 	if written != null:
