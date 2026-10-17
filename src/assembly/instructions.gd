@@ -48,6 +48,9 @@ const ATTACH_TAKES_PARTS := true
 ## touches nothing built yet: see [method _best].
 const WHEELS_LATER := 1.0e9
 const UNJOINED_LATER := 3.0e8
+## A step begun with a part that touches nothing standing looks elsewhere
+## first for one that does ([method _steadier]).
+const STEADIER_FIRST := true
 
 ## How far apart two of one part at one height can be and still go in one
 ## step: twelve studs, a row of tiles or a ring of 1 x 1s round a rim, as a
@@ -1071,10 +1074,14 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 ## plate pressed up under a sign does ([method _pressed_up]): put in after
 ## it, it is put in under it, and before it, it floats. What rests on what
 ## is the parts' covers' ([member Node2.over]); not a pin or an axle, which
-## goes in along its line. On the model only: a sub-assembly in the hand is
-## any way up, and there it only hid the part under the one it hangs from.
+## goes in along its line, or a wheel, pushed onto its pin. On the model
+## only: a sub-assembly in the hand is any way up, and there it only hid the
+## part under the one it hangs from.
 static func _hung_under(nodes: Array[Node2]) -> void:
 	for node: Node2 in nodes:
+		# A wheel is pushed onto what holds it, and goes on last.
+		if node.wheel > 0:
+			continue
 		for need: int in node.needs:
 			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need) \
 					and not node.hung.has(need):
@@ -2355,6 +2362,11 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 	var fits := func(node: Node2) -> bool:
 		if not same_step:
 			return true
+		# Wheels go on in a step of wheels: a step whose next part would hide
+		# one it holds filled up with the wheels beside it instead, and the
+		# example car began with its wheels.
+		if (node.wheel > 0) != (first.wheel > 0):
+			return false
 		var loose: bool = node.assembly == null or node.assembly.whole
 		if kind.is_empty():
 			return loose
@@ -2369,12 +2381,20 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 		func(node: Node2) -> bool:
 			return node.region == current and fits.call(node) and not refused.has(node.id),
 		false, joins, step)
-	if here != null:
-		return [here, HERE]
 	# Nothing legal is near enough: end the step rather than reaching
 	# across the model, or into another region, for the sake of filling it.
 	if same_step:
-		return [null, HERE]
+		return [here, HERE]
+	# A step begun with a part that joins nothing standing floats, and so
+	# does all that goes on it until what holds it is reached: begin with
+	# one this region waits for, or one elsewhere, that joins what stands.
+	if STEADIER_FIRST and here != null and joins.is_valid() and not joins.call(here):
+		var held := func(node: Node2) -> bool: return joins.call(node)
+		var steady: Array = _steadier(ready, remaining, last_at, have_last, current, held, joins)
+		if not steady.is_empty():
+			return steady
+	if here != null:
+		return [here, HERE]
 
 	var wanted: Dictionary = {}
 	for node: Node2 in remaining.values():
@@ -2406,6 +2426,28 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 		elif node.box.position.y < lowest.box.position.y:
 			lowest = node
 	return [lowest, MOVED]
+
+
+## A ready node that joins what stands ([param held]), when the region's
+## best does not: one the region waits for, then the nearest anywhere, as
+## [method _next] borrows and moves. Empty when there is none.
+static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3,
+		have_last: bool, current: String, held: Callable, joins: Callable) -> Array:
+	var wanted: Dictionary = {}
+	for node: Node2 in remaining.values():
+		if node.region != current:
+			continue
+		for need: int in node.after:
+			if remaining.has(need):
+				wanted[need] = true
+	var borrowed: Node2 = _best(ready, last_at, have_last, false,
+		func(node: Node2) -> bool: return wanted.has(node.id) and held.call(node), false, joins)
+	if borrowed != null:
+		return [borrowed, BORROWED]
+	var moved: Node2 = _best(ready, last_at, have_last, false, held, true, joins)
+	if moved != null:
+		return [moved, MOVED]
+	return []
 
 
 ## The best ready node among those [param allowed] admits, or null.
