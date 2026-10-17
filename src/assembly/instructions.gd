@@ -1074,14 +1074,17 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 ## plate pressed up under a sign does ([method _pressed_up]): put in after
 ## it, it is put in under it, and before it, it floats. What rests on what
 ## is the parts' covers' ([member Node2.over]); not a pin or an axle, which
-## goes in along its line, or a wheel, pushed onto its pin. On the model
-## only: a sub-assembly in the hand is any way up, and there it only hid the
-## part under the one it hangs from.
+## goes in along its line. On the model only: a sub-assembly in the hand is
+## any way up, and there it only hid the part under the one it hangs from.
+##
+## A wheel under the plate or the holder its pin is on goes on with it, so a
+## vehicle stands on its wheels from there on: with every wheel last, the
+## build check, which holds a part by the floor, called a car's chassis and
+## all on it floating until its wheels went on.
+## Not in the model's first step, which is the chassis: the example car
+## began with its wheels standing on the table. They go on in the next.
 static func _hung_under(nodes: Array[Node2]) -> void:
 	for node: Node2 in nodes:
-		# A wheel is pushed onto what holds it, and goes on last.
-		if node.wheel > 0:
-			continue
 		for need: int in node.needs:
 			if node.over.has(need) and not node.joined.has(need) and not node.under.has(need) \
 					and not node.hung.has(need):
@@ -2312,7 +2315,8 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 					if int(waiting[dependent]) == 0 and remaining.has(dependent):
 						ready[dependent] = by_id[dependent]
 						var under_it: Node2 = by_id[dependent]
-						if under_it.under.has(here.id) or not in_hand and under_it.hung.has(here.id):
+						if under_it.under.has(here.id) or not in_hand and under_it.hung.has(here.id) \
+								and not (under_it.wheel > 0 and steps.is_empty()):
 							placing.append(under_it)
 			unsupported = unsupported or forced
 			last_at = node.box.get_center()
@@ -2473,8 +2477,10 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 			if nearest_first
 			else node.box.position.y * 1000.0 + distance)
 		# Wheels go on at the end, as a set's do, not with the chassis
-		# plate they hang from at the bottom of it.
-		if node.wheel > 0:
+		# plate they hang from at the bottom of it. Except one under the plate
+		# or the holder its pin is on, which goes on with it ([method
+		# _hung_under]), or in the step after when that was the first.
+		if node.wheel > 0 and node.hung.is_empty():
 			score += WHEELS_LATER
 		# And a part held only by a guess after what is held for certain:
 		# begun first, it was a piece of its own in the air until the rest
