@@ -1689,7 +1689,13 @@ func set_faded_in_order(changes: Dictionary) -> bool:
 				_shown_colour(brick, _brick_colour(brick, batch.surface_color)))
 			touched[batch] = true
 	for batch: Batch in touched:
+		# Into a buffer of its own, not the one drawn from written over: in
+		# a browser what is written over in place is not drawn
+		# (_fresh_slots), and the pages came up with what was built before
+		# drawn dark where it should be faded, now and then.
+		_fresh_slots(batch, batch.brick_ids.size())
 		batch.multimesh.buffer = batch.buffer
+		batch.multimesh.visible_instance_count = batch.shown + batch.revealed
 	return true
 
 
