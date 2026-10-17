@@ -2310,9 +2310,12 @@ func _draw_ahead(page: int) -> void:
 
 
 var _ahead_turn: int = 0
-## Pages drawn ahead first, and pictures asked for at a time.
+## Pages drawn ahead first, and pictures asked for at a time: as many as there
+## are stages, drawn in one frame of the whole window and one wait on the card,
+## where eight a time on a busy box left a jump to step 30 of 1,000 parts 25 s
+## without its pictures.
 const AHEAD_FIRST := 3
-const AHEAD_AT_ONCE := 8
+const AHEAD_AT_ONCE := PartThumbnails.STAGES
 
 
 ## Milliseconds since [param since], under [param name]; now.
