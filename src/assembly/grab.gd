@@ -234,15 +234,29 @@ func _chosen() -> String:
 	# A pinion in a rack that does not move with it holds it too: the rack
 	# goes as the teeth say, and what the rack is joined to with it.
 	var geared: Array[Racks.Pinion] = bodies.racks_out(ours)
+	# Or a pinion the grabbed part turns through gears: a steering wheel and
+	# its bevels. Their meshes hold the loop too.
+	var couplings: Array = []
+	if geared.is_empty() and held.is_empty():
+		var offer: Array = _train_to_racks(ours)
+		couplings = offer[0]
+		geared.assign(offer[1])
 	linkage = null
+	var loop: Linkage = null
+	var other_words: String = ""
 	if not held.is_empty() or not geared.is_empty():
 		# Held at both ends: a closed loop, moved as it allows (Linkage).
-		var other_words: String = held[0].words().trim_prefix("on ") if not held.is_empty() \
+		other_words = held[0].words().trim_prefix("on ") if not held.is_empty() \
 			else "by %s" % geared[0].said(world)
 		if link.axis == Vector3.ZERO:
 			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
-		var loop := Linkage.read(bodies, link, body)
+		loop = Linkage.read(bodies, link, body, couplings)
+		if loop.gears_carried and held.is_empty() and bodies.racks_out(ours).is_empty():
+			# Its gears ride on joints the loop moves: not read so yet. Turned
+			# as before, its gears by their teeth and the rack left standing.
+			loop = null
+	if loop != null:
 		if not loop.why.is_empty():
 			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
 				bodies.named(moving_bodies), link.words().trim_prefix("on "), other_words, loop.why])
@@ -500,6 +514,53 @@ func _gears() -> void:
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
 	_follow_driven()
+
+
+## The gear train the grabbed joint drives, when it reaches a pinion in a
+## rack that does not move with it (a steering wheel turning its pinion
+## through bevels): [the train's meshes, those pinions], else [[], []]. The
+## train is the gear reading's (GrabDrag reads it ahead), solved from the
+## grabbed joint as [method _gears] solves it.
+func _train_to_racks(ours: Dictionary) -> Array:
+	var none: Array = [[], []]
+	if shared_mechanism == null or link.axis == Vector3.ZERO or bodies.racks().is_empty():
+		return none
+	var gear_parts: Array = []
+	for key: int in moving:
+		if not Mechanism.spec_of(world.get_brick(key).part_id).is_empty():
+			gear_parts.append(key)
+	if gear_parts.is_empty():
+		return none
+	var train: Mechanism = shared_mechanism
+	var driven: int = -1
+	for key: int in [part] + gear_parts:
+		var here: int = train.body_of(key)
+		var turning_on: Mechanism.Joint = train.joint_of(here)
+		if turning_on != null and Bodies._same_line(turning_on.point, turning_on.way, link.point,
+				link.axis.normalized()):
+			driven = here
+			break
+	if driven < 0:
+		return none
+	var solved: Dictionary = train.solve({driven: 1.0})
+	if not bool(solved["ok"]):
+		return none
+	var turning: Dictionary = {}
+	for gear: Mechanism.Gear in train.gears:
+		if gear.body == driven or (gear.body != train.ground and not train.floating.has(gear.body)
+				and train.omega(gear.body).length() > 1e-6):
+			turning[gear.key] = true
+	var pinions: Array = []
+	for mesh: Racks.Pinion in bodies.racks():
+		if turning.has(mesh.gear) and not ours.has(int(bodies.body_of[mesh.rack])):
+			pinions.append(mesh)
+	if pinions.is_empty():
+		return none
+	var meshes: Array = []
+	for coupling: Mechanism.Coupling in train.couplings:
+		if coupling.how != "chain" and turning.has(coupling.one.key) and turning.has(coupling.other.key):
+			meshes.append(coupling)
+	return [meshes, pinions]
 
 
 ## What hangs on a driven body by a joint the gear reading does not read (a

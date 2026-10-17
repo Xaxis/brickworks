@@ -72,6 +72,16 @@ var racks: Array[Racks.Pinion] = []
 var _rack_ends: Array = []    ## [pinion body, rack body]
 var _rack_sides: Array = []   ## [PackedInt32Array, PackedInt32Array]
 var _rack_turn: Array = []    ## PackedFloat64Array, a coefficient a column
+## Gears meshing gears the loops are held by too (Mechanism.Coupling): a
+## steering wheel that turns its pinion through a pair of bevels. Each is one
+## more equation, linear, as Mechanism has it: the two gears' teeth move
+## together where they meet. Offered by the grab (the train it drives), not
+## read off the whole model: a drivetrain is not a loop.
+var gear_meshes: Array = []
+var _gear_rows: Array = []    ## PackedFloat64Array, a coefficient a column
+var _offered: Array = []
+## A gear of [member gear_meshes] is carried by more than its own joint.
+var gears_carried: bool = false
 ## For each closing joint, the joints on the way from the anchor to each of
 ## its halves: [PackedInt32Array for a, for b].
 var _sides: Array = []
@@ -98,9 +108,10 @@ var last_residual := PackedFloat64Array()
 ## The loops round [param driver] (a tree link) and its [param child]:
 ## every closing joint whose loop runs through a joint that moves, and every
 ## joint of those loops, until nothing more is added.
-static func read(from: Bodies, driver: Bodies.Link, child: int) -> Linkage:
+static func read(from: Bodies, driver: Bodies.Link, child: int, couplings: Array = []) -> Linkage:
 	var out := Linkage.new()
 	out.bodies = from
+	out._offered = couplings
 	out._read(driver, child)
 	return out
 
@@ -136,6 +147,27 @@ func _read(driver: Bodies.Link, child: int) -> void:
 	var meshes: Array[Racks.Pinion] = bodies.racks()
 	while changed:
 		changed = false
+		for coupling: Mechanism.Coupling in _offered:
+			if used.has(coupling):
+				continue
+			var one: int = int(bodies.body_of.get(coupling.one.key, -1))
+			var other: int = int(bodies.body_of.get(coupling.other.key, -1))
+			if one < 0 or other < 0 or one == other:
+				continue
+			var only_gears: Array = _only(one, other)
+			var meets: bool = false
+			for joint: Variant in only_gears:
+				if inside.has(joint):
+					meets = true
+					break
+			if not meets:
+				continue
+			used[coupling] = true
+			gear_meshes.append(coupling)
+			for joint: Variant in only_gears:
+				if not inside.has(joint):
+					inside[joint] = true
+			changed = true
 		for mesh: Racks.Pinion in meshes:
 			if used.has(mesh):
 				continue
@@ -218,6 +250,32 @@ func _read(driver: Bodies.Link, child: int) -> void:
 				if _axis[n] != Vector3.ZERO:
 					turn[turn_col[n]] += _axis[n].dot(mesh.axis) * (1.0 if s == 0 else -1.0)
 		_rack_turn.append(turn)
+	for coupling: Mechanism.Coupling in gear_meshes:
+		# Mechanism's row, on these joints: each joint's turn moves the teeth
+		# at the mesh along their way (a worm's thread advancing too); the one
+		# gear's side less the other's.
+		var row := PackedFloat64Array()
+		row.resize(cols)
+		row.fill(0.0)
+		var ends: Array = [[int(bodies.body_of[coupling.one.key]), coupling.point, coupling.along, -1.0],
+			[int(bodies.body_of[coupling.other.key]), coupling.point_other, coupling.along_other, 1.0]]
+		for end: Array in ends:
+			var point: Vector3 = end[1]
+			var along: Vector3 = end[2]
+			# Linear, as Mechanism's rows are, only while each gear turns on its
+			# own axle in what stands: a gear carried by a joint the loop moves
+			# is not read so yet (8062-1's column turned 4.6° off its bevels).
+			if _joints_on(int(end[0])).size() > 1:
+				gears_carried = true
+			for n: int in _joints_on(int(end[0])):
+				if _axis[n] == Vector3.ZERO:
+					continue
+				var moves: float = _axis[n].cross(point - _point[n]).dot(along) \
+					+ coupling.lead * _axis[n].dot(along)
+				row[turn_col[n]] += float(end[3]) * moves
+				if slide_col[n] >= 0:
+					row[slide_col[n]] += float(end[3]) * _axis[n].dot(along)
+		_gear_rows.append(row)
 	q.resize(cols)
 	q.fill(0.0)
 	kept = q.duplicate()
@@ -362,6 +420,11 @@ func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 			out.append_array([gap.x, gap.y, gap.z])
 	for k: int in racks.size():
 		out.append(_rack_residual(k, at, cache))
+	for row: PackedFloat64Array in _gear_rows:
+		var teeth: float = 0.0
+		for c: int in cols:
+			teeth += row[c] * at[c]
+		out.append(teeth)
 	return out
 
 
@@ -480,6 +543,8 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 				if slide_col[n] >= 0:
 					row[slide_col[n]] += mesh.line.dot(back * ways[n]) * sign
 		rows.append(row)
+	for row: PackedFloat64Array in _gear_rows:
+		rows.append(row.duplicate())
 	return rows
 
 
@@ -763,6 +828,8 @@ func said() -> String:
 		parts.append("%d %s" % [int(kinds[kind]), kind])
 	var words: String = "a loop of %d joints (%s), closed by %d" % [links.size() + closing.size(),
 		", ".join(parts), closing.size()]
+	if not gear_meshes.is_empty():
+		words += ", %d gear mesh%s" % [gear_meshes.size(), "" if gear_meshes.size() == 1 else "es"]
 	if not racks.is_empty():
 		var teeth := PackedStringArray()
 		for mesh: Racks.Pinion in racks:

@@ -1014,6 +1014,8 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 const RACKS: Array = [
 	["rack and pinion: the steering wheel pushes the track rod's rack", "res://vendor/omr/files/8841-1_Chassis.mpd"],
 	["rack and pinion: a racer's steering", "res://vendor/omr/files/8808-1.mpd"],
+	["rack and pinion: a column turning its pinion through bevels", "res://vendor/omr/files/8054-1_Model-C.mpd"],
+	["rack and pinion: a grader's column through bevels", "res://vendor/omr/files/8828-1_Grader.mpd"],
 ]
 ## Tried and not passing, run with --rack-set=: 5533-1_Tractor-Pulling's
 ## steering stops at 24° against the model, and its arms stand 5.7° and
@@ -1075,12 +1077,47 @@ func _rack_case(name: String, path: String) -> void:
 		trial.builder = _builder
 		trial.library = _library
 		trial.bodies = bodies
+		trial.shared_mechanism = _grab.get("_mechanism")
 		if trial.begin(brick.id, brick.transform.origin) == "moves" and trial.linkage != null \
 				and not trial.linkage.racks.is_empty():
 			wheel_body = int(bodies.body_of[brick.id])
 		else:
-			print("    (the steering wheel turns its pinion by gears, not by joints: the pinion's column is turned)")
+			print("    (the steering wheel does not reach the pinion by joints or gears read here: the pinion's column is turned)")
 		break
+	# Else a column that turns the pinion's axle through gears (a pair of
+	# bevels under the steering wheel): turned there, the train's meshes hold
+	# the loop with the rack.
+	var train: Mechanism = _grab.get("_mechanism")
+	var ratio: float = NAN
+	var column_gear: int = 0
+	if wheel_body == pinion and train != null and not "--pinion" in OS.get_cmdline_user_args():
+		for coupling: Mechanism.Coupling in train.couplings:
+			var ends: Array = [coupling.one, coupling.other]
+			for k: int in 2:
+				var mine: Mechanism.Gear = ends[k]
+				var theirs: Mechanism.Gear = ends[1 - k]
+				if int(bodies.body_of.get(mine.key, -1)) != pinion or theirs.kind == "worm":
+					continue
+				var column: int = int(bodies.body_of.get(theirs.key, -1))
+				if column < 0 or column == pinion or not bodies.parent_link.has(column):
+					continue
+				var trial := Grab.new()
+				trial.world = _world
+				trial.builder = _builder
+				trial.library = _library
+				trial.bodies = bodies
+				trial.shared_mechanism = train
+				if trial.begin(theirs.key, _world.get_brick(theirs.key).transform.origin) == "moves" \
+						and trial.linkage != null and not trial.linkage.racks.is_empty() \
+						and not trial.linkage.gear_meshes.is_empty():
+					wheel_body = column
+					column_gear = theirs.key
+					ratio = float(theirs.teeth) / float(mine.teeth)
+					print("    the column that turns the pinion through gears: %s, %d teeth to the pinion axle's %d (%s)"
+						% [bodies.named([column]), theirs.teeth, mine.teeth, coupling.how])
+					break
+			if wheel_body != pinion:
+				break
 	var driver: Bodies.Link = bodies.parent_link[wheel_body]
 	var line: Vector3 = driver.axis.normalized()
 	# From above, everything over the arms and the track rod cut away, the
@@ -1093,8 +1130,10 @@ func _rack_case(name: String, path: String) -> void:
 	# Cut just over the pinion: the column, the seat and the body over the
 	# steering are cut away; the rack, its pinion, the arms and the wheels
 	# below the cut stay.
-	var gear_brick: BrickWorld.Brick = _world.get_brick(mesh.gear)
-	top = maxf(top, (gear_brick.transform * _library.parts[gear_brick.part_id].bounds).end.y)
+	for key: int in [mesh.gear, column_gear]:
+		var gear_brick: BrickWorld.Brick = _world.get_brick(key)
+		if gear_brick != null:
+			top = maxf(top, (gear_brick.transform * _library.parts[gear_brick.part_id].bounds).end.y)
 	var cut := Plane(Vector3.UP, top + 1.0)
 	_world.set_cut(true, cut, false)
 	_builder.lattice.cut = cut
@@ -1108,6 +1147,8 @@ func _rack_case(name: String, path: String) -> void:
 	var pressable: PackedInt64Array = bodies.members[wheel_body]
 	if wheel_body == pinion:
 		pressable = PackedInt64Array([mesh.gear]) + pressable
+	elif column_gear != 0:
+		pressable = PackedInt64Array([column_gear]) + pressable
 	var press: Dictionary = _press_off_line(pressable, driver.point, line)
 	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
 			Vector3(-1, 0.6, -1)]:
@@ -1178,6 +1219,7 @@ func _rack_case(name: String, path: String) -> void:
 		"far": int((bodies.members[far_arm] as PackedInt64Array)[0])}
 	var form := {"phi": 0.0, "far": far_pin.point}
 	var turned_most: float = 0.0
+	var worst_ratio: float = 0.0
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var began: int = Time.get_ticks_usec()
@@ -1196,6 +1238,13 @@ func _rack_case(name: String, path: String) -> void:
 		# now is along the rack's teeth, as the rack sees it.
 		var against: Transform3D = w_rack.affine_inverse() * w_gear
 		var psi: float = _turn_about(against.basis, mesh.axis)
+		if not is_nan(ratio):
+			# The column's own turn, as drawn, against the pinion's: the gears'
+			# teeth say how many times one goes round for the other.
+			var w_column: Transform3D = (grab.placed.get(column_gear, grab.rest.get(column_gear))
+				as Transform3D) * (grab.rest.get(column_gear) as Transform3D).affine_inverse()
+			var column_turn: float = _turn_about(w_column.basis, grab.axis)
+			worst_ratio = maxf(worst_ratio, absf(absf(psi) - ratio * absf(column_turn)))
 		var along: float = mesh.line.dot(w_rack.affine_inverse() * (w_gear * mesh.centre) - mesh.centre)
 		var by_teeth: float = -Racks.pitch() * float(mesh.teeth) * psi / 360.0 \
 			* signf(mesh.rate)
@@ -1220,6 +1269,9 @@ func _rack_case(name: String, path: String) -> void:
 		print(row)
 	_check("%s: the steering follows the pointer in %d frames, %s, as far as %.1f°" % [name, followed,
 		grab.mode, turned_most], followed >= 6 and grab.mode == "turn" and turned_most >= 30.0)
+	if not is_nan(ratio):
+		_check("%s: the pinion turns %.3f of the column's turn, by the gears' teeth, to %.3f°" % [name, ratio,
+			worst_ratio], worst_ratio < 0.1)
 	_check("%s: in %d poses the rack has gone a tooth, 8 LDU, for each tooth of the pinion's turn, to %.3f LDU"
 		% [name, checked, worst_teeth], checked >= 6 and worst_teeth < 0.1)
 	_check("%s: the near arm turns as the rack's place along its teeth says, by hand, to %.3f°" % [name,
