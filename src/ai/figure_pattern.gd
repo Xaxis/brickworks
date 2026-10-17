@@ -47,9 +47,9 @@ const ARM_POSES: Dictionary = {
 ## Words a pose may be said in, to one of ARM_POSES. A ball plate's socket
 ## folds only so far before it meets the plate it is on (measured: a forearm
 ## bent back past the upper arm, a fist to the chin, meets it by 1.4 to 2.7
-## LDU; solved to reach the chin or the knee, the socket's rim meets the
-## shoulder plate and the elbow folds into itself by 1 to 4 LDU, 2026-10-16),
-## so those are said as the nearest pose that builds.
+## LDU; of 980 poses searched to put a hand under the chin, none keeps the
+## upper arm's socket out of its shoulder plate, the nearest by 1.35 LDU,
+## 2026-10-16), so those are said as the nearest pose that builds.
 const POSE_WORDS: Dictionary = {"down": "down", "side": "down", "at side": "down",
 	"hanging": "down", "rest": "down", "bent": "bent", "elbow": "bent", "holding": "bent",
 	"forward": "forward", "reaching": "forward", "reach": "forward", "pointing": "forward",
@@ -58,12 +58,19 @@ const POSE_WORDS: Dictionary = {"down": "down", "side": "down", "at side": "down
 	"to chin": "bent", "chin": "bent", "thinking": "bent", "fist to chin": "bent",
 	"on knee": "forward", "knee": "forward", "on lap": "forward", "lap": "forward"}
 
-## Torso lean forward, in degrees. A lean is a hinge (3937 under 3938) at the
-## waist, the torso and all on it built on the hinge's top, so everything over
-## the waist leans as one; past LEAN_MOST its front edge meets the hips.
-const LEANS: Dictionary = {"forward": 25.0, "hunched": 25.0, "bowing": 25.0, "stooped": 25.0,
-	"bent over": 30.0, "slightly forward": 12.0}
+## Torso leans, the way and degrees. A lean is a hinge (3937 under 3938) at
+## the waist, the torso and all on it built on the hinge's top, so everything
+## over the waist leans as one; past these its edge meets the hips.
+const LEANS: Dictionary = {"forward": {"way": "forward", "degrees": 25.0},
+	"hunched": {"way": "forward", "degrees": 25.0}, "bowing": {"way": "forward", "degrees": 25.0},
+	"stooped": {"way": "forward", "degrees": 25.0},
+	"bent over": {"way": "forward", "degrees": 30.0},
+	"slightly forward": {"way": "forward", "degrees": 12.0},
+	"back": {"way": "back", "degrees": 15.0}, "backward": {"way": "back", "degrees": 15.0},
+	"left": {"way": "left", "degrees": 10.0}, "right": {"way": "right", "degrees": 10.0},
+	"sideways": {"way": "left", "degrees": 10.0}}
 const LEAN_MOST := 30.0
+const LEAN_BACK_MOST := 15.0
 
 
 ## Plates up a leg's bricks are, and the parts of each size: [leg, hips,
@@ -269,22 +276,42 @@ static func _person(pattern: Dictionary, origin: Vector3, main: int, colours: Di
 	y += 1.0
 	var leaning: bool = absf(float(lean.get("degrees", 0.0))) > 0.01
 	if leaning:
-		# A hinge course in place of the torso's first: hinge bricks (3937) along
-		# the back of the hips, their tops (3938) turned forward by the lean, and
-		# the torso built up on the tops, so it folds over the hips' front rather
-		# than off their back. Leaning back or to a side turns the base round,
-		# and the torso with it, which the shoulders' studs do not follow yet.
+		# A hinge course in place of the torso's first: hinge bricks (3937) on the
+		# hips in one line across the lean, their tops (3938) turned by it, and
+		# the torso built up on the tops. A top turns one way off its base
+		# without meeting it, so the base is turned (rot) to the way the torso
+		# leans, and its line is on the side away from the lean, so the torso
+		# folds over the hips rather than off them. Turned so, the top's first
+		# stud is at a different corner and the torso goes on it turned back
+		# square (measured: 3938's open[0] on 3937 at each rot).
+		var way: String = str(lean["way"])
 		var degrees: float = float(lean["degrees"])
-		for k: int in wide / 2:
+		var rot: int = {"forward": 0, "back": 2, "left": 1, "right": 3}[way]
+		var bases: Array = []         # [x, z] of each base
+		var stud: Vector2i            # the column and row of the first top's first stud
+		if way == "forward" or way == "back":
+			var row: int = 0 if way == "forward" else 1
+			for k: int in wide / 2:
+				bases.append([2 * k, hips_z + row])
+			stud = Vector2i(0 if way == "forward" else 1, row)
+		else:
+			var column: int = wide / 2 - 1 if way == "left" else wide / 2
+			bases.append([column, hips_z])
+			stud = Vector2i(column, 1 if way == "left" else 0)
+		for k: int in bases.size():
 			var base_name: String = "%swaist%s" % [n, "" if k == 0 else " %d" % (k + 1)]
-			bricks.append(_at({"part": "3937", "color": legs_c, "x": 2 * k, "y": y,
-				"z": hips_z, "rot": 0, "name": base_name}, origin))
+			bricks.append(_at({"part": "3937", "color": legs_c, "x": bases[k][0], "y": y,
+				"z": bases[k][1], "rot": rot, "name": base_name}, origin))
 			bricks.append({"part": "3938", "color": shirt,
 				"name": "%swaist top%s" % [n, "" if k == 0 else " %d" % (k + 1)],
 				"attach": {"to": "%s.hinge[0]" % base_name, "by": "hinge[0]", "yaw": -degrees}})
+		# A torso brick's holes go column by column, the front row's first.
+		var hole: int = 2 * stud.x + (0 if stud.y == 1 else 1)
+		var first: Dictionary = {"to": "%swaist top.open[0]" % n, "by": "hole[%d]" % hole}
+		if rot != 0:
+			first["yaw"] = {2: 180, 1: 90, 3: 270}[rot]
 		bricks.append({"part": s["torso"], "color": shirt, "name": "%storso" % n
-			if torso_n > 2 else "%schest" % n,
-			"attach": {"to": "%swaist top.open[0]" % n, "by": "hole[1]"}})
+			if torso_n > 2 else "%schest" % n, "attach": first})
 		for i: int in range(2, torso_n):
 			var below: String = "%storso" % n if i == 2 else "%storso %d" % [n, i - 1]
 			bricks.append({"part": s["torso"], "color": shirt,
@@ -328,6 +355,15 @@ static func _person(pattern: Dictionary, origin: Vector3, main: int, colours: Di
 			upper_way = _way(p[0], side)
 			fore_way = _way(p[1], side)
 			yaw = float(p[2])
+		if leaning and float(upper_way[1]) < -0.5 and (lean["way"] == "left" and side_n == 0
+				or lean["way"] == "right" and side_n == 1):
+			# Leaning to a side, an arm hanging on the side that rises keeps its
+			# pose to the torso, or the chest's lower edge, swung out under it,
+			# meets the arm; every other arm is aimed as it would be upright.
+			var tilt := Basis(Vector3.BACK, deg_to_rad(float(lean["degrees"])
+				* (-1.0 if lean["way"] == "left" else 1.0)))
+			upper_way = _rounded(tilt * Vector3(upper_way[0], upper_way[1], upper_way[2]))
+			fore_way = _rounded(tilt * Vector3(fore_way[0], fore_way[1], fore_way[2]))
 		var arm_attach: Dictionary = {"to": "%s%s shoulder.ball[0]" % [n, side_word],
 			"by": "ball[1]", "align": ["-x", upper_way]}
 		if yaw != 0.0:
@@ -354,8 +390,8 @@ static func _person(pattern: Dictionary, origin: Vector3, main: int, colours: Di
 	var tall: float = y + 1.0 + head_plates + 1.0
 	var lean_word: String = ""
 	if leaning:
-		lean_word = ", leaning forward %d° on a hinge at the waist (\"waist\")" \
-			% roundi(float(lean["degrees"]))
+		lean_word = ", leaning %s %d° on a hinge at the waist (\"waist\")" \
+			% [lean["way"], roundi(float(lean["degrees"]))]
 	return {"bricks": bricks, "said": ("figure: a person %d plates tall%s%s, facing +z, its "
 		% [roundi(tall), seat_said, lean_word] + "right side at low x; arms on ball shoulders "
 		+ "(%s %s, %s %s), " % ["right arm", _word(arm_words["right arm"]), "left arm",
@@ -372,22 +408,23 @@ static func _has_face(pattern: Dictionary) -> bool:
 		str(said).strip_edges().to_lower())
 
 
-## A torso lean said, as {"degrees": forward}, or {"error"}: a word of
-## LEANS or degrees, 0 to LEAN_MOST.
+## A torso lean said, as {"way": forward, back, left or right, "degrees"},
+## or {"error"}: a word of LEANS, or degrees forward (negative, back).
 static func _lean(said: Variant) -> Dictionary:
 	if said == null or (said is String and (said as String).strip_edges().is_empty()):
-		return {"degrees": 0.0}
+		return {"way": "forward", "degrees": 0.0}
 	if said is float or said is int or str(said).is_valid_float():
-		return {"degrees": clampf(float(said), 0.0, LEAN_MOST)}
+		var d: float = clampf(float(said), -LEAN_BACK_MOST, LEAN_MOST)
+		return {"way": "forward" if d >= 0.0 else "back", "degrees": absf(d)}
 	var word: String = str(said).strip_edges().to_lower().trim_prefix("leaning ").trim_prefix(
-		"lean ")
+		"lean ").trim_prefix("to the ")
 	if ["none", "upright", "straight", "no"].has(word):
-		return {"degrees": 0.0}
+		return {"way": "forward", "degrees": 0.0}
 	if not LEANS.has(word):
-		return {"error": "a lean is forward (%s), or degrees forward up to %d; not %s"
-			% [", ".join(PackedStringArray(LEANS.keys())), roundi(LEAN_MOST),
-				JSON.stringify(said)]}
-	return {"degrees": float(LEANS[word])}
+		return {"error": "a lean is %s, or degrees forward (%d to %d, back negative); not %s"
+			% [", ".join(PackedStringArray(LEANS.keys())), -roundi(LEAN_BACK_MOST),
+				roundi(LEAN_MOST), JSON.stringify(said)]}
+	return LEANS[word]
 
 
 ## A head on [param on] (a jumper's centre stud), turned by [param turn]: a
@@ -412,6 +449,10 @@ static func _head_on(n: String, on: String, turn: float, skin: int, hair_c: int,
 	out.append({"part": "4032b", "color": hair_c, "name": "%shair" % n,
 		"attach": {"to": "%sface.stud[0]" % n, "by": "hole[0]"}})
 	return out
+
+
+static func _rounded(v: Vector3) -> Array:
+	return [snappedf(v.x, 0.0001), snappedf(v.y, 0.0001), snappedf(v.z, 0.0001)]
 
 
 static func _word(words: Variant) -> String:

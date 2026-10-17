@@ -15,6 +15,11 @@
 ##     pose turns that part about the joint, still joined, and the pose words
 ##     land where they say (a raised hand over the shoulder, a forward one in
 ##     front, an animal's head up or down, its tail raised or down);
+##   - read as a character: each head's two printed eyes face the way it faces
+##     (a person's and a head's forward, an animal's out of its sides, a nose
+##     ahead of them), the grey joint plates a set would hide covered or in
+##     the body's colour, and a lean tips all over the waist on a hinge
+##     (forward 25°, back 15°, to either side 10°), every arm pose with it;
 ##   - hold: submitted, a later edit leaves every posed part where it stood, and
 ##     an arm and a head posed again by an edit stand where the new pose puts
 ##     them, still joined;
@@ -41,21 +46,23 @@ const KINDS: Array = [
 		"colors": {"legs": 72, "hair": 0}, "pose": {"right arm": "down", "left arm": "raised",
 		"head": 20}}, ["head", "face", "hair", "neck", "chest", "hips", "right shoulder",
 		"left shoulder", "right upper arm", "left forearm", "right hand", "left hand",
-		"right foot", "left leg"]],
+		"right foot", "left leg", "right eye", "left eye", "back of head",
+		"right shoulder top"]],
 	["person, large", {"pattern": "figure", "kind": "person", "at": AT, "height": 42, "color": 4,
 		"colors": {"legs": 1, "hair": 70}, "pose": {"right arm": "forward", "left arm": "out"}},
 		["head", "chest", "right hand", "left hand", "right shoulder", "left shoulder"]],
 	["person, seated", {"pattern": "figure", "kind": "person", "at": AT, "height": 36, "color": 70,
 		"colors": {"skin": 70, "seat": 72}, "pose": {"seated": true, "right arm": "to chin",
-		"left arm": "on knee"}}, ["seat", "right thigh", "left knee", "head", "right hand",
-		"left hand"]],
+		"left arm": "on knee", "lean": "forward"}}, ["seat", "right thigh", "left knee", "head",
+		"right hand", "left hand", "waist", "waist top", "torso", "right eye"]],
 	["animal, small", {"pattern": "figure", "kind": "animal", "at": AT, "length": 6, "color": 1,
 		"pose": {"head": "up", "tail": "raised"}}, ["body", "neck", "jaw", "head", "rump", "tail",
-		"right foreleg", "left hind leg"]],
+		"right foreleg", "left hind leg", "crown", "right eye", "left eye", "nose", "neck top"]],
 	["animal, large", {"pattern": "figure", "kind": "animal", "at": AT, "length": 8, "color": 70,
 		"pose": {"tail": "raised"}}, ["body", "back", "neck", "jaw", "head", "crown", "rump", "tail"]],
 	["head on a neck", {"pattern": "figure", "kind": "head", "at": AT, "height": 12, "color": 15,
-		"pose": {"head": 30}}, ["neck", "chin", "head", "face", "hair"]],
+		"pose": {"head": 30}}, ["neck", "chin", "head", "face", "hair", "right eye",
+		"left eye"]],
 ]
 
 
@@ -109,6 +116,9 @@ func _run() -> void:
 	_turns("an animal's tail swings on its bar", KINDS[3][1], "tail", "rump",
 		{"tail": "raised"}, {"tail": "down"}, 60.0)
 	_animal_poses()
+
+	print("\nfaces, covered joints and the lean")
+	_faces()
 
 	print("\nsubmitted, the joints hold")
 	await _holds()
@@ -312,6 +322,103 @@ func _animal_poses() -> void:
 			% [_v(heads["up"]), _v(heads["forward"]), _v(heads["down"])])
 
 
+## Each kind's face, its joints' covers and the lean, as laid.
+func _faces() -> void:
+	for k: int in [0, 1, 5]:
+		var laid: Dictionary = _laid(KINDS[k][1])
+		var named: Dictionary = laid["named"]
+		var head: Transform3D = laid["at"][named["head"]]
+		var ahead: Vector3 = (head.basis * Vector3.BACK).normalized()
+		var eyes: Array = []
+		var facing: Array = []
+		for side: String in ["right eye", "left eye"]:
+			var eye: Transform3D = laid["at"][named[side]]
+			eyes.append(eye.origin)
+			facing.append(snappedf((eye.basis * Vector3.UP).normalized().dot(ahead), 0.01))
+		var apart: float = (eyes[0] as Vector3).distance_to(eyes[1])
+		var before: float = minf(((eyes[0] as Vector3) - head.origin).dot(ahead),
+			((eyes[1] as Vector3) - head.origin).dot(ahead))
+		var model: Assistant.Model = laid["model"]
+		_ok(facing.all(func(d: float) -> bool: return d > 0.99) and absf(apart - 20.0) < 0.5
+			and before > 20.0 and model.placements[named["right eye"]].part == FigurePattern.EYE,
+			"%s: two printed eyes a stud apart (%s LDU) on its front, facing the way the head is "
+				% [KINDS[k][0], str(snappedf(apart, 0.1))]
+				+ "turned (%s against its forward)" % str(facing))
+	for k: int in [3, 4]:
+		var laid: Dictionary = _laid(KINDS[k][1])
+		var named: Dictionary = laid["named"]
+		var model: Assistant.Model = laid["model"]
+		var way: Vector3 = ((laid["at"][named["jaw"]] as Transform3D).basis * Vector3.LEFT).normalized()
+		var normals: Array = []
+		for side: String in ["right eye", "left eye"]:
+			normals.append(((laid["at"][named[side]] as Transform3D).basis * Vector3.UP).normalized())
+		var nose: Vector3 = (laid["at"][named["nose"]] as Transform3D).origin
+		var crown: Vector3 = (laid["at"][named["crown"]] as Transform3D).origin
+		var crown_top: float = crown.y
+		var side_on: bool = absf((normals[0] as Vector3).dot(way)) < 0.2 \
+			and absf((normals[1] as Vector3).dot(way)) < 0.2 \
+			and (normals[0] as Vector3).dot(normals[1]) < -0.95 \
+			and absf((normals[0] as Vector3).y) < 0.5
+		var body: int = model.placements[named["body"]].color
+		_ok(side_on and (nose - crown).dot(way) > 10.0
+			and ((laid["at"][named["right eye"]] as Transform3D).origin.y < crown_top + 1.0),
+			"%s: an eye out of each side of its head, not on top (%s against the way it looks), "
+				% [KINDS[k][0], str(snappedf((normals[0] as Vector3).dot(way), 0.01))]
+				+ "a nose ahead of them on its muzzle (%s LDU)"
+				% str(snappedf((nose - crown).dot(way), 0.1)))
+		_ok(model.placements[named["neck top"]].color == body
+			and model.placements[named["rump"]].color == body,
+			"%s: its neck plate covered in its colour, its tail's bar in it" % KINDS[k][0])
+	var person: Dictionary = _laid(KINDS[0][1])
+	var sleeves: Array = ["right shoulder top", "left shoulder top"].map(func(name: String) -> int:
+		return (person["model"] as Assistant.Model).placements[person["named"][name]].color)
+	_ok(sleeves.all(func(c: int) -> bool: return c == int(KINDS[0][1]["color"])),
+		"person, small: each grey shoulder plate covered by a tile in the sleeve's colour %s"
+			% str(sleeves))
+	var upright: Dictionary = _laid(_posed_as(KINDS[2][1], {"lean": "none"}))
+	var leaning: Dictionary = _laid(KINDS[2][1])
+	var chest: Transform3D = leaning["at"][leaning["named"]["chest"]]
+	var tilt: float = rad_to_deg((chest.basis * Vector3.UP).normalized().angle_to(Vector3.UP))
+	var forward: float = (chest.basis * Vector3.UP).z
+	var head_moved: Vector3 = (leaning["at"][leaning["named"]["head"]] as Transform3D).origin \
+		- (upright["at"][upright["named"]["head"]] as Transform3D).origin
+	var report: Dictionary = _assistant._check(upright["model"], true)
+	_ok(absf(tilt - 25.0) < 1.0 and forward > 0.0 and head_moved.z > 30.0
+		and bool(report.get("ok", false)) and _unjoined(upright).is_empty(),
+		"seated, \"lean\": \"forward\": the chest tips %d° forward on the waist's hinge, the head "
+			% roundi(tilt) + "%d LDU further forward than upright; upright, it passes too (%s)"
+			% [roundi(head_moved.z), report.get("summary", "")])
+	# Each way, standing and seated, at both sizes, with every arm pose: the
+	# torso tips that way by its degrees, and the check passes it.
+	for way: Array in [["back", Vector3.FORWARD, 15.0], ["left", Vector3.RIGHT, 10.0],
+			["right", Vector3.LEFT, 10.0]]:
+		var bad := PackedStringArray()
+		var tipped: Array = []
+		for height: int in [30, 42]:
+			for seated: bool in [false, true]:
+				for arms: Array in [["down", "raised"], ["bent", "forward"], ["out", "down"]]:
+					var said: Dictionary = {"pattern": "figure", "kind": "person", "at": AT,
+						"height": height, "color": 4, "pose": {"seated": seated, "lean": way[0],
+						"right arm": arms[0], "left arm": arms[1], "head": 20}}
+					var one: Dictionary = _laid(said)
+					var up: Vector3 = ((one["at"][one["named"]["chest"]] as Transform3D).basis
+						* Vector3.UP).normalized()
+					tipped.append(roundi(rad_to_deg(up.angle_to(Vector3.UP))))
+					var check: Dictionary = _assistant._check(one["model"], true)
+					if not bool(check.get("ok", false)) or not _unjoined(one).is_empty() \
+							or absf(rad_to_deg(up.angle_to(Vector3.UP)) - float(way[2])) > 1.0 \
+							or up.dot(way[1]) <= 0.0:
+						bad.append("%d%s %s: %s" % [height, " seated" if seated else "", arms,
+							check.get("summary", "")])
+		_ok(bad.is_empty(), "\"lean\": \"%s\": the chest tips %s° %s at 30 and 42 plates, "
+			% [way[0], str(tipped[0]), way[0]] + "standing and seated, every arm pose, "
+			+ "joined and passed %s" % ", ".join(bad))
+	var trouble: Array = []
+	FigurePattern.lay(_posed_as(KINDS[0][1], {"lean": "cartwheel"}), trouble)
+	_ok(not trouble.is_empty() and str(trouble[0]).contains("forward"),
+		"a lean it does not know is said back, not laid: %s" % str(trouble).left(120))
+
+
 ## Submitted as a session submits it, every posed part stays where it stood
 ## through a later edit and reads back where it stands; an arm and a head posed
 ## again by an edit stand where the new pose puts them, still joined.
@@ -365,17 +472,19 @@ func _holds() -> void:
 	var on_the_arm := func(brick: Dictionary) -> bool:
 		var to: String = str((brick.get("attach", {}) as Dictionary).get("to", ""))
 		return to.begins_with("right upper arm") or to.begins_with("right forearm") \
-			or to.begins_with("right shoulder")
+			or to.begins_with("right shoulder.ball")
 	await _posed_again("the right arm raised", person, {"right arm": "raised"}, off_arm,
 		on_the_arm, "right hand")
 	ids_of.clear()
 	for placement: Assistant.Placement in _assistant._model_from_world().placements:
 		if not placement.name.is_empty():
 			ids_of[placement.name] = placement.id
+	var head_parts: Array = ["head", "face", "back of head", "right eye", "left eye", "hair"]
 	var the_head := func(brick: Dictionary) -> bool:
-		return str(brick.get("name", "")) in ["head", "face", "hair"]
+		return str(brick.get("name", "")) in head_parts
 	await _posed_again("the head turned to 60°", _posed_as(person, {"right arm": "raised"}),
-		{"head": 60}, [ids_of["head"], ids_of["face"], ids_of["hair"]], the_head, "face")
+		{"head": 60}, head_parts.map(func(name: String) -> int: return int(ids_of[name])),
+		the_head, "face")
 
 
 ## Parts [param off] taken off by an edit and the ones [param keep] picks from

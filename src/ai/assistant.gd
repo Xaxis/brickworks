@@ -5808,8 +5808,9 @@ func _unjointed_refusal(design: Model) -> String:
 		+ ("It lays feet, legs, hips, a torso, arms on ball shoulders posed by words (down, "
 			+ "bent, forward, raised, out), hands, and a head turning on a "
 			+ "jumper's stud, with printed eyes and hair; \"seated\": true sits it on a "
-			+ "block of its own; \"lean\": \"forward\" (or degrees) hunches its torso on a "
-			+ "hinge at the waist; \"kind\": \"head\" is a head on a neck alone. "
+			+ "block of its own; \"lean\": \"forward\", \"back\", \"left\" or \"right\" tips "
+			+ "its torso on a hinge at the waist; \"kind\": \"head\" is a head on a neck "
+			+ "alone. "
 			if kind == "figure"
 			else "It lays four legs, a body, the head on a ball neck (up, down, forward, left, "
 			+ "right) with printed eyes on its sides and a nose, and the tail on a bar (raised, "
@@ -17235,7 +17236,8 @@ for the shape it makes, in sub-assemblies joined at angles.
 "pose": {"right arm": "down", "left arm": "raised", "head": 20}} lays a \
 person feet to crown with its arms on ball shoulders, posed by words (down, \
 bent, forward, raised, out; "seated": true on a seat of \
-its own; "lean": "forward" hunched on a hinge at the waist), and its head \
+its own; "lean": "forward", "back", "left" or "right" on a hinge at the \
+waist), and its head \
 turning on a jumper's stud, two printed eyes on its face; "kind": "animal" \
 with a "length" in studs four legs, a body, the head on a ball neck with \
 eyes on its sides and a nose, and the tail on a bar; "kind": "head" a head \
