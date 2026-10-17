@@ -15,10 +15,16 @@
 ## was lost: the autosave waits 2.5 s for changes to settle, and nothing wrote
 ## it as the app closed. Pass: each run exits 0 and its autosave has the
 ## parts off.
+##
+## And the window closed a few seconds into a Brickify run on its worker
+## (the bunny at BRICKIFY_STUDS): the run is told to stop and the app is
+## gone within BRICKIFY_GONE ms, where it used to wait the run out.
 extends SceneTree
 
 const PARTS := 1000
-const WAYS := ["close", "menu"]
+const WAYS := ["close", "menu", "brickify"]
+const BRICKIFY_STUDS := 48
+const BRICKIFY_GONE := 8000
 
 var _failures: int = 0
 
@@ -31,15 +37,30 @@ func _initialize() -> void:
 
 
 func _parent() -> void:
-	for way: String in WAYS:
+	# -- --only=brickify runs one way.
+	var ways: Array = WAYS
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--only="):
+			ways = argument.trim_prefix("--only=").split(",")
+	for way: String in ways:
 		var said: Array = []
 		var code: int = OS.execute(OS.get_executable_path(), PackedStringArray(["--headless",
 			"--path", ProjectSettings.globalize_path("res://"), "--script",
 			"res://src/dev/quit_probe.gd", "--", "--child", "--way=" + way]), said, true)
 		var output: String = "".join(said)
+		var ended: int = int(Time.get_unix_time_from_system() * 1000.0)
 		if output.contains("SCRIPT ERROR") or output.contains("Parse Error"):
 			print(output.right(3000))
 			_check("%s: the run had no script error" % way, false)
+			continue
+		if way == "brickify":
+			var asked: int = int(_said(output, "QUIT-AT "))
+			_check("brickify: the window closed with a run on its worker (%s)"
+				% _said(output, "BRICKIFYING "), _said(output, "BRICKIFYING ").begins_with("true"))
+			_check("brickify: and the app was gone %.1f s later, the run stopped, not waited out "
+				% ((ended - asked) / 1000.0) + "(at most %.0f s)" % (BRICKIFY_GONE / 1000.0),
+				asked > 0 and ended - asked <= BRICKIFY_GONE)
+			_check("brickify: and exited 0 (%d)" % code, code == 0)
 			continue
 		var before: int = int(_said(output, "AUTOSAVE-BEFORE "))
 		var took: int = int(_said(output, "TOOK "))
@@ -74,6 +95,9 @@ func _child() -> void:
 	var playback: BuildPlayback = main.get("_playback")
 	if playback != null:
 		playback.stop()
+	if way == "brickify":
+		await _brickify_then_close(main)
+		return
 	var store: ModelStore = main.get("_store")
 	var builder: Builder = main.get("_builder")
 	var world: BrickWorld = main.get("_world")
@@ -108,6 +132,33 @@ func _child() -> void:
 			root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 			root.close_requested.emit()
 	# A quit that never came is a failure, not a hang.
+	for _n: int in 600:
+		await process_frame
+	print("the app did not quit")
+	quit(3)
+
+
+## The bunny brickified, and the window closed while the run is on its
+## worker, past its measuring.
+func _brickify_then_close(main: Node) -> void:
+	var dialog: BrickifyDialog = main.get("_brickify")
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes("res://tests/fixtures/brickify/bunny.obj")
+	dialog.show_for(MeshFile.read(bytes, "bunny.obj"))
+	dialog.set_studs(BRICKIFY_STUDS)
+	dialog.brickify()
+	for _n: int in 6000:
+		if int(dialog.get("_task")) >= 0:
+			break
+		await process_frame
+	var until: int = Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	var progress: Brickify.Progress = dialog.get("_progress")
+	print("BRICKIFYING %s, %s" % [int(dialog.get("_task")) >= 0,
+		progress.said() if progress != null else "no run"])
+	print("QUIT-AT %d" % int(Time.get_unix_time_from_system() * 1000.0))
+	root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	root.close_requested.emit()
 	for _n: int in 600:
 		await process_frame
 	print("the app did not quit")
