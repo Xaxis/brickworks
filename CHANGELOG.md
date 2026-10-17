@@ -13,6 +13,19 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
+A release about the whole craft. A model can be rendered, shared by
+link, laid out as an instruction booklet whose steps build as drawn,
+posed and animated, printed and stickered, brickified from a 3D file,
+laid from a picture as Brick Art, and exported to Studio, BrickLink, Rebrickable or a 3D
+program. A file another program wrote comes back exactly as it went in,
+and a 4,000-part set stays quick to select, undo and step through.
+Building by hand from a booklet takes fewer actions, and with the
+assistant switched off nothing of it is missing. Claude, on your plan,
+shows the model in 3D beside its answers and builds characters on real
+joints. Models saved by 0.2.0 open in 0.3.0 unchanged.
+
 ### Added
 
 - Building from a booklet takes fewer actions. E makes the parts put down
