@@ -441,10 +441,12 @@ static func _copies(world: BrickWorld, section: String, skip: Dictionary) -> Arr
 static func swap(world: BrickWorld, section: String, step: int, by: int,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var other: int = step + by
 	for copy: String in _copies(world, section, skip):
 		var steps: Array = steps_in(world, copy, skip)
-		if not steps.has(step) or not steps.has(other):
+		# The step beside it that has anything in it: a file's empty step
+		# (a ROTSTEP alone) is no step to change places with.
+		var other: int = neighbour(steps, step, by)
+		if not steps.has(step) or other < 0:
 			continue
 		for item: Dictionary in items_of(world, copy, skip):
 			if int(item["step"]) == step:
@@ -461,8 +463,11 @@ static func swap(world: BrickWorld, section: String, step: int, by: int,
 ## foot is on another's top, where its studs are.
 static func blocked_swap(world: BrickWorld, section: String, step: int, by: int,
 		skip: Dictionary = {}) -> String:
-	var early: int = mini(step, step + by)
-	var late: int = early + 1
+	var other: int = neighbour(steps_in(world, section, skip), step, by)
+	if other < 0:
+		return ""
+	var early: int = mini(step, other)
+	var late: int = maxi(step, other)
 	var low: Array[AABB] = _boxes_in(world, section, early, skip)
 	var high: Array[AABB] = _boxes_in(world, section, late, skip)
 	for upper: AABB in high:
@@ -515,14 +520,24 @@ static func _stands_on(upper: AABB, lower: AABB) -> bool:
 	return a.intersects(b)
 
 
+## The step [param by] places from [param step] in [param steps] (a
+## section's steps in order, steps_in), or -1 at either end.
+static func neighbour(steps: Array, step: int, by: int) -> int:
+	var at: int = steps.find(step)
+	if at < 0 or at + by < 0 or at + by >= steps.size():
+		return -1
+	return int(steps[at + by])
+
+
 ## Step [param step] of [param section] and the one after it made one:
 ## the timeline's Merge.
 static func merge(world: BrickWorld, section: String, step: int,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
 	for copy: String in _copies(world, section, skip):
+		var next: int = neighbour(steps_in(world, copy, skip), step, 1)
 		for item: Dictionary in items_of(world, copy, skip):
-			if int(item["step"]) == step + 1:
+			if int(item["step"]) == next:
 				_put(world, item, step, undo)
 		_tidy(world, copy, skip, undo)
 	return squash(undo)

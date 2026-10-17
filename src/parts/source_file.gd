@@ -620,6 +620,17 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 			if not into.has(step):
 				into[step] = []
 			(into[step] as Array).append([float(n), text])
+		# A step with nothing in it is taken out with the line that ended
+		# it: the steps are numbered as the model has them now, and what an
+		# empty step's ROTSTEP turned goes with the step it turned
+		# (BookletLooks.follow).
+		var any: bool = false
+		for n: int in blocks[k]:
+			if line_step.has(n):
+				any = true
+				break
+		if not any:
+			continue
 		ending[block_step[k]] = lines[int(ends[k])].trim_suffix("\r") if int(ends[k]) >= 0 else ""
 	for entry: Array in added:
 		var step: int = int(entry[0]) if int(entry[0]) >= 0 else latest

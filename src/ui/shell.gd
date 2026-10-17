@@ -1585,6 +1585,19 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	var level: String = assemblies.entered if assemblies != null else ""
 	if op == "close":
 		return _close_step(level, skip)
+	# Parts of the sub-model whose step the timeline shows are its parts to
+	# move, as they are once it is entered: a booklet's steps are a
+	# sub-model's steps as often as the model's own.
+	if not ids.is_empty() and at != null and at.authored_step >= 0 \
+			and at.authored_in != level and Assemblies.within(at.authored_in, level):
+		var all_in: bool = true
+		for brick_id: Variant in ids:
+			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
+			if brick == null or Assemblies.path_of(brick) != at.authored_in:
+				all_in = false
+				break
+		if all_in:
+			level = at.authored_in
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
 	var where: Array = _step_at(at)
 	if op in ["earlier", "later"] and int(where[1]) >= 0:

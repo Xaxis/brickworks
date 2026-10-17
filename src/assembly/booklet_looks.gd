@@ -195,6 +195,7 @@ static func _usual(field: String, value: Variant) -> bool:
 ## read from the first copy of each sub-model.
 static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
+	var turns: Dictionary = {}
 	var sections: Array = AuthorSteps.paths_in(world, skip).keys()
 	sections.sort()
 	sections.push_front("")
@@ -208,6 +209,13 @@ static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionar
 				else "u" + Assemblies.leaf(str(item["unit"]))
 			items[named] = int(item["step"])
 		out[definition] = items
+		var seen: Dictionary = {}
+		for step: int in AuthorSteps.steps_in(world, section, skip):
+			var turn: Dictionary = turn_at(world, section, step)
+			if not turn.is_empty():
+				seen[step] = turn
+		turns[definition] = seen
+	out["@turns"] = turns
 	return out
 
 
@@ -264,10 +272,75 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {})
 					kept[field] = look[field]
 		else:
 			moved[target] = look
+	_turns_follow(moved, before, after)
 	if moved == was:
 		return []
 	world.step_looks = moved
 	return [{"undo": "steplooks", "looks": was}]
+
+
+## Each step's turn after a step edit is the one its parts were seen from
+## before it ([method items_by_step]'s "turns"), written again only where it
+## changes from the step before: a ROTSTEP ending an empty step, which the
+## edit takes out, gives its turn to the step it turned. A turn written as
+## it was keeps its line.
+static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictionary) -> void:
+	var turns: Dictionary = before.get("@turns", {})
+	for definition: String in after:
+		if definition.begins_with("@"):
+			continue
+		var then: Dictionary = before.get(definition, {})
+		var now: Dictionary = after[definition]
+		if then == now:
+			continue
+		var seen: Dictionary = turns.get(definition, {})
+		var steps: Dictionary = {}
+		for item: String in now:
+			steps[int(now[item])] = true
+		var order: Array = steps.keys()
+		order.sort()
+		# Each new step's turn: what most of its parts were seen from.
+		var want: Dictionary = {}
+		for step: int in order:
+			var votes: Dictionary = {}
+			for item: String in now:
+				if int(now[item]) == step and then.has(item):
+					var was: String = JSON.stringify(seen.get(int(then[item]), {}))
+					votes[was] = int(votes.get(was, 0)) + 1
+			var best: String = "{}"
+			for one: String in votes:
+				if not votes.has(best) or int(votes[one]) > int(votes[best]):
+					best = one
+			want[step] = JSON.parse_string(best)
+		# The lines that said them, kept by what they said.
+		var lines: Dictionary = {}
+		for name: String in looks.keys():
+			if name.get_slice("|", 0) != definition or not name.get_slice("|", 1).is_valid_int():
+				continue
+			var look: Dictionary = looks[name]
+			if look.has("line"):
+				lines[JSON.stringify([look.get("turn"), look.get("how", "REL")])] = look["line"]
+			look.erase("turn")
+			look.erase("how")
+			look.erase("line")
+			if look.is_empty():
+				looks.erase(name)
+		var state: Dictionary = {}
+		for step: int in order:
+			var turn: Dictionary = want[step] if want[step] is Dictionary else {}
+			if JSON.stringify(turn) == JSON.stringify(state):
+				continue
+			var look: Dictionary = looks.get(key(definition, step), {})
+			if turn.is_empty():
+				look["turn"] = "end"
+			else:
+				look["turn"] = turn["turn"]
+				look["how"] = str(turn.get("how", "REL"))
+			var said: String = JSON.stringify([look["turn"], look.get("how", "REL")])
+			if lines.has(said):
+				look["line"] = lines[said]
+			looks[key(definition, step)] = look
+			state = turn
 
 
 # -- reading and writing the file ---------------------------------------------
@@ -294,7 +367,10 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			step = 0
 			continue
 		if keyword == "ROTSTEP":
-			var look: Dictionary = out.get(key(definition, step), {})
+			# It ends this step and turns the next, as MLCad reads it and as
+			# the files of LDraw's model repository write it: a ROTSTEP at
+			# the head of a sub-model, before its first part, turns its first.
+			var look: Dictionary = out.get(key(definition, step + 1), {})
 			if words.size() >= 3 and words[2].to_upper() == "END":
 				look["turn"] = "end"
 			elif words.size() >= 5:
@@ -302,7 +378,7 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				look["how"] = words[5].to_upper() if words.size() >= 6 \
 					and words[5].to_upper() in ["REL", "ABS", "ADD"] else "REL"
 			look["line"] = line
-			out[key(definition, step)] = look
+			out[key(definition, step + 1)] = look
 			step += 1
 			continue
 		if keyword == "STEP":
@@ -392,11 +468,15 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_step_lines(out, looks, definition, step, eol, wrote)
-			out.append(_ending(raw, looks, definition, step, eol))
+			out.append(_ending(raw, looks, definition, step + 1, eol))
 			step += 1
 			any_part = false
 			continue
 		if line.begins_with("1 "):
+			if step == 0 and not any_part:
+				var first: Dictionary = looks.get(key(definition, 0), {})
+				if first.has("turn") and str(first["turn"]) != "end":
+					out.append(_ending("0 STEP" + eol, looks, definition, 0, eol))
 			any_part = true
 		out.append(raw)
 	if section_open or first_file:
@@ -435,8 +515,6 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 	var look: Dictionary = looks.get(key(definition, step), {})
 	if any_part or not look.is_empty():
 		_step_lines(extra, looks, definition, step, eol, wrote)
-		if look.has("turn"):
-			extra.append(_ending("0 STEP" + eol, looks, definition, step, eol))
 	# A sub-model's callout, said once in it.
 	var whole: Dictionary = looks.get(definition + "|*", {})
 	if not definition.is_empty() and whole.has("callout") and not bool(whole["callout"]) \
@@ -474,7 +552,8 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append(META + "PARTS OFF" + eol)
 
 
-## The line that ends a step: as it was when it says what the look says.
+## The line that ends a step, saying the turn of the step after it
+## ([param step]): as it was when it says what the look says.
 static func _ending(raw: String, looks: Dictionary, definition: String, step: int,
 		eol: String) -> String:
 	var look: Dictionary = looks.get(key(definition, step), {})
