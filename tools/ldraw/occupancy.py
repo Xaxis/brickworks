@@ -121,6 +121,10 @@ class Occupancy:
 ## How far a column's ray is moved off its cell's middle to tell which side
 ## of a face the middle is on, LDU: far below anything drawn. See [voxelise].
 TIE = 1.3e-4
+## How near an edge in plan a moved ray is still on it, LDU: a quarter of
+## the move, so a ray moved off an edge is off it and one moved along it
+## is not.
+ON_EDGE = TIE / 4.0
 
 
 def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
@@ -172,10 +176,25 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
         # whose middles are on an edge in plan. On a face square to z,
         # moving along x leaves the ray on it and the two moves agree; on a
         # face square to x, moving along z does. Slanted, neither does.
-        moved = {(dx, dz): _stab(tri, origin, shape, cell, dx, dz, touchy)[0]
-                 for dx, dz in ((TIE, 0.0), (-TIE, 0.0), (0.0, TIE), (0.0, -TIE))}
-        agreed = ((moved[(TIE, 0.0)] & moved[(-TIE, 0.0)])
-                  | (moved[(0.0, TIE)] & moved[(0.0, -TIE)]))
+        moved, on = {}, {}
+        for step in ((TIE, 0.0), (-TIE, 0.0), (0.0, TIE), (0.0, -TIE)):
+            moved[step], on[step] = _stab(
+                tri, origin, shape, cell, *step, touchy, band=ON_EDGE)
+        xp, xm = moved[(TIE, 0.0)], moved[(-TIE, 0.0)]
+        zp, zm = moved[(0.0, TIE)], moved[(0.0, -TIE)]
+        agreed = (xp & xm) | (zp & zm)
+        # But a move that leaves the ray on the edge leaves it on the seam
+        # between two faces of one surface too, and there the ray crosses
+        # both of them: twice in, or twice out. Through a hollow that made
+        # the hollow inside: a tyre's tread meets its shoulder on a circle
+        # at z = 7, a cell's middle, and the column on it was solid across
+        # the tyre's hole, which closed it at both sidewalls and took the
+        # wheel holder's pin in. Where the moves along one axis leave the
+        # ray off every edge and agree, they are the answer.
+        clean_x = ~(on[(TIE, 0.0)] | on[(-TIE, 0.0)])[:, None, :] & ~(xp ^ xm)
+        clean_z = ~(on[(0.0, TIE)] | on[(0.0, -TIE)])[:, None, :] & ~(zp ^ zm)
+        agreed = np.where(clean_x | clean_z,
+                          (clean_x & xp) | (clean_z & zp), agreed)
         grid = np.where(touchy[:, None, :], agreed, grid)
 
     return Occupancy(
@@ -187,11 +206,13 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
 
 def _stab(
     tri: np.ndarray, origin: np.ndarray, shape: tuple[int, int, int], cell: float,
-    dx: float, dz: float, columns: np.ndarray | None = None,
+    dx: float, dz: float, columns: np.ndarray | None = None, *,
+    band: float = 2.0 * TIE,
 ) -> tuple[np.ndarray, np.ndarray]:
     """The cells inside by a ray up each column, ``dx`` and ``dz`` LDU off
-    its middle, and the columns whose rays are within TIE of an edge of a
-    triangle in plan. With ``columns``, only those columns are stabbed."""
+    its middle, and the columns whose rays are within ``band`` of an edge
+    of a triangle in plan. With ``columns``, only those columns are
+    stabbed."""
     xs = (np.arange(shape[0]) + origin[0] + 0.5) * cell + dx
     zs = (np.arange(shape[2]) + origin[2] + 0.5) * cell + dz
     y_base = (np.arange(shape[1]) + origin[1] + 0.5) * cell
@@ -203,11 +224,12 @@ def _stab(
     # Twice the signed area of the triangle projected onto XZ. Its sign is
     # the facing: positive means the triangle's normal has +Y in it.
     area2 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax)
-    # How far each barycentric coordinate moves when the ray moves TIE:
-    # the opposite edge's length over the area. Twice that, to be sure.
+    # How far each barycentric coordinate moves when the ray moves ``band``:
+    # the opposite edge's length over the area. A band of twice TIE, to be
+    # sure, finds the columns a move of TIE could take across an edge.
     reach = np.stack([np.hypot(bx - cx, bz - cz), np.hypot(cx - ax, cz - az),
                       np.hypot(ax - bx, az - bz)], axis=1)
-    reach = 2.0 * TIE * reach / np.maximum(np.abs(area2), 1e-300)[:, None]
+    reach = band * reach / np.maximum(np.abs(area2), 1e-300)[:, None]
 
     touchy = np.zeros((shape[0], shape[2]), dtype=bool)
     # Crossings per column, gathered triangle by triangle.
@@ -242,11 +264,12 @@ def _stab(
         w1 = ((cx[n] - gx) * (az[n] - gz) - (cz[n] - gz) * (ax[n] - gx)) / area2[n]
         w2 = 1.0 - w0 - w1
 
-        if columns is None:
-            e0, e1, e2 = reach[n]
-            touchy[i0 : i1 + 1, k0 : k1 + 1] |= (
-                (w0 >= -e0) & (w1 >= -e1) & (w2 >= -e2)
+        e0, e1, e2 = reach[n]
+        near = ((w0 >= -e0) & (w1 >= -e1) & (w2 >= -e2)
                 & ((np.abs(w0) <= e0) | (np.abs(w1) <= e1) | (np.abs(w2) <= e2)))
+        if wanted is not None:
+            near &= wanted
+        touchy[i0 : i1 + 1, k0 : k1 + 1] |= near
 
         inside = (w0 >= 0.0) & (w1 >= 0.0) & (w2 >= 0.0)
         if wanted is not None:
@@ -515,6 +538,8 @@ class Hole:
     # line through the part (a peghole primitive says where its mouth is,
     # not how deep it goes).
     span: tuple[float, float] | None
+    # How far from the axis it reaches: a pin's, or a tyre's ([wide_bores]).
+    radius: float = HOLE_RADIUS
 
 
 def holes(connections: list[Connection]) -> list[Hole]:
@@ -569,6 +594,117 @@ def holes(connections: list[Connection]) -> list[Hole]:
     return out
 
 
+## A bore wider than this, in LDU, is wider than any pin's hole: a tyre's,
+## round the rim that fills it.
+WIDE_BORE = 7.0
+## How far inside a wide bore's round a cell's middle may lie and the bore
+## still be the part's innermost there, in LDU: under a cell's half diagonal.
+WIDE_SLACK = 1.5
+
+
+def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole]:
+    """Every tyre's hole: a bore wider than a pin's, all the way round,
+    across the stud axis, with nothing of the part inside it along its
+    length but a cell at either end, where the part's own faces meet it.
+
+    Its cover keeps it open ([to_boxes]), as it keeps a Technic hole open.
+    A tyre is a ring, so its convex hull is a disc, and a tyre past the box
+    limit was covered at a coarser grain inside that hull: its hole was
+    filled. 18450's, 41893's and 23798's held tens of thousands of cells, so
+    no rim could go in. A round brick's hollow is along the stud axis and a
+    hub's bore has the hub's axle in it, so neither is one.
+
+    Each bore is one, and the bores on one line are one more, from the first
+    one's start to the last one's end at the narrowest of them: a tyre's
+    hole is often two bores at its shoulders and a narrower one between,
+    joined by cones that are no bore (50951's: 14, 12 and 14 LDU).
+
+    Only a hole through the part, square to it: the bores on its line reach
+    from one face of the part to the other, to within WIDE_FACE. A shell's
+    round hollow is a bore and nothing is inside it, but it is no hole a rim
+    goes through: carved from 30117's cover, a quarter saucer, it was 1,256
+    boxes where it had been one.
+    """
+    if occupancy.cell_count == 0:
+        return []
+    grid = occupancy.to_grid()
+    out: list[Hole] = []
+    for c in connections:
+        if (c.kind is not ConnectorKind.BORE or c.radius <= WIDE_BORE
+                or c.arc < 1.0 - 1e-6 or abs(c.axis.y) >= 0.99 or c.length <= 0.0):
+            continue
+        axis = np.array([c.axis.x, -c.axis.y, -c.axis.z])
+        length = float(np.linalg.norm(axis))
+        if length < 1e-9:
+            continue
+        hole = Hole(point=np.array([c.position.x, -c.position.y, -c.position.z]),
+                    axis=axis / length, span=(0.0, c.length), radius=c.radius)
+        if _filled_inside(occupancy, grid, hole):
+            continue
+        out.append(hole)
+    # The bores on one line, as one at the narrowest of them.
+    lines: list[Hole] = []
+    for hole in out:
+        for line in lines:
+            if abs(float(line.axis @ hole.axis)) < 0.999:
+                continue
+            gap = hole.point - line.point
+            if np.linalg.norm(gap - line.axis * float(gap @ line.axis)) > 1.5:
+                continue
+            a = float(gap @ line.axis)
+            b = a + (hole.span[1] - hole.span[0]) * float(hole.axis @ line.axis)
+            assert line.span is not None
+            line.span = (min(line.span[0], a, b), max(line.span[1], a, b))
+            line.radius = min(line.radius, hole.radius)
+            break
+        else:
+            lines.append(Hole(point=hole.point.copy(), axis=hole.axis.copy(),
+                              span=hole.span, radius=hole.radius))
+    through = [line for line in lines if _through(occupancy, grid, line)]
+    kept = [hole for hole in out if any(_on_line(hole, line) for line in through)]
+    return kept + [line for line in through if not _filled_inside(occupancy, grid, line)]
+
+
+## How far in from a face of the part a hole through it may start, in LDU:
+## a tyre's sidewall is drawn as a ring at its face, its bores from there.
+WIDE_FACE = 2.0 * CELL
+
+
+def _through(occupancy: Occupancy, grid: np.ndarray, line: Hole) -> bool:
+    """Whether the bores on a line reach through the part, square to it."""
+    square = [n for n in range(3) if abs(line.axis[n]) > 0.999]
+    if not square or line.span is None:
+        return False
+    n = square[0]
+    filled = np.nonzero(grid.any(axis=tuple(a for a in range(3) if a != n)))[0]
+    if filled.size == 0:
+        return False
+    low = (occupancy.origin[n] + int(filled[0])) * CELL
+    high = (occupancy.origin[n] + int(filled[-1]) + 1) * CELL
+    ends = [line.point[n] + line.axis[n] * s for s in line.span]
+    return min(ends) <= low + WIDE_FACE and max(ends) >= high - WIDE_FACE
+
+
+def _on_line(hole: Hole, line: Hole) -> bool:
+    """Whether a bore is one of a line's."""
+    if abs(float(line.axis @ hole.axis)) < 0.999:
+        return False
+    gap = hole.point - line.point
+    return bool(np.linalg.norm(gap - line.axis * float(gap @ line.axis)) <= 1.5)
+
+
+def _filled_inside(occupancy: Occupancy, grid: np.ndarray, hole: Hole) -> bool:
+    """Whether any cell of the part is inside a wide bore, a cell in from
+    either end of it and WIDE_SLACK in from its round."""
+    assert hole.span is not None
+    low, high = hole.span[0] + CELL, hole.span[1] - CELL
+    if high <= low:
+        return False
+    inner = Hole(point=hole.point, axis=hole.axis, span=(low, high),
+                 radius=hole.radius - WIDE_SLACK)
+    return bool((_bore(occupancy, [inner], whole_line=False) & grid).any())
+
+
 def _fills(shaft: Connection, bore: Connection) -> bool:
     """Whether a part's own shaft stands inside one of its bores."""
     if shaft.radius < bore.radius - 1.0 or shaft.radius > bore.radius + DRAWN_HOLE_FIT:
@@ -610,7 +746,7 @@ def _bore(occupancy: Occupancy, found: list[Hole], *, whole_line: bool) -> np.nd
                 window.append(slice(0, shape[n]))
                 continue
             middle = point[n] / CELL - (ox, oy, oz)[n]
-            reach = (HOLE_RADIUS / CELL) + 1.0
+            reach = (hole.radius / CELL) + 1.0
             window.append(slice(
                 max(0, int(np.floor(middle - reach))),
                 min(shape[n], int(np.ceil(middle + reach)) + 1)))
@@ -625,7 +761,7 @@ def _bore(occupancy: Occupancy, found: list[Hole], *, whole_line: bool) -> np.nd
         px = dx - along * axis[0]
         py = dy - along * axis[1]
         pz = dz - along * axis[2]
-        inside = (px * px + py * py + pz * pz) <= HOLE_RADIUS * HOLE_RADIUS
+        inside = (px * px + py * py + pz * pz) <= hole.radius * hole.radius
         if hole.span is not None and not whole_line:
             inside &= (along >= hole.span[0]) & (along <= hole.span[1])
         bore[window[0], window[1], window[2]] |= inside
@@ -872,8 +1008,12 @@ def to_boxes(
             return exact
     whole = _greedy(bounds, occupancy.origin, 1)
     carved = None
-    if found or rooms:
+    # And a tyre's hole, which a rim fills ([wide_bores]).
+    wide = wide_bores(occupancy, connections or [])
+    if found or rooms or wide:
         carved = _bore(occupancy, found, whole_line=True)
+        if wide:
+            carved |= _bore(occupancy, wide, whole_line=False)
         for window, room in rooms:
             carved[window] |= room
 
