@@ -54,6 +54,9 @@ declare -A CMD=(
   [sections]="tools/web/sections_flow.mjs --url=$P/app $B --out=$S/${TAG}_sections_web"
   [placing]="tools/web/placing_flow.mjs --url=$P/app $B --out=$S/${TAG}_placing_web"
   [flex_skin]="tools/web/flex_skin_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_skin_web $R/vendor/omr/files/8202-1.mpd"
+  # A set's carried parts drawn from LDraw's own subparts, fetched from the
+  # parts bucket as it opens (tools/storage_ldraw.py must have run).
+  [carried]="tools/web/carried_flow.mjs --url=$P/app $B --label=preview --out=$S/${TAG}_carried_web $R/vendor/omr/files/21321-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=stand --out=$S/${TAG}_brickify_fox_web"
 )

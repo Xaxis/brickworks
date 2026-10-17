@@ -2126,6 +2126,27 @@
       "entry": "src/dev/tabpair_probe.gd",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabpair_probe.gd -- 8790   (with .env sourced)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "carried fetch probe",
+      "entry": "src/dev/carried_fetch_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   (a file's carried parts built on the web's path with the library withheld, its LDraw files fetched over HTTP from python's http.server on 8841: the same faces and bounds as the desktop's, nothing fetched twice or for a file that carries nothing, a file not there and a web page refused and said; -- --census OUT.json counts what vendor/omr's files need)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "carried parts in a browser",
+      "entry": "tools/web/carried_flow.mjs",
+      "reach": "node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried MODEL.mpd   (a local export served by tools/web/serve.py DIR 8840 --parts-url \"$PARTS_URL\": each file opened through Open… > From a file, none of the parts it carries said not shown, the LDraw files it fetched and the open time said, a picture each)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "LDraw files in storage",
+      "entry": "tools/storage_ldraw.py",
+      "reach": "tools/storage_ldraw.py --check   (the library's parts/ in the parts bucket under ldraw/parts/, what is not up yet and its size; without --check uploads it, never over a file there)",
+      "area": "model-io"
     }
   ]
 }

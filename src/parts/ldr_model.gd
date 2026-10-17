@@ -144,6 +144,10 @@ var section_texts: Dictionary = {}
 ## The sub-models LDCad generated a flexible part's skin into: sub-model key
 ## -> [the line of its first `0 !LDCAD GENERATED`, the step it is in].
 var generated: Dictionary = {}
+## What each of those sub-models' skin is as a part (CustomParts._skin_text),
+## by its body: made once an open, where the web looks for what a skin is
+## drawn from before it opens (CustomParts.unreached_by) and builds it after.
+var skin_texts: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,

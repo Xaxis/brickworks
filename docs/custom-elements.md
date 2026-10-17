@@ -154,6 +154,14 @@ parts** puts it in the bin under Custom.
   copy of the app that never made the part — rebuilds it from that section.
   The `bw-` prefix keeps it clear of the namespace problem the MPD spec
   warns about.
+- **A carried part may draw on LDraw's own files.** Somebody else's file
+  often carries parts drawn from the library's subparts and parts, which
+  the desktop reads from `vendor/ldraw` and no build ships (34,122 files,
+  495 MB). In a browser those a file names are fetched as it opens, from
+  `ldraw/parts/` beside the geometry (`tools/storage_ldraw.py` put them
+  there), and kept for the visit (`CustomParts.fetch_sources`). Of the
+  repository's 1,576 real sets' files, 190 need some: one file, 3 KB, for
+  42082-1; 26 files, 563 KB, at most (41075-1).
 - **The pipeline** can build just made parts in seconds:
   `tools/build_custom.py` takes `.dat` files or a model file, writes meshes
   and catalogue entries, merges them into a catalogue with `--into`, and

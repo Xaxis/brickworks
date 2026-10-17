@@ -810,9 +810,12 @@ static func pictures_named(text: String) -> PackedStringArray:
 ## coordinates and the block's picture. [param pictures] is file name ->
 ## PNG bytes. The result's problem says what is missing, if anything. With
 ## [param library], a print of a part it has is that part's collision cover
-## and underside exactly: only its pictures are new.
+## and underside exactly: only its pictures are new. [param others]: the
+## files it may draw on from the model file it came in, as PartForge.build
+## has them. Without them 42058-1's 28884c01, a print whose faces are all in
+## the subparts the file carries, was said not shown everywhere.
 static func build(text: String, id: String, pictures: Dictionary,
-		library: PartLibrary = null) -> PartForge.Result:
+		library: PartLibrary = null, others: Dictionary = {}) -> PartForge.Result:
 	var blocks: Array = []        ## per block: {method, points, angle, picture}
 	var lines := PackedStringArray()
 	var block: int = -1
@@ -845,7 +848,7 @@ static func build(text: String, id: String, pictures: Dictionary,
 	var plain: Lbm.PartMesh = null
 	if library != null and is_print(text) and not base_in(text).is_empty():
 		plain = library.mesh_for(base_in(text))
-	var built: PartForge.Result = PartForge.build("\n".join(lines), id, {}, true, plain)
+	var built: PartForge.Result = PartForge.build("\n".join(lines), id, others, true, plain)
 	if not built.problem.is_empty() or built.mesh == null:
 		return built
 	var mesh: Lbm.PartMesh = built.mesh

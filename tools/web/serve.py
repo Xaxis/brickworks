@@ -15,6 +15,13 @@ each /parts/<hash>.lbm is read from that directory after --delay
 milliseconds and up to as much again. A line "part <name>" is printed
 for each one served, so a browser check can tell the network was used.
 
+With --parts-url it stands in for the deployment as it is: /api/account
+names that URL, as the deployment names PARTS_URL, so a local export reads
+the real parts bucket (its geometry, and the LDraw files a carried part is
+drawn from, tools/storage_ldraw.py):
+
+    tools/web/serve.py build/web 8840 --parts-url "$PARTS_URL"
+
 Done here rather than by intercepting requests in the browser, because
 interception never saw the app's fetches: a check that throttled them
 there scrolled 4,680 parts deep and counted none.
@@ -50,6 +57,7 @@ class Handler(SimpleHTTPRequestHandler):
         ".lbm": "application/octet-stream",
     }
     parts: Path | None = None
+    parts_url: str = ""
     delay: float = 0.0
     share: Path | None = None
 
@@ -62,6 +70,10 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - the name http.server calls
         path = self.path.split("?", 1)[0]
         if self.share is not None and self._shared(path):
+            return
+        if self.parts_url and path == "/api/account":
+            self._send(200, "application/json",
+                       json.dumps({"parts_url": self.parts_url}).encode())
             return
         if self.parts is not None and path == "/api/account":
             host = self.headers.get("Host", "127.0.0.1")
@@ -127,6 +139,7 @@ def main() -> int:
     parser.add_argument("directory", nargs="?", default="build/web")
     parser.add_argument("port", nargs="?", type=int, default=8099)
     parser.add_argument("--parts", help="serve /parts/*.lbm from here, slowly")
+    parser.add_argument("--parts-url", help="answer /api/account with this as where parts live")
     parser.add_argument("--delay", type=float, default=2500.0, help="milliseconds")
     parser.add_argument("--share", help="answer /api/share?id= and /m/<id> with this model")
     args = parser.parse_args()
@@ -135,10 +148,13 @@ def main() -> int:
         Handler.delay = args.delay / 1000.0
     if args.share:
         Handler.share = Path(args.share).resolve()
+    if args.parts_url:
+        Handler.parts_url = args.parts_url
     server = ThreadingHTTPServer(
         ("127.0.0.1", args.port), partial(Handler, directory=args.directory))
     print(f"serving {args.directory} at http://127.0.0.1:{args.port}/ (COOP/COEP on)"
-          + (f", parts from {args.parts} after {args.delay:.0f} ms" if args.parts else ""),
+          + (f", parts from {args.parts} after {args.delay:.0f} ms" if args.parts else "")
+          + (f", parts at {args.parts_url}" if args.parts_url else ""),
           flush=True)
     server.serve_forever()
     return 0
