@@ -2019,7 +2019,9 @@ static func _prop_under(room: Laid, piece: Dictionary, rest: Dictionary) -> bool
 		if not open:
 			continue
 		tried += 1
-		if room.pillar([int(n)], rest, true, 24):
+		# Onto the model itself, not the ground: a pillar from a figure's arm
+		# to the floor held it, and stood a stud and more off the figure.
+		if room.pillar([int(n)], rest, false, 24):
 			return true
 		if tried >= 24:
 			break
