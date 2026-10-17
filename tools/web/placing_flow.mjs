@@ -34,6 +34,11 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = String(args.url || "http://127.0.0.1:8931/");
+// A protected preview is opened once with its bypass, which sets a cookie
+// for the rest (as assembly_flow does); preview_checks passes --bypass.
+const first = args.bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = resolve(String(args.out || "shots/placing"));
 const ONLY = String(args.only || "edge,parts,balance").split(",");
 const RATIO = Number(args.ratio || 1);
@@ -137,7 +142,7 @@ async function aimAndPut(x, y, { keep = false } = {}) {
 }
 
 async function start() {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   await where("model_name", Number(args.wait || 400));
   await page.waitForTimeout(8000);
   const fresh_ = await where("new");
