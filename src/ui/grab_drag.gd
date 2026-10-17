@@ -1221,10 +1221,13 @@ func _adopt(read: Array, revision: int) -> void:
 	_judge_revision = revision
 
 
-## What a drag is doing, for a browser test: window.brickworksGrab, with a
-## place on the page over a part of each of the first few bodies that turn
-## on a joint, so a mouse can take hold of it as a person's would. Web
-## builds only.
+## What a drag is doing, for a browser test: window.brickworksGrab. Its
+## handles, a place on the page over a part of each of the first few bodies
+## that turn on a joint (so a mouse can take hold of it as a person's
+## would), only when the page asks (window.brickworksGrabAsk), and found
+## again only when the model or the view has changed: found twice a second
+## for every model, raycasting each body's parts, they cost a 4,000-part
+## model's frames 180 to 460 ms in a browser. Web builds only.
 func _tell_page() -> void:
 	if not OS.has_feature("web") or world == null or camera == null:
 		return
@@ -1232,21 +1235,14 @@ func _tell_page() -> void:
 	if now - _told_page_at < 500:
 		return
 	_told_page_at = now
-	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
-	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
-	var to_window: Transform2D = get_viewport().get_final_transform()
 	var handles: Array = []
-	if grab == null and is_ready():
-		for body: Variant in _bodies.parent_link:
-			if handles.size() >= 8:
-				break
-			var spot: Variant = _handle(int(body), _bodies.parent_link[body])
-			if spot != null:
-				var at: Vector2 = to_window * (spot["screen"] as Vector2) / per_css
-				spot.erase("screen")
-				spot["x"] = roundi(at.x)
-				spot["y"] = roundi(at.y)
-				handles.append(spot)
+	if grab == null and is_ready() and bool(JavaScriptBridge.eval("!!window.brickworksGrabAsk", true)):
+		var seen: Array = [world.revision, camera.global_transform, get_viewport().get_visible_rect().size,
+			get_viewport().get_final_transform()]
+		if seen != _handles_for:
+			_handles_for = seen
+			_handles = _find_handles()
+		handles = _handles
 	var state: Dictionary = {"grabbing": grab != null, "handles": handles,
 		"said": last_words, "frames": frames, "worst_ms": snappedf(worst_ms, 0.01),
 		"mean_ms": snappedf(mean_ms, 0.01), "revision": world.revision, "ready": is_ready(),
@@ -1255,6 +1251,10 @@ func _tell_page() -> void:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)
 		state["stopped"] = grab.stopped
+	state["swinging"] = _swinging != null
+	state["swing_frames"] = swing_frames
+	state["swing_mean_ms"] = snappedf(swing_mean_ms, 0.01)
+	state["swing_worst_ms"] = snappedf(swing_worst_ms, 0.01)
 	var said: String = JSON.stringify(state)
 	if said == _told_page:
 		return
@@ -1262,22 +1262,55 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksGrab = %s" % said, true)
 
 
-## A point on the screen over a part of [param body], the one furthest from
-## its joint's line that the pointer lands on: {screen, part, kind, id}.
+## The handles found last, and for what: [revision, eye, view size, its
+## place in the window].
+var _handles: Array = []
+var _handles_for: Array = []
+## At most this many of a body's parts, furthest from its joint first, are
+## raycast for a handle.
+const HANDLE_PARTS := 4
+
+
+## A place on the page over a part of each of the first eight bodies that
+## turn on a joint and show: [{x, y, part, kind, id}].
+func _find_handles() -> Array:
+	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
+	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
+	var to_window: Transform2D = get_viewport().get_final_transform()
+	var out: Array = []
+	for body: Variant in _bodies.parent_link:
+		if out.size() >= 8:
+			break
+		var spot: Variant = _handle(int(body), _bodies.parent_link[body])
+		if spot != null:
+			var at: Vector2 = to_window * (spot["screen"] as Vector2) / per_css
+			spot.erase("screen")
+			spot["x"] = roundi(at.x)
+			spot["y"] = roundi(at.y)
+			out.append(spot)
+	return out
+
+
+## A point on the screen over a part of [param body], of the
+## [constant HANDLE_PARTS] furthest from its joint's line the first the
+## pointer lands on: {screen, part, kind, id}.
 func _handle(body: int, link: Bodies.Link) -> Variant:
-	var best: Variant = null
-	var furthest: float = -1.0
+	# The furthest few by their middles alone, before any ray is cast.
+	var order: Array = []   ## [distance off the line, brick id]
 	for key: int in _bodies.members.get(body, PackedInt64Array()):
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
 		if info == null:
 			continue
-		var centre: Vector3 = brick.transform * info.bounds.get_center()
-		var off: Vector3 = centre - link.point
+		var off: Vector3 = brick.transform * info.bounds.get_center() - link.point
 		if link.axis != Vector3.ZERO:
 			off -= link.axis * off.dot(link.axis)
-		if off.length() <= furthest:
-			continue
+		order.append([off.length(), key])
+	order.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	for entry: Array in order.slice(0, HANDLE_PARTS):
+		var key: int = int(entry[1])
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		# Its middle, then towards its corners: a turret under an arm shows
 		# only its edge.
 		for corner: int in 9:
@@ -1289,7 +1322,5 @@ func _handle(body: int, link: Bodies.Link) -> Variant:
 			var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
 				camera.ray_normal(screen))
 			if hit.is_valid() and hit.brick_id == key:
-				furthest = off.length()
-				best = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
-				break
-	return best
+				return {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+	return null

@@ -16,7 +16,18 @@
 // the turret is dragged round on its turntable, carrying the arm. Beside it a
 // four-bar lies flat, two cranks pinned to a beam 15 and a coupler across
 // their ends: a crank dragged round turns the other one by the loop (Linkage),
-// as a steering's arms turn. Fails if
+// as a steering's arms turn. Behind them a beam 9 hangs on a pin without
+// friction from a Technic brick on a tower: dragged out and let go, it swings
+// under its own weight, back and forth, and comes to rest hanging (Swing).
+// The page asks for the handles (window.brickworksGrabAsk): the app finds
+// them only when asked.
+//
+//   ... --big=vendor/omr/files/42082-1.mpd --only-big
+//
+// opens that model instead and, the page not asking for handles as a
+// person's never does, times its frames standing still for --seconds (20):
+// the handles were found twice a second for every model, raycasting each
+// body's parts, and held a 4,000-part model's frames 180 to 460 ms. Fails if
 // nothing turns, the arm does not come back on undo, the app's own work in a
 // drag frame passes --work ms (33), the page stops answering for longer than
 // --stall ms (5000: a hang), or a script error reaches the console. Pictures
@@ -66,12 +77,21 @@ writeFileSync(model, [
   "1 0 200 -10 60 0 -1 0 1 0 0 0 0 1 3673.dat",
   "1 0 280 -30 -60 0 -1 0 1 0 0 0 0 1 3673.dat",
   "1 0 280 -30 60 0 -1 0 1 0 0 0 0 1 3673.dat",
+  // The pendulum: a tower of seven 2x4 bricks, a Technic brick 1x4 with
+  // holes on it, and a beam 9 hanging on a pin without friction in front.
+  ...Array.from({ length: 7 }, (_, k) => `1 4 -200 ${-24 * (k + 1)} -10 1 0 0 0 1 0 0 0 1 3001.dat`),
+  "1 7 -200 -192 0 1 0 0 0 1 0 0 0 1 3701.dat",
+  "1 0 -200 -182 10 0 0 -1 0 1 0 1 0 0 3673.dat",
+  "1 14 -200 -102 20 -1 0 0 0 0 1 0 1 0 40490.dat",
   "",
 ].join("\n"));
+const PARTS = 24;
 
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
+// The app finds the grab handles only when a page asks for them.
+await page.addInitScript(() => { window.brickworksGrabAsk = true; });
 page.choosers = [];
 page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
@@ -170,14 +190,61 @@ async function drag(from, by, steps, picture) {
 }
 
 const timings = {};
+// The page's frames, timed by requestAnimationFrame for [seconds]: the
+// longest gaps, and how many passed 50 and 100 ms.
+async function frameGaps(seconds) {
+  return page.evaluate((ms) => new Promise((done) => {
+    const gaps = [];
+    let last = performance.now();
+    const end = last + ms;
+    const tick = (now) => {
+      gaps.push(now - last);
+      last = now;
+      if (now < end) requestAnimationFrame(tick);
+      else {
+        gaps.sort((a, b) => b - a);
+        done({ frames: gaps.length, longest: gaps.slice(0, 5).map(Math.round),
+          over50: gaps.filter((g) => g > 50).length, over100: gaps.filter((g) => g > 100).length });
+      }
+    };
+    requestAnimationFrame(tick);
+  }), seconds * 1000);
+}
+if (args.big) {
+  try {
+    await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
+    check(Boolean(await where("open", 400)), "the app came up");
+    await page.waitForTimeout(Number(args.load || 15000));
+    await page.evaluate(() => { window.brickworksGrabAsk = false; });
+    await open(path.resolve(args.big));
+    const opened = await until(state, (s) => (s.bricks || 0) > 500 && !/arriving|opening|reading/i.test(s.said || ""), 900);
+    check(Boolean(opened), `${path.basename(args.big)} opened: ${(await state()).bricks} parts`);
+    // Read for a grab (GrabDrag reads a model's joints once it stands still).
+    await until(grab, (g) => g.ready, 300);
+    await page.waitForTimeout(5000);
+    const seconds = Number(args.seconds || 20);
+    const gaps = await frameGaps(seconds);
+    console.log(`      standing still ${seconds} s: ${gaps.frames} frames, longest ${gaps.longest.join(", ")} ms; `
+      + `${gaps.over50} past 50 ms, ${gaps.over100} past 100 ms`);
+    timings.big = { model: path.basename(args.big), ...gaps };
+    const asked = await grab();
+    check((asked.handles || []).length === 0, `no handles found while the page does not ask (${(asked.handles || []).length})`);
+    check(gaps.over100 === 0, `no frame past 100 ms standing still on ${path.basename(args.big)} (${gaps.over100})`);
+    await shot("big.png");
+  } catch (trouble) {
+    check(false, `stopped: ${trouble.message}`);
+    await shot("stopped.png");
+  }
+}
 try {
+  if (args["only-big"]) throw new Error("only the big model was asked for");
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   check(Boolean(await where("open", 400)), "the app came up");
   await page.waitForTimeout(Number(args.load || 15000));
   let opened = null;
   for (let attempt = 0; attempt < 3 && !opened; attempt++) {
     await open(model);
-    opened = await until(state, (s) => s.bricks === 14 && !/arriving/.test(s.said || ""), 240);
+    opened = await until(state, (s) => s.bricks === PARTS && !/arriving/.test(s.said || ""), 240);
     if (!opened) await page.waitForTimeout(15000);
   }
   check(Boolean(opened), `the crane opened: ${(await state()).bricks} parts`);
@@ -267,9 +334,52 @@ try {
       `the loop carried what the crank does not hold: ${moved.map((h) => h.part).join(", ") || "nothing"} moved`);
     await shot("7_fourbar_after.png");
   }
+
+  // The pendulum: dragged out and let go, it swings, and is kept at rest.
+  const isBeam = (h) => h.part === "40490";
+  const hung = await until(grab, (g) => !g.grabbing && !g.swinging && (g.handles || []).some(isBeam), 20);
+  const beam = hung && hung.handles.find(isBeam);
+  if (check(Boolean(beam), "the pendulum's beam is there to take hold of")) {
+    await page.mouse.move(beam.x, beam.y, { steps: 3 });
+    await page.waitForTimeout(600);
+    await heartbeat();
+    await page.mouse.down();
+    for (let n = 1; n <= 16; n++) {
+      await page.mouse.move(beam.x + 150 * n / 16, beam.y - 40 * n / 16);
+      await page.waitForTimeout(60);
+    }
+    await page.waitForTimeout(400);
+    const held = await grab();
+    await page.mouse.up();
+    let seen = false;
+    let shots = 0;
+    for (let n = 0; n < 120; n++) {
+      const now = await grab();
+      if (now.swinging) {
+        seen = true;
+        if (shots < 4) await shot(`8_pendulum_swinging_${shots++}.png`);
+      } else if (seen || n > 10) break;
+      await page.waitForTimeout(150);
+    }
+    const rested = await until(grab, (g) => !g.swinging && /came to rest/.test(g.said || ""), 60);
+    const stall = await page.evaluate(() => Math.round(window.__beat.worst));
+    check(Boolean(held && held.grabbing) && Math.abs(held.angle || 0) > 10,
+      `the beam turns out on its free pin: ${held && held.angle}°`);
+    check(seen, "let go, it swings");
+    check(Boolean(rested), `and comes to rest, said: "${rested && rested.said}"`);
+    check(Boolean(rested) && Number(rested.swing_worst_ms) <= workLimit,
+      `the app's own work in a swing frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
+      + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
+    check(stall <= stallLimit, `the page did not hang in the swing: its longest wait ${stall} ms`);
+    timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
+      worst_ms: rested && rested.swing_worst_ms, stall_ms: stall };
+    await shot("9_pendulum_rest.png");
+  }
 } catch (trouble) {
-  check(false, `stopped: ${trouble.message}`);
-  await shot("stopped.png");
+  if (!args["only-big"]) {
+    check(false, `stopped: ${trouble.message}`);
+    await shot("stopped.png");
+  }
 }
 writeFileSync(path.join(out, "timings.json"), JSON.stringify(timings, null, 2));
 check(errors.length === 0, `no script errors (${errors.slice(0, 3).join(" | ")})`);
