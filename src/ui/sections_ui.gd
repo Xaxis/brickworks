@@ -188,6 +188,12 @@ func toggle_explode() -> String:
 	_goal = 1.0
 	set_process(true)
 	_frame_apart(apart)
+	# A click chooses a section: the level they are in edited, as the
+	# Corvette's are inside its one sub-model, where a click took all of it.
+	var at: String = sections._level()
+	if at != shell.assemblies.entered and Assemblies.within(at, shell.assemblies.entered):
+		_entered_was = shell.assemblies.entered
+		shell.assemblies.enter(at)
 	var said: String = "%d sections apart — click one to choose it; the model is as it was. " \
 		% groups.size() + "Shift+Y puts them back together"
 	shell.bar.say(said)
@@ -236,8 +242,15 @@ func _frame_apart(apart: Dictionary) -> void:
 	camera.frame(box, 1.15)
 
 
+## The level edited before the sections were drawn apart, or null.
+var _entered_was: Variant = null
+
+
 ## And back to where it was, once together again.
 func _frame_back() -> void:
+	if _entered_was != null:
+		shell.assemblies.leave_to(str(_entered_was))
+		_entered_was = null
 	var camera: CadCamera = shell.camera
 	if camera == null or _view_was.is_empty():
 		return
