@@ -35,6 +35,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 from typing import Callable
 
@@ -151,6 +152,28 @@ def small_png() -> str:
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 24, 16, 8, 6, 0, 0, 0)) \
         + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
     return base64.b64encode(png).decode()
+
+
+def pictured_model() -> dict | None:
+    """The newest model in the gallery with a picture, as its list gives it
+    (api/share.js ?op=list: a card's image), asked of the deployment the
+    app asks (src/net/deployment.gd: BRICKWORKS_API, or brickworks.diy)."""
+    base = (os.environ.get("BRICKWORKS_API") or "https://brickworks.diy").rstrip("/")
+    for page in (1, 2, 3):
+        asked = urllib.request.Request("%s/api/share?op=list&page=%d" % (base, page),
+                                       headers={"Accept": "application/json",
+                                                "User-Agent": "brickworks-mcp-check"})
+        try:
+            with urllib.request.urlopen(asked, timeout=30) as reply:
+                listed = json.load(reply)
+        except (OSError, ValueError):
+            return None
+        for model in listed.get("models", []):
+            if model.get("image") and model.get("id"):
+                return model
+        if not listed.get("more"):
+            break
+    return None
 
 
 def text_of(result: dict) -> str:
@@ -352,16 +375,24 @@ def drive(relay: Relay, window: bool = False) -> None:
     simulate(relay, say, kept.parent)
     # The gallery (src/net/gallery_tool.gd), read-only, from the app's own
     # deployment (BRICKWORKS_API, or brickworks.diy): searched, and one
-    # model opened as a reference with its credit, licence and picture.
+    # model opened as a reference with its credit, licence and picture —
+    # one the list says has a picture, not whichever is newest. The newest
+    # was once a probe's model with none, and every desktop release job
+    # failed on it (2026-10-17).
     found = say("gallery", {"sort": "newest"})
     first = re.search(r"^1\. .*?\(([A-Za-z0-9]{10})\)", found, re.M)
     check("the gallery searched over MCP: %s" % (found.splitlines()[0][:80] if found else "nothing"),
           found.startswith("The gallery at") and first is not None and "credit them" in found)
-    if first:
-        opened = relay.call("tools/call", {"name": "gallery", "arguments": {"open": first.group(1)}})
+    pictured = pictured_model()
+    check("the gallery lists a model with a picture: %s" % (
+        "%s (%s)" % (pictured["name"], pictured["id"]) if pictured else "none on its first pages"),
+        pictured is not None)
+    if pictured:
+        opened = relay.call("tools/call", {"name": "gallery", "arguments": {"open": pictured["id"]}})
         blocks = opened.get("result", {}).get("content", [])
         words = text_of(opened.get("result", {}))
-        check("...one opened as a reference, with its licence and size: %s" % words.splitlines()[0][:70],
+        check("...%s opened as a reference, with its licence and size: %s"
+              % (pictured["id"], words.splitlines()[0][:70] if words else "nothing"),
               "Licence:" in words and "Size:" in words and "Read-only" in words)
         check("...and its picture as an MCP image block",
               any(b.get("type") == "image" and b.get("mimeType", "").startswith("image/")
