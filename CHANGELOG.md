@@ -31,6 +31,12 @@ whole cycle.
   42082 waited 12 s for the status bar to finish weighing 42082; it now
   opens in 1.5 s, and the new model is weighed after.
 
+### Fixed
+
+- Brickify stops when you cancel it, close its panel or quit. It used to
+  run on to its end: quitting during a large run waited 25 s, and now
+  takes under a second.
+
 ## [0.3.0] - 2026-10-16
 
 A release about the whole craft. A model can be rendered, shared by

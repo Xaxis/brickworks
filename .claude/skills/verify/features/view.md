@@ -157,14 +157,19 @@ picture the assistant is shown.
   read as "files that carry parts" because the sets tried were big). Every
   task the app waits for goes through `WorkerTasks.add` and `collect`, and
   those still out when the tree goes are collected then; Brickify's dialog
-  collects its run before freeing the checker it reads. And the autosave
+  tells its run to stop (`Brickify.Progress.stop`, asked between its steps,
+  inside the laying too, `Shapes.lay`'s "stop") and collects it before
+  freeing the checker it reads: a 64-stud bunny held the quit 24.6 s, and
+  goes in 0.6 s. And the autosave
   waits 2.5 s for a change to settle, so an edit made just before closing
   was lost: `Main._exit_tree` writes the working model now
   (`ModelStore.write_now`). `quit_probe` (headless) runs the app twice, a
   1,000-part model each time, deletes a part (its sub-model copy with it)
   while the weigh is out and quits by the close request and by File, Quit:
   each exits 0 with a task out, and its autosave is the model as it stood at
-  the quit. Pass: exit 0 and `quit: quits cleanly and keeps the last edit`.
+  the quit; and a third run closes the window 3 s into Brickify's run on the
+  bunny at 64 studs: gone within 8 s (`--only=brickify` runs that one).
+  Pass: exit 0 and `quit: quits cleanly and keeps the last edit`.
   On main both runs exit 134 and their autosave still has the 50 parts. The
   windowed close button is pressed for real with WM_DELETE_WINDOW from
   outside, which on a bare Xvfb needs the atom made first (Godot asks for it
