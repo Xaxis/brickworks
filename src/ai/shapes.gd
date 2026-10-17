@@ -1869,6 +1869,7 @@ class Plan extends RefCounted:
 	var bond: bool = false
 	## The colour of a core part none of which shows: the model's main colour.
 	var core_colour: int = -1
+	var _made_in_colour: Dictionary = {}
 
 	func _init(given: Dictionary, height: int, tiles: bool, parts: PartLibrary) -> void:
 		columns = given
@@ -1908,7 +1909,8 @@ class Plan extends RefCounted:
 		return at(cell, j) >= 0 and shelled.has(Vector3i(cell.x, j + 1, cell.y))
 
 	## Studs where course [param k] is whole, in one colour: with [member
-	## bond], in one colour where it shows.
+	## bond], in one colour where it shows, but in a thin part's columns
+	## ([member plain_at]) as measured, whose plates cross and hold it.
 	func full(k: int) -> Dictionary:
 		var out: Dictionary = {}
 		for key: Variant in columns:
@@ -1916,7 +1918,7 @@ class Plan extends RefCounted:
 			var j: int = 3 * k
 			if not (body(cell, j) and body(cell, j + 1) and body(cell, j + 2)):
 				continue
-			if bond and shown_colour(cell, j, 3) != MIXED \
+			if bond and not plain_at.has(cell) and shown_colour(cell, j, 3) != MIXED \
 					or at(cell, j) == at(cell, j + 1) and at(cell, j + 1) == at(cell, j + 2):
 				out[cell] = true
 		return out
@@ -5502,11 +5504,14 @@ class Plan extends RefCounted:
 						var colour: int = _fits_any(wanted, corner, wide, deep)
 						if colour == MIXED:
 							continue
+						colour = colour if colour >= 0 else core_colour
+						if wide * deep > 1 and not _made(str(one[2]), colour):
+							continue
 						for i: int in wide:
 							for k: int in deep:
 								wanted.erase(corner + Vector2i(i, k))
-						out.append({"part": one[2], "color": colour if colour >= 0 else core_colour,
-							"x": corner.x, "y": j, "z": corner.y, "rot": one[3]})
+						out.append({"part": one[2], "color": colour, "x": corner.x, "y": j,
+							"z": corner.y, "rot": one[3]})
 						placed = true
 						break
 					if placed:
@@ -5514,6 +5519,19 @@ class Plan extends RefCounted:
 				if placed:
 					break
 		return out
+
+	## Whether the LEGO Group sells [param part] in [param colour], by
+	## Rebrickable's elements, when colours are asked ([member sold_in]). A
+	## longer brick is not made in every colour its studs are: merged into a
+	## 1 x 8 brick, an avocado's Bright Green flesh came out Green, the
+	## nearest colour that brick is sold in.
+	func _made(part: String, colour: int) -> bool:
+		if sold_in.is_empty() or library == null:
+			return true
+		var key: String = "%s/%d" % [part, colour]
+		if not _made_in_colour.has(key):
+			_made_in_colour[key] = not library.element_for(Shapes.current(library, part), colour).is_empty()
+		return bool(_made_in_colour[key])
 
 	## Whether a part [param wide] by [param deep] at [param corner] fits the
 	## studs [param wanted] still has, and in what colour: [constant MIXED]
@@ -5581,7 +5599,7 @@ class Plan extends RefCounted:
 					if not table.has(whole.size):
 						continue
 					var colour: int = _merged_colour([one, other])
-					if colour == MIXED:
+					if colour == MIXED or not _made(str(table[whole.size][2]), colour):
 						continue
 					made[n] = _merged(table[whole.size], whole, int(one["y"]), colour, h)
 					gone[m] = true
@@ -5616,7 +5634,7 @@ class Plan extends RefCounted:
 						or _plain_rect(made[top], plates, bricks) != rect:
 					continue
 				var colour: int = _merged_colour([made[n], made[mid], made[top]])
-				if colour == MIXED:
+				if colour == MIXED or not _made(str(bricks[rect.size][2]), colour):
 					continue
 				made[n] = _merged(bricks[rect.size], rect, corner.y, colour, 3)
 				gone[mid] = true
