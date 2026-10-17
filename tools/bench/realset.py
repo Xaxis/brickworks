@@ -37,8 +37,8 @@ tuned on, judged blind.
   subscription, the app on the GPU's lease as every windowed run is. Each
   of `--jobs` workers takes its share of the subjects; run under one `gpu`,
   every worker's designs and pictures share that one lease. The workers
-  wait for no CPU slot: in software (the app drew too slowly to show the
-  session its model) at load 50 a worker waited 30 minutes for one. Only
+  wait for no CPU slot: in software under `heavy` at load 50 a worker
+  waited 30 minutes for one. Only
   the build check's reading of a model is CPU work, under `heavy`, and
   `--audit-later` leaves it to `audit`, one heavy job after the run, so a
   run holding the GPU never waits on the CPU queue. `--software` draws on

@@ -225,11 +225,12 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
     log = run_dir / "design.log"
     since = time.time() - 1.0
     say(f"design {subject.id}: port {port}, up to {timeout // 60} min")
-    # On the GPU's lease, as every windowed run is: in software the app drew
-    # so slowly at load 50 that the session was told "no picture in time"
-    # and shown the letters. Inside a lease (a batch run under one `gpu`)
-    # it runs at once. The timeout is inside the lease: a queue on a busy
-    # machine is not the design's time.
+    # On the GPU's lease, as every windowed run is, not drawn in software
+    # under `heavy`, whose queue held a design half an hour at load 50. The
+    # app idles while the session thinks: one design's app used under a
+    # second of the GPU in ten minutes. Inside a lease (a batch run
+    # under one `gpu`) it runs at once. The timeout is inside the lease: a
+    # queue on a busy machine is not the design's time.
     command = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}",
                "timeout", "--kill-after=30", str(timeout), "godot", "--path", str(app),
                "--log-file", str(run_dir / "godot_design.log"),

@@ -959,14 +959,6 @@
       "tests": []
     },
     {
-      "id": "lib:any design sent back square once",
-      "kind": "lib",
-      "entry": "src/ai/assistant.gd",
-      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  (a design on a brief with nothing on a joint or off the square sent back once with the hinged section, the clip-and-bar detail, the pivot on a pin and the sideways face; built when it comes again)",
-      "area": "assistant",
-      "tests": []
-    },
-    {
       "id": "lib:axles and gears on a line",
       "kind": "lib",
       "entry": "src/assembly/joints.gd",

@@ -237,6 +237,120 @@ design a subject, on m33's code with the armature merged.
 Results: `bench/results/realset-2026-10-16-armature/` and
 `realset-2026-10-16-m32-vs-armature/`.
 
+### Technique: a square design sent back once (2026-10-16, tried and taken out)
+
+Technique is the dimension we lose most to the sets. This round looked for
+the cheapest lever on it, on the tune half only, then ran the proof half
+once. It did not move technique, and it is not in the code.
+
+**Where the sessions stacked.** Every set of the tune half has joint parts:
+locking hinge plates under Shelob's legs and the pyramid's walls, ball joints
+in the wolf, clip plates and handle plates for Andrea's spotlights. The
+judge's reasons for the sets say the same: "clip-mounted angled spotlights",
+"fans the Skytree's legs out at an angle", "a worm-screw drive for the boom".
+Ours say "stacked bricks and plates", nine of ten at the start code. Three things,
+read in the logs and transcripts:
+
+- A session settles how it builds at its first submission: the whole massing,
+  part by part, in coordinates. The real-set briefs name no moving part, so
+  nothing at that moment asks for a joint, and it is built square.
+- The real-set index reaches the design only through the feature pass, and
+  is almost never kept. Of 725 features settled in 289 design logs on disk
+  (the proof half left out), 11 kept a real set's piece; 558 were built by
+  hand and 156 were refused as the wrong thing ("a grey Technic display beam
+  is not a microphone stand").
+- SNOT alone does not win the verdict. m32's sheep was 18% SNOT, more than
+  its set, and lost technique to "angled leg sub-assemblies on clips and
+  hinges".
+
+The verbs are there: a section's `hinge` is one field, and 62 of 267 recent
+sessions used it, on BrickBench prompts that named a moving part.
+
+**The lever** (`2dd7663`), the armature's send-back made general: a design
+started on a brief, not a character, 20 parts or more, with nothing on a
+joint and nothing off the square, sent back once with four ways named for how
+they are built (a hinged section, a clip-and-bar detail, a pivot on a pin, a
+sideways face) and its own features to look at first. Sent again as it was,
+it was built. The armature probe proved it (90 checks).
+
+**The tune half,** both arms on the GPU, one design a subject: the start code
+(`b217576`, all ten subjects designed again) against the lever.
+
+| dimension | start preferred to the set | lever preferred to the set | start minus lever, paired (95%) | lever preferred to start, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 15% (4-46) | +15 (-10, +40) | 50% (24-76) |
+| surface | 40% (17-69) | 25% (8-56) | +15 (-15, +45) | 65% (35-86) |
+| colour | 35% (14-65) | 30% (11-60) | +5 (0, +15) | 40% (17-69) |
+| technique | 5% (1-34) | 5% (1-34) | 0 (0, 0) | 70% (40-89) |
+| creativity | 25% (8-56) | 30% (11-60) | -5 (-15, 0) | 65% (35-86) |
+| overall | 30% (11-60) | 15% (4-46) | +15 (0, +35) | 55% (27-80) |
+
+**The proof half,** run once on the lever, against the armature arm:
+
+| dimension | armature preferred to the set | lever preferred to the set | armature minus lever, paired (95%) | lever preferred to armature, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 20% (6-51) | +10 (0, +25) | 35% (14-65) |
+| surface | 40% (17-69) | 20% (6-51) | +20 (+5, +35) | 25% (8-56) |
+| colour | 30% (11-60) | 20% (6-51) | +10 (0, +25) | 30% (11-60) |
+| technique | 15% (4-46) | 5% (1-34) | +10 (0, +25) | 25% (8-56) |
+| creativity | 45% (20-73) | 35% (14-65) | +10 (-15, +30) | 35% (14-65) |
+| overall | 25% (8-56) | 15% (4-46) | +10 (0, +30) | 30% (11-60) |
+
+- **Technique against the sets did not move:** one verdict in twenty on the
+  tune half, both arms. Head to head the judge leaned to the lever's
+  technique (70%, 40-89%), an interval that holds a tie.
+- **On the proof half every dimension leaned the other way,** and surface fell
+  beyond noise. The armature arm drew its designs in software and this one on
+  the GPU, so the proof comparison carries that change too; the tune half,
+  the same harness on both sides, also leaned against the lever on likeness
+  and overall. Not shipped: `b217576`'s assistant is back.
+- **What they are made of did not move** (medians, ours against the sets):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 |
+|---|---|---|---|---|
+| tune, start | 22.4 | 8% | 1% | 30% |
+| tune, lever | 22.6 | 10% | 1% | 30% |
+| tune, the sets | 29.2 | 35% | 7% | 19% |
+| proof, armature | 16 | 4% | 0% | 23% |
+| proof, lever | 16.1 | 3% | 0% | 20% |
+| proof, the sets | 28.4 | 25% | 3% | 13% |
+
+**What stood in the way.**
+- *The way out was taken.* Ten designs were sent back, three of seven on the
+  tune half and seven of ten on the proof. Four rebuilt with real joints:
+  Andrea's spotlights hung on clips (joints 0% to 9%), a hinge brick in Emma's
+  studio, click hinges in the Container Stacker, a clip and bar in Naida's
+  spa. Six sent it again unchanged or nearly, Tokyo and the Scorpion Pyramid
+  among them, though their sets angle the Skytree's legs and hinge the walls.
+- *A joint is a detail; technique is judged whole.* Taken, the lever put one
+  jointed detail on a stacked model, and the judge said so: "only spotlights
+  hung from brackets on a plain stacked wall".
+- *"Posed" is read too loosely.* Any joint part counts, a plant's bar or a
+  section turned on a stud, so four of the seven non-character tune designs
+  were never asked.
+- A next lever has to change how the body is built, not add to it: the
+  sets' angles are in their main structure (the pyramid's walls, the tower's
+  legs, the boom).
+
+**The bench, kept.** A design is a windowed app, so run.py's design stage
+now takes the GPU's lease, as every windowed run does; it used to draw in
+software under `heavy`. A realset run under one `gpu` holds one lease for
+every worker, its workers hold no CPU slot, and `--audit-later` leaves the
+build check's reading to `realset.py audit`, one `heavy` job after the run.
+At load 45-75 each half had its lease within a minute, while the `heavy`
+queue was holding this project's jobs for over an hour. Six designs at once in
+one lease: one design's app used under a second of the GPU in ten minutes.
+The GPU did not bring the session's pictures sooner: "no picture in time"
+came 1 to 2 times a design either way.
+
+Results: `bench/results/realset-2026-10-16-technique-base/`,
+`realset-2026-10-16-technique/` (both halves),
+`realset-2026-10-16-technique-base-vs-technique/` and
+`realset-2026-10-16-armature-vs-technique/`. The base's Year of the Sheep and
+Robin each lost a part fetch for forty seconds while the shared
+`assets/generated` link was briefly broken; both are characters, which the
+lever never touched.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

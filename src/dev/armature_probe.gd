@@ -20,12 +20,7 @@
 ##     them, still joined;
 ##   - send a figure or a creature with nothing on a joint back once, with an
 ##     entry that builds when submitted as it is; build it when it comes again;
-##     and never send back a vehicle with its crew, a toy car or a tower;
-##   - send any other design started on a brief back once when nothing in it is
-##     on a joint or off the square (Assistant._square_refusal), naming the
-##     hinged section, the clip-and-bar detail, the pivot on a pin and the
-##     sideways face and its own features; build it when it comes again, and at once when something in it
-##     is on a joint, when no brief was given, or when it is small.
+##     and never send back a vehicle with its crew, a toy car or a tower.
 ##
 ## --out=DIR writes each laid kind as DIR/<kind>.ldr, for BrickBench's verify.py.
 extends SceneTree
@@ -118,9 +113,6 @@ func _run() -> void:
 
 	print("\nsent back once")
 	await _refusals()
-
-	print("\nany design on a brief, square, sent back once")
-	await _square_refusals()
 
 	print("\narmature probe: %d passed, %d failed" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -488,84 +480,6 @@ func _refusals() -> void:
 		"description": "a lighthouse on a rock", "floor": "none", "bricks": _stacked()}))
 	_ok(stood.begins_with("Built") and not tower.contains("on a joint"),
 		"a statue built, the model cleared: a lighthouse is told nothing of joints")
-
-
-## A design started on a brief, every part studs up on the grid, is sent back once
-## with the four ways to put something on a joint; built when it comes again,
-## and never sent back when it is posed, small, or from a session with no brief.
-func _square_refusals() -> void:
-	var stall: Dictionary = {"name": "Market stall", "description": "a market stall with an "
-		+ "awning", "floor": "none", "bricks": _column(24),
-		"features": [{"name": "awning"}, {"name": "lamp"}]}
-	_world.clear()
-	_assistant.forget_built()
-	_assistant.heard("A market stall with an awning, about 12 x 8 studs, 60 to 90 pieces.", true)
-	var sent: String = _text(await _assistant.use_tool("submit_design", stall))
-	_ok(sent.begins_with("Not applied, this once") and sent.contains("a hinged section")
-		and sent.contains("a clip-and-bar detail") and sent.contains("a sideways face")
-		and sent.contains("a pivot on a pin")
-		and sent.contains("\"hinge\": \"click\"") and _world.brick_count() == 0,
-		"a stall stacked square is sent back, nothing built, with the four ways: %s"
-			% sent.left(160))
-	_ok(sent.contains("awning, lamp") and not sent.contains("\"pattern\": \"figure\""),
-		"...naming its own features, and no figure: %s" % _line_of(sent, "Look first"))
-	var again: String = _text(await _assistant.use_tool("submit_design", stall))
-	_ok(again.begins_with("Built"), "submitted again as it was, it is built: %s" % again.left(100))
-	var third: String = _text(await _assistant.use_tool("submit_design", {"name": "Market stall",
-		"description": "a market stall, taller", "floor": "none", "bricks": _column(28)}))
-	_ok(third.begins_with("Built"), "...and changed, still square: built, not sent back twice: %s"
-		% third.left(100))
-
-	# Posed: the large person of KINDS, every limb on a joint, which the check
-	# passes standing on a bare floor (each kind, laid, above).
-	var cases: Array = [
-		["A market stall with an awning.", {"patterns": [KINDS[1][1]]},
-			"with a person on joints in it, posed"],
-		["", {"bricks": _column(24)}, "with no brief (a session from outside)"],
-		["A market stall with an awning.", {"bricks": _column(SMALL)}, "of %d parts" % SMALL],
-	]
-	for case: Array in cases:
-		_world.clear()
-		_assistant.forget_built()
-		_assistant.heard(str(case[0]), true)
-		var design: Dictionary = {"name": "Stall", "description": "a market stall",
-			"floor": "none"}
-		design.merge(case[1])
-		var built: String = _text(await _assistant.use_tool("submit_design", design))
-		_ok(built.begins_with("Built"), "a stall %s is built at once: %s" % [case[2],
-			built.left(80)])
-
-	# A statue is a figure: the figure's refusal, never this one, and the second
-	# submission is built though it is square.
-	_world.clear()
-	_assistant.forget_built()
-	_assistant.heard("A dark-brown statue of a man sits hunched forward on a rough block.", true)
-	var statue: Dictionary = {"name": "Thinker", "description": "a seated statue of a man",
-		"floor": "none", "bricks": _column(24)}
-	var figure: String = _text(await _assistant.use_tool("submit_design", statue))
-	var built_statue: String = _text(await _assistant.use_tool("submit_design", statue))
-	_ok(figure.contains("\"pattern\": \"figure\"") and not figure.contains("a hinged section")
-		and built_statue.begins_with("Built"),
-		"a statue is sent back as a figure, once, and built when it comes again: %s"
-			% built_statue.left(80))
-
-
-## Fewer parts than a design is sent back square for.
-const SMALL := Assistant.SQUARE_FROM - 1
-
-
-## A column of 2 x 4 plates, [param count] of them: as square as a model gets.
-static func _column(count: int) -> Array:
-	var out: Array = []
-	for n: int in count:
-		out.append({"part": "3020", "color": 4, "x": 0, "y": n, "z": 0, "rot": 0})
-	return out
-
-
-## The part of [param text] from [param mark] on, a line's worth.
-static func _line_of(text: String, mark: String) -> String:
-	var at: int = text.find(mark)
-	return "(not found)" if at < 0 else text.substr(at, 160)
 
 
 ## The figure entry a refusal hands over, read back as the session would copy it.

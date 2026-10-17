@@ -5643,7 +5643,6 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_joints_told = 0
 		_joint_parts_told = false
 		_joints_refused = false
-		_square_refused = false
 		return
 	if said.is_empty() or _heard.to_lower().contains(said.to_lower()):
 		return
@@ -5812,68 +5811,6 @@ func _unjointed_refusal(design: Model) -> String:
 		+ "attach to them, a hat {\"part\": ..., \"attach\": {\"to\": \"hair.stud[0]\"}}, or stand "
 		+ "on their studs. Keep the rest of the design (a plinth, props), leave out the body "
 		+ "it replaces. Submitted again with nothing on a joint, it is built as it is.")
-
-
-## Whether a design's first submission with nothing on a joint has been sent back.
-var _square_refused: bool = false
-## From this many parts a design started on a brief is sent back square once.
-const SQUARE_FROM := 20
-
-
-## Any design started on a brief (a design run: main.design_with_claude_code)
-## submitted with nothing on a joint and nothing turned off the square is sent
-## back once, as a character is. Against real sets on held-out subjects
-## (tools/bench/realset.py), the set won technique 19 verdicts in 20, and the
-## judge's reasons were the same each time: the set hangs a spotlight on a clip,
-## hinges a leg or a wall to its angle and builds a face on its side; ours are
-## "stacked bricks and plates". Every real set of the tune half has two joint
-## parts or more; the median design of ours had none. The ways to build them
-## were in the guide and the technique library all along: a submission is the
-## choice made, so the choice is put back while it is open. Once: submitted
-## again as it was, it is built.
-## A character has its own (_unjointed_refusal); a session from outside, with
-## no brief, is never sent back. "" to go on and check it.
-func _square_refusal(design: Model) -> String:
-	if _square_refused or _heard_fresh.is_empty() or design.placements.size() < SQUARE_FROM \
-			or _posed(design):
-		return ""
-	if Style.character_of(_subject_of(design)) in ["figure", "creature"]:
-		return ""
-	_square_refused = true
-	print("sent back once: %d parts, nothing on a joint" % design.placements.size())
-	var named := PackedStringArray()
-	for feature: String in design.features:
-		named.append(feature)
-	for assembly: Dictionary in design.assemblies:
-		var name: String = str(assembly.get("name", ""))
-		if not name.is_empty() and not named.has(name):
-			named.append(name)
-	var look: String = ""
-	if not named.is_empty():
-		look = ("Look first at what it names: %s. Which of them leans, opens, swings, hangs "
-			% ", ".join(named.slice(0, 8)) + "or points?\n")
-	return ("Not applied, this once: nothing in it is on a joint and nothing is turned off "
-		+ "the square. That is the plainest "
-		+ "difference between a design built here and a real set of its kind: a set hangs "
-		+ "a lamp on a clip, hinges a roof, a ramp or a leg to its angle, turns a boom on a "
-		+ "pin and builds a face on its side. Put what in this subject leans, opens, swings, "
-		+ "hangs or points on a joint before it is built:\n"
-		+ "  a hinged section  a roof, a ramp, a lid, a door, a boom, a wall or a leg at its "
-		+ "angle: a section with \"hinge\": \"click\" (44302a and 44301a), \"clip\" (a bar "
-		+ "plate in a clip plate) or \"tilting\" (a hinge brick), and its pitch; the app lays "
-		+ "both halves and turns it.\n"
-		+ "  a clip-and-bar detail  a lamp, a sign, a flag, a tool, a plant or an arm on a "
-		+ "clip: place_technique \"limb on a clip\", or a part's attach to a clip (63868, "
-		+ "4081b, 6019) or a bar (60478, 3957a), its yaw the way it points.\n"
-		+ "  a pivot on a pin  a boom, an arm, a lever or a wheel turning in a Technic beam "
-		+ "or brick: the pin or axle given its axis and the hole's x, y and z "
-		+ "(attachment_points lists them), the arm on it at its angle.\n"
-		+ "  a sideways face  a smooth face, a sign or a pair of eyes on side studs: the "
-		+ "studs_out pattern, or brackets (99780, 99781) and bricks with a stud on the side "
-		+ "(87087, 11211, 30414) under tiles.\n"
-		+ look
-		+ "If nothing in this subject leans, opens, swings, hangs or points, submit it again "
-		+ "as it is: it is built.")
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -19095,8 +19032,6 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	var design: Model = _pending
 	_pending = null
 	var unjointed: String = _unjointed_refusal(design)
-	if unjointed.is_empty():
-		unjointed = _square_refusal(design)
 	if not unjointed.is_empty():
 		return unjointed
 	await _ready_to_check(design)

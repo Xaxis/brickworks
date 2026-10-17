@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:any design sent back square once -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints -->
 
 ## Sub-features
 
@@ -66,16 +66,6 @@ fixing what it got wrong.
   read as for the joints' advice, and a fresh brief (`heard`) or a model cleared or
   opened (`forget_built`) forgets the last design's name. Recipe under How to
   check it, "Characters laid on joints".
-- `any design sent back square once`: `Assistant._square_refusal`, beside
-  `_unjointed_refusal` in `use_tool`. A design started on a brief (a design run,
-  `main.design_with_claude_code`, which says it to `heard`) and submitted with
-  nothing on a joint and nothing off the square (`_posed`) is sent back once,
-  "Not applied, this once", with four ways: a hinged section (a section's
-  `hinge`), a clip-and-bar detail, a pivot on a pin and a sideways face, and the features and
-  assemblies it named to look at first; built when it comes again. Never for a
-  figure or a creature (their own refusal), a session from outside with no
-  brief, or a model under `SQUARE_FROM` (20) parts. The design log says `sent back
-  once: N parts, nothing on a joint`. Recipe: "Characters laid on joints".
 - `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
   `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
   may say `"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`
@@ -2308,8 +2298,9 @@ orders agree on most dimensions with the model shown first winning near half
 (2026-10-16: 120 of 120 calibration verdicts named the set; m32's proof half,
 24 of 24 verdicts with all six pictures, orders agreeing on 82%, the first
 shown winning 42%; a design 5-24 minutes, a half about 80 minutes on two
-workers after the `heavy` queue; on the GPU with audits later, the `technique`
-round's tune half started at once at load 70, two workers in one lease).
+workers after the `heavy` queue; on the GPU with audits later, 2026-10-16's
+technique round started each half at once at load 45-75, its workers in one lease,
+and a half of ten took 45-55 minutes on two or three workers).
 
 ### The check by real shapes
 
@@ -2427,12 +2418,7 @@ entry that builds as it is, built when it comes again, and not sent back a secon
 time; a balloon dog is sent back with an animal's; a fire engine with a firefighter,
 a Porsche at minifigure scale and a lighthouse never are; and with no brief (the
 connector), a lighthouse checked after a statue was built and the model cleared is
-told nothing of joints. Any other design on a brief (a market stall of 24 plates)
-is sent back square once with the hinged section, the clip-and-bar detail, the pivot
-on a pin and the sideways face and its own features named, nothing built; it is built when it comes
-again and not sent back a second time; with a limb on a clip on it, with no brief,
-or of 19 parts it is built at once; and a statue on a brief gets the figure's
-refusal, not this one. Before a fresh brief or a cleared model forgot the last
+told nothing of joints. Before a fresh brief or a cleared model forgot the last
 design's name (armature, 2026-10-16), the balloon dog was handed a person's entry and
 the three vehicles and the tower were sent back: the statue's name, kept as the brief,
 made each of them a figure.

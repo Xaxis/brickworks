@@ -1986,13 +1986,6 @@
       "entry": "src/ai/figure_pattern.gd",
       "reach": "godot --headless --path . --script src/dev/armature_probe.gd  ({\"pattern\": \"figure\"}: a person, an animal and a head laid on joints that turn and hold; a character with no joint sent back once)",
       "area": "assistant"
-    },
-    {
-      "kind": "lib",
-      "label": "any design sent back square once",
-      "entry": "src/ai/assistant.gd",
-      "reach": "godot --headless --path . --script src/dev/armature_probe.gd  (a design on a brief with nothing on a joint or off the square sent back once with the hinged section, the clip-and-bar detail, the pivot on a pin and the sideways face; built when it comes again)",
-      "area": "assistant"
     }
   ]
 }
