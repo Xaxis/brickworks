@@ -151,7 +151,7 @@ static func squash(undo: Array) -> Array:
 	var seen: Dictionary = {}
 	for entry: Dictionary in undo:
 		var name: String = "b%d" % int(entry["brick"]) if entry.has("brick") \
-			else "u" + str(entry["unit"])
+			else ("u" + str(entry["unit"]) if entry.has("unit") else str(entry.get("undo", "")))
 		if seen.has(name):
 			continue
 		seen[name] = true
@@ -441,10 +441,12 @@ static func _copies(world: BrickWorld, section: String, skip: Dictionary) -> Arr
 static func swap(world: BrickWorld, section: String, step: int, by: int,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var other: int = step + by
 	for copy: String in _copies(world, section, skip):
 		var steps: Array = steps_in(world, copy, skip)
-		if not steps.has(step) or not steps.has(other):
+		# The step beside it that has anything in it: a file's empty step
+		# (a ROTSTEP alone) is no step to change places with.
+		var other: int = neighbour(steps, step, by)
+		if not steps.has(step) or other < 0:
 			continue
 		for item: Dictionary in items_of(world, copy, skip):
 			if int(item["step"]) == step:
@@ -454,14 +456,88 @@ static func swap(world: BrickWorld, section: String, step: int, by: int,
 	return squash(undo)
 
 
+## Why step [param step] of [param section] cannot change places with the
+## one [param by] away (-1 the one before, 1 the one after), or "": the
+## step that would go first must not stand on the other, or its parts are
+## put down in the air. "Stands on" is read off the parts' boxes: one whose
+## foot is on another's top, where its studs are.
+static func blocked_swap(world: BrickWorld, section: String, step: int, by: int,
+		skip: Dictionary = {}) -> String:
+	var other: int = neighbour(steps_in(world, section, skip), step, by)
+	if other < 0:
+		return ""
+	var early: int = mini(step, other)
+	var late: int = maxi(step, other)
+	var low: Array[AABB] = _boxes_in(world, section, early, skip)
+	var high: Array[AABB] = _boxes_in(world, section, late, skip)
+	for upper: AABB in high:
+		for lower: AABB in low:
+			if _stands_on(upper, lower):
+				return ("that step cannot go %s: parts of the later step stand on the earlier "
+					+ "one's, and would be put down in the air") % ["earlier" if by < 0 else "later"]
+	return ""
+
+
+static func _boxes_in(world: BrickWorld, section: String, step: int,
+		skip: Dictionary) -> Array[AABB]:
+	var out: Array[AABB] = []
+	var units: Array[String] = []
+	for item: Dictionary in items_of(world, section, skip):
+		if int(item["step"]) != step:
+			continue
+		if item.has("brick"):
+			out.append(_box_of(world, world.get_brick(int(item["brick"]))))
+		else:
+			units.append(str(item["unit"]))
+	if not units.is_empty():
+		for brick: BrickWorld.Brick in world.bricks():
+			if skip.has(brick.id):
+				continue
+			var path: String = Assemblies.path_of(brick)
+			for unit: String in units:
+				if path == unit or path.begins_with(unit + "/"):
+					out.append(_box_of(world, brick))
+					break
+	return out
+
+
+static func _box_of(world: BrickWorld, brick: BrickWorld.Brick) -> AABB:
+	var part: Lbm.PartMesh = world.library.mesh_for(brick.part_id) if world.library != null \
+		else null
+	if part == null:
+		return AABB(brick.transform.origin - Vector3(10, 0, 10), Vector3(20, 24, 20))
+	return brick.transform * part.bounds
+
+
+## Whether [param upper] rests on [param lower]: its foot within a stud's
+## height of the other's top, over it by more than an edge.
+static func _stands_on(upper: AABB, lower: AABB) -> bool:
+	var foot: float = upper.position.y
+	if foot < lower.end.y - 6.0 or foot > lower.end.y + 0.5 or foot <= lower.position.y + 2.0:
+		return false
+	var a := Rect2(upper.position.x, upper.position.z, upper.size.x, upper.size.z).grow(-2.0)
+	var b := Rect2(lower.position.x, lower.position.z, lower.size.x, lower.size.z).grow(-2.0)
+	return a.intersects(b)
+
+
+## The step [param by] places from [param step] in [param steps] (a
+## section's steps in order, steps_in), or -1 at either end.
+static func neighbour(steps: Array, step: int, by: int) -> int:
+	var at: int = steps.find(step)
+	if at < 0 or at + by < 0 or at + by >= steps.size():
+		return -1
+	return int(steps[at + by])
+
+
 ## Step [param step] of [param section] and the one after it made one:
 ## the timeline's Merge.
 static func merge(world: BrickWorld, section: String, step: int,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
 	for copy: String in _copies(world, section, skip):
+		var next: int = neighbour(steps_in(world, copy, skip), step, 1)
 		for item: Dictionary in items_of(world, copy, skip):
-			if int(item["step"]) == step + 1:
+			if int(item["step"]) == next:
 				_put(world, item, step, undo)
 		_tidy(world, copy, skip, undo)
 	return squash(undo)

@@ -53,7 +53,7 @@ const COMMANDS: Dictionary = {
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
 	"replace": "edit_model", "make_submodel": "edit_model",
-	"step_*": "edit_steps", "timeline": "edit_steps",
+	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
 	"flex": "lay_flex", "reshape_flex": "lay_flex",
 	"pose": "pose_model", "mode_hinge": "pose_model",
@@ -132,6 +132,10 @@ a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
 no op it lists them; "next"/"prev" move parts a step, "new" makes a step \
 of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
+ - booklet_layout reads the booklet's pages and how each step is printed, \
+changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
+"usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
+booklet's per_page=, as the timeline's Booklet row does.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -254,6 +258,45 @@ func definitions() -> Array:
 					"description": "part numbers from look_at_model, for next, prev and new"},
 				"step": {"type": "integer", "description": "a step's number, for earlier, later, merge and delete"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
+			}},
+		},
+		{
+			"name": "booklet_layout",
+			"description": ("The booklet's pages as Instructions would print them now, without "
+				+ "drawing a picture: each page with the steps on it, and for each step how its "
+				+ "designer set it (turned, tilted, zoomed, larger or smaller, a new page or a "
+				+ "page alone, its parts list left off), which sub-assemblies are built in a "
+				+ "callout box and which on pages of their own, and the most steps a page. "
+				+ "Steps the booklet turns round by itself are decided when it is drawn. "
+				+ "Changes nothing."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"from": {"type": "integer", "description": "list from this page; 2, the first page of steps, when omitted"},
+			}},
+		},
+		{
+			"name": "edit_booklet",
+			"description": ("Set how the booklet prints a step, as the timeline's Booklet row "
+				+ "and Build, Booklet page do; one undo step, saved with the model (a turn "
+				+ "as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number "
+				+ "from booklet_layout or edit_steps. turn= degrees round from the usual "
+				+ "angle and tilt= degrees higher, held for the steps after it until turned "
+				+ "again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); "
+				+ "size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; "
+				+ "parts= false leaves its parts list off; callout= false builds the "
+				+ "sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or "
+				+ "0 (as they fit) for the whole booklet. A model with no steps of its own is "
+				+ "given the worked-out ones first, in the same undo step."),
+			"input_schema": {"type": "object", "additionalProperties": false,
+				"required": ["step"], "properties": {
+				"step": {"type": "integer"},
+				"turn": {"description": "degrees round (-180 to 180), or \"usual\""},
+				"tilt": {"type": "number", "description": "degrees higher (-60 to 45)"},
+				"zoom": {"type": "number"},
+				"size": {"type": "number"},
+				"page": {"type": "string", "enum": ["new", "alone", "auto"]},
+				"parts": {"type": "boolean"},
+				"callout": {"type": "boolean"},
+				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 			}},
 		},
 		{
@@ -621,6 +664,10 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return _set_floor(input)
 		"edit_steps":
 			return _edit_steps(input)
+		"booklet_layout":
+			return await _booklet_layout(input)
+		"edit_booklet":
+			return _edit_booklet(input)
 		"lay_flex":
 			return await _lay_flex(input)
 		"pose_model":
@@ -693,7 +740,7 @@ func refusal(tool: String, input: Dictionary) -> String:
 
 
 ## The tools that change the model.
-const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "move_part",
+const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_flex", "pose_model", "move_part",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
 	"make_sections", "break_out_section"]
 
@@ -716,7 +763,7 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return not bool(input.get("record", false))
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
-		"suggest_sections", "evaluate_section":
+		"suggest_sections", "evaluate_section", "booklet_layout":
 			return true
 	return false
 
@@ -824,6 +871,80 @@ func _edit_steps(input: Dictionary) -> String:
 					steps[steps.size() - 1].number]
 			return shell.change_steps(op, [], at)
 	return "op is one of list, next, prev, new, earlier, later, merge, delete."
+
+
+# -- the booklet, by hand --------------------------------------------------------
+
+
+## The pages as the booklet would lay them out now (BookletMaker.lay_out_only).
+func _booklet_layout(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = library
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
+	maker.queue_free()
+	if pages.is_empty():
+		return "There is nothing built to make a booklet of."
+	return BookletLooks.layout_said(world, pages, int(input.get("from", 2)))
+
+
+## How a step is printed, set (Shell.change_look): one undo.
+func _edit_booklet(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var shell: Shell = app.get("_shell")
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {},
+		true)
+	if steps.is_empty():
+		return "There is nothing built to have steps."
+	var at: Instructions.Step = _step_numbered(steps, int(input.get("step", 0)))
+	if at == null:
+		return "There is no step %d: the steps run 1 to %d." % [int(input.get("step", 0)),
+			steps[steps.size() - 1].number]
+	var fields: Dictionary = {}
+	if input.has("turn") or input.has("tilt"):
+		var raw: Variant = input.get("turn", 0.0)
+		if raw is String and str(raw) == "usual":
+			fields["turn"] = "usual"
+		elif raw is String and not str(raw).is_valid_float():
+			return "turn= is degrees round, or \"usual\"."
+		else:
+			var round: float = fposmod(float(raw) + 180.0, 360.0) - 180.0
+			var tilt: float = clampf(float(input.get("tilt", 0.0)), -60.0, 45.0)
+			fields["turn"] = [tilt, round, 0.0]
+			fields["how"] = "REL"
+	if input.has("zoom"):
+		fields["zoom"] = clampf(float(input["zoom"]), 0.5, 3.0)
+	if input.has("size"):
+		fields["size"] = clampf(float(input["size"]), 0.6, 2.0)
+	if input.has("page"):
+		var page: String = str(input["page"])
+		if not page in ["new", "alone", "auto"]:
+			return "page= is \"new\", \"alone\" or \"auto\"."
+		fields["page"] = null if page == "auto" else page
+	if input.has("parts"):
+		fields["parts"] = bool(input["parts"])
+	if input.has("callout"):
+		fields["callout"] = bool(input["callout"])
+	if input.has("per_page"):
+		if not int(input["per_page"]) in [0, 1, 2, 4]:
+			return "per_page= is 1, 2, 4, or 0 for as many as fit."
+		fields["per_page"] = int(input["per_page"])
+	if fields.is_empty():
+		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, callout= or "
+			+ "per_page=. booklet_layout says how each step is printed now.")
+	var said: String = shell.change_look("set", at, fields)
+	var now: String = ""
+	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
+		var again: Instructions.Step = _step_numbered(Instructions.plan(world, library,
+			store.scenery, {}, true), at.number)
+		if again != null and again.authored_step >= 0:
+			now = BookletLooks.said(world, again.authored_in, again.authored_step)
+	return said + (("; step %d is now: %s" % [at.number, now]) if not now.is_empty() else "")
 
 
 ## The step of the model with this number: the one that puts a callout on,

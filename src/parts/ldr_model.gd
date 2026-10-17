@@ -120,6 +120,9 @@ var unit_frames: Dictionary = {}
 var unit_sections: Dictionary = {}
 ## And the colour each copy hands its parts of colour 16.
 var unit_colours: Dictionary = {}
+## And the line of the file that places each copy (Placement.line): a save
+## that changes the steps writes it into the step its copy is in now.
+var unit_lines: Dictionary = {}
 
 ## The line Brickworks writes into a model whose steps are somebody's own,
 ## so they are kept when it is opened again. Other LDraw readers skip a
@@ -480,6 +483,7 @@ func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	unit_frames.clear()
 	unit_sections.clear()
 	unit_colours.clear()
+	unit_lines.clear()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
 			{})
@@ -565,6 +569,7 @@ func _inline(
 			unit_frames[inside] = at * placement.transform
 			unit_sections[inside] = _key(nested.name)
 			unit_colours[inside] = placement.color_code if placement.color_code != 16 else color
+			unit_lines[inside] = placement.line
 			_inline(
 				nested,
 				at * placement.transform,

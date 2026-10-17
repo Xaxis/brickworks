@@ -225,6 +225,10 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## How the booklet shows each step, as its designer set it (BookletLooks):
+## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
+## sub-models' and the booklet's own. Changed only by the history's steps.
+var step_looks: Dictionary = {}
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
 ## "home": brick id -> the Transform3D it stood at}. Changed only by the
@@ -448,6 +452,7 @@ func clear() -> void:
 	_drawn.clear()
 	_next_id = 1
 	unit_steps.clear()
+	step_looks.clear()
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
@@ -603,6 +608,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.library = library
 	copy.keeps_history = false
 	copy.unit_steps = unit_steps.duplicate()
+	copy.step_looks = step_looks.duplicate(true)
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue

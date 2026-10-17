@@ -792,13 +792,6 @@
     },
     {
       "kind": "ui",
-      "label": "typed place and hinge",
-      "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
       "label": "swing on a hinge",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
@@ -1334,6 +1327,20 @@
       "label": "the author's steps",
       "entry": "src/assembly/author_steps.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: open a Studio, LDCad or LeoCAD model; B opens the timeline in Author's steps; Shift-[ / Shift-] / Shift-N, Edit, Build steps, and the timeline's Earlier, Later, Merge with next, Delete step)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet by hand",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the timeline's Booklet row or Build, Booklet page: turn, tilt, this view, zoom, size, new page, alone, parts list, callout, steps a page; Instructions prints it so)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "the booklet by hand in a browser",
+      "entry": "tools/web/booklet_edit_flow.mjs",
+      "reach": "node tools/web/booklet_edit_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts)",
       "area": "view"
     },
     {
@@ -2080,13 +2087,6 @@
     },
     {
       "kind": "cli",
-      "label": "off-grid probe",
-      "entry": "src/dev/offgrid_probe.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
       "label": "placing probe",
       "entry": "src/dev/placing_probe.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/placing_probe.gd  (each click sent as a browser sends one: 35 across a plate's edge, a clip plate, a bar in its clip, a hinge, slopes, a pin in a hole and 8841-1's Technic plates swung onto their axle, each put where its ghost stood; -- only=edge|parts|balance)",
@@ -2231,6 +2231,20 @@
       "entry": "src/dev/worker_first_run_probe.gd",
       "reach": "godot --headless --path . --script src/dev/worker_first_run_probe.gd [-- rounds=N] [-- cold]   (operators run for the first time on every worker at once, through WorkerTasks.first_here, every round right and the engine still up; PartForge.warm's part and skin built all the way; the first carried parts built at once run the forge here first. -- cold skips first_here: the engine as it is, which crashes, rip 0x0)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "typed place and hinge",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "off-grid probe",
+      "entry": "src/dev/offgrid_probe.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
+      "area": "building"
     }
   ]
 }

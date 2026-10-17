@@ -27,6 +27,9 @@ declare -A CMD=(
   [cursor]="tools/web/cursor_check.mjs --url=$P/app $B"
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
+  # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
+  # and undone by the timeline's buttons and keys; its booklet and file say so.
+  [booklet_edit]="tools/web/booklet_edit_flow.mjs --url=$P/app $B --model=$R/vendor/omr/files/106-1.mpd --out=$S/${TAG}_booklet_edit_web"
   [flex_pose]="tools/web/flex_pose_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_pose_web"
   [grab]="tools/web/grab_flow.mjs --url=$P/app $B --out=$S/${TAG}_grab_web"
   [progress]="tools/web/progress_check.mjs --url=$P/app"
@@ -75,7 +78,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site download frames"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)

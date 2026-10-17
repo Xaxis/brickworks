@@ -103,6 +103,15 @@ class Entry extends RefCounted:
 	## .marks): [{label, name, rgb}], a chip each beside the number, or in
 	## the banner when the step starts the section it is the colour of.
 	var marks: Array = []
+	## As its designer set it (BookletLooks): drawn from a direction they
+	## chose, zoomed in or out on what it adds, larger or smaller on the
+	## page, at the top of a new page ("new") or on one alone ("alone").
+	var fixed: bool = false
+	var zoom: float = 1.0
+	var size: float = 1.0
+	var page_break: String = ""
+	## The step's look's name (BookletLooks.key), "" for a worked-out step.
+	var look: String = ""
 
 	## Laid out: the panel on the page, the part of it the model is drawn
 	## in, and how big.
@@ -155,6 +164,9 @@ class Callout extends RefCounted:
 	var images: PackedStringArray = PackedStringArray()
 	## The hidden colours it is built with: a chip in its corner each.
 	var marks: Array = []
+	## Built on pages of its own whatever its size: its designer turned the
+	## callout box off (BookletLooks.callout_on).
+	var own_pages: bool = false
 
 	func cell_view(index: int, px_per_mm: float) -> BookletStudio.View:
 		var cell: Rect2 = cells[index]
@@ -213,7 +225,12 @@ static func content() -> Rect2:
 ## Lay steps out on pages. [param entries] are the main steps in order,
 ## each attach step carrying its callout. Returns the step pages,
 ## callout pages among them, numbered from [param first_page].
-static func lay_out(entries: Array[Entry], first_page: int = 2) -> Array[Page]:
+## [param per_page] is the most steps a page may have (1, 2 or 4; 0 as many
+## as fit), and a step's [member Entry.page_break] starts a page or has one
+## alone.
+static func lay_out(entries: Array[Entry], first_page: int = 2,
+		per_page: int = 0) -> Array[Page]:
+	var most: int = per_page if per_page in [1, 2, 4] else 4
 	var pages: Array[Page] = []
 	var at: int = 0
 	var section: String = ""
@@ -225,7 +242,7 @@ static func lay_out(entries: Array[Entry], first_page: int = 2) -> Array[Page]:
 			section = entry.section
 			banner = section
 		if entry.callout != null:
-			entry.callout.inline = _fits_inline(entry.callout)
+			entry.callout.inline = _fits_inline(entry.callout) and not entry.callout.own_pages
 			if not entry.callout.inline:
 				for page: Page in _callout_pages(entry.callout,
 						float(at) / float(total)):
@@ -235,12 +252,13 @@ static func lay_out(entries: Array[Entry], first_page: int = 2) -> Array[Page]:
 			area = Rect2(area.position + Vector2(0.0, BANNER),
 				area.size - Vector2(0.0, BANNER))
 		var run: Array[Entry] = []
-		for index: int in range(at, mini(at + 4, entries.size())):
+		for index: int in range(at, mini(at + most, entries.size())):
 			var next: Entry = entries[index]
-			if index > at and (next.section != section or next.callout != null):
+			if index > at and (next.section != section or next.callout != null
+					or not next.page_break.is_empty() or entries[index - 1].page_break == "alone"):
 				break
 			run.append(next)
-		var page := _best_page(run, area, false)
+		var page := _best_page(run, area, false, most)
 		page.banner = banner
 		page.progress = float(at + page.entries.size()) / float(total)
 		pages.append(page)
@@ -253,9 +271,10 @@ static func lay_out(entries: Array[Entry], first_page: int = 2) -> Array[Page]:
 
 
 ## The fullest page the run can make that is still big enough to read.
-static func _best_page(run: Array[Entry], area: Rect2, framed: bool) -> Page:
+static func _best_page(run: Array[Entry], area: Rect2, framed: bool,
+		most: int = 4) -> Page:
 	for count: int in [4, 2, 1]:
-		if count > run.size():
+		if count > run.size() or count > most:
 			continue
 		var group: Array[Entry] = run.slice(0, count)
 		if count == 4 and group.any(func(e: Entry) -> bool: return e.callout != null):
@@ -315,8 +334,16 @@ static func _arrangements(count: int, area: Rect2) -> Array:
 static func _page_scale(group: Array, panels: Array) -> float:
 	var scale: float = MOST_SCALE
 	for index: int in group.size():
-		scale = minf(scale, _fit(group[index], panels[index])[0])
+		var entry: Entry = group[index]
+		scale = minf(scale, _fit(entry, panels[index])[0] / _grown(entry))
 	return scale
+
+
+## How much larger than the page's other steps its designer drew [param
+## entry]: its size, and its zoom, which frames a smaller part of the model
+## in the same room (BookletMaker._zoomed).
+static func _grown(entry: Entry) -> float:
+	return maxf(entry.size, 0.1) * maxf(entry.zoom, 0.1)
 
 
 ## How big the step's model can be drawn in [param panel], and where:
@@ -348,12 +375,14 @@ static func _fit(entry: Entry, panel: Rect2) -> Array:
 		if scale > best_scale:
 			best_scale = scale
 			best = option
-	return [minf(best_scale, MOST_SCALE), best]
+	return [minf(best_scale, MOST_SCALE * _grown(entry)), best]
 
 
 static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	entry.rect = panel
-	entry.scale = scale
+	# Larger or smaller than the page's other steps where its designer said.
+	entry.scale = minf(scale * _grown(entry), _fit(entry, panel)[0]) \
+		if not is_equal_approx(_grown(entry), 1.0) else scale
 	entry.number_size = _number_size(entry, panel)
 	var parts: Vector2 = _parts_size(entry.lots, _parts_width(entry, panel))
 	entry.parts_rect = Rect2(panel.position, parts) if not entry.lots.is_empty() else Rect2()
@@ -640,7 +669,11 @@ static func _class_of(key: String, document: Document) -> String:
 
 static func _page(page: Page, document: Document) -> String:
 	var out := PackedStringArray()
-	out.append("<section class=\"page %s\" id=\"page-%d\">" % [page.kind, page.number])
+	var numbers := PackedStringArray()
+	for entry: Entry in page.entries:
+		numbers.append(str(entry.number))
+	out.append("<section class=\"page %s\" id=\"page-%d\"%s>" % [page.kind, page.number,
+		(" data-steps=\"%s\"" % " ".join(numbers)) if not numbers.is_empty() else ""])
 	var svg := PackedStringArray()
 	match page.kind:
 		"cover":

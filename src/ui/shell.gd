@@ -88,7 +88,7 @@ const MENUS: Array = [
 		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "step_close", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
+	["Build", ["timeline", "step_close", "pose", "instructions", ">booklet", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "suggest_sections",
 		"evaluate_section", "break_out", "explode", "-", "flex", "minifig", "mosaic",
@@ -120,6 +120,10 @@ const SUBMENUS: Dictionary = {
 	"steps": ["step_close", "-", "step_prev", "step_next", "step_new", "-", "step_earlier",
 		"step_later",
 		"step_merge", "step_delete"],
+	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
+		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -751,6 +755,26 @@ func _define() -> void:
 		on_a_step, "The step the timeline is on and the next made one")
 	_add("step_delete", "Delete the step", 0, func() -> void: edit_steps("delete"), on_a_step,
 		"Take out the step the timeline is on; its parts join the step before")
+	# How the booklet prints the step the timeline is on (BookletLooks), as
+	# Studio's Instruction Maker sets each step's view and page.
+	for look: Array in [
+			["booklet_turn_left", "Turn the view left", "The model turned 45 degrees for this step's picture, and the steps after it"],
+			["booklet_turn_right", "Turn the view right", "The model turned 45 degrees the other way for this step's picture"],
+			["booklet_tilt_up", "Look from higher", "This step's picture from 15 degrees higher"],
+			["booklet_tilt_down", "Look from lower", "This step's picture from 15 degrees lower"],
+			["booklet_this_view", "Use this view for the step", "This step's picture drawn from the angle the window looks from now"],
+			["booklet_usual_view", "Usual view", "This step drawn from the booklet's usual angle again"],
+			["booklet_zoom_in", "Zoom in", "This step's picture closer in on what it adds"],
+			["booklet_zoom_out", "Zoom out", "This step's picture further out"],
+			["booklet_bigger", "Bigger on the page", "This step drawn larger, so fewer go on its page"],
+			["booklet_smaller", "Smaller on the page", "This step drawn smaller"],
+			["booklet_new_page", "Start a new page", "This step at the top of a new page"],
+			["booklet_alone", "A page alone", "This step on a page of its own"],
+			["booklet_parts", "Parts list", "The box of parts this step adds, shown or left off"],
+			["booklet_callout", "Callout", "The sub-assembly this step puts on built in a box beside it, or on pages of its own"],
+			["booklet_per_page", "Steps a page", "At most this many steps on a page: as they fit, 1, 2 or 4"]]:
+		var op: String = str(look[0]).trim_prefix("booklet_")
+		_add(look[0], look[1], 0, func() -> void: edit_look(op), on_a_step, look[2])
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -1047,6 +1071,7 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			var words: String = {"recent": "Open recent", "import": "Import",
 				"export": "Export", "history": "History",
 				"select_by": "Select by", "cut_away": "Cut along", "steps": "Build steps",
+				"booklet": "Booklet page",
 				"floor": "Floor", "floor_colour": "Baseplate colour"}[kind]
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(words, sub, SUBMENU_ID + popup.item_count)
@@ -1560,8 +1585,29 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	var level: String = assemblies.entered if assemblies != null else ""
 	if op == "close":
 		return _close_step(level, skip)
+	# Parts of the sub-model whose step the timeline shows are its parts to
+	# move, as they are once it is entered: a booklet's steps are a
+	# sub-model's steps as often as the model's own.
+	if not ids.is_empty() and at != null and at.authored_step >= 0 \
+			and at.authored_in != level and Assemblies.within(at.authored_in, level):
+		var all_in: bool = true
+		for brick_id: Variant in ids:
+			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
+			if brick == null or Assemblies.path_of(brick) != at.authored_in:
+				all_in = false
+				break
+		if all_in:
+			level = at.authored_in
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
 	var where: Array = _step_at(at)
+	if op in ["earlier", "later"] and int(where[1]) >= 0:
+		var blocked: String = AuthorSteps.blocked_swap(world, str(where[0]), int(where[1]),
+			-1 if op == "earlier" else 1, skip)
+		if not blocked.is_empty():
+			_take_back(undo)
+			return blocked
+	# Each step's look goes with its parts (BookletLooks.follow).
+	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var count: int = ids.size()
 	var words: String = ""
 	match op:
@@ -1589,6 +1635,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 			words = "took out step %d; its parts are in the step %s" % [number,
 				"before" if int(where[1]) > 0 else "after"]
 			number = maxi(number - 1, 1)
+	undo.append_array(BookletLooks.follow(world, looked, skip))
 	undo = AuthorSteps.squash(undo)
 	if undo.is_empty():
 		return "the steps are as they were"
@@ -1599,6 +1646,163 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	store.touch()
 	steps.refresh(number)
 	return words
+
+
+## A Booklet page command on the step the timeline is on.
+func edit_look(op: String) -> void:
+	if read_only:
+		return
+	var steps: StepsBar = app.get("_steps")
+	bar.say(change_look(op, steps.booklet_step()))
+
+
+## How the booklet prints step [param at]: [param op] one of the Booklet
+## page commands' (turn_left, zoom_in, new_page, ...), or "set" with
+## [param fields] as BookletLooks keeps them (a session's edit_booklet).
+## One undo, saved with the model; the first on a model with no steps of
+## its own gives it the worked-out ones first, as a step edit does.
+## Returns what was done, or why nothing was.
+func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> String:
+	if read_only:
+		return "this model is open to look at, not to change"
+	if at == null:
+		return "go to a step on the timeline first"
+	var steps: StepsBar = app.get("_steps")
+	var number: int = at.number
+	var skip: Dictionary = store.scenery
+	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	var where: Array = _step_at(at)
+	var section: String = str(where[0])
+	var step: int = int(where[1])
+	if step < 0:
+		_take_back(undo)
+		return "this step has no parts of its own to set"
+	var name: String = BookletLooks.key(BookletLooks.definition_of(section), step)
+	var own: Dictionary = BookletLooks.of(world, section, step)
+	var turn: Dictionary = BookletLooks.turn_at(world, section, step)
+	var by: Vector3 = BookletLooks._vector(turn.get("turn", [0, 0, 0]))
+	var change: Dictionary = {}
+	var words: String = ""
+	var target: String = name
+	match op:
+		"set":
+			if str(fields.get("turn", "")) == "usual":
+				fields = fields.duplicate()
+				var before: Dictionary = BookletLooks.turn_at(world, section, step - 1) \
+					if step > 0 else {}
+				fields["turn"] = "end" if not before.is_empty() else null
+			if fields.has("callout"):
+				var unit: String = _attached(at, section)
+				if unit.is_empty():
+					_take_back(undo)
+					return "step %d puts no sub-assembly on" % number
+				undo.append_array(BookletLooks.change(world,
+					BookletLooks.definition_of(unit) + "|*", {"callout": fields["callout"]}))
+				fields = fields.duplicate()
+				fields.erase("callout")
+			if fields.has("per_page"):
+				undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET,
+					{"per_page": fields["per_page"]}))
+				fields = fields.duplicate()
+				fields.erase("per_page")
+			change = fields
+			words = "set how step %d is printed" % number
+		"turn_left", "turn_right":
+			by.y = fposmod(by.y + (-45.0 if op == "turn_left" else 45.0) + 180.0, 360.0) - 180.0
+			change = {"turn": [by.x, by.y, by.z], "how": str(turn.get("how", "REL"))}
+			words = "step %d turned to %d°" % [number, roundi(by.y)]
+		"tilt_up", "tilt_down":
+			by.x = clampf(by.x + (15.0 if op == "tilt_up" else -15.0), -60.0, 45.0)
+			change = {"turn": [by.x, by.y, by.z], "how": str(turn.get("how", "REL"))}
+			words = "step %d seen from %d° %s" % [number, absi(roundi(by.x)),
+				"higher" if by.x >= 0.0 else "lower"]
+		"this_view":
+			var seen: Array = BookletLooks.turn_for(camera.global_transform.basis.z) \
+				if camera != null else [0.0, 0.0, 0.0]
+			change = {"turn": seen, "how": "REL"}
+			words = "step %d drawn from this view" % number
+		"usual_view":
+			var before: Dictionary = BookletLooks.turn_at(world, section, step - 1) \
+				if step > 0 else {}
+			change = {"turn": "end" if not before.is_empty() else null}
+			words = "step %d from the usual angle" % number
+		"zoom_in", "zoom_out":
+			change = {"zoom": _next_of(BookletLooks.ZOOMS, float(own.get("zoom", 1.0)),
+				1 if op == "zoom_in" else -1)}
+			words = "step %d zoomed to %sx" % [number, BookletLooks._number(float(change["zoom"]))]
+		"bigger", "smaller":
+			change = {"size": _next_of(BookletLooks.SIZES, float(own.get("size", 1.0)),
+				1 if op == "bigger" else -1)}
+			words = "step %d drawn at %sx" % [number, BookletLooks._number(float(change["size"]))]
+		"new_page", "alone":
+			var page: String = "new" if op == "new_page" else "alone"
+			var off: bool = str(own.get("page", "")) == page
+			change = {"page": null if off else page}
+			words = ("step %d " % number) + ("back with the steps before it" if off
+				else ("starts a new page" if page == "new" else "on a page alone"))
+		"parts":
+			var shown: bool = bool(own.get("parts", true))
+			change = {"parts": not shown}
+			words = "step %d's parts list %s" % [number, "left off" if shown else "shown"]
+		"callout":
+			var unit: String = _attached(at, section)
+			if unit.is_empty():
+				_take_back(undo)
+				return "step %d puts no sub-assembly on" % number
+			var on: bool = BookletLooks.callout_on(world, unit)
+			target = BookletLooks.definition_of(unit) + "|*"
+			change = {"callout": not on}
+			words = "the %s built %s" % [BookletLooks.definition_of(unit),
+				"on pages of its own" if on else "in a callout box"]
+		"per_page":
+			var most: int = int(BookletLooks.booklet(world).get("per_page", 0))
+			var next: int = int({0: 1, 1: 2, 2: 4, 4: 0}.get(most, 0))
+			target = BookletLooks.BOOKLET
+			change = {"per_page": next}
+			words = "steps a page: %s" % ("as they fit" if next == 0 else str(next))
+		_:
+			_take_back(undo)
+			return "no booklet edit called %s" % op
+	if not change.is_empty():
+		undo.append_array(BookletLooks.change(world, target, change))
+	undo = AuthorSteps.squash(undo)
+	if undo.is_empty():
+		return "step %d is printed as it was" % number
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	steps.refresh(number)
+	# Seen as the booklet will draw it.
+	if camera != null and (op.begins_with("turn") or op.begins_with("tilt")
+			or op == "usual_view" or op == "set" and fields.has("turn")):
+		var now: Dictionary = BookletLooks.turn_at(world, section, step)
+		camera.look_from(BookletLooks.direction(now) if not now.is_empty()
+			else BookletStudio.FRONT)
+	return words
+
+
+## An edit's first half put back when its second is refused: a model given
+## the worked-out steps to be edited, and then not edited, keeps none.
+func _take_back(undo: Array) -> void:
+	for index: int in range(undo.size() - 1, -1, -1):
+		builder._apply(undo[index])
+
+
+## The next of [param values] after [param now], up or down, kept at the ends.
+static func _next_of(values: Array[float], now: float, by: int) -> float:
+	var at: int = 0
+	for index: int in values.size():
+		if values[index] <= now + 0.001:
+			at = index
+	if by < 0 and values[at] < now - 0.001:
+		return values[at]
+	return values[clampi(at + by, 0, values.size() - 1)]
+
+
+## The sub-assembly step [param at] puts on, as a path inside [param
+## section], or "".
+func _attached(at: Instructions.Step, section: String) -> String:
+	return BookletLooks.attached(world, at, section)
 
 
 static func _parts(count: int) -> String:

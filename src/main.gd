@@ -2901,6 +2901,7 @@ func _build_ui() -> void:
 	_steps.reveal_upto.connect(_steps_revealed_upto)
 	_steps.export_wanted.connect(_booklet_wanted)
 	_steps.edit_wanted.connect(func(op: String) -> void: _shell.edit_steps(op))
+	_steps.look_wanted.connect(func(op: String) -> void: _shell.edit_look(op))
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
 	_builder.place_step = _steps.place_step

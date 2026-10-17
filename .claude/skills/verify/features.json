@@ -935,6 +935,14 @@
       "tests": []
     },
     {
+      "id": "cli:the booklet by hand in a browser",
+      "kind": "cli",
+      "entry": "tools/web/booklet_edit_flow.mjs",
+      "reach": "node tools/web/booklet_edit_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -2489,6 +2497,14 @@
       "kind": "ui",
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the booklet by hand",
+      "kind": "ui",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the timeline's Booklet row or Build, Booklet page: turn, tilt, this view, zoom, size, new page, alone, parts list, callout, steps a page; Instructions prints it so)",
       "area": "view",
       "tests": []
     },

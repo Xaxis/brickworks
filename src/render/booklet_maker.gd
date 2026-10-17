@@ -46,6 +46,9 @@ var job: Working.Job = null
 var marks: Dictionary = {}
 
 var _studio: BookletStudio
+## Lay the pages out and draw nothing ([method lay_out_only]): which steps
+## go on which page, read in a moment where the pictures take minutes.
+var dry: bool = false
 var _world: BrickWorld
 ## The parts list the booklet ends with, which its steps' parts boxes agree
 ## with.
@@ -67,6 +70,35 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	var html: String = await _make(world, scenery, title)
 	busy = false
 	return html
+
+
+## The booklet's pages as [method make] lays them out, with no picture
+## drawn: each step's place, size and look, for the timeline and a session
+## (booklet_layout). The steps the booklet turns round by itself are
+## decided as it draws them; here they are seen from the front.
+func lay_out_only(world: BrickWorld, scenery: Dictionary, title: String) -> Array[Booklet.Page]:
+	dry = true
+	await _make(world, scenery, title)
+	var out: Array[Booklet.Page] = []
+	if document != null:
+		out = document.pages
+	return out
+
+
+## The bricks of [param order] on a stage of their own: drawn, or, laying
+## out only, their boxes alone, numbered as a drawn one numbers them.
+func _stage(order: Array) -> BookletStudio.Stage:
+	if not dry:
+		return _studio.stage(order)
+	var made := BookletStudio.Stage.new()
+	for entry: Array in order:
+		var part: Lbm.PartMesh = library.mesh_for(str(entry[1]))
+		if part == null:
+			continue
+		made.count += 1
+		made.number[int(entry[0])] = made.count
+		made.boxes.append((entry[3] as Transform3D) * part.bounds)
+	return made
 
 
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
@@ -95,16 +127,17 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		px_per_mm = minf(px_per_mm, 3.6)
 	elif steps.size() > 300:
 		px_per_mm = minf(px_per_mm, 4.2)
-	_studio = BookletStudio.new()
-	_studio.library = library
-	add_child(_studio)
-	await get_tree().process_frame
+	if not dry:
+		_studio = BookletStudio.new()
+		_studio.library = library
+		add_child(_studio)
+		await get_tree().process_frame
 
 	var order: Array = []
 	for step: Instructions.Step in steps:
 		for brick_id: int in step.brick_ids:
 			order.append(_entry_of(brick_id))
-	_main = _studio.stage(order)
+	_main = _stage(order)
 	_order = order
 	await get_tree().process_frame
 
@@ -131,7 +164,12 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		return _forget_all()
 	_subjects(entries)
 
-	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2)
+	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
+		int(BookletLooks.booklet(world).get("per_page", 0)))
+	if dry:
+		document.pages = pages
+		_forget_all()
+		return ""
 	var drawn: int = 0
 	var total: int = 0
 	for page: Booklet.Page in pages:
@@ -188,12 +226,13 @@ func _stopped() -> bool:
 
 ## Put the stages away, as at the end; an empty booklet, for a stop.
 func _forget_all() -> String:
-	for made: BookletStudio.Stage in _stages:
-		_studio.forget(made)
+	if is_instance_valid(_studio):
+		for made: BookletStudio.Stage in _stages:
+			_studio.forget(made)
+		if _main != null:
+			_studio.forget(_main)
 	_stages.clear()
-	if _main != null:
-		_studio.forget(_main)
-		_main = null
+	_main = null
 	if is_instance_valid(_studio):
 		_studio.queue_free()
 	return ""
@@ -269,10 +308,14 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		var part: Lbm.PartMesh = library.mesh_for(lot.part_id)
 		if part == null:
 			continue
-		var stage: BookletStudio.Stage = _studio.stage(
-			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
 		var extent: Rect2 = BookletStudio.extent([part.bounds], BookletStudio.FRONT)
 		made.size = Booklet.part_size(extent.size)
+		if dry:
+			made.size += Vector2(1.0, 1.0)
+			lots[key] = made
+			continue
+		var stage: BookletStudio.Stage = _studio.stage(
+			[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
 		# Twice the page's resolution: a part is small on the page and
 		# read closely.
 		var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
@@ -392,6 +435,7 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 				entry.marks.append(mark)
 		if step.unsupported:
 			entry.note = "Hold this in place: it rests on nothing until the next step."
+		var own: Dictionary = _look(entry, step)
 		if step.attaches():
 			var first: int = int(_ranks[index - pending.size()][0]) if not pending.is_empty() else from
 			_ranks[index] = [first, rank]
@@ -410,8 +454,29 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			entry.lots = _lots_of(step.brick_ids, lots)
 			if not marks.is_empty():
 				entry.marks.append_array(_marks_in(step.brick_ids, _marked))
+		if own.has("parts") and not bool(own["parts"]):
+			entry.lots.clear()
 		entries.append(entry)
 	return entries
+
+
+## The look its designer gave [param step] (BookletLooks), put on [param
+## entry]: the view, the zoom, the size and the page. Returns the step's
+## own look, {} for a step worked out here.
+func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
+	if step.authored_step < 0:
+		return {}
+	var section: String = step.authored_in
+	var own: Dictionary = BookletLooks.of(_world, section, step.authored_step)
+	entry.look = BookletLooks.key(BookletLooks.definition_of(section), step.authored_step)
+	entry.zoom = clampf(float(own.get("zoom", 1.0)), 0.25, 4.0)
+	entry.size = clampf(float(own.get("size", 1.0)), 0.4, 3.0)
+	entry.page_break = str(own.get("page", ""))
+	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
+	if not turn.is_empty():
+		entry.fixed = true
+		entry.from = BookletLooks.direction(turn)
+	return own
 
 
 ## The groups whose hidden colour has gone in by now, by label, and the
@@ -447,6 +512,8 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 	var callout := Booklet.Callout.new()
 	callout.name = attach.assembly
 	callout.times = attach.times
+	var unit: String = BookletLooks.attached(_world, attach, attach.authored_in)
+	callout.own_pages = not unit.is_empty() and not BookletLooks.callout_on(_world, unit)
 	var order: Array = []
 	var spans: Array = []
 	for step: Instructions.Step in built:
@@ -454,7 +521,7 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		for brick_id: int in step.shown_ids:
 			order.append(_entry_of(brick_id))
 		spans.append([from, order.size()])
-	var stage: BookletStudio.Stage = _studio.stage(order)
+	var stage: BookletStudio.Stage = _stage(order)
 	_stages.append(stage)
 	callout.from = _facing(attach)
 	var boxes: Array = []
@@ -495,15 +562,34 @@ func _facing(attach: Instructions.Step) -> Vector3:
 ## turned while the back is still where the work is.
 func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	var facing: Vector3 = BookletStudio.FRONT
+	if dry:
+		var was: Vector3 = BookletStudio.FRONT
+		for entry: Booklet.Entry in entries:
+			if not entry.fixed:
+				entry.from = BookletStudio.FRONT
+			entry.turned = entry != entries[0] and _round_from(was, entry.from)
+			was = entry.from
+		return
 	var keep: int = _studio.supersample
 	_studio.supersample = 1
 	var count: int = 0
+	var before: Vector3 = BookletStudio.FRONT
 	for entry: Booklet.Entry in entries:
 		count += 1
 		if count % 10 == 1:
 			_say("Choosing how each step is seen…", entries.size(), count - 1)
 		if _stopped():
 			return
+		# Seen the way its designer set it: turned where the turn is more
+		# than a glance round from the step before.
+		if entry.fixed:
+			# The first step is where the reader starts: nothing to turn from.
+			entry.turned = count > 1 and _round_from(before, entry.from)
+			before = entry.from
+			facing = BookletStudio.FRONT
+			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
+				"other": -1.0, "turned": entry.turned, "fixed": true})
+			continue
 		var span: Array = _where(entry)
 		var here: float = await _seen(span, facing)
 		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
@@ -524,7 +610,20 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 			facing = other
 			entry.turned = true
 		entry.from = facing
+		if not turn:
+			entry.turned = _round_from(before, entry.from)
+		before = entry.from
 	_studio.supersample = keep
+
+
+## Whether a step seen from [param to] after one seen from [param from] is
+## the model turned round: more than 60 degrees of it.
+static func _round_from(from: Vector3, to: Vector3) -> bool:
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	if a.length() < 0.01 or b.length() < 0.01:
+		return false
+	return absf(a.angle_to(b)) > deg_to_rad(60.0)
 
 
 ## How much of a step's new parts [param from] shows: [param where] as
@@ -575,7 +674,7 @@ func _find_apart(entries: Array[Booklet.Entry]) -> void:
 		var upto: int = int(_ranks[int(entries[end].get_meta("step"))][1])
 		if not first.section.is_empty() and from > 1 and upto >= from \
 				and not _touches(from, upto):
-			var stage: BookletStudio.Stage = _studio.stage(_order.slice(from - 1, upto))
+			var stage: BookletStudio.Stage = _stage(_order.slice(from - 1, upto))
 			_stages.append(stage)
 			for n: int in range(at, end + 1):
 				_apart[entries[n]] = [stage, from - 1]
@@ -639,6 +738,28 @@ func _subjects(entries: Array[Booklet.Entry]) -> void:
 			entry.subject = BookletStudio.extent(
 				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
 			entry.cropped = false
+		_zoomed(entry)
+
+
+## A step its designer zoomed: in, framed on what it adds, the rest of the
+## model running off the picture and faded; out, more of the page round it.
+func _zoomed(entry: Booklet.Entry) -> void:
+	if is_equal_approx(entry.zoom, 1.0):
+		return
+	var where: Array = _where(entry)
+	var stage: BookletStudio.Stage = where[0]
+	var fresh: Rect2 = BookletStudio.extent(stage.boxes.slice(int(where[1]) - 1, int(where[2])),
+		entry.from)
+	var whole: Rect2 = entry.subject
+	var size: Vector2 = whole.size / entry.zoom
+	var centre: Vector2 = whole.get_center()
+	if entry.zoom > 1.0:
+		if fresh.size.length() > 0.0:
+			centre = fresh.get_center()
+		centre.x = clampf(centre.x, whole.position.x + size.x * 0.5, whole.end.x - size.x * 0.5)
+		centre.y = clampf(centre.y, whole.position.y + size.y * 0.5, whole.end.y - size.y * 0.5)
+		entry.cropped = true
+	entry.subject = Rect2(centre - size * 0.5, size)
 
 
 # -- pictures ------------------------------------------------------------------
