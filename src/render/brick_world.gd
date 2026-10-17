@@ -765,10 +765,10 @@ func _mark_dirty(key: String) -> void:
 		_flush_when_due.call_deferred()
 
 
-## The last rebuild's cost, ms, and how many batches it wrote: for a probe
-## timing a drag's frames.
-var last_flush_ms: float = 0.0
-var last_flush_batches: int = 0
+## What rewriting batches has cost, ms, and how many, since a probe timing
+## a drag's frames last took them.
+var rebuilt_ms: float = 0.0
+var rebuilt_batches: int = 0
 
 
 ## Whether a big rebuild may be spread over frames (FramePace), batches
@@ -826,16 +826,13 @@ func _flush() -> void:
 	_rebuild_queued = false
 	if _drawing_held > 0:
 		return
-	var began: int = Time.get_ticks_usec()
 	var triangles: int = 0
 	for key: String in _dirty:
 		var batch: Batch = _batches.get(key)
 		if batch == null:
 			continue
 		_rebuild(batch, key)
-	last_flush_batches = _dirty.size()
 	_dirty.clear()
-	last_flush_ms = float(Time.get_ticks_usec() - began) / 1000.0
 
 	var live: int = 0
 	for key: String in _batches:
@@ -847,6 +844,13 @@ func _flush() -> void:
 
 
 func _rebuild(batch: Batch, key: String) -> void:
+	var began: int = Time.get_ticks_usec()
+	_rebuild_batch(batch, key)
+	rebuilt_ms += float(Time.get_ticks_usec() - began) / 1000.0
+	rebuilt_batches += 1
+
+
+func _rebuild_batch(batch: Batch, key: String) -> void:
 	# Written as usual, a batch laid out for a reveal would draw the wrong
 	# bricks at the next count: whatever writes it ends the reveal first.
 	if not batch.ranks.is_empty():
