@@ -1004,7 +1004,7 @@ func _tell_page() -> void:
 	var handles: Array = []
 	if grab == null and is_ready():
 		for body: Variant in _bodies.parent_link:
-			if handles.size() >= 4:
+			if handles.size() >= 8:
 				break
 			var spot: Variant = _handle(int(body), _bodies.parent_link[body])
 			if spot != null:

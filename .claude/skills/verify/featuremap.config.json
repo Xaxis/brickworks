@@ -771,6 +771,13 @@
     },
     {
       "kind": "lib",
+      "label": "racks and their pinions",
+      "entry": "src/assembly/racks.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
       "label": "a model that tips falls",
       "entry": "src/assembly/topple.gd",
       "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",

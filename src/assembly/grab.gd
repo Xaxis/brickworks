@@ -51,6 +51,9 @@ const ON_THE_LINE := 6.5
 const BELOW_FLOOR := 4.0
 ## A loop's driver is turned on a grid of this, degrees.
 const LOOP_GRID := 0.25
+## A loop with no more moving parts than this has what they overlap where
+## they stand found at the press.
+const LOOP_AHEAD_PARTS := 80
 ## Two parts whose turned boxes are into each other by no more than this
 ## only touch, LDU: under a cell of the cover, 0.4 mm.
 const TOUCHING := 1.0
@@ -289,6 +292,18 @@ func _chosen() -> String:
 				var them: BrickWorld.Brick = world.get_brick(other)
 				var mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
 				if mesh != null and (them.transform * mesh.bounds).intersects(near_ball):
+					skip[other] = true
+	# A loop's few parts: what each overlaps where it stands is found now,
+	# not by the first frame's test, which worked out a wheel's turned cover
+	# (18 ms) to find its own tyre's neighbour forgiven.
+	if linkage != null and moving.size() <= LOOP_AHEAD_PARTS:
+		for key: int in moving:
+			var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
+			if boxes.is_empty():
+				continue
+			for other: int in builder.lattice.blockers_boxes(boxes, key, {}):
+				if not moving.has(other):
+					_rest_overlap[other] = true
 					skip[other] = true
 	rest.clear()
 	grams = 0.0
@@ -665,7 +680,9 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 ## other. Nothing ahead on a build without threads, or for one cover.
 func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
 	var out: Dictionary = {}
-	if OS.has_feature("web") and not OS.has_feature("threads"):
+	# Not in a browser: its workers start when first asked, and the first
+	# drag's frame waited 1.3 s for them.
+	if OS.has_feature("web"):
 		return out
 	var wanted: Array = []   ## [mesh, basis]
 	var asked: Dictionary = {}

@@ -1365,8 +1365,101 @@ edit sets going 17; the checking itself is off the window); it was 17 to
 20 s with a worst frame of 160 ms.
 
 **Left for later.** Racks: a rack driven by its pinion, a steering rack
-and its arms, a scissor lift (Mechanism has no prismatic joint yet, §5), the
-next unit; a loop's drag frame reliably under 33 ms; a loop through a joint the tree grew
+and its arms, a scissor lift (Mechanism has no prismatic joint yet, §5), done in section 12;
+a loop's drag frame reliably under 33 ms; a loop through a joint the tree grew
 as a ball is solved, but the ball itself cannot be grabbed to drive it; the
 settling of free joints inside a loop; the fall of a model whose support
 Balance cannot see; dynamics (S2, P3).
+
+## 12. Racks and scissor lifts (G3)
+
+G2 left racks and scissor lifts for the next unit. Both are loops, so both go
+through `Linkage`; a rack needed one more kind of equation, and a scissor lift
+needed a loop that is driven by a slide.
+
+**A pinion in its rack.** `src/assembly/racks.gd`. Every rack the library
+draws from a tooth primitive has its teeth 8 LDU apart: ten to the four studs
+of a 1 x 4 (3743), and the same in the 1 x 8, 1 x 10 and 1 x 14 with holes
+and the 1 x 7 and 1 x 13 steering racks (two authors). A pinion's pitch
+circle is 1.25 LDU a tooth (section 2), 7.854 LDU of arc a tooth. Teeth do not
+slip, so a turn of an 8 tooth pinion moves its rack 8 teeth, 64 LDU; its pitch
+circle would say 62.83. The 1.9% between them is taken up in the teeth's
+play, and the rack moves 8 LDU a tooth, as the parts are drawn. Whether a
+real rack is cut 3.2 mm or π mm a tooth, the parts do not say, and nothing
+we found does.
+
+Where a pinion stands against a rack was measured on the OMR's sets, in the
+rack's own frame (the gear table's `racks`): a 3743's 8 tooth pinions stand
+14 LDU above its origin in 50 pairs and 12 or 16 in 26 more, a 16 at 26, so
+its pitch line is 4 LDU up and a mesh is read within 2.5 LDU of it; the 1 x 8
+and 1 x 10 with holes have theirs at 2, the 1 x 14 at 0, the 1 x 7 and 1 x 13
+steering racks at 5 (55 pairs of a 12 at 20). 2790a's teeth are drawn without
+the tooth primitive and were not counted; 18942's pinion was not met in a set.
+
+`Racks.find` reads each pinion in a rack, and `Linkage` takes each as one
+more equation of a loop: where the pinion's centre now is, seen from the
+rack, along the rack's teeth, from where it was, plus the teeth's share of
+the pinion's turn against the rack, is nought. Its derivatives are exact, as
+the loops' are: a joint on the pinion's side moves the centre the rack sees,
+one on the rack's side moves the rack under it the other way. The 1980s
+Technic steering is this loop: the rack rides on the track rod, which is the
+coupler of a four-bar with the two steering arms, and the pinion on the
+steering column pushes it. Read from the column, the pinion is a closing
+link like any other, so turning the steering wheel turns the wheels, and
+dragging a wheel turns the column.
+
+Measured with the pointer on the steering, 45 frames each, against the
+geometry by hand (`grab_probe -- --only=racks`): the rack's place along its
+teeth against 8 LDU a tooth of the pinion's turn in the rack; the near arm's
+turn found by bisection where the track rod's near pin, carried round its
+kingpin, puts the rack at that place, the far pin where two circles meet;
+the far arm's turn from the far pin.
+
+| set | steering | rack against its teeth | near arm | far arm |
+|---|---|---|---|---|
+| 8841-1 Chassis | the steering wheel, by a universal joint to the pinion's column | 0.010 LDU | 0.014° | 0.016° |
+| 8808-1 | the steering wheel on the pinion's column | 0.010 LDU | 0.016° | 0.018° |
+| 5533-1 Tractor-Pulling | the pinion's column (its wheel turns it by gears, which this does not read) | see the run's log | | |
+
+On 8841 the steering wheel turned 30° turns the pinion 30° in the rack,
+two thirds of a tooth: the rack goes 5.33 LDU and both arms 7.66°; at 90°,
+two teeth, 16.00 LDU and 23.58°, by hand and as drawn. The 8020 Jeep's
+four-bar of section 11 now carries its pinion's column round with it, and
+its far arm still stands where the circles put it, to 0.004°.
+
+**A scissor lift.** A loop that cannot turn the joint grabbed but can slide
+it is driven by the slide (`Linkage.can_move`): a scissor lift's foot on its
+rail cannot turn about the rail, and slides along it. No set in the OMR has
+a scissor lift whose sliding foot the joints read (42078's tipper has a
+scissor driven by a rack in its housing, which `Bodies` does not read as a
+slide), so `grab_probe -- --only=scissor` makes one: two stages of beams 9
+crossed and pinned at their middles and ends with friction pins, one foot
+pinned to a beam 15 on the floor, the other on a cross block that slides
+along an axle 8 held at its ends by two more cross blocks. Each link is
+160 LDU between its end pins, so with its foot x from the fixed one the top
+stands 2·sqrt(160² − x²) above it. Dragged by its foot from 113.14 LDU
+(45°) to 33.14 LDU (78.05°, 313.06 high) and back, in 41 frames the top
+stood where that puts it to 0.015 LDU. A lift held only by its foot's slide
+is not a real one: on an axle in round holes, a part slides as far as the
+axle reaches, and nothing here stops it sooner but the parts it meets.
+
+**The loop's drag frame.** Builder's worker cache held its lock while it
+worked a cover out, so covers asked of workers side by side took turns; it
+now holds it only to look up and to keep (`Builder.boxes_for`). A grab works
+out the turned covers a frame's test will want side by side on the engine's
+workers before testing (`Grab._covers_ahead`), and keeps them as
+`boxes_for` keeps its own. That helps where a frame wants several covers. The
+four-bar's worst frames want one, a wheel's, 18 ms on a loaded box: the
+drag's own worst frame was still 28.7 ms and the whole frame 50 ms in the
+run below, not reliably under 33. Precomputing the covers at the press for
+the turns the drag will ask needs the solved poses to match exactly where
+the cache looks them up, which the solver from the last pose does not
+promise.
+
+**Left for later.** A steering wheel that drives its pinion through gears
+(5533's, 9393's and every 42xxx's bevels): Mechanism's gear train and
+Linkage's loop are still read apart. A rack held in a guide the joints do
+not read (a 1 x 13 steering rack between beams, 42078's rack in its
+housing): `Bodies` gives it no slide, so its loop is under-held or rigid.
+Worms and linear actuators driving a rack; 2790a's teeth; the loop's drag
+frame under 33 ms; dynamics (S2, P3).

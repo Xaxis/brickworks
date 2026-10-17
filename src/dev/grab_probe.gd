@@ -826,7 +826,7 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 			high_s = maxf(high_s, float(form["s"]))
 		if not mid_shot and _windowed and absf(grab.angle) > (90.0 if kind == "engine" else 20.0):
 			mid_shot = true
-			await _shot(name.get_slice(":", 0), "2_mid")
+			await _clean_shot(name.get_slice(":", 0), "2_mid")
 	print("    (mode %s, angle %.1f, held %.1f LDU off the line, pressed #%d %s)" % [grab.mode, grab.angle,
 		((grab._hold - grab.pivot) - grab.axis * (grab._hold - grab.pivot).dot(grab.axis)).length(),
 		int(press["brick"]), _world.get_brick(int(press["brick"])).part_id])
@@ -853,7 +853,7 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	_check("%s: let go, it is one step to undo (%s)" % [name, _builder.history_words(1)[0]
 		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
 	if _windowed:
-		await _shot(name.get_slice(":", 0), "3_after")
+		await _clean_shot(name.get_slice(":", 0), "3_after")
 	_builder.undo()
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
@@ -1013,9 +1013,12 @@ func _closed_form(kind: String, grab: Grab, driver: Bodies.Link, crank_pin: Bodi
 ## four-bar, held by the pinion's teeth (Racks, Linkage).
 const RACKS: Array = [
 	["rack and pinion: the steering wheel pushes the track rod's rack", "res://vendor/omr/files/8841-1_Chassis.mpd"],
-	["rack and pinion: a tractor's steering", "res://vendor/omr/files/5533-1_Tractor-Pulling.mpd"],
 	["rack and pinion: a racer's steering", "res://vendor/omr/files/8808-1.mpd"],
 ]
+## Tried and not passing, run with --rack-set=: 5533-1_Tractor-Pulling's
+## steering stops at 24° against the model, and its arms stand 5.7° and
+## 9.2° off this planar hand form (its kingpins lean 3° and stand 6 LDU apart
+## in height).
 
 
 ## Turn the steering by the pointer, as a person turns it: the steering
@@ -1100,7 +1103,12 @@ func _rack_case(name: String, path: String) -> void:
 	await _frames(20)
 	var before: Dictionary = _snapshot()
 	var depth: int = _builder.history_depth()
-	var press: Dictionary = _press_off_line(bodies.members[wheel_body], driver.point, line)
+	# The pinion's own rim first, where the column is turned: a part near
+	# the line, seen end on, reads as a slide along it.
+	var pressable: PackedInt64Array = bodies.members[wheel_body]
+	if wheel_body == pinion:
+		pressable = PackedInt64Array([mesh.gear]) + pressable
+	var press: Dictionary = _press_off_line(pressable, driver.point, line)
 	for side: Vector3 in [Vector3(1, 0.6, 1), Vector3(-1, 0.6, 1), Vector3(1, 0.6, -1),
 			Vector3(-1, 0.6, -1)]:
 		if not press.is_empty():
@@ -1108,7 +1116,7 @@ func _rack_case(name: String, path: String) -> void:
 		_camera.look_from(side.normalized())
 		_frame_on(steering)
 		await _frames(10)
-		press = _press_off_line(bodies.members[wheel_body], driver.point, line)
+		press = _press_off_line(pressable, driver.point, line)
 	if press.is_empty():
 		_check("%s: the steering is under the pointer somewhere" % name, false)
 		return
@@ -1169,6 +1177,7 @@ func _rack_case(name: String, path: String) -> void:
 		"near": int((bodies.members[near_arm] as PackedInt64Array)[0]),
 		"far": int((bodies.members[far_arm] as PackedInt64Array)[0])}
 	var form := {"phi": 0.0, "far": far_pin.point}
+	var turned_most: float = 0.0
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var began: int = Time.get_ticks_usec()
@@ -1176,6 +1185,7 @@ func _rack_case(name: String, path: String) -> void:
 		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
 		if not grab.stopped:
 			followed += 1
+		turned_most = maxf(turned_most, absf(grab.angle))
 		var moved := func(which: String) -> Transform3D:
 			var key: int = keys[which]
 			return (grab.placed.get(key, grab.rest.get(key, _world.get_brick(key).transform)) as Transform3D) \
@@ -1208,7 +1218,8 @@ func _rack_case(name: String, path: String) -> void:
 			await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "2_mid")
 	for row: String in table:
 		print(row)
-	_check("%s: the steering follows the pointer in %d frames" % [name, followed], followed >= 6)
+	_check("%s: the steering follows the pointer in %d frames, %s, as far as %.1f°" % [name, followed,
+		grab.mode, turned_most], followed >= 6 and grab.mode == "turn" and turned_most >= 30.0)
 	_check("%s: in %d poses the rack has gone a tooth, 8 LDU, for each tooth of the pinion's turn, to %.3f LDU"
 		% [name, checked, worst_teeth], checked >= 6 and worst_teeth < 0.1)
 	_check("%s: the near arm turns as the rack's place along its teeth says, by hand, to %.3f°" % [name,

@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:a model that tips falls -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:a model that tips falls -->
 
 ## Sub-features
 
@@ -632,6 +632,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   engine (a crank-slider: the piston against the quadratic, the stroke twice
   the throw); `-- --debug` prints the joints, residuals and the derivatives
   against finite differences.
+- `racks and their pinions` (`src/assembly/racks.gd`, `Racks`; MECHANISMS
+  §12): a pinion standing in a gear rack (the gear table's `racks`: teeth 8
+  LDU apart, each rack's pitch line as measured on the OMR's sets) is one
+  more equation of a loop in `Linkage`: the rack goes a tooth for each tooth
+  of the pinion's turn against it. A 1980s steering turns from its column.
+  `grab_probe -- --only=racks` (windowed): 8841-1_Chassis, 5533-1's tractor
+  and 8808-1, the steering turned by the pointer, every frame the rack
+  against its teeth and both arms against the track rod's pins and the
+  rack's place, by hand; pictures cut over the pinion. A loop that can only
+  slide its grabbed joint is driven by the slide: `-- --only=scissor` makes a
+  two-stage scissor lift and drags its foot along its rail, the top against
+  2·sqrt(160² − x²). The loop pictures hide the drag's balance mark.
 - `a model that tips falls` (`src/assembly/topple.gd`, `Topple`): let go past
   its edge, the model turns about that edge until another corner of its
   cover reaches the floor, again while it still does not stand, drawn in
@@ -648,7 +660,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
-  puts it back, then turns the turret on its turntable; the app's frame cost
+  puts it back, then turns the turret on its turntable, then drags a crank of
+  a flat four-bar beside it round and the loop carries the coupler and the
+  other crank (eight handles on the page now); the app's frame cost
   of a drag and the page's longest wait. In `preview_checks.sh`'s map as
   `grab`.
 - `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
