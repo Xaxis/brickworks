@@ -749,6 +749,17 @@ picture the assistant is shown.
   `--arrive=SECONDS` waits, up to that long, for the parts a model fetches as
   it opens (`brickworksState.awaited`) before the acts, so they are measured
   on the whole model and not on one changing at every arrival.
+  `--gate` (2026-10-17) judges, and exits 1 on a miss: the app's own work,
+  the frame less its WebGL, in each press of the timeline's Next's worst
+  frame and an orbit's drawn frames at their 95th percentile under 200 ms,
+  and select all's worst frame under 400 (a good build's read 114 to 190 ms
+  here; `--step-ms`, `--orbit-ms`, `--select-ms`);
+  `--bypass=` for a protected preview. It is the release's `frames` preview
+  check on 75969-1 (`tools/release/preview_checks.sh`, alone): no check held
+  a frame's cost, and the grab's drag handles, found twice a second in every
+  browser, took a step there from 75 ms to 6.7 s while `steps_flow` passed.
+  On a build with them it fails on every press of Next, and passes with
+  grab's `420422d` (docs/CADTASK.md, section 6).
 - `big models stay fast` (`src/dev/bigmodel_probe.gd`, in `tools/check.sh`):
   headless, so what is timed is the app's own work. Bare, it makes two models
   of 1,000 and 5,000 parts (towers of four bricks in eight colours, one size

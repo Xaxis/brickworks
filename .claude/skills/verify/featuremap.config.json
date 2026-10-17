@@ -2040,7 +2040,7 @@
       "kind": "cli",
       "label": "cad task frames in a browser",
       "entry": "tools/web/cad_frames.mjs",
-      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web)",
+      "reach": "node tools/web/cad_frames.mjs --url=http://127.0.0.1:<port>/ --out=DIR MODEL.mpd ...   (serve.py build/web with --parts, .env sourced; python3 tools/bench/cadtask.py frames --platform web); --gate --arrive=300 --only=orbit,select_all,step on 75969-1 is the release's frames check: each step and an orbit's frames under 200 ms of the app's own work, select all under 400, exit 1 on a miss",
       "area": "view"
     },
     {

@@ -59,6 +59,13 @@ declare -A CMD=(
   [carried]="tools/web/carried_flow.mjs --url=$P/app $B --label=preview --out=$S/${TAG}_carried_web $R/vendor/omr/files/21321-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=on.a.stand --out=$S/${TAG}_brickify_fox_web"
+  # What a frame costs the app on a big model (75969-1, 925 parts): each press
+  # of the timeline's Next and an orbit's frames held to 200 ms of the app's
+  # own work, select all to 400 (cad_frames --gate). steps_flow checks what
+  # a step shows, not
+  # what it costs: the grab's drag handles, found twice a second, took a step
+  # from 75 ms to 6.7 s and every check passed (CADTASK.md, section 6).
+  [frames]="tools/web/cad_frames.mjs --url=$P/app $B --gate --arrive=300 --only=orbit,select_all,step --out=$S/${TAG}_frames_web $R/vendor/omr/files/75969-1.mpd"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
   # Build it from a shared link on a slowed phone: each page turn timed, and
@@ -68,7 +75,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download frames"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)
@@ -85,7 +92,8 @@ run() {
 # Timing checks run alone: beside a heavy flow, idle's ghost drew 4 or 6
 # frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
 # page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
-SOLO=" idle arrival progress cursor render_open grab share_steps "
+# frames holds the app's own work a frame on 75969-1 (200 ms, select all 400).
+SOLO=" idle arrival progress cursor render_open grab share_steps frames "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED
