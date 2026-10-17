@@ -106,7 +106,7 @@ func _run() -> void:
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
 	for case: Array in CASES:
-		if not only.is_empty() and not str(case[0]).contains(only):
+		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
 		await _case(case[0], case[1], case[2])
 	if only.is_empty() or only == "loops" or only == "fourbar" or only == "engine":
@@ -316,9 +316,10 @@ func _case(name: String, path: String, want: String) -> void:
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var grab: Grab = _grab.grab
 	if grab == null:
-		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s)" % [
+		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s copies=%s locked=%s ready=%s selection=%s)" % [
 			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(),
-			_main.get("_press_brick"), _verbs.mode])
+			_main.get("_press_brick"), _verbs.mode, _main.get("_press_copies"),
+			_builder.is_locked(int(press["brick"])), _grab.is_ready(), _builder.selection.keys()])
 		var trial := Grab.new()
 		trial.world = _world
 		trial.builder = _builder
