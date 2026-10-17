@@ -138,7 +138,7 @@ static func _built(library: PartLibrary, text: String, id: String,
 				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
 			if pictures.has(name.to_lower()):
 				pictures[name] = pictures[name.to_lower()]
-		built = PartPrints.build(text, id, pictures, library)
+		built = PartPrints.build(text, id, pictures, library, sources)
 	elif is_skin_text(text):
 		built = PartForge.build_skin(text, id, sources)
 	else:
