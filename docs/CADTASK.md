@@ -1428,9 +1428,9 @@ Of the 39 parts off the grid, **31 of 39: 11 by the pointer alone, 20 with a num
 | 8841-1 | #54 4262 | aimed at its joint (pin); exact by the pointer | nothing | 0.002 LDU, 0.04° |
 
 The eight tyres are the misses: every typed move to the rim's place was
-refused ("no room there"), the tyre's cover running into the wheel
-holder's, and a tyre has no joint for its ghost to take on the rim (the
-gaps below, 1). A part the run could not put was put from the file, so
+refused ("no room there"): the tyre's cover closes its hole at its
+sidewalls and the wheel holder's pin runs through one. And a tyre has no
+joint for its ghost to take on the rim (the gaps below, 1). A part the run could not put was put from the file, so
 the parts after it were tried on what holds them. The Y typed on two of
 the pans' plates is the plate under them read in Properties and a plate's
 8 LDU added (156.35 is 148.35 and 8); the X and Z typed on the pans are a
@@ -1449,9 +1449,14 @@ first run's thirteen are kept below, each with what closed it.
    joint for a tyre (`JointSnap` takes round ends a bar's size only), and
    typed to the rim's place the move is refused, the tyre's cover running
    into the wheel holder's (`room_for`'s blockers: the 6157 and the rim,
-   and only the rim is forgiven as joined). The file opens with them, but
-   a builder cannot put one there by hand. The next unit's: a tyre on a
-   rim as a joint, and the holder's cover where it meets the tyre.
+   and only the rim is forgiven as joined). Why: 50951's cover closes its
+   hole at both of its sidewalls (cells across the middle of the hole at
+   x −48 and −34 where the hole between is open), and the holder's wheel pin
+   runs through the inner one: 12 cells, one cell deep. The cover is the
+   mesh pipeline's (`tools/build_meshes.py`), built with the cache. The file
+   opens with the tyres, but a builder cannot put one there by hand. The
+   next unit's: a tyre's cover open through its hole, and a tyre on a rim
+   as a joint its ghost can take.
 2. **Studio has still never been run beside it.** Every Studio number is
    modelled (section 3); Wine needs a password on this box.
 3. **The actions a part** are 11.5 to 17.6 in this run's measured builds
