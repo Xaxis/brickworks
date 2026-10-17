@@ -1419,7 +1419,13 @@ the far arm's turn from the far pin.
 |---|---|---|---|---|
 | 8841-1 Chassis | the steering wheel, by a universal joint to the pinion's column | 0.010 LDU | 0.014° | 0.016° |
 | 8808-1 | the steering wheel on the pinion's column | 0.010 LDU | 0.016° | 0.018° |
-| 5533-1 Tractor-Pulling | the pinion's column (its wheel turns it by gears, which this does not read) | see the run's log | | |
+
+5533-1's tractor does not pass: its steering wheel turns the pinion by
+gears, which this does not read, so the column is turned instead; it stops
+at 24° against the model, and its arms stand 5.7° and 9.2° off the planar
+hand form, whose kingpins it takes to be parallel (5533's lean 3° and stand
+6 LDU apart in height). It is left out of the run and can be asked for with
+`--rack-set=`.
 
 On 8841 the steering wheel turned 30° turns the pinion 30° in the rack,
 two thirds of a tooth: the rack goes 5.33 LDU and both arms 7.66°; at 90°,
