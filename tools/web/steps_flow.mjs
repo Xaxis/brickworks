@@ -213,14 +213,23 @@ text = open(sys.argv[1], encoding="utf-8").read()
 main = text.split("0 NOFILE")[0]
 steps, now = [], []
 for line in main.splitlines():
-    if line.startswith("0 STEP"):
+    # A ROTSTEP ends a step as a STEP does (MLCad, LDraw's model
+    # repository): counted only by STEP, the gatehouse's windows ran into
+    # the blue brick's step once its ROTSTEP was kept on export (m65).
+    if line.startswith("0 STEP") or line.startswith("0 ROTSTEP"):
         steps.append(sorted(now)); now = []
     elif line.startswith("1 "):
         f = line.split()
         now.append(f[-1].lower() + "/" + f[1])
 if now:
     steps.append(sorted(now))
-print(json.dumps({"steps": [" ".join(s) for s in steps], "marked": "0 !BRICKWORKS AUTHORED_STEPS" in text}))
+# The steps said to be the author's, as LdrModel.steps_are_authored reads
+# it: the app's line, or the author's own name kept on a file that is
+# theirs (the gatehouse, written back as it came with only the move in it).
+author = next((l.split(":", 1)[1].strip() for l in text.splitlines() if l.startswith("0 Author:")), "")
+marked = "0 !BRICKWORKS WORKED_STEPS" not in text and (
+    "0 !BRICKWORKS AUTHORED_STEPS" in text or (author != "" and author != "Brickworks"))
+print(json.dumps({"steps": [" ".join(s) for s in steps], "marked": marked}))
 `, saved], { encoding: "utf8" }));
   } catch (e) {
     steps = { error: String(e.stderr || e).slice(0, 300) };
