@@ -222,6 +222,25 @@ if (app.status !== 200) {
   if (executable !== `/b/${sha}/index`) fail(`/app's engine is ${executable}, not /b/${sha}/index`);
   ok(`/app 200, build ${sha}, isolated, its own policy, not cached`);
 
+  // Visits counted by Overlook: on the public pages and the app, with the
+  // per-person and secret paths left out, and never on admin or a model's
+  // page. The policy must let it load and report, or it counts nothing
+  // without a word.
+  const counter = /<script defer src="https:\/\/overlook\.technology\/s\.js" data-site="ws_3frcuzvdsh" data-exclude="\/m\/\*\*,\/u\/\*\*,\/c\/\*\*,\/oauth\/\*\*,\/admin"><\/script>/;
+  const counted = PAGES.filter((p) => !p.model && p.path !== "/admin").map((p) => p.path);
+  for (const path of counted) {
+    if (!counter.test(pageHtml[path] || "")) fail(`${path} does not count visits, or counts paths it must not`);
+  }
+  for (const path of PAGES.filter((p) => p.model || p.path === "/admin").map((p) => p.path)) {
+    if (/overlook\.technology/.test(pageHtml[path] || "")) fail(`${path} loads the visit counter`);
+  }
+  if (!counter.test(app.body || "")) fail("/app does not count visits");
+  if (!/script-src [^;]*https:\/\/overlook\.technology/.test(appCsp)
+      || !/connect-src [^;]*https:\/\/overlook\.technology/.test(appCsp)) {
+    fail("the policy does not let the visit counter load and report");
+  }
+  ok(`visits counted on ${counted.length} pages and the app, not on admin or a model's page`);
+
   const built = await get(`/b/${sha}/`);
   if (built.status !== 200 || built.headers.get("content-security-policy") !== appCsp) {
     fail(`/b/${sha}/ answered ${built.status}, or with another policy`);
