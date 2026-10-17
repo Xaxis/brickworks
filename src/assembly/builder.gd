@@ -1729,8 +1729,9 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
 		if _seated_on != 0 else room_for(held_part, _ghost_transform)
-	var framed: Variant = _in_frame_of(hit.brick_id, _ghost_transform) if hit.is_valid() \
-		else null
+	# Not on side studs: those are found where the struck part's own are.
+	var framed: Variant = _in_frame_of(hit.brick_id, _ghost_transform) \
+		if hit.is_valid() and onto == null else null
 	if framed != null and room_for(held_part, framed):
 		_ghost_transform = framed
 		_ghost_valid = true
