@@ -229,11 +229,16 @@ check("Got it puts the warning away", await press(page, "storage_got_it", 10)
   && await until(async () => !(await page.evaluate(() => (window.brickworksControls || {}).storage_download_all)), 10));
 
 // 4.
-await press(page, "account", 10);
-await page.waitForTimeout(1500);
+// Read until it says so, not after a fixed wait: the panel follows the
+// browser's answer as it comes (AccountPanel._process), and the page hears
+// it at the next telling. At load 50 on SwiftShader that took over the 1.5 s
+// this once waited, and the check read the panel's first line while the
+// screen already showed the right one (2026-10-16).
+const clearedSaid = (a) => a.includes("may be cleared by the browser") && a.includes("Your account keeps no copy");
+check("Account is open", await press(page, "account", 10));
+await until(async () => clearedSaid((await state(page)).storage?.account || ""), 20);
 const account = (await state(page)).storage?.account || "";
-check(`Account says the models may be cleared by the browser: "${account}"`,
-  account.includes("may be cleared by the browser") && account.includes("Your account keeps no copy"));
+check(`Account says the models may be cleared by the browser: "${account}"`, clearedSaid(account));
 await page.screenshot({ path: `${out}/2_account.png` }).catch(() => {});
 await press(page, "account_done", 10);
 await page.waitForTimeout(800);
@@ -287,8 +292,9 @@ check("the save asks the browser, once",
   await until(async () => (await other.evaluate(() => window.keepAsked)) === 1, 20));
 const yes = await kept(other);
 check(`...and its answer is kept: ${JSON.stringify(yes)}`, yes && yes.granted === true);
-await press(other, "account", 10);
-await other.waitForTimeout(1500);
+check("Account is open", await press(other, "account", 10));
+await until(async () => ((await state(other)).storage?.account || "")
+  .startsWith("Your models are kept on this device: this browser has agreed"), 20);
 const says = (await state(other)).storage?.account || "";
 check(`Account says the models are kept on this device: "${says}"`,
   says.startsWith("Your models are kept on this device: this browser has agreed"));
