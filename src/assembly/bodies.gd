@@ -47,6 +47,8 @@ const CLICK_STEP := 22.5
 ## Two joints are on one line when their ways agree to this and each point
 ## is this close to the other's line, LDU (Mechanism.LINE_SLACK).
 const SAME_LINE := 1.5
+## Two parts' boxes counted cell by cell for touching only below this many.
+const MOST_BOXES := 400
 ## A part a single stud across: its footprint no wider than this, LDU.
 const ONE_STUD := 22.0
 
@@ -273,6 +275,10 @@ func _read() -> void:
 	# Studs: two or more between two parts hold them; one alone turns when
 	# either is a single stud across.
 	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
+	# The baseplate's own studs are not asked: a 48 x 48 plate has 2,304,
+	# and the lattice's answer under a big model's turned parts took 36 s at
+	# 1,300 parts. What stands on it is found from the parts' feet instead
+	# ([method _on_the_floor]).
 	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
 		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
 		return there if there != 0 and there != int(key) else null)
@@ -290,10 +296,10 @@ func _read() -> void:
 		if partners.has(b):
 			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array))
 		if scenery.has(a) or scenery.has(b):
-			# On the baseplate's studs: a part that takes studs from below,
-			# not a tyre the plate's studs touch.
+			# On the baseplate's studs: a stud in one of its sockets, not a
+			# tyre the plate's studs touch.
 			var on: int = b if scenery.has(a) else a
-			if _in_a_socket(on, stud[2]):
+			if not scenery.has(on) and _in_a_socket(on, stud[2]):
 				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
@@ -321,8 +327,13 @@ func _read() -> void:
 			continue
 		for other: int in lattice.near_bounds(lid, a):
 			var pair := Vector2i(mini(a, other), maxi(a, other))
-			if per_pair.has(pair) or turning.has(pair) or not _up.has(other) \
-					or BrickLattice.shared_cells(lid, lattice.boxes_of(other)) <= 0:
+			if per_pair.has(pair) or turning.has(pair) or not _up.has(other):
+				continue
+			# Touching, cell by cell, but not for two turned parts of hundreds
+			# of boxes each: counted box by box that took 30 s at 1,300 parts.
+			var theirs: PackedInt32Array = lattice.boxes_of(other)
+			if lid.size() + theirs.size() < MOST_BOXES * 6 \
+					and BrickLattice.shared_cells(lid, theirs) <= 0:
 				continue
 			var under: Array = _studs_under(a, other)
 			if not under.is_empty():
@@ -691,6 +702,48 @@ func _sits_on(foot: Vector3, way: Vector3, ids: Array) -> int:
 	return best
 
 
+## The parts standing on the baseplate's studs: a part that takes studs
+## from below (it has sockets), its foot on the plate's top and over it. A
+## tyre resting on the plate has no socket and is not; a wheel turns on its
+## axle under the chassis that stands.
+func _on_the_floor(entries: Array, floor_entries: Array) -> void:
+	var plates: Array = []   ## [top, AABB]
+	for entry: Array in floor_entries:
+		var box: AABB = (entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds
+		plates.append([box.end.y - BrickLattice.PLATE * 0.5, box])
+	if plates.is_empty():
+		return
+	for entry: Array in entries:
+		var mesh: Lbm.PartMesh = entry[2]
+		if mesh.sockets.is_empty():
+			continue
+		var at: Transform3D = entry[1]
+		var box: AABB = at * mesh.bounds
+		for n: int in plates.size():
+			var plate: Array = plates[n]
+			var over: AABB = plate[1]
+			# The studs stand half a plate proud of the plate: a part on them
+			# has its foot at their foot, and a socket of it on one of them.
+			if absf(box.position.y - float(plate[0])) > 2.5 \
+					or box.position.x >= over.end.x or box.end.x <= over.position.x \
+					or box.position.z >= over.end.z or box.end.z <= over.position.z:
+				continue
+			var local: Transform3D = (floor_entries[n][1] as Transform3D).affine_inverse()
+			var on_a_stud: bool = false
+			for socket: Vector2 in mesh.sockets:
+				var p: Vector3 = local * (at * Vector3(socket.x, mesh.bounds.position.y, socket.y))
+				# A baseplate's studs are half a stud off its middle, 20 apart:
+				# the floor's plates are a whole number of eights across.
+				var dx: float = fposmod(p.x - 10.0, 20.0)
+				var dz: float = fposmod(p.z - 10.0, 20.0)
+				if (dx <= 1.5 or dx >= 18.5) and (dz <= 1.5 or dz >= 18.5):
+					on_a_stud = true
+					break
+			if on_a_stud:
+				_standing[int(entry[0])] = true
+				break
+
+
 ## Whether a stud at [param foot] is in one of [param key]'s sockets: a part
 ## that takes studs from below, not a tyre the baseplate's studs touch.
 func _in_a_socket(key: int, foot: Vector3) -> bool:
@@ -717,6 +770,8 @@ func _studs_under(low: int, high: int) -> Array:
 		return []
 	var box: AABB = (over.transform * top.bounds).grow(1.0)
 	var out: Array = []
+	# Its foot on the studs' foot: an arm hanging down past a minifigure's
+	# hips holds their studs inside its box, and is not on them.
 	for connector: Lbm.Connector in mesh.connectors:
 		if connector.kind != "stud" or connector.gender != "male":
 			continue
@@ -725,7 +780,7 @@ func _studs_under(low: int, high: int) -> Array:
 			continue
 		var foot: Vector3 = under.transform * connector.position
 		var tip: Vector3 = foot + way * Joints.STUD_REACH
-		if box.has_point(tip) and tip.y - box.position.y < BrickLattice.PLATE + 1.0:
+		if box.has_point(tip) and absf(box.position.y + 1.0 - foot.y) <= 1.5:
 			out.append([foot, way])
 	return out
 

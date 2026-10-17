@@ -602,13 +602,20 @@ func _handle(body: int, link: Bodies.Link) -> Variant:
 		var off: Vector3 = centre - link.point
 		if link.axis != Vector3.ZERO:
 			off -= link.axis * off.dot(link.axis)
-		if off.length() <= furthest or camera.is_position_behind(centre):
+		if off.length() <= furthest:
 			continue
-		var screen: Vector2 = camera.unproject_position(centre)
-		var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
-			camera.ray_normal(screen))
-		if not hit.is_valid() or hit.brick_id != key:
-			continue
-		furthest = off.length()
-		best = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+		# Its middle, then towards its corners: a turret under an arm shows
+		# only its edge.
+		for corner: int in 9:
+			var spot: Vector3 = brick.transform * (info.bounds.get_center() if corner == 8
+				else info.bounds.get_center().lerp(info.bounds.get_endpoint(corner), 0.7))
+			if camera.is_position_behind(spot):
+				continue
+			var screen: Vector2 = camera.unproject_position(spot)
+			var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
+				camera.ray_normal(screen))
+			if hit.is_valid() and hit.brick_id == key:
+				furthest = off.length()
+				best = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+				break
 	return best

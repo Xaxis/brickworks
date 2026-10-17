@@ -691,7 +691,8 @@ func _frame_on(ids: PackedInt64Array) -> void:
 	var first: bool = true
 	for brick: BrickWorld.Brick in _world.bricks():
 		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
-		if info == null:
+		# The model, not the baseplate laid under it.
+		if info == null or _store.scenery.has(brick.id):
 			continue
 		var here: AABB = brick.transform * info.bounds
 		box = here if first else box.merge(here)

@@ -187,7 +187,9 @@ try {
   await shot("3_arm_after.png");
   const moved = (await until(grab, (g) => (g.handles || []).length >= 2, 10)).handles
     .find((h) => h.id === arm.id);
-  check(Boolean(moved) && Math.hypot(moved.x - arm.x, moved.y - arm.y) > 20,
+  // A 30 degree turn on the hinge moves the arm's middle a dozen or so
+  // pixels at this distance: well past the 2 the undo is held to below.
+  check(Boolean(moved) && Math.hypot(moved.x - arm.x, moved.y - arm.y) > 8,
     `the arm stands somewhere else now (${moved && moved.x},${moved && moved.y} from ${arm.x},${arm.y})`);
 
   // Undo: back where it was.

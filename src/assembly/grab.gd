@@ -169,6 +169,28 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 			continue
 		for other: int in builder.lattice.blockers_boxes(boxes, 0, skip):
 			skip[other] = true
+	# A ball's socket sits flush against what the ball stands out of: within
+	# a stud of the ball, a part touching the moving side by a cell is not
+	# in its way, as the cells cannot tell a flush face from a collision
+	# (30472's wing socket against its fuselage's 2x2 brick met it at once).
+	if link.axis == Vector3.ZERO:
+		var near_ball := AABB(link.point - Vector3.ONE * BrickLattice.STUD,
+			Vector3.ONE * BrickLattice.STUD * 2.0)
+		for key: int in moving:
+			var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
+			if boxes.is_empty():
+				continue
+			# Its bounds a cell wider all round: flush is not overlapping.
+			var wide: PackedInt32Array = BrickLattice._bound_of(boxes)
+			wide = PackedInt32Array([wide[0] - 1, wide[1] - 1, wide[2] - 1, wide[3] + 1,
+				wide[4] + 1, wide[5] + 1])
+			for other: int in builder.lattice.near_bounds(wide, key):
+				if skip.has(other):
+					continue
+				var them: BrickWorld.Brick = world.get_brick(other)
+				var mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
+				if mesh != null and (them.transform * mesh.bounds).intersects(near_ball):
+					skip[other] = true
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -187,8 +209,12 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 	pivot = link.point
 	axis = link.axis.normalized()
 	mode = "ball" if axis == Vector3.ZERO else "turn"
-	# An axle or a pin on the joint's own line sweeps only the holes it is in.
+	# An axle or a pin on the joint's own line sweeps only the holes it is in,
+	# and a part whose whole sweep round the line meets nothing but what it
+	# may press on can never meet anything: neither is tested again.
 	_on_the_line.clear()
+	if mode == "turn":
+		_never_meet()
 	if mode == "turn":
 		for key: int in moving:
 			var brick: BrickWorld.Brick = world.get_brick(key)
@@ -410,6 +436,37 @@ func has_room(at: Dictionary) -> bool:
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
 	return free
+
+
+## Every moving part whose sweep all the way round the joint's line, a
+## cylinder about it as far out as the part reaches, has nothing in it but
+## what the moving side may press on: put with [member _on_the_line].
+func _never_meet() -> void:
+	for key: int in moving:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var reach: float = 0.0
+		var lo: float = INF
+		var hi: float = -INF
+		for corner: int in 8:
+			var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - pivot
+			var along: float = off.dot(axis)
+			reach = maxf(reach, (off - axis * along).length())
+			lo = minf(lo, along)
+			hi = maxf(hi, along)
+		var sweep := AABB(pivot + axis * lo, Vector3.ZERO)
+		for end: float in [lo, hi]:
+			var middle: Vector3 = pivot + axis * end
+			for n: int in 3:
+				var way := Vector3.ZERO
+				way[n] = 1.0
+				var across: Vector3 = way - axis * way.dot(axis)
+				var spread: float = across.length() * reach
+				sweep = sweep.expand(middle + way * spread).expand(middle - way * spread)
+		if not _near_anything(sweep):
+			_on_the_line[key] = true
 
 
 ## Whether anything but what the moving side may press on has its bounds
