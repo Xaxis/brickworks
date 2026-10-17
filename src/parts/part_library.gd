@@ -773,7 +773,10 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 # middle of growing, so while any reader is out nothing it reads is written:
 # geometry that arrives waits in _arrived, and a part being made or the cache
 # being dropped waits for the readers to finish (_wait_for_readers) — a
-# moment, and only when the two meet.
+# moment, and only when the two meet. A reader whose answer can be done
+# without is told to stop first (reading_in's stop): the status bar's
+# weighing of a 4,139-part set held the next file's hose 11 s, waiting to be
+# added, for a weight about to be thrown away.
 
 
 ## Readers on other threads now. Changed only on the main thread.
@@ -783,6 +786,8 @@ var _readers: int = 0
 var _arrived: Dictionary = {}
 ## The WorkerThreadPool tasks reading, for _wait_for_readers.
 var _reading_tasks: Array[int] = []
+## task -> what ends it early, for the readers that can be.
+var _stops: Dictionary = {}
 
 
 ## Called before a reader's task is started, so nothing is written between
@@ -791,13 +796,18 @@ func begin_reading() -> void:
 	_readers += 1
 
 
-func reading_in(task: int) -> void:
+## [param stop], when given, ends the task early, and is called on the main
+## thread when something it reads must be written.
+func reading_in(task: int, stop: Callable = Callable()) -> void:
 	_reading_tasks.append(task)
+	if stop.is_valid():
+		_stops[task] = stop
 
 
 ## After the task has been waited for.
 func end_reading(task: int = -1) -> void:
 	_reading_tasks.erase(task)
+	_stops.erase(task)
 	_readers = maxi(0, _readers - 1)
 	if _readers > 0:
 		return
@@ -808,6 +818,8 @@ func end_reading(task: int = -1) -> void:
 ## Until every reader's task has finished, so what they read can be written.
 ## Main thread only.
 func _wait_for_readers() -> void:
+	for task: int in _stops:
+		(_stops[task] as Callable).call()
 	for task: int in _reading_tasks:
 		while not WorkerThreadPool.is_task_completed(task):
 			OS.delay_usec(500)
