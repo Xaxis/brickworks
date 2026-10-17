@@ -190,7 +190,10 @@ func _case(name: String, path: String, want: String) -> void:
 	var before: Dictionary = _snapshot()
 	var revision: int = _world.revision
 	var depth: int = _builder.history_depth()
-	var press: Dictionary = _press_point(moving, bodies)
+	# A part of the grabbed body itself: one further out has a joint of its own.
+	var press: Dictionary = _press_point(bodies.members[child], bodies)
+	if press.is_empty():
+		press = _press_point(moving, bodies)
 	if press.is_empty():
 		_check("%s: a part of what moves is under the pointer somewhere" % name, false)
 		return
@@ -265,7 +268,8 @@ func _case(name: String, path: String, want: String) -> void:
 		and not grab.link.holds)
 	_builder.undo()
 	await _frames(3)
-	_check("%s: one undo puts every part back exactly" % name, _snapshot() == before)
+	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
 
 
 var _last_screen := Vector2.ZERO
@@ -438,7 +442,7 @@ func _session() -> void:
 		_builder.history_depth() == 1 and moved.contains("Moved") and moved.contains("Now:"))
 	_builder.undo()
 	await _frames(2)
-	_check("...and undo puts it back exactly", _snapshot() == before)
+	_check("...and undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
 
 
 # -- a big model: frame timings ---------------------------------------------------------
@@ -612,6 +616,21 @@ static func _same_set(a: Dictionary, b: PackedInt64Array) -> bool:
 		if not a.has(key):
 			return false
 	return true
+
+
+## Which part stands other than in [param before], and by how much.
+func _differs(before: Dictionary) -> String:
+	var now: Dictionary = _snapshot()
+	if now.size() != before.size():
+		return "%d parts, was %d" % [now.size(), before.size()]
+	for key: Variant in before:
+		var a: Transform3D = before[key]
+		var b: Transform3D = now.get(key, Transform3D())
+		if a != b:
+			return "#%d %s off by %.6f LDU, %.6f in its turn" % [int(key),
+				_world.get_brick(int(key)).part_id, a.origin.distance_to(b.origin),
+				(a.basis.x - b.basis.x).length() + (a.basis.y - b.basis.y).length()]
+	return "none differs"
 
 
 func _snapshot() -> Dictionary:

@@ -144,6 +144,16 @@ func begin(brick_id: int, at: Vector3, selection: Dictionary = {}) -> String:
 			for pair: Array in joined.pairs:
 				for key: int in pair:
 					skip[key] = true
+	# What it already overlaps where it stands is not in its way: covers are
+	# 2 LDU cells, and a minifigure's hand sits closer to its leg than that.
+	for key: int in moving:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		for other: int in builder.lattice.blockers_boxes(builder.boxes_for(mesh, brick.transform),
+				0, skip):
+			skip[other] = true
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -314,8 +324,8 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 			* Transform3D(Basis.IDENTITY, -pivot)
 	var out: Dictionary = {}
 	for key: int in moving:
-		var to: Transform3D = move * (rest[key] as Transform3D)
-		out[key] = Transform3D(to.basis.orthonormalized(), to.origin)
+		# Not squared up: a file's own six-decimal turns would read as moved.
+		out[key] = move * (rest[key] as Transform3D)
 	if mechanism != null and not coupled.is_empty():
 		var all: Dictionary = mechanism.pose(deg_to_rad(degrees) * _drive_sign)
 		for key: int in coupled:
