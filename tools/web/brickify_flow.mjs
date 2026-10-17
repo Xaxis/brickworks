@@ -113,12 +113,22 @@ ok(panel, `the Brickify panel comes up for ${model.split("/").pop()}`);
 await page.waitForTimeout(6000);
 await shot("1_panel.png");
 
+// Typed as a person types it: the box's text cleared first. Control+A did
+// not always select it in a browser, the digits went after the old ones,
+// and "2430" was taken as the largest size, 64: the fox was laid at 64
+// studs, not 24, and its checks passed on what that said (2026-10-17).
 const box = await where("brickify_studs");
-await page.mouse.click(box.x, box.y);
-await page.keyboard.press("Control+A");
-await page.keyboard.type(studs, { delay: 60 });
-await page.keyboard.press("Enter");
-await page.waitForTimeout(2000);
+const typed = Number(studs);
+for (let attempt = 0; attempt < 3 && (await state())?.brickify_studs !== typed; attempt++) {
+  await page.mouse.click(box.x, box.y);
+  await page.keyboard.press("End");
+  for (let n = 0; n < 6; n++) await page.keyboard.press("Backspace");
+  await page.keyboard.type(studs, { delay: 60 });
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(2000);
+}
+ok((await state())?.brickify_studs === typed,
+  `the size typed in is the size: ${(await state())?.brickify_studs} studs, asked ${typed}`);
 await shot("2_sized.png");
 
 const before = (await state())?.bricks || 0;

@@ -470,6 +470,11 @@ func set_studs(studs: int) -> void:
 	_set_studs(studs)
 
 
+## The size it will be laid at, in studs across its longest side.
+func studs() -> int:
+	return int(_studs.value)
+
+
 func _set_studs(studs: int) -> void:
 	if _syncing:
 		return
