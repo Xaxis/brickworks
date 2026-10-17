@@ -1847,10 +1847,25 @@ where turning the view with a right-drag drew them 33 ms apart in the same
 run, so the 2.98 s swing took 10.7 s on the clock in 14 frames. A frame
 steps the swing at most a quarter of a second
 (`GrabDrag.SWING_MOST_FRAME_S`); at the first cap, a twentieth, the same
-swing was drawn fifteen times slower than it is. What the page spends on a
-swing's frame beyond the app's 5.4 ms was not traced; it is not the
-drawing alone, which turning the view does in 33 ms. A Chromium trace of a
-swing, as §13 took of a drag, is where to look.
+swing was drawn fifteen times slower than it is.
+
+Traced in Chromium (`grab_flow --trace=FILE`, with `--trace-drag=` and
+`--trace-view=` for the arm's drag and the view turning): each long frame of
+the swing is the page waiting on the GPU process in
+`CheckFramebufferStatus` or `GetBooleanv` (1.5 s of a 1.6 s frame), and the
+GPU process's WebGL flushes add up to 13 to 16 s over the swing's 16 to 18
+frames, about a second of SwiftShader's work a frame. The arm's drag costs
+770 ms of flushes over its 24 drawn frames (32 ms a frame), the view turning
+2.2 s over 17 (130 ms). Tried and ruled out, each in a build of its own,
+none bringing a frame under 0.6 s: the swing worked out ahead at the
+release and drawn back with no room test in a drawn frame (the app's frame
+0.05 to 0.23 ms); its moving part drawn apart from its batch, a one-instance
+MultiMesh moved by its node's transform, so no batch's buffer is written a
+frame (`_fresh_slots` is not it) and no `rebuilt` listener runs; and that
+part casting no shadow. What a frame in which a part has moved costs
+SwiftShader that one in which the view has turned does not is not found.
+The flow now fails while a swing draws under 15 frames a second (or the
+view turning's rate, if lower); it does, at about one.
 
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)
@@ -1874,5 +1889,7 @@ while the model falls. A big section's swing (over 40 parts its room tests
 cost more than a frame; it settles as before). Loops, balls and click hinges
 swinging. Friction in a free pin measured on the bench (§ What "accurate"
 can honestly mean), and how much a section bounces. Why a swing's frames in
-a browser drawing in software come 0.58 s apart when turning the view's
-come 33 ms apart (above).
+a browser drawing in software cost SwiftShader about a second each when
+turning the view's cost 33 to 130 ms (above): the next step is a trace with
+the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
+SwiftShader's, to see which draw it is.

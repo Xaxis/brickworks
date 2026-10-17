@@ -191,6 +191,15 @@ async function drag(from, by, steps, picture) {
 }
 
 const timings = {};
+// A Chromium performance trace of one stretch of the flow, to FILE.
+const TRACED = ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "gpu",
+  "disabled-by-default-devtools.timeline.frame", "v8.execute", "blink", "cc", "viz"];
+async function traceStart(file) {
+  if (file) await browser.startTracing(page, { path: String(file), screenshots: false, categories: TRACED });
+}
+async function traceStop(file) {
+  if (file) await browser.stopTracing();
+}
 // The page's frames, timed by requestAnimationFrame for [seconds]: the
 // longest gaps, and how many passed 50 and 100 ms.
 async function frameGaps(seconds) {
@@ -307,7 +316,9 @@ try {
 
   // The arm, up on its hinge.
   await startGaps();
+  await traceStart(args["trace-drag"]);
   const up = await drag(arm, { x: 0, y: -160 }, 24, "2_arm_mid_drag.png");
+  await traceStop(args["trace-drag"]);
   const dragGaps = await readGaps();
   console.log(`      the page's frames during the arm's drag: ${dragGaps.frames}, gaps median ${dragGaps.median}, `
     + `mean ${dragGaps.mean}, worst ${dragGaps.worst} ms`);
@@ -406,6 +417,8 @@ try {
     await page.waitForTimeout(400);
     const held = await grab();
     if (!pictures) await startGaps();
+    // --trace=FILE: a Chromium performance trace of the swing, release to rest.
+    if (!pictures) await traceStart(args.trace);
     await page.mouse.up();
     let seen = false;
     let shots = 0;
@@ -418,6 +431,7 @@ try {
       await page.waitForTimeout(150);
     }
     const rested = await until(grab, (g) => !g.swinging && /came to rest/.test(g.said || ""), 60);
+    if (!pictures) await traceStop(args.trace);
     const stall = await page.evaluate(() => Math.round(window.__beat.worst));
     const gaps = pictures ? null : await readGaps();
     return { held, seen, rested, stall, gaps };
@@ -440,6 +454,10 @@ try {
     // loaded box), the swing is drawn slower than it is.
     console.log(`      the swing: ${rested && rested.swing_s} s simulated, drawn over ${rested && rested.swing_clock_s} s `
       + `on the clock in ${rested && rested.swing_frames} frames`);
+    // The bar: a swing drawn at 15 frames a second at least, or as fast as
+    // the page draws the view turning, whichever is slower.
+    const perSecond = rested ? rested.swing_frames / Math.max(rested.swing_clock_s, 0.001) : 0;
+    timings.swing_fps = perSecond;
     timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
       worst_ms: rested && rested.swing_worst_ms, stall_ms: stall, simulated_s: rested && rested.swing_s,
       clock_s: rested && rested.swing_clock_s, page_frames: gaps };
@@ -453,6 +471,7 @@ try {
     // frame for three seconds.
     await page.mouse.move(700, 450);
     await startGaps();
+    await traceStart(args["trace-view"]);
     await page.mouse.down({ button: "right" });
     const began = Date.now();
     for (let n = 0; Date.now() - began < 3000; n++) {
@@ -460,10 +479,15 @@ try {
       await page.waitForTimeout(16);
     }
     await page.mouse.up({ button: "right" });
+    await traceStop(args["trace-view"]);
     const turning = await readGaps();
     console.log(`      for reference, the page's frames while the view turns: ${turning.frames}, gaps median `
       + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms`);
     timings.view_turning_frames = turning;
+    const viewPerSecond = 1000 / Math.max(turning.median, 1);
+    const bar = Math.min(15, viewPerSecond);
+    check(timings.swing_fps >= bar, `the swing was drawn at ${timings.swing_fps.toFixed(1)} frames a second, `
+      + `at least ${bar.toFixed(1)} (15, or the view turning's ${viewPerSecond.toFixed(1)})`);
     await page.waitForTimeout(1500);
   }
 } catch (trouble) {
