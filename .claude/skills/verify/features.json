@@ -839,6 +839,14 @@
       "tests": []
     },
     {
+      "id": "cli:share steps browser flow",
+      "kind": "cli",
+      "entry": "tools/web/share_steps_flow.mjs",
+      "reach": "node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR   (a local export; or --url=<preview> --publish with .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:share view probe",
       "kind": "cli",
       "entry": "src/dev/share_view_probe.gd",

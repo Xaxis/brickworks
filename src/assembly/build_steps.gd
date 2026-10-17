@@ -57,6 +57,16 @@ var _planes: Dictionary = {}
 ## lots by key.
 var _lot_of: Dictionary = {}
 var _lots: Dictionary = {}
+## The bricks in the order the pages add them, as the timeline lays them
+## out (StepsBar's order: each step's bricks in turn), and for each page
+## how many of that order are on the baseplate by then: a page is a count
+## of the order (BrickWorld.reveal_upto), not a set of the whole model.
+var order := PackedInt64Array()
+var _upto := PackedInt64Array()
+## page -> the bricks it adds (by _rank), and how many bricks are on the
+## baseplate by then, each once.
+var _added: Array[PackedInt64Array] = []
+var _standing := PackedInt64Array()
 
 
 ## The pages for the bricks in [param world], in the order of [param
@@ -78,16 +88,23 @@ func _read() -> void:
 		_lots["%s:%d" % [lot.part_id, lot.color_code]] = lot
 	_fresh.append({})
 	_built_box.append(AABB())
+	_upto.append(0)
+	_added.append(PackedInt64Array())
+	_standing.append(0)
 	var built := AABB()
 	var any: bool = false
 	for page: int in range(1, steps.size() + 1):
 		var step: Instructions.Step = steps[page - 1]
 		var fresh: Dictionary = {}
+		var added := PackedInt64Array()
+		order.append_array(step.brick_ids)
+		_upto.append(order.size())
 		for brick_id: int in step.brick_ids:
 			if _rank.has(brick_id):
 				continue
 			_rank[brick_id] = page
 			fresh[brick_id] = true
+			added.append(brick_id)
 			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 			if brick == null:
 				continue
@@ -104,6 +121,8 @@ func _read() -> void:
 					fresh[brick_id] = true
 		_fresh.append(fresh)
 		_built_box.append(built)
+		_added.append(added)
+		_standing.append(_standing[page - 1] + added.size())
 	_built_box[0] = built
 
 
@@ -138,6 +157,48 @@ func shown(page: int) -> Dictionary:
 		if page == 0 or int(_rank[brick_id]) <= page:
 			out[brick_id] = true
 	return out
+
+
+## How much of [member order] is on the baseplate at [param page]: the
+## whole of it on the cover.
+func count(page: int) -> int:
+	page = clamped(page)
+	return order.size() if page == 0 else int(_upto[page])
+
+
+## How many bricks are on the baseplate at [param page], the ground not
+## counted: what shown(page) holds, without gathering it.
+func standing(page: int) -> int:
+	page = clamped(page)
+	return _rank.size() if page == 0 else int(_standing[page])
+
+
+## The bricks whose fading changes going from page [param from] to page
+## [param to], each to whether it is faded there: id -> bool. Only the
+## two pages' own parts and those of the pages between them, so the next
+## page is the page before's parts faded and nothing else — not every
+## brick in the model asked, as faded() asks.
+func fading(from: int, to: int) -> Dictionary:
+	from = clamped(from)
+	to = clamped(to)
+	var out: Dictionary = {}
+	if from == to:
+		return out
+	var asked: Array = [_fresh[from], _fresh[to]]
+	for page: int in range(mini(from, to), maxi(from, to) + 1):
+		asked.append(_added[page])
+	for some: Variant in asked:
+		for brick_id: int in some:
+			var there: bool = _is_faded(brick_id, to)
+			if there != _is_faded(brick_id, from):
+				out[brick_id] = there
+	return out
+
+
+## Whether a brick is drawn faded on [param page]: built on a page before
+## it, and not one the page points at.
+func _is_faded(brick_id: int, page: int) -> bool:
+	return page > 0 and int(_rank.get(brick_id, page)) < page and not _fresh[page].has(brick_id)
 
 
 ## What [param page] adds: drawn in full colour and outlined.

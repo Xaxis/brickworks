@@ -22,11 +22,17 @@ extends Control
 signal next_wanted
 signal back_wanted
 signal close_wanted
+## A page tapped on the progress bar: the steps lie along it.
+signal page_wanted(page: int)
 
 ## Points.
 const BUTTON := 60.0
 const PICTURE := 64.0
 const SWIPE := 56.0
+## Points a finger may move and still tap, and how far from the progress
+## bar's middle a tap is on it.
+const TAP := 12.0
+const BAR_REACH := 16.0
 ## The parts and the buttons are no wider than this.
 const WIDEST := 600.0
 
@@ -70,7 +76,7 @@ func _build_top() -> void:
 	_top = PanelContainer.new()
 	_top.mouse_filter = Control.MOUSE_FILTER_STOP
 	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_top.gui_input.connect(_swiped)
+	_top.gui_input.connect(_swiped.bind(_top))
 	add_child(_top)
 	var column := VBoxContainer.new()
 	_top.add_child(column)
@@ -110,7 +116,7 @@ func _build_bottom() -> void:
 	_bottom.mouse_filter = Control.MOUSE_FILTER_STOP
 	_bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_bottom.gui_input.connect(_swiped)
+	_bottom.gui_input.connect(_swiped.bind(_bottom))
 	add_child(_bottom)
 	var column := VBoxContainer.new()
 	_bottom.add_child(column)
@@ -331,7 +337,7 @@ func covers(point: Vector2) -> bool:
 ## right Back. Across, and far enough, so a tap that wobbles is still a tap.
 ## A finger's own events only: the click emulated from it is the same
 ## finger again.
-func _swiped(event: InputEvent) -> void:
+func _swiped(event: InputEvent, panel: Control) -> void:
 	var down: bool = false
 	var up: bool = false
 	var at: Vector2
@@ -368,6 +374,9 @@ func _swiped(event: InputEvent) -> void:
 	var moved: Vector2 = at - _swipe_from
 	_swipe_from = Vector2(-1, -1)
 	_swipe_index = -1
+	if moved.length() < TAP * _pt and panel == _top:
+		_tapped_bar(panel.get_global_rect().position + at)
+		return
 	if absf(moved.x) < SWIPE * _pt or absf(moved.x) < absf(moved.y) * 1.5:
 		return
 	accept_event()
@@ -377,11 +386,23 @@ func _swiped(event: InputEvent) -> void:
 		back_wanted.emit()
 
 
+## A tap on the progress bar, or a fingertip from it: the step under it, the
+## bar being the steps from the first to the last, each its share. The bar
+## is drawn thin; the finger is not.
+func _tapped_bar(point: Vector2) -> void:
+	var bar: Rect2 = _progress.get_global_rect()
+	if last <= 0 or bar.size.x <= 0.0 or absf(point.y - bar.get_center().y) > BAR_REACH * _pt:
+		return
+	accept_event()
+	page_wanted.emit(clampi(ceili((point.x - bar.position.x) / bar.size.x * last), 1, last))
+
+
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"build_next": _next, "build_back": _back, "build_close": _close,
-		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom}
+		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
+		"build_progress": _progress}
 
 
 ## What the page says, for a check to read.

@@ -69,6 +69,14 @@ whole cycle.
 
 ### Changed
 
+- Building a shared model from a phone: a page of Build it changes only
+  that step's parts. On 4,000 parts with the phone's processor slowed
+  four times, Next and Back took 90 to 500 ms and the last step 1.4 s;
+  most turns now take 35 to 90 ms. Tap the progress bar to jump to a
+  step. A tap on Build it while the steps are still being worked out now
+  opens it when they are, where it did nothing, and a model in one piece
+  works its steps out without first sorting the whole parts library: the
+  first step of 1,000 parts comes up in 9 to 12 s instead of 45.
 - With several tabs or windows open, a new Claude chat that has not chosen
   one asks before its first change, listing them. It used to build in the
   tab used last, which could be the one another chat was building in.

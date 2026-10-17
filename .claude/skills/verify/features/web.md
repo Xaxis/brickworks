@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -755,11 +755,42 @@ plan with Claude as the client.
   `view_build` (the bar's, or on a window under 1,040 points a big yellow
   Build it over the model, above the timeline). `brickworksState.told_ms` and
   `told_most_ms` say what publishing all this to the page costs a frame,
-  twice a second. Not done: the author's own steps (`0 STEP`, item 1
+  twice a second. **A page turn** (2026-10-17) changes the step's parts,
+  not the model: a page is a count of the build order (`BuildSteps.order`,
+  `count`, shown by `BrickWorld.reveal_upto` with the timeline's own order
+  and key when the pages are its steps, so the world the timeline laid out
+  is laid out for the player and the cover costs nothing), and only the
+  bricks whose fading changes are faded or not (`BuildSteps.fading(from,
+  to)`: the two pages' own parts and those of the pages between), each
+  written into the buffer its batch was written with and the batch handed
+  that buffer again (`BrickWorld.set_faded_in_order`; `_write_in_order`
+  packs it and keeps it — a slot written in place is never drawn in a
+  browser). It asked every brick whether it was shown and faded and wrote
+  every batch holding one that changed again whole: on 4,000 parts on a
+  phone slowed four times, 90 to 500 ms a turn and 1.4 s to the last page;
+  the turn's own work is now 2 to 10 ms (`turn_last`). A tap on or within
+  16 points of the progress bar goes to the step under it (`page_wanted`,
+  control `build_progress`; the bar keeps its size, so every picture of a
+  step is as it was). Build it tapped while the steps are still being
+  worked out is taken up when they are (`_build_wanted`; it did nothing).
+  `brickworksShare.build` also has `turn_last`, `turn_frames` (the rest of
+  the turn's frame) and `told_laps` (what telling the page cost, piece by
+  piece), and the page hears which frame drew a page
+  (`window.brickworksBuildDrawn`). Not done: the author's own steps (`0 STEP`, item 1
   of docs/COMPETITIVE.md) are not kept yet, so these are always
   `Instructions.plan`'s; the parts are fetched for the whole model before
-  the first page, not page by page; and a page turn is not yet under 100 ms
-  on a phone (see the browser flow below).
+  the first page, not page by page; the first step waits for every step to
+  be worked out (9 to 12 s after the first frame for 1,000 parts slowed
+  four times here, against a 3 s aim; 75 to 135 s for 4,000, all of it
+  the main thread's own work, not frames waiting on the drawing); on
+  4,000 parts some turns' frames still spend 180 to 460 ms in the frame's
+  processing outside the turn (`turn_frames[1]`) and outside Main's own
+  `_process` (`turn_frames[4]`, about 12 ms with the page told within it):
+  always in a frame that also told the page everything, never located yet;
+  and at 1,000 parts the jump to step 30 is 120 to 230 ms on screen of
+  which 30 to 150 ms is the WebGL calls (7,200 of them, 224 draws) of
+  drawing step 30 itself, slowed with everything else (see the share steps
+  flow below).
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
@@ -1616,6 +1647,45 @@ the parts; a finger turning the model; the page in `localStorage`; and after a
 reload, step 3 again. Pictures
 `shots/build_web/<size>_1_viewer.png` to `_5_reloaded.png`. Against a
 deployment: `--url=<preview> --id=<a published link's id> --bypass=…`.
+
+**Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
+each page turn of Build it timed from the finger to the frame, and the first
+step from the link, on a phone slowed four times, at 300, 1,000 and 4,000
+parts (the lowest parts of Orthanc's own model, so the steps are worked out).
+About ten minutes a size here, most of it the steps being worked out:
+
+```sh
+tools/export.sh web
+node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR
+set -a; . ./.env; set +a
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_steps_flow.mjs --url=<preview> --publish --out=DIR
+```
+
+`--build` serves the export itself (`serve.py`, one link a size with
+`--share ID=FILE`); `--publish` publishes the three to a deployment from a
+throwaway account at a Resend test address (marked a test, so no gallery
+lists them), and unpublishes them and deletes the account at the end;
+`--ids=300:ID,...` names links already up. Chromium on SwiftShader, 390 x
+844 at 3x, touch, `Emulation.setCPUThrottlingRate` 4 from the engine's first
+frame (slowed from the start, the download and the engine starting took over
+ten minutes). Build it is tapped the moment it is offered and Start the
+moment the cover is up; then Next three times, Back, a tap on the progress
+bar at step 30, and End. Every engine frame is timed in the page (its
+callback, its time inside WebGL, its WebGL calls and draws); a turn is from
+the touchend the page heard to the end of the frame that drew the page (the
+app says which: `window.brickworksBuildDrawn` = [page, when]) and to the
+next frame's start, "on screen"; with `brickworksShare.build.turn_last` (the
+turn's own laps: world, outline, view, page, kept), `turn_frames` (the rest
+of that frame: to its processing, the processing, the drawing, and the page
+told all within it) and whether the page was told all in that frame. Proves
+it when it ends "a shared model's pages turn quickly on a slow phone, and its
+first step comes up quickly": each turn on screen under 100 ms at 300 and
+1,000 parts and under 200 ms at 4,000, the first step within 3 s of the first
+frame at 300 and 1,000. `--report-only` says it all and judges nothing (a
+build from before: no drawn mark, no tap on the bar, the turn read as the
+first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
+`_step30`, `_step<last>` (at full speed), and `times.json`. In
+`tools/release/preview_checks.sh` as `share_steps`, run alone.
 
 And the deploy, which is the only proof that counts for the web build:
 

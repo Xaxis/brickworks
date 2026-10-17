@@ -106,6 +106,16 @@ var _build_mode: BuildMode
 var _build_pages: BuildSteps
 var _build_outline: SelectionOutline
 var _build_page: int = 0
+## The page whose fading the world is drawing (0: none faded), and the key
+## of the order it shows the pages by (BrickWorld.reveal_upto): the
+## timeline's when the pages are its steps, so the world laid out for the
+## timeline is laid out for the player.
+var _build_faded: int = 0
+var _build_key: int = 0
+## Build it tapped while the steps were being worked out: the page it asked
+## for (-1, where this device left it), taken up when they are.
+const NO_BUILD_WANTED := -2
+var _build_wanted: int = NO_BUILD_WANTED
 ## What was in sight before the player took the window, put back after.
 var _build_left: Dictionary = {}
 ## How long turning to the last page took, and the longest, in microseconds:
@@ -114,6 +124,24 @@ var _build_turned_us: int = 0
 var _build_turned_most_us: int = 0
 ## ...and where the longest one's time went, ms by what it did.
 var _build_turned_most: Dictionary = {}
+var _build_turned_last: Dictionary = {}
+## The rest of the frame a page was turned in, in ms: from the turn to the
+## frame's processing, the processing (every node's, the page told all
+## included), the drawing on this side, and of the processing how long
+## telling the page took. What a turn's frame cost besides the turn.
+var _turn_frames: Array = []
+var _turn_marks := PackedInt64Array()
+var _told_this_frame_us: int = 0
+
+
+func _turn_mark() -> void:
+	_turn_marks.append(Time.get_ticks_usec())
+	if _turn_marks.size() == 4:
+		_turn_frames = [snappedf((_turn_marks[1] - _turn_marks[0]) / 1000.0, 0.1),
+			snappedf((_turn_marks[2] - _turn_marks[1]) / 1000.0, 0.1),
+			snappedf((_turn_marks[3] - _turn_marks[2]) / 1000.0, 0.1),
+			snappedf(_told_this_frame_us / 1000.0, 0.1),
+			snappedf(_main_process_us / 1000.0, 0.1), snappedf(_weighed_us / 1000.0, 0.1)]
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -442,6 +470,8 @@ func _tell_page() -> void:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
+	var lap: int = Time.get_ticks_usec()
+	var laps: Dictionary = {}
 	var where: Dictionary = _page_places(_page_controls(), to_window, per_css)
 	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
 		var faces: Dictionary = _gizmo.face_points()
@@ -449,6 +479,7 @@ func _tell_page() -> void:
 			var at: Vector2 = to_window * (faces[face] as Vector2) / per_css
 			where[face] = {"x": roundi(at.x), "y": roundi(at.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	lap = _lap(laps, "controls", lap)
 	# And, when a check asks for it, the model's part of the window and
 	# what covers it (model_cover): a grid of points over it walked
 	# through the interface is too much work to do twice a second.
@@ -470,6 +501,7 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksBricks = %d" % _world.brick_count(), true)
 	# And what a test cannot see in the canvas: how many bricks there are,
 	# what is in hand, which parts were made here.
+	lap = _lap(laps, "before_state", lap)
 	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
 		"bricks": _world.brick_count() - _store.scenery.size(),
 		# Parts of a model just opened still on their way over the network
@@ -599,6 +631,7 @@ func _tell_page() -> void:
 	# And a model shared by link: the owner's panel, what the viewer is
 	# showing, how far along its timeline, and whether this run can write
 	# anything at all (tools/web/share_flow.mjs).
+	lap = _lap(laps, "state", lap)
 	JavaScriptBridge.eval("window.brickworksShare = %s" % JSON.stringify({
 		"viewing": _viewing,
 		"copying": _copying,
@@ -611,6 +644,8 @@ func _tell_page() -> void:
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
+	_lap(laps, "share", lap)
+	_told_laps = laps
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
 	if _account != null:
@@ -1140,8 +1175,12 @@ func _ready() -> void:
 	# Which parts are a figure's, sorted a slice at a time once the window
 	# is up: the first question about a figure built it in one frame, the
 	# autosave's after Brickify among them.
+	# Not in the viewer, which puts no figure down: there it took the
+	# frames a shared model opens and works its steps out in, and the
+	# steps ask for it themselves when a sub-model needs it.
 	get_tree().create_timer(1.0).timeout.connect(func() -> void:
-		Minifig.index_paced(_library))
+		if _viewing.is_empty():
+			Minifig.index_paced(_library))
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
@@ -1833,6 +1872,7 @@ func _enter_view() -> void:
 	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1))
 	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
 	_build_mode.close_wanted.connect(_leave_build)
+	_build_mode.page_wanted.connect(_build_go)
 	_build_outline = SelectionOutline.new()
 	_build_outline.world = _world
 	_build_outline.library = _library
@@ -1966,7 +2006,11 @@ func _view_shared() -> void:
 	# the page it was on.
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
-	if bool(kept.get("building", false)):
+	if _build_wanted != NO_BUILD_WANTED:
+		var wanted: int = _build_wanted
+		_build_wanted = NO_BUILD_WANTED
+		_enter_build(wanted)
+	elif bool(kept.get("building", false)):
 		_enter_build(int(kept["page"]))
 
 
@@ -1985,6 +2029,12 @@ func _open_copy() -> void:
 func _enter_build(page: int = -1) -> void:
 	if _share_view == null or _share_view.state != "ready" or _build_mode.is_open():
 		return
+	if _steps.is_starting():
+		# Tapped while the steps are still being worked out (the bar says
+		# so): taken up the moment they are. It did nothing at all, and a
+		# person on a phone tapped Build it again or gave up.
+		_build_wanted = page
+		return
 	if _inventory.is_showing():
 		_inventory.hide_list()
 	var made: Array[Instructions.Step] = _steps.steps()
@@ -2002,6 +2052,12 @@ func _enter_build(page: int = -1) -> void:
 		_steps.visible = false
 	if _build_pages == null:
 		_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+		# The timeline's order, when the pages are its steps (they are,
+		# unless it is showing the order parts were put down in): the
+		# world is laid out in it already, and the cover costs nothing.
+		var timeline: Array = _steps.reveal_order()
+		_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
+			else -1000 - Time.get_ticks_msec()
 	_share_view.show_bar(false)
 	_share_view.hover("", Vector2.ZERO)
 	_hovered = 0
@@ -2032,10 +2088,22 @@ func _build_go(page: int) -> void:
 	var lap: int = started
 	page = _build_pages.clamped(page)
 	_build_page = page
-	# Faded first: it only marks the batches, and showing them writes each
-	# once, faded and shown together, rather than once each.
-	_world.set_faded(_build_pages.faded(page))
-	_world.show_only(_build_pages.shown(page))
+	# A page is a count of the order the pages add bricks in, as a step of
+	# the timeline is, and its fading the page before's parts faded and
+	# its own not: the step's parts changed, never the whole model. It was
+	# every brick asked whether it was shown and faded, and every batch
+	# holding one that changed written again whole — on 4,000 parts most
+	# of a slowed phone's page turn.
+	if _world.reveal_upto(_build_pages.order, _build_pages.count(page), _build_key) \
+			and _world.set_faded_in_order(_build_pages.fading(_build_faded, page)):
+		_build_faded = page
+	else:
+		# Under a cut or x-ray, which the world draws only from a set.
+		# Faded first: it only marks the batches, and showing them writes
+		# each once, faded and shown together, rather than once each.
+		_world.set_faded(_build_pages.faded(page))
+		_world.show_only(_build_pages.shown(page))
+		_build_faded = page
 	lap = _lap(took, "world", lap)
 	_build_outline.show_selection(_build_pages.fresh(page))
 	lap = _lap(took, "outline", lap)
@@ -2054,6 +2122,22 @@ func _build_go(page: int) -> void:
 	if _build_turned_us > _build_turned_most_us:
 		_build_turned_most_us = _build_turned_us
 		_build_turned_most = took
+	_build_turned_last = took
+	_turn_frames = []
+	_turn_marks = PackedInt64Array([Time.get_ticks_usec()])
+	_told_this_frame_us = 0
+	for done: Signal in [get_tree().process_frame, RenderingServer.frame_pre_draw,
+			RenderingServer.frame_post_draw]:
+		if not done.is_connected(_turn_mark):
+			done.connect(_turn_mark, CONNECT_ONE_SHOT)
+	# And the page told which frame drew it, for a check to time a turn from
+	# the tap to the frame (tools/web/share_steps_flow.mjs).
+	if OS.has_feature("web") and not RenderingServer.frame_post_draw.is_connected(_build_drawn):
+		RenderingServer.frame_post_draw.connect(_build_drawn, CONNECT_ONE_SHOT)
+
+
+func _build_drawn() -> void:
+	JavaScriptBridge.eval("window.brickworksBuildDrawn = [%d, performance.now()]" % _build_page, true)
 
 
 ## Milliseconds since [param since], under [param name]; now.
@@ -2070,7 +2154,9 @@ func _leave_build() -> void:
 	if _build_mode == null or not _build_mode.is_open():
 		return
 	_build_mode.close()
-	_world.set_faded({})
+	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0))):
+		_world.set_faded({})
+	_build_faded = 0
 	_build_outline.show_selection({})
 	_camera.seen = _model_rect
 	_share_view.show_bar(true)
@@ -2098,11 +2184,11 @@ func build_state() -> Dictionary:
 	said["turn_ms"] = roundi(_build_turned_us / 1000.0)
 	said["turn_most_ms"] = roundi(_build_turned_most_us / 1000.0)
 	said["turn_most"] = _build_turned_most
-	var shown: int = 0
-	for brick: BrickWorld.Brick in _world.bricks():
-		if not brick.hidden and not _store.scenery.has(brick.id):
-			shown += 1
-	said["shown"] = shown
+	said["turn_last"] = _build_turned_last
+	said["turn_frames"] = _turn_frames
+	said["told_laps"] = _told_laps
+	# Counted by the pages, not by asking every brick twice a second.
+	said["shown"] = _build_pages.standing(_build_page) if _build_pages != null else 0
 	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
 		and _build_pages.view(_build_page)["from"] == BookletStudio.BACK else "front")
 	return said
@@ -4677,6 +4763,18 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	var began: int = Time.get_ticks_usec()
+	_process_main(_delta)
+	_main_process_us = Time.get_ticks_usec() - began
+
+
+var _main_process_us: int = 0
+## What the last telling of the page took, piece by piece, in ms.
+var _told_laps: Dictionary = {}
+var _weighed_us: int = 0
+
+
+func _process_main(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
 	if not _viewing.is_empty():
@@ -4717,8 +4815,12 @@ func _process(_delta: float) -> void:
 	if _store != null:
 		_store.tick()
 		_watch_other_tabs()
+	var weighing: int = Time.get_ticks_usec()
 	_weigh()
+	_weighed_us = Time.get_ticks_usec() - weighing
+	var telling: int = Time.get_ticks_usec()
 	_tell_page()
+	_told_this_frame_us = Time.get_ticks_usec() - telling
 	if _counts == null:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is

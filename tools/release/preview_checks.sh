@@ -61,6 +61,9 @@ declare -A CMD=(
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=on.a.stand --out=$S/${TAG}_brickify_fox_web"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
+  # Build it from a shared link on a slowed phone: each page turn timed, and
+  # the first step's arrival; publishes from a throwaway account, deleted after.
+  [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --out=$S/${TAG}_share_steps"
 )
 ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download"
 NAMES="${*:-$ORDER}"
@@ -79,7 +82,7 @@ run() {
 # Timing checks run alone: beside a heavy flow, idle's ghost drew 4 or 6
 # frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
 # page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
-SOLO=" idle arrival progress cursor render_open grab "
+SOLO=" idle arrival progress cursor render_open grab share_steps "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED

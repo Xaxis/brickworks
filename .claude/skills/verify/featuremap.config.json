@@ -2168,6 +2168,13 @@
       "entry": "tools/storage_ldraw.py",
       "reach": "tools/storage_ldraw.py --check   (the library's parts/ in the parts bucket under ldraw/parts/, what is not up yet and its size; without --check uploads it, never over a file there)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "share steps browser flow",
+      "entry": "tools/web/share_steps_flow.mjs",
+      "reach": "node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR   (a local export; or --url=<preview> --publish with .env sourced)",
+      "area": "web"
     }
   ]
 }
