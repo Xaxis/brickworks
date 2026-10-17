@@ -303,7 +303,7 @@ session, where a part a file carries is kept on disk and found at start
 (the before side's first opens of it took 5.2 s and 0.23 s).
 
 **The round trip** (`cadtask.py roundtrip`, the 54 files of the fidelity
-sample, `bench/results/flexdraw-2026-10-16/roundtrip-final/`) is as the fidelity
+sample, `bench/results/flexdraw-2026-10-16/roundtrip-m39/`) is as the fidelity
 unit left it: 54 of 54 saved untouched are the same file, every meta line
 and the author kept, the app's model the same opened again, 44 of 44
 author's steps kept, nothing lost on open. And the 4,713 lines of skin in 5
