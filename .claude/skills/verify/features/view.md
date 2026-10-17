@@ -682,21 +682,43 @@ picture the assistant is shown.
   check would compare ratios, never these. The browser rows also carry the
   app's scripts apart from the engine (`scripts_max_ms`: the worst frame the
   page's `window.brickworksState.busy` and `.slow` list, frames whose own
-  work, process to drawing, was over 8 and 50 ms; Main._watch_own_frames).
+  work, process to drawing, was over 8 and 50 ms; Main._watch_own_frames;
+  each of them in `scripts_each`), and each drawn frame's own work less its
+  WebGL (`drawn_own_median_ms`, `drawn_own_p95_ms`, `drawn_own_each`): with a
+  part swept in hand a drawn frame is a move, so this is what a move costs
+  the app. The process-to-drawing window misses the pointer's own handling
+  (input is flushed before the frame's process) and catches WebGL work done
+  in it, so for a move the drawn frame less its WebGL is the measure.
+  `--arrive=SECONDS` waits, up to that long, for the parts a model fetches as
+  it opens (`brickworksState.awaited`) before the acts, so they are measured
+  on the whole model and not on one changing at every arrival.
 - `big models stay fast` (`src/dev/bigmodel_probe.gd`, in `tools/check.sh`):
   headless, so what is timed is the app's own work. Bare, it makes two models
-  of 1,000 and 5,000 parts (towers of four bricks in eight colours, fifty to a
-  sub-model, author's steps of ten), opens each as File, Open does, and makes
-  a right-drag orbit, Ctrl-A, D, Ctrl-Z, Ctrl-Shift-Z, Delete and Ctrl-Z, B and
+  of 1,000 and 5,000 parts (towers of four bricks in eight colours, one size
+  of the four a Technic brick with holes, fifty to a sub-model, author's steps
+  of ten), opens each as File, Open does, and makes a part in hand swept
+  across the model a step a frame (a 2 x 4 brick, a Technic pin, a copy of
+  eight parts by Copy and Paste, a figure, a sticker; 40 moves each), a
+  right-drag orbit, Ctrl-A, D, Ctrl-Z, Ctrl-Shift-Z, Delete and Ctrl-Z, B and
   Next, each by its key or click; the select, the move, its undo and redo and
   the Delete twice, the quicker kept. It holds ratios, never times: an orbit
-  frame and a step of the timeline (and ten steps alone) no more than 3x from
-  1,000 to 5,000 parts, select all, the move, undo, redo, Delete and its undo
-  no more than 9x (linear is 5, quadratic 25), the model asked what is
-  under the pointer at most 3 times in a 30-frame turn (the press), every
-  part's lattice cover its part's own after the moves, undo and redo, and
-  what the web build tells the page of the sub-assemblies kept while nothing
-  changes (`Main._page_assemblies`). Main at 63cab62 fails six: the move
+  frame, a move with each of the five in hand (its frame, and the aiming
+  alone, `Main._refresh_preview` at each place the pointer was, the median,
+  floored at 1 ms) and a step of the timeline (and ten steps alone) no more
+  than 3x from 1,000 to 5,000 parts, select all, the move, undo, redo, Delete
+  and its undo no more than 9x (linear is 5, quadratic 25), the model asked
+  what is under the pointer at most 3 times in a 30-frame turn (the press),
+  every part's lattice cover its part's own after the moves, undo and redo,
+  and what the web build tells the page of the sub-assemblies kept while
+  nothing changes (`Main._page_assemblies`). And that what the aiming asks,
+  the parts near the line kept by where they are (`BrickGrid`), finds what
+  asking every one did: the builder's connectors are `JointSnap.sites_in`'s
+  in its order, the end a pin is aimed at with and without the grid the
+  same at every move, every part a sticker's line meets in `Stickers._along`
+  in the world's order, and the part it goes on the one every part's faces
+  asked in order strike first (windowed only: headless there are no
+  triangles). Main at aad2371 fails two: aiming a pin 3.8x and a sticker
+  5.3x (every connector and every part asked at every move). Main at 63cab62 fails six: the move
   13.1x, its redo 11.8x and Delete's undo 14.2x (sub-model copies matched
   again at every edit), ten steps 11.8x, 29 asks a turn, and the page's
   answer worked out at every asking. Then, where the checkout has
@@ -725,10 +747,20 @@ picture the assistant is shown.
   world's, timeline's and store's signals timed one by one, every node's
   `_process` in the orbit, and the pieces of an edit and an undo
   (`assemblies.copies_follow`, the lattice's let go, collide and put in, the
-  world's flush) timed alone. Not `--out=`: Main reads that as "export the
-  model and quit" (cadtask_frames hit the same). Results for 2026-10-16 are
-  in `bench/results/bigmodels-2026-10-16/` of the main checkout and
-  `docs/CADTASK.md`.
+  world's flush) timed alone. With `-- --sweep [--profile] [--shots=DIR]
+  [PATH...]` it opens each model and only sweeps, judged as above when it
+  made the models: with `--profile` the aiming's pieces at each move
+  (lattice raycast, `_onto_a_joint`, `_onto_side_studs`, `_settle`,
+  `room_for`, `Stickers.face_at`), a 32 x 20 grid of places over the model
+  each aimed at alone with the worst five in pieces (one line across misses
+  where aiming is dear), and what a change to the model costs the kept
+  connectors; windowed, `--shots` keeps a picture of each sweep halfway.
+  Each sweep's ghosts (place to 0.01 LDU, turn, whether it could go down)
+  are written with `--bigmodel-out`, so two builds' sweeps are compared
+  move for move. Not `--out=`: Main reads that as "export the model and
+  quit" (cadtask_frames hit the same). Results for 2026-10-16 are in
+  `bench/results/bigmodels-2026-10-16/` and `bench/results/sweep-2026-10-16/`
+  of the main checkout and `docs/CADTASK.md`.
 - `the author's steps` (`src/assembly/author_steps.gd`, `AuthorSteps`): the
   steps a model's designer gave it in Studio, LDCad, LeoCAD or Bricksmith,
   kept and changed here. A file's `0 STEP` (and `0 ROTSTEP`) lines were read
