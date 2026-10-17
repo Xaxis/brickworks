@@ -27,6 +27,9 @@ if [ "$PREV" != "-" ]; then
     exit 1
   fi
 fi
+# Not begun while a hold is set ($S/HOLD, $S/TAG.hold): ship.sh would
+# stop at production anyway, after a preview and its checks for nothing.
+while [ -e "$S/HOLD" ] || [ -e "$S/$TAG.hold" ]; do sleep 30; done
 "$HERE/ship.sh" "$W" "$TAG" "$@" > "$S/${TAG}_ship.log" 2>&1
 code=$?
 echo "exit=$code" >> "$S/${TAG}_ship.log"

@@ -59,6 +59,13 @@ rm -f $S/${TAG}_pv.out
 "$HERE/preview_checks.sh" "$URL" "$W" ${TAG}_pv "$@" || { echo "SHIP: held, the checks did not run"; exit 1; }
 cut -c1-160 $S/${TAG}_pv.out
 passed $S/${TAG}_pv.out $# || { echo "SHIP: held, a check failed or did not run on the preview"; exit 1; }
+# A hold set by hand stops a release here, before main moves, even one
+# already under way: $S/HOLD for every release, $S/<tag>.hold for this one.
+# Stopping the waiter that queued it does not stop a ship already started:
+# m50 went out with a regression the session thought it had held (2026-10-17).
+for hold in "$S/HOLD" "$S/${TAG}.hold"; do
+  [ -e "$hold" ] && { echo "SHIP: held by $hold ($(cat "$hold" 2>/dev/null))"; exit 1; }
+done
 git -C $R merge --ff-only "$SHA" >/dev/null && env -u GITHUB_TOKEN git -C $R push -q origin main || { echo "SHIP: could not fast-forward or push main"; exit 1; }
 echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format='%an <%ae>' | sort | uniq -c | tr '\n' ' ')"
 timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod > $S/${TAG}_prod.log 2>&1

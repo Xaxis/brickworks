@@ -43,6 +43,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   ships only if it shipped, and writes its own. `-` for none before. A
   waiter written by hand found the release before by its command line, its
   own grep hid it, and m43's ship went at once (2026-10-17).
+- To hold releases, write a reason to `$RELEASE_OUT/HOLD` (all) or
+  `$RELEASE_OUT/<tag>.hold` (one): a queued release waits, and one already
+  shipping stops before main moves. Remove the file to let them go. Killing
+  a queued waiter does not stop a ship it already started.
 - `SHIP_REUSE=1 ship.sh <worktree> <tag> <check…>` reuses the preview that
   tag made, only if it was made from the same commit (`<tag>_preview.sha`),
   and runs the named checks on it again; each must still pass. A timing
