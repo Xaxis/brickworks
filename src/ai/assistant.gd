@@ -19061,6 +19061,13 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
+		var built: String = _built_from_outside(design, report)
+		var turned: String = await surface_pass().skin_faces()
+		if turned.is_empty():
+			return built
+		var head: PackedStringArray = built.split("\n\n", true, 1)
+		head.insert(1, turned)
+		return "\n\n".join(head)
 	return _built_from_outside(design, report)
 
 

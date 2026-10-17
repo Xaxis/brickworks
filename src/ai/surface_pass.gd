@@ -372,6 +372,65 @@ func hand() -> Variant:
 	return [{"type": "text", "text": text}, picture]
 
 
+## How long laying a body's faces on their side may take, inside the answer to
+## the submission that laid the body.
+const FACES_MS := 45000
+
+
+## The body's plain faces built on their side, laid with the body: every flank
+## the pass skins — a course of plain bricks, a side of plates — on every face,
+## buildings too, all at once and kept, numbered with the pass's findings so
+## settle_surface can put one back. A line for the answer; "" where none.
+##
+## Why with the body and not as a proposal. The sets the bench judges against
+## build a quarter to a third of their parts on their side, and ours 4-8%
+## (docs/DESIGN_SCORES.md, "Against real sets"); the judge's word for ours is
+## "stacked bricks and plates", subject after subject. A session settles how it
+## builds at its first submission, and the pass came after, capped at six
+## flanks a review, never for a building: Tokyo's design kept five skins in
+## 418 parts. Advice did not move it either: told to ask for a joint, six of
+## ten resubmitted unchanged. So the face is built on its side by the call that
+## lays it.
+func skin_faces() -> String:
+	if _is_mosaic():
+		return ""
+	_read = OpenPoints.read(assistant)
+	_taken_off = {}
+	left_alone = PackedStringArray()
+	_shortest = 2
+	var found: Array[Finding] = _flanks({})
+	found.append_array(_plate_flanks({}, found.duplicate()))
+	_shortest = SHORTEST_SKIN
+	if found.is_empty():
+		return ""
+	assistant.progress.emit("building the body's plain faces on their side")
+	var laid: Array[Finding] = await _lay_all(found, Time.get_ticks_msec() + FACES_MS)
+	if laid.is_empty():
+		return ""
+	var sideways: int = 0
+	var first: int = _numbered + 1
+	for one: Finding in laid:
+		_numbered += 1
+		one.key = "S%d" % _numbered
+		one.verdict = "accepted"
+		one.reason = "built on its side with the body"
+		findings.append(one)
+		for placed: Variant in one.add:
+			if str((placed as Dictionary).get("face", "up")) != "up":
+				sideways += 1
+	assistant.progress.emit("built %d plain face%s on %s side" % [laid.size(),
+		"" if laid.size() == 1 else "s", "its" if laid.size() == 1 else "their"])
+	var keys: String = "S%d" % first if laid.size() == 1 else "S%d-S%d" % [first, _numbered]
+	return ("Its plain faces are built on their side, as a set builds a face: %d " % laid.size()
+		+ "stretch%s of plain courses (%s) laid again as bricks with studs on " % [
+			"" if laid.size() == 1 else "es", keys]
+		+ "their side, and on them tiles a plate proud — %d parts turned sideways. " % sideways
+		+ "Detail on top of them. To cut a window or a door into one, settle_surface "
+		+ "{\"finding\": \"%s\", \"verdict\": \"reject\", \"reason\": ...} puts its " % (
+			"S%d" % first)
+		+ "plain bricks back first.")
+
+
 func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 	var lines := PackedStringArray()
 	lines.append("The surface pass: the app read the model's open studs, its tops, the "
@@ -2221,6 +2280,10 @@ const SKIN_END := "5520"
 ## The shortest run of a course a skin is laid on, in studs: a rounded end at
 ## each end.
 const SHORTEST_SKIN := 4
+## The shortest run a skin is laid on now: SHORTEST_SKIN in a review, and two
+## studs when the body is laid (skin_faces), a narrow tower's or a speaker's
+## face as much as a hull's, with a plain tile and no rounded ends.
+var _shortest: int = SHORTEST_SKIN
 
 
 ## The flanks of a body that is not a building: a wall of plain bricks,
@@ -2424,12 +2487,12 @@ func _flank_runs(row: Array, taken: Dictionary, skinned: Array, course: float) -
 		var joined: bool = not run.is_empty() and absf(float(run[-1]["along"])
 			+ int(run[-1]["long"]) - float(entry["along"])) < 0.05
 		if not ok or not joined:
-			if _run_long(run) >= SHORTEST_SKIN:
+			if _run_long(run) >= _shortest:
 				out.append(run)
 			run = []
 		if ok:
 			run.append(entry)
-	if _run_long(run) >= SHORTEST_SKIN:
+	if _run_long(run) >= _shortest:
 		out.append(run)
 	return out
 
