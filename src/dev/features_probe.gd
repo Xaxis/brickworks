@@ -148,6 +148,12 @@ func _run() -> void:
 	assistant._busy = false
 	world.clear()
 	builder.lattice.clear()
+	# This is about features, not joints. An owl with nothing on a joint is
+	# sent back once (Assistant._unjointed_refusal), and a cleared model
+	# arms that again, so the build below answered with the send-back and
+	# every check after it failed (since b217576). Spent here, as a session
+	# that submitted it twice would have.
+	assistant._joints_refused = true
 	var built: Variant = await assistant.use_tool("submit_design", _owl([
 		{"name": "eyes", "x": 5, "y": 13, "z": 7, "facing": "+z"},
 		{"name": "beak", "x": 8, "y": 1, "z": 13, "facing": "+z"}]))
