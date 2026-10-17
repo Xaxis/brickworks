@@ -19,8 +19,8 @@ class_name Racks
 extends RefCounted
 
 ## A pinion's centre within this of its rack's pitch line plus its pitch
-## radius meshes, LDU: 3743's eights stand 12 to 16 above it.
-const PITCH_SLACK := 2.5
+## radius meshes, LDU: 3743's eights stand 12 to 16 above it, 8849-1's at 11.
+const PITCH_SLACK := 3.0
 ## Its teeth's plane within the rack's teeth across it, give or take this.
 const ACROSS_SLACK := 1.0
 ## Its centre within this past the first or last tooth's middle, LDU.

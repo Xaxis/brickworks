@@ -1391,9 +1391,10 @@ we found does.
 Where a pinion stands against a rack was measured on the OMR's sets, in the
 rack's own frame (the gear table's `racks`): a 3743's 8 tooth pinions stand
 14 LDU above its origin in 50 pairs and 12 or 16 in 26 more, a 16 at 26, so
-its pitch line is 4 LDU up and a mesh is read within 2.5 LDU of it; the 1 x 8
-and 1 x 10 with holes have theirs at 2, the 1 x 14 at 0, the 1 x 7 and 1 x 13
-steering racks at 5 (55 pairs of a 12 at 20). 2790a's teeth are drawn without
+its pitch line is 4 LDU up and a mesh is read within 3 LDU of it (8849-1
+stands its at 11); the 1 x 8 and 1 x 10 with holes have theirs at 2, the
+1 x 14 at 0, the 1 x 7 and 1 x 13 steering racks at 5 (55 pairs of a 12 at
+20). 2790a's teeth are drawn without
 the tooth primitive and were not counted; 18942's pinion was not met in a set.
 
 `Racks.find` reads each pinion in a rack, and `Linkage` takes each as one
@@ -1449,23 +1450,43 @@ stood where that puts it to 0.015 LDU. A lift held only by its foot's slide
 is not a real one: on an axle in round holes, a part slides as far as the
 axle reaches, and nothing here stops it sooner but the parts it meets.
 
-**The loop's drag frame.** Builder's worker cache held its lock while it
-worked a cover out, so covers asked of workers side by side took turns; it
-now holds it only to look up and to keep (`Builder.boxes_for`). A grab works
-out the turned covers a frame's test will want side by side on the engine's
-workers before testing (`Grab._covers_ahead`), and keeps them as
-`boxes_for` keeps its own. That helps where a frame wants several covers. The
-four-bar's worst frames want one, a wheel's, 18 ms on a loaded box: the
-drag's own worst frame was still 28.7 ms and the whole frame 50 ms in the
-run below, not reliably under 33. Precomputing the covers at the press for
-the turns the drag will ask needs the solved poses to match exactly where
-the cache looks them up, which the solver from the last pose does not
-promise.
+**The loop's drag frame.** The steering's worst drag frames worked out one
+part's turned cover, 11 to 18 ms, and it was most often the first frame
+finding what a part already overlapped where it stood (a wheel's box into
+its neighbour's), which is forgiven for good once found. A loop's grab of
+no more than 80 parts now finds those at the press (`Grab._chosen`), as the
+first frame would. Builder's worker cache held its lock while it worked a
+cover out, so covers asked of workers side by side took turns; it now holds
+it only to look up and to keep (`Builder.boxes_for`), and a grab works out
+the turned covers a frame's test will want side by side on the engine's
+workers before testing (`Grab._covers_ahead`), kept as `boxes_for` keeps its
+own. Not in a browser: its workers start when first asked, and the first
+drag there waited 1.3 s for them.
 
-**Left for later.** A steering wheel that drives its pinion through gears
-(5533's, 9393's and every 42xxx's bevels): Mechanism's gear train and
+Over four runs of 8020's four-bar on a loaded box (`grab_probe --
+--only=fourbar`), the drag's own worst frame was 13.7 to 15.5 ms (26 to
+41 ms before), one steering arm's cover where it rests on the brick under it
+(12 to 14 ms); whole frames, with drawing and the balance weighed every
+50 ms, 29.7 to 37.9 ms. 8808's steering's own worst frame went from 25 to
+31 ms to 2.2 ms. In a browser, the flat four-bar's frames cost 1.4 ms on
+average and 5.6 ms at worst, and the page's longest wait during the drag
+was 69 ms.
+
+**Tried and left.** A steering wheel that turns its pinion through gears:
+offered the grabbed train's meshes as linear equations of the loop, 8062-1's
+column took its loop through its pair of 14 tooth bevels, but its drag
+stopped at 6.8° and the pinion turned 4.6° off the bevels' one to one, so it
+was taken out rather than shipped unproven. 42035-1's 1 x 7 steering rack
+is read as one body with the connector its pinion's axle turns in, so the
+pinion cannot push it; 8849-1's whole steering is read as hanging from the
+pinion's axle. Both are `Bodies` readings of a sliding fit the connectors do
+not name.
+
+**Left for later.** Gears between a steering wheel and its pinion (5533's,
+8062's, 9393's and every 42xxx's bevels): Mechanism's gear train and
 Linkage's loop are still read apart. A rack held in a guide the joints do
 not read (a 1 x 13 steering rack between beams, 42078's rack in its
-housing): `Bodies` gives it no slide, so its loop is under-held or rigid.
-Worms and linear actuators driving a rack; 2790a's teeth; the loop's drag
-frame under 33 ms; dynamics (S2, P3).
+housing, 42035's in its connector): `Bodies` gives it no slide. Worms and
+linear actuators driving a rack (the library has both; a linear actuator's
+travel per turn is not published); 2790a's teeth; whole frames, drawing
+included, under 33 ms; dynamics (S2, P3).
