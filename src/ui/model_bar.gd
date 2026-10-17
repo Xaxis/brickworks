@@ -24,6 +24,9 @@ var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
 var _account: Button
+var _claude_tab: HBoxContainer
+var _claude_dot: ColorRect
+var _claude_words: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: ModelFilePicker
 
@@ -130,6 +133,27 @@ func _build() -> void:
 	push.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(push)
 
+	# This tab as Claude knows it, and whether a Claude chat is working in it
+	# (ClaudeTabView.badge): quiet, always there while Claude can reach it.
+	# A press opens Account, where the chats are and a new chat for this tab.
+	_claude_tab = HBoxContainer.new()
+	_claude_tab.add_theme_constant_override("separation", 6)
+	_claude_tab.visible = false
+	row.add_child(_claude_tab)
+	_claude_dot = ColorRect.new()
+	_claude_dot.custom_minimum_size = Vector2(7, 7)
+	_claude_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_claude_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_claude_tab.add_child(_claude_dot)
+	_claude_words = Button.new()
+	_claude_words.flat = true
+	_claude_words.focus_mode = Control.FOCUS_NONE
+	_claude_words.add_theme_font_size_override("font_size", 12)
+	_claude_words.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	_claude_words.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_claude_words.pressed.connect(func() -> void: account_wanted.emit())
+	_claude_tab.add_child(_claude_words)
+
 	# Who is signed in, and the way out. Everyone using Brickworks is.
 	_account = _button(row, "Account", func() -> void: account_wanted.emit(),
 		"Who is signed in, and Sign out")
@@ -222,8 +246,28 @@ func bind(to: ModelStore) -> void:
 
 
 ## The bar's own controls, for the page to find (Main._tell_page).
+## This tab's line about Claude: [param said] from ClaudeTabView.badge,
+## [text, colour, tooltip]; hidden for "".
+func show_claude_tab(said: Array) -> void:
+	if _claude_tab == null:
+		return
+	var text: String = str(said[0])
+	_claude_tab.visible = not text.is_empty()
+	if _claude_words.text != text:
+		_claude_words.text = text
+	_claude_dot.color = said[1]
+	_claude_words.tooltip_text = str(said[2])
+
+
+## What it says now, for probes.
+func claude_tab_words() -> String:
+	return _claude_words.text if _claude_tab != null and _claude_tab.visible else ""
+
+
 func controls_by_name() -> Dictionary:
 	var out: Dictionary = {"model_name": _name, "account": _account}
+	if _claude_tab != null and _claude_tab.is_visible_in_tree():
+		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.
 	if _confirm_new.visible:
 		out["new_save"] = _save_then_new_button

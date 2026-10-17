@@ -597,6 +597,14 @@ func _tell_page() -> void:
 			"on": _connector.is_on(),
 			"connected": clients,
 			"status": _chat.connector_status(),
+			# This tab as Claude knows it, the chats working in it, and what
+			# the toolbar and Account say of them (ClaudeTabView).
+			"tab": _connector.tab(),
+			"chats": _connector.working(),
+			"badge": _bar.claude_tab_words() if _bar != null else "",
+			"account_says": _account_panel.tab_words() if _account_panel != null else "",
+			"first_message": _connector.first_message(),
+			"opened": _connector.last_opened,
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
@@ -2670,6 +2678,18 @@ func _build_ui() -> void:
 	_connector.held = not ShellPrefs.assistant_shown()
 	add_child(_connector)
 	_chat.use_connector(_connector)
+	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
+	# as the chats in it change, and twice a minute for their "2 min ago".
+	var badge := func() -> void:
+		if _bar != null:
+			_bar.show_claude_tab(ClaudeTabView.badge(_connector))
+	_connector.listening.connect(func(_on: bool, _address: String) -> void: badge.call())
+	_connector.chats_changed.connect(func(_now: Array) -> void: badge.call())
+	var badge_clock := Timer.new()
+	badge_clock.wait_time = 30.0
+	badge_clock.autostart = true
+	badge_clock.timeout.connect(badge)
+	add_child(badge_clock)
 	# On again with the same address if it was on last time, so the
 	# connector added to Claude keeps working from one visit to the next —
 	# once somebody is signed in, because a connector belongs to an

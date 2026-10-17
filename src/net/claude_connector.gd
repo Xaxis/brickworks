@@ -102,6 +102,18 @@ signal relay_ok()
 ## The account's Claude connections changed: each {id, client, since,
 ## last_used}, newest first.
 signal connections_changed(connections: Array)
+## The Claude chats working in this tab changed (see [member chats]).
+signal chats_changed(chats: Array)
+
+## The Claude chats working in this tab, as the relay says and as their
+## calls come (2026-10-17): each {chat, since, last, did, words}: a short
+## name for the chat, when it chose this tab and when it last called (ISO,
+## UTC), which tool that was, and what it did in words. Two at once is two
+## chats editing one model, which the tab says plainly ([method keep_chat]).
+var chats: Array = []
+## How long a chat that has said nothing still counts as working here: the
+## relay's HELD_MS (api/mcp.js).
+const HELD_S := 30 * 60
 
 ## Claude (claude.ai, the Claude apps, Claude Code) signed in to this
 ## account, as the deployment last said; empty until it has been asked.
@@ -292,6 +304,167 @@ func open_in_claude() -> void:
 		OS.shell_open(CONNECTORS)
 
 
+## A Claude chat for this tab (2026-10-17): Claude opened on a new chat
+## whose first message names this tab, so the chat's first call chooses it
+## (select_tab, api/mcp.js) and it never lands in a tab another chat is
+## building in. Claude's own links, each filling the message in for the
+## person to read and send, never sending it:
+##   claude.ai        https://claude.ai/new?q=…   (not in Anthropic's docs;
+##                    the desktop's documented link below is the same path)
+##   the Claude app   claude://claude.ai/new?q=…  support.claude.com/en/
+##                    articles/14729294-open-claude-desktop-with-a-link
+##   Claude Code      claude-cli://open?q=…, code.claude.com/docs/en/
+##                    deep-links; or the command line to paste
+## The message is copied too, for wherever a link cannot fill it in.
+const NEW_CHAT := "https://claude.ai/new?q="
+const NEW_CHAT_APP := "claude://claude.ai/new?q="
+const NEW_CHAT_CODE := "claude-cli://open?q="
+
+
+## What this tab is called to Claude and to the person: its id, and its
+## model's name when it has one: "k7qd (“Castle”)".
+func tab_words() -> String:
+	var model: String = _model().strip_edges()
+	return tab() + (" (“%s”)" % model if not model.is_empty() and model != ModelStore.UNTITLED else "")
+
+
+## The first message of a chat for this tab, for the person to send as it
+## is or to go on typing after.
+func first_message() -> String:
+	return "Use my Brickworks tab %s for this chat." % tab_words()
+
+
+## The link that opens [param where] ("claude.ai", "app", "code") on a new
+## chat with [method first_message] filled in.
+func new_chat_link(where: String = "claude.ai") -> String:
+	var start: String = {"app": NEW_CHAT_APP, "code": NEW_CHAT_CODE}.get(where, NEW_CHAT)
+	return start + first_message().uri_encode()
+
+
+## The same for Claude Code from a shell: a command line to paste. Double
+## quotes, which every shell takes, round a message with none in it.
+func new_chat_command() -> String:
+	var said: String = first_message()
+	for awkward: String in ["\"", "$", "`", "\\", "!", "%"]:
+		said = said.replace(awkward, "")
+	return "claude \"%s\"" % said
+
+
+## Opens [param where] on a new chat for this tab, and copies its first
+## message (for Claude Code, the command line) for wherever it is not filled in.
+func start_chat(where: String = "claude.ai") -> void:
+	DisplayServer.clipboard_set(new_chat_command() if where == "code" else first_message())
+	last_opened = new_chat_link(where)
+	if not open_links:
+		return
+	if OS.has_feature("web") and where != "claude.ai":
+		# An app's own link, followed in place: a new browser tab for it
+		# would be left behind empty. Nothing happens where the app is not
+		# installed, and the page stays as it was.
+		JavaScriptBridge.eval("(function (u) { var a = document.createElement('a'); "
+			+ "a.href = u; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); })(%s)"
+			% JSON.stringify(last_opened), true)
+		return
+	OS.shell_open(last_opened)
+
+
+## The chats working in this tab now: the ones heard from within
+## [constant HELD_S], oldest first.
+func working() -> Array:
+	var now: int = int(Time.get_unix_time_from_system())
+	return chats.filter(func(one: Variant) -> bool:
+		return one is Dictionary and now - _unix(str((one as Dictionary).get("last", ""))) < HELD_S)
+
+
+## Keep [param chat] working in this tab and move every other chat off it:
+## the other's next call is told so and does nothing. Returns how many were
+## moved, or -1 if the relay could not be asked.
+func keep_chat(chat: String) -> int:
+	if _token.is_empty():
+		return -1
+	var got: Array = await _ask_aside("%s/api/mcp?t=%s&i=%s&op=keep&chat=%s"
+		% [base_url, _token, _instance, chat.uri_encode()])
+	var body: Variant = JSON.parse_string((got[2] as PackedByteArray).get_string_from_utf8()) \
+		if got[0] == HTTPRequest.RESULT_SUCCESS else null
+	if body is Dictionary and (body as Dictionary).get("chats") is Array:
+		_set_chats((body as Dictionary)["chats"])
+	return int((body as Dictionary).get("moved", -1)) if body is Dictionary and int(got[1]) == 200 else -1
+
+
+## Asks the relay which chats work in this tab: as it switches on, when a
+## page comes back.
+func refresh_chats() -> void:
+	if _token.is_empty() or not _on:
+		return
+	var got: Array = await _ask_aside("%s/api/mcp?t=%s&i=%s&op=chats" % [base_url, _token, _instance])
+	if got[0] != HTTPRequest.RESULT_SUCCESS or int(got[1]) != 200:
+		return
+	var body: Variant = JSON.parse_string((got[2] as PackedByteArray).get_string_from_utf8())
+	if body is Dictionary and (body as Dictionary).get("chats") is Array:
+		_set_chats((body as Dictionary)["chats"])
+
+
+## The relay's list, keeping the words this tab heard for a chat's last call.
+func _set_chats(given: Array) -> void:
+	var heard: Dictionary = {}
+	for one: Variant in chats:
+		if one is Dictionary:
+			heard[str((one as Dictionary).get("chat", ""))] = one
+	var now: Array = []
+	for one: Variant in given:
+		if not one is Dictionary:
+			continue
+		var it: Dictionary = (one as Dictionary).duplicate()
+		var was: Dictionary = heard.get(str(it.get("chat", "")), {})
+		if str(was.get("did", "")) == str(it.get("did", "")) and not str(was.get("words", "")).is_empty():
+			it["words"] = was["words"]
+		elif not str(it.get("did", "")).is_empty():
+			it["words"] = ConnectorForm.said(str(it["did"]))
+		now.append(it)
+	chats = now
+	chats_changed.emit(chats)
+
+
+## A call from a chat working in this tab (the relay names it on the call's
+## _meta): when, and what it did.
+func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> void:
+	var params: Dictionary = request.get("params", {}) if request.get("params") is Dictionary else {}
+	var meta: Dictionary = params.get("_meta", {}) if params.get("_meta") is Dictionary else {}
+	var said: Dictionary = meta.get("brickworks/chat", {}) if meta.get("brickworks/chat") is Dictionary else {}
+	var chat: String = str(said.get("chat", ""))
+	if chat.is_empty():
+		return
+	var at: String = Time.get_datetime_string_from_system(true) + "Z"
+	var found: Dictionary = {}
+	for one: Variant in chats:
+		if one is Dictionary and str((one as Dictionary).get("chat", "")) == chat:
+			found = one
+	if found.is_empty():
+		found = {"chat": chat, "since": str(said.get("since", at))}
+		chats.append(found)
+	found["last"] = at
+	found["did"] = tool
+	found["words"] = ConnectorForm.said(tool, arguments)
+	chats_changed.emit(chats)
+
+
+## An ISO time from the relay, in seconds since 1970 (UTC).
+static func _unix(iso: String) -> int:
+	if iso.length() < 19:
+		return 0
+	return int(Time.get_unix_time_from_datetime_string(iso.substr(0, 19)))
+
+
+## A POST of its own, beside the request waiting for work: [result, code, body].
+func _ask_aside(url: String) -> Array:
+	var http := HTTPRequest.new()
+	http.timeout = 20.0
+	add_child(http)
+	var got: Array = await _ask(http, url, "{}")
+	http.queue_free()
+	return got
+
+
 ## Where Connect Claude has sent the person and what to do there, in a
 ## sentence: adding Brickworks the first time, connecting the one they have
 ## after that. Claude's own names for it (claude.com/docs/connectors/
@@ -431,6 +604,10 @@ func _hang_up() -> void:
 	_http.cancel_request()
 	listening.emit(false, address())
 	_watch_the_page()
+	# No chat reaches a tab that is not listening.
+	if not chats.is_empty():
+		chats = []
+		chats_changed.emit(chats)
 	# Told so the relay can say "not open" at once, rather than after the
 	# tab has been silent long enough to count as gone.
 	_tell("close")
@@ -649,7 +826,8 @@ func _save() -> void:
 ## together under the limit.
 const CONNECTED_NOTE := ("These tools build in Brickworks, in a tab of the "
 	+ "person's browser that keeps working while they are here. Each answer "
-	+ "begins with the tab and model it acted on; tabs lists them all.\n\n")
+	+ "begins with the tab and model it acted on; tabs lists them all. When "
+	+ "the person names a tab or a model, call select_tab with it first.\n\n")
 
 
 func _model() -> String:
@@ -720,6 +898,8 @@ func _listen() -> void:
 			return
 		if greeted == 204:
 			relay_ok.emit()
+			# A page reloaded or switched on again: which chats work here.
+			refresh_chats()
 			break
 		if greeted == 401 or greeted == 403:
 			# Not something trying again fixes: off, and why.
@@ -793,6 +973,13 @@ func _answer(token: String, work: Dictionary) -> void:
 	if str(request.get("method", "")) == "brickworks/claude_here" and not connected() \
 			and not _asking_connections:
 		refresh_connections()
+	# Which chats work in this tab now: one chose it, or left it.
+	if str(request.get("method", "")) == "brickworks/chats":
+		var listed: Variant = (request.get("params", {}) as Dictionary).get("chats", []) \
+			if request.get("params") is Dictionary else []
+		if listed is Array:
+			_set_chats(listed)
+		return
 	var tool: String = ""
 	var arguments: Dictionary = {}
 	if str(request.get("method", "")) == "tools/call":
@@ -808,6 +995,8 @@ func _answer(token: String, work: Dictionary) -> void:
 	# does not say Claude is at work for it.
 	var looking: bool = ViewerTools.handles(tool)
 	if not looking:
+		if not tool.is_empty():
+			_chat_called(request, tool, arguments)
 		called.emit(tool, arguments)
 	# A notification — the relay saying Claude reached it, or one of the
 	# protocol's own — wants no answer, and the relay has already let it go.

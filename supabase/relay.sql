@@ -90,6 +90,20 @@ create table if not exists public.relay_picks (
   picked_at timestamptz not null default now()
 );
 
+-- 2026-10-17: two chats, two tabs. A tab shows which chats work in it, and
+-- a new chat is kept out of a tab another chat holds unless it chooses it
+-- (api/mcp.js, "Two chats, two tabs"):
+--
+--   called_at  the chat's last call in its tab
+--   did        which tool that was (a name, never what was passed)
+--   moved_at   the person kept another chat in that tab: this one's next
+--              call is told so and does nothing until it chooses a tab
+alter table public.relay_picks add column if not exists called_at timestamptz;
+alter table public.relay_picks add column if not exists did       text;
+alter table public.relay_picks add column if not exists moved_at  timestamptz;
+create index if not exists relay_picks_channel on public.relay_picks (channel);
+create index if not exists relay_picks_owner on public.relay_picks (owner);
+
 -- 2026-10-13: which tools each Claude conversation was given, by the same
 -- key as its pick (or "address:<channel>" for a tab's own address with no
 -- session), so that when the tab it works in says hello with other tools —
