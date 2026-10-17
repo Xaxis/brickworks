@@ -644,7 +644,19 @@ picture the assistant is shown.
   11.2% to 8.5%, things put in under 6.3% to 5.5%, parts the build check
   calls floating 17.3% to 4.0%, steps of one thing 23.3% to 19.6%, and tau
   0.30 to 0.26, a loss (docs/INSTRUCTIONS.md). A wheel whose name LDraw
-  marks as an alias ("=Wheel Rim") is a wheel.
+  marks as an alias ("=Wheel Rim") is a wheel. Then (2026-10-17, later):
+  wheels go on last again (`WHEELS_WITH_HOLDER` off, as the authors build);
+  a part hangs only from what holds it from the side or by touch
+  (`_hung_under`), not from the part on its studs; the table is under the
+  model as it stands; what hides a step's part is drawn near it only
+  (`Pictures.open_of`, `in_front`); the covers are read only where a part no
+  stud seats is one of the two; and a section of one step goes under its
+  neighbour's banner (`_fold_lone_sections`, checked by `instructions_probe`).
+  On the held-out sample, judged once against d24d4d6 with the measure as it
+  now is: steps with a hidden new thing 14.5% to 12.1%, steps with a floating
+  thing 10.3% to 7.5%, things put in under 6.3% to 5.7%, the build check's
+  floating 12.2% to 8.0%, steps of one thing 23.3% to 19.5%, tau 0.30 to
+  0.28; planning about twice main's.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
@@ -721,7 +733,13 @@ picture the assistant is shown.
   a floating one floated on its own (a root) or went on one, and why the
   planner thought it held; each hidden thing found says whether earlier steps
   hid it or only its own step's parts, and each floating one how many steps
-  it waited to be held; the maths is pinned
+  it waited to be held. Since 2026-10-17 a stud from the side holds in the
+  probe's graph (`Joints.studs_in` on the check's lattice), each piece of the
+  finished model rests at each step on a table at its own lowest point, and
+  the build check is asked with the ground at the lowest point of the model
+  as it stands (`Assistant._ground_at`, `ExactCheck.ground`); the readings
+  before are rows of their own, and the self-test holds a plate on a side
+  stud and a car body before its wheels; the maths is pinned
   by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
   against the definition).
 - `cad task frames` and `cad task frames in a browser`
