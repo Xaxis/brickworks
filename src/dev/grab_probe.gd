@@ -693,15 +693,16 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		_camera.look_from((line * side + Vector3(0.0, 0.45, 0.35)).normalized())
 		shown = bodies.parts_of([coupler, last])
 	else:
+		# Cut just over the arms and the track rod, the wheels below the cut
+		# with them.
 		var top: float = -INF
-		for key: int in shown:
+		for key: int in bodies.parts_of([crank, coupler, last]):
 			var brick: BrickWorld.Brick = _world.get_brick(key)
 			top = maxf(top, (brick.transform * _library.parts[brick.part_id].bounds).end.y)
 		var cut := Plane(Vector3.UP, top + 1.0)
 		_world.set_cut(true, cut, false)
 		_builder.lattice.cut = cut
-		_camera.look_from(Vector3(0.12, 1.0, 0.3).normalized())
-		shown = PackedInt64Array()
+		_camera.look_from(Vector3(0.05, 1.0, 0.12).normalized())
 	_frame_on(shown)
 	await _frames(20)
 	var before: Dictionary = _snapshot()
