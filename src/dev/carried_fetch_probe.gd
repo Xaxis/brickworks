@@ -98,6 +98,7 @@ func _run() -> void:
 	await _one_session(PackedStringArray([SET, "res://vendor/omr/files/42115-1.mpd"]))
 	await _restored()
 	await _kept()
+	await _kept_own()
 	await _not_there()
 	_web_page()
 	OS.kill(_server)
@@ -363,6 +364,69 @@ func _kept() -> void:
 	DirAccess.remove_absolute(path)
 	PartForge.withheld = false
 	CustomParts.sources_from = ""
+
+
+## A carried part drawn from a subpart its own file carries, kept: at the
+## next start, the file gone, it is built from what was kept beside it with
+## nothing to fetch, and a model saved then carries the subpart again. Kept
+## as the part alone, 19 of the sets' carried parts were not built at the
+## next start (2026-10-17).
+func _kept_own() -> void:
+	print("carriedfetch: a part kept with the subpart its file carried")
+	_fresh()
+	CustomParts.drawn_from.clear()
+	CustomParts.keeps = true
+	var taken: Dictionary = CustomParts.take_from(_library, LdrModel.parse(GATE, "gate"))
+	CustomParts.keeps = false
+	var beside: String = CustomParts.dir + "probe-gate" + CustomParts.NEEDS
+	_expect((taken["added"] as PackedStringArray).has("probe-gate"),
+		"built from the file it came in: %s" % [taken["problems"]])
+	_expect(FileAccess.file_exists(beside), "kept with its subpart beside it")
+	# The next start: the file gone, and the library and what each part was
+	# drawn from forgotten; only the server to fetch from, as on the web.
+	_fresh()
+	CustomParts.drawn_from.clear()
+	PartForge.withheld = true
+	CustomParts.sources_from = _root()
+	CustomParts.load_all(_library)
+	var began: int = Time.get_ticks_msec()
+	while not _library.parts.has("probe-gate") and Time.get_ticks_msec() - began < 20000:
+		await process_frame
+	_expect(_library.parts.has("probe-gate"),
+		"built at the next start from what was kept, in %d ms" % (Time.get_ticks_msec() - began))
+	var drawn: Dictionary = CustomParts.drawn_from.get("probe-gate", {})
+	_expect(drawn.has("s/probe-gate-s01.dat"),
+		"and a model saved now carries its subpart: %s" % [drawn.keys()])
+	DirAccess.remove_absolute(CustomParts.dir + "probe-gate.dat")
+	DirAccess.remove_absolute(beside)
+	PartForge.withheld = false
+	CustomParts.sources_from = ""
+
+
+## A carried part drawn from a subpart of the file's own.
+const GATE := """0 FILE gate.ldr
+0 Gate
+0 Name: gate.ldr
+0 Author: Somebody Else
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 probe-gate.dat
+0 NOFILE
+0 FILE probe-gate.dat
+0 A gate drawn from its file's own subpart
+0 Name: probe-gate.dat
+0 Author: Somebody Else
+0 !LDRAW_ORG Unofficial_Part
+0 BFC CERTIFY CCW
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s/probe-gate-s01.dat
+0 NOFILE
+0 FILE s/probe-gate-s01.dat
+0 A gate's post
+0 Name: s/probe-gate-s01.dat
+0 Author: Somebody Else
+0 !LDRAW_ORG Unofficial_Subpart
+0 BFC CERTIFY CCW
+1 16 0 0 0 4 0 0 0 24 0 0 0 4 4-4cyli.dat
+0 NOFILE
+"""
 
 
 ## A carried part drawn from a library subpart the server has not got.
