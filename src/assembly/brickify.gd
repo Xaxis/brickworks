@@ -369,7 +369,10 @@ static func _turned_bounds(mesh: MeshFile, turn: Basis) -> AABB:
 
 ## The model in studs and plates: which cells it fills, the colour of each,
 ## and whether its top is a curve or a facet.
-static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> Grid:
+## With [param progress], its sides' cubes and rays ask the run's stop: on a
+## 48-stud armadillo they are more than a second's work.
+static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
+		progress: Progress = null) -> Grid:
 	var start: int = Time.get_ticks_msec()
 	var grid := Grid.new()
 	var turn: Basis = turn_for(options.up)
@@ -496,11 +499,11 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> 
 	grid.ms["stance"] = Time.get_ticks_msec() - clock
 	if options.smooth and options.snot:
 		clock = Time.get_ticks_msec()
-		grid.cubes = _cubes(grid, points, count, outward)
+		grid.cubes = _cubes(grid, points, count, outward, progress)
 		if not grid.cubes.is_empty():
 			grid.side_rows = ceili(grid.tall / PLATES * FINE)
-			grid.spans_x = _side_spans(grid, points, count, outward, true)
-			grid.spans_z = _side_spans(grid, points, count, outward, false)
+			grid.spans_x = _side_spans(grid, points, count, outward, true, progress)
+			grid.spans_z = _side_spans(grid, points, count, outward, false, progress)
 		grid.ms["cubes"] = Time.get_ticks_msec() - clock
 	return grid
 
@@ -508,7 +511,7 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary) -> 
 ## The rays of [member Grid.spans_x] (or with [param along_x] false,
 ## spans_z): as the rays up are cast, along x or z.
 static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outward: float,
-		along_x: bool) -> Array:
+		along_x: bool, progress: Progress = null) -> Array:
 	var fu: int = (grid.deep if along_x else grid.across) * FINE
 	var fv: int = grid.side_rows
 	var hits: Array = []
@@ -516,6 +519,8 @@ static func _side_spans(grid: Grid, points: PackedVector3Array, count: int, outw
 	const NUDGE_U := 0.0000613
 	const NUDGE_V := 0.0000287
 	for t: int in count:
+		if t % 4096 == 0 and _stopping(progress):
+			return []
 		var a: Vector3 = points[3 * t]
 		var b: Vector3 = points[3 * t + 1]
 		var c: Vector3 = points[3 * t + 2]
@@ -588,11 +593,14 @@ const CUBE_AGREES := 0.6
 const CUBE_IN := 0.5
 
 
-static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float) -> Dictionary:
+static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
+		progress: Progress = null) -> Dictionary:
 	var sums: Dictionary = {}    ## Vector3i -> Vector3, area times the way out, square studs
 	var areas: Dictionary = {}   ## Vector3i -> float
 	var iso := Vector3(1.0, 1.0 / PLATES, 1.0)
 	for t: int in count:
+		if t % 4096 == 0 and _stopping(progress):
+			return {}
 		var a: Vector3 = points[3 * t]
 		var b: Vector3 = points[3 * t + 1]
 		var c: Vector3 = points[3 * t + 2]
@@ -1730,7 +1738,7 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	var telling: Progress = progress if suggest else null
 	if telling != null:
 		telling.say("measuring the model")
-	var grid: Grid = voxelise(mesh, options, library)
+	var grid: Grid = voxelise(mesh, options, library, progress)
 	times["measure"] = Time.get_ticks_msec() - t0
 	if _stopping(progress):
 		return _stopped_run()
