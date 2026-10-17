@@ -54,6 +54,8 @@ var _grab: GrabDrag
 var _store: ModelStore
 var _windowed: bool = false
 var _timings: Dictionary = {}
+## The last case reached its end.
+var _case_done: bool = false
 
 
 func _initialize() -> void:
@@ -108,7 +110,13 @@ func _run() -> void:
 	for case: Array in CASES:
 		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
+		# A case that stopped on a script error says so: it counted no
+		# failure, and what it left going broke the next one.
+		_case_done = false
+		var failed_before: int = _failures
 		await _case(case[0], case[1], case[2])
+		if not _case_done and _failures == failed_before:
+			_check("%s: the case ran to its end" % case[0], false)
 	if only.is_empty() or only == "loops" or only == "fourbar" or only == "engine":
 		for loop: Array in LOOPS:
 			if only.is_empty() or only == "loops" or only == loop[2]:
@@ -175,6 +183,7 @@ func _open(path: String) -> bool:
 	if not FileAccess.file_exists(path):
 		print("  (no %s: tools/omr.py fetch brings the sets; skipped)" % path)
 		return false
+	await _clean_slate()
 	_main.call("clear_model")
 	await _frames(3)
 	_main.call("_open", ProjectSettings.globalize_path(path))
@@ -195,6 +204,40 @@ func _open(path: String) -> bool:
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	return _world.brick_count() > 0
+
+
+## Until the view stops moving: framed from another side, it eases there
+## over some frames, and a point picked on the way is over another part by
+## the press.
+func _camera_still() -> void:
+	var was: Transform3D = _camera.global_transform
+	var still: int = 0
+	for _n: int in 240:
+		await process_frame
+		var now: Transform3D = _camera.global_transform
+		still = still + 1 if now.is_equal_approx(was) else 0
+		was = now
+		if still >= 3:
+			return
+
+
+## Nothing an earlier case left going: a button still down, a grab or a
+## drag not let go, a part in hand, a selection. A case that stopped half
+## way (the windmill's press once carried a part off and the case ended on
+## it) left a drag going, and the next case's press was not a grab.
+func _clean_slate() -> void:
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or bool(_main.get("_dragging_part")) \
+			or bool(_main.get("_grabbing")) or _grab.is_grabbing():
+		await _button(_last_screen, false)
+	if _grab.is_grabbing():
+		_grab.cancel()
+	if _builder.is_carrying():
+		_verbs.put_away()
+	_main.set("_dragging_part", false)
+	_main.set("_grabbing", false)
+	_main.set("_press_brick", 0)
+	_builder.clear_selection()
+	await _frames(2)
 
 
 func playback_stop() -> bool:
@@ -309,25 +352,60 @@ func _case(name: String, path: String, want: String) -> void:
 		return
 	if _windowed:
 		await _shot(name, "1_before")
+	# Still that part under the point, once the view has come to rest: framed
+	# from another side, the view was still moving, and the windmill's press
+	# landed on the frame beside its crank and carried it off.
+	await _camera_still()
+	for _settle: int in 6:
+		if _verbs.brick_at(press["screen"]) == int(press["brick"]):
+			break
+		await _frames(10)
+		var again: Dictionary = _press_point(bodies.members[child], bodies)
+		if again.is_empty():
+			again = _press_point(moving, bodies)
+		if not again.is_empty():
+			press = again
+	# What a grab of the part pressed reads, asked before the press: a press
+	# that carries it off takes it out of the model.
+	var pressed: int = int(press["brick"])
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	var trial_said: String = trial.begin(pressed, _world.get_brick(pressed).transform.origin)
+	trial_said += " " + (trial.why if not trial.why.is_empty() else trial.said)
+	if "--debug" in OS.get_cmdline_user_args():
+		_grab._ready_now()
+		var as_drag := Grab.new()
+		as_drag.world = _world
+		as_drag.builder = _builder
+		as_drag.library = _library
+		as_drag.bodies = _grab.get("_bodies")
+		as_drag.shared_mechanism = _grab.get("_mechanism")
+		print("    (as GrabDrag reads it: %s %s %s)" % [as_drag.begin(pressed,
+			_world.get_brick(pressed).transform.origin), as_drag.why, as_drag.said])
 	var screen: Vector2 = press["screen"]
+	var revision_before: int = _world.revision
+	var under_before: int = _verbs.brick_at(screen)
 	await _move(screen, 0)
+	var under_hover: int = _verbs.brick_at(screen)
 	await _button(screen, true)
+	var pressed_on: int = int(_main.get("_press_brick"))
+	var pressed_at: Vector2 = _main.get("_press_at")
+	var pressed_part: String = _world.get_brick(pressed_on).part_id if _world.get_brick(pressed_on) != null else "?"
 	# Past the slop: the drag is the grab's.
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var grab: Grab = _grab.grab
 	if grab == null:
-		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s copies=%s locked=%s ready=%s selection=%s)" % [
+		print("    (the press landed on #%d %s; under the point before %d, hovering %d, pressed %d at %s, event %s, main pressed at %s; revision %d at the case, %d before the press, %d now; playing %s)" % [
+			pressed_on, pressed_part, under_before, under_hover, int(press["brick"]), screen, _as_event(screen), pressed_at,
+			revision, revision_before, _world.revision, (_main.get("_playback") as BuildPlayback).is_playing()])
+		print("    (press state: grabbing=%s dragging=%s carrying=%s press_brick=%s mode=%s copies=%s locked=%s ready=%s selection=%s; GrabDrag said %s)" % [
 			_main.get("_grabbing"), _main.get("_dragging_part"), _builder.is_carrying(),
 			_main.get("_press_brick"), _verbs.mode, _main.get("_press_copies"),
-			_builder.is_locked(int(press["brick"])), _grab.is_ready(), _builder.selection.keys()])
-		var trial := Grab.new()
-		trial.world = _world
-		trial.builder = _builder
-		trial.library = _library
-		trial.bodies = bodies
-		print("    (Grab.begin on #%d directly: %s %s)" % [int(press["brick"]),
-			trial.begin(int(press["brick"]), _world.get_brick(int(press["brick"])).transform.origin),
-			trial.why])
+			_builder.is_locked(pressed), _grab.is_ready(), _builder.selection.keys(), _grab.last_words])
+		print("    (Grab.begin on #%d directly, before the press: %s)" % [pressed, trial_said])
 	_check("%s: a drag on #%d is a grab on its joint, not a carry (%s)" % [name, int(press["brick"]),
 		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
 		and not _builder.is_carrying())
@@ -385,6 +463,7 @@ func _case(name: String, path: String, want: String) -> void:
 	await _frames(3)
 	_check("%s: one undo puts every part back exactly (%s)" % [name, _differs(before)],
 		_differs(before) == "none differs")
+	_case_done = true
 
 
 ## A round part turned beside the joint's line (4096's cones under the boom)

@@ -1487,6 +1487,19 @@ Over four runs of 8020's four-bar on a loaded box (`grab_probe --
 average and 5.6 ms at worst, and the page's longest wait during the drag
 was 69 ms.
 
+**A round part beside the line.** From G2's loop work on, a drag on 4096's
+turret stopped at 3.7° either way, where the build before it turned. The
+two cones under the boom turn with it, and their turned covers, 2 LDU cells
+worked out turned from a square, reached past the round cones into the
+2 x 2 plate beside their feet by up to 1.2 LDU from 3.7° to 8.8° either way,
+though the cones swing away from it. The room test had seen that span
+before too: the build before only jumped past it, its first frame reading
+-8.8°. A part round about its own middle's line along the joint's (a cone,
+a round brick, a wheel lying flat) is now tested as its shape where it
+stood, moved round (`Grab._shape_at`), which is what it is; pushed 4 LDU
+into the parts beside them, the cones still meet them (`grab_probe --
+--only=turntable`). The turret now follows the pointer all the way round.
+
 **Tried and left.** 42035-1's 1 x 7 steering rack is read as one body with
 the connector its pinion's axle turns in, so the pinion cannot push it;
 8849-1's whole steering is read as hanging from the pinion's axle. Both are

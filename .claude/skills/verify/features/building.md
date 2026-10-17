@@ -598,8 +598,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   minifigures and move_part). Held still 0.4 s, then dragged: the part by its
   chain of joints (`src/assembly/grab_chain.gd`, "chain" in the status bar;
   `grab_probe -- --only=chain`, a hand and 4096's crane end).
-  Probe: `grab_probe` (real sets, simulated pointer events); browser:
-  `tools/web/grab_flow.mjs`.
+  Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
+  pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
+  starts clean (`_clean_slate`: no button down, drag, grab, part in hand or
+  selection left by the last) and presses only once the view has stopped
+  easing (`_camera_still`); a case that dies on a script error counts as a
+  failure. `-- --only=cases` runs the single-joint cases in the full run's
+  order. A turn stopped by the model names the two parts that met.
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
