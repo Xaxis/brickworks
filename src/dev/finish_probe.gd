@@ -211,6 +211,8 @@ func _same_grey_each_finish(world: BrickWorld, library: PartLibrary, camera: Cad
 	var image: Image = await _settled_view()
 
 	var stats: Array[Vector4] = []
+	## How grainy each brick's middle is, pixel to pixel (_grain).
+	var grains: Array[float] = []
 	var marked: Image = image.duplicate()
 	for at: Vector3 in places:
 		var rect: Rect2i = _rect_of(image, camera, at)
@@ -220,6 +222,7 @@ func _same_grey_each_finish(world: BrickWorld, library: PartLibrary, camera: Cad
 		# finish has none.
 		var whole: Vector4 = _region(image, _rect_of(image, camera, at, 0.5))
 		stats.append(Vector4(middle.x, middle.y, whole.z, middle.w))
+		grains.append(_grain(image, rect))
 		# Where it measured, drawn on the copy that is kept, so a number
 		# below can be checked against the brick it came from.
 		for x: int in range(rect.position.x, rect.end.x):
@@ -259,8 +262,13 @@ func _same_grey_each_finish(world: BrickWorld, library: PartLibrary, camera: Cad
 				_say("...and it gives off light: brighter than plastic",
 					here.x > reference.x)
 			PartLibrary.BrickColor.Finish.SPECKLE, PartLibrary.BrickColor.Finish.GLITTER:
-				_say("...and it is flecked: more spread than plastic",
-					here.y > reference.y)
+				# Flecks are fine grain, pixel to pixel. The spread over the
+				# middle is mostly the studs' shading, and a surface well
+				# covered in flecks is the more even of the two: on Forward+
+				# speckle read 0.101 against plastic's 0.118 while every
+				# fleck was in the picture (2026-10-16).
+				_say("...and it is flecked: grainier than plastic (%.4f against %.4f)"
+					% [grains[n], grains[n - finish]], grains[n] > grains[n - finish] * 1.15)
 	for code: int in codes:
 		library.colors.erase(code)
 
@@ -296,6 +304,21 @@ func _rect_of(image: Image, camera: CadCamera, at: Vector3, share: float = 0.25)
 
 
 ## Mean, spread and brightest luminance over a rectangle of the picture.
+## The mean step in brightness from a pixel to the one right of it and the
+## one below it, over [param rect]: fine detail, which shading across a
+## face hardly has and a fleck has at its every edge.
+static func _grain(image: Image, rect: Rect2i) -> float:
+	var total: float = 0.0
+	var counted: int = 0
+	for y: int in range(rect.position.y, rect.end.y - 1):
+		for x: int in range(rect.position.x, rect.end.x - 1):
+			var here: float = image.get_pixel(x, y).get_luminance()
+			total += absf(image.get_pixel(x + 1, y).get_luminance() - here) \
+				+ absf(image.get_pixel(x, y + 1).get_luminance() - here)
+			counted += 2
+	return total / counted if counted > 0 else 0.0
+
+
 static func _region(image: Image, rect: Rect2i) -> Vector4:
 	var total: float = 0.0
 	var squares: float = 0.0
