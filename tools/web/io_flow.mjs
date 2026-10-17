@@ -8,12 +8,15 @@
 // Opens tests/fixtures/studio/bay_2025.io (made in the shape Studio 2.25
 // saves one, by tests/fixtures/studio/make_fixtures.py) through Open… > From
 // a file, the page's own file picker answered by Playwright, and checks its
-// five parts came in and that the status bar names the one only Studio has.
+// six parts came in: its five and the one Studio's Part Designer made,
+// built from the CustomParts/ file it carries (3001.dat fetched from the
+// parts store, as the desktop reads it from its library; until 2026-10-17
+// the browser could not, and named it not shown).
 // Then File > Export > BrickLink Studio model (.io), by the keys a person
 // would use in the menu (exportStudio says which, and why not its name
 // typed), catches the download and reads it with Python's
 // zipfile: model.ldr, .info, errorPartList.err and a thumbnail. Opens that
-// file again through the picker and checks the same five parts. Last, a
+// file again through the picker and checks the same six parts. Last, a
 // picture renamed .io: the status bar has to say it is not a Studio file.
 // Every result is read off window.brickworksState; pictures in --out. It
 // fails if a step does not happen or a script error reaches the console.
@@ -160,10 +163,9 @@ for (let attempt = 0; attempt < 3; attempt++) {
   if (note && !/arriving/.test(note.said)) break;
   await page.waitForTimeout(20000);
 }
-ok((await state()).bricks === 5, `bay_2025.io opened through Open… > From a file: ${(await state()).bricks} parts`);
-ok(Boolean(note) && /opened 5 parts/.test(note.said)
-  && /1 not shown, kept in the file \(m1a2b3c4_2025408_163200\)/.test(note.said),
-  `and the status bar names the part only Studio has: "${note ? note.said : ""}"`);
+ok((await state()).bricks === 6, `bay_2025.io opened through Open… > From a file: ${(await state()).bricks} parts`);
+ok(Boolean(note) && /opened 6 parts/.test(note.said) && !/not shown|left out/.test(note.said),
+  `and the Part Designer part is built too, none said not shown: "${note ? note.said : ""}"`);
 await page.waitForTimeout(6000);
 await shot("1_bay.png");
 
@@ -191,8 +193,8 @@ print(json.dumps({"names": z.namelist(), "parts": sum(1 for l in ldr.splitlines(
 ok(download && /\.io$/.test(download.suggestedFilename())
   && JSON.stringify(members.names) === JSON.stringify(["model.ldr", ".info", "errorPartList.err", "thumbnail.png"]),
   `a zip Python's zipfile tests clean, holding ${JSON.stringify(members.names || members.error)}`);
-// Six: the five shown and the one only Studio has, kept in the file
-// (SourceFile) where it was left out before 2026-10-16.
+// Six: its five and the Part Designer part, written back to the file
+// (SourceFile), where it was left out before 2026-10-16.
 ok(members.info && members.info.total_parts === 6 && members.crlf && members.thumbnail === "89504e470d0a1a0a",
   `its model.ldr in Studio's line ends, .info counting ${members.info ? members.info.total_parts : "?"} parts, `
   + `and a PNG thumbnail drawn in the browser (${members.thumbnail ? "PNG" : "none"})`);
@@ -200,7 +202,7 @@ ok(members.info && members.info.total_parts === 6 && members.crlf && members.thu
 // ...and that file in again.
 if (download) {
   await open(exported);
-  const again = await until((s) => /^opened \d+ parts/.test(s.said || "") && s.bricks === 5, 240);
+  const again = await until((s) => /^opened \d+ parts/.test(s.said || "") && s.bricks === 6, 240);
   ok(Boolean(again), `the exported .io opens again: ${(await state()).bricks} parts, "${(await state()).said}"`);
   await page.waitForTimeout(4000);
   await shot("3_reopened.png");
@@ -209,7 +211,7 @@ if (download) {
 // A picture called .io is not a Studio model, and is said not to be.
 await open(notStudio);
 const refused = await until((s) => /not a Studio \.io file/.test(s.said || ""), 60);
-ok(Boolean(refused) && (await state()).bricks === 5,
+ok(Boolean(refused) && (await state()).bricks === 6,
   `a picture renamed .io is refused, the model left as it was: "${(await state()).said}"`);
 await browser.close();
 
