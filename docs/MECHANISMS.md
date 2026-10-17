@@ -1683,5 +1683,7 @@ on (8062-1's crane winch); a worm's hand, read from its thread; 42080-1's
 pneumatic cylinders, held to their turret by more than the cylinder; the
 8 x 2 x 2 actuator's input, drawn inside its body's part; a big loop's drag
 (an actuator's arm in a loop of 25 to 36 joints, 137 to 174 ms a frame, and
-42081-1's held one frame 1.9 to 2.7 s, not yet taken apart); the room test's false meetings that stop 42006-1's boom and
-42024-1's small actuator short of their ends; dynamics (S2, P3).
+42081-1's held one frame 1.9 to 2.7 s, not yet taken apart); whether the
+meetings that stop 42006-1's boom and 42024-1's small actuator short of
+their ends are the real sets' or the room test's 2 LDU cells (not checked
+against the built models); dynamics (S2, P3).
