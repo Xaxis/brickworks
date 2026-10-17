@@ -521,13 +521,23 @@ func _pressed_up(world: BrickWorld, library: PartLibrary) -> void:
 ## A section of one step goes under its neighbour's banner: 8032's
 ## steering knuckle was "Cabrio Sub 6a" for one step, then "the rest".
 func _lone_sections() -> void:
-	var raw: Array = [{"section": "knuckle"}, {"section": "the rest"}, {"section": "the rest"},
-		{"section": "frame"}, {"section": "frame"}, {"section": "seat"}]
+	var at := func(x: float) -> Array:
+		var node := Instructions.Node2.new()
+		node.box = AABB(Vector3(x, 0, 0), Vector3(20, 24, 20))
+		return [node]
+	# Six steps side by side, each touching the next; and a seventh far off.
+	var raw: Array = [{"section": "knuckle", "nodes": at.call(0.0)},
+		{"section": "the rest", "nodes": at.call(20.0)}, {"section": "the rest", "nodes": at.call(40.0)},
+		{"section": "frame", "nodes": at.call(60.0)}, {"section": "frame", "nodes": at.call(80.0)},
+		{"section": "seat", "nodes": at.call(100.0)}, {"section": "yard", "nodes": at.call(900.0)}]
 	Instructions._fold_lone_sections(raw)
 	var said: Array = raw.map(func(entry: Dictionary) -> String: return entry["section"])
 	print("\n  sections of one step")
-	_assert("one at the start goes with the next, one at the end with the one before (%s)"
-		% ", ".join(said), said == ["the rest", "the rest", "the rest", "frame", "frame", "frame"])
+	_assert("one at the start goes with the next, one touching the one before with it (%s)"
+		% ", ".join(said), said.slice(0, 6) == ["the rest", "the rest", "the rest", "frame", "frame",
+			"frame"])
+	_assert("...and one that touches nothing beside it keeps its own (%s)" % said[6],
+		said[6] == "yard")
 
 
 ## A step's own parts are in its picture. A 1 x 1 plate with a 3 x 3 plate

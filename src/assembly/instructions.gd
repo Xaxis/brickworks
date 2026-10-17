@@ -2874,8 +2874,26 @@ static func _fold_lone_sections(raw: Array) -> void:
 		var run: Array = runs[k]
 		if int(run[0]) != int(run[1]) or str(raw[run[0]]["section"]).is_empty():
 			continue
-		var into: Array = runs[k + 1] if k + 1 < runs.size() else runs[k - 1]
-		raw[run[0]]["section"] = raw[into[0]]["section"]
+		# Into the one after, or else the one before, that it touches: a step
+		# that touches neither is a thing of its own, a yard beside the
+		# house, drawn on its own (BookletMaker._find_apart) under its banner.
+		for into: Array in ([runs[k + 1]] if k + 1 < runs.size() else []) \
+				+ ([runs[k - 1]] if k > 0 else []):
+			if _touches_run(raw[run[0]]["nodes"], raw, into):
+				raw[run[0]]["section"] = raw[into[0]]["section"]
+				break
+
+
+## Whether any of [param nodes] touches a node of the steps of [param raw]
+## from [code]run[0][/code] to [code]run[1][/code], by their boxes.
+static func _touches_run(nodes: Array, raw: Array, run: Array) -> bool:
+	for node: Node2 in nodes:
+		var box: AABB = node.box.grow(1.0)
+		for at: int in range(int(run[0]), int(run[1]) + 1):
+			for other: Node2 in raw[at]["nodes"]:
+				if box.intersects(other.box):
+					return true
+	return false
 
 
 static func _add(step: Step, node: Node2) -> void:
