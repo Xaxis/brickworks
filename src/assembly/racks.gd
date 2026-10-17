@@ -45,9 +45,16 @@ class Pinion extends RefCounted:
 	var rate: float = 0.0
 	## How far the pinion's centre stands from where the table puts it, LDU.
 	var off: float = 0.0
+	## A linear actuator's screw: [member gear] its input, [member rack] its
+	## rod, [member body] its body (brick id).
+	var screw: bool = false
+	var body: int = 0
 
 	## "an 8 tooth pinion in a 1 x 4 rack".
 	func said(world: BrickWorld) -> String:
+		if screw:
+			return "the screw of linear actuator %s" % (world.get_brick(body).part_id
+				if world.get_brick(body) != null else "?")
 		var rack_part: String = world.get_brick(rack).part_id if world.get_brick(rack) != null else "?"
 		return "a %d tooth pinion in rack %s" % [teeth, rack_part]
 
@@ -63,6 +70,52 @@ static func pitch() -> float:
 
 static func is_rack(part_id: String) -> bool:
 	return table().has(part_id)
+
+
+## Each linear actuator's screw whose input is a part of its own (the gear
+## table's actuators: input, turns), among [param entries] ([brick id, part
+## id, Transform3D]) and the actuator joints [param links] (Bodies.Link, kind
+## "actuator", pairs [body, rod]): read as a pinion whose rack is the rod, on
+## the actuator's axis. The rod goes the stroke over the input's turns, as
+## builders counted them (docs/MECHANISMS.md, section 13); which way round
+## extends it is not read from the parts.
+static func screws(entries: Array, links: Array) -> Array[Pinion]:
+	var out: Array[Pinion] = []
+	var table: Dictionary = Mechanism.table().get("actuators", {})
+	var part_of: Dictionary = {}
+	for entry: Array in entries:
+		part_of[int(entry[0])] = entry
+	for link: Variant in links:
+		if str(link.kind) != "actuator" or (link.pairs as Array).is_empty():
+			continue
+		var pair: Array = link.pairs[0]
+		var body_entry: Variant = part_of.get(int(pair[0]))
+		if body_entry == null:
+			continue
+		var spec: Dictionary = table.get(str(body_entry[1]), {})
+		if not spec.has("input") or float(spec.get("turns", 0.0)) <= 0.0:
+			continue
+		var way: Vector3 = (link.axis as Vector3).normalized()
+		var point: Vector3 = link.point
+		for entry: Array in entries:
+			if str(entry[1]) != str(spec["input"]):
+				continue
+			var gap: Vector3 = (entry[2] as Transform3D).origin - point
+			if (gap - way * gap.dot(way)).length() > Mechanism.LINE_SLACK:
+				continue
+			var mesh := Pinion.new()
+			mesh.screw = true
+			mesh.body = int(pair[0])
+			mesh.rack = int(pair[1])
+			mesh.gear = int(entry[0])
+			mesh.centre = (entry[2] as Transform3D).origin
+			mesh.axis = way
+			mesh.line = way
+			# Seen from the rod, the input goes back as far as the rod goes out.
+			mesh.rate = absf(float(spec["to"]) - float(spec["from"])) / (float(spec["turns"]) * TAU)
+			out.append(mesh)
+			break
+	return out
 
 
 ## Every pinion standing in a rack among [param entries], each [brick id,

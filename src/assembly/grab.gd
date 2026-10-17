@@ -169,6 +169,12 @@ var _on_the_line: Dictionary = {}
 ## by 1.2 LDU from 3.7° to 8.8° either way, though the cones swing away from
 ## it.
 var _round_self: Dictionary = {}
+## Parts of a loop round about the line of a joint that a joint of the loop
+## carries (a column's bevel in a cab of hinges): brick id -> the body that
+## carries the joint. Its own turn sweeps only where it is, so it is tested
+## where what carries it puts it, unturned: 8062-1's column bevel, tested by
+## its turned cover, met the plate beside it at 4.25°.
+var _spin_with: Dictionary = {}
 ## Parts met, and whether they overlapped the moving side where it stood.
 var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
@@ -262,10 +268,19 @@ func _chosen() -> String:
 			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
 		loop = Linkage.read(bodies, link, body, couplings)
-		if loop.gears_carried and held.is_empty() and bodies.racks_out(ours).is_empty():
-			# Its gears ride on joints the loop moves: not read so yet. Turned
-			# as before, its gears by their teeth and the rack left standing.
-			loop = null
+	if loop != null and loop.why.is_empty():
+		# A linear actuator's screw holds its loop where it is: only its rod
+		# drawn along it, or its input turned, moves it.
+		var by_input: bool = false
+		for mesh: Racks.Pinion in loop.racks:
+			if mesh.screw and bodies.parent_link.get(int(bodies.body_of[mesh.gear])) == link:
+				by_input = true
+		for joined: Bodies.Link in loop.links:
+			if joined.kind == "actuator" and joined != link and not by_input:
+				return _refuse("locked", ("Held by its linear actuator: %s is in a loop with %s, whose screw "
+					+ "holds it where it is (a screw is self-locking). Drag the actuator's rod, or turn its "
+					+ "input.") % [bodies.named(moving_bodies), bodies.named([joined.b if
+					bodies.parent_link.get(joined.b) == joined else joined.a])])
 	if loop != null:
 		if not loop.why.is_empty():
 			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
@@ -283,6 +298,12 @@ func _chosen() -> String:
 			ours[one] = true
 		for key: int in bodies.parts_of(moving_bodies):
 			moving[key] = true
+		# A gear the loop moves that a worm standing still drives: the worm holds
+		# it, as it holds a train turned from the gear's side (_gears).
+		var held_by: Mechanism.Coupling = _worm_holding(ours)
+		if held_by != null:
+			linkage = null
+			return _refuse("locked", _worm_words(held_by))
 	skip = moving.duplicate()
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
@@ -350,6 +371,9 @@ func _chosen() -> String:
 	if linkage != null and linkage.is_slide():
 		# Its loop lets it slide and not turn: a scissor lift's foot.
 		mode = "slide"
+	elif linkage == null and mode == "turn" and not link.turns:
+		# An actuator's rod: drawn out and in, never turned.
+		mode = "slide"
 	# An axle or a pin on the joint's own line sweeps only the holes it is in,
 	# and a part whose whole sweep round the line meets nothing but what it
 	# may press on can never meet anything: neither is tested again.
@@ -377,14 +401,19 @@ func _chosen() -> String:
 			var middle: Vector3 = mesh.bounds.get_center()
 			if _round_on(key, brick.transform * middle, axis):
 				_round_self[key] = middle
+	_spin_with.clear()
 	if linkage != null:
 		for n: int in linkage.links.size():
 			var joined: Bodies.Link = linkage.links[n]
-			if joined.axis == Vector3.ZERO or linkage.moved.has(linkage.parent_of[n]):
+			if joined.axis == Vector3.ZERO:
 				continue
+			var carried: bool = linkage.moved.has(linkage.parent_of[n])
 			for key: int in bodies.members.get(linkage.child_of[n], PackedInt64Array()):
 				if _round_on(key, joined.point, joined.axis.normalized()):
-					_on_the_line[key] = true
+					if carried:
+						_spin_with[key] = int(linkage.parent_of[n])
+					else:
+						_on_the_line[key] = true
 	var shaft_moves: bool = moving.has(link.shaft_part)
 	_range = Vector2(-link.slide.y, link.slide.x) if shaft_moves else Vector2(-link.slide.x, link.slide.y)
 	if linkage == null:
@@ -411,6 +440,18 @@ func _refuse(kind: String, words: String) -> String:
 ## for a joint's anchored half, the half across it.
 func _from_part(brick_id: int) -> void:
 	body = int(bodies.body_of[brick_id])
+	# An actuator's rod is drawn out and in along its actuator, whichever way
+	# the tree hangs the two.
+	for joined: Bodies.Link in bodies.touching.get(body, []):
+		if joined.turns or joined.shaft_part != brick_id:
+			continue
+		for end: int in [joined.a, joined.b]:
+			if bodies.parent_link.get(end) == joined:
+				body = end
+				link = joined
+				moving_bodies = bodies.beyond(end)
+				state = "moves"
+				return
 	if bodies.anchors.has(body) or not bodies.parent_link.has(body):
 		# The anchored half of a joint moves the half across it.
 		for joined: Bodies.Link in bodies.touching.get(body, []):
@@ -514,6 +555,14 @@ func _gears() -> void:
 				", ".join(PackedStringArray(solved["culprits"]))])
 		mechanism = null
 		return
+	# A worm turns its gear; its gear cannot turn it (self-locking). Grabbed
+	# on the gear's side, the train is held there.
+	var held_back: Array[Mechanism.Coupling] = mechanism.worms_back_driven(driven)
+	if not held_back.is_empty():
+		_refuse("locked", _worm_words(held_back[0]))
+		gear_note = "a worm it would turn backwards holds it"
+		mechanism = null
+		return
 	_driver = driven
 	_drive_sign = 1.0 if joint.way.dot(axis) > 0.0 else -1.0
 	# What turns: every body the solve gives a spin, its parts; not the whole
@@ -529,6 +578,54 @@ func _gears() -> void:
 			skip[key] = true
 			rest[key] = mechanism.rest[key]
 	_follow_driven()
+
+
+## Why a worm holds what was grabbed, in words: its gear cannot turn it.
+func _worm_words(worm: Mechanism.Coupling) -> String:
+	var worm_body: int = int(bodies.body_of.get(worm.one.key, -1))
+	# Its thread's lead angle: a tooth a turn round its pitch circle.
+	var lead: float = float(Mechanism.table().get("worm_lead", PI * 2.5))
+	var climbs: float = rad_to_deg(atan(lead / (TAU * maxf(worm.one.radius, 1.0))))
+	return ("Held by a worm: %s turns the %d tooth gear that turns %s, and a gear cannot turn its worm "
+		+ "back (a worm is self-locking: its thread climbs at %.0f°, too shallow for the gear's teeth to "
+		+ "push it round). Turn the worm's axle instead.") % [bodies.named([worm_body]) if worm_body >= 0
+		else "the worm", worm.other.teeth, bodies.named(moving_bodies), climbs]
+
+
+## A worm standing still whose gear the loop moves against it, from the gear
+## reading read ahead: the loop's driver stepped a little, the gear's body
+## has moved against the worm's. Null for none. [param ours]: the bodies the
+## loop moves (Bodies body -> true).
+func _worm_holding(ours: Dictionary) -> Mechanism.Coupling:
+	if shared_mechanism == null or linkage == null:
+		return null
+	var step: Dictionary = {}
+	for coupling: Mechanism.Coupling in shared_mechanism.couplings:
+		if coupling.how != "worm":
+			continue
+		var wheel: int = int(bodies.body_of.get(coupling.other.key, -1))
+		var worm: int = int(bodies.body_of.get(coupling.one.key, -1))
+		# The worm moved too is the loop's driver or carried with it: a worm
+		# may turn its gear.
+		if wheel < 0 or not ours.has(wheel) or ours.has(worm):
+			continue
+		if step.is_empty():
+			var small: float = Linkage.FREEDOM_SLIDE if linkage.is_slide() else Linkage.FREEDOM_TURN
+			if absf(linkage.reach(linkage.kept_value() + small) - linkage.kept_value()) < small * 0.5:
+				linkage.reach(linkage.kept_value() - small)
+			step = linkage.places()
+			linkage.q = linkage.kept.duplicate()
+		var against: Transform3D = (step.get(worm, Transform3D.IDENTITY) as Transform3D).affine_inverse() \
+			* (step.get(wheel, Transform3D.IDENTITY) as Transform3D)
+		var turned: float = rad_to_deg(Quaternion(against.basis.orthonormalized()).get_angle())
+		var moved: float = (against * coupling.other.centre).distance_to(coupling.other.centre)
+		gear_note = "the gear moved %.4f° and %.4f LDU against its worm for the driver's step" % [turned, moved]
+		# Turned against it: a gear shifted along its own axle by a slide the
+		# loop takes up (8062-1's, 0.13 LDU for a degree of the column) does
+		# not turn the worm.
+		if turned > 0.01:
+			return coupling
+	return null
 
 
 ## The gear train the grabbed joint drives, when it reaches a pinion in a
@@ -698,7 +795,8 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	var n: int = from
 	# Which parts' turned covers this test wants, worked out side by side
 	# first, when the whole test is asked at once.
-	var meets: Dictionary = _covers_ahead(at, keys) if budget == INF else {}
+	var carried_at: Dictionary = linkage.places() if linkage != null and not _spin_with.is_empty() else {}
+	var meets: Dictionary = _covers_ahead(at, keys, carried_at) if budget == INF else {}
 	while n < keys.size():
 		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
 			result = -1
@@ -711,7 +809,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
 			continue
-		var to: Transform3D = _shape_at(key, at[key])
+		var to: Transform3D = _tested_at(key, at, carried_at)
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
@@ -747,6 +845,16 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	return Vector2i(result, n if result == -1 else 0)
 
 
+## Where [param key] is tested for room with the parts at [param at]: a part
+## round on a joint the loop carries, where what carries it stands
+## ([param carried_at], Linkage.places as the test's pose has it), unturned;
+## else as [method _shape_at] has it.
+func _tested_at(key: int, at: Dictionary, carried_at: Dictionary) -> Transform3D:
+	if _spin_with.has(key) and not carried_at.is_empty() and rest.has(key):
+		return (carried_at.get(_spin_with[key], Transform3D.IDENTITY) as Transform3D) * (rest[key] as Transform3D)
+	return _shape_at(key, at[key])
+
+
 ## Where [param key]'s shape stands with the part at [param to]: for a part
 ## round about its own middle's line along the joint's ([member _round_self]),
 ## its shape as it stood moved so its middle is where the turn puts it; else
@@ -766,7 +874,7 @@ func _shape_at(key: int, to: Transform3D) -> Transform3D:
 ## kept as [method Builder.boxes_for] keeps its own: a four-bar's frame asked
 ## for its two wheels' and two arms' covers, 11 to 16 ms each, one after the
 ## other. Nothing ahead on a build without threads, or for one cover.
-func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
+func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	# Not in a browser: its workers start when first asked, and the first
 	# drag's frame waited 1.3 s for them.
@@ -781,7 +889,7 @@ func _covers_ahead(at: Dictionary, keys: Array) -> Dictionary:
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 		if mesh == null:
 			continue
-		var to: Transform3D = _shape_at(key, at[key])
+		var to: Transform3D = _tested_at(key, at, carried_at)
 		var box: AABB = to * mesh.bounds
 		var may: bool = _near_anything(box) and _boxes_meet(key, mesh, to, box)
 		out[key] = may
@@ -1140,34 +1248,36 @@ func turn_to(degrees: float) -> float:
 ## the way, bisected back towards the last turn checked, a round a frame.
 ## True once it stands where it has room.
 func verify_step() -> bool:
-	if not unchecked or mode != "turn":
+	if not unchecked or mode == "ball":
 		unchecked = false
 		return true
+	var now: float = angle if mode == "turn" else shift
 	if _verifying_hi == null:
-		var r: Vector2i = _test(transforms_at(angle), _verify_from, budget_ms)
+		var r: Vector2i = _test(_pose_at(now), _verify_from, budget_ms)
 		if r.x == -1:
 			_verify_from = r.y
 			return false
 		_verify_from = 0
 		if r.x == 1:
 			unchecked = false
-			_checked_angle = angle
+			_checked_angle = now
 			return true
-		_verifying_hi = angle
+		_verifying_hi = now
 		_verifying_lo = _checked_angle
 	var hi: float = float(_verifying_hi)
-	if absf(hi - _verifying_lo) < STOP_TO:
-		angle = _verifying_lo
-		placed = transforms_at(angle)
+	# A slide is found to a tenth of an LDU, a turn to STOP_TO degrees.
+	if absf(hi - _verifying_lo) < (STOP_TO if mode == "turn" else 0.1):
+		_set_value(_verifying_lo)
+		placed = _pose_at(_verifying_lo)
 		_keep_loop()
-		_wall = hi
+		_wall = hi if mode == "turn" else NAN
 		_verifying_hi = null
 		unchecked = false
 		stopped = true
-		_checked_angle = angle
+		_checked_angle = _verifying_lo
 		return true
 	var middle: float = (_verifying_lo + hi) * 0.5
-	var r2: Vector2i = _test(transforms_at(middle), _verify_from, budget_ms)
+	var r2: Vector2i = _test(_pose_at(middle), _verify_from, budget_ms)
 	if r2.x == -1:
 		_verify_from = r2.y
 		return false
@@ -1176,11 +1286,24 @@ func verify_step() -> bool:
 		_verifying_lo = middle
 	else:
 		_verifying_hi = middle
-	angle = _verifying_lo
-	placed = transforms_at(angle)
+	_set_value(_verifying_lo)
+	placed = _pose_at(_verifying_lo)
 	_keep_loop()
 	stopped = true
 	return false
+
+
+## Where everything stands with the joint at [param value]: degrees for a
+## turn, LDU for a slide.
+func _pose_at(value: float) -> Dictionary:
+	return transforms_at(value) if mode == "turn" else transforms_at(angle, value)
+
+
+func _set_value(value: float) -> void:
+	if mode == "turn":
+		angle = value
+	else:
+		shift = value
 
 
 ## Slide [param along] LDU from where it was grabbed, along the shaft as far
@@ -1188,12 +1311,38 @@ func verify_step() -> bool:
 func slide_to(along: float) -> float:
 	if state != "moves" or mode != "slide":
 		return shift
+	frame_solve_ms = 0.0
+	frame_test_ms = 0.0
+	frame_tests = 0
 	var wanted: float = clampf(along, _range.x, _range.y)
 	if linkage != null:
 		# A slide in a loop goes as far as the loop takes it.
 		wanted = linkage.reach(along)
 	stopped = not is_equal_approx(wanted, along)
 	var at: Dictionary = transforms_at(angle, wanted)
+	if budget_ms < INF:
+		# A big section, as turn_to has it: tested within a frame's share,
+		# shown where the pointer says when there is not time to finish, and
+		# checked on a pause or at the release (verify_step). 42081-1's boom,
+		# 262 parts on its actuator, was bisected by whole tests at its stop:
+		# 164 of them, 31 s in one frame.
+		var room: int = _test(at, 0, budget_ms).x
+		if room != 0:
+			if room == 1 and not unchecked:
+				_checked_angle = wanted
+			else:
+				unchecked = true
+			shift = wanted
+			placed = at
+			_keep_loop()
+			return shift
+		if not unchecked:
+			_checked_angle = shift
+		unchecked = true
+		_verifying_lo = _checked_angle
+		_verifying_hi = wanted
+		stopped = true
+		return shift
 	if has_room(at):
 		shift = wanted
 		placed = at

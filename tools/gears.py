@@ -136,6 +136,50 @@ def check_holes(table: dict) -> list[str]:
     return problems
 
 
+def _moved_to(part: str) -> str:
+    """The part a "~Moved to X" file stands for, else the part itself."""
+    path = LDRAW / "parts" / f"{part}.dat"
+    if path.exists():
+        first = path.read_text(errors="replace").splitlines()[0]
+        if "~Moved to " in first:
+            return first.split("~Moved to ", 1)[1].strip()
+    return part
+
+
+def check_actuators(table: dict) -> list[str]:
+    """Each actuator's rod stands where the library's own contracted and
+    extended files put it: from and to along the body's axis, in the app's
+    axes (LDraw's with y and z turned round), and nowhere off it."""
+    problems: list[str] = []
+    for body, spec in sorted(table.get("actuators", {}).items()):
+        axis = _ldraw_axis(spec.get("axis", "z"))
+        flip = (1.0, -1.0, -1.0)
+        for drawn, want in zip(spec["drawn"], (spec["from"], spec["to"])):
+            path = LDRAW / "parts" / f"{drawn}.dat"
+            if not path.exists():
+                problems.append(f"{body}: no {drawn}.dat to read its stroke from")
+                continue
+            placed: dict[str, tuple[list[float], list[float]]] = {}
+            for line in path.read_text(errors="replace").splitlines():
+                bits = line.split()
+                if len(bits) >= 15 and bits[0] == "1":
+                    part = _moved_to(bits[14].lower().removesuffix(".dat"))
+                    placed[part] = ([float(v) for v in bits[2:5]], [float(v) for v in bits[5:14]])
+            if body not in placed or spec["rod"] not in placed:
+                problems.append(f"{body}: {drawn} does not place {body} and {spec['rod']}")
+                continue
+            (b, m), (r, _) = placed[body], placed[spec["rod"]]
+            gap = [r[k] - b[k] for k in range(3)]
+            # Into the body's own frame (its matrix's columns), then the app's axes.
+            local = [sum(m[3 * k + j] * gap[k] for k in range(3)) * flip[j] for j in range(3)]
+            along = sum(a * x for a, x in zip(axis, local))
+            off = math.sqrt(max(sum(x * x for x in local) - along * along, 0.0))
+            if abs(along - float(want)) > 0.01 or off > 0.01:
+                problems.append(f"{body}: {drawn} puts {spec['rod']} {along:.2f} along its axis and "
+                                f"{off:.2f} off it, where the table says {want}")
+    return problems
+
+
 def check_sizes(table: dict, catalogue: dict) -> list[str]:
     """A spur gear's outside diameter is 2.5 (N + 2) LDU."""
     by_id = {p["id"]: p for p in catalogue["parts"]}
@@ -230,6 +274,7 @@ def main(argv: list[str]) -> int:
         print(f"(no {CATALOGUE}: names and sizes not checked)")
     if (LDRAW / "parts").is_dir():
         problems += check_holes(table)
+        problems += check_actuators(table)
     else:
         print(f"(no {LDRAW}: holes not checked)")
     for problem in problems:

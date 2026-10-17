@@ -58,6 +58,29 @@ func show_report(weighed: Balance.Report, tints: Dictionary = {}) -> void:
 	_draw()
 
 
+## Draw one triangle nobody can see, in front of [param eye], for two
+## frames, so the renderer builds this mark's material (unshaded, blended,
+## over everything) before a drag first needs it. A browser drawing in
+## software built it in the first drag's first frame, 203 ms of it on a
+## loaded box (MECHANISMS §13). Nothing is left drawn after.
+func warm(eye: Camera3D) -> void:
+	if report != null or eye == null:
+		return
+	var ahead: Vector3 = eye.global_position - eye.global_transform.basis.z * (eye.near + 1.0)
+	var across: Vector3 = eye.global_transform.basis.x * 0.01
+	var up: Vector3 = eye.global_transform.basis.y * 0.01
+	_lines.clear_surfaces()
+	_lines.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	_triangle(ahead, ahead + across, ahead + up, Color(1.0, 1.0, 1.0, 0.0))
+	_lines.surface_end()
+	visible = true
+	for _n: int in 2:
+		await RenderingServer.frame_post_draw
+	if report == null:
+		_lines.clear_surfaces()
+		visible = false
+
+
 func clear() -> void:
 	report = null
 	visible = false

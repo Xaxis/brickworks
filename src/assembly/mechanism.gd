@@ -1441,6 +1441,34 @@ static func _eliminate(rows: Array, depth: Dictionary = {}) -> Dictionary:
 	return {"consistent": true, "pivots": pivots}
 
 
+## The worms a turn of [param driver] would turn backwards: each one whose
+## gear the train reaches before the worm itself, going out from the driver
+## mesh by mesh. A worm turns its gear and the gear cannot turn the worm: its
+## thread rises a tooth (pi mm) a turn round a 4 mm pitch radius, a lead
+## angle of 7°, and the teeth's friction holds it (self-locking). A crane's
+## boom on a worm stays where it is left.
+func worms_back_driven(driver: int) -> Array[Coupling]:
+	var out: Array[Coupling] = []
+	var reached: Dictionary = {driver: true}
+	var queue: Array = [driver]
+	var used: Dictionary = {}
+	while not queue.is_empty():
+		var at: int = queue.pop_front()
+		for coupling: Coupling in couplings:
+			if used.has(coupling) or (coupling.one.body != at and coupling.other.body != at):
+				continue
+			used[coupling] = true
+			var next: int = coupling.other.body if coupling.one.body == at else coupling.one.body
+			if coupling.how == "worm" and coupling.other.body == at and not reached.has(next):
+				out.append(coupling)
+				continue
+			if next == ground or floating.has(next) or reached.has(next):
+				continue
+			reached[next] = true
+			queue.append(next)
+	return out
+
+
 ## How fast [param body] turns, as a vector: the sum of every joint's rate
 ## on its way from the ground, radians for one of the driver's.
 func omega(body: int) -> Vector3:

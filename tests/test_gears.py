@@ -89,3 +89,16 @@ def test_real_sets_stand_their_gears_one_and_a_quarter_ldu_a_tooth_apart() -> No
     wrong["ldu_per_tooth"] = 1.3
     off = gears.spacing(files, wrong)
     assert (off["0.1"] + off["0.3"]) < close / 2
+
+
+@needs_ldraw
+def test_each_actuator_strokes_as_the_library_draws_it() -> None:
+    # The rod's place drawn in and drawn out, read from the library's own
+    # contracted and extended files: the small linear actuator's 60 LDU.
+    table = gears.load_table()
+    assert gears.check_actuators(table) == []
+    small = table["actuators"]["92693c01"]
+    assert abs(small["to"] - small["from"]) == 60.0
+    wrong = copy.deepcopy(table)
+    wrong["actuators"]["92693c01"]["to"] = -200.0
+    assert any(p.startswith("92693c01") for p in gears.check_actuators(wrong))

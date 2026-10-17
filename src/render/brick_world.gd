@@ -772,6 +772,12 @@ func _mark_dirty(key: String) -> void:
 		_flush_when_due.call_deferred()
 
 
+## What rewriting batches has cost, ms, and how many, since a probe timing
+## a drag's frames last took them.
+var rebuilt_ms: float = 0.0
+var rebuilt_batches: int = 0
+
+
 ## Whether a big rebuild may be spread over frames (FramePace), batches
 ## not yet rebuilt drawing as they were a frame or two longer. The world on
 ## screen does: writing every batch of the owner's 4,242-part Falcon Heavy,
@@ -845,6 +851,13 @@ func _flush() -> void:
 
 
 func _rebuild(batch: Batch, key: String) -> void:
+	var began: int = Time.get_ticks_usec()
+	_rebuild_batch(batch, key)
+	rebuilt_ms += float(Time.get_ticks_usec() - began) / 1000.0
+	rebuilt_batches += 1
+
+
+func _rebuild_batch(batch: Batch, key: String) -> void:
 	# Written as usual, a batch laid out for a reveal would draw the wrong
 	# bricks at the next count: whatever writes it ends the reveal first.
 	if not batch.ranks.is_empty():
