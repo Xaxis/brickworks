@@ -351,6 +351,122 @@ Robin each lost a part fetch for forty seconds while the shared
 `assets/generated` link was briefly broken; both are characters, which the
 lever never touched.
 
+### Technique: the body built on its side (2026-10-16, tried and taken out)
+
+The last lever put a joint on a stacked body and did not move technique.
+This one went for the body: its plain faces built on their side, by the call
+that lays it. It did not move technique either, and it is not in the code.
+
+**How the bodies are laid.** Read in the ten tune transcripts of the start
+code (`technique-base`):
+
+- Six sessions laid the first body by hand, brick by brick: 37 to 101
+  parts in one submission, or Robin's in edits. Patterns laid it in four: Tokyo's towers (repeat, round), the End
+  island (fill), Shelob's lair (shape, rock) and the pyramid (shape, once).
+  A pattern made more expert reaches few bodies.
+- The two that reached for a body built rather than stacked were turned
+  away. Shelob's legs on ball joints were refused seven times, most for a
+  ball and its socket overlapping by 1 to 2.4 LDU. The pyramid's shape was
+  sent back as a figure, built on the second try at 16 plates where its
+  profile rose to 41, and then laid again by hand: 149 slope bricks.
+- The character send-back misreads scenes. A person or a creature named in
+  the description is read as the subject: the pyramid's statues, the End's
+  dragon, Jungle River and Dino Explorer, in the last round's runs and the
+  armature's. Dino Explorer was told "nothing in it is on a
+  joint" in 11 replies. The armature unit has the cause
+  (`Style.character_of`) and a fix.
+- SNOT is the widest gap measured: the tune sets build 35% of their parts
+  on their side, ours 8%. The surface pass's flank skin reached little of
+  it: only when asked, six a review, never a building, never a run under
+  four studs. Tokyo kept five skins in 418 parts.
+
+**The lever** (`369b006`): submit_design lays every plain face of the body
+on its side as it builds it. Each course of plain bricks with a face open to
+the air is laid again as bricks with studs on the side, with tiles on them a
+plate proud. Two-stud runs count, and so do buildings. Each is a kept
+finding of the surface pass, so settle_surface can put one back. Replayed
+on 15 first bodies from the transcripts, a median 9% of their parts then
+stood on their side (0-23%).
+
+**The tune half,** one design a subject, both arms drawn on the GPU (RADV,
+every views_render.log):
+
+| dimension | start preferred to the set | lever preferred to the set | start minus lever, paired (95%) | start preferred to lever, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 10% (2-40) | +20 (0, +50) | 80% (49-94) |
+| surface | 40% (17-69) | 30% (11-60) | +10 (-15, +35) | 55% (27-80) |
+| colour | 35% (14-65) | 35% (14-65) | 0 (-15, +15) | 65% (35-86) |
+| technique | 5% (1-34) | 5% (1-34) | 0 (0, 0) | 65% (35-86) |
+| creativity | 25% (8-56) | 15% (4-46) | +10 (0, +25) | 60% (31-83) |
+| overall | 30% (11-60) | 20% (6-51) | +10 (-10, +35) | 80% (49-94) |
+
+**The proof half,** run once on the lever, against the armature arm (drawn
+on the GPU too: every views_render.log names the RADV device, so nothing was
+drawn again):
+
+| dimension | armature preferred to the set | lever preferred to the set | armature minus lever, paired (95%) | lever preferred to armature, head to head (95%) |
+|---|---|---|---|---|
+| likeness | 30% (11-60) | 25% (8-56) | +5 (-10, +20) | 45% (20-73) |
+| surface | 40% (17-69) | 35% (14-65) | +5 (-10, +20) | 60% (31-83) |
+| colour | 30% (11-60) | 25% (8-56) | +5 (-10, +20) | 30% (11-60) |
+| technique | 15% (4-46) | 5% (1-34) | +10 (0, +25) | 30% (11-60) |
+| creativity | 45% (20-73) | 20% (6-51) | +25 (+5, +45) | 25% (8-56) |
+| overall | 25% (8-56) | 20% (6-51) | +5 (-10, +30) | 30% (11-60) |
+
+- **Technique against the sets did not move:** one verdict in twenty on
+  both halves, as the start's tune half and m32's proof half; the armature
+  arm had three. No dimension rose. Creativity fell beyond noise on the
+  proof half, and likeness all but did on the tune half: neither is a thing
+  a tile on a side stud can do, which says how far two sessions of nearly
+  the same code can differ.
+
+**What they are made of** (medians, ours against the sets):
+
+| | shapes per 100 parts | SNOT | joints | 1 x 1 | tiles |
+|---|---|---|---|---|---|
+| tune, start | 22.4 | 8% | 1% | 30% | 17% |
+| tune, lever | 25.5 | 11% | 1% | 30% | 22% |
+| tune, the sets | 29.2 | 35% | 7% | 19% | 7% |
+| proof, armature | 16 | 4% | 0% | 23% | 18% |
+| proof, lever | 18.2 | 5% | 0% | 18% | 18% |
+| proof, the sets | 28.4 | 25% | 3% | 13% | 11% |
+
+**What happened.**
+- *The faces were laid, and kept.* Six of ten tune designs had faces laid at
+  their first submission (Tokyo 15, the End 43, Robin 6, the wolf 5, the
+  sheep 3, Shelob 2). SNOT rose on four of them: Tokyo 1% to 6%, the End
+  14% to 20%, the sheep 4% to 26% (19 of its 24 sideways parts its own
+  round plates and tiles, 4 the lever's), Shelob 18% to 33%. On the proof
+  half eight of ten had faces laid and SNOT went from 4% to 5%: a session
+  that submits again replaces the model, and Container Yard's first body,
+  158 parts on their side, went with it.
+- *The judge saw them and did not count them.* Tokyo: "largely stacked
+  bricks and round plates, with some sideways-mounted detail on the grey
+  towers". The End: "a layered island ... better use of technique than A's
+  dragon arms made of plain bricks, even though A has some sideways-mounted
+  detail on its base". The sheep: "round plates mounted sideways for wool
+  texture are a good idea, but the rest is stacked bricks". What the sets
+  win technique on is what they angle: legs and claws on joints, lamps on
+  clips, arches, a boom on gears. A face built on its side is still a box.
+- *Head to head the start won, carried by sessions the lever never touched.*
+  Andrea's Stage, the pyramid and Jungle River had no face laid, and the
+  start won likeness and overall on all three, both orders: "its bare
+  studded floor looks unfinished", "a lumpy, studded pyramid lost in
+  clutter". Two sessions of the same code differ that much; ten subjects
+  cannot tell it from the lever.
+
+**Taken out:** submit_design lays the body as it did before. What is kept
+is above: where the bodies come from, what a skin reaches, and that a face
+on its side does not win the verdict. A next lever has to angle the body,
+not face it, and the sessions that tried (Shelob's legs, the pyramid's
+shape) were refused by the build check or the send-back before the judge
+saw them. The build check read all twenty: the only parts floating are
+two minifigure skirts in Emma's studio, none of the lever's.
+
+Results: `bench/results/realset-2026-10-16-faces/` (both halves),
+`realset-2026-10-16-technique-base-vs-faces/` and
+`realset-2026-10-16-armature-vs-faces/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
