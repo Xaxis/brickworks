@@ -567,7 +567,7 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		for entry: Booklet.Entry in entries:
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
-			entry.turned = _round_from(was, entry.from)
+			entry.turned = entry != entries[0] and _round_from(was, entry.from)
 			was = entry.from
 		return
 	var keep: int = _studio.supersample
@@ -583,7 +583,8 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		# Seen the way its designer set it: turned where the turn is more
 		# than a glance round from the step before.
 		if entry.fixed:
-			entry.turned = _round_from(before, entry.from)
+			# The first step is where the reader starts: nothing to turn from.
+			entry.turned = count > 1 and _round_from(before, entry.from)
 			before = entry.from
 			facing = BookletStudio.FRONT
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,

@@ -982,8 +982,10 @@ picture the assistant is shown.
   drawing nothing, which is what `booklet_layout` reads. Over MCP:
   `booklet_layout` (read-only: pages, steps and each step's look) and
   `edit_booklet` (step=, turn=, tilt=, zoom=, size=, page=, parts=, callout=,
-  per_page=; one undo). `booklet_edit_probe` (gpu, windowed; `-- --into=DIR`,
-  never `--out=`, which Main takes as an export) opens 30050-1 (ROTSTEPs,
+  per_page=; one undo). `booklet_edit_probe` (`gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot
+  --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd --
+  --into=DIR`: windowed on Xvfb, or the pictures are never drawn; never
+  `--out=`, which Main takes as an export; `--no-booklet` headless) opens 30050-1 (ROTSTEPs,
   ABS), 106-1 and 10016-1 (no steps) as File, Open does; checks a file
   opened and saved unchanged is the file; merges, splits, reorders (and is
   refused where a step stands on the one before), moves a part, each one

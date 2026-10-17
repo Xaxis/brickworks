@@ -5,8 +5,13 @@
 ## (Shell.change_steps, Shell.change_look: the timeline's buttons, the
 ## Booklet page menu and edit_booklet over MCP all come here).
 ##
-##   ~/.claude/claude-core/bin/gpu env XDG_DATA_HOME=$PWD/.scratch-data \
-##     godot --path . --script src/dev/booklet_edit_probe.gd -- [--into=DIR] [--no-booklet]
+##   ~/.claude/claude-core/bin/gpu env XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw \
+##     xvfb-run -a --server-args="-screen 0 1400x900x24" godot --path . --resolution 1280x800 \
+##     --script src/dev/booklet_edit_probe.gd -- [--into=DIR] [--no-booklet] [--only=SET]
+##
+## Windowed, on the GPU, under Xvfb: on a display with no monitor the
+## booklet's pictures were never drawn (each given up after 20 s).
+## --no-booklet judges the file and the edits alone, headless.
 ##
 ## On two real sets with their designers' steps, 30050-1 (sub-models, and
 ## seven ROTSTEPs, ABS) and 106-1 (a car, a figure and its wheels as
@@ -49,6 +54,8 @@ var _library: PartLibrary
 var _out: String = ""
 var _booklets: bool = true
 var _name: String = ""
+## --only=SET: that set alone.
+var _only: String = ""
 
 
 func _initialize() -> void:
@@ -73,6 +80,8 @@ func _run() -> void:
 			_out = arg.substr(7)
 		if arg == "--no-booklet":
 			_booklets = false
+		if arg.begins_with("--only="):
+			_only = arg.substr(7)
 	if _out.is_empty():
 		_out = OS.get_user_data_dir().path_join("sessions/probe/booklet_edit")
 	DirAccess.make_dir_recursive_absolute(_out)
@@ -90,12 +99,22 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_steps = _main.get("_steps")
 	_library = _main.get("_library")
+	# With the assistant switched off, as a person may have it: every one of
+	# these is the window's own.
+	_shell.set_assistant(false)
+	var menu: Array = Shell.SUBMENUS.get("booklet", [])
+	var missing: Array = menu.filter(func(id: String) -> bool:
+		return id != "-" and not _shell._commands.has(id))
+	_check("the assistant off, Build, Booklet page has its %d commands"
+		% menu.filter(func(id: String) -> bool: return id != "-").size(),
+		not menu.is_empty() and missing.is_empty() and not _shell.assistant_shown)
 	if not FileAccess.file_exists(str(SETS[0][0])):
 		print("booklet edit: vendor/omr is not in this checkout; nothing judged")
 		quit(0)
 		return
 	for set: Array in SETS:
-		await _one_set(str(set[0]), str(set[1]))
+		if _only.is_empty() or str(set[1]) == _only:
+			await _one_set(str(set[0]), str(set[1]))
 	print("")
 	print("booklet edit: %s" % ("every check passed" if _failures == 0
 		else "%d FAILED" % _failures))
@@ -441,6 +460,7 @@ func _first_look_adopts(base: String) -> void:
 
 
 func _all_looks(name: String, before: Dictionary) -> void:
+	var adopted: bool = not AuthorSteps.any(_world, _store.scenery)
 	var own: Array[Instructions.Step] = _own_steps(1)
 	if own.size() < 6:
 		own = []
@@ -486,7 +506,22 @@ func _all_looks(name: String, before: Dictionary) -> void:
 	await _timeline()
 	_check("saved and opened again: every look as it was set (%d)" % looks.size(),
 		_without_lines(_world.step_looks) == _without_lines(looks))
-	_check("...the timeline's steps the same (%d)" % timeline.size(), _captions() == timeline)
+	var now: Array = _captions()
+	var differ: String = ""
+	for at: int in mini(now.size(), timeline.size()):
+		if now[at] != timeline[at]:
+			differ = ": first apart at %s, was %s" % [now[at], timeline[at]]
+			break
+	# A model given the worked-out steps has each copy of a sub-model built
+	# in its own order, and a file writes a sub-model once: reopened, every
+	# copy is built as the first (10016-1's second wheels). Said, and only
+	# the count judged there.
+	if adopted:
+		_check("...as many steps (%d, now %d%s)" % [timeline.size(), now.size(), differ],
+			now.size() == timeline.size())
+	else:
+		_check("...the timeline's steps the same (%d, now %d%s)" % [timeline.size(), now.size(),
+			differ], now == timeline)
 	var again: String = _save()
 	var drift: Array = _diff(saved, again)
 	_check("...and saved again, the same file (%d out, %d in)" % [(drift[0] as Array).size(),

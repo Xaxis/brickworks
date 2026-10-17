@@ -2496,7 +2496,7 @@
       "id": "ui:the booklet by hand",
       "kind": "ui",
       "entry": "src/assembly/booklet_looks.gd",
-      "reach": "gpu godot --path . --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the timeline's Booklet row or Build, Booklet page: turn, tilt, this view, zoom, size, new page, alone, parts list, callout, steps a page; Instructions prints it so)",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the timeline's Booklet row or Build, Booklet page: turn, tilt, this view, zoom, size, new page, alone, parts list, callout, steps a page; Instructions prints it so)",
       "area": "view",
       "tests": []
     },

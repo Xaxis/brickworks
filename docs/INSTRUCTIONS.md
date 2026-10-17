@@ -845,7 +845,79 @@ frame first.
 
 ![8032 after, page 3](instructions/8032-after-page3.webp)
 
+## The booklet by hand (2026-10-17)
+
+A designer who publishes instructions adjusts them. Studio's Instruction
+Maker lets them lay out steps, pages, callouts and parts lists by hand
+[st-im] [st-callout]; LPub does it with meta lines in the file. Ours was
+worked out and could not be changed past the steps themselves.
+
+Now the timeline (B) has a Booklet row for the step showing, and Build has
+the same as Booklet page: turn the step's picture round (45 degrees a press)
+or look from higher or lower (15), or take the angle the window looks from;
+zoom in on what the step adds or out; draw the step larger or smaller on
+its page; start a new page with it, or give it a page alone; leave its parts
+list off; build the sub-assembly it puts on in a callout box or on pages of
+its own; and say how many steps a page may have. The row's last words say
+how the step is set ("turned 45°, zoom 1.25x, new page"). Steps are merged,
+split, moved earlier or later and given parts as before, with two changes:
+Earlier will not put a step before the one its parts stand on, and the
+step beside one is the nearest with parts in it. Every change is one undo.
+Over MCP, `booklet_layout` reads the pages and how each step is set, and
+`edit_booklet` sets one.
+
+All of it is kept in the model's file. A turn is LDraw's own rotation step,
+`0 ROTSTEP x y z REL`, which MLCad, LPub and LDCad read: it ends the step
+before and turns the one after it, and every step after until the next, as
+the files of LDraw's model repository write it (30050 Republic Attack
+Shuttle turns each sub-model from a ROTSTEP before its first part). Read as
+turning the step it ends, every turned step of that file was one off. The
+rest are lines of the app's own inside the step, which other programs pass
+over: `0 !BRICKWORKS PAGE NEW`, `PAGE ALONE`, `ZOOM 1.25`, `SIZE 1.25`,
+`PARTS OFF`, `CALLOUT OFF` in a sub-model, `PER_PAGE 2` in the model.
+
+Someone else's file is written back with only what changed. A merge took
+every part after it out of its line and put it back one step early, and
+left an empty step at the end; now the sub-model is written again a step at
+a time: a merge is one STEP line out, a split one in, a reorder whole steps
+moved with their lines, every other line as it was. `booklet_edit_probe`
+makes each edit on 30050-1, 106-1 and 10016-1 (no steps of its own) and
+reads the file after it line by line: on 106-1 a merge is exactly its STEP
+line out and a split one STEP in, each look adds exactly its one line, and
+one undo gives back the file byte for byte. 30050-1 has steps of nothing
+but a ROTSTEP; an edit of that sub-model takes them out and hands each turn
+to the step it turned, so its file loses those lines and every part is
+still seen from the side it was. The round trip on 30 real sets' files
+(`tools/bench/cadtask.py roundtrip`) is unchanged: 30 of 30 written back
+exactly, steps kept in all 22 with steps.
+
+The pages, made by `booklet_edit_probe` on the GPU and printed by
+`tools/web/booklet_print.mjs`. 30050-1 as its author stepped it, page 2:
+four steps, each turned as the author's ROTSTEPs say (the first from behind
+and to the right, ABS 35 125).
+
+![30050-1 before, page 2](instructions/30050-hand-before-page2.webp)
+
+After two a page, step 2 turned a further 90 degrees and tilted 15 higher
+(the turn sign says so), and step 3 zoomed to 1.5x, on a page of its own
+because the next starts a new page:
+
+![30050-1 after, page 2](instructions/30050-hand-after-page2.webp)
+![30050-1 after, page 3](instructions/30050-hand-after-page3.webp)
+
+What reads badly: a step alone, or two a page, is drawn no larger than ten
+millimetres a stud unless Bigger or Zoom says so, so a small model sits
+small in the middle of its page; and step 2's half page shows the whole
+model small where a designer would zoom it too.
+
 ## What is left
+
+- **The page by hand.** Studio places a step's picture, its callout and its
+  parts list anywhere on the page, adds text and pictures, and highlights
+  the new parts; ours lays each page out from the choices above. A step's
+  turn is a turn round and a tilt; LDraw's third angle (a roll) is kept in
+  the file but not drawn. The step player (Build it, a shared link) does not
+  follow the designer's turns yet.
 
 - **Order.** Ours reads what the file's shape says and not what its author
   chose among equal options. The order the file lists its sub-models in is
@@ -905,4 +977,6 @@ frame first.
 [apexmr]: https://arxiv.org/html/2503.15836
 [gt-asp]: https://arxiv.org/abs/2210.05236
 [patent]: https://patents.google.com/patent/US7979251B2/en
+[st-im]: https://studiohelp.bricklink.com/hc/en-us/articles/5626403887511
+[st-callout]: https://studiohelp.bricklink.com/hc/en-us/articles/5679958311191
 [omr-spec]: https://www.ldraw.org/article/593.html
