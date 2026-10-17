@@ -152,7 +152,7 @@ func _open_mid_weigh() -> void:
 		print("  ----  8202-1 is not in this checkout, or no big model is up: the open "
 			+ "while a model is weighed was not judged")
 		return
-	var weighed: String = _store.title
+	var weighed: String = str(REAL_SETS[-1]).get_file().get_basename()
 	var whole: int = -1
 	for weighing: int in 2:
 		_main.set("_stability_revision", -1)
