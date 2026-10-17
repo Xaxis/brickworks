@@ -502,6 +502,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			plan.stitch()
 		return [plan, shells]
 	var built: Array = build.call(bool(pattern.get("sideways", not gridded)))
+	if built.is_empty():
+		return []
 	var plan: Plan = built[0]
 	var shells: Array = built[1]
 	# Turning a side out must not cut the core in two: a car's arches left
@@ -512,6 +514,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	if not shells.is_empty() and (plan.pieces().size() > 1
 			or plan.screens_kept() < plan.screens_laid):
 		var upright: Array = build.call(false)
+		if upright.is_empty():
+			return []
 		var up: Plan = upright[0]
 		if up.pieces().size() < plan.pieces().size() \
 				or (up.pieces().size() == plan.pieces().size()
