@@ -70,7 +70,8 @@ def upload(url: str, key: str, name: str, path: Path) -> str | None:
     request = urllib.request.Request(
         f"{url}/storage/v1/object/{BUCKET}/{name}", data=path.read_bytes(), method="POST",
         headers={"apikey": key, "authorization": f"Bearer {key}",
-                 "content-type": "text/plain; charset=utf-8",
+                 # The bucket takes the meshes' type and no text type (415).
+                 "content-type": "application/octet-stream",
                  "cache-control": CACHE_CONTROL, "x-upsert": "false"})
     for attempt in range(4):
         try:

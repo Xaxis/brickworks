@@ -16,7 +16,9 @@
 ##   no carried part is left out, each built as the desktop builds it from
 ##   vendor/ldraw (the same faces and bounds), and only what the file names
 ##   and what those draw on is fetched;
+## - answers heard in whatever order they come;
 ## - opened again, nothing is fetched and no frame is waited for;
+## - the working model put back at start-up fetches what it needs as well;
 ## - a file that carries nothing, or the desktop with its library, waits for
 ##   no frame and fetches nothing;
 ## - a file the server has not got is said not shown, with why (HTTP 404),
@@ -78,9 +80,11 @@ func _run() -> void:
 		quit(1)
 		return
 	await _nothing_to_fetch()
+	await _any_order()
 	await _fetched_as_the_web_does(SET)
 	for path: String in args:
 		await _fetched_as_the_web_does(path)
+	await _restored()
 	await _not_there()
 	_web_page()
 	OS.kill(_server)
@@ -174,6 +178,28 @@ func _nothing_to_fetch() -> void:
 			% [_carried_unshown(opened, model)])
 
 
+## Answers come in any order (in a browser they did): a big file asked for
+## first and three small ones after, each must be heard. Awaited one after
+## another, an answer that came while an earlier one was awaited was never
+## heard, and 21321-1 never opened in a browser.
+func _any_order() -> void:
+	print("carriedfetch: answers in any order")
+	_fresh()
+	var keys := PackedStringArray(["4510086c.dat", "s/3001s01.dat", "3004.dat", "79.dat"])
+	var done: Array = [false]
+	var fetch: Callable = func() -> void:
+		await CustomParts._fetch_each(self, _root(), keys)
+		done[0] = true
+	fetch.call()
+	var began: int = Time.get_ticks_msec()
+	while not done[0] and Time.get_ticks_msec() - began < 40000:
+		await process_frame
+	_expect(done[0] and PartForge._fetched.size() == keys.size(),
+		"a 1.9 MB file first and three small: all %d heard, in %d ms (%d kept)"
+			% [keys.size(), Time.get_ticks_msec() - began, PartForge._fetched.size()])
+	_fresh()
+
+
 func _fetched_as_the_web_does(path: String) -> void:
 	var text: String = FileAccess.get_file_as_string(path)
 	var name: String = path.get_file().get_basename()
@@ -247,6 +273,30 @@ func _fetched_as_the_web_does(path: String) -> void:
 	_expect(Engine.get_process_frames() == frame and PartForge._fetched.size() == count
 		and _carried_unshown(opened, model) == on_desktop,
 		"opened again: nothing fetched, no frame waited for")
+	PartForge.withheld = false
+	CustomParts.sources_from = ""
+
+
+## The working model, put back at start-up (Main: ModelStore.restore_fetched),
+## is a file opened like any other: what its carried parts need fetched first.
+func _restored() -> void:
+	print("carriedfetch: the working model put back at start-up")
+	TabSession.use("carriedfetchprobe")
+	var path: String = ModelStore.autosave()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/21321-1.mpd")
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	_fresh()
+	PartForge.withheld = true
+	CustomParts.sources_from = _root()
+	var placed: int = await _store.restore_fetched()
+	var out: Array = _carried_unshown({"unshown": _store.unshown}, LdrModel.parse(text, "21321-1"))
+	_expect(placed > 0 and out.is_empty() and not PartForge._fetched.is_empty(),
+		"21321-1 restored with every part it carries: %d parts, %d files fetched, not shown %s"
+			% [placed, PartForge._fetched.size(), out])
+	DirAccess.remove_absolute(path)
 	PartForge.withheld = false
 	CustomParts.sources_from = ""
 

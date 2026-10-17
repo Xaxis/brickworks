@@ -376,36 +376,47 @@ static func fetch_sources(library: PartLibrary, model: LdrModel) -> void:
 
 ## Fetch [param keys] from [param root], [constant MOST_FETCHES] at a time.
 ## How many arrived.
+##
+## Each answer is taken by a callable of its own, whenever it comes. Awaited
+## one after another, an answer that came while an earlier one was awaited
+## was never heard, and in a browser, where answers come in any order,
+## 21321-1 waited for ever before it opened.
 static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray) -> int:
-	var arrived: int = 0
-	for first: int in range(0, keys.size(), MOST_FETCHES):
-		var going: Array = []
-		for key: String in keys.slice(first, first + MOST_FETCHES):
+	var arrived: Array = [0]
+	var going: Array = [0]
+	var todo: Array = Array(keys)
+	while not todo.is_empty() or int(going[0]) > 0:
+		while not todo.is_empty() and int(going[0]) < MOST_FETCHES:
+			var key: String = todo.pop_front()
 			var request := HTTPRequest.new()
 			request.timeout = 30.0
 			tree.root.add_child(request)
+			request.request_completed.connect(func(result: int, code: int,
+					headers: PackedStringArray, body: PackedByteArray) -> void:
+				request.queue_free()
+				going[0] = int(going[0]) - 1
+				if _took(key, result, code, headers, body):
+					arrived[0] = int(arrived[0]) + 1, CONNECT_ONE_SHOT)
 			if request.request(root + SOURCES_DIR + key.uri_encode().replace("%2F", "/")) != OK:
 				_unfetched[key] = ["the request could not start", true]
 				request.queue_free()
 				continue
-			going.append([key, request])
-		for pair: Array in going:
-			var key: String = pair[0]
-			var request: HTTPRequest = pair[1]
-			var result: Array = await request.request_completed
-			request.queue_free()
-			var why: String = _fetch_problem(int(result[0]), int(result[1]),
-				result[2], result[3])
-			if not why.is_empty():
-				# Not there is so for the session; the network may come back.
-				var code: int = int(result[1])
-				_unfetched[key] = [why, code == 0 or code >= 500]
-				push_warning("could not fetch the LDraw file %s: %s" % [key, why])
-				continue
-			PartForge.keep_fetched(key,
-				(result[3] as PackedByteArray).get_string_from_utf8())
-			arrived += 1
-	return arrived
+			going[0] = int(going[0]) + 1
+		await tree.process_frame
+	return int(arrived[0])
+
+
+## Keep what came for [param key], or why it is not LDraw. Whether it was.
+static func _took(key: String, result: int, code: int, headers: PackedStringArray,
+		body: PackedByteArray) -> bool:
+	var why: String = _fetch_problem(result, code, headers, body)
+	if not why.is_empty():
+		# Not there is so for the session; the network may come back.
+		_unfetched[key] = [why, code == 0 or code >= 500]
+		push_warning("could not fetch the LDraw file %s: %s" % [key, why])
+		return false
+	PartForge.keep_fetched(key, body.get_string_from_utf8())
+	return true
 
 
 ## Why a fetched body is not an LDraw file, or "". A missing file is a

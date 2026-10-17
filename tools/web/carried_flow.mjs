@@ -8,8 +8,8 @@
 //
 // Each file is handed to Open… > From a file, as a person opens one. Once its
 // parts have arrived, none of the parts it carries may be among what the status
-// bar says is not shown, each must be on the baseplate, and no script error may
-// reach the console. Says how long the open took (the file handed over to
+// bar says is not shown, and no script error may reach the console. How many of
+// them the app built is said (window.brickworksState.custom). Says how long the open took (the file handed over to
 // "opened N parts"), which LDraw files were fetched and how they answered, and
 // takes a picture of each. --label names the run in the JSON (before, after).
 import { launch } from "./browser.mjs";
@@ -34,13 +34,14 @@ const ok = (passed, line) => {
   return passed;
 };
 
-// The parts a file carries: its FILE sections named .dat, by id as the app
-// names them (lower case, no folder, no .dat).
+// The parts a file carries: its FILE sections named .dat outside a folder
+// (a subpart is s\..., a primitive 48\...), by id as the app names them
+// (lower case, no .dat).
 function carriedIn(text) {
   const ids = new Set();
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^0\s+FILE\s+(.+?)\s*$/i);
-    if (m && /\.dat$/i.test(m[1])) ids.add(m[1].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.dat$/, ""));
+    if (m && /\.dat$/i.test(m[1]) && !/[\\/]/.test(m[1])) ids.add(m[1].toLowerCase().replace(/\.dat$/, ""));
   }
   return [...ids];
 }
@@ -146,23 +147,23 @@ for (const model of models) {
   if (!ok(Boolean(chooser), "Open… > From a file brought the file picker")) continue;
   fetched.length = 0;
   const began = Date.now();
-  await chooser.setFiles(model);
+  await chooser.setFiles(model, { timeout: 300000 });
   const { s: opened, words } = await until((s) => /^opened \d+ parts/.test(String(s.said || "")), 600);
   const openMs = Date.now() - began;
   const said = String(opened.said || "");
   const s = await settled(Number(args.settle || 20000));
   const unshown = notShown(said);
-  const parts = new Set(s.parts || []);
+  const built = new Set(s.custom || []);
   const carriedOut = carried.filter((id) => unshown.ids.includes(id));
-  const carriedDown = carried.filter((id) => parts.has(id));
+  const carriedBuilt = carried.filter((id) => built.has(id));
   const row = { label, file: basename(model), bricks: s.bricks, said: said.slice(0, 300), open_ms: openMs,
     settled_ms: Date.now() - began, not_shown: unshown.count, not_shown_ids: unshown.ids,
-    carried: carried.length, carried_down: carriedDown.length, carried_not_shown: carriedOut,
+    carried: carried.length, carried_built: carriedBuilt.length, carried_not_shown: carriedOut,
     custom: (s.custom || []).length, fetched: [...fetched], working: words };
   rows.push(row);
   console.log(`        the status bar: "${said.slice(0, 300)}"`);
   console.log(`        ${s.bricks} parts; opened in ${(openMs / 1000).toFixed(1)} s, settled in ${Math.round(row.settled_ms / 1000)} s; `
-    + `${carriedDown.length} of the ${carried.length} parts it carries on the baseplate; ${unshown.count} not shown`);
+    + `${carriedBuilt.length} of the ${carried.length} parts it carries built; ${unshown.count} not shown`);
   console.log(`        LDraw files fetched: ${fetched.length} (${fetched.slice(0, 6).map((f) => `${f.url} ${f.status}`).join(", ")})`);
   if (words.length) console.log(`        working: ${words.join(" | ")}`);
   ok(carriedOut.length === 0, `${basename(model)}: no part it carries said not shown${carriedOut.length ? ": " + carriedOut.join(", ") : ""}`);
