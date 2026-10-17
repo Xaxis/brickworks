@@ -652,8 +652,26 @@ picture the assistant is shown.
   changes (`Main._page_assemblies`). Main at 63cab62 fails six: the move
   13.1x, its redo 11.8x and Delete's undo 14.2x (sub-model copies matched
   again at every edit), ten steps 11.8x, 29 asks a turn, and the page's
-  answer worked out at every asking. Pass:
+  answer worked out at every asking. Then, where the checkout has
+  `vendor/omr`, two real sets' files opened as File, Open does, each once
+  and first, so the parts the file carries are built (kept nowhere:
+  `CustomParts.keeps` off): 42082-1 opened whole (4,139 parts), and opening
+  it takes no more than LINEAR's share of its 4.5 times 75969-1's parts
+  (at most 8.0x; 4.5x here, main 5.3x). They open in a second run of the probe
+  (`--open`), its own process, which the check reads back: the engine dumps
+  core as it quits after any file that carries parts of its own (main too,
+  e502c58; not under gdb), and a `note` line says so; a script error there,
+  or no measurement, fails. Without `vendor/omr` it says so and judges
+  nothing there. Pass:
   exit 0 and `bigmodel: every act grows no faster than the model`. With
+  `-- --open [--times=N] [--dump=DIR] [--profile] PATH...` it only opens
+  each file N times (3): the open to its second frame and until it settles,
+  its phases (`ModelStore.open_phases`: parse, carried, flatten, known,
+  source, clear, lift, covers, draw, covered, place, meta), with `--profile`
+  the bar's opened handlers one by one and their pieces alone, and with
+  `--dump` the world of the first open written part by part (number,
+  colour, transform, sub-model path, step, lattice cover; the store's and
+  the history's state), so two builds' opens are compared with `cmp`. With
   `-- --profile PATH...` it opens real sets' files instead, judges nothing,
   and prints where each act's time went: every handler of the builder's,
   world's, timeline's and store's signals timed one by one, every node's

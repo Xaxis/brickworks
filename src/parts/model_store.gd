@@ -675,7 +675,10 @@ static func title_in(text: String, file_name: String) -> String:
 ## does not carry, and "opened, 340 of 500 parts" is a true answer where
 ## "opened" is not.
 func open_text(text: String, name: String = "model") -> Dictionary:
+	open_phases = {}
+	_phase_at = Time.get_ticks_usec()
 	var model: LdrModel = LdrModel.parse(text, name)
+	_phase("parse")
 	if model == null:
 		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
 	# Parts the file brought with it, made here or somewhere else, join
@@ -683,8 +686,10 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	var carried: Dictionary = CustomParts.take_from(library, model)
 	for problem: String in carried["problems"]:
 		push_warning("could not build a part the file carries: " + problem)
+	_phase("carried")
 
 	var flattened: Array = model.flatten(library.parts)
+	_phase("flatten")
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
@@ -733,6 +738,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		else:
 			known.append(placement)
 
+	_phase("known")
 	if known.is_empty():
 		return {"placed": 0, "missing": missing.size(), "waiting": 0,
 			"missing_ids": missing,
@@ -746,12 +752,14 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		flattened.filter(func(p: LdrModel.Placement) -> bool:
 			return not library.parts.has(p.part_id))) \
 		if model.author.strip_edges() != "Brickworks" else null
+	_phase("source")
 
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_phase("clear")
 	_source = source
 	_opened_in = world.generation()
 	# What the file holds that is not on the baseplate: kept in it, and said.
@@ -766,7 +774,14 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, model.author.strip_edges() != "Brickworks")
+	_phase("lift")
+	# A turned part's cover is the slow half of putting it down, and depends
+	# on nothing but the part and its turn: all of them set going at once,
+	# first, and worked out while the parts are drawn.
+	builder.prepare_covers(known)
+	_phase("covers")
 	var placed: int = 0
+	var down: Array[int] = []
 	for item: Variant in known:
 		var placement: LdrModel.Placement = item
 		placement.transform.origin += up
@@ -775,15 +790,24 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		# waited for.
 		var brick_id: int = world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
+		down.append(brick_id)
 		if brick_id == 0:
 			awaited.append(placement)
 			continue
 		world.get_brick(brick_id).group = placement.group
 		world.get_brick(brick_id).unit = placement.unit
 		world.get_brick(brick_id).step = placement.step
-		builder.register(brick_id, placement.part_id, placement.transform)
 		placed += 1
+	_phase("draw")
+	# Then the lattice told of each, in the same order, once the covers are in.
+	builder.finish_covers()
+	_phase("covered")
+	for n: int in known.size():
+		if down[n] != 0:
+			var placement: LdrModel.Placement = known[n]
+			builder.register(down[n], placement.part_id, placement.transform)
 	_awaited_in = world.generation()
+	_phase("place")
 
 	# Ask for the ones that were not to hand, and put each down as it
 	# arrives (place_awaited).
@@ -810,10 +834,27 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	from_set = set_in(text)
 	hidden_scheme = HiddenColours.read(text)
 	example = false
+	_phase("meta")
 	loaded.emit(title, placed)
+	_phase("loaded")
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null}
+
+
+## What the last [method open_text] spent, phase by phase, in ms, in order:
+## parse, carried, flatten, known, source, clear, lift, covers (set going),
+## draw (the world), covered (waiting for the covers), place (the lattice),
+## meta and the store's own [signal loaded] handlers (bigmodel_probe --open
+## says it).
+var open_phases: Dictionary = {}
+var _phase_at: int = 0
+
+
+func _phase(name: String) -> void:
+	var now: int = Time.get_ticks_usec()
+	open_phases[name] = (now - _phase_at) / 1000.0
+	_phase_at = now
 
 
 ## Part numbers and how many of each, as a person reads them: "3626cpr9

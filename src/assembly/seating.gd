@@ -50,9 +50,9 @@ static func shift_for(mesh: Lbm.PartMesh, part_id: String, at: Transform3D,
 	if covers.has(key):
 		cover = covers[key]
 	else:
-		cover = Vector3i(0x7FFFFFFF, 0, 0x7FFFFFFF)
-		for cell: Vector3i in builder._cells_for(mesh, Transform3D(basis, Vector3.ZERO)):
-			cover = Vector3i(mini(cover.x, cell.x), 0, mini(cover.z, cell.z))
+		var span: Array = builder._cell_span(mesh, Transform3D(basis, Vector3.ZERO))
+		cover = Vector3i(0x7FFFFFFF, 0, 0x7FFFFFFF) if span.is_empty() \
+			else Vector3i((span[0] as Vector3i).x, 0, (span[0] as Vector3i).z)
 		covers[key] = cover
 	var footprint: Vector3i = assistant._corner_cell(mesh, part_id, basis)
 	var shift := Vector3((cover.x - footprint.x) * BrickLattice.CELL, 0.0,

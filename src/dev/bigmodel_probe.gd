@@ -4,6 +4,7 @@
 ##
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd
 ##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --profile [--bigmodel-out=FILE.json] PATH ...
+##   godot --headless --path . --script src/dev/bigmodel_probe.gd -- --open [--times=N] [--dump=DIR] [--profile] PATH ...
 ##
 ## Bare, it is the check (tools/check.sh): two models made here, of 1,000
 ## and 5,000 parts in sub-models with author's steps, each opened as File,
@@ -22,10 +23,26 @@
 ## signals timed one by one, every node's _process timed in the orbit,
 ## and the parts of the page's state the web build writes twice a second.
 ##
+## With --open, each is only opened, N times (3), and the quickest kept, the
+## first beside it (the first builds the parts the file carries): the open's
+## phases (ModelStore.open_phases) and, with --profile, the bar's opened
+## handlers and their pieces; with --dump, the world of the first open
+## written to DIR part by part (each part's number, colour, place, sub-model
+## path, step and lattice cover; the store's and the history's state), so
+## two builds' opens are compared with cmp.
+##
+## Bare, it also opens two real sets where the checkout has them
+## (REAL_SETS), and holds the big one's open to near-linear in its parts.
+##
 ## Measured at 5,025 parts in a browser (CADTASK.md, 2026-10-16) an
 ## orbit frame's own work was 2.7 s, select all 65 s, and the undo of a
 ## Delete of everything had not ended after 15 minutes.
 extends SceneTree
+
+## Two real sets the check opens, of 925 and 4,139 parts (the LDraw model
+## repository's files, vendor/omr): opening the second may take no more
+## than LINEAR's share of how many more parts it has.
+const REAL_SETS := ["res://vendor/omr/files/75969-1.mpd", "res://vendor/omr/files/42082-1.mpd"]
 
 ## The two sizes the check makes, in parts.
 const SMALL := 1000
@@ -45,6 +62,9 @@ var _store: ModelStore
 var _steps: StepsBar
 var _failures: int = 0
 var _profile: bool = false
+var _open_only: bool = false
+var _times: int = 3
+var _dump: String = ""
 ## Name -> [calls, total us, most us], while profiling.
 var _spent: Dictionary = {}
 
@@ -63,8 +83,19 @@ func _run() -> void:
 			_profile = true
 		elif argument.begins_with("--bigmodel-out="):
 			out_path = argument.trim_prefix("--bigmodel-out=")
+		elif argument == "--open":
+			_open_only = true
+		elif argument.begins_with("--times="):
+			_times = maxi(int(argument.trim_prefix("--times=")), 1)
+		elif argument.begins_with("--dump="):
+			_dump = argument.trim_prefix("--dump=")
 		else:
 			paths.append(argument)
+	# Parts a file carries are built on its first open, as for a person
+	# opening a file new to them, and never kept: kept, the next run's start
+	# built them and its first open was a second one.
+	CustomParts.keeps = false
+	CustomParts.dir = "user://bigmodel_probe_parts/"
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	for _n: int in 150:
@@ -80,12 +111,19 @@ func _run() -> void:
 		_wrap_signals()
 
 	var rows: Array = []
+	var sets: Array = []
 	if paths.is_empty():
 		for size: int in [SMALL, BIG]:
 			rows.append(await _one("made %d" % size, _made(size)))
+		# And two real sets opened, where this checkout has them: each its
+		# first open, the parts the file carries built.
+		sets = _real_sets()
 	else:
 		for path: String in paths:
-			rows.append(await _one(path.get_file(), FileAccess.get_file_as_string(path)))
+			if _open_only:
+				rows.append(await _opened(path))
+			else:
+				rows.append(await _one(path.get_file(), FileAccess.get_file_as_string(path)))
 	if not out_path.is_empty():
 		var file: FileAccess = FileAccess.open(out_path, FileAccess.WRITE)
 		file.store_string(JSON.stringify({"models": rows}, " "))
@@ -93,6 +131,7 @@ func _run() -> void:
 		print("bigmodel: written to %s" % out_path)
 	if paths.is_empty():
 		_judge(rows[0], rows[1])
+		_judge_open(sets)
 		print("bigmodel: %s" % ("every act grows no faster than the model"
 			if _failures == 0 else "%d acts grow faster than the model" % _failures))
 	# Down as a window closes, the model off and the work it set going let
@@ -271,6 +310,116 @@ func _one(name: String, text: String) -> Dictionary:
 	return row
 
 
+## [param path] opened [member _times] times and nothing else, the quickest
+## kept: to the second frame, and until it settles; its phases, and with
+## --profile the handlers. With --dump, the world of the first open written
+## out (_dumped).
+func _opened(path: String) -> Dictionary:
+	var text: String = FileAccess.get_file_as_string(path)
+	var best: Dictionary = {}
+	var first: Dictionary = {}
+	var each: Array = []
+	for n: int in _times:
+		_main.call("clear_model")
+		await _quiet()
+		_spent.clear()
+		var began: int = Time.get_ticks_usec()
+		var result: Dictionary = _store.open_text(text, path.get_file().get_basename())
+		var stored: int = Time.get_ticks_usec()
+		var phases: Variant = _store.get("open_phases")
+		(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
+		var emitted: int = Time.get_ticks_usec()
+		await _frames(2)
+		var row: Dictionary = {"model": path.get_file(),
+			"open_text_ms": (stored - began) / 1000.0,
+			"opened_handlers_ms": (emitted - stored) / 1000.0,
+			"open_ms": (Time.get_ticks_usec() - began) / 1000.0,
+			"parts": _world.brick_count() - _store.scenery.size(),
+			"phases": (phases as Dictionary).duplicate() if phases is Dictionary else {}}
+		await _quiet()
+		row["open_settled_ms"] = (Time.get_ticks_usec() - began) / 1000.0
+		each.append(row["open_settled_ms"])
+		print("  %s, %d parts: open_text %.0f ms, opened %.0f ms, to the second frame %.0f ms, "
+			% [row["model"], row["parts"], row["open_text_ms"], row["opened_handlers_ms"],
+			row["open_ms"]] + "settled %.0f ms" % row["open_settled_ms"])
+		print("    phases %s" % JSON.stringify(row["phases"]))
+		_profiled(row, "open")
+		if n == 0 and not _dump.is_empty():
+			_dumped(_dump.path_join(path.get_file().get_basename() + ".dump"))
+		if _profile and n == 0:
+			_open_sections(row)
+		if n == 0:
+			first = row
+		if best.is_empty() or float(row["open_settled_ms"]) < float(best["open_settled_ms"]):
+			best = row
+	# The first open builds the parts the file carries; later ones find them
+	# built, so the first is a person's open of a file new to them.
+	best = best.duplicate()
+	best["each_settled_ms"] = each
+	best["first"] = first
+	return best
+
+
+## After an open: the pieces of what the bar's opened handlers do, each
+## timed alone, again, on the model as it opened.
+func _open_sections(row: Dictionary) -> void:
+	var shell: Node = _main.get("_shell")
+	var assemblies: Assemblies = shell.get("assemblies") if shell != null else null
+	var parts: Dictionary = {
+		"main._lay_baseplate": func() -> void: _main.call("_lay_baseplate"),
+		"main._model_bounds": func() -> void: _main.call("_model_bounds"),
+		"main._built_bounds": func() -> void: _main.call("_built_bounds"),
+		"main._on_model_changed": func() -> void: _main.call("_on_model_changed"),
+		"assistant.forget_built": func() -> void:
+			(_main.get("_assistant") as Object).call("forget_built"),
+		"seat_offer.check": func() -> void: (_main.get("_seat_offer") as Object).call("check"),
+		"Seating.misplaced": func() -> void: Seating.misplaced(_world, _builder,
+			_main.get("_assistant"), _store.scenery),
+		"assemblies.enter": func() -> void:
+			if assemblies != null:
+				assemblies.enter(""),
+	}
+	var out: Dictionary = {}
+	for name: String in parts:
+		var t0: int = Time.get_ticks_usec()
+		(parts[name] as Callable).call()
+		var ms: float = (Time.get_ticks_usec() - t0) / 1000.0
+		out[name] = snappedf(ms, 0.01)
+		print("        section %8.2f ms  %s" % [ms, name])
+	row["open_sections"] = out
+
+
+## The world as it opened, a line a part in id order, then the store's,
+## the lattice's and the history's state: what two builds' opens of one
+## file are compared by.
+func _dumped(file_path: String) -> void:
+	var lines := PackedStringArray()
+	var lattice: BrickLattice = _builder.lattice
+	for brick: BrickWorld.Brick in _world.bricks():
+		var at: Transform3D = brick.transform
+		var numbers := PackedStringArray()
+		for v: float in [at.origin.x, at.origin.y, at.origin.z, at.basis.x.x, at.basis.x.y,
+				at.basis.x.z, at.basis.y.x, at.basis.y.y, at.basis.y.z, at.basis.z.x, at.basis.z.y,
+				at.basis.z.z]:
+			numbers.append("%.4f" % v)
+		var cover: PackedInt32Array = lattice.boxes_of(brick.id)
+		lines.append("%d %s %d [%s] group=%s unit=%s step=%d scenery=%s cover=%d:%d" % [brick.id,
+			brick.part_id, brick.color_code, " ".join(numbers), brick.group, brick.unit, brick.step,
+			_store.scenery.has(brick.id), cover.size() / 6, hash(cover)])
+	lines.append("title=%s whole=%s awaited=%d unshown=%s lifted=%.4f floor=%s set=%s share=%s"
+		% [_store.title, _store.whole, _store.awaited.size(), JSON.stringify(_store.unshown),
+		float(_store.get("_lifted_by")), _store.model_floor.words(), _store.from_set,
+		_store.share_id])
+	lines.append("unit_steps=%s" % JSON.stringify(_world.unit_steps))
+	lines.append("history=%d redo=%d bricks=%d" % [(_builder.get("_history") as Array).size(),
+		(_builder.get("_redo") as Array).size(), _world.brick_count()])
+	DirAccess.make_dir_recursive_absolute(file_path.get_base_dir())
+	var file: FileAccess = FileAccess.open(file_path, FileAccess.WRITE)
+	file.store_string("\n".join(lines) + "\n")
+	file.close()
+	print("    the world as it opened: %s" % file_path)
+
+
 ## After moves, undos and redos of everything: whether the lattice holds
 ## each part where it stands, its cover what the part's own makes it there
 ## and the cell at its cover's low corner found as it, by its buckets.
@@ -446,6 +595,62 @@ func _judge(small: Dictionary, big: Dictionary) -> void:
 	# With it, no faster.
 	for act: String in ["select_all", "move", "undo_move", "redo_move", "delete", "undo_delete"]:
 		_ratio(act, small[act]["total_ms"], big[act]["total_ms"], LINEAR)
+
+
+## The real sets' first opens (_opened), opened by this probe again in a
+## process of its own (--open): [] when the checkout has not got them. Its
+## own, because the engine dumps core as it quits after opening a file that
+## carries parts of its own (on main too, e502c58, every time; not under
+## gdb): nothing to do with how fast the file opened, so said and not judged
+## here, where the suite would read it as this check failing. A script error
+## in it, or no measurement from it, is a failure.
+func _real_sets() -> Array:
+	var paths: Array = []
+	for path: String in REAL_SETS:
+		if not FileAccess.file_exists(path):
+			return []
+		paths.append(ProjectSettings.globalize_path(path))
+	var written: String = OS.get_user_data_dir().path_join("bigmodel_real_sets.json")
+	DirAccess.remove_absolute(written)
+	var arguments: PackedStringArray = PackedStringArray(["--headless", "--path",
+		ProjectSettings.globalize_path("res://"), "--script", "res://src/dev/bigmodel_probe.gd",
+		"--", "--open", "--times=1", "--bigmodel-out=" + written])
+	arguments.append_array(paths)
+	var said: Array = []
+	var code: int = OS.execute(OS.get_executable_path(), arguments, said, true)
+	var output: String = "".join(said)
+	for line: String in output.split("\n"):
+		if line.begins_with("  ") and line.contains(" parts: "):
+			print(line)
+	if output.contains("SCRIPT ERROR") or output.contains("Parse Error") \
+			or not FileAccess.file_exists(written):
+		print(output.right(2000))
+		_check("the real sets opened, in a process of their own", false)
+		return []
+	if code != 0:
+		print("  note  the real sets' own process exited %d as it quit: the engine's fault "
+			% code + "after a file that carries parts, which main has too")
+	var read: Variant = JSON.parse_string(FileAccess.get_file_as_string(written))
+	return (read as Dictionary).get("models", []) if read is Dictionary else []
+
+
+## The real sets' first opens (_opened): the big one opened whole, and in
+## no more time than its parts, near-linearly (LINEAR over five times the
+## parts, of the parts it has more). Measured 2026-10-16: 10.5 s against
+## 2.0 s on main (5.3x), 3.1 s against 0.7 s after (4.5x); said, not judged,
+## where vendor/omr is not.
+func _judge_open(sets: Array) -> void:
+	if sets.size() < 2:
+		if not FileAccess.file_exists(REAL_SETS[0]) or not FileAccess.file_exists(REAL_SETS[1]):
+			print("  ----  the real sets are not in this checkout (vendor/omr): their opens "
+				+ "were not judged")
+		return
+	var small: Dictionary = sets[0]
+	var big: Dictionary = sets[1]
+	var grew: float = float(big["parts"]) / maxf(float(small["parts"]), 1.0)
+	_check("%s opened whole, %d parts" % [big["model"], big["parts"]], int(big["parts"]) >= 4139)
+	_ratio("opening %s against %s (%.1f times the parts)" % [big["model"], small["model"], grew],
+		small["open_settled_ms"], big["open_settled_ms"], LINEAR / (float(BIG) / SMALL) * grew)
 
 
 func _ratio(what: String, small_ms: float, big_ms: float, most: float) -> void:

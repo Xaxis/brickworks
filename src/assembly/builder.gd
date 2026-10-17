@@ -112,12 +112,57 @@ func _new_step(brick: BrickWorld.Brick) -> int:
 
 ## Register a brick that was placed by something other than the mouse —
 ## loading a model, or the design assistant — so the lattice agrees.
+##
+## A part's cover is its cover at cell zero moved to its cell wherever
+## boxes_for says so ([method _cover_moves]), so it is worked out once for
+## each part and turn, with its bound and rows, and moved
+## (BrickLattice.occupy_moved), as a move of a selection moves it. Worked
+## out again for every part, a Technic set's 74 boxes a part were each
+## turned, rounded and laid out by rows 4,139 times over (42082-1).
 func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
 		return false
-	lattice.occupy_boxes(brick_id, boxes_for(part, at))
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		lattice.occupy_boxes(brick_id, boxes_for(part, at))
+		return true
+	finish_covers()
+	if not _cover_moves(part, at):
+		lattice.occupy_boxes(brick_id, boxes_for(part, at))
+		return true
+	var by_basis: Variant = _covers.get(part.get_instance_id())
+	if by_basis == null:
+		by_basis = {}
+		_covers[part.get_instance_id()] = by_basis
+	var cover: Variant = (by_basis as Dictionary).get(at.basis)
+	if cover == null:
+		var packed: PackedInt32Array = boxes_for(part, Transform3D(at.basis, Vector3.ZERO))
+		var bound: PackedInt32Array = BrickLattice._bound_of(packed)
+		cover = [packed, bound, BrickLattice._rows_of(packed, bound)
+			if packed.size() > BrickLattice.ROWS_FROM * 6 else []]
+		(by_basis as Dictionary)[at.basis] = cover
+	lattice.occupy_moved(brick_id, cover, BrickLattice.to_cell(at.origin))
 	return true
+
+
+## Covers at cell zero ([method register]), by part (its mesh's instance)
+## and then by its basis exactly. Main thread only.
+var _covers: Dictionary = {}
+
+
+## Whether [method boxes_for] gives [param part] at [param at] its cover at
+## cell zero moved to the cell [param at] is in: everywhere but a part square
+## to the grid and off the lattice, which is cut back to where it stands
+## (BrickLattice.within), and a part with no cover, made from its cells.
+static func _cover_moves(part: Lbm.PartMesh, at: Transform3D) -> bool:
+	if part.boxes.is_empty():
+		return false
+	if not BrickLattice.is_off_lattice(at.origin):
+		return true
+	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
+	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
+		return true
+	return not BrickLattice.is_square_to_grid(at.basis)
 
 
 ## Place the held part where the ghost is, if the ghost is legal.
@@ -2287,14 +2332,7 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 			drawn = _stretched_off_main.get(exact, PackedInt32Array())
 			_turned_lock.unlock()
 		if drawn.is_empty():
-			var stretched: Array[AABB] = []
-			var source: Array[AABB] = part.boxes
-			if source.is_empty():
-				source = [AABB(part.bounds.position / BrickLattice.CELL,
-					part.bounds.size / BrickLattice.CELL)]
-			for box: AABB in source:
-				stretched.append(AABB(box.position * stretch, box.size * stretch).abs())
-			drawn = BrickLattice.boxes_for_turned(stretched, Vector3i.ZERO,
+			drawn = BrickLattice.boxes_for_turned(_stretched_boxes(part, stretch), Vector3i.ZERO,
 				at.basis.orthonormalized())
 			if on_main:
 				_stretched_cache[exact] = drawn
@@ -2354,9 +2392,155 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	return out
 
 
+## A part's cover boxes made [param stretch] as long on each axis, for a
+## stretched part's cover ([method boxes_for]).
+static func _stretched_boxes(part: Lbm.PartMesh, stretch: Vector3) -> Array[AABB]:
+	var stretched: Array[AABB] = []
+	var source: Array[AABB] = part.boxes
+	if source.is_empty():
+		source = [AABB(part.bounds.position / BrickLattice.CELL,
+			part.bounds.size / BrickLattice.CELL)]
+	for box: AABB in source:
+		stretched.append(AABB(box.position * stretch, box.size * stretch).abs())
+	return stretched
+
+
+## The turned and stretched covers [method boxes_for] will want for
+## [param placements] (LdrModel.Placement) and has not kept yet, set going
+## on the engine's worker threads, each as soon as its part is read, and
+## kept by [method finish_covers]: worked out on this thread, a cell at a
+## time, as a model was put down a part at a time, they were 5.5 s of
+## opening 42082-1 (510 covers, 1.27 million cells). The same covers, by the
+## same code, kept the same way: only when and where they are worked out
+## changes. Nothing to do on a build without threads.
+func prepare_covers(placements: Array) -> void:
+	finish_covers()
+	if OS.get_thread_caller_id() != OS.get_main_thread_id() \
+			or (OS.has_feature("web") and not OS.has_feature("threads")):
+		return
+	## [stretched, key] of each cover set going, its task, and what it made.
+	var jobs: Array = []
+	var tasks: Array[int] = []
+	var made: Dictionary = {}
+	var writing := Mutex.new()
+	var asked: Dictionary = {}
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		var part: Lbm.PartMesh = library.mesh_for(placement.part_id)
+		if part == null:
+			continue
+		var basis: Basis = placement.transform.basis
+		var stretch := Vector3(basis.x.length(), basis.y.length(), basis.z.length())
+		var boxes: Array[AABB]
+		var turn: Basis
+		if not stretch.is_equal_approx(Vector3.ONE) and basis.determinant() > 0.0:
+			var exact: Array = [part.get_instance_id(), basis]
+			if _stretched_cache.has(exact) or asked.has(exact):
+				continue
+			asked[exact] = true
+			jobs.append([true, exact])
+			boxes = _stretched_boxes(part, stretch)
+			turn = basis.orthonormalized()
+		elif not part.boxes.is_empty() and not BrickLattice.is_square_to_grid(basis):
+			var key: String = "%d|%s" % [part.get_instance_id(), basis]
+			if _turned_cache.has(key) or asked.has(key):
+				continue
+			asked[key] = true
+			jobs.append([false, key])
+			boxes = part.boxes
+			turn = basis
+		else:
+			continue
+		var n: int = jobs.size() - 1
+		tasks.append(WorkerThreadPool.add_task(func() -> void:
+			var shape: PackedInt32Array = BrickLattice.boxes_for_turned(boxes, Vector3i.ZERO, turn)
+			writing.lock()
+			made[n] = shape
+			writing.unlock(), true, "a turned cover"))
+	if not jobs.is_empty():
+		_preparing = [jobs, tasks, made, writing]
+
+
+## What [method prepare_covers] set going: [jobs, tasks, made, its lock].
+var _preparing: Array = []
+
+
+## Wait for the covers [method prepare_covers] set going, and keep them as
+## [method boxes_for] keeps its own (none it found empty). Asked by
+## [method register] too, so nothing reads a cover while one is still being
+## worked out.
+func finish_covers() -> void:
+	if _preparing.is_empty():
+		return
+	var preparing: Array = _preparing
+	_preparing = []
+	for task: int in preparing[1]:
+		WorkerThreadPool.wait_for_task_completion(task)
+	var jobs: Array = preparing[0]
+	var made: Dictionary = preparing[2]
+	for n: int in jobs.size():
+		var shape: PackedInt32Array = made.get(n, PackedInt32Array())
+		if shape.is_empty():
+			continue
+		if jobs[n][0]:
+			_stretched_cache[jobs[n][1]] = shape
+		else:
+			_turned_cache[jobs[n][1]] = shape
+
+
 func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	if part == null:
 		return []
+	# cells_for takes the span between two rotated corners, which is the
+	# rotated box only for the 24 orientations it documents as its
+	# precondition; anything else spans a diagonal instead. Every basis
+	# this project places is one of the 24, but one read out of somebody
+	# else's .ldr need not be — and squaring it up first, which is what
+	# used to happen here, meant a brick turned thirty degrees reserved
+	# the cells of a brick turned none.
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	if BrickLattice.is_square_to_grid(at.basis):
+		return BrickLattice.cells_for(_cover_boxes(part), cell, at.basis)
+	return BrickLattice.cells_for_turned(_cover_boxes(part), cell, at.basis)
+
+
+## The lowest and highest cell (both inclusive) of [method _cells_for], or
+## [] when it gives none: for a part square to the grid, from its boxes'
+## corners, with no cell made. The corner is all Seating and
+## Assistant._corner_cell ask for, and making every cell of each Technic
+## part's cover to find it was most of the 4.9 s 42082-1 took after it
+## opened.
+func _cell_span(part: Lbm.PartMesh, at: Transform3D) -> Array:
+	if part == null:
+		return []
+	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := -lo
+	if not BrickLattice.is_square_to_grid(at.basis):
+		for cell: Vector3i in _cells_for(part, at):
+			lo = lo.min(cell)
+			hi = hi.max(cell)
+		return [] if lo.x == 0x7FFFFFFF else [lo, hi]
+	# As BrickLattice.cells_for spans each box, without walking the span.
+	for box: AABB in _cover_boxes(part):
+		var a: Vector3 = at.basis * Vector3(box.position)
+		var b: Vector3 = at.basis * (Vector3(box.position) + Vector3(box.size))
+		var from := Vector3i(int(round(minf(a.x, b.x))), int(round(minf(a.y, b.y))),
+			int(round(minf(a.z, b.z))))
+		var to := Vector3i(int(round(maxf(a.x, b.x))), int(round(maxf(a.y, b.y))),
+			int(round(maxf(a.z, b.z))))
+		if from.x >= to.x or from.y >= to.y or from.z >= to.z:
+			continue
+		lo = lo.min(from)
+		hi = hi.max(to - Vector3i.ONE)
+	if lo.x == 0x7FFFFFFF:
+		return []
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	return [lo + cell, hi + cell]
+
+
+## The boxes a part's cells are made from: its cover, or its bounding box
+## when it has none.
+static func _cover_boxes(part: Lbm.PartMesh) -> Array[AABB]:
 	var boxes: Array[AABB] = part.boxes
 	if boxes.is_empty():
 		# No cover was built for this part; fall back to its bounding
@@ -2384,17 +2568,7 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 			ceil((box.end.y - slack) / BrickLattice.CELL),
 			ceil((box.end.z - slack) / BrickLattice.CELL))
 		boxes = [AABB(from, (to - from).max(Vector3.ONE))]
-	# cells_for takes the span between two rotated corners, which is the
-	# rotated box only for the 24 orientations it documents as its
-	# precondition; anything else spans a diagonal instead. Every basis
-	# this project places is one of the 24, but one read out of somebody
-	# else's .ldr need not be — and squaring it up first, which is what
-	# used to happen here, meant a brick turned thirty degrees reserved
-	# the cells of a brick turned none.
-	var cell: Vector3i = BrickLattice.to_cell(at.origin)
-	if BrickLattice.is_square_to_grid(at.basis):
-		return BrickLattice.cells_for(boxes, cell, at.basis)
-	return BrickLattice.cells_for_turned(boxes, cell, at.basis)
+	return boxes
 
 
 ## Turn the part in hand: a quarter about its own up, or, on a joint, a
