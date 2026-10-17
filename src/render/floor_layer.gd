@@ -28,6 +28,15 @@ const SHADOW_SHADER := preload("res://src/render/floor_shadow.gdshader")
 ## lights: the fill and the rim cast no shadows, and lighting it they
 ## would light the shadow away. Main keeps them off this layer.
 const SHADOW_LAYER := 1 << 19
+## The shadow's ground's grey under Forward+, which the desktop draws with
+## on a GPU. The shader's own was matched to the background under the
+## Compatibility renderer, the web's, which lights in sRGB space
+## (BrickWorld._linearise_colors); under Forward+ it drew the ground round
+## the model up to ten levels lighter than the view behind it, a pale disc
+## on no floor (2026-10-16). Measured on the GPU with floor_probe's shadow
+## check: 0.47 left it 5 levels darker, 0.51 3 lighter, and 0.495 within a
+## level all the way round (shots/floor/shadow_none_with.png).
+const LINEAR_SHADOW_TINT := Color(0.495, 0.495, 0.505)
 ## How long a shadow is against how tall the model is: the sun stands
 ## about forty degrees up (main.tscn), with some to spare.
 const SHADOW_LENGTH := 1.4
@@ -92,6 +101,8 @@ func _ready() -> void:
 	add_child(_grid)
 	_shadow_material = ShaderMaterial.new()
 	_shadow_material.shader = SHADOW_SHADER
+	if BrickWorld._linearise_colors():
+		_shadow_material.set_shader_parameter("tint", LINEAR_SHADOW_TINT)
 	_shadow = MeshInstance3D.new()
 	_shadow.name = "FloorShadow"
 	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

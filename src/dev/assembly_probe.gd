@@ -263,7 +263,13 @@ func _nested() -> void:
 
 func _saved_and_read_back() -> void:
 	print("  saved as LDraw sub-models, and read back")
-	var text: String = _store.to_text("Probe Plane")
+	# As Save writes it: with the build order in it. A file's copies were
+	# read back numbered in the order it places them, which is the build
+	# order, so a copy built first came back as the first copy.
+	var each_before: Dictionary = {}
+	for path: String in _tree.paths():
+		each_before[path] = _snapshot_of(path)
+	var text: String = _store.to_text("Probe Plane", true)
 	var files: Array = []
 	for line: String in text.split("\n"):
 		if line.begins_with("0 FILE "):
@@ -294,6 +300,10 @@ func _saved_and_read_back() -> void:
 	named.sort()
 	_check("...in the same tree (%s)" % str(named),
 		named == ["Plane#1", "Plane#1/Wing#1", "Plane#1/Wing#2"])
+	var moved: Array = each_before.keys().filter(func(path: String) -> bool:
+		return _snapshot_of(path) != each_before[path])
+	_check("...each copy the one it was, where it was (%s)" % (str(moved) if not moved.is_empty()
+		else "%d of them" % each_before.size()), moved.is_empty())
 	# Edit one wing of the reopened plane; the other still follows.
 	await _click_tool("mode_select")
 	await _double_click(_on(_of_part("Plane#1/Wing#1", "3034")))

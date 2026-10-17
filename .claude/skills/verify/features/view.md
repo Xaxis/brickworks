@@ -314,7 +314,10 @@ picture the assistant is shown.
   first, so a drag changes counts and writes only the parts it crosses.
   Measured in software (llvmpipe) on Orthanc: a frame cut at 60% costs less
   than a whole one (0.4 s against 1.3 s), turning the cut on is 65 ms of the
-  app's own work and dragging it 11 ms a plate. The variants discard what is past the plane and draw the back
+  app's own work and dragging it 11 ms a plate. On the GPU (2026-10-16) the
+  cut on is 162 ms of that work and a plate 2.0 ms; `see_inside_probe` holds a
+  move under a tenth of the work of turning the cut on (a whole frame was the
+  yardstick, and on the GPU a frame is 18 ms of the GPU's own). The variants discard what is past the plane and draw the back
   faces as the cut face (`PLASTIC_CAP` in `plastic_body.gdshaderinc`: flat,
   square to the plane, hatched in the part's colour) — LDraw's surfaces are
   closed, so a back face seen past the plane is exactly where the plane is
@@ -1087,9 +1090,13 @@ node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
 # the tab it opens, checks the booklet in it and prints it to booklet.pdf.
 # Serve with --parts assets/generated/parts --delay 0 so parts come from this
-# checkout. 2026-10-16, SwiftShader at load ~50: the car's booklet in 259 s;
-# --model=7636 stalled the page past Playwright's 30 s screenshot once opened,
-# on main's export and the branch's alike, so a big model is for the preview.
+# checkout. 2026-10-16, SwiftShader at load ~50: the car's booklet in 259 s.
+# --model waits until the app says no part is still on its way
+# (brickworksState.awaited): 7636's 372 took 146 s, and the old test (the count
+# holding between two looks) photographed it at 324. Each frame of it drawn in
+# SwiftShader at load 60-90 takes 5-14 s (a key turning the view), so app.png
+# waits up to 180 s and is not a check. Its booklet did not arrive in 1,500 s
+# here at load 40-90 (--wait=1500): a big model's booklet is for the preview.
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face

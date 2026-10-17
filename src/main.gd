@@ -429,6 +429,11 @@ func _tell_page() -> void:
 	# what is in hand, which parts were made here.
 	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
 		"bricks": _world.brick_count() - _store.scenery.size(),
+		# Parts of a model just opened still on their way over the network
+		# (ModelStore.awaited): a browser check waits for none, rather than
+		# for the count to hold still between two looks, which it does
+		# between two arrivals (booklet_flow.mjs on 7636, 2026-10-16).
+		"awaited": _store.awaited.size(),
 		# What it stands on, and the plates laid as scenery, for
 		# tools/web/floor_flow.mjs.
 		"floor": _store.model_floor.to_meta().trim_prefix(ModelFloor.META),

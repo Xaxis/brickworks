@@ -1321,7 +1321,10 @@ whole too; twenty publishes an hour, then 429.
 
 The viewer and the Share panel in the real scene, with no network
 (`FakeShared` plays the endpoint; a window, so on Xvfb in a session with no
-screen; about three minutes, most of it two catalogue loads):
+screen; about three minutes in software, 74 s on the GPU under `gpu`, most
+of it two catalogue loads). The viewer is up before its steps are worked
+out, so the probe waits on the steps bar, not a count of frames: it prints
+how long the steps took (0.6 s for the 73-part house on the GPU):
 
 ```sh
 godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd

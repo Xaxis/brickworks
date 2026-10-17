@@ -138,6 +138,15 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 	for _n: int in 30:
 		await process_frame
 	var frames: int = 0
+	# Where a frame goes: drawing it, the CPU's side and the GPU's (the
+	# viewport's measured render times). The rest is the app's own work
+	# and handing the frame to the display, which under Xvfb is a copy the
+	# CPU makes (MESA_VK_WSI_DEBUG=sw).
+	var viewport: RID = root.get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(viewport, true)
+	var draw_cpu_ms: float = 0.0
+	var draw_gpu_ms: float = 0.0
+	var queued: float = _waited_for_cpu_ms()
 	var began: int = Time.get_ticks_usec()
 	var worst: float = 0.0
 	var last: int = began
@@ -148,17 +157,24 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 		worst = maxf(worst, (now - last) / 1000.0)
 		last = now
 		frames += 1
+		draw_cpu_ms += RenderingServer.viewport_get_measured_render_time_cpu(viewport)
+		draw_gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(viewport)
 	var fps: float = frames / ((Time.get_ticks_usec() - began) / 1e6)
+	queued = _waited_for_cpu_ms() - queued
+	RenderingServer.viewport_set_measure_render_time(viewport, false)
+	print("  a frame while turning: %.1f ms, of which drawing is %.1f ms of the CPU's and %.1f of the GPU's"
+		% [2000.0 / maxf(frames, 1), draw_cpu_ms / maxf(frames, 1), draw_gpu_ms / maxf(frames, 1)])
 	var batches: int = 0
 	for key: String in world._batches:
 		if world._batches[key].multimesh.instance_count > 0:
 			batches += 1
 	var adapter: String = RenderingServer.get_video_adapter_name()
 	var software: bool = _software
-	_check("turning round %d parts in %d batches: %.0f frames a second, the slowest %.0f ms (%s on %s)%s"
+	_check("turning round %d parts in %d batches: %.0f frames a second, the slowest %.0f ms (%s on %s)%s%s"
 		% [world.brick_count(), batches, fps, worst,
 			RenderingServer.get_current_rendering_method(), adapter,
-			", in software, so not judged" if software else ""],
+			", in software, so not judged" if software else "",
+			_queued_said(queued, 2000.0)],
 		software or fps >= ORBIT_FPS)
 	if library == null:
 		return
@@ -190,6 +206,26 @@ static func _falcon_calls() -> Array:
 		{"name": "clear_model", "input": {}},
 		{"name": "submit_design", "input": design},
 	]
+
+
+## How long this process's main thread has waited for a CPU it was ready
+## to run on, in ms (/proc/self/schedstat, Linux; -1 elsewhere). On a
+## machine other projects share, it says how much of a slow stretch was
+## the machine rather than the app: the frames are judged as they are.
+static func _waited_for_cpu_ms() -> float:
+	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
+	if stat == null:
+		return -1.0
+	var fields: PackedStringArray = stat.get_line().split(" ", false)
+	return fields[1].to_float() / 1e6 if fields.size() > 1 else -1.0
+
+
+static func _queued_said(queued: float, of_ms: float) -> String:
+	if queued < 0.0:
+		return ""
+	var load: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
+	return "; the main thread waited %.0f of those %.0f ms for a CPU, at a load of %s" % [
+		queued, of_ms, load.get_line().get_slice(" ", 0) if load != null else "?"]
 
 
 func _check(what: String, held: bool) -> void:

@@ -522,6 +522,13 @@ func _shadow_falls(kind: String) -> void:
 	await _frames(4)
 	await RenderingServer.frame_post_draw
 	var with_shadow: Image = root.get_texture().get_image()
+	# The two pictures compared, to look at when the count is wrong.
+	for pair: Array in [["without", without], ["with", with_shadow]]:
+		var path: String = ProjectSettings.globalize_path("res://shots/floor/shadow_%s_%s.png"
+			% [kind, pair[0]])
+		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+		(pair[1] as Image).save_png(path)
+	print("    pictures: shots/floor/shadow_%s_without.png and _with.png" % kind)
 	var darker: int = 0
 	var lighter: int = 0
 	var x_end: int = mini(int(view.end.x), with_shadow.get_width())

@@ -384,11 +384,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (Baseplate colour); Grid floor (no plate: a faint ground with a line
   between every stud); No floor. With no plate the model's shadow still falls
   on the ground (`floor_shadow.gdshader`: a quad at y = 0 lit by the sun alone,
-  in the grey of the view's background where the sun reaches it, faded out
+  in the grey of the view's background where the sun reaches it — its own
+  grey under Forward+ (`FloorLayer.LINEAR_SHADOW_TINT`), as the web's
+  Compatibility grey drew a pale disc on a GPU — faded out
   round the model as far as its shadow goes, refitted as it grows by
   `FloorLayer.follow`), so a part on nothing does not float; on the grid
   floor the grid's own ground takes it, lit by the sun alone. `floor_probe`
-  compares the view with and without what takes the shadow, and
+  compares the view with and without what takes the shadow (the pair in
+  `shots/floor/shadow_<floor>_with.png`, `_without.png`), on the GPU under
+  `gpu` as the suite runs it and in software for the web's renderer, and
   `idle_check --floor=none` that it costs no frame standing still. Godot's
   shadow to opacity drew nothing in the Compatibility renderer. The same in the properties with nothing
   selected (`FloorPicker`, two rows under the header), and Settings, New
@@ -498,8 +502,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
   so undo, save and the timeline carry it. Saved, it is a nested `.mpd`: each
   definition once, each copy a `1` line, a mirrored copy by a reflecting matrix
-  (`LdrModel.write_tree`); read back, a mirrored reference is put in the other
-  hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which also
+  (`LdrModel.write_tree`), each with `0 !BRICKWORKS COPY n` before it, as
+  the file is in build order and copies read back by their place in it swapped
+  (`LdrModel.COPY_META`); read back, a mirrored reference is put in the other
+  hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
+  as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
 - `model tree`: under the parts bin in the left-hand column (View, Model
   tree, or its header) lists the
@@ -676,6 +683,8 @@ Runtime:
 
 ```sh
 # the real gestures, in a real window — this is the one that catches feel
+# (a box let go over a column, whichever side it is: the parts bin's, on the
+# left, on a first visit)
 godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd
 # what a dragged box catches, which needs a camera with a viewport to project into
 godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd

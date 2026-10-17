@@ -54,6 +54,9 @@ class Placement extends RefCounted:
 	## not read from a file: what a save writes back in place when nothing
 	## about the part changed (SourceFile).
 	var line: int = -1
+	## For a reference to a sub-model, which copy of it this is, as the
+	## file says (COPY_META); 0 where it does not.
+	var copy: int = 0
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -127,6 +130,13 @@ const AUTHORED_META := "0 !BRICKWORKS AUTHORED_STEPS"
 ## still no one's ([member marked_worked]).
 const WORKED_META := "0 !BRICKWORKS WORKED_STEPS"
 var marked_worked: bool = false
+## The line before a reference to a sub-model saying which copy of it that
+## is: "Wing#2" is "0 !BRICKWORKS COPY 2". A file has nowhere else to keep
+## it, and copies read back were numbered in the order the file places
+## them, which is the build order once the steps are written: a mirrored
+## wing built first came back as the wing and the original as its copy
+## (assembly_flow.mjs, 2026-10-16).
+const COPY_META := "0 !BRICKWORKS COPY"
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -163,6 +173,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	model.main = current
 
 	var step: int = 0
+	## The copy the next reference is, from a COPY_META line before it.
+	var copy_next: int = 0
 	var first_file: bool = true
 	## The FILE section being read, and its lines as written.
 	var section: String = ""
@@ -239,6 +251,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == WORKED_META.get_slice(" ", 2):
 				model.marked_worked = true
+			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
+					and tokens[2] == COPY_META.get_slice(" ", 2):
+				copy_next = maxi(tokens[3].to_int(), 0)
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -272,6 +287,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 
 		var read := Placement.new(part_id, color, to_transform(numbers), step)
 		read.line = index
+		read.copy = copy_next
+		copy_next = 0
 		current.placements.append(read)
 
 	if not data_name.is_empty():
@@ -524,8 +541,18 @@ func _inline(
 				named = kind
 			# Each copy its own unit, at every depth: the four windows are
 			# four assemblies of one kind, not one assembly of sixteen parts.
-			copies[kind] = int(copies.get(kind, 0)) + 1
-			var copy: String = "%s#%d" % [kind, int(copies[kind])]
+			# Numbered as the file says (COPY_META) where that number is
+			# still free, and otherwise the next after the highest, as the
+			# app numbers a new copy (Assemblies.next_copy). Free matters: a
+			# definition's references are written once, for its first copy,
+			# and a second copy of the house says its windows are 1 and 2
+			# again.
+			var number: int = int(copies.get(kind, 0)) + 1
+			if placement.copy > 0 and not copies.has("%s#%d" % [kind, placement.copy]):
+				number = placement.copy
+			copies[kind] = maxi(int(copies.get(kind, 0)), number)
+			var copy: String = "%s#%d" % [kind, number]
+			copies[copy] = true
 			inside = copy if unit.is_empty() else "%s/%s" % [unit, copy]
 			unit_steps[inside] = placement.step
 			unit_frames[inside] = at * placement.transform
@@ -686,8 +713,15 @@ static func write_tree(
 		var out: Array[String] = []
 		for child: String in children.get(parent, []):
 			var entry: Dictionary = instances[child]
-			out.append("1 16 %s %s" % [_line_numbers(inverse * (entry["frame"] as Transform3D)),
-				str(file_of[str(entry["def"])])])
+			var line: String = "1 16 %s %s" % [_line_numbers(inverse
+				* (entry["frame"] as Transform3D)), str(file_of[str(entry["def"])])]
+			# Which copy it is, where it is a copy of the definition it
+			# places: one that went its own way (Assemblies.file_frames) is
+			# the first of a definition of its own.
+			var leaf: String = child.get_slice("/", child.count("/"))
+			if leaf.get_slice("#", 0) == str(entry["def"]) and leaf.contains("#"):
+				line = "%s %d\n%s" % [COPY_META, maxi(leaf.get_slice("#", 1).to_int(), 1), line]
+			out.append(line)
 		return out
 	var ref_steps := func(parent: String) -> Array:
 		if unit_steps.is_empty():
