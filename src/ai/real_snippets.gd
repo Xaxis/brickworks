@@ -56,6 +56,21 @@ static var _fetching: bool = false
 ## Stemmed word -> the subjects it names, from the index's own table.
 static var _subject_of: Dictionary = {}
 static var _by_id: Dictionary = {}
+## A line of sets (a theme's top level: "Technic", "Pharaoh's Quest") -> its
+## name's words, stemmed, for every line the index holds pieces of.
+static var _lines: Dictionary = {}
+
+## What a piece's kinds say of how it is built, in a builder's words. Only
+## these are a way of building; textured, smooth and organic are a finish.
+const BUILT := {"hinged": "on hinges or clips", "angled": "at an angle",
+	"sideways": "studs sideways", "brackets": "on brackets",
+	"sloped": "of slopes", "curved": "of curves"}
+## Lines that are a way of selling sets, not a way of building them: a word
+## of their name in a brief ("other", "exclusive") says nothing of its build.
+const NOT_A_LINE := ["Other", "Promotional", "LEGO Exclusive", "LEGO Brand Store",
+	"Legoland", "Hobby Sets", "Factory", "Collectable Minifigures"]
+## The fewest parts a piece has to be a body or a mass of one, not a detail.
+const BODY_PARTS := 12
 
 
 ## The index, read from this build's own files the first time anything
@@ -110,9 +125,13 @@ static func _take(read_in: Dictionary) -> void:
 					_subject_of[said] = []
 				if not (_subject_of[said] as Array).has(subject):
 					(_subject_of[said] as Array).append(subject)
+	_lines.clear()
 	for raw: Variant in _document.get("entries", []):
 		var entry: Dictionary = raw
 		_by_id[str(entry["id"])] = entry
+		var line: String = line_named(entry)
+		if not line.is_empty() and not _lines.has(line) and not NOT_A_LINE.has(line):
+			_lines[line] = words(line)
 
 
 static func available() -> bool:
@@ -277,6 +296,101 @@ static func search(query: String, max_studs: float = 0.0, kinds: Array = [],
 			continue
 		taken[from] = int(taken.get(from, 0)) + 1
 		out.append([row[1], entry])
+		if out.size() >= limit:
+			break
+	return out
+
+
+## The line a piece's set is of: its theme's top level, "Technic" of
+## "Technic > Model".
+static func line_named(entry: Dictionary) -> String:
+	return str(entry.get("theme", "")).get_slice(" > ", 0).strip_edges()
+
+
+## The line of sets [param text] names, as the index has it, or "": "in the
+## style of LEGO® Pharaoh's Quest sets" is Pharaoh's Quest. Every word of the
+## line's name has to be there; of two, the one named first, then the longer
+## name, so a brief's own line is ahead of words said after it.
+static func line_of(text: String) -> String:
+	document()
+	var said: PackedStringArray = words(text)
+	var best: String = ""
+	var best_at: int = 0
+	var best_words: int = 0
+	for line: String in _lines:
+		var named: PackedStringArray = _lines[line]
+		if named.is_empty():
+			continue
+		var at: int = -1
+		for word: String in named:
+			var found: int = said.find(word)
+			if found < 0:
+				at = -1
+				break
+			at = maxi(at, found)
+		if at < 0:
+			continue
+		if best.is_empty() or at < best_at or (at == best_at and named.size() > best_words):
+			best = line
+			best_at = at
+			best_words = named.size()
+	return best
+
+
+## How a piece is built, in a builder's words: ["on hinges or clips",
+## "studs sideways"]. Empty for one stacked square.
+static func how_built(entry: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	for kind: Variant in entry.get("kinds", []):
+		if BUILT.has(str(kind)):
+			out.append(BUILT[str(kind)])
+	return out
+
+
+## The pieces of a line that are bodies, not details, best first: the ones
+## [param query]'s words find, those built some way other than stacked
+## square, and the bigger (to 40 parts), at most [param per_set] from a set.
+## With [param matched_only], only pieces the words find, and by how well
+## they find them alone: a feature's piece, where size and build are the
+## fit's to judge.
+static func bodies(line: String, query: String, limit: int = 6, per_set: int = 2,
+		least: int = BODY_PARTS, matched_only: bool = false) -> Array:
+	var doc: Dictionary = document()
+	var idf: Dictionary = doc.get("idf", {})
+	var average: float = maxf(float(doc.get("average", 1.0)), 0.001)
+	var asked: Dictionary = query_words(query)
+	var scored: Array = []
+	for raw: Variant in doc.get("entries", []):
+		var entry: Dictionary = raw
+		if line_named(entry) != line or int(entry["parts"]) < least:
+			continue
+		var terms: Dictionary = entry["t"]
+		var matched: float = 0.0
+		for word: String in asked:
+			var tf: float = float(terms.get(word, 0.0))
+			if tf > 0.0:
+				matched += float(asked[word]) * float(idf.get(word, 0.0)) * tf * (K1 + 1.0) / (
+					tf + K1 * (1.0 - B + B * float(entry["n"]) / average))
+		if matched_only and matched <= 0.0:
+			continue
+		var built: float = float(how_built(entry).size())
+		var score: float = matched * (LAYS if bool(entry.get("lays", false)) else 1.0) \
+			if matched_only else (1.0 + matched) * (1.0 + 0.5 * built) \
+				* minf(float(entry["parts"]), 40.0) / 40.0
+		scored.append([snappedf(score, 0.000001), entry])
+	scored.sort_custom(func(one: Array, other: Array) -> bool:
+		if one[0] != other[0]:
+			return one[0] > other[0]
+		return str(one[1]["id"]) < str(other[1]["id"]))
+	var out: Array = []
+	var taken: Dictionary = {}
+	for row: Array in scored:
+		var entry: Dictionary = row[1]
+		var from: String = str(entry["set"])
+		if int(taken.get(from, 0)) >= per_set:
+			continue
+		taken[from] = int(taken.get(from, 0)) + 1
+		out.append(entry)
 		if out.size() >= limit:
 			break
 	return out

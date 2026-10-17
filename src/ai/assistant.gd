@@ -1551,6 +1551,11 @@ func opening_for(text: String) -> Array:
 			"Before you choose parts, this is how real LEGO® sets of this "
 			+ "kind are actually built. It is measured over every "
 			+ "catalogued set, not advice.\n" + measured})
+	# How real sets of its line build their bodies, for the same reason: the
+	# build is settled at the first submission. In words, as the rest is.
+	var bodies: Dictionary = _bodies_said(text, _subject_words(text), [])
+	if not bodies.is_empty():
+		opening.append({"type": "text", "text": str(bodies["text"])})
 	# And, for the same reason, what our own scored designs of the nearest
 	# subject did and what the bench's judge faulted (src/ai/design_memory.gd).
 	# In words: the pictures here are the reference.
@@ -3216,11 +3221,16 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
 			heard(subject)
+			# How real sets of its line build their bodies, each mass the
+			# session plans among them: asked before the first brick, where
+			# the choice of technique costs nothing to change.
+			var masses: Array = args.get("assemblies", []) if args.get("assemblies") is Array else []
+			var bodies: Array = await _real_bodies(_heard, subject, masses, true)
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
-				+ DesignMemory.recall(subject)
+			return bodies + [{"type": "text", "text":
+				str(_how_real_sets_build_this(subject)["content"])}] + DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -16835,6 +16845,146 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 		+ "to fill. Check a part with search_parts before placing it."}
 
 
+## How real sets of the brief's line build their bodies, before the first
+## brick: the real-set index's biggest built sub-assemblies of that line (or,
+## where the brief names none the index has, of sets about the subject), and
+## for each mass the session plans the nearest of them. As blocks: the words,
+## and with [param picture] a picture of the pieces in that order.
+##
+## Why here. Twenty sessions on the tune half (technique-base, jointcheck)
+## all opened with how_real_sets_build_this, and settled the body's build at
+## their first submission, from their own memory: fifteen first calls found
+## no kind of set ("stage", "telehandler", "skyline", "brickheadz") or a list
+## of doors and windows, nothing on how a body is built. The one session
+## shown a whole real body that fitted (a BrickHeadz frame, for Robin) laid
+## it and built on it, both times. What a set wins technique on is its main
+## structure — legs and walls on hinges, a boom on pins, faces sideways — so
+## the choice is made here, where it costs nothing, and not sent back after
+## (DESIGN_SCORES.md, "Technique: the body's build decided before the first
+## brick").
+func _real_bodies(about: String, subject: String, masses: Array, picture: bool) -> Array:
+	if not await RealSnippets.ensure(self):
+		return []
+	var said: Dictionary = _bodies_said(about, subject, masses)
+	if said.is_empty():
+		return []
+	var text: String = said["text"]
+	if not picture:
+		return [{"type": "text", "text": text}]
+	var sheet: Image = await _snippet_picture(said["pictured"])
+	if sheet == null:
+		return [{"type": "text", "text": text}]
+	return [{"type": "text", "text": text + "\n\nThe picture shows them in that order, left "
+			+ "to right."},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(sheet.save_png_to_buffer())}}]
+
+
+## _real_bodies' words, and the pieces to picture, in that order: {"text",
+## "pictured"}, or {} when the index has nothing to show.
+func _bodies_said(about: String, subject: String, masses: Array) -> Dictionary:
+	if not RealSnippets.available():
+		return {}
+	var line: String = RealSnippets.line_of(about)
+	if line.is_empty():
+		line = RealSnippets.line_of(subject)
+	var shown: Array = []
+	var head: String = ""
+	if not line.is_empty():
+		shown = RealSnippets.bodies(line, subject, BODIES)
+		var sets: Dictionary = {}
+		for raw: Variant in RealSnippets.document().get("entries", []):
+			if RealSnippets.line_named(raw) == line:
+				sets[str((raw as Dictionary)["set"])] = true
+		head = "From the LEGO® %s line, %d of its sets, the biggest sub-assemblies built " % [
+			line, sets.size()] + "some way other than stacked square first:"
+	if shown.is_empty() and not subject.strip_edges().is_empty():
+		for row: Variant in RealSnippets.search(subject, 0.0, [], 40, 2):
+			var entry: Dictionary = (row as Array)[1]
+			if int(entry["parts"]) >= RealSnippets.BODY_PARTS:
+				shown.append(entry)
+			if shown.size() >= BODIES:
+				break
+		head = "From real sets about %s, their biggest sub-assemblies:" % subject
+	var lines := PackedStringArray()
+	for n: int in shown.size():
+		lines.append(_body_line(n + 1, shown[n]))
+	# Each mass the session plans: the nearest pieces of the line, or of any
+	# set where the line has none.
+	var each := PackedStringArray()
+	var pictured: Array = shown.duplicate()
+	for raw: Variant in masses.slice(0, MASSES):
+		var mass: String = str(raw).strip_edges()
+		if mass.is_empty():
+			continue
+		var near: Array = RealSnippets.bodies(line, mass, 2, 1, 6, true) if not line.is_empty() else []
+		if near.is_empty():
+			for row: Variant in RealSnippets.search(mass, 0.0, [], 12, 1):
+				var entry: Dictionary = (row as Array)[1]
+				if int(entry["parts"]) >= 6:
+					near.append(entry)
+				if near.size() >= 2:
+					break
+		var named := PackedStringArray()
+		for entry: Dictionary in near:
+			var built: PackedStringArray = RealSnippets.how_built(entry)
+			named.append("%s \"%s\" from %s (%d parts, %s x %s studs, %s)" % [entry["id"],
+				entry["name"], entry["set_name"], int(entry["parts"]),
+				_studs(float(entry["size"][0])), _studs(float(entry["size"][2])),
+				"built " + ", ".join(built) if not built.is_empty() else "stacked square"])
+			if not pictured.has(entry) and pictured.size() < PICTURED:
+				pictured.append(entry)
+		each.append("  %s: %s" % [mass, "; ".join(named) if not named.is_empty()
+			else "no real set has a piece called anything like it"])
+	if lines.is_empty() and each.is_empty():
+		return {}
+	var ids := PackedStringArray()
+	for entry: Dictionary in shown:
+		ids.append(str(entry["id"]))
+	progress.emit("how real sets build its body: %s" % (", ".join(ids) if not ids.is_empty()
+		else "nothing of its line"))
+	var said := PackedStringArray([BODY_HOW])
+	if not lines.is_empty():
+		said.append(head)
+		said.append("\n".join(lines))
+	if not each.is_empty():
+		said.append("Each mass you plan, the nearest real pieces:\n" + "\n".join(each))
+	else:
+		said.append("Name your main masses in assemblies (\"tower\", \"leg\", \"boom\", "
+			+ "\"wall\", \"roof\") to be shown the nearest real pieces to each.")
+	said.append(BODY_USE)
+	return {"text": "\n\n".join(said), "pictured": pictured.slice(0, PICTURED)}
+
+
+## Pieces of the line shown, masses looked up, and pieces pictured at most.
+const BODIES := 6
+const MASSES := 6
+const PICTURED := 8
+
+const BODY_HOW := """HOW REAL SETS BUILD ITS BODY. Decide it here, for each \
+mass, before the first brick. A set's technique is in its main structure: \
+legs and walls on hinges, a boom on pins, a face built sideways whole, a \
+curve made of slopes. A body submitted stacked square stays square: what \
+the first submission settles is what gets built."""
+
+const BODY_USE := """Lay one whole where a mass of yours is that kind of \
+thing: place_technique with its id, x, y, z and recolor to your colours \
+(parts do not scale; pick one the size you need). Or build yours the way it \
+is built, at your size. Then say in submit_design's description how each \
+assembly is built."""
+
+
+## A real piece for the body, in two lines: find_techniques' line, with how
+## it is built.
+func _body_line(n: int, entry: Dictionary) -> String:
+	var built: PackedStringArray = RealSnippets.how_built(entry)
+	var line: String = _piece_line(n, entry)
+	var cut: int = line.find("\n")
+	var how: String = " Built %s." % ", ".join(built) if not built.is_empty() \
+		else " Stacked square."
+	return line.insert(cut, how) if cut >= 0 else line + how
+
+
 ## A part's name as a person would read it, or its number if unknown.
 func _part_called(part_id: String) -> String:
 	if library == null:
@@ -18150,8 +18300,10 @@ section of the rest in full.
 
 HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
-that exists; how_real_sets_build_this with the subject: real sets' parts, \
-and the faults the judge found in our own designs of it, to design out.
+that exists; how_real_sets_build_this with the subject and your main \
+masses as assemblies: how real sets of its line build each (on hinges, \
+sideways, of slopes), to decide here how yours are built; real sets' parts; \
+the faults the judge found in our own designs of it.
  2. The silhouette: the main masses, sized in studs off the picture and \
 the brief. A hull, a car body, a fuselage or a building is a shape pattern \
 (read_guide "shapes"); a figure, a creature, a character or anything \
@@ -21339,7 +21491,13 @@ func _tools() -> Array:
 				+ "difference between a model of the thing and a model "
 				+ "of bricks, and you cannot get it from the shape "
 				+ "alone.\n\nGive the plain word for the thing. Nothing "
-				+ "matches a specific name.\n\nWith it comes our own best "
+				+ "matches a specific name.\n\nFirst comes how real sets of "
+				+ "its line build a body: their biggest sub-assemblies, how "
+				+ "each is built (on hinges, at an angle, studs sideways, of "
+				+ "slopes) and the nearest to each mass you name in "
+				+ "assemblies, with a picture and an id to lay one whole. "
+				+ "Decide there how each mass is built, before the first "
+				+ "brick.\n\nWith it comes our own best "
 				+ "design of the nearest subject, as the design bench's judge "
 				+ "scored it: how it was built, what it did best, and the "
 				+ "faults to design out before you build."),
@@ -21350,6 +21508,12 @@ func _tools() -> Array:
 						"the kind of thing being built, in plain words "
 						+ "— \"fire station\", \"medieval castle\", "
 						+ "\"spaceship\""},
+					"assemblies": {"type": "array", "items": {"type": "string"},
+						"description": "the main masses you plan, a few words "
+							+ "each — \"tower\", \"leg\", \"boom\", \"wing\", "
+							+ "\"sloped wall\", \"roof\": each comes back with "
+							+ "the nearest real sub-assemblies, to build that way "
+							+ "or lay whole"},
 				},
 				"required": ["subject"],
 				"additionalProperties": false,
