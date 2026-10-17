@@ -58,7 +58,7 @@ declare -A CMD=(
   # parts bucket as it opens (tools/storage_ldraw.py must have run).
   [carried]="tools/web/carried_flow.mjs --url=$P/app $B --label=preview --out=$S/${TAG}_carried_web $R/vendor/omr/files/21321-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
-  [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=stand --out=$S/${TAG}_brickify_fox_web"
+  [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=on.a.stand --out=$S/${TAG}_brickify_fox_web"
   # Render's first open in a fresh browser, every frame timed: alone, below.
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
 )

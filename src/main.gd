@@ -579,6 +579,8 @@ func _tell_page() -> void:
 		"offer": _offer != null and _offer.visible,
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
 		"brickified": _brickify.last_summary if _brickify != null else "",
+		# The size the panel will lay it at, so a flow knows what it typed was taken.
+		"brickify_studs": _brickify.studs() if _brickify != null else 0,
 		# And the last picture laid in LEGO Art, for art_flow.mjs.
 		"art": _art_said,
 		# Sections suggested, broken out and evaluated, for sections_flow.mjs.
