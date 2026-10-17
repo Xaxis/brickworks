@@ -394,6 +394,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.bond = bool(pattern.get("bond", false))
 		plan.core_colour = colour
 		plan.sold_in = PackedInt32Array(pattern.get("sold_in", []))
+		plan.sold_only = bool(pattern.get("sold_only", false))
 		plan.faces = faces
 		if pattern.get("cubes") is Dictionary:
 			plan.cubes = pattern["cubes"]
@@ -1902,6 +1903,11 @@ class Plan extends RefCounted:
 	## overhangs, 3660a, has no element in any colour, so no colour of it can
 	## be bought.
 	var sold_in := PackedInt32Array()
+	## Every slope only in a colour it is sold in, chosen by the flag too: a
+	## sculpt in one colour asked for, which is not recoloured after. A blue
+	## bunny laid again by the flag came back with inverted slopes no one
+	## sells in blue.
+	var sold_only: bool = false
 	var _sold_somewhere: Dictionary = {}
 	## Rounds of the stitch in a row whose first ways, kept unchecked, left no
 	## fewer pieces, before it takes them back and checks them (see [method
@@ -3000,6 +3006,10 @@ class Plan extends RefCounted:
 	## less than [constant CUBE_KEEPS] of its plates goes back to the core.
 	const CUBE_LEAST := 4
 	const CUBE_KEEPS := 0.6
+	## How deep the core behind a cube, not turned itself, has to be, studs.
+	## A fox at 48 studs, two studs deep, hung its head on two joints past
+	## their load more than upright; three, as many as upright.
+	const CUBE_BACK := 3
 	## The most parts of a piece of the core a shell cuts off that are taken
 	## out before the check (Shapes.lay).
 	const CUT_OFF := 16
@@ -3195,8 +3205,14 @@ class Plan extends RefCounted:
 					var key := Vector3i(cell.x, j, cell.y)
 					if at(past, j) >= 0:
 						beyond += 1
-					if inner and at(cell - facing, j) >= 0 and at(cell - facing * 2, j) >= 0:
-						backed += 1
+					if inner:
+						var deep_enough: bool = true
+						for k: int in range(1, CUBE_BACK + 1):
+							var back: Vector2i = cell - facing * k
+							deep_enough = deep_enough and at(back, j) >= 0 \
+								and not shelled.has(Vector3i(back.x, j, back.y))
+						if deep_enough:
+							backed += 1
 					if at(cell, j) < 0:
 						if not taken.has(key):
 							empty.append(key)
@@ -3466,6 +3482,7 @@ class Plan extends RefCounted:
 			# A sculpt's colours and the colours it may lay go with it on its side.
 			sub.colour_shown = colour_shown
 			sub.sold_in = sold_in
+			sub.sold_only = sold_only
 			sub.stop = stop
 			# And its side's own surface, at thirds of a stud along and down, in
 			# plates out from the face: its slopes fitted by distance.
@@ -4204,7 +4221,7 @@ class Plan extends RefCounted:
 					return ""
 				# Fitted by distance, only in a colour it is sold in: two of the one
 				# wide where the two wide is not.
-				if fine.is_valid() and pick.has("colour") and not _made(id, int(pick["colour"])):
+				if (fine.is_valid() or sold_only) and pick.has("colour") and not _made(id, int(pick["colour"])):
 					return ""
 				var shape: Dictionary = Shapes.part(library, id, bool(pick["under"]))
 				if shape.is_empty() or int(shape["w"]) != wide \
