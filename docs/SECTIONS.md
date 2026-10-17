@@ -134,7 +134,15 @@ Sungnyemun's Base, its own booklet: 36 steps, written by the booklet's own
 code with the rest of the model left out.
 
 Pictures, drawn by the GPU: `bench/results/sections-2026-10-16/shots/`.
-`tools/web/sections_flow.mjs` does the same by clicks and keys in a browser.
+
+In a browser, `tools/web/sections_flow.mjs` on a local export of the web
+build, by clicks and keys on 21016-1: Suggest sections in the model tree
+(3, covering all 325 parts), a click on a suggestion selecting its 127
+parts, a double-click renaming one, Split (3 to 4) and Merge (back to 3),
+Accept all (3 sub-assemblies), Evaluate… on one (144 parts, 105 g, one
+piece, 38 steps), `Y` out and `Y` back with every part where it was, each
+way undone and redone, `Shift+Y` apart and together, and three undos back
+to the model as it opened. Pictures in `bench/results/sections-2026-10-16/web/`.
 
 ## What is left
 
