@@ -388,8 +388,11 @@ static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray) 
 	while not todo.is_empty() or int(going[0]) > 0:
 		while not todo.is_empty() and int(going[0]) < MOST_FETCHES:
 			var key: String = todo.pop_front()
+			# No time limit, as the geometry's fetches have none. One is polled
+			# once a frame, and a frame drawing a big model in software can take
+			# seconds: 42115-1 opened after 42082-1 had all six of its files
+			# arrive in the browser and given up on by a 30 s limit.
 			var request := HTTPRequest.new()
-			request.timeout = 30.0
 			tree.root.add_child(request)
 			request.request_completed.connect(func(result: int, code: int,
 					headers: PackedStringArray, body: PackedByteArray) -> void:

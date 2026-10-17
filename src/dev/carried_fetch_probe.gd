@@ -84,6 +84,7 @@ func _run() -> void:
 	await _fetched_as_the_web_does(SET)
 	for path: String in args:
 		await _fetched_as_the_web_does(path)
+	await _one_session(PackedStringArray([SET, "res://vendor/omr/files/42115-1.mpd"]))
 	await _restored()
 	await _not_there()
 	_web_page()
@@ -273,6 +274,24 @@ func _fetched_as_the_web_does(path: String) -> void:
 	_expect(Engine.get_process_frames() == frame and PartForge._fetched.size() == count
 		and _carried_unshown(opened, model) == on_desktop,
 		"opened again: nothing fetched, no frame waited for")
+	PartForge.withheld = false
+	CustomParts.sources_from = ""
+
+
+## Files opened one after another in one session, as a person does: each
+## with every part it carries (a browser left 42115-1's out after 42082-1).
+func _one_session(paths: PackedStringArray) -> void:
+	print("carriedfetch: one file after another in one session")
+	_fresh()
+	PartForge.withheld = true
+	CustomParts.sources_from = _root()
+	for path: String in paths:
+		var text: String = FileAccess.get_file_as_string(path)
+		var name: String = path.get_file().get_basename()
+		var opened: Dictionary = await _open(text, name)
+		var out: Array = _carried_unshown(opened, LdrModel.parse(text, name))
+		_expect(out.is_empty(), "%s: every part it carries shown (%d parts, %d files fetched so far): %s"
+			% [name, int(opened["placed"]), PartForge._fetched.size(), out])
 	PartForge.withheld = false
 	CustomParts.sources_from = ""
 

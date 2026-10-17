@@ -59,9 +59,12 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const choosers = [];
 page.on("filechooser", (chooser) => choosers.push(chooser));
 const errors = [];
+// Why a part was not built, as the app says it on the console.
+const why = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => {
   if (/SCRIPT ERROR|USER ERROR|Parse Error/i.test(m.text())) errors.push(m.text().slice(0, 300));
+  if (/could not (build a part|fetch the LDraw)/.test(m.text())) why.push(m.text().split("\n")[0].slice(0, 300));
 });
 // Every LDraw file asked for, and how it answered.
 const fetched = [];
@@ -146,6 +149,7 @@ for (const model of models) {
   }
   if (!ok(Boolean(chooser), "Open… > From a file brought the file picker")) continue;
   fetched.length = 0;
+  why.length = 0;
   const began = Date.now();
   await chooser.setFiles(model, { timeout: 300000 });
   const { s: opened, words } = await until((s) => /^opened \d+ parts/.test(String(s.said || "")), 600);
@@ -159,13 +163,14 @@ for (const model of models) {
   const row = { label, file: basename(model), bricks: s.bricks, said: said.slice(0, 300), open_ms: openMs,
     settled_ms: Date.now() - began, not_shown: unshown.count, not_shown_ids: unshown.ids,
     carried: carried.length, carried_built: carriedBuilt.length, carried_not_shown: carriedOut,
-    custom: (s.custom || []).length, fetched: [...fetched], working: words };
+    custom: (s.custom || []).length, fetched: [...fetched], working: words, why: [...why] };
   rows.push(row);
   console.log(`        the status bar: "${said.slice(0, 300)}"`);
   console.log(`        ${s.bricks} parts; opened in ${(openMs / 1000).toFixed(1)} s, settled in ${Math.round(row.settled_ms / 1000)} s; `
     + `${carriedBuilt.length} of the ${carried.length} parts it carries built; ${unshown.count} not shown`);
   console.log(`        LDraw files fetched: ${fetched.length} (${fetched.slice(0, 6).map((f) => `${f.url} ${f.status}`).join(", ")})`);
   if (words.length) console.log(`        working: ${words.join(" | ")}`);
+  for (const line of why.slice(0, 6)) console.log(`        why: ${line}`);
   ok(carriedOut.length === 0, `${basename(model)}: no part it carries said not shown${carriedOut.length ? ": " + carriedOut.join(", ") : ""}`);
   ok(fetched.every((f) => f.status === 200), `${basename(model)}: every LDraw file asked for came (${fetched.length})`);
   await page.keyboard.press("Escape");
