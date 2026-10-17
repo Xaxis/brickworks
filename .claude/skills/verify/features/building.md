@@ -487,8 +487,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
   so undo, save and the timeline carry it. Saved, it is a nested `.mpd`: each
   definition once, each copy a `1` line, a mirrored copy by a reflecting matrix
-  (`LdrModel.write_tree`); read back, a mirrored reference is put in the other
-  hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which also
+  (`LdrModel.write_tree`), each with `0 !BRICKWORKS COPY n` before it, as
+  the file is in build order and copies read back by their place in it swapped
+  (`LdrModel.COPY_META`); read back, a mirrored reference is put in the other
+  hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
+  as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
 - `model tree`: under the parts bin in the left-hand column (View, Model
   tree, or its header) lists the
