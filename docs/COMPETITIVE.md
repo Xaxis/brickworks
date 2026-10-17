@@ -81,8 +81,10 @@ built in other worktrees and are not on `next3`.
    - Studio has a Step Editor, Page Design, PDF and PNG export, and new-part
      highlighting [st-im] [st-stepedit] [st-im-export]. LeoCAD's timeline
      moves parts between steps [lc-history].
-   - Brickworks generates a good booklet, but nobody can edit it. It also
-     drops the steps a file already had (item 1 below).
+   - Brickworks generates a booklet whose steps can be built as drawn, keeps
+     the steps a file already had, and lets a person end a step (E) or move
+     a part to another step by hand. It prints to PDF, A4 or letter. Its
+     pages cannot be laid out by hand ([view] [cadtask]).
 2. **Rendering.**
    - Studio's Eyesight is a Cycles path tracer with a POV-Ray/LGEO option
      [st-eyesight] [st-pov]. Mecabricks has a render farm and a Blender
@@ -96,7 +98,9 @@ built in other worktrees and are not on `next3`.
      [st-bt], and a moderated Gallery [st-gallery].
    - Mecabricks has a public library with an embed [mb-model], and
      Rebrickable has more than 200,000 MOCs [rb-wiki].
-   - Brickworks has unlisted share links and nothing else ([web]).
+   - Brickworks has share links, a public gallery with remixing, likes and
+     moderation, and people's pages and lists; nothing live and shared
+     ([web]).
 4. **Buying the parts.**
    - Studio shows BrickLink Price Guide prices and puts a model on a wanted
      list in one click [st-price] [st-wanted].
