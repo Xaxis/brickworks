@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.2.0",
+ "latest": "0.3.0",
  "releases": [
+  {
+   "version": "0.3.0",
+   "tag": "v0.3.0",
+   "date": "2026-10-16",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.3.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.3.0/CHANGELOG.md",
+   "summary": "A release about the whole craft. A model can be rendered, shared by link, laid out as an instruction booklet whose steps build as drawn, posed and animated, printed and stickered, brickified from a 3D file, laid from a picture as Brick Art, and exported to Studio, BrickLink, Rebrickable or a 3D program. A file another program wrote comes back exactly as it went in, and a 4,000-part set stays quick to select, undo and step through. Building by hand from a booklet takes fewer actions, and with the assistant switched off nothing of it is missing. Claude, on your plan, shows the model in 3D beside its answers and builds characters on real joints. Models saved by 0.2.0 open in 0.3.0 unchanged.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.3.0-linux-x86_64.AppImage",
+     "size": 594250232,
+     "sha256": "c66bc6839203fae5bf6d20712f05096d5addf11953599c33583120c2158ad431",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.3.0/Brickworks-0.3.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.3.0-linux-x86_64.tar.xz",
+     "size": 442889336,
+     "sha256": "7365dab134170e4e93c054c8363da765745b4319ebd89ab5ef8489d2a17fe98e",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.3.0/Brickworks-0.3.0-linux-x86_64.tar.xz",
+     "unpacked": 1513570350,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.3.0-macos-universal.zip",
+     "size": 774679693,
+     "sha256": "268400094c2ffdfa17cbd2359cbebbec28ab065fb0421a4d0fc128f30a17e27e",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.3.0/Brickworks-0.3.0-macos-universal.zip",
+     "unpacked": 1610324816,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.3.0-windows-x86_64.zip",
+     "size": 753042871,
+     "sha256": "f10e6f67f9afda67d922d094e2f51d384d199670c034a883902678a0f11661c8",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.3.0/Brickworks-0.3.0-windows-x86_64.zip",
+     "unpacked": 1549273230,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.2.0",
    "tag": "v0.2.0",
