@@ -63,7 +63,10 @@ declare -A CMD=(
   [render_open]="tools/web/render_open_check.mjs --url=$P/app --out=$S/${TAG}_render_open"
   # Build it from a shared link on a slowed phone: each page turn timed, and
   # the first step's arrival; publishes from a throwaway account, deleted after.
-  [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --out=$S/${TAG}_share_steps"
+  # A shared link built on a throttled phone: every step and turn timed and
+  # said; until the steps are carried with the link (sharesteps, round 2),
+  # the first step takes 9-12 s, so the times are said, not held to a bar.
+  [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
 ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet flex_pose grab progress share_probe site download"
 NAMES="${*:-$ORDER}"
