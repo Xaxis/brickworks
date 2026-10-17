@@ -104,6 +104,8 @@ whole cycle.
 
 ### Fixed
 
+- Build it in a browser now and then drew the parts of earlier steps in
+  their own colours where they should be faded.
 - A part a set's file carries, kept by the app, is kept with the pieces it
   is drawn from. It used to be missing after a restart, and a model saved
   then went out without them.

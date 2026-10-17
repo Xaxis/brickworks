@@ -1746,7 +1746,13 @@ screen under 100 ms at 300 and 1,000 parts and under 200 ms at 4,000, the
 first step, each tap at once, within 3 s of the first frame at 300 and
 1,000 parts and 5 s at 4,000. On a box at load 30 to 50 a frame's WebGL
 calls wait seconds on SwiftShader now and then, and a turn with them misses
-however little the app did (the line says the WebGL time). `--report-only`
+however little the app did (the line says the WebGL time). Measured
+2026-10-17 at load 25 to 54 (bench/results/sharesteps-2026-10-17/r7-local):
+the first step, taps at once, 0.3 s, 0.25 s and 3.2 s after the first frame
+at 300, 1,000 and 4,000 parts with the steps carried (9 to 12 s and 75 to
+135 s worked out on the phone); a turn's own work 13 to 56 ms, and two
+turns of five at each size over the bar on WebGL waits of 0.5 to 2 s.
+`--report-only`
 says it all and judges nothing (a build from before: no drawn mark, no tap
 on the bar, the turn read as the first frame after the tap). Pictures `<size>_step1.png`, `_step4`,
 `_step30`, `_step<last>` (at full speed), and `times.json`. In
