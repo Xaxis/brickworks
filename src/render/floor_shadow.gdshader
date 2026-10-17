@@ -14,8 +14,10 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_back, specular_disabled;
 
 // Measured against the view's background (main.tscn's sky below the
-// horizon, 0.563 grey): 0.52 left the ground 0.007 darker and 0.56 0.016
-// lighter. At 0.9 the shadow is about 0.09 darker than what is round it.
+// horizon, 0.563 grey) under the Compatibility renderer: 0.52 left the
+// ground 0.007 darker and 0.56 0.016 lighter. At 0.9 the shadow is about
+// 0.09 darker than what is round it. Forward+ lights in linear space and
+// needs its own grey, which FloorLayer sets (LINEAR_SHADOW_TINT).
 uniform vec3 tint : source_color = vec3(0.53, 0.53, 0.54);
 uniform float strength = 0.9;
 uniform vec2 middle = vec2(0.0);
