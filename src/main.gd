@@ -125,28 +125,22 @@ var _build_turned_most_us: int = 0
 ## ...and where the longest one's time went, ms by what it did.
 var _build_turned_most: Dictionary = {}
 var _build_turned_last: Dictionary = {}
-## The frames a turn is drawn in, the turn's own and the two after, as
-## [ms of every script's processing, ms of it telling the page, ms of the
-## engine's drawing on this side]: what a turn's frame cost besides the turn.
+## The rest of the frame a page was turned in, in ms: from the turn to the
+## frame's processing, the processing (every node's, the page told all
+## included), the drawing on this side, and of the processing how long
+## telling the page took. What a turn's frame cost besides the turn.
 var _turn_frames: Array = []
-var _turn_frames_left: int = 0
+var _turn_marks := PackedInt64Array()
 var _told_this_frame_us: int = 0
 
 
-## Read at the start of each frame, of the frame before.
-func _time_turn_frames() -> void:
-	if _turn_frames_left <= 0:
-		return
-	_turn_frames_left -= 1
-	if _turn_frames_left == 2:
-		# This is the turn's own frame: nothing of it is measured yet.
-		_told_this_frame_us = 0
-		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
-		return
-	_turn_frames.append([snappedf(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, 0.1),
-		snappedf(_told_this_frame_us / 1000.0, 0.1),
-		snappedf(RenderingServer.viewport_get_measured_render_time_cpu(get_viewport().get_viewport_rid())
-			+ RenderingServer.get_frame_setup_time_cpu(), 0.1)])
+func _turn_mark() -> void:
+	_turn_marks.append(Time.get_ticks_usec())
+	if _turn_marks.size() == 4:
+		_turn_frames = [snappedf((_turn_marks[1] - _turn_marks[0]) / 1000.0, 0.1),
+			snappedf((_turn_marks[2] - _turn_marks[1]) / 1000.0, 0.1),
+			snappedf((_turn_marks[3] - _turn_marks[2]) / 1000.0, 0.1),
+			snappedf(_told_this_frame_us / 1000.0, 0.1)]
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -2120,7 +2114,12 @@ func _build_go(page: int) -> void:
 		_build_turned_most = took
 	_build_turned_last = took
 	_turn_frames = []
-	_turn_frames_left = 3
+	_turn_marks = PackedInt64Array([Time.get_ticks_usec()])
+	_told_this_frame_us = 0
+	for done: Signal in [get_tree().process_frame, RenderingServer.frame_pre_draw,
+			RenderingServer.frame_post_draw]:
+		if not done.is_connected(_turn_mark):
+			done.connect(_turn_mark, CONNECT_ONE_SHOT)
 	# And the page told which frame drew it, for a check to time a turn from
 	# the tap to the frame (tools/web/share_steps_flow.mjs).
 	if OS.has_feature("web") and not RenderingServer.frame_post_draw.is_connected(_build_drawn):
@@ -4753,7 +4752,6 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
-	_time_turn_frames()
 	_watch_view()
 	_steer_from_keys(_delta)
 	if not _viewing.is_empty():
