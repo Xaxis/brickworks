@@ -31,6 +31,12 @@ whole cycle.
   42082 waited 12 s for the status bar to finish weighing 42082; it now
   opens in 1.5 s, and the new model is weighed after.
 
+### Fixed
+
+- The pictures the assistant judges its work by no longer draw dark tops
+  white from one side. Its fill light caught the stud tops of the far rows,
+  and a dark grey model could read as banded in white.
+
 ## [0.3.0] - 2026-10-16
 
 A release about the whole craft. A model can be rendered, shared by
