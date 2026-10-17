@@ -1034,7 +1034,8 @@ node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots
 # (brickworksState.awaited): 7636's 372 took 146 s, and the old test (the count
 # holding between two looks) photographed it at 324. Each frame of it drawn in
 # SwiftShader at load 60-90 takes 5-14 s (a key turning the view), so app.png
-# waits up to 180 s and is not a check; a big model's booklet is slow here.
+# waits up to 180 s and is not a check. Its booklet did not arrive in 1,500 s
+# here at load 40-90 (--wait=1500): a big model's booklet is for the preview.
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
