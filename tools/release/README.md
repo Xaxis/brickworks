@@ -49,6 +49,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   ships only if it shipped, and writes its own. `-` for none before. A
   waiter written by hand found the release before by its command line, its
   own grep hid it, and m43's ship went at once (2026-10-17).
+- Every release runs `site` and `frames` whether they are named or not:
+  `frames` holds a big model's step, orbit and select all to the app's own
+  work per frame, after a feature that ran twice a second left a step at
+  6 s while every named check passed.
 - To hold releases, write a reason to `$RELEASE_OUT/HOLD` (all) or
   `$RELEASE_OUT/<tag>.hold` (one): a queued release waits, and one already
   shipping stops before main moves. Remove the file to let them go. Killing
