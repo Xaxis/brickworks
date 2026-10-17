@@ -1713,8 +1713,10 @@ rack's beam runs in), which the connectors do not give.
 on (8062-1's crane winch); a worm's hand, read from its thread; 42080-1's
 pneumatic cylinders, held to their turret by more than the cylinder; the
 8 x 2 x 2 actuator's input, drawn inside its body's part; a big loop's drag
-(an actuator's arm in a loop of 25 to 36 joints, 137 to 174 ms a frame, and
-42081-1's held one frame 1.9 to 2.7 s, not yet taken apart); whether the
+(an actuator's arm in a loop of 25 to 36 joints, 137 to 174 ms a frame;
+42081-1's held one frame 1.9 to 3.1 s, one room test of one large part, and
+let go it was checked and kept in 22 s on a box loaded 41, not yet taken
+apart); whether the
 meetings that stop 42006-1's boom and 42024-1's small actuator short of
 their ends are the real sets' or the room test's 2 LDU cells (not checked
 against the built models); dynamics (S2, P3).

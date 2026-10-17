@@ -2030,10 +2030,13 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
 		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	var let_go: int = Time.get_ticks_msec()
 	await _button(_last_screen, false)
 	await _frames(3)
-	await _settled()
-	print("    said: %s" % _grab.last_words)
+	# 42081-1's arm, 262 parts, is checked on a worker and its cells laid a
+	# share a frame: on a loaded box that took more than the usual 20 s.
+	await _settled(120000)
+	print("    said: %s (kept in %.1f s)" % [_grab.last_words, float(Time.get_ticks_msec() - let_go) / 1000.0])
 	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
 	if _windowed:
 		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")
@@ -3516,9 +3519,9 @@ static func _near(a: Transform3D, b: Transform3D) -> bool:
 
 
 ## Until a big section let go has been checked and kept.
-func _settled() -> void:
+func _settled(most_ms: int = 20000) -> void:
 	var waited: int = Time.get_ticks_msec()
-	while _grab.is_settling() and Time.get_ticks_msec() - waited < 20000:
+	while _grab.is_settling() and Time.get_ticks_msec() - waited < most_ms:
 		await process_frame
 
 
