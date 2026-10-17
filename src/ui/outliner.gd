@@ -313,6 +313,10 @@ func _suggested_state() -> String:
 ## The suggested sections, under the model's own rows: numbered as they
 ## would be built, each with its part count and a tick to accept it.
 func _fill_suggested(top: TreeItem, folded: Dictionary) -> void:
+	# Room for a few of them whatever the properties under it take: with a
+	# suggestion's parts selected, the tree was squeezed to one row.
+	_tree.custom_minimum_size.y = 60.0 if sections == null \
+		or sections.sections.suggested.is_empty() else 120.0
 	if sections == null or sections.sections.suggested.is_empty():
 		return
 	var head: TreeItem = _tree.create_item(top)
@@ -393,6 +397,16 @@ func _mark_selected() -> void:
 		return
 	var chosen: String = assemblies.selected_assembly()
 	var row: TreeItem = _find(_tree.get_root(), chosen) if not chosen.is_empty() else null
+	# A suggestion whose parts are what is selected stays chosen, so its
+	# Merge, Split and Evaluate stay under the tree.
+	if row == null and sections != null:
+		var picked: Dictionary = shell.builder.selection
+		for made: Sections.Suggestion in sections.sections.suggested:
+			if made.ids.size() != picked.size() or picked.is_empty():
+				continue
+			if Array(made.ids).all(func(id: int) -> bool: return picked.has(id)):
+				row = _find(_tree.get_root(), SUGGESTION + str(made.number))
+				break
 	# Lit to match the view, which is not a person choosing the row: the
 	# row's own handler would select again, and round it went.
 	_marking = true
@@ -401,6 +415,7 @@ func _mark_selected() -> void:
 		row.select(0)
 		_tree.scroll_to_item(row)
 	_marking = false
+	_update_strip()
 
 
 func _find(item: TreeItem, path: String) -> TreeItem:
@@ -622,4 +637,7 @@ func row_rect(meta: String) -> Variant:
 	if rect.size == Vector2.ZERO:
 		return null
 	rect.position += _tree.get_global_rect().position - Vector2(0, _tree.get_scroll().y)
+	# Only a row in view: one scrolled out is no place to click.
+	if not _tree.get_global_rect().has_point(rect.get_center()):
+		return null
 	return rect
