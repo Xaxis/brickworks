@@ -5046,6 +5046,8 @@ var _weighed_us: int = 0
 func _process_main(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
+	if _press_brick != 0:
+		_press_still_ms = Time.get_ticks_msec()
 	if not _viewing.is_empty():
 		_view_hover()
 	else:
@@ -5142,6 +5144,12 @@ var _grabbing: bool = false
 ## still to take the part by its chain of joints (GrabChain), ms.
 var _press_ms: int = 0
 const CHAIN_HOLD_MS := 400
+## The last frame that saw that press still held where it began, ms. Held is
+## what a frame saw: in a browser drawing a frame a second, a press and the
+## drag straight after it come a frame apart, and timed from the press to
+## the first move they read as a hold (grab_flow on m78's preview: the
+## pendulum taken by its chain, never swung).
+var _press_still_ms: int = 0
 ## A left press that is not yet a click or a drag. A drag from it moves the
 ## view ("turn", "slide", "zoom") or draws a box ("box"); "" for a finger,
 ## whose drags are the camera's. Nothing is placed or selected until it
@@ -5349,7 +5357,7 @@ func _grab_on_joint(brick_id: int) -> bool:
 		return false
 	var selected: Dictionary = _builder.selection if _builder.selection.has(brick_id) else {}
 	# Held still on it a moment before dragging: by its chain of joints.
-	var chained: bool = Time.get_ticks_msec() - _press_ms >= CHAIN_HOLD_MS
+	var chained: bool = _press_still_ms - _press_ms >= CHAIN_HOLD_MS
 	if not _grab_drag.press(brick_id, _press_at, selected, chained):
 		return false
 	_builder.hide_preview()
@@ -5598,6 +5606,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_press_brick = under
 				_press_copies = button.ctrl_pressed or button.meta_pressed
 				_press_ms = Time.get_ticks_msec()
+				_press_still_ms = _press_ms
 				return
 		_pending_left = true
 		_pending_verb = verb

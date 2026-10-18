@@ -504,7 +504,12 @@ try {
     await page.keyboard.press("Control+z");
     await page.waitForTimeout(2500);
     const drawn = await swingOnce(true);
-    check(Boolean(drawn && drawn.rested), "swung again for its pictures, and at rest again");
+    if (!check(Boolean(drawn && drawn.rested), "swung again for its pictures, and at rest again")) {
+      const now = await grab();
+      console.log(`        found the beam: ${Boolean(drawn)}; at release: grabbing ${drawn && drawn.held && drawn.held.grabbing}, `
+        + `angle ${drawn && drawn.held && drawn.held.angle}, swung ${drawn && drawn.seen}; now: swinging ${now.swinging}, `
+        + `said "${now.said}"`);
+    }
     await shot("9_pendulum_rest.png");
     // For reference, the page's frames while every frame is drawn anew and
     // nothing of the grab runs: the view turned by a right-drag, a move each

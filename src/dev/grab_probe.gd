@@ -4497,6 +4497,27 @@ func _chain_case(name: String, path: String, end: String) -> void:
 	_builder.undo()
 	await _frames(3)
 	_check("%s: one undo puts it back (%s)" % [name, _differs(before)], _differs(before) == "none differs")
+	# Pressed and dragged at once, with one slow frame between (a browser
+	# drawing in software): the press was not held, so not by its chain. The
+	# frame is slow in its drawing, after the app's own work for it, and the
+	# move is read at the start of the next.
+	await _move(screen, 0)
+	await _button(screen, true)
+	await RenderingServer.frame_post_draw
+	OS.delay_msec(CHAIN_SLOW_FRAME_MS)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	_check("%s: pressed and dragged at once across a %d ms frame, it is not taken by its chain (%s)"
+		% [name, CHAIN_SLOW_FRAME_MS, _grab.chain.said if _grab.chain != null else "grabbed by its joint"
+		if _grab.grab != null else "not grabbed"], _grab.chain == null)
+	await _button(_last_screen, false)
+	await _frames(3)
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(3)
+
+
+## A frame as slow as m78's preview drew the grab flow's (a second and more).
+const CHAIN_SLOW_FRAME_MS := 600
 
 
 # -- a session -------------------------------------------------------------------------

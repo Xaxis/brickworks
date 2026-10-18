@@ -602,7 +602,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   step (`GrabDrag._own_copies`; `grab_probe -- --only=copies`, two alike
   minifigures and move_part). Held still 0.4 s, then dragged: the part by its
   chain of joints (`src/assembly/grab_chain.gd`, "chain" in the status bar;
-  `grab_probe -- --only=chain`, a hand and 4096's crane end).
+  `grab_probe -- --only=chain`, a hand and 4096's crane end). Held is what a
+  frame saw (`main.gd` `_press_still_ms`): pressed and dragged at once across
+  one 600 ms frame it is an ordinary grab, as in a browser drawing a frame a
+  second.
   Turned and turned back over MCP: `grab_probe -- --only=steer` builds a real
   session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
   steering wheel +30, -60 and +30, back where it was built, the chassis still.

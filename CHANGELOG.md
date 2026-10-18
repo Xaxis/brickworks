@@ -281,6 +281,12 @@ whole cycle.
 
 ### Fixed
 
+- A quick drag in a slow browser grabs the part as it should. Pressed and
+  dragged at once, a part was taken by its chain of joints instead, as if
+  held still first, whenever a frame took longer than 0.4 s to draw: the
+  hold was timed from the press to the first move the app read, a frame
+  apart. It is now timed by what the frames saw.
+
 - What you set on a step stays on that step. A step's turn, zoom, size,
   page break, page alone, parts list, turn sign, placed picture, parts
   list and number, words, pictures and arrows moved onto the next step
