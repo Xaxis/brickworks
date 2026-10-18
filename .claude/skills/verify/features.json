@@ -2512,7 +2512,7 @@
       "id": "ui:the booklet page by hand",
       "kind": "ui",
       "entry": "src/ui/page_editor.gd",
-      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page\u2026 or Build, Booklet page, Lay out the page\u2026: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture\u2026; Outline new on the row)",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page\u2026 or Build, Booklet page, Lay out the page\u2026: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture\u2026, Draw an arrow and drag, its middle to bend it, Arrow colour, Arrow width, the turn sign selected and Delete, a callout's own pages by Previous or Next page; Outline new on the row)",
       "area": "view",
       "tests": []
     },

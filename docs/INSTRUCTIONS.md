@@ -1155,15 +1155,127 @@ out by hand keeps its boxes where they were put when the steps around it
 change, so a step merged into another page can put two pictures in one
 place.
 
+## The page by hand, again (2026-10-17, evening)
+
+Four things the page by hand above left undone, as a LEGO® booklet and
+Studio's Instruction Maker have them [st-im].
+
+**What is placed goes with its step.** A placed picture, parts list,
+callout or number, and the words, pictures and arrows put on a page, now
+belong to the step they were placed on, kept with the room the booklet gave
+the step on its page (`0 !BRICKWORKS PANEL x y w h`, written with the first
+thing placed). When the pages flow again round it, a merge, a page break,
+steps a page, a step given a page alone, they move into the step's new room
+and scale with it: each centre to the same place in the room, each size by
+the room's smaller change, so a picture keeps its shape. A merge of two
+steps keeps the words, pictures and arrows of both. On 30050-1, step 8's
+picture placed in the right half of page 3's lower row went with it to the
+left half when step 1 was merged with step 2 ([137.5, 99.5] to [9, 99.5]
+mm, the same size); on 106-1, step 5's went to the same place in the whole
+page when the step was given a page alone.
+
+Where one thing would still lie on another (a box dropped on another
+step's, or a step's things moved into a room another's things reach), the
+page is laid out with nothing on anything else: what its designer placed
+keeps its place, step by step, then what the booklet laid out, then words
+and pictures, and the one that would land on a thing already kept goes to
+the nearest free room of its size on the page (a picture, a callout or an
+added picture smaller, down to half, where nothing fits). A picture counts
+as the rectangle round its model, not the box it was given, and on a page
+laid out by hand the step pictures are drawn clear behind the model, so a
+box over the empty edge of a picture covers nothing. Lay out page…
+outlines what was moved in red
+and says it ("step 1's picture was on step 2's picture: moved off it"), as it
+says a box held over another while it is dragged, and
+`booklet_layout` says it on the page's line.
+
+![Step 2's picture dropped on step 1's model: the page says so and moves step 1's off it](instructions/30050-overlap-editor.webp)
+
+**The designer's own arrows.** Lay out page… has Draw an arrow: drag on the
+page from where the arrow starts to where it points, each end snapping as a
+box does, then drag its middle to bend it (back onto the line straightens
+it). Arrow colour makes it red, as a booklet points where a part goes in,
+or black, as its callout arrows are; Arrow width makes it 0.45, 0.9 or 1.4
+mm, the callout arrow's width, the red pointer's and a broad one, no other.
+Each is one undo, and each prints as the booklet's own arrows do: a white
+edge under it so it reads across a model of its colour, a head as big for
+its width as the red pointer's, a bent one as a curve through its bend.
+An arrow goes with the step whose room it points into. In the file:
+`0 !BRICKWORKS ARROW RED 0.9 x1 y1 x2 y2 [bx by]`. Over MCP `edit_booklet
+arrow={x1, y1, x2, y2, bx, by, colour, width}` draws one, with `index=`
+changes or removes one, and `booklet_layout` lists them ("a black arrow
+from 30, 40 to 70, 80 mm, bent through 60, 45, 0.9 mm wide").
+
+![30050-1, page 4: step 4's page laid out by hand, a red arrow bent into the picture](instructions/30050-arrow-page4.webp)
+
+**The turn sign.** A LEGO® booklet tells the builder to turn the model with
+a small sign under the step number: a white rounded square, two rings
+round its middle, one upright and one flat, an arrowhead on each (31139
+Cozy House, steps 58 and 100: the same sign for the model turned round and
+turned over). Ours was a half ring beside the number, for a turn round of
+more than 60 degrees only. It is now that sign, under the number, where the
+step is seen more than 60 degrees round, or more than 45 degrees higher or
+lower, than the step before: a turn of the model, or the model turned over
+to work under it. A Booklet row turn of 45 degrees or a tilt of 30 is a
+glance and gets none. Selected on Lay out page… and Delete, a sign comes
+off (a faint one stays, for Put back), saved as `0 !BRICKWORKS TURN_SIGN
+OFF` in the step; `edit_booklet sign=false` over MCP.
+
+![106-1, page 2: step 2 turned 90 degrees on the Booklet row, the sign under its number](instructions/106-sign-page2.webp)
+
+**A callout's own pages by hand.** A sub-assembly built on pages of its own
+(a long callout, or one whose callout box was turned off) has its pages in
+Lay out page… in their place among the pages of steps, framed as they print:
+its steps' pictures, parts lists and numbers are dragged and sized, words,
+pictures and arrows added, as on any page, and kept on the sub-model's own
+steps in its part of the file. The callout's view stays the callout's own.
+
+| line | what |
+|---|---|
+| `0 !BRICKWORKS PANEL x y w h` | the room the step had on its page when its things were placed |
+| `0 !BRICKWORKS ARROW RED 0.9 x1 y1 x2 y2 [bx by]` | an arrow on the step's page; RED or BLACK, 0.45, 0.9 or 1.4 mm |
+| `0 !BRICKWORKS TURN_SIGN OFF` | the step's turn sign left off |
+
+`booklet_edit_probe` checks each: the placed step moved by a merge (or a
+page alone), its picture and words in its new room, no page with one thing
+on another; a picture dropped on another's model, the page saying so, the
+file keeping it where it was dropped; an arrow drawn, bent, recoloured and
+widened by the mouse on Lay out page…, Ctrl-Z, and one over MCP, each one
+undo and its one line; a step tilted 30 degrees lower with no sign and 60
+lower with one, under its number, taken off, put back and taken off again
+on the page and over MCP; a callout turned off and its own page reached by
+Previous or Next page, its first step's picture dragged and an arrow drawn
+on it, kept on the sub-model's step; and in the printed booklet the arrow
+on its page and none before, a sign per turned step, a callout step's
+picture where it was placed on its own page, nothing on anything else
+(30050-1, 106-1 and 10016-1, 341 checks). With the
+step's room not followed and the page not settled, its four checks of that
+fail. `booklet_edit_flow.mjs` draws an arrow by the mouse in a browser and
+finds it printed and in the exported file. The round trip on real sets'
+files (`tools/bench/cadtask.py roundtrip`) writes back all 54 exactly, the
+steps kept in all 44 that have them, and `booklet_probe`'s booklet, laid
+out by the booklet alone, reads as it did.
+
+What reads badly: 10016-1's added picture, put over the empty lower corner
+of the step's picture box, is moved off it, because the rectangle round the
+model reaches that corner though the model does not.
+
 ## What is left
 
-- **The page by hand.** Placed boxes stay where they were put when the
-  steps around them change, so a step merged onto another page can put two
-  pictures in one place; nothing says so. A box cannot be turned, a callout
-  page (a sub-assembly on pages of its own) cannot be laid out by hand, and
-  there are no arrows or rulers of the designer's own, which Studio has. A
-  step's turn is a turn round and a tilt; LDraw's third angle (a roll) is
-  kept in the file but not drawn.
+- **The page by hand.** A box cannot be turned, and there are no rulers of
+  the designer's own, which Studio has. A callout's own page is laid out
+  by hand, but its steps cannot be turned or zoomed apart from the callout,
+  and a callout box beside its step shows its steps' pictures as the
+  booklet lays them, not as placed. A step's turn is a
+  turn round and a tilt; LDraw's third angle (a roll) is kept in the file
+  but not drawn. A thing moved off another goes to the nearest free room on
+  its page, which can be across the page from its step; a picture is
+  judged by the rectangle round its model, so a thing in an empty corner of
+  that rectangle is moved though it touches nothing; and a placed thing
+  scaled into a smaller room can be smaller than its designer would make
+  it. An arrow is a line or one bend; a booklet's arrow that wraps round a
+  part (a turn of an axle) is drawn as a bent arrow. The turn sign has no
+  "turn it over" sign of its own: LEGO® booklets use the one sign for both.
 
 - **Order.** Ours reads what the file's shape says and not what its author
   chose among equal options. The order the file lists its sub-models in is

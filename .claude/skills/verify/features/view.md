@@ -1057,14 +1057,49 @@ picture the assistant is shown.
   `BookletLooks.turn_at`; `AuthorSteps._copies_alike` steps a sub-model's
   copies as its first when the worked-out steps are taken. Over MCP
   `edit_booklet` `place=` / `text=` / `highlight=`, read by
-  `booklet_layout`. `booklet_edit_probe` drags by the mouse (windowed),
+  `booklet_layout`. What is placed is kept with the step's room on its page
+  (`0 !BRICKWORKS PANEL x y w h`, Shell.change_look's `room=`, from
+  `Entry.panel`): `Booklet._by_hand` moves and scales it into the step's
+  room now (`BookletLooks.rebased`), and a merge (`BookletLooks.follow`)
+  keeps both steps' words, pictures and arrows. `Booklet._settle` keeps
+  nothing on a page of steps on anything else (`things_on`: a picture is
+  its model's ink, `ink_of`; placed things first, then laid out, then words
+  and pictures; the one that lands on another goes to the nearest free room,
+  `Page.overlaps`), and a page laid out by hand has its step pictures drawn
+  clear behind the model (`Entry.clear`, WebP). The page editor outlines
+  what moved in red and says it; `booklet_layout` says "overlapping: ...".
+  Arrows: Draw an arrow (`page_add_arrow`), a drag on the canvas, the
+  selected arrow's `page_arrow_start` / `_end` / `_bend` handles,
+  `page_arrow_colour`, `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW
+  RED|BLACK width x1 y1 x2 y2 [bx by]` on the step whose room it points into
+  (Shell.change_look "arrow", "arrow_edit"), printed by `Booklet.drawn_arrow`
+  (`path.drawn-arrow`); `edit_booklet arrow=`. The turn sign
+  (`Booklet._turn_sign`, `g.turn-sign`, under the number, `sign_rect`) is due
+  past `BookletMaker.TURN_ROUND` (60°) round or `TURN_OVER` (45°) up or down
+  (`_round_from`); `page_sign_N` on the page editor, Delete / Put back
+  (change_look "sign", `0 !BRICKWORKS TURN_SIGN OFF`), `edit_booklet
+  sign=`. A callout's own pages (`kind` "callout" in `page_state`, framed)
+  are among the editor's pages; their steps carry the sub-model's looks
+  (`BookletMaker._hand_look`, plan index as the entry's "step" meta), are
+  settled inside the frame (`Booklet._room_of`), and are drawn with the
+  step that puts the callout on (`_attach_of`; pictures keyed by page and
+  step, `_shot_key`). `booklet_edit_probe` drags by the mouse (windowed),
   checks each edit's line, undo and reopen, the dry layout (the placed
-  boxes, the step alone filling its page), the step player's turns, and
-  the booklet's HTML (the page as placed, the outline's orange pixels on
-  and off); `booklet_edit_flow.mjs` drags the picture onto the margin and
-  the parts list's corner by the mouse in a browser, adds words and a
-  picture through the file chooser, Ctrl-Z / Ctrl-Shift-Z, and reads the
-  printed page and the exported file.
+  boxes, the step alone filling its page), a placed step moved by a merge
+  (or a page alone) taking its picture and words into its new room and no
+  page with one thing on another (`_follows`), a picture dropped on
+  another's said while held and moved when let go (`_overlap_said`), an arrow drawn, bent,
+  recoloured and widened by the mouse and one over MCP (`_arrows`), the
+  sign at 30° and 60° lower, off and back (`_signs`), a callout turned off
+  and its own page laid out by hand, Previous / Next page to it, its first
+  step's picture dragged and an arrow drawn (`_callout_by_hand`), the step player's
+  turns, and the booklet's HTML (the page as placed, the arrow printed and
+  none before, a sign per turned step, nothing printed on anything else, the
+  outline's orange pixels on and off); `booklet_edit_flow.mjs` drags the
+  picture onto the margin and the parts list's corner by the mouse in a
+  browser, adds words and a picture through the file chooser, draws an
+  arrow, Ctrl-Z / Ctrl-Shift-Z, and reads the printed page (`path.drawn-arrow`)
+  and the exported file (ARROW, PANEL).
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
