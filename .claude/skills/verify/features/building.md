@@ -936,6 +936,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   model stands on: its ghost below the ground, the model up 4 LDU after the
   click, one undo back; fails with the rule undone). In the build flow the
   model's rise is read from where the part went (`followRise`).
+- `on studs off the grid, by its own studs, against a side`
+  (`Builder._on_studs_off_the_grid`, `_on_its_own_grid`, `_out_from_face`,
+  2026-10-18): a part aimed at the top of a part sits on that part's studs
+  where they stand off the stud grid (a jumper plate's middle stud, and
+  every stud of a part on one: 5762-1's tail fin and the slope on it); a
+  part whose box is not whole studs across takes its phase across that axis
+  from its own top studs, and a part with no socket on the grid its box's
+  middle where the box's count puts one (8643-1's flared cab roof, 50948);
+  a part aimed at a side face goes against it by whole studs as a carried
+  group does, at the plate the pointer is on, and not up onto what
+  overhangs it (8841-1's 1 x 12 beam beside the 1 x 2 under the 1 x 4's
+  end). Probe: `placing_probe -- only=wholeset` (the fin and its slope on
+  three jumpers, the roof on the cab's two 1 x 4s, the beam beside the
+  1 x 2; each fails with its rule taken out). A hole goes on an axle
+  anywhere along it, a whole LDU at a time, where the pointer is along the
+  shaft (`JointSnap.End.back`, `ways`): an axle and nothing else has the
+  shaft behind each tip, and a wheel, a bush or a beam on it slides
+  (8841-1's belt wheel halfway along its axle; probe: the same section).
+  The build flow's side of it:
+  `tests/test_cadtask.py` (a part on its side aimed at by its underside; a
+  beam hung from its middle out).
 - `what the ghost shows is where it goes` (`Main._true_point`, 2026-10-16):
   a click aims before it puts (a finger has no move before it), and in a
   browser the click was aimed somewhere else: Godot reads a move from the
