@@ -241,6 +241,12 @@ whole cycle.
   a ship's wings. On 100 real sets nobody tuned on, 54% of the sets' own
   sub-assemblies are built on the side, from 51%, and steps with a hidden
   new part went from 12.1% to 11.4%.
+- A model's booklet is held to be the same however you got to it: opened
+  first, or opened again after other models, its steps are the same, and
+  the app's own checks now say so on every run. Over 200 real sets planned
+  in one go in two orders, and each on its own, none differs. Two runs
+  that differed earlier the same day had read two versions of the part
+  library, one with other wheels and tyres, not anything opened before.
 
 ### Fixed
 

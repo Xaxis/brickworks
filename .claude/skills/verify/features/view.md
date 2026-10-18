@@ -783,8 +783,9 @@ picture the assistant is shown.
   different catalogues and which differing files' parts differ (samebooklet,
   2026-10-17: for 13 minutes that day the shared catalogue gave 421 wheels
   and tyres other covers, and two dumps of one checkout either side of it
-  differed in 7 files). In one process, shuffled or in reverse, m73 plans
-  each of the 200 the same (`bench/results/samebooklet-2026-10-17/`).
+  differed in 7 files). In one process, shuffled or in reverse, or each in
+  a process of its own, m73 plans each of the 200 the same
+  (`bench/results/samebooklet-2026-10-17/`).
 - `cad task frames` and `cad task frames in a browser`
   (`src/dev/cadtask_frames.gd`, `tools/web/cad_frames.mjs`; run by
   `tools/bench/cadtask.py frames`, written up in `docs/CADTASK.md`): the frames
