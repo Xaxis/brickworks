@@ -780,7 +780,7 @@
       "kind": "lib",
       "label": "a model that tips falls",
       "entry": "src/assembly/topple.gd",
-      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=falling   (by hand: on no floor, swing a section out past the model's edge and let go; -- --only=tipping scans real sets headless)",
       "area": "building"
     },
     {
@@ -2244,6 +2244,13 @@
       "label": "off-grid probe",
       "entry": "src/dev/offgrid_probe.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/offgrid_probe.gd  (every part the CAD task's three sets have off the grid, 39, put through the interface part by part: aimed and clicked, then Hinge or X, Y, Z typed in Properties where the pointer cannot say it; each against the file to 0.05 LDU and 0.002 of its matrix; -- only=5762|8643|8841)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "swinging on a free joint",
+      "entry": "src/assembly/swing.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
       "area": "building"
     }
   ]

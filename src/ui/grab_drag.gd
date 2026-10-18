@@ -27,8 +27,6 @@ const LEAN := 4.0
 ## Weighed at most this often while dragging, ms: a big model's weighing is
 ## a few milliseconds and the frame comes first.
 const WEIGH_EVERY_MS := 50
-## A model that tips is shown falling over this long, ms.
-const FALL_MS := 500
 ## A model standing on the baseplate's studs does not fall: they hold it, and
 ## on a baseplate the plate is the floor. Off by default; a probe may set it.
 var topple_on_baseplate: bool = false
@@ -99,6 +97,36 @@ var keep_ms: float = 0.0
 var keep_took: Dictionary = {}
 ## A grab let go while its turn was still being checked: kept once it is.
 var _settling: Grab = null
+## A grab let go swinging on a free joint (Grab.swing): drawn a frame at a
+## time and kept when it comes to rest, or when a press catches it.
+var _swinging: Grab = null
+var _swing_began: int = 0
+## The clock at the swing's last frame, usec: a frame steps the time since,
+## not the engine's delta, which counts the frame before the release too.
+var _swing_tick: int = 0
+## Simulated time the clock is owed (whole 1 ms steps run over by a part of
+## one, or a frame's budget ran out first), s.
+var _swing_owed: float = 0.0
+## The model's revision when the swing began: an edit while it swings (an
+## undo, a session's call) puts it back rather than keep it over the edit.
+var _swing_revision: int = -1
+## The swing's own share of a frame, ms, at most: past it the swing goes
+## slower than the clock rather than hold the frame.
+const SWING_BUDGET_MS := 8.0
+## A frame's simulated time at most, s: a hitch does not leap far, and a
+## browser drawing in software (a frame each 0.5 to 0.7 s on a loaded box)
+## shows the swing in steps rather than fifteen times slower than it is. The
+## steps are still 1 ms; SWING_BUDGET_MS bounds the work.
+const SWING_MOST_FRAME_S := 0.25
+## The last swing's frames: how many, the worst and mean of its own work
+## (stepping, room tests, drawing), ms; and how long it took on the clock.
+var swing_frames: int = 0
+var swing_worst_ms: float = 0.0
+var swing_mean_ms: float = 0.0
+var swing_clock_s: float = 0.0
+var _swing_total_ms: float = 0.0
+## The last swing, kept for a probe.
+var last_swing: Swing = null
 
 
 ## A drag began on [param brick_id] at [param screen]. True when the drag
@@ -310,9 +338,42 @@ func _verify_off_thread(held: Grab) -> void:
 var _verify_task: int = -1
 
 
+## Whether [param held], let go, falls before anything in it swings: the
+## model is past its edge as it was let go, and the grabbed joint holds. It
+## begins to fall at once; what hangs on a free joint inside it is held
+## while it falls, a fifth of a second or so, and swings as it lands (_land):
+## the two together are not worked out. A grabbed joint that is free swings
+## first, as before: it drops at once, and may bring the weight back.
+func _falls_first(held: Grab) -> bool:
+	if _judge == null or held.swing == null or held.swing_has_grabbed():
+		return false
+	return _fall_of(held.placed, _judge.weigh_pose(held.placed)).has("turn")
+
+
 ## Keep a grab let go: settle what swings, one step to undo, and say how the
 ## model stands.
 func _keep(held: Grab, cells: Dictionary = {}) -> String:
+	if not held.settled:
+		# A free joint swings, frame by frame (_swing_frame), and is kept when
+		# it comes to rest; the rest settle at once.
+		if _swinging == null and held.swing_begin():
+			if _falls_first(held):
+				held.swing = null
+				held.settled = true
+				held.swung = ""
+			else:
+				_swinging = held
+				_swing_revision = world.revision
+				_swing_began = Time.get_ticks_msec()
+				_swing_tick = Time.get_ticks_usec()
+				_swing_owed = 0.0
+				swing_frames = 0
+				swing_worst_ms = 0.0
+				swing_mean_ms = 0.0
+				_swing_total_ms = 0.0
+				say.call("%s — swinging…" % _capital(held.said))
+				last_words = "swinging"
+				return "swinging"
 	if not held.settled:
 		held.settled = true
 		held.swung = held.settle()
@@ -360,10 +421,16 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 			last_report = _judge.weigh_pose(held.placed)
 			var fell: Dictionary = _fall_of(held.placed, last_report)
 			if fell.has("turn"):
-				# Shown falling, then kept with the pose as one step.
+				# Shown falling as a body falls about its edge (Topple.timed),
+				# then kept with the pose as one step.
+				var from: Dictionary = _standing_now()
+				var timing: Dictionary = Topple.timed(fell["steps"], Swing.lump(world, library, from.keys()))
+				fall_seconds = float(timing["seconds"])
+				fall_lowest = INF
 				_falling = {"start": Time.get_ticks_msec(), "steps": fell["steps"],
-					"turn": fell["turn"], "from": _standing_now(), "depth": depth,
-					"words": "%s; then it %s" % [words, fell["words"]],
+					"turn": fell["turn"], "from": from, "depth": depth, "timing": timing,
+					"words": "%s; then it %s, falling for %s s" % [words, fell["words"],
+						Balance.tidy(fall_seconds)],
 					"step": "then it %s" % fell["words"]}
 				last_words = _falling["words"]
 				say.call("%s…" % _capital(str(fell["words"])))
@@ -448,8 +515,15 @@ func _standing_now() -> Dictionary:
 	return out
 
 
-## A fall shown: [member _falling] {start, steps, turn, from, depth, words}.
+## A fall shown: [member _falling] {start, steps, turn, from, depth, timing,
+## words}.
 var _falling: Dictionary = {}
+## The last fall's time, simulated (Topple.timed), and on the clock, s.
+var fall_seconds: float = 0.0
+var fall_clock_s: float = 0.0
+## The lowest any corner of the model was drawn in the last fall, for a
+## probe: below the floor it would have gone through it.
+var fall_lowest: float = INF
 
 
 ## Whether a model let go is being shown falling over.
@@ -457,24 +531,82 @@ func is_falling() -> bool:
 	return not _falling.is_empty()
 
 
-## One frame of a fall: drawn part of the way, faster as it goes (as a thing
-## falling does), and at the end kept with the pose as one step.
+## One frame of a fall: drawn where the body falling about its edge has got
+## to by the clock (Topple.timed), and at the end kept with the pose as one
+## step; then what hangs on a free joint swings in its new lie, starting
+## with the speed the fall gave it (_land).
 func _fall_frame() -> void:
-	var share: float = float(Time.get_ticks_msec() - int(_falling["start"])) / float(FALL_MS)
+	var seconds: float = float(Time.get_ticks_msec() - int(_falling["start"])) / 1000.0
 	var from: Dictionary = _falling["from"]
-	if share < 1.0:
-		var turn: Transform3D = Topple.part_way(_falling["steps"], share * share)
+	var timing: Dictionary = _falling["timing"]
+	if seconds < float(timing["seconds"]):
+		var turn: Transform3D = Topple.turn_at(_falling["steps"], timing, seconds)
 		var drawn: Dictionary = {}
 		for key: Variant in from:
 			drawn[key] = turn * (from[key] as Transform3D)
 		world.set_drawn(drawn)
+		if not _falling.has("corners"):
+			_falling["corners"] = Topple.corners_of(world, library, from, scenery)
+		for corner: Vector3 in _falling["corners"]:
+			fall_lowest = minf(fall_lowest, (turn * corner).y)
 		return
 	var fell: Dictionary = _falling
 	_falling = {}
+	fall_clock_s = seconds
 	world.set_drawn({})
 	_lay_fallen(fell["from"], fell["turn"], int(fell["depth"]), str(fell["step"]))
 	var words: String = _capital(str(fell["words"]))
+	if _land(timing, int(fell["depth"]), words):
+		return
 	last_words = words
+	say.call(words)
+	edited.call()
+
+
+## A model that has fallen and landed: what hangs on a free joint in it
+## swings in its new lie (Grab.land_begin), drawn as a swing is and kept in
+## the same step. False when nothing swings, or the model is too big to read
+## again in a frame.
+func _land(timing: Dictionary, depth: int, words: String) -> bool:
+	if world.brick_count() >= READY_OFF_THREAD_FROM:
+		return false
+	_ready_now()
+	var held := Grab.new()
+	held.world = world
+	held.builder = builder
+	held.library = library
+	held.bodies = _bodies
+	var line: Vector3 = timing["line"]
+	if not held.land_begin(line * float(timing["speed"]), timing["point"]):
+		return false
+	held.landing_depth = depth
+	held.landing_said = words
+	_swinging = held
+	_swing_revision = world.revision
+	_swing_began = Time.get_ticks_msec()
+	_swing_tick = Time.get_ticks_usec()
+	_swing_owed = 0.0
+	swing_frames = 0
+	swing_worst_ms = 0.0
+	swing_mean_ms = 0.0
+	_swing_total_ms = 0.0
+	say.call("%s; as it lands, %s swings…" % [words, held.said])
+	last_words = "swinging"
+	return true
+
+
+## A swing after a landing, over: kept in the drag's step, and said.
+func _keep_landing(held: Grab, why: String) -> void:
+	world.set_drawn({})
+	held.commit("swung %s as it landed" % held.said)
+	builder.fold_since(held.landing_depth)
+	var swung: String = why if not why.is_empty() else held.swing.words()
+	var words: String = held.landing_said
+	if not swung.is_empty():
+		words += "; as it landed, %s %s, and came to rest hanging within its friction of straight down" % [
+			held.said, swung]
+	last_words = words
+	_said = ""
 	say.call(words)
 	edited.call()
 
@@ -500,6 +632,13 @@ func _lay_fallen(from: Dictionary, turn: Transform3D, depth: int, words: String)
 
 ## Escape, or the drag lost: everything back where it was, nothing kept.
 func cancel() -> void:
+	if _swinging != null:
+		_swinging = null
+		world.set_drawn({})
+		_unlean()
+		_clear_marks()
+		say.call("put back where it was")
+		return
 	if _verify_task >= 0:
 		WorkerTasks.collect(_verify_task)
 		_verify_task = -1
@@ -699,7 +838,18 @@ func for_session(input: Dictionary) -> String:
 		held.turn_to(float(input["degrees"]))
 		asked_for = "%s°" % Balance.tidy(float(input["degrees"]))
 	var stopped: bool = held.stopped
-	var swung: String = held.settle()
+	# A free joint swings to rest, run here at once (Swing.run), as a drag's
+	# is drawn; the rest settle.
+	var swung: String
+	if held.swing_begin() and _falls_first(held):
+		swung = ""
+	elif held.swing != null:
+		held.swing.run()
+		held.swing_pose()
+		last_swing = held.swing
+		swung = held.swing_words()
+	else:
+		swung = held.settle()
 	var depth: int = builder.history_depth()
 	var own: String = _own_copies(held)
 	var moved: int = held.commit(held.step_words())
@@ -718,10 +868,28 @@ func for_session(input: Dictionary) -> String:
 		last_report = after
 		var fell: Dictionary = _fall_of(held.placed, after)
 		if fell.has("turn"):
-			_lay_fallen(_standing_now(), fell["turn"], depth, "then it %s" % fell["words"])
+			var from: Dictionary = _standing_now()
+			var timing: Dictionary = Topple.timed(fell["steps"], Swing.lump(world, library, from.keys()))
+			fall_seconds = float(timing["seconds"])
+			_lay_fallen(from, fell["turn"], depth, "then it %s" % fell["words"])
 			lines.append("Then it %s: its centre of mass was %s studs past its %s edge, and it turned "
 				% [fell["words"], Balance.studs(-after.margin), after.edge]
-				+ "about that edge until the floor stopped it.")
+				+ "about that edge until the floor stopped it, falling for %s s." % Balance.tidy(fall_seconds))
+			if world.brick_count() < READY_OFF_THREAD_FROM:
+				_ready_now()
+				var landed := Grab.new()
+				landed.world = world
+				landed.builder = builder
+				landed.library = library
+				landed.bodies = _bodies
+				if landed.land_begin((timing["line"] as Vector3) * float(timing["speed"]), timing["point"]):
+					landed.swing.run()
+					landed.swing_pose()
+					last_swing = landed.swing
+					landed.commit("swung %s as it landed" % landed.said)
+					builder.fold_since(depth)
+					lines.append("As it landed, %s %s, and came to rest hanging within its friction of "
+						% [landed.said, landed.swing.words()] + "straight down.")
 		else:
 			lines.append("Now: %s.%s" % [_standing_words(after, fell.has("why_not")),
 				" " + str(fell["why_not"]) if fell.has("why_not") else ""])
@@ -806,6 +974,8 @@ var _told_page_at: int = 0
 
 func _process(_delta: float) -> void:
 	_ready_ahead()
+	if _swinging != null:
+		_swing_frame()
 	# The balance mark drawn once, unseen, while nothing is held, so its
 	# material is built before the first drag needs it (BalanceMark.warm).
 	if not _mark_warmed and grab == null and chain == null and camera != null and is_ready():
@@ -877,7 +1047,59 @@ func _process(_delta: float) -> void:
 
 ## Whether a grab let go is still being checked before it is kept.
 func is_settling() -> bool:
-	return _settling != null or _laying != null or not _falling.is_empty()
+	return _settling != null or _laying != null or not _falling.is_empty() or _swinging != null
+
+
+## Whether a section let go is swinging.
+func is_swinging() -> bool:
+	return _swinging != null
+
+
+## One frame of a swing: the frame's time stepped (Swing.advance, within
+## its budget), drawn, and kept once it rests.
+func _swing_frame() -> void:
+	if world.revision != _swing_revision:
+		cancel()
+		say.call("The model changed while it swung: the swing is put back")
+		return
+	var started: int = Time.get_ticks_usec()
+	_swing_owed = minf(_swing_owed + float(started - _swing_tick) / 1000000.0, SWING_MOST_FRAME_S)
+	_swing_tick = started
+	var held: Grab = _swinging
+	_swing_owed -= held.swing.advance(maxf(_swing_owed, 0.0), SWING_BUDGET_MS)
+	held.swing_pose()
+	world.set_drawn(held.placed)
+	var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
+	swing_frames += 1
+	_swing_total_ms += spent
+	swing_worst_ms = maxf(swing_worst_ms, spent)
+	swing_mean_ms = _swing_total_ms / float(swing_frames)
+	if held.swing.at_rest:
+		_end_swing("")
+
+
+## The swing over: kept where it is, as one step with the drag, and said.
+## [param why] is said instead of the swing's own words (a press caught it).
+func _end_swing(why: String) -> void:
+	var held: Grab = _swinging
+	_swinging = null
+	swing_clock_s = float(Time.get_ticks_msec() - _swing_began) / 1000.0
+	last_swing = held.swing
+	held.settled = true
+	held.swing_pose()
+	if held.landing:
+		_keep_landing(held, why)
+		return
+	held.swung = why if not why.is_empty() else held.swing_words()
+	_keep(held)
+
+
+## A press while a section swings catches it where it is, as a hand would:
+## kept there, as one step with the drag.
+func catch() -> void:
+	if _swinging == null:
+		return
+	_end_swing("caught by a press %s s into its swing" % Balance.tidy(_swinging.swing.time))
 
 
 # -- ready ahead of the press ------------------------------------------------------
@@ -1043,7 +1265,10 @@ func _tell_page() -> void:
 			get_viewport().get_final_transform()]
 		if seen != _handles_for:
 			_handles_for = seen
+			var finding: int = Time.get_ticks_usec()
 			_handles = _find_handles()
+			handles_ms = float(Time.get_ticks_usec() - finding) / 1000.0
+			handles_found += 1
 		handles = _handles
 	var state: Dictionary = {"grabbing": grab != null, "handles": handles,
 		"said": last_words, "frames": frames, "worst_ms": snappedf(worst_ms, 0.01),
@@ -1053,6 +1278,16 @@ func _tell_page() -> void:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)
 		state["stopped"] = grab.stopped
+	state["handles_found"] = handles_found
+	state["handles_ms"] = snappedf(handles_ms, 0.1)
+	state["swinging"] = _swinging != null
+	state["swing_frames"] = swing_frames
+	state["swing_mean_ms"] = snappedf(swing_mean_ms, 0.01)
+	state["swing_worst_ms"] = snappedf(swing_worst_ms, 0.01)
+	# Simulated against the clock: a frame steps at most SWING_MOST_FRAME_S,
+	# so frames slower than that draw the swing slower than it is.
+	state["swing_s"] = snappedf(last_swing.time, 0.01) if last_swing != null else 0.0
+	state["swing_clock_s"] = snappedf(swing_clock_s, 0.01)
 	var said: String = JSON.stringify(state)
 	if said == _told_page:
 		return
@@ -1060,6 +1295,9 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksGrab = %s" % said, true)
 
 
+## How often the handles were found, and what the last finding cost, ms.
+var handles_found: int = 0
+var handles_ms: float = 0.0
 ## The handles found last, and for what: [revision, eye, view size, its
 ## place in the window].
 var _handles: Array = []
