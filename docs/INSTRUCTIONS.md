@@ -79,6 +79,13 @@ chose for real sets, says what the measure showed, and what changed.
   box set the table under every part: at the table where the parts reach,
   an author's step leaves 0.9% of what it adds floating on proof and none
   on tune, against 3.1% and 6.0% on the floor.
+- **Planning faster, the same steps** (2026-10-17, planspeed). The covers
+  are read once a part and turn, the step pictures a view at a time, and a
+  file's own stickers no longer sort the whole library for the figures'
+  index: the 100 proof files plan in about two thirds of the time, and
+  every step of the 100 proof and 100 tune files, four ways each, is the
+  same. Against main that is 1.17 to 1.33 times, short of the 1.2 asked
+  (After).
 - **Pages.** A small model is no longer cut into "Part 1" and "Part 2": 918
   Space Transport's booklet lost a one-step page and a repeated banner. A
   section that touches nothing built before it is drawn on its own: 7636's
@@ -1017,6 +1024,113 @@ about 40: worked out in 10.6 s, the order 7.1 s of it, where before took
 and 252 ms before against 200, the longest of the app's own work 182 ms and
 222 ms, both "Showing the first step"; instr4 saw 160 ms at a lower load.
 
+### Planning faster, the same steps (2026-10-17, planspeed)
+
+Asked for: `Instructions.plan` on the 100 proof files at most 1.2 times
+main's (d24d4d6) time, with every one of the proof and tune files planned
+step for step as at 607928d. Four changes, none of which moves a step:
+
+1. **The figures' index** (`Minifig._made_since_change_nothing`). Whether a
+   sub-model is a figure asks an index of the library's figure parts, and the
+   first question after a file brought parts of its own (stickers, prints)
+   sorted all 29,587 parts again: about 85 ms a file, which main paid too.
+   Parts made since the sort that are new to the library and no real figure
+   part leave it as sorting would. Finding the sub-assemblies over the 100
+   files, profiled side by side: 8.9 s before, 1.9 s after.
+2. **The covers** (`_contacts_of`, `_shape`, `_meet`). A square part's
+   cover is worked out once for each part and turn, counted from the cell
+   its origin is in, where it was worked out, lifted a cell and bounded for
+   every part asked about. Such a shared cover of more than 12 boxes is
+   kept in order of its boxes' heights as well, and only the boxes at the
+   height where two covers meet are looked through (`_band`, a native
+   `bsearch`); a turned part's own cover is not, since sorting its
+   thousands of boxes cost more than its few meetings (10315 planned in
+   9 s that way, 1.1 s without). The loop makes its cheap comparisons
+   before calling anything, writes the test of two plans out where it was a
+   call, and marks the parts it has looked at in a packed array where it
+   kept a Dictionary for each part. Profiled side by side, an earlier cut
+   of this: the covers 7.9 s to 6.5 s.
+3. **The step pictures a view at a time** (`Pictures.pixels_of`,
+   `open_of`, `would_hide`). Each view of a part is drawn, and what hides
+   it worked out, only when it is asked about; a part that leaves another a
+   tenth in sight from the front is not drawn from the back, and when even
+   all its pixels taken out would leave a tenth, or less than a tenth
+   shows already, nothing is counted. What stands in front of a part is
+   tested by its box before its picture is looked up, and the parts built
+   so far are kept in cells of four studs, not two (`Pictures.CELL`): at two
+   a part was found again in every cell it reached into, and on the 14
+   biggest files the search took an eighth longer. Profiled side by side,
+   an earlier cut: the pictures 8.3 s to 6.7 s.
+4. **Choosing** (`_best`, `_steadier`). Whether a part ready is allowed in
+   the step (two lambdas) is asked only of a part that could still be the
+   best, and whether another region has a ready part is a loop, not a
+   lambda a part.
+
+Tried and not kept, each giving the same steps: the pictures drawn into
+packed grids (`PackedFloat32Array`) and compared a row at a time, with each
+face's points made and turned onto the picture natively (`Transform3D` on a
+`PackedVector3Array`, the same floats bit for bit over 27,733 boxes): the
+same pixels, and slower (4.9 s against 4.2 s over the 14 biggest files), as
+a GDScript loop over a packed array costs about what one over a Dictionary
+does. Covers looked through by layers of four cells, kept in Dictionaries:
+slower than the plain loop. Not tried: drawing
+each face as a polygon and taking away what hides it with Geometry2D, which
+measures area, not the pixels the steps are chosen by; it would move steps.
+
+**The same steps.** Every one of the 100 proof and 100 tune files planned
+four ways (as opened, the author's steps as the booklet draws them, ours
+with the parts shuffled with and without their sub-models, as the steps
+score plans them), every field of every step (its parts, section, callout,
+copies, the author's step) and the step player's view of each page (where
+it looks from and what it frames), against 607928d: **0 of 200 files
+differ**, 87,856 steps and 6,374 sub-assemblies put on compared
+(`src/dev/plan_dump.gd`, `tools/plan_diff.py`;
+`bench/results/planspeed-2026-10-17/plan-diff-*.txt`).
+`instructions_probe`, `booklet_probe` and `booklet_edit_probe` pass, and
+`booklet_flow.mjs` on a local web export of this change: the car's booklet
+arrives in its tab, 9 pages, every picture decoding, no script error.
+
+**Planning** did not come back to 1.2 times main's. `Instructions.plan`
+alone on the 100 proof files as opened (`plan_dump.gd --time`): main
+(d24d4d6), before (607928d) and after, one after another in that order,
+two rounds, twice: with the change as committed in a86419c, and again with
+d2d6618 (the covers loop and the four-stud cells), at loads of 26 to 70 on
+24 cores, each run at nice 10 (the shared `heavy` pool stayed shut at that
+load for most of the hour; `bench/results/planspeed-2026-10-17/timing-*`):
+
+| | main | before | after |
+|---|---:|---:|---:|
+| a86419c, first round (load 62 to 47) | 30.4 s | 54.7 s (1.80 times) | 35.5 s (1.17 times) |
+| a86419c, second round (load 52 to 43) | 26.5 s | 46.0 s (1.74 times) | 33.2 s (1.25 times) |
+| d2d6618, first round (load 42 to 34) | 22.8 s | 43.7 s (1.92 times) | 30.3 s (1.33 times) |
+| d2d6618, second round (load 34 to 26, then 53) | 19.5 s | 48.4 s (2.48 times) | 35.7 s (1.83 times) |
+| 76161 (2,398 parts), the four rounds | 2.15, 1.77, 1.65, 1.07 s | 4.96, 3.16, 2.78, 3.34 s | 3.35, 2.87, 2.69, 3.19 s |
+
+Beside before, each round: 0.65, 0.72, 0.69 and 0.74 of its time, about
+a third off. Beside main, 1.17 to 1.33 times in the three rounds whose load
+held (the fourth's doubled while after ran): short of 1.2 times, where
+before was 1.7 to 2.5 times in the same rounds. With the box's load moving by
+half between one run and the next, the rounds do not tell a86419c and
+d2d6618 apart.
+
+**In a browser.** The change uses nothing the web build lacks (packed
+arrays' `bsearch`, `sort` and `fill`, and GDScript), and no thread. On local
+web exports of 607928d and of this change, in Chromium on SwiftShader,
+`progress_check.mjs --only=timeline --model=` 76161 with its `STEP` lines
+taken out (`--parts=2398`): pressing Timeline to its steps took 24.4 s and
+then 7.3 s on 607928d, and 8.1 s on this change between them, the bar up
+within 47 to 56 ms each time. In the browser the Timeline's planning is
+paced a slice a frame, and each frame of the whole model drawn in software
+is most of that time (the first run had a frame of 4.7 s), so at this load
+it does not tell the two apart. The longest piece of the app's own work
+was "Showing the first step", 1.3 to 1.8 s, in all three.
+
+Found on the way, and left (it would move steps): in `_supports_of`, what a
+part's cover rests on is gathered into a packed array held in a Dictionary
+(`(under_it[top] as PackedInt64Array).append(…)`), which appends to a copy,
+so it stays empty. A part no stud seats whose cover rests on something has
+its box's supports cleared rather than replaced by what its cover rests on.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the
@@ -1408,17 +1522,22 @@ pages of its own.
     stands.
   - **The app's build check** calls 4% of the parts our sampled steps add
     floating (17% before), against 3% of the authors'.
-- **The step pictures and the covers cost time**: planning still takes
-  about twice main's. Over the 100 proof files, stage by stage against main,
-  the extra is the step pictures (the order on the model 1.2 s to 9.4 s, in
-  the hand 1.1 s to 6.5 s, most of it drawing each part's box a pixel at a
-  time and comparing pixels) and the covers (what rests on what 3.2 s to
-  10.0 s); reading the covers a second time for a model on its stand is
-  0.9 s of the hundred files, most of it 76161's. Walking less of either
-  (31 to 33) changed little: what costs is the drawing and the comparing
-  themselves, a dictionary entry at a time in GDScript. Drawing each face as
-  a polygon and taking what hides it away natively (Geometry2D's clipping),
-  and comparing covers in native code, is what is open.
+- **The step pictures and the covers still cost time**: planning takes 1.17
+  to 1.33 times main's, where 1.2 was asked (planspeed, After). What
+  costs now is a GDScript loop over a step picture's pixels or a cover's
+  boxes (211,536 cover meetings over the 100 files in one profile), and a
+  native loop is not to
+  be had for it in Godot without a different measure: no packed array or
+  Image operation compares two arrays element by element, and drawing each
+  face as a polygon (Geometry2D) counts area, not the pixels the steps are
+  chosen by, so it would move steps. Doing it natively means a GDExtension,
+  which the web build would have to carry too, or a measure of what hides a
+  part that is cheaper to read, which is a change of the steps.
+- **What a part's cover rests on is never gathered** (`_supports_of`,
+  `under_it`): appended through a cast to a packed array in a Dictionary,
+  which is a copy, it stays empty, and a part no stud seats whose cover
+  rests on something has its box's supports cleared rather than replaced by
+  what the cover rests on. Mending it changes the steps.
 - **Sub-assemblies.** Ours builds on the side sub-models of at most 60
   parts and under 30% of the model (`ASSEMBLY_MOST`), a sub-model put on
   at an angle up to half the model, and one the model places itself at any

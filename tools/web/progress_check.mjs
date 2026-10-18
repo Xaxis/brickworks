@@ -49,6 +49,9 @@
 // work of its own over --budget ms (250) in one go, or when the bar is still
 // up at the end.
 // --report-only prints the table and passes, for a build from before.
+// --model=FILE --parts=N opens FILE, of N parts, where Orthanc is opened:
+// --only=timeline with a model whose author's steps are taken out times the
+// planner (Instructions.plan_paced) in the browser.
 import { controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -136,7 +139,11 @@ function galaxy(w, h) {
 const picture = resolve(out, "galaxy.png");
 writeFileSync(picture, galaxy(96, 64));
 const bunny = resolve("tests/fixtures/brickify/bunny.obj");
-const orthanc = resolve("models/orthanc.ldr");
+const orthanc = resolve(args.model || "models/orthanc.ldr");
+// When the big model is open, and when its opening is heard: Orthanc's
+// counts, or a little under --parts and a ninth of it.
+const opened = args.parts ? Number(args.parts) * 0.95 : 9000;
+const begun = args.parts ? Number(args.parts) / 9 : 1000;
 
 // In the page before the engine starts: every engine frame timed, and every
 // press noted, in the page's own clock.
@@ -490,8 +497,8 @@ try {
     await measure(page, "open", async () => {
       await page.evaluate(() => window.brickworksFrames.presses.push(performance.now()));
       await chooser.setFiles(orthanc);
-    }, async (s) => (s.bricks || 0) > 9000 && !s.playing,
-    async (s) => said(/open|reading|orthanc/i)(s) || (s.bricks || 0) > 1000, 600);
+    }, async (s) => (s.bricks || 0) > opened && !s.playing,
+    async (s) => said(/open|reading|orthanc/i)(s) || (s.bricks || 0) > begun, 600);
     await h.quiet(4000, 300000);
     if (wanted("timeline")) {
       await measure(page, "timeline", press(page, "tool_timeline"),
