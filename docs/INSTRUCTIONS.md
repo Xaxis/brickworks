@@ -1170,6 +1170,17 @@ end, and the right one stands alone, joined to nothing, until a later step.
 ![8032 after, page 2](instructions/8032-planner2-after-page2.webp)
 ![8032 after, page 3](instructions/8032-planner2-after-page3.webp)
 
+7130 Snowspeeder (234 parts), before: the wings are built in place on the
+hull, their slopes going on at the wing's angle (step 11).
+
+![7130 before, page 10](instructions/7130-planner2-before-page10.webp)
+
+After: each wing is built flat on the side, on framed pages of its own, and
+put on whole at its angle, as its author builds it. 24 steps where there
+were 35.
+
+![7130 after, page 9](instructions/7130-planner2-after-page9.webp)
+
 
 ## What is left
 
