@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_in_sight(world, library)
 	_like_parts_together(world, library)
 	_lone_sections()
+	await _same_however_reached(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -696,6 +697,79 @@ func _on_its_edge(world: BrickWorld, library: PartLibrary) -> void:
 		put_on.size() == 1)
 	_assert("...each brick after the one it sits on in its own frame (%d before it)" % early,
 		early == 0)
+
+
+## A model's booklet is the same however the app got to it: planned first,
+## and planned again after two other models were opened and planned in the
+## same run, as a person opens one, looks at others, and comes back. Each is
+## opened as File > Open opens it (ModelStore.open_text), with the parts it
+## carries and its LDCad skins, and planned both ways the app plans: as worked
+## out, and as the booklet draws the author's steps. 8159-1 carries a wheel
+## cover of its own; 7410-1 carries six parts, a flexible part's skin and two
+## figures; 6531-1 two skins and a figure. Skipped when the repository has not
+## been fetched (tools/fetch_data.sh).
+func _same_however_reached(world: BrickWorld, library: PartLibrary) -> void:
+	const FILES: Array[String] = ["8159-1.mpd", "7410-1.mpd", "6531-1.mpd", "8159-1.mpd"]
+	for file: String in FILES:
+		if not FileAccess.file_exists("res://vendor/omr/files/" + file):
+			print("\n  SKIP the same booklet however reached: vendor/omr is not here")
+			return
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	root.add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.library = library
+	store.builder = builder
+	store.keeps = false
+	# Nothing a file carries is kept in the person's own folder.
+	var keeping: bool = CustomParts.keeps
+	CustomParts.keeps = false
+	await process_frame
+	var plans: Array = []
+	for file: String in FILES:
+		store.open_text(FileAccess.get_file_as_string("res://vendor/omr/files/" + file), file)
+		plans.append([_plan_text(Instructions.plan(world, library)),
+			_plan_text(Instructions.plan(world, library, {}, {}, true))])
+	CustomParts.keeps = keeping
+	world.clear()
+	builder.queue_free()
+	print("\n  %s planned, then %s and %s, then %s again" % FILES)
+	var first: Array = plans[0]
+	var again: Array = plans[FILES.size() - 1]
+	_assert("its steps as worked out are the same (%d and %d steps, %s)" % [
+		(first[0] as Array).size(), (again[0] as Array).size(),
+		_first_difference(first[0], again[0])], first[0] == again[0])
+	_assert("...and the author's steps as the booklet draws them (%d and %d, %s)" % [
+		(first[1] as Array).size(), (again[1] as Array).size(),
+		_first_difference(first[1], again[1])], first[1] == again[1])
+
+
+## Every field of every step, as text a step a line: what two plans are
+## compared by.
+func _plan_text(steps: Array[Instructions.Step]) -> Array:
+	var out: Array = []
+	for step: Instructions.Step in steps:
+		var parts: Array = []
+		for part_id: String in step.parts:
+			parts.append("%s=%d" % [part_id, int(step.parts[part_id])])
+		parts.sort()
+		var copies: Array = []
+		for copy: PackedInt64Array in step.copies:
+			copies.append(Array(copy))
+		out.append(str([step.index, step.number, Array(step.brick_ids), parts, step.unsupported,
+			step.section, step.assembly, step.callout, step.callout_step, step.callout_steps,
+			step.times, step.figure, Array(step.shown_ids), copies, step.authored_in,
+			step.authored_step]))
+	return out
+
+
+func _first_difference(one: Array, other: Array) -> String:
+	for at: int in mini(one.size(), other.size()):
+		if one[at] != other[at]:
+			return "first apart at step %d" % (at + 1)
+	return "the same" if one.size() == other.size() else "one runs longer"
 
 
 func _load(world: BrickWorld, library: PartLibrary, ldr: LdrModel) -> void:
