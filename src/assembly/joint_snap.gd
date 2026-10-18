@@ -277,13 +277,17 @@ static func _square_axis(axis: Vector3) -> int:
 
 
 ## Whether nothing of the part's cover comes inside a bore's round along its
-## length ([param inside]), or reaches outside a shaft's: from a cell in
-## from either end of it, where the part's own faces meet it.
+## length ([param inside]), or reaches outside a shaft's: from in from
+## either end of it, where the part's own faces meet it, by a cell or a
+## quarter of its length. Never by all of it: a Technic brick's hole is a
+## short round 8 across at each mouth, and asked along none of it, it was
+## a rim the brick's own body stands outside.
 static func _bare(part: Lbm.PartMesh, round: Lbm.Connector, along: int, inside: bool) -> bool:
 	var a: float = round.position[along]
 	var b: float = a + round.length * round.axis.normalized()[along]
-	var low: float = minf(a, b) + part.cell_ldu
-	var high: float = maxf(a, b) - part.cell_ldu
+	var inset: float = minf(part.cell_ldu, round.length * 0.25)
+	var low: float = minf(a, b) + inset
+	var high: float = maxf(a, b) - inset
 	var u: int = (along + 1) % 3
 	var v: int = (along + 2) % 3
 	var cu: float = round.position[u]
