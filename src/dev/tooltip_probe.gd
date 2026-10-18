@@ -27,6 +27,11 @@ extends SceneTree
 ## At most this many controls with a tooltip are rested on in one panel.
 const MOST_IN_A_PANEL := 40
 
+## Whether this is a screen nobody is looking at, so the system's pointer
+## is the probe's to move (as cursor_probe): xvfb-run keeps its authority
+## file in a directory of its own name.
+var _virtual: bool = OS.get_environment("XAUTHORITY").contains("xvfb-run")
+
 var _failures: int = 0
 var _main: Node
 var _presses: int = 0
@@ -454,7 +459,15 @@ func _as_event(at: Vector2) -> Vector2:
 	return root.get_final_transform() * at
 
 
+## The pointer moved, as an event and, on Xvfb, for real: the app replays a
+## motion where the system says the pointer is whenever the control under
+## it changes (Cursors._process). Moved only by events, the system's pointer
+## sat in the middle of Xvfb's screen, the replay took the pointer off the
+## link as soon as it got there, and no tooltip ever came (2026-10-18). A
+## hand's pointer and its events are in one place.
 func _move(at: Vector2) -> void:
+	if _virtual:
+		Input.warp_mouse(_as_event(at))
 	var event := InputEventMouseMotion.new()
 	event.position = _as_event(at)
 	event.global_position = event.position
