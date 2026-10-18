@@ -159,6 +159,25 @@ function boxOf(id) {
   return boxes[id] || null;
 }
 
+// Whether box [b] (the app's space) touches a part turned off the square,
+// asked in that part's own frame too ([turned]: its rows, place and own
+// box): a 4262 swung 66 degrees has a box across the world's axes much
+// bigger than it, and 8841-1's pan plates, 80 LDU under it, touched it.
+function touchesTurned(b, turned) {
+  const { m, o, lo, hi } = turned;
+  const a = [Infinity, Infinity, Infinity];
+  const z = [-Infinity, -Infinity, -Infinity];
+  for (let c = 0; c < 8; c++) {
+    const d = [b[c & 1][0], b[(c >> 1) & 1][1], b[(c >> 2) & 1][2]].map((v, i) => v - o[i]);
+    for (let k = 0; k < 3; k++) {
+      const v = m[0][k] * d[0] + m[1][k] * d[1] + m[2][k] * d[2];
+      a[k] = Math.min(a[k], v);
+      z[k] = Math.max(z[k], v);
+    }
+  }
+  return [0, 1, 2].every((k) => a[k] <= hi[k] + 1 && lo[k] <= z[k] + 1);
+}
+
 // A part of a file where the file has it, as a box in the app's space.
 function placedBox(part, own) {
   const b = own(part.id);
@@ -175,7 +194,11 @@ function placedBox(part, own) {
       hi[r] = Math.max(hi[r], v);
     }
   }
-  return [lo, hi];
+  const box = [lo, hi];
+  if (m.some((row) => row.some((v) => Math.abs(v) > 0.01 && Math.abs(Math.abs(v) - 1) > 0.01))) {
+    box.turned = { m, o, lo: b[0], hi: b[1] };
+  }
+  return box;
 }
 
 // The order a hand puts a step's parts in: lowest first, as what holds a
@@ -185,12 +208,34 @@ function placedBox(part, own) {
 // brick's hole once the brick is down, though the pin's middle is lower
 // than the brick's top: 8841-1's step 1 tried its four pins before the
 // bricks they go in, with no hole there for them (2026-10-17).
-export function handOrder(step, own = boxOf) {
+//
+// And each on what is down already, where one is: of the parts left, the
+// lowest that touches a part of an earlier step, one of this step's put
+// before it, or the floor ([placed], the boxes of the parts before the
+// step; [floor], the bottom of the model). 8841-1's balance hangs two pans
+// from an axle at its top, and lowest first put each pan's plate first, in
+// the air under it, and nothing of either pan could go on (2026-10-17). A
+// person hangs the axle, the arms on it, and builds each pan down from them.
+export function handOrder(step, own = boxOf, placed = [], floor = -Infinity) {
   const low = [...step].sort((p, q) => q.at[1] - p.at[1]);
   const box = low.map((p) => placedBox(p, own));
+  const down = [...placed];
+  // Held by it: into it (a pin in its hole), or on it or under it; a part
+  // only beside another is not held by it (8841-1's top plates beside the
+  // columns, put first, held by nothing).
+  const holds = (b, o) => {
+    const ov = [0, 1, 2].map((i) => Math.min(b[1][i], o[1][i]) - Math.max(b[0][i], o[0][i]));
+    return ov[0] > 1 && ov[2] > 1 && ov[1] > -1;
+  };
+  const touches = (b) => !b || b[0][1] <= floor + 1 || down.some((o) => o && holds(b, o)
+    && (!o.turned || touchesTurned(b, o.turned)));
   const size = (b) => (b ? (b[1][0] - b[0][0]) * (b[1][1] - b[0][1]) * (b[1][2] - b[0][2]) : 0);
   const holders = low.map((p, n) => {
-    const at = toApp(p.at);
+    // The middle of its box, not its origin: a plate's origin is its top,
+    // the underside of the brick on it, and as "inside" that brick the
+    // plate went after it, the brick into the air a plate over the plate
+    // under (8841-1's first 3701, 2026-10-17). A pin's middle is its own.
+    const at = box[n] ? [0, 1, 2].map((i) => (box[n][0][i] + box[n][1][i]) / 2) : toApp(p.at);
     const round = low.filter((q, k) => k !== n && box[k] && size(box[k]) > size(box[n])
       && at.every((v, i) => v >= box[k][0][i] - 1 && v <= box[k][1][i] + 1));
     round.sort((a, b) => size(box[low.indexOf(a)]) - size(box[low.indexOf(b)]));
@@ -199,12 +244,32 @@ export function handOrder(step, own = boxOf) {
   const out = [];
   const done = new Set();
   while (out.length < low.length) {
-    const next = low.find((p, n) => !done.has(p) && holders[n].every((q) => done.has(q)))
-      || low.find((p) => !done.has(p));
+    const ready = (p, n) => !done.has(p) && holders[n].every((q) => done.has(q));
+    // Touching what is down goes first even before the part its middle is
+    // in: a pin hung from a swung plate takes the connector after it, not
+    // the connector first in the air (8841-1's pans).
+    const next = low.find((p, n) => ready(p, n) && touches(box[n]))
+      || low.find((p, n) => !done.has(p) && touches(box[n]))
+      || low.find((p, n) => ready(p, n)) || low.find((p) => !done.has(p));
     out.push(next);
     done.add(next);
+    down.push(box[low.indexOf(next)]);
   }
   return out;
+}
+
+// What each step of [set] is put down on: the boxes of every part of the
+// steps before it, and the bottom of the first step's parts, the floor.
+export function handOrders(set, own = boxOf) {
+  const first = set.steps[0] || [];
+  const bottoms = first.map((p) => placedBox(p, own)).filter(Boolean).map((b) => b[0][1]);
+  const floor = bottoms.length ? Math.min(...bottoms) : -Infinity;
+  const before = [];
+  return set.steps.map((step) => {
+    const order = handOrder(step, own, before, floor);
+    for (const p of step) before.push(placedBox(p, own));
+    return order;
+  });
 }
 
 // -- the 24 turns in hand (BrickLattice.basis_for) ------------------------------
@@ -240,6 +305,20 @@ export function turnFor(matrix) {
     }
   }
   return null;
+}
+// The one of the 24 turns nearest [matrix] (rows), for a part the file
+// has turned off them.
+export function nearestTurn(matrix) {
+  let best = null;
+  let off = Infinity;
+  for (const face of FACES) {
+    for (let q = 0; q < 4; q++) {
+      const b = basisFor(face, q);
+      const d = b.reduce((sum, row, r) => sum + row.reduce((t, v, c) => t + (v - matrix[r][c]) ** 2, 0), 0);
+      if (d < off) { off = d; best = { face, q }; }
+    }
+  }
+  return best;
 }
 // The fewest presses from one turn in hand to another: T rolls onto the
 // next face in FACES (Shift-T back), R a quarter about the part's up.
@@ -496,12 +575,23 @@ function standsAt(s, target, turn) {
   return true;
 }
 
+// Whether the ghost is turned as [turn] (the app's matrix, rows), wherever
+// it stands.
+function turnedAs(s, turn) {
+  const pose = s.ghost_pose;
+  if (!s.ghost || !pose || !turn) return false;
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 3; r++) if (Math.abs(pose[3 + c * 3 + r] - turn[r][c]) > 0.01) return false;
+  }
+  return true;
+}
+
 // The part in hand onto the joint its place is on: the ends of the parts
 // down that its own ends take, nearest on the page to where it goes, each
 // pointed at in turn, and on one, R and T until the ghost stands where the
 // file has it. A pin aimed about a brick goes on the studs; aimed at the
 // hole it goes in (8841-1's pins, 2026-10-17). Null when none takes it.
-async function onItsJoint(target, turn, view, here) {
+async function onItsJoint(target, turn, view, here, any = false, part = null) {
   let s = await fresh();
   const kinds = new Set((s.held_ends || []).flatMap((k) => TAKES[k] || []));
   if (!kinds.size) return null;
@@ -509,10 +599,14 @@ async function onItsJoint(target, turn, view, here) {
   // Looked for only for a part that goes into or round something: a Technic
   // brick has holes but goes on the studs, and hung on every pin near it
   // first it took 23 presses (8841-1's second 3702, 2026-10-17).
-  const goes = (s.held_ends || []).some((k) => INTO.has(k));
+  // [any]: the last try for a part with holes and no pin of its own, which
+  // goes onto pins when it does not go on the studs (a Technic brick on its
+  // side); a pin's own were tried at its first aim.
+  const into = (s.held_ends || []).some((k) => INTO.has(k));
+  const goes = any ? !into : into;
   const near = (goes ? s.joints || [] : []).filter((j) => kinds.has(j.kind))
     .map((j) => ({ ...j, d: Math.hypot(j.x - aim[0], j.y - aim[1]) }))
-    .filter((j) => j.d <= JOINT_PX).sort((a, b) => a.d - b.d).slice(0, 3);
+    .filter((j) => j.d <= JOINT_PX || within(part, j, view)).sort((a, b) => a.d - b.d).slice(0, 3);
   // Already on a joint where the pointer is, in the file's place but turned
   // otherwise: turned there first. On one somewhere else it is not this
   // part's joint (8841-1's second brick hung on the first one's pin, and
@@ -526,19 +620,41 @@ async function onItsJoint(target, turn, view, here) {
       s = await fresh();
     }
     if (!s.on_joint) continue;
+    let at = [j.x, j.y];
     for (let n = 0; n <= ON_JOINT_KEYS.length; n++) {
       if (n > 0) {
         await key(ON_JOINT_KEYS[n - 1], 300);
         s = await fresh();
       }
-      if (!standsAt(s, target, turn) || !s.can_place) continue;
+      // Turned as the file has it but along the joint from its place (a
+      // wheel on its pin, a clip on its bar): slid there, the pointer moved
+      // along it as a person moves a wheel along its pin (8643-1's wheels).
+      for (let slide = 0; slide < 3 && s.on_joint && turnedAs(s, turn)
+          && !standsAt(s, target, turn); slide++) {
+        const a = project(s.ghost, view, shift);
+        const b = project(target, view, shift);
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1) break;
+        at = [at[0] + b[0] - a[0], at[1] + b[1] - a[1]];
+        count.aim_fix += 1;
+        await pointTo(at[0], at[1]);
+        s = await fresh();
+      }
+      if (!standsAt(s, target, turn) || !s.can_place) {
+        if (at[0] !== j.x || at[1] !== j.y) {
+          at = [j.x, j.y];
+          await pointTo(at[0], at[1]);
+          s = await fresh();
+        }
+        continue;
+      }
       // Seen there twice, as below.
       const again = await fresh();
       if (!standsAt(again, target, turn) || !again.can_place) continue;
       const before = again.bricks;
       count.click += 1;
-      await page.mouse.click(j.x, j.y);
+      await page.mouse.click(at[0], at[1]);
       const after = await until((now) => now.bricks > before, 8);
+      if (after.bricks > before) followRise(after, again.ghost);
       return after.bricks > before ? { ok: true, at: again.ghost }
         : { ok: false, why: "the click put nothing down" };
     }
@@ -548,26 +664,292 @@ async function onItsJoint(target, turn, view, here) {
 
 let shiftToApp = null;
 let viewRect = [362, 106, 1238, 710];
+// A part put down below the ground, held by the model, stands the model up
+// on it (Builder._stand_on_the_ground): the part went down that much higher
+// than its ghost, and everything built is that much higher than the file
+// says from here on, as a person sees the model rise.
+function followRise(now, ghost) {
+  const put = now.put && now.put.pose;
+  if (!put || !ghost || Math.abs(put[0] - ghost[0]) > 0.5 || Math.abs(put[2] - ghost[2]) > 0.5) return;
+  const rose = Math.round(put[1] - ghost[1]);
+  if (rose < 1) return;
+  shiftToApp[1] += rose;
+  log(`the model rose ${rose} LDU to stand on it`);
+}
 async function put(part, view) {
   const want = toApp(part.at);
   if (shiftToApp) {
+    // Where a person points: the middle of the part's underside, on what it
+    // stands on; then, if the ghost will not come there, its origin, as
+    // the flow first aimed (a part that hangs under another is pointed at
+    // by its top). A brick's origin is the top of it, a brick's height over
+    // the plate it goes on: aimed there, a 1 x 4 Technic brick on a stack
+    // one stud wide went past the stack, onto its side (8841-1's step 1,
+    // 2026-10-17).
+    const foot = footOf(part);
+    const passes = foot[1] < -0.5 ? [[foot, AIMS, true], [[0, 0, 0], Math.ceil(AIMS / 2), false]]
+      : [[[0, 0, 0], AIMS, true]];
+    let got = null;
+    for (const [by, aims, tryJoint] of passes) {
+      got = await putBy(part, view, by, aims, tryJoint);
+      if (got.ok || got.final) return got;
+      view = (await fresh()).view;
+    }
+    // Onto a joint at last, for a part with holes too: a brick on its side
+    // goes onto pins, not studs (8841-1's 3703s).
+    const target = want.map((v, i) => v + shiftToApp[i]);
+    const onto = await onItsJoint(target, appMatrix(part.m), view, project(target, view, shift), true,
+      part);
+    if (onto) return onto;
+    // From the side it is on, as a person turns the view to see the far
+    // side of a car: a wheel on the far side's pin is behind the body, and
+    // the line from the eye meets the body first (8643-1's right wheels).
+    // A view key (1 to 4) tipped 20 degrees, the passes again, and the default
+    // view (0) after.
+    const side = sideKey(target);
+    if (side) {
+      // The key's view is level with the ground, and a line from it aimed
+      // a little high meets nothing short of the horizon: Up twice, as a
+      // person tips the view to see the side and the top together (an
+      // arrow turns the view 10 degrees with nothing selected).
+      await key(side, 1500);
+      await key("ArrowUp", 400);
+      await key("ArrowUp", 1200);
+      let there = (await fresh()).view;
+      for (const [by, aims, tryJoint] of passes) {
+        got = await putBy(part, there, by, Math.ceil(aims / 2), tryJoint);
+        if (got.ok || got.final) break;
+        there = (await fresh()).view;
+      }
+      if (!got.ok && !got.final) {
+        const again = await onItsJoint(target, appMatrix(part.m), there,
+          project(target, there, shift), true, part);
+        if (again) got = again;
+      }
+      // Near, but where the pointer cannot say (below), from this side.
+      if (!got.ok && !got.final) {
+        const typed = await putNearAndType(part, target, appMatrix(part.m), there);
+        if (typed) got = typed;
+      }
+      await key("0", 1500);
+      return got;
+    }
+    // Near, but where the pointer cannot say: put down where it comes
+    // nearest, on its joint or on the studs, and its swing and place typed
+    // in Properties (Hinge, X, Y, Z), as Studio's hinge tool and a typed
+    // move say it. 8841-1's pans hang at 66.4 degrees, half a stud off the
+    // stud grid (offgrid_probe types the same numbers).
+    const typed = await putNearAndType(part, target, appMatrix(part.m), view);
+    return typed || got;
+  }
+  return putFirst(part, view, want);
+}
+
+// Whether a joint on the page ([j], CSS pixels) is over where [part] goes:
+// inside its box at the file's place, drawn on the page. A part's middle
+// can be far from the ends it goes on by: 8841-1's 1 x 16 Technic brick
+// stands on end on two pins 100 LDU and more below its middle.
+function within(part, j, view) {
+  const box = part && placedBox(part, boxOf);
+  if (!box || !shiftToApp) return false;
+  let lo = [Infinity, Infinity];
+  let hi = [-Infinity, -Infinity];
+  for (let c = 0; c < 8; c++) {
+    const p = project([box[c & 1][0], box[(c >> 1) & 1][1], box[(c >> 2) & 1][2]]
+      .map((v, i) => v + shiftToApp[i]), view, shift);
+    lo = [Math.min(lo[0], p[0]), Math.min(lo[1], p[1])];
+    hi = [Math.max(hi[0], p[0]), Math.max(hi[1], p[1])];
+  }
+  return j.x >= lo[0] - 6 && j.x <= hi[0] + 6 && j.y >= lo[1] - 6 && j.y <= hi[1] + 6;
+}
+
+// How far a part may come down from its place and still be typed there.
+const NEAR_LDU = 60;
+
+// The part in hand pointed at its place's projection, then at the joints
+// near it, and put down where its ghost may go nearest its place, within
+// NEAR_LDU; then selected and typed to the file (typeTo). Null when it
+// came nowhere near, or the typing did not bring it there (undone).
+async function putNearAndType(part, target, turn, view) {
+  const tries = [project(target, view, shift)];
+  const s0 = await fresh();
+  const kinds = new Set((s0.held_ends || []).flatMap((k) => TAKES[k] || []));
+  for (const j of s0.joints || []) {
+    if (kinds.has(j.kind) && (Math.hypot(j.x - tries[0][0], j.y - tries[0][1]) <= JOINT_PX
+        || within(part, j, view))) tries.push([j.x, j.y]);
+  }
+  for (const at of tries.slice(0, 4)) {
+    count.aim_fix += 1;
+    await pointTo(at[0], at[1]);
+    const s = await fresh();
+    if (!s.ghost || !s.can_place) continue;
+    if (Math.hypot(...s.ghost.map((v, i) => v - target[i])) > NEAR_LDU) continue;
+    // Put down there, then typed.
+    const before = s.bricks;
+    count.click += 1;
+    await page.mouse.click(at[0], at[1]);
+    const after = await until((now) => now.bricks > before, 8);
+    if (after.bricks <= before) return null;
+    followRise(after, s.ghost);
+    const done = await typeTo(part, target, turn, view);
+    if (done.ok) return { ok: true, at: target, typed: done.typed };
+    // Not brought there: taken back, as a person undoes a wrong part.
+    for (let n = 0; n < done.steps + 1; n++) await key("Control+z", 500);
+    log(`typed ${done.typed.join(", ") || "nothing"}, and it did not stand at its place: undone`);
+    return null;
+  }
+  return null;
+}
+
+// Whether a pose (brickworksState.put.pose: origin, then the basis's
+// columns) stands at [target] turned as [turn], to 0.05 LDU and 0.002.
+function poseAt(pose, target, turn, place = 0.05) {
+  if (!pose || !pose.slice(0, 3).every((v, i) => Math.abs(v - target[i]) <= place)) return false;
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 3; r++) if (Math.abs(pose[3 + c * 3 + r] - turn[r][c]) > 0.002) return false;
+  }
+  return true;
+}
+
+// The Hinge (degrees off square about the joint, Builder.hinge_angle) of
+// [turn], about the axis [from] turns about to come to it: of the 24 square
+// turns, the one [turn] is the least swing from about that axis. Both
+// signs are offered: which way round the joint's axis runs is the app's.
+function hingeOf(from, turn) {
+  const mulT = (A, B) => A.map((row) => [0, 1, 2].map((j) => row.reduce((t, v, k) => t + v * B[j][k], 0)));
+  const axisAngle = (M) => {
+    const angle = Math.acos(Math.max(-1, Math.min(1, (M[0][0] + M[1][1] + M[2][2] - 1) / 2)));
+    const v = [M[2][1] - M[1][2], M[0][2] - M[2][0], M[1][0] - M[0][1]];
+    const len = Math.hypot(...v);
+    return { angle, axis: len > 1e-6 ? v.map((x) => x / len) : [0, 0, 0] };
+  };
+  const swing = axisAngle(mulT(turn, from));
+  if (swing.angle < 1e-4) return [];
+  let best = null;
+  for (const face of FACES) {
+    for (let q = 0; q < 4; q++) {
+      const m = axisAngle(mulT(turn, basisFor(face, q)));
+      const along = m.axis.reduce((t, v, i) => t + v * swing.axis[i], 0);
+      if (m.angle > 1e-4 && Math.abs(along) < 0.999) continue;
+      const degrees = m.angle * 180 / Math.PI * (along < 0 ? -1 : 1);
+      if (Math.abs(degrees) <= 45.01 && (!best || Math.abs(degrees) < Math.abs(best))) best = degrees;
+    }
+  }
+  return best === null ? [] : [best, -best];
+}
+
+// The part just put down selected by a click on it, and what the pointer
+// could not say typed in Properties: its swing (Hinge), then X, Y and Z.
+// Each typed number a click in its box, Ctrl+A, the number, Enter. Read
+// back from where the app says that part now stands (brickworksState.put).
+async function typeTo(part, target, turn, view) {
+  const typed = [];
+  let steps = 0;
+  let s = await fresh();
+  const put = s.put;
+  if (!put) return { ok: false, typed, steps };
+  await key("Escape", 500);
+  inHand = "";
+  // On its body: the middle of its box where it stands, then a little in.
+  const own = boxOf(part.id);
+  const middle = own ? [0, 1, 2].map((i) => (own[0][i] + own[1][i]) / 2) : [0, 0, 0];
+  const P = [0, 1, 2].map((r) => [0, 1, 2].map((c) => put.pose[3 + c * 3 + r]));
+  const at = [0, 1, 2].map((r) => put.pose[r] + P[r].reduce((t, v, c) => t + v * middle[c], 0));
+  let selected = false;
+  for (const nudge of [[0, 0], [0, -3], [3, 0], [-3, 0], [0, 3]]) {
+    const p = project(at, view, shift);
+    await clickAt(p[0] + nudge[0], p[1] + nudge[1]);
+    s = await fresh();
+    if ((s.selection || []).includes(put.id) && s.selected === 1) { selected = true; break; }
+  }
+  if (!selected) return { ok: false, typed: ["could not select it"], steps };
+  // Each number that moved it is a step of the history, for the undo if
+  // it never comes to its place; one refused ("no room there") is none.
+  const typeIn = async (name, value) => {
+    const box = (await controls())[name];
+    if (!box) return false;
+    const was = JSON.stringify(((await fresh()).put || {}).pose);
+    await clickAt(box.x, box.y);
+    await key("Control+a", 150);
+    await typeText(String(value));
+    await key("Enter", 900);
+    typed.push(`${name.replace("prop_", "")} ${value}`);
+    if (JSON.stringify(((await fresh()).put || {}).pose) !== was) steps += 1;
+    return true;
+  };
+  s = await fresh();
+  const pose = () => ((s.put || {}).id === put.id && s.put.pose) || put.pose;
+  if (!poseAt(pose(), pose().slice(0, 3), turn)) {
+    const from = [0, 1, 2].map((r) => [0, 1, 2].map((c) => pose()[3 + c * 3 + r]));
+    for (const hinge of hingeOf(from, turn)) {
+      if (!(await typeIn("prop_hinge", hinge.toFixed(2)))) break;
+      s = await fresh();
+      if (poseAt(pose(), pose().slice(0, 3), turn)) break;
+    }
+  }
+  const names = ["prop_x", "prop_y", "prop_z"];
+  for (let pass = 0; pass < 2 && !poseAt(pose(), target, turn); pass++) {
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(pose()[i] - target[i]) <= 0.02) continue;
+      await typeIn(names[i], target[i].toFixed(2));
+      s = await fresh();
+    }
+  }
+  const ok = poseAt(pose(), target, turn);
+  await key("Escape", 400);
+  log(`typed ${typed.join(", ")}: ${ok ? "at its place" : "not at its place"}`);
+  return { ok, typed, steps };
+}
+
+// The middle of the set's parts as the file has them, in the app's axes:
+// which side of the model a part is on.
+let setMiddle = [0, 0, 0];
+// The view key that looks at [target] from its own side of the model (1
+// front, 2 back, 3 left, 4 right; CadCamera.set_view), or null for a part
+// near the middle.
+function sideKey(target) {
+  if (!shiftToApp) return null;
+  const d = target.map((v, i) => v - setMiddle[i] - shiftToApp[i]);
+  if (Math.max(Math.abs(d[0]), Math.abs(d[2])) < 10) return null;
+  if (Math.abs(d[0]) >= Math.abs(d[2])) return d[0] > 0 ? "4" : "3";
+  return d[2] > 0 ? "1" : "2";
+}
+
+// Under a part's origin, at the bottom of it where the file has it: the
+// spot on what it stands on that a person points at. A brick's or a
+// plate's origin is the middle of its top; a corner plate's is its corner
+// stud, on its body, where the middle of its box is the corner it has not
+// (2420, whose box's middle is over the arm of the wheel holder beside it).
+function footOf(part) {
+  const box = placedBox(part, boxOf);
+  if (!box) return [0, 0, 0];
+  return [0, box[0][1] - toApp(part.at)[1], 0];
+}
+
+// The part in hand aimed with the pointer at the file's place moved [by]
+// (the point aimed at, from the part's origin), corrected by where its
+// ghost stands, [aims] times.
+async function putBy(part, view, by, aims, tryJoint) {
+  {
+    const want = toApp(part.at);
     const target = want.map((v, i) => v + shiftToApp[i]);
     const turn = appMatrix(part.m);
-    let pointer = project(target, view, shift);
+    const off = (p) => p.map((v, i) => v + by[i]);
+    let pointer = project(off(target), view, shift);
     let last = null;
     let outs = 0;
     let joint = false;
-    for (let n = 0; n < AIMS; n++) {
+    for (let n = 0; n < aims; n++) {
       // Off the model's part of the window, a click would land on a panel:
       // out a little, as a person zooms out to see where it goes.
       const [vx, vy, vw, vh] = viewRect;
       if (pointer[0] < vx + 8 || pointer[0] > vx + vw - 8 || pointer[1] < vy + 8 || pointer[1] > vy + vh - 8) {
-        if (outs++ >= 2) return { ok: false, why: "its place stays off the view" };
+        if (outs++ >= 2) return { ok: false, final: true, why: "its place stays off the view" };
         await pointTo(vx + vw / 2, vy + vh / 2);
         await key("Minus", 300);
         await key("Minus", 600);
         view = (await fresh()).view;
-        pointer = project(target, view, shift);
+        pointer = project(off(target), view, shift);
         continue;
       }
       if (n > 0) count.aim_fix += 1;
@@ -596,17 +978,18 @@ async function put(part, view) {
         count.click += 1;
         await page.mouse.click(pointer[0], pointer[1]);
         const after = await until((now) => now.bricks > before, 8);
+        if (after.bricks > before) followRise(after, s.ghost);
         return after.bricks > before ? { ok: true, at: s.ghost }
-          : { ok: false, why: "the click put nothing down" };
+          : { ok: false, final: true, why: "the click put nothing down" };
       }
       if (s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1) && !s.can_place
           && turnedRight) {
-        return { ok: false, why: "the ghost stands in the file's place but the app says it may not go there" };
+        return { ok: false, final: true, why: "the ghost stands in the file's place but the app says it may not go there" };
       }
       // Not there: if it joins by something, onto the joint it goes on, once.
-      if (!joint) {
+      if (!joint && tryJoint) {
         joint = true;
-        const onto = await onItsJoint(target, turn, view, pointer);
+        const onto = await onItsJoint(target, turn, view, pointer, false, part);
         if (onto) return onto;
         await pointTo(pointer[0], pointer[1]);
         s = await fresh();
@@ -615,8 +998,15 @@ async function put(part, view) {
         pointer = [pointer[0] + (n % 2 ? -7 : 7), pointer[1] + 5];
         continue;
       }
-      const a = project(s.ghost, view, shift);
-      const b = project(target, view, shift);
+      // Fallen past what it goes on, onto something lower (the floor beyond
+      // a wing it overhangs): moved across on the level it fell to, where
+      // the pointer is, not towards its place in the air above that, which
+      // the line from the eye passes over to the floor further on again
+      // (5762-1's wedge plates, 2026-10-17).
+      const across = s.ghost[1] < target[1] - 1
+        && (Math.abs(s.ghost[0] - target[0]) > 1 || Math.abs(s.ghost[2] - target[2]) > 1);
+      const a = project(off(s.ghost), view, shift);
+      const b = project(off(across ? [target[0], s.ghost[1], target[2]] : target), view, shift);
       const step = [b[0] - a[0], b[1] - a[1]];
       // The ghost on the wrong level and nothing to move across: the
       // pointer is over another part's face; edge it inwards.
@@ -625,7 +1015,10 @@ async function put(part, view) {
     }
     return { ok: false, why: `the ghost would not stand there (last at ${JSON.stringify(last)}, wanted ${JSON.stringify(target)})` };
   }
-  // The first part: anywhere on the baseplate, in the middle of the view.
+}
+
+// The first part: anywhere on the baseplate, in the middle of the view.
+async function putFirst(part, view, want) {
   const middle = await where("view");
   await pointTo(middle.x, middle.y);
   let s = await fresh();
@@ -811,6 +1204,10 @@ await page.waitForTimeout(8000);
 {
   const text = readFileSync(`${SETS_DIR}/${name}`, "utf8");
   const set = readSet(text);
+  {
+    const all = set.steps.flat().map((p) => toApp(p.at));
+    setMiddle = [0, 1, 2].map((i) => all.reduce((t, p) => t + p[i], 0) / Math.max(all.length, 1));
+  }
   const stem = basename(name).replace(/\.(mpd|ldr)$/i, "");
   log(`${stem}: ${set.steps.flat().length} parts in ${set.steps.length} steps`);
   count = fresh_counts();
@@ -830,12 +1227,16 @@ await page.waitForTimeout(8000);
   shift = [rect[0] + rect[2] / 2 - W / 2, rect[1] + rect[3] / 2 - H / 2];
   const gaps = [];
   const placed = [];
+  // The parts put down where the pointer could not say it, and what was
+  // typed in Properties for each.
+  const typedParts = [];
   let done = 0;
   let framed = false;
   let stepHas = 0;
+  const orders = handOrders(set);
   for (let k = 0; k < set.steps.length; k++) {
     // Lowest first, as a hand puts them on: what holds a part before it.
-    const step = handOrder(set.steps[k]);
+    const step = orders[k];
     for (const part of step) {
       if (MOST && done >= MOST) break;
       // Out of time, or told to stop (a file named stop in --out): what is
@@ -848,21 +1249,17 @@ await page.waitForTimeout(8000);
       done += 1;
       const t0 = Date.now();
       const counted = { ...count };
-      const turn = turnFor(appMatrix(part.m));
+      // Off the 24 turns (a pan's 4262 swung on its axle) or off the whole
+      // LDU (a part on one off the lattice): held at the nearest of the 24
+      // and tried all the same, since on a joint the app swings a part onto
+      // a second one and puts a part on one off the lattice in its frame.
+      const turn = turnFor(appMatrix(part.m)) || nearestTurn(appMatrix(part.m));
       const skip = (why) => {
         gaps.push({ step: k + 1, part: part.id, colour: part.colour, why });
         appendFileSync(`${out}/${stem}_parts.jsonl`, JSON.stringify({ step: k + 1, id: part.id,
           colour: part.colour, put: false, why, seconds: (Date.now() - t0) / 1000 }) + "\n");
         log(`step ${k + 1} ${part.id}/${part.colour}: GAP ${why}`);
       };
-      if (!turn) {
-        skip("turned off the grid's 24 turns (a hinge or an angle): no key turns a part in hand to it");
-        continue;
-      }
-      if (part.at.some((v) => Math.abs(v - Math.round(v)) > 0.01)) {
-        skip(`a place off the whole LDU (${part.at.join(" ")})`);
-        continue;
-      }
       const got = await take(part.id);
       if (!got.held) {
         skip("the search could not put it in hand");
@@ -895,7 +1292,8 @@ await page.waitForTimeout(8000);
       // Kept as it goes, so a run stopped part way still says what it did.
       appendFileSync(`${out}/${stem}_parts.jsonl`, JSON.stringify({ step: k + 1, id: part.id,
         colour: part.colour, put: put_.ok, why: put_.why || "", colour_score: chose,
-        seconds: (Date.now() - t0) / 1000, spent }) + "\n");
+        typed: put_.typed || [], seconds: (Date.now() - t0) / 1000, spent }) + "\n");
+      if (put_.ok && put_.typed) typedParts.push(`${part.id} (step ${k + 1}): ${put_.typed.join(", ")}`);
       log(`step ${k + 1} ${part.id}/${part.colour}: ${put_.ok ? "put" : "GAP " + put_.why} `
         + `(${((Date.now() - t0) / 1000).toFixed(1)} s, colour ${chose}, ${JSON.stringify(spent)})`);
       if (put_.ok) stepHas += 1;
@@ -952,13 +1350,13 @@ await page.waitForTimeout(8000);
     set: name, parts_in_file: set.steps.flat().length, steps: set.steps.length, tried: parts,
     sub_models: set.subs, placed: placed.length, compared, counts: count, actions,
     actions_per_part: +(actions / parts).toFixed(2), seconds: +seconds.toFixed(1),
-    seconds_per_part: +(seconds / parts).toFixed(2), gaps, focus,
+    seconds_per_part: +(seconds / parts).toFixed(2), gaps, focus, typed: typedParts,
     // The author's steps, marked as they were built: E once a step.
     step_marking: { steps: set.steps.length, marked: count.step,
       kept: compared ? compared.steps : null },
     pictures: { built: shotBuilt, file: shotFile, side_by_side: `${out}/${stem}_side_by_side.png` },
     // In the order they were tried: each step's lowest first.
-    parts_list: set.steps.map((s, k) => handOrder(s).map((p) => ({ step: k + 1, id: p.id, colour: p.colour,
+    parts_list: orders.map((s, k) => s.map((p) => ({ step: k + 1, id: p.id, colour: p.colour,
       turn: turnFor(appMatrix(p.m)) }))).flat(),
     built_parts: builtParts.map((p) => ({ id: p.id, colour: p.colour, at: p.at, m: p.m, step: p.step + 1 })),
   };
@@ -987,7 +1385,7 @@ async function main() {
       recoloured: r.compared ? r.compared.recoloured : null,
       turned: r.compared ? r.compared.turned : null, moved: r.compared ? r.compared.moved : null,
       actions: r.actions, actions_per_part: r.actions_per_part, seconds_per_part: r.seconds_per_part,
-      counts: r.counts, gaps: r.gaps.map((g) => (g.part ? `${g.part}/${g.colour} (step ${g.step}): ${g.why}` : g.why)),
+      typed: r.typed || [], counts: r.counts, gaps: r.gaps.map((g) => (g.part ? `${g.part}/${g.colour} (step ${g.step}): ${g.why}` : g.why)),
       side_by_side: r.pictures.side_by_side,
     })),
   });

@@ -942,8 +942,36 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   until the ghost (`brickworksState.ghost`) stands where the file has the
   part, a click, and `E` once a step's parts are down. A step's parts go
   lowest first, but a part whose middle is inside a bigger part of the step
-  after the smallest such (`handOrder`, from the catalogue's boxes): a pin
-  after the brick it goes in. A part that goes into or round another's
+  after the smallest such (`handOrder`, from the catalogue's boxes; a part's
+  middle is its box's, not its origin, which is a plate's top): a pin
+  after the brick it goes in; and of those, the lowest that is held by what
+  is down already (into it, on it or under it, not only beside it), an
+  earlier step's parts, this step's put before it or the floor, asked in a
+  swung part's own frame where it is off the square, and
+  a part that touches before the part its middle is in (`handOrders`): a
+  balance's pans built down from the arms they hang on, a pin, its
+  connector, the plates, not their plates first in the air. The pointer goes first under the
+  part's origin, at the bottom of the part (`footOf`: the spot on what it
+  stands on, as a person points there), then at the origin itself, as it
+  first did; a brick's origin is the top of it, and aimed there a 1 x 4
+  brick on a stack one stud wide went past the stack (8841-1, 2026-10-17).
+  A part off the 24 turns or off the whole LDU is held at the nearest of the
+  24 and tried, not skipped: on a joint the app swings it onto a second one
+  and puts it in the frame of a part off the lattice. A part with holes and
+  no pin of its own is aimed at the pins over its place on the page last,
+  when the studs would not take it (a Technic brick on its side; `within`),
+  and on a joint a ghost
+  turned as the file has it but along the joint from its place is slid
+  there by the pointer, as a wheel along its pin. A part still not down is
+  tried again from its own side of the model (a view key, 1 to 4, tipped
+  up 20 degrees by Up twice, and 0 after: a wheel on the far side's pin is
+  behind the body; `sideKey`).
+  Where the pointer cannot say it, the part goes down where its ghost may go within 60 LDU of its
+  place, is selected by a click on it, and its Hinge (its swing off square
+  about its joint, worked out from the file's turn, either sign) and X, Y, Z
+  are typed in Properties (`putNearAndType`, `typeTo`), as offgrid_probe
+  types them; read back from where the app says the part stands
+  (`brickworksState.put`), and undone if it does not come to its place. A part that goes into or round another's
   (`brickworksState.held_ends` has a pin, an axle, a tyre or a rim) and is
   not where the file has it at the first aim is aimed at the joints on the
   page that take it (`brickworksState.joints`), nearest where it goes
