@@ -1065,7 +1065,8 @@ picture the assistant is shown.
   alone), then what is set on a step stays on it (`_settings_stay`,
   `--only=stay`, headless with `--no-booklet` in about 3 minutes):
   `tests/fixtures/steps/row.mpd` (seven steps of two bricks of a colour,
-  none on another, a pair of 1 x 1s with two steps of its own). The yellow
+  none on another, and the pair, a callout of three steps of its own on
+  the green bricks, its callout turned off here). The yellow
   step gets every kind of setting a step has (turn, zoom, size, page alone,
   parts off, sign off, picture, parts and number placed, words, a picture,
   an arrow) by the Booklet row and `edit_booklet`; the black and the pair's
@@ -1084,7 +1085,8 @@ picture the assistant is shown.
   checks, of which 19 fail on the code before stepsettings. Windowed, it
   also puts a step earlier with Lay out page… up on its page and checks no
   step there shows a picture drawn of another (`_pictures_follow`), and
-  writes `row_before_move.html` and `row_after_earlier.html` to print. Then it opens
+  writes `row_before_move.html` and `row_after_earlier.html` to print
+  (the whole probe windowed on the GPU: 524 checks, 2026-10-18). Then it opens
   30050-1 (ROTSTEPs, ABS), 106-1 and 10016-1 (no steps) as
   File, Open does; checks a file
   opened and saved unchanged is the file; merges, splits, reorders (and is
@@ -1169,12 +1171,14 @@ picture the assistant is shown.
   outline's orange pixels on and off); `booklet_edit_flow.mjs` drags the
   picture onto the margin and the parts list's corner by the mouse in a
   browser, adds words and a picture through the file chooser, draws an
-  arrow, Ctrl-Z / Ctrl-Shift-Z, then puts that step Later on the timeline
-  (Earlier where the next stands on it), and reads the row of the moved step
-  (still a new page) and of the step it swapped with (still alone), the
+  arrow, Ctrl-Z / Ctrl-Shift-Z, then moves that step: Later or Earlier on
+  the timeline, and where both are refused (106-1's step 4, 2026-10-18)
+  Merge with next on step 1, which brings it to step 3. It reads the row of
+  the moved step (still a new page) and of the alone step (still alone), the
   printed page of the moved step's new number (the picture as dragged, the
   words, the picture and `path.drawn-arrow`, none on any other page) and the
-  exported file (ARROW, PANEL).
+  exported file (ARROW, PANEL). It ends "...a page laid out by hand and its
+  step moved with its arrow..." (47 checks, 2026-10-18, on a local export).
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

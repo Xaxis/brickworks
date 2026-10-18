@@ -22,8 +22,14 @@
 // mouse onto the top margin, which it snaps to; its parts list widened by its
 // corner; words added and typed; a picture added through the file chooser;
 // Ctrl-Z and Ctrl-Shift-Z on it; Draw an arrow and a drag from below its
-// picture to its middle, Ctrl-Z and Ctrl-Shift-Z. The booklet's page 4
-// (the arrow printed on it) and the file (ARROW and the step's PANEL) say so.
+// picture to its middle, Ctrl-Z and Ctrl-Shift-Z. Then step 4, with its
+// arrow, moved: Later or Earlier on the timeline, and where both are refused
+// (106-1's step 4 stands on step 3 and step 5 on it) Merge with next on
+// step 1, which brings it to step 3. The moved step's row still says new
+// page and the alone step's still alone. The booklet's page of the moved
+// step (its picture as dragged, the words, the picture and the arrow printed
+// on it, no arrow on any other page) and the file (ARROW and the step's
+// PANEL) say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
 import { launch } from "./browser.mjs";
@@ -350,6 +356,47 @@ try {
     await press("page_done");
   }
 
+  // The step that carries the arrow moved on the timeline: Later, or Earlier;
+  // where its parts and the next's stand on each other (106-1's step 4 both
+  // ways), the two steps before it merged, which brings it one earlier. What
+  // was set on it goes with it, and the step after it keeps its own
+  // (stepsettings, 2026-10-18: a session's arrow and page settings had moved
+  // to the wrong step).
+  let carried = 4;
+  let how = "nowhere";
+  ok(await toStep(4), `step 4, with the arrow, to move: "${(await timeline()).caption}"`);
+  for (const [op, to] of [["later", 5], ["earlier", 3]]) {
+    await press(`steps_${op}`);
+    const moved = await until((s) => /put step 4 (later|earlier)|cannot go/.test(s.said || ""), 30);
+    const words = moved ? moved.said : (await state()).said;
+    if (/put step 4/.test(words || "")) {
+      carried = to;
+      how = `${op} ("${words}")`;
+      break;
+    }
+    console.log(`        ${op} refused: "${words}"`);
+  }
+  if (carried === 4 && await toStep(1)) {
+    await press("steps_merge");
+    const merged = await until((s) => /merged step 1 with the next/.test(s.said || ""), 30);
+    if (merged) {
+      carried = 3;
+      how = `by Merge with next on step 1 ("${merged.said}")`;
+    }
+  }
+  ok(carried !== 4, `step 4, with the arrow, moved ${how}: now step ${carried}`);
+  // The step alone, step 5: one earlier after Later on step 4 or a merge
+  // before it.
+  const aloneAt = /^earlier/.test(how) ? 5 : 4;
+  ok(await toStep(carried), `the moved step, now ${carried}: "${(await timeline()).caption}"`);
+  const carriedLook = await says((l) => /new page/.test(l));
+  ok(/new page/.test(carriedLook) && !/alone/.test(carriedLook),
+    `...its row still says it starts a new page: "${carriedLook}"`);
+  ok(await toStep(aloneAt), `the alone step, now ${aloneAt}`);
+  const aloneLook = await says((l) => /a page alone/.test(l));
+  ok(/a page alone/.test(aloneLook) && !/new page/.test(aloneLook),
+    `...still alone, no parts list, and not the new page: "${aloneLook}"`);
+
   // The booklet from those choices, in the tab the timeline's Instructions opens.
   const opened = context.waitForEvent("page", { timeout: 30000 });
   await press("steps_booklet");
@@ -377,27 +424,32 @@ try {
       boxes: s.querySelectorAll(".box").length,
     })));
     const of = (n) => facts.find((p) => p.steps.includes(n));
-    const four = of(4);
-    const five = of(5);
-    ok(four && four.steps[0] === 4, `step 4 heads its page (${four ? `${four.id}: ${four.steps.join(",")}` : "none"})`);
+    // The step laid out by hand, moved to [carried]; the one alone, to [aloneAt].
+    const four = of(carried);
+    const five = of(aloneAt);
+    ok(four && four.steps[0] === carried, `the step laid out by hand, now ${carried}, heads its page (${four ? `${four.id}: ${four.steps.join(",")}` : "none"})`);
     ok(five && five.steps.length === 1 && five.boxes === 0,
-      `step 5 alone on its page, no parts box (${five ? `${five.id}: ${five.steps.join(",")}, ${five.boxes} boxes` : "none"})`);
+      `step ${aloneAt} alone on its page, no parts box (${five ? `${five.id}: ${five.steps.join(",")}, ${five.boxes} boxes` : "none"})`);
     const most = Math.max(...facts.map((p) => p.steps.length));
     ok(most <= 2, `no page of more than two steps (${most})`);
-    // The page laid out by hand, as printed.
-    const byHand = four ? await tab.evaluate((id) => {
+    // The page laid out by hand, as printed, with the step it was laid out for.
+    const byHand = four ? await tab.evaluate(([id, n]) => {
       const s = document.getElementById(id);
-      const img = [...s.querySelectorAll("img.a")].find((i) => /Step 4/.test(i.alt));
+      const img = [...s.querySelectorAll("img.a")].find((i) => new RegExp(`Step ${n}\\b`).test(i.alt));
       return {
         top: img ? img.style.getPropertyValue("--y") : "",
         words: s.innerText.includes("Build both sides alike"),
         picture: [...s.querySelectorAll("img.a")].some((i) => i.src.startsWith("data:image/png")),
         arrows: s.querySelectorAll("path.drawn-arrow").length,
       };
-    }, four.id) : {};
+    }, [four.id, carried]) : {};
     ok(parseFloat(byHand.top) === 9 && byHand.words && byHand.picture,
-      `step 4's page as dragged: its picture at the top margin (--y ${byHand.top}), the words and the picture on it`);
-    ok(byHand.arrows === 1, `...and the arrow drawn on it, printed (${byHand.arrows})`);
+      `step ${carried}'s page as dragged: its picture at the top margin (--y ${byHand.top}), the words and the picture on it`);
+    ok(byHand.arrows === 1, `...and the arrow drawn on it, printed, moved with it (${byHand.arrows})`);
+    const arrowsElsewhere = await tab.evaluate((id) => [...document.querySelectorAll("section.page")]
+      .filter((s) => s.id !== id).reduce((n, s) => n + s.querySelectorAll("path.drawn-arrow").length, 0),
+    four ? four.id : "");
+    ok(arrowsElsewhere === 0, `...and no other page has an arrow (${arrowsElsewhere})`);
     await tab.setViewportSize({ width: 1060, height: 800 });
     await tab.addStyleTag({ content: ".bar { display: none !important; }" });
     for (const p of [three(facts), four, five].filter(Boolean)) {
@@ -452,5 +504,5 @@ const failed = said.filter((l) => l.includes("FAIL")).length + errors.length;
 writeFileSync(`${out}/result.txt`, said.join("\n") + "\n");
 console.log(failed
   ? `booklet edit flow: ${failed} problem(s); pictures in ${out}`
-  : `booklet edit flow: a step turned, zoomed, put on a new page and a page alone, its parts list off, two a page, a merge undone, the booklet and its PDF laid out so, and the file saying it; pictures in ${out}`);
+  : `booklet edit flow: a step turned, zoomed, put on a new page and a page alone, its parts list off, two a page, a merge undone, a page laid out by hand and its step moved with its arrow, the booklet and its PDF laid out so, and the file saying it; pictures in ${out}`);
 process.exit(failed ? 1 : 0);

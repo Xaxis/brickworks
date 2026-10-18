@@ -281,6 +281,20 @@ whole cycle.
 
 ### Fixed
 
+- What you set on a step stays on that step. A step's turn, zoom, size,
+  page break, page alone, parts list, turn sign, placed picture, parts
+  list and number, words, pictures and arrows moved onto the next step
+  once a step's parts had been taken off the model and a part put on: the
+  next step edit numbered the steps again and the settings stayed with the
+  numbers. They now go with the step's parts through every move, merge,
+  split, part moved, step taken out, undo and redo, and a save. That edit
+  also changed the step after the one asked for; it changes the one asked
+  for. Merging a step into a turned one keeps the turn, and a split or a
+  part moved out leaves the settings with the parts that stay. The page
+  editor no longer shows a moved step's old picture while it draws the
+  new one. A turned first step no longer moves the booklet's lines and
+  the floor's on each save.
+
 - Brickify takes a 3D model on this computer. Over MCP, brickify file= its
   path lays it, and a path given as a link does too; only an OBJ, STL,
   glTF or GLB is read. A Claude session given a path had it refused,

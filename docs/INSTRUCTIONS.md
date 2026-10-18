@@ -1844,6 +1844,96 @@ What reads badly: 10016-1's added picture, put over the empty lower corner
 of the step's picture box, is moved off it, because the rectangle round the
 model reaches that corner though the model does not.
 
+## What is set on a step stays on it (2026-10-18, stepsettings)
+
+A Claude session making a booklet over MCP (bench/results/mcpwalk-2026-10-17,
+t2) gave the front axle's step a page alone and a 1.5x zoom, and the
+steering column's step after it a new page and a red arrow. Then it took the
+axle's parts off the model and put them back, merged that step and moved it
+earlier three times. Read again, the page alone and the zoom were on the
+steering step, and the new page and the arrow on the plate after it. It
+moved them back by hand.
+
+A step's settings are kept by its number in its sub-model
+(`BrickWorld.step_looks`, "|21"), and a step edit carries each to where its
+parts went (`BookletLooks.follow`). But taking a step's parts off the model
+leaves its number empty, and the next step edit's first act, giving the
+parts put on since a step (`AuthorSteps.ensure`), numbered the steps again,
+before `follow` had read where everything was. So the steering step took
+the axle's number and its settings, and the plate took the steering
+step's. `follow` then kept the axle's settings on that number too ("a step
+nobody had parts in: kept where it was"). The same renumbering left the
+timeline's step stale, so that edit moved the step after the one asked
+for. And a model written whole numbers its file's steps with none empty,
+so a save after the parts came off put every setting after the gap on the
+step after its own.
+
+Now a step is its parts, not its number:
+
+- The step edit and the Booklet row read where every part was before
+  anything numbers the steps again, and the step to change is read off its
+  parts as they are now (`Shell._step_at`).
+- A step with no parts left is gone, and so are its settings; its turn is
+  still the view the steps after it are seen from.
+- A step keeps its settings with the parts it keeps. New step from
+  selection, Shift-] and Shift-[ and Delete step name the parts they take
+  out (`follow`'s `taken`), and the settings go with those only when none
+  are left. A merge keeps the first step's, then the second's where the
+  first had none, its turn included: a step merged into a turned one is
+  seen from that turn, where before most of the parts decided it.
+- A model written whole has its settings numbered as its file numbers the
+  steps (`BookletLooks.as_written`). Someone else's file keeps the empty
+  step, and its settings as they are.
+- The booklet's own lines and a sub-model's CALLOUT OFF go in the first
+  step with a part in it, and the floor's line before that step's ROTSTEP.
+  A turned first step's ROTSTEP comes before the first part, so the file
+  opened again has no part in step 0, and each save moved those lines past
+  that ROTSTEP.
+- Lay out page… keeps each step's drawn picture under its page and number.
+  After a move the picture under that number is of another step, so it is
+  now dropped until the step's own is drawn.
+
+`booklet_edit_probe -- --only=stay` (on `tests/fixtures/steps/row.mpd`:
+seven steps of two bricks of a colour, none on another, and a callout
+built in three steps of its own on the green bricks) gives the yellow step a turn, a zoom, a size, a
+page alone, its parts list off, its turn sign off, its picture, parts list
+and number placed, words, a picture and an arrow. They are set by the
+Booklet row and by `edit_booklet`. The black step gets a new page, a zoom
+and a black arrow, the pair's second step a zoom, and the booklet two a
+page with no outline. Then it moves the yellow step every way, on the
+timeline and with `edit_steps`: earlier, later, merged with the next, the
+step before merged into it, split twice, a part moved out of it and a part
+moved in, the step before taken out. It also moves the black step and the
+pair's step, and it undoes and redoes each move. After every one, the step
+the yellow brick is in has exactly the yellow settings and its turn, the
+black and pair steps have theirs, no other step has any, and the undo gives
+the file back. Then t2's case: the blue step's parts are taken off, the
+model is saved and opened again, the red step's parts come off, an orange
+brick goes on, the white step is put later and the yellow merged, then it
+is saved and opened again. It runs on the file as opened (written back
+over) and on a copy written whole: 181 checks. On the code before, 19 of
+them fail. A merge into the yellow step, or of it with the next, loses its
+turn. On the copy written whole, the save after the blue step's parts came
+off puts the yellow and black settings one step on. On both, the first
+step edit after a part goes on does the same, and it moves the black step
+where the white was asked. Windowed, it also puts a step earlier with Lay out
+page… up on its page: no step there shows a picture drawn of another. The
+whole probe, windowed on the GPU with 30050-1, 106-1 and 10016-1 after,
+passes its 524 checks.
+
+`booklet_edit_flow.mjs`, in a browser, moves 106-1's step 4, the one with a
+drawn arrow, a new page, words and a picture. Its parts stand on step 3's and
+step 5's stand on it, so Later and Earlier are both refused. Merging steps 1
+and 2 brings it to step 3. Its row still says new page, and the alone step
+is still alone. The printed booklet has the arrow, words and picture on step
+3's page and no arrow on any other (47 checks).
+
+The yellow step's page before and after Earlier (row.mpd, printed by
+`booklet_print.mjs`, bench/results/stepsettings-2026-10-18/print_before and
+print_after, page 3): step 3, then step 2, alone, turned, its picture where
+it was placed, the arrow, the words and the picture with it. Blue, now step
+3, is on the next page, seen as usual, with nothing of yellow's.
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
