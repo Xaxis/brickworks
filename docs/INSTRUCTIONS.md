@@ -1181,6 +1181,11 @@ were 35.
 
 ![7130 after, page 9](instructions/7130-planner2-after-page9.webp)
 
+75277 (624 parts): 44 steps where there were 63, with two more of its
+author's sub-models (the helmet's back and its rim) built on the side; only
+its first 16 pages were made, and page 14 is one of its callouts, on framed
+pages of its own.
+
 
 ## What is left
 
