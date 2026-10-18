@@ -1500,6 +1500,8 @@ class Grid extends RefCounted:
 ## occupancy.TIE: how far a column's ray is moved off its cell's middle to
 ## tell which side of a face the middle is on, LDU.
 const TIE := 1.3e-4
+## occupancy.ON_EDGE: how near an edge in plan a moved ray is still on it.
+const ON_EDGE := TIE / 4.0
 
 
 ## occupancy.voxelise. A ray up each column, and then, in the columns whose
@@ -1507,7 +1509,10 @@ const TIE := 1.3e-4
 ## and each way along z: what both moves along one of them agree on is
 ## kept. On a face square to z the moves along x agree, on one square to x
 ## the moves along z do, and on an upright face slanted in plan neither
-## does, so a cell there is inside neither part meeting on it.
+## does, so a cell there is inside neither part meeting on it. Where the
+## moves along one axis leave the ray off every edge and agree, they are
+## the answer: a move along a seam between two faces of one surface stays
+## on it and crosses both (a tyre's hole was closed at its sidewalls so).
 func _voxelise() -> Grid:
 	var grid := Grid.new()
 	var count: int = _tri_color.size()
@@ -1536,26 +1541,36 @@ func _voxelise() -> Grid:
 	if not touchy.has(1):
 		return grid
 	var moved: Array[PackedByteArray] = []
+	var on: Array[PackedByteArray] = []
 	for step: Array in [[TIE, 0.0], [-TIE, 0.0], [0.0, TIE], [0.0, -TIE]]:
-		moved.append(_stab(app, grid.origin, grid.shape, step[0], step[1], touchy)[0])
+		var stab: Array = _stab(app, grid.origin, grid.shape, step[0], step[1], touchy, ON_EDGE)
+		moved.append(stab[0])
+		on.append(stab[1])
 	var s: Vector3i = grid.shape
 	for i: int in s.x:
 		for k: int in s.z:
-			if touchy[i * s.z + k] == 0:
+			var column: int = i * s.z + k
+			if touchy[column] == 0:
 				continue
+			var off_x: bool = on[0][column] == 0 and on[1][column] == 0
+			var off_z: bool = on[2][column] == 0 and on[3][column] == 0
 			for j: int in s.y:
 				var n: int = (i * s.y + j) * s.z + k
 				var agreed: bool = (moved[0][n] == 1 and moved[1][n] == 1) \
 					or (moved[2][n] == 1 and moved[3][n] == 1)
+				var clean_x: bool = off_x and moved[0][n] == moved[1][n]
+				var clean_z: bool = off_z and moved[2][n] == moved[3][n]
+				if clean_x or clean_z:
+					agreed = (clean_x and moved[0][n] == 1) or (clean_z and moved[2][n] == 1)
 				grid.bits[n] = 1 if agreed else 0
 	return grid
 
 
 ## occupancy._stab: [the cells inside by a ray up each column, dx and dz LDU
-## off its middle; the columns (x * sz + z) whose rays are within TIE of an
+## off its middle; the columns (x * sz + z) whose rays are within band of an
 ## edge of a triangle in plan]. Given columns, only those are stabbed.
 static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx: float,
-		dz: float, columns: PackedByteArray) -> Array:
+		dz: float, columns: PackedByteArray, band: float = 2.0 * TIE) -> Array:
 	var every: bool = columns.is_empty()
 	var xs := PackedFloat64Array()
 	for i: int in shape.x:
@@ -1591,13 +1606,13 @@ static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx
 		var k1: int = mini(shape.z - 1, int(ceil(z1 / CELL)) - origin.z)
 		if i0 > i1 or k0 > k1:
 			continue
-		# How far each barycentric coordinate moves when the ray moves TIE,
-		# twice over: the opposite edge's length over the area. np.hypot
-		# there; its last bit could only matter to a ray an ulp from TIE.
+		# How far each barycentric coordinate moves when the ray moves band:
+		# the opposite edge's length over the area. np.hypot there; its last
+		# bit could only matter to a ray an ulp from the band.
 		var spread: float = maxf(absf(area2), 1e-300)
-		var e0: float = 2.0 * TIE * sqrt((bx - cx) * (bx - cx) + (bz - cz) * (bz - cz)) / spread
-		var e1: float = 2.0 * TIE * sqrt((cx - ax) * (cx - ax) + (cz - az) * (cz - az)) / spread
-		var e2: float = 2.0 * TIE * sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)) / spread
+		var e0: float = band * sqrt((bx - cx) * (bx - cx) + (bz - cz) * (bz - cz)) / spread
+		var e1: float = band * sqrt((cx - ax) * (cx - ax) + (cz - az) * (cz - az)) / spread
+		var e2: float = band * sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)) / spread
 		var direction: int = 1 if area2 > 0.0 else -1
 		for i: int in range(i0, i1 + 1):
 			var gx: float = xs[i]
@@ -1608,7 +1623,7 @@ static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx
 				var w0: float = ((bx - gx) * (cz - gz) - (bz - gz) * (cx - gx)) / area2
 				var w1: float = ((cx - gx) * (az - gz) - (cz - gz) * (ax - gx)) / area2
 				var w2: float = 1.0 - w0 - w1
-				if every and w0 >= -e0 and w1 >= -e1 and w2 >= -e2 \
+				if w0 >= -e0 and w1 >= -e1 and w2 >= -e2 \
 						and (absf(w0) <= e0 or absf(w1) <= e1 or absf(w2) <= e2):
 					touchy[i * shape.z + k] = 1
 				if w0 < 0.0 or w1 < 0.0 or w2 < 0.0:
@@ -1807,6 +1822,64 @@ static func _holes(connectors: Array) -> Array:
 	return out
 
 
+## occupancy.WIDE_BORE: a bore wider than any pin's hole, LDU, and
+## occupancy.WIDE_SLACK: how far inside one a cell's middle may lie and
+## nothing of the part be inside it.
+const WIDE_BORE := 7.0
+const WIDE_SLACK := 1.5
+
+
+## occupancy.wide_bores: every tyre's hole, as [point, unit axis, [] (the
+## whole line), radius] in the app's axes: the line of a bore wider than a
+## pin's, all the way round, across the stud axis and square to the part,
+## that nothing of the part comes inside anywhere along it, at the
+## narrowest of the bores on the line.
+static func _wide_bores(grid: Grid, connectors: Array) -> Array:
+	var lines: Array = []
+	if grid.count() == 0:
+		return lines
+	for c: Array in connectors:
+		if c[0] != "bore" or float(c[9]) <= WIDE_BORE or _arc(c) < 1.0 - 1e-6 \
+				or absf(float(c[6])) >= 0.99 or float(c[8]) <= 0.0:
+			continue
+		var axis := PackedFloat64Array([float(c[5]), -float(c[6]), -float(c[7])])
+		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
+		if length < 1e-9 or maxf(absf(axis[0]), maxf(absf(axis[1]), absf(axis[2]))) / length < 0.999:
+			continue
+		axis = PackedFloat64Array([axis[0] / length, axis[1] / length, axis[2] / length])
+		var point := PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])])
+		var joined: bool = false
+		for line: Array in lines:
+			if _on_line(point, axis, line):
+				line[3] = minf(float(line[3]), float(c[9]))
+				joined = true
+				break
+		if not joined:
+			lines.append([point, axis, [], float(c[9])])
+	return lines.filter(func(line: Array) -> bool: return not _filled_near(grid, line))
+
+
+## occupancy._on_line: whether a bore at [param point] going [param axis] is
+## on a line's.
+static func _on_line(point: PackedFloat64Array, axis: PackedFloat64Array, line: Array) -> bool:
+	var way: PackedFloat64Array = line[1]
+	if absf(_dot(way, axis)) < 0.999:
+		return false
+	var gap: PackedFloat64Array = _sub(point, line[0])
+	return _length(_sub(gap, _scaled(way, _dot(gap, way)))) <= 1.5
+
+
+## occupancy._filled_near: whether any cell of the part is inside a line's
+## round, WIDE_SLACK in from it, anywhere along it.
+static func _filled_near(grid: Grid, line: Array) -> bool:
+	var inner: PackedByteArray = _bore(grid, [[line[0], line[1], [],
+		float(line[3]) - WIDE_SLACK]], true)
+	for n: int in inner.size():
+		if inner[n] == 1 and grid.bits[n] == 1:
+			return true
+	return false
+
+
 ## A round's arc; a round a file states for itself has none.
 static func _arc(c: Array) -> float:
 	return float(c[10]) if c.size() > 10 else 0.0
@@ -1842,6 +1915,8 @@ static func _bore(grid: Grid, found: Array, whole_line: bool) -> PackedByteArray
 		var point: PackedFloat64Array = hole[0]
 		var axis: PackedFloat64Array = hole[1]
 		var span: Array = hole[2]
+		# A pin's, or a tyre's (_wide_bores), fourth.
+		var radius: float = float(hole[3]) if hole.size() > 3 else HOLE_RADIUS
 		var bounded: bool = not span.is_empty() and not whole_line
 		var square: bool = maxf(absf(axis[0]), maxf(absf(axis[1]), absf(axis[2]))) > 0.99
 		var lo := Vector3i.ZERO
@@ -1851,7 +1926,7 @@ static func _bore(grid: Grid, found: Array, whole_line: bool) -> PackedByteArray
 			if not square or absf(axis[n]) > 0.99:
 				continue
 			var middle: float = point[n] / CELL - grid.origin[n]
-			var reach: float = HOLE_RADIUS / CELL + 1.0
+			var reach: float = radius / CELL + 1.0
 			lo[n] = maxi(0, int(floor(middle - reach)))
 			hi[n] = mini(s[n], int(ceil(middle + reach)) + 1)
 			if lo[n] >= hi[n]:
@@ -1868,7 +1943,7 @@ static func _bore(grid: Grid, found: Array, whole_line: bool) -> PackedByteArray
 					var px: float = dx - along * axis[0]
 					var py: float = dy - along * axis[1]
 					var pz: float = dz - along * axis[2]
-					if px * px + py * py + pz * pz > HOLE_RADIUS * HOLE_RADIUS:
+					if px * px + py * py + pz * pz > radius * radius:
 						continue
 					if bounded and (along < float(span[0]) or along > float(span[1])):
 						continue
@@ -2064,8 +2139,15 @@ static func _to_boxes(grid: Grid, connectors: Array = []) -> Array:
 			return exact
 	var whole: Array = [box]
 	var carved := PackedByteArray()
-	if not found.is_empty() or not rooms.is_empty():
+	# And a tyre's hole, which a rim fills (occupancy.wide_bores).
+	var wide: Array = _wide_bores(grid, connectors)
+	if not found.is_empty() or not rooms.is_empty() or not wide.is_empty():
 		carved = _bore(grid, found, true)
+		if not wide.is_empty():
+			var tyre: PackedByteArray = _bore(grid, wide, false)
+			for n: int in size:
+				if tyre[n] == 1:
+					carved[n] = 1
 		for room: Array in rooms:
 			var lo: Vector3i = room[0]
 			var hi: Vector3i = room[1]

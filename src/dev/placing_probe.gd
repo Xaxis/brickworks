@@ -62,6 +62,8 @@ func _run() -> void:
 		await _awkward()
 	if only.is_empty() or only == "balance":
 		await _balance()
+	if only.is_empty() or only == "wheels":
+		await _wheels()
 	var path: String = ProjectSettings.globalize_path("res://shots/placing/placing.json")
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -263,6 +265,84 @@ func _balance() -> void:
 			and _builder.can_place())
 		await _one("4262 Technic plate #%d, swung onto the axle" % (n + 1), point, want, true)
 	await _shot("balance")
+
+
+## 8643-1's wheels: a 6157's wheel pins with a rim on each (51719, as the
+## file has them, the left one turned the other way), and a tyre (50951)
+## aimed at each rim's middle: its ghost round the rim, centred and square,
+## T for the other way round, where the file has it. And a wheel that comes
+## with its tyre on (4624c01) aimed at a wheel pin of another 6157, and at
+## the end of an axle in a Technic brick's hole (3482c01, whose hub takes
+## an axle).
+func _wheels() -> void:
+	print("  8643-1's tyres on their rims, and wheels with tyres on pins and axles")
+	_main.call("clear_model")
+	_put_ldr("6157", 0, [0, -48, 160, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("51719", 0, [-40, -43, 160, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_put_ldr("51719", 0, [40, -43, 160, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	var holder: int = _put_ldr("6157", 0, [0, -48, 80, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("3700", 4, [0, -64, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var axle: int = _put_ldr("3705", 0, [0, -54, -30, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_camera.frame(AABB(Vector3(-70, 20, -180), Vector3(140, 50, 260)))
+	await _frames(40)
+	await _hold("50951")
+	await _turn_to(Basis.IDENTITY)
+	for want: Array in [[-40, -43, 160, 0, 0, -1, 0, 1, 0, 1, 0, 0],
+			[40, -43, 160, 0, 0, -1, 0, 1, 0, 1, 0, 0]]:
+		var at: Transform3D = _ldr(want)
+		var rim: JointSnap.End = null
+		for site: JointSnap.End in JointSnap.sites_in(_world, _library):
+			if site.kind == "rim" and site.at.distance_to(at.origin) < 1.0:
+				rim = site
+		if rim == null:
+			_check("the rim at %s has a rim to aim a tyre at" % _ldr_of(at), false)
+			continue
+		var point: Vector2 = _screen(rim.aimed(Vector3.ZERO, Vector3.FORWARD))
+		await _move(point + Vector2(0, 1))
+		await _move(point)
+		# R about the rim (45 degrees a press), T over to its other way round.
+		var presses: int = 0
+		while not _near(_builder.ghost_transform(), at, 0.05, 0.002) and presses < 18:
+			await _key(KEY_T if presses % 9 == 8 else KEY_R)
+			presses += 1
+			await _move(point + Vector2(0, 1))
+			await _move(point)
+		var said: String = _builder.joint_words()
+		_check("50951 tyre: its ghost round the rim, centred and square, where the file has it (%s, wanted %s; %d keys; on %s; %s)"
+			% [_ldr_of(_builder.ghost_transform()), _ldr_of(at), presses, said,
+				"may go" if _builder.can_place() else "red"],
+			_builder.ghost_place() != null and _near(_builder.ghost_transform(), at, 0.05, 0.002)
+			and _builder.can_place() and said.begins_with("the rim of"))
+		await _one("50951 tyre round its rim", point, at, true)
+	# A wheel with its tyre on, onto a wheel pin.
+	await _hold("4624c01")
+	await _turn_to(Basis.IDENTITY)
+	var pin: JointSnap.End = null
+	for site: JointSnap.End in JointSnap.sites_in(_world, _library):
+		if site.brick == holder and site.kind == "shaft" and site.at.x < -30.0 \
+				and (pin == null or site.reach > pin.reach):
+			pin = site
+	if pin == null:
+		_check("the 6157 has a wheel pin to aim a wheel at", false)
+	else:
+		await _one("4624c01 wheel with its tyre, on a wheel pin", _screen(pin.aimed(
+			_camera.global_position, (pin.middle() - _camera.global_position).normalized())),
+			null, true)
+	# ...and onto an axle, by its hub's axle hole.
+	await _hold("3482c01")
+	await _turn_to(Basis.IDENTITY)
+	# Its end out of the brick, not the one at the brick's far face.
+	var tip: JointSnap.End = null
+	for site: JointSnap.End in JointSnap.sites_in(_world, _library):
+		if site.brick == axle and site.kind == "axle" \
+				and (tip == null or site.at.z > tip.at.z):
+			tip = site
+	if tip == null:
+		_check("the axle has an end to aim a wheel at", false)
+	else:
+		await _one("3482c01 wheel with its tyre, on an axle", _screen(tip.aimed(
+			Vector3.ZERO, Vector3.FORWARD)), null, true)
+	await _shot("wheels")
 
 
 # -- one part -----------------------------------------------------------------------

@@ -1163,3 +1163,45 @@ def test_a_round_plate_with_an_opening_is_open_through_it() -> None:
     cells, _connectors = _built_cover("11833.dat")
     assert not [c for c in cells if c[0] in (-1, 0) and c[2] in (-1, 0)]
     assert (15, -1, 0) in cells
+
+
+def _near_axis(cells: set, within: float) -> list:
+    """Cells whose middles are within ``within`` LDU of a tyre's axle line,
+    its own z through x 0, y 0."""
+    return [c for c in cells if ((2 * c[0] + 1) ** 2 + (2 * c[1] + 1) ** 2) ** 0.5 < within]
+
+
+@needs_numpy
+def test_a_tyre_is_open_through_its_hole() -> None:
+    """50951's tread meets its shoulder on a circle at z 7, a cell's middle,
+    and the column on it crossed both faces there and counted itself inside
+    across the hole: the hole was closed at both sidewalls, so the wheel
+    holder's pin a rim goes on ran into the tyre and no tyre could be put
+    on its rim. Its hole is open from one sidewall to the other now, 12 LDU
+    across at its narrowest, and its tread is still there."""
+    cells, _connectors = _built_cover("50951.dat")
+    assert not _near_axis(cells, 11.0)
+    assert len(_near_axis(cells, 19.0)) > 500
+
+
+@needs_numpy
+def test_a_tyre_past_the_box_limit_keeps_its_hole() -> None:
+    """2857, a tyre 20/46 x 30, is past the box limit and covered at a
+    coarser grain, inside the convex hull of its cells: a disc, its hole and
+    all. The hole is carved out as a Technic hole is, so a rim goes in."""
+    cells, _connectors = _built_cover("2857.dat")
+    assert not _near_axis(cells, 36.0)
+    assert len(_near_axis(cells, 48.0)) > 1000
+
+
+@needs_numpy
+def test_a_seam_over_a_hollow_is_counted_once() -> None:
+    """4215a, a panel 1 x 4 x 3, has edges along x at z 7 under its front,
+    a cell's middle. A column on them crossed both faces they join, and the
+    panel had a wall a cell thick standing in front of its own, the whole
+    height of the panel. That column is its base and the top of its frame
+    now; the panel's own wall, behind it, is all there."""
+    cells, _connectors = _built_cover("4215a.dat")
+    column = [c for c in cells if c[0] == -13 and c[2] == 3]
+    assert len(column) <= 8, column
+    assert len([c for c in cells if c[0] == -13 and c[2] == -4]) >= 30

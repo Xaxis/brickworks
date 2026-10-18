@@ -33,3 +33,8 @@
 11477
 15068
 93606
+# Tyres: a seam across a hollow (50951's hole, closed at both sidewalls
+# until the seam was counted once), and a hole kept open past the box limit
+# (30648, covered at a coarser grain).
+50951
+30648
