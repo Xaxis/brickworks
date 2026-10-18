@@ -241,7 +241,71 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 	sections[""] = true
 	for section: String in sections:
 		_tidy(world, section, skip, undo)
+	_copies_alike(world, skip, undo)
 	return squash(undo)
+
+
+## Every copy of a sub-model stepped as its first copy is, part for part:
+## a file writes a sub-model once, from its first copy (LdrModel.write_tree),
+## so a second copy the plan built in an order of its own was built as the
+## first once saved and opened again (10016-1's second pair of wheels).
+## A copy whose parts are not the first's, part for part, keeps its own.
+static func _copies_alike(world: BrickWorld, skip: Dictionary, undo: Array) -> void:
+	var own: Dictionary = {}       ## path -> its own bricks, by id
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		if path.is_empty():
+			continue
+		if not own.has(path):
+			own[path] = []
+		(own[path] as Array).append(brick)
+	var by_definition: Dictionary = {}
+	for path: String in paths_in(world, skip):
+		var named: String = Assemblies.definition(Assemblies.leaf(path))
+		if not by_definition.has(named):
+			by_definition[named] = []
+		(by_definition[named] as Array).append(path)
+	for named: String in by_definition:
+		var copies: Array = by_definition[named]
+		if copies.size() < 2:
+			continue
+		# The first as the file writes it: outermost, then by name.
+		copies.sort_custom(func(a: String, b: String) -> bool:
+			if a.count("/") != b.count("/"):
+				return a.count("/") < b.count("/")
+			return a.naturalnocasecmp_to(b) < 0)
+		var first: String = copies[0]
+		var model: Array = own.get(first, [])
+		model.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
+		for copy: String in copies.slice(1):
+			var bricks: Array = own.get(copy, [])
+			bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
+			if bricks.size() != model.size():
+				continue
+			var alike: bool = true
+			for n: int in bricks.size():
+				if (bricks[n] as BrickWorld.Brick).part_id != (model[n] as BrickWorld.Brick).part_id:
+					alike = false
+					break
+			if not alike:
+				continue
+			for n: int in bricks.size():
+				var brick: BrickWorld.Brick = bricks[n]
+				var step: int = (model[n] as BrickWorld.Brick).step
+				if brick.step != step:
+					undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
+					brick.step = step
+			for path: String in world.unit_steps.keys():
+				if Assemblies.parent_of(path) != first:
+					continue
+				var twin: String = Assemblies.join(copy, Assemblies.leaf(path))
+				if world.unit_steps.has(twin) \
+						and int(world.unit_steps[twin]) != int(world.unit_steps[path]):
+					undo.append({"undo": "unitstep", "unit": twin,
+						"step": int(world.unit_steps[twin])})
+					world.unit_steps[twin] = int(world.unit_steps[path])
 
 
 ## The worked-out order as numbers a file can hold: {"bricks": id -> the

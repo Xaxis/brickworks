@@ -1337,6 +1337,13 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "the booklet page by hand",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page… or Build, Booklet page, Lay out the page…: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture…; Outline new on the row)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "the booklet by hand in a browser",
       "entry": "tools/web/booklet_edit_flow.mjs",

@@ -123,7 +123,8 @@ const SUBMENUS: Dictionary = {
 	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
 		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
-		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page"],
+		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
+		"booklet_lay_out", "booklet_highlight"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -772,7 +773,9 @@ func _define() -> void:
 			["booklet_alone", "A page alone", "This step on a page of its own"],
 			["booklet_parts", "Parts list", "The box of parts this step adds, shown or left off"],
 			["booklet_callout", "Callout", "The sub-assembly this step puts on built in a box beside it, or on pages of its own"],
-			["booklet_per_page", "Steps a page", "At most this many steps on a page: as they fit, 1, 2 or 4"]]:
+			["booklet_per_page", "Steps a page", "At most this many steps on a page: as they fit, 1, 2 or 4"],
+			["booklet_lay_out", "Lay out the page…", "This step's page by hand: drag its picture, parts list, callout and number where they go, and add words and pictures"],
+			["booklet_highlight", "Outline new parts", "The parts each step adds outlined in orange in the booklet, or not"]]:
 		var op: String = str(look[0]).trim_prefix("booklet_")
 		_add(look[0], look[1], 0, func() -> void: edit_look(op), on_a_step, look[2])
 	# src/ui/flex_tool.gd.
@@ -1652,6 +1655,11 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 func edit_look(op: String) -> void:
 	if read_only:
 		return
+	if op == "lay_out":
+		var editor: PageEditor = app.get("_page_editor")
+		if editor != null:
+			editor.open()
+		return
 	var steps: StepsBar = app.get("_steps")
 	bar.say(change_look(op, steps.booklet_step()))
 
@@ -1760,6 +1768,93 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 			target = BookletLooks.BOOKLET
 			change = {"per_page": next}
 			words = "steps a page: %s" % ("as they fit" if next == 0 else str(next))
+		"highlight":
+			var on: bool = BookletLooks.highlight_on(world)
+			if fields.has("highlight"):
+				on = not bool(fields["highlight"])
+			target = BookletLooks.BOOKLET
+			change = {"highlight": not on}
+			words = "the parts each step adds %s" % ("not outlined" if on else "outlined")
+		"place":
+			# An item of the step's page where it was dragged, in page mm
+			# (BookletLooks "place"); at= null puts it back as laid out.
+			var item: String = str(fields.get("item", ""))
+			if not BookletLooks.ITEMS.has(item):
+				_take_back(undo)
+				return "the items of a step's page are %s" % ", ".join(BookletLooks.ITEMS.keys())
+			var place: Dictionary = (own.get("place", {}) as Dictionary).duplicate(true)
+			var spot: Variant = fields.get("at")
+			if spot is Array and (spot as Array).size() >= int(BookletLooks.ITEMS[item]):
+				var kept: Array = []
+				for n: int in int(BookletLooks.ITEMS[item]):
+					kept.append(snappedf(float(spot[n]), 0.1))
+				place[item] = kept
+				words = "step %d's %s at %s, %s mm" % [number, item,
+					BookletLooks._number(kept[0]), BookletLooks._number(kept[1])]
+			else:
+				place.erase(item)
+				words = "step %d's %s laid out by the booklet again" % [number, item]
+			change = {"place": place}
+		"text", "image":
+			# Words, or a picture, put on the step's page (BookletLooks "notes").
+			var notes: Array = (own.get("notes", []) as Array).duplicate(true)
+			var given: Array = fields.get("at", []) if fields.get("at") is Array else []
+			var spot: Array = []
+			for n: int in 4:
+				spot.append(snappedf(float(given[n]), 0.1) if n < given.size()
+					else [20.0, 150.0, 80.0, 12.0][n])
+			if op == "text":
+				var said: String = str(fields.get("text", "")).strip_edges()
+				if said.is_empty():
+					_take_back(undo)
+					return "say the words to put on the page"
+				notes.append({"text": said, "at": spot,
+					"size": clampf(float(fields.get("size", 4.0)), 1.5, 40.0)})
+				words = "words put on step %d's page" % number
+			else:
+				var data: String = str(fields.get("data", ""))
+				if data.is_empty():
+					_take_back(undo)
+					return "a picture to put on the page"
+				var pictures: Dictionary = BookletLooks.images(world).duplicate()
+				var made: int = pictures.size() + 1
+				var file: String = ""
+				while file.is_empty() or pictures.has(file):
+					file = "%s%d.%s" % [BookletLooks.IMAGE_PREFIX, made,
+						"png" if str(fields.get("kind", "png")) == "png" else "jpg"]
+					made += 1
+				pictures[file] = data
+				undo.append_array(BookletLooks.set_images(world, pictures))
+				notes.append({"image": file, "at": spot})
+				words = "a picture put on step %d's page" % number
+			change = {"notes": notes}
+		"note":
+			# One of the words or pictures on the step's page moved, resized,
+			# reworded or taken off: index= which.
+			var notes: Array = (own.get("notes", []) as Array).duplicate(true)
+			var index: int = int(fields.get("index", -1))
+			if index < 0 or index >= notes.size():
+				_take_back(undo)
+				return "step %d's page has %d of its own words and pictures" % [number, notes.size()]
+			var note: Dictionary = notes[index]
+			if bool(fields.get("remove", false)):
+				notes.remove_at(index)
+				words = "%s taken off step %d's page" % ["words" if note.has("text") else "a picture",
+					number]
+				if note.has("image"):
+					var pictures: Dictionary = BookletLooks.images(world).duplicate()
+					pictures.erase(str(note["image"]))
+					undo.append_array(BookletLooks.set_images(world, pictures))
+			else:
+				if fields.get("at") is Array and (fields["at"] as Array).size() >= 4:
+					note["at"] = (fields["at"] as Array).slice(0, 4).map(
+						func(value: Variant) -> float: return snappedf(float(value), 0.1))
+				if fields.has("text") and note.has("text"):
+					note["text"] = str(fields["text"]).strip_edges()
+				if fields.has("size") and note.has("text"):
+					note["size"] = clampf(float(fields["size"]), 1.5, 40.0)
+				words = "step %d's %s changed" % [number, "words" if note.has("text") else "picture"]
+			change = {"notes": notes}
 		_:
 			_take_back(undo)
 			return "no booklet edit called %s" % op

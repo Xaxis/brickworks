@@ -15,6 +15,21 @@ whole cycle.
 
 ### Added
 
+- A booklet page laid out by hand. Lay out page… on the timeline's Booklet
+  row (or Build, Booklet page) shows the step's page to scale with its
+  pictures: drag a step's picture, its parts list, its callout and its
+  number where they go and drag a corner to size them, each snapping to
+  the page's margins and middle and to the other items; add words, and a
+  picture of your own from a file. Every drop is one undo, saved in the
+  model's file as the app's own lines (`0 !BRICKWORKS PLACE`, `TEXT`,
+  `IMAGE`, the picture as LDraw's `0 !DATA`), and Instructions prints the
+  page just so; a file without them prints as before. Over MCP,
+  `edit_booklet` takes `place=` and `text=` and `booklet_layout` says
+  where each item is.
+- The parts each step adds are outlined in orange in the booklet's
+  pictures, as Studio and the LEGO® app outline them; Outline new on the
+  Booklet row turns it off for the booklet.
+
 - The booklet, laid out by hand, as Studio's Instruction Maker lays one
   out. On the timeline (B), a Booklet row for the step showing, and Build,
   Booklet page: turn the step's picture round or tilt it (or use the view
@@ -105,6 +120,11 @@ whole cycle.
 
 ### Changed
 
+- A step given a page alone in the booklet is drawn as large as fills the
+  page, where it kept to ten millimetres a stud and sat small in the
+  middle.
+- Build it, the step player, sees each step from where its designer turned
+  it (a `ROTSTEP`, or the Booklet row), as the booklet draws it.
 - Building a shared model from a phone: a page of Build it changes only
   that step's parts. On 4,000 parts with the phone's processor slowed
   four times, Next and Back took 90 to 500 ms and the last step 1.4 s;
@@ -176,6 +196,9 @@ whole cycle.
 
 ### Fixed
 
+- A model without steps of its own, given the worked-out ones by its first
+  booklet edit, built the second copy of a sub-model (10016-1's second
+  wheels) differently once it was saved and opened again.
 - In a browser, a step of the timeline on a big model is quick again. Since
   parts could be grabbed and moved on their joints, the page looked for
   every part's drag handle twice a second, and a step on a 925-part model

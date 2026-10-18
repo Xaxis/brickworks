@@ -288,10 +288,14 @@ func _build() -> void:
 			["alone", "Alone", "This step on a page of its own"],
 			["parts", "Parts list", "The box of the parts this step adds"],
 			["callout", "Callout", "The sub-assembly this step puts on built in a box beside it; "
-				+ "off, on pages of its own"]]:
+				+ "off, on pages of its own"],
+			["highlight", "Outline new", "The parts each step adds outlined in orange, in the "
+				+ "whole booklet"],
+			["lay_out", "Lay out page…", "This step's page by hand: drag its picture, parts list, "
+				+ "callout and number, and add words and pictures"]]:
 		var op: String = look[0]
 		var made: Button = _button(look[1], look[2])
-		if op in ["new_page", "alone", "parts", "callout"]:
+		if op in ["new_page", "alone", "parts", "callout", "highlight"]:
 			made.toggle_mode = true
 			_look_toggles[op] = made
 			made.toggled.connect(func(_on: bool) -> void: look_wanted.emit(op))
@@ -832,6 +836,7 @@ func _show_look() -> void:
 	var callout: Button = _look_toggles["callout"]
 	callout.disabled = unit.is_empty()
 	callout.set_pressed_no_signal(not unit.is_empty() and BookletLooks.callout_on(_world, unit))
+	(_look_toggles["highlight"] as Button).set_pressed_no_signal(BookletLooks.highlight_on(_world))
 	var most: int = int(BookletLooks.booklet(_world).get("per_page", 0))
 	_per_page.text = "Per page: %s" % ("as fit" if most == 0 else str(most))
 	var said: String = BookletLooks.said(_world, section, step) if step >= 0 else ""

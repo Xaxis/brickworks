@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
 
 ## Sub-features
 
@@ -1036,6 +1036,35 @@ picture the assistant is shown.
   browser by the row's buttons and the keys (Right, Ctrl-Z, Ctrl-Shift-Z) on
   106-1, makes the booklet from the timeline's Instructions, reads its pages
   (`section.page[data-steps]`), prints it to PDF and exports the file.
+- `the booklet page by hand` (the Booklet row's Lay out page…, or Build,
+  Booklet page, Lay out the page…; `src/ui/page_editor.gd`): the step's page
+  to scale, from `BookletMaker.lay_out_only`, then its steps' pictures and
+  parts drawn by `BookletMaker.draw_steps` (those steps alone; not
+  headless). Each step's picture, parts list, callout and number is a
+  control named `page_picture_N`, `page_parts_N`, `page_callout_N`,
+  `page_number_N` (words and pictures added `page_text_N_I`,
+  `page_image_N_I`; the selected one's corner `page_resize`) to drag, and
+  the corner sizes it; `Booklet.snapped_to` snaps it within 2.5 mm to the
+  margins, the page's middle and the other boxes. A drop is one undo
+  (`Shell.change_look` "place", "note"; "text" and "image" add; "highlight"
+  the outline). Saved by `BookletLooks` as `0 !BRICKWORKS PLACE PICTURE x y
+  w h`, `PLACE PARTS x y w`, `PLACE CALLOUT x y w h`, `PLACE NUMBER x y`,
+  `TEXT x y w h size words`, `IMAGE x y w h name` with the picture as `0
+  !DATA name`, and `HIGHLIGHT OFF`, in page mm; `Booklet._by_hand` lays
+  them out and `Booklet._notes` prints the words and pictures. The new
+  parts' band is `booklet_ink`'s `mark_new` (`halo`). A step alone may be
+  drawn up to `ALONE_MOST` times ten mm a stud; `BuildSteps.view` follows
+  `BookletLooks.turn_at`; `AuthorSteps._copies_alike` steps a sub-model's
+  copies as its first when the worked-out steps are taken. Over MCP
+  `edit_booklet` `place=` / `text=` / `highlight=`, read by
+  `booklet_layout`. `booklet_edit_probe` drags by the mouse (windowed),
+  checks each edit's line, undo and reopen, the dry layout (the placed
+  boxes, the step alone filling its page), the step player's turns, and
+  the booklet's HTML (the page as placed, the outline's orange pixels on
+  and off); `booklet_edit_flow.mjs` drags the picture onto the margin and
+  the parts list's corner by the mouse in a browser, adds words and a
+  picture through the file chooser, Ctrl-Z / Ctrl-Shift-Z, and reads the
+  printed page and the exported file.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

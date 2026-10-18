@@ -1049,14 +1049,121 @@ millimetres a stud unless Bigger or Zoom says so, so a small model sits
 small in the middle of its page; and step 2's half page shows the whole
 model small where a designer would zoom it too.
 
+## The page by hand (2026-10-17, later)
+
+Studio's Instruction Maker does three things the booklet above did not:
+"placing pictures, callouts and parts lists freely on the page, adding
+text and images, and highlighting new parts" [st-im] [st-callout]. And the
+booklet by hand left three things wrong. Now:
+
+**The page laid out by hand.** The Booklet row's Lay out page… (Build,
+Booklet page, Lay out the page…) shows the page the timeline's step is on,
+to scale. Each step's picture, its parts list, its callout and its number
+is a box to drag, and the picture, the parts list and the callout have a
+corner to drag to size them. A box let go within 2.5 mm of a margin, the
+page's middle, or another box's edge or middle snaps onto it, with a line
+drawn along what it snapped to. Add words puts words on the page, typed in
+the box above it, larger or smaller; Add a picture… puts a picture of the
+designer's on it, from a file. Put back (or Delete) puts a box back where
+the booklet lays it out, or takes words or a picture off. Every drop is one
+undo, and Ctrl-Z shows on the page. The boxes come up at once and the
+page's own pictures and parts a few seconds later, drawn as Instructions
+draws them (the page's steps alone, `BookletMaker.draw_steps`); a picture
+stretches with its box while it is dragged and is drawn again when let go.
+
+![Lay out page… on 30050-1's page 2, its pictures drawn, the new parts outlined](instructions/30050-page-editor.webp)
+
+Over MCP, `edit_booklet` takes `place=` ({item, x, y, w, h} in mm; item
+picture, parts, callout, number, or note with its index) and `text=`
+({words, x, y, w, h, size}), each one undo; `booklet_layout` says where each
+was put ("picture at 60, 30 mm (150 wide, 110 high)").
+
+It is kept in the model's file, as the app's own lines on the step, which
+other programs pass over; a file without them is laid out as before:
+
+| line | what |
+|---|---|
+| `0 !BRICKWORKS PLACE PICTURE x y w h` | the step's picture, its model fitted to the box |
+| `0 !BRICKWORKS PLACE PARTS x y w` | the parts list, `w` wide; as tall as its parts need |
+| `0 !BRICKWORKS PLACE CALLOUT x y w h` | the callout box; its pictures fitted to it |
+| `0 !BRICKWORKS PLACE NUMBER x y` | the step's number (under the parts list unless placed) |
+| `0 !BRICKWORKS TEXT x y w h size words` | words on the step's page, `size` mm high; a line break is written `\n` |
+| `0 !BRICKWORKS IMAGE x y w h name` | a picture on the step's page |
+| `0 !DATA name` and `0 !: base64` lines | the picture itself, as LDraw's own embedded file, at the end of the file |
+| `0 !BRICKWORKS HIGHLIGHT OFF` | in the model: the new parts not outlined |
+
+Every number is millimetres from the page's top left corner on its 269 x
+199 mm page (it prints on A4 and on US Letter). The lines go in the step
+whose page they are on; words and pictures go with the first step of the
+page they were added to. A picture is kept no larger than 900 pixels, as a
+JPEG, or a PNG where it has see-through parts.
+
+**New parts outlined.** The parts a step adds have an orange band round
+them, just outside their ink line, so their colours stay true. It is on by
+default and off for the whole booklet by Outline new on the Booklet row.
+Printed, the band shows on the parts of each step (106-1, steps 8 and 9,
+the band round the windscreen, the wall and the roof plates):
+
+![106-1, page 6, new parts outlined](instructions/106-outline-page6.webp)
+
+The page 106-1's step 5 is on, laid out by hand: its number and parts list
+placed, its picture moved right and made 130 by 120 mm, words and a picture
+added. Printed as placed:
+
+![106-1, page 6, laid out by hand](instructions/106-hand-page6.webp)
+
+**A step alone fills its page.** A step given a page alone is drawn as large
+as fills the page, up to three times the ten millimetres a stud a shared
+page keeps to. 10016-1's step 5, alone, is 94% of the page across at 0.85
+mm an LDU, where it was 0.48:
+
+![10016-1, page 5, a step alone](instructions/10016-alone-page5.webp)
+
+**The step player follows the designer's turns.** Build it (the step player
+of a shared link and of Build) sees each step from where a ROTSTEP or the
+Booklet row turned it, as the booklet draws it; it saw them from the front,
+turning round only for parts hidden there. 30050-1's 22 pages are each
+seen from its author's turn.
+
+**10016-1's second wheels.** A model given the worked-out steps (by its
+first booklet edit) had each copy of a sub-model stepped in its own order,
+and a file writes a sub-model once, from its first copy: reopened, the
+second copy was built as the first, and the timeline differed. The copies
+now take the first copy's steps when the worked-out steps are taken, so the
+timeline is the same after a save and a reopen.
+
+`booklet_edit_probe` makes each of these on 30050-1 and 106-1 in Lay out the
+page (the picture dragged by the mouse onto the top margin, the parts list
+widened by its corner, the number moved, words and a picture added, the
+outline off) and over MCP, and on 10016-1 with every look at once. Each is
+one undo; the file gains exactly its line (the picture its !DATA too) and
+one undo gives it back byte for byte; saved and reopened, the looks and the
+timeline are the same and save to the same text. The booklet then has the
+picture where it was put, the words and the picture on its page, the band
+round the new parts when on (6,093 pixels of it in 106-1's first steps)
+and none when off (30050-1, 0 against 3,865). `booklet_edit_flow.mjs` does it
+in a browser by the mouse: the picture dragged onto the margin, the parts
+list's corner, words typed, a picture through the file chooser, Ctrl-Z and
+Ctrl-Shift-Z, the PDF and the exported file. The round trip on real sets'
+files (`tools/bench/cadtask.py roundtrip`, 54 now) writes back all 54
+exactly with the steps kept in all 44 that have them, and the 30 of the
+booklet by hand's run judge as they did then, but for their times.
+
+What reads badly: the band is about two thirds of a millimetre, enough on
+a light part and thin on a black one beside other black parts; a page laid
+out by hand keeps its boxes where they were put when the steps around it
+change, so a step merged into another page can put two pictures in one
+place.
+
 ## What is left
 
-- **The page by hand.** Studio places a step's picture, its callout and its
-  parts list anywhere on the page, adds text and pictures, and highlights
-  the new parts; ours lays each page out from the choices above. A step's
-  turn is a turn round and a tilt; LDraw's third angle (a roll) is kept in
-  the file but not drawn. The step player (Build it, a shared link) does not
-  follow the designer's turns yet.
+- **The page by hand.** Placed boxes stay where they were put when the
+  steps around them change, so a step merged onto another page can put two
+  pictures in one place; nothing says so. A box cannot be turned, a callout
+  page (a sub-assembly on pages of its own) cannot be laid out by hand, and
+  there are no arrows or rulers of the designer's own, which Studio has. A
+  step's turn is a turn round and a tilt; LDraw's third angle (a roll) is
+  kept in the file but not drawn.
 
 - **Order.** Ours reads what the file's shape says and not what its author
   chose among equal options. The order the file lists its sub-models in is

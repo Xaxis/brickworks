@@ -16,8 +16,18 @@
 ## for the sub-model as a whole, and "|booklet" for the booklet. A step's
 ## own: {"turn": [x, y, z] degrees, "how": "REL"|"ABS"|"ADD", or "turn":
 ## "end", "zoom": float, "size": float, "page": "new"|"alone", "parts":
-## false}. A sub-model's: {"callout": false}. The booklet's: {"per_page":
-## 1, 2 or 4}.
+## false, "place": {item: [x, y, w, h]}, "notes": [note]}. A sub-model's:
+## {"callout": false}. The booklet's: {"per_page": 1, 2 or 4, "highlight":
+## false}. "|data": {name: base64} holds the pictures a page shows.
+##
+## The page laid out by hand: "place" puts the step's own items where its
+## designer dragged them, in millimetres from the page's top left corner
+## (Booklet.PAGE, 269 x 199): "picture" [x, y, w, h], "parts" [x, y, w]
+## (as tall as its parts need), "callout" [x, y, w, h], "number" [x, y].
+## An item not placed is laid out as the booklet lays it. "notes" are what
+## a designer adds to the step's page: {"text": words, "at": [x, y, w, h],
+## "size": mm} and {"image": name, "at": [x, y, w, h]}, the picture's bytes
+## in "|data" under its name.
 ##
 ## In the file a turn is LDraw's own rotation step, which MLCad, LPub,
 ## LDCad and Studio read: the line that ends the step is
@@ -28,7 +38,12 @@
 ## alone is what LPub draws. The rest are the app's own lines inside the
 ## step, which other readers pass over: "0 !BRICKWORKS PAGE NEW", "... PAGE
 ## ALONE", "... ZOOM 1.5", "... SIZE 1.25", "... PARTS OFF", and in a
-## sub-model "... CALLOUT OFF"; "... PER_PAGE 2" in the model.
+## sub-model "... CALLOUT OFF"; "... PER_PAGE 2" and "... HIGHLIGHT OFF" in
+## the model. A page laid out by hand: "... PLACE PICTURE x y w h", "...
+## PLACE PARTS x y w", "... PLACE CALLOUT x y w h", "... PLACE NUMBER x y",
+## "... TEXT x y w h size words" (a line break written \n) and "... IMAGE x
+## y w h name", the picture itself as LDraw's own embedded file, "0 !DATA
+## name" with its base64 in "0 !:" lines, at the end of the file.
 ##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
@@ -38,8 +53,16 @@ extends RefCounted
 
 const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
-const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE"]
+const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
+	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE"]
 const BOOKLET := "|booklet"
+## The pictures a page shows, by name: {name: base64}.
+const DATA := "|data"
+## The items of a step a designer can place on its page, and how many
+## numbers place each.
+const ITEMS: Dictionary = {"picture": 4, "parts": 3, "callout": 4, "number": 2}
+## The names a page's picture is kept under in the file, as LDraw's !DATA.
+const IMAGE_PREFIX := "brickworks-page-"
 const ZOOMS: Array[float] = [0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]
 const SIZES: Array[float] = [0.6, 0.8, 1.0, 1.25, 1.5, 2.0]
 ## How far up or down a tilt may go, from level, in degrees.
@@ -67,6 +90,17 @@ static func booklet(world: BrickWorld) -> Dictionary:
 	return world.step_looks.get(BOOKLET, {})
 
 
+## Whether the booklet marks the parts each step adds: on unless its
+## designer turned it off.
+static func highlight_on(world: BrickWorld) -> bool:
+	return bool(booklet(world).get("highlight", true))
+
+
+## The pictures a booklet's pages show, name -> base64.
+static func images(world: BrickWorld) -> Dictionary:
+	return world.step_looks.get(DATA, {})
+
+
 static func callout_on(world: BrickWorld, section: String) -> bool:
 	var whole: Dictionary = world.step_looks.get(definition_of(section) + "|*", {})
 	return bool(whole.get("callout", true))
@@ -76,11 +110,26 @@ static func callout_on(world: BrickWorld, section: String) -> bool:
 ## or before it ({"turn": [x, y, z], "how": ...}), or {} for the usual view
 ## (none, or "end").
 static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary:
+	if world.step_looks.is_empty() or step < 0:
+		return {}
 	var definition: String = definition_of(section)
+	# The turned steps at or before it, read off the looks (a few), not
+	# asked of every step before it: the step player asks on every page
+	# turn, and a castle has a thousand steps.
+	var head: String = definition + "|"
+	var turned: Array = []
+	for name: String in world.step_looks:
+		if not name.begins_with(head):
+			continue
+		var tail: String = name.substr(head.length())
+		if tail.is_valid_int() and tail.to_int() <= step \
+				and (world.step_looks[name] as Dictionary).has("turn"):
+			turned.append(tail.to_int())
+	turned.sort()
 	var found: Dictionary = {}
 	var added := Vector3.ZERO
-	for at: int in range(0, step + 1):
-		var look: Dictionary = world.step_looks.get(key(definition, at), {})
+	for at: int in turned:
+		var look: Dictionary = world.step_looks[key(definition, at)]
 		if not look.has("turn"):
 			continue
 		if str(look["turn"]) == "end":
@@ -177,12 +226,27 @@ static func change(world: BrickWorld, name: String, change: Dictionary) -> Array
 	return [{"undo": "steplooks", "looks": was}]
 
 
+## The pictures the pages show set to [param pictures] (name -> base64).
+## Returns the undo, empty when nothing changed.
+static func set_images(world: BrickWorld, pictures: Dictionary) -> Array:
+	if images(world) == pictures:
+		return []
+	var was: Dictionary = world.step_looks.duplicate(true)
+	if pictures.is_empty():
+		world.step_looks.erase(DATA)
+	else:
+		world.step_looks[DATA] = pictures.duplicate()
+	return [{"undo": "steplooks", "looks": was}]
+
+
 static func _usual(field: String, value: Variant) -> bool:
 	match field:
 		"zoom", "size":
 			return is_equal_approx(float(value), 1.0)
-		"parts", "callout":
+		"parts", "callout", "highlight":
 			return bool(value)
+		"place", "notes":
+			return (value is Dictionary or value is Array) and value.is_empty()
 		"page":
 			return str(value).is_empty() or str(value) == "auto"
 		"per_page":
@@ -226,7 +290,7 @@ static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionar
 static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {}) -> Array:
 	var any_step: bool = false
 	for name: String in world.step_looks:
-		if not name.ends_with("|*") and name != BOOKLET:
+		if not name.ends_with("|*") and name != BOOKLET and name != DATA:
 			any_step = true
 			break
 	if not any_step:
@@ -353,14 +417,30 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	var out: Dictionary = {}
 	var definition: String = ""
 	var step: int = 0
+	## A page's picture being read (LDraw's !DATA), and its base64 so far.
+	var data_name: String = ""
+	var data := PackedStringArray()
+	var pictures: Dictionary = {}
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
+		if not data_name.is_empty():
+			if line.begins_with("0 !:"):
+				data.append(line.substr(4).strip_edges())
+				continue
+			pictures[data_name] = "".join(data)
+			data_name = ""
 		if not line.begins_with("0 "):
 			continue
 		var words: PackedStringArray = LdrModel._fields(line)
 		if words.size() < 2:
 			continue
 		var keyword: String = words[1].to_upper()
+		if keyword == "!DATA":
+			var named: String = " ".join(words.slice(2)).get_file().to_lower()
+			if named.begins_with(IMAGE_PREFIX):
+				data_name = named
+				data = PackedStringArray()
+			continue
 		if keyword == "FILE":
 			var file_key: String = LdrModel._key(" ".join(words.slice(2)))
 			definition = "" if file_key == main_key else str(names.get(file_key, file_key))
@@ -406,7 +486,71 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			"PER_PAGE":
 				if value.is_valid_int() and value.to_int() in [1, 2, 4]:
 					_put_in(out, BOOKLET, "per_page", value.to_int())
+			"HIGHLIGHT":
+				if value == "OFF":
+					_put_in(out, BOOKLET, "highlight", false)
+			"PLACE":
+				var item: String = value.to_lower()
+				var numbers: Array = _numbers(words, 4, int(ITEMS.get(item, 0)))
+				if not numbers.is_empty():
+					var name: String = key(definition, step)
+					var place: Dictionary = (out.get(name, {}) as Dictionary).get("place", {})
+					place[item] = numbers
+					_put_in(out, name, "place", place)
+			"TEXT":
+				var at: Array = _numbers(words, 3, 5)
+				if not at.is_empty():
+					var said: String = _rest_after(line, 8).replace("\\n", "\n")
+					_note_in(out, key(definition, step), {"text": said,
+						"at": at.slice(0, 4), "size": clampf(float(at[4]), 1.5, 40.0)})
+			"IMAGE":
+				var at: Array = _numbers(words, 3, 4)
+				if not at.is_empty() and words.size() > 7:
+					_note_in(out, key(definition, step), {"image": words[7].to_lower(),
+						"at": at})
+	if not data_name.is_empty():
+		pictures[data_name] = "".join(data)
+	# Only the pictures a page shows.
+	var shown: Dictionary = {}
+	for name: String in out:
+		for note: Dictionary in (out[name] as Dictionary).get("notes", []):
+			if note.has("image") and pictures.has(str(note["image"])):
+				shown[str(note["image"])] = pictures[str(note["image"])]
+	if not shown.is_empty():
+		out[DATA] = shown
 	return out
+
+
+## [param count] numbers from [param words] at [param from], each within
+## the page; [] when any is missing or not a number.
+static func _numbers(words: PackedStringArray, from: int, count: int) -> Array:
+	if count <= 0 or words.size() < from + count:
+		return []
+	var out: Array = []
+	for at: int in range(from, from + count):
+		if not words[at].is_valid_float():
+			return []
+		out.append(clampf(words[at].to_float(), -Booklet.PAGE.x, Booklet.PAGE.x * 2.0))
+	return out
+
+
+## What follows the first [param count] words of [param line], as written.
+static func _rest_after(line: String, count: int) -> String:
+	var at: int = 0
+	for _n: int in count:
+		while at < line.length() and line[at] in [" ", "\t"]:
+			at += 1
+		while at < line.length() and not line[at] in [" ", "\t"]:
+			at += 1
+	return line.substr(at).strip_edges()
+
+
+static func _note_in(out: Dictionary, name: String, note: Dictionary) -> void:
+	var look: Dictionary = out.get(name, {})
+	var notes: Array = look.get("notes", [])
+	notes.append(note)
+	look["notes"] = notes
+	out[name] = look
 
 
 static func _put_in(out: Dictionary, name: String, field: String, value: Variant) -> void:
@@ -417,7 +561,8 @@ static func _put_in(out: Dictionary, name: String, field: String, value: Variant
 
 ## Whether [param text] has any of the lines these are written as.
 static func _written_in(text: String) -> bool:
-	if text.contains("ROTSTEP") or text.contains("rotstep"):
+	if text.contains("ROTSTEP") or text.contains("rotstep") \
+			or text.contains("0 !DATA " + IMAGE_PREFIX):
 		return true
 	for word: String in WORDS:
 		if text.contains(META + word):
@@ -446,15 +591,29 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	# The model's own lines go first in it, where a file without FILE lines
 	# has them too.
 	var first_file: bool = true
+	## Inside a page's picture as it was written (LDraw's !DATA): left out,
+	## and written again at the end from the looks.
+	var skipping: bool = false
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
+		if skipping:
+			if line.begins_with("0 !:"):
+				continue
+			skipping = false
 		var words: PackedStringArray = LdrModel._fields(line) if line.begins_with("0 ") \
 			else PackedStringArray()
 		var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
 		if keyword in ["FILE", "NOFILE", "!DATA"]:
 			if section_open or (first_file and any_part):
 				_close_section(out, looks, definition, step, any_part, eol, wrote)
+				if not section_open:
+					# The model's own lines, in a file of no FILE lines, are done.
+					first_file = false
 			section_open = keyword == "FILE"
+			if keyword == "!DATA" and " ".join(words.slice(2)).get_file().to_lower() \
+					.begins_with(IMAGE_PREFIX):
+				skipping = true
+				continue
 			if keyword == "FILE":
 				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
 				definition = "" if first_file or file_key == main_key \
@@ -488,8 +647,8 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		if wrote.has(name):
 			continue
 		var look: Dictionary = looks[name]
-		if name == BOOKLET and look.has("per_page"):
-			head.append(META + "PER_PAGE %d" % int(look["per_page"]) + eol)
+		if name == BOOKLET:
+			_booklet_lines(head, look, eol)
 	if not head.is_empty():
 		var at: int = 1
 		while at < out.size() and out[at].strip_edges().begins_with("0 ") \
@@ -500,7 +659,41 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			at += 1
 		for n: int in head.size():
 			out.insert(at + n, head[n])
+	# The pictures the pages show, each as LDraw's embedded file, at the end.
+	var pictures: Dictionary = looks.get(DATA, {})
+	var shown: Dictionary = {}
+	for name: String in looks:
+		for note: Variant in (looks[name] as Dictionary).get("notes", []) \
+				if looks[name] is Dictionary else []:
+			if note is Dictionary and (note as Dictionary).has("image") \
+					and pictures.has(str(note["image"])):
+				shown[str(note["image"])] = true
+	if not shown.is_empty():
+		# Before the blank lines the file ends with, as they were.
+		var end: int = out.size()
+		while end > 0 and out[end - 1].strip_edges().is_empty():
+			end -= 1
+		var block := PackedStringArray()
+		var kept: Array = shown.keys()
+		kept.sort()
+		for name: String in kept:
+			block.append("0 !DATA " + name + eol)
+			var encoded: String = str(pictures[name])
+			for at: int in range(0, encoded.length(), 76):
+				block.append("0 !: " + encoded.substr(at, 76) + eol)
+		for n: int in block.size():
+			out.insert(end + n, block[n])
+		if end + block.size() == out.size():
+			out.append("")
 	return "\n".join(out)
+
+
+## The booklet's own lines, said once at the head of the model.
+static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: String) -> void:
+	if whole.has("per_page"):
+		out.append(META + "PER_PAGE %d" % int(whole["per_page"]) + eol)
+	if whole.has("highlight") and not bool(whole["highlight"]):
+		out.append(META + "HIGHLIGHT OFF" + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line
@@ -533,10 +726,11 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		if whole.has("callout") and not bool(whole["callout"]) and not wrote.has(definition + "|*"):
 			out.append(META + "CALLOUT OFF" + eol)
 			wrote[definition + "|*"] = true
-	if definition.is_empty() and step == 0 and looks.has(BOOKLET):
+	if definition.is_empty() and step == 0 and looks.has(BOOKLET) and not wrote.has(BOOKLET):
 		var whole: Dictionary = looks[BOOKLET]
-		if whole.has("per_page"):
-			out.append(META + "PER_PAGE %d" % int(whole["per_page"]) + eol)
+		var before: int = out.size()
+		_booklet_lines(out, whole, eol)
+		if out.size() > before:
 			wrote[BOOKLET] = true
 	var look: Dictionary = looks.get(key(definition, step), {})
 	if look.is_empty():
@@ -550,6 +744,19 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append(META + "SIZE " + _number(float(look["size"])) + eol)
 	if look.has("parts") and not bool(look["parts"]):
 		out.append(META + "PARTS OFF" + eol)
+	var place: Dictionary = look.get("place", {})
+	for item: String in ITEMS:
+		if place.has(item):
+			out.append(META + "PLACE " + item.to_upper() + " " + _numbers_said(place[item]) + eol)
+	for note: Variant in look.get("notes", []):
+		if not (note is Dictionary):
+			continue
+		var at: String = _numbers_said(note.get("at", []))
+		if note.has("text"):
+			out.append(META + "TEXT " + at + " " + _number(float(note.get("size", 4.0))) + " "
+				+ str(note["text"]).replace("\r", "").replace("\n", "\\n").strip_edges() + eol)
+		elif note.has("image"):
+			out.append(META + "IMAGE " + at + " " + str(note["image"]) + eol)
 
 
 ## The line that ends a step, saying the turn of the step after it
@@ -575,6 +782,23 @@ static func _number(value: float) -> String:
 	return String.num(value, 3)
 
 
+static func _numbers_said(values: Variant) -> String:
+	var said := PackedStringArray()
+	for value: Variant in values if values is Array else []:
+		said.append(_number(snappedf(float(value), 0.1)))
+	return " ".join(said)
+
+
+## A place on the page as a rect, in mm: [x, y, w, h], or [x, y, w] and [x,
+## y] with what is not said zero.
+static func rect_of(values: Variant) -> Rect2:
+	var numbers: Array = values if values is Array else []
+	var got: Array = []
+	for n: int in 4:
+		got.append(float(numbers[n]) if n < numbers.size() else 0.0)
+	return Rect2(got[0], got[1], got[2], got[3])
+
+
 # -- what the booklet is told ---------------------------------------------------
 
 
@@ -590,10 +814,11 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		if page.kind == "steps":
 			steps += page.entries.size()
 	var most: int = int(booklet(world).get("per_page", 0))
-	told.append("%d pages of steps and %d of callouts, %d steps; %s a page. Then the "
+	told.append("%d pages of steps and %d of callouts, %d steps; %s a page; %s. Then the "
 		% [int(kinds.get("steps", 0)), int(kinds.get("callout", 0)), steps,
-			"as many as fit" if most == 0 else "at most %d" % most]
-		+ "finished model and the parts list.")
+			"as many as fit" if most == 0 else "at most %d" % most,
+			"the parts each step adds outlined" if highlight_on(world) else "new parts not outlined"]
+		+ "finished model and the parts list. Places are in mm on a 269 x 199 page.")
 	var characters: int = 0
 	var off: Dictionary = {}
 	for page: Booklet.Page in pages:
@@ -658,4 +883,24 @@ static func said(world: BrickWorld, section: String, step: int) -> String:
 			parts.append("a page alone")
 	if own.has("parts") and not bool(own["parts"]):
 		parts.append("no parts list")
+	var place: Dictionary = own.get("place", {})
+	for item: String in ITEMS:
+		if place.has(item):
+			var at: Array = place[item]
+			parts.append("%s at %s, %s mm%s" % [item, _number(snappedf(float(at[0]), 0.1)),
+				_number(snappedf(float(at[1]), 0.1)), (" (%s wide%s)" % [
+					_number(snappedf(float(at[2]), 0.1)),
+					(", %s high" % _number(snappedf(float(at[3]), 0.1))) if at.size() > 3 else ""])
+					if at.size() > 2 else ""])
+	for note: Variant in own.get("notes", []):
+		if not (note is Dictionary):
+			continue
+		var at: Rect2 = rect_of(note.get("at", []))
+		if note.has("text"):
+			parts.append("text \"%s\" at %s, %s mm" % [str(note["text"]).replace("\n", " / ").left(60),
+				_number(snappedf(at.position.x, 0.1)), _number(snappedf(at.position.y, 0.1))])
+		elif note.has("image"):
+			parts.append("a picture at %s, %s mm, %s x %s" % [_number(snappedf(at.position.x, 0.1)),
+				_number(snappedf(at.position.y, 0.1)), _number(snappedf(at.size.x, 0.1)),
+				_number(snappedf(at.size.y, 0.1))])
 	return ", ".join(parts)

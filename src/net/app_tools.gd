@@ -135,7 +135,8 @@ of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
-booklet's per_page=, as the timeline's Booklet row does.
+booklet's per_page=, as the timeline's Booklet row does; place= and text= \
+lay a page out by hand.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -284,11 +285,33 @@ func definitions() -> Array:
 				+ "size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; "
 				+ "parts= false leaves its parts list off; callout= false builds the "
 				+ "sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or "
-				+ "0 (as they fit) for the whole booklet. A model with no steps of its own is "
-				+ "given the worked-out ones first, in the same undo step."),
+				+ "0 (as they fit) for the whole booklet; highlight= false leaves the new parts "
+				+ "unoutlined in the whole booklet. The page by hand, one undo step each and "
+				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
+				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
+				+ "(item picture, parts, callout or number; note with index= for words or a "
+				+ "picture added; remove=true takes a note off, back=true puts an item back "
+				+ "where the booklet lays it); text= puts words on the step's page. booklet_layout "
+				+ "says where each is. A model with no steps of its own is given the "
+				+ "worked-out ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["step"], "properties": {
 				"step": {"type": "integer"},
+				"highlight": {"type": "boolean"},
+				"place": {"type": "object", "description": "{item, x, y, w, h, index, remove}: w and h kept when omitted",
+					"properties": {
+						"item": {"type": "string", "enum": ["picture", "parts", "callout", "number", "note"]},
+						"x": {"type": "number"}, "y": {"type": "number"},
+						"w": {"type": "number"}, "h": {"type": "number"},
+						"index": {"type": "integer", "description": "which note, from 0, for item note"},
+						"remove": {"type": "boolean"},
+						"back": {"type": "boolean", "description": "true: where the booklet lays it out again"}}},
+				"text": {"type": "object", "description": "{words, x, y, w, h, size}: mm, size the letters' height (4 when omitted)",
+					"properties": {
+						"words": {"type": "string"},
+						"x": {"type": "number"}, "y": {"type": "number"},
+						"w": {"type": "number"}, "h": {"type": "number"},
+						"size": {"type": "number"}}},
 				"turn": {"description": "degrees round (-180 to 180), or \"usual\""},
 				"tilt": {"type": "number", "description": "degrees higher (-60 to 45)"},
 				"zoom": {"type": "number"},
@@ -667,7 +690,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"booklet_layout":
 			return await _booklet_layout(input)
 		"edit_booklet":
-			return _edit_booklet(input)
+			return await _edit_booklet(input)
 		"lay_flex":
 			return await _lay_flex(input)
 		"pose_model":
@@ -905,7 +928,13 @@ func _edit_booklet(input: Dictionary) -> String:
 	if at == null:
 		return "There is no step %d: the steps run 1 to %d." % [int(input.get("step", 0)),
 			steps[steps.size() - 1].number]
+	if input.has("place") or input.has("text"):
+		return await _edit_page(input, at)
 	var fields: Dictionary = {}
+	if input.has("highlight"):
+		var on: String = shell.change_look("highlight", at, {"highlight": bool(input["highlight"])})
+		if input.size() <= 2:
+			return on
 	if input.has("turn") or input.has("tilt"):
 		var raw: Variant = input.get("turn", 0.0)
 		if raw is String and str(raw) == "usual":
@@ -945,6 +974,71 @@ func _edit_booklet(input: Dictionary) -> String:
 		if again != null and again.authored_step >= 0:
 			now = BookletLooks.said(world, again.authored_in, again.authored_step)
 	return said + (("; step %d is now: %s" % [at.number, now]) if not now.is_empty() else "")
+
+
+## The page by hand (Shell.change_look "place", "note", "text"), as the
+## page editor's drags and Add words do: one undo.
+func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
+	var shell: Shell = app.get("_shell")
+	if input.has("place") and input.has("text"):
+		return "One at a time: place= or text=, each its own undo step."
+	if input.has("text"):
+		var given: Variant = input["text"]
+		var text: Dictionary = given if given is Dictionary else {"words": str(given)}
+		var words: String = str(text.get("words", "")).strip_edges()
+		if words.is_empty():
+			return "text= {words, x, y, w, h, size}: say the words."
+		return shell.change_look("text", at, {"text": words, "size": float(text.get("size", 4.0)),
+			"at": [float(text.get("x", 20.0)), float(text.get("y", 150.0)),
+				float(text.get("w", 80.0)), float(text.get("h", 12.0))]})
+	var place: Dictionary = input["place"] if input["place"] is Dictionary else {}
+	var item: String = str(place.get("item", ""))
+	if item == "note":
+		var fields: Dictionary = {"index": int(place.get("index", -1))}
+		if bool(place.get("remove", false)):
+			fields["remove"] = true
+		else:
+			var now: Rect2 = await _now_at(at, "note", int(place.get("index", -1)))
+			fields["at"] = [float(place.get("x", now.position.x)), float(place.get("y", now.position.y)),
+				float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]
+		return shell.change_look("note", at, fields)
+	if not BookletLooks.ITEMS.has(item):
+		return "place= {item: picture, parts, callout, number or note, x, y, w, h} in mm."
+	if bool(place.get("back", false)):
+		return shell.change_look("place", at, {"item": item, "at": null})
+	if not place.has("x") or not place.has("y"):
+		return "place= needs x and y, in mm from the page's top left corner."
+	var now: Rect2 = await _now_at(at, item)
+	return shell.change_look("place", at, {"item": item, "at": [float(place["x"]),
+		float(place["y"]), float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]})
+
+
+## Where [param item] of step [param at]'s page is laid out now, in page mm.
+func _now_at(at: Instructions.Step, item: String, index: int = -1) -> Rect2:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = app.get("_library")
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
+	maker.queue_free()
+	for page: Booklet.Page in pages:
+		if page.kind != "steps":
+			continue
+		for entry: Booklet.Entry in page.entries:
+			if entry.number != at.number:
+				continue
+			match item:
+				"picture":
+					return entry.rect
+				"parts":
+					return entry.parts_rect
+				"callout":
+					return entry.callout.box if entry.callout != null else Rect2()
+				"note":
+					if index >= 0 and index < entry.notes.size():
+						return BookletLooks.rect_of((entry.notes[index] as Dictionary).get("at", []))
+	return Rect2(0, 0, 40, 30)
 
 
 ## The step of the model with this number: the one that puts a callout on,
