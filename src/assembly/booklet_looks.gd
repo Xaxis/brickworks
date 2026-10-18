@@ -962,7 +962,10 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		% [int(kinds.get("steps", 0)), int(kinds.get("callout", 0)), steps,
 			"as many as fit" if most == 0 else "at most %d" % most,
 			"the parts each step adds outlined" if highlight_on(world) else "new parts not outlined"]
-		+ "finished model and the parts list. Places are in mm on a 269 x 199 page.")
+		+ "finished model and the parts list. Places are in mm on a 269 x 199 page, and "
+		+ "each step's new parts are where its picture shows them: point an arrow there. A step "
+		+ "left to the booklet is seen from the front here, and may be drawn turned round: "
+		+ "give it turn= to be sure.")
 	var characters: int = 0
 	var off: Dictionary = {}
 	for page: Booklet.Page in pages:
@@ -982,6 +985,8 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 					entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
+			if entry.adds.size.x > 0.0:
+				how.append("its new parts at %s" % adds_said(entry.adds))
 			if entry.callout != null:
 				how.append("puts on the %s%s, %s" % [entry.callout.name,
 					" x%d" % entry.callout.times if entry.callout.times > 1 else "",
@@ -1001,6 +1006,14 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 	if not off.is_empty():
 		told.append("Built on pages of their own by choice: %s." % ", ".join(off.keys()))
 	return "\n".join(told)
+
+
+## Where a step's new parts are on its page, as a session reads it:
+## "150-195 x 50-100 mm (the middle 172, 75)".
+static func adds_said(adds: Rect2) -> String:
+	return "%s-%s x %s-%s mm (the middle %s, %s)" % [_number(roundf(adds.position.x)),
+		_number(roundf(adds.end.x)), _number(roundf(adds.position.y)), _number(roundf(adds.end.y)),
+		_number(roundf(adds.get_center().x)), _number(roundf(adds.get_center().y))]
 
 
 ## How a step's look reads, for the timeline and a session: "turned 90°,

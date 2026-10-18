@@ -150,6 +150,9 @@ class Entry extends RefCounted:
 	var parts_width: float = 0.0
 	var number_at: Vector2 = Vector2()
 	var number_size: float = NUMBER
+	## Where the parts it adds are drawn on the page, in mm, cut to its
+	## picture (BookletMaker._adds); empty when none shows.
+	var adds: Rect2 = Rect2()
 
 	## Drawn: the picture (a data URI) and the arrows, in page mm: from a
 	## callout to where it goes, and red ones onto small new parts.

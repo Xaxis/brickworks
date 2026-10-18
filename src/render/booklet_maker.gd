@@ -206,6 +206,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2,
 		int(BookletLooks.booklet(world).get("per_page", 0)))
+	for page: Booklet.Page in pages:
+		for entry: Booklet.Entry in page.entries:
+			_adds(entry)
 	if dry:
 		document.pages = pages
 		_forget_all()
@@ -859,6 +862,36 @@ func _zoomed(entry: Booklet.Entry) -> void:
 	entry.subject = Rect2(centre - size * 0.5, size)
 
 
+## Where the parts a step adds are on its page, in mm: their boxes projected
+## through the picture's own camera, cut to the picture. What a session
+## points an arrow at (booklet_layout): one drew its arrow onto the middle of
+## a step's picture, reckoned from the zoom, and it pointed at the seat
+## beside the steering wheel it meant.
+func _adds(entry: Booklet.Entry) -> void:
+	entry.adds = Rect2()
+	if entry.in_callout or entry.rect.size.x <= 0.0 or not entry.has_meta("step") \
+			or not _ranks.has(int(entry.get_meta("step"))):
+		return
+	var where: Array = _where(entry)
+	var stage: BookletStudio.Stage = where[0]
+	# At a pixel a millimetre, the picture's pixels are the page's mm.
+	var view: BookletStudio.View = entry.view(1.0)
+	var seen := Rect2()
+	var first: bool = true
+	for rank: int in range(int(where[1]), int(where[2]) + 1):
+		if rank < 1 or rank > stage.boxes.size():
+			continue
+		var box: AABB = stage.boxes[rank - 1]
+		for corner: int in 8:
+			var point: Vector2 = view.project(box.get_endpoint(corner), entry.rect.size)
+			seen = Rect2(point, Vector2.ZERO) if first else seen.expand(point)
+			first = false
+	if first:
+		return
+	seen.position += entry.rect.position
+	entry.adds = seen.intersection(entry.rect)
+
+
 # -- pictures ------------------------------------------------------------------
 
 
@@ -874,6 +907,12 @@ func _draw(entry: Booklet.Entry) -> void:
 	# in the picture's box and must not be painted over.
 	entry.image = _data_uri(shot.image, Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR)
 	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
+	# Where the new parts were laid out to be (booklet_layout), and where the
+	# picture drew them, for a probe to hold the one to the other.
+	if shot.new_rect.size.x > 0.0:
+		measured.append({"what": "new parts of step %d" % entry.number, "laid": entry.adds,
+			"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
+				shot.new_rect.size / px_per_mm)})
 	_point_at_small(entry, shot)
 	if entry.callout == null:
 		return

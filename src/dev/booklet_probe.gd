@@ -376,6 +376,24 @@ func _pictures(what: String, maker: BookletMaker) -> void:
 		", " + worst if not worst.is_empty() else ""], framed == steps)
 	_assert("%s: every step's new parts are in the picture (%d of %d)" % [what, inside, steps],
 		inside == steps)
+	# Where booklet_layout tells a session each step's new parts are, so it
+	# can point an arrow at them: the picture draws them inside it. One drew
+	# its arrow from the zoom alone, onto the seat beside the steering wheel.
+	var told: int = 0
+	var placed: int = 0
+	var off: String = ""
+	for note: Dictionary in maker.measured:
+		if not str(note["what"]).begins_with("new parts of step "):
+			continue
+		told += 1
+		var laid: Rect2 = note["laid"]
+		var drawn_at: Rect2 = note["drawn"]
+		if laid.grow(2.0).encloses(drawn_at):
+			placed += 1
+		elif off.is_empty():
+			off = ", %s drawn at %s, said to be at %s" % [note["what"], drawn_at, laid]
+	_assert("%s: each step's new parts are drawn where the layout says they are (%d of %d%s)"
+		% [what, placed, told, off], told > 0 and placed == told)
 
 
 ## Every step has a parts box, a picture for each part in it, and its

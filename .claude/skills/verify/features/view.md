@@ -1117,7 +1117,11 @@ picture the assistant is shown.
   `page_arrow_colour`, `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW
   RED|BLACK width x1 y1 x2 y2 [bx by]` on the step whose room it points into
   (Shell.change_look "arrow", "arrow_edit"), printed by `Booklet.drawn_arrow`
-  (`path.drawn-arrow`); `edit_booklet arrow=`. The turn sign
+  (`path.drawn-arrow`); `edit_booklet arrow=`, whose answer says whether the
+  tip is on the step's new parts (`AppTools._aimed`, `Entry.adds` from
+  `BookletMaker._adds`), and `booklet_layout` gives each step's "its new
+  parts at x-x x y-y mm"; `booklet_probe` holds every drawn step's new parts
+  (`measured` "new parts of step N") inside where the layout says they are. The turn sign
   (`Booklet._turn_sign`, `g.turn-sign`, under the number, `sign_rect`) is due
   past `BookletMaker.TURN_ROUND` (60°) round or `TURN_OVER` (45°) up or down
   (`_round_from`); `page_sign_N` on the page editor, Delete / Put back

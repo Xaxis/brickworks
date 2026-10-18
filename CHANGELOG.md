@@ -276,6 +276,11 @@ whole cycle.
   baseplate's studs and been taken for standing on them. move_part says a
   joint whose line stands upright stays where it is put, rather than that
   it swings down.
+- An arrow on a booklet page can be aimed at what a step adds without
+  seeing the page. booklet_layout says where each step's new parts are on
+  its page, and edit_booklet arrow= says whether the tip is on them or how
+  far off. A session drew its arrow for a steering wheel onto the seat
+  beside it, and told the person it pointed at the wheel.
 - A tyre goes on its rim over MCP too. attachment_points names a rim's
   barrel and a tyre's hole, each by its middle and how wide it is (30699's
   and 56904's are both 30.4 mm), and a tyre put by its axis at the rim's

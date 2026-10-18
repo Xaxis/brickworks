@@ -1781,7 +1781,14 @@ An arrow goes with the step whose room it points into. In the file:
 `0 !BRICKWORKS ARROW RED 0.9 x1 y1 x2 y2 [bx by]`. Over MCP `edit_booklet
 arrow={x1, y1, x2, y2, bx, by, colour, width}` draws one, with `index=`
 changes or removes one, and `booklet_layout` lists them ("a black arrow
-from 30, 40 to 70, 80 mm, bent through 60, 45, 0.9 mm wide").
+from 30, 40 to 70, 80 mm, bent through 60, 45, 0.9 mm wide"). It also says
+where each step's new parts are on its page ("its new parts at 150-195 x
+50-100 mm (the middle 172, 75)": their boxes projected through the step
+picture's own camera, `BookletMaker._adds`, `Entry.adds`), and an arrow
+drawn says whether its tip is on them or how far off. A session that could
+not see the page drew its arrow for a steering wheel from the zoom alone,
+onto the seat beside it, and told the person it pointed at the wheel
+(bench/results/mcpwalk-2026-10-17).
 
 ![30050-1, page 4: step 4's page laid out by hand, a red arrow bent into the picture](instructions/30050-arrow-page4.webp)
 

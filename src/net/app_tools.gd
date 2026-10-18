@@ -1025,11 +1025,16 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 			for name: String in ["colour", "width"]:
 				if arrow.has(name):
 					fields[name] = arrow[name]
-			return shell.change_look("arrow_edit", at, fields)
+			var changed: String = shell.change_look("arrow_edit", at, fields)
+			if points.size() >= 4 and not fields.has("remove"):
+				changed += _aimed(entry, at.number, points, int(arrow["index"]))
+			return changed
 		if points.size() < 4:
 			return "arrow= {x1, y1, x2, y2} in mm: where it starts and where it points."
+		var index: int = entry.drawn_arrows.size() if entry != null else 0
 		return shell.change_look("arrow", at, {"at": points, "colour": str(arrow.get("colour", "red")),
-			"width": float(arrow.get("width", 0.9)), "room": room})
+			"width": float(arrow.get("width", 0.9)), "room": room}) \
+			+ _aimed(entry, at.number, points, index)
 	if input.has("text"):
 		var given: Variant = input["text"]
 		var text: Dictionary = given if given is Dictionary else {"words": str(given)}
@@ -1060,6 +1065,25 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 	return shell.change_look("place", at, {"item": item, "at": [float(place["x"]),
 		float(place["y"]), float(place.get("w", now.size.x)), float(place.get("h", now.size.y))],
 		"room": room})
+
+
+## Whether an arrow's tip ([param points] x2, y2) is on what step [param
+## number] adds, as its picture draws it ([member Booklet.Entry.adds]), said
+## after the arrow is drawn. A session drew its arrow for a steering wheel
+## from the zoom alone, onto the seat beside it, and told the person it
+## pointed at the wheel.
+static func _aimed(entry: Booklet.Entry, number: int, points: Array, index: int) -> String:
+	if entry == null or entry.adds.size.x <= 0.0:
+		return ""
+	var tip := Vector2(float(points[2]), float(points[3]))
+	var adds: Rect2 = entry.adds
+	if adds.grow(2.0).has_point(tip):
+		return ". Its tip is on step %d's new parts, at %s." % [number, BookletLooks.adds_said(adds)]
+	var nearest := Vector2(clampf(tip.x, adds.position.x, adds.end.x),
+		clampf(tip.y, adds.position.y, adds.end.y))
+	return (". Its tip is %d mm from step %d's new parts, which its picture draws at %s: "
+		% [roundi(tip.distance_to(nearest)), number, BookletLooks.adds_said(adds)]
+		+ "arrow={\"index\": %d, x2, y2} moves the tip onto them." % index)
 
 
 ## Step [param at] as the booklet lays it out now (BookletMaker.lay_out_only),
