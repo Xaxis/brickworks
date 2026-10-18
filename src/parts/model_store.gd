@@ -1268,6 +1268,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	var from_source: Variant = _source_text(title)
 	if from_source != null:
 		var kept: String = str(from_source)
+		# A hose LDCad laid, bent by a grab: its path where it now lies.
+		kept = LdcadPath.written_into(kept, _live_source(), library)
 		kept = model_floor.written_into(kept) if model_floor != null else kept
 		kept = HiddenColours.written_into(kept, hidden_scheme)
 		kept = _with_looks(kept)
@@ -1364,6 +1366,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 				held.line = placement.line
 				waiting.append(held)
 		text = _live_source().carried_into(text, waiting)
+		# And LDCad's hoses keep their paths, where they now lie.
+		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
