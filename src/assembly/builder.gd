@@ -2391,7 +2391,43 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	while n < cover.size():
 		low = mini(low, cover[n])
 		n += 6
-	return maxi(rest_cell - low - lattice.rise_onto(cover, GROUND_CELL), 0)
+	var rise: int = lattice.rise_onto(cover, GROUND_CELL)
+	var sink: int = rest_cell - low - rise
+	if sink <= 0:
+		return 0
+	# Lower only where it is held by its sockets there: the boxes that take
+	# studs rest on what is under them. 5762-1's 4488 stands on a wedge
+	# plate by the block under half of it, where its sockets are, the other
+	# half a plate over the wing; the wedge's cover is short of its slanted
+	# edge under that block, and lowered by its cover the 4488 sank a plate
+	# into the wing (2026-10-17).
+	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
+			and not _seated_by_sockets(part, basis, snapped, cover, rise):
+		return 0
+	return sink
+
+
+## Whether a socket of [param part] (turned by [param basis], across at
+## [param snapped], its cover [param cover] at height 0 raised [param rise]
+## cells) sits on what is under it: the bottom of its cover where the socket
+## is meets the top of what the lattice has under that column.
+func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
+		cover: PackedInt32Array, rise: int) -> bool:
+	for socket: Vector2 in part.sockets:
+		var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y) + snapped
+		var cx: int = floori(at.x / BrickLattice.CELL)
+		var cz: int = floori(at.z / BrickLattice.CELL)
+		var seat: int = 1 << 30
+		var n: int = 0
+		while n < cover.size():
+			if cover[n] <= cx and cx < cover[n + 3] and cover[n + 2] <= cz and cz < cover[n + 5]:
+				seat = mini(seat, cover[n + 1])
+			n += 6
+		if seat == 1 << 30:
+			continue
+		if lattice.surface_under(cx - 1, cz - 1, cx + 1, cz + 1, GROUND_CELL) == seat + rise:
+			return true
+	return false
 
 
 ## Where on the stud grid a part goes across, by its sockets, when its box

@@ -237,6 +237,32 @@ func _awkward() -> void:
 		await _one("2420 corner plate round the wheel holder's arm", _screen(foot), at)
 	await _shot("corner_plate")
 
+	# ...but only where it is held by its sockets: 5762-1's 4488 stands on
+	# a wedge plate by the block under half of it, where its sockets are,
+	# the other half a plate over the wing; the wedge's cover is short of
+	# its slanted edge under that block, and lowered by its cover the 4488
+	# sank a plate into the wing (Builder._seated_by_sockets).
+	_main.call("clear_model")
+	_put_ldr("54384", 15, [80, -16, -10, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_camera.frame(AABB(Vector3(0, 0, -60), Vector3(160, 50, 140)))
+	await _frames(40)
+	await _hold("4488")
+	var nacelle: Transform3D = _ldr([80, -32, -40, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	await _turn_to(nacelle.basis)
+	# Aimed between its sockets, at the bottom of the block they are under,
+	# and moved across by where its ghost stands, as the build flow aims.
+	var at_sockets: Vector2 = _screen(nacelle * Vector3(10, -16, 0))
+	for _n: int in 4:
+		await _move(at_sockets)
+		if _builder.ghost_place() == null:
+			break
+		var ghost: Vector3 = _builder.ghost_transform().origin
+		if Vector2(ghost.x, ghost.z).distance_to(Vector2(nacelle.origin.x, nacelle.origin.z)) < 0.5:
+			break
+		at_sockets += _screen(Vector3(nacelle.origin.x, ghost.y, nacelle.origin.z)) - _screen(ghost)
+	await _one("4488 on the wedge plate by its sockets, not sunk into it", at_sockets, nacelle)
+	await _shot("on_its_sockets")
+
 	# Below the ground, held by the model: a bracket on the edge of the plate
 	# the model is built up from, its arm hanging 4 LDU past the plate's
 	# underside, as 8643-1's front bracket (2436a) hangs. Its ghost stood on

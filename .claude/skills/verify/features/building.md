@@ -806,10 +806,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   that is not a box has room its box has not: 8643-1's two 2420 corner
   plates go round the arm of a wheel holder (6157) in their missing corners,
   and by their box they stood on the arm, a plate up, in the build flow and
-  by hand. Only ever lower than by the box, never below what is under it;
-  every plain part, one box across, rests as before. Probe: `placing_probe
-  -- only=parts` (the two corner plates beside a 6157, as the set has them,
-  aimed at their corner studs; fails with the rule undone).
+  by hand. Only ever lower than by the box, never below what is under it,
+  and only where the part is held by its sockets there
+  (`Builder._seated_by_sockets`): 5762-1's 4488 stands on a wedge plate by
+  the block under half of it, where its sockets are, and the wedge's cover
+  is short of its slanted edge under that block, so lowered by its cover
+  it sank a plate into the wing. Every plain part, one box across, rests as
+  before. Probe: `placing_probe -- only=parts` (the two corner plates
+  beside a 6157, as the set has them, aimed at their corner studs; the
+  4488 on its wedge; each fails with its rule undone).
 - `held below the ground` (`Builder._held_below_ground`,
   `_stand_on_the_ground`, 2026-10-17): a part the model holds below the
   ground (resting on a part of it with what hangs past it lower, on a
