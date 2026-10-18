@@ -371,7 +371,7 @@ func _read() -> void:
 			# On the baseplate's studs: a stud in one of its sockets, not a
 			# tyre the plate's studs touch.
 			var on: int = b if scenery.has(a) else a
-			if not scenery.has(on) and _in_a_socket(on, stud[2]):
+			if not scenery.has(on) and not _is_tyre(info_of.get(on)) and _in_a_socket(on, stud[2]):
 				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
@@ -381,6 +381,15 @@ func _read() -> void:
 		# a rim with its tyre, read as held by the two dash studs its tyre
 		# touches, and its column was locked to the chassis.
 		if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
+			continue
+		# A stud into a part turned off the grid holds only in one of its
+		# sockets or holes. The lattice covers a turned part by boxes round
+		# its shape, so a stud under one reads as in it where it is not: a
+		# session turned a steering column 30 degrees, the four studs of the
+		# Technic plate under its 24 tooth gear no longer met the gear's
+		# holes, and the next reading locked the column, both kingpins and
+		# their gears to the chassis. The column then would not turn back.
+		if (_turned(a) or _turned(b)) and not _takes_stud(b, stud[2], stud[3]):
 			continue
 		var pair := Vector2i(mini(a, b), maxi(a, b))
 		if not per_pair.has(pair):
@@ -1004,7 +1013,12 @@ func _on_the_floor(entries: Array, floor_entries: Array) -> void:
 		return
 	for entry: Array in entries:
 		var mesh: Lbm.PartMesh = entry[2]
-		if mesh.sockets.is_empty():
+		# Nor a tyre whose tread the part file leaves gaps in that read as
+		# sockets: 58090 has four. A session's car turned its steering 30
+		# degrees, a front tyre's gaps came over the baseplate's studs, the
+		# front axle became what stays, and the next turn of the steering
+		# wheel swung the chassis round it instead of the wheels.
+		if mesh.sockets.is_empty() or _is_tyre(library.parts.get(str(entry[3]))):
 			continue
 		var at: Transform3D = entry[1]
 		var box: AABB = at * mesh.bounds
@@ -1043,6 +1057,37 @@ func _in_a_socket(key: int, foot: Vector3) -> bool:
 	for socket: Vector2 in mesh.sockets:
 		var at: Vector3 = brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)
 		if at.distance_to(foot) <= Mechanism.STUD_SLACK + 4.0:
+			return true
+	return false
+
+
+## Whether a part stands turned off the grid, where the lattice holds it by
+## boxes round its shape rather than by its cells.
+func _turned(key: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	return brick != null and not BrickLattice.is_square_to_grid(brick.transform.basis)
+
+
+## Whether a stud at [param foot] pointing [param way] goes into something of
+## [param key] that takes it: one of its sockets, or a pin hole or an axle
+## hole it points along.
+func _takes_stud(key: int, foot: Vector3, way: Vector3) -> bool:
+	if _in_a_socket(key, foot):
+		return true
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return false
+	var tip: Vector3 = foot + way * Joints.STUD_REACH
+	for end: JointSnap.End in JointSnap.ends_of(mesh):
+		if not end.is_hole():
+			continue
+		var hole: JointSnap.End = end.placed(brick.transform, key)
+		if absf(hole.axis.dot(way)) < 0.99:
+			continue
+		var gap: Vector3 = tip - hole.at
+		var along: float = gap.dot(hole.axis)
+		if absf(along) <= hole.reach + 1.0 and (gap - hole.axis * along).length() <= 2.0:
 			return true
 	return false
 

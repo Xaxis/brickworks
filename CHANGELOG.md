@@ -262,6 +262,15 @@ whole cycle.
 
 ### Fixed
 
+- A steering column turned once turns back. A gear turned off the grid
+  read the studs of the plate under it as held in it, so the column, both
+  kingpins and their gears were locked to the chassis, and a second turn
+  was refused as "held rigidly". A stud into a turned part now holds only
+  in its sockets or holes. And a car turned back no longer swings its
+  chassis round the front axle: a front tyre's tread had come over the
+  baseplate's studs and been taken for standing on them. move_part says a
+  joint whose line stands upright stays where it is put, rather than that
+  it swings down.
 - A tyre goes on its rim over MCP too. attachment_points names a rim's
   barrel and a tyre's hole, each by its middle and how wide it is (30699's
   and 56904's are both 30.4 mm), and a tyre put by its axis at the rim's

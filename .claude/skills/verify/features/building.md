@@ -603,6 +603,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   minifigures and move_part). Held still 0.4 s, then dragged: the part by its
   chain of joints (`src/assembly/grab_chain.gd`, "chain" in the status bar;
   `grab_probe -- --only=chain`, a hand and 4096's crane end).
+  Turned and turned back over MCP: `grab_probe -- --only=steer` builds a real
+  session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
+  steering wheel +30, -60 and +30, back where it was built. A stud into a part
+  turned off the grid holds only in its sockets or holes (`Bodies._takes_stud`):
+  read off the lattice's boxes round the turned gear, the plate's studs locked
+  the column to the chassis and the second turn was refused, "held rigidly to
+  what stays". A joint whose line stands upright says its weight does not
+  turn it (`GrabDrag.for_session`).
   Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
   pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
   starts clean (`_clean_slate`: no button down, drag, grab, part in hand or

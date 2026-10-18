@@ -1,0 +1,297 @@
+{
+ "name": "Technic steering buggy",
+ "description": "A small Technic buggy with working steering: the steering wheel turns a column with a 24-tooth gear, which drives two 24-tooth gears on the kingpins. Perpendicular axle-and-pin connectors on the kingpins carry the front wheel axles. Four wheels with tyres. No floor, because it is a vehicle to pick up and play with.",
+ "floor": "none",
+ "bricks": [
+  {
+   "part": "3894",
+   "color": 0,
+   "x": 0,
+   "y": 5,
+   "z": 4
+  },
+  {
+   "part": "3894",
+   "color": 0,
+   "x": 0,
+   "y": 5,
+   "z": 7
+  },
+  {
+   "part": "3032",
+   "color": 72,
+   "x": 0,
+   "y": 8,
+   "z": 4
+  },
+  {
+   "part": "3009",
+   "color": 4,
+   "x": 0,
+   "y": 9,
+   "z": 4
+  },
+  {
+   "part": "3009",
+   "color": 4,
+   "x": 0,
+   "y": 9,
+   "z": 7
+  },
+  {
+   "part": "3032",
+   "color": 72,
+   "x": 0,
+   "y": 12,
+   "z": 4
+  },
+  {
+   "part": "3032",
+   "color": 72,
+   "x": 0,
+   "y": 13,
+   "z": 4
+  },
+  {
+   "part": "3029",
+   "color": 72,
+   "x": 3,
+   "y": 14,
+   "z": 4
+  },
+  {
+   "part": "3738",
+   "color": 0,
+   "x": 11,
+   "y": 15,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3034",
+   "color": 72,
+   "x": 9,
+   "y": 15,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3034",
+   "color": 72,
+   "x": 13,
+   "y": 15,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3008",
+   "color": 4,
+   "x": 9,
+   "y": 16,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3008",
+   "color": 4,
+   "x": 14,
+   "y": 16,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3738",
+   "color": 0,
+   "x": 11,
+   "y": 19,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3034",
+   "color": 72,
+   "x": 9,
+   "y": 19,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3034",
+   "color": 72,
+   "x": 13,
+   "y": 19,
+   "z": 2,
+   "rot": 1
+  },
+  {
+   "part": "3666",
+   "color": 4,
+   "x": 9,
+   "y": 20,
+   "z": 4
+  },
+  {
+   "part": "3666",
+   "color": 4,
+   "x": 9,
+   "y": 20,
+   "z": 7
+  },
+  {
+   "part": "3648b",
+   "color": 7,
+   "axis": "y",
+   "x": 12,
+   "y": 17.5,
+   "z": 3
+  },
+  {
+   "part": "3648b",
+   "color": 7,
+   "axis": "y",
+   "x": 12,
+   "y": 17.5,
+   "z": 6
+  },
+  {
+   "part": "3648b",
+   "color": 7,
+   "axis": "y",
+   "x": 12,
+   "y": 17.5,
+   "z": 9
+  },
+  {
+   "part": "3706",
+   "color": 0,
+   "axis": "y",
+   "x": 12,
+   "y": 13,
+   "z": 3
+  },
+  {
+   "part": "3706",
+   "color": 0,
+   "axis": "y",
+   "x": 12,
+   "y": 13,
+   "z": 9
+  },
+  {
+   "part": "3705",
+   "color": 0,
+   "axis": "y",
+   "x": 12,
+   "y": 20,
+   "z": 6
+  },
+  {
+   "part": "2819",
+   "color": 0,
+   "axis": "y",
+   "x": 12,
+   "y": 23,
+   "z": 6,
+   "name": "Steering wheel"
+  },
+  {
+   "part": "6536",
+   "color": 71,
+   "axis": "y",
+   "joint": 0,
+   "x": 12,
+   "y": 6.75,
+   "z": 3
+  },
+  {
+   "part": "6536",
+   "color": 71,
+   "axis": "y",
+   "joint": 0,
+   "x": 12,
+   "y": 6.75,
+   "z": 9
+  },
+  {
+   "part": "4519",
+   "color": 0,
+   "axis": "z",
+   "x": 13,
+   "y": 6.75,
+   "z": 2
+  },
+  {
+   "part": "4519",
+   "color": 0,
+   "axis": "z",
+   "x": 13,
+   "y": 6.75,
+   "z": 10
+  },
+  {
+   "part": "56904c01",
+   "color": 71,
+   "axis": "z",
+   "x": 13,
+   "y": 6.75,
+   "z": 1.5
+  },
+  {
+   "part": "56904c01",
+   "color": 71,
+   "axis": "z",
+   "x": 13,
+   "y": 6.75,
+   "z": 10.5
+  },
+  {
+   "part": "3737",
+   "color": 0,
+   "axis": "z",
+   "x": 3,
+   "y": 6.75,
+   "z": 6
+  },
+  {
+   "part": "56904c01",
+   "color": 71,
+   "axis": "z",
+   "x": 3,
+   "y": 6.75,
+   "z": 1.5
+  },
+  {
+   "part": "56904c01",
+   "color": 71,
+   "axis": "z",
+   "x": 3,
+   "y": 6.75,
+   "z": 10.5
+  }
+ ],
+ "assemblies": [
+  {
+   "name": "steering module",
+   "x_from": 9,
+   "x_to": 16,
+   "z_from": 0,
+   "z_to": 12
+  },
+  {
+   "name": "chassis and rear axle",
+   "x_from": 0,
+   "x_to": 9,
+   "z_from": 0,
+   "z_to": 12
+  }
+ ],
+ "features": [
+  {
+   "name": "steering wheel",
+   "x": 12,
+   "y": 24,
+   "z": 6,
+   "facing": "up"
+  }
+ ]
+}

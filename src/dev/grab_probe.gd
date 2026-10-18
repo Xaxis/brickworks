@@ -189,6 +189,8 @@ func _run() -> void:
 		await _chain_case("chain: the crane's end", "res://vendor/omr/files/4096-1_Crane.mpd", "end")
 	if only.is_empty() or only == "mcp":
 		await _session()
+	if only.is_empty() or only == "mcp" or only == "steer":
+		await _steer_twice()
 	if only.is_empty() or only == "big":
 		await _big()
 	if Grab.check_covers:
@@ -3921,6 +3923,64 @@ func _chain_case(name: String, path: String, end: String) -> void:
 
 
 # -- a session -------------------------------------------------------------------------
+
+
+## A steering column turned one way and back again over MCP. A real session
+## (bench/results/mcpwalk-2026-10-17) built a buggy whose column's 24 tooth
+## gear sits on a Technic plate's studs, in the gear's holes. Turned 30
+## degrees the studs no longer met the holes, the next reading counted them
+## as held in the gear, locked the column and both kingpins to the chassis,
+## and the turn back was refused: "held rigidly to what stays". The session
+## took the steering wheel off its column to get round it.
+##
+## And a second session's kart (steering_kart.json), on four rims with their
+## tyres: the first turn went as it should, then a front tyre's tread, whose
+## gaps the part file reads as sockets, came over the baseplate's studs and
+## was taken for standing on them; the front axle became what stays, and
+## the turn back swung the chassis round it. The chassis must stay put.
+func _steer_twice() -> void:
+	for fixture: Array in [["buggy", "steering_buggy.json", "submit_design"],
+			["kart", "steering_kart.json", "edit_model"]]:
+		print("\nmove_part twice: a session's %s, its steering turned, and turned back" % fixture[0])
+		await _clean_slate()
+		_main.call("clear_model")
+		await _frames(3)
+		var design: Variant = JSON.parse_string(FileAccess.get_file_as_string(
+			"res://tests/fixtures/mcpwalk/" + str(fixture[1])))
+		var assistant: Assistant = _main.get("_assistant")
+		var built: String = str(await assistant.use_tool(str(fixture[2]), design))
+		_check("the session's %s builds: %s" % [fixture[0], built.left(50)],
+			built.begins_with("Built") or built.begins_with("Done"))
+		var wheel: BrickWorld.Brick = null
+		var deck: BrickWorld.Brick = null
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == "2819":
+				wheel = brick
+			elif brick.part_id == "3738" and deck == null:
+				deck = brick
+		if wheel == null or deck == null:
+			_check("it has its steering wheel and its deck", false)
+			continue
+		var key: int = wheel.id
+		var as_built: Basis = wheel.transform.basis
+		var deck_at: Transform3D = deck.transform
+		var turned := func() -> float:
+			var relative: Basis = _world.get_brick(key).transform.basis * as_built.inverse()
+			return rad_to_deg(atan2(-relative.x.z, relative.x.x))
+		var tools := AppTools.new()
+		tools.app = _main
+		tools.assistant = assistant
+		for step: Array in [[30.0, 30.0], [-60.0, -30.0], [30.0, 0.0]]:
+			var said: String = str(await tools.run("move_part", {"part": "#%d" % key,
+				"degrees": step[0]}))
+			await _frames(3)
+			var now: float = turned.call()
+			var still: bool = _world.get_brick(deck.id).transform.is_equal_approx(deck_at)
+			_check("turned %+d: the wheel stands %+.1f degrees from where it was built, for %+d, the chassis %s: %s"
+				% [int(step[0]), now, int(step[1]), "where it was" if still else "MOVED",
+					said.left(110).replace("\n", " | ")],
+				said.contains("Moved") and absf(now - float(step[1])) < 1.0 and still)
+		_builder.forget_history()
 
 
 func _session() -> void:

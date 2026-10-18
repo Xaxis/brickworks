@@ -795,6 +795,10 @@ func for_session(input: Dictionary) -> String:
 	var lines := PackedStringArray()
 	var kind: String = held.link.kind
 	var how: String = "holds where it is put" if held.link.holds else "turns freely and swings down under its own weight"
+	# Upright, its weight has nothing to swing it round: a session told so of
+	# a crane's grab arm on a standing axle had to reason that it stays put.
+	if not held.link.holds and held.mode == "turn" and absf(held.axis.normalized().y) > 0.97:
+		how = "turns freely; its line stands upright, so its weight does not turn it and it stays where it is put"
 	if held.link.detent > 0.0:
 		how = "clicks every %s°" % Balance.tidy(held.link.detent)
 	var slides: String = ""
