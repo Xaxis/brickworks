@@ -55,8 +55,11 @@ const SAID: Dictionary = {
 }
 
 ## A round wider than this, in LDU, is a tyre's inside or a rim's outside:
-## narrower ones are a pin's, a hole's or a bar's, matched by their own.
-const WIDE := 7.0
+## narrower ones are a pin's, a hole's or a bar's, matched by their own. Past
+## 8: a Technic hole's counterbore and a pin's collar are 8 across, and as a
+## tyre and a rim a pin went round its hole's mouth, and a Technic brick
+## round a pin (8841-1's second brick, turned 77 presses in the build flow).
+const WIDE := 8.5
 ## How far a cover's box may come inside a tyre's round, or reach outside a
 ## rim's, and the round still be the part's innermost or outermost, in LDU:
 ## a cell's half diagonal and a little, which is how far an exact cover

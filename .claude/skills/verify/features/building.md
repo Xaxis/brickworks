@@ -712,7 +712,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a pin (against the collar) or an axle's tip (flush), a clip onto a bar
   where the pointer is along it (half-plate steps), a bar into a clip or
   a hollow stud, and a tyre round a rim (2026-10-17): a part's `tyre` end is
-  a bore wider than a pin's (over 7 LDU), across its stud axis, that nothing
+  a bore wider than a Technic hole's counterbore or a pin's collar (over 8
+  LDU, `JointSnap.WIDE`), across its stud axis, that nothing
   of its cover comes inside, and a `rim` end a shaft that nothing reaches
   outside (`JointSnap._wraps`, the bores or shafts on one line at one size
   as one end); a tyre goes on a rim whose barrel is its hole's size, within

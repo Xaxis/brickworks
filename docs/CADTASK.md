@@ -1522,8 +1522,12 @@ exact for the first time (5 of 8 in section 6), its two pins each after
 the brick it goes in, aimed at the hole and turned by T to the file's
 way: 3 and 4 presses. 23.5 actions a part there, because the second
 brick was hung on the first one's pin by its first aim and turned there
-77 presses before it was aimed again; a ghost on a joint away from the
-part's place is no longer turned (`run4/`: RUN4). Two runs before
+77 presses before it was aimed again. Not, as first taken, turning away
+from its place (`run4/`, with that stopped: the same 8 exact, 23.6 actions
+a part, the same 77): a Technic hole's counterbores, 8 across, read as a
+tyre and a pin's collar, 8 across, as a rim, so the brick went round the
+pin's collar. A tyre or a rim is now wider than 8 (`JointSnap.WIDE`); the
+GPU probes were run on that, the browser build not again. Two runs before
 it (`build/`, `run2/`) found the rest: a pin put the other way round in its
 hole stands in the same place, so a ghost on a joint must be turned as the
 file has it, which takes up to four ways onto a pin (either end in, from
@@ -1565,8 +1569,10 @@ first run's thirteen are kept below, each with what closed it.
    and 9.4 to 12.4 s in Studio, steps marked or not within a second of
    that; a measured hand against Studio's has not been timed.
 4. **The build flow's actions a part on Technic.** 8841-1's first 8 went
-   down exactly (section 7), but at 23.5 actions a part in the run
-   measured, against 11.5 for its first 5 in section 6: R and T on joints.
+   down exactly (section 7), but at 23.5 actions a part in the runs
+   measured, against 11.5 for its first 5 in section 6: 77 presses on its
+   second brick, gone round a pin's collar as a tyre. Rounds of 8 are no
+   tyres or rims now, but the browser build has not been run on that.
 5. **The plane's wedge plates and the propeller on its slope** would not
    come to their place in eight aims in the whole plane's run (section 5).
    Not run again here: the whole plane takes 40 minutes of the box.
