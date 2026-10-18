@@ -1309,40 +1309,56 @@ static func drawn_arrow(arrow: Dictionary) -> String:
 ## rings round a middle, one upright and one flat, each with an arrowhead
 ## on it, the flat one over the upright where they cross.
 static func _turn_sign(at: Rect2) -> String:
-	var c: Vector2 = at.get_center()
-	var r: float = at.size.x * 0.36
-	var thin: float = r * 0.4
-	var stroke: float = at.size.x * 0.06
+	var s: float = at.size.x
+	var stroke: float = s * 0.055
 	var out := PackedStringArray()
 	out.append("<g class=\"turn-sign\">")
 	out.append("<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" rx=\"%s\" fill=\"#fff\" stroke=\"#15191e\" stroke-width=\".35\"/>"
-		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), _n(at.size.x * 0.16)])
-	# The upright ring, from low on the left round over the top to its head
-	# low on the right; then the flat one, from the left round the back to
-	# its head low on the left, a white edge under it where it crosses.
-	for ring: Array in [[Vector2(thin, r), 100.0, 420.0, false], [Vector2(r, thin), 150.0, 470.0, true]]:
-		var radii: Vector2 = ring[0]
-		var from: float = deg_to_rad(float(ring[1]))
-		var to: float = deg_to_rad(float(ring[2]))
-		var start: Vector2 = c + Vector2(cos(from) * radii.x, sin(from) * radii.y)
-		var end: Vector2 = c + Vector2(cos(to) * radii.x, sin(to) * radii.y)
-		var way: Vector2 = Vector2(-sin(to) * radii.x, cos(to) * radii.y).normalized()
-		var head: float = at.size.x * 0.13
-		var tail: Vector2 = end - way * head * 0.5
-		var arc: String = "M%s %s A%s %s 0 1 1 %s %s" % [_n(start.x), _n(start.y), _n(radii.x),
-			_n(radii.y), _n(tail.x), _n(tail.y)]
-		if bool(ring[3]):
-			out.append("<path d=\"%s\" fill=\"none\" stroke=\"#fff\" stroke-width=\"%s\"/>"
-				% [arc, _n(stroke * 2.6)])
-		out.append("<path d=\"%s\" fill=\"none\" stroke=\"#15191e\" stroke-width=\"%s\"/>"
-			% [arc, _n(stroke)])
-		var side := Vector2(-way.y, way.x)
-		var tip: Vector2 = end + way * head * 0.6
-		out.append("<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"#15191e\"/>" % [_n(tip.x), _n(tip.y),
-			_n(tail.x + side.x * head * 0.55), _n(tail.y + side.y * head * 0.55),
-			_n(tail.x - side.x * head * 0.55), _n(tail.y - side.y * head * 0.55)])
+		% [_n(at.position.x), _n(at.position.y), _n(s), _n(at.size.y), _n(s * 0.16)])
+	# The upright ring, from low on the right round under, up the left and
+	# over the top to its head on the right, pointing down; then the flat
+	# one, from low on the left round the back to its head at the front,
+	# pointing left, on a white edge so it reads in front where they cross.
+	# Angles clockwise from the right, as the page's y runs down.
+	var heads := PackedStringArray()
+	for ring: Array in [[Vector2(0.22, 0.36), 95.0, 415.0, false],
+			[Vector2(0.37, 0.15), 150.0, 470.0, true]]:
+		var drawn: Array = _ring_arrow(at.get_center(), (ring[0] as Vector2) * s, float(ring[1]),
+			float(ring[2]), stroke, s * 0.15, bool(ring[3]))
+		out.append(drawn[0])
+		heads.append(drawn[1])
+	# The heads over both rings.
+	out.append("".join(heads))
 	out.append("</g>")
 	return "".join(out)
+
+
+## Part of an ellipse round [param c] ([param radii]) from [param from] to
+## [param to] degrees, clockwise, on a white edge when [param edged], and
+## an arrowhead [param head] long at its end: [ring, head] as SVG.
+static func _ring_arrow(c: Vector2, radii: Vector2, from: float, to: float, stroke: float,
+		head: float, edged: bool) -> Array:
+	var at := func(degrees: float) -> Vector2:
+		return c + Vector2(cos(deg_to_rad(degrees)) * radii.x, sin(deg_to_rad(degrees)) * radii.y)
+	var start: Vector2 = at.call(from)
+	var end: Vector2 = at.call(to)
+	var way: Vector2 = Vector2(-sin(deg_to_rad(to)) * radii.x, cos(deg_to_rad(to)) * radii.y).normalized()
+	var arc: String = "M%s %s A%s %s 0 1 1 %s %s" % [_n3(start.x), _n3(start.y), _n3(radii.x),
+		_n3(radii.y), _n3(end.x), _n3(end.y)]
+	var out: String = ""
+	if edged:
+		out += "<path d=\"%s\" fill=\"none\" stroke=\"#fff\" stroke-width=\"%s\"/>" % [arc, _n3(stroke * 2.4)]
+	out += "<path d=\"%s\" fill=\"none\" stroke=\"#15191e\" stroke-width=\"%s\"/>" % [arc, _n3(stroke)]
+	var side := Vector2(-way.y, way.x)
+	var tip: Vector2 = end + way * head * 0.7
+	var base: Vector2 = end - way * head * 0.3
+	return [out, "<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"#15191e\" stroke=\"#fff\" stroke-width=\"%s\" paint-order=\"stroke\"/>" % [
+		_n3(tip.x), _n3(tip.y), _n3(base.x + side.x * head * 0.5), _n3(base.y + side.y * head * 0.5),
+		_n3(base.x - side.x * head * 0.5), _n3(base.y - side.y * head * 0.5), _n3(stroke * 0.8)]]
+
+
+static func _n3(value: float) -> String:
+	return String.num(value, 3)
 
 
 static func _n(value: float) -> String:
