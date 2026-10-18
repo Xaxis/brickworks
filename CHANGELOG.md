@@ -293,9 +293,6 @@ whole cycle.
   instead or could not be put at all, so a car built from its booklet could
   never have its wheels. The status line says how far the model rose, and
   one undo takes the part off and the model down again.
-- A model without steps of its own, given the worked-out ones by its first
-  booklet edit, built the second copy of a sub-model (10016-1's second
-  wheels) differently once it was saved and opened again.
 - A tyre goes on its rim. Aimed at a rim, the tyre in hand snaps round it,
   centred and square, `R` and `T` turning it about the rim and over; a rim
   goes into a tyre the same way. A tyre drawn with no connector of its own
@@ -304,11 +301,6 @@ whole cycle.
   the library's 118 tyres, from 31): a tyre's cover was closed at its
   sidewalls, so the wheel holder's pin ran into it and no tyre could be
   put on its rim, even typed in Properties.
-
-- In a browser, a step of the timeline on a big model is quick again. Since
-  parts could be grabbed and moved on their joints, the page looked for
-  every part's drag handle twice a second, and a step on a 925-part model
-  took 6 s.
 
 - A shared model's Build it draws the steps before the one shown faded
   again in a browser. Since the faster page turns, they were sometimes
