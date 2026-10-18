@@ -1472,6 +1472,14 @@ static func _find_supports(nodes: Array[Node2], world: BrickWorld,
 const UPRIGHT := 0.7
 ## Parts whose studs are read between two looks at the clock, paced.
 const SLICE := 100
+## A part no stud seats whose cover rests on something rests on what its
+## cover rests on, one way round, in place of what its box sat on (true), or
+## on neither, as the planner has always had it (false). Tried on 2026-10-17
+## and not kept: on the held-out sample, steps with a hidden new thing 11.4%
+## to 10.4%, but the build check's floating parts 5.9% to 7.5% and tau 0.287
+## to 0.279; read both ways round as well, steps with a floating thing 7.7%
+## to 10.0% (docs/INSTRUCTIONS.md, lostappend).
+const COVER_RESTS := false
 
 
 ## [method _find_supports], a slice at a time with a [param job].
@@ -1512,20 +1520,31 @@ static func _supports_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 				_hold(owner, into)
 	await _boxes_under(nodes, job)
 	await _contacts_of(nodes, world, library, job, frame)
-	# What a part no stud seats rests on is what its cover rests on, where
-	# its cover rests on anything: its box sat on a slope's or a bracket's
-	# box, which the part itself does not touch, and it went in on nothing.
-	var under_it: Dictionary = {}     ## id -> what its cover rests on
+	# Where the cover of a part no stud seats rests on anything, what its
+	# box sat on is not what it rests on: a slope's or a bracket's box, which
+	# the part itself does not touch. So that goes, and with COVER_RESTS
+	# what the cover rests on takes its place. Until 2026-10-17 what the
+	# cover rests on was appended through a cast to a packed array in a
+	# Dictionary, a copy, so it was always empty and only the going
+	# happened; the planner was tuned that way, and is kept so.
+	var under_it: Dictionary = {}     ## id -> Array of what its cover rests on
 	for node: Node2 in nodes:
 		for top: int in node.over:
+			# Covers that meet both ways (a figure's arm in its torso, a hand
+			# in its arm, a leg in its hips) say neither rests on the other.
+			# Read as resting each on each, they waited each on the other, and
+			# the order forced three times the steps it had.
+			if COVER_RESTS and (by_id[top] as Node2).over.has(node.id):
+				continue
 			if not under_it.has(top):
-				under_it[top] = PackedInt64Array()
-			(under_it[top] as PackedInt64Array).append(node.id)
+				under_it[top] = []
+			(under_it[top] as Array).append(node.id)
 	for node: Node2 in nodes:
 		if not node.seated and not node.boxed.is_empty() and under_it.has(node.id):
-			var resting: PackedInt64Array = under_it[node.id]
+			var resting := PackedInt64Array(under_it[node.id]) if COVER_RESTS \
+				else PackedInt64Array()
 			if not Array(node.boxed).any(func(id: int) -> bool: return resting.has(id)):
-				node.boxed = resting.duplicate()
+				node.boxed = resting
 		for need: int in node.boxed:
 			if not node.needs.has(need):
 				node.needs.append(need)
