@@ -281,6 +281,13 @@ whole cycle.
 
 ### Fixed
 
+- The page stands still between Claude's calls again. The line in Account
+  and the assistant panel that says which Claude chat works in this tab
+  kept its "2 min ago" true on a clock, and twice a minute made its rows
+  again, which in a browser drawing in software is the whole window drawn
+  again. It now says the time of day the chat's last call came, "last:
+  changed the model at 14:07", which needs no clock.
+
 - A quick drag in a slow browser grabs the part as it should. Pressed and
   dragged at once, a part was taken by its chain of joints instead, as if
   held still first, whenever a frame took longer than 0.4 s to draw: the

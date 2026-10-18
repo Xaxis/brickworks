@@ -501,6 +501,13 @@ func _run() -> void:
 	_check(panel._run_clock.text == clock_was and ticking.is_empty(),
 		"standing still between Claude's calls, the card's clock stays at %s, and nothing on the connector's line runs on a timer (%d)"
 			% [panel._run_clock.text, ticking.size()])
+	# The tab's line of the chats working in it kept "2 min ago" true on a
+	# 30-second Timer (2026-10-17); it says the time of day instead.
+	var chat_said: String = ClaudeTabView.chat_words({"since": "2026-10-18T09:00:00",
+		"did": "submit_design", "last": "2026-10-18T09:07:00"})
+	_check(chat_said.contains(", last: ") and chat_said.contains(" at ")
+			and not chat_said.contains(" ago"),
+		"...and the tab says when a chat's last call came, which needs no clock: %s" % chat_said)
 	connector.answered.emit("plan_scale", true, "90 studs")
 	_check(panel._run_clock.text != clock_was,
 		"...and the clock moves with the next of them: %s" % panel._run_clock.text)
