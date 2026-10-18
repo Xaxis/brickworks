@@ -39,14 +39,17 @@ fi
 git add .claude/skills/verify/features.json 2>/dev/null
 git "${ID[@]}" commit -q -m "$MSG" || exit 1
 git log --oneline -1
+# Imported in every mode: a probe run on the staged worktree before it
+# ships finds no class_names without it (rel-m79's grab_probe, "Could not
+# find type BrickWorld", the third time a missed import cost a run).
+~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
+echo "imported"
 # MERGE_GATES=ship: the parse gate and the tool list are left to ship.sh,
 # which runs them once for every unit merged, under the release's priority.
 if [ "${MERGE_GATES:-}" = ship ]; then
   ~/.claude/claude-core/bin/featuremap check 2>&1 | tail -1
   exit 0
 fi
-~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
-echo "imported"
 "$HERE/parse_gate.sh" "$W" || exit 3
 if ! git diff --quiet HEAD^1 HEAD -- src/net src/ai tools/mcp_tools.json 2>/dev/null; then
   ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd -- --write 2>&1 | grep -E "^  (ok|FAIL)|in step" 
