@@ -13,6 +13,11 @@
 #
 # Before removing, its shots/ are copied to bench/results/shots-<date>/<name>
 # in the main checkout, and nothing else ignored is touched.
+#
+# Then every process of ours still working in a worktree that is gone is
+# ended: a finished agent's background waiters (until grep …; do sleep) and
+# its Xvfb outlive it, and eleven were found running for one to nine days
+# (2026-10-18). A process in a removed worktree has nothing left to do.
 set -u
 DRY=${1:-}
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
@@ -39,4 +44,12 @@ for d in "$R"/.claude/worktrees/*/; do
   [ -d "$d/shots" ] && mkdir -p "$SHOTS" && cp -r "$d/shots" "$SHOTS/$w"
   git worktree remove --force "$d" && echo "removed $w"
   [ "$b" != HEAD ] && git branch -d "$b" >/dev/null 2>&1
+done
+gone=$(for p in /proc/[0-9]*; do [ -O "$p" ] || continue
+  c=$(readlink "$p/cwd" 2>/dev/null) || continue
+  case "$c" in "$R"/.claude/worktrees/*" (deleted)") echo "${p#/proc/}";; esac; done)
+for pid in $gone; do
+  what=$(ps -o etimes=,args= -p "$pid" 2>/dev/null | cut -c1-120) || continue
+  if [ "$DRY" = --dry-run ]; then echo "would end $pid (in a removed worktree):$what"; continue; fi
+  kill "$pid" 2>/dev/null && echo "ended $pid (in a removed worktree):$what"
 done
