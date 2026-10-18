@@ -42,7 +42,7 @@
 // while the app's own drag frames never passed 7.3 ms, and it held m54's
 // turntable fix three times.
 import { launch } from "./browser.mjs";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -52,6 +52,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const url = args.url || "https://brickworks.diy/app";
 const out = args.out || "shots/grab_web";
 const stallLimit = Number(args.stall || 5000);
+// The page's longest waits, judged at the end against what drawing a frame
+// costs on this box: [ms, what].
+const stalls = [];
+let drawWorst = 0;
 const workLimit = Number(args.work || 33);
 const first = args.bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
@@ -340,7 +344,15 @@ try {
     opened = await until(state, (s) => s.bricks === PARTS && !/arriving/.test(s.said || ""), 240);
     if (!opened) await page.waitForTimeout(15000);
   }
-  check(Boolean(opened), `the crane opened: ${(await state()).bricks} parts`);
+  if (!check(Boolean(opened), `the crane opened: ${(await state()).bricks} parts`)) {
+    // Which of the file's parts the app has not got.
+    const now = await state();
+    const wanted = [...new Set(readFileSync(model, "utf8").split("\n").filter((l) => l.startsWith("1 "))
+      .map((l) => l.trim().split(/\s+/).pop().replace(/\.dat$/, "")))];
+    const have = new Set(now.parts || []);
+    console.log(`        not in the model: ${wanted.filter((p) => !have.has(p)).join(", ") || "none by number"}; `
+      + `the bar says "${now.said}"`);
+  }
   await page.keyboard.press("Shift+F");
   await page.waitForTimeout(4000);
   const ready = await until(grab, (g) => (g.handles || []).length >= 2, 60);
@@ -368,7 +380,7 @@ try {
     `let go, it is kept and said: "${after && after.said}"`);
   check(Boolean(after) && Number(after.worst_ms) <= workLimit,
     `the app's own work in a drag frame stays under ${workLimit} ms: worst ${after && after.worst_ms} ms`);
-  check(up.stall <= stallLimit, `the page did not hang in the drag: its longest wait ${up.stall} ms`);
+  stalls.push([up.stall, "the drag"]);
   timings.arm = { frames: after && after.frames, mean_ms: after && after.mean_ms,
     worst_ms: after && after.worst_ms, stall_ms: up.stall };
   console.log(`      the app's own cost of a drag frame: mean ${after && after.mean_ms} ms, worst `
@@ -421,7 +433,7 @@ try {
     check(Boolean(kept), `and is kept: "${kept && kept.said}"`);
     check(Boolean(kept) && Number(kept.worst_ms) <= workLimit,
       `the app's own work in a four-bar frame stays under ${workLimit} ms: worst ${kept && kept.worst_ms} ms`);
-    check(loop.stall <= stallLimit, `the page did not hang in the four-bar's drag: its longest wait ${loop.stall} ms`);
+    stalls.push([loop.stall, "the four-bar's drag"]);
     timings.fourbar = { frames: kept && kept.frames, mean_ms: kept && kept.mean_ms,
       worst_ms: kept && kept.worst_ms, stall_ms: loop.stall };
     console.log(`      the app's own cost of a four-bar frame: mean ${kept && kept.mean_ms} ms, worst `
@@ -489,7 +501,7 @@ try {
     check(Boolean(rested) && Number(rested.swing_worst_ms) <= workLimit,
       `the app's own work in a swing frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
       + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
-    check(stall <= stallLimit, `the page did not hang in the swing: its longest wait ${stall} ms`);
+    stalls.push([stall, "the swing"]);
     // A frame steps the swing at most a quarter second and 8 ms of the app's
     // work: where the page draws slower than that (software drawing on a
     // loaded box), the swing is drawn slower than it is.
@@ -533,6 +545,7 @@ try {
       + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms; the app drew ${viewDrawn.frames} `
       + `in ${viewDrawn.seconds} s, ${viewDrawn.per_second} a second`);
     timings.view_turning_frames = turning;
+    drawWorst = turning.worst;
     timings.view_turning_drawn = viewDrawn;
     // Like with like: frames the app drew a second, the swing's and the
     // view turning's. The page's median gap, the bar until 2026-10-17, is
@@ -571,11 +584,15 @@ try {
     await page.mouse.down();
     const began = Date.now();
     let heldMid = null;
-    while (Date.now() - began < 2000) {
+    // Two seconds round, and on until the app has hold of it and has turned
+    // it (at most ten): a browser drawing a frame a second reads the press
+    // a frame late, and read once at a second the drag had not begun.
+    const turned = (g) => Boolean(g && g.grabbing) && Math.abs(g.angle || 0) > 5;
+    while (Date.now() - began < 10000 && (Date.now() - began < 2000 || !turned(heldMid))) {
       const a = a0 + Math.PI * (Date.now() - began) / 1000;
       await page.mouse.move(cx + r * Math.sin(a), cy - r * Math.cos(a));
       await page.waitForTimeout(16);
-      if (!heldMid && Date.now() - began > 1000) heldMid = await grab();
+      if (Date.now() - began > 1000 && !turned(heldMid)) heldMid = await grab();
     }
     await page.mouse.up();
     let coasting = null;
@@ -597,7 +614,7 @@ try {
     check(Boolean(rested) && Number(rested.swing_worst_ms) <= workLimit,
       `the app's own work in a coasting frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
       + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
-    check(stall <= stallLimit, `the page did not hang in the flick: its longest wait ${stall} ms`);
+    stalls.push([stall, "the flick"]);
     timings.coast = { said: rested && rested.said, deg_s: rested && rested.coast_deg_s,
       frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
       worst_ms: rested && rested.swing_worst_ms, simulated_s: rested && rested.swing_s,
@@ -609,6 +626,17 @@ try {
     check(false, `stopped: ${trouble.message}`);
     await shot("stopped.png");
   }
+}
+// A hang is a wait well past what drawing one frame costs here: in software
+// on a shared box a frame of the view turning, with nothing of the grab
+// running, took 3.4 s at worst (m78's preview at load 43), and the swing's
+// longest wait, 5.1 s, was that drawing, not the app (its own work in a
+// swing frame is gated above, 8 ms). Twice the view's worst, or the limit
+// given, whichever is more.
+const hangLimit = Math.max(stallLimit, 2 * drawWorst);
+for (const [ms, what] of stalls) {
+  check(ms <= hangLimit, `the page did not hang in ${what}: its longest wait ${ms} ms (a hang: over ${hangLimit} ms, `
+    + `twice a frame of the view turning at worst, ${drawWorst} ms, or ${stallLimit})`);
 }
 writeFileSync(path.join(out, "timings.json"), JSON.stringify(timings, null, 2));
 check(errors.length === 0, `no script errors (${errors.slice(0, 3).join(" | ")})`);
