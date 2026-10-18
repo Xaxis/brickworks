@@ -305,8 +305,10 @@ class Pictures extends RefCounted:
 	## The cells, in LDU, that the parts built so far are kept in by their
 	## boxes. Kept by where they landed in the front view, every part of a big
 	## model along a line of sight was looked at for each part asked about,
-	## to find the few near it: most of what the step pictures cost.
-	const CELL := 40.0
+	## to find the few near it: most of what the step pictures cost. Four
+	## studs: at two, a part was found again in every cell it reached into,
+	## and looking up what is in front took an eighth longer.
+	const CELL := 80.0
 	## How far, in LDU, an earlier part may be from one and still count as
 	## in front of it: a stud and a bit.
 	const IN_FRONT := 24.0
@@ -1620,6 +1622,9 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		return out
 	# Each part against those whose top is near its underside, or above it
 	# and still under its top: what it may rest on.
+	var seen := PackedInt32Array()
+	seen.resize(nodes.size())
+	seen.fill(-1)
 	for index: int in nodes.size():
 		if job != null and job.due():
 			await job.next()
@@ -1628,19 +1633,25 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		var node: Node2 = nodes[index]
 		var lowest: int = floori((node.box.position.y - 2.5) / LAYER)
 		var highest: int = floori((node.box.end.y + 2.5) / LAYER)
-		var seen: Dictionary = {}
 		var near: Dictionary = loose if node.seated else grid
 		var top: float = node.box.end.y
 		var under: float = node.box.position.y - 2.5
+		# _overlaps_flat, written out: a call a pair asked was a good part of
+		# the loop.
+		var left: float = node.box.position.x
+		var right: float = node.box.end.x
+		var back: float = node.box.position.z
+		var front: float = node.box.end.z
 		for cell: Vector2i in _cells(node.box, BUCKET):
 			for layer: int in range(lowest, highest + 1):
 				var there: Variant = near.get(Vector3i(cell.x, cell.y, layer))
 				if there == null:
 					continue
 				for other: int in there:
-					if other == index or seen.has(other):
+					# Each part once, marked with the index of the one asking.
+					if other == index or seen[other] == index:
 						continue
-					seen[other] = true
+					seen[other] = index
 					var them: Node2 = nodes[other]
 					# Two parts on studs are read by their studs; what their
 					# covers say is for a part no stud seats. Asked of every
@@ -1650,11 +1661,13 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 					# Each pair once, from the one whose top is higher; and
 					# under it, the other's top within a cell of its
 					# underside, or above it. The comparisons before the call.
-					var their_top: float = them.box.end.y
+					var box: AABB = them.box
+					var their_top: float = box.end.y
 					if their_top > top or their_top == top and other < index or their_top < under:
 						continue
-					# Their plans overlap.
-					if not _overlaps_flat(node.box, them.box):
+					# Their plans overlap, a shared edge not (_overlaps_flat).
+					if not (left < box.end.x - 0.5 and box.position.x < right - 0.5
+							and back < box.end.z - 0.5 and box.position.z < front - 0.5):
 						continue
 					# Kept, and worked out only the first time (cover_of).
 					var mine: Variant = covers.get(index)
