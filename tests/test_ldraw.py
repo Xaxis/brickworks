@@ -1224,3 +1224,13 @@ def test_a_tyre_drawn_with_no_primitive_has_its_hole_as_a_bore() -> None:
     assert abs(bore.axis[2]) == pytest.approx(1.0)
     rim = [c for c in _built_cover("3482.dat")[1] if c.kind == "shaft"]
     assert any(abs(c.radius - bore.radius) <= 1.0 for c in rim)
+
+
+@needs_numpy
+def test_an_arch_with_a_free_line_through_it_is_no_ring() -> None:
+    """67503c01, a car's canvas roof, has no connector and a line along its
+    length with nothing within 9 LDU of it, its sides hanging below the
+    line. It is an arch, not a ring a rim goes in: it reaches 80 LDU out.
+    It gets no bore."""
+    _cells, connectors = _built_cover("67503c01.dat")
+    assert connectors == []

@@ -649,6 +649,10 @@ def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole
 ## than a Technic hole's counterbore and a pin's collar, both 8 across
 ## (JointSnap.WIDE).
 RING_BORE = 8.5
+## How far out a ring may reach, in its hole's radii: a tyre is a band round
+## its hole, 1.4 to 2 of them across in the library. 67503c01, a car's canvas
+## roof, has a free line 9 across through its middle and reaches 80 out.
+RING_THICK = 4.0
 
 
 def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
@@ -665,7 +669,8 @@ def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
     and a tyre its ghost puts round a rim (JointSnap).
 
     A ring: its hole open (nothing of its cover nearer the line than the
-    round, less WIDE_SLACK) and its cells all round the line.
+    round, less WIDE_SLACK), its cells all round the line, in each eighth
+    of the way round, and none further out than RING_THICK of its radii.
     """
     if not mesh.triangles or occupancy.cell_count == 0:
         return None
@@ -682,11 +687,14 @@ def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
             continue
         du = cells[:, u] - centre[u]
         dw = cells[:, w] - centre[w]
-        if float(np.sqrt(du * du + dw * dw).min()) < radius - WIDE_SLACK:
+        reach = np.sqrt(du * du + dw * dw)
+        if float(reach.min()) < radius - WIDE_SLACK or float(reach.max()) > RING_THICK * radius:
             continue
-        half = radius / 2.0
-        if not ((du > half).any() and (du < -half).any()
-                and (dw > half).any() and (dw < -half).any()):
+        # All round: cells in each of the eight eighths round the line. Four
+        # half-planes were not enough: 67503c01, a car's canvas roof, is an
+        # arch whose sides hang below its middle, open underneath.
+        eighth = (du > 0) * 4 + (dw > 0) * 2 + (np.abs(du) > np.abs(dw))
+        if np.unique(eighth).size < 8:
             continue
         start = centre.copy()
         start[n] = low[n]

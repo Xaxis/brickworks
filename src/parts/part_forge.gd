@@ -1862,6 +1862,8 @@ static func _wide_bores(grid: Grid, connectors: Array) -> Array:
 ## occupancy.RING_BORE: the narrowest round a ring's hole may be and be a
 ## tyre's, LDU.
 const RING_BORE := 8.5
+## occupancy.RING_THICK: how far out a ring may reach, in its hole's radii.
+const RING_THICK := 4.0
 
 
 ## occupancy.ring_bore: the hole of a part with no connector at all that is
@@ -1901,16 +1903,20 @@ func _ring_bore(grid: Grid) -> Array:
 			radius = minf(radius, sqrt(pu * pu + pw * pw))
 		if radius <= RING_BORE:
 			continue
+		# All round: cells in each of the eight eighths round the line.
 		var nearest: float = INF
-		var sides: int = 0
-		var half: float = radius / 2.0
+		var furthest: float = 0.0
+		var eighths: int = 0
 		for m: PackedFloat64Array in cells:
 			var du: float = m[u] - centre[u]
 			var dw: float = m[w] - centre[w]
-			nearest = minf(nearest, sqrt(du * du + dw * dw))
-			sides |= (1 if du > half else 0) | (2 if du < -half else 0) \
-				| (4 if dw > half else 0) | (8 if dw < -half else 0)
-		if nearest < radius - WIDE_SLACK or sides != 15:
+			var reach: float = sqrt(du * du + dw * dw)
+			nearest = minf(nearest, reach)
+			furthest = maxf(furthest, reach)
+			var eighth: int = (4 if du > 0.0 else 0) + (2 if dw > 0.0 else 0) \
+				+ (1 if absf(du) > absf(dw) else 0)
+			eighths |= 1 << eighth
+		if nearest < radius - WIDE_SLACK or furthest > RING_THICK * radius or eighths != 255:
 			continue
 		var start := centre.duplicate()
 		start[n] = low[n]
