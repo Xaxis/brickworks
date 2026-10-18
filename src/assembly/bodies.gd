@@ -79,6 +79,9 @@ class Link extends RefCounted:
 	## False for a joint that only slides: a linear actuator's rod in its body,
 	## a pneumatic cylinder's.
 	var turns: bool = true
+	## The round it turns in, its radius, LDU: a turntable's disc in its base
+	## bears on it ([Swing]'s friction); 0 where the joints do not say.
+	var radius: float = 0.0
 
 	func other(body: int) -> int:
 		return b if body == a else a
@@ -295,7 +298,7 @@ func _read() -> void:
 				slide_and_shaft = _slide_within(a, b, zone)
 				holds = false
 			candidates.append([a, b, kind, zone[0], (zone[1] as Vector3).normalized(), holds,
-				detent, slide_and_shaft[0], slide_and_shaft[1]])
+				detent, slide_and_shaft[0], slide_and_shaft[1], float(zone[4]) if zone.size() > 4 else 0.0])
 
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
@@ -506,6 +509,7 @@ func _read() -> void:
 			link.slide = c[7]
 			link.shaft_part = c[8]
 			link.turns = not (str(c[2]) in ["actuator", "cylinder"])
+			link.radius = float(c[9]) if c.size() > 9 else 0.0
 			made[pair] = link
 			links.append(link)
 			for end: int in [x, y]:
@@ -892,6 +896,11 @@ func universals() -> Array:
 		for link: Link in touching.get(body, []):
 			if link.axis != Vector3.ZERO and link.turns:
 				turning.append(link)
+		# Pinned into its ends' forks: a shaft of two parts (a joint's end on
+		# its axle) turning as an axle in a hole on a line through where it
+		# is pinned is not a cross.
+		if turning.size() == 2 and not (turning[0].kind in ["hinge", "pin"] and turning[1].kind in ["hinge", "pin"]):
+			continue
 		if turning.size() != 2 or turning[0].other(body) == turning[1].other(body):
 			continue
 		var u: Vector3 = turning[0].axis.normalized()

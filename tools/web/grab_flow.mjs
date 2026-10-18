@@ -19,8 +19,11 @@
 // as a steering's arms turn. Left of the crane a beam 7 hangs on a pin without
 // friction from a Technic brick on a tower: dragged out and let go, it swings
 // under its own weight, back and forth, and comes to rest hanging (Swing).
-// The page asks for the handles (window.brickworksGrabAsk): the app finds
-// them only when asked.
+// Further left a gear 40 lies flat on an axle standing free in a plate's
+// hole: taken by its rim, turned round and let go while it turns, it coasts
+// on at the pointer's speed and
+// stops against its bearing's friction (Swing, flung). The page asks for the
+// handles (window.brickworksGrabAsk): the app finds them only when asked.
 //
 //   ... --big=vendor/omr/files/42082-1.mpd --only-big
 //
@@ -84,9 +87,17 @@ writeFileSync(model, [
   "1 7 -120 -168 0 1 0 0 0 1 0 0 0 1 3701.dat",
   "1 0 -120 -158 -10 0 0 -1 0 1 0 1 0 0 3673.dat",
   "1 14 -120 -98 -20 -1 0 0 0 0 1 0 1 0 32524.dat",
+  // The flywheel, further left: a Technic gear 40 lying flat on an axle 3
+  // standing in a Technic plate 2x4 with holes on a tower of three bricks
+  // 2x4. Upright, the axle's line is a long one on the page, so a drag round
+  // the gear turns it rather than sliding it along its axle.
+  ...Array.from({ length: 3 }, (_, k) => `1 4 -300 ${-24 * (k + 1)} 0 1 0 0 0 1 0 0 0 1 3001.dat`),
+  "1 7 -300 -80 0 1 0 0 0 1 0 0 0 1 3709b.dat",
+  "1 0 -300 -102 0 0 -1 0 1 0 0 0 0 1 4519.dat",
+  "1 7 -300 -112 0 1 0 0 0 0 1 0 -1 0 3649.dat",
   "",
 ].join("\n"));
-const PARTS = 23;
+const PARTS = 29;
 
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -530,6 +541,63 @@ try {
     console.log(`      drawn a second: the swing ${timings.swing_fps.toFixed(1)}, `
       + `the view turning ${viewDrawn.per_second.toFixed(1)}`);
     await page.waitForTimeout(1500);
+  }
+  // The flywheel: taken by its rim and turned round by the mouse at half a
+  // turn a second for two seconds by the clock (a browser drawing in
+  // software reads the pointer a few times a second, and the speed is read
+  // over those), then let go at once: it carries on at that speed and
+  // coasts to a stop against its bearing's friction, and says so.
+  // The only part on an axle here: the gear 40's, or its axle's. (Not told
+  // by where it is on the page: the view has been turned since the arm.)
+  const isWheel = (h) => h.part === "3649" || h.kind === "axle";
+  const wheelAt = await until(grab, (g) => !g.grabbing && !g.swinging && (g.handles || []).some(isWheel), 20);
+  const wheel = wheelAt && wheelAt.handles.find(isWheel);
+  if (check(Boolean(wheel), `the flywheel is there to take hold of (${wheelAt
+    ? wheelAt.handles.map((h) => `${h.part} on its ${h.kind}`).join(", ") : "none"})`)) {
+    // Round the axle's point on the page (pivot_x, pivot_y), through the
+    // handle on the gear.
+    const cx = wheel.pivot_x ?? wheel.x;
+    const cy = wheel.pivot_y ?? wheel.y;
+    const r = Math.max(Math.hypot(wheel.x - cx, wheel.y - cy), 10);
+    const a0 = Math.atan2(wheel.x - cx, -(wheel.y - cy));
+    await page.mouse.move(cx + r * Math.sin(a0), cy - r * Math.cos(a0), { steps: 3 });
+    await page.waitForTimeout(600);
+    await heartbeat();
+    await page.mouse.down();
+    const began = Date.now();
+    let heldMid = null;
+    while (Date.now() - began < 2000) {
+      const a = a0 + Math.PI * (Date.now() - began) / 1000;
+      await page.mouse.move(cx + r * Math.sin(a), cy - r * Math.cos(a));
+      await page.waitForTimeout(16);
+      if (!heldMid && Date.now() - began > 1000) heldMid = await grab();
+    }
+    await page.mouse.up();
+    let coasting = null;
+    for (let n = 0; n < 200 && !coasting; n++) {
+      const now = await grab();
+      if (now.swinging && Math.abs(now.coast_deg_s || 0) > 0) coasting = now;
+      else if (!now.swinging && /coasted|stopped at|not moved|, \d+°/.test(now.said || "") && n > 4) break;
+      await page.waitForTimeout(100);
+    }
+    const rested = await until(grab, (g) => !g.swinging && !g.grabbing && /coasted/.test(g.said || ""), 120);
+    const stall = await page.evaluate(() => Math.round(window.__beat.worst));
+    check(Boolean(heldMid && heldMid.grabbing) && Math.abs(heldMid.angle || 0) > 5,
+      `the flywheel turns on its axle while the button is down: `
+      + `${heldMid && heldMid.angle}° (${heldMid && heldMid.what})`);
+    check(Boolean(rested), `let go while it turns, it coasts and says how far: "${rested && rested.said}"`);
+    console.log(`      let go at ${rested && rested.coast_deg_s}° a second (the mouse went round at 180), `
+      + `${rested && rested.swing_s} s simulated over ${rested && rested.swing_clock_s} s on the clock in `
+      + `${rested && rested.swing_frames} frames`);
+    check(Boolean(rested) && Number(rested.swing_worst_ms) <= workLimit,
+      `the app's own work in a coasting frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
+      + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
+    check(stall <= stallLimit, `the page did not hang in the flick: its longest wait ${stall} ms`);
+    timings.coast = { said: rested && rested.said, deg_s: rested && rested.coast_deg_s,
+      frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
+      worst_ms: rested && rested.swing_worst_ms, simulated_s: rested && rested.swing_s,
+      clock_s: rested && rested.swing_clock_s, stall_ms: stall };
+    await shot("10_flywheel_after.png");
   }
 } catch (trouble) {
   if (!args["only-big"]) {

@@ -127,6 +127,11 @@ var swing_clock_s: float = 0.0
 var _swing_total_ms: float = 0.0
 ## The last swing, kept for a probe.
 var last_swing: Swing = null
+## How fast the pointer was turning the last grab as it let go, rad/s about
+## its joint's line (Grab.fling_rate): the swing starts at it.
+var held_fling: float = 0.0
+## When the swing's line was last said, ms.
+var _swing_told_at: int = 0
 
 
 ## A drag began on [param brick_id] at [param screen]. True when the drag
@@ -306,6 +311,8 @@ func release() -> String:
 	grab = null
 	if held.state != "moves":
 		return held.why
+	# Let go while the pointer was turning it: it carries on at that rate.
+	held_fling = held.fling_rate(Time.get_ticks_usec())
 	if held.unchecked:
 		# Checked from here, then kept: on a worker where there are threads,
 		# else a frame at a time (_process).
@@ -356,7 +363,7 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	if not held.settled:
 		# A free joint swings, frame by frame (_swing_frame), and is kept when
 		# it comes to rest; the rest settle at once.
-		if _swinging == null and held.swing_begin():
+		if _swinging == null and held.swing_begin(held_fling):
 			if _falls_first(held):
 				held.swing = null
 				held.settled = true
@@ -371,7 +378,8 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 				swing_worst_ms = 0.0
 				swing_mean_ms = 0.0
 				_swing_total_ms = 0.0
-				say.call("%s — swinging…" % _capital(held.said))
+				_swing_told_at = 0
+				say.call("%s — %s" % [_capital(held.said), _swing_line(held)])
 				last_words = "swinging"
 				return "swinging"
 	if not held.settled:
@@ -811,11 +819,12 @@ func for_session(input: Dictionary) -> String:
 	# The graph read for this revision, as a drag weighs with.
 	var judge: Balance = _judge
 	var weighs: bool = judge != null
-	if not input.has("degrees") and not input.has("along"):
+	if not input.has("degrees") and not input.has("along") and not input.has("spin"):
 		if weighs:
 			lines.append("As it stands: %s." % _standing_words(judge.weigh_pose({}), false))
-		lines.append("Nothing was changed. degrees= turns it%s." % (", along= slides it"
-			if held.can_slide() else ""))
+		lines.append("Nothing was changed. degrees= turns it%s%s." % [", along= slides it"
+			if held.can_slide() else "", ", spin= lets it go turning that many degrees a second"
+			if held.mode == "turn" and not held.link.holds else ""])
 		return "\n".join(lines)
 	var asked_for: String = ""
 	if input.has("along"):
@@ -832,16 +841,29 @@ func for_session(input: Dictionary) -> String:
 		var about := Vector3(float(way[0]), float(way[1]), float(way[2]))
 		if about.length() < 0.001:
 			return "axis= must not be [0, 0, 0]."
-		held.ball_to(Basis(about.normalized(), deg_to_rad(float(input["degrees"]))))
-		asked_for = "%s°" % Balance.tidy(float(input["degrees"]))
+		held.ball_to(Basis(about.normalized(), deg_to_rad(float(input.get("degrees", 0.0)))))
+		asked_for = "%s°" % Balance.tidy(float(input.get("degrees", 0.0)))
 	else:
-		held.turn_to(float(input["degrees"]))
-		asked_for = "%s°" % Balance.tidy(float(input["degrees"]))
+		held.turn_to(float(input.get("degrees", 0.0)))
+		asked_for = "%s°" % Balance.tidy(float(input.get("degrees", 0.0)))
 	var stopped: bool = held.stopped
+	# Let go turning, as a pointer's flick lets it go: spin= degrees a second.
+	var spin: float = deg_to_rad(float(input.get("spin", 0.0))) if held.mode == "turn" else 0.0
+	if input.has("spin"):
+		asked_for = ("%s, let go at %s° a second" % [asked_for, Balance.tidy(float(input["spin"]))]) \
+			if input.has("degrees") else "let go at %s° a second" % Balance.tidy(float(input["spin"]))
 	# A free joint swings to rest, run here at once (Swing.run), as a drag's
 	# is drawn; the rest settle.
 	var swung: String
-	if held.swing_begin() and _falls_first(held):
+	var began: bool = held.swing_begin(spin)
+	if input.has("spin") and (not began or not held.swing_has_grabbed()):
+		var why_not: String = "only a section of up to %d parts on a free joint coasts" % Grab.SWING_MOST_PARTS
+		if held.train_held:
+			why_not = "a bearing of the gears it drives holds by friction"
+		elif held.link.holds or held.mode != "turn":
+			why_not = "%s holds by friction, where it is let go" % held.link.words().trim_prefix("on ")
+		lines.append("It does not coast: %s." % why_not)
+	if began and _falls_first(held):
 		swung = ""
 	elif held.swing != null:
 		held.swing.run()
@@ -1069,6 +1091,10 @@ func _swing_frame() -> void:
 	_swing_owed -= held.swing.advance(maxf(_swing_owed, 0.0), SWING_BUDGET_MS)
 	held.swing_pose()
 	world.set_drawn(held.placed)
+	var told: int = Time.get_ticks_msec()
+	if told - _swing_told_at >= TELL_EVERY_MS and not held.swing.at_rest:
+		_swing_told_at = told
+		_tell("%s — %s" % [_capital(held.said), _swing_line(held)])
 	var spent: float = float(Time.get_ticks_usec() - started) / 1000.0
 	swing_frames += 1
 	_swing_total_ms += spent
@@ -1076,6 +1102,17 @@ func _swing_frame() -> void:
 	swing_mean_ms = _swing_total_ms / float(swing_frames)
 	if held.swing.at_rest:
 		_end_swing("")
+
+
+## The status line while a section swings or coasts: "coasting at 1.8
+## turns a second, 2.3 turns so far" for one let go while it moved,
+## "swinging…" for one let go from rest.
+func _swing_line(held: Grab) -> String:
+	var swing: Swing = held.swing
+	if swing == null or absf(swing.flung) <= 0.0:
+		return "swinging…"
+	return "coasting at %s turns a second, %s turns so far%s…" % [Balance.tidy(absf(swing.qd[0]) / TAU),
+		Balance.tidy(swing.travel / TAU), ", the gears it drives with it" if not held.coupled.is_empty() else ""]
 
 
 ## The swing over: kept where it is, as one step with the drag, and said.
@@ -1289,6 +1326,9 @@ func _tell_page() -> void:
 	# so frames slower than that draw the swing slower than it is.
 	state["swing_s"] = snappedf(last_swing.time, 0.01) if last_swing != null else 0.0
 	state["swing_clock_s"] = snappedf(swing_clock_s, 0.01)
+	# How fast the swing was let go, degrees a second: a flick's coast.
+	var coasting: Swing = _swinging.swing if _swinging != null else last_swing
+	state["coast_deg_s"] = snappedf(rad_to_deg(coasting.flung), 0.1) if coasting != null else 0.0
 	# Frames drawn: a drag draws one a move, a swing or a turning view one
 	# every frame, so a page's frames apart say nothing of what drawing costs.
 	state["drawn"] = Engine.get_frames_drawn()
@@ -1327,6 +1367,12 @@ func _find_handles() -> Array:
 			spot.erase("screen")
 			spot["x"] = roundi(at.x)
 			spot["y"] = roundi(at.y)
+			# Where its joint's point is on the page, to turn it round that.
+			var link: Bodies.Link = _bodies.parent_link[body]
+			if not camera.is_position_behind(link.point):
+				var pivot: Vector2 = to_window * camera.unproject_position(link.point) / per_css
+				spot["pivot_x"] = roundi(pivot.x)
+				spot["pivot_y"] = roundi(pivot.y)
 			out.append(spot)
 	return out
 
