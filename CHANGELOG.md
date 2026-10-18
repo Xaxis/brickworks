@@ -156,6 +156,13 @@ whole cycle.
 
 ### Changed
 
+- Working out a booklet's steps, for a model without steps of its own,
+  takes about two thirds of the time it did, and gives the same steps,
+  step for step: the steps score's 100 held-out files plan in 30 to 36 s
+  where they took 44 to 55 s on a busy machine, and 76161's Batwing on its
+  stand (2,398 parts) in 2.7 to 3.4 s where it took 2.8 to 5.0. A file's
+  own stickers and prints no longer sort the whole parts library again
+  before the first figure is found.
 - A step given a page alone in the booklet is drawn as large as fills the
   page, where it kept to ten millimetres a stud and sat small in the
   middle.
