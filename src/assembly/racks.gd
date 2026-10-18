@@ -149,14 +149,30 @@ static func find(entries: Array) -> Array[Pinion]:
 			var axis: Vector3 = (gear_at.basis * Vector3.BACK).normalized()
 			var local: Vector3 = inverse * centre
 			var local_axis: Vector3 = (inverse.basis * axis).normalized()
-			if absf(local_axis.z) < SQUARE:
-				continue
 			var teeth: int = int(gear_spec["teeth"])
 			var radius: float = per_tooth * teeth
-			var off: float = local.y - (float(spec["pitch_line"]) + radius)
+			# The way from the rack's teeth to the pinion's centre, in the
+			# rack's frame: up, or for a round rack (2790a, a rod ringed with
+			# teeth) straight out from its line, whichever side the pinion is.
+			var out_way := Vector3.UP
+			var off: float = 0.0
+			if bool(spec.get("round", false)):
+				var across := Vector2(local.y, local.z)
+				if across.length() < 0.001:
+					continue
+				out_way = Vector3(0.0, across.x, across.y).normalized()
+				# Square to the rod and to the way out to its centre.
+				var skew: float = sqrt(1.0 - SQUARE * SQUARE)
+				if absf(local_axis.x) > skew or absf(local_axis.dot(out_way)) > skew:
+					continue
+				off = across.length() - (float(spec["pitch_line"]) + radius)
+			else:
+				if absf(local_axis.z) < SQUARE:
+					continue
+				off = local.y - (float(spec["pitch_line"]) + radius)
+				if local.z < float(z[0]) - ACROSS_SLACK or local.z > float(z[1]) + ACROSS_SLACK:
+					continue
 			if absf(off) > PITCH_SLACK:
-				continue
-			if local.z < float(z[0]) - ACROSS_SLACK or local.z > float(z[1]) + ACROSS_SLACK:
 				continue
 			if local.x < float(spec["from"]) - ALONG_SLACK or local.x > float(spec["to"]) + ALONG_SLACK:
 				continue
@@ -171,7 +187,7 @@ static func find(entries: Array) -> Array[Pinion]:
 			# The pinion's tooth where it meets the rack, below its centre on
 			# the rack's side, goes this way as the pinion turns about its
 			# axis; the rack goes with it a tooth for a tooth.
-			var down: Vector3 = -(at.basis * Vector3.UP).normalized()
+			var down: Vector3 = -(at.basis * out_way).normalized()
 			var sense: float = signf(mesh.line.dot(axis.cross(down)))
 			mesh.rate = sense * pitch() * float(teeth) / TAU
 			out.append(mesh)

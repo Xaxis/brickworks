@@ -99,6 +99,12 @@ class Link extends RefCounted:
 				return "in its linear actuator"
 			"cylinder":
 				return "in its pneumatic cylinder"
+			"housing":
+				return "in its rack housing"
+			"groove":
+				return "on the studs in its groove"
+			"rests":
+				return "sliding where it rests"
 			"click":
 				return "on its click hinge"
 			"turntable":
@@ -257,7 +263,7 @@ func _read() -> void:
 	# along their axis as far as the library draws it out and in, and does not
 	# turn there. Nothing else joins the two.
 	var acting: Dictionary = {}   ## Vector2i pair -> true
-	for c: Array in _actuators(entries):
+	for c: Array in _actuators(entries) + _rack_housings(entries):
 		candidates.append(c)
 		acting[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
 	# A screw's input turns in its body and is held there: it does not slide.
@@ -318,6 +324,13 @@ func _read() -> void:
 			if zones.is_empty():
 				continue
 			var zone: Array = zones[0]
+			# A round steering rack (2790a) is loose in its holder (a rod 20
+			# across in a bore 22 to 26 across), and its pinion pushes it
+			# along: as the arms at its ends swing, the rod goes a little
+			# aside. Held to the holder's line, 8022-1's steering closed to a
+			# hundredth at 5 degrees and not at 20.
+			if _rides_loose(a, b, part_of, zone):
+				continue
 			var kind: String = "hinge"
 			var detent: float = 0.0
 			var holds: bool = true
@@ -512,6 +525,10 @@ func _read() -> void:
 		var found: Array = per_pair[pair]
 		if turning.has(pair):
 			continue
+		var groove: Array = _in_a_groove(pair, int(stud_of.get(pair, pair.x)), found)
+		if not groove.is_empty():
+			candidates.append(groove)
+			continue
 		if found.size() == 1 and (_one_stud(info_of.get(pair.x)) or _one_stud(info_of.get(pair.y))):
 			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
 				Vector2.ZERO, 0])
@@ -559,7 +576,10 @@ func _read() -> void:
 		for c: Array in candidates:
 			var x: int = _find(int(c[0]))
 			var y: int = _find(int(c[1]))
-			if x == y:
+			# A rack's housing or the studs in its groove guide it along its
+			# line: what else joins the two rides in the housing's slot (an
+			# axle through 18940's), and does not hold the rack with them.
+			if x == y or str(c[2]) in GUIDES:
 				continue
 			var pair := Vector2i(mini(x, y), maxi(x, y))
 			if not by_pair.has(pair):
@@ -614,7 +634,7 @@ func _read() -> void:
 			link.detent = c[6]
 			link.slide = c[7]
 			link.shaft_part = c[8]
-			link.turns = not (str(c[2]) in ["actuator", "cylinder"])
+			link.turns = not (str(c[2]) in ["actuator", "cylinder"] or str(c[2]) in GUIDES)
 			link.radius = float(c[9]) if c.size() > 9 else 0.0
 			made[pair] = link
 			links.append(link)
@@ -622,6 +642,16 @@ func _read() -> void:
 				if not touching.has(end):
 					touching[end] = []
 				(touching[end] as Array).append(link)
+		elif str(c[2]) in GUIDES or link.kind in GUIDES:
+			# A rack guided along its line by its housing or its groove moves
+			# as they let it, whatever else joins the two.
+			if str(c[2]) in GUIDES and not (link.kind in GUIDES):
+				link.kind = c[2]
+				link.point = c[3]
+				link.axis = c[4]
+				link.slide = c[7]
+				link.shaft_part = c[8]
+				link.turns = false
 		else:
 			# Two along one line: the tighter fit says how far it slides, and
 			# friction anywhere holds it.
@@ -707,6 +737,20 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if best == 0:
 			continue
 		var into: int = Bodies._piece_find(up, _find(best))
+		# A rack a pinion of another piece stands in is held by the pinion's
+		# teeth, and slides as they push it, on what it rests on: 6753-1's
+		# tow truck has its rack under a Technic brick lying on a tile, and
+		# lodged in the tile the rack was held with the frame.
+		var driven: Array = _driven_rack(keys, piece, up)
+		if not driven.is_empty():
+			var rack: int = int(driven[0])
+			var rack_at: Transform3D = world.get_brick(rack).transform
+			var spec: Dictionary = Racks.table().get(world.get_brick(rack).part_id, {})
+			var reach: float = absf(float(spec.get("to", 20.0)) - float(spec.get("from", -20.0))) * 0.5
+			candidates.append([best, rack, "rests", rack_at.origin, (rack_at.basis * Vector3.RIGHT).normalized(),
+				true, 0.0, Vector2(reach, reach), rack])
+			Bodies._piece_join(up, piece, into)
+			continue
 		_join(from, best, "lodged")
 		lodged_in[from] = best
 		var root: int = _find(from)
@@ -715,6 +759,29 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		Bodies._piece_join(up, root, into)
 		Bodies._piece_join(up, root, piece)
 		lodged += 1
+
+
+## A gear rack among [param keys] (one piece, [param piece] in [param up])
+## that a pinion of another piece stands in (Racks.find): [rack, pinion]
+## ids, or empty.
+func _driven_rack(keys: Array, piece: int, up: Dictionary) -> Array:
+	var racks: Array = []
+	for key: int in keys:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		if brick != null and Racks.is_rack(brick.part_id):
+			racks.append([key, brick.part_id, brick.transform])
+	if racks.is_empty():
+		return []
+	var near: Array = racks.duplicate()
+	for brick: BrickWorld.Brick in world.bricks():
+		if not _up.has(brick.id) or Bodies._piece_find(up, _find(brick.id)) == piece:
+			continue
+		var spec: Dictionary = Mechanism.spec_of(brick.part_id)
+		if not spec.is_empty() and int(spec.get("teeth", 0)) > 0:
+			near.append([brick.id, brick.part_id, brick.transform])
+	for mesh: Racks.Pinion in Racks.find(near):
+		return [mesh.rack, mesh.gear]
+	return []
 
 
 ## Whether [param part_id] bends: a hose's, a tube's, a string's or a
@@ -1219,6 +1286,108 @@ func _actuators(entries: Array) -> Array:
 				true, 0.0, Vector2(stroke - out_by, out_by), int(rod[0])])
 	return out
 
+
+## A rack that slides in a housing of its own (18942 in 18940, the gear
+## table's racks: housing, housing_at): the rack's origin on the housing's x
+## line where the table puts it, give or take a cell across, anywhere along
+## the housing. It slides along that line, the rack's middle staying within
+## the housing's length, and does not turn there: candidates as
+## [method _actuators] gives them, kind "housing".
+func _rack_housings(entries: Array) -> Array:
+	var out: Array = []
+	var by_housing: Dictionary = {}   ## housing part -> [rack entry, spec]
+	for entry: Array in entries:
+		var spec: Dictionary = Racks.table().get(str(entry[3]), {})
+		if spec.has("housing"):
+			var housing: String = str(spec["housing"])
+			if not by_housing.has(housing):
+				by_housing[housing] = []
+			(by_housing[housing] as Array).append([entry, spec])
+	if by_housing.is_empty():
+		return out
+	for entry: Array in entries:
+		if not by_housing.has(str(entry[3])):
+			continue
+		var at: Transform3D = entry[1]
+		var inverse: Transform3D = at.affine_inverse()
+		var info: PartLibrary.PartInfo = library.parts.get(str(entry[3]))
+		for pair: Array in by_housing[str(entry[3])]:
+			var rack: Array = pair[0]
+			var spec: Dictionary = pair[1]
+			var rack_at: Transform3D = rack[1]
+			var local: Vector3 = inverse * rack_at.origin
+			var want: Array = spec.get("housing_at", [0.0, 0.0, 0.0])
+			if absf(local.y - float(want[1])) > Mechanism.LINE_SLACK \
+					or absf(local.z - float(want[2])) > Mechanism.LINE_SLACK:
+				continue
+			if absf((inverse.basis * rack_at.basis * Vector3.RIGHT).normalized().x) < Racks.SQUARE:
+				continue
+			# Along the housing: the rack's middle within its length.
+			var lo: float = info.bounds.position.x if info != null else local.x - 20.0
+			var hi: float = info.bounds.end.x if info != null else local.x + 20.0
+			if local.x < lo - Mechanism.REACH_SLACK or local.x > hi + Mechanism.REACH_SLACK:
+				continue
+			# As an actuator's stroke: how far on along the housing's x, then
+			# how far back.
+			var way: Vector3 = (at.basis * Vector3.RIGHT).normalized()
+			out.append([int(entry[0]), int(rack[0]), "housing", rack_at.origin, way, true, 0.0,
+				Vector2(maxf(hi - local.x, 0.0), maxf(local.x - lo, 0.0)), int(rack[0])])
+	return out
+
+
+## Studs standing up into a gear rack from underneath ride in its groove: a
+## steering rack (87761, 64781; the gear table's racks: groove) is a channel
+## open below, and the half pins
+## under it guide it as it slides (42083-1, 42111-1). Read as studs, the
+## half pins held the rack to the frame and its pinion turned against
+## nothing. [param pair]'s studs, all of [param owner]'s, each [foot, way]:
+## a candidate as [method _read] gathers them, kind "groove", the rack
+## sliding along its line as far as the studs stay under it; empty when the
+## other is not a rack or a stud does not stand up into it.
+func _in_a_groove(pair: Vector2i, owner: int, found: Array) -> Array:
+	var rack: int = pair.y if owner == pair.x else pair.x
+	var brick: BrickWorld.Brick = world.get_brick(rack)
+	if brick == null or not bool((Racks.table().get(brick.part_id, {}) as Dictionary).get("groove", false)):
+		return []
+	var up: Vector3 = (brick.transform.basis * Vector3.UP).normalized()
+	var line: Vector3 = (brick.transform.basis * Vector3.RIGHT).normalized()
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+	if info == null:
+		return []
+	var inverse: Transform3D = brick.transform.affine_inverse()
+	var on: float = INF
+	var back: float = INF
+	for stud: Array in found:
+		if (stud[1] as Vector3).normalized().dot(up) < Racks.SQUARE:
+			return []
+		# The stud's middle stays under the rack, a stud's half from its ends.
+		var along: float = (inverse * (stud[0] as Vector3)).x
+		on = minf(on, along - info.bounds.position.x - 6.0)
+		back = minf(back, info.bounds.end.x - 6.0 - along)
+	return [owner, rack, "groove", found[0][0], line, true, 0.0,
+		Vector2(maxf(on, 0.0), maxf(back, 0.0)), rack]
+
+
+## A round steering rack (the gear table's racks: round), which slides
+## through the holder it turns in.
+static func _round_rack(part_id: String) -> bool:
+	return bool((Racks.table().get(part_id, {}) as Dictionary).get("round", false))
+
+
+## Whether [param zone] between [param a] and [param b] is a round rack in
+## its holder: a round on the rack's own line, not the pin holes at its ends.
+func _rides_loose(a: int, b: int, part_of: Dictionary, zone: Array) -> bool:
+	for key: int in [a, b]:
+		if _round_rack(str(part_of.get(key, ""))):
+			var line: Vector3 = (world.get_brick(key).transform.basis * Vector3.RIGHT).normalized()
+			return absf(line.dot((zone[1] as Vector3).normalized())) > Racks.SQUARE
+	return false
+
+
+## Joints that guide a rack along its line: its housing (18942 in 18940),
+## studs standing in its groove (a steering rack on half pins), and what a
+## rack its pinion holds rests on ([method _lodge]).
+const GUIDES: Array[String] = ["housing", "groove", "rests"]
 
 var _racks: Array[Racks.Pinion] = []
 var _racks_read: bool = false
