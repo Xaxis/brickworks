@@ -38,6 +38,13 @@ func ask() -> void:
 
 ## A model on this computer, with the files it names read from beside it.
 func open_path(path: String) -> void:
+	var read: Dictionary = read_path(path)
+	take(read["bytes"], path.get_file(), read["extras"])
+
+
+## A model's bytes on this computer and the files it names, read from beside
+## it: {"bytes", "extras"}. The dialog's way in, and brickify's file=.
+static func read_path(path: String) -> Dictionary:
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
 	var extras: Dictionary = {}
 	# Twice: an OBJ names its .mtl, and only then the .mtl its pictures.
@@ -50,7 +57,7 @@ func open_path(path: String) -> void:
 					or not FileAccess.file_exists(beside):
 				continue
 			extras[wanted] = FileAccess.get_file_as_bytes(beside)
-	take(bytes, path.get_file(), extras)
+	return {"bytes": bytes, "extras": extras}
 
 
 func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) -> void:

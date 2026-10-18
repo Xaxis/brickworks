@@ -262,6 +262,11 @@ whole cycle.
 
 ### Fixed
 
+- Brickify takes a 3D model on this computer. Over MCP, brickify file= its
+  path lays it, and a path given as a link does too; only an OBJ, STL,
+  glTF or GLB is read. A Claude session given a path had it refused,
+  opened the file dialog for a person who was not there, and told them to
+  serve the folder on this computer, which is refused as well.
 - A steering column turned once turns back. A gear turned off the grid
   read the studs of the plate under it as held in it, so the column, both
   kingpins and their gears were locked to the chassis, and a second turn

@@ -218,10 +218,14 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   (`BrickifyStock.shows`). `BrickifyStock.said` is the panel's line: drawn,
   how, the colour difference where it shows, and the shortfall by lots.
 
-A session does it with the `brickify` tool (`src/net/app_tools.gd`): `url=`
+A session does it with the `brickify` tool (`src/net/app_tools.gd`): `file=`
+a path on this computer (desktop only, `AppTools._brickify_file`: an .obj,
+.stl, .gltf or .glb and nothing else, read with what it names beside it by
+`MeshFilePicker.read_path` as the file dialog reads it; a path or a `file://`
+given as `url=` is taken as `file=`), or `url=`
 an http(s) link the app fetches (HTTPRequest, capped at `MeshFile.MAX_BYTES`;
-an OBJ's .mtl and a .gltf's .bin from beside it; never `file://`, this
-computer or its network), read by `BrickifyDialog.take` as a picked file is,
+an OBJ's .mtl and a .gltf's .bin from beside it; never this
+computer or its network, and the refusal names `file=`), read by `BrickifyDialog.take` as a picked file is,
 so the panel opens on it; `pick=true` opens the window's file dialog for the
 person and says so (refused in a browser, which opens its chooser only from a
 click); neither lays what the panel shows. The choices go through

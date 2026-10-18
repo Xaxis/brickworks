@@ -453,8 +453,11 @@ and `RenderDialog.folder` and `PosePanel.folder` at its own folder, so nothing l
 Its brickify part serves `tests/fixtures/brickify/bunny.obj` from a web
 server of its own on 127.0.0.1 (`AppTools.fetch_near`, which only a probe
 sets) and reads the bunny back off the model as one sub-assembly, one undo
-step; `file://`, this computer, a link naming no 3D model and a file over the
-cap are each refused. Its prints part prints an svg on a 2 x 2 tile and reads
+step; a link to this computer, a link naming no 3D model and a file over the
+cap are each refused, and a link that is not http(s) is told to use `file=`.
+`file=` (and a path given as `url=`) lays the same bunny from its path on
+disk, one sub-assembly; `file:///etc/passwd` is not read (not a 3D model's
+kind) and a path that is not there is said so. Its prints part prints an svg on a 2 x 2 tile and reads
 the printed part back where the tile stood, in its colour, one undo step, and
 sticks a sticker on a brick's -z face facing -z. Its make_unique part cuts
 Wheel (copy 2) loose, by name and by a part in it, and reads the paths back.

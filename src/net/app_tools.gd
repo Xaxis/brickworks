@@ -170,9 +170,9 @@ Best, up to 4K, saved where Render saves.
 parts list, or the building instructions as a booklet, written where \
 Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF) laid in LEGO® bricks at the size asked, \
-as one sub-assembly: url= a link the app fetches, or pick=true opens the \
-window's file dialog for the person, after which brickify with neither \
-lays what they chose.
+as one sub-assembly: file= its path on this computer, url= a link the app \
+fetches, or pick=true opens the window's file dialog for the person, after \
+which brickify with neither lays what they chose.
  - print_part: a picture (svg= you draw, picture_data= a picture the person \
 gave you, as base64, or picture_url=) printed on a part where it stands, or \
 with sticker=true stuck on one of its faces; or the LEGO Group's own: \
@@ -520,7 +520,8 @@ func definitions() -> Array:
 			"description": ("Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an "
 				+ "OBJ, STL or glTF/GLB laid at the size asked (studs along its longest side) "
 				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
-				+ "sub-assembly named after the file, beside what is built. url= an http(s) "
+				+ "sub-assembly named after the file, beside what is built. file= its path on "
+				+ "this computer (the desktop app), or url= an http(s) "
 				+ "link to the file, fetched by the app (96 MB at most; an OBJ's .mtl and a "
 				+ ".gltf's .bin come from beside it). pick=true opens the window's file "
 				+ "dialog for the person to choose one on their computer, and says so; once "
@@ -532,6 +533,7 @@ func definitions() -> Array:
 				+ "collection=true lays it from the person's collection: their parts and "
 				+ "colours first, then stand-ins, the shortfall said."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"file": {"type": "string", "description": "the path of an .obj, .stl, .gltf or .glb on this computer"},
 				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf or .glb"},
 				"pick": {"type": "boolean", "description": "open the file dialog for the person"},
 				"studs": {"type": "integer", "description": "studs along its longest side, %d to %d; 24 when omitted"
@@ -1612,7 +1614,18 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 	if dialog.is_busy():
 		return "A model is being brickified already; job says when it is done."
 	var url: String = str(input.get("url", "")).strip_edges()
-	if bool(input.get("pick", false)):
+	var file: String = str(input.get("file", "")).strip_edges()
+	# A path given as a link is a path: a session given a model's path passed
+	# it as url=.
+	if file.is_empty() and (url.begins_with("/") or url.begins_with("~")
+			or url.to_lower().begins_with("file://")):
+		file = url
+		url = ""
+	if not file.is_empty():
+		var opened: String = await _brickify_file(dialog, file)
+		if not opened.is_empty():
+			return opened
+	elif bool(input.get("pick", false)):
 		if OS.has_feature("web"):
 			return ("In a browser the file chooser opens only from the person's own click: ask "
 				+ "them to choose Build, Brickify a 3D model…, then call brickify with neither "
@@ -1626,14 +1639,17 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 			+ "size) to lay it.")
 	if not url.is_empty():
 		if not url.to_lower().begins_with("https://") and not url.to_lower().begins_with("http://"):
-			return "Only an http or https link can be fetched, and %s is not one." % url.left(100)
+			return ("Only an http or https link can be fetched, and %s is not one; a file on this "
+				+ "computer goes in file=, by its path.") % url.left(100)
 		var name: String = url.get_slice("?", 0).get_slice("#", 0).get_file().uri_decode()
 		if not name.get_extension().to_lower() in MeshFile.KINDS:
 			return ("%s does not name an OBJ, STL, glTF or GLB file; give a link that ends in "
 				% url.left(100) + ".obj, .stl, .gltf or .glb.")
 		var fetched: Dictionary = await _fetch(url, MeshFile.MAX_BYTES)
 		if fetched.has("error"):
-			return str(fetched["error"])
+			# Not "serve it on localhost": that is refused too.
+			return str(fetched["error"]) + (" A file on this computer goes in file=, by its path."
+				if str(fetched["error"]).contains("this computer") else "")
 		var bytes: PackedByteArray = fetched["bytes"]
 		# An OBJ's .mtl and its pictures, a .gltf's .bin: beside it, as the
 		# desktop's picker reads them (MeshFilePicker.open_path).
@@ -1651,9 +1667,9 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		var why: String = await dialog.take(bytes, name, extras)
 		if not why.is_empty():
 			return why.left(1).to_upper() + why.substr(1) + "."
-	elif dialog.model() == null or not dialog.visible:
-		return ("Give url= an http(s) link to an OBJ, STL or glTF, or pick=true for the person "
-			+ "to choose one on their computer.")
+	elif file.is_empty() and (dialog.model() == null or not dialog.visible):
+		return ("Give file= the path of an OBJ, STL or glTF on this computer, url= an http(s) "
+			+ "link to one, or pick=true for the person to choose one.")
 	var refused: String = dialog.choose(input)
 	if not refused.is_empty():
 		return refused.left(1).to_upper() + refused.substr(1) + "."
@@ -1683,6 +1699,43 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		said += (" No price: BrickLink's price guide needs a seller's API keys, which this "
 			+ "app does not have.")
 	return said
+
+
+## A 3D model on this computer at [param path], read as the window's file
+## dialog reads one (MeshFilePicker.read_path: the .mtl, pictures and .bin it
+## names from beside it) and put in the Brickify panel; "" once it is, or why
+## not. A session given a path had been refused ("Only an http or https link
+## can be fetched"), opened the file dialog for a person who was not there,
+## and told them to serve the folder on localhost, which is refused too.
+## Only a 3D model's own kinds are read, so nothing else on the computer can
+## be: a session drives the app, not the person's files.
+func _brickify_file(dialog: BrickifyDialog, path: String) -> String:
+	if OS.has_feature("web"):
+		return ("In a browser the app cannot read a file on the person's computer: ask them to "
+			+ "choose Build, Brickify a 3D model…, then call brickify with neither file nor url "
+			+ "to lay what they chose.")
+	var at: String = path.uri_decode().trim_prefix("file://") if path.to_lower().begins_with(
+		"file://") else path
+	if at.begins_with("~"):
+		at = OS.get_environment("HOME") + at.substr(1)
+	at = at.simplify_path()
+	if not at.get_extension().to_lower() in MeshFile.KINDS:
+		return "%s is not an OBJ, STL, glTF or GLB file; file= takes one of those." % at.left(160)
+	if not at.is_absolute_path() or not FileAccess.file_exists(at):
+		return "There is no file %s on this computer." % at.left(160)
+	var size: int = 0
+	var handle := FileAccess.open(at, FileAccess.READ)
+	if handle != null:
+		size = handle.get_length()
+		handle.close()
+	if size > MeshFile.MAX_BYTES:
+		return "%s is larger than %s, more than can be brought in." % [at.get_file(),
+			String.humanize_size(MeshFile.MAX_BYTES)]
+	var read: Dictionary = MeshFilePicker.read_path(at)
+	var why: String = await dialog.take(read["bytes"], at.get_file(), read["extras"])
+	if not why.is_empty():
+		return why.left(1).to_upper() + why.substr(1) + "."
+	return ""
 
 
 ## The bytes at [param url], fetched as the app fetches pictures of a

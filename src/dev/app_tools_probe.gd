@@ -399,9 +399,16 @@ func _brickify() -> void:
 		"/notes.txt": "not a model".to_utf8_buffer()}
 	root.add_child(server)
 	var at: String = "http://127.0.0.1:%d" % server.port
-	var said: String = await _say("brickify", {"url": "file:///etc/passwd"})
+	var said: String = await _say("brickify", {"url": "ftp://example.com/bunny.obj"})
 	_check("a link that is not http or https is refused: %s" % said.left(60),
-		said.begins_with("Only an http or https link"))
+		said.begins_with("Only an http or https link") and said.contains("file="))
+	# A path on this computer is read only when it names a 3D model: a session
+	# drives the app, not the person's files.
+	said = await _say("brickify", {"url": "file:///etc/passwd"})
+	_check("a file that is not a 3D model is not read: %s" % said.left(70),
+		said.contains("is not an OBJ, STL, glTF or GLB file"))
+	said = await _say("brickify", {"file": "/no/such/place/bunny.obj"})
+	_check("...nor one that is not there: %s" % said.left(70), said.begins_with("There is no file"))
 	said = await _say("brickify", {"url": at + "/bunny.obj"})
 	_check("...and one to this computer: %s" % said.left(70), said.contains("this computer"))
 	tools.fetch_near = true
@@ -411,7 +418,7 @@ func _brickify() -> void:
 	_check("the size is capped: %s" % str(capped.get("error", "")).left(60),
 		str(capped.get("error", "")).contains("larger than"))
 	said = await _say("brickify", {})
-	_check("with nothing to lay it says what to give: %s" % said.left(50), said.begins_with("Give url="))
+	_check("with nothing to lay it says what to give: %s" % said.left(50), said.begins_with("Give file="))
 	var before: int = _model_ids().size()
 	var depth: int = _builder.history_depth()
 	var first: Dictionary = await _rpc("tools/call", {"name": "brickify",
@@ -428,6 +435,19 @@ func _brickify() -> void:
 	_check("...one undo step", _builder.history_depth() == depth + 1)
 	await _say("undo", {})
 	_check("...and undone, it is gone", _model_ids().size() == before)
+	# A path on this computer, as a person gives one. A session given one was
+	# refused, and told the person to serve the folder on localhost, which is
+	# refused too.
+	var on_disk: String = ProjectSettings.globalize_path("res://tests/fixtures/brickify/bunny.obj")
+	for given: Dictionary in [{"file": on_disk, "studs": 12}, {"url": on_disk, "studs": 12}]:
+		var asked: Dictionary = await _rpc("tools/call", {"name": "brickify", "arguments": given})
+		said = _text(await _finished(asked))
+		added = _model_ids()
+		path = Assemblies.path_of(_world.get_brick(added[-1])) if added.size() > before else ""
+		_check("%s= a path on this computer lays it, as one sub-assembly: %s"
+			% [given.keys()[0], said.left(70)],
+			said.begins_with("Brickified bunny") and added.size() > before + 20 and path.begins_with("bunny"))
+		await _say("undo", {})
 	said = await _say("brickify", {"collection": true})
 	_check("laid from a collection the person does not keep, it says so: %s" % said.left(70),
 		said.contains("no collection to lay it from"))
