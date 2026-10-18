@@ -1592,8 +1592,11 @@ func surface_under(lo_x: int, lo_z: int, hi_x: int, hi_z: int,
 ## eight Technic parts over 42082-1's crane rescanned the parts in the
 ## tower's columns for each of its hundreds of boxes: 320 ms a move, and a
 ## 2 x 4 brick column by column 600 ms (sweep-2026-10-16).
+##
+## [param leave_out]: bricks by id that hold nothing up, the floor's
+## baseplate when what is asked is what the model holds (Builder._held).
 func rise_onto(packed: PackedInt32Array, floor_cell: int, by_x: int = 0,
-		by_z: int = 0) -> int:
+		by_z: int = 0, leave_out: Dictionary = {}) -> int:
 	# Boxes over the same columns rest by the lowest of them.
 	var lowest: Dictionary = {}
 	var low: int = 1 << 30
@@ -1633,7 +1636,7 @@ func rise_onto(packed: PackedInt32Array, floor_cell: int, by_x: int = 0,
 		if here == null:
 			continue
 		for brick_id: int in here:
-			if seen.has(brick_id):
+			if seen.has(brick_id) or leave_out.has(brick_id):
 				continue
 			seen[brick_id] = true
 			var bound: PackedInt32Array = _bounds.get(brick_id, PackedInt32Array())

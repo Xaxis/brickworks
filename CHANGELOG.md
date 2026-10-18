@@ -283,6 +283,19 @@ whole cycle.
   4,000-part model each look held a frame for 180 to 460 ms, and on a
   2,184-part one drawn without a graphics card the page drew one frame a
   second. It now draws sixty.
+- A part that is not a box lies where its own shape has room. A 2 x 2
+  corner plate put on a plate beside the arm of a wheel holder, its missing
+  corner round the arm, stood a plate up on the arm, and could not be put
+  where 8643-1's booklet has it.
+- A part that hangs below the part a model was built up from goes on, and
+  the model rises to stand on it. A bracket whose arm hangs past the bottom
+  plate, a wheel or a tyre lower than the chassis, stood on the floor
+  instead or could not be put at all, so a car built from its booklet could
+  never have its wheels. The status line says how far the model rose, and
+  one undo takes the part off and the model down again.
+- A model without steps of its own, given the worked-out ones by its first
+  booklet edit, built the second copy of a sub-model (10016-1's second
+  wheels) differently once it was saved and opened again.
 - A tyre goes on its rim. Aimed at a rim, the tyre in hand snaps round it,
   centred and square, `R` and `T` turning it about the rim and over; a rim
   goes into a tyre the same way. A tyre drawn with no connector of its own

@@ -216,6 +216,98 @@ func _awkward() -> void:
 			_check("the Technic brick has a hole to aim at", false)
 	await _shot("hinge_slopes_pin")
 
+	# A corner plate round what stands in its missing corner: 8643-1's step 2
+	# lays two 2420s on its 4 x 4 plate, their missing corners round the arm
+	# of a wheel holder (6157) beside it. By its box a 2420 stood on the arm,
+	# a plate up; by its cover it lies on the plate (Builder._sinks_by).
+	_main.call("clear_model")
+	_put_ldr("3031", 8, [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("6157", 0, [0, -16, -60, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, 0, -60), Vector3(120, 40, 160)))
+	await _frames(40)
+	await _hold("2420")
+	var corner: Lbm.PartMesh = _library.mesh_for("2420")
+	for want: Array in [[-10, -16, -30, -1, 0, 0, 0, 1, 0, 0, 0, -1],
+			[10, -16, -30, 0, 0, 1, 0, 1, 0, -1, 0, 0]]:
+		var at: Transform3D = _ldr(want)
+		await _turn_to(at.basis)
+		# At its corner stud, the plate's own origin, on the plate under it.
+		var foot: Vector3 = at.origin + Vector3(0, (at * corner.bounds).abs().position.y
+			- at.origin.y, 0)
+		await _one("2420 corner plate round the wheel holder's arm", _screen(foot), at)
+	await _shot("corner_plate")
+
+	# ...but only where it is held by its sockets: 5762-1's 4488 stands on
+	# a wedge plate by the block under half of it, where its sockets are,
+	# the other half a plate over the wing; the wedge's cover is short of
+	# its slanted edge under that block, and lowered by its cover the 4488
+	# sank a plate into the wing (Builder._seated_by_sockets).
+	_main.call("clear_model")
+	_put_ldr("54384", 15, [80, -16, -10, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_camera.frame(AABB(Vector3(0, 0, -60), Vector3(160, 50, 140)))
+	await _frames(40)
+	await _hold("4488")
+	var nacelle: Transform3D = _ldr([80, -32, -40, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	await _turn_to(nacelle.basis)
+	# Aimed between its sockets, at the bottom of the block they are under,
+	# and moved across by where its ghost stands, as the build flow aims.
+	var at_sockets: Vector2 = _screen(nacelle * Vector3(10, -16, 0))
+	for _n: int in 4:
+		await _move(at_sockets)
+		if _builder.ghost_place() == null:
+			break
+		var ghost: Vector3 = _builder.ghost_transform().origin
+		if Vector2(ghost.x, ghost.z).distance_to(Vector2(nacelle.origin.x, nacelle.origin.z)) < 0.5:
+			break
+		at_sockets += _screen(Vector3(nacelle.origin.x, ghost.y, nacelle.origin.z)) - _screen(ghost)
+	await _one("4488 on the wedge plate by its sockets, not sunk into it", at_sockets, nacelle)
+	await _shot("on_its_sockets")
+
+	# Below the ground, held by the model: a bracket on the edge of the plate
+	# the model is built up from, its arm hanging 4 LDU past the plate's
+	# underside, as 8643-1's front bracket (2436a) hangs. Its ghost stood on
+	# its arm, a plate up; it goes where it is aimed, and the model rises to
+	# stand on it, one undo with the put (Builder._held_below_ground,
+	# _stand_on_the_ground).
+	_main.call("clear_model")
+	var plate: int = _put_ldr("3031", 8, [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, -10, -60), Vector3(120, 50, 140)))
+	await _frames(40)
+	await _hold("2436a")
+	await _turn_to(Basis.IDENTITY)
+	var hung: Transform3D = _ldr([0, -16, -30, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var aim: Vector2 = _screen(hung.origin - Vector3(0, 8, 0))
+	await _move(aim + Vector2(0, 1))
+	await _move(aim)
+	var shown: Transform3D = _builder.ghost_transform()
+	_check("2436a bracket: its ghost hangs below the ground where the set has it (%s, %s)" % [
+		_ldr_of(shown), "may go" if _builder.can_place() else "red"],
+		_builder.ghost_place() != null and _builder.can_place()
+		and _near(shown, hung, 0.05, 0.002))
+	var before: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		before[brick.id] = true
+	await _click_whole(aim)
+	var bracket: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not before.has(brick.id):
+			bracket = brick.id
+	_check("...and a click puts it down", bracket != 0)
+	if bracket != 0:
+		var up := Vector3(0, 4, 0)
+		var base_at: Vector3 = _world.get_brick(plate).transform.origin
+		var bracket_at: Vector3 = _world.get_brick(bracket).transform.origin
+		_check("...and the model rose 4 LDU to stand on it (plate at %s, bracket at %s)" % [
+			base_at, bracket_at], base_at.is_equal_approx(Vector3(0, 8, 0) + up)
+			and bracket_at.is_equal_approx(hung.origin + up))
+		await _key(KEY_ESCAPE)
+		await _key(KEY_Z, true)
+		_check("one undo takes the bracket off and the model down again (plate at %s, %d parts)" % [
+			_world.get_brick(plate).transform.origin, _world.brick_count()],
+			_world.get_brick(plate).transform.origin.is_equal_approx(Vector3(0, 8, 0))
+			and _world.get_brick(bracket) == null)
+	await _shot("below_the_ground")
+
 
 ## 8841-1 Balance's step 4: two Technic plates (4262) hang from an axle in
 ## the end of a Technic brick, their lower holes on two pins. Each is off

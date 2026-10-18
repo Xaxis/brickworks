@@ -829,6 +829,36 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   upright part of the CAD task's three sets against where its file has it
   across the grid: 97 of 140 by the sockets' rule, 87 by the box alone,
   worse for none.
+- `rests by its own shape` (`Builder._sinks_by`, 2026-10-17): a part
+  dropped onto what is under it rests where each box of its cover meets what
+  is under that box's own columns (`BrickLattice.rise_onto`, as a copy in
+  hand rests), not where its box's rectangle first meets something. A part
+  that is not a box has room its box has not: 8643-1's two 2420 corner
+  plates go round the arm of a wheel holder (6157) in their missing corners,
+  and by their box they stood on the arm, a plate up, in the build flow and
+  by hand. Only ever lower than by the box, never below what is under it,
+  and only where the part is held by its sockets there
+  (`Builder._seated_by_sockets`): 5762-1's 4488 stands on a wedge plate by
+  the block under half of it, where its sockets are, and the wedge's cover
+  is short of its slanted edge under that block, so lowered by its cover
+  it sank a plate into the wing. Every plain part, one box across, rests as
+  before. Probe: `placing_probe -- only=parts` (the two corner plates
+  beside a 6157, as the set has them, aimed at their corner studs; the
+  4488 on its wedge; each fails with its rule undone).
+- `held below the ground` (`Builder._held_below_ground`,
+  `_stand_on_the_ground`, 2026-10-17): a part the model holds below the
+  ground (resting on a part of it with what hangs past it lower, on a
+  joint, hung under it, on its side studs) has its ghost there, the floor's
+  baseplate not in its way (`room_for(..., held)`, `_not_scenery`); put
+  down, everything but the floor rises by whole cells to stand on it, in
+  the same undo step as the put, and the status line says so
+  (`Builder.risen`). A model is built up from its first part on the ground,
+  and 8643-1's front bracket hangs 4 LDU below that part, its wheels 3 and
+  its tyres 8: none could go on. Never under the floor's own baseplate.
+  Probe: `placing_probe -- only=parts` (a 2436a on the edge of the plate a
+  model stands on: its ghost below the ground, the model up 4 LDU after the
+  click, one undo back; fails with the rule undone). In the build flow the
+  model's rise is read from where the part went (`followRise`).
 - `what the ghost shows is where it goes` (`Main._true_point`, 2026-10-16):
   a click aims before it puts (a finger has no move before it), and in a
   browser the click was aimed somewhere else: Godot reads a move from the
@@ -942,8 +972,36 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   until the ghost (`brickworksState.ghost`) stands where the file has the
   part, a click, and `E` once a step's parts are down. A step's parts go
   lowest first, but a part whose middle is inside a bigger part of the step
-  after the smallest such (`handOrder`, from the catalogue's boxes): a pin
-  after the brick it goes in. A part that goes into or round another's
+  after the smallest such (`handOrder`, from the catalogue's boxes; a part's
+  middle is its box's, not its origin, which is a plate's top): a pin
+  after the brick it goes in; and of those, the lowest that is held by what
+  is down already (into it, on it or under it, not only beside it), an
+  earlier step's parts, this step's put before it or the floor, asked in a
+  swung part's own frame where it is off the square, and
+  a part that touches before the part its middle is in (`handOrders`): a
+  balance's pans built down from the arms they hang on, a pin, its
+  connector, the plates, not their plates first in the air. The pointer goes first under the
+  part's origin, at the bottom of the part (`footOf`: the spot on what it
+  stands on, as a person points there), then at the origin itself, as it
+  first did; a brick's origin is the top of it, and aimed there a 1 x 4
+  brick on a stack one stud wide went past the stack (8841-1, 2026-10-17).
+  A part off the 24 turns or off the whole LDU is held at the nearest of the
+  24 and tried, not skipped: on a joint the app swings it onto a second one
+  and puts it in the frame of a part off the lattice. A part with holes and
+  no pin of its own is aimed at the pins over its place on the page last,
+  when the studs would not take it (a Technic brick on its side; `within`),
+  and on a joint a ghost
+  turned as the file has it but along the joint from its place is slid
+  there by the pointer, as a wheel along its pin. A part still not down is
+  tried again from its own side of the model (a view key, 1 to 4, tipped
+  up 20 degrees by Up twice, and 0 after: a wheel on the far side's pin is
+  behind the body; `sideKey`).
+  Where the pointer cannot say it, the part goes down where its ghost may go within 60 LDU of its
+  place, is selected by a click on it, and its Hinge (its swing off square
+  about its joint, worked out from the file's turn, either sign) and X, Y, Z
+  are typed in Properties (`putNearAndType`, `typeTo`), as offgrid_probe
+  types them; read back from where the app says the part stands
+  (`brickworksState.put`), and undone if it does not come to its place. A part that goes into or round another's
   (`brickworksState.held_ends` has a pin, an axle, a tyre or a rim) and is
   not where the file has it at the first aim is aimed at the joints on the
   page that take it (`brickworksState.joints`), nearest where it goes

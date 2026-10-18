@@ -167,6 +167,7 @@ static func _cover_moves(part: Lbm.PartMesh, at: Transform3D) -> bool:
 
 ## Place the held part where the ghost is, if the ghost is legal.
 func place() -> int:
+	risen = 0.0
 	if is_carrying():
 		return _put_carried()
 	if not _ghost_valid:
@@ -181,12 +182,52 @@ func place() -> int:
 	world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
 
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
-	lattice.occupy_boxes(brick_id, boxes_for(part, _ghost_transform))
+	var packed: PackedInt32Array = boxes_for(part, _ghost_transform)
+	lattice.occupy_boxes(brick_id, packed)
 
 	_history.append({"undo": "remove", "brick": brick_id})
 	_redo.clear()
+	_stand_on_the_ground(brick_id, packed)
 	placed.emit(brick_id, held_part)
 	return brick_id
+
+
+## How far the model last rose to stand on a part put down below the
+## ground, in LDU, for the status line; 0 when it did not.
+var risen: float = 0.0
+
+
+## The model raised, everything but the floor, so that a part just put
+## down below the ground ([param brick_id], [param packed] its cover)
+## stands on it: by whole cells, as one step with the put, so one undo takes
+## both back (the part's own rise is not kept: the undo takes it off, and
+## the redo puts it back where it went up to). The set's own file stands on
+## its lowest part the same way when it is opened.
+func _stand_on_the_ground(brick_id: int, packed: PackedInt32Array) -> void:
+	risen = 0.0
+	var low: int = 1 << 30
+	var n: int = 1
+	while n < packed.size():
+		low = mini(low, packed[n])
+		n += 6
+	if low >= GROUND_CELL:
+		return
+	var by := Vector3i(0, GROUND_CELL - low, 0)
+	var up := Vector3(0.0, by.y * BrickLattice.CELL, 0.0)
+	var steps: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		if brick.id != brick_id:
+			steps.append({"undo": "move", "brick": brick.id, "transform": brick.transform})
+		world.move_brick(brick.id, Transform3D(brick.transform.basis, brick.transform.origin + up))
+		lattice.shift(brick.id, by)
+	var last: Dictionary = _history.back()
+	var words: String = _words_for(last)
+	risen = up.y
+	extend_last(steps)
+	_history.back()["words"] = "%s; the model rose %s LDU to stand on it" % [words,
+		String.num(up.y, 0)]
 
 
 ## Remove whatever is under the cursor.
@@ -1748,11 +1789,11 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_ghost_transform = onto if onto != null else _settle(part, basis, target, hit)
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
-		if _seated_on != 0 else room_for(held_part, _ghost_transform)
+		if _seated_on != 0 else room_for(held_part, _ghost_transform, false, true)
 	# Not on side studs: those are found where the struck part's own are.
 	var framed: Variant = _in_frame_of(hit.brick_id, _ghost_transform) \
 		if hit.is_valid() and onto == null else null
-	if framed != null and room_for(held_part, framed):
+	if framed != null and room_for(held_part, framed, false, true):
 		_ghost_transform = framed
 		_ghost_valid = true
 	_show_ghost(part)
@@ -1930,7 +1971,7 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	if _joint_asked(key, basis, options) != _joint_last:
 		_joint_last_at = _joint_pose(options, posmod(_joint_way, options.size()),
 			_joint_roll, site, basis, _joint_extra)
-		_joint_last_fits = room_for(held_part, _joint_last_at, true)
+		_joint_last_fits = room_for(held_part, _joint_last_at, true, true)
 		if not _joint_chosen:
 			_best_on_joint(options, site, basis)
 		_joint_last = _joint_asked(key, basis, options)
@@ -2066,7 +2107,7 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 				return
 			var at: Transform3D = _joint_pose(options, way, int(turn[0]), site, basis,
 				float(turn[1]))
-			if not room_for(held_part, at, true):
+			if not room_for(held_part, at, true, true):
 				continue
 			var joins: int = _joins_made(at)
 			if joins > best_joins:
@@ -2131,18 +2172,24 @@ func _joins_made(at: Transform3D) -> int:
 ## round in something round that fits it where the two meet inside the
 ## round. [param grounded] refuses it below the ground as well, which a
 ## part on a joint can be and one on the studs never is.
-func room_for(part_id: String, at: Transform3D, grounded: bool = false) -> bool:
+## [param held]: the part in hand where the model holds it, on a joint,
+## on what it rests on, under or beside a part of it. Below the ground
+## there, the floor's baseplate is not in its way: put down, the model
+## rises to stand on it ([method _stand_on_the_ground]).
+func room_for(part_id: String, at: Transform3D, grounded: bool = false,
+		held: bool = false) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
 		return false
 	var packed: PackedInt32Array = boxes_for(part, at)
-	if grounded:
+	if grounded and not held:
 		var n: int = 1
 		while n < packed.size():
 			if packed[n] < GROUND_CELL:
 				return false
 			n += 6
-	var blockers: PackedInt64Array = lattice.blockers_boxes(packed)
+	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed)) if held \
+		else lattice.blockers_boxes(packed)
 	if blockers.is_empty():
 		return true
 	var entries: Array = [[0, at, part, library.resolve(part_id)]]
@@ -2183,6 +2230,17 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false) -> bool:
 			continue
 		return false
 	return true
+
+
+## [param ids] less the floor's own bricks.
+func _not_scenery(ids: PackedInt64Array) -> PackedInt64Array:
+	if scenery.is_empty() or ids.is_empty():
+		return ids
+	var out := PackedInt64Array()
+	for id: int in ids:
+		if not scenery.has(id):
+			out.append(id)
+	return out
 
 
 ## How far apart the places a part can be put down are, across the
@@ -2256,16 +2314,24 @@ func _settle(
 				n += 6
 			reach = highest * BrickLattice.CELL
 		var hung: float = _on_cell(top - reach)
-		if hung + box.position.y >= GROUND_CELL * BrickLattice.CELL:
+		# Below the ground under a part of the model, which then rises to
+		# stand on it; never under the floor's own baseplate.
+		if hung + box.position.y >= GROUND_CELL * BrickLattice.CELL \
+				or not scenery.has(hit.brick_id):
 			return Transform3D(basis, Vector3(snapped.x, hung, snapped.z))
 
 	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
+	var y: float = rest_cell * BrickLattice.CELL - box.position.y \
+		- _sinks_by(part, basis, snapped, rest_cell) * BrickLattice.CELL
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies.
 	if hit.is_valid() and hit.normal.y == 0:
-		rest_cell = maxi(rest_cell, hit.adjacent().y)
-
-	var y: float = rest_cell * BrickLattice.CELL - box.position.y
+		y = maxf(y, hit.adjacent().y * BrickLattice.CELL - box.position.y)
+	elif y + box.position.y <= GROUND_CELL * BrickLattice.CELL + 0.01:
+		# Down on the ground: unless the model holds it lower.
+		var held: Variant = _held_below_ground(part, basis, snapped, y)
+		if held != null:
+			return Transform3D(basis, Vector3(snapped.x, held, snapped.z))
 	# On its plate, not on what hangs below it, where that leaves room: the
 	# clip plates of 5762-1's step 4 hang their clips 2 LDU below the plate,
 	# over the edge of the plate they stand on, and stood 2 LDU up by their
@@ -2278,6 +2344,90 @@ func _settle(
 				and room_for(held_part, at):
 			return at
 	return Transform3D(basis, Vector3(snapped.x, y, snapped.z))
+
+
+## Where the model holds a part below the ground, at [param snapped]
+## across: resting on the parts of the model under its own boxes, the floor
+## and its baseplate left out, when that is lower than [param y], where the
+## ground held it up, and below the ground. Null otherwise. 8643-1's front
+## bracket (2436a) hangs its arm 4 LDU below the plate the set is built up
+## from, and its wheels and tyres go lower still: a model built from its
+## first part on the ground had no room for any of them. Put down, the
+## model rises to stand on it, as the set stands on its tyres.
+func _held_below_ground(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
+		y: float) -> Variant:
+	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
+		Vector3(snapped.x, 0.0, snapped.z)))
+	if cover.is_empty():
+		return null
+	const DEEP := -(1 << 20)
+	var rise: int = lattice.rise_onto(cover, DEEP, 0, 0, scenery)
+	var low: int = 1 << 30
+	var n: int = 1
+	while n < cover.size():
+		low = mini(low, cover[n])
+		n += 6
+	# Nothing of the model under it, or not below the ground where it does.
+	if rise + low <= DEEP + 1 or rise + low >= GROUND_CELL:
+		return null
+	var at: float = rise * BrickLattice.CELL
+	return at if at < y - 0.01 else null
+
+
+## How many cells lower a part rests by its own cover than by its box, at
+## [param snapped] across, where its box rests on [param rest_cell]: the
+## cover's boxes each on what is under its own columns. A part that is not
+## a box has room its box has not: 2420, a corner plate, goes round a wheel
+## holder's arm with its missing corner, and by its box it stood on the
+## arm, a plate up (8643-1's step 2, 2026-10-17). 0 for a part whose cover
+## fills its box across, which is every plain part.
+func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> int:
+	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
+		Vector3(snapped.x, 0.0, snapped.z)))
+	if cover.size() <= 6:
+		return 0
+	var low: int = 1 << 30
+	var n: int = 1
+	while n < cover.size():
+		low = mini(low, cover[n])
+		n += 6
+	var rise: int = lattice.rise_onto(cover, GROUND_CELL)
+	var sink: int = rest_cell - low - rise
+	if sink <= 0:
+		return 0
+	# Lower only where it is held by its sockets there: the boxes that take
+	# studs rest on what is under them. 5762-1's 4488 stands on a wedge
+	# plate by the block under half of it, where its sockets are, the other
+	# half a plate over the wing; the wedge's cover is short of its slanted
+	# edge under that block, and lowered by its cover the 4488 sank a plate
+	# into the wing (2026-10-17).
+	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
+			and not _seated_by_sockets(part, basis, snapped, cover, rise):
+		return 0
+	return sink
+
+
+## Whether a socket of [param part] (turned by [param basis], across at
+## [param snapped], its cover [param cover] at height 0 raised [param rise]
+## cells) sits on what is under it: the bottom of its cover where the socket
+## is meets the top of what the lattice has under that column.
+func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
+		cover: PackedInt32Array, rise: int) -> bool:
+	for socket: Vector2 in part.sockets:
+		var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y) + snapped
+		var cx: int = floori(at.x / BrickLattice.CELL)
+		var cz: int = floori(at.z / BrickLattice.CELL)
+		var seat: int = 1 << 30
+		var n: int = 0
+		while n < cover.size():
+			if cover[n] <= cx and cx < cover[n + 3] and cover[n + 2] <= cz and cz < cover[n + 5]:
+				seat = mini(seat, cover[n + 1])
+			n += 6
+		if seat == 1 << 30:
+			continue
+		if lattice.surface_under(cx - 1, cz - 1, cx + 1, cz + 1, GROUND_CELL) == seat + rise:
+			return true
+	return false
 
 
 ## Where on the stud grid a part goes across, by its sockets, when its box
@@ -2414,7 +2564,9 @@ var _seated_on: int = 0
 func _fits_on_studs(part: Lbm.PartMesh, at: Transform3D, onto: int,
 		out: Vector3i) -> bool:
 	var packed: PackedInt32Array = boxes_for(part, at)
-	var blockers: PackedInt64Array = lattice.blockers_boxes(packed)
+	# The floor's baseplate is not in the way of a part the model holds
+	# below the ground: put down, the model rises to stand on it.
+	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed))
 	if blockers.is_empty():
 		return true
 	if blockers.size() > 1 or blockers[0] != onto:
