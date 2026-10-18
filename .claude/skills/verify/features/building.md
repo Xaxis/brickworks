@@ -1093,7 +1093,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   there by the pointer, as a wheel along its pin. A part still not down is
   tried again from its own side of the model (a view key, 1 to 4, tipped
   up 20 degrees by Up twice, and 0 after: a wheel on the far side's pin is
-  behind the body; `sideKey`).
+  behind the body; `sideKey`), a part near the middle from the side it
+  leans to; the view waited for until it stops moving (`settledView`). The
+  foot is along the part's own down, and for a part on its side a stud's
+  height out from its underside (a light in a clip's ring). Before typing,
+  the part is aimed at the faces of the parts down it meets
+  (`contactsOf`, `atContacts`: a side at the lowest plate they share, an
+  underside from below with the model framed first). Of parts that hang
+  at one height the most held goes first, and a plate that hangs waits for
+  the parts of its step it also hangs from (`tests/test_cadtask.py`;
+  docs/CADTASK.md section 9).
   Where the pointer cannot say it, the part goes down where its ghost may go within 60 LDU of its
   place, is selected by a click on it, and its Hinge (its swing off square
   about its joint, worked out from the file's turn, either sign) and X, Y, Z
