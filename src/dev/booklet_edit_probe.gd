@@ -554,7 +554,7 @@ func _over_mcp(base: String) -> void:
 	var put: Array = (diff[1] as Array).map(func(line: Variant) -> String: return str(line).strip_edges())
 	var again: String = str(await tools.run("booklet_layout", {}))
 	_check("...booklet_layout says it: %s" % _line_with(again, "%d (" % pick.number),
-		_line_with(again, "%d (" % pick.number).contains("zoom 1.5x, new page, no parts list"))
+		_line_with(again, "%d (" % pick.number, 4000).contains("zoom 1.5x, new page, no parts list"))
 	await _judge(diff, (diff[0] as Array).is_empty() and put.size() == 3
 		and put.has("0 !BRICKWORKS ZOOM 1.5") and put.has("0 !BRICKWORKS PAGE NEW")
 		and put.has("0 !BRICKWORKS PARTS OFF"), base)
@@ -732,7 +732,7 @@ func _page_over_mcp(base: String) -> void:
 		base, history)
 	var layout: String = str(await tools.run("booklet_layout", {}))
 	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
-		_line_with(layout, "%d (" % pick.number).contains("picture at 60, 30 mm (150 wide, 110 high)"))
+		_line_with(layout, "%d (" % pick.number, 4000).contains("picture at 60, 30 mm (150 wide, 110 high)"))
 	await _judge(diff, _put_one(diff, "0 !BRICKWORKS PLACE PICTURE 60 30 150 110", true), base)
 	history = _history()
 	said = str(await tools.run("edit_booklet", {"step": pick.number,
@@ -740,7 +740,7 @@ func _page_over_mcp(base: String) -> void:
 	diff = _edited("edit_booklet text \"Turn the model round\" (\"%s\")" % said.left(80), base, history)
 	layout = str(await tools.run("booklet_layout", {}))
 	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
-		_line_with(layout, "%d (" % pick.number).contains("text \"Turn the model round\" at 20, 170 mm"))
+		_line_with(layout, "%d (" % pick.number, 4000).contains("text \"Turn the model round\" at 20, 170 mm"))
 	await _judge(diff, _put_one(diff, "0 !BRICKWORKS TEXT 20 170 70 10 4.5 Turn the model round", true),
 		base)
 	history = _history()
