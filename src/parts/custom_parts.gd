@@ -94,6 +94,13 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 	if not base.is_empty():
 		PartPrints.bases[id] = base
 	var info: PartLibrary.PartInfo = info_for(built)
+	# A model file's own copy of a part, described only by the part's number
+	# ("23798", 42081-1's "42081 - 23798.dat"), is named as the catalogue
+	# names that part: what a part is is read from its name, and a tyre called
+	# "23798" was not read as a tyre, so its tread's gaps stood on a stud.
+	var known: PartLibrary.PartInfo = library.parts.get(info.name.strip_edges())
+	if known != null and not known.custom and info.name.strip_edges() != id:
+		info.name = known.name
 	# Prints and stickers in bins of their own, as the bin shows them.
 	info.category = PartPrints.bin_for(text)
 	var skin: bool = is_skin_text(text)

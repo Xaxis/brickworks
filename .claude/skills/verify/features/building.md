@@ -638,9 +638,20 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   steering in the probe's sets (8020-1_Jeep, 8841-1, 8808-1, 8054-1, 8828-1,
   8062-1) turned +30, -60 and +30 over MCP from where it stands: each moves,
   the rack goes one way then the other, every part back within 0.1 LDU, what
-  stays still; `--steer-set=FILE` for another. Still open: 42081-1's tyre is
-  carried as "23798" and stands on a stud by its tread's gaps (named from the
-  catalogue, the heaviest body is its arm's curved panel; §17).
+  stays still; `--steer-set=FILE` for another. 42050-1 and 8273-1 too (G9:
+  a block with pins on two lines, 48989, is not a lone pin,
+  `Bodies._pins_on_lines`). Every OMR set with a steering:
+  `tools/steer_sweep.py run LABEL` (181 files, four headless jobs under
+  heavy, ~15 min; `--only=SET,...`, `--shots` windowed with pictures from
+  above) runs `grab_probe -- --only=sweep --list=FILE` and writes
+  `sweep_LABEL.jsonl` and `.md` to bench/results/grab9-2026-10-18; `table
+  LABEL --against=OTHER` sets two side by side (MECHANISMS §18: 25 of 168
+  before G9). Why a rack does not go: `grab_probe -- --only=steerdebug
+  --steer-set=FILE [--turn=ID]` prints the rack's joins to the part its
+  pinion turns in, every shaft near it, and pictures of the rack's
+  neighbourhood when windowed. `-- --only=stays` (in the full run): 42081-1's
+  tyre "23798" named from the catalogue, and what stays the biggest body,
+  not its bucket (535 g by its box).
   Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
   pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
   starts clean (`_clean_slate`: no button down, drag, grab, part in hand or
@@ -670,8 +681,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
   nothing on and is tested for room by nothing (`Bodies.flexible`).
   Each piece's anchor: a locked part's body, else what stands on the
-  baseplate (a stud in a socket; never a tyre), else the heaviest body
-  (`Bodies.anchor_why`). Studs pressed on a part with no socket hold only in
+  baseplate (a stud in a socket; never a tyre), else the body with the most
+  parts, unless a body standing on the floor (within 2 LDU of the piece's
+  lowest point, not by a tyre) is heavier (`Bodies.anchor_why`; not the
+  heaviest outright, which a shell's box fools; MECHANISMS §18). Studs pressed on a part with no socket hold only in
   its holes (`Bodies.pressed_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
