@@ -78,6 +78,10 @@ var bodies: Bodies
 ## locks). [member why] says it in words.
 var state: String = ""
 var why: String = ""
+## For a part refused as rigid that has a joint its body holds still (an
+## axle in a round hole whose halves something else holds as one), what
+## holds it, part by part (Bodies.overruled_words); "" otherwise.
+var held_by: String = ""
 var part: int = 0
 var body: int = 0
 var link: Bodies.Link
@@ -471,7 +475,10 @@ func _from_part(brick_id: int) -> void:
 					moving_bodies = bodies.beyond(across)
 					state = "moves"
 					return
-		_refuse("rigid", "that part is held rigidly to what it stands on")
+		held_by = bodies.overruled_words(brick_id)
+		var held: String = held_by if not held_by.is_empty() else bodies.held_words(brick_id)
+		_refuse("rigid", "that part is held rigidly to what it stands on"
+			+ ("" if held.is_empty() else ": " + held))
 		return
 	link = bodies.parent_link[body]
 	moving_bodies = bodies.beyond(body)
@@ -558,8 +565,10 @@ func _gears() -> void:
 		# of these gears: moved on its joint, its gears left where they are.
 		gear_note = "the gear reading says: %s" % str(solved["said"])
 		if bool(solved["locked"]) and not (solved["culprits"] as Array).is_empty():
-			_refuse("locked", "%s will not turn: its gears lock (%s)." % [bodies.named(moving_bodies),
-				", ".join(PackedStringArray(solved["culprits"]))])
+			var stays: String = bodies.what_stays(body)
+			_refuse("locked", "%s will not turn: its gears lock (%s).%s" % [bodies.named(moving_bodies),
+				", ".join(PackedStringArray(solved["culprits"])),
+				"" if stays.is_empty() else " It is held between what stays: %s." % stays])
 		mechanism = null
 		return
 	# A worm turns its gear; its gear cannot turn it (self-locking). Grabbed

@@ -2309,3 +2309,178 @@ runs beside it on the box (8.2 and 8.3 ms, the idle frame itself 20 ms) and
 passed with none (−0.3 ms): the box's load, as §13 says. The reading of the
 model's bodies on 42081-1 is 7.0 s against 6.6 s without lodging, on a
 worker, on a loaded box.
+
+## 17. Steering that turns both ways, and what holds a part that will not (G8)
+
+A real Claude session building a small Technic kart over MCP, the way the
+owner builds (bench/results/mcpwalk-2026-10-17), met three things worst
+first: its steering turned once and the turn back swung the chassis; made a
+sub-assembly, its front axle locked the steering's gears; and a bush on the
+deck locked the steering column, with an answer no one could act on, "held
+rigidly to what stays (26 bodies, 30 joints ...): nothing it is built on
+turns". G8 takes each to its cause.
+
+**A tyre on the baseplate's studs.** What stays when a part is moved is a
+locked part's body, else what stands on the baseplate's studs (a stud in one
+of its sockets), else the heaviest body (§10). A tyre was meant to be no
+socket's, but 58090's part file leaves four gaps in its tread that read as
+sockets. The kart (its column turning a centre-pivot front axle through
+three 16 tooth gears) turned 30 degrees, a front tyre's gap came over a
+baseplate stud, the front axle became what stays, and the turn back swung
+the chassis round it. The sub-assembly was the same tyre: the session took
+the axle's eight parts off and put them back in a section of their own, the
+tyres laid a hair differently, and the next turn found the front axle
+standing on a stud, the pivot's gear held with it, and the column's train
+locked against it ("its gears lock (parallel 16-16, parallel 16-16)"). A
+sub-assembly is only a grouping in the file: grouped as one with Make
+sub-assembly, the same eight parts steer as before. A tyre now stands on no
+stud, whatever its file says (`Bodies._read`). The fix tried and reverted in
+the walk-through kept tyres off the floor in a second place too, and asked
+a turned part for two studs to stand: that cut the half pin's stud in
+42081-1's turned arm, and is not needed.
+
+**Studs pressed on a face.** A stud holds where it goes into something: a
+socket underneath, or a hole. The kart had a bush (3713) on its column and
+half bushes on the idler and the pivot, sitting on the deck's studs; the
+lattice found the studs' tips in the bushes' cells, two studs or more joined
+them, and the bush, gripping its axle, joined the column to the chassis. A
+part with no socket (a bush, a gear, a beam) now takes a stud only in one of
+its holes (`Bodies._no_sockets`, `_takes_stud`); studs that only press on
+its face join nothing, between any two parts and where a part rests on a
+joint's half. On 42042-1 two pairs are read so (a 1 x 3 plate's studs
+against a long pin's stop bush) and its winch turns as before; if a stud
+there goes into the pin's hollow end, which a stud does, a pin's end is not
+yet read as a hole.
+
+**What holds it, in words.** Bodies now keeps why each two parts became one
+body (`joined_by`: an axle gripped in an axle hole, studs, a tyre on its
+rim, glue, a lodged piece, a lone pin, two joints on different lines) and
+each joint it read between two parts that ended in one body (`overruled`).
+A part that will not move is told by the joint nearest it that its body
+holds still and each join that holds the two halves as one, part by part,
+each named with its number (`Bodies.held_words`): "the Technic Axle 4 (#15)
+would turn on its axle in the Technic Plate 2 x 8 with Holes (#11), but the
+Brick 2 x 2 Round (#25) grips the Technic Axle 4 (#15) and the studs of the
+Technic Plate 2 x 8 with Holes (#11) grip the Brick 2 x 2 Round (#25)". With
+no such joint, why its body is what stays: it is locked, it stands on the
+baseplate's studs, or it is the heaviest. move_part answers so; the status
+bar says it as the part is carried instead (a press on a part held rigidly
+picks it up, as before); and a train whose gears lock names what it is held
+between ("It is held between what stays: the Technic Plate 2 x 8 with Holes
+(#11) is locked and the Tyre 14/ 50 x 17 VR (#23) is locked"). Locking or
+unlocking a part changes no revision, so the joints read ahead were kept:
+after unlocking, the kart's steering stayed locked. They are read again
+when the locked parts differ from those they were read with
+(`GrabDrag.is_ready`).
+
+**Measured** (`grab_probe -- --only=kart`, windowed): each kart turned +30,
+−60 and +30 by move_part, the front axle against the column (column, idler
+and pivot gear are all 16s, so one for one, the same way round), the deck
+where it was built.
+
+| kart | +30 | −30 | back | chassis |
+|---|---|---|---|---|
+| as built (`steering_kart.json`) | 29.7° | −29.5° | 0.4° | still |
+| its front axle put back as a section, as the session did | 30.0° | −30.0° | 0.0° | still |
+| its front axle a sub-assembly (Make sub-assembly) | 29.7° | −29.5° | 0.4° | still |
+| with its bushes (`steering_kart_bushes.json`, as the session first built it) | 29.7° | −29.5° | 0.4° | still |
+
+The front axle falls 0.3° short of the column one way and 0.5° the other,
+and comes back 0.4° past where it was built; why was not found (the
+section's re-laid parts follow exactly), and it is within the check's
+degree. Each check fails with its fix taken out: with
+tyres standing on studs, the kart's turn back moves the chassis and the
+section's turn locks its gears, word for word as the session was told;
+with studs pressed on a face holding, the bushed kart "will not move"; with
+the locked parts not compared, the unlocked steering stays locked.
+
+**Every steering in the probe's sets, both ways and back** (`grab_probe --
+--only=steering`, in the full run): 8020-1's Jeep, 8841-1, 8808-1, 8054-1,
+8828-1 and 8062-1, each turned over MCP at its steering wheel where turning
+it reaches the rack (8808-1), else its pinion's column, +30, −60 and +30
+from where it stands. Each turn moved; the rack went 5.34 LDU one way and
+5.34 to 5.35 the other side of where it stood (by hand 5.33: 30 degrees of
+an 8 tooth pinion is two thirds of a tooth, 8 LDU a tooth); the last put
+every part back within 0.001 to 0.015 LDU; what stays never moved.
+`--steer-set=FILE` asks it of another set.
+
+Eight more of the OMR's 64 sets with a steering rack, asked so
+(`steering_extra.log`), do not pass, and none for the reasons above.
+8815-1's racer, 8832-1 and 8272-1 have no pinion read in a rack (their
+racks are parts the gear table does not list); 8448-1's pinion and 42035-1's
+turn without moving their racks (42035-1's rack is read as one body with the
+connector it rides in, §12); 42029-1's column is held at both ends; 42037-1's
+rack goes 0.29 LDU for 30 degrees, and the turn back leaves a part 23 LDU
+from where it stood. 42039-1 is the kart's kind: turned +30 its rack goes
+11.19 LDU, and read again its pinion is in no rack, so the turn back turns
+the column alone. Its pinion stood 7.9 LDU across the rack's middle, within
+the 7 + 1 the reading allows, and 8.6 once the rack had tipped 3.5 degrees
+on its track rod. Allowed half a gear's face (4 LDU) the pinion is read in
+its rack again, and the loop it closes then reads 58 joints where it read 75
+and "has no freedom": read again after the turn, the tow ball pin 6628 in
+its cross block (42003) is no longer a joint (226 bodies for 227) and an
+axle joint the build did not read appears. Choosing a lone pin's part by
+number rather than by the order the joints are read changed the whole
+reading (235 bodies, the steering's loops too big to solve), so it is left.
+That is the next unit's.
+
+**The session again.** The walk-through's kart task was run again on this
+build, the way mcpwalk ran it (`claude -p` with only the app's MCP, on the
+subscription; `t1_kart` in bench/results/grab8-2026-10-18). The session
+built its own kart (no floor, an 8 tooth gear on the column driving a 24 on
+a pivoting front axle) and turned it +60, −120 and +60: each turn drove the
+front axle, and it reported both directions working. Asked then to put a
+round brick 2 x 2 over the column and turn it both ways (`t1b_held`), it was
+told "#32 will not move: the Technic Axle 4 (#31) would turn on its axle in
+the Technic Plate 2 x 4 with Holes (#14), but the Brick 2 x 2 Round without
+Reinforcement (#51) grips the Technic Axle 4 (#31) and the studs of the
+Technic Plate 2 x 4 with Holes (#14) grip the Brick 2 x 2 Round without
+Reinforcement (#51)", and swapped the brick for a round tile with a hole
+under it. It then met one more: the
+column turned +60 drove the front axle, and turned back drove nothing. The
+model it was in is kept (`tests/fixtures/mcpwalk/steering_kart2.ldr`, from
+the session's own app by undo) and is `grab_probe -- --only=kart2`.
+
+**A gear's face on studs.** The gear reading (Mechanism) joins a part to the
+studs it stands on where it records no socket for them (a turntable's base,
+a beam's holes over a plate's studs). Turned 60 degrees, the round brick
+on the session's column brought one of its studs under the 24 tooth gear on
+the pivot beside it, at the gear's face: read as the gear standing on it, the
+pivot was one body with the column, both were held to the chassis, and the
+turn back turned the column alone. A gear now stands on a stud only where
+the stud is on the line of one of its holes (`Mechanism._in_a_hole`). The
+session's kart turned +60, −120 and +60: the 24 turns −20.0°, +20.0° and
+back to 0.0°, a third of the wheel's turn the other way, by its teeth; with
+the change taken out the second and third turns fail. A fresh session given
+that saved car (`t1c_turn_back`) turned it +60, −120 and +60, each turn
+driving the same 12 parts, and reported the front wheels steered each way
+and back to straight.
+
+**The whole probe** (`grab_probe`, windowed) passes 368 checks, 320 before
+G8; mechanism_probe (54), mechanism_sets and simulate_probe pass as before.
+
+**Tried and left.** What stays chosen through the wheels: a vehicle on its
+wheels stays with what they turn in, rather than with its heaviest body. It
+was tried for 42081-1, whose tyre the file carries as "42081 - 23798",
+described only "23798", so it is not read as a tyre and its tread's gaps
+stand on a baseplate stud: the loader is anchored on a wheel, by chance, as
+the kart was. Named from the catalogue (Tyre 44/ 58 x 56 R Tractor), the
+tyre stood on nothing, and the heaviest body was the arm's curved panel
+(15265, 535 g weighed by its box), so the loader swung round the arm when
+its rod was drawn. Anchored on what its wheels turn in, the arm moved
+again, but 42042-1's crawler crane stood on its tracks' rollers, the gear
+reading's ground went with them, and the winch's worm turned its gear no
+longer; and 7191-1, on three legs, would have swung its whole hull about
+the canopy's hinge. Both are left out: 42081-1's tyre still stands on its
+stud, and the heaviest body by boxes is not yet a measure of what stays
+that a curved panel cannot fool.
+
+**Left for later.** A model file's parts described by a bare number named
+from the catalogue, with what stays chosen so a panel's box does not decide
+it (above). A pin's hollow end read as a hole a stud goes into. The eight
+sets above, 42039-1 first, and the rest of the 64 with steering racks.
+Two things the sessions stumbled on: move_part's "now −120°" is the turn of
+that call, not where the part stands from where it was built, and one
+session had to check with a picture; and look_at_model lists a wheel turned
+and turned back by a few ten-millionths as standing a stud off (its axis at
+z 9 for 10), which sent a session to look again.

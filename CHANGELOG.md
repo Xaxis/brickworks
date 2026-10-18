@@ -307,6 +307,32 @@ whole cycle.
   now hold by more than one stud only where the studs go into sockets or
   holes. move_part says a joint whose line stands upright stays where it
   is put, rather than that it swings down.
+- A car's steering turns both ways and back. A session's kart turned its
+  steering wheel 30 degrees, and the turn back swung the whole chassis
+  round the front axle: a front tyre's tread, whose gaps its part file
+  reads as sockets, had come over a baseplate stud and was taken for
+  standing on it, so the front axle became what stays. The same tyre made
+  the steering's gears lock when the session made the front axle a
+  sub-assembly, the parts put back a hair differently. A tyre stands on no
+  stud now. And a bush, a gear or a beam sitting on a plate's studs is not
+  held by them unless they go into one of its holes: the kart's bush on its
+  deck had locked the steering column to the chassis.
+- A part that will not move says what holds it, by name and number. "the
+  Technic Axle 4 (#15) would turn on its axle in the Technic Plate 2 x 8
+  with Holes (#11), but the Brick 2 x 2 Round (#25) grips the Technic Axle
+  4 (#15) and the studs of the Technic Plate 2 x 8 with Holes (#11) grip
+  the Brick 2 x 2 Round (#25)", in move_part's answer and in the status bar
+  as the part is carried instead; a train whose gears lock names what it
+  is held between. It used to say "held rigidly to what stays (26 bodies,
+  30 joints ...)", which no one could act on.
+- A steering column with a round brick on it turns back too. Turned 60
+  degrees, the brick brought one of its studs under the gear beside it,
+  and the gear reading took the gear for standing on it: the steering's
+  train was held to the chassis and the turn back turned the column alone.
+  A gear stands on a stud only where the stud is in one of its holes.
+- A part locked or unlocked is read as such by the next grab. The joints
+  were read again only when the model changed, so after unlocking, a
+  steering stayed locked by parts no longer locked.
 - An arrow on a booklet page can be aimed at what a step adds without
   seeing the page. booklet_layout says where each step's new parts are on
   its page, and edit_booklet arrow= says whether the tip is on them or how

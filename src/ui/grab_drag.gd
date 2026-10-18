@@ -189,6 +189,12 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	grab.budget_ms = FRAME_BUDGET_MS if grab.moving.size() > BIG_SECTION \
 		else (LOOP_BUDGET_MS if grab.linkage != null else INF)
 	if state == "rigid":
+		# Carried as a part, as before; but a part with a joint its body
+		# holds still (a steering column held to its deck) says what holds
+		# it, so the person can take that off.
+		if not grab.held_by.is_empty():
+			last_words = "%s: carried as a part instead" % _capital(grab.held_by)
+			say.call(last_words)
 		grab = null
 		return false
 	if state != "moves":
@@ -796,8 +802,11 @@ func for_session(input: Dictionary) -> String:
 	var first: int = ids[0]
 	var state: String = held.begin(first, world.get_brick(first).transform.origin, selection)
 	if state == "rigid":
-		return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s") % [
-			first, _bodies.summary(), held.why]
+		var held_said: String = _bodies.held_words(first)
+		if held_said.is_empty():
+			return ("#%d is held rigidly to what stays (%s): nothing it is built on turns. %s") % [
+				first, _bodies.summary(), held.why]
+		return "#%d will not move: %s. Nothing was changed." % [first, held_said]
 	if state != "moves":
 		return held.why
 	var lines := PackedStringArray()
@@ -1169,8 +1178,11 @@ var ready_took: Dictionary = {}
 ## Whether what a grab needs is read for the model as it stands: the bodies,
 ## the graph Balance weighs, and the gear trains.
 func is_ready() -> bool:
+	# And read with the parts locked as they are now: a part locked since
+	# (the outliner's lock, Lock parts) is what stays, and changes no
+	# revision.
 	return _bodies != null and _bodies.revision == world.revision \
-		and _judge_revision == world.revision
+		and _judge_revision == world.revision and _bodies.locked == builder.locked
 
 
 ## Read what a grab needs once the model has stood still a moment, so a
@@ -1227,7 +1239,7 @@ func _ready_ahead() -> void:
 ## press that came before the reading was done.
 func _ready_now() -> void:
 	var started: int = Time.get_ticks_msec()
-	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked)
+	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked.duplicate())
 	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3]], world.revision)
 	ready_off_thread = false
 

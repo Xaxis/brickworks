@@ -607,16 +607,34 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
   steering wheel +30, -60 and +30, back where it was built, the chassis still.
   Two parts askew to each other (`Bodies._askew`) hold by more than one stud
-  only where the studs go into sockets or holes (`Bodies._takes_stud`): read
-  off the lattice's boxes round the turned gear, the plate's four studs locked
-  the column to the chassis and the second turn was refused, "held rigidly to
-  what stays". One stud alone still holds as before (a half pin's stud in
-  42081-1's turned arm). A joint whose line stands upright says its weight
-  does not turn it (`GrabDrag.for_session`). Still open, `grab_probe --
-  --only=kart` (`steering_kart.json`): a front tyre's tread, whose gaps 58090's
-  file reads as sockets, turned over a baseplate stud stands on it, the front
-  axle becomes what stays and the turn back swings the chassis; asking a
-  turned part for two studs to stand fixed it and broke 42081-1's arm.
+  only where the studs go into sockets or holes (`Bodies._takes_stud`). A
+  joint whose line stands upright says its weight does not turn it
+  (`GrabDrag.for_session`). `grab_probe -- --only=kart` (in the full run; G8,
+  MECHANISMS §17): a session's kart (`steering_kart.json`) turned the same
+  way, its front axle checked to turn with the column one for one, then the
+  same kart with its front axle put back as a section as the session did,
+  made a sub-assembly (`Assemblies.make`), and with its bushes on the deck
+  (`steering_kart_bushes.json`). A tyre stands on no baseplate stud (58090's
+  tread gaps read as sockets: the turn back swung the chassis, the section's
+  turn locked its gears); a part with no socket takes a stud only in a hole
+  (`Bodies._no_sockets`: the bush on the deck locked the column). Then what
+  holds a part that will not move: a round brick 2 x 2 gripping the column on
+  the deck's studs, and move_part and the status bar (`GrabDrag.press`, carried
+  instead) must name it and the deck's studs (`Bodies.held_words`); the deck
+  and a front tyre locked, the gears lock and both are named
+  (`Bodies.what_stays`); unlocked, it turns again (`GrabDrag.is_ready` compares
+  the locked parts). `grab_probe -- --only=kart2` (in the full run and in
+  `--only=kart`): the G8 re-run session's own kart, saved from its app where
+  its turn back failed (`steering_kart2.ldr`), turned +60, -120 and +60, its
+  pivot's 24 a third of the wheel's turn the other way each time (a gear on
+  studs stands on them only through its holes, `Mechanism._in_a_hole`).
+  `grab_probe -- --only=steering` (in the full run): every
+  steering in the probe's sets (8020-1_Jeep, 8841-1, 8808-1, 8054-1, 8828-1,
+  8062-1) turned +30, -60 and +30 over MCP from where it stands: each moves,
+  the rack goes one way then the other, every part back within 0.1 LDU, what
+  stays still; `--steer-set=FILE` for another. Still open: 42081-1's tyre is
+  carried as "23798" and stands on a stud by its tread's gaps (named from the
+  catalogue, the heaviest body is its arm's curved panel; §17).
   Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
   pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
   starts clean (`_clean_slate`: no button down, drag, grab, part in hand or
@@ -646,7 +664,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
   nothing on and is tested for room by nothing (`Bodies.flexible`).
   Each piece's anchor: a locked part's body, else what stands on the
-  baseplate (a stud in a socket), else the heaviest body. Read ahead once a
+  baseplate (a stud in a socket; never a tyre), else the heaviest body
+  (`Bodies.anchor_why`). Studs pressed on a part with no socket hold only in
+  its holes (`Bodies.pressed_on`); why parts are one body is kept
+  (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
   `grab_probe -- --survey FILE` prints the bodies and joints.
 - `moving a body on its joint` (`src/assembly/grab.gd`, `Grab`): one grab's
