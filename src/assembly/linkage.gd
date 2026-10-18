@@ -1059,6 +1059,12 @@ func _reach(value: float) -> float:
 	return good
 
 
+## The part of the loops that spins on its own, as last found, and for which
+## driving column ([method _spinning_part]); how many steps a unit of the
+## driver its last solve took.
+var _part_found: Array = []
+var _part_col: int = -1
+var _part_rate: float = 0.0
 ## How each coordinate went with the driver over the last step that closed,
 ## per unit of the driver's, and for which column: where the next step
 ## starts from. A small actuator's input turns 2 radians for each LDU its rod
@@ -1066,12 +1072,6 @@ func _reach(value: float) -> float:
 ## where the last step left them, each 4 LDU step began 8 radians out, and
 ## one in five took 24 rounds and still did not close, stopping the drag
 ## there for a frame.
-## The part of the loops that spins on its own, as last found, and for which
-## driving column ([method _spinning_part]); how many steps a unit of the
-## driver its last solve took.
-var _part_found: Array = []
-var _part_col: int = -1
-var _part_rate: float = 0.0
 var _slope := PackedFloat64Array()
 var _slope_col: int = -1
 ## The columns that turn: not slides, not held still.
