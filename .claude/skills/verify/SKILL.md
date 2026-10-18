@@ -30,6 +30,7 @@ reading, by eye.
 | network suite | `tools/check.sh --network` | also fetching a part over the wire, and opening a model the way the browser does | passes, +~15s |
 | types | `pyright` | the Python pipeline and tools | passes, 3s, warnings only for pytest, numpy and scipy imports |
 | pipeline only | `python3 -m pytest tests/ -q`, or `python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py tests/test_release.py tests/test_minifig.py tests/test_elements.py tests/test_trademarks.py` | the LDraw facts everything rests on: 8 mm stud pitch, 9.6 mm brick, −Y up; the colour join; the style measures on hand-made models; where a minifigure's parts go; and that every word a person reads writes LEGO® as the Fair Play policy asks, with its disclaimer where it must be (`docs/TRADEMARKS.md`) | 102 passed, 25 skipped, 2.7s |
+| no write through a packed cast | `python3 tools/minitest.py tests/test_packed_casts.py` (in the suite too) | no `.gd` under `src/` or `tools/` writes through `(x as Packed…Array)`, which writes to a copy on Godot 4.7.2 and is silently lost: three such were found on 2026-10-17 (`docs/INSTRUCTIONS.md`, lostappend) | 5 passed, 1.7s |
 | parses | `godot --headless --path . --quit` | every script and scene loads | passes, ~20s |
 
 `features.json` lists `python -m pytest -q` and `pyright` because those are what
