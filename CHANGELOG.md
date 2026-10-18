@@ -262,6 +262,12 @@ whole cycle.
 
 ### Fixed
 
+- A tyre goes on its rim over MCP too. attachment_points names a rim's
+  barrel and a tyre's hole, each by its middle and how wide it is (30699's
+  and 56904's are both 30.4 mm), and a tyre put by its axis at the rim's
+  point goes round it. A session asked for a car with tyres was told the
+  tyre had no studs and nothing clutched to it, and had it refused by its
+  axis.
 - A model without steps of its own, given the worked-out ones by its first
   booklet edit, built the second copy of a sub-model (10016-1's second
   wheels) differently once it was saved and opened again.

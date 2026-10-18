@@ -4510,12 +4510,15 @@ func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> Str
 		if joint[0] == "axle" or joint[0] == "pin" or joint[0] == "bar":
 			# Its length, so a gear or a clip can be put anywhere along it.
 			said = said % _studs(float(joint[3]) * 2.0 / STUD)
+		elif joint[0] == "tyre" or joint[0] == "rim":
+			# Across, in the millimetres a tyre's and a rim's names give.
+			said = said % Placement._num(snappedf(float(joint[4]) * 2.0 * Lbm.LDU_MM, 0.1))
 		lines.append("  joint %d: %s at %s, running %s — %s" % [n, joint[0], where,
 			_which_axis(way), said])
 	if lines.is_empty():
 		return ""
 	return ("\n\nIts joints, each at its middle:\n" + "\n".join(lines)
-		+ "\nTo put a pin, an axle, a gear, a bush or a clip on one, give it axis: the way the "
+		+ "\nTo put a pin, an axle, a gear, a bush, a clip or a tyre on one, give it axis: the way the "
 		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
 		+ "where its own middle goes, not its low corner. Slide it along by changing "
 		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
@@ -4602,6 +4605,10 @@ const AXLE_WORDS: Dictionary = {
 	"bar": ("a bar %s studs long: a clip, a hand or a hollow stud grips it anywhere "
 		+ "along it, at any angle round it"),
 	"clip": "grips a bar laid along this line (a clip, a hollow stud, a bar holder)",
+	"tyre": ("the tyre's hole, %s mm across: it goes round a rim whose barrel is that size, "
+		+ "put by axis at the rim's rim joint"),
+	"rim": ("the rim's barrel, %s mm across: a tyre whose hole is that size goes round it, "
+		+ "put by axis at this point"),
 }
 
 
@@ -4770,7 +4777,7 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 ## The lines a part joins by, in its own frame, in the order attachment_points
 ## numbers them: [kind, middle, way, half its length along the line]. kind is
 ## "axle", "pin", "axle hole" or "pin hole", then "bar" or "clip" ([method
-## _bar_kind]). An axle's or a pin's middle is
+## _bar_kind]), then "tyre" or "rim" with a fifth, the round's radius. An axle's or a pin's middle is
 ## halfway along it (Mechanism reads the same lines, Joints.through matches
 ## them); a hole's is halfway through the part (JointSnap.ends_of).
 ##
@@ -4824,7 +4831,55 @@ static func _joint_lines(part: Lbm.PartMesh, part_id: String = "") -> Array:
 				again = true
 		if not again:
 			out.append([kind, middle, connector.axis, connector.length * 0.5])
+	# And last, a tyre's hole or a rim's barrel, so a tyre goes on its rim by
+	# one point: both middles together. A session asked for a car with tyres
+	# was told 30699 had "no studs — nothing clutches to it", had a tyre by
+	# its axis refused, and laid every tyre at its rim as an overlap.
+	var wrap: Array = _wrap_line(part, not out.is_empty())
+	if not wrap.is_empty():
+		out.append(wrap)
 	return out
+
+
+## A tyre's hole or a rim's barrel as one joint line, [kind, middle, way,
+## half its length, radius], or [] for a part that is neither. JointSnap
+## reads every round of a part a tyre or a rim could be (56904's barrel is
+## three, 30.4, 27.2 and 24.8 mm across; 30699 has holes of 27.4 and 30.4
+## mm, and its tread reads as a rim 43.6 mm across), and a session needs the
+## one that meets. A part with no pin, axle or hole of its own whose hole
+## runs through its middle, at least half as wide as its widest round, is a
+## tyre: its widest hole, said at its middle. Anything else with a rim is a
+## rim: its widest barrel. The widest of each is what meets: 30699 and 56898
+## both go on 56904 at 30.4 mm.
+static func _wrap_line(part: Lbm.PartMesh, technic: bool) -> Array:
+	var tyres: Array = []
+	var rims: Array = []
+	for end: JointSnap.End in JointSnap.ends_of(part):
+		if end.kind == "tyre":
+			tyres.append(end)
+		elif end.kind == "rim":
+			rims.append(end)
+	var widest := func(ends: Array) -> JointSnap.End:
+		var best: JointSnap.End = null
+		for end: JointSnap.End in ends:
+			if best == null or end.radius > best.radius:
+				best = end
+		return best
+	var rim: JointSnap.End = widest.call(rims)
+	var hole: JointSnap.End = widest.call(tyres)
+	if not technic and hole != null and (rim == null or hole.radius >= rim.radius * 0.5):
+		var centre: Vector3 = part.bounds.get_center()
+		for end: JointSnap.End in tyres:
+			var along: float = (centre - end.at).dot(end.axis)
+			if absf(along) > end.reach + 1.0 \
+					or (centre - end.at - end.axis * along).length() > 2.0:
+				continue
+			var size: Vector3 = part.bounds.size * end.axis
+			return ["tyre", end.at + end.axis * along, end.axis, size.length() * 0.5,
+				hole.radius]
+	if rim == null:
+		return []
+	return ["rim", rim.at, rim.axis, rim.reach, rim.radius]
 
 
 ## The radius of a bar, LDU: 3.18 mm across. A clip, a hand, a hollow stud
@@ -4851,14 +4906,15 @@ static var _joints_of: Dictionary = {}
 
 
 ## Which of a part's joints is nearest its middle: the one a placement on a
-## line takes when it names none. A Technic joint before a bar or a clip,
-## so a part that has both is put by its pin, axle or hole as it was.
+## line takes when it names none. A Technic joint before a bar, a clip, a
+## tyre or a rim, so a part that has both is put by its pin, axle or hole as
+## it was.
 static func _middle_joint(part: Lbm.PartMesh, lines: Array) -> int:
 	var centre: Vector3 = part.bounds.get_center()
 	var best: int = -1
 	for technic: bool in [true, false]:
 		for n: int in lines.size():
-			if technic and str(lines[n][0]) in BAR_KINDS:
+			if technic and (str(lines[n][0]) in BAR_KINDS or str(lines[n][0]) in WRAP_KINDS):
 				continue
 			if best < 0 or (lines[n][1] as Vector3).distance_to(centre) \
 					< (lines[best][1] as Vector3).distance_to(centre) - 0.5:
@@ -4870,6 +4926,9 @@ static func _middle_joint(part: Lbm.PartMesh, lines: Array) -> int:
 
 ## The joints a bar makes, as [method _joint_lines] names them.
 const BAR_KINDS: Array[String] = ["bar", "clip"]
+## And a tyre's hole and a rim's barrel: a rim put by its axis with no joint
+## named goes by its axle hole, as it did before it had a barrel.
+const WRAP_KINDS: Array[String] = ["tyre", "rim"]
 
 
 ## The four square turns that carry [param local] onto [param want], a
@@ -5069,12 +5128,14 @@ const GOES_IN: Dictionary = {
 	"pin": ["pin hole"], "axle": ["pin hole", "axle hole"],
 	"pin hole": ["pin", "axle"], "axle hole": ["axle"],
 	"bar": ["clip"], "clip": ["bar"],
+	"tyre": ["rim"], "rim": ["tyre"],
 }
 
 
-## Whether a joint line is the kind something goes into: a hole or a clip.
+## Whether a joint line is the kind something goes into: a hole, a clip or a
+## tyre (a rim goes into its hole).
 static func _takes_one(kind: String) -> bool:
-	return kind.ends_with("hole") or kind == "clip"
+	return kind.ends_with("hole") or kind == "clip" or kind == "tyre"
 
 
 ## Whether a part has studs of its own (a brick, a plate), which a joint's
@@ -20550,10 +20611,10 @@ func _tools() -> Array:
 			"rot": {"type": "integer", "description":
 				"quarter turns about the face direction, 0-3; with axis, about that line"},
 			"axis": {"type": "string", "enum": ["x", "-x", "y", "-y", "z", "-z"],
-				"description": "for a pin, an axle, a gear, a bush or a beam put on "
-					+ "a line: the way its axle, pin or hole runs. x, y and z are then "
+				"description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on "
+					+ "a line: the way its axle, pin, hole or round runs. x, y and z are then "
 					+ "where that joint's middle goes (the point attachment_points "
-					+ "gives a hole or an axle), not the low corner, and face is "
+					+ "gives a hole, an axle or a rim), not the low corner, and face is "
 					+ "not used."},
 			"joint": {"type": "integer", "description": "with axis: which of the "
 				+ "part's own holes, pins or axles goes there, numbered as "
@@ -21367,9 +21428,10 @@ func _tools() -> Array:
 			"name": "attachment_points",
 			"description": ("Where a part's studs are and the exact "
 				+ "coordinates something sitting on each one would "
-				+ "take, and its joints: holes, pins, axles, and the bars "
+				+ "take, and its joints: holes, pins, axles, the bars "
 				+ "(a handle is one) and clips a clip-on-bar joint is made "
-				+ "of, each by its middle and the way it runs, numbered "
+				+ "of, and a rim's barrel and a tyre's hole, "
+				+ "each by its middle and the way it runs, numbered "
 				+ "for a placement by axis and joint. Ask about a brick that is already placed by "
 				+ "its number, or about one you are considering by "
 				+ "giving part and position. Use this rather than "

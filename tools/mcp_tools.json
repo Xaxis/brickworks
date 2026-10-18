@@ -88,7 +88,7 @@
                 "type": "object"
               },
               "axis": {
-                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                 "enum": [
                   "x",
                   "-x",
@@ -271,7 +271,7 @@
                       "type": "object"
                     },
                     "axis": {
-                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                       "enum": [
                         "x",
                         "-x",
@@ -1098,7 +1098,7 @@
       "readOnlyHint": true,
       "title": "Where a part attaches"
     },
-    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, and the bars (a handle is one) and clips a clip-on-bar joint is made of, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it. And every connector by the address attach takes (\"#41.hinge[0]\", \"hinge[0]\"): its type and number, where it is and the way it points.",
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, the bars (a handle is one) and clips a clip-on-bar joint is made of, and a rim's barrel and a tyre's hole, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it. And every connector by the address attach takes (\"#41.hinge[0]\", \"hinge[0]\"): its type and number, where it is and the way it points.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1460,7 +1460,7 @@
                 "type": "object"
               },
               "axis": {
-                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                 "enum": [
                   "x",
                   "-x",
@@ -2091,7 +2091,7 @@
                 "type": "object"
               },
               "axis": {
-                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                 "enum": [
                   "x",
                   "-x",
@@ -2332,7 +2332,7 @@
                       "type": "object"
                     },
                     "axis": {
-                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                       "enum": [
                         "x",
                         "-x",
@@ -3494,7 +3494,7 @@
                 "type": "object"
               },
               "axis": {
-                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "description": "for a pin, an axle, a gear, a bush, a beam or a tyre put on a line: the way its axle, pin, hole or round runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole, an axle or a rim), not the low corner, and face is not used.",
                 "enum": [
                   "x",
                   "-x",

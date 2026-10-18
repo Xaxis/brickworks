@@ -54,13 +54,15 @@ func _initialize() -> void:
 	await _an_axle_through_a_forty()
 	await _the_gear_train()
 	await _the_orrery_steps()
+	await _a_tyre_on_its_rim()
 	_by_hand()
 
 	print("")
 	if _failures == 0:
 		print("axles: a pin and an axle go in the hole attachment_points names, an axle "
 			+ "carries every part on its line, gears in mesh are not an overlap, and a "
-			+ "crank turns an 8, a 24 and an arm at 1:3")
+			+ "crank turns an 8, a 24 and an arm at 1:3, and a tyre goes round its rim by the "
+			+ "point attachment_points gives the rim")
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
@@ -602,6 +604,91 @@ func _mechanism_of(ground: int, also: Array = []) -> Mechanism:
 		list.append({"key": brick.id, "part": brick.part_id, "at": brick.transform,
 			"mesh": _library.mesh_for(brick.part_id)})
 	return Mechanism.build(list, [ground] + also)
+
+
+# -- a tyre on its rim -------------------------------------------------------------
+
+
+## A wheel and its tyre, as a session puts them on. A real session asked for
+## "a small Technic car with four wheels with tyres" (mcpwalk 2026-10-17) was
+## told the tyre 30699 had "no studs — nothing clutches to it", had it
+## refused by its axis ("no pin, axle, hole, bar or clip to put on a line"),
+## and laid it at the rim's point as an overlap. attachment_points now names
+## a rim's barrel and a tyre's hole, each by its middle and how wide, and a
+## tyre by its axis at the rim's point goes round it.
+func _a_tyre_on_its_rim() -> void:
+	print("\na tyre on its rim, at the point attachment_points gives the rim")
+	_clear()
+	var said: String = await _say("attachment_points", {"part": "30699"})
+	var hole := RegEx.create_from_string("joint \\d+: tyre at .*? the tyre's hole, "
+		+ "([0-9.]+) mm across").search(said)
+	_ok(hole != null, "attachment_points: the tyre 30699 has its hole as a joint: %s"
+		% said.left(500))
+	# A rim on an axle through a Technic brick two bricks up: 3700 at 10, 6,
+	# 10 has its hole at 11, 7.75, 10.5 along z; the axle runs on behind it.
+	var stand: Array = [
+		{"part": "3004", "color": 71, "x": 10, "y": 0, "z": 10, "rot": 0},
+		{"part": "3004", "color": 71, "x": 10, "y": 3, "z": 10, "rot": 0},
+		{"part": "3700", "color": 71, "x": 10, "y": 6, "z": 10, "rot": 0},
+		{"part": "3706", "color": 0, "x": 11, "y": 7.75, "z": 12.5, "rot": 0, "axis": "z"}]
+	var rim: Dictionary = {"part": "56904", "color": 71, "x": 11, "y": 7.75, "z": 14,
+		"rot": 0, "axis": "z"}
+	said = await _say("attachment_points", rim)
+	var barrel := RegEx.create_from_string("joint \\d+: rim at x=([-0-9.]+) y=([-0-9.]+) "
+		+ "z=([-0-9.]+), running along z — the rim's barrel, ([0-9.]+) mm across").search(said)
+	_ok(barrel != null, "...the rim 56904 on that axle has its barrel as a joint along z: %s"
+		% said.left(600))
+	if hole == null or barrel == null:
+		return
+	_ok(absf(hole.get_string(1).to_float() - barrel.get_string(4).to_float()) < 1.0,
+		"...the same size as the tyre's hole: %s mm and %s mm"
+			% [barrel.get_string(4), hole.get_string(1)])
+	var at := Vector3(barrel.get_string(1).to_float(), barrel.get_string(2).to_float(),
+		barrel.get_string(3).to_float())
+	var all: Array = stand.duplicate()
+	all.append(rim)
+	all.append({"part": "30699", "color": 0, "x": at.x, "y": at.y, "z": at.z, "rot": 0,
+		"axis": "z"})
+	said = await _say("check_design", {"bricks": all})
+	_ok(not said.contains("overlap") and not said.contains("floating")
+		and not said.contains("no such joint"),
+		"check_design: the tyre by its axis at the rim's point fits and is held: %s"
+			% said.left(400))
+	said = await _say("edit_model", {"add": all})
+	var tyres: Array[BrickWorld.Brick] = _bricks_of("30699")
+	var rims: Array[BrickWorld.Brick] = _bricks_of("56904")
+	_ok(not said.begins_with("Not applied") and tyres.size() == 1 and rims.size() == 1,
+		"edit_model puts it on: %s" % said.left(300))
+	if tyres.is_empty() or rims.is_empty():
+		return
+	var round_of := func(brick: BrickWorld.Brick) -> JointSnap.End:
+		for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for(brick.part_id)):
+			if end.is_wrap():
+				return end.placed(brick.transform, brick.id)
+		return null
+	var outer: JointSnap.End = round_of.call(tyres[0])
+	var inner: JointSnap.End = round_of.call(rims[0])
+	_ok(outer != null and inner != null and outer.at.distance_to(inner.at) < 1.0
+		and absf(outer.axis.dot(inner.axis)) > 0.99,
+		"...round the rim, the two middles together: %s and %s"
+			% [outer.at if outer != null else null, inner.at if inner != null else null])
+	# And look_at_model says where the tyre's line runs, as it does an axle's.
+	said = await _say("look_at_model", {})
+	_ok(said.contains("30699") and said.contains("axis z at %s, %s, %s" % [
+		Assistant.Placement._num(at.x), Assistant.Placement._num(at.y), Assistant.Placement._num(at.z)]),
+		"look_at_model gives the tyre's line: %s" % said.substr(maxi(said.find("30699") - 80, 0), 300))
+
+	# A rim put by its axis with no joint named still goes by its axle hole.
+	_clear()
+	said = await _say("edit_model", {"add": [stand[0], stand[1], stand[2], stand[3], rim]})
+	rims = _bricks_of("56904")
+	var axle_hole: Vector3 = Vector3.INF
+	if not rims.is_empty():
+		for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for("56904")):
+			if end.kind == "axle_hole":
+				axle_hole = rims[0].transform * end.at
+	_ok(axle_hole.distance_to(Vector3(11 * 20.0, 7.75 * 8.0, 14 * 20.0)) < 1.01,
+		"a rim by its axis with no joint named goes by its axle hole: %s" % axle_hole)
 
 
 # -- by hand -----------------------------------------------------------------------

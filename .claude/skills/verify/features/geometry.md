@@ -612,7 +612,12 @@ naming it; a mesh read at one gear's pitch circle was 1e-2 out on a diagonal.
 
 Axles and gears: `axle_probe` ends on "axles: a pin and an axle go in the hole
 attachment_points names, an axle carries every part on its line, gears in mesh are
-not an overlap, and a crank turns an 8, a 24 and an arm at 1:3". It drives the
+not an overlap, and a crank turns an 8, a 24 and an arm at 1:3, and a tyre goes round
+its rim by the point attachment_points gives the rim". Its tyre part: 30699's hole
+and 56904's barrel are joints (`Assistant._wrap_line`, the widest of JointSnap's
+wraps, both 30.4 mm), the tyre by its axis at the rim's point checks and builds with
+the two middles together, look_at_model gives its line, and a rim by its axis with no
+joint named still goes by its axle hole. It drives the
 tools a session calls (use_tool) with the numbers they hand back: the owner's
 sequence first (attachment_points on 3700 at 80, 0, 80 gives 81, 1.75, 80.5 along
 z; 2780 there by a quarter turn, by face +z and by axis, axle 3706 by a quarter
