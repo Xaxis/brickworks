@@ -3646,8 +3646,14 @@ const FLICK_S := 0.3
 ## hinge, which holds by friction, flicked the same way stays where it is
 ## let go.
 func _coast_case() -> void:
-	for train: bool in [false, true]:
-		var name: String = "coast: %s" % ("a gear 40 driving a gear 8" if train else "a flywheel")
+	# [the train, a slow frame before the release, ms]: the flywheel again, let
+	# go across one slow frame, coasts as fast (a browser drawing a frame a
+	# second read its release a frame late, and the pointer as stopped).
+	for variant: Array in [[false, 0], [true, 0], [false, CHAIN_SLOW_FRAME_MS]]:
+		var train: bool = variant[0]
+		var slow_ms: int = variant[1]
+		var name: String = "coast: %s%s" % ["a gear 40 driving a gear 8" if train else "a flywheel",
+			", let go across a %d ms frame" % slow_ms if slow_ms > 0 else ""]
 		print("\n%s" % name)
 		var path: String = OUT.path_join("made_%s.ldr" % ("train" if train else "flywheel"))
 		_write(path, MADE_FLYWHEEL + (MADE_TRAIN_GEAR if train else ""))
@@ -3677,7 +3683,7 @@ func _coast_case() -> void:
 		await _camera_still()
 		var before: Dictionary = _snapshot()
 		var depth: int = _builder.history_depth()
-		var flick: Array = await _flick(bodies.members[wheel], bodies, FLICK_RATE, FLICK_S, name)
+		var flick: Array = await _flick(bodies.members[wheel], bodies, FLICK_RATE, FLICK_S, name, slow_ms)
 		var grab: Grab = flick[0]
 		if grab == null:
 			continue
@@ -3702,7 +3708,7 @@ func _coast_case() -> void:
 				shot = true
 				said_mid = str(_grab.get("_said"))
 				if _windowed:
-					await _clean_shot("coast " + ("train" if train else "flywheel"), "2_mid")
+					await _clean_shot("coast " + ("train" if train else "flywheel") + ("_slow" if slow_ms > 0 else ""), "2_mid")
 			await process_frame
 		await _settled()
 		print("    mid-coast the status line said: %s" % said_mid)
@@ -3750,7 +3756,7 @@ func _coast_case() -> void:
 				absf(wrapf(turned_small - want, -180.0, 180.0))], absf(wrapf(turned_small - want, -180.0, 180.0)) < 0.05)
 		_check("%s: let go, the drag and the coast are one step to undo" % name, _builder.history_depth() == depth + 1)
 		if _windowed:
-			await _clean_shot("coast " + ("train" if train else "flywheel"), "3_rest")
+			await _clean_shot("coast " + ("train" if train else "flywheel") + ("_slow" if slow_ms > 0 else ""), "3_rest")
 		_builder.undo()
 		await _frames(3)
 		_check("%s: one undo puts it back exactly (%s)" % [name, _differs(before)], _differs(before) == "none differs")
@@ -3820,7 +3826,8 @@ func _hinge_flick() -> void:
 ## go while it still turns: [the grab or null, the pointer's rate over its
 ## last tenth of a second by the probe's own clock, the turn as it was let
 ## go].
-func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, name: String) -> Array:
+func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, name: String,
+		slow_ms: int = 0) -> Array:
 	var joined: Bodies.Link = bodies.parent_link[int(bodies.body_of[int(ids[0])])]
 	var press: Dictionary = _press_off_line(ids, joined.point, joined.axis.normalized())
 	if press.is_empty():
@@ -3849,6 +3856,12 @@ func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, 
 		if t >= seconds:
 			break
 	var let_go_at: float = grab.angle
+	if slow_ms > 0:
+		# One slow frame between the last move and the button coming up, slow
+		# in its drawing, after the app's own work for it (a browser drawing
+		# in software): the release is read at the start of the next.
+		await RenderingServer.frame_post_draw
+		OS.delay_msec(slow_ms)
 	await _button(_last_screen, false)
 	# The pointer's own rate over its last tenth of a second, by the probe's
 	# clock: what the grab reads from the moves it was given.

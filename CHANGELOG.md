@@ -287,7 +287,9 @@ whole cycle.
   hold was timed from the press to the first move the app read, a frame
   apart. It is now timed by what the frames saw. The same went for a
   finger's tap on a slow phone, which read as a hold and took the part off,
-  and a click on the view cube's arrows and zoom, which did nothing.
+  a click on the view cube's arrows and zoom, which did nothing, and a
+  flywheel let go while it turned, which a slow frame before the release
+  made stop dead instead of coasting.
 
 - What you set on a step stays on that step. A step's turn, zoom, size,
   page break, page alone, parts list, turn sign, placed picture, parts
