@@ -1288,6 +1288,9 @@ func _tell_page() -> void:
 	# so frames slower than that draw the swing slower than it is.
 	state["swing_s"] = snappedf(last_swing.time, 0.01) if last_swing != null else 0.0
 	state["swing_clock_s"] = snappedf(swing_clock_s, 0.01)
+	# Frames drawn: a drag draws one a move, a swing or a turning view one
+	# every frame, so a page's frames apart say nothing of what drawing costs.
+	state["drawn"] = Engine.get_frames_drawn()
 	var said: String = JSON.stringify(state)
 	if said == _told_page:
 		return

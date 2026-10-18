@@ -1864,8 +1864,54 @@ MultiMesh moved by its node's transform, so no batch's buffer is written a
 frame (`_fresh_slots` is not it) and no `rebuilt` listener runs; and that
 part casting no shadow. What a frame in which a part has moved costs
 SwiftShader that one in which the view has turned does not is not found.
-The flow now fails while a swing draws under 15 frames a second (or the
-view turning's rate, if lower); it does, at about one.
+
+**Found (swingtrace, 2026-10-17): nothing; a swing frame costs what any
+drawn frame costs.** Each of the app's WebGL calls recorded in the page
+(a wrapper round the context, `bench/results/swingtrace-2026-10-17/`): a
+drawn frame of the crane is 20,842 calls, the same call for call, objects
+renumbered, in a drag before any swing and in one after it, but for where
+one draw's blend is set. The GPU process traced with
+`--enable-gpu-service-tracing` says the same of a drag frame and a swing
+frame: 514 and 535 instanced draws, every other call within a few per cent.
+`CheckFramebufferStatus` is Godot checking the multisample resolve's
+framebuffer in every 3D frame, a drag's as well, and `GetBooleanv` a
+`getParameter` before the last blit to the page: neither makes anything,
+both are where the page waits for SwiftShader to finish the frame before.
+What a frame is, for SwiftShader: the sun's 4096² shadow atlas (four 2048²
+splits cleared, two drawn), the model's depth and colour into a 1400 × 900
+target four samples deep, three full-window blits resolving depth, stencil
+and colour, glow's seven passes, the tone map, the interface and the blit
+to the page, 550 draw calls and 265,000 primitives.
+
+Counted in frames the app drew (`Engine.get_frames_drawn`, which the page
+now has as `window.brickworksGrab.drawn`), in one page on this box at load
+36 to 40: the arm dragged as a person drags it, a move every 60 ms, 108 ms a
+drawn frame; the same drag moved without a pause, 437; the swing, 746;
+after it the paced drag 895 and the unpaused one 609, and a second swing
+347. A view turning drew its first frames in 119 and 258 ms and the rest in
+627 to 713. The drag's "17 ms" was the page's median gap, and a drag draws
+only when the pointer moves: most of the page's frames had nothing drawn.
+A swing and a turning view draw every frame. SwiftShader's sixteen workers
+had a fifth to a third of a core each (load 45 to 58, the browser at the
+pool's nice 10), 3 to 5 cores in all, 2.5 to 3.5 CPU-seconds a frame.
+Taken away one at a time while it swung, none of them made a frame cheap:
+the hover outline (1.1 frames a second), the parts bin's pictures (1.8),
+the sun's shadow, multisampling, glow (670 to 980 ms a frame; all three
+together 548), the same pose drawn again every frame (2.2 frames a second),
+a frame drawn only once the card had finished the last (by a fence: the
+page never waited past 33 ms, and the swing drew 1.1 a second), every
+fourth frame drawn (1.5). Why one drawn frame costs 110 ms in one minute
+and 900 in the next with the same calls is not found: it follows the box's
+load and how long SwiftShader has been drawing without rest, and switching
+the 3D off for two seconds brought a drag back to 107 to 118 ms three times
+at load 42 or under, and not at 54.
+
+grab_flow judged the swing against the page's median gap while the view
+turned; it now judges it against the frames the app drew while the view
+turned, a second: the swing must draw at least three quarters of that rate,
+or of 15 a second if that is lower (the two are timed a minute apart on a
+shared box). Fifteen a second for this model drawn in software would take
+SwiftShader a tenth of the work it does a frame now.
 
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)
@@ -1888,8 +1934,10 @@ read from the pointer (a release now starts from rest). A joint swinging
 while the model falls. A big section's swing (over 40 parts its room tests
 cost more than a frame; it settles as before). Loops, balls and click hinges
 swinging. Friction in a free pin measured on the bench (§ What "accurate"
-can honestly mean), and how much a section bounces. Why a swing's frames in
-a browser drawing in software cost SwiftShader about a second each when
-turning the view's cost 33 to 130 ms (above): the next step is a trace with
-the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
-SwiftShader's, to see which draw it is.
+can honestly mean), and how much a section bounces. A frame of the model
+drawn in software (above): every motion drawn frame by frame, a swing, a
+turning view or a drag moved without pausing, draws one to two frames a
+second on this box; what in SwiftShader's 2.5 to 3.5 CPU-seconds a frame is
+worth cutting (the 4096² shadow atlas, the multisampled blits, the
+interface) is measured nowhere yet, and only on a box not shared with forty
+other jobs would the measure mean much.

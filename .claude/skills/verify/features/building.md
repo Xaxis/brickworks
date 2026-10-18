@@ -732,10 +732,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   frame past 100 ms; none found), then asks (found once, its cost said). On
   42082-1 drawn by SwiftShader: 1,201 frames in 20 s, none past 17 ms; the
   build before the page had to ask drew 20, each over a second. The swing
-  also reports the page's frames against turning the view, and fails under
-  15 frames a second (or the view's rate, if lower): on SwiftShader it draws
-  about one, a second of the GPU process's work a frame, cause not found
-  (MECHANISMS §14). `--trace=FILE`, `--trace-drag=FILE`, `--trace-view=FILE`
+  also reports its frames against turning the view, both in frames the app
+  drew a second (`window.brickworksGrab.drawn`; the page's median gap is
+  mostly frames with nothing drawn), and fails under three quarters of the
+  view's drawn rate, or of 15 a second if that is lower: on SwiftShader on
+  this box every drawn frame of the crane, a swing's, a turn's or a drag's,
+  costs 0.1 to 1 s with the same WebGL calls (MECHANISMS §14).
+  `--trace=FILE`, `--trace-drag=FILE`, `--trace-view=FILE`
   write Chromium performance traces of the swing, the arm's drag and the view
   turning. In `preview_checks.sh`'s map as
   `grab`. Its waits over 250 ms come under load, on live's build as on new

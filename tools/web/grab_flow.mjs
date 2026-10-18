@@ -223,6 +223,30 @@ async function frameGaps(seconds) {
     requestAnimationFrame(tick);
   }), seconds * 1000);
 }
+// The frames the app drew from FROM ({drawn, at}) until it stops drawing:
+// {frames, seconds, per_second}. A page's requestAnimationFrame comes every
+// 17 ms whether or not the app draws, and a drag draws only when the pointer
+// moves, so the gaps between the page's frames are mostly frames with
+// nothing drawn (window.brickworksGrab.drawn, said twice a second at most).
+async function drawnFrom() {
+  const now = await grab();
+  return { drawn: now.drawn || 0, at: Date.now() };
+}
+async function drawnUntilStill(from) {
+  let last = await grab();
+  let changedAt = Date.now();
+  for (let n = 0; n < 240; n++) {
+    await page.waitForTimeout(250);
+    const now = await grab();
+    if (now.drawn !== last.drawn) {
+      last = now;
+      changedAt = Date.now();
+    } else if (Date.now() - changedAt > 1500) break;
+  }
+  const frames = (last.drawn || 0) - from.drawn;
+  const seconds = Math.max((changedAt - from.at) / 1000, 0.001);
+  return { frames, seconds: Number(seconds.toFixed(2)), per_second: Number((frames / seconds).toFixed(2)) };
+}
 // The page's frames recorded from now until read: their gaps, by
 // requestAnimationFrame, while something else goes on.
 async function startGaps() {
@@ -433,7 +457,10 @@ try {
       } else if (seen || n > 10) break;
       await page.waitForTimeout(150);
     }
-    const rested = await until(grab, (g) => !g.swinging && /came to rest/.test(g.said || ""), 60);
+    // Drawn in software a frame of this model takes 0.5 to 3 s on a loaded
+    // box, and a picture as long again: the swing's 3 s, drawn a quarter
+    // second a frame at most, came to rest after the minute this waited.
+    const rested = await until(grab, (g) => !g.swinging && /came to rest/.test(g.said || ""), 180);
     if (!pictures) await traceStop(args.trace);
     const stall = await page.evaluate(() => Math.round(window.__beat.worst));
     const gaps = pictures ? null : await readGaps();
@@ -473,6 +500,8 @@ try {
     // nothing of the grab runs: the view turned by a right-drag, a move each
     // frame for three seconds.
     await page.mouse.move(700, 450);
+    await page.waitForTimeout(1500);
+    const viewFrom = await drawnFrom();
     await startGaps();
     await traceStart(args["trace-view"]);
     await page.mouse.down({ button: "right" });
@@ -484,13 +513,22 @@ try {
     await page.mouse.up({ button: "right" });
     await traceStop(args["trace-view"]);
     const turning = await readGaps();
+    const viewDrawn = await drawnUntilStill(viewFrom);
     console.log(`      for reference, the page's frames while the view turns: ${turning.frames}, gaps median `
-      + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms`);
+      + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms; the app drew ${viewDrawn.frames} `
+      + `in ${viewDrawn.seconds} s, ${viewDrawn.per_second} a second`);
     timings.view_turning_frames = turning;
-    const viewPerSecond = 1000 / Math.max(turning.median, 1);
-    const bar = Math.min(15, viewPerSecond);
-    check(timings.swing_fps >= bar, `the swing was drawn at ${timings.swing_fps.toFixed(1)} frames a second, `
-      + `at least ${bar.toFixed(1)} (15, or the view turning's ${viewPerSecond.toFixed(1)})`);
+    timings.view_turning_drawn = viewDrawn;
+    // Like with like: frames the app drew a second, the swing's and the
+    // view turning's. The page's median gap, the bar until 2026-10-17, is
+    // mostly frames with nothing to draw: on SwiftShader every drawn frame
+    // of this model costs the same, a drag's, a swing's or a turn's
+    // (MECHANISMS section 14). The two are timed a minute apart on a shared
+    // box, so the swing may fall a quarter short of the turn.
+    const bar = Math.min(15, viewDrawn.per_second);
+    check(timings.swing_fps >= 0.75 * bar, `the swing was drawn at ${timings.swing_fps.toFixed(1)} frames a second, `
+      + `at least ${(0.75 * bar).toFixed(1)} (15, or the view turning's ${viewDrawn.per_second.toFixed(1)} drawn, `
+      + `less a quarter)`);
     await page.waitForTimeout(1500);
   }
 } catch (trouble) {
