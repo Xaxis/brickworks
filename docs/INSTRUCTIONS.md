@@ -86,6 +86,20 @@ chose for real sets, says what the measure showed, and what changed.
   every step of the 100 proof and 100 tune files, four ways each, is the
   same. Against main that is 1.17 to 1.33 times, short of the 1.2 asked
   (After).
+- **Appends that were lost** (2026-10-17, lostappend). Appending to a
+  packed array read out of a Dictionary through a cast appends to a copy.
+  The measure built every copy of a repeated sub-model but the first in no
+  step until it went on whole; mended, the order agreement of ours is
+  0.287 on the held-out sample and 0.300 on tune (from 0.285 and 0.291),
+  and the booklet's reading of the authors keeps 97.9% of their same-step
+  pairs together (from 95.2%); hidden, put in under, floating and the
+  build check moved by two tenths of a point at most.
+  The planner never learnt what a part's cover rests on, and the booklet
+  was tuned without it. Mended, it was worse on the held-out sample (steps
+  with a floating thing 7.7% to 10.0%, the build check 5.9% to 9.0%), and
+  read one way round only, mixed (hidden 11.4% to 10.4%, the build check
+  5.9% to 7.5%), so the booklet keeps its steps (After). A test now fails
+  on any write through a packed-array cast.
 - **Pages.** A small model is no longer cut into "Part 1" and "Part 2": 918
   Space Transport's booklet lost a one-step page and a repeated banner. A
   section that touches nothing built before it is drawn on its own: 7636's
@@ -1130,6 +1144,171 @@ part's cover rests on is gathered into a packed array held in a Dictionary
 (`(under_it[top] as PackedInt64Array).append(…)`), which appends to a copy,
 so it stays empty. A part no stud seats whose cover rests on something has
 its box's supports cleared rather than replaced by what its cover rests on.
+Tried below.
+
+### Appends that were lost (2026-10-17, lostappend)
+
+Asked for: the three writes through a packed-array cast that a grep of
+`src/` and `tools/` finds mended, the measure first and then the planner;
+the planner's kept only if the booklet is at least as good on proof; and a
+check that stops the pattern coming back.
+
+**The bug, on Godot 4.7.2.** `(by_id[k] as PackedInt64Array).append(x)`
+appends to a copy the cast makes, and the array in the Dictionary stays as
+it was; so does an index assigned, a `reverse()` or any other write, and the
+same through an Array's element. `by_id[k].append(x)` with no cast does
+write, as does an Array (not packed) through a cast. A script that does each
+printed sizes 0, 1, 1 and 0, and `[1, 2]` after both the assignment and the
+reverse. Two of the three were in the measure and one in the planner.
+Locals typed as a packed array and taken out of a Dictionary, which copy
+the same way, were read too: each of the 29 that is written to is written
+back, returned or used only where it is.
+
+**The measure** (`src/dev/steps_score.gd`, `_authors` and `_from_plan`).
+The author's steps build the copies of a sub-model placed in one step once,
+the others in step with the first, a part beside its twin. Each twin's list
+of parts was appended to a copy, so it stayed empty: every copy but the
+first was built in no step, and went on whole when its parent put it on.
+The booklet's reading of a "2x" callout, and ours, lost the other copies
+the same way. The self-test now builds two copies of a two-brick sub-model
+on a stack of four 2 x 4 bricks, placed in one step, and asks that the
+second copy's parts go in beside the first copy's, in the author's steps
+and in the booklet's reading of them; on the code before, all three of its
+checks fail.
+
+This changes the ruler, not the booklet. Before is cd42e69 (release m71),
+after is the measure mended, both on the planner as it was, the same
+evening. On proof 55 of the 100 files score differently, every one of them
+a file that places copies of a sub-model in one step (65 do), and the
+author's own order moved in 54. On tune 66 moved: 62 such files, and 4
+that by a count of their lines place no copies in one step, one of them in
+the author's order and three only in the booklet's and ours, whose "2x"
+callouts gather copies the file places apart. What moved, paired file by
+file:
+
+- the booklet's reading of the authors: same-step pairs kept together
+  95.2% to **97.9%** on proof (+2.7, +0.1 to +7.8) and 93.0% to **98.8%**
+  on tune (+5.8, +1.0 to +16.2); tau 0.937 to 0.940 and 0.898 to 0.895;
+- ours: tau 0.285 to **0.287** on proof (+0.002, -0.002 to +0.006) and
+  0.291 to **0.300** on tune (+0.009, +0.001 to +0.021); same-step pairs
+  23.5% to 22.2% and 68.5% to 71.6%;
+- the author's own build: things put in under 0.8% to 0.9% on proof;
+- nothing else by more than two tenths of a point, and the step counts
+  not at all but for the noise below.
+
+The corrected baseline, proof, before the measure was mended → after:
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.94 → **0.94 (0.90–0.97)** | 0.28 → **0.29 (0.21–0.36)** | 0.28 → **0.28 (0.21–0.35)** | 0.25 |
+| author's same-step pairs kept together | 100.0% | 95.2% → **97.9% (95.5–99.2)** | 23.5% → **22.2% (10.9–42.2)** | 21.1% → **21.1% (10.0–40.8)** | 9.5% |
+| steps for each of the author's | 1.00 | 1.00 → **1.00 (1.00–1.03)** | 1.06 → **1.06 (0.99–1.22)** | 0.87 → **0.87 (0.79–1.00)** | 0.77 |
+| author's sub-assemblies built on the side | 97.9% | 54.3% → **54.3% (41.0–68.2)** | 54.2% → **54.2% (41.0–68.1)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.7% | 9.9% → **9.9% (7.9–11.8)** | 11.3% → **11.4% (9.0–14.1)** | 20.4% → **20.5% (17.4–23.5)** | 21.2% |
+| things put in under one already there | 0.9% | 5.1% → **5.2% (3.9–6.7)** | 5.2% → **5.3% (3.4–8.4)** | 19.2% → **19.3% (12.8–26.7)** | 26.3% |
+| things floating at their step | 0.7% | 3.1% → **3.1% (2.1–4.3)** | 7.0% → **7.0% (4.5–10.0)** | 10.8% → **10.8% (7.0–15.1)** | 14.6% |
+| steps with a floating thing | 1.3% | 4.3% → **4.3% (3.1–5.5)** | 7.7% → **7.7% (5.5–10.2)** | 11.4% → **11.4% (8.2–15.0)** | 27.0% |
+| parts the build check calls floating at sampled steps | 0.9% | – | 6.1% → **5.9% (2.3–10.7)** | 11.7% → **11.5% (4.9–19.4)** | – |
+| steps in all | 11,930 | 12,247 → 12,247 | 12,749 → 12,753 | 10,489 → 10,489 | 7,356 |
+
+Tune, the same way: the booklet's reading 0.90 → **0.90**, 93.0% →
+**98.8%** of same-step pairs, 59.3% of sub-assemblies, 8.2% hidden, 6.7%
+put in under, 3.4% floating; ours tau 0.29 → **0.30 (0.22–0.37)**, 57.6%
+of sub-assemblies, steps with a hidden new thing **10.4%**, things put in
+under **5.7%**, things floating **5.1%**, steps with a floating thing
+**6.7%**, the build check **3.9%**, 10,653 → 10,650 steps.
+
+**A noise found on the way, and left.** Bottom up and file order cannot
+move with this change, and moved in 12 files on proof (bottom up's floating
+things 15.0% to 14.6%) and 17 on tune, and ours planned 4 steps more on
+proof. A long run's plans and the measure's geometry are not quite the
+same from one run to the next. Two dumps of all 100 proof files, in the
+same order, with planners that plan the same (below), differ in 7 files
+(none of tune's); those seven dumped again, three fresh processes, agree;
+and three proof files dumped alone came out the same twice, and two of
+them differently than in the long run (8159-1, ours 48 steps against 50).
+So what a process planned or loaded before moves a few plans; not looked
+into. A paired change smaller than this is not a change.
+
+**The planner** (`Instructions._supports_of`, `under_it`). A part no stud
+seats (a figure's, a Technic beam's, a tile on a side stud) rests on what
+its box sits on, read by boxes. Where its cover rests on something, what
+the box sat on was to be replaced by what the cover rests on: a slope's or a
+bracket's box reaches where the part itself does not. With the list always
+empty, every such part's box supports were cleared instead, and it went in
+needing nothing it rests on. On 20 proof files: 476 parts no stud seats,
+359 whose covers rest on something, 136 of those with box supports, all
+cleared, and 344 needing nothing at all after the supports are read (211
+with the fix; the other 223 had no box supports to replace). Mended, 122 of
+the 136 rest only on what their covers rest on, and 14 keep box supports
+one of which their cover rests on: what the code was written to do.
+
+But 94 of the 136 rest on a part that rests on them: a figure's arm in its
+torso, a hand in its arm, a leg in its hips, a head on its torso, whose
+covers meet each way a cell up. 65 of them wait on a part that waits on
+them, and the order breaks such a loop by taking a step out of order.
+Over the 100 proof files planned as opened, steps taken out of order went
+from 431 to **1,452**, steps of one part from 1,958 to 3,472, and steps
+from 12,675 to 14,173; on tune 254 to 1,273. Read one way round only, two
+covers that meet both ways resting neither on the other, the 20 files have
+no such loop, and 427 steps are out of order on proof against 431, though
+359 on tune against 254. That reading was made after seeing what the fix
+did to 20 proof files' supports, not their scores, so proof is not quite
+held out for it.
+
+Against the corrected baseline, paired, scored once each:
+
+| | proof, mended | proof, one way round | tune, mended | tune, one way round |
+|---|---:|---:|---:|---:|
+| tau, ours | 0.287 → 0.295 (+0.008, -0.027 to +0.041) | 0.287 → 0.279 (-0.007, -0.039 to +0.022) | 0.300 → 0.285 (-0.015, -0.061 to +0.026) | 0.300 → 0.295 (-0.005, -0.046 to +0.031) |
+| author's sub-assemblies built on the side | 54.2% → 53.7% (-0.6, -1.6 to +0.3) | 54.2% → 53.9% (-0.4, -1.1 to +0.3) | 57.6% → 57.6% | 57.6% → 57.6% |
+| steps with a hidden new thing | 11.4% → 12.0% (+0.6, -0.6 to +1.9) | 11.4% → **10.4%** (-0.9, -1.6 to -0.3) | 10.4% → 10.6% (+0.2, -0.7 to +1.1) | 10.4% → 9.8% (-0.6, -1.5 to +0.4) |
+| things put in under one already there | 5.3% → 5.4% (+0.1, -0.4 to +0.6) | 5.3% → 5.5% (+0.2, -0.3 to +0.7) | 5.7% → 5.5% (-0.2, -0.6 to +0.2) | 5.7% → 5.6% (-0.1, -0.5 to +0.3) |
+| things floating at their step | 7.0% → 8.1% (+1.2, -0.1 to +2.5) | 7.0% → 7.0% (-0.0, -1.0 to +1.1) | 5.1% → 5.7% (+0.6, -0.4 to +1.5) | 5.1% → 5.3% (+0.2, -0.8 to +1.0) |
+| steps with a floating thing | 7.7% → **10.0%** (+2.3, +0.8 to +3.8) | 7.7% → 8.0% (+0.3, -0.7 to +1.4) | 6.7% → **9.7%** (+3.0, +1.9 to +4.3) | 6.7% → 7.4% (+0.7, -0.0 to +1.5) |
+| parts the build check calls floating | 5.9% → 9.0% (+3.0, -2.6 to +10.2) | 5.9% → 7.5% (+1.5, -1.0 to +4.4) | 3.9% → 2.4% (-1.4, -3.6 to +0.2) | 3.9% → 3.1% (-0.8, -2.5 to +0.8) |
+| steps, ours | 12,753 → 14,176 | 12,753 → 12,854 | 10,650 → 11,930 | 10,650 → 10,956 |
+| files whose steps change (four plans a file) | 94 of 100 | 93 of 100 | 97 of 100 | 97 of 100 |
+
+Mended as written, the booklet is worse: a step in ten floats something
+where one in thirteen did, on both samples, beyond the noise. One way round
+it is mixed on proof: fewer hidden steps, beyond the noise, but tau, things
+put in under, steps floating and the build check each a little the wrong
+way, within it; and with it `booklet_edit_probe` failed three checks, a
+model saved and opened again planning its second wheels' copy differently.
+Neither is at least as good on proof, so the planner keeps its steps:
+`COVER_RESTS` is false, the box's supports are cleared on purpose where the
+cover rests on something, and plans are as before: all 100 tune files step
+for step, and on proof 93, the other 7 being the noise above, which plan
+the same as before when planned again side by side
+(`plan-diff-final-*.txt`, `seven-*.jsonl`).
+
+Why the one-way reading does not help more is not settled. The planner was
+tuned all of 2026-10-17 with those parts needing nothing (the code came in
+that morning, a0c5e62), and a part goes in once what it touches stands
+(`_touching`), which may be what kept them from floating more than they
+did; with needs as well, the pages show the order going where a builder
+would not. 30105's stall builds its canopy on its posts and then puts the counter
+in under it (both readings; before, the counter and its cakes came first),
+and 7246's loader puts its bucket in alone at step 2, two steps before the
+arm that holds it (mended as written; before, the two went on together)
+(`booklets/before|after|oneway`, pages 2 and 3).
+
+**The check** (`tests/test_packed_casts.py`, in `tools/check.sh`'s list
+for machines without pytest and in CI's pytest). Every `.gd` under `src/`
+and `tools/` is read with its comments and strings blanked, and each
+`as Packed…Array)` fails the test if a write follows it: `append`,
+`push_back`, `append_array`, `resize`, `fill`, `set`, `remove_at`,
+`insert`, `sort`, `reverse`, `erase`, `clear`, PackedByteArray's `encode_*`,
+or an index with any assignment after it. It finds exactly the three on
+cd42e69 and none after; a line planted in `plan_dump.gd`,
+`(d[0] as PackedInt32Array)[0] = 1`, failed it by file and line; 18 planted
+writes are found and 12 safe lines (reads, comparisons, an Array through a
+cast, the cast in a comment or a string) are not.
+
+`instructions_probe`, `booklet_probe` and `booklet_edit_probe` pass and
+`python3 -m pytest -q` passes (in a scratch venv with numpy and scipy:
+none skipped). Results: `bench/results/lostappend-2026-10-17/`.
 
 ## The pages
 
@@ -1645,11 +1824,18 @@ model reaches that corner though the model does not.
   chosen by, so it would move steps. Doing it natively means a GDExtension,
   which the web build would have to carry too, or a measure of what hides a
   part that is cheaper to read, which is a change of the steps.
-- **What a part's cover rests on is never gathered** (`_supports_of`,
-  `under_it`): appended through a cast to a packed array in a Dictionary,
-  which is a copy, it stays empty, and a part no stud seats whose cover
-  rests on something has its box's supports cleared rather than replaced by
-  what the cover rests on. Mending it changes the steps.
+- **What a part's cover rests on is not read** (`_supports_of`,
+  `COVER_RESTS`): a part no stud seats whose cover rests on something has
+  its box's supports cleared, on purpose now. Read as the code meant, both
+  ways round, it made a step in ten float something; one way round, fewer
+  hidden steps but the rest a little worse (lostappend, After). Reading it
+  well probably needs the order tuned with it, not added to an order tuned
+  without it.
+- **A long run's plans move a little from run to run** (lostappend,
+  After): 7 of 100 proof files planned differently in two runs of the same
+  planner, and 8159-1's shuffled plan is 48 or 50 steps by what the process
+  did first. Found, not looked into: a person's booklet of one model could
+  differ between two sessions.
 - **Sub-assemblies.** Ours builds on the side sub-models of at most 60
   parts and under 30% of the model (`ASSEMBLY_MOST`), a sub-model put on
   at an angle up to half the model, and one the model places itself at any
