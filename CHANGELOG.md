@@ -185,6 +185,12 @@ whole cycle.
 
 ### Fixed
 
+- A universal joint passes a turn on. Turning 8062-1's crane winch turns
+  the shaft past its two universal joints and the winch at the far end, the
+  joints' crosses turning between their ends; it did not move at all, the
+  cross meeting the far end at once. Shafts in line turn one for one; a
+  joint at an angle turns its far shaft at the mean of its ratio.
+
 - A big loop dragged by its linear actuator follows the pointer at frame
   rate. 42081-1's digging arm, 262 parts in a loop of 25 joints, cost 253 ms
   a frame on average and held some frames 2.9 s; it now costs 11 ms, and

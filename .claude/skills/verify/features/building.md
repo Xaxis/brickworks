@@ -673,9 +673,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   §13): a worm turns its gear a tooth a turn and holds it; a grab on the
   gear's side is refused in words ("Held by a worm … self-locking").
   `grab_probe -- --only=worms` (windowed): 42042-1's winch (1/8), 8063-1's
-  sower (1/24, its gear's side a loop) and 8049-1's grabber, each worm turned
-  two turns by the pointer and its gear checked against the teeth its name
-  gives every frame, then the gear's side pressed. `--worm-set=FILE` tries
+  sower (1/24, its gear's side a loop), 8049-1's grabber and 8062-1's crane
+  winch, each worm turned two turns by the pointer and its gear checked
+  against the teeth its name gives every frame, then the gear's side
+  pressed. On 8062-1 the winch's shafts go through two universal joints
+  (`Bodies.universals`, `Mechanism.join_universals`, `Grab._pose_crosses`;
+  MECHANISMS §15): every frame the shaft past each joint turns as the one
+  before it (in line, one for one), with pictures of the driveline drawn
+  alone before and after (`u_before`, `u_turned`). `--worm-set=FILE` tries
   another set.
 - `linear actuators` (the gear table's `actuators`, `Bodies._actuators`,
   `Racks.screws`; MECHANISMS §13): a rod in its actuator or cylinder slides

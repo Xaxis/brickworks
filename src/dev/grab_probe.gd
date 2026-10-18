@@ -1599,11 +1599,10 @@ const WORMS: Array = [
 	["worm: a tower crane's winch", "res://vendor/omr/files/42042-1_Tower-Crane.mpd"],
 	["worm: a tractor's sower, on a 24", "res://vendor/omr/files/8063-1_Sower.mpd"],
 	["worm: a log loader's grabber", "res://vendor/omr/files/8049-1.mpd"],
+	["worm: a crane's winch, through two universal joints", "res://vendor/omr/files/8062-1_Crane.mpd"],
 ]
-## Tried and not passing, run with --worm-set=: 8062-1_Crane's winch stops at
-## once, its gear's axle carrying a universal joint whose far end the grab
-## does not turn (a universal joint is not read as passing a turn on);
-## 8258-1's worm stops at 10°, a beam on its axle meeting the beam beside it.
+## Tried and not passing, run with --worm-set=: 8258-1's worm stops at 10°, a
+## beam on its axle meeting the beam beside it.
 
 
 ## Turn a worm by the pointer, as a person turns its crank, two whole turns:
@@ -1658,6 +1657,25 @@ func _worm_case(name: String, path: String) -> void:
 		Mechanism._tidy(chosen.ideal)])
 	var driver: Bodies.Link = bodies.parent_link[worm_body]
 	var line: Vector3 = driver.axis.normalized()
+	# A universal joint the train turns through, pictured where it stood:
+	# the shafts the universal joints join, and their crosses, drawn alone.
+	var cardan := PackedInt64Array()
+	for joint: Dictionary in train.universals:
+		for body: int in [int(joint["one"]), int(joint["other"])]:
+			for key: int in train.bodies.get(body, []):
+				if not cardan.has(key):
+					cardan.append(key)
+		for key: int in joint["cross"]:
+			if not cardan.has(key):
+				cardan.append(key)
+	var first_joint := PackedInt64Array()
+	if not train.universals.is_empty():
+		first_joint.append_array([int(train.universals[0]["end_one"]), int(train.universals[0]["end_other"])])
+		for key: int in train.universals[0]["cross"]:
+			first_joint.append(key)
+	if _windowed and not cardan.is_empty():
+		await _cardan_shot(cardan, first_joint, name.get_slice(":", 0) + " " + path.get_file().get_basename(),
+			"u_before")
 	var around: PackedInt64Array = bodies.parts_of([worm_body, wheel_body])
 	_camera.look_from(Vector3(0.6, 0.7, 1.0).normalized())
 	_frame_on(around)
@@ -1716,6 +1734,12 @@ func _worm_case(name: String, path: String) -> void:
 	var table := PackedStringArray()
 	var mid_shot: bool = false
 	var frame_worst: float = 0.0
+	# Each universal joint's two shafts, their turns about their own lines
+	# as drawn, unwrapped frame to frame: [last one, last other, turned one,
+	# turned other, worst apart].
+	var crossing: Array = []
+	for joint: Dictionary in train.universals:
+		crossing.append([0.0, 0.0, 0.0, 0.0, 0.0])
 	for n: int in range(1, 73):
 		var target: float = 10.0 * n
 		var began: int = Time.get_ticks_usec()
@@ -1738,6 +1762,18 @@ func _worm_case(name: String, path: String) -> void:
 		var w_wheel: Transform3D = (grab.placed.get(wheel_key, grab.rest[wheel_key]) as Transform3D) \
 			* (grab.rest[wheel_key] as Transform3D).affine_inverse()
 		var wheel_turned: float = _turn_about(w_wheel.basis, wheel_axis)
+		for u: int in train.universals.size():
+			var joint: Dictionary = train.universals[u]
+			var turns: Array = crossing[u]
+			for side: int in 2:
+				var end: int = int(joint["end_one" if side == 0 else "end_other"])
+				var w_end: Transform3D = (grab.placed.get(end, _world.get_brick(end).transform) as Transform3D) \
+					* (grab.rest.get(end, _world.get_brick(end).transform) as Transform3D).affine_inverse()
+				var now: float = _turn_about(w_end.basis, joint["way_one" if side == 0 else "way_other"])
+				turns[2 + side] = float(turns[2 + side]) + wrapf(now - float(turns[side]), -180.0, 180.0)
+				turns[side] = now
+			# In line, Cardano's ratio is one for one.
+			turns[4] = maxf(float(turns[4]), absf(float(turns[3]) - float(turns[2])))
 		if absf(worm_turned) < 5.0:
 			continue
 		if sense == 0.0:
@@ -1759,6 +1795,21 @@ func _worm_case(name: String, path: String) -> void:
 	_check("%s: in %d poses its %d tooth gear has turned a tooth for each turn of the worm, 1/%d, to %.4f°"
 		% [name, checked, named_teeth, named_teeth, worst], named_teeth > 0 and checked >= 60 and worst < 0.01
 		and chosen.other.teeth == named_teeth)
+	if _windowed and not cardan.is_empty():
+		await _cardan_shot(cardan, first_joint, name.get_slice(":", 0) + " " + path.get_file().get_basename(),
+			"u_turned")
+	for u: int in train.universals.size():
+		var joint: Dictionary = train.universals[u]
+		var turns: Array = crossing[u]
+		var bent: float = rad_to_deg((joint["way_one"] as Vector3).angle_to(joint["way_other"]))
+		# A universal joint passes the turn on: the shaft past it turns as the
+		# one before it (one for one in line, by Cardano), and its cross stays
+		# between its ends (the room test would stop it there otherwise).
+		_check(("%s: a universal joint (#%d %s to #%d %s, its shafts %.1f° apart) passes the turn on: the shaft "
+			+ "before it turned %.1f°, the one past it %.1f°, at most %.4f° apart") % [name, int(joint["end_one"]),
+			_world.get_brick(int(joint["end_one"])).part_id, int(joint["end_other"]),
+			_world.get_brick(int(joint["end_other"])).part_id, bent, float(turns[2]), float(turns[3]),
+			float(turns[4])], bent < 1.0 and absf(float(turns[2])) > 30.0 and float(turns[4]) < 0.01)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst)" % [frame_worst, _grab.worst_follow_ms])
 	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
@@ -1824,6 +1875,23 @@ func _worm_case(name: String, path: String) -> void:
 	await _frames(3)
 	_check("%s: let go, nothing was kept (%s)" % [name, _differs(before)], _builder.history_depth() == depth
 		and _differs(before) == "none differs")
+
+
+## A picture of [param keys] alone, from one side, as a drag has them drawn,
+## close on [param near].
+func _cardan_shot(keys: PackedInt64Array, near: PackedInt64Array, name: String, when: String) -> void:
+	var alone: Dictionary = {}
+	for key: int in keys:
+		alone[key] = true
+	var eye: Transform3D = _camera.global_transform
+	_world.show_only(alone)
+	_camera.look_from(Vector3(0.25, 0.45, 1.0).normalized())
+	_frame_on(near)
+	await _frames(20)
+	await _clean_shot(name, when)
+	_world.show_only({})
+	_camera.global_transform = eye
+	await _frames(5)
 
 
 # -- linear actuators -----------------------------------------------------------------------

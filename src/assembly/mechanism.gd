@@ -211,6 +211,12 @@ var ground: int = -1
 var bodies: Dictionary = {}      ## body -> Array of keys
 var gears: Array[Gear] = []
 var couplings: Array[Coupling] = []
+## Universal joints between two shafts ([method join_universals]): each
+## {one, other (the two shafts' bodies), at (where the cross's lines cross),
+## way_one, way_other (each shaft's line, the way the turn goes through),
+## cross (its parts' keys), pin_one, pin_other (the cross's two lines, where
+## it stood), end_one, end_other (a part of each end, its key)}.
+var universals: Array = []
 var chains: Array[Chain] = []
 var joints: Array[Joint] = []    ## every joint between two bodies
 var tree: Array[Joint] = []      ## the ones the tree is grown along, root first
@@ -1269,6 +1275,107 @@ func _loop_rows(joint: Joint) -> Array:
 	return rows
 
 
+## Take the universal joints [param found] (Bodies.universals: a cross pinned
+## into two ends, [its body, a link to each end, where they cross]) as
+## couplings between the shafts their ends are on: each shaft turns about a
+## line through where the cross's lines cross, square to the line it is
+## pinned on. A universal joint passes a turn on one for one when its shafts
+## are in line, and one for one over each half turn when they are not (the
+## far shaft runs ahead and behind by the angle between them; Cardano's), so
+## it is read as one for one: exact for shafts in line, as 8062-1's crane's
+## are, the mean for shafts at an angle. [param with] says which parts are the
+## cross and which the ends.
+func join_universals(found: Array, with: Bodies) -> void:
+	var crosses: Array = []   ## [[end key, its pin's line] x2, where they cross, the cross's keys]
+	for one: Array in found:
+		var cross: int = one[0]
+		var ends: Array = []
+		for link: Bodies.Link in [one[1], one[2]]:
+			var pair: Array = link.pairs[0]
+			var end: int = int(pair[0]) if int(with.body_of.get(int(pair[0]), -1)) != cross else int(pair[1])
+			if not parts.has(end):
+				break
+			ends.append([end, link.axis.normalized()])
+		if ends.size() != 2:
+			continue
+		var cross_keys: Array = []
+		for key: int in with.members[cross]:
+			if parts.has(key):
+				cross_keys.append(key)
+		crosses.append([ends, one[3], cross_keys])
+	# A shaft held by nothing but the crosses at its two ends (a cardan shaft
+	# between two universal joints, 8062-1's crane's) the gear reading leaves
+	# floating: it turns about the line between them, in what the shaft at the
+	# near end turns in.
+	var crossings_of: Dictionary = {}   ## floating body -> Array of [where, the body across]
+	for one: Array in crosses:
+		for side: int in 2:
+			var body: int = body_of(int(one[0][side][0]))
+			if floating.has(body):
+				if not crossings_of.has(body):
+					crossings_of[body] = []
+				(crossings_of[body] as Array).append([one[1], body_of(int(one[0][1 - side][0]))])
+	var grew: bool = false
+	for body: int in crossings_of:
+		var list: Array = crossings_of[body]
+		if list.size() != 2 or (list[0][0] as Vector3).distance_to(list[1][0]) < 1.0:
+			continue
+		var held_by: Joint = _joint_of.get(int(list[0][1]))
+		if held_by == null:
+			continue
+		var joint := Joint.new()
+		joint.a = held_by.parent
+		joint.b = body
+		joint.point = list[0][0]
+		joint.way = ((list[1][0] as Vector3) - (list[0][0] as Vector3)).normalized()
+		joint.what = "a shaft between universal joints"
+		joints.append(joint)
+		grew = true
+	if grew:
+		_grow()
+	for one: Array in crosses:
+		var ends: Array = one[0]
+		var at: Vector3 = one[1]
+		var shafts: Array = []
+		for end: Array in ends:
+			var body: int = body_of(int(end[0]))
+			var joint: Joint = _joint_of.get(body)
+			if joint == null or floating.has(body):
+				break
+			var way: Vector3 = joint.way.normalized()
+			var off: Vector3 = at - joint.point
+			# Its shaft turns about a line through the crossing, square to the
+			# line the cross is pinned on in it.
+			if (off - way * off.dot(way)).length() > LINE_SLACK or absf(way.dot(end[1] as Vector3)) > 0.05:
+				break
+			shafts.append([body, way])
+		if shafts.size() != 2 or int(shafts[0][0]) == int(shafts[1][0]):
+			continue
+		# Each shaft's line the way the turn goes: from the first end through
+		# the crossing to the second.
+		var near: Vector3 = (rest[int(ends[0][0])] as Transform3D) * (parts[int(ends[0][0])] as Piece).mesh.bounds.get_center()
+		var far: Vector3 = (rest[int(ends[1][0])] as Transform3D) * (parts[int(ends[1][0])] as Piece).mesh.bounds.get_center()
+		var way_one: Vector3 = shafts[0][1]
+		var way_other: Vector3 = shafts[1][1]
+		if (at - near).dot(way_one) < 0.0:
+			way_one = -way_one
+		if (far - at).dot(way_other) < 0.0:
+			way_other = -way_other
+		universals.append({"one": int(shafts[0][0]), "other": int(shafts[1][0]), "at": at,
+			"way_one": way_one, "way_other": way_other, "cross": one[2], "pin_one": ends[0][1],
+			"pin_other": ends[1][1], "end_one": int(ends[0][0]), "end_other": int(ends[1][0])})
+
+
+## A universal joint's equation, as {column: coefficient}: the two shafts
+## turn alike about their lines, the way the turn goes through.
+func _universal_row(joint: Dictionary) -> Dictionary:
+	var row: Dictionary = {}
+	for side: Array in [[int(joint["one"]), joint["way_one"], 1.0], [int(joint["other"]), joint["way_other"], -1.0]]:
+		for one: Joint in path(int(side[0])):
+			row[one.column] = float(row.get(one.column, 0.0)) + float(side[2]) * one.way.dot(side[1] as Vector3)
+	return row
+
+
 ## Every joint's rate for the [param drivers]: body -> how fast it turns
 ## about its own joint's axis, against the ground (1.0 to drive it, 0.0 to
 ## hold it). Returns {ok, locked, said, culprits (each coupling whose removal
@@ -1303,6 +1410,9 @@ func solve(drivers: Dictionary) -> Dictionary:
 			continue
 		used.append(coupling)
 		rows.append([_row(coupling), 0.0])
+	# After the couplings, so the n-th row is still the n-th coupling's.
+	for joint: Dictionary in universals:
+		rows.append([_universal_row(joint), 0.0])
 	var depth: Dictionary = {}
 	for joint: Joint in tree:
 		depth[joint.column] = path(joint.child).size()

@@ -529,6 +529,7 @@ func _gears() -> void:
 			if bodies.anchors.has(int(bodies.body_of[key])):
 				held.append(key)
 		mechanism = Mechanism.build(list, held)
+		mechanism.join_universals(bodies.universals(), bodies)
 	# The driver is what the gear that moves turns on, on the grabbed joint's
 	# line: the part pressed may be a sail pinned to it, which Mechanism
 	# reads as a body of its own.
@@ -775,8 +776,42 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 			var carrier: int = followers[key]
 			out[key] = ((out[carrier] as Transform3D) * (rest[carrier] as Transform3D).affine_inverse()) \
 				* (rest[key] as Transform3D)
+		_pose_crosses(out)
 	return out
 
+
+## A universal joint's cross where its two ends put it: each of its lines
+## turns with the end it is pinned in, and it stays where they cross. Hung
+## on one end it went round with that one alone, which is right only while
+## the other turns alike. [param out]: brick id -> Transform3D, as
+## [method transforms_at] has it.
+func _pose_crosses(out: Dictionary) -> void:
+	for joint: Dictionary in mechanism.universals:
+		var keys: Array = joint["cross"]
+		if keys.is_empty() or not (out.has(int(keys[0]))):
+			continue
+		var moved := func(key: int) -> Transform3D:
+			if not out.has(key) or not rest.has(key):
+				return Transform3D.IDENTITY
+			return (out[key] as Transform3D) * (rest[key] as Transform3D).affine_inverse()
+		var one: Transform3D = moved.call(int(joint["end_one"]))
+		var other: Transform3D = moved.call(int(joint["end_other"]))
+		var p: Vector3 = joint["pin_one"]
+		var q: Vector3 = joint["pin_other"]
+		var p_now: Vector3 = (one.basis * p).normalized()
+		var q_now: Vector3 = (other.basis * q).normalized()
+		var stood := Basis(p, (q - p * p.dot(q)).normalized(), p.cross(q).normalized())
+		var q_square: Vector3 = (q_now - p_now * p_now.dot(q_now))
+		if q_square.length() < 0.01:
+			continue
+		q_square = q_square.normalized()
+		var stands := Basis(p_now, q_square, p_now.cross(q_square).normalized())
+		var turn: Basis = stands * stood.inverse()
+		var at: Vector3 = one * (joint["at"] as Vector3)
+		var move := Transform3D(turn, at - turn * (joint["at"] as Vector3))
+		for key: int in keys:
+			if out.has(key) and rest.has(key):
+				out[key] = move * (rest[key] as Transform3D)
 
 
 ## Whether every part that moves has room at [param at]: nothing in the

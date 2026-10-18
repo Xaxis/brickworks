@@ -1894,13 +1894,13 @@ turning the view's cost 33 to 130 ms (above): the next step is a trace with
 the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
 SwiftShader's, to see which draw it is.
 
-## 15. Big loops at frame rate (G6)
+## 15. Big loops at frame rate, and universal joints (G6)
 
 G4 left an actuator's arm in a loop of 25 to 36 joints dragging at 137 to
 174 ms a frame, one frame of 42081-1's held 1.9 to 3.1 s, and the arm let go
 checked and kept in 22 s. A person feels that: the arm follows the pointer
 in steps. G6 measured where each frame's time went and took out what was
-spent.
+spent, and then let a universal joint pass a turn on.
 
 **Where the time went.** Each part of a drag frame timed apart, on the code
 before (`grab_probe -- --only=actuators`, windowed, a box loaded 35 to 45):
@@ -1987,11 +1987,42 @@ three worms, the scissor lift) pass as before, with 269 checks in all. The
 probe checks the mean and the 95th percentile under 33 ms, the release under
 10 s and the rod kept where it was let go; each fails with its fix taken out.
 
+**A universal joint passes a turn on.** `Bodies` already read a universal
+joint as what it is, a cross pinned into two ends: on 8062-1's crane each
+3326a sits in two 3712s by two hinges, one along y and one along z, their
+lines crossing on the shafts' line. The gear reading did not read hinges, so
+the shaft past the joint was a train of its own. Turning the winch's crank
+turned the near shaft through the worm and its gears; what hung on it went
+round with it rigidly, the cross with it, and the cross met the far end at
+once (§13). Now `Bodies.universals` finds each cross (a body of a part or
+two joined to two others by a turning joint each, the two lines square and
+crossing within 1.5 LDU), and `Mechanism.join_universals` takes it as a
+coupling between the shafts its ends are keyed to, when each shaft turns
+about a line through the crossing square to the line it is pinned on: the
+two shafts turn alike about their lines, the way the turn goes through. A
+shaft held by nothing but the crosses at its two ends (8062-1's axles 6 and
+8, joined by a connector, between its two joints) floats in the gear reading; it is given the line
+between the two crossings, in what the near shaft turns in. The cross is
+drawn from both ends, each of its lines turning with the end it is pinned
+in (`Grab._pose_crosses`). One for one is exact for shafts in line, as
+8062-1's are; for shafts at an angle it is the mean of Cardano's ratio, which
+runs the far shaft ahead and behind within each half turn, and the cross is
+drawn square between its two lines.
+
+The crank turned two turns by the pointer, 72 frames (`grab_probe --
+--only=worms`, 8062-1_Crane now in the run): its 8 tooth gear turns 90° to
+0.0000°, and at each universal joint the shaft before it and the one past it
+turned 90.0° and 90.0°, at most 0.0000° apart in any frame. Pictures of the
+driveline drawn alone, before and after, show both ends and the cross a
+quarter turn round. Without the joining the crank does not move at all, the
+cross meeting its far end in the first frame.
+
 **Left for later.** The arm laid in the lattice at the release still works
 the panel's whole cover out, 3.5 to 4.5 s of the 3.8 to 5.8 on a worker
 while the window draws (a cover worked out by runs along each line of cells
 rather than cell by cell was only 1.3 times quicker, and cut into more boxes,
 so it was left). A loop's worst frame is near 33 ms on a loaded box (42024-1's
 32.2 in the full run, 26 alone); a person's drag of more than 4 LDU a frame
-takes more steps. A universal joint passing a turn on (8062-1's crane winch)
-and 42080-1's pneumatic cylinders are as §13 left them.
+takes more steps. A universal joint at an angle turns its far shaft by
+Cardano's ratio, not its mean, and none in the probe's sets stands at one.
+42080-1's pneumatic cylinders are as §13 left them.
