@@ -35,6 +35,18 @@ signal placing(name: String)
 signal brickified(ids: PackedInt64Array, summary: String)
 ## Something for the status line: a file that could not be read.
 signal said(text: String)
+## Once it is down, from the panel: the booklet of the sub-assembly at
+## [param path] (its own steps, a course at a time), and a shop's list of its
+## parts ("bricklink" or "rebrickable"), through the app's own exporters; and
+## what the person's collection is short of (CollectionDialog's need page).
+signal booklet_wanted(path: String, title: String)
+signal shop_wanted(shop: String, path: String)
+signal need_wanted
+
+## The person's collection, part and colour -> how many are on hand
+## (CollectionStore.on_hand, sets expanded): what "Lay it from my
+## collection" lays from. Empty when they keep none.
+var owned: Callable = func() -> Dictionary: return {}
 
 var _mesh: MeshFile
 var _picker: MeshFilePicker
@@ -70,9 +82,27 @@ var _limit: SpinBox
 var _status: Label
 var _go: Button
 var _cancel: Button
+var _from_owned: CheckBox
 var _syncing: bool = false
 ## What the last one came to, as the status line said it.
 var last_summary: String = ""
+## The sub-assembly the last one went down as ("bunny#1"), its steps
+## (BrickifySteps), and what the collection gave it (BrickifyStock.draw).
+var last_path: String = ""
+var last_steps: BrickifySteps.Plan = null
+var last_stock: Dictionary = {}
+## Down, and the panel showing what to do with it: the booklet, the lists.
+var _landed: bool = false
+var _choices: Array[Control] = []
+var _buttons: HBoxContainer
+var _after: HBoxContainer
+var _booklet: Button
+var _bricklink: Button
+var _rebrickable: Button
+var _need: Button
+var _done: Button
+## Where main put the panel, kept while it sits in a corner once down.
+var _placed: Array = []
 
 
 func _ready() -> void:
@@ -173,6 +203,12 @@ func choose(asked: Dictionary) -> String:
 		_limit.value = clampi(int(asked["limit"]), int(_limit.min_value), int(_limit.max_value))
 		if not asked.has("colours"):
 			_colours.select(2)
+	if asked.has("collection"):
+		_tell_owned()
+		if bool(asked["collection"]) and _from_owned.disabled:
+			return ("there is no collection to lay it from: the person keeps none yet (My "
+				+ "collection, or parts_list which=need)")
+		_from_owned.button_pressed = bool(asked["collection"])
 	_on_colours_changed()
 	return ""
 
@@ -212,7 +248,9 @@ func show_for(mesh: MeshFile) -> void:
 	_colours.select(0 if mesh.coloured else 1)
 	_syncing = false
 	_status.text = ""
+	_set_landed(false)
 	_set_enabled(true)
+	_tell_owned()
 	_show_model()
 	_on_up_changed()
 	_on_colours_changed()
@@ -363,6 +401,16 @@ func _build() -> void:
 	_one.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	colour_row.add_child(_one)
 
+	_from_owned = CheckBox.new()
+	_from_owned.text = "Lay it from my collection"
+	_from_owned.tooltip_text = ("The parts and colours you have first, then the same part in "
+		+ "the nearest colour you have, then two smaller parts that make the same footprint; "
+		+ "what is still short is said")
+	_from_owned.add_theme_font_size_override("font_size", 12)
+	column.add_child(_from_owned)
+	_choices.assign([_about, _view, size_row, scale_row, up_row, _detail, _hollow, _stand, surface_row,
+		colour_row, _from_owned])
+
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 12)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -381,6 +429,95 @@ func _build() -> void:
 	_go.text = "Brickify"
 	_go.pressed.connect(func() -> void: brickify())
 	buttons.add_child(_go)
+	_buttons = buttons
+
+	# Once it is down: what to do with it, a press each.
+	_after = HBoxContainer.new()
+	_after.add_theme_constant_override("separation", 6)
+	_after.alignment = BoxContainer.ALIGNMENT_END
+	_after.visible = false
+	column.add_child(_after)
+	_booklet = _after_button("Booklet", "Its building instructions, a course a step, to print")
+	_booklet.pressed.connect(func() -> void: booklet_wanted.emit(last_path,
+		Assemblies.definition(Assemblies.leaf(last_path))))
+	_bricklink = _after_button("BrickLink", "A BrickLink wanted list of its parts (.xml), to "
+		+ "upload under Wanted, Upload")
+	_bricklink.pressed.connect(func() -> void: shop_wanted.emit("bricklink", last_path))
+	_rebrickable = _after_button("Rebrickable", "A Rebrickable parts list of its parts (.csv)")
+	_rebrickable.pressed.connect(func() -> void: shop_wanted.emit("rebrickable", last_path))
+	_need = _after_button("What do I need?", "What your collection is short of, and what "
+		+ "could stand in")
+	_need.pressed.connect(func() -> void: need_wanted.emit())
+	_done = _after_button("Done", "")
+	_done.pressed.connect(close)
+
+
+func _after_button(words: String, tip: String) -> Button:
+	var button := Button.new()
+	button.text = words
+	button.tooltip_text = tip
+	button.focus_mode = Control.FOCUS_NONE
+	_after.add_child(button)
+	return button
+
+
+## What a shop's list or the booklet came to, said on the panel too.
+func tell(line: String) -> void:
+	if _landed and not line.is_empty():
+		_status.text = line
+
+
+## Whether [param point] is over the panel: anywhere while it is choosing,
+## since it covers the model; only its own box once it is down and sits in
+## a corner, so the model can be turned and picked meanwhile.
+func covers(point: Vector2) -> bool:
+	return visible and (not _landed or get_global_rect().has_point(point))
+
+
+func landed() -> bool:
+	return _landed
+
+
+## Down, and showing what to do with it; or choosing again.
+func _set_landed(on: bool) -> void:
+	if on == _landed:
+		return
+	_landed = on
+	for control: Control in _choices:
+		control.visible = not on
+	_buttons.visible = not on
+	_after.visible = on
+	if on:
+		_placed = [anchor_left, anchor_top, anchor_right, anchor_bottom, offset_left,
+			offset_top, offset_right, offset_bottom]
+		# Out of the way, in the bottom right corner.
+		set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		offset_left = -520.0
+		offset_right = -16.0
+		offset_top = -276.0
+		offset_bottom = -64.0
+	elif _placed.size() == 8:
+		anchor_left = _placed[0]
+		anchor_top = _placed[1]
+		anchor_right = _placed[2]
+		anchor_bottom = _placed[3]
+		offset_left = _placed[4]
+		offset_top = _placed[5]
+		offset_right = _placed[6]
+		offset_bottom = _placed[7]
+
+
+## The box for laying from the collection, saying what is on hand.
+func _tell_owned() -> void:
+	var on_hand: Dictionary = owned.call()
+	var pieces: int = 0
+	for key: String in on_hand:
+		pieces += int(on_hand[key])
+	_from_owned.disabled = pieces == 0
+	if pieces == 0:
+		_from_owned.button_pressed = false
+	_from_owned.text = ("Lay it from my collection (%s pieces)" % Brickify._comma(pieces)) \
+		if pieces > 0 else "Lay it from my collection (none kept yet: My collection)"
 
 
 func _row(column: Control, words: String) -> HBoxContainer:
@@ -414,6 +551,7 @@ func close() -> void:
 	if _busy:
 		_stop()
 	visible = false
+	_set_landed(false)
 
 
 ## The run stopped, from Cancel, the panel closed or the app quitting.
@@ -427,8 +565,15 @@ func _stop() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	if _landed:
+		var out: Dictionary = {"brickify_booklet": _booklet, "brickify_bricklink": _bricklink,
+			"brickify_rebrickable": _rebrickable, "brickify_done": _done}
+		if _need.visible:
+			out["brickify_need"] = _need
+		return out
 	return {"brickify_studs": _studs.get_line_edit(), "brickify_go": _go,
-		"brickify_hollow": _hollow, "brickify_stand": _stand, "brickify_cancel": _cancel}
+		"brickify_hollow": _hollow, "brickify_stand": _stand, "brickify_cancel": _cancel,
+		"brickify_collection": _from_owned}
 
 
 ## The fence behind the last turn of the preview drawn (GpuFence).
@@ -441,7 +586,7 @@ func _process(delta: float) -> void:
 	# software queued frame after frame of it, and the status bar's line
 	# saying Brickify had started was drawn 1.6 s after the press, behind
 	# them (2026-10-12).
-	if not visible or _turntable == null or _busy:
+	if not visible or _turntable == null or _busy or _landed:
 		return
 	if not GpuFence.passed(_turned):
 		return
@@ -586,6 +731,11 @@ func _place_model(turn: Basis, box: AABB) -> void:
 func brickify(job: Working.Job = null) -> void:
 	if _busy or _mesh == null or library == null:
 		return
+	# Laid again from the panel that is down (a session's brickify with new
+	# choices): choosing again while it works.
+	if _landed:
+		_set_landed(false)
+		_title.text = "Brickify “%s”" % _mesh.name
 	_busy = true
 	_stopped = false
 	last_summary = ""
@@ -617,15 +767,18 @@ func brickify(job: Working.Job = null) -> void:
 	var result: Dictionary = {}
 	var mesh: MeshFile = _mesh
 	var checker: Assistant = _checker
+	var on_hand: Dictionary = owned.call() if _from_owned.button_pressed else {}
 	if OS.has_feature("nothreads"):
 		await get_tree().process_frame
 		result = Brickify.build(mesh, choice, checker, progress)
+		finish(result, on_hand, checker, progress)
 	else:
 		# A worker never loads a part, and the library keeps new arrivals
 		# aside while one reads it (PartLibrary.begin_reading).
 		library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
-			result.merge(Brickify.build(mesh, choice, checker, progress)), false, "brickify")
+			result.merge(Brickify.build(mesh, choice, checker, progress))
+			finish(result, on_hand, checker, progress), false, "brickify")
 		_task = task
 		# Stopped, rather than the window held until it ends, when the library
 		# must add a part: a file opened meanwhile, whose hose or carried part
@@ -672,19 +825,44 @@ func brickify(job: Working.Job = null) -> void:
 	job.end()
 	_busy = false
 	_set_enabled(true)
-	visible = false
+	last_steps = result.get("steps")
+	last_stock = result.get("stock", {})
 	last_summary = _summary(result, mesh.name, Time.get_ticks_msec() - began, missing)
+	# Left up, in a corner, with what to do with it: its booklet and its lists.
+	_need.visible = not last_stock.is_empty()
+	_title.text = "“%s” is down" % mesh.name
+	_status.text = _landed_words(result)
+	_set_landed(true)
 	brickified.emit(ids, last_summary)
 
 
 func _set_enabled(on: bool) -> void:
 	for control: Control in [_size, _studs, _scale, _up, _hollow, _stand, _surface, _colours,
-			_one, _limit, _go]:
+			_one, _limit, _go, _from_owned]:
 		if control is BaseButton:
 			(control as BaseButton).disabled = not on
 		elif control is Range:
 			(control as Range).editable = on
 	_go.text = "Brickify" if on else "Working…"
+
+
+## What follows the build on its worker: laid from the collection when there
+## is one to lay from ([param on_hand], BrickifyStock), then its own steps
+## (BrickifySteps), into [param result] as "stock" and "steps".
+static func finish(result: Dictionary, on_hand: Dictionary, checker: Assistant,
+		progress: Brickify.Progress = null) -> void:
+	if not result.has("model") or (progress != null and progress.stopped()):
+		return
+	var model: Assistant.Model = result["model"]
+	if not on_hand.is_empty():
+		if progress != null:
+			progress.say("laying it from your collection")
+		result["stock"] = BrickifyStock.draw(model, on_hand, checker)
+	if progress != null and progress.stopped():
+		return
+	if progress != null:
+		progress.say("working out its steps, a course at a time")
+	result["steps"] = BrickifySteps.of(model, checker)
 
 
 ## Every part Brickify may lay, here before the worker starts: on the web
@@ -778,11 +956,30 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	placing.emit(name)
 	var model: Assistant.Model = result["model"]
 	var grid: Brickify.Grid = result["grid"]
-	var path: String = (assemblies.unused_name(name) if assemblies != null else name) + "#1"
+	var top: String = assemblies.unused_name(name) if assemblies != null else name
+	var path: String = top + "#1"
+	last_path = path
+	# Its own steps, as a file's "0 STEP" lines (BrickifySteps): each part
+	# its course's, and each panel built on the side a sub-assembly of its
+	# own, named after the build so that no two builds' panels are taken for
+	# copies of one another (Assemblies.after_edit).
+	var plan: BrickifySteps.Plan = result.get("steps")
+	if plan != null and plan.step.size() != model.placements.size():
+		plan = null
+	var panel_paths := PackedStringArray()
+	if plan != null:
+		for panel_name: String in plan.panel_name:
+			panel_paths.append(Assemblies.join(path, "%s %s#1" % [top, panel_name]))
+	# A model with steps of its own already builds this after them.
+	var after: int = -1
+	if plan != null and AuthorSteps.any(world, scenery):
+		for step: Variant in AuthorSteps.steps_in(world, "", scenery):
+			after = maxi(after, int(step))
 	var corner: Vector2i = _clear_spot(grid)
 	var pace := FramePace.new()
 	var adds: Array = []
-	for placement: Assistant.Placement in model.placements:
+	for index: int in model.placements.size():
+		var placement: Assistant.Placement = model.placements[index]
 		if pace.due():
 			await pace.next()
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
@@ -790,8 +987,13 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 			continue
 		placement.x += corner.x
 		placement.z += corner.y
-		adds.append({"part": placement.part, "color": placement.color,
-			"at": _checker._transform(placement, part), "path": path})
+		var add: Dictionary = {"part": placement.part, "color": placement.color,
+			"at": _checker._transform(placement, part), "path": path}
+		if plan != null:
+			add["step"] = plan.step[index]
+			if plan.panel[index] >= 0:
+				add["path"] = panel_paths[plan.panel[index]]
+		adds.append(add)
 	world.hold_drawing()
 	var steps: Array = []
 	if _put_job != null:
@@ -811,6 +1013,17 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	var ids := PackedInt64Array()
 	for step: Dictionary in steps:
 		ids.append(int(step["brick"]))
+	# The step each panel goes on in, and the build's after the model's own;
+	# taken back with the parts.
+	var units: Dictionary = {}
+	for n: int in panel_paths.size():
+		units[panel_paths[n]] = plan.panel_step[n]
+	if after >= 0:
+		units[path] = after + 1
+	for unit: String in units:
+		steps.append({"undo": "unitstep", "unit": unit,
+			"step": int(world.unit_steps.get(unit, -1))})
+		world.unit_steps[unit] = int(units[unit])
 	builder._history.append({"undo": "group", "steps": steps,
 		"words": "brickified %s" % Assemblies.definition(path)})
 	builder._redo.clear()
@@ -843,6 +1056,23 @@ func _clear_spot(grid: Brickify.Grid) -> Vector2i:
 		roundi(built.get_center().z / BrickLattice.STUD) - grid.deep / 2)
 
 
+## What the panel says once it is down, in a few lines: the status bar has
+## the whole of it.
+static func _landed_words(result: Dictionary) -> String:
+	var model: Assistant.Model = result["model"]
+	var lines := PackedStringArray(["%s parts, %s." % [Brickify._comma(model.placements.size()),
+		Brickify.said(result).get_slice(";", 0)]])
+	var plan: BrickifySteps.Plan = result.get("steps")
+	if plan != null:
+		lines.append(plan.said().left(1).to_upper() + plan.said().substr(1) + ".")
+	var stock: Dictionary = result.get("stock", {})
+	if not stock.is_empty():
+		var said: String = BrickifyStock.said(stock)
+		lines.append(said.left(1).to_upper() + said.substr(1) + ".")
+	return "
+".join(lines)
+
+
 func _summary(result: Dictionary, name: String, ms: int,
 		missing: PackedStringArray = PackedStringArray()) -> String:
 	var model: Assistant.Model = result["model"]
@@ -854,6 +1084,12 @@ func _summary(result: Dictionary, name: String, ms: int,
 	var words: String = "brickified %s: %s parts in %d colour%s, %s" % [name,
 		Brickify._comma(model.placements.size()), colours.size(),
 		"" if colours.size() == 1 else "s", Brickify.said(result)]
+	var stock: Dictionary = result.get("stock", {})
+	if not stock.is_empty():
+		words += "; " + BrickifyStock.said(stock)
+	var plan: BrickifySteps.Plan = result.get("steps")
+	if plan != null:
+		words += "; " + plan.said()
 	if not missing.is_empty():
 		words += " — laid without %s, which never arrived" % ", ".join(missing)
 	return "%s, in %.1f s" % [words, ms / 1000.0]

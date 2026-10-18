@@ -3168,6 +3168,18 @@ func _build_ui() -> void:
 		_camera.frame(_selection_bounds(), 1.4)
 		_on_model_edited()
 		_bar.say(summary))
+	# Once it is down, its booklet and its lists from the panel, a press each,
+	# through the app's own exporters, of the build alone; and laid from the
+	# person's collection when they ask.
+	_brickify.owned = func() -> Dictionary:
+		return _shell.collection.store.on_hand if _shell != null and _shell.collection != null \
+			and _shell.collection.store != null else {}
+	_brickify.booklet_wanted.connect(_brickify_booklet)
+	_brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
+		_brickify.tell(_exports.shop_list(shop, _outside_of(path))))
+	_brickify.need_wanted.connect(func() -> void:
+		if _shell != null and _shell.collection != null:
+			_shell.collection.open("need"))
 
 	_elements = ElementDialog.new()
 	_elements.library = _library
@@ -3693,6 +3705,29 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	job.end()
 	_bar.say(note)
 	return note
+
+
+## Every brick but those in the sub-assembly at [param path]: what a list or a
+## booklet of it alone leaves out.
+func _outside_of(path: String) -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if path.is_empty() or not Assemblies.within(Assemblies.path_of(brick), path):
+			out[brick.id] = true
+	return out
+
+
+## The Brickify panel's Booklet: the build's own booklet, its steps a course
+## at a time (BrickifySteps), whatever else is on the baseplate.
+func _brickify_booklet(path: String, title: String) -> void:
+	if BookletMaker.busy:
+		_brickify.tell("already drawing the booklet…")
+		return
+	if OS.has_feature("web"):
+		BookletMaker.open_tab()
+	var skip: Dictionary = _outside_of(path)
+	skip.merge(_store.scenery)
+	_brickify.tell(await _export_booklet("", null, skip, title))
 
 
 ## The Instructions button, on the toolbar and on the timeline.
@@ -5831,7 +5866,7 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	if _mosaic != null and _mosaic.visible:
 		return true
-	if _brickify != null and _brickify.visible:
+	if _brickify != null and _brickify.covers(point):
 		return true
 	if _figures != null and _figures.visible:
 		return true

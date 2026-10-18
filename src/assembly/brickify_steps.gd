@@ -58,7 +58,9 @@ class Plan extends RefCounted:
 	## The courses, before any went in with the next.
 	var courses: int = 0
 	## Partial builds weighed, a course's at a time, and how many of the
-	## steps kept stand (all of them, unless the whole build does not).
+	## steps kept before the last stand (all of them): the last is the
+	## whole build, which stands or not as it was laid ([member
+	## whole_stands], [member whole_over]).
 	var weighed: int = 0
 	var stood: int = 0
 	## Steps put in with the next because the build up to them would not
@@ -71,8 +73,10 @@ class Plan extends RefCounted:
 	var unheld: int = 0
 	## The least margin of any partial build kept, in studs.
 	var least_margin: float = INF
-	## And the whole build, weighed as it stands.
+	## And the whole build, weighed as it stands: its stud joints past their
+	## working load are the build's, which the order cannot change.
 	var whole_stands: bool = true
+	var whole_over: int = 0
 	var ms: int = 0
 
 	## In words, for the panel and the session.
@@ -84,8 +88,11 @@ class Plan extends RefCounted:
 			out += ", %d panel%s built on the side" % [panel_name.size(),
 				"" if panel_name.size() == 1 else "s"]
 		if weighed > 0:
-			out += "; every step's build stands" if stood == steps \
-				else "; %d of %d steps' builds stand" % [stood, steps]
+			out += "; every step's build stands" if stood == steps - 1 \
+				else "; %d of %d steps' builds stand" % [stood, steps - 1]
+			if not whole_stands:
+				out += (" (the whole build has %d stud joint%s past its working load, as it was "
+					+ "laid)") % [whole_over, "" if whole_over == 1 else "s"]
 		if merged > 0:
 			out += " (%d course%s put in with the next, which would not have)" % [merged,
 				"" if merged == 1 else "s"]
@@ -154,12 +161,20 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 		var at: Transform3D = (bricks[index] as BrickWorld.Brick).transform
 		for stud: Array in studs_of[placement.part]:
 			var reached: int = lattice.brick_at(BrickLattice.to_cell(at * (stud[0] as Vector3)))
-			if reached > 0 and reached - 1 != index:
-				_link(near, index, reached - 1)
-				# A stud pointing sideways, which what rests on what (Balance's
-				# graph) does not see: a tile on a side stud, a panel on a core.
-				if absf((at.basis * (stud[1] as Vector3)).normalized().y) < 0.5:
-					side[mini(index, reached - 1) * count + maxi(index, reached - 1)] = true
+			if reached <= 0 or reached - 1 == index:
+				continue
+			# Into the part's underside: it faces the way the stud points. A
+			# stud against a plate's edge, a panel standing on a course's studs,
+			# holds nothing: counted, a panel went on with the course under it
+			# and stood five plates above the core.
+			var way := Vector3i((at.basis * (stud[1] as Vector3)).round())
+			if out_way[reached - 1] != way:
+				continue
+			_link(near, index, reached - 1)
+			# A stud pointing sideways, which what rests on what (Balance's
+			# graph) does not see: a tile on a side stud, a panel on a core.
+			if way.y == 0:
+				side[mini(index, reached - 1) * count + maxi(index, reached - 1)] = true
 
 	# The panels: sideways parts held to one another, facing one way.
 	var root: PackedInt32Array = PackedInt32Array()
@@ -309,14 +324,12 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 				continue
 			plan.weighed += 1
 			var stands: bool = report.margin >= 0.0 and report.over == 0 and report.adrift == 0
-			if stands:
-				plan.stood += 1
 			if n == steps - 1:
 				plan.whole_stands = stands
-				if stands:
-					plan.least_margin = minf(plan.least_margin, report.margin)
+				plan.whole_over = report.over
 				continue
 			if stands:
+				plan.stood += 1
 				plan.least_margin = minf(plan.least_margin, report.margin)
 				continue
 			keep[n] = 0
