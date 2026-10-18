@@ -14,6 +14,15 @@
 ## the file's part order, and the step player's view of each page
 ## (BuildSteps.view). Under XDG_DATA_HOME of its own, as tools/steps_score.py
 ## runs, so no person's saved state is read.
+##
+## And what the plans were made from besides the planner: the catalogue, on
+## a first line, and each file's parts as the library read them ("geometry",
+## a digest of each part's mesh file, or of its text for a part the file
+## carries). A plan moves with its parts: for 13 minutes on 2026-10-17 the
+## shared catalogue gave 421 wheels and tyres other covers, and two dumps of
+## one checkout, made either side of it, differed in 7 files, which was read
+## as the planner remembering what it planned before (docs/INSTRUCTIONS.md,
+## samebooklet). tools/plan_diff.py says which files' parts differ.
 extends SceneTree
 
 const SEED := 20261015
@@ -68,6 +77,8 @@ func _run() -> void:
 	_store.keeps = false
 	await process_frame
 	var out := FileAccess.open(out_path, FileAccess.WRITE)
+	out.store_line(JSON.stringify({"catalogue":
+		FileAccess.get_md5(PartLibrary.FULL_ROOT + "catalogue.json")}))
 	var total_usec: int = 0
 	for path: String in named:
 		_world.clear()
@@ -75,7 +86,8 @@ func _run() -> void:
 		var bricks: Array = _world.bricks()
 		bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
 			return a.id < b.id)
-		var row: Dictionary = {"file": path.get_file(), "parts": bricks.size()}
+		var row: Dictionary = {"file": path.get_file(), "parts": bricks.size(),
+			"geometry": _geometry(bricks)}
 		if mode == "time":
 			var began: int = Time.get_ticks_usec()
 			var steps: Array[Instructions.Step] = Instructions.plan(_world, _library)
@@ -111,6 +123,26 @@ func _run() -> void:
 		print("total %.1f s over %d files" % [total_usec / 1.0e6, named.size()])
 	out.close()
 	quit(0)
+
+
+## One digest of the geometry of [param bricks]' parts as the library read
+## it: each part's mesh file, or the text of a part the file carries.
+func _geometry(bricks: Array) -> String:
+	var kinds: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		kinds[brick.part_id] = true
+	var ids: Array = kinds.keys()
+	ids.sort()
+	var lines := PackedStringArray()
+	for id: String in ids:
+		var source: String = _library.custom_source(id)
+		var info: PartLibrary.PartInfo = _library.parts.get(id)
+		if not source.is_empty():
+			lines.append("%s %s" % [id, source.md5_text()])
+		elif info != null:
+			lines.append("%s %s" % [id, FileAccess.get_md5(PartLibrary.FULL_ROOT + "parts/"
+				+ info.mesh_hash + ".lbm")])
+	return "\n".join(lines).md5_text()
 
 
 func _restaged(bricks: Array, order: Array, structure: bool) -> Dictionary:

@@ -1310,6 +1310,76 @@ cast, the cast in a comment or a string) are not.
 `python3 -m pytest -q` passes (in a scratch venv with numpy and scipy:
 none skipped). Results: `bench/results/lostappend-2026-10-17/`.
 
+### The same booklet however it was reached (2026-10-17, samebooklet)
+
+Asked for: a model's booklet the same whatever the app planned or loaded
+before it. lostappend had written that two dumps of the 100 proof files, in
+the same order and with planners that plan the same, differed in 7 files
+(8159-1, 8198-1, 75870-1, 8160-1, 10019-1, 21307-1, 8169-1), that those
+seven dumped again in fresh processes agreed, and that 8159-1 dumped alone
+gave 50 steps of ours where the long run gave 48; so "what a process
+planned or loaded before moves a few plans".
+
+**It does not.** On m73 (ab32705), every field of every step of four plans
+a file compared (`plan_dump.gd`, `plan_diff.py`), as planspeed compared them:
+
+| | files that differ |
+|---|---:|
+| the 200 proof and tune files in one process, shuffled (seed 20261017), against the same in reverse order | **0 of 200** (87,856 steps) |
+| shuffled, against each file in a process of its own, with an empty data folder of its own | **0 of 200** |
+| shuffled, against planspeed's dumps in the samples' order (`plans-after-*`) | **0 of 200** |
+
+And planned stage by stage (`_survey` to `_expand`, every node's needs,
+contacts, joints and assemblies), 8159-1 first, then the 46 proof files
+before it, then 8159-1 again: the same at every stage; 42076-1 alone and
+after the 47 files the shuffled order puts before it: the same.
+
+**What moved the seven was the part library.** For 13 minutes, from about
+19:50 to 20:03:31, the shared `assets/generated/catalogue.json` was the tyres covers'
+merged catalogue (`bench/results/tyres-2026-10-17/merged-m69/`), which gives
+421 parts other meshes and covers: 279 wheels, 100 tyres, and 42 parts
+with wheels or tyres on them or old numbers of such. lostappend's proof
+"score" dump, finished at 20:06, read it; its tune dump, its "final" dumps
+and the seven plan as today's catalogue does. Its base, cd42e69, dumped
+here against that catalogue (a folder of links to `assets/generated` with
+`merged-m69`'s catalogue in it) plans the 100 proof files as that dump did,
+**0 of 100** differing; against today's catalogue, the same 7 differ. Each
+of the 7 uses one of the 421 (`55982`, `56145`, `51719`, `2903`, …), as do 44
+other proof files whose steps did not move. A dump said nothing of the
+library it read, so a plan that moved with its parts read as a plan that
+moved with its process. The 410 meshes that catalogue named are still in
+`assets/generated/parts`, named by nothing; left there (it is read only).
+
+**The change.** `plan_dump.gd` writes the md5 of the catalogue it read on
+its first line, and for each file `geometry`, one digest of its parts as the
+library read them: each part's mesh file, or the text of a part the file
+carries. `plan_diff.py` says when two dumps read different catalogues, and
+which of the files that differ have other parts' geometry. The planner is
+not changed, and plans as it did: this change's 200 files in one shuffled
+process against m73's each in its own, **0 of 200** differ.
+
+**The check** (`instructions_probe`, `_same_however_reached`). 8159-1, its
+own wheel cover carried in the file; 7410-1, six parts of its own, a
+flexible part's skin and two figures; 6531-1, two skins and a figure; and
+8159-1 again, each opened as File > Open opens it (`ModelStore.open_text`,
+nothing kept in the person's folder) and planned both ways the app plans
+(as worked out, and the author's steps as the booklet draws them), every
+field of every step. It passes on m73, where there was nothing to catch. A
+leak planted for the purpose, `_per_step` reading the size of the model
+planned before, fails it: 8159-1 planned again in 68 steps where it was 51
+the first time, apart from step 1, and nothing else in the probe fails
+(`bench/results/samebooklet-2026-10-17/instructions_probe-planted-leak.log`).
+
+`instructions_probe`, `booklet_probe`, `booklet_edit_probe` and
+`build_steps_probe` pass, and `python3 -m pytest -q` passes. Results:
+`bench/results/samebooklet-2026-10-17/`. A paired change on the steps
+score's samples is measured against the noise of the planner alone, which
+is none: lostappend's "a paired change smaller than this is not a change"
+does not hold, so long as both sides read one catalogue. Left: the steps
+score's shards (`tools/steps_score.py`) read the catalogue each as it
+starts and record nothing of it either, so a score run across such a swap
+would mix two libraries without saying so.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the

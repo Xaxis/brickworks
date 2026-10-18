@@ -720,7 +720,11 @@ picture the assistant is shown.
   region: the example car's booklet began with four wheels on the table. Steps take
   4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
   found through a two-stud grid and the order through a set of ready bricks:
-  the 8,603-part Orthanc planned in 87 s and now in 5.
+  the 8,603-part Orthanc planned in 87 s and now in 5. A model's steps are
+  the same however it was reached: `instructions_probe` opens 8159-1, 7410-1
+  and 6531-1 as File > Open does (their own parts, skins and figures) and
+  8159-1 again, and holds its two plans (worked out, and the author's as the
+  booklet draws them) to the same every field (`_same_however_reached`).
 - `score the steps against real sets' authors` (`tools/steps_score.py`,
   `src/dev/steps_score.gd`; the write-up is `docs/INSTRUCTIONS.md`): files of
   LDraw's model repository (vendor/omr) with their authors' `0 STEP` lines,
@@ -772,7 +776,16 @@ picture the assistant is shown.
   where, and the steps and callouts compared. `--time` times
   `Instructions.plan` alone on each file as opened. Over the 100 proof and
   100 tune files, 607928d against the planspeed change: 0 of 200 differ,
-  87,856 steps (`bench/results/planspeed-2026-10-17/`).
+  87,856 steps (`bench/results/planspeed-2026-10-17/`). A plan moves with
+  its parts too: a dump's first line is the md5 of the catalogue it read and
+  each file's row has `geometry`, a digest of its parts' mesh files (of the
+  text of a part the file carries); `plan_diff.py` says when the two read
+  different catalogues and which differing files' parts differ (samebooklet,
+  2026-10-17: for 13 minutes that day the shared catalogue gave 421 wheels
+  and tyres other covers, and two dumps of one checkout either side of it
+  differed in 7 files). In one process, shuffled or in reverse, or each in
+  a process of its own, m73 plans each of the 200 the same
+  (`bench/results/samebooklet-2026-10-17/`).
 - `cad task frames` and `cad task frames in a browser`
   (`src/dev/cadtask_frames.gd`, `tools/web/cad_frames.mjs`; run by
   `tools/bench/cadtask.py frames`, written up in `docs/CADTASK.md`): the frames
