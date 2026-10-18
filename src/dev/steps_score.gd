@@ -573,17 +573,20 @@ func _authors(bricks: Array) -> Dictionary:
 			var first: PackedInt32Array = contexts[context_of[twin[0]]]
 			var other: PackedInt32Array = contexts[context_of[twin[1]]]
 			var into: int = context_of[twin[1]]
-			var by_step: Dictionary = {}
+			# An Array, not a PackedInt32Array: a packed array read out of a
+			# Dictionary through a cast is a copy, and appending to it left
+			# every copy but the first with no parts (tests/test_packed_casts.py).
+			var by_step: Dictionary = {}    ## step -> Array of indices
 			for n: int in other.size():
 				var k: int = int(built_at.get(first[n], -1)) if first.size() == other.size() \
 					else -1
 				if k < 0:
 					k = int(twin[2])
 				if not by_step.has(k):
-					by_step[k] = PackedInt32Array()
-				(by_step[k] as PackedInt32Array).append(other[n])
+					by_step[k] = []
+				(by_step[k] as Array).append(other[n])
 			for k: int in by_step:
-				(steps[k]["also"] as Array).append([into, by_step[k]])
+				(steps[k]["also"] as Array).append([into, PackedInt32Array(by_step[k])])
 	for step: Dictionary in steps:
 		step.erase("twins")
 	return {"steps": steps, "contexts": contexts}
@@ -656,16 +659,16 @@ static func _from_plan(steps: Array[Instructions.Step], index_of: Dictionary,
 	for step: Instructions.Step in steps:
 		if step.in_callout():
 			var shown: int = (copy_contexts[step.callout] as Array)[0]
-			var others: Dictionary = {}
+			var others: Dictionary = {}     ## context -> Array of indices, as in _authors
 			for index: int in _indices(step.brick_ids, index_of):
 				if context_of[index] == shown:
 					continue
 				if not others.has(context_of[index]):
-					others[context_of[index]] = PackedInt32Array()
-				(others[context_of[index]] as PackedInt32Array).append(index)
+					others[context_of[index]] = []
+				(others[context_of[index]] as Array).append(index)
 			var also: Array = []
 			for context: int in others:
-				also.append([context, others[context]])
+				also.append([context, PackedInt32Array(others[context])])
 			out.append({"context": shown, "parts": _indices(step.shown_ids, index_of),
 				"also": also, "attach": PackedInt32Array()})
 		elif step.attaches():
@@ -1491,6 +1494,57 @@ func _selftest() -> void:
 		int(early["hidden"]) == 0)
 	_assert("...nor is it blocked or floating (%d, %d)" % [int(late["blocked"]),
 		int(late["floating"])], int(late["blocked"]) == 0 and int(late["floating"]) == 0)
+
+	# Two copies of a sub-model of two parts, placed in one step: the
+	# second is built in step with the first, a part beside its twin, both
+	# as LDraw means the author's steps and as the booklet draws them. Until
+	# 2026-10-17 the second copy's parts were appended to a copy of the list
+	# that held them, and it was built in no step until it went on whole.
+	var copies: Array = _toy_copies()
+	var by_author: Dictionary = copies[0]
+	var by_booklet: Dictionary = copies[1]
+	_assert("the author's steps build the second copy beside the first (%d of 2 parts)"
+		% _also_count(by_author), _also_count(by_author) == 2)
+	_assert("...and so does the booklet's reading of them (%d of 2)" % _also_count(by_booklet),
+		_also_count(by_booklet) == 2)
+	var ranked: PackedInt32Array = _measure(by_author, copies[2])["rank"]
+	var first: PackedInt32Array = (by_author["contexts"] as Array)[1]
+	var second: PackedInt32Array = (by_author["contexts"] as Array)[2]
+	_assert("...and each part's step is its twin's (%s)" % str(ranked),
+		first.size() == 2 and second.size() == 2 and ranked[first[0]] == ranked[second[0]]
+		and ranked[first[1]] == ranked[second[1]] and ranked[first[0]] != ranked[first[1]])
+
+
+## Two copies of a two-brick sub-model on a stack of four 2 x 4 bricks
+## (small beside the model, as a callout must be), placed in one step:
+## [the author's build, the booklet's reading of it, the geometry].
+func _toy_copies() -> Array:
+	var text: String = "\n".join([
+		"0 FILE main.ldr", "0 Main", "0 Name: main.ldr",
+		"1 4 0 72 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 4 0 48 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 4 0 24 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 STEP",
+		"1 4 -20 -24 -10 1 0 0 0 1 0 0 0 1 wing.ldr",
+		"1 4 20 -24 -10 1 0 0 0 1 0 0 0 1 wing.ldr", "0 STEP", "0 NOFILE",
+		"0 FILE wing.ldr", "0 Wing", "0 Name: wing.ldr",
+		"1 1 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat", "0 STEP",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3004.dat", "0 STEP", "0 NOFILE", ""])
+	_store.open_text(text, "copies.mpd")
+	var bricks: Array = _world.bricks()
+	bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
+	var index_of: Dictionary = {}
+	for index: int in bricks.size():
+		index_of[(bricks[index] as BrickWorld.Brick).id] = index
+	return [_authors(bricks), _from_plan(Instructions.plan(_world, _library, {}, {}, true),
+		index_of, bricks.size()), _geometry(bricks, index_of)]
+
+
+## The parts a build puts in step with another copy, over all its steps.
+static func _also_count(build: Dictionary) -> int:
+	var count: int = 0
+	for step: Dictionary in build["steps"]:
+		for also: Array in step["also"]:
+			count += (also[1] as PackedInt32Array).size()
+	return count
 
 
 ## A 1 x 1 brick with a stud on its side, standing on the ground, and a
