@@ -311,6 +311,23 @@ whole cycle.
   set the OMR has with a steering is now turned both ways and back by
   `tools/steer_sweep.py`, which writes a table of what steers and why the
   rest do not.
+- More real sets steer both ways and back, and more of their doors,
+  turntables and booms come back where they were. The 1980s steering rack, a
+  rod ringed with teeth that runs through its holder, is read as a rack its
+  gear pushes, where it was locked (8022, 8024, 8815, 8820 and 8832); a
+  steering rack riding on half pins slides over them in its groove instead
+  of being held by them (42076-1); a rack in a housing of its own slides in
+  it (42043-1's outriggers); a steering link's end drawn as plain rounds
+  holds its towball; and an axle turning in a loop no longer meets the
+  bearing it turns in (8862-1). Turned out and turned back in separate
+  moves, a part no longer stops short against what it was built against; a
+  steered tyre scrubs on the baseplate rather than stopping on it; and a
+  cable or a rubber band bends out of the way of what moves. When a move
+  stops against the model, move_part and the status bar say which two parts
+  met, or which part would go through the floor, where they said "something
+  is in the way". `tools/move_sweep.py` moves every real set's turntable,
+  doors and booms both ways and back over MCP and writes a table of what
+  moves and what stopped each one.
 - What stays when you move a part of a model is chosen on purpose, not by
   weight alone. It is a part you locked, else what stands on the
   baseplate's studs, else the body with the most parts, unless something

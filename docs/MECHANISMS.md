@@ -2802,3 +2802,262 @@ load 30 to 40 (G7 measured 9.5 to 12.7, 13.5 to 19.8 and 15 to 22), within
 the case's gate on the mean and the 95th per cent. flex_probe, flex_ui_probe
 (its reshape check reads `Flex.along_of` now), mechanism_probe and
 simulate_probe (41) pass.
+
+## 19. What steering still could not do, and the other moving things (G11)
+
+G9 swept every OMR set with a steering and left 136 of 169 that did not
+steer both ways and back. G11 takes the biggest groups left to their causes,
+then sweeps the other things a real set moves: a turntable's top, a door or
+a ramp, a boom or an arm on its hinge, pin or axle.
+
+**The base.** The staged release (17bc0382: m78 with G9, G10 and the
+whole-set placing fixes), swept again (`sweep_before`): 33 of 169, the same
+33 sets as G9's after table. The tables are in
+bench/results/grab11-2026-10-18.
+
+**A round steering rack.** The 1980s steering rack (2790a) is a rod ringed
+with teeth 8 LDU apart that runs through its holder (2791a), pushed by an 8
+tooth gear standing beside it at whatever angle the holder is turned round
+the rod. It was not in the gear table, so no pinion was read in it, and its
+rod in the holder's bore was read as a hinge that turns and does not slide:
+each of the eleven files that have it (8022, 8024, 8815, 8820, 8832) was
+"locked: this loop has no freedom". Measured on the eleven, the gear stands
+16 to 18.9 LDU from the rod's line (an 8's pitch radius is 10), at the rod's
+middle. The table now has it as a round rack (`round`, its pitch line 8 from
+the line); `Racks.find` reads a pinion in it on whatever side it stands,
+square to the rod and to the way out to it. Held to its holder's line as
+well, the loop closed to 0.007 LDU at 5 degrees, 0.028 at 10 and not at all
+(0.064) at 20: as the arms at the rod's ends swing, their pins go a little
+aside, and so does the rod, which the holder lets it (a rod 20 across in a
+bore 22 across). The rod is now loose in its holder (`Bodies._rides_loose`):
+its pinion and its arms hold it.
+
+**A rack in a housing.** 18942 (a 1 x 14 rack with a beam under it) slides
+in its housing (18940) on 42043-1's outriggers and 42078-1's tipper. It is in
+the table now (32 teeth, pitch line 25: a 12 stands at 40 on 42043-1 and
+42078-1's dump truck), with its housing: the rack's origin on the housing's
+line where the table puts it is a slide along that line that does not turn
+(`Bodies._rack_housings`, kind "housing"), and what else joins the two (an
+axle through the housing's slot) does not hold them as one. 42078-1,
+42079-1, 42061-1 and 42062-1 drive theirs with a worm, which is not read in
+a rack, and no longer count as having a steering (164 sets, from 169).
+
+**A steering rack's groove.** The 1 x 7 and 1 x 13 steering racks (87761,
+64781) are channels open underneath, as their files draw them, and the half
+pins standing up into them guide them as they slide (42069-1, 42076-1,
+42083-1, 42111-1). The half pins' studs were read as gripping the rack, and
+the rack was one with the frame. Studs standing up into a grooved rack from
+below now ride in its groove: a slide along its line as far as they stay
+under it (`Bodies._in_a_groove`, kind "groove"; the table's `groove`). Only
+those two racks are marked: 3743 has sockets underneath and clicks onto
+studs, and with every rack read so 8273-1, which steers on jumper plates,
+stopped coming back.
+
+**A rack its pinion holds, lying on a tile.** 6753-1's tow truck has its 1 x 4
+rack under a Technic brick that lies on a tile 1 x 6; nothing joins the two,
+so the brick was lodged in the tile (§16) and the rack was held with the
+frame. A piece with a rack in it that a pinion of another piece stands in is
+held by the pinion's teeth: it is not lodged where it rests, but slides
+there along the rack's line (`Bodies._driven_rack`, kind "rests"). The tow
+truck's rack now goes 10.67 LDU each way; read again after the two turns,
+its piece shares no cell with the tile, is held by nothing and stays, and
+the turn back turns nothing. Sliding it against what its pinion turns in
+then did not bring it back either, and was taken out; it is left.
+
+**A shaft on a loop's line.** An axle or a pin on a joint's own line turns
+inside the holes it is in; a grab left such parts untested where nothing
+but the joint moved, and tested them in a loop. 42111-1's steering column
+turned in its loop met the joiner it turns in at once ("the Technic Axle 4
+with Middle Cylindrical Stop meets the Technic Axle Joiner 3L"); 8862-1's
+too. In a loop, a part all within 6.5 LDU of a turning joint's line that
+the loop does not carry is not tested either (`Grab._thin_on`).
+
+**A socket drawn as plain rounds.** A steering link's ends (2739a) are ball
+sockets drawn from cylinders, not the socket primitive, so a towball in them
+(6628) was in nothing: the track rods were not in the steering's loop, and
+the rack slid without them. A bore a ball's size (8 LDU across the middle,
+no longer than the ball) is now a socket at its middle (`Joints.balls`).
+
+**A tyre on the floor.** 8063-1's and 42075-1's steering stopped where a front
+tyre met the baseplate at the first degree. Rubber on the floor scrubs round
+as its wheel is steered: the baseplate is not in a tyre's way
+(`Grab._scrubs`); that it goes no lower is the floor's own test.
+
+**What bends is not in the way.** A hose's piece was never tested; a cable or
+a rubber band a file draws whole (a skin) was, and 8074-1's crane stopped
+where its frame met its cable, 10252-1's arm where it met a rubber band. A
+part that bends (`Bodies.bends`) is no longer in a move's way
+(`Grab._bends_aside`).
+
+**What touched as built.** A grab forgives for good what its moving side
+touched where it began: the covers are 2 LDU cells and a part built flush
+against another meets it at the first degree. Turned out and back in three
+moves, the third began away from what the part was built against and met it
+short of where it was built: 10220-1's door stopped at 18 degrees, 8855-1's
+steering at 6. Pairs found touching before a grab moved either are now kept
+from one grab to the next (`Grab._built_touching`), so moves in turn forgive
+what one drag through the same angles forgives.
+
+**What is in the way, named.** A move stopped by the model said "something is
+in the way at once" or "it stopped where it meets the model". move_part and
+the status bar now say which two parts met ("the Technic Axle Towball (#1095)
+meets the Technic Steering Wheel Bearing ... (#1045)"), or which part would
+go through the floor (`GrabDrag._met_words`). The sweep's tables give them.
+
+**The sweep's own fixes.** A turn stopped short against the model says how
+far it went; the sweep turned back by the 30 it asked, and 12 of G9's 21 "not
+back" were that. It now turns back by the turn measured from where the part
+stood (the calls say whole degrees). A shared sub-assembly's copy made its
+own by a turn gave its parts new numbers and lost the sweep the parts it
+watched (8283-1, 8855-1): the sweep makes every copy its own before it turns
+anything. Each row says how far the steering arms turned (`arms_deg`).
+
+**Steering, swept** (`tools/steer_sweep.py`, bench/results/grab11-2026-10-18:
+`sweep_before`, `sweep_after3`; `sweep_after2` is the same without the last
+four fixes and is 38 of 164).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (17bc0382) | 33 of 169 |
+| all of G11, and a stud rule since taken out (`sweep_after3`) | 53 of 167 |
+| as committed: `sweep_after3`'s 53 swept again (`sweep_final`) | 51 of 167 |
+
+No set that steered stopped. The 18 that steer now: the eleven round-rack
+files (8022-1's racecar, robot and tow truck, 8024-1's racer, 8815-1 and its
+racer and road roller, 8820-1 and its racer and dune buggy, 8832-1), 42043-1
+and its flatbed trailer (the housing), 42076-1 (the groove), 42075-1 (a tyre
+on the floor), 8416-1, 8845-1 and 8862-1 (a shaft on the line, and the parts
+met named). The two of `sweep_after3` that do not: 8074-1's grader, which
+needed the stud rule (below), and 6753-1's tow truck (above). In every one that steers at a pinion and has steering arms, the
+arms turn with the rack (34 of 34). 167 count as having a steering, from
+169: 42061-1, 42062-1, 42078-1 and 42079-1 drive 18942 with a worm, which is
+not read in a rack (no steering read, not counted), and 8836-1 took longer
+than the sweep's 300 s twice (it failed before, "what stays moved"); 8283-1
+is read to the end now, and 850-1's and 950-1's lifts have their pinion read
+in their rack once the rack is no longer one body with it.
+
+| what stopped it | before | after |
+|---|---|---|
+| the rack (or far arm) did not move | 33 | 34 |
+| the pinion turned, its rack did not (one body with what it turns in) | 23 | 13 |
+| not back where it stood | 21 | 21 |
+| something is in the way at once | 15 | 18 |
+| its loop has no freedom | 13 | 4 |
+| held rigidly | 9 | 7 |
+| its arm hangs on a ball in a loop | 7 | 8 |
+| its rack is not in the gear table | 7 | 0 |
+| its loops are too big to solve | 6 | 8 |
+| what stays moved | 1 | 0 |
+| held by a worm or a screw | 1 | 1 |
+
+"Not back" is 21 again but not the same 21: twelve of G9's were the sweep
+turning back by 30 after a turn stopped short, and are gone; of those left,
+seven come back to within 0.02 to 0.07 LDU (8256-1, 5571-1, 5510-1, 8274-1,
+8840-1's B model, 8854-1, 8850-1's B model): a loop is closed to 0.05 LDU,
+and the turns there and back leave its idle freedoms (an axle free to slide
+in its hole, a link free to spin on its line) a few hundredths from where
+they stood. The rest stop on the way back where two parts meet, now named
+in each row (9393-1's "Technic Axle 3 with Stud meets the Technic Gear 12
+Tooth Bevel", 42077-1's steering link and wheel bearing, 42110-1's rack and
+frame).
+
+**The other moving things, swept** (`tools/move_sweep.py`,
+`movesweep_now`). 749 OMR files have a turntable, a door, ramp, hatch, gate,
+flap or lid, or say crane, excavator or boom; 407 have something of those
+kinds on a joint, and 574 things were moved +30, -60 and back over MCP: the
+top of a turntable, a door, and the biggest boom or arm (6 parts or more) on
+a hinge, a pin or an axle, which in a car is often a bonnet or a gearbox
+shaft. With every fix above but the last three:
+
+| kind | things | both ways and back |
+|---|---|---|
+| turntable | 130 | 72 |
+| door | 97 | 52 |
+| boom or arm | 347 | 123 |
+
+| what stopped it | things |
+|---|---|
+| two parts meet at once | 108 |
+| moves, not back where it stood | 104 |
+| its loop has no freedom | 57 |
+| held rigidly | 21 |
+| its loops are too big to solve | 11 |
+| held by a worm or a screw | 11 |
+| it did not move | 10 |
+| what stays moved | 4 |
+
+Every one moved at all; the refusals name what holds each. Of the 104 not
+back, 50 stop on the way back where two parts meet, 30 swing down under
+their weight on the way (a boom on a pin without friction falls when let
+go, as it should), and 22 drift. Two parts meeting, at once or on the way
+back, is the biggest cause (158 of 327), and the last three fixes are for
+it: what bends is not in the way, a tyre scrubs on the floor, and what
+touched as built is forgiven in each later grab.
+Swept again with them (`movesweep_after`): the 138 sets with a thing that
+two parts stopped, and every fourth of the rest with one that moved, 184
+sets and 285 things (run with a stud rule since taken out, below).
+
+| | both ways and back | two parts meet at once | not back |
+|---|---|---|---|
+| before the three (`movesweep_now`) | 87 of 285 | 108 | 60 |
+| after (`movesweep_after`) | 102 of 285 | 104 | 49 |
+
+Sixteen move both ways and back that did not (ten booms or arms, four
+turntables, two doors: 8074-1's crane on its turntable past its cable,
+10220-1's door back past what it was built against), and one that did no
+longer comes back (8110-1's arm, 2.3 LDU short). Most of what meets at once
+is not changed by them: covers 2 LDU a cell meeting a neighbour built flush
+(a plate meeting the tile beside it, two slopes, a door its frame's corner),
+which each row names.
+
+**A stud's tip, tried and taken out.** 8074-1's grader is drawn tipped 4.6
+degrees, and the studs of a brick under a row of tiles were read as reaching
+the plate on the tiles, which holds the rack: the lattice covers a part
+turned off the grid with every cell its boxes touch. A stud into a part
+turned off the grid held only where its tip is inside that part's box
+(`Bodies._tip_in`), and the grader steered; but 42080-1's crane then left
+five round bricks behind on its flexible joiners, and its cylinder's checks
+failed (with the rule, and with it narrowed to parts square to each other,
+when the grader stopped steering again). It is taken out, and the grader is
+left for later.
+
+**Proved** (bench/results/grab11-2026-10-18, `probes/`), on a box at load
+25 to 38: `grab_probe` windowed (`grab_probe_full2.log`) ran 439 checks and
+434 passed. Of the five that failed, 6753-1's turn back is no longer a
+check (above); "pulled too far, the tube is named" fails on 17bc0382 too
+(G10's, `--only=hoses --hose=made` on the base); two hose-laying costs (6.1
+and 27.3 ms a frame) and the big model's let-go frame (111 ms) are timing
+checks and pass run alone (`--only=hoses`: 31 of 32, the one G10's;
+`--only=big`: 5 of 5, 45 ms). The check added for the round rack's socket
+count was corrected after that run and passes alone (`--only=sockets`, 6
+ball joints for 4 links). mechanism_probe (54), mechanism_sets (2 sets) and
+simulate_probe (41) pass; `tools/gears.py check`: 0 problems. Each new
+check fails with its fix taken out, tried once in a copy with the fixes
+out: 42076-1 without the groove, 8022-1's racecar (the round rack's;
+8832-1's is the same rule) and 42043-1 without the table's entries, 8862-1
+without the shaft on the line, 42111-1's sockets without the bore rule
+(0 ball joints), 42083-1's meeting words without the names, 8074-1's crane
+and 10220-1's door without what bends and what touched as built. Pictures
+from above, cut over the rack, before and turned each way
+(`steer_SET_*.png`): 8022-1's racecar and 8832-1's roadster, whose front
+wheels the round rack turns one way and the other, and 8074-1's grader,
+taken with the stud rule (its wheels turned each way; without the rule it
+does not steer).
+
+**Tried and left.** A pinion read in its rack kept in it at the next reading
+with twice the slacks (teeth in mesh stay in mesh), for 8466-1 and
+42077-1, whose turn back found the pinion in no rack: neither came back,
+and it was taken out again.
+
+**Left for later**, with sets to start from: racks clicked onto a plate's
+studs in the file (8448-1's five models: 32185's peg holes take the 2 x 10
+plate's studs and the plate stands on the frame's studs; 8081-1, 854-1,
+5533-1); steering arms on balls (10295-1, 4404-1, 9392-1, 42021-1); loops
+too big to solve (42029-1, 42039-1, 42125-1, 42131-1, now with the track
+rods' balls in them); the far arm that does not follow (34, many bikes and
+single wheels, where the sweep's far arm is not a steering's); the 21 not
+back (above: a loop's idle freedoms, and parts meeting on the way back);
+8836-1, which takes longer than the sweep allows. In the moving things:
+loops with no freedom (57: a boom in a frame of pins), and what swings down
+under its weight on the way back, which is right, and which the sweep counts
+as not back.
