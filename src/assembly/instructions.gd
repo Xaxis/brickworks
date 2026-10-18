@@ -311,14 +311,20 @@ class Pictures extends RefCounted:
 	## in front of it: a stud and a bit.
 	const IN_FRONT := 24.0
 	var _frames: Array = []          ## [view, right, up] per view
-	var _own: Dictionary = {}        ## node id -> [{pixel: depth}, {pixel: depth}]
+	## node id -> its pixels in each view, {pixel: depth}, each drawn when it
+	## is first asked for (null till then).
+	var _own: Dictionary = {}
 	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2, Vector2, Vector2]
 	var _built: Dictionary = {}      ## Vector3i -> the parts of earlier steps there
 	var _before: Dictionary = {}     ## node id -> earlier parts that may be in front of it
 	var _step: Array = []            ## the parts of the step being filled
 	## node id -> the pixels of it still in sight in each view, with their
-	## depths, as the step stands: worked out once a step, and each part the
-	## step takes after takes its own out of them.
+	## depths, as the step stands (null for a view not asked about yet):
+	## worked out once a step, and each part the step takes after takes its
+	## own out of them. A view is worked out only when it is asked about: a
+	## part that leaves another in sight from the front need not be drawn
+	## from the back, and drawing both for every part asked about was most
+	## of what the step pictures cost.
 	var _open: Dictionary = {}
 
 	func _init() -> void:
@@ -329,8 +335,9 @@ class Pictures extends RefCounted:
 	## Where [param node]'s box lands in each picture, as a rectangle, and
 	## then how near the eye it comes in each, nearest and furthest.
 	func span_of(node: Node2) -> Array:
-		if _span.has(node.id):
-			return _span[node.id]
+		var known: Variant = _span.get(node.id)
+		if known != null:
+			return known
 		var out: Array = []
 		var depths: Array = []
 		for frame: Array in _frames:
@@ -353,17 +360,16 @@ class Pictures extends RefCounted:
 	## [param node] goes into the step being filled.
 	func accept(node: Node2) -> void:
 		var theirs: Array = []
+		var mine: Array = span_of(node)
 		for other: Node2 in _step:
-			if _open.has(other.id) and meet(node, other):
+			if _open.has(other.id) and _meets(mine, span_of(other)):
 				theirs.append(other)
 		_step.append(node)
-		if theirs.is_empty():
-			return
-		var mine: Array = pixels_of(node)
 		for other: Node2 in theirs:
 			var open: Array = _open[other.id]
 			for v: int in 2:
-				_cover(open[v], mine[v])
+				if open[v] != null:
+					_cover(open[v], pixels_of(node, v))
 
 	## A step is done: its parts are built, and may stand in front of the
 	## next steps'.
@@ -389,8 +395,9 @@ class Pictures extends RefCounted:
 	## The parts of earlier steps near [param node] that land on it in both
 	## pictures and come nearer the eye than its furthest point in both.
 	func in_front(node: Node2) -> Array:
-		if _before.has(node.id):
-			return _before[node.id]
+		var known: Variant = _before.get(node.id)
+		if known != null:
+			return known
 		var mine: Array = span_of(node)
 		var seen: Dictionary = {}
 		var out: Array = []
@@ -398,12 +405,17 @@ class Pictures extends RefCounted:
 		# sides, and on a big model everything in front of it is hundreds.
 		var near: AABB = node.box.grow(IN_FRONT)
 		for key: Vector3i in _cells_of(near):
-			for other: Node2 in _built.get(key, []):
+			var there: Variant = _built.get(key)
+			if there == null:
+				continue
+			for other: Node2 in there:
 				if seen.has(other.id):
 					continue
 				seen[other.id] = true
+				if not near.intersects(other.box):
+					continue
 				var theirs: Array = span_of(other)
-				if near.intersects(other.box) and meet(node, other) \
+				if _meets(mine, theirs) \
 						and (theirs[2] as Vector2).y > (mine[2] as Vector2).x \
 						and (theirs[3] as Vector2).y > (mine[3] as Vector2).x:
 					out.append(other)
@@ -413,63 +425,72 @@ class Pictures extends RefCounted:
 	## Whether [param one] and [param other] land on each other in both
 	## pictures.
 	func meet(one: Node2, other: Node2) -> bool:
-		var a: Array = span_of(one)
-		var b: Array = span_of(other)
+		return _meets(span_of(one), span_of(other))
+
+	## [method meet] of two parts' spans ([method span_of]).
+	static func _meets(a: Array, b: Array) -> bool:
 		return (a[0] as Rect2).intersects(b[0]) and (a[1] as Rect2).intersects(b[1])
 
-	## The pixels [param node]'s box covers from each view, and how near.
-	func pixels_of(node: Node2) -> Array:
-		if _own.has(node.id):
-			return _own[node.id]
-		var out: Array = []
-		for frame: Array in _frames:
-			var view: Vector3 = frame[0]
-			var right: Vector3 = frame[1]
-			var up: Vector3 = frame[2]
-			var nearest: Dictionary = {}
-			var from: Vector3 = node.box.position
-			var to: Vector3 = node.box.end
-			for axis: int in 3:
-				if absf(view[axis]) < 0.001:
-					continue
-				var a: int = (axis + 1) % 3
-				var b: int = (axis + 2) % 3
-				var count_a: int = maxi(1, int(ceil((to[a] - from[a]) / PIXEL)))
-				var count_b: int = maxi(1, int(ceil((to[b] - from[b]) / PIXEL)))
-				var point := Vector3()
-				point[axis] = to[axis] if view[axis] > 0.0 else from[axis]
-				for i: int in count_a:
-					point[a] = from[a] + (i + 0.5) * (to[a] - from[a]) / count_a
-					for j: int in count_b:
-						point[b] = from[b] + (j + 0.5) * (to[b] - from[b]) / count_b
-						var pixel: int = (floori(point.dot(right) / PIXEL) << 24) \
-							+ floori(point.dot(up) / PIXEL)
-						var depth: float = point.dot(view)
-						if depth > float(nearest.get(pixel, -INF)):
-							nearest[pixel] = depth
-			out.append(nearest)
-		_own[node.id] = out
-		return out
+	## The pixels [param node]'s box covers from view [param v], and how near.
+	func pixels_of(node: Node2, v: int) -> Dictionary:
+		var known: Variant = _own.get(node.id)
+		if known == null:
+			known = [null, null]
+			_own[node.id] = known
+		var drawn: Variant = (known as Array)[v]
+		if drawn != null:
+			return drawn
+		var frame: Array = _frames[v]
+		var view: Vector3 = frame[0]
+		var right: Vector3 = frame[1]
+		var up: Vector3 = frame[2]
+		var nearest: Dictionary = {}
+		var from: Vector3 = node.box.position
+		var to: Vector3 = node.box.end
+		for axis: int in 3:
+			if absf(view[axis]) < 0.001:
+				continue
+			var a: int = (axis + 1) % 3
+			var b: int = (axis + 2) % 3
+			var count_a: int = maxi(1, int(ceil((to[a] - from[a]) / PIXEL)))
+			var count_b: int = maxi(1, int(ceil((to[b] - from[b]) / PIXEL)))
+			var point := Vector3()
+			point[axis] = to[axis] if view[axis] > 0.0 else from[axis]
+			for i: int in count_a:
+				point[a] = from[a] + (i + 0.5) * (to[a] - from[a]) / count_a
+				for j: int in count_b:
+					point[b] = from[b] + (j + 0.5) * (to[b] - from[b]) / count_b
+					var pixel: int = (floori(point.dot(right) / PIXEL) << 24) \
+						+ floori(point.dot(up) / PIXEL)
+					var depth: float = point.dot(view)
+					if depth > float(nearest.get(pixel, -INF)):
+						nearest[pixel] = depth
+		(known as Array)[v] = nearest
+		return nearest
 
-	## The pixels of [param node] in sight in each view, as the step being
-	## filled and the earlier parts near it leave them.
-	func open_of(node: Node2) -> Array:
-		if _open.has(node.id):
-			return _open[node.id]
-		var near: Array = _step.filter(func(one: Node2) -> bool:
-			return one != node and meet(one, node))
+	## The pixels of [param node] in sight from view [param v], as the step
+	## being filled and the earlier parts near it leave them.
+	func open_of(node: Node2, v: int) -> Dictionary:
+		var known: Variant = _open.get(node.id)
+		if known == null:
+			known = [null, null]
+			_open[node.id] = known
+		var left: Variant = (known as Array)[v]
+		if left != null:
+			return left
+		var near: Array = []
+		var mine: Array = span_of(node)
+		for one: Node2 in _step:
+			if one != node and _meets(span_of(one), mine):
+				near.append(one)
 		near.append_array(in_front(node))
-		var mine: Array = pixels_of(node)
-		var out: Array = []
-		for v: int in 2:
-			var left: Dictionary = (mine[v] as Dictionary).duplicate()
-			for other: Node2 in near:
-				if left.is_empty():
-					break
-				_cover(left, pixels_of(other)[v])
-			out.append(left)
-		_open[node.id] = out
-		return out
+		var open: Dictionary = pixels_of(node, v).duplicate()
+		for other: Node2 in near:
+			if open.is_empty():
+				break
+			_cover(open, pixels_of(other, v))
+		(known as Array)[v] = open
+		return open
 
 	## Takes out of [param left] the pixels [param over] covers, nearer the
 	## eye. Walking the smaller of the two: a 1 x 1 plate in front of a
@@ -500,27 +521,35 @@ class Pictures extends RefCounted:
 		return count
 
 	## Whether [param node] would hide one of [param step], parts the step
-	## being filled holds that show now.
+	## being filled holds that show now: one that shows a tenth of itself
+	## from either side, and would not from both. A view at a time, and the
+	## back only when the front leaves too little of it in sight.
 	func would_hide(node: Node2, step: Array) -> bool:
-		var over: Array = []
+		var mine: Array = span_of(node)
 		for other: Node2 in step:
-			if not meet(node, other):
+			if not _meets(mine, span_of(other)):
 				continue
-			var total: Array = pixels_of(other)
-			if (total[0] as Dictionary).is_empty() or (total[1] as Dictionary).is_empty():
-				continue
-			var open: Array = open_of(other)
-			if over.is_empty():
-				over = pixels_of(node)
 			var before: float = 0.0
-			var after: float = 0.0
+			var hides: bool = true
 			for v: int in 2:
-				var left: Dictionary = open[v]
-				var still: int = left.size() - _covered(left, over[v])
-				var whole: float = float((total[v] as Dictionary).size())
-				before = maxf(before, float(left.size()) / whole)
-				after = maxf(after, float(still) / whole)
-			if before >= SEEN and after < SEEN:
+				var left: Dictionary = open_of(other, v)
+				var whole: float = float(pixels_of(other, v).size())
+				# A part with no pixels in a view is not one this could hide.
+				if whole == 0.0:
+					hides = false
+					break
+				var over: Dictionary = pixels_of(node, v)
+				# At most all of [param over] is taken out of what shows.
+				if float(left.size() - over.size()) / whole >= SEEN:
+					hides = false
+					break
+				var shows: float = float(left.size()) / whole
+				# Less than a tenth in sight stays so whatever is taken out.
+				if shows >= SEEN and float(left.size() - _covered(left, over)) / whole >= SEEN:
+					hides = false
+					break
+				before = maxf(before, shows)
+			if hides and before >= SEEN:
 				return true
 		return false
 
@@ -1546,14 +1575,22 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 				if not loose.has(key):
 					loose[key] = []
 				(loose[key] as Array).append(index)
-	# Each part's cover, its cover lifted a cell, and both their bounds:
-	# worked out only for a part that is asked about.
+	# Each part's cover, as a shape ([method _shape]) and the cell it is
+	# counted from: worked out only for a part that is asked about. A square
+	# part's is its part's in that turn, from the cell its origin is in, as
+	# BrickLattice.boxes_for counts it, and kept for every part of that part
+	# in that turn: worked out for each of them, with its cover lifted a cell
+	# and both their bounds, it was a third of what reading the covers cost.
 	var covers: Dictionary = {}
+	var shapes: Dictionary = {}        ## part id -> {Basis -> shape}
 	var cover_of := func(index: int) -> Array:
-		if covers.has(index):
-			return covers[index]
+		var known: Variant = covers.get(index)
+		if known != null:
+			return known
 		var node: Node2 = nodes[index]
 		var mine := PackedInt32Array()
+		var from := Vector3i.ZERO
+		var shape: Array = []
 		var brick: BrickWorld.Brick = world.get_brick(node.id)
 		var part: Lbm.PartMesh = library.mesh_for(node.part_id)
 		if brick != null and part != null:
@@ -1561,13 +1598,24 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			if part.boxes.is_empty():
 				mine = _cells_round(at * part.bounds)
 			elif BrickLattice.is_square_to_grid(at.basis):
-				mine = BrickLattice.boxes_for(part.boxes, BrickLattice.to_cell(at.origin), at.basis)
+				from = BrickLattice.to_cell(at.origin)
+				if not shapes.has(node.part_id):
+					shapes[node.part_id] = {}
+				var turns: Dictionary = shapes[node.part_id]
+				if not turns.has(at.basis):
+					turns[at.basis] = _shape(BrickLattice.boxes_for(part.boxes, Vector3i.ZERO,
+						at.basis))
+				shape = turns[at.basis]
 			else:
 				for box: AABB in part.boxes:
 					mine.append_array(_cells_round(at * AABB(box.position * part.cell_ldu,
 						box.size * part.cell_ldu)))
-		var lid: PackedInt32Array = BrickLattice.moved_by(mine, Vector3i(0, 1, 0))
-		var out: Array = [mine, _bounds_of(mine), lid, _bounds_of(lid)]
+		# One part's own cover is read a few times, and is not put in order:
+		# sorting each turned part's thousands of boxes cost more than all its
+		# meetings, and 10315 planned in 9 s where it plans in 1.1 without.
+		if shape.is_empty():
+			shape = [mine, _bounds_of(mine)]
+		var out: Array = [shape, from]
 		covers[index] = out
 		return out
 	# Each part against those whose top is near its underside, or above it
@@ -1582,9 +1630,14 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		var highest: int = floori((node.box.end.y + 2.5) / LAYER)
 		var seen: Dictionary = {}
 		var near: Dictionary = loose if node.seated else grid
+		var top: float = node.box.end.y
+		var under: float = node.box.position.y - 2.5
 		for cell: Vector2i in _cells(node.box, BUCKET):
 			for layer: int in range(lowest, highest + 1):
-				for other: int in near.get(Vector3i(cell.x, cell.y, layer), []):
+				var there: Variant = near.get(Vector3i(cell.x, cell.y, layer))
+				if there == null:
+					continue
+				for other: int in there:
 					if other == index or seen.has(other):
 						continue
 					seen[other] = true
@@ -1594,22 +1647,30 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 					# pair, it tripled what reading supports cost.
 					if node.seated and them.seated:
 						continue
-					# Under it: their plans overlap, and the other's top is
-					# within a cell of its underside, or above it.
-					if not _overlaps_flat(node.box, them.box) \
-							or them.box.end.y < node.box.position.y - 2.5:
+					# Each pair once, from the one whose top is higher; and
+					# under it, the other's top within a cell of its
+					# underside, or above it. The comparisons before the call.
+					var their_top: float = them.box.end.y
+					if their_top > top or their_top == top and other < index or their_top < under:
 						continue
-					# Each pair once, from the one whose top is higher.
-					if them.box.end.y > node.box.end.y \
-							or them.box.end.y == node.box.end.y and other < index:
+					# Their plans overlap.
+					if not _overlaps_flat(node.box, them.box):
 						continue
-					var mine: Array = cover_of.call(index)
-					var theirs: Array = cover_of.call(other)
-					if (mine[0] as PackedInt32Array).is_empty() \
-							or (theirs[0] as PackedInt32Array).is_empty():
+					# Kept, and worked out only the first time (cover_of).
+					var mine: Variant = covers.get(index)
+					if mine == null:
+						mine = cover_of.call(index)
+					var theirs: Variant = covers.get(other)
+					if theirs == null:
+						theirs = cover_of.call(other)
+					if ((mine[0] as Array)[0] as PackedInt32Array).is_empty() \
+							or ((theirs[0] as Array)[0] as PackedInt32Array).is_empty():
 						continue
-					var on_mine: bool = _meet(mine[2], mine[3], theirs[0], theirs[1])
-					var on_theirs: bool = _meet(theirs[2], theirs[3], mine[0], mine[1])
+					# Each lifted a cell onto the other.
+					var on_mine: bool = _meet(mine[0], (mine[1] as Vector3i) + Vector3i(0, 1, 0),
+						theirs[0], theirs[1])
+					var on_theirs: bool = _meet(theirs[0],
+						(theirs[1] as Vector3i) + Vector3i(0, 1, 0), mine[0], mine[1])
 					if on_mine:
 						node.over.append(them.id)
 					if on_theirs:
@@ -1633,37 +1694,113 @@ static func _bounds_of(boxes: PackedInt32Array) -> PackedInt32Array:
 	return out
 
 
-## Whether packed boxes [param a] and [param b] share a cell, looking only
-## at the boxes of each inside where their bounds meet: two bricks one on the
-## other meet in a layer a cell deep, and a stud's round cover is a hundred
-## boxes, most of them nowhere near it.
-static func _meet(a: PackedInt32Array, a_bounds: PackedInt32Array, b: PackedInt32Array,
-		b_bounds: PackedInt32Array) -> bool:
-	var low := Vector3i(maxi(a_bounds[0], b_bounds[0]), maxi(a_bounds[1], b_bounds[1]),
-		maxi(a_bounds[2], b_bounds[2]))
-	var high := Vector3i(mini(a_bounds[3], b_bounds[3]), mini(a_bounds[4], b_bounds[4]),
-		mini(a_bounds[5], b_bounds[5]))
+## A cover of more boxes than this is kept in order of its boxes' heights
+## too ([method _shape]).
+const BANDED_FROM := 12
+
+
+## Packed boxes (six ints each) as [method _meet] reads them: [boxes, their
+## bounds, and for a cover of many boxes where each box begins in order of
+## its low y, those low ys, where each begins in order of its high y, and
+## those]. Two bricks one on the other meet in a layer a cell deep, and a
+## stud's round cover is a hundred boxes, most of them nowhere near it: of a
+## cover kept in order, only those that reach that layer are looked at.
+static func _shape(boxes: PackedInt32Array) -> Array:
+	var count: int = boxes.size() / 6
+	if count <= BANDED_FROM:
+		return [boxes, _bounds_of(boxes)]
+	# Sorted natively, each box by its height and then where it is.
+	const SHIFT := 24
+	const OFFSET := 1 << 20
+	var by_low := PackedInt64Array()
+	var by_high := PackedInt64Array()
+	by_low.resize(count)
+	by_high.resize(count)
+	for k: int in count:
+		by_low[k] = ((boxes[k * 6 + 1] + OFFSET) << SHIFT) | k
+		by_high[k] = ((boxes[k * 6 + 4] + OFFSET) << SHIFT) | k
+	by_low.sort()
+	by_high.sort()
+	var low_starts := PackedInt32Array()
+	var lows := PackedInt32Array()
+	var high_starts := PackedInt32Array()
+	var highs := PackedInt32Array()
+	low_starts.resize(count)
+	lows.resize(count)
+	high_starts.resize(count)
+	highs.resize(count)
+	const MASK := (1 << SHIFT) - 1
+	for k: int in count:
+		low_starts[k] = (by_low[k] & MASK) * 6
+		lows[k] = (by_low[k] >> SHIFT) - OFFSET
+		high_starts[k] = (by_high[k] & MASK) * 6
+		highs[k] = (by_high[k] >> SHIFT) - OFFSET
+	return [boxes, _bounds_of(boxes), low_starts, lows, high_starts, highs]
+
+
+## Where in [param shape]'s boxes those that may reach into cells
+## [param low_y] up to [param high_y] begin: [starts, from, to], every box
+## for a short cover (starts empty), else those whose low y is under
+## [param high_y] or those whose high y is over [param low_y], whichever
+## are fewer, found by halving natively.
+static func _band(shape: Array, low_y: int, high_y: int) -> Array:
+	if shape.size() == 2:
+		return [PackedInt32Array(), 0, (shape[0] as PackedInt32Array).size() / 6]
+	var lows: PackedInt32Array = shape[3]
+	var highs: PackedInt32Array = shape[5]
+	var under: int = lows.bsearch(high_y, true)
+	var over_from: int = highs.bsearch(low_y, false)
+	if under <= highs.size() - over_from:
+		return [shape[2], 0, under]
+	return [shape[4], over_from, highs.size()]
+
+
+## Whether covers [param a] and [param b] ([method _shape]), counted from
+## cells [param a_from] and [param b_from], share a cell, looking only at
+## the boxes of each inside where their bounds meet. Read where they are
+## counted from, a square part's boxes are worked out once for every part
+## of its kind in its turn.
+static func _meet(a: Array, a_from: Vector3i, b: Array, b_from: Vector3i) -> bool:
+	var a_bounds: PackedInt32Array = a[1]
+	var b_bounds: PackedInt32Array = b[1]
+	var low := Vector3i(maxi(a_bounds[0] + a_from.x, b_bounds[0] + b_from.x),
+		maxi(a_bounds[1] + a_from.y, b_bounds[1] + b_from.y),
+		maxi(a_bounds[2] + a_from.z, b_bounds[2] + b_from.z))
+	var high := Vector3i(mini(a_bounds[3] + a_from.x, b_bounds[3] + b_from.x),
+		mini(a_bounds[4] + a_from.y, b_bounds[4] + b_from.y),
+		mini(a_bounds[5] + a_from.z, b_bounds[5] + b_from.z))
 	if high.x <= low.x or high.y <= low.y or high.z <= low.z:
 		return false
+	# Each part's boxes against where they meet, counted from its own cell.
+	var bb: PackedInt32Array = b[0]
+	var lo: Vector3i = low - b_from
+	var hi: Vector3i = high - b_from
 	var near_b: Array[int] = []
-	var j: int = 0
-	while j < b.size():
-		if b[j] < high.x and b[j + 3] > low.x and b[j + 1] < high.y and b[j + 4] > low.y \
-				and b[j + 2] < high.z and b[j + 5] > low.z:
+	var band: Array = _band(b, lo.y, hi.y)
+	var starts: PackedInt32Array = band[0]
+	for k: int in range(band[1], band[2]):
+		var j: int = starts[k] if not starts.is_empty() else k * 6
+		if bb[j] < hi.x and bb[j + 3] > lo.x and bb[j + 1] < hi.y and bb[j + 4] > lo.y \
+				and bb[j + 2] < hi.z and bb[j + 5] > lo.z:
 			near_b.append(j)
-		j += 6
 	if near_b.is_empty():
 		return false
-	var i: int = 0
-	while i < a.size():
-		if a[i] < high.x and a[i + 3] > low.x and a[i + 1] < high.y and a[i + 4] > low.y \
-				and a[i + 2] < high.z and a[i + 5] > low.z:
+	var ab: PackedInt32Array = a[0]
+	lo = low - a_from
+	hi = high - a_from
+	# b's boxes counted from a's cell.
+	var s: Vector3i = b_from - a_from
+	band = _band(a, lo.y, hi.y)
+	starts = band[0]
+	for k: int in range(band[1], band[2]):
+		var i: int = starts[k] if not starts.is_empty() else k * 6
+		if ab[i] < hi.x and ab[i + 3] > lo.x and ab[i + 1] < hi.y and ab[i + 4] > lo.y \
+				and ab[i + 2] < hi.z and ab[i + 5] > lo.z:
 			for at: int in near_b:
-				if mini(a[i + 3], b[at + 3]) > maxi(a[i], b[at]) \
-						and mini(a[i + 4], b[at + 4]) > maxi(a[i + 1], b[at + 1]) \
-						and mini(a[i + 5], b[at + 5]) > maxi(a[i + 2], b[at + 2]):
+				if mini(ab[i + 3], bb[at + 3] + s.x) > maxi(ab[i], bb[at] + s.x) \
+						and mini(ab[i + 4], bb[at + 4] + s.y) > maxi(ab[i + 1], bb[at + 1] + s.y) \
+						and mini(ab[i + 5], bb[at + 5] + s.z) > maxi(ab[i + 2], bb[at + 2] + s.z):
 					return true
-		i += 6
 	return false
 
 
@@ -2687,8 +2824,13 @@ static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3
 	# What this one waits on is asked only when another region has a part
 	# ready that joins what stands: in the hand, one region, it was every part
 	# left read at every step's start, for nothing.
-	var elsewhere: bool = ready.values().any(func(node: Node2) -> bool:
-		return node.region != current and joins.call(node))
+	# A loop, not any() with a lambda: in one region every part ready was a
+	# call for nothing at each step's start.
+	var elsewhere: bool = false
+	for node: Node2 in ready.values():
+		if node.region != current and joins.call(node):
+			elsewhere = true
+			break
 	if elsewhere:
 		var wanted: Dictionary = {}
 		for node: Node2 in remaining.values():
@@ -2724,17 +2866,18 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 	var best: Node2 = null
 	var best_score: float = INF
 	for node: Node2 in ready.values():
-		if not allowed.call(node):
-			continue
 		var distance: float = (node.box.get_center().distance_to(last_at)
 			if have_last else 0.0)
 		# The cheap reasons first, and whether it joins what stands only for
 		# one that could still be the best: asked of every part ready, every
 		# time a part was chosen, it was most of what Orthanc's order cost.
+		# Whether it is allowed too: a lambda or two a part ready.
 		var base: float = (distance * 1000.0 + node.box.position.y
 			if nearest_first
 			else node.box.position.y * 1000.0 + distance)
 		if base >= best_score:
+			continue
+		if not allowed.call(node):
 			continue
 		if same_step and distance > NEAR and not _near_step(node, step):
 			continue
