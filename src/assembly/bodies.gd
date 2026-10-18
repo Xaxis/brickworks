@@ -362,6 +362,7 @@ func _read() -> void:
 			if not partners.has(ends[0]):
 				partners[ends[0]] = []
 			(partners[ends[0]] as Array).append(ends[1])
+	var askew: Dictionary = {}   ## pair -> its studs into a part askew to them, in no socket or hole
 	for stud: Array in studs:
 		var a: int = int(stud[0])
 		var b: int = int(stud[1])
@@ -371,7 +372,7 @@ func _read() -> void:
 			# On the baseplate's studs: a stud in one of its sockets, not a
 			# tyre the plate's studs touch.
 			var on: int = b if scenery.has(a) else a
-			if not scenery.has(on) and not _is_tyre(info_of.get(on)) and _in_a_socket(on, stud[2]):
+			if not scenery.has(on) and _in_a_socket(on, stud[2]):
 				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
@@ -382,19 +383,25 @@ func _read() -> void:
 		# touches, and its column was locked to the chassis.
 		if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
 			continue
-		# A stud into a part turned off the grid holds only in one of its
-		# sockets or holes. The lattice covers a turned part by boxes round
-		# its shape, so a stud under one reads as in it where it is not: a
-		# session turned a steering column 30 degrees, the four studs of the
-		# Technic plate under its 24 tooth gear no longer met the gear's
-		# holes, and the next reading locked the column, both kingpins and
-		# their gears to the chassis. The column then would not turn back.
-		if (_turned(a) or _turned(b)) and not _takes_stud(b, stud[2], stud[3]):
-			continue
 		var pair := Vector2i(mini(a, b), maxi(a, b))
+		if _askew(a, b) and not _takes_stud(b, stud[2], stud[3]):
+			askew[pair] = int(askew.get(pair, 0)) + 1
 		if not per_pair.has(pair):
 			per_pair[pair] = []
 		(per_pair[pair] as Array).append([stud[2], stud[3]])
+	# Two parts turned askew to each other hold by studs only where they go
+	# into sockets or holes: one stud alone is a round joint, as any lone
+	# stud is, but more than one cannot all be in a part turned off their
+	# grid, and are read so only off the boxes the lattice covers a turned
+	# part with. A session turned a steering column 30 degrees, the four
+	# studs of the Technic plate under its 24 tooth gear no longer met the
+	# gear's holes, and the next reading locked the column, both kingpins
+	# and their gears to the chassis: the column would not turn back. A
+	# section built at an angle is square to itself and held as it was, and
+	# a half pin's stud in a turned part (42081-1's arm) is one stud.
+	for pair: Vector2i in askew:
+		if int(askew[pair]) >= 2 and int(askew[pair]) == (per_pair[pair] as Array).size():
+			per_pair.erase(pair)
 	var turning: Dictionary = {}
 	for c: Array in candidates:
 		turning[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
@@ -1013,12 +1020,7 @@ func _on_the_floor(entries: Array, floor_entries: Array) -> void:
 		return
 	for entry: Array in entries:
 		var mesh: Lbm.PartMesh = entry[2]
-		# Nor a tyre whose tread the part file leaves gaps in that read as
-		# sockets: 58090 has four. A session's car turned its steering 30
-		# degrees, a front tyre's gaps came over the baseplate's studs, the
-		# front axle became what stays, and the next turn of the steering
-		# wheel swung the chassis round it instead of the wheels.
-		if mesh.sockets.is_empty() or _is_tyre(library.parts.get(str(entry[3]))):
+		if mesh.sockets.is_empty():
 			continue
 		var at: Transform3D = entry[1]
 		var box: AABB = at * mesh.bounds
@@ -1061,11 +1063,13 @@ func _in_a_socket(key: int, foot: Vector3) -> bool:
 	return false
 
 
-## Whether a part stands turned off the grid, where the lattice holds it by
-## boxes round its shape rather than by its cells.
-func _turned(key: int) -> bool:
-	var brick: BrickWorld.Brick = world.get_brick(key)
-	return brick != null and not BrickLattice.is_square_to_grid(brick.transform.basis)
+## Whether two parts stand turned to each other off the square, so their
+## studs and sockets are on grids that do not meet.
+func _askew(one: int, other: int) -> bool:
+	var a: BrickWorld.Brick = world.get_brick(one)
+	var b: BrickWorld.Brick = world.get_brick(other)
+	return a != null and b != null and not BrickLattice.is_square_to_grid(
+		a.transform.basis.inverse() * b.transform.basis)
 
 
 ## Whether a stud at [param foot] pointing [param way] goes into something of

@@ -268,14 +268,12 @@ whole cycle.
   opened the file dialog for a person who was not there, and told them to
   serve the folder on this computer, which is refused as well.
 - A steering column turned once turns back. A gear turned off the grid
-  read the studs of the plate under it as held in it, so the column, both
-  kingpins and their gears were locked to the chassis, and a second turn
-  was refused as "held rigidly". A stud into a turned part now holds only
-  in its sockets or holes. And a car turned back no longer swings its
-  chassis round the front axle: a front tyre's tread had come over the
-  baseplate's studs and been taken for standing on them. move_part says a
-  joint whose line stands upright stays where it is put, rather than that
-  it swings down.
+  read the four studs of the plate under it as held in it, so the column,
+  both kingpins and their gears were locked to the chassis, and a second
+  turn was refused as "held rigidly". Two parts turned askew to each other
+  now hold by more than one stud only where the studs go into sockets or
+  holes. move_part says a joint whose line stands upright stays where it
+  is put, rather than that it swings down.
 - An arrow on a booklet page can be aimed at what a step adds without
   seeing the page. booklet_layout says where each step's new parts are on
   its page, and edit_booklet arrow= says whether the tip is on them or how

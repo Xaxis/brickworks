@@ -605,12 +605,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `grab_probe -- --only=chain`, a hand and 4096's crane end).
   Turned and turned back over MCP: `grab_probe -- --only=steer` builds a real
   session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
-  steering wheel +30, -60 and +30, back where it was built. A stud into a part
-  turned off the grid holds only in its sockets or holes (`Bodies._takes_stud`):
-  read off the lattice's boxes round the turned gear, the plate's studs locked
+  steering wheel +30, -60 and +30, back where it was built, the chassis still.
+  Two parts askew to each other (`Bodies._askew`) hold by more than one stud
+  only where the studs go into sockets or holes (`Bodies._takes_stud`): read
+  off the lattice's boxes round the turned gear, the plate's four studs locked
   the column to the chassis and the second turn was refused, "held rigidly to
-  what stays". A joint whose line stands upright says its weight does not
-  turn it (`GrabDrag.for_session`).
+  what stays". One stud alone still holds as before (a half pin's stud in
+  42081-1's turned arm). A joint whose line stands upright says its weight
+  does not turn it (`GrabDrag.for_session`). Still open, `grab_probe --
+  --only=kart` (`steering_kart.json`): a front tyre's tread, whose gaps 58090's
+  file reads as sockets, turned over a baseplate stud stands on it, the front
+  axle becomes what stays and the turn back swings the chassis; asking a
+  turned part for two studs to stand fixed it and broke 42081-1's arm.
   Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
   pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
   starts clean (`_clean_slate`: no button down, drag, grab, part in hand or
