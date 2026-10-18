@@ -15,8 +15,14 @@
 // not all selected, or a script error reaches the console. The web build
 // works it out on a worker (BrickifyDialog), so the page goes on drawing
 // meanwhile: the frames are timed while it works.
+//
+// Then what to do with it, from the panel that stays up once it is down:
+// BrickLink and Rebrickable pressed, each list downloaded and its pieces
+// counted against the build's, and Booklet pressed, its tab read for its
+// pages of steps (its own steps, a course a step) and two of them
+// photographed. --after=no leaves those out.
 import { launch } from "./browser.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -153,11 +159,14 @@ const landed = await until(async () => {
 const s = await state();
 // The tree lists each sub-assembly's own parts by number, "3001,3004". A
 // first visit's example car, untouched, is taken off to make room, so then
-// the model is everything on the baseplate.
-const inside = String(s?.tree?.[`${name}#1`] || "").split(",").filter(Boolean).length;
+// the model is everything on the baseplate. Its side panels are sub-assemblies
+// inside it ("bunny#1/bunny left panel 1#1"), built on the side in its booklet.
+const top = `${name}#1`;
+const paths = Object.keys(s?.tree || {}).filter((p) => p === top || p.startsWith(`${top}/`));
+const inside = paths.reduce((sum, p) => sum + String(s.tree[p] || "").split(",").filter(Boolean).length, 0);
 const all = s?.bricks || 0;
 ok(landed && inside > least && (inside === all || all - before === inside),
-  `it lands as the sub-assembly ${name}#1: ${inside} parts in it, ${all} on the baseplate (${before} before), the tree ${Object.keys(s?.tree || {})}`);
+  `it lands as the sub-assembly ${top}: ${inside} parts in it, ${paths.length - 1} side panels inside it, ${all} on the baseplate (${before} before)`);
 ok(s?.selected === inside, `all of it selected, to move or turn: ${s?.selected}`);
 // What the status line said: buildable in one piece, every part it needed here.
 const summary = String(s?.brickified || "");
@@ -166,6 +175,59 @@ ok(/buildable in one piece/.test(summary) && !/never arrived/.test(summary) && (
 ok(true, `frames while it worked: the longest ${longest} ms of ${frames.length}`);
 await page.waitForTimeout(8000);
 await shot("3_placed_selected.png");
+
+// What to do with it, a press each, from the panel that stays up.
+if (args.after !== "no") {
+  const after = await until(async () => Boolean((await controls()).brickify_bricklink), 60, "after");
+  ok(after, "the panel stays up once it is down, with Booklet, BrickLink and Rebrickable");
+  if (after) {
+    for (const [control, kind] of [["brickify_bricklink", "xml"], ["brickify_rebrickable", "csv"]]) {
+      const coming = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
+      await click(control);
+      const download = await coming;
+      let text = "";
+      let file = "no download";
+      if (download) {
+        file = download.suggestedFilename();
+        await download.saveAs(`${out}/${file}`);
+        text = readFileSync(`${out}/${file}`, "utf8");
+      }
+      const pieces = kind === "xml"
+        ? [...text.matchAll(/<MINQTY>(\d+)<\/MINQTY>/g)].reduce((sum, m) => sum + Number(m[1]), 0)
+        : text.trim().split("\n").slice(1).reduce((sum, row) => sum + Number(row.split(",")[2] || 0), 0);
+      ok(pieces === inside, `${control.replace("brickify_", "")}, pressed: ${file}, ${pieces} pieces for its ${inside}`);
+    }
+    const steps = Number((summary.match(/(\d+) steps? by courses/) || [])[1] || 0);
+    ok(steps > 1, `its own steps, by courses: ${steps}`);
+    const opened = page.context().waitForEvent("page", { timeout: 60000 }).catch(() => null);
+    await click("brickify_booklet");
+    const tab = await opened;
+    ok(Boolean(tab), "Booklet, pressed, opens a tab");
+    if (tab) {
+      const started = Date.now();
+      let pages = 0;
+      while (Date.now() - started < Number(args.wait || 900) * 1000) {
+        pages = await tab.evaluate(() => document.querySelectorAll("section.page.steps").length)
+          .catch(() => 0);
+        if (pages > 0) break;
+        await tab.waitForTimeout(3000);
+      }
+      const numbers = await tab.evaluate(() => new Set([...document.querySelectorAll("section.page.steps")]
+        .map((p) => (p.getAttribute("data-steps") || "").split(" ").filter(Boolean)).flat()).size)
+        .catch(() => 0);
+      ok(pages > 0 && numbers >= steps,
+        `its booklet arrives in the tab in ${Math.round((Date.now() - started) / 1000)} s: ${pages} pages of steps holding ${numbers} steps, for its ${steps}`);
+      for (const n of [1, Math.max(2, Math.floor(pages / 2))]) {
+        const section = tab.locator(`section.page.steps >> nth=${n - 1}`);
+        if ((await section.count().catch(() => 0)) > 0) {
+          await section.screenshot({ path: `${out}/5_booklet_steps_${n}.png`, timeout: 120000 })
+            .catch(() => {});
+        }
+      }
+      await tab.close().catch(() => {});
+    }
+  }
+}
 await page.mouse.move(view.x, view.y);
 await page.keyboard.press("Escape");
 await page.waitForTimeout(8000);

@@ -422,9 +422,15 @@ func _brickify() -> void:
 	var path: String = Assemblies.path_of(_world.get_brick(added[-1])) if added.size() > before else ""
 	_check("the bunny is fetched and laid, as one sub-assembly: %s" % said.left(90),
 		said.begins_with("Brickified bunny") and added.size() > before + 20 and path.begins_with("bunny"))
+	_check("...with its steps and how to get its booklet and lists: %s" % said.get_slice("\n", 1).left(120),
+		said.contains("steps by courses") and said.contains("format=instructions")
+		and said.contains("format=bricklink") and said.contains("format=rebrickable"))
 	_check("...one undo step", _builder.history_depth() == depth + 1)
 	await _say("undo", {})
 	_check("...and undone, it is gone", _model_ids().size() == before)
+	said = await _say("brickify", {"collection": true})
+	_check("laid from a collection the person does not keep, it says so: %s" % said.left(70),
+		said.contains("no collection to lay it from"))
 	said = await _say("brickify", {"pick": true})
 	if DisplayServer.get_name() == "headless":
 		_check("headless, there is no file dialog to open: %s" % said.left(60),

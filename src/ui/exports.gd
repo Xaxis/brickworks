@@ -46,8 +46,14 @@ func take_picture() -> String:
 	return line
 
 
-func shop_list(shop: String) -> String:
-	var stock: Inventory = Inventory.of(world, library, scenery)
+func shop_list(shop: String, skip: Dictionary = {}) -> String:
+	# [param skip]: the bricks to leave off besides the baseplate, for the
+	# list of one part of what is built (a brickified model, from its panel).
+	var left: Dictionary = scenery
+	if not skip.is_empty():
+		left = scenery.duplicate()
+		left.merge(skip)
+	var stock: Inventory = Inventory.of(world, library, left)
 	if stock.lots.is_empty():
 		say.call("nothing to list yet")
 		return ""

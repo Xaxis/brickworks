@@ -41,6 +41,18 @@ whole cycle.
   Where one thing would still lie on another, the page is printed with it
   moved to the nearest free room, and Lay out page… outlines it in red and
   says what it was on.
+- Brickify gives what it lays steps of its own, as a builder would build
+  it: a course a step from the bottom, each side panel built on the side as
+  a sub-assembly and put on once the core behind it is up, and every step's
+  build standing (weighed; a course that would not stand goes in with the
+  next). They are the file's own steps, so the timeline, the booklet and a
+  saved file follow them. Once it is down the Brickify panel stays in the
+  corner with Booklet, BrickLink and Rebrickable, a press each, of the build
+  alone. Lay it from my collection lays it from what you own: your parts in
+  their colours first, then the same part in a near colour, then two
+  smaller parts, and says what is still short. There is no price yet:
+  BrickLink's price guide needs a seller's keys. Over MCP, brickify says how
+  to get its booklet and lists and takes `collection=true`.
 
 - A booklet page laid out by hand. Lay out page… on the timeline's Booklet
   row (or Build, Booklet page) shows the step's page to scale with its

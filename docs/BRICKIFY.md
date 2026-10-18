@@ -104,7 +104,13 @@ studs, against a greedy stack of standard bricks and legolization:
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
-   collection.
+   collection. *Done 2026-10-17, section 11: every Brickify build goes down
+   with steps of its own, a course a step, its side panels built on the
+   side, and every partial build stands on all 28 bench runs; Booklet,
+   BrickLink and Rebrickable from the panel, a press each; laid from set
+   10698's parts, the grey Stanford bunny draws 15.8% of its parts from it
+   at 0.18 ΔE2000 where it shows (26.9% at 5.7 taking any colour). No price:
+   BrickLink's price guide needs a seller's keys.*
 8. **Model and sculpture modes**, to 128 studs, the second tier of
    techniques behind an option.
 9. **Every file people have**: PLY, 3MF, VOX, FBX.
@@ -727,6 +733,8 @@ colour then by size, the shortfall said.
 **Measure.** Every step's partial build stands, on the bench's builds; with a
 test collection (set 10698's 790 parts), the share of parts drawn from it
 and what that costs in ΔE2000.
+
+*Done 2026-10-17, section 11, all but the price.*
 
 ### 8. Model and sculpture
 
@@ -2529,7 +2537,292 @@ threads; section 6's, `2789cd0` and the branch on 2026-10-16, at a load of
 at a load of 15 to 45; section 8's, `a1d1998` and the branch on 2026-10-16
 and 17, at a load of 25 to 45; section 9's, `d55251d` and the branch on
 2026-10-17, at a load of 2 to 24; section 10's, `d24d4d6` and the branch on
-2026-10-17, at a load of 10 to 35.
+2026-10-17, at a load of 10 to 35; section 11's, `d5ca5e9` and the branch on
+2026-10-17, at a load of 35 to 65.
+
+## 11. Unit 7, done: buy it, or build it from what you own (2026-10-17)
+
+Unit 7 of the plan. On `main` today (`d5ca5e9`), a Brickify build goes down
+with no steps of its own: the timeline and the booklet work its order out as
+for any model (`Instructions.plan`), its parts lists are under File, Export
+and the parts list's buttons, and the collection is asked only by the parts
+list's What do I need?. The panel closes once the build is down. Branch
+`worktree-agent-a12af423c8082f50b`, from `main` at `d5ca5e9`.
+
+**In short.** Every Brickify build now goes down with steps of its own, as
+the file's "0 STEP" lines: a course a step from the bottom, each side panel
+a sub-assembly built on the side, and every step's partial build standing.
+On all 14 bench models at 24 and 48 studs every partial build stands (28 of
+28 runs, 1,387 steps), a course or a few a step; in 14 of the runs some
+courses went in with the next, most of them the 48-stud milk truck's (57
+courses in 20 steps) and the temple scene's (82 in 43). The whole build is
+weighed as laid, and stands in 26 of 28 (the temple scene at 48 studs has 35
+stud joints past their working load and the fox 2, as Brickify laid them).
+The design check agrees, step by step, on the 55 partial builds of the bunny
+and the fox it was asked about, in the booklet's order. Working the steps
+out costs 14% of the build's time at 48 studs on average, 15 s at most (the
+temple). The panel stays up once the build is down, with Booklet, BrickLink
+and Rebrickable, a press each, of the build alone. Laid from a collection of
+set 10698's 790 parts, the 24-stud Stanford bunny draws 191 of its 1,211
+parts from it (15.8%) at a colour cost of 0.18 ΔE2000 where it shows,
+against the build laid without it; taking any colour on hand where it shows,
+327 of 1,217 (26.9%) at 5.7. The rest is said short, by part and colour. No
+price: see "What a price needs" below.
+
+**What changed** ([brickify_steps.gd](../src/assembly/brickify_steps.gd),
+[brickify_stock.gd](../src/assembly/brickify_stock.gd),
+[brickify_dialog.gd](../src/ui/brickify_dialog.gd); the booklet planner,
+`Instructions.plan`, is untouched: the booklet follows the file's own steps
+as it does for any model that has them, `Instructions._authored_plan`):
+
+1. **Steps by courses** (`BrickifySteps.of`, on the worker after the build,
+   `BrickifyDialog.finish`). A course is a plate's height: every part whose
+   foot is at that level, bottom up, a course of fewer than eight parts
+   going in with the next (up to three plates of them). The sideways parts
+   held to one another and facing one way, four or more, are a panel
+   (Shapes' cube shells, `lay_shell`), named after the build and the side it
+   faces ("bunny left panel 2"), a sub-assembly inside the build: built in
+   the hand a layer out from the core a step, and put on in the step its
+   last core part goes in. The rest of the sideways parts (a tile on a side
+   stud, two or three plates on their side) go in where they stand: built on
+   the side, the 48-stud Stanford bunny's 108 panels of two and three parts
+   were 108 pages of callouts. The top's few parts go in with the course
+   under them.
+2. **Held when it goes in.** A part goes in at the first step at which
+   something already there holds it by a stud: a stud of either part pushed
+   into the other's underside, whichever way it points. The step is the
+   least, over every way down to the ground, of the latest step on that way
+   (a bottleneck path, worked out a step at a time). So an inverted slope
+   hung under a ledge goes in with the ledge, and a part resting on a tile
+   waits for what clutches it from above: weighed by "rests on", the design
+   check found a plate and 14 parts on it lying loose on a tile in the
+   fixture bunny's step 7. And a stud only holds what it goes into: one
+   pressed against a plate's edge holds nothing, so a panel standing on a
+   course's studs is not put on with that course.
+3. **Every partial build weighed** (Balance, with what rests on what read
+   once, `Balance.measure(..., contacts)`, and the sideways studs given as
+   links, which Balance cannot see itself): its centre of mass over what it
+   stands on, no stud joint past its working load, nothing adrift. A step
+   whose build would not stand goes in with the next, so it is never a place
+   the builder stops; the build itself never changes. The last step is the
+   whole build, which stands or not as it was laid, and is said.
+4. **Down with them** (`BrickifyDialog._put_down`): each part with its step,
+   each panel at `bunny#1/bunny left panel 2#1` with the step it goes on in
+   (`world.unit_steps`), taken back with the parts by the one undo. A model
+   that has steps of its own already gets the build after them.
+5. **The panel stays up** in the bottom right corner once it is down, out of
+   the model's way (`covers`): its parts, its steps, what the collection
+   gave it, and Booklet, BrickLink, Rebrickable (and What do I need? when
+   laid from the collection) and Done. Each list and the booklet are of the
+   build alone, through the app's own exporters (`Exports.shop_list` with
+   the other bricks skipped, `Main._export_booklet` with a skip and the
+   build's name). Over MCP, the brickify tool's answer says how to get each
+   (`export_model format=instructions`, `bricklink`, `rebrickable`), and
+   that it takes in more than the build when more is built.
+6. **Lay it from my collection** (`BrickifyStock.draw`, a box on the panel,
+   `collection=true` over MCP). After laying, each part is drawn from what
+   is on hand (the collection's `on_hand`, sets expanded), what shows first:
+   as it is or in its other moulding; then the same part in the nearest
+   colour on hand by CIEDE2000, where a part that shows takes one only
+   within 16 (about white against light bluish grey: a white bunny patched
+   yellow is not the model, and the part is better said short) and a part
+   inside takes any; then two smaller parts of its kind that make its
+   footprint, in its colour or the nearest (`Collection._splits`), kept only
+   while the check passes in one piece: the splits near what came apart are
+   taken back, three rounds, then all. What is still short is said by part
+   and colour, and What do I need? opens the collection's own page for it.
+   What shows is read off a grid of studs and plates filled with the parts'
+   boxes and flooded with air from outside (`BrickifyStock.shows`).
+
+### The numbers
+
+The build's own steps, on the bench's models (`brickify_buy_probe
+--steps-only`, all 14 at 24 and 48 studs; the bunny and the fox in full):
+
+| Model | Studs | Parts | Courses | Steps | Put in with the next | Panels | Partial builds standing | Whole build | Parts later than their course | Steps, s | Build, s | Design check |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Stanford bunny | 24 | 1,183 | 50 | 50 | 0 | 14 | 49 of 49 | stands | 161 | 1.3 | 10.0 | 13 of 13 pass |
+| Stanford bunny | 48 | 5,959 | 114 | 104 | 10 | 87 | 103 of 103 | stands | 876 | 13.1 | 46.2 | 13 of 13 pass |
+| fox | 24 | 220 | 17 | 14 | 0 | 0 | 13 of 13 | stands | 81 | 0.1 | 1.1 | 14 of 14 pass |
+| fox | 48 | 972 | 48 | 44 | 4 | 8 | 43 of 43 | 2 joints past their load | 377 | 0.7 | 7.3 | 15 of 15 pass |
+
+All 14 at both sizes, steps only (`--steps-only`,
+`bench/results/brickify7-2026-10-17/steps_all/buy.json`): every partial
+build stands in every run. Parts, steps (from how many courses), courses put
+in with the next, and panels:
+
+| Model | 24 studs: parts, steps (courses), put in with the next, panels | 48 studs: parts, steps (courses), put in with the next, panels | Steps at 48, s |
+|---|---|---|---|
+| armadillo | 692, 41 (41), 0, 5 | 3,295, 103 (108), 3, 57 | 8.1 |
+| avocado | 905, 45 (45), 0, 12 | 4,016, 110 (110), 0, 48 | 5.8 |
+| Bell X-1 | 152, 11 (11), 0, 0 | 653, 23 (24), 1, 0 | 0.3 |
+| Benchy | 608, 35 (35), 0, 0 | 2,904, 61 (79), 14, 8 | 4.4 |
+| Bob | 880, 28 (28), 0, 3 | 3,737, 60 (60), 0, 33 | 4.8 |
+| bust | 1,195, 55 (58), 3, 0 | 5,597, 112 (118), 6, 14 | 9.7 |
+| figure | 543, 32 (34), 2, 0 | 2,573, 55 (74), 19, 7 | 3.3 |
+| fox | 220, 14 (17), 0, 0 | 972, 44 (48), 4, 8; as laid, 2 joints past their load | 0.6 |
+| milk truck | 999, 26 (29), 3, 16 | 3,678, 20 (57), 36, 40 | 2.8 |
+| Spot | 998, 47 (49), 0, 13 | 4,804, 109 (111), 0, 65 | 7.1 |
+| Stanford bunny | 1,183, 50 (50), 0, 14 | 5,959, 104 (114), 10, 87 | 13.1 |
+| teapot | 630, 21 (23), 0, 5 | 3,295, 50 (52), 0, 20 | 3.9 |
+| temple scene | 1,877, 36 (39), 3, 0 | 10,872, 43 (82), 39, 0; as laid, 35 joints past their load | 15.2 |
+| toy car | 676, 17 (17), 0, 2 | 3,010, 35 (36), 1, 9 | 2.0 |
+
+A course goes in with the next where its build would carry a stud joint past
+its working load: mostly where a body spans its legs or wheels before the
+courses above bond it (the fox at 48 studs, 10 to 12 joints in steps 27 to
+30; the milk truck, 4 to 7 over its wheels; the figure, 3 to 11). Before the
+whole build was weighed first, a joint past its load in the build as laid
+was held against every step that had it: the temple scene went in 19 steps
+of 570 parts, and the fox at 48 studs in 29.
+
+**By the design check, in the booklet's order.** Independently of the steps'
+own weighing, the probe puts the build down as the panel does, reads the
+booklet's plan back (its steps are the build's own, a callout a panel), and
+checks about twelve of its partial builds, evenly spread, with
+`check_design`'s own check and Balance: all 55 pass: one piece (or, the
+Stanford bunny at 24 studs in two steps, in pieces each on the ground, as
+feet are before the body joins them), nothing floating, standing by its
+Balance. Early on, weighed by "rests on" rather than by studs, it found a
+plate and 14 parts on it lying loose on a tile in the fixture bunny's step
+7, and with every course a step whatever held it, the first step in 8
+pieces.
+
+**From a collection** (set 10698, the Large Creative Brick Box: 790 pieces
+in 225 lots, a test collection of the probe's own; the person's is never
+read). Against the same model laid without it, part for part:
+
+| Model | Laid from 10698 | Parts | Drawn from it | As they are | In another colour | As two smaller | Short | ΔE2000 where it shows (changed) |
+|---|---|---|---|---|---|---|---|---|
+| Stanford bunny, 24 studs (one colour, grey) | within 16 where it shows | 1,211 | 191 (15.8%) | 22 | 113 | 56 | 1,020 in 47 lots | 0.18 (12 of 961 that show, 14.7 each) |
+| | any colour | 1,217 | 327 (26.9%) | 22 | 237 | 68 | 890 in 30 lots | 5.74 (210 of 979, 26.8 each) |
+| bunny fixture, 24 studs (white, pink, black) | within 16 where it shows | 693 | 92 (13.3%) | 21 | 59 | 12 | 601 in 63 lots | 0.01 (2 of 589, 1.6 each) |
+| | any colour | 713 | 226 (31.7%) | 21 | 153 | 52 | 487 in 47 lots | 9.33 (165 of 607, 34.3 each) |
+
+A creative box has few of any one part in one colour: 790 pieces in 225
+lots, 48 or so of each of its commonest colours (49 light bluish grey),
+where the grey bunny is short 175 grey 1 x 2 plates alone. So most of what
+is drawn stands in by colour inside, where it costs nothing, and by size (a
+1 x 4 plate as two 1 x 2s; none of the splits came apart). Taking any colour
+where it shows draws 70% more of the build from the box and turns 210 of the
+grey bunny's visible parts other colours, 26.8 ΔE2000 each, so the cap of 16
+is the default. The check passes in one piece every time, and the steps are
+worked out after, on what was drawn.
+
+### What a price needs
+
+No price is shown. BrickLink's price guide (what a part in a colour has sold
+for and is offered at, new or used) is read through BrickLink's API, which
+wants a seller's OAuth keys (a consumer key and secret and an access token
+and secret, issued to a BrickLink seller), and the owner has not given any.
+A price would need:
+
+- those keys kept on the server, never in the app (`api/`, beside the
+  collection's), and a call there per lot, since the price guide is asked
+  for one item and colour at a time: the 24-stud Stanford bunny's 1,183
+  parts are 48 lots;
+- a cache of each part and colour's price for a day or so (a Supabase table
+  of its own, added, never changing what is there), so a second build costs
+  no calls;
+- and the shortfall's lots priced, not the build's, when it is laid from a
+  collection.
+
+BrickOwl's API is the other source the plan names: a key per account, with
+the same call per lot and the same cache.
+
+### Proof
+
+On the branch at `679e174` and after, at a load of 35 to 65 (other agents'
+browser runs), every Godot run with a data folder of its own
+(`XDG_DATA_HOME`), so nothing of the owner's app data was read or written:
+
+- `brickify_buy_probe` (headless, new): all pass on the fixtures (the bunny
+  and the fox at 24 studs, then the bunny from set 10698) and on the bench's
+  Stanford bunny and fox at 24 and 48 studs: every step's partial build
+  stands, none held by nothing, every part down with its step and each panel
+  a sub-assembly put on in a step of it, the booklet's plan the build's own
+  steps (a callout a panel, a brick of somebody else's after them), each
+  step's highest foot no lower than the last's, about twelve partial builds
+  a model passing the design check in the booklet's order, the BrickLink and
+  Rebrickable lists of the build alone with every piece wanted (1,183 of
+  1,183 for the 24-stud Stanford bunny, 48 lots), and the collection's
+  numbers above. `--steps-only` over all 14 bench models at both sizes:
+  every partial build of all 28 runs stands.
+- **Broken on purpose, it fails.** Each part put in at its own course
+  whatever holds it: 352 parts held by nothing, and by the design check the
+  first step's build in 8 pieces. No step put in with the next: the fox's
+  steps 8 and 9 with 3 stud joints past their load, by the steps' weighing
+  and by the design check's.
+- `brickify_probe`: 84 of 84, as on `main` (the forty-stud bunny 2,143
+  parts, buildable, in one piece).
+- `brickify_ui_probe` in a window on the GPU: 21 of 21; the 32-stud bunny
+  lands as 1,266 parts with 10 panels inside it, its 60 steps said, the
+  panel in the corner (`brickify_landed.png`), BrickLink's list 1,266 pieces
+  wanted, Rebrickable's 82 rows, the booklet written in 23 s with its 60
+  steps, Done, one undo taking it and its panels' steps off.
+- `app_tools_probe`: 99 of 99, the brickify tool's answer naming
+  `export_model format=instructions`, `bricklink` and `rebrickable`, and
+  `collection=true` refused, said, when the person keeps no collection;
+  `mcp_sync_probe` with `tools/mcp_tools.json` written again.
+- `example_name_probe` 26 of 26, `quit_probe --only=brickify` 3 of 3 (the
+  app gone 1.2 s after the window closed mid-run), `balance_probe` 46 of 46
+  (Balance's new `contacts` changes nothing when not given), `io_probe` 62
+  of 62.
+- **The booklets, printed** (`--model=<build>.ldr --booklet=…`, then
+  `tools/web/booklet_print.mjs`; in
+  `bench/results/brickify7-2026-10-17/booklets`): the 24-stud Stanford
+  bunny, 50 steps on 52 pages; the fox at 24, 14 steps on 9; the fox at 48,
+  44 on 40; the Stanford bunny at 48, 104 steps on 176 pages, 87 panels'
+  callouts among them; every picture decodes. Looked at page by page: each
+  step is the next course, the stand first where there is one; a panel is
+  built in its callout a layer out at a time and put on where the course has
+  reached its top; nothing floats.
+- `tools/web/brickify_flow.mjs` against a local export (`tools/export.sh
+  web`, `serve.py` on port 8537), Chromium on SwiftShader: all pass: the
+  bunny at 30 studs lands as `bunny#1`, 1,224 parts with 11 side panels
+  inside it, its line ending "51 steps by courses, bottom up, 11 panels
+  built on the side; every step's build stands"; the panel stays up;
+  BrickLink downloads `bunny_bricklink.xml` and Rebrickable
+  `bunny_rebrickable.csv`, each 1,224 pieces for its 1,224; Booklet opens a
+  tab and the booklet arrives in it, 44 pages of steps holding all 51
+  (`flow/5_booklet_steps_1.png`, `_22.png`). It ran on the build before the
+  whole was weighed first (`2464a40`'s flow, `679e174`'s app), which changes
+  no step of the bunny.
+- `featuremap affected --since d5ca5e9`: Balance, the brickify tool, the
+  window's commands over MCP, export, and main's panels are covered by the
+  runs above; `featuremap check` is current.
+
+### What is left
+
+- **A price**, as above: the keys first.
+- **Big courses.** A course is the whole model's plates at one level: at 48
+  studs a step of the Stanford bunny is up to 251 parts (the median 31). A
+  booklet of a big sculpture splits a course by area, as the planner's
+  regions do; the steps here never do.
+- **Panels that are alike** are each a definition of their own, so two
+  mirror-image flanks are built twice, not once "2x"; and every callout
+  takes a page, so the 48-stud bunny's booklet is 176 pages for 104 steps.
+  Matching panels part for part (Assemblies' own `best_match`) would make
+  them copies.
+- **The weighing's time.** Balance reads every part afresh for each step's
+  build: 13.1 s of the 48-stud bunny's, beside its 46.2 s build, on a box at
+  a load of 40 to 65. A Balance that reads the parts once and weighs growing
+  sets of them would take most of that away.
+- **Partial builds in pieces.** A model on feet with no stand stands in
+  pieces on the table until its body joins them (the Stanford bunny at 24
+  studs, two of the steps checked): each on the ground, nothing floating,
+  but a builder holds them. Laying the feet on a plate first, or building
+  them as one sub-assembly, would make them one piece.
+- **The collection by region.** Stand-ins are chosen a part at a time, so a
+  colour stands in for another in patches; a flank taken in one colour on
+  hand would read better. And with a creative box most of a white model is
+  short: laid with the collection's colours as the palette from the start
+  (`Options.palette`), it would draw more of it, at a cost in likeness to be
+  measured. Stand-ins by size are two parts of one kind; three (a 1 x 6 from
+  three 1 x 2s) and three plates for a brick are not tried.
+- **The browser flow** ran against a local export, not a preview: a preview
+  is the release's. Its booklet took 740 s to arrive in SwiftShader at a
+  load of 40 to 50, most of it drawing 51 steps' pictures in software.
 
 ## Each model, every arm
 

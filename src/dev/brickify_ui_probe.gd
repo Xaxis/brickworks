@@ -7,13 +7,17 @@
 ## the panel shows the bunny turning, its triangles and what it comes to.
 ## The size is typed into the size box, Brickify is clicked, and the bunny
 ## lands: one sub-assembly called "bunny", every part of it in it and all of
-## them selected, buildable in one piece by the status line's word. One undo
-## takes the whole of it off and redo puts it back. Then a sphere, an STL
-## with Z up, is brought in hollow from the Build menu's own command and
-## lands beside the bunny, touching nothing of it.
+## them selected, buildable in one piece by the status line's word. The panel
+## stays up in the corner with its steps said and Booklet, BrickLink and
+## Rebrickable, each pressed and its file read; Done puts it away. One undo
+## takes the whole of it off, its steps too, and redo puts it back. Then a
+## sphere, an STL with Z up, is brought in hollow from the Build menu's own
+## command and lands beside the bunny, touching nothing of it.
 ##
-## Pictures: shots/brickify_dialog.png (the panel) and
-## shots/brickify_placed.png (the two models). Look at them.
+## Pictures: shots/brickify_dialog.png (the panel), shots/brickify_landed.png
+## (the panel once it is down) and shots/brickify_placed.png (the two
+## models). Look at them. Run it with XDG_DATA_HOME pointed somewhere of its
+## own: its lists and booklet go to sessions/probe/brickify_ui there.
 extends SceneTree
 
 var _failures: int = 0
@@ -83,27 +87,37 @@ func _run() -> void:
 	var waited: int = await _until_down(240)
 	var bricks: int = _world.brick_count() - scenery
 	var tree: Dictionary = (_main.get("_shell") as Shell).assemblies.parts_by_path()
-	_check("it lands in %d s: %d parts, as the sub-assembly %s" % [waited, bricks, tree.keys()],
-		bricks > 300 and tree.has("bunny#1")
-		and str(tree["bunny#1"]).split(",").size() == bricks)
+	# Its own parts and its side panels', each panel a sub-assembly inside it.
+	var under: int = 0
+	var panels: int = 0
+	for path: String in tree:
+		if Assemblies.within(path, "bunny#1"):
+			under += str(tree[path]).split(",", false).size()
+			panels += 1 if path != "bunny#1" else 0
+	_check("it lands in %d s: %d parts, as the sub-assembly bunny#1 with %d panels inside it"
+		% [waited, bricks, panels], bricks > 300 and tree.has("bunny#1") and under == bricks)
 	var said: String = _status()
 	_check("the status line says so: \"%s\"" % said, said.contains("buildable in one piece"))
 	_check("and all of it is selected, to move or turn straight away: %d" % _builder.selection.size(),
 		_builder.selection.size() == bricks)
+	await _after_landing(bricks)
 	var grouped: bool = true
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not (_main.get("_store") as ModelStore).scenery.has(brick.id) and brick.group != "bunny":
 			grouped = false
 	_check("every part of it is in the bunny", grouped)
 	_builder.clear_selection()
+	panels = _panels("bunny#1")
 	await _key(KEY_Z, "", true)
 	await _frames(20)
-	_check("one undo takes all of it back: %d left" % (_world.brick_count() - scenery),
-		_world.brick_count() - scenery == 0)
+	_check("one undo takes all of it back, its panels' steps too: %d left, %d panels" % [
+		_world.brick_count() - scenery, _panels("bunny#1")],
+		_world.brick_count() - scenery == 0 and _panels("bunny#1") == 0)
 	await _key(KEY_Z, "", true, true)
 	await _frames(20)
-	_check("and redo puts it back: %d" % (_world.brick_count() - scenery),
-		_world.brick_count() - scenery == bricks)
+	_check("and redo puts it back: %d, %d panels put on in their steps" % [
+		_world.brick_count() - scenery, _panels("bunny#1")],
+		_world.brick_count() - scenery == bricks and _panels("bunny#1") == panels)
 	var bunny_box: AABB = _bounds("bunny")
 
 	print("")
@@ -157,12 +171,86 @@ func _finish() -> void:
 func _until_down(seconds: int) -> int:
 	var began: int = Time.get_ticks_msec()
 	await _frames(5)
-	while (_dialog.is_busy() or _dialog.visible) and Time.get_ticks_msec() - began < seconds * 1000:
+	while (_dialog.is_busy() or _dialog.visible and not _dialog.landed()) \
+			and Time.get_ticks_msec() - began < seconds * 1000:
 		await process_frame
 	await _frames(20)
-	if _dialog.visible:
+	if _dialog.visible and not _dialog.landed():
 		print("    still up: %s" % _dialog._status.text)
 	return (Time.get_ticks_msec() - began) / 1000
+
+
+## The sub-assemblies inside [param path] given a step to go on in: its
+## panels, built on the side.
+func _panels(path: String) -> int:
+	var count: int = 0
+	for unit: String in _world.unit_steps:
+		if Assemblies.parent_of(unit) == path:
+			count += 1
+	return count
+
+
+## Once it is down: the panel in the corner with its steps, its lists and its
+## booklet a press each, into a folder of the probe's; then Done.
+func _after_landing(bricks: int) -> void:
+	var controls: Dictionary = _dialog.controls_by_name()
+	_check("the panel stays up, out of the way, with what to do with it: %s" % [controls.keys()],
+		_dialog.landed() and controls.has("brickify_booklet") and controls.has("brickify_bricklink")
+		and controls.has("brickify_rebrickable") and not controls.has("brickify_go"))
+	_check("and says its steps: \"%s\"" % _dialog._status.text,
+		_dialog._status.text.contains("steps by courses") and _dialog._status.text.contains("stands"))
+	var middle: Vector2 = root.get_visible_rect().get_center()
+	_check("the model is not behind it: the middle of the window is not over the panel",
+		not _dialog.covers(middle) and _dialog.covers(_dialog.get_global_rect().get_center()))
+	await _shot("brickify_landed")
+	var lists: String = OS.get_user_data_dir().path_join("sessions/probe/brickify_ui")
+	DirAccess.make_dir_recursive_absolute(lists)
+	for name: String in DirAccess.get_files_at(lists):
+		DirAccess.remove_absolute(lists.path_join(name))
+	Download.folder = lists
+	(_main.get("_exports") as Exports).folder = lists
+	BookletMaker.open_when_written = false
+	await _click_control(_dialog._bricklink)
+	await _frames(10)
+	var xml: String = _read_one(lists, "_bricklink.xml")
+	var wanted: int = 0
+	for found: RegExMatch in RegEx.create_from_string("<MINQTY>(\\d+)</MINQTY>").search_all(xml):
+		wanted += found.get_string(1).to_int()
+	_check("BrickLink, pressed: its wanted list, %d pieces for its %d: \"%s\"" % [wanted, bricks,
+		_dialog._status.text], wanted == bricks)
+	await _click_control(_dialog._rebrickable)
+	await _frames(10)
+	var csv: String = _read_one(lists, "_rebrickable.csv")
+	_check("Rebrickable, pressed: its list, %d rows" % (csv.strip_edges().split("\n").size() - 1),
+		csv.begins_with("Part,Color,Quantity") and csv.strip_edges().split("\n").size() > 10)
+	var began: int = Time.get_ticks_msec()
+	await _click_control(_dialog._booklet)
+	await _frames(10)
+	while BookletMaker.busy and Time.get_ticks_msec() - began < 600000:
+		await process_frame
+	await _frames(10)
+	var html: String = _read_one(lists, "_instructions.html")
+	var plan: BrickifySteps.Plan = _dialog.last_steps
+	# The steps its pages hold, by the numbers each page of steps carries.
+	var numbers: Dictionary = {}
+	for found: RegExMatch in RegEx.create_from_string("data-steps=\"([^\"]*)\"").search_all(html):
+		for number: String in found.get_string(1).split(" ", false):
+			numbers[number] = true
+	var pages: int = numbers.size()
+	_check("Booklet, pressed: written in %d s, \"%s\", %d steps in it for its %d by courses" % [
+		(Time.get_ticks_msec() - began) / 1000, _dialog._status.text, pages, plan.steps if plan else 0],
+		html.length() > 1000 and plan != null and pages >= plan.steps)
+	await _click_control(_dialog._done)
+	await _frames(10)
+	_check("Done puts the panel away", not _dialog.visible)
+
+
+## The one file in [param folder] whose name ends so, read; "" when none.
+func _read_one(folder: String, ending: String) -> String:
+	for name: String in DirAccess.get_files_at(folder):
+		if name.ends_with(ending):
+			return FileAccess.get_file_as_string(folder.path_join(name))
+	return ""
 
 
 func _status() -> String:

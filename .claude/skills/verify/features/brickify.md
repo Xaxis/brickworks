@@ -2,7 +2,7 @@
 
 A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO at the size the person picks, the way a builder would lay it, and placed as a sub-assembly.
 
-<!-- covers: ui:brickify a 3d model, lib:brickify, lib:3d model files, cli:measure brickify against outside models -->
+<!-- covers: ui:brickify a 3d model, lib:brickify, lib:3d model files, cli:measure brickify against outside models, lib:brickify steps, lib:brickify from a collection -->
 
 ## Sub-features
 
@@ -174,7 +174,49 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   selected. The example car, untouched, is taken off first, and the model is
   then a new one called after the file ("bunny"), as it is on a bare, Untitled
   baseplate; it kept the car's name. `example_name_probe` (headless) brickifies
-  the bunny over the car and reads the name.
+  the bunny over the car and reads the name. Once it is down the panel stays
+  up, in the bottom right corner (`BrickifyDialog._set_landed`; `covers` lets
+  the model be turned and picked past it), saying its parts, its steps and
+  what the collection gave, with Booklet, BrickLink, Rebrickable (and What do
+  I need? when it was laid from the collection) and Done: the booklet and the
+  lists of the build alone (`Main._outside_of`: every other brick skipped),
+  through the app's own exporters (`Main._export_booklet` with a skip and the
+  build's name, `Exports.shop_list(shop, skip)`), the need page
+  `CollectionDialog.open("need")`. Escape or Done puts it away; choosing
+  another file, or a session's brickify, makes it the choosing panel again.
+- `brickify steps` (`src/assembly/brickify_steps.gd`, docs/BRICKIFY.md unit
+  7): the build's own steps, worked out on the worker after it is laid
+  (`BrickifyDialog.finish`) and put down as the file's "0 STEP" lines
+  (`BrickWorld.Brick.step`, `world.unit_steps`), so the timeline, the booklet
+  (`Instructions._authored_plan`) and a saved file follow them. A course a
+  plate tall a step, bottom up, a course of fewer than 8 parts in with the
+  next (`FEWEST`, at most 3 plates of them; the top's few with the course
+  under them); each part in the first step at which something already there
+  holds it by a stud (a stud of either part pushed into the other's
+  underside, any way it points, never against an edge: `_reach`, a
+  bottleneck path a bucket a step, so an inverted slope goes in with the
+  ledge it hangs from), not by resting on a tile; the sideways parts held to one another and facing one way, four
+  or more (`PANEL_FEWEST`; fewer go in where they stand), a panel (`<build> <side> panel N`, named after the build so no two
+  builds' panels are copies of one definition), a sub-assembly inside the
+  build built a layer out from the core a step and put on in the step the
+  last core part it is held to goes in. Every step's partial build weighed by
+  Balance (with the contacts read once, `Balance.measure(..., contacts)`, and
+  the sideways studs as links): standing, no stud joint past its working
+  load, nothing adrift; a step whose build would not stand goes in with the
+  next. `Plan.said()` is the line the status bar ends with. One undo takes the
+  build off with its panels' steps (`unitstep` entries in its group).
+- `brickify from a collection` (`src/assembly/brickify_stock.gd`): Lay it from
+  my collection (the panel's box, `owned` = the CollectionStore's
+  `on_hand`; `collection=true` over MCP). After laying, each part drawn from
+  what is on hand, what shows first: as it is (or its other moulding), then
+  the same part in the nearest colour on hand (CIEDE2000; a part that shows
+  only within `shown_most`, 16, about white against light bluish grey; inside
+  any colour), then two smaller parts of its kind that make its footprint
+  (`Collection._splits`), kept only while the check passes in one piece (the
+  splits near what came apart taken back, three rounds, then all). What
+  shows is a stud-and-plate grid of the parts' boxes flooded from outside
+  (`BrickifyStock.shows`). `BrickifyStock.said` is the panel's line: drawn,
+  how, the colour difference where it shows, and the shortfall by lots.
 
 A session does it with the `brickify` tool (`src/net/app_tools.gd`): `url=`
 an http(s) link the app fetches (HTTPRequest, capped at `MeshFile.MAX_BYTES`;
@@ -184,7 +226,12 @@ so the panel opens on it; `pick=true` opens the window's file dialog for the
 person and says so (refused in a browser, which opens its chooser only from a
 click); neither lays what the panel shows. The choices go through
 `BrickifyDialog.choose`, so the panel shows what is laid, and laying is a job
-(see mcp.md) on the panel's own Working bar. `app_tools_probe` covers it.
+(see mcp.md) on the panel's own Working bar. `collection=true` lays it from
+the person's collection (refused, said, when they keep none). Its answer ends
+with how to get its booklet (export_model format=instructions) and its lists
+(format=bricklink, format=rebrickable), says when those would take in more
+than the build, and that there is no price (BrickLink's price guide needs a
+seller's keys). `app_tools_probe` covers it.
 
 ## How to reach it
 
@@ -266,6 +313,31 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   on their sides with slopes facing out; the 65 degree ledge laid upright. 2026-10-17
 #   on the unit 5 branch: 84 ok; sphere 416 on their sides (44), 1,948 parts (1,589);
 #   forty-stud bunny 286 (53), 2,146 (1,943); turned block 357 (81).
+XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd \
+    [-- --models=FILE@STUDS@UP,... --out=DIR]
+#   unit 7, buy it or build it from what you own (docs/BRICKIFY.md section 11): the
+#   bunny and the fox fixtures at 24 studs (or the models named), each laid, its steps
+#   worked out (every step's partial build standing by Balance, none held by nothing),
+#   put down by the panel's own _put_down beside a brick of somebody else's, the
+#   booklet's plan read back (its steps the build's own, a callout a panel, the other
+#   brick after them), each step's highest foot no lower than the last's, every
+#   step's build (about twelve of them, evenly spread) checked by the design check in the
+#   booklet's order (passing, nothing floating, standing; in pieces only each on the ground, as feet before the body joins them), and the BrickLink and
+#   Rebrickable lists of it alone written (Exports.shop_list with a skip) and their
+#   pieces counted. Then laid from a collection of set 10698's 790 parts
+#   (SetInventories, never the person's): drawn, how, never more than on hand, the
+#   shortfall, the colour cost against the build laid without it, still one piece;
+#   and again taking any colour where it shows. --out writes NAME_STUDS.ldr with its
+#   steps and buy.json. Broken on purpose (each part at its own course, or no step put
+#   in with the next) it fails: 352 held by nothing and the first step in 8 pieces;
+#   the fox's steps 8 and 9 with 3 stud joints overloaded. Its lists and files go to
+#   user://sessions/probe/brickify_buy (run it with XDG_DATA_HOME of its own).
+#   2026-10-17 on the unit 7 branch at a load of 35 to 65: all ok; the fixture bunny 44
+#   steps, every partial build standing; the bench's Stanford bunny at 48 studs 5,959
+#   parts in 104 steps (10 courses in with the next), 87 panels, the steps 13 s of a 46 s
+#   build; --steps-only over the 14 at 24 and 48 studs, every partial build of the 28
+#   standing; from 10698, the grey Stanford bunny at 24 draws 15.8% at 0.18 ΔE2000 where
+#   it shows (any colour: 26.9% at 5.7).
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
@@ -273,18 +345,31 @@ godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:U
 #   one heavy job: on a shared box only the ratio means anything.
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
-#   clicked: one sub-assembly "bunny" holding every part, all selected, the
-#   status line saying "buildable in one piece", one undo takes it all and redo
-#   puts it back; then a hollow sphere STL from the Build menu's command lands
-#   beside it. shots/brickify_dialog.png and shots/brickify_placed.png.
+#   clicked: one sub-assembly "bunny" holding every part (its side panels inside it),
+#   all selected, the status line saying "buildable in one piece"; the panel stays up
+#   in the corner saying its steps, BrickLink and Rebrickable pressed and their files
+#   read (every piece wanted), Booklet pressed and its pages' steps counted, Done puts
+#   it away; one undo takes it all, its panels' steps too, and redo puts it back; then
+#   a hollow sphere STL from the Build menu's command lands beside it.
+#   shots/brickify_dialog.png, shots/brickify_landed.png and shots/brickify_placed.png.
+#   With XDG_DATA_HOME of its own: its lists and booklet go to
+#   user://sessions/probe/brickify_ui.
 ```
 
 In a browser: `tools/web/brickify_flow.mjs` presses Ctrl-I, answers the page's file
 chooser with the bunny, types 30 into the size, presses Brickify, and reads
 `window.brickworksState.tree` for `bunny#1` holding every part on the baseplate
-(a first visit's example car is taken off to make room), `selected`, and
-`brickified`, the status line's sentence: buildable in one piece, no part
-missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
+(its own and its side panels', `bunny#1/bunny left panel 1#1`; a first visit's
+example car is taken off to make room), `selected`, and `brickified`, the status
+line's sentence: buildable in one piece, no part missing, its steps by courses.
+Then, from the panel that stays up, BrickLink and Rebrickable pressed (each
+download's pieces counted against the build's) and Booklet (its tab read for
+pages of steps holding at least the build's own steps, two of them
+photographed, `5_booklet_steps_N.png`); `--after=no` leaves those out. On a local
+export (`tools/export.sh web`, `serve.py build/web PORT --parts assets/generated/parts
+--delay 0`, the flow's `--url=http://127.0.0.1:PORT/index.html`), 2026-10-17 at a load of
+40 to 50: all ok, the bunny at 30 studs 1,224 parts in 51 steps with 11 panels, both
+lists 1,224 pieces, the booklet's tab filled in 740 s (its pictures drawn in software). Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
 the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
 the desktop. With `--model=tests/fixtures/brickify/fox.obj --studs=24 --least=60

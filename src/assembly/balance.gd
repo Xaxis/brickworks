@@ -336,10 +336,14 @@ var _floor_y: float = 0.0
 ## how it stands at the worst. [param links] are pairs of brick ids held by
 ## something other than studs — a pin, an axle, a clip, a hinge, a sticker's
 ## glue, a string's braids — when the caller has them already (the design
-## check does); found here otherwise.
-func measure(bricks: Array, poses: Array = [], links: Variant = null) -> Report:
+## check does); found here otherwise. [param contacts] is what rests on
+## what (Stability.contacts) in a model these bricks are part of, read once
+## for many of its parts weighed in turn (BrickifySteps: each step's partial
+## build); worked out here otherwise.
+func measure(bricks: Array, poses: Array = [], links: Variant = null,
+		contacts: Dictionary = {}) -> Report:
 	var report := Report.new()
-	if not prepare(bricks, links):
+	if not prepare(bricks, links, contacts):
 		return report
 	report.empty = false
 	report.support = _hull
@@ -395,20 +399,29 @@ func measure(bricks: Array, poses: Array = [], links: Variant = null) -> Report:
 ## then be weighed one at a time as they come ([method weigh_pose]): a part
 ## being dragged about its joint (GrabDrag), weighed every frame. False for a
 ## model with nothing to stand on.
-func prepare(bricks: Array, links: Variant = null) -> bool:
+func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) -> bool:
 	_read(bricks)
 	if _ids.is_empty():
 		return false
-	var judge := Stability.new()
-	judge.library = library
-	judge.lattice = lattice
-	var model: Array = []
-	for item: Variant in bricks:
-		var brick: BrickWorld.Brick = item
-		if _index_of.has(brick.id):
-			model.append(brick)
-	var graph: Dictionary = judge.contacts(model)
-	var boxes: Dictionary = graph["boxes"]
+	var graph: Dictionary = contacts
+	var boxes: Dictionary = {}
+	if contacts.is_empty():
+		var judge := Stability.new()
+		judge.library = library
+		judge.lattice = lattice
+		var model: Array = []
+		for item: Variant in bricks:
+			var brick: BrickWorld.Brick = item
+			if _index_of.has(brick.id):
+				model.append(brick)
+		graph = judge.contacts(model)
+		boxes = graph["boxes"]
+	else:
+		# Only these bricks' boxes: what they stand on is the lowest of them.
+		var all: Dictionary = contacts["boxes"]
+		for id: int in _ids:
+			if all.has(id):
+				boxes[id] = all[id]
 	_ground(boxes)
 	if _hull.size() < 3:
 		return false

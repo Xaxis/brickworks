@@ -527,7 +527,10 @@ func definitions() -> Array:
 				+ "they have, brickify with neither lays what the panel shows. Laying is a "
 				+ "job: the answer is a job number, and job gives the result: whether it is "
 				+ "one piece and stands (weighed), on what, any stand it was given, what was "
-				+ "joined, and anything left out, where and why."),
+				+ "joined, and anything left out, where and why; its steps, a course a step "
+				+ "with every step's build standing; and how to get its booklet and lists. "
+				+ "collection=true lays it from the person's collection: their parts and "
+				+ "colours first, then stand-ins, the shortfall said."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"url": {"type": "string", "description": "http(s) link to an .obj, .stl, .gltf or .glb"},
 				"pick": {"type": "boolean", "description": "open the file dialog for the person"},
@@ -542,6 +545,7 @@ func definitions() -> Array:
 					"description": "its own, all colour=, or its own cut to the limit= it uses most"},
 				"colour": {"type": "integer", "description": "LDraw colour, for colours one"},
 				"limit": {"type": "integer", "description": "how many colours, for colours limit"},
+				"collection": {"type": "boolean", "description": "lay it from the person's collection (My collection)"},
 			}},
 		},
 		{
@@ -1655,7 +1659,30 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		return refused.left(1).to_upper() + refused.substr(1) + "."
 	await dialog.brickify(work)
 	var said: String = dialog.outcome()
-	return said.left(1).to_upper() + said.substr(1) + "."
+	said = said.left(1).to_upper() + said.substr(1) + "."
+	if dialog.landed():
+		var world: BrickWorld = app.get("_world")
+		var store: ModelStore = app.get("_store")
+		var others: bool = false
+		for brick: BrickWorld.Brick in world.bricks():
+			if not store.scenery.has(brick.id) and not Assemblies.within(
+					Assemblies.path_of(brick), dialog.last_path):
+				others = true
+				break
+		said += ("\nIts booklet follows its own steps, a course a step with the side panels "
+			+ "built on their own: export_model format=instructions. Its parts: export_model "
+			+ "format=bricklink (a BrickLink wanted list) or format=rebrickable (a Rebrickable "
+			+ "list).")
+		if others:
+			said += " Those are of everything on the baseplate, and more is built there than this."
+		said += (" The person has the same on the Brickify panel, which stays up once it is "
+			+ "down: Booklet, BrickLink and Rebrickable, of this build alone.")
+		if not dialog.last_stock.is_empty():
+			said += (" parts_list which=need says what their collection is short of, with "
+				+ "what could stand in.")
+		said += (" No price: BrickLink's price guide needs a seller's API keys, which this "
+			+ "app does not have.")
+	return said
 
 
 ## The bytes at [param url], fetched as the app fetches pictures of a
