@@ -104,6 +104,15 @@ var shift: float = 0.0
 var twist := Basis.IDENTITY
 ## Where everything that moves stands now: brick id -> Transform3D.
 var placed: Dictionary = {}
+## The hoses, tubes and strings whose ends this grab parts, laid again as it
+## moves ([method drawn]); null for none.
+var flex: FlexFollow = null
+## The hoses' bends read ahead (GrabDrag), body -> FlexFollow.fit_all's.
+var hose_fits: Dictionary = {}
+## What held it the last time a pose was refused for a hose pulled to its
+## length ("the pneumatic tube from the valve"); "" when the last refusal
+## was the model in the way.
+var stretch_words: String = ""
 ## Gears the grabbed one turns, and what they turn on: brick id -> true.
 var coupled: Dictionary = {}
 ## What hangs on a driven gear's body by a joint of its own (an arm on its
@@ -272,7 +281,7 @@ func _chosen() -> String:
 			else "by %s" % geared[0].said(world)
 		if link.axis == Vector3.ZERO:
 			return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
-				+ "of a part on one of the loop's turning joints (its crank).") % bodies.named(moving_bodies))
+				+ "of a part on one of the loop's turning joints (its crank).") % _named())
 		loop = Linkage.read(bodies, link, body, couplings)
 	if loop != null and loop.why.is_empty():
 		# A linear actuator's screw holds its loop where it is: only its rod
@@ -285,16 +294,16 @@ func _chosen() -> String:
 			if joined.kind == "actuator" and joined != link and not by_input:
 				return _refuse("locked", ("Held by its linear actuator: %s is in a loop with %s, whose screw "
 					+ "holds it where it is (a screw is self-locking). Drag the actuator's rod, or turn its "
-					+ "input.") % [bodies.named(moving_bodies), bodies.named([joined.b if
+					+ "input.") % [_named(), bodies.named([joined.b if
 					bodies.parent_link.get(joined.b) == joined else joined.a])])
 	if loop != null:
 		if not loop.why.is_empty():
 			return _refuse("loop", "%s is held at both ends, %s and %s: %s." % [
-				bodies.named(moving_bodies), link.words().trim_prefix("on "), other_words, loop.why])
+				_named(), link.words().trim_prefix("on "), other_words, loop.why])
 		if not loop.can_move():
 			return _refuse("locked", ("Locked: this loop has no freedom. %s is held at both ends, "
 				+ "%s and %s, and %s closes neither a degree one way nor the other.") % [
-				_capital(bodies.named(moving_bodies)), link.words().trim_prefix("on "), other_words,
+				_capital(_named()), link.words().trim_prefix("on "), other_words,
 				loop.said()])
 		linkage = loop
 		moving_bodies = loop.moved
@@ -360,6 +369,7 @@ func _chosen() -> String:
 				if not moving.has(other):
 					_rest_overlap[other] = true
 					skip[other] = true
+					_keep_built_touching(key, other)
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -401,11 +411,7 @@ func _chosen() -> String:
 			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if mesh == null:
 				continue
-			var furthest: float = 0.0
-			for corner: int in 8:
-				var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - pivot
-				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
-			if furthest <= ON_THE_LINE * 1.42 or _round_on(key, pivot, axis):
+			if _thin_on(key, pivot, axis) or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
 				continue
 			var middle: Vector3 = mesh.bounds.get_center()
@@ -419,7 +425,12 @@ func _chosen() -> String:
 				continue
 			var carried: bool = linkage.moved.has(linkage.parent_of[n])
 			for key: int in bodies.members.get(linkage.child_of[n], PackedInt64Array()):
-				if _round_on(key, joined.point, joined.axis.normalized()):
+				# An axle or a pin on a joint's own line turns inside the holes
+				# it is in, in a loop as out of one: 42111-1's steering column,
+				# turned in its loop, met the bearing it turns in at once.
+				if not carried and joined.turns and _thin_on(key, joined.point, joined.axis.normalized()):
+					_on_the_line[key] = true
+				elif _round_on(key, joined.point, joined.axis.normalized()):
 					if carried:
 						_spin_with[key] = int(linkage.parent_of[n])
 					else:
@@ -429,11 +440,33 @@ func _chosen() -> String:
 	if linkage == null:
 		_gears()
 	begin_took["gears"] = (Time.get_ticks_usec() - clock) / 1000
+	# A hose whose one end moves and other does not bends between them.
+	var going: Dictionary = moving.duplicate()
+	going.merge(coupled)
+	going.merge(followers)
+	flex = FlexFollow.read(world, library, bodies, going, hose_fits)
+	if flex.items.is_empty():
+		flex = null
+	else:
+		rest.merge(flex.rests())
+	begin_took["hoses"] = flex.read_ms if flex != null else 0.0
 	placed = rest.duplicate()
-	said = "%s %s" % [bodies.named(moving_bodies), link.words()]
+	said = "%s %s" % [_named(), link.words()]
 	if linkage != null:
 		said += ", in %s" % linkage.said()
 	return state
+
+
+## What moves, in words: named by its rigid bodies, not a hose it carries,
+## which bends and is not what was taken hold of (an arm on a hinge with a
+## tube of 53 pieces hanging from it was "Pneumatic Tube 9L, 56 parts"); its
+## parts counted whole.
+func _named() -> String:
+	var rigid: Array = moving_bodies.filter(func(one: int) -> bool: return not bodies.flexible.has(one))
+	if rigid.is_empty() or rigid.size() == moving_bodies.size():
+		return bodies.named(moving_bodies)
+	var count: int = bodies.parts_of(moving_bodies).size()
+	return "%s, %d part%s" % [bodies.named(rigid).get_slice(",", 0), count, "" if count == 1 else "s"]
 
 
 static func _capital(words: String) -> String:
@@ -566,7 +599,7 @@ func _gears() -> void:
 		gear_note = "the gear reading says: %s" % str(solved["said"])
 		if bool(solved["locked"]) and not (solved["culprits"] as Array).is_empty():
 			var stays: String = bodies.what_stays(body)
-			_refuse("locked", "%s will not turn: its gears lock (%s).%s" % [bodies.named(moving_bodies),
+			_refuse("locked", "%s will not turn: its gears lock (%s).%s" % [_named(),
 				", ".join(PackedStringArray(solved["culprits"])),
 				"" if stays.is_empty() else " It is held between what stays: %s." % stays])
 		mechanism = null
@@ -605,7 +638,7 @@ func _worm_words(worm: Mechanism.Coupling) -> String:
 	return ("Held by a worm: %s turns the %d tooth gear that turns %s, and a gear cannot turn its worm "
 		+ "back (a worm is self-locking: its thread climbs at %.0f°, too shallow for the gear's teeth to "
 		+ "push it round). Turn the worm's axle instead.") % [bodies.named([worm_body]) if worm_body >= 0
-		else "the worm", worm.other.teeth, bodies.named(moving_bodies), climbs]
+		else "the worm", worm.other.teeth, _named(), climbs]
 
 
 ## A worm standing still whose gear the loop moves against it, from the gear
@@ -960,6 +993,17 @@ func has_room(at: Dictionary) -> bool:
 func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	var started: int = Time.get_ticks_usec()
 	tests += 1
+	if flex != null and from == 0:
+		# A hose pulled further than it reaches holds what it joins.
+		var holding: FlexFollow.Item = flex.stretched(at)
+		if holding != null:
+			met = holding.slots[0]
+			blocked_by = [holding.slots[0], holding.holders[0]]
+			stretch_words = holding.name
+			test_ms = float(Time.get_ticks_usec() - started) / 1000.0
+			frame_test_ms += test_ms
+			frame_tests += 1
+			return Vector2i(0, 0)
 	var keys: Array = moving.keys()
 	if not followers.is_empty():
 		keys.append_array(followers.keys())
@@ -986,6 +1030,8 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
 			met = key
+			blocked_by = []
+			stretch_words = ""
 			break
 		# Its box first: nothing but what it may press on anywhere near it,
 		# and its turned cover is not worked out at all. A sail turning in
@@ -1027,6 +1073,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		if not hit.is_empty():
 			blocked_by = [key, int(hit[0])]
 			met = key
+			stretch_words = ""
 			result = 0
 			break
 	test_ms = float(Time.get_ticks_usec() - started) / 1000.0
@@ -1114,6 +1161,21 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 	return out
 
 
+## Parts that touched where the model was built, kept from one grab to the
+## next: "brick id:part" -> {brick id: part} of what each touched before a
+## grab moved either. A grab forgives for good what its moving side touched
+## where it began; turned out and back in three moves, the third began away
+## from what the part was built against and met it short of where it was
+## built (10220-1's door at 18 degrees, 8855-1's steering). Moves in turn
+## are one drag: what touched as built is not in the way of coming back.
+static var _built_touching: Dictionary = {}
+## Parts a grab has moved since [member _built_touching] began, and the world
+## and part count it was kept for.
+static var _moved_since_built: Dictionary = {}
+static var _built_for: int = 0
+static var _built_count: int = -1
+
+
 ## Every room test asks a turned part's cover whole too, and counts where
 ## the two answer differently: for a probe.
 static var check_covers: bool = false
@@ -1128,7 +1190,8 @@ static var covers_differ: int = 0
 func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		turned: BrickLattice.TurnedCover) -> PackedInt64Array:
 	for other: int in builder.lattice.blockers_boxes(turned.loose_at(), 0, skip):
-		if skip.has(other) or not turned.meets(builder.lattice.boxes_of(other)):
+		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
+				or not turned.meets(builder.lattice.boxes_of(other)):
 			continue
 		if _overlapped_at_rest(other):
 			skip[other] = true
@@ -1148,7 +1211,8 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 		var other: int = int(hit[0])
 		if _overlapped_at_rest(other):
 			skip[other] = true
-		elif _slides_over(key, mesh, to, other) or _touching(mesh, to, other):
+		elif _scrubs(key, other) or _bends_aside(other) or _slides_over(key, mesh, to, other) \
+				or _touching(mesh, to, other):
 			skip[other] = true
 			forgiven.append(other)
 		else:
@@ -1157,6 +1221,28 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 	for other: int in forgiven:
 		skip.erase(other)
 	return hit
+
+
+## Whether [param other] bends out of the way: a hose's piece, a string's,
+## or a flexible part a file draws whole (a cable, a rubber band:
+## Bodies.bends). 8074-1's crane turned on its turntable and stopped where
+## its frame met the cable's skin hanging from it, and 10252-1's arm where it
+## met a rubber band.
+func _bends_aside(other: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(other)
+	return brick != null and Bodies.bends(library, brick.part_id)
+
+
+## Whether [param key] is a tyre and [param other] the baseplate it stands
+## on: rubber on the floor scrubs round as its wheel is steered, and the
+## floor is not in its way (that it goes no lower is the floor's own test).
+## 8063-1's and 42075-1's steering stopped where a front tyre met the
+## baseplate at the first degree.
+func _scrubs(key: int, other: int) -> bool:
+	if not bodies.scenery.has(other):
+		return false
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	return brick != null and Bodies._is_tyre(library.parts.get(brick.part_id))
 
 
 ## Whether [param key] at [param to] only slides over [param other] across a
@@ -1248,6 +1334,21 @@ static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
 ## is, so it is never tested (a tyre resting on the floor, turned with its
 ## axle, met the floor by its turned cover's cells); turning about a line
 ## beside it, along that one, it is its own shape moved ([member _round_self]).
+## Whether [param key] lies all within [constant ON_THE_LINE] of the line
+## through [param point] along [param way] (its box's corners within that
+## of it, a square's diagonal over): an axle or a pin on the line.
+func _thin_on(key: int, point: Vector3, way: Vector3) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return false
+	for corner: int in 8:
+		var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - point
+		if (off - way * off.dot(way)).length() > ON_THE_LINE * 1.42:
+			return false
+	return true
+
+
 func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
@@ -1288,9 +1389,55 @@ func _overlapped_at_rest(other: int) -> bool:
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
 				touching = true
-				break
+				_keep_built_touching(key, other)
+	if not touching:
+		touching = _touched_as_built(other)
 	_rest_overlap[other] = touching
 	return touching
+
+
+## Keep that [param one] and [param other] touch where they stand, where
+## neither has been moved by a grab since the model was built.
+func _keep_built_touching(one: int, other: int) -> void:
+	_built_for_world()
+	if _moved_since_built.has(one) or _moved_since_built.has(other):
+		return
+	for pair: Array in [[one, other], [other, one]]:
+		var a: BrickWorld.Brick = world.get_brick(int(pair[0]))
+		var b: BrickWorld.Brick = world.get_brick(int(pair[1]))
+		if a == null or b == null:
+			continue
+		var key: String = "%d:%s" % [a.id, a.part_id]
+		if not _built_touching.has(key):
+			_built_touching[key] = {}
+		(_built_touching[key] as Dictionary)[b.id] = b.part_id
+
+
+## Whether a part of the moving side touched [param other] where the model
+## was built ([member _built_touching]).
+func _touched_as_built(other: int) -> bool:
+	_built_for_world()
+	var them: BrickWorld.Brick = world.get_brick(other)
+	if them == null:
+		return false
+	var touched: Dictionary = _built_touching.get("%d:%s" % [other, them.part_id], {})
+	for key: Variant in touched:
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		if brick != null and brick.part_id == str(touched[key]) \
+				and (moving.has(int(key)) or followers.has(int(key))):
+			return true
+	return false
+
+
+## Starts the record again for another world, or where parts were added or
+## taken away since it was kept.
+func _built_for_world() -> void:
+	if _built_for == world.get_instance_id() and _built_count == world.brick_count():
+		return
+	_built_for = world.get_instance_id()
+	_built_count = world.brick_count()
+	_built_touching.clear()
+	_moved_since_built.clear()
 
 
 ## Every moving part whose sweep all the way round the joint's line, a
@@ -2349,7 +2496,7 @@ func land_begin(spin: Vector3, about: Vector3) -> bool:
 			rest[brick.id] = brick.transform
 			grams += Stability.grams(info)
 	placed = rest.duplicate()
-	said = bodies.named(moving_bodies)
+	said = _named()
 	angle = 0.0
 	_let_go_at = 0.0
 	_make_swing(free)
@@ -2525,22 +2672,41 @@ static func _turns_words(degrees: float) -> String:
 ## called [param words]. Returns how many moved.
 func commit(words: String, cells: Dictionary = {}) -> int:
 	var steps: Array = []
+	# The hoses laid where they are kept; one laid as more or fewer pieces
+	# than it has is laid afresh in its place, in the same step.
+	var swapping: Dictionary = {}
+	if flex != null:
+		flex.lay_into(placed)
+		swapping = flex.swapped()
 	for key: int in placed:
 		var brick: BrickWorld.Brick = world.get_brick(key)
-		if brick == null:
+		if brick == null or swapping.has(key):
 			continue
 		var to: Transform3D = placed[key]
 		if Grab._same(to, rest[key]):
 			continue
 		steps.append({"undo": "move", "brick": key, "transform": rest[key]})
+		_built_for_world()
+		_moved_since_built[key] = true
 		world.move_brick(key, to)
 		builder.lattice.release(key)
 		# Worked out ahead, a share a frame, for a big section (GrabDrag).
 		var boxes: Variant = cells.get(key)
 		builder.lattice.occupy_boxes(key, boxes if boxes != null
 			else builder.boxes_for(library.mesh_for(brick.part_id), to))
+	var moved: int = steps.size() + swapping.size()
+	if flex != null and not swapping.is_empty():
+		steps.append_array(flex.swap(builder, placed, rest))
 	builder.record(steps, words)
-	return steps.size()
+	return moved
+
+
+## [member placed] with the hoses this grab bends laid where it puts their
+## ends ([FlexFollow]): what is drawn.
+func drawn() -> Dictionary:
+	if flex != null:
+		flex.lay_into(placed)
+	return placed
 
 
 ## The parts that will move when it is kept: brick id -> where.
@@ -2566,5 +2732,5 @@ func position_words() -> String:
 ## The step's words: "turned the boom, 38 parts, on its turntable to 45°".
 func step_words() -> String:
 	var verb: String = {"slide": "slid", "ball": "turned"}.get(mode, "turned")
-	return "%s %s %s %s" % [verb, bodies.named(moving_bodies), link.words(),
+	return "%s %s %s %s" % [verb, _named(), link.words(),
 		"to " + position_words() if mode == "turn" else position_words()]

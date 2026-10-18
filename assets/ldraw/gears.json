@@ -83,15 +83,17 @@
     "3590": {"reach": [-30.0, 10.0]},
     "7557": {"reach": [-30.0, 10.0]}
   },
-  "racks_about": "Gear racks, in the app's axes (the part's own frame, +Y up): teeth along x, from and to the first and last tooth's middle as the LDraw file draws them, every one 8 LDU apart (ten teeth to four studs, so racks laid end to end keep their pitch); a pinion's centre stands pitch_line + its pitch radius above the rack's origin, measured on the OMR's sets (docs/MECHANISMS.md, section 12); z is where the teeth are across the rack, [lo, hi]. 2790a's teeth are not drawn from a tooth primitive and were not counted; 18942's pinion was not met in a set.",
+  "racks_about": "Gear racks, in the app's axes (the part's own frame, +Y up): teeth along x, from and to the first and last tooth's middle as the LDraw file draws them, every one 8 LDU apart (ten teeth to four studs, so racks laid end to end keep their pitch); a pinion's centre stands pitch_line + its pitch radius above the rack's origin, measured on the OMR's sets (docs/MECHANISMS.md, section 12); z is where the teeth are across the rack, [lo, hi]. round: the 1980s steering rack (2790a), a rod ringed with teeth 8 LDU apart, which a pinion meets from any side: pitch_line is then from the rod's line, measured on the eleven OMR sets that have it (an 8 at 16 to 18.9). groove: a channel open underneath, which studs standing up into it (half pins) guide along the rack's line (87761 and 64781, as their files draw them). housing: the part a rack slides in, on its line (18942 in 18940), its origin in the housing's frame at housing_at give or take a cell; its pinion measured on 42043-1 and 42078-1 (a 12 at 40).",
   "racks": {
     "3743": {"teeth": 10, "from": -36.0, "to": 36.0, "pitch_line": 4.0, "z": [-10.0, 10.0]},
     "6630": {"teeth": 12, "from": -44.0, "to": 44.0, "pitch_line": 2.0, "z": [-10.0, 10.0]},
     "6592": {"teeth": 18, "from": -68.0, "to": 68.0, "pitch_line": 2.0, "z": [-10.0, 10.0]},
     "32185": {"teeth": 26, "from": -100.0, "to": 100.0, "pitch_line": 0.0, "z": [-10.0, 10.0]},
     "6574": {"teeth": 6, "from": -20.0, "to": 20.0, "pitch_line": 4.0, "z": [-10.0, 10.0]},
-    "87761": {"teeth": 6, "from": -20.0, "to": 20.0, "pitch_line": 5.0, "z": [-7.0, 7.0]},
-    "64781": {"teeth": 22, "from": -84.0, "to": 84.0, "pitch_line": 5.0, "z": [-7.0, 7.0]}
+    "87761": {"teeth": 6, "from": -20.0, "to": 20.0, "pitch_line": 5.0, "z": [-7.0, 7.0], "groove": true},
+    "64781": {"teeth": 22, "from": -84.0, "to": 84.0, "pitch_line": 5.0, "z": [-7.0, 7.0], "groove": true},
+    "2790a": {"teeth": 8, "from": -28.0, "to": 28.0, "pitch_line": 8.0, "z": [-10.0, 10.0], "round": true},
+    "18942": {"teeth": 32, "from": -112.0, "to": 136.0, "pitch_line": 25.0, "z": [-10.0, 10.0], "housing": "18940", "housing_at": [-40.0, 20.0, 0.0]}
   },
   "rack_pitch": 8.0,
   "actuators_about": "Linear actuators and pneumatic cylinders whose body and rod are two parts, in the app's axes (the body's own frame, +Y up): the rod stands on the body's axis, its origin at from when drawn in and at to when drawn out, as the library's contracted and extended files (drawn) place it; tools/gears.py checks the two against those files. kind screw: a screw inside drives the rod as its input turns and holds it where it is left; kind air: a pneumatic cylinder, pushed by air. input: the part that turns a screw's input, where it is a part of its own; turns: turns of the input over the whole stroke, counted by builders on the Eurobricks forum (topic 196207, 2023-24: the small one 7,112 to 7,226 degrees in six runs, the 8 x 2 x 2 9,665 to 9,709 in six, the 12 x 2 x 2 43.75 turns once). Which way round extends it is not read from the parts.",

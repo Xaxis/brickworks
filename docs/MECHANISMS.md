@@ -2623,3 +2623,441 @@ local export was made, and the flow waited on the box past the time box).
 8283-1 is the one set the sweep could not read to the end: turning it made
 a copy of a shared sub-assembly its own, which gives its parts new
 numbers, and the row is empty.
+## 18. Hoses that follow what they join (G10)
+
+G7 let a hose bend rather than hold what it joins (`Bodies.flexible`), and
+left it where it was drawn: raise 42080-1's crane arm and the tubes from the
+cab stayed put, their ends out of the fittings on the arm (§16). G10 lays
+each such hose again as the section moves.
+
+**The cases.** `grab_probe -- --flex-survey` over 22 sets with pneumatic
+parts, hoses, strings or chains lists every flexible thing held at both ends
+and the joints between the two bodies holding them
+(`bench/results/grab10-2026-10-18/flex_survey.txt`). 96 hoses in 9 sets are
+held at both ends; 51 of them have a joint between their ends, so a grab
+moves one end and not the other. The other 45 run between parts that are
+pieces of their own (a T-piece or a valve no joint holds), each with its own
+anchor: a grab of either moves one end too.
+
+| set | what bends | its two ends | what moves one end |
+|---|---|---|---|
+| 42080-1 | 15 pneumatic tubes LDCad laid (165 and 166, read as 71533k01 and k03) | the cab's valve u9417 and the hose connectors on the arm (LQ-11, LQ-12); the arm head's cylinder 2947b and its connectors (LQ-9, LQ-10); a connector and a cross block across the turret (LQ-1) | the arm on its pin (493 to 606 parts, raised by its two cylinders); the arm head on its turntable (132); the head's cylinder on its axle; the turret on its turntable (1,346) |
+| 42043-1 | 14 pneumatic tubes | connectors on the arm and the 2 x 11 and 1 x 11 cylinders (19, 20, 22, 23); a pin and a cross block (1) | each cylinder on its axle or pin (3 or 4 parts) |
+| 42053-1 | 15 pneumatic tubes | the valves 47223 and the cylinders 19466 (LQ-07 to 10); the valves and the grabber's cylinder (LQ-11 to 14) | the cylinders on their axles; the boom (266 parts); the grabber |
+| 8110-1 | 9 pneumatic tubes | the valves on the crane arm and the curved cylinders 47224 (LQ-5 to 8) | the cylinders on their pins; the crane arm on its axle (501 parts) |
+| 8868-1 | 13 pneumatic tubes | the gripper's flex-system hoses and its 1 x 5 cylinder | the gripper's hinges |
+| 8851-1 | 8 pneumatic tubes | the T-pieces on hinges and a brick 1 x 16, a valve | the T-pieces on their hinges |
+| 8854-1 | 6 pneumatic tubes | the valve, T-pieces and cylinders 2793, all pieces of their own | either piece |
+| 42050-1 | 9 ribbed hoses LDCad laid (79 and 80, read as 71944k01 and k02) | pins and cross blocks on the engine and the frame | the engine's cone on its axle (23 parts) |
+| 42029-1 | 2 ribbed hoses | pins on the pickup's panel and its frame | the panel (44 parts), in a loop of 44 joints too big to solve: the grab is refused |
+
+Strings: no set surveyed has a string with end studs (71149) held at both
+ends; 42042-1's winch rope and 42082-1's rope are skins LDCad drew, one mesh
+each, which no layout here lays (CADTASK). Chains: every chain in the sets
+(8838-1, 8835-1, 42035-1, 8844-1, 42050-1, 10124-1) is held by no joint, link
+or sprocket, so no grab parts it, and none has its sprockets on two bodies a
+grab moves apart. A chain already couples its sprockets in the gear reading
+(`Mechanism._find_chains`, §2): turning one turns the others. Laying a chain
+again as its sprockets move is left. LSynth hoses (8273-1, 8275-1) and
+8049-1's tubes, whose middles are skins, are not Flex's kinds and are carried
+whole as before.
+
+**How it follows** (`src/assembly/flex_follow.gd`). At the press
+(`Grab._chosen`) every flexible body whose one end is held by a part that
+moves and the other by one that does not is read as an item: its kind
+(`Flex.strung`, so LDCad's 165 is the tube's end), its two ends off its own
+end pieces (`Flex.ends_of_item`), the part across the hose's joint nearest
+each tip, its length along its pieces as they lie, end to end, and its bend
+(`Flex.fit_bend`, as Reshape reads one, now from one to seven bend points).
+The bends of every hose in the model are read ahead with the bodies, on the
+worker (`GrabDrag._read_all`, `FlexFollow.fit_all`): read at a drag's first
+frame, 42080-1's six tubes held it half a second. Each drawn frame of a
+drag, a swing, a coast or a settle (`Grab.drawn`, wherever the window draws
+a grab) each item is laid again by its kind's own layout (`Flex.lay_swept`)
+between where its ends' holders put its tips, the way each leaves turned
+with them, its bend points carried by both ends, each by as much as it is
+near that end. One whose ends move alike is carried whole. Its pieces are
+drawn slot for slot onto its own; kept (`Grab.commit`), it is moved piece by
+piece where the layout lays as many, and otherwise laid afresh in its place,
+its own end parts and colours kept (`FlexFollow.swap`), in the move's one
+undo step.
+
+Three things the reading found. LDCad puts a pneumatic tube's bulged end
+(71533k01) on the other way round from the end Flex lays (71533k02): read as
+Flex's, each end left its fitting backwards, into the valve, and the tube was
+read back 15 to 21 LDU off where it lay. Which way an end points is now read
+from the piece next to it (`Flex._faces_away`), and an own end the other way
+round is laid turned half round (`FlexFollow._own_end`). LDCad lays a ribbed
+hose's rings closer than their pitch (42050-1's 4.8 LDU apart, not 6.25):
+its length by its rings was a quarter too long, so a hose's length is
+measured along its pieces, its rings' count used only where the two agree.
+And the layout's end tangents were never shorter than a fifth of the whole
+gap between the ends, which with bend points near the ends overshot each
+one: the least is now a fifth of the way to the next point the curve goes
+through, which changes nothing for a hose without bend points or one that
+fitted before.
+
+**A hose has a length.** A pose that would put a hose's ends further apart
+than it reaches is no pose (`Grab._test`, `FlexFollow.stretched`): how far it
+must reach is its tips' straight runs and the line between them, and near
+its length (within 15%) the shortest curve its layout lays there, which
+cannot cut straight across ends that leave their holes side by side; a hose
+drawn taut in a file may reach as far as it does where it stands. Not
+through its bend points: they lie on the hose as it was read, and a curve
+through them is as long as the hose already (42080-1's arm lowered by 4 LDU
+of rod read a tube as pulled to its length). Where the curve through them
+would come out longer than the hose, it straightens, laid between its ends
+alone. A hose to a small piece no joint holds (Bodies reaches it from no
+anchor: 42080-1's T-pieces, joined to the model by tubes alone) is laid to
+it and holds nothing by its length (`FlexFollow._hangs`): the T-piece would
+come with it, and stood where it was drawn, its tube held the arm 3° down.
+The turn is
+bisected back as a collision is, a swing or a coast stops dead there, and the
+status bar says "stopped: the pneumatic tube from the Technic Brick 1 x 2 with
+Hole (#7) holds it"; move_part, "it stopped where the pneumatic tube from …
+holds it, pulled to its full length".
+
+**Saved.** A hose LDCad laid keeps its path: when a sub-model of the file
+was an LDCad path of parts and its end caps no longer stand where the file
+had them, its `PATH_POINT`s are written along its pieces as they lie, a point
+about every 20 LDU pointing along the hose (LDCad's point runs along its own
+-y), its control points a third of the way to its neighbours, and its
+`PATH_CAP`s on its end pieces (`src/parts/ldcad_path.gd`), in a file
+written whole (a copy of a sub-model made its own, which posing 42080-1's arm
+does), where the path lines were lost before, and in one written back over
+its source, where they are replaced in place (no probe case writes that one
+yet). A path untouched is left byte for byte.
+
+**It stays fast.** A hose laid again is drawn by at most 100 points
+(`FlexFollow.POINTS`; three quarters of an LDU apart on a short hose, as
+Flex draws one, 7 on 42080-1's 700 LDU tubes), its length search started
+from the last frame's (`Flex._rising_root`: two or three tries where
+bisecting from nothing takes fifty, each length worked out without making
+the curve, `Flex._curve_length`), and how tight it bends left out of a
+drag's frame.
+
+**Measured** (`grab_probe -- --only=hoses`, windowed, on a box at load 30 to
+40; `bench/results/grab10-2026-10-18`):
+
+| case | what moved | its ends against their fittings | its length | laid again, a frame |
+|---|---|---|---|---|
+| a tube the app laid from the floor to an arm on a hinge | the arm, 20° | 0.000 LDU | 179.92 of 179.97 | 1.0 to 1.2 ms |
+| 42080-1, the cab's tube LQ-12 (709 LDU) | the arm lowered 6° on its pin, in its loop of 11 joints; 6 tubes bent | 0.000 | 708.93 of 709.10 | 8.0 ms for six (1.3 a tube) |
+| 42043-1, the arm's tube 19 (493 LDU) | its cylinder −6° on its axle; 2 tubes | 0.000 | 492.80 of 492.92 | 2.7 ms for two |
+| 42050-1, ribbed hose 1 (149 LDU) | the engine's cone 19.9° on its axle; 8 hoses | 0.007 | 147.86 of 149.03 | 9.0 ms for eight (1.1 a hose) |
+
+Each kept is one undo step, and the undo puts every part back exactly; the
+made tube and 42080-1's saved and opened again lie where they were kept, to
+0.000 LDU. 42080-1 was written whole (the arm's copy of a sub-model made its
+own), and the tube's sub-model has 37 `PATH_POINT`s, its first and last on
+its caps to 0.000 LDU. A tube laid as short as the layout lays it between
+the made model's two holes stops the arm at 23.5°, where it would have to
+reach 152.99 LDU and is 152.51; move_part says "it stopped where the
+pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it, pulled to
+its full length". Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
+(42080-1, 42043-1) on the worker. Read back by the layout where they lay, the
+tubes are 2.5 LDU (42050-1), 11.5 (42080-1, seven bend points) and 49 LDU
+(42043-1, one) off where LDCad drew them: at the first frame of a drag a
+hose moves into the layout's curve by that much.
+
+In a browser (`tools/web/grab_flow.mjs` on a local web export, SwiftShader),
+the made tube's arm dragged 16°: the page says one tube was laid again, at
+most 7.7 ms a frame, and the drag frames' own work was 4.8 ms on average and
+9.6 at worst over 19 frames, under the 33 ms gate. The app drew a frame
+for 19 of the drag's 20 moves, 60 ms apart on the clock, so it kept up with
+the pointer there; said, not gated. The flow's other cases passed but one:
+the pendulum's swing, with no hose in it, kept the page waiting 36.6 s on the
+loaded box (its gate is 5 s).
+
+With FlexFollow taken out (once, by a switch since removed), the made case
+fails at once: the arm's grab bends no tube (0 read), and every check after
+it stands on that. And 42080-1's cylinder case, with it out, drew the rod in
+to the end of its stroke (−70.44 LDU); with it in, before T-pieces held by
+nothing were let hang, a tube from one held the arm at −4.00.
+
+**Left for later.** 42043-1's tube 19 is read back by the layout only to
+49 LDU: LDCad routed it tighter than a pneumatic tube bends, and the kink
+penalty of the fit (as Reshape scores it) keeps one bend point, so the tube
+jumps into the layout's curve at the first frame. A T-piece or a valve held
+by nothing stays where it was drawn while its tubes are laid to it; carried
+by its tubes, it would come along. A chain is not laid again as its
+sprockets move apart (no set's chain has its sprockets on two bodies a grab
+parts). Skins (a rope, a band) and LSynth hoses are not Flex's kinds and are
+carried whole. A grab by its chain of joints (`GrabChain`) and Pose's
+sliders bend no hose. A hose hanging from what moves still reads its far end
+as a loop (`Bodies.loops_out`), so a hinge with a tube on it says "in a loop
+of 1 joints, closed by 0", as it has since G7. In a browser a tube's own
+piece is offered as a handle to take hold of ("71533k03 on its hinge").
+
+**The whole probe** (`grab_probe`, windowed) ran 402 checks, 368 before G10:
+400 passed. The two that failed were the actuators' "kept where it was let
+go": 42024-1's, which has no hose, passed in both runs since; 42080-1's was
+a tube from a T-piece held by nothing holding the arm (above), and with that
+fixed the actuators' run passes all 38. The whole probe was not run again
+after the last two fixes (the T-pieces, and a hose straightening where its
+bend points would overstretch it); the hoses' and the actuators' runs were.
+42080-1's cylinder drag now lays six tubes a frame: its own work a frame was
+20.5 ms on average, 32.4 at the 95th per cent and 43.1 at worst on a box at
+load 30 to 40 (G7 measured 9.5 to 12.7, 13.5 to 19.8 and 15 to 22), within
+the case's gate on the mean and the 95th per cent. flex_probe, flex_ui_probe
+(its reshape check reads `Flex.along_of` now), mechanism_probe and
+simulate_probe (41) pass.
+
+## 19. What steering still could not do, and the other moving things (G11)
+
+G9 swept every OMR set with a steering and left 136 of 169 that did not
+steer both ways and back. G11 takes the biggest groups left to their causes,
+then sweeps the other things a real set moves: a turntable's top, a door or
+a ramp, a boom or an arm on its hinge, pin or axle.
+
+**The base.** The staged release (17bc0382: m78 with G9, G10 and the
+whole-set placing fixes), swept again (`sweep_before`): 33 of 169, the same
+33 sets as G9's after table. The tables are in
+bench/results/grab11-2026-10-18.
+
+**A round steering rack.** The 1980s steering rack (2790a) is a rod ringed
+with teeth 8 LDU apart that runs through its holder (2791a), pushed by an 8
+tooth gear standing beside it at whatever angle the holder is turned round
+the rod. It was not in the gear table, so no pinion was read in it, and its
+rod in the holder's bore was read as a hinge that turns and does not slide:
+each of the eleven files that have it (8022, 8024, 8815, 8820, 8832) was
+"locked: this loop has no freedom". Measured on the eleven, the gear stands
+16 to 18.9 LDU from the rod's line (an 8's pitch radius is 10), at the rod's
+middle. The table now has it as a round rack (`round`, its pitch line 8 from
+the line); `Racks.find` reads a pinion in it on whatever side it stands,
+square to the rod and to the way out to it. Held to its holder's line as
+well, the loop closed to 0.007 LDU at 5 degrees, 0.028 at 10 and not at all
+(0.064) at 20: as the arms at the rod's ends swing, their pins go a little
+aside, and so does the rod, which the holder lets it (a rod 20 across in a
+bore 22 across). The rod is now loose in its holder (`Bodies._rides_loose`):
+its pinion and its arms hold it.
+
+**A rack in a housing.** 18942 (a 1 x 14 rack with a beam under it) slides
+in its housing (18940) on 42043-1's outriggers and 42078-1's tipper. It is in
+the table now (32 teeth, pitch line 25: a 12 stands at 40 on 42043-1 and
+42078-1's dump truck), with its housing: the rack's origin on the housing's
+line where the table puts it is a slide along that line that does not turn
+(`Bodies._rack_housings`, kind "housing"), and what else joins the two (an
+axle through the housing's slot) does not hold them as one. 42078-1,
+42079-1, 42061-1 and 42062-1 drive theirs with a worm, which is not read in
+a rack, and no longer count as having a steering (164 sets, from 169).
+
+**A steering rack's groove.** The 1 x 7 and 1 x 13 steering racks (87761,
+64781) are channels open underneath, as their files draw them, and the half
+pins standing up into them guide them as they slide (42069-1, 42076-1,
+42083-1, 42111-1). The half pins' studs were read as gripping the rack, and
+the rack was one with the frame. Studs standing up into a grooved rack from
+below now ride in its groove: a slide along its line as far as they stay
+under it (`Bodies._in_a_groove`, kind "groove"; the table's `groove`). Only
+those two racks are marked: 3743 has sockets underneath and clicks onto
+studs, and with every rack read so 8273-1, which steers on jumper plates,
+stopped coming back.
+
+**A rack its pinion holds, lying on a tile.** 6753-1's tow truck has its 1 x 4
+rack under a Technic brick that lies on a tile 1 x 6; nothing joins the two,
+so the brick was lodged in the tile (§16) and the rack was held with the
+frame. A piece with a rack in it that a pinion of another piece stands in is
+held by the pinion's teeth: it is not lodged where it rests, but slides
+there along the rack's line (`Bodies._driven_rack`, kind "rests"). The tow
+truck's rack now goes 10.67 LDU each way; read again after the two turns,
+its piece shares no cell with the tile, is held by nothing and stays, and
+the turn back turns nothing. Sliding it against what its pinion turns in
+then did not bring it back either, and was taken out; it is left.
+
+**A shaft on a loop's line.** An axle or a pin on a joint's own line turns
+inside the holes it is in; a grab left such parts untested where nothing
+but the joint moved, and tested them in a loop. 42111-1's steering column
+turned in its loop met the joiner it turns in at once ("the Technic Axle 4
+with Middle Cylindrical Stop meets the Technic Axle Joiner 3L"); 8862-1's
+too. In a loop, a part all within 6.5 LDU of a turning joint's line that
+the loop does not carry is not tested either (`Grab._thin_on`).
+
+**A socket drawn as plain rounds.** A steering link's ends (2739a) are ball
+sockets drawn from cylinders, not the socket primitive, so a towball in them
+(6628) was in nothing: the track rods were not in the steering's loop, and
+the rack slid without them. A bore a ball's size (8 LDU across the middle,
+no longer than the ball) is now a socket at its middle (`Joints.balls`).
+
+**A tyre on the floor.** 8063-1's and 42075-1's steering stopped where a front
+tyre met the baseplate at the first degree. Rubber on the floor scrubs round
+as its wheel is steered: the baseplate is not in a tyre's way
+(`Grab._scrubs`); that it goes no lower is the floor's own test.
+
+**What bends is not in the way.** A hose's piece was never tested; a cable or
+a rubber band a file draws whole (a skin) was, and 8074-1's crane stopped
+where its frame met its cable, 10252-1's arm where it met a rubber band. A
+part that bends (`Bodies.bends`) is no longer in a move's way
+(`Grab._bends_aside`).
+
+**What touched as built.** A grab forgives for good what its moving side
+touched where it began: the covers are 2 LDU cells and a part built flush
+against another meets it at the first degree. Turned out and back in three
+moves, the third began away from what the part was built against and met it
+short of where it was built: 10220-1's door stopped at 18 degrees, 8855-1's
+steering at 6. Pairs found touching before a grab moved either are now kept
+from one grab to the next (`Grab._built_touching`), so moves in turn forgive
+what one drag through the same angles forgives.
+
+**What is in the way, named.** A move stopped by the model said "something is
+in the way at once" or "it stopped where it meets the model". move_part and
+the status bar now say which two parts met ("the Technic Axle Towball (#1095)
+meets the Technic Steering Wheel Bearing ... (#1045)"), or which part would
+go through the floor (`GrabDrag._met_words`). The sweep's tables give them.
+
+**The sweep's own fixes.** A turn stopped short against the model says how
+far it went; the sweep turned back by the 30 it asked, and 12 of G9's 21 "not
+back" were that. It now turns back by the turn measured from where the part
+stood (the calls say whole degrees). A shared sub-assembly's copy made its
+own by a turn gave its parts new numbers and lost the sweep the parts it
+watched (8283-1, 8855-1): the sweep makes every copy its own before it turns
+anything. Each row says how far the steering arms turned (`arms_deg`).
+
+**Steering, swept** (`tools/steer_sweep.py`, bench/results/grab11-2026-10-18:
+`sweep_before`, `sweep_after3`; `sweep_after2` is the same without the last
+four fixes and is 38 of 164).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (17bc0382) | 33 of 169 |
+| all of G11, and a stud rule since taken out (`sweep_after3`) | 53 of 167 |
+| as committed: `sweep_after3`'s 53 swept again (`sweep_final`) | 51 of 167 |
+
+No set that steered stopped. The 18 that steer now: the eleven round-rack
+files (8022-1's racecar, robot and tow truck, 8024-1's racer, 8815-1 and its
+racer and road roller, 8820-1 and its racer and dune buggy, 8832-1), 42043-1
+and its flatbed trailer (the housing), 42076-1 (the groove), 42075-1 (a tyre
+on the floor), 8416-1, 8845-1 and 8862-1 (a shaft on the line, and the parts
+met named). The two of `sweep_after3` that do not: 8074-1's grader, which
+needed the stud rule (below), and 6753-1's tow truck (above). In every one that steers at a pinion and has steering arms, the
+arms turn with the rack (34 of 34). 167 count as having a steering, from
+169: 42061-1, 42062-1, 42078-1 and 42079-1 drive 18942 with a worm, which is
+not read in a rack (no steering read, not counted), and 8836-1 took longer
+than the sweep's 300 s twice (it failed before, "what stays moved"); 8283-1
+is read to the end now, and 850-1's and 950-1's lifts have their pinion read
+in their rack once the rack is no longer one body with it.
+
+| what stopped it | before | after |
+|---|---|---|
+| the rack (or far arm) did not move | 33 | 34 |
+| the pinion turned, its rack did not (one body with what it turns in) | 23 | 13 |
+| not back where it stood | 21 | 21 |
+| something is in the way at once | 15 | 18 |
+| its loop has no freedom | 13 | 4 |
+| held rigidly | 9 | 7 |
+| its arm hangs on a ball in a loop | 7 | 8 |
+| its rack is not in the gear table | 7 | 0 |
+| its loops are too big to solve | 6 | 8 |
+| what stays moved | 1 | 0 |
+| held by a worm or a screw | 1 | 1 |
+
+"Not back" is 21 again but not the same 21: twelve of G9's were the sweep
+turning back by 30 after a turn stopped short, and are gone; of those left,
+seven come back to within 0.02 to 0.07 LDU (8256-1, 5571-1, 5510-1, 8274-1,
+8840-1's B model, 8854-1, 8850-1's B model): a loop is closed to 0.05 LDU,
+and the turns there and back leave its idle freedoms (an axle free to slide
+in its hole, a link free to spin on its line) a few hundredths from where
+they stood. The rest stop on the way back where two parts meet, now named
+in each row (9393-1's "Technic Axle 3 with Stud meets the Technic Gear 12
+Tooth Bevel", 42077-1's steering link and wheel bearing, 42110-1's rack and
+frame).
+
+**The other moving things, swept** (`tools/move_sweep.py`,
+`movesweep_now`). 749 OMR files have a turntable, a door, ramp, hatch, gate,
+flap or lid, or say crane, excavator or boom; 407 have something of those
+kinds on a joint, and 574 things were moved +30, -60 and back over MCP: the
+top of a turntable, a door, and the biggest boom or arm (6 parts or more) on
+a hinge, a pin or an axle, which in a car is often a bonnet or a gearbox
+shaft. With every fix above but the last three:
+
+| kind | things | both ways and back |
+|---|---|---|
+| turntable | 130 | 72 |
+| door | 97 | 52 |
+| boom or arm | 347 | 123 |
+
+| what stopped it | things |
+|---|---|
+| two parts meet at once | 108 |
+| moves, not back where it stood | 104 |
+| its loop has no freedom | 57 |
+| held rigidly | 21 |
+| its loops are too big to solve | 11 |
+| held by a worm or a screw | 11 |
+| it did not move | 10 |
+| what stays moved | 4 |
+
+Every one moved at all; the refusals name what holds each. Of the 104 not
+back, 50 stop on the way back where two parts meet, 30 swing down under
+their weight on the way (a boom on a pin without friction falls when let
+go, as it should), and 22 drift. Two parts meeting, at once or on the way
+back, is the biggest cause (158 of 327), and the last three fixes are for
+it: what bends is not in the way, a tyre scrubs on the floor, and what
+touched as built is forgiven in each later grab.
+Swept again with them (`movesweep_after`): the 138 sets with a thing that
+two parts stopped, and every fourth of the rest with one that moved, 184
+sets and 285 things (run with a stud rule since taken out, below).
+
+| | both ways and back | two parts meet at once | not back |
+|---|---|---|---|
+| before the three (`movesweep_now`) | 87 of 285 | 108 | 60 |
+| after (`movesweep_after`) | 102 of 285 | 104 | 49 |
+
+Sixteen move both ways and back that did not (ten booms or arms, four
+turntables, two doors: 8074-1's crane on its turntable past its cable,
+10220-1's door back past what it was built against), and one that did no
+longer comes back (8110-1's arm, 2.3 LDU short). Most of what meets at once
+is not changed by them: covers 2 LDU a cell meeting a neighbour built flush
+(a plate meeting the tile beside it, two slopes, a door its frame's corner),
+which each row names.
+
+**A stud's tip, tried and taken out.** 8074-1's grader is drawn tipped 4.6
+degrees, and the studs of a brick under a row of tiles were read as reaching
+the plate on the tiles, which holds the rack: the lattice covers a part
+turned off the grid with every cell its boxes touch. A stud into a part
+turned off the grid held only where its tip is inside that part's box
+(`Bodies._tip_in`), and the grader steered; but 42080-1's crane then left
+five round bricks behind on its flexible joiners, and its cylinder's checks
+failed (with the rule, and with it narrowed to parts square to each other,
+when the grader stopped steering again). It is taken out, and the grader is
+left for later.
+
+**Proved** (bench/results/grab11-2026-10-18, `probes/`), on a box at load
+25 to 38: `grab_probe` windowed (`grab_probe_full2.log`) ran 439 checks and
+434 passed. Of the five that failed, 6753-1's turn back is no longer a
+check (above); "pulled too far, the tube is named" fails on 17bc0382 too
+(G10's, `--only=hoses --hose=made` on the base); two hose-laying costs (6.1
+and 27.3 ms a frame) and the big model's let-go frame (111 ms) are timing
+checks and pass run alone (`--only=hoses`: 31 of 32, the one G10's;
+`--only=big`: 5 of 5, 45 ms). The check added for the round rack's socket
+count was corrected after that run and passes alone (`--only=sockets`, 6
+ball joints for 4 links). mechanism_probe (54), mechanism_sets (2 sets) and
+simulate_probe (41) pass; `tools/gears.py check`: 0 problems. Each new
+check fails with its fix taken out, tried once in a copy with the fixes
+out: 42076-1 without the groove, 8022-1's racecar (the round rack's;
+8832-1's is the same rule) and 42043-1 without the table's entries, 8862-1
+without the shaft on the line, 42111-1's sockets without the bore rule
+(0 ball joints), 42083-1's meeting words without the names, 8074-1's crane
+and 10220-1's door without what bends and what touched as built. Pictures
+from above, cut over the rack, before and turned each way
+(`steer_SET_*.png`): 8022-1's racecar and 8832-1's roadster, whose front
+wheels the round rack turns one way and the other, and 8074-1's grader,
+taken with the stud rule (its wheels turned each way; without the rule it
+does not steer).
+
+**Tried and left.** A pinion read in its rack kept in it at the next reading
+with twice the slacks (teeth in mesh stay in mesh), for 8466-1 and
+42077-1, whose turn back found the pinion in no rack: neither came back,
+and it was taken out again.
+
+**Left for later**, with sets to start from: racks clicked onto a plate's
+studs in the file (8448-1's five models: 32185's peg holes take the 2 x 10
+plate's studs and the plate stands on the frame's studs; 8081-1, 854-1,
+5533-1); steering arms on balls (10295-1, 4404-1, 9392-1, 42021-1); loops
+too big to solve (42029-1, 42039-1, 42125-1, 42131-1, now with the track
+rods' balls in them); the far arm that does not follow (34, many bikes and
+single wheels, where the sweep's far arm is not a steering's); the 21 not
+back (above: a loop's idle freedoms, and parts meeting on the way back);
+8836-1, which takes longer than the sweep allows. In the moving things:
+loops with no freedom (57: a boom in a frame of pins), and what swings down
+under its weight on the way back, which is right, and which the sweep counts
+as not back.

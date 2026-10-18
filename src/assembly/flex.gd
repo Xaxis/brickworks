@@ -343,6 +343,79 @@ static func body_length(kind: String, real: float) -> float:
 	return real
 
 
+## The straight part's length for a body [param body] long along its path:
+## [method body_length] the other way.
+static func real_for(kind: String, body: float) -> float:
+	if kind == "string":
+		return body + 28.0
+	if kind == "flex_axle":
+		return body - 1.0
+	return body
+
+
+## The bend points that lay an item where it lies ([param line], its
+## centreline as it lies): none if laying it afresh puts it there, else one
+## halfway along, else two at the thirds, else three, and so on to seven
+## (a long hose LDCad laid through many points), the fewest within 2.5 LDU. Each try is scored by how far its path lies from the line at
+## worst, and a bend tighter than the part goes counts against it: a fit
+## that kinks it would kink it again at the first drag. [param lay] lays it
+## through the points it is given (a Flex.Laid, or null); [param own] is the
+## tightest the item bends where it lies or the kind may, the lesser.
+## [param scored] (when not 0) scores each try on about that many of the
+## line's points, evenly along it: a long hose's line is hundreds.
+static func fit_bend(lay: Callable, line: Path, own: float, scored: int = 0) -> PackedVector3Array:
+	var judged: Path = line
+	if scored > 0 and line.points.size() > scored:
+		judged = Path.new()
+		var every: float = float(line.points.size() - 1) / float(scored)
+		for n: int in scored + 1:
+			judged.points.append(line.points[mini(roundi(n * every), line.points.size() - 1)])
+		judged.measure()
+	var best := PackedVector3Array()
+	var best_score: float = _bend_score(judged, lay.call(PackedVector3Array()), own)
+	for fractions: Array in [[0.5], [0.4], [0.6], [0.33, 0.67], [0.25, 0.75],
+			[0.25, 0.5, 0.75], [0.2, 0.4, 0.6, 0.8], [0.17, 0.33, 0.5, 0.67, 0.83],
+			[0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]]:
+		if best_score < 2.5:
+			break
+		var trial := PackedVector3Array()
+		for fraction: float in fractions:
+			trial.append(line.at(line.total() * fraction))
+		var score: float = _bend_score(judged, lay.call(trial), own)
+		if score < best_score:
+			best_score = score
+			best = trial
+	return best
+
+
+static func _bend_score(line: Path, laid: Laid, own: float) -> float:
+	if laid == null:
+		return INF
+	return farthest_off(line, laid) + (50.0 if laid.tightest < own * 0.8 else 0.0)
+
+
+## How far from a laid path the farthest point of a centreline is.
+static func farthest_off(line: Path, laid: Laid) -> float:
+	if laid == null or laid.path == null:
+		return INF
+	var worst: float = 0.0
+	for point: Vector3 in line.points:
+		worst = maxf(worst, point.distance_to(laid.path.at(along_of(laid.path, point))))
+	return worst
+
+
+## How far along [param path] its point nearest [param point] is.
+static func along_of(path: Path, point: Vector3) -> float:
+	var best: float = 0.0
+	var nearest: float = INF
+	for n: int in path.points.size():
+		var gap: float = path.points[n].distance_squared_to(point)
+		if gap < nearest:
+			nearest = gap
+			best = path.along[n]
+	return best
+
+
 # -- paths ----------------------------------------------------------------------
 
 
@@ -431,9 +504,10 @@ static func circumradius(a: Vector3, b: Vector3, c: Vector3) -> float:
 ## A smooth curve from [param from] leaving along [param leave] to
 ## [param to] arriving along [param arrive], through [param controls] in
 ## between: Hermite pieces, the tangent at either end [param k] long and
-## between them Catmull-Rom's. Returned as points.
+## between them Catmull-Rom's. Returned as points, about [param step] LDU
+## apart.
 static func curve(from: Vector3, leave: Vector3, to: Vector3, arrive: Vector3,
-		controls: PackedVector3Array, k: float) -> PackedVector3Array:
+		controls: PackedVector3Array, k: float, step_ldu: float = SAMPLE) -> PackedVector3Array:
 	var knots := PackedVector3Array([from])
 	knots.append_array(controls)
 	knots.append(to)
@@ -452,7 +526,7 @@ static func curve(from: Vector3, leave: Vector3, to: Vector3, arrive: Vector3,
 		var m0: Vector3 = tangents[n]
 		var m1: Vector3 = tangents[n + 1]
 		var guess: float = p0.distance_to(p1) + (m0.length() + m1.length()) * 0.5
-		var steps: int = clampi(ceili(guess / SAMPLE), 16, 1600)
+		var steps: int = clampi(ceili(guess / step_ldu), 16, 1600)
 		for step: int in range(1, steps + 1):
 			var t: float = float(step) / float(steps)
 			var t2: float = t * t
@@ -469,13 +543,125 @@ static func _length_of(points: PackedVector3Array) -> float:
 	return run
 
 
+## How long [method curve] would be, worked out as it goes: the same points
+## in the same order, so the same length to the last bit, without making
+## the array. The length searches below ask it fifty times a laying.
+static func _curve_length(from: Vector3, leave: Vector3, to: Vector3, arrive: Vector3,
+		controls: PackedVector3Array, k: float, step_ldu: float = SAMPLE) -> float:
+	var count: int = controls.size() + 2
+	var run: float = 0.0
+	var last: Vector3 = from
+	for n: int in count - 1:
+		var p0: Vector3 = from if n == 0 else controls[n - 1]
+		var p1: Vector3 = to if n == count - 2 else controls[n]
+		var m0: Vector3 = leave * k if n == 0 \
+			else ((controls[n] if n < count - 2 else to) - (from if n == 1 else controls[n - 2])) * 0.5
+		var m1: Vector3 = arrive * k if n + 1 == count - 1 \
+			else ((to if n + 2 == count - 1 else controls[n + 1]) - (from if n == 0 else controls[n - 1])) * 0.5
+		var guess: float = p0.distance_to(p1) + (m0.length() + m1.length()) * 0.5
+		var steps: int = clampi(ceili(guess / step_ldu), 16, 1600)
+		for step: int in range(1, steps + 1):
+			var t: float = float(step) / float(steps)
+			var t2: float = t * t
+			var t3: float = t2 * t
+			var point: Vector3 = p0 * (2.0 * t3 - 3.0 * t2 + 1.0) + m0 * (t3 - 2.0 * t2 + t) \
+				+ p1 * (-2.0 * t3 + 3.0 * t2) + m1 * (t3 - t2)
+			run += point.distance_to(last)
+			last = point
+	return run
+
+
+## The [param x] where [param f] (rising with x) is [param wanted], to
+## within [param within]: from [param hint] (the last frame's answer, as a
+## hose is laid again frame after frame) by the secant, two or three tries
+## where bisecting from nothing takes fifty; bracketed and closed by false
+## position (the Illinois rule) where the secant strays. [param least] is
+## where f is known to be under it.
+static func _rising_root(f: Callable, wanted: float, least: float, hint: float,
+		within: float = 0.005) -> float:
+	var floor_x: float = least * 1.0001 + 0.0001
+	var x0: float = maxf(hint, floor_x)
+	var f0: float = float(f.call(x0)) - wanted
+	if absf(f0) <= within:
+		return x0
+	var x1: float = maxf(x0 * (1.02 if f0 < 0.0 else 0.98), floor_x)
+	var f1: float = float(f.call(x1)) - wanted
+	# Whatever is known to be either side, for the bracket if it comes to it.
+	var a: float = least
+	var fa: float = -INF
+	var b: float = INF
+	var fb: float = INF
+	for pair: Array in [[x0, f0], [x1, f1]]:
+		if float(pair[1]) < 0.0 and float(pair[0]) > a:
+			a = float(pair[0])
+			fa = float(pair[1])
+		elif float(pair[1]) >= 0.0 and float(pair[0]) < b:
+			b = float(pair[0])
+			fb = float(pair[1])
+	for _round: int in 6:
+		if absf(f1) <= within:
+			return x1
+		if is_equal_approx(f0, f1):
+			break
+		var x2: float = x1 - f1 * (x1 - x0) / (f1 - f0)
+		if x2 <= a or x2 >= b:
+			break
+		x0 = x1
+		f0 = f1
+		x1 = x2
+		f1 = float(f.call(x1)) - wanted
+		if f1 < 0.0:
+			a = x1
+			fa = f1
+		else:
+			b = x1
+			fb = f1
+	if absf(f1) <= within:
+		return x1
+	if is_inf(fa):
+		fa = float(f.call(a)) - wanted
+	var guard: int = 0
+	while is_inf(b) and guard < 40:
+		var trial: float = maxf(a, floor_x) * 1.5 + 1.0
+		var ft: float = float(f.call(trial)) - wanted
+		if ft < 0.0:
+			a = trial
+			fa = ft
+		else:
+			b = trial
+			fb = ft
+		guard += 1
+	var side: int = 0
+	for _round: int in 40:
+		var c: float = (a * fb - b * fa) / (fb - fa) if not is_equal_approx(fa, fb) else (a + b) * 0.5
+		if c <= minf(a, b) or c >= maxf(a, b):
+			c = (a + b) * 0.5
+		var fc: float = float(f.call(c)) - wanted
+		if absf(fc) <= within:
+			return c
+		if fc < 0.0:
+			a = c
+			fa = fc
+			if side == -1:
+				fb *= 0.5
+			side = -1
+		else:
+			b = c
+			fb = fc
+			if side == 1:
+				fa *= 0.5
+			side = 1
+	return (a + b) * 0.5
+
+
 ## The whole path of a swept part: straight out of the first connector,
 ## the bend, straight into the second. The bend's tangents are made as
 ## long as it takes for the path to be [param wanted] long, tip to tip.
 ## Returns {path, k, short}: short when even the shortest smooth path
 ## between the two is longer than the part.
 static func swept_path(a: Port, b: Port, controls: PackedVector3Array, wanted: float,
-		hangs: bool = false, up: Vector3 = Vector3.UP) -> Dictionary:
+		hangs: bool = false, up: Vector3 = Vector3.UP, hint: float = 0.0,
+		step_ldu: float = SAMPLE) -> Dictionary:
 	var from: Vector3 = a.start()
 	var to: Vector3 = b.start()
 	var free: float = wanted - a.lead - b.lead
@@ -483,6 +669,7 @@ static func swept_path(a: Port, b: Port, controls: PackedVector3Array, wanted: f
 	var shaped: PackedVector3Array = controls
 	var bend: PackedVector3Array
 	var k: float = 0.0
+	var sag_made: float = 0.0
 	var short: bool = false
 	if hangs and controls.is_empty():
 		# A string hangs: its middle drops until it is as long as it is.
@@ -490,45 +677,63 @@ static func swept_path(a: Port, b: Port, controls: PackedVector3Array, wanted: f
 		var high: float = maxf(free, 1.0)
 		var tangent: float = gap * 0.4
 		var middle: Vector3 = (from + to) * 0.5
-		var shortest: float = _length_of(curve(from, a.out, to, -b.out,
-			PackedVector3Array([middle]), tangent))
+		var shortest: float = _curve_length(from, a.out, to, -b.out,
+			PackedVector3Array([middle]), tangent, step_ldu)
 		short = shortest > free + 0.5
-		for _round: int in 40:
-			var sag: float = (low + high) * 0.5
-			var trial: float = _length_of(curve(from, a.out, to, -b.out,
-				PackedVector3Array([middle - up * sag]), tangent))
-			if trial < free:
-				low = sag
-			else:
-				high = sag
-		var dropped: float = 0.0 if short else (low + high) * 0.5
+		var dropped: float = 0.0
+		if not short and hint > 0.0:
+			# Laid again a frame on (FlexFollow): from where it hung then.
+			dropped = _rising_root(func(sag: float) -> float:
+				return _curve_length(from, a.out, to, -b.out, PackedVector3Array([middle - up * sag]),
+					tangent, step_ldu), free, 0.0, hint)
+		elif not short:
+			for _round: int in 40:
+				var sag: float = (low + high) * 0.5
+				var trial: float = _curve_length(from, a.out, to, -b.out,
+					PackedVector3Array([middle - up * sag]), tangent, step_ldu)
+				if trial < free:
+					low = sag
+				else:
+					high = sag
+			dropped = (low + high) * 0.5
+		sag_made = dropped
 		shaped = PackedVector3Array([middle - up * dropped])
 		k = tangent
-		bend = curve(from, a.out, to, -b.out, shaped, k)
+		bend = curve(from, a.out, to, -b.out, shaped, k, step_ldu)
 	else:
 		# The bend gets longer as its tangents do: find the length that
-		# makes it the part's. Never shorter than a fifth of the gap, which
-		# kinks it at both ends.
-		var low: float = maxf(gap * 0.2, 1.0)
-		var shortest: float = _length_of(curve(from, a.out, to, -b.out, shaped, low))
+		# makes it the part's. Never shorter than a fifth of the way to the
+		# next point it goes through, the other end or a bend point, which
+		# kinks it at both ends. (A fifth of the whole gap made a long hose
+		# LDCad laid through bend points near its ends overshoot each one:
+		# 42080-1's tubes, read where they lie, came out 20 LDU too long.)
+		var near: float = gap
+		if not shaped.is_empty():
+			near = minf(near, minf(from.distance_to(shaped[0]), to.distance_to(shaped[shaped.size() - 1])))
+		var low: float = maxf(near * 0.2, 1.0)
+		var shortest: float = _curve_length(from, a.out, to, -b.out, shaped, low, step_ldu)
 		if shortest >= free:
 			short = shortest > free + 0.5
 			k = low
+		elif hint > low:
+			# Laid again a frame on (FlexFollow): from the last frame's.
+			k = _rising_root(func(trial: float) -> float:
+				return _curve_length(from, a.out, to, -b.out, shaped, trial, step_ldu), free, low, hint)
 		else:
 			var high: float = maxf(gap, 8.0)
 			var guard: int = 0
-			while _length_of(curve(from, a.out, to, -b.out, shaped, high)) < free and guard < 30:
+			while _curve_length(from, a.out, to, -b.out, shaped, high, step_ldu) < free and guard < 30:
 				low = high
 				high *= 2.0
 				guard += 1
 			for _round: int in 48:
 				var mid: float = (low + high) * 0.5
-				if _length_of(curve(from, a.out, to, -b.out, shaped, mid)) < free:
+				if _curve_length(from, a.out, to, -b.out, shaped, mid, step_ldu) < free:
 					low = mid
 				else:
 					high = mid
 			k = (low + high) * 0.5
-		bend = curve(from, a.out, to, -b.out, shaped, k)
+		bend = curve(from, a.out, to, -b.out, shaped, k, step_ldu)
 	var path := Path.new()
 	path.points.append(a.tip)
 	if a.lead > 0.001:
@@ -542,7 +747,7 @@ static func swept_path(a: Port, b: Port, controls: PackedVector3Array, wanted: f
 		for n: int in range(1, back.size()):
 			path.points.append(back[n])
 	path.measure()
-	return {"path": path, "k": k, "short": short, "controls": shaped}
+	return {"path": path, "k": k, "short": short, "controls": shaped, "sag": sag_made}
 
 
 static func _line(from: Vector3, to: Vector3) -> PackedVector3Array:
@@ -639,12 +844,22 @@ class Laid extends RefCounted:
 	var slack: float = 0.0
 	## The bend points the path went through, for the handles.
 	var controls: PackedVector3Array = PackedVector3Array()
+	## What the length search came to, the next laying's start when it is
+	## laid again a frame on: its end tangents' length, or how far a string
+	## hangs.
+	var k: float = 0.0
+	var sag: float = 0.0
 
 
 ## A swept kind laid from [param a] to [param b], [param real] LDU long
 ## as a straight part, through [param controls].
+## [param hint] and [param step_ldu] are for one laid again a frame on
+## (FlexFollow): where its length search starts, and how finely its path is
+## drawn. [param judge] false leaves out how tight it bends and what is
+## wrong with it, which a drag's frame does not show.
 static func lay_swept(kind: String, a: Port, b: Port, real: float,
-		controls: PackedVector3Array = PackedVector3Array()) -> Laid:
+		controls: PackedVector3Array = PackedVector3Array(), hint: float = 0.0,
+		step_ldu: float = SAMPLE, judge: bool = true) -> Laid:
 	var spec: Dictionary = KINDS[kind]
 	var laid := Laid.new()
 	laid.wanted = body_length(kind, real)
@@ -652,11 +867,17 @@ static func lay_swept(kind: String, a: Port, b: Port, real: float,
 	var ends: Array = [a, b]
 	if kind == "string":
 		ends = [_string_port(a, b.tip), _string_port(b, a.tip)]
-	var shaped: Dictionary = swept_path(ends[0], ends[1], controls, laid.wanted, hangs)
+	var shaped: Dictionary = swept_path(ends[0], ends[1], controls, laid.wanted, hangs, Vector3.UP,
+		hint, step_ldu)
 	var path: Path = shaped["path"]
 	laid.path = path
+	laid.k = float(shaped["k"])
+	laid.sag = float(shaped["sag"])
 	laid.controls = shaped["controls"] if hangs else controls
-	laid.tightest = path.tightest(maxf(float(spec.get("radius", 4.0)) * 0.5, 1.5))
+	# Never finer than the path is drawn: three points across one of its
+	# corners read a bend far tighter than the curve it is drawn from.
+	laid.tightest = path.tightest(maxf(maxf(float(spec.get("radius", 4.0)) * 0.5, 1.5), step_ldu)) \
+		if judge else INF
 	if bool(shaped["short"]):
 		laid.warnings.append("the path is longer than this %s: %.0f LDU are needed and it is %.0f"
 			% [str(spec["label"]).to_lower(), path.total(), laid.wanted])
@@ -1351,7 +1572,8 @@ static func real_part(library: PartLibrary, kind: String, pieces: Array) -> Stri
 ## A swept item's two ends read off its end pieces, as free ports: where
 ## each tip is and which way the part leaves it. A file written by any
 ## tool that lays the same segments reads back the same way. Empty when
-## the pieces have no two ends.
+## the pieces have no two ends. [param pieces] are of the kind alone, its
+## own or another end of it (Flex.strung).
 static func ends_of_item(kind: String, pieces: Array) -> Array:
 	var spec: Dictionary = KINDS.get(kind, {})
 	var out: Array = []
@@ -1364,21 +1586,51 @@ static func ends_of_item(kind: String, pieces: Array) -> Array:
 			var port: Port = free_port(at * Vector3(reach, 0, 0), -at.basis.x, reach)
 			port.set_meta("end", which)
 			out.append(port)
-		elif str(spec.get("end", "")) == part:
+		elif spec.has("end") and part != str(spec.get("middle", spec.get("segment", ""))):
+			# Its end, or another end of the same thing a file drew it with:
+			# LDCad ends a pneumatic tube with the bulged end (71533k01).
 			match kind:
 				"ribbed_hose":
 					var inward: Vector3 = at.basis.y.normalized()
+					if _faces_away(spec, pieces, at.origin, inward):
+						inward = -inward
 					out.append(free_port(at.origin - inward * float(spec["tip"]), inward, 2.0))
 				"string":
 					var up: Vector3 = at.basis.y.normalized()
 					out.append(free_port(at.origin - up * 8.0, up, 0.0))
 				_:
-					out.append(free_port(at.origin, -at.basis.y.normalized(), 2.0))
+					var into: Vector3 = -at.basis.y.normalized()
+					if _faces_away(spec, pieces, at.origin, into):
+						into = -into
+					out.append(free_port(at.origin, into, 2.0))
 	if out.size() != 2:
 		return []
 	if out[0].has_meta("end") and int(out[0].get_meta("end")) == 1:
 		out.reverse()
 	return out
+
+
+## Whether an end at [param tip] leaving along [param way] leaves away from
+## the rest of the item: the middle of its piece nearest the tip is behind
+## it. LDCad puts a pneumatic tube's bulged end (71533k01) on the other way
+## round from the end Flex lays (71533k02), and read as Flex's it left its
+## fitting backwards, into the valve.
+static func _faces_away(spec: Dictionary, pieces: Array, tip: Vector3, way: Vector3) -> bool:
+	var middle: String = str(spec.get("middle", spec.get("segment", "")))
+	var scaled_y: bool = str(spec.get("family", "")) == "scaled" and str(spec.get("along", "y")) == "y"
+	var native: float = float(spec.get("native", 1.0))
+	var nearest: float = INF
+	var toward := Vector3.ZERO
+	for piece: Dictionary in pieces:
+		if str(piece["part"]) != middle:
+			continue
+		var at: Transform3D = piece["at"]
+		var centre: Vector3 = at.origin - at.basis.y * native * 0.5 if scaled_y else at.origin
+		var gap: float = centre.distance_to(tip)
+		if gap > 0.01 and gap < nearest:
+			nearest = gap
+			toward = centre - tip
+	return toward != Vector3.ZERO and toward.dot(way) < 0.0
 
 
 ## A swept item's centreline as it lies, from [param from] on: where its

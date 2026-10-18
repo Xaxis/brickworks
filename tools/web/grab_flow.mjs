@@ -22,7 +22,12 @@
 // Further left a gear 40 lies flat on an axle standing free in a plate's
 // hole: taken by its rim, turned round and let go while it turns, it coasts
 // on at the pointer's speed and
-// stops against its bearing's friction (Swing, flung). The page asks for the
+// stops against its bearing's friction (Swing, flung). Last it opens a tube
+// the app laid from a hole on the floor to one on an arm on a hinge
+// (tests/fixtures/grab10/made_hose.ldr) and drags the arm: the tube is laid
+// again between its holes every frame (FlexFollow), and the app's own work
+// in a drag frame with it is gated as the others are (--no-hose leaves it
+// out). The page asks for the
 // handles (window.brickworksGrabAsk): the app finds them only when asked.
 //
 //   ... --big=vendor/omr/files/42082-1.mpd --only-big
@@ -624,6 +629,41 @@ try {
       worst_ms: rested && rested.swing_worst_ms, simulated_s: rested && rested.swing_s,
       clock_s: rested && rested.swing_clock_s, stall_ms: stall };
     await shot("10_flywheel_after.png");
+  }
+  // A pneumatic tube laid from a hole on the floor to one on an arm on a
+  // hinge (tests/fixtures/grab10/made_hose.ldr, laid by the app): the arm
+  // dragged round, the tube is laid again between its holes every frame
+  // (FlexFollow), and the app's own work in a drag frame stays under the
+  // gate with it.
+  if (!args["no-hose"]) {
+    await open(path.resolve("tests/fixtures/grab10/made_hose.ldr"));
+    const hoseOpen = await until(state, (s) => s.bricks >= 40 && !/arriving/.test(s.said || ""), 240);
+    check(Boolean(hoseOpen), `the tube and its arm opened: ${(await state()).bricks} parts`);
+    await page.keyboard.press("Shift+F");
+    await page.waitForTimeout(4000);
+    const isArm = (h) => h.part === "3004" || h.part === "3700" || h.kind === "hinge";
+    const armAt = await until(grab, (g) => !g.grabbing && (g.handles || []).some(isArm), 60);
+    const hoseArm = armAt && armAt.handles.find(isArm);
+    if (check(Boolean(hoseArm), `the arm the tube goes to is there to take hold of (${armAt
+      ? armAt.handles.map((h) => `${h.part} on its ${h.kind}`).join(", ") : "none"})`)) {
+      await shot("11_hose_before.png");
+      const bent = await drag(hoseArm, { x: 70, y: 40 }, 20, "12_hose_mid_drag.png");
+      const keptHose = await until(grab, (g) => !g.grabbing && /hinge/.test(g.said || ""), 30);
+      check(Boolean(bent.mid && bent.mid.grabbing && Math.abs(bent.mid.angle || 0) > 3),
+        `the arm turns on its hinge while the button is down: ${bent.mid && bent.mid.angle}°`);
+      check(Boolean(keptHose) && Number(keptHose.hoses) >= 1,
+        `and the tube is bent with it: ${keptHose && keptHose.hoses} laid again, `
+        + `at most ${keptHose && keptHose.hose_worst_ms} ms a frame`);
+      check(Boolean(keptHose) && Number(keptHose.worst_ms) <= workLimit,
+        `the app's own work in a drag frame with the tube stays under ${workLimit} ms: `
+        + `mean ${keptHose && keptHose.mean_ms}, worst ${keptHose && keptHose.worst_ms} ms over `
+        + `${keptHose && keptHose.frames} frames`);
+      check(bent.stall <= stallLimit, `the page did not hang in the tube's drag: its longest wait ${bent.stall} ms`);
+      timings.hose = { said: keptHose && keptHose.said, hoses: keptHose && keptHose.hoses,
+        hose_worst_ms: keptHose && keptHose.hose_worst_ms, mean_ms: keptHose && keptHose.mean_ms,
+        worst_ms: keptHose && keptHose.worst_ms, frames: keptHose && keptHose.frames, stall_ms: bent.stall };
+      await shot("13_hose_after.png");
+    }
   }
 } catch (trouble) {
   if (!args["only-big"]) {

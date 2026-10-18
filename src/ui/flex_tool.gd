@@ -474,7 +474,7 @@ func add_bend() -> void:
 	var path: Flex.Path = _laid.path
 	var marks: Array[float] = [0.0]
 	for control: Vector3 in _controls:
-		marks.append(_along(path, control))
+		marks.append(Flex.along_of(path, control))
 	marks.append(path.total())
 	marks.sort()
 	var widest: int = 0
@@ -485,7 +485,7 @@ func add_bend() -> void:
 	var placed: PackedVector3Array = PackedVector3Array()
 	var inserted: bool = false
 	for control: Vector3 in _controls:
-		if not inserted and _along(path, control) > _along(path, point):
+		if not inserted and Flex.along_of(path, control) > Flex.along_of(path, point):
 			placed.append(point)
 			inserted = true
 		placed.append(control)
@@ -504,15 +504,6 @@ func clear_bends() -> void:
 	_put()
 
 
-static func _along(path: Flex.Path, point: Vector3) -> float:
-	var best: float = 0.0
-	var nearest: float = INF
-	for n: int in path.points.size():
-		var gap: float = path.points[n].distance_squared_to(point)
-		if gap < nearest:
-			nearest = gap
-			best = path.along[n]
-	return best
 
 
 # -- laying ------------------------------------------------------------------------
@@ -712,40 +703,10 @@ func _recover(pieces: Array) -> void:
 	line.measure()
 	if line.points.size() < 3:
 		return
-	# Each way scored by how far it lies from where the item is, and a
-	# bend tighter than the part goes counted against it: a fit that kinks
-	# it would kink it again at the first drag.
-	var best: PackedVector3Array = PackedVector3Array()
 	var own: float = minf(line.tightest(2.0), float(Flex.KINDS[kind].get("bend", 0.0)))
-	var best_score: float = _score(line, _compute(), own)
-	for fractions: Array in [[0.5], [0.4], [0.6], [0.33, 0.67], [0.25, 0.75],
-			[0.25, 0.5, 0.75]]:
-		if best_score < 2.5:
-			break
-		_controls = PackedVector3Array()
-		for fraction: float in fractions:
-			_controls.append(line.at(line.total() * fraction))
-		var score: float = _score(line, _compute(), own)
-		if score < best_score:
-			best_score = score
-			best = _controls
-	_controls = best
-
-
-static func _score(line: Flex.Path, laid: Flex.Laid, own: float) -> float:
-	if laid == null:
-		return INF
-	return _off(line, laid) + (50.0 if laid.tightest < own * 0.8 else 0.0)
-
-
-## How far from a path the farthest point of a centreline is.
-static func _off(line: Flex.Path, laid: Flex.Laid) -> float:
-	if laid == null or laid.path == null:
-		return INF
-	var worst: float = 0.0
-	for point: Vector3 in line.points:
-		worst = maxf(worst, point.distance_to(laid.path.at(_along(laid.path, point))))
-	return worst
+	_controls = Flex.fit_bend(func(controls: PackedVector3Array) -> Flex.Laid:
+		_controls = controls
+		return _compute(), line, own)
 
 
 # -- what is shown -------------------------------------------------------------------

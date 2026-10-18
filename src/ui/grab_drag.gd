@@ -75,6 +75,12 @@ var worst_settle_ms: float = 0.0
 ## Of those: checking where it stops, and working out its cells.
 var worst_verify_ms: float = 0.0
 var worst_lay_ms: float = 0.0
+## The hoses the last grab bent (Grab.flex), and the most laying them again
+## took in one of its frames, ms.
+var hoses: int = 0
+var hose_worst_ms: float = 0.0
+## Each hose's bend read ahead with the bodies (FlexFollow.fit_all).
+var _hose_fits: Dictionary = {}
 ## Bodies read once per revision, kept between drags.
 var _bodies: Bodies = null
 var _judge: Balance = null
@@ -183,6 +189,7 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 			return true
 		_ready_now()
 	grab.bodies = _bodies
+	grab.hose_fits = _hose_fits
 	grab.shared_mechanism = _mechanism
 	var state: String = grab.begin(brick_id, at, selection)
 	# A section this big is tested within a frame's share, and checked fully
@@ -211,6 +218,8 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	worst_lay_ms = 0.0
 	worst_follow_ms = 0.0
 	worst_weigh_ms = 0.0
+	hoses = grab.flex.items.size() if grab.flex != null else 0
+	hose_worst_ms = 0.0
 	_total_ms = 0.0
 	frames = 0
 	_said = ""
@@ -237,7 +246,10 @@ func motion(screen: Vector2) -> void:
 		worst_follow_said = "solving %.1f ms, %d room tests %.1f ms" % [grab.frame_solve_ms,
 			grab.frame_tests, grab.frame_test_ms]
 	worst_follow_ms = maxf(worst_follow_ms, following)
-	world.set_drawn(grab.placed)
+	world.set_drawn(grab.drawn())
+	if grab.flex != null:
+		hoses = grab.flex.items.size()
+		hose_worst_ms = maxf(hose_worst_ms, grab.flex.lay_ms)
 	var now: int = Time.get_ticks_msec()
 	if _judge != null and now - _weighed_at >= WEIGH_EVERY_MS:
 		_weighed_at = now
@@ -261,6 +273,8 @@ func motion(screen: Vector2) -> void:
 		line += " — too big to test every frame: checked when you pause"
 	elif grab.loop_short:
 		line += " — stopped: its loop closes no further that way"
+	elif grab.stopped and not grab.stretch_words.is_empty():
+		line += " — stopped: %s holds it" % grab.stretch_words
 	elif grab.stopped:
 		line += " — stopped: it meets the model"
 	if report != null and not report.empty:
@@ -343,7 +357,7 @@ func release() -> String:
 ## the worst frame 160 ms. The lattice is only read; nothing edits the model
 ## while a grab is being kept (is_settling).
 func _verify_off_thread(held: Grab) -> void:
-	world.set_drawn(held.placed.duplicate())
+	world.set_drawn(held.drawn().duplicate())
 	held.budget_ms = INF
 	_verify_task = WorkerTasks.add(func() -> void:
 		while not held.verify_step():
@@ -478,6 +492,14 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 func _own_copies(held: Grab) -> String:
 	if assemblies == null:
 		return ""
+	# The hoses it bends where it puts them, so their copies count; and a hose
+	# laid again has changed shape, not only moved, though every piece moved.
+	held.drawn()
+	var bent: Dictionary = {}
+	if held.flex != null:
+		for item: FlexFollow.Item in held.flex.items:
+			if item.laid != null:
+				bent[item.path] = true
 	var moved: Dictionary = held.changed()
 	var paths: Dictionary = {}
 	for key: int in moved:
@@ -498,7 +520,7 @@ func _own_copies(held: Grab) -> String:
 			if not moved.has(brick.id):
 				whole = false
 				break
-		if whole:
+		if whole and not bent.has(path):
 			continue
 		assemblies.make_unique(path)
 		said.append("this copy of %s is now its own; the other %s stay%s as %s" % [
@@ -801,6 +823,7 @@ func for_session(input: Dictionary) -> String:
 	held.builder = builder
 	held.library = library
 	held.bodies = _bodies
+	held.hose_fits = _hose_fits
 	held.shared_mechanism = _mechanism
 	var selection: Dictionary = {}
 	if ids.size() > 1:
@@ -897,12 +920,16 @@ func for_session(input: Dictionary) -> String:
 	var moved: int = held.commit(held.step_words())
 	builder.fold_since(depth)
 	if moved == 0:
-		lines.append("It did not move: %s" % ("something is in the way at once." if stopped
-			else "it is already there."))
+		lines.append("It did not move: %s" % (("%s holds it, pulled to its full length." % held.stretch_words)
+			if stopped and not held.stretch_words.is_empty() else _in_the_way(held)
+			if stopped else "it is already there."))
 		return "\n".join(lines)
 	lines.append("Moved %d part%s: now %s (asked %s)%s%s%s." % [moved, "" if moved == 1 else "s",
 		held.position_words(), asked_for,
-		"; it stopped where it meets the model" if stopped else "",
+		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
+			if stopped and not held.stretch_words.is_empty()
+			else ("; it stopped where %s" % (_met_words(held) if not _met_words(held).is_empty()
+				else "it meets the model")) if stopped else "",
 		"; then " + swung if not swung.is_empty() else "",
 		"; " + own if not own.is_empty() else ""])
 	if weighs:
@@ -985,6 +1012,27 @@ func _chain_for_session(end: int, to: Variant) -> String:
 
 ## The parts a session names: a part's number, or every part of a
 ## sub-assembly by its name or path.
+## What stopped a move at once, named: the part of the moving side and the
+## part it met, or the floor it would go through. A session told only
+## "something is in the way" could not say what to take off.
+static func _in_the_way(held: Grab) -> String:
+	var met: String = _met_words(held)
+	return "something is in the way at once." if met.is_empty() else met + " at once."
+
+
+## The two parts that met where a move stopped ("the Technic Axle 4 (#54)
+## meets the Wheel Rim (#211)"), or the part that would go through the
+## floor; empty when the grab did not say.
+static func _met_words(held: Grab) -> String:
+	var bodies: Bodies = held.bodies
+	if bodies == null or held.met == 0 or held.world.get_brick(held.met) == null:
+		return ""
+	if held.blocked_by.size() == 2 and int(held.blocked_by[0]) == held.met \
+			and held.world.get_brick(int(held.blocked_by[1])) != null:
+		return "%s meets %s" % [bodies._part_named(held.met), bodies._part_named(int(held.blocked_by[1]))]
+	return "%s would go through the floor" % bodies._part_named(held.met)
+
+
 func _named_parts(asked: String) -> Array:
 	var text: String = asked.trim_prefix("#")
 	if text.is_valid_int():
@@ -1032,7 +1080,7 @@ func _process(_delta: float) -> void:
 	# let go, before it is kept.
 	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
 		grab.verify_step()
-		world.set_drawn(grab.placed)
+		world.set_drawn(grab.drawn())
 	if _laying != null:
 		var began: int = Time.get_ticks_usec()
 		# The cells on a worker (Builder.boxes_for is safe off the main
@@ -1073,7 +1121,7 @@ func _process(_delta: float) -> void:
 			_verify_task = -1
 			var checked: Grab = _settling
 			_settling = null
-			world.set_drawn(checked.placed)
+			world.set_drawn(checked.drawn())
 			_keep(checked)
 		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - waiting) / 1000.0)
 	elif _settling != null:
@@ -1081,7 +1129,7 @@ func _process(_delta: float) -> void:
 		var done: bool = _settling.verify_step()
 		worst_verify_ms = maxf(worst_verify_ms, float(Time.get_ticks_usec() - started) / 1000.0)
 		worst_settle_ms = maxf(worst_settle_ms, float(Time.get_ticks_usec() - started) / 1000.0)
-		world.set_drawn(_settling.placed)
+		world.set_drawn(_settling.drawn())
 		if done:
 			var held: Grab = _settling
 			_settling = null
@@ -1112,7 +1160,7 @@ func _swing_frame() -> void:
 	var held: Grab = _swinging
 	_swing_owed -= held.swing.advance(maxf(_swing_owed, 0.0), SWING_BUDGET_MS)
 	held.swing_pose()
-	world.set_drawn(held.placed)
+	world.set_drawn(held.drawn())
 	var told: int = Time.get_ticks_msec()
 	if told - _swing_told_at >= TELL_EVERY_MS and not held.swing.at_rest:
 		_swing_told_at = told
@@ -1227,7 +1275,7 @@ func _ready_ahead() -> void:
 	_still_lattice = builder.lattice.copy_for_reading()
 	var floor_ids: Dictionary = scenery.duplicate()
 	var held: Dictionary = builder.locked.duplicate()
-	var out: Array = [null, null, null, 0, {}]
+	var out: Array = [null, null, null, 0, {}, {}]
 	_ready_out = out
 	var still: BrickWorld = _still
 	var cells: BrickLattice = _still_lattice
@@ -1239,6 +1287,7 @@ func _ready_ahead() -> void:
 		out[1] = read[1]
 		out[2] = read[2]
 		out[4] = read[3]
+		out[5] = read[4]
 		out[3] = Time.get_ticks_msec() - started, false, "read the model's joints")
 	library.reading_in(_readying)
 	ready_off_thread = true
@@ -1249,7 +1298,7 @@ func _ready_ahead() -> void:
 func _ready_now() -> void:
 	var started: int = Time.get_ticks_msec()
 	var read: Array = GrabDrag._read_all(world, library, builder.lattice, scenery, builder.locked.duplicate())
-	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3]], world.revision)
+	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3], read[4]], world.revision)
 	ready_off_thread = false
 
 
@@ -1290,7 +1339,11 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 		mechanism = Mechanism.build(list, ground)
 		mechanism.join_universals(bodies.universals(), bodies)
 	took["gears"] = Time.get_ticks_msec() - clock
-	return [bodies, judge, mechanism, took]
+	clock = Time.get_ticks_msec()
+	# Each hose's bend, for the drag that bends it (FlexFollow).
+	var fits: Dictionary = FlexFollow.fit_all(from, parts, bodies)
+	took["hoses"] = Time.get_ticks_msec() - clock
+	return [bodies, judge, mechanism, took, fits]
 
 
 func _adopt(read: Array, revision: int) -> void:
@@ -1299,6 +1352,7 @@ func _adopt(read: Array, revision: int) -> void:
 	_mechanism = read[2]
 	ready_ms = int(read[3]) if read.size() > 3 else 0
 	ready_took = read[4] if read.size() > 4 else {}
+	_hose_fits = read[5] if read.size() > 5 else {}
 	if _bodies != null:
 		_bodies.world = world
 		_bodies.lattice = builder.lattice
@@ -1341,6 +1395,8 @@ func _tell_page() -> void:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)
 		state["stopped"] = grab.stopped
+	state["hoses"] = hoses
+	state["hose_worst_ms"] = snappedf(hose_worst_ms, 0.01)
 	state["handles_found"] = handles_found
 	state["handles_ms"] = snappedf(handles_ms, 0.1)
 	state["swinging"] = _swinging != null

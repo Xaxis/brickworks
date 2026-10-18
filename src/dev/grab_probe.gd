@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab9-2026-10-18"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab11-2026-10-18"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -97,6 +97,12 @@ func _run() -> void:
 				await _survey(file if file.begins_with("res://") else "res://" + file)
 		quit(0)
 		return
+	if "--flex-survey" in args:
+		for file: String in args:
+			if file.ends_with(".mpd") or file.ends_with(".ldr"):
+				await _flex_survey(file if file.begins_with("res://") else "res://" + file)
+		quit(0)
+		return
 	if "--gears" in args:
 		await _gears_headless()
 		quit(1 if _failures > 0 else 0)
@@ -129,6 +135,20 @@ func _run() -> void:
 			if arg.begins_with("--sweep-out="):
 				sweep_out = arg.trim_prefix("--sweep-out=")
 		await _steer_sweep(swept, sweep_out)
+		quit(0)
+		return
+	if only == "movesweep":
+		# The other moving things' sweep (tools/move_sweep.py): rows, not checks.
+		var listed: Array = []
+		var rows_out: String = OUT.path_join("movesweep.jsonl")
+		for arg: String in args:
+			if arg.begins_with("--list="):
+				for line: String in FileAccess.get_file_as_string(arg.trim_prefix("--list=")).split("\n"):
+					if not line.strip_edges().is_empty():
+						listed.append("res://" + line.strip_edges())
+			if arg.begins_with("--sweep-out="):
+				rows_out = arg.trim_prefix("--sweep-out=")
+		await _move_sweep(listed, rows_out)
 		quit(0)
 		return
 	for case: Array in CASES:
@@ -232,6 +252,24 @@ func _run() -> void:
 			await _steer_set(one)
 	if only.is_empty() or only == "stays":
 		await _what_stays()
+	if only.is_empty() or only == "meets":
+		await _says_what_meets()
+	if only.is_empty() or only == "sockets":
+		await _socket_rounds()
+	if only.is_empty() or only == "moving":
+		for one: Array in MOVING:
+			await _moving_check(str(one[0]), str(one[1]))
+	if only.is_empty() or only == "hoses" or only == "hose":
+		# --hose=WORD runs only the cases whose name has it ("made" the made one).
+		var asked_hose: String = ""
+		for arg: String in args:
+			if arg.begins_with("--hose="):
+				asked_hose = arg.trim_prefix("--hose=")
+		if asked_hose.is_empty() or asked_hose == "made":
+			await _hose_made()
+		for one: Array in HOSES:
+			if asked_hose.is_empty() or str(one[0]).contains(asked_hose):
+				await _hose_set(one[0], one[1], one[2], one[3], one[4] if one.size() > 4 else "")
 	if only.is_empty() or only == "big":
 		await _big()
 	if Grab.check_covers:
@@ -391,6 +429,548 @@ func _survey(path: String) -> void:
 					for c: Lbm.Connector in mesh.connectors:
 						print("      %s %s at %s way %s len %s r %s" % [c.kind, c.gender, c.position,
 							c.axis, c.length, c.radius])
+
+
+## Every flexible thing in [param path] whose ends are held by two bodies
+## (Bodies.flexible), and the joint between those two bodies that moves one
+## end and not the other: a row each, "FLEX|set|item|kind|parts|end one|end
+## other|what moves|on what".
+func _flex_survey(path: String) -> void:
+	if not await _open(path):
+		return
+	var bodies: Bodies = _bodies()
+	var source: SourceFile = _store.call("_live_source")
+	var rows: int = 0
+	for one: int in bodies.flexible:
+		var keys: PackedInt64Array = bodies.members[one]
+		var first: BrickWorld.Brick = _world.get_brick(keys[0])
+		var item: String = Assemblies.path_of(first)
+		var family: String = Flex.strung(_library, first.part_id)
+		var parts: Dictionary = {}
+		for key: int in keys:
+			var id: String = _world.get_brick(key).part_id
+			parts[id] = int(parts.get(id, 0)) + 1
+		var held: Dictionary = {}   ## other body -> [kind, its part, our part]
+		for link: Bodies.Link in bodies.touching.get(one, []):
+			var other: int = link.other(one)
+			if bodies.flexible.has(other) or held.has(other):
+				continue
+			var pair: Array = link.pairs[0]
+			var ours: int = int(pair[0]) if int(bodies.body_of[int(pair[0])]) == one else int(pair[1])
+			var theirs: int = int(pair[1]) if ours == int(pair[0]) else int(pair[0])
+			held[other] = [link.kind, theirs, ours]
+		var ldcad: bool = source != null and not first.unit.is_empty() \
+			and source.flexible.has(str(source.unit_sections.get(first.unit, "")))
+		var said := PackedStringArray()
+		for id: String in parts:
+			said.append("%s x%d" % [id, parts[id]])
+		if held.size() < 2:
+			print("FLEXONE|%s|%s|%s|%s|%s|held by %d body" % [path.get_file(), item, family,
+				"ldcad" if ldcad else "", ", ".join(said), held.size()])
+			continue
+		var others: Array = held.keys()
+		var a: int = others[0]
+		var b: int = others[1]
+		# The joint between the two: up from each to where they meet.
+		var up_a: Array = [a]
+		while bodies.parent_of.has(up_a[up_a.size() - 1]):
+			up_a.append(bodies.parent_of[up_a[up_a.size() - 1]])
+		var up_b: Array = [b]
+		while bodies.parent_of.has(up_b[up_b.size() - 1]):
+			up_b.append(bodies.parent_of[up_b[up_b.size() - 1]])
+		var meet: int = -1
+		for body: int in up_a:
+			if up_b.has(body):
+				meet = body
+				break
+		var joints := PackedStringArray()
+		if meet < 0:
+			joints.append("two pieces, each with its own anchor")
+		else:
+			for side: Array in [up_a, up_b]:
+				for body: int in side:
+					if body == meet:
+						break
+					var link: Bodies.Link = bodies.parent_link[body]
+					joints.append("%s moves %s" % [link.kind, bodies.named(bodies.beyond(body))])
+		var end_words := func(other: int) -> String:
+			var row: Array = held[other]
+			var brick: BrickWorld.Brick = _world.get_brick(int(row[1]))
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			return "%s #%d (%s) by %s" % [info.name if info != null else brick.part_id, int(row[1]),
+				brick.part_id, row[0]]
+		print("FLEX|%s|%s|%s|%s|%s|%s|%s|%s" % [path.get_file(), item, family, "ldcad" if ldcad else "",
+			", ".join(said), end_words.call(a), end_words.call(b), "; ".join(joints)])
+		rows += 1
+	print("FLEXSET|%s|%d parts|%d flexible bodies|%d held at both ends" % [path.get_file(),
+		_world.brick_count(), bodies.flexible.size(), rows])
+
+
+# -- hoses that follow (G10) -------------------------------------------------------
+
+
+## Real sets whose grab moves a section a laid hose is held by at one end:
+## [name, set, a word of the hose's sub-model, the turn, what is asked of
+## the save]. The joint turned is the one below where the bodies holding the
+## hose's two ends meet in the tree, on the first end's side.
+const HOSES: Array = [
+	["42080-1: the crane's arm lowered on its pin, its tubes from the cab", "res://vendor/omr/files/42080-1.mpd",
+		"pneumaticHoseLQ-12", -6.0, "ldcad"],
+	["42043-1: the arm's second section on its cylinder", "res://vendor/omr/files/42043-1.mpd",
+		"pneumaticHose-19", -6.0],
+	["42050-1: a ribbed hose to the engine turned on its axle", "res://vendor/omr/files/42050-1.mpd",
+		"technicRibHoseLQ-1", 20.0],
+]
+
+## A made model: a tower on the floor with an arm on a hinge, a Technic brick
+## with a hole on the arm and one on the floor beside it, for a tube laid
+## between the holes. LDraw's own units, y down.
+const MADE_HOSE := """0 A tube from the floor to an arm on a hinge
+0 Name: made_hose.ldr
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -72 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 0 -72 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 0 -96 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -120 10 1 0 0 0 1 0 0 0 1 3700.dat
+1 7 70 -24 80 1 0 0 0 1 0 0 0 1 3700.dat
+"""
+
+
+## A hose's pieces: the world's bricks under [param path], placed as [param
+## drawn] has them where it does, read as Flex reads them.
+func _hose_pieces(path: String, drawn: Dictionary = {}) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path:
+			out.append({"part": brick.part_id, "at": drawn.get(brick.id, brick.transform),
+				"id": brick.id, "color": brick.color_code})
+	return out
+
+
+## A hose's ends and how long it is, tip to tip along its pieces.
+func _hose_shape(kind: String, pieces: Array) -> Dictionary:
+	var ends: Array = Flex.ends_of_item(kind, pieces)
+	if ends.size() != 2:
+		return {}
+	var line: PackedVector3Array = Flex.centreline(kind, pieces, (ends[0] as Flex.Port).tip)
+	var run: float = 0.0
+	var last: Vector3 = (ends[0] as Flex.Port).tip
+	for point: Vector3 in line:
+		run += point.distance_to(last)
+		last = point
+	run += last.distance_to((ends[1] as Flex.Port).tip)
+	return {"ends": ends, "length": run}
+
+
+## How far the ends read off a hose's own [param pieces] are from where the
+## parts holding them put them in [param at]: each holder's move applied to
+## where its end's tip stood. The worst of the two, LDU.
+func _ends_held(item: FlexFollow.Item, pieces: Array, at: Dictionary) -> float:
+	var shape: Dictionary = _hose_shape(item.kind, pieces)
+	if shape.is_empty():
+		return INF
+	var worst: float = 0.0
+	for n: int in 2:
+		var holder: int = item.holders[n]
+		var move := Transform3D.IDENTITY
+		if holder != 0 and at.has(holder):
+			move = (at[holder] as Transform3D) * (item.holders_rest[n] as Transform3D).affine_inverse()
+		var wanted: Vector3 = move * (item.ends[n] as Flex.Port).tip
+		var best: float = INF
+		for port: Flex.Port in shape["ends"]:
+			best = minf(best, port.tip.distance_to(wanted))
+		worst = maxf(worst, best)
+	return worst
+
+
+## Two shapes of one hose alike, whatever the model was lifted by when it
+## opened: the gap between their tips and their lengths, LDU.
+static func _shapes_differ(a: Dictionary, b: Dictionary) -> float:
+	if a.is_empty() or b.is_empty():
+		return INF
+	var a0: Vector3 = (a["ends"][0] as Flex.Port).tip
+	var a1: Vector3 = (a["ends"][1] as Flex.Port).tip
+	var b0: Vector3 = (b["ends"][0] as Flex.Port).tip
+	var b1: Vector3 = (b["ends"][1] as Flex.Port).tip
+	return absf(a0.distance_to(a1) - b0.distance_to(b1)) + absf(float(a["length"]) - float(b["length"]))
+
+
+func _two_holes() -> Array:
+	var holes: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3700":
+			holes.append(brick.id)
+	var anchors: Array = []
+	for anchor: Flex.Anchor in Flex.anchors_in(_world, _library, "pneumatic_tube"):
+		if holes.has(anchor.brick) and not anchors.any(func(a: Flex.Anchor) -> bool:
+				return a.brick == anchor.brick):
+			anchors.append(anchor)
+	return anchors
+
+
+## A grab as the app makes one at a press: the bodies, the gear trains and the
+## hoses' bends read ahead (GrabDrag._ready_now), [param bodies] when given.
+func _new_grab(bodies: Bodies = null) -> Grab:
+	_grab._ready_now()
+	var held := Grab.new()
+	held.world = _world
+	held.builder = _builder
+	held.library = _library
+	held.bodies = bodies if bodies != null else _grab._bodies
+	held.hose_fits = _grab._hose_fits
+	held.shared_mechanism = _grab._mechanism
+	return held
+
+
+func _part_numbered(part_id: String) -> int:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			return brick.id
+	return 0
+
+
+## A tube laid by the app from a hole on the floor to one on an arm on a
+## hinge: turned, it follows; kept, one step to undo; saved and opened
+## again, where it was kept; pulled further than it reaches, it holds the
+## arm and is named.
+func _hose_made() -> void:
+	print("\nhoses: a tube laid from the floor to an arm on a hinge")
+	var file: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose.ldr")
+	DirAccess.make_dir_recursive_absolute(file.get_base_dir())
+	var out := FileAccess.open(file, FileAccess.WRITE)
+	out.store_string(MADE_HOSE)
+	out.close()
+	if not await _open(file):
+		_check("hoses: the made model opens", false)
+		return
+	var flex_tool: FlexTool = _main.get("_flex")
+	var anchors: Array = _two_holes()
+	var laid: Flex.Laid = await flex_tool.lay("pneumatic_tube", anchors, [], 0) if anchors.size() == 2 else null
+	_check("hoses: a pneumatic tube is laid between the two holes (%s)" % ("none" if laid == null
+		else "%d pieces %s" % [laid.pieces.size(), ", ".join(laid.warnings)]),
+		laid != null and laid.warnings.is_empty())
+	if laid == null:
+		return
+	var item_path: String = flex_tool.laid_item()
+	_builder.forget_history()
+	await _frames(3)
+	# As laid, for a browser's grab (tests/fixtures/grab10/made_hose.ldr).
+	_store.save_file(OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose_laid.ldr"), "made_hose")
+	var arm: int = _part_numbered("3004")
+	var before: Dictionary = _snapshot()
+	var rest_shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path))
+	var held := _new_grab()
+	var state: String = held.begin(arm, _world.get_brick(arm).transform.origin)
+	_check("hoses: the arm moves on its hinge (%s), and the tube is one it bends (%d)" % [state,
+		held.flex.items.size() if held.flex != null else 0], state == "moves" and held.flex != null
+		and held.flex.items.size() == 1)
+	if held.flex == null or held.flex.items.is_empty():
+		return
+	var item: FlexFollow.Item = held.flex.items[0]
+	# A degree a frame, as a drag goes.
+	var worst_ms: float = 0.0
+	for step: int in 20:
+		held.turn_to(float(step + 1))
+		var began: int = Time.get_ticks_usec()
+		held.drawn()
+		worst_ms = maxf(worst_ms, float(Time.get_ticks_usec() - began) / 1000.0)
+	var drawn: Dictionary = held.drawn()
+	var miss: float = _ends_held(item, _hose_pieces(item_path, drawn), drawn)
+	var shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path, drawn))
+	print("    turned %.1f°: ends %.3f LDU from their holes, %.2f LDU long against %.2f; laid again in %.2f ms at worst"
+		% [held.angle, miss, float(shape.get("length", 0.0)), float(rest_shape["length"]), worst_ms])
+	_check("hoses: turned 20°, the tube's ends stay in their holes (%.3f LDU)" % miss, miss < 0.3)
+	_check("hoses: and it is as long as it was (%.2f against %.2f LDU)" % [float(shape.get("length", 0.0)),
+		float(rest_shape["length"])], absf(float(shape.get("length", 0.0)) - float(rest_shape["length"])) < 1.0)
+	_check("hoses: laying it again costs a few ms a frame (%.2f ms at worst)" % worst_ms, worst_ms <= 2.0)
+	var moved: int = held.commit(held.step_words())
+	await _frames(2)
+	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
+	_check("hoses: kept, its pieces stand where it was drawn, ends in their holes (%.3f LDU, %d parts moved)"
+		% [kept_miss, moved], kept_miss < 0.3 and moved > 0)
+	_check("hoses: one step to undo (%s)" % (_builder.history_words(1)[0] if _builder.history_depth() > 0
+		else "none"), _builder.history_depth() == 1)
+	_builder.undo()
+	await _frames(2)
+	_check("hoses: one undo puts the tube and the arm back exactly (%s)" % _differs(before),
+		_differs(before) == "none differs")
+	_builder.redo()
+	await _frames(2)
+	var kept_shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path))
+	var saved: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose_turned.ldr")
+	if _store.save_file(saved, "made_hose_turned") and await _open(saved):
+		var again: Dictionary = {}
+		for path: String in Flex.items_in(_world):
+			again = _hose_shape("pneumatic_tube", _hose_pieces(path))
+		var off: float = _shapes_differ(kept_shape, again)
+		_check("hoses: saved and opened again, the tube is laid as it was kept (%.3f LDU)" % off, off < 0.1)
+	else:
+		_check("hoses: saved and opened again", false)
+	# Pulled too far: a tube 3% longer than the way between its holes
+	# holds the arm, and says so.
+	await _open(file)
+	await flex_tool.lay("pneumatic_tube", _two_holes(), [], 0)
+	var holes: Array = _two_holes()
+	var ports: Array = []
+	for n: int in 2:
+		var anchor: Flex.Anchor = holes[n]
+		ports.append(Flex.port_for("pneumatic_tube", anchor, Flex.side_toward(anchor,
+			(holes[1 - n] as Flex.Anchor).at, 1), n))
+	# As FlexFollow measures how far a hose must reach: its tips' short runs
+	# out of the holes and the line between (Flex.ends_of_item reads 2 LDU).
+	var taut: float = ((ports[0] as Flex.Port).tip + (ports[0] as Flex.Port).out * 2.0).distance_to(
+		(ports[1] as Flex.Port).tip + (ports[1] as Flex.Port).out * 2.0) + 4.0
+	var short: Flex.Laid = Flex.lay_swept("pneumatic_tube", ports[0], ports[1], taut * 1.03)
+	var adds: Array = []
+	for piece: Dictionary in short.pieces:
+		adds.append({"part": piece["part"], "color": 0, "at": piece["at"], "path": flex_tool.laid_item()})
+	var old := PackedInt64Array()
+	for piece: Dictionary in _hose_pieces(flex_tool.laid_item()):
+		old.append(int(piece["id"]))
+	_builder.swap_bricks(old, adds)
+	_builder.forget_history()
+	await _frames(2)
+	arm = _part_numbered("3004")
+	var words: String = ""
+	for way: float in [-1.0, 1.0]:
+		var pull := _new_grab()
+		var began: String = pull.begin(arm, _world.get_brick(arm).transform.origin)
+		for step: int in 170:
+			pull.turn_to(way * float(step + 1))
+			if pull.stopped:
+				break
+		if pull.flex != null and not pull.flex.items.is_empty():
+			var its: FlexFollow.Item = pull.flex.items[0]
+			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f" % [
+				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach])
+		else:
+			print("    no hose bent")
+		print("    turned %s: %s, to %.1f°, %s%s" % ["back" if way < 0.0 else "on", began, pull.angle,
+			"stopped" if pull.stopped else "not stopped", (" by " + pull.stretch_words) if not pull.stretch_words.is_empty()
+			else (" meeting #%d" % int(pull.blocked_by[1]) if pull.blocked_by.size() > 1 else "")])
+		if not pull.stopped or pull.stretch_words.is_empty() or pull.flex == null:
+			continue
+		words = pull.stretch_words
+		var still: FlexFollow.Item = pull.flex.items[0]
+		var reach: float = pull.flex._reach_of(still, pull.placed)
+		print("    pulled %s: stopped at %.1f°, its ends' runs and the line between them %.2f LDU, the tube %.2f"
+			% ["back" if way < 0.0 else "on", pull.angle, reach, still.length])
+		_check("hoses: it stops where the tube is pulled to its length (%.2f of %.2f LDU)" % [reach,
+			still.length], reach <= still.reach + FlexFollow.SLACK and reach > still.reach - 3.0)
+		var tell: String = str(_grab.call("for_session", {"part": "#%d" % arm, "degrees": way * 170.0}))
+		print("    move_part: %s" % tell.replace("\n", " | "))
+		_check("hoses: move_part names the tube that holds it", tell.contains("pneumatic tube from"))
+		while _builder.history_depth() > 0:
+			_builder.undo()
+		break
+	_check("hoses: pulled too far, the arm stops and the tube is named as what holds it (%s)" % words,
+		words.begins_with("the pneumatic tube from"))
+	await _clean_slate()
+
+
+## A real set's hose bent by turning the joint between its two ends:
+## pictures before and after, its ends in their fittings, its length, one
+## undo; for [param ask] "ldcad", saved and opened again with LDCad's path
+## written between its new ends.
+func _hose_set(name: String, path: String, word: String, degrees: float, ask: String) -> void:
+	print("\nhoses: %s" % name)
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var hose: int = -1
+	var item_path: String = ""
+	for one: int in bodies.flexible:
+		var first: BrickWorld.Brick = _world.get_brick((bodies.members[one] as PackedInt64Array)[0])
+		if Assemblies.path_of(first).contains(word):
+			hose = one
+			item_path = Assemblies.path_of(first)
+			break
+	if hose < 0:
+		_check("%s: the hose %s is read as one that bends" % [name, word], false)
+		return
+	# The two bodies holding its ends, and the body just below where they
+	# meet in the tree, on the first one's side.
+	var held_by: Array = []
+	for link: Bodies.Link in bodies.touching.get(hose, []):
+		var other: int = link.other(hose)
+		if not bodies.flexible.has(other) and not held_by.has(other):
+			held_by.append(other)
+	var grab_at: int = 0
+	for side: int in [0, 1]:
+		if held_by.size() < 2 or grab_at != 0:
+			break
+		var up: Array = [held_by[1 - side]]
+		while bodies.parent_of.has(up[up.size() - 1]):
+			up.append(bodies.parent_of[up[up.size() - 1]])
+		var at: int = held_by[side]
+		var below: int = -1
+		while not up.has(at) and bodies.parent_of.has(at):
+			below = at
+			at = int(bodies.parent_of[at])
+		if below >= 0 and up.has(at):
+			grab_at = int((bodies.members[below] as PackedInt64Array)[0])
+	_check("%s: a joint between the hose's two ends is found" % name, grab_at != 0)
+	if grab_at == 0:
+		return
+	var before: Dictionary = _snapshot()
+	var held := _new_grab(bodies)
+	var state: String = held.begin(grab_at, _world.get_brick(grab_at).transform.origin)
+	print("    every hose's bend read ahead with the bodies in %s ms" % str(_grab.ready_took.get("hoses", "?")))
+	var item: FlexFollow.Item = null
+	if held.flex != null:
+		for one: FlexFollow.Item in held.flex.items:
+			if one.path == item_path:
+				item = one
+	print("    grabbed #%d %s: %s, %s; it bends %d hoses, read in %.1f ms" % [grab_at,
+		_world.get_brick(grab_at).part_id, state, held.said if state == "moves" else held.why,
+		held.flex.items.size() if held.flex != null else 0, held.flex.read_ms if held.flex != null else 0.0])
+	_check("%s: the grab moves (%s) and bends the hose (%s)" % [name, state, item.name if item != null
+		else "not read"], state == "moves" and item != null)
+	if item == null:
+		return
+	# The hose and what moves it, as far as a few hundred parts of it.
+	var view: PackedInt64Array = item.slots.duplicate()
+	for key: int in held.moving:
+		if view.size() < item.slots.size() + 300:
+			view.append(key)
+	_frame_on(view)
+	await _camera_still()
+	if _windowed:
+		await _shot("hose_" + path.get_file().get_basename(), "before")
+	var rest_shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path))
+	var worst_ms: float = 0.0
+	var first_ms: float = -1.0
+	var rest_ms: float = 0.0
+	var steps: int = maxi(roundi(absf(degrees) * 2.0), 1)
+	for step: int in steps:
+		held.turn_to(degrees * float(step + 1) / float(steps))
+		var began: int = Time.get_ticks_usec()
+		held.drawn()
+		var took: float = float(Time.get_ticks_usec() - began) / 1000.0
+		if first_ms < 0.0:
+			first_ms = took
+		else:
+			rest_ms = maxf(rest_ms, took)
+		worst_ms = maxf(worst_ms, took)
+	var drawn: Dictionary = held.drawn()
+	if "--debug" in OS.get_cmdline_user_args():
+		print("    stopped %s %s" % [held.stopped, held.stretch_words])
+		for one: FlexFollow.Item in held.flex.items:
+			print("      %s: reaches %.2f there, %.2f at rest, %.2f long, may reach %.2f; %d pieces, %d bend points, %s, loose %s"
+				% [one.name, held.flex._reach_of(one, held.placed), held.flex._reach_of(one, {}), one.length,
+				one.reach, one.slots.size(), one.controls.size(), one.path, one.loose])
+			for holder: int in one.holders:
+				var at: int = int(bodies.body_of.get(holder, -1))
+				while bodies.parent_of.has(at):
+					at = int(bodies.parent_of[at])
+				var rigid: Array = bodies.beyond(at).filter(func(b: int) -> bool: return not bodies.flexible.has(b))
+				print("        holder #%d: anchor %d %s, %d parts of its own, %d with hoses" % [holder, at,
+					bodies.anchor_why.get(at, []), bodies.parts_of(rigid).size(), bodies.parts_of(bodies.beyond(at)).size()])
+	var miss: float = _ends_held(item, _hose_pieces(item_path, drawn), drawn)
+	var shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path, drawn))
+	var at_rest: Flex.Laid = Flex.lay_swept(item.kind, item.ends[0], item.ends[1], item.real, item.controls)
+	var fit: float = Flex.farthest_off(item.line, at_rest)
+	if "--debug" in OS.get_cmdline_user_args():
+		var worst_at: float = 0.0
+		var worst_off: float = 0.0
+		for point: Vector3 in item.line.points:
+			var off: float = point.distance_to(at_rest.path.at(Flex.along_of(at_rest.path, point)))
+			if off > worst_off:
+				worst_off = off
+				worst_at = Flex.along_of(item.line, point) / item.line.total()
+		print("    fit: worst %.2f LDU at %.2f of the way; tips %s %s, out %s %s, leads %.1f %.1f; line %d points %.1f long, from %s to %s; laid %.1f long, k %.1f%s"
+			% [worst_off, worst_at, (item.ends[0] as Flex.Port).tip, (item.ends[1] as Flex.Port).tip,
+			(item.ends[0] as Flex.Port).out, (item.ends[1] as Flex.Port).out, (item.ends[0] as Flex.Port).lead,
+			(item.ends[1] as Flex.Port).lead, item.line.points.size(), item.line.total(), item.line.points[0],
+			item.line.points[item.line.points.size() - 1], at_rest.path.total(), at_rest.k,
+			" (" + ", ".join(at_rest.warnings) + ")" if not at_rest.warnings.is_empty() else ""])
+		print("    first laying %.1f ms (the bend read then), the rest %.2f ms at worst" % [first_ms, rest_ms])
+	print(("    turned %.2f° of %.1f: ends %.3f LDU from their fittings, %.2f LDU long against %.2f; "
+		+ "read again where it lay to %.2f LDU with %d bend points; %.2f ms a laying at worst; %s") % [held.angle,
+		degrees, miss, float(shape.get("length", 0.0)), float(rest_shape.get("length", 0.0)), fit,
+		item.controls.size(), worst_ms, "kept as its own pieces" if item.exact()
+		else "laid afresh when kept (%d pieces for %d)" % [item.laid.pieces.size(), item.slots.size()]])
+	_check("%s: its ends stay in their fittings as the section moves (%.3f LDU)" % [name, miss], miss < 0.5)
+	var length_was: float = float(rest_shape.get("length", 0.0))
+	_check("%s: it keeps its length (%.2f against %.2f LDU)" % [name, float(shape.get("length", 0.0)),
+		length_was], absf(float(shape.get("length", 0.0)) - length_was) < maxf(1.0, length_was * 0.01))
+	var bent: int = held.flex.items.size()
+	_check("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms at worst, %.2f a hose)" % [
+		name, bent, worst_ms, worst_ms / float(bent)], worst_ms / float(bent) <= 2.0)
+	_timings["hoses_" + path.get_file().get_basename()] = {"hoses": bent, "worst_ms": worst_ms,
+		"first_ms": first_ms, "fit_off_ldu": fit, "bend_points": item.controls.size(),
+		"read_ahead_ms": _grab.ready_took.get("hoses", -1)}
+	var moved: int = held.commit(held.step_words())
+	await _frames(3)
+	if _windowed:
+		await _shot("hose_" + path.get_file().get_basename(), "after")
+	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
+	_check("%s: kept, its ends are in their fittings (%.3f LDU, %d parts moved)" % [name, kept_miss, moved],
+		kept_miss < 0.5)
+	if ask == "ldcad":
+		var kept_shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path))
+		var saved: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/%s" % path.get_file())
+		var wrote: bool = _store.save_file(saved, path.get_file().get_basename())
+		var meta: Dictionary = _ldcad_path_of(FileAccess.get_file_as_string(saved) if wrote else "",
+			item_path, kept_shape)
+		print("    saved: %s" % meta.get("said", ""))
+		_check("%s: saved, LDCad's path in the file runs between the hose's new ends (%s)" % [name,
+			meta.get("said", "")], bool(meta.get("follows", false)))
+		if wrote and await _open(saved):
+			var off: float = _shapes_differ(kept_shape, _hose_shape(item.kind, _hose_pieces(item_path)))
+			_check("%s: saved and opened again, the hose is laid as it was kept (%.3f LDU)" % [name, off],
+				off < 0.1)
+		else:
+			_check("%s: saved and opened again" % name, false)
+		await _clean_slate()
+		return
+	_builder.undo()
+	await _frames(2)
+	_check("%s: one undo puts the hose and the section back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	await _clean_slate()
+
+
+## LDCad's path in the saved [param text] for the sub-model [param item_path]
+## is in: its points, and whether its first and last are the hose's two tips
+## as [param kept] has them (the app's axes; the file's are LDraw's, y and z
+## the other way), its caps on them too.
+func _ldcad_path_of(text: String, item_path: String, kept: Dictionary) -> Dictionary:
+	var key: String = Assemblies.definition(Assemblies.leaf(item_path)).to_lower()
+	var inside: bool = false
+	var points: Array = []
+	var caps: Array = []
+	for line: String in text.split("\n"):
+		var said: String = line.strip_edges()
+		if said.begins_with("0 FILE "):
+			# "42080 - pneumaticHoseLQ-12.ldr", or written whole
+			# "pneumatic_hose_lq_12.ldr", for the sub-model pneumaticHoseLQ-12.
+			inside = LdcadPath._letters(said.substr(7).get_basename()).ends_with(LdcadPath._letters(key))
+		elif inside and said.begins_with("0 !LDCAD PATH_POINT"):
+			points.append(_pos_ori(said))
+		elif inside and said.begins_with("0 !LDCAD PATH_CAP"):
+			caps.append(_pos_ori(said))
+	if points.size() < 2 or caps.size() != 2 or kept.is_empty():
+		return {"said": "%d points and %d caps in section %s" % [points.size(), caps.size(), key]}
+	var first: Vector3 = points[0]
+	var last: Vector3 = points[points.size() - 1]
+	var on_caps: float = first.distance_to(caps[0]) + last.distance_to(caps[1])
+	# Its length along its points against the hose's: the tips' gap here.
+	var gap_file: float = first.distance_to(last)
+	var gap_kept: float = (kept["ends"][0] as Flex.Port).tip.distance_to((kept["ends"][1] as Flex.Port).tip)
+	return {"follows": on_caps < 0.05 and absf(gap_file - gap_kept) < 0.1,
+		"said": "%d points, its ends on its caps to %.3f LDU and %.2f LDU apart, the hose's tips %.2f" % [
+			points.size(), on_caps, gap_file, gap_kept]}
+
+
+static func _pos_ori(line: String) -> Vector3:
+	var at: int = line.find("[posOri=")
+	if at < 0:
+		return Vector3.INF
+	var numbers: PackedStringArray = line.substr(at + 8, line.find("]", at) - at - 8).split(" ", false)
+	return Vector3(float(numbers[0]), float(numbers[1]), float(numbers[2]))
 
 
 func _parts_said(bodies: Bodies, link: Bodies.Link) -> String:
@@ -4721,6 +5301,24 @@ const STEERING: Array = [
 	# (48989), and one on jumper plates on half pins held so.
 	"res://vendor/omr/files/42050-1.mpd",
 	"res://vendor/omr/files/8273-1.mpd",
+	# G11 (MECHANISMS §19): a rack whose half pins ride in its groove.
+	"res://vendor/omr/files/42076-1.mpd",
+	# And one whose steering column, turned in its loop, met the bearing it
+	# turns in at once (a shaft on a loop's line, Grab._thin_on); the 1980s
+	# round rack (2790a), loose in its holder; a rack in its housing (18942
+	# in 18940, 42043-1's outriggers).
+	"res://vendor/omr/files/8862-1.mpd",
+	"res://vendor/omr/files/8832-1.mpd",
+	"res://vendor/omr/files/42043-1.mpd",
+]
+## Moving things moved +30, -60 and back over MCP as tools/move_sweep.py moves
+## them (G11, MECHANISMS §19), each [set, kind]: 8074-1's crane on its
+## turntable stopped where its frame met its cable's skin (what bends is not
+## in the way, Grab._bends_aside); 10220-1's door turned back met what it was
+## built against (Grab._built_touching).
+const MOVING: Array = [
+	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
+	["res://vendor/omr/files/10220-1.mpd", "door"],
 ]
 
 
@@ -4764,8 +5362,25 @@ func _steer_set(path: String) -> void:
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
 	var first := Vector3.ZERO
+	# Back by as far as it turned: a steering that meets its lock short of
+	# 30 degrees (8815-1's at 25) comes back by what it turned.
+	var went_so_far: float = 0.0
+	# Back by the turn measured from where the part stood, not the whole
+	# degrees each call says (a door turned 3.4 said "now 3°").
+	var start_at: Transform3D = _world.get_brick(driver).transform
+	var turn_way := Vector3.ZERO
+	var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
 	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
-		var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": step[0]}))
+		var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
+		# Back already, to a hundredth of a degree: nothing to turn.
+		var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+		if str(step[1]) != "back" or absf(asked) >= 0.01:
+			said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
+		var reached: RegExMatch = reached_re.search(said)
+		if reached != null and said.contains("Moved"):
+			went_so_far += float(reached.get_string(1))
+			if turn_way == Vector3.ZERO and absf(went_so_far) >= 1.0:
+				turn_way = _way_turned(driver, start_at) * signf(went_so_far)
 		print("    said: %s" % said.get_slice("\n", 0).left(400))
 		await _frames(3)
 		var went: Vector3 = _world.get_brick(mesh.rack).transform.origin - rack_at
@@ -4788,8 +5403,79 @@ func _steer_set(path: String) -> void:
 			ok = ok and most < 0.1
 			how = "every part back where it stood to %.3f LDU" % most
 		_check("%s: #%d %s turned %+d (%s): %s, what stays %s: %s" % [name, driver,
-			_world.get_brick(driver).part_id, int(step[0]), step[1], how,
+			_world.get_brick(driver).part_id, int(asked), step[1], how,
 			"still" if still else "MOVED", said.left(90).replace("\n", " | ")], ok)
+	_builder.forget_history()
+
+
+## A move stopped by the model says which two parts met (G11, MECHANISMS
+## §19): a session told only "something is in the way" could not say what to
+## take off. MEETS: [set, part number, degrees].
+const MEETS: Array = ["res://vendor/omr/files/42083-1.mpd", 1165, -60.0]
+
+
+## A steering link's end drawn as plain rounds is a ball socket (G11,
+## MECHANISMS §19): 42111-1's track rods (2739a) hang on the towballs (6628)
+## at the rack's ends by a ball joint each, where the rack used to slide and
+## leave them.
+func _socket_rounds() -> void:
+	print("\na socket drawn as plain rounds holds its ball")
+	if not await _open("res://vendor/omr/files/42111-1.mpd"):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var links: Array = []
+	var balls: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "2739a":
+			links.append(brick.id)
+		elif brick.part_id == "6628":
+			balls.append(brick.id)
+	var held: int = 0
+	for link_part: int in links:
+		for joined: Bodies.Link in bodies.touching.get(int(bodies.body_of[link_part]), []):
+			if joined.kind != "ball":
+				continue
+			for pair: Array in joined.pairs:
+				if (int(pair[0]) == link_part and balls.has(int(pair[1]))) \
+						or (int(pair[1]) == link_part and balls.has(int(pair[0]))):
+					held += 1
+	_check("42111-1: its %d steering links (2739a) are held on towballs by %d ball joints" % [links.size(), held],
+		not links.is_empty() and held >= links.size())
+	_builder.forget_history()
+
+
+func _moving_check(path: String, kind: String) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s's %s moved both ways and back over MCP" % [name, kind])
+	var row: Dictionary = await _move_sweep_one(path)
+	var found: Dictionary = {}
+	for thing: Dictionary in row.get("things", []):
+		if str(thing.get("kind")) == kind:
+			found = thing
+	var turns := PackedStringArray()
+	for step: Dictionary in found.get("steps", []):
+		turns.append("%+.0f°" % float(step.get("now", 0.0)) if bool(step.get("moved")) else "no")
+	_check("%s: its %s %s turns %s and is back to %.3f LDU%s" % [name, kind, str(found.get("driver", "?")),
+		", ".join(turns), float(found.get("back_ldu", -1.0)), "" if str(found.get("result")) == "moves"
+		else ": " + str(found.get("cause", "not found")).left(200)], str(found.get("result")) == "moves")
+	_builder.forget_history()
+
+
+func _says_what_meets() -> void:
+	print("\nmove_part says what a stopped move meets")
+	if not await _open(str(MEETS[0])):
+		return
+	_grab._ready_now()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % int(MEETS[1]), "degrees": float(MEETS[2])}))
+	var named := RegEx.create_from_string("the [^#]+ \\(#[0-9]+\\) (meets the [^#]+ \\(#[0-9]+\\)|would go through the floor)")
+	var found: RegExMatch = named.search(said)
+	_check("%s: #%d turned %+d says what it met: %s" % [str(MEETS[0]).get_file().get_basename(), int(MEETS[1]),
+		int(MEETS[2]), found.get_string() if found != null else said.left(200).replace("\n", " | ")],
+		found != null and (said.contains("stopped where") or said.contains("at once")))
 	_builder.forget_history()
 
 
@@ -4868,6 +5554,242 @@ func _steer_sweep(paths: Array, out_path: String) -> void:
 		print("    %s: %s" % ["steers" if bool(row.get("steers", false)) else "fails", str(row.get("cause", ""))])
 		_sweep_line(out_path, row)
 		_builder.forget_history()
+
+
+
+## The way [param key] has turned since [param start]: the axis of its turn,
+## unit; zero when it has not turned.
+func _way_turned(key: int, start: Transform3D) -> Vector3:
+	var q: Quaternion = (_world.get_brick(key).transform.basis.orthonormalized()
+		* start.basis.orthonormalized().inverse()).get_rotation_quaternion()
+	return q.get_axis().normalized() if q.get_angle() > 0.0001 else Vector3.ZERO
+
+
+## How far [param key] has turned since [param start] about [param way]
+## (move_part's positive turn), degrees; [param said] where the way is not
+## known yet.
+func _turn_since(key: int, start: Transform3D, way: Vector3, said: float) -> float:
+	if way == Vector3.ZERO:
+		return said
+	var q: Quaternion = (_world.get_brick(key).transform.basis.orthonormalized()
+		* start.basis.orthonormalized().inverse()).get_rotation_quaternion()
+	var angle: float = rad_to_deg(q.get_angle())
+	if angle > 180.0:
+		angle -= 360.0
+	return angle * signf(q.get_axis().dot(way)) if absf(angle) > 0.0001 else 0.0
+
+## Every copy of a shared sub-assembly made its own before a sweep turns
+## anything: a turn makes the copy it moves its own, and that gives its parts
+## new numbers, so the sweep lost the parts it was watching (8283-1, 8855-1).
+## How many were made their own.
+func _own_all_copies() -> int:
+	var assemblies: Assemblies = _grab.get("assemblies")
+	if assemblies == null:
+		return 0
+	var made: int = 0
+	for _round: int in 50:
+		var shared: String = ""
+		var paths: Array = Array(assemblies.paths())
+		paths.sort_custom(func(a: String, b: String) -> bool:
+			return Assemblies.segments(a).size() < Assemblies.segments(b).size())
+		for one: String in paths:
+			if not assemblies.copies_of(one).is_empty():
+				shared = one
+				break
+		if shared.is_empty():
+			break
+		assemblies.make_unique(shared)
+		made += 1
+	if made > 0:
+		await _frames(2)
+		_builder.forget_history()
+	return made
+
+
+## The other moving things of each set (tools/move_sweep.py): a turntable's
+## top, a door or ramp, a boom on its hinge or pin, each moved over MCP +30,
+## -60 and +30 degrees from where it stands, as a session moves one.
+func _move_sweep(paths: Array, out_path: String) -> void:
+	for path: String in paths:
+		var name: String = path.get_file().get_basename()
+		print("\nmovesweep: %s" % name)
+		_sweep_line(out_path, {"set": name, "begin": true})
+		var started: int = Time.get_ticks_msec()
+		var row: Dictionary = await _move_sweep_one(path)
+		row["set"] = name
+		row["ms"] = Time.get_ticks_msec() - started
+		for thing: Dictionary in row.get("things", []):
+			print("    %s %s: %s %s" % [thing.get("kind"), thing.get("driver"), thing.get("result"),
+				str(thing.get("cause", ""))])
+		_sweep_line(out_path, row)
+		_builder.forget_history()
+
+
+const _DOOR_WORDS: Array[String] = ["Door", "Ramp", "Hatch", "Gate", "Tailgate", "Flap", "Lid"]
+
+
+## Whether a part's name says it is a door, a ramp, a hatch, a gate, a flap
+## or a lid, as a word, and not its frame.
+static func _door_named(part_name: String) -> bool:
+	if part_name.contains("Frame") or part_name.begins_with("~"):
+		return false
+	for word: String in _DOOR_WORDS:
+		var at: int = part_name.find(word)
+		while at >= 0:
+			var before_ok: bool = at == 0 or not part_name[at - 1].is_valid_identifier()
+			var end: int = at + word.length()
+			var after_ok: bool = end >= part_name.length() or not part_name[end].is_valid_identifier()
+			if before_ok and after_ok:
+				return true
+			at = part_name.find(word, at + 1)
+	return false
+
+
+func _move_sweep_one(path: String) -> Dictionary:
+	var row: Dictionary = {"things": []}
+	if not await _open(path):
+		row["cause"] = "did not open"
+		return row
+	row["owned"] = await _own_all_copies()
+	row["parts"] = _world.brick_count()
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	if bodies == null:
+		row["cause"] = "its joints were not read"
+		return row
+	row["bodies"] = bodies.members.size()
+	var name_of := func(key: int) -> String:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+		return info.name if info != null else ""
+	# Up to one of each kind, the one with the most parts: each body hanging
+	# on the body it is joined to by a turntable, a hinge, a click hinge or
+	# a pin, and the part of it in that joint, which a session would take.
+	var best: Dictionary = {}   ## kind -> [parts, body, link, driver]
+	for key: Variant in bodies.parent_link:
+		var body: int = int(key)
+		var link: Bodies.Link = bodies.parent_link[body]
+		# A hose bends: it is not a thing that turns on a joint.
+		if not link.turns or bodies.flexible.has(body):
+			continue
+		var ids: PackedInt64Array = bodies.members.get(body, PackedInt64Array())
+		var minifig: bool = false
+		var door: bool = false
+		for id: int in ids:
+			var part_name: String = name_of.call(id)
+			if part_name.contains("Minifig"):
+				minifig = true
+			if _door_named(part_name):
+				door = true
+		if minifig:
+			continue
+		var kind: String = ""
+		if link.kind == "turntable":
+			kind = "turntable"
+		elif link.kind in ["hinge", "click", "pin", "axle"]:
+			# A boom pivots on a pin or an axle through its holes as often as on
+			# a hinge; a door does not hang on an axle.
+			kind = "door" if door and link.kind != "axle" else ("boom" if ids.size() >= 6 else "")
+		if kind.is_empty():
+			continue
+		var driver: int = int(ids[0])
+		for pair: Array in link.pairs:
+			for end: Variant in pair:
+				if int(bodies.body_of.get(int(end), -1)) == body:
+					driver = int(end)
+		if not best.has(kind) or ids.size() > int((best[kind] as Array)[0]):
+			best[kind] = [ids.size(), body, link, driver]
+	if best.is_empty():
+		row["cause"] = "%d bodies, none on a turntable, a hinge or a pin that is a door or of 6 parts" \
+			% bodies.members.size()
+		return row
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var now_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	for kind: String in ["turntable", "door", "boom"]:
+		if not best.has(kind):
+			continue
+		var chosen: Array = best[kind]
+		var driver: int = int(chosen[3])
+		var link: Bodies.Link = chosen[2]
+		var thing: Dictionary = {"kind": kind, "driver": "#%d %s" % [driver, _world.get_brick(driver).part_id],
+			"name": str(name_of.call(driver)).left(60), "joint": link.kind, "parts": int(chosen[0]),
+			"steps": []}
+		# What stays: the root of the tree the moved body hangs in.
+		bodies = _grab._bodies if _grab._bodies != null else bodies
+		var anchor: int = int(bodies.body_of.get(driver, 0))
+		while bodies.parent_of.has(anchor):
+			anchor = int(bodies.parent_of[anchor])
+		var anchor_part: int = int((bodies.members[anchor] as PackedInt64Array)[0])
+		var anchor_at: Transform3D = _world.get_brick(anchor_part).transform
+		thing["stays"] = bodies.stays_words(anchor).left(120)
+		var before: Dictionary = _snapshot()
+		var own: PackedInt64Array = bodies.members.get(int(bodies.body_of.get(driver, 0)), PackedInt64Array([driver]))
+		var ok: bool = true
+		var moved_once: bool = false
+		var went_so_far: float = 0.0
+		# Back by the turn measured from where the part stood, not the whole
+		# degrees each call says (a door turned 3.4 said "now 3°").
+		var start_at: Transform3D = _world.get_brick(driver).transform
+		var turn_way := Vector3.ZERO
+		var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+		for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
+			# Back by as far as it went, where a turn stopped short against the
+			# model: the turn of a call is what it says ("now 18°").
+			var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
+			# Back already, to a hundredth of a degree: nothing to turn.
+			var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+			if str(step[1]) != "back" or absf(asked) >= 0.01:
+				said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
+			var reached: RegExMatch = reached_re.search(said)
+			if reached != null and said.contains("Moved"):
+				went_so_far += float(reached.get_string(1))
+				if turn_way == Vector3.ZERO and absf(went_so_far) >= 1.0:
+					turn_way = _way_turned(driver, start_at) * signf(went_so_far)
+			await _frames(2)
+			var moved: bool = said.contains("Moved")
+			var still: bool = _world.get_brick(anchor_part).transform.is_equal_approx(anchor_at)
+			var found: RegExMatch = now_re.search(said)
+			var record: Dictionary = {"asked": asked, "said": said.replace("\n", " | ").left(500),
+				"moved": moved, "stays_still": still, "now": float(found.get_string(1)) if found != null else 0.0}
+			moved_once = moved_once or moved
+			var step_ok: bool = moved and still
+			if str(step[1]) == "back":
+				# Back where it stood: the moved thing's own parts. What hangs
+				# from it may have swung down under its weight on the way.
+				var most: float = 0.0
+				var worst: int = 0
+				for key: int in own:
+					var now_brick: BrickWorld.Brick = _world.get_brick(key)
+					if now_brick != null:
+						var off: float = (before[key] as Transform3D).origin.distance_to(now_brick.transform.origin)
+						if off > most:
+							most = off
+							worst = int(key)
+				record["back_ldu"] = snappedf(most, 0.0001)
+				thing["back_ldu"] = record["back_ldu"]
+				if worst != 0:
+					record["worst"] = "#%d %s" % [worst, _world.get_brick(worst).part_id]
+				step_ok = step_ok and most <= 0.02
+			record["ok"] = step_ok
+			(thing["steps"] as Array).append(record)
+			if not step_ok and ok:
+				ok = false
+				var why: String = said.get_slice("\n", 1) if said.contains("\n") else said
+				if moved and not still:
+					why = "what stays moved (%s)" % thing["stays"]
+				elif moved and str(step[1]) == "back":
+					why = "back to %.3f LDU, %s" % [float(record["back_ldu"]), str(record.get("worst", ""))]
+				thing["cause"] = "%s turned %+d: %s" % [step[1], int(step[0]), why.replace("\n", " ").left(400)]
+		thing["moved_once"] = moved_once
+		thing["result"] = "moves" if ok else "fails"
+		(row["things"] as Array).append(thing)
+		# Put it back as it was opened before the next.
+		_builder.undo_steps(1000)
+		await _frames(2)
+		_grab._ready_now()
+	return row
 
 
 ## What a steering's pinion and rack are read as, for finding why one does
@@ -4956,9 +5878,34 @@ func _steer_debug(path: String) -> void:
 		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
 		if info != null and _steering_arm(info.name) and bodies.body_of.has(brick.id):
 			print("  arm %s: %s" % [named.call(brick.id), body_words.call(int(bodies.body_of[brick.id]))])
+	# Where two parts stand and the studs of each that reach into the other
+	# (--pair=A,B), for reading why the two are one.
+	for arg: String in OS.get_cmdline_user_args():
+		if not arg.begins_with("--pair="):
+			continue
+		var ids: PackedStringArray = arg.trim_prefix("--pair=").split(",")
+		var pair_entries: Array = []
+		for one: String in ids:
+			var brick: BrickWorld.Brick = _world.get_brick(int(one))
+			if brick != null:
+				print("  %s at %s, basis %s" % [named.call(brick.id), brick.transform.origin.snapped(Vector3.ONE * 0.1),
+					brick.transform.basis.get_euler().snapped(Vector3.ONE * 0.01)])
+				pair_entries.append([brick.id, brick.transform, _library.mesh_for(brick.part_id)])
+		for stud: Array in Joints.studs_in(pair_entries, func(tip: Vector3, key: Variant) -> Variant:
+				var there: int = _builder.lattice.brick_at(BrickLattice.to_cell(tip))
+				return there if there != 0 and there != int(key) else null):
+			print("    stud of #%d at %s way %s reaches #%d" % [int(stud[0]), (stud[2] as Vector3).snapped(Vector3.ONE * 0.1),
+				(stud[3] as Vector3).snapped(Vector3.ONE * 0.01), int(stud[1])])
+		for one: String in ids:
+			for edge: Array in bodies.joined_by.get(int(one), []):
+				print("    #%s joined to %s by %s" % [one, named.call(int(edge[0])), edge[1]])
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--turn="):
-			var key: int = int(arg.trim_prefix("--turn="))
+			# --turn=ID, or --turn=SET:ID for one set of several.
+			var asked_turn: String = arg.trim_prefix("--turn=")
+			if asked_turn.contains(":") and asked_turn.get_slice(":", 0) != path.get_file().get_basename():
+				continue
+			var key: int = int(asked_turn.get_slice(":", 1) if asked_turn.contains(":") else asked_turn)
 			var trial := Grab.new()
 			trial.world = _world
 			trial.builder = _builder
@@ -4972,16 +5919,22 @@ func _steer_debug(path: String) -> void:
 					trial.linkage.racks.size()])
 				for n: int in trial.linkage.links.size():
 					var joined: Bodies.Link = trial.linkage.links[n]
-					print("      joint %d: %s %d-%d at %s axis %s" % [n, joined.kind, joined.a, joined.b,
-						joined.point, joined.axis])
+					print("      joint %d: %s %d-%d at %s axis %s slide %s" % [n, joined.kind, joined.a, joined.b,
+						joined.point, joined.axis, joined.slide])
+				# How far the loop closes, a few degrees at a time.
+				for deg: float in [5.0, 10.0, 20.0, 24.0, 26.0, 30.0, -10.0, -30.0]:
+					var reached: float = trial.linkage.reach(deg_to_rad(deg))
+					print("      reach %+.0f: got %+.2f, residual %.4f" % [deg, rad_to_deg(reached),
+						trial.linkage.residual])
 			if state == "moves":
 				var got: float = trial.turn_to(30.0)
 				var changed: int = 0
 				for one: Variant in trial.placed:
 					if not (trial.placed[one] as Transform3D).is_equal_approx(trial.rest[one]):
 						changed += 1
-				print("    turn_to 30: %.2f, stopped %s, short %s, %d parts placed, %d changed" % [got,
-					trial.stopped, trial.loop_short, trial.placed.size(), changed])
+				print("    turn_to 30: %.2f, stopped %s, short %s, %d parts placed, %d changed, met %s" % [got,
+					trial.stopped, trial.loop_short, trial.placed.size(), changed,
+					GrabDrag._in_the_way(trial) if trial.stopped else "-"])
 
 
 func _sweep_line(out_path: String, row: Dictionary) -> void:
@@ -5005,6 +5958,7 @@ func _sweep_one(path: String) -> Dictionary:
 	if not await _open(path):
 		row["cause"] = "did not open"
 		return row
+	row["owned"] = await _own_all_copies()
 	row["parts"] = _world.brick_count()
 	_grab._ready_now()
 	var bodies: Bodies = _grab._bodies
@@ -5023,7 +5977,8 @@ func _sweep_one(path: String) -> Dictionary:
 			continue
 		if Racks.is_rack(brick.part_id):
 			read_racks[brick.part_id] = true
-		elif part_name.contains("Gear Rack") or part_name.contains("Steering Rack"):
+		elif (part_name.contains("Gear Rack") or part_name.contains("Steering Rack")) \
+				and not part_name.contains("Housing") and not part_name.contains("Holder"):
 			unread_racks[brick.part_id] = true
 		if _steering_arm(part_name):
 			arms.append(brick.id)
@@ -5157,8 +6112,25 @@ func _sweep_one(path: String) -> Dictionary:
 		_world.set_cut(false)
 	if shots:
 		await picture.call("0_before")
+	var went_so_far: float = 0.0
+	# Back by the turn measured from where the part stood, not the whole
+	# degrees each call says (a door turned 3.4 said "now 3°").
+	var start_at: Transform3D = _world.get_brick(driver).transform
+	var turn_way := Vector3.ZERO
+	var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
 	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
-		var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": step[0]}))
+		# Back by as far as it went, where a turn stopped short against the
+		# model: the turn of a call is what it says ("now 18°").
+		var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
+		# Back already, to a hundredth of a degree: nothing to turn.
+		var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+		if str(step[1]) != "back" or absf(asked) >= 0.01:
+			said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
+		var reached: RegExMatch = reached_re.search(said)
+		if reached != null and said.contains("Moved"):
+			went_so_far += float(reached.get_string(1))
+			if turn_way == Vector3.ZERO and absf(went_so_far) >= 1.0:
+				turn_way = _way_turned(driver, start_at) * signf(went_so_far)
 		await _frames(2)
 		if shots and str(step[1]) != "back":
 			await picture.call("1_turned_+30" if str(step[1]) == "one way" else "2_turned_-30")
@@ -5171,8 +6143,20 @@ func _sweep_one(path: String) -> Dictionary:
 			went = now.origin - follower_at.origin
 			var relative: Basis = now.basis * follower_at.basis.inverse()
 			turned = rad_to_deg(relative.get_rotation_quaternion().get_angle())
-		var record: Dictionary = {"asked": step[0], "said": said.replace("\n", " | ").left(700),
+		var record: Dictionary = {"asked": asked, "said": said.replace("\n", " | ").left(700),
 			"moved": moved, "stays_still": still}
+		# How far the steering arms turned from where they stood, the most of
+		# them: a rack that moves and turns no arm steers nothing.
+		var arms_turned: float = 0.0
+		for arm: int in arms:
+			# A copy of a shared sub-assembly made its own on the turn gives
+			# its parts new numbers (8855-1).
+			if _world.get_brick(arm) == null or not before.has(arm):
+				continue
+			var arm_now: Transform3D = _world.get_brick(arm).transform
+			arms_turned = maxf(arms_turned, rad_to_deg((arm_now.basis * (before[arm] as Transform3D).basis.inverse())
+				.get_rotation_quaternion().get_angle()))
+		record["arms_deg"] = snappedf(arms_turned, 0.01)
 		var step_ok: bool = moved and still
 		if kind == "arm":
 			record["follower_deg"] = snappedf(turned, 0.01)

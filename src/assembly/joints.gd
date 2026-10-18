@@ -352,6 +352,8 @@ static func lines_up(plug_at: Vector3, plug_way: Vector3,
 ## How far apart a ball's middle and a socket's may be and the ball be in
 ## the socket, in LDU. A ball is 16 across; a cell is 2.
 const BALL_SLACK := 2.0
+## A Joint-8 ball's and a towball's radius, LDU.
+const BALL_RADIUS := 8.0
 
 
 ## Balls in sockets, both ways round: key -> {other key -> true}. A Joint-8
@@ -374,6 +376,16 @@ static func balls(entries: Array) -> Dictionary:
 				found.append([entry[0], at * connector.position])
 			elif connector.kind == "socket":
 				var middle: Vector3 = at * connector.position
+				var box: Vector3i = _bucket(middle)
+				if not sockets.has(box):
+					sockets[box] = []
+				(sockets[box] as Array).append([entry[0], middle])
+			elif connector.kind == "bore" and absf(connector.radius - BALL_RADIUS) <= ROUND_FIT * 0.5 \
+					and connector.length > 0.0 and connector.length <= BALL_RADIUS * 2.0:
+				# A socket drawn as plain rounds, a bore a ball's size and no
+				# longer than the ball (2739a's ends, a steering link on its
+				# towball): its middle is the socket's.
+				var middle: Vector3 = at * (connector.position + connector.axis * connector.length * 0.5)
 				var box: Vector3i = _bucket(middle)
 				if not sockets.has(box):
 					sockets[box] = []
