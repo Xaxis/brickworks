@@ -921,14 +921,15 @@ func for_session(input: Dictionary) -> String:
 	builder.fold_since(depth)
 	if moved == 0:
 		lines.append("It did not move: %s" % (("%s holds it, pulled to its full length." % held.stretch_words)
-			if stopped and not held.stretch_words.is_empty() else "something is in the way at once."
+			if stopped and not held.stretch_words.is_empty() else _in_the_way(held)
 			if stopped else "it is already there."))
 		return "\n".join(lines)
 	lines.append("Moved %d part%s: now %s (asked %s)%s%s%s." % [moved, "" if moved == 1 else "s",
 		held.position_words(), asked_for,
 		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty()
-			else "; it stopped where it meets the model" if stopped else "",
+			else ("; it stopped where %s" % (_met_words(held) if not _met_words(held).is_empty()
+				else "it meets the model")) if stopped else "",
 		"; then " + swung if not swung.is_empty() else "",
 		"; " + own if not own.is_empty() else ""])
 	if weighs:
@@ -1011,6 +1012,27 @@ func _chain_for_session(end: int, to: Variant) -> String:
 
 ## The parts a session names: a part's number, or every part of a
 ## sub-assembly by its name or path.
+## What stopped a move at once, named: the part of the moving side and the
+## part it met, or the floor it would go through. A session told only
+## "something is in the way" could not say what to take off.
+static func _in_the_way(held: Grab) -> String:
+	var met: String = _met_words(held)
+	return "something is in the way at once." if met.is_empty() else met + " at once."
+
+
+## The two parts that met where a move stopped ("the Technic Axle 4 (#54)
+## meets the Wheel Rim (#211)"), or the part that would go through the
+## floor; empty when the grab did not say.
+static func _met_words(held: Grab) -> String:
+	var bodies: Bodies = held.bodies
+	if bodies == null or held.met == 0 or held.world.get_brick(held.met) == null:
+		return ""
+	if held.blocked_by.size() == 2 and int(held.blocked_by[0]) == held.met \
+			and held.world.get_brick(int(held.blocked_by[1])) != null:
+		return "%s meets %s" % [bodies._part_named(held.met), bodies._part_named(int(held.blocked_by[1]))]
+	return "%s would go through the floor" % bodies._part_named(held.met)
+
+
 func _named_parts(asked: String) -> Array:
 	var text: String = asked.trim_prefix("#")
 	if text.is_valid_int():

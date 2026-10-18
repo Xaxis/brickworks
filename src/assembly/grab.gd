@@ -369,6 +369,7 @@ func _chosen() -> String:
 				if not moving.has(other):
 					_rest_overlap[other] = true
 					skip[other] = true
+					_keep_built_touching(key, other)
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -410,11 +411,7 @@ func _chosen() -> String:
 			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if mesh == null:
 				continue
-			var furthest: float = 0.0
-			for corner: int in 8:
-				var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - pivot
-				furthest = maxf(furthest, (off - axis * off.dot(axis)).length())
-			if furthest <= ON_THE_LINE * 1.42 or _round_on(key, pivot, axis):
+			if _thin_on(key, pivot, axis) or _round_on(key, pivot, axis):
 				_on_the_line[key] = true
 				continue
 			var middle: Vector3 = mesh.bounds.get_center()
@@ -428,7 +425,12 @@ func _chosen() -> String:
 				continue
 			var carried: bool = linkage.moved.has(linkage.parent_of[n])
 			for key: int in bodies.members.get(linkage.child_of[n], PackedInt64Array()):
-				if _round_on(key, joined.point, joined.axis.normalized()):
+				# An axle or a pin on a joint's own line turns inside the holes
+				# it is in, in a loop as out of one: 42111-1's steering column,
+				# turned in its loop, met the bearing it turns in at once.
+				if not carried and joined.turns and _thin_on(key, joined.point, joined.axis.normalized()):
+					_on_the_line[key] = true
+				elif _round_on(key, joined.point, joined.axis.normalized()):
 					if carried:
 						_spin_with[key] = int(linkage.parent_of[n])
 					else:
@@ -1028,6 +1030,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			result = 0
 			met = key
+			blocked_by = []
 			stretch_words = ""
 			break
 		# Its box first: nothing but what it may press on anywhere near it,
@@ -1158,6 +1161,21 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 	return out
 
 
+## Parts that touched where the model was built, kept from one grab to the
+## next: "brick id:part" -> {brick id: part} of what each touched before a
+## grab moved either. A grab forgives for good what its moving side touched
+## where it began; turned out and back in three moves, the third began away
+## from what the part was built against and met it short of where it was
+## built (10220-1's door at 18 degrees, 8855-1's steering). Moves in turn
+## are one drag: what touched as built is not in the way of coming back.
+static var _built_touching: Dictionary = {}
+## Parts a grab has moved since [member _built_touching] began, and the world
+## and part count it was kept for.
+static var _moved_since_built: Dictionary = {}
+static var _built_for: int = 0
+static var _built_count: int = -1
+
+
 ## Every room test asks a turned part's cover whole too, and counts where
 ## the two answer differently: for a probe.
 static var check_covers: bool = false
@@ -1172,7 +1190,8 @@ static var covers_differ: int = 0
 func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		turned: BrickLattice.TurnedCover) -> PackedInt64Array:
 	for other: int in builder.lattice.blockers_boxes(turned.loose_at(), 0, skip):
-		if skip.has(other) or not turned.meets(builder.lattice.boxes_of(other)):
+		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
+				or not turned.meets(builder.lattice.boxes_of(other)):
 			continue
 		if _overlapped_at_rest(other):
 			skip[other] = true
@@ -1192,7 +1211,8 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 		var other: int = int(hit[0])
 		if _overlapped_at_rest(other):
 			skip[other] = true
-		elif _slides_over(key, mesh, to, other) or _touching(mesh, to, other):
+		elif _scrubs(key, other) or _bends_aside(other) or _slides_over(key, mesh, to, other) \
+				or _touching(mesh, to, other):
 			skip[other] = true
 			forgiven.append(other)
 		else:
@@ -1201,6 +1221,28 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 	for other: int in forgiven:
 		skip.erase(other)
 	return hit
+
+
+## Whether [param other] bends out of the way: a hose's piece, a string's,
+## or a flexible part a file draws whole (a cable, a rubber band:
+## Bodies.bends). 8074-1's crane turned on its turntable and stopped where
+## its frame met the cable's skin hanging from it, and 10252-1's arm where it
+## met a rubber band.
+func _bends_aside(other: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(other)
+	return brick != null and Bodies.bends(library, brick.part_id)
+
+
+## Whether [param key] is a tyre and [param other] the baseplate it stands
+## on: rubber on the floor scrubs round as its wheel is steered, and the
+## floor is not in its way (that it goes no lower is the floor's own test).
+## 8063-1's and 42075-1's steering stopped where a front tyre met the
+## baseplate at the first degree.
+func _scrubs(key: int, other: int) -> bool:
+	if not bodies.scenery.has(other):
+		return false
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	return brick != null and Bodies._is_tyre(library.parts.get(brick.part_id))
 
 
 ## Whether [param key] at [param to] only slides over [param other] across a
@@ -1292,6 +1334,21 @@ static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
 ## is, so it is never tested (a tyre resting on the floor, turned with its
 ## axle, met the floor by its turned cover's cells); turning about a line
 ## beside it, along that one, it is its own shape moved ([member _round_self]).
+## Whether [param key] lies all within [constant ON_THE_LINE] of the line
+## through [param point] along [param way] (its box's corners within that
+## of it, a square's diagonal over): an axle or a pin on the line.
+func _thin_on(key: int, point: Vector3, way: Vector3) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return false
+	for corner: int in 8:
+		var off: Vector3 = brick.transform * mesh.bounds.get_endpoint(corner) - point
+		if (off - way * off.dot(way)).length() > ON_THE_LINE * 1.42:
+			return false
+	return true
+
+
 func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
@@ -1332,9 +1389,55 @@ func _overlapped_at_rest(other: int) -> bool:
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
 				touching = true
-				break
+				_keep_built_touching(key, other)
+	if not touching:
+		touching = _touched_as_built(other)
 	_rest_overlap[other] = touching
 	return touching
+
+
+## Keep that [param one] and [param other] touch where they stand, where
+## neither has been moved by a grab since the model was built.
+func _keep_built_touching(one: int, other: int) -> void:
+	_built_for_world()
+	if _moved_since_built.has(one) or _moved_since_built.has(other):
+		return
+	for pair: Array in [[one, other], [other, one]]:
+		var a: BrickWorld.Brick = world.get_brick(int(pair[0]))
+		var b: BrickWorld.Brick = world.get_brick(int(pair[1]))
+		if a == null or b == null:
+			continue
+		var key: String = "%d:%s" % [a.id, a.part_id]
+		if not _built_touching.has(key):
+			_built_touching[key] = {}
+		(_built_touching[key] as Dictionary)[b.id] = b.part_id
+
+
+## Whether a part of the moving side touched [param other] where the model
+## was built ([member _built_touching]).
+func _touched_as_built(other: int) -> bool:
+	_built_for_world()
+	var them: BrickWorld.Brick = world.get_brick(other)
+	if them == null:
+		return false
+	var touched: Dictionary = _built_touching.get("%d:%s" % [other, them.part_id], {})
+	for key: Variant in touched:
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		if brick != null and brick.part_id == str(touched[key]) \
+				and (moving.has(int(key)) or followers.has(int(key))):
+			return true
+	return false
+
+
+## Starts the record again for another world, or where parts were added or
+## taken away since it was kept.
+func _built_for_world() -> void:
+	if _built_for == world.get_instance_id() and _built_count == world.brick_count():
+		return
+	_built_for = world.get_instance_id()
+	_built_count = world.brick_count()
+	_built_touching.clear()
+	_moved_since_built.clear()
 
 
 ## Every moving part whose sweep all the way round the joint's line, a
@@ -2583,6 +2686,8 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 		if Grab._same(to, rest[key]):
 			continue
 		steps.append({"undo": "move", "brick": key, "transform": rest[key]})
+		_built_for_world()
+		_moved_since_built[key] = true
 		world.move_brick(key, to)
 		builder.lattice.release(key)
 		# Worked out ahead, a share a frame, for a big section (GrabDrag).
