@@ -653,6 +653,10 @@ RING_BORE = 8.5
 ## its hole, 1.4 to 2 of them across in the library. 67503c01, a car's canvas
 ## roof, has a free line 9 across through its middle and reaches 80 out.
 RING_THICK = 4.0
+## How much further from the line a ring's hole may be in one eighth of the
+## way round than in another: a round hole drawn in facets and covered in
+## 2 LDU cells.
+RING_ROUND = 1.25
 
 
 def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
@@ -670,7 +674,8 @@ def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
 
     A ring: its hole open (nothing of its cover nearer the line than the
     round, less WIDE_SLACK), its cells all round the line, in each eighth
-    of the way round, and none further out than RING_THICK of its radii.
+    of the way round, as near the line in each to within RING_ROUND, and
+    none further out than RING_THICK of its radii.
     """
     if not mesh.triangles or occupancy.cell_count == 0:
         return None
@@ -695,6 +700,12 @@ def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
         # arch whose sides hang below its middle, open underneath.
         eighth = (du > 0) * 4 + (dw > 0) * 2 + (np.abs(du) > np.abs(dw))
         if np.unique(eighth).size < 8:
+            continue
+        # And round: as near the line in every eighth. A door's frame (4343),
+        # a sensor's face and a beard round a neck are rings round a line,
+        # but their holes are no round a rim or a pulley goes in.
+        nearest = [float(reach[eighth == k].min()) for k in range(8)]
+        if max(nearest) > RING_ROUND * min(nearest):
             continue
         start = centre.copy()
         start[n] = low[n]
