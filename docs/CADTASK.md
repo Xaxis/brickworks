@@ -53,6 +53,12 @@ back as their authors wrote them. Worse: a step of the timeline in a
 browser held the page for seconds on a 925-part model; found to be the
 grab's drag handles, fixed (m62), and now held by a release check.
 
+**Later that day (section 7)** all 39 go where the file has them: 8643-1's
+tyres on their rims by their ghosts, their holes open in the cover (a
+seam had been counted twice), and 92 of the library's 118 tyres open
+through their narrowest bore, from 31. The build flow puts 8841-1's
+first 8 down exactly, its pins aimed at their holes.
+
 ## 1. Files opened, saved and opened again
 
 **What was run.** 48 real sets' files from the LDraw model repository
@@ -1437,6 +1443,107 @@ the pans' plates is the plate under them read in Properties and a plate's
 stud or half a stud that the probe's pointer did not reach (the pans sit
 half a stud off the stud grid in Z, which Snap at ½ stud gives).
 
+## 7. Tyres on their rims, pins in their holes (2026-10-17, later)
+
+Section 6's misses were 8643-1's eight tyres, and 8841-1's two pins and
+the plate over them in the build flow. A builder puts tyres on rims and
+wheels on pins all the time. Everything is in
+`bench/results/tyres-2026-10-17/`.
+
+**Why a tyre would not go on.** Two faults in how the mesh pipeline covers
+a part (`tools/ldraw/occupancy.py`), and no joint for a tyre.
+
+- *A seam counted twice.* The voxeliser stabs a ray up each column of
+  cells and counts the faces it crosses. A ray on an edge between two faces
+  of one surface crosses both. Where that edge lay along x or z through a
+  cell's middle, the old rule asked the moves along it, which stay on the
+  edge and cross both again, and took their answer: twice in at the bottom
+  of a hollow, so inside all the way across it. 50951's tread meets its
+  shoulder on a circle at z 7, a cell's middle, so its hole was closed at
+  both sidewalls, and the wheel holder's pin ran into it. Now, where the
+  moves along one axis leave the ray off every edge and agree, they are the
+  answer. It only ever takes cells away, and only cells inside a hollow:
+  over a random 592 parts of the library 76 covers change (13%), every one
+  smaller, such as 4215a's panel, which had a wall a cell thick standing in
+  front of its own the whole height of the panel.
+- *A tyre past the box limit filled.* A cover past 64 boxes is drawn at a
+  coarser grain inside the convex hull of its cells, and a ring's hull is a
+  disc: 18450's, 41893's and 23798's holes held tens of thousands of cells.
+  A tyre's hole is now carved out of a coarse cover as a Technic hole is:
+  the line of a bore wider than any pin's, across the stud axis, with
+  nothing of the part inside it from one face of the part to the other,
+  at the narrowest bore on it (`wide_bores`; a shell's round hollow is a
+  bore too, but its line runs into the shell).
+- *No joint.* `JointSnap` took round ends a bar's size only. A tyre's
+  inside and a rim's barrel are now ends of their own (`tyre`, `rim`: the
+  innermost wide bores and the outermost wide shafts, each line of them at
+  one size one end), and a tyre goes on a rim whose barrel is its hole's
+  size, their middles together, either way round.
+
+The app's own build of a part (`PartForge`) does the same, held to the
+pipeline byte for byte by `element_files_probe`, which now builds two tyres
+too (50951, and 30648 past the box limit).
+
+**The covers rebuilt.** Every tyre and wheel in the catalogue (559, and 29
+moved numbers that forward to one) and 300 control parts, sub-built in 325 s
+on 8 workers (`tools/build_meshes.py --only`) and merged
+(`tools/merge_subbuild.py`; every control agreed about its connectors): 421
+entries changed, 405 new meshes. Five controls came out different too, and
+by the code before this change as well: shells whose catalogue covers are
+older than the coarse covers of 2026-10-13 (30117 one box, now 1,256), so
+the catalogue is that much behind the code, not moved by this. The rest of
+the library, which the seam rule also changes (about 13%, all smaller), is
+left for the next full build. Of the catalogue's 118 tyres, 92 are open
+through their narrowest bore now, from 31 (`tyre_holes_after.json`). The 26
+still closed are tyres drawn with no bore at all whose own geometry fills
+the hole (23798, 32003, 3740, 11957: the voxels, not the cover), and tyres
+whose sidewall lips stand inside their narrowest bore or whose tread is
+drawn with cracks (11209, 56891), which this measure counts as closed.
+
+**Proved** (all in the results folder):
+
+| check | before | now |
+|---|---|---|
+| the sets' 39 parts off the grid through the interface (`offgrid_probe`, 0.05 LDU, 0.002) | 31 of 39 | **39 of 39** |
+| ...8643-1's eight tyres | none: "no room there" | **8, each aimed at its rim's middle, one `T`** |
+| ...of the 39, by the pointer alone | 11 | 19 |
+| 8643-1's tyres on their rims, wheels with tyres on a wheel pin and an axle (`placing_probe -- only=wheels`) | — | all, exactly |
+| the app's build of 50951 and 30648 the pipeline's, byte for byte (`element_files_probe`) | — | yes |
+| `handbuild_probe`, the rest of `placing_probe` | passed | passed |
+| the build flow, first 8 parts put down / exact: 8643-1; 8841-1 | 8, 8; 5, 5 | **8, 8; 8, 8** |
+
+The picture (`offgrid_shots/8643-1_46.png`, on the graphics card): the last
+tyre round its rim under the mudguard, square, the model whole.
+
+**The build** (`cadtask.py build --only 8643-1,8841-1 --most 8`, the
+worktree's web export in Chromium, `run3/`): 8643-1's first 8 all down
+and exact, as before (16.4 actions a part); 8841-1's first 8 all down and
+exact for the first time (5 of 8 in section 6), its two pins each after
+the brick it goes in, aimed at the hole and turned by T to the file's
+way: 3 and 4 presses. 23.5 actions a part there, because the second
+brick was hung on the first one's pin by its first aim and turned there
+77 presses before it was aimed again; a ghost on a joint away from the
+part's place is no longer turned (`run4/`: RUN4). Two runs before
+it (`build/`, `run2/`) found the rest: a pin put the other way round in its
+hole stands in the same place, so a ghost on a joint must be turned as the
+file has it, which takes up to four ways onto a pin (either end in, from
+either face); a Technic brick's hole ring came out a rim (`JointSnap._bare`
+asked a short round about none of its length); and the comparison took an
+exact part as another's moved one when the file lists a part not yet
+built before it.
+
+**Why a pin was aimed as a brick.** The build flow put a step's parts
+lowest first, and a pin's middle is lower than the top of the brick it
+goes in, so 8841-1's pins were tried before their bricks, with no hole
+there. And the flow moved the pointer until the ghost stood where the
+file has the part, which takes a pin onto the studs. A step's parts now go
+lowest first but each after the smallest bigger part its middle is inside
+(`handOrder`), and a part that joins by something (the page now says
+which ends the part in hand has, `held_ends`) is aimed at the joints on the
+page that take it, nearest where it goes first, R and T until its ghost
+stands at the file's place and turn, as a person turns a pin round in its
+hole.
+
 ## The gaps, by how much a builder would feel them
 
 Rewritten on 2026-10-17 from the run of section 6, most felt first. The
@@ -1444,19 +1551,12 @@ first run's thirteen are kept below, each with what closed it.
 
 **Open, today:**
 
-1. **A tyre will not go on its rim where the set has it.** 8643-1's eight
-   tyres (50951 on 51719, on 6157's wheel pins): aimed, the ghost has no
-   joint for a tyre (`JointSnap` takes round ends a bar's size only), and
-   typed to the rim's place the move is refused, the tyre's cover running
-   into the wheel holder's (`room_for`'s blockers: the 6157 and the rim,
-   and only the rim is forgiven as joined). Why: 50951's cover closes its
-   hole at both of its sidewalls (cells across the middle of the hole at
-   x −48 and −34 where the hole between is open), and the holder's wheel pin
-   runs through the inner one: 12 cells, one cell deep. The cover is the
-   mesh pipeline's (`tools/build_meshes.py`), built with the cache. The file
-   opens with the tyres, but a builder cannot put one there by hand. The
-   next unit's: a tyre's cover open through its hole, and a tyre on a rim
-   as a joint its ghost can take.
+1. **26 of the library's 118 tyres are still closed through their
+   narrowest bore** (section 7): tyres drawn with no bore whose own geometry
+   fills the hole, and tyres whose lips or cracked treads this measure
+   counts. And the rest of the library's covers the seam rule changes
+   (about 13%) wait for the next full build. A tyre drawn with no bore has
+   no tyre end either, so its ghost does not go round a rim.
 2. **Studio has still never been run beside it.** Every Studio number is
    modelled (section 3); Wine needs a password on this box.
 3. **The actions a part** are 11.5 to 17.6 in this run's measured builds
@@ -1464,24 +1564,29 @@ first run's thirteen are kept below, each with what closed it.
    aims, looks and aims again. By the model a part takes 7.5 to 12.2 s here
    and 9.4 to 12.4 s in Studio, steps marked or not within a second of
    that; a measured hand against Studio's has not been timed.
-4. **Pins aimed like bricks.** In 8841-1's first steps the build flow, which
-   aims every part by moving the pointer until its ghost stands where the
-   file has it, could not put the Technic pins in their holes: aimed at a
-   hole's mouth a pin goes in (section 5, `placing_probe`), aimed about the
-   brick it does not. In this run 2 pins, and the plate over them, of
-   8841-1's first 8.
+4. **The build flow's actions a part on Technic.** 8841-1's first 8 went
+   down exactly (section 7), but at 23.5 actions a part in the run
+   measured, against 11.5 for its first 5 in section 6: R and T on joints.
 5. **The plane's wedge plates and the propeller on its slope** would not
    come to their place in eight aims in the whole plane's run (section 5).
    Not run again here: the whole plane takes 40 minutes of the box.
 6. **Places off the grid take a typed number where the pointer cannot say
-   it.** Section 6: of the 31 of 39 put, 11 go where the file has them
-   by the pointer alone and the rest with a number typed in Properties (a
+   it.** Section 7: all 39 put, 19 where the file has them by the pointer
+   alone (11 in section 6) and the rest with a number typed in Properties (a
    light 1 LDU out of its clip, a wheel's or a propeller's place along its
    pin, a pan's first 4262 swung to 23.58 degrees). Studio does the same with
    its hinge tool; its snapping may find some of them unasked.
 
 **Closed:**
 
+- *Pins aimed like bricks* (section 6's 4): the flow put a step's parts
+  lowest first, pins before their bricks, and aimed every part as a brick.
+  A part now goes after the part its middle is in, and a pin is aimed at
+  the hole it goes in: 8841-1's first 8 all exact (section 7).
+- *A tyre would not go on its rim where the set has it* (section 6's 1):
+  its cover was closed at its sidewalls, a seam counted twice, and there
+  was no joint for a tyre. 8643-1's eight go on by their ghosts, aimed at
+  the rim, one `T` each (section 7).
 - *A step of the timeline in a browser held the page for seconds* (found by
   this run): 5.7 to 6.7 s of the app's own work in a press of Next on
   75969-1, where the morning's build took 18 to 75 ms, and a builder
