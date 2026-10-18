@@ -691,9 +691,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   said. `grab_probe -- --only=actuators` (windowed): 42081-1's digging arm
   and 42024-1's small actuator, the rod dragged past both ends, the arm
   against the law of cosines by hand, the drag's own work a frame (mean and
-  95% under 33 ms: 11.0 and 15.8 on 42081-1, 9.1 and 18.6 on 42024-1, from
-  253 and 148 mean before G6), let go checked and kept in under 10 s (5.8 and
-  0.5, from 19 and 3) and kept where it was let go, the arm grabbed and
+  95% under 33 ms: about 11 and 18 on 42081-1, 10 and 23 on 42024-1, from
+  253 and 148 mean before G6; the worst frame is printed, and passes 33 now
+  and then on a loaded box), let go checked and kept in under 10 s (about 6
+  and 0.5, from 19 and 3) and kept where it was let go, the arm grabbed and
   refused, the input turned over MCP. Each frame's pose is written to
   `poses_<set>.json` in the results folder, to set a run before a change
   against one after. `--actuator-set=FILE` tries another set.

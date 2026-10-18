@@ -1970,8 +1970,12 @@ pointer, the room test, the loop, drawing, weighing), and the release:
 
 | set | loop | before: mean, worst | after: mean, 95%, worst | let go, checked and kept |
 |---|---|---|---|---|
-| 42081-1 | the digging arm, 262 parts, 25 joints | 252.7 ms, 2,936 ms | 11.0, 15.8, 18.1 ms | 19.0 s, now 3.8 to 5.8 s |
-| 42024-1 | the small actuator's arm, 82 parts, 36 joints | 148.3 ms, 346 ms | 9.1, 18.6, 32.2 ms | 3.0 s, now 0.4 to 0.5 s |
+| 42081-1 | the digging arm, 262 parts, 25 joints | 252.7 ms, 2,936 ms | 10.4 to 11.1, 14.7 to 18.2, 15.2 to 19.7 ms | 19.0 s, now 3.8 to 6.1 s |
+| 42024-1 | the small actuator's arm, 82 parts, 36 joints | 148.3 ms, 346 ms | 9.0 to 10.7, 17.4 to 22.7, 25.5 to 35.9 ms | 3.0 s, now 0.4 to 0.5 s |
+
+The after figures are three runs of the code as committed, on a box loaded 40
+to 50 (two of the actuators alone, one in the whole run); before is one run of
+the code before, at the same load.
 
 Every frame's pose was written out before and after and set side by side.
 On 42081-1 every part of every one of the 73 frames stands within 0.07 LDU
@@ -2022,7 +2026,31 @@ the panel's whole cover out, 3.5 to 4.5 s of the 3.8 to 5.8 on a worker
 while the window draws (a cover worked out by runs along each line of cells
 rather than cell by cell was only 1.3 times quicker, and cut into more boxes,
 so it was left). A loop's worst frame is near 33 ms on a loaded box (42024-1's
-32.2 in the full run, 26 alone); a person's drag of more than 4 LDU a frame
-takes more steps. A universal joint at an angle turns its far shaft by
+25.5 to 35.9 over three runs, at the end of its rod's stroke, where the rest of
+the loop is bisected; the 95th percentile stays under 23); a person's drag of
+more than 4 LDU a frame takes more steps. A universal joint at an angle turns its far shaft by
 Cardano's ratio, not its mean, and none in the probe's sets stands at one.
-42080-1's pneumatic cylinders are as §13 left them.
+
+42080-1's pneumatic cylinders still do not move; taken apart, three things
+hold them, and a trial of the first two is kept beside the results
+(`bench/results/grab6-2026-10-17/cylinders-trial.patch`):
+
+- `Bodies` joins a pin keyed to nothing to the first part it is in, and
+  asks which pins are alone as it joins them. Joining changes a piece's
+  root, the root is then not among the sizes counted before, and a pin in
+  that piece is taken for one alone: the axle pin at the rod's eye, keyed
+  into the arm, joined the rod to the arm, and the cylinder and the arm's
+  two lines then made the rod and the cylinder one body of 458 parts. Read
+  before joining, each cylinder is read as sliding (250 bodies and 59 loops,
+  from 232 and 40).
+- The cylinders' tubes are rigid pieces joined to their ports and valves,
+  and held at both ends they lock the loop ("closes neither a degree one way
+  nor the other"). Read as bending (closing no loop, carrying nothing on,
+  tested for room by nothing), the rod is drawn out to the end of its stroke
+  and in 12 LDU, the arm against the law of cosines to 0.0031°, 9.5 ms a frame.
+- But a 24 tooth gear and a part beside it on the arm's head stay where they
+  stood as the arm rises: they hang from the frame through the saw's
+  drivetrain, not from the arm. A section this big is tested within 10 ms a
+  frame, so the drag shows the arm through them, and let go, the release's
+  whole test finds them and puts the arm back near where it began. Until the
+  drivetrain on the arm goes with the arm, the trial is left out.
