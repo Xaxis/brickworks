@@ -332,6 +332,12 @@ XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_
 #   in with the next) it fails: 352 held by nothing and the first step in 8 pieces;
 #   the fox's steps 8 and 9 with 3 stud joints overloaded. Its lists and files go to
 #   user://sessions/probe/brickify_buy (run it with XDG_DATA_HOME of its own).
+#   2026-10-17 on the unit 7 branch at a load of 35 to 65: all ok; the fixture bunny 44
+#   steps, every partial build standing; the bench's Stanford bunny at 48 studs 5,959
+#   parts in 104 steps (10 courses in with the next), 87 panels, the steps 13 s of a 46 s
+#   build; --steps-only over the 14 at 24 and 48 studs, every partial build of the 28
+#   standing; from 10698, the grey Stanford bunny at 24 draws 15.8% at 0.18 ΔE2000 where
+#   it shows (any colour: 26.9% at 5.7).
 godot --headless --path . --script src/dev/brickify_phases.gd -- 3 [FILE:STUDS:UP ...]
 #   where the time goes: the forty-stud bunny laid three times, and any model
 #   named, each with its phases (measure.*, lay.*, lay.stitch.*, check.*), and
@@ -359,7 +365,11 @@ line's sentence: buildable in one piece, no part missing, its steps by courses.
 Then, from the panel that stays up, BrickLink and Rebrickable pressed (each
 download's pieces counted against the build's) and Booklet (its tab read for
 pages of steps holding at least the build's own steps, two of them
-photographed, `5_booklet_steps_N.png`); `--after=no` leaves those out. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
+photographed, `5_booklet_steps_N.png`); `--after=no` leaves those out. On a local
+export (`tools/export.sh web`, `serve.py build/web PORT --parts assets/generated/parts
+--delay 0`, the flow's `--url=http://127.0.0.1:PORT/index.html`), 2026-10-17 at a load of
+40 to 50: all ok, the bunny at 30 studs 1,224 parts in 51 steps with 11 panels, both
+lists 1,224 pieces, the booklet's tab filled in 740 s (its pictures drawn in software). Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
 the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
 the desktop. With `--model=tests/fixtures/brickify/fox.obj --studs=24 --least=60
