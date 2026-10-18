@@ -778,6 +778,7 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 	return out
 
 
+
 ## Whether every part that moves has room at [param at]: nothing in the
 ## way but what it is joined to, and nothing through the floor.
 func has_room(at: Dictionary) -> bool:
@@ -829,9 +830,25 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 		elif not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
 			continue
 		var part_began: int = Time.get_ticks_usec()
-		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
-		var cover_us: int = Time.get_ticks_usec() - part_began
-		var hit: PackedInt64Array = _blocked(key, mesh, to, packed)
+		# A part at a turn whose cover is not kept is asked where something
+		# is (BrickLattice.TurnedCover), not worked out whole: each body of a
+		# loop is at a new turn every frame, and 42081-1's panel of 611 boxes
+		# took 2.8 s a cover.
+		var turned: BrickLattice.TurnedCover = builder.turned_cover(mesh, to)
+		var hit: PackedInt64Array
+		var cover_us: int = 0
+		if turned != null:
+			hit = _blocked_turned(key, mesh, to, turned)
+			if check_covers:
+				var whole: PackedInt64Array = _blocked(key, mesh, to, builder.boxes_for(mesh, to))
+				covers_checked += 1
+				if whole.is_empty() != hit.is_empty():
+					covers_differ += 1
+					print("    COVER DIFFERS: #%d %s whole %s, asked %s" % [key, brick.part_id, whole, hit])
+		else:
+			var packed: PackedInt32Array = builder.boxes_for(mesh, to)
+			cover_us = Time.get_ticks_usec() - part_began
+			hit = _blocked(key, mesh, to, packed)
 		var part_us: int = Time.get_ticks_usec() - part_began
 		if part_us > slowest_us:
 			slowest_us = part_us
@@ -926,6 +943,29 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 	for n: int in wanted.size():
 		builder.keep_turned(wanted[n][0], wanted[n][1], made[n])
 	return out
+
+
+## Every room test asks a turned part's cover whole too, and counts where
+## the two answer differently: for a probe.
+static var check_covers: bool = false
+static var covers_checked: int = 0
+static var covers_differ: int = 0
+
+
+## What [param key] at [param to], its cover [param turned] asked where each
+## part near it is, meets, as [method _blocked] says of the whole cover: the
+## first part met that it did not overlap where it stood, slide over or only
+## touch, or nothing.
+func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
+		turned: BrickLattice.TurnedCover) -> PackedInt64Array:
+	for other: int in builder.lattice.blockers_boxes(turned.loose_at(), 0, skip):
+		if skip.has(other) or not turned.meets(builder.lattice.boxes_of(other)):
+			continue
+		if _overlapped_at_rest(other):
+			skip[other] = true
+		elif not _slides_over(key, mesh, to, other) and not _touching(mesh, to, other):
+			return PackedInt64Array([other])
+	return PackedInt64Array()
 
 
 ## What [param key], its cover [param packed] at [param to], meets: nothing
@@ -1143,7 +1183,18 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 		# Into its box: then against its cover, box by box, which hugs it.
 		var cover: PackedInt32Array = builder.lattice.boxes_of(other)
 		var cell_size: float = BrickLattice.CELL
+		# A piece whose box the part's own box, square to the grid, is not
+		# into by more than TOUCHING along some axis is not into the part's
+		# turned box either: the three axes are three of box_depth's fifteen
+		# lines, and along them the part's turned box reaches as far as its
+		# box does. Asked first: a neighbour of hundreds of boxes cost 42081-1's
+		# drag 9 ms a frame by the fifteen lines alone.
+		var lo: Vector3 = box.position / cell_size + Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
+		var hi: Vector3 = box.end / cell_size - Vector3.ONE * ((TOUCHING - 0.01) / cell_size)
 		for at: int in range(0, cover.size(), 6):
+			if float(cover[at + 3]) <= lo.x or float(cover[at]) >= hi.x or float(cover[at + 4]) <= lo.y \
+					or float(cover[at + 1]) >= hi.y or float(cover[at + 5]) <= lo.z or float(cover[at + 2]) >= hi.z:
+				continue
 			var piece := AABB(Vector3(cover[at], cover[at + 1], cover[at + 2]) * cell_size,
 				Vector3(cover[at + 3] - cover[at], cover[at + 4] - cover[at + 1],
 					cover[at + 5] - cover[at + 2]) * cell_size)
@@ -1206,10 +1257,7 @@ func turn_to(degrees: float) -> float:
 		# Room, or not all asked this frame: a big section is shown where the
 		# pointer says and checked when it pauses or is let go
 		# ([method verify_step]), rather than hold the frame.
-		if room == 1 and not unchecked:
-			_checked_angle = wanted
-		else:
-			unchecked = true
+		_shown_on_trust(room == 1, wanted)
 		angle = wanted
 		placed = at
 		_keep_loop()
@@ -1219,13 +1267,7 @@ func turn_to(degrees: float) -> float:
 		# Met something, on a section too big to bisect in a frame: it stays
 		# where it last had room and the stop is found a round a frame
 		# (verify_step), on a pause or at the release.
-		_wall = wanted
-		if not unchecked:
-			_checked_angle = angle
-		unchecked = true
-		_verifying_lo = _checked_angle
-		_verifying_hi = wanted
-		stopped = true
+		_met_on_trust(wanted, angle)
 		return angle
 	var low: float = angle
 	var high: float = wanted
@@ -1249,6 +1291,36 @@ func turn_to(degrees: float) -> float:
 	_keep_loop()
 	stopped = true
 	return angle
+
+
+## A big section drawn at [param value] (degrees or LDU), [param checked]
+## when its whole test found room there. A stop met earlier and not found
+## yet is behind it now: found later, it put a section let go somewhere else
+## back at that stop (42081-1's arm let go 20 LDU out was kept at its stop
+## 60 LDU in), and a test cut short for an earlier pose went on from the
+## part it had reached, for this one.
+func _shown_on_trust(checked: bool, value: float) -> void:
+	if checked:
+		_checked_angle = value
+		unchecked = false
+	else:
+		unchecked = true
+	_verifying_hi = null
+	_verify_from = 0
+
+
+## A big section met something at [param value], standing at [param at]: it
+## stays, and where it stops is found on a pause or at the release
+## ([method verify_step]), bisected from the last value checked whole.
+func _met_on_trust(value: float, at: float) -> void:
+	_wall = value
+	if not unchecked:
+		_checked_angle = at
+	unchecked = true
+	_verifying_lo = _checked_angle
+	_verifying_hi = value
+	_verify_from = 0
+	stopped = true
 
 
 ## One frame's worth of checking a turn shown on trust: the whole section
@@ -1278,7 +1350,7 @@ func verify_step() -> bool:
 		_set_value(_verifying_lo)
 		placed = _pose_at(_verifying_lo)
 		_keep_loop()
-		_wall = hi if mode == "turn" else NAN
+		_wall = hi
 		_verifying_hi = null
 		unchecked = false
 		stopped = true
@@ -1323,9 +1395,23 @@ func slide_to(along: float) -> float:
 	frame_test_ms = 0.0
 	frame_tests = 0
 	var wanted: float = clampf(along, _range.x, _range.y)
+	if budget_ms < INF and not is_nan(_wall) and (wanted - _wall) * (_wall - shift) >= 0.0 \
+			and absf(_wall - shift) < absf(wanted - shift) + 0.001:
+		# Past the stop it met last, the same way, as turn_to has it: 42081-1's
+		# arm drawn on past its stop was tested again each frame. A loop got as
+		# far as that stop, so it gets there again before anything further.
+		stopped = true
+		return shift
+	_wall = NAN
 	if linkage != null:
 		# A slide in a loop goes as far as the loop takes it.
+		var solving: int = Time.get_ticks_usec()
 		wanted = linkage.reach(along)
+		frame_solve_ms += float(Time.get_ticks_usec() - solving) / 1000.0
+		if absf(wanted - shift) < 0.001 and not is_equal_approx(wanted, along):
+			# Where it already stands: the loop closes no further that way.
+			stopped = true
+			return shift
 	stopped = not is_equal_approx(wanted, along)
 	var at: Dictionary = transforms_at(angle, wanted)
 	if budget_ms < INF:
@@ -1336,20 +1422,12 @@ func slide_to(along: float) -> float:
 		# 164 of them, 31 s in one frame.
 		var room: int = _test(at, 0, budget_ms).x
 		if room != 0:
-			if room == 1 and not unchecked:
-				_checked_angle = wanted
-			else:
-				unchecked = true
+			_shown_on_trust(room == 1, wanted)
 			shift = wanted
 			placed = at
 			_keep_loop()
 			return shift
-		if not unchecked:
-			_checked_angle = shift
-		unchecked = true
-		_verifying_lo = _checked_angle
-		_verifying_hi = wanted
-		stopped = true
+		_met_on_trust(wanted, shift)
 		return shift
 	if has_room(at):
 		shift = wanted

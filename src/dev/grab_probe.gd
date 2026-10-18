@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab5-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab6-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -107,6 +107,10 @@ func _run() -> void:
 			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
+		if arg == "--check-covers":
+			# Every turned part asked where something is is also worked out
+			# whole, and the two answers compared (Grab.check_covers).
+			Grab.check_covers = true
 	for case: Array in CASES:
 		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
@@ -187,6 +191,9 @@ func _run() -> void:
 		await _session()
 	if only.is_empty() or only == "big":
 		await _big()
+	if Grab.check_covers:
+		_check("a turned part's cover asked where something is answers as the whole cover does, %d of %d"
+			% [Grab.covers_checked - Grab.covers_differ, Grab.covers_checked], Grab.covers_differ == 0)
 	var file := FileAccess.open(OUT.path_join("timings.json"), FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify(_timings, "  "))
@@ -1986,13 +1993,29 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	var frame_worst: float = 0.0
 	var rod_rest: Vector3 = _world.get_brick(rod_key).transform.origin
 	var stop_said: Dictionary = {}
+	# Every frame's pose, for a run before a change to be set against one
+	# after: each moving part's place (poses_<set>.json).
+	var poses: Array = []
+	var pose_keys: Array = grab.moving.keys()
+	pose_keys.sort()
+	# The drag's own work each frame (GrabDrag.last_motion_ms), and where the
+	# rod was at the last.
+	var own := PackedFloat64Array()
+	var last_e: float = 0.0
 	for target: float in targets:
 		var began: int = Time.get_ticks_usec()
 		await _move(_camera.unproject_position(hold + way * target), MOUSE_BUTTON_MASK_LEFT)
 		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		own.append(_grab.last_motion_ms)
+		var origins: Array = []
+		for key: int in pose_keys:
+			var o: Vector3 = (grab.placed.get(key, _world.get_brick(key).transform) as Transform3D).origin
+			origins.append([snappedf(o.x, 0.0001), snappedf(o.y, 0.0001), snappedf(o.z, 0.0001)])
+		poses.append({"target": target, "shift": grab.shift, "stopped": grab.stopped, "origins": origins})
 		# As drawn: the rod's place along the actuator against its body.
 		var rel: Transform3D = (moved.call(body_key) as Transform3D).affine_inverse() * moved.call(rod_key)
 		var e: float = way.dot(rel * rod_rest - rod_rest)
+		last_e = e
 		most = maxf(most, e)
 		least = minf(least, e)
 		outside = maxf(outside, maxf(-(out_by + e), out_by + e - stroke))
@@ -2036,13 +2059,46 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
 		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	# Its own work a frame within a frame at 30 a second, the drag's whole
+	# share: 42081-1's arm cost 253 ms a frame on average and held one 2.9 s,
+	# a panel's turned cover worked out whole at each new turn; 42024-1's 148,
+	# its loop solved in steps the screw's input turned eight radians in.
+	var sorted_own: PackedFloat64Array = own.duplicate()
+	sorted_own.sort()
+	var own_mean: float = 0.0
+	for ms: float in own:
+		own_mean += ms / maxf(own.size(), 1.0)
+	var own_95: float = sorted_own[mini(sorted_own.size() - 1, int(sorted_own.size() * 0.95))] \
+		if not sorted_own.is_empty() else 0.0
+	_check("%s: the drag's own work a frame, mean %.1f ms, 95%% %.1f, worst %.1f, within a 33 ms frame"
+		% [name, own_mean, own_95, sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0],
+		not own.is_empty() and own_mean <= 33.0 and own_95 <= 33.0)
+	_timings[name + " " + path.get_file()]["p95_ms"] = snappedf(own_95, 0.01)
+	var pose_file := FileAccess.open(OUT.path_join("poses_%s.json" % path.get_file().get_basename()), FileAccess.WRITE)
+	if pose_file != null:
+		pose_file.store_string(JSON.stringify({"keys": pose_keys, "frames": poses}))
+		pose_file.close()
 	var let_go: int = Time.get_ticks_msec()
 	await _button(_last_screen, false)
 	await _frames(3)
 	# 42081-1's arm, 262 parts, is checked on a worker and its cells laid a
 	# share a frame: on a loaded box that took more than the usual 20 s.
 	await _settled(120000)
-	print("    said: %s (kept in %.1f s)" % [_grab.last_words, float(Time.get_ticks_msec() - let_go) / 1000.0])
+	var kept_in: float = float(Time.get_ticks_msec() - let_go) / 1000.0
+	print("    said: %s (kept in %.1f s)" % [_grab.last_words, kept_in])
+	_timings[name + " " + path.get_file()]["kept_s"] = snappedf(kept_in, 0.01)
+	# Checked and kept in a few seconds: 42081-1's arm took 20.6 to 22 s, its
+	# panel's turned cover worked out whole at every bisection.
+	_check("%s: let go, it is checked and kept in %.1f s" % [name, kept_in], kept_in <= 10.0)
+	# Kept where it was let go. A stop met earlier in the drag and not yet
+	# found was found at the release, and 42081-1's arm let go 20 LDU out was
+	# kept 60 in, at that stop.
+	var now_at := func(key: int) -> Transform3D:
+		return _world.get_brick(key).transform * (grab.rest[key] as Transform3D).affine_inverse()
+	var kept_rel: Transform3D = (now_at.call(body_key) as Transform3D).affine_inverse() * now_at.call(rod_key)
+	var kept_e: float = way.dot(kept_rel * rod_rest - rod_rest)
+	_check("%s: kept where it was let go, the rod %.2f LDU out, let go at %.2f" % [name, kept_e, last_e],
+		absf(kept_e - last_e) < 0.1)
 	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
 	if _windowed:
 		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")

@@ -57,6 +57,12 @@ can occupy the same millimetre.
   thousand angled bricks took 185 s to place on the app's only thread (its
   looks timed out); 9.5 s now. `turned_probe` checks the cells are identical to
   the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
+  A cover asked only where another part's boxes are (`BrickLattice.TurnedCover`,
+  `Builder.turned_cover`; the grab's room test, MECHANISMS §15): each cover box
+  against each box by the separating axis test, the cells asked as
+  `cells_for_turned` asks them within 0.01 of a cell of touching. `turned_probe`
+  holds it to the whole cover over 1,800 random parts and boxes (beside, into,
+  against a face): the same answer each time, about 40 times quicker.
 - `turned any way on hinges` (`src/ai/hinges.gd`, `Section` in
   `src/ai/assistant.gd`): a section turns yaw, then pitch, then roll (its +z
   the nose: yaw swings it to +x, pitch lifts it, roll lifts its +x side), or

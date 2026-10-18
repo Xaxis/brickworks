@@ -588,8 +588,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   falls over (`Topple`, below) in 0.5 s, in the same step. Escape puts it
   back. Past 40 moving parts a frame's room test stops at 10 ms and the rest
   is checked on pauses and, let go, on a worker (`Grab.verify_step`,
-  "checked when you pause"); a press on a big model before its joints are
-  read says so. Over MCP: `move_part` (degrees=, along=, or to= [x, y, z]
+  "checked when you pause"); a stop met and not yet found is dropped once
+  the section stands where its whole test finds room (`Grab._shown_on_trust`),
+  and a slide drawn on past a stop is not tested again; a press on a big model
+  before its joints are read says so. A turned part whose cover is not kept is
+  asked where something is, not worked out whole (`Grab._blocked_turned`,
+  `BrickLattice.TurnedCover`): `grab_probe -- --check-covers` works each out
+  whole too and fails where the two answer differently. Over MCP: `move_part` (degrees=, along=, or to= [x, y, z]
   studs: the part drawn there by its chain, `GrabDrag._chain_for_session`).
   Headless gear check without a pointer: `grab_probe -- --gears` (8020's
   crank turns the sails 1 in 9).
@@ -628,7 +633,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   §11): a part held at both ends (Bodies' closing links) moves as its loop
   allows: the loop's joint angles (and slides, and a ball's three turns)
   solved by damped Gauss-Newton with exact derivatives, from the last pose,
-  in 5° steps. Stops at the nearest pose that closes ("its loop closes no
+  in steps sized by the fastest turning joint (0.5 rad), each started along
+  the last step's slope, closed to 0.5 LDU on the way and 0.05 at the end; a
+  part that spins on its own (a screw's input and what it drives) solved
+  after the rest (`Linkage._reach_parted`; MECHANISMS §15). Stops at the
+  nearest pose that closes ("its loop closes no
   further that way"); "Locked: this loop has no freedom" when it closes
   neither a degree one way nor the other. An engine's piston slides in its
   cylinder and its rod's ball end sits in it (`Bodies._slide_within`,
@@ -676,8 +685,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a stroke over 19.9 turns; the loop's other joints are held by the screw,
   said. `grab_probe -- --only=actuators` (windowed): 42081-1's digging arm
   and 42024-1's small actuator, the rod dragged past both ends, the arm
-  against the law of cosines by hand, the arm grabbed and refused, the input
-  turned over MCP. `--actuator-set=FILE` tries another set.
+  against the law of cosines by hand, the drag's own work a frame (mean and
+  95% under 33 ms: 11.0 and 15.8 on 42081-1, 9.1 and 18.6 on 42024-1, from
+  253 and 148 mean before G6), let go checked and kept in under 10 s (5.8 and
+  0.5, from 19 and 3) and kept where it was let go, the arm grabbed and
+  refused, the input turned over MCP. Each frame's pose is written to
+  `poses_<set>.json` in the results folder, to set a run before a change
+  against one after. `--actuator-set=FILE` tries another set.
 - `a model that tips falls` (`src/assembly/topple.gd`, `Topple`): let go past
   its edge, the model turns about that edge until another corner of its
   cover reaches the floor, again while it still does not stand, and kept in

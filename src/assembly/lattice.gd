@@ -196,6 +196,175 @@ static func boxes_for_turned(
 	return compress(cells_for_turned(boxes, origin_cell, basis))
 
 
+## A turned part's cover asked only where something is ([class TurnedCover]):
+## [param boxes] turned by [param basis] about [param origin_cell], as
+## [method boxes_for_turned] has them, not worked out.
+static func turned_cover(boxes: Array[AABB], origin_cell: Vector3i, basis: Basis) -> TurnedCover:
+	return TurnedCover.new(boxes, origin_cell, basis)
+
+
+## The cells [method cells_for_turned] gives a turned part, asked where
+## another part's boxes are rather than worked out whole. A turned cover is
+## worked out cell by cell; for a Technic panel of 611 boxes that took
+## 2.8 s, and a part dragged on a loop is at a new turn every frame, so
+## 42081-1's arm held one frame that long each time its panel was asked.
+## Whether a box of the part touches a box of the other's is the
+## separating axis test of the two (a cell touches the turned box exactly
+## when that test says so of the cell, and the other's box is its cells);
+## where the two are within [constant UNSURE] of touching the cells there
+## are asked as [method cells_for_turned] asks them, so a cell that only
+## just touches is decided the way it always was.
+class TurnedCover extends RefCounted:
+	## Cells either side of touching where the boxes' test is not trusted
+	## to say which, and the cells are asked: far above single precision's
+	## rounding at a model's size.
+	const UNSURE := 0.01
+	var boxes: Array[AABB] = []
+	var basis: Basis
+	var cell: Vector3i
+	## Each box's reach, in cells about [member cell], a little wider than
+	## the cells it can touch: low then high corner, the high exclusive.
+	var loose := PackedInt32Array()
+	## The bound of [member loose].
+	var bound := PackedInt32Array()
+	## Box index -> [the cells it is scanned in (as loose), middle, axes,
+	## reaches, the box's own share of each reach], as cells_for_turned
+	## works them out; worked out when the box is first asked.
+	var _exact: Dictionary = {}
+
+	func _init(from: Array[AABB], origin_cell: Vector3i, turn: Basis) -> void:
+		boxes = from
+		basis = turn
+		cell = origin_cell
+		var ax := Vector3(absf(turn.x.x), absf(turn.x.y), absf(turn.x.z))
+		var ay := Vector3(absf(turn.y.x), absf(turn.y.y), absf(turn.y.z))
+		var az := Vector3(absf(turn.z.x), absf(turn.z.y), absf(turn.z.z))
+		loose.resize(boxes.size() * 6)
+		var n: int = 0
+		for box: AABB in boxes:
+			var lo := Vector3(box.position)
+			var hi := lo + Vector3(box.size)
+			var middle: Vector3 = turn * ((lo + hi) * 0.5)
+			var h: Vector3 = (hi - lo) * 0.5
+			var e: Vector3 = (ax * absf(h.x) + ay * absf(h.y) + az * absf(h.z)) + Vector3.ONE * UNSURE
+			loose[n] = floori(middle.x - e.x)
+			loose[n + 1] = floori(middle.y - e.y)
+			loose[n + 2] = floori(middle.z - e.z)
+			loose[n + 3] = ceili(middle.x + e.x)
+			loose[n + 4] = ceili(middle.y + e.y)
+			loose[n + 5] = ceili(middle.z + e.z)
+			n += 6
+		bound = BrickLattice._bound_of(loose)
+
+	## [member loose] where the part stands.
+	func loose_at() -> PackedInt32Array:
+		return BrickLattice.moved_by(loose, cell)
+
+	## Whether any cell of the cover is in one of [param theirs] (boxes as
+	## the lattice keeps them, where they stand).
+	func meets(theirs: PackedInt32Array) -> bool:
+		if theirs.is_empty() or boxes.is_empty():
+			return false
+		var tb: PackedInt32Array = BrickLattice._bound_of(theirs)
+		var x0: int = tb[0] - cell.x
+		var y0: int = tb[1] - cell.y
+		var z0: int = tb[2] - cell.z
+		var x1: int = tb[3] - cell.x
+		var y1: int = tb[4] - cell.y
+		var z1: int = tb[5] - cell.z
+		if not (bound[0] < x1 and x0 < bound[3] and bound[1] < y1 and y0 < bound[4]
+				and bound[2] < z1 and z0 < bound[5]):
+			return false
+		for i: int in boxes.size():
+			var o: int = i * 6
+			if not (loose[o] < x1 and x0 < loose[o + 3] and loose[o + 1] < y1 and y0 < loose[o + 4]
+					and loose[o + 2] < z1 and z0 < loose[o + 5]):
+				continue
+			var exact: Array = _exact_of(i)
+			var scan: PackedInt32Array = exact[0]
+			if not (scan[0] < x1 and x0 < scan[3] and scan[1] < y1 and y0 < scan[4]
+					and scan[2] < z1 and z0 < scan[5]):
+				continue
+			var j: int = 0
+			while j < theirs.size():
+				var b0 := Vector3i(theirs[j] - cell.x, theirs[j + 1] - cell.y, theirs[j + 2] - cell.z)
+				var b1 := Vector3i(theirs[j + 3] - cell.x, theirs[j + 4] - cell.y, theirs[j + 5] - cell.z)
+				j += 6
+				# Their box has a cell where this box is scanned.
+				if not (scan[0] < b1.x and b0.x < scan[3] and scan[1] < b1.y and b0.y < scan[4]
+						and scan[2] < b1.z and b0.z < scan[5]):
+					continue
+				var depth: float = _depth(exact, b0, b1)
+				if depth > UNSURE:
+					return true
+				if depth >= -UNSURE and _cells_meet(exact, b0, b1):
+					return true
+		return false
+
+	## How far box [param exact] and the box of cells [param b0] to
+	## [param b1] are into each other along the fifteen lines that separate
+	## them (below nought, apart), in cells.
+	func _depth(exact: Array, b0: Vector3i, b1: Vector3i) -> float:
+		var middle: Vector3 = exact[1]
+		var axes: Array[Vector3] = exact[2]
+		var own: PackedFloat64Array = exact[4]
+		var centre := Vector3(b0 + b1) * 0.5
+		var half := Vector3(b1 - b0) * 0.5
+		var apart: Vector3 = middle - centre
+		var least: float = INF
+		for n: int in axes.size():
+			var axis: Vector3 = axes[n]
+			var reach: float = own[n] + half.x * absf(axis.x) + half.y * absf(axis.y) + half.z * absf(axis.z)
+			least = minf(least, reach - absf(apart.dot(axis)))
+		return least
+
+	## Whether a cell of box [param exact] is in the box of cells [param b0]
+	## to [param b1], each line of cells asked as cells_for_turned asks it.
+	func _cells_meet(exact: Array, b0: Vector3i, b1: Vector3i) -> bool:
+		var scan: PackedInt32Array = exact[0]
+		var middle: Vector3 = exact[1]
+		var axes: Array[Vector3] = exact[2]
+		var reaches: PackedFloat64Array = exact[3]
+		var z_from: int = scan[2]
+		var z_to: int = scan[5] - 1
+		for x: int in range(maxi(scan[0], b0.x), mini(scan[3], b1.x)):
+			for y: int in range(maxi(scan[1], b0.y), mini(scan[4], b1.y)):
+				var run: Vector2i = BrickLattice._line_run(middle, axes, reaches, x, y, z_from, z_to)
+				if run.x <= run.y and run.x < b1.z and b0.z <= run.y:
+					return true
+		return false
+
+	func _exact_of(i: int) -> Array:
+		if _exact.has(i):
+			return _exact[i]
+		var box: AABB = boxes[i]
+		var lo := Vector3(box.position)
+		var hi := lo + Vector3(box.size)
+		var low := Vector3(INF, INF, INF)
+		var high := Vector3(-INF, -INF, -INF)
+		for n: int in 8:
+			var corner: Vector3 = basis * Vector3(
+				hi.x if n & 1 else lo.x,
+				hi.y if n & 2 else lo.y,
+				hi.z if n & 4 else lo.z)
+			low = low.min(corner)
+			high = high.max(corner)
+		var half: Vector3 = (hi - lo) * 0.5
+		var middle: Vector3 = basis * ((lo + hi) * 0.5)
+		var test: Array = BrickLattice._separating(basis, half)
+		var axes: Array[Vector3] = test[0]
+		var reaches: PackedFloat64Array = test[1]
+		var own := PackedFloat64Array()
+		for n: int in axes.size():
+			var axis: Vector3 = axes[n]
+			own.append(reaches[n] - 0.5 * (absf(axis.x) + absf(axis.y) + absf(axis.z)))
+		var scan := PackedInt32Array([floori(low.x), floori(low.y), floori(low.z),
+			ceili(high.x), ceili(high.y), ceili(high.z)])
+		var out: Array = [scan, middle, axes, reaches, own]
+		_exact[i] = out
+		return out
+
+
 ## Whether a point is off the lattice: not on a cell corner on some axis,
 ## beyond float dust.
 static func is_off_lattice(point: Vector3) -> bool:
@@ -589,55 +758,57 @@ static func cells_for_turned(
 		var z_to: int = ceili(high.z) - 1
 		for x: int in range(floori(low.x), ceili(high.x)):
 			for y: int in range(floori(low.y), ceili(high.y)):
-				# Along a line of cells the ones that touch are one run:
-				# the box grown by a cell is convex. So the run's ends,
-				# from the same fifteen slabs, and the cells between.
-				var px: float = float(x) + 0.5
-				var py: float = float(y) + 0.5
-				var t0: float = -INF
-				var t1: float = INF
-				var empty: bool = false
-				for n: int in axes.size():
-					var axis: Vector3 = axes[n]
-					var k: float = middle.dot(axis) - px * axis.x - py * axis.y
-					var r: float = reaches[n]
-					if absf(axis.z) < 0.000001:
-						if absf(k) > r:
-							empty = true
-							break
-						continue
-					var a: float = (k - r) / axis.z
-					var b: float = (k + r) / axis.z
-					t0 = maxf(t0, minf(a, b))
-					t1 = minf(t1, maxf(a, b))
-					if t0 > t1 + 1.0:
-						empty = true
-						break
-				if empty:
-					continue
-				# The ends settled by the exact test, so a cell that only
-				# just touches is decided the way it always was.
-				var first: int = clampi(ceili(t0 - 0.5), z_from, z_to + 1)
-				var last: int = clampi(floori(t1 - 0.5), z_from - 1, z_to)
-				while first - 1 >= z_from and _touches_with(middle, axes,
-						reaches, Vector3(px, py, float(first - 1) + 0.5)):
-					first -= 1
-				while first <= z_to and not _touches_with(middle, axes,
-						reaches, Vector3(px, py, float(first) + 0.5)):
-					first += 1
-				while last + 1 <= z_to and _touches_with(middle, axes,
-						reaches, Vector3(px, py, float(last + 1) + 0.5)):
-					last += 1
-				while last >= first and not _touches_with(middle, axes,
-						reaches, Vector3(px, py, float(last) + 0.5)):
-					last -= 1
-				for z: int in range(first, last + 1):
+				var run: Vector2i = _line_run(middle, axes, reaches, x, y, z_from, z_to)
+				for z: int in range(run.x, run.y + 1):
 					var cell: Vector3i = origin_cell + Vector3i(x, y, z)
 					if taken.has(cell):
 						continue
 					taken[cell] = true
 					out.append(cell)
 	return out
+
+
+## The run of cells a turned box touches along the line of cells at
+## [param x], [param y], within [param z_from] to [param z_to]: Vector2i(first,
+## last), last below first for none. Along a line of cells the ones that
+## touch are one run: the box grown by a cell is convex. So the run's ends,
+## from the fifteen slabs ([method _separating]), settled by the exact test,
+## so a cell that only just touches is decided the way it always was.
+static func _line_run(middle: Vector3, axes: Array[Vector3], reaches: PackedFloat64Array,
+		x: int, y: int, z_from: int, z_to: int) -> Vector2i:
+	var px: float = float(x) + 0.5
+	var py: float = float(y) + 0.5
+	var t0: float = -INF
+	var t1: float = INF
+	for n: int in axes.size():
+		var axis: Vector3 = axes[n]
+		var k: float = middle.dot(axis) - px * axis.x - py * axis.y
+		var r: float = reaches[n]
+		if absf(axis.z) < 0.000001:
+			if absf(k) > r:
+				return Vector2i(0, -1)
+			continue
+		var a: float = (k - r) / axis.z
+		var b: float = (k + r) / axis.z
+		t0 = maxf(t0, minf(a, b))
+		t1 = minf(t1, maxf(a, b))
+		if t0 > t1 + 1.0:
+			return Vector2i(0, -1)
+	var first: int = clampi(ceili(t0 - 0.5), z_from, z_to + 1)
+	var last: int = clampi(floori(t1 - 0.5), z_from - 1, z_to)
+	while first - 1 >= z_from and _touches_with(middle, axes,
+			reaches, Vector3(px, py, float(first - 1) + 0.5)):
+		first -= 1
+	while first <= z_to and not _touches_with(middle, axes,
+			reaches, Vector3(px, py, float(first) + 0.5)):
+		first += 1
+	while last + 1 <= z_to and _touches_with(middle, axes,
+			reaches, Vector3(px, py, float(last + 1) + 0.5)):
+		last += 1
+	while last >= first and not _touches_with(middle, axes,
+			reaches, Vector3(px, py, float(last) + 0.5)):
+		last -= 1
+	return Vector2i(first, last)
 
 
 ## The fifteen separating axes for a turned box and a unit cell, and for

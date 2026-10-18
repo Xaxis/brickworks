@@ -185,6 +185,17 @@ whole cycle.
 
 ### Fixed
 
+- A big loop dragged by its linear actuator follows the pointer at frame
+  rate. 42081-1's digging arm, 262 parts in a loop of 25 joints, cost 253 ms
+  a frame on average and held some frames 2.9 s; it now costs 11 ms, and
+  18 at worst. 42024-1's small actuator, in a loop of 36 joints, went from
+  148 ms to 9, and no longer stops for a frame where nothing is in its way.
+  Let go, the arm is checked and kept in 4 to 6 s, from 19.
+
+- A big section dragged into something and back, then let go, is kept
+  where it was let go. It was put back at the place it had met something
+  earlier in the drag: 42081-1's arm let go 20 LDU out was kept 60 LDU in.
+
 - In a browser, a step of the timeline on a big model is quick again, and a
   big model no longer stutters. Since parts could be grabbed and moved on
   their joints, the page looked for every part's drag handle twice a second,
