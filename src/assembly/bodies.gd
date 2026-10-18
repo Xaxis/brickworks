@@ -127,6 +127,9 @@ var links: Array[Link] = []
 var touching: Dictionary = {}
 ## Body -> true for each anchor.
 var anchors: Dictionary = {}
+## Anchor body -> why it stays, [kind, a part]: "locked" (the part the person
+## locked), "studs" (the part on the baseplate's studs), "heaviest".
+var anchor_why: Dictionary = {}
 ## Body -> the Link between it and its parent (towards the anchor).
 var parent_link: Dictionary = {}
 ## Body -> its parent body.
@@ -142,6 +145,18 @@ var flexible: Dictionary = {}
 var revision: int = -1
 ## How long the reading took, ms.
 var took_ms: int = 0
+
+## Pairs of parts whose studs only press on the other's face, holding
+## nothing: a bush resting on a plate's studs ([method _no_sockets]).
+var pressed_on: Dictionary = {}
+## Why parts are one body: part -> Array of [the part it was joined to, why],
+## each join that made two bodies one, so [method held_words] can say what
+## holds a part ("grips", "tyre", "studs:<the part whose studs>", "stuck",
+## "pin", "lodged", "lines:<a part>:<the other>").
+var joined_by: Dictionary = {}
+## Each joint read between two parts that ended in one body: what would
+## turn but is held, as [a, b, kind].
+var overruled: Array = []
 
 var _up: Dictionary = {}
 var _standing: Dictionary = {}   ## brick id -> true: on the baseplate's studs
@@ -180,7 +195,8 @@ func _find(key: int) -> int:
 	return at
 
 
-func _join(one: int, other: int) -> bool:
+## Join two parts' bodies, and keep [param why] they are one ([member joined_by]).
+func _join(one: int, other: int, why: String = "") -> bool:
 	var a: int = _find(one)
 	var b: int = _find(other)
 	if a == b:
@@ -189,6 +205,10 @@ func _join(one: int, other: int) -> bool:
 		_up[b] = a
 	else:
 		_up[a] = b
+	for ends: Array in [[one, other], [other, one]]:
+		if not joined_by.has(ends[0]):
+			joined_by[ends[0]] = []
+		(joined_by[ends[0]] as Array).append([ends[1], why])
 	return true
 
 
@@ -237,7 +257,7 @@ func _read() -> void:
 		if acting.has(Vector2i(mini(a, b), maxi(a, b))):
 			continue
 		if str(one[2]) == "grips":
-			_join(a, b)
+			_join(a, b, "grips:%d" % a)
 			continue
 		var shaft_info: PartLibrary.PartInfo = info_of.get(a)
 		var shaft_name: String = shaft_info.name if shaft_info != null else ""
@@ -293,7 +313,7 @@ func _read() -> void:
 				holds = false
 			# A tyre is held on its wheel: it does not turn on the rim.
 			if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
-				_join(a, b)
+				_join(a, b, "tyre")
 				continue
 			# A clip, or a minifigure's hand, slides along the bar it holds;
 			# a hinge's pin and a head on its neck do not.
@@ -353,10 +373,8 @@ func _read() -> void:
 	# Studs: two or more between two parts hold them; one alone turns when
 	# either is a single stud across.
 	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
-	# The baseplate's own studs are not asked: a 48 x 48 plate has 2,304,
-	# and the lattice's answer under a big model's turned parts took 36 s at
-	# 1,300 parts. What stands on it is found from the parts' feet instead
-	# ([method _on_the_floor]).
+	# The baseplate's studs too: a part with one in a socket stands on the
+	# floor (below).
 	var studs: Array = Joints.studs_in(entries + floor_entries, func(tip: Vector3, key: Variant) -> Variant:
 		var there: int = lattice.brick_at(BrickLattice.to_cell(tip))
 		return there if there != 0 and there != int(key) else null)
@@ -368,7 +386,10 @@ func _read() -> void:
 			if not partners.has(ends[0]):
 				partners[ends[0]] = []
 			(partners[ends[0]] as Array).append(ends[1])
+	var stud_of: Dictionary = {}   ## pair -> the part whose studs they are
 	var askew: Dictionary = {}   ## pair -> its studs into a part askew to them, in no socket or hole
+	var pressed: Dictionary = {}   ## pair -> its studs against a part with no socket, in no hole of it
+	pressed_on.clear()
 	for stud: Array in studs:
 		var a: int = int(stud[0])
 		var b: int = int(stud[1])
@@ -376,9 +397,13 @@ func _read() -> void:
 			b = _sits_on(stud[2], stud[3], [b] + (partners[b] as Array))
 		if scenery.has(a) or scenery.has(b):
 			# On the baseplate's studs: a stud in one of its sockets, not a
-			# tyre the plate's studs touch.
+			# tyre the plate's studs touch. A tyre is rubber with no socket,
+			# whatever gaps its tread has: 58090's file leaves four that read
+			# as sockets, and a session's kart, its steering turned 30
+			# degrees, had a front tyre's gap come over a stud. Its front
+			# axle became what stays, and the turn back swung the chassis.
 			var on: int = b if scenery.has(a) else a
-			if not scenery.has(on) and _in_a_socket(on, stud[2]):
+			if not scenery.has(on) and not _is_tyre(info_of.get(on)) and _in_a_socket(on, stud[2]):
 				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
@@ -392,8 +417,16 @@ func _read() -> void:
 		var pair := Vector2i(mini(a, b), maxi(a, b))
 		if _askew(a, b) and not _takes_stud(b, stud[2], stud[3]):
 			askew[pair] = int(askew.get(pair, 0)) + 1
+		# A part with nothing underneath to take a stud (a bush, a gear, a
+		# beam: no socket) takes one only in a hole; a stud against its face
+		# holds nothing. A session's kart had a bush on its steering column
+		# sitting on the deck's studs, read as held by them, and the column
+		# was locked to the chassis.
+		if _no_sockets(b) and not _takes_stud(b, stud[2], stud[3]):
+			pressed[pair] = int(pressed.get(pair, 0)) + 1
 		if not per_pair.has(pair):
 			per_pair[pair] = []
+			stud_of[pair] = a
 		(per_pair[pair] as Array).append([stud[2], stud[3]])
 	# Two parts turned askew to each other hold by studs only where they go
 	# into sockets or holes: one stud alone is a round joint, as any lone
@@ -408,6 +441,10 @@ func _read() -> void:
 	for pair: Vector2i in askew:
 		if int(askew[pair]) >= 2 and int(askew[pair]) == (per_pair[pair] as Array).size():
 			per_pair.erase(pair)
+	for pair: Vector2i in pressed:
+		if per_pair.has(pair) and int(pressed[pair]) == (per_pair[pair] as Array).size():
+			per_pair.erase(pair)
+			pressed_on[pair] = true
 	var turning: Dictionary = {}
 	for c: Array in candidates:
 		turning[Vector2i(mini(int(c[0]), int(c[1])), maxi(int(c[0]), int(c[1])))] = true
@@ -436,8 +473,15 @@ func _read() -> void:
 					and BrickLattice.shared_cells(lid, theirs) <= 0:
 				continue
 			var under: Array = _studs_under(a, other)
+			# Pressed on a face with nothing to take them, as above.
+			if not under.is_empty() and _no_sockets(other):
+				under = under.filter(func(stud: Array) -> bool:
+					return _takes_stud(other, stud[0], stud[1]))
+				if under.is_empty():
+					pressed_on[pair] = true
 			if not under.is_empty():
 				per_pair[pair] = under
+				stud_of[pair] = a
 				_resting[pair] = true
 	# A turntable's top on its base, a hinge brick's halves, a click hinge's
 	# two parts: the joint between them is what holds them, whatever studs
@@ -450,14 +494,14 @@ func _read() -> void:
 			candidates.append([pair.x, pair.y, "stud", found[0][0], found[0][1], true, 0.0,
 				Vector2.ZERO, 0])
 		else:
-			_join(pair.x, pair.y)
+			_join(pair.x, pair.y, "studs:%d" % int(stud_of.get(pair, pair.x)))
 
 	# Glue, magnets, one thing in pieces.
 	var stuck: Dictionary = Joints.held_otherwise(entries, library)
 	for one: Variant in stuck:
 		for other: Variant in stuck[one]:
 			if _up.has(int(one)) and _up.has(int(other)):
-				_join(int(one), int(other))
+				_join(int(one), int(other), "stuck")
 
 	# A piece nothing holds where it is, lodged in another, is held by what
 	# it is lodged in: an axle in a pin's stop bush, a log in a gripper's
@@ -480,7 +524,7 @@ func _read() -> void:
 		if int(sizes.get(_find(pin), 1)) == 1:
 			lone.append(pin)
 	for pin: int in lone:
-		_join(pin, int((pin_rows[pin] as Array)[0]))
+		_join(pin, int((pin_rows[pin] as Array)[0]), "pin")
 	# Two joints between the same two bodies on different lines hold them.
 	var changed: bool = true
 	while changed:
@@ -500,8 +544,14 @@ func _read() -> void:
 			var first: Array = found[0]
 			for c: Array in found:
 				if not _one_line(first, c):
-					changed = _join(int(first[0]), int(first[1])) or changed
+					changed = _join(int(first[0]), int(first[1]),
+						"lines:%d:%d" % [int(c[0]), int(c[1])]) or changed
 					break
+
+	overruled.clear()
+	for c: Array in candidates:
+		if _find(int(c[0])) == _find(int(c[1])) and str(c[2]) != "stud":
+			overruled.append([int(c[0]), int(c[1]), str(c[2])])
 
 	members.clear()
 	body_of.clear()
@@ -631,7 +681,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if best == 0:
 			continue
 		var into: int = Bodies._piece_find(up, _find(best))
-		_join(from, best)
+		_join(from, best, "lodged")
 		lodged_in[from] = best
 		var root: int = _find(from)
 		if not up.has(root):
@@ -701,29 +751,29 @@ func _anchor_and_grow() -> void:
 					seen[next] = true
 					frontier.append(next)
 		pieces.append(piece)
+	anchor_why.clear()
 	for piece: Array in pieces:
-		var chosen: Array = []
 		for body: int in piece:
 			for key: int in members[body]:
 				if locked.has(key):
-					chosen.append(body)
+					anchor_why[body] = ["locked", key]
 					break
-		if chosen.is_empty():
+		if not _any_of(piece, anchor_why):
 			for body: int in piece:
 				for key: int in members[body]:
 					if _standing.has(key):
-						chosen.append(body)
+						anchor_why[body] = ["studs", key]
 						break
-		if chosen.is_empty():
+		if not _any_of(piece, anchor_why):
 			var best: int = piece[0]
 			for body: int in piece:
 				if float(grams.get(body, 0.0)) > float(grams.get(best, 0.0)) \
 						or (is_equal_approx(float(grams.get(body, 0.0)), float(grams.get(best, 0.0)))
 							and body < best):
 					best = body
-			chosen.append(best)
-		for body: int in chosen:
-			anchors[body] = true
+			anchor_why[best] = ["heaviest", 0]
+	for body: int in anchor_why:
+		anchors[body] = true
 	# Breadth first from every anchor at once: each body hangs from the one
 	# nearest an anchor.
 	var reached: Dictionary = {}
@@ -791,6 +841,197 @@ func _anchor_and_grow() -> void:
 		if not children.has(parent):
 			children[parent] = []
 		(children[parent] as Array).append(child)
+
+
+## Whether any of [param piece]'s bodies is a key of [param among].
+static func _any_of(piece: Array, among: Dictionary) -> bool:
+	for body: int in piece:
+		if among.has(body):
+			return true
+	return false
+
+
+## What holds [param part] still, in words a person or a session can act on,
+## each part named with its number, or "" when nothing is known. The joint
+## nearest it that its body holds still (an axle in a round hole, a pin, a
+## hinge, whose two halves ended in one body), and each join that holds those
+## halves as one, from one to the other: "the Technic Axle 4 (#15) would turn
+## on its axle in the Technic Plate 2 x 8 with Holes (#11), but the Brick 2 x
+## 2 Round (#25) grips the Technic Axle 4 (#15) and the studs of the Technic
+## Plate 2 x 8 with Holes (#11) grip the Brick 2 x 2 Round (#25)". With no
+## such joint, why its body is what stays ([method stays_words]).
+func held_words(part: int) -> String:
+	var body: int = int(body_of.get(part, -1))
+	if body < 0:
+		return ""
+	var overruled_said: String = overruled_words(part)
+	if not overruled_said.is_empty():
+		return overruled_said
+	var stays: String = stays_words(body)
+	if stays.is_empty():
+		return ""
+	stays = "%s is part of what stays: %s" % [_part_named(part), stays]
+	var at: int = int((anchor_why[body] as Array)[1])
+	var path: Array = _path(part, at) if at != 0 and at != part else []
+	if path.is_empty() or path.size() > 3:
+		return stays
+	var steps := PackedStringArray()
+	for step: Array in path:
+		steps.append(_join_words(int(step[0]), int(step[1]), str(step[2])))
+	return "%s, and %s" % [stays, Bodies._and(steps)]
+
+
+## The joint nearest [param part] that its body holds still, and what holds
+## its halves as one ([method held_words]); "" for a part with none.
+func overruled_words(part: int) -> String:
+	var body: int = int(body_of.get(part, -1))
+	if body < 0:
+		return ""
+	var hops: Dictionary = _hops(part)
+	var far: int = 1 << 30
+	var near_first: Array = []   ## [hops, joint]
+	for one: Array in overruled:
+		if int(body_of.get(int(one[0]), -1)) == body:
+			near_first.append([mini(int(hops.get(int(one[0]), far)), int(hops.get(int(one[1]), far))), one])
+	near_first.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) < int(y[0]))
+	# Not a joint between two parts joined to each other directly: a wheel's
+	# hub read as on a hinge in the axle it grips is no joint at all.
+	var best: Array = []
+	for near: Array in near_first:
+		if _path(int(near[1][0]), int(near[1][1])).size() >= 2:
+			best = near[1]
+			break
+	if best.is_empty():
+		return ""
+	var near_end: int = int(best[0])
+	var far_end: int = int(best[1])
+	if int(hops.get(far_end, far)) < int(hops.get(near_end, far)):
+		near_end = int(best[1])
+		far_end = int(best[0])
+	var steps := PackedStringArray()
+	for step: Array in _path(near_end, far_end):
+		steps.append(_join_words(int(step[0]), int(step[1]), str(step[2])))
+	var said := Link.new()
+	said.kind = str(best[2])
+	return "%s would turn %s in %s, but %s" % [_part_named(near_end), said.words(),
+		_part_named(far_end), Bodies._and(steps)]
+
+
+## What stays in [param body]'s piece of the model, each anchor and why, in
+## words ([method stays_words]): a train that locks is held between them.
+func what_stays(body: int) -> String:
+	var seen: Dictionary = {body: true}
+	var queue: Array = [body]
+	var said := PackedStringArray()
+	var head: int = 0
+	while head < queue.size():
+		var at: int = queue[head]
+		head += 1
+		if anchors.has(at):
+			said.append(stays_words(at))
+		for link: Link in touching.get(at, []):
+			var next: int = link.other(at)
+			if not seen.has(next):
+				seen[next] = true
+				queue.append(next)
+	return Bodies._and(said)
+
+
+## Why [param body] is what stays when something else is moved, or "" for a
+## body that is not an anchor.
+func stays_words(body: int) -> String:
+	var why: Array = anchor_why.get(body, [])
+	if why.is_empty():
+		return ""
+	var at: int = int(why[1])
+	match str(why[0]):
+		"locked":
+			return "%s is locked" % _part_named(at)
+		"studs":
+			return "%s stands on the baseplate's studs" % _part_named(at)
+	return "the body of %s is the heaviest of the model" % named([body]).get_slice(",", 0)
+
+
+## [param one] and [param other] made one body for [param why] (as [member
+## joined_by] keeps it), in words.
+func _join_words(one: int, other: int, why: String) -> String:
+	var kind: String = why.get_slice(":", 0)
+	match kind:
+		"grips":
+			var shaft: int = int(why.get_slice(":", 1))
+			return "%s grips %s" % [_part_named(other if shaft == one else one), _part_named(shaft)]
+		"studs":
+			var owner: int = int(why.get_slice(":", 1))
+			return "the studs of %s grip %s" % [_part_named(owner), _part_named(other if owner == one else one)]
+		"tyre":
+			var tyre: int = one if Bodies._is_tyre(_info(one)) else other
+			return "%s is held on %s" % [_part_named(tyre), _part_named(other if tyre == one else one)]
+		"pin":
+			return "%s and %s turn as one (a pin is part of the first thing it is in)" % [
+				_part_named(one), _part_named(other)]
+		"lodged":
+			var lodged_part: int = one if int(lodged_in.get(one, -1)) == other else other
+			return "%s is lodged in %s" % [_part_named(lodged_part),
+				_part_named(other if lodged_part == one else one)]
+		"lines":
+			return "%s and %s are joined on two lines at once" % [_part_named(one), _part_named(other)]
+	return "%s is stuck to %s" % [_part_named(one), _part_named(other)]
+
+
+## How many joins from [param from] each part of its body is.
+func _hops(from: int) -> Dictionary:
+	var out: Dictionary = {from: 0}
+	var queue: Array = [from]
+	var head: int = 0
+	while head < queue.size():
+		var at: int = queue[head]
+		head += 1
+		for edge: Array in joined_by.get(at, []):
+			if not out.has(int(edge[0])):
+				out[int(edge[0])] = int(out[at]) + 1
+				queue.append(int(edge[0]))
+	return out
+
+
+## The joins from [param from] to [param to], each [one, other, why], or [].
+func _path(from: int, to: int) -> Array:
+	var back: Dictionary = {from: []}
+	var queue: Array = [from]
+	var head: int = 0
+	while head < queue.size() and not back.has(to):
+		var at: int = queue[head]
+		head += 1
+		for edge: Array in joined_by.get(at, []):
+			if not back.has(int(edge[0])):
+				back[int(edge[0])] = [at, str(edge[1])]
+				queue.append(int(edge[0]))
+	if not back.has(to):
+		return []
+	var out: Array = []
+	var at: int = to
+	while at != from:
+		var step: Array = back[at]
+		out.push_front([int(step[0]), at, str(step[1])])
+		at = int(step[0])
+	return out
+
+
+func _info(key: int) -> PartLibrary.PartInfo:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	return library.parts.get(brick.part_id) if brick != null else null
+
+
+## "the Technic Bush (#80)".
+func _part_named(key: int) -> String:
+	var info: PartLibrary.PartInfo = _info(key)
+	return "the %s (#%d)" % [Bodies._short(info.name) if info != null else "part", key]
+
+
+## "a", "a and b", "a, b and c".
+static func _and(said: PackedStringArray) -> String:
+	if said.size() <= 1:
+		return "".join(said)
+	return ", ".join(said.slice(0, said.size() - 1)) + " and " + said[said.size() - 1]
 
 
 ## Every body beyond [param body], it included: what comes along when it
@@ -1169,48 +1410,6 @@ func _sits_on(foot: Vector3, way: Vector3, ids: Array) -> int:
 	return best
 
 
-## The parts standing on the baseplate's studs: a part that takes studs
-## from below (it has sockets), its foot on the plate's top and over it. A
-## tyre resting on the plate has no socket and is not; a wheel turns on its
-## axle under the chassis that stands.
-func _on_the_floor(entries: Array, floor_entries: Array) -> void:
-	var plates: Array = []   ## [top, AABB]
-	for entry: Array in floor_entries:
-		var box: AABB = (entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds
-		plates.append([box.end.y - BrickLattice.PLATE * 0.5, box])
-	if plates.is_empty():
-		return
-	for entry: Array in entries:
-		var mesh: Lbm.PartMesh = entry[2]
-		if mesh.sockets.is_empty():
-			continue
-		var at: Transform3D = entry[1]
-		var box: AABB = at * mesh.bounds
-		for n: int in plates.size():
-			var plate: Array = plates[n]
-			var over: AABB = plate[1]
-			# The studs stand half a plate proud of the plate: a part on them
-			# has its foot at their foot, and a socket of it on one of them.
-			if absf(box.position.y - float(plate[0])) > 2.5 \
-					or box.position.x >= over.end.x or box.end.x <= over.position.x \
-					or box.position.z >= over.end.z or box.end.z <= over.position.z:
-				continue
-			var local: Transform3D = (floor_entries[n][1] as Transform3D).affine_inverse()
-			var on_a_stud: bool = false
-			for socket: Vector2 in mesh.sockets:
-				var p: Vector3 = local * (at * Vector3(socket.x, mesh.bounds.position.y, socket.y))
-				# A baseplate's studs are half a stud off its middle, 20 apart:
-				# the floor's plates are a whole number of eights across.
-				var dx: float = fposmod(p.x - 10.0, 20.0)
-				var dz: float = fposmod(p.z - 10.0, 20.0)
-				if (dx <= 1.5 or dx >= 18.5) and (dz <= 1.5 or dz >= 18.5):
-					on_a_stud = true
-					break
-			if on_a_stud:
-				_standing[int(entry[0])] = true
-				break
-
-
 ## Whether a stud at [param foot] is in one of [param key]'s sockets: a part
 ## that takes studs from below, not a tyre the baseplate's studs touch.
 func _in_a_socket(key: int, foot: Vector3) -> bool:
@@ -1223,6 +1422,13 @@ func _in_a_socket(key: int, foot: Vector3) -> bool:
 		if at.distance_to(foot) <= Mechanism.STUD_SLACK + 4.0:
 			return true
 	return false
+
+
+## Whether [param key] has nothing underneath to take a stud: no socket.
+func _no_sockets(key: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	return mesh != null and mesh.sockets.is_empty()
 
 
 ## Whether two parts stand turned to each other off the square, so their

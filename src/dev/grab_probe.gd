@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab7-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab8-2026-10-18"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -194,9 +194,20 @@ func _run() -> void:
 	if only.is_empty() or only == "mcp":
 		await _session()
 	if only.is_empty() or only == "mcp" or only == "steer":
-		await _steer_twice()
-	if only == "kart":
-		await _steer_twice(true)
+		await _steer_twice("buggy")
+	if only.is_empty() or only == "mcp" or only == "steer" or only == "kart":
+		await _steer_twice("kart")
+		await _steer_twice("kart", "section")
+		await _steer_twice("kart", "grouped")
+		await _steer_twice("kart_bushes")
+		await _held_says()
+	if only.is_empty() or only == "steering":
+		var asked_steering: Array = []
+		for arg: String in args:
+			if arg.begins_with("--steer-set="):
+				asked_steering.append("res://" + arg.trim_prefix("--steer-set="))
+		for one: String in (STEERING if asked_steering.is_empty() else asked_steering):
+			await _steer_set(one)
 	if only.is_empty() or only == "big":
 		await _big()
 	if Grab.check_covers:
@@ -292,6 +303,23 @@ func _survey(path: String) -> void:
 		return
 	var bodies: Bodies = _bodies()
 	print("%s: %d parts, %s" % [path.get_file(), _world.brick_count(), bodies.summary()])
+	for body: int in bodies.anchors:
+		var names := PackedStringArray()
+		for key: int in (bodies.members[body] as PackedInt64Array).slice(0, 6):
+			var info: PartLibrary.PartInfo = _library.parts.get(_world.get_brick(key).part_id)
+			names.append(info.name if info != null else _world.get_brick(key).part_id)
+		print("    anchor %d: %d parts, %.1f g, %s; %s: %s" % [body, (bodies.members[body] as PackedInt64Array).size(),
+			float(bodies.grams.get(body, 0.0)), bodies.named([body]), bodies.stays_words(body), ", ".join(names)])
+	var heavy: Array = bodies.members.keys()
+	heavy.sort_custom(func(x: int, y: int) -> bool:
+		return float(bodies.grams.get(x, 0.0)) > float(bodies.grams.get(y, 0.0)))
+	for body: int in heavy.slice(0, 8):
+		var ids := PackedStringArray()
+		for key: int in (bodies.members[body] as PackedInt64Array).slice(0, 12):
+			ids.append(_world.get_brick(key).part_id)
+		print("    heavy %d: %d parts, %.1f g, %s%s: %s" % [body, (bodies.members[body] as PackedInt64Array).size(),
+			float(bodies.grams.get(body, 0.0)), bodies.named([body]), " (anchor)" if bodies.anchors.has(body) else "",
+			" ".join(ids)])
 	for body: int in bodies.members:
 		var ids: PackedInt64Array = bodies.members[body]
 		if ids.size() > 1 and ids.size() < 30:
@@ -303,6 +331,9 @@ func _survey(path: String) -> void:
 	for pair: Vector2i in bodies._resting:
 		print("    resting on studs: %s on %s" % [_world.get_brick(pair.x).part_id,
 			_world.get_brick(pair.y).part_id])
+	for pair: Vector2i in bodies.pressed_on:
+		print("    studs pressed on a face, holding nothing: #%d %s and #%d %s" % [pair.x,
+			_world.get_brick(pair.x).part_id, pair.y, _world.get_brick(pair.y).part_id])
 	for link: Bodies.Link in bodies.links:
 		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
 		var moved: Array = bodies.beyond(child)
@@ -4477,64 +4508,306 @@ func _chain_case(name: String, path: String, end: String) -> void:
 ## and the turn back was refused: "held rigidly to what stays". The session
 ## took the steering wheel off its column to get round it.
 ##
-## --only=kart: a second session's kart (steering_kart.json), on four rims
-## with their tyres, still OPEN. The first turn goes as it should; then a
-## front tyre's tread, whose gaps the part file reads as sockets (58090 has
-## four), comes over a baseplate stud and is taken for standing on it, the
-## front axle becomes what stays, and the turn back swings the chassis round
-## it. Asking a turned part for two studs to stand fixed it and broke
-## 42081-1's arm, whose rolled tyre stands on one, so it is not in the run.
-func _steer_twice(kart: bool = false) -> void:
-	var fixtures: Array = [["kart", "steering_kart.json", "edit_model"]] if kart \
-		else [["buggy", "steering_buggy.json", "submit_design"]]
-	for fixture: Array in fixtures:
-		print("\nmove_part twice: a session's %s, its steering turned, and turned back" % fixture[0])
-		await _clean_slate()
-		_main.call("clear_model")
-		await _frames(3)
-		var design: Variant = JSON.parse_string(FileAccess.get_file_as_string(
-			"res://tests/fixtures/mcpwalk/" + str(fixture[1])))
-		var assistant: Assistant = _main.get("_assistant")
-		# In a window the answer is blocks, the picture among them.
-		var answer: Variant = await assistant.use_tool(str(fixture[2]), design)
-		var built: String = str(answer)
-		if answer is Array:
-			built = ""
-			for block: Variant in answer:
-				if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
-					built += str((block as Dictionary)["text"])
-		_check("the session's %s builds: %s" % [fixture[0], built.left(50)],
-			built.begins_with("Built") or built.begins_with("Done"))
-		var wheel: BrickWorld.Brick = null
-		var deck: BrickWorld.Brick = null
+## And a second session's kart (steering_kart.json), on four rims with their
+## tyres, its column turning a centre-pivot front axle through three 16 tooth
+## gears. The first turn went as it should; then a front tyre's tread, whose
+## gaps the part file reads as sockets (58090 has four), came over a
+## baseplate stud and was taken for standing on it, the front axle became
+## what stays, and the turn back swung the chassis round it. A tyre stands on
+## no stud now. Each turn's front axle is checked to have turned with the
+## column, one for one through the idler.
+##
+## [param how] "section": the same kart with its front axle made a section
+## as the session made it (edit_model, the eight parts taken off and put back
+## where they were, in a section of their own). That locked its gears: "will
+## not turn: its gears lock (parallel 16-16, parallel 16-16)". Put back, a
+## front tyre's tread gap stood on a baseplate stud, the front axle was what
+## stays, and the pivot's gear with it: the tyre on the studs, as above.
+## "grouped": the eight made a sub-assembly in the file (Make sub-assembly,
+## Assemblies.make). A sub-assembly is a grouping in the file and must not
+## change what turns.
+func _steer_twice(which: String, how: String = "") -> void:
+	var tool: String = "edit_model" if which.begins_with("kart") else "submit_design"
+	var name: String = which + str({"": "", "section": ", its front axle a section",
+		"grouped": ", its front axle a sub-assembly"}[how])
+	print("\nmove_part twice: a session's %s, its steering turned, and turned back" % name)
+	await _clean_slate()
+	_main.call("clear_model")
+	await _frames(3)
+	var design: Variant = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://tests/fixtures/mcpwalk/steering_%s.json" % which))
+	var assistant: Assistant = _main.get("_assistant")
+	var built: String = _text_of(await assistant.use_tool(tool, design))
+	_check("the session's %s builds: %s" % [name, built.left(50)],
+		built.begins_with("Built") or built.begins_with("Done"))
+	var wheel: BrickWorld.Brick = null
+	var deck: BrickWorld.Brick = null
+	var pivot: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "2819":
+			wheel = brick
+		elif brick.part_id == "3738" and deck == null:
+			deck = brick
+		elif brick.part_id == "6536":
+			pivot = brick
+	if wheel == null or deck == null:
+		_check("it has its steering wheel and its deck", false)
+		return
+	var axle_parts: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id in ["6536", "4519", "4019", "3737", "55982", "58090"] and pivot != null \
+				and brick.transform.origin.z >= pivot.transform.origin.z - 10.0:
+			axle_parts.append(brick.id)
+	if how == "section":
+		var edit: Dictionary = {"remove": axle_parts,
+			"sections": [{"name": "front axle assembly", "x": 0, "y": 0, "z": 0}], "add": []}
+		for one: Dictionary in [
+				{"part": "6536", "color": 0, "axis": "y", "joint": 0, "x": 12, "y": 4.75, "z": 11, "rot": 3},
+				{"part": "4519", "color": 0, "axis": "y", "x": 12, "y": 7.25, "z": 11},
+				{"part": "4019", "color": 71, "axis": "y", "x": 12, "y": 7.75, "z": 11},
+				{"part": "3737", "color": 0, "axis": "x", "x": 12, "y": 4.75, "z": 12},
+				{"part": "55982", "color": 71, "axis": "x", "joint": 0, "x": 9.55, "y": 4.75, "z": 12},
+				{"part": "55982", "color": 71, "axis": "-x", "joint": 0, "x": 14.45, "y": 4.75, "z": 12},
+				{"part": "58090", "color": 0, "axis": "x", "x": 8.6, "y": 4.75, "z": 12},
+				{"part": "58090", "color": 0, "axis": "x", "x": 15.4, "y": 4.75, "z": 12}]:
+			one["section"] = "front axle assembly"
+			(edit["add"] as Array).append(one)
+		var said_edit: String = _text_of(await assistant.use_tool("edit_model", edit))
+		_check("its front axle's %d parts are put back in a section of their own: %s" % [axle_parts.size(),
+			said_edit.left(40)], axle_parts.size() == 8 and said_edit.contains("front axle assembl"))
 		for brick: BrickWorld.Brick in _world.bricks():
-			if brick.part_id == "2819":
-				wheel = brick
-			elif brick.part_id == "3738" and deck == null:
-				deck = brick
-		if wheel == null or deck == null:
-			_check("it has its steering wheel and its deck", false)
+			if brick.part_id == "6536":
+				pivot = brick
+	elif how == "grouped":
+		_builder.clear_selection()
+		for id: int in axle_parts:
+			_builder.select_brick(id, true)
+		var shell: Node = _main.get("_shell")
+		var path: String = (shell.get("assemblies") as Assemblies).make("front axle")
+		_builder.clear_selection()
+		var in_it: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if Assemblies.path_of(brick) == path:
+				in_it += 1
+		_check("its front axle's %d parts are made the sub-assembly %s" % [in_it, path],
+			in_it == 8 and not path.is_empty())
+	var front: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3737" and pivot != null and (front == null
+				or brick.transform.origin.distance_to(pivot.transform.origin)
+					< front.transform.origin.distance_to(pivot.transform.origin)):
+			front = brick
+	var key: int = wheel.id
+	var as_built: Basis = wheel.transform.basis
+	var deck_at: Transform3D = deck.transform
+	var front_built: Basis = front.transform.basis if front != null else Basis()
+	var yaw := func(id: int, from: Basis) -> float:
+		var relative: Basis = _world.get_brick(id).transform.basis * from.inverse()
+		return rad_to_deg(atan2(-relative.x.z, relative.x.x))
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = assistant
+	for step: Array in [[30.0, 30.0], [-60.0, -30.0], [30.0, 0.0]]:
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % key,
+			"degrees": step[0]}))
+		await _frames(3)
+		var now: float = yaw.call(key, as_built)
+		var still: bool = _world.get_brick(deck.id).transform.is_equal_approx(deck_at)
+		var steered: bool = true
+		var axle_words: String = ""
+		if which.begins_with("kart") and front != null:
+			# Column, idler and the pivot's gear are all 16s: the front axle
+			# turns as the column does, the same way round.
+			var axle: float = yaw.call(front.id, front_built)
+			steered = absf(axle - float(step[1])) < 1.0
+			axle_words = ", the front axle %+.1f" % axle
+			if _windowed and how.is_empty():
+				_frame_on(PackedInt64Array())
+				await _frames(3)
+				await _shot("%s_steered" % which, "%+d" % int(step[1]))
+		_check("%s turned %+d: the wheel stands %+.1f degrees from where it was built, for %+d%s, the chassis %s: %s"
+			% [name, int(step[0]), now, int(step[1]), axle_words, "where it was" if still else "MOVED",
+				said.left(110).replace("\n", " | ")],
+			said.contains("Moved") and absf(now - float(step[1])) < 1.0 and still and steered)
+	_builder.forget_history()
+
+
+## The text of a tool's answer: in a window it is blocks, a picture among them.
+func _text_of(answer: Variant) -> String:
+	if not answer is Array:
+		return str(answer)
+	var out: String = ""
+	for block: Variant in answer:
+		if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
+			out += str((block as Dictionary)["text"])
+	return out
+
+
+## Every Technic steering in the probe's sets, turned over MCP as a session
+## turns one: its steering wheel (else its pinion's column) turned +30, -60
+## and +30 from where it stands (move_part degrees=). Each turn moves it; the
+## rack goes one way, then past where it stood the other way; the last turn
+## puts every part back where it stood; and what stays never moves. The turn
+## back is what two sessions' cars got wrong (G8, docs/MECHANISMS.md §17).
+const STEERING: Array = [
+	"res://vendor/omr/files/8020-1_Jeep.mpd",
+	"res://vendor/omr/files/8841-1_Chassis.mpd",
+	"res://vendor/omr/files/8808-1.mpd",
+	"res://vendor/omr/files/8054-1_Model-C.mpd",
+	"res://vendor/omr/files/8828-1_Grader.mpd",
+	"res://vendor/omr/files/8062-1_Truck-with-Motorbike.mpd",
+]
+
+
+func _steer_set(path: String) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\nsteering both ways and back over MCP: %s" % name)
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var meshes: Array[Racks.Pinion] = bodies.racks()
+	if meshes.is_empty():
+		_check("%s: a pinion stands in a rack" % name, false)
+		return
+	var mesh: Racks.Pinion = meshes[0]
+	# Turned where a person turns it: the steering wheel, where turning it
+	# reaches the rack; else the pinion's own column.
+	var driver: int = mesh.gear
+	for brick: BrickWorld.Brick in _world.bricks():
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null or not info.name.contains("Steering Wheel") or not bodies.body_of.has(brick.id):
 			continue
-		var key: int = wheel.id
-		var as_built: Basis = wheel.transform.basis
-		var deck_at: Transform3D = deck.transform
-		var turned := func() -> float:
-			var relative: Basis = _world.get_brick(key).transform.basis * as_built.inverse()
-			return rad_to_deg(atan2(-relative.x.z, relative.x.x))
-		var tools := AppTools.new()
-		tools.app = _main
-		tools.assistant = assistant
-		for step: Array in [[30.0, 30.0], [-60.0, -30.0], [30.0, 0.0]]:
-			var said: String = str(await tools.run("move_part", {"part": "#%d" % key,
-				"degrees": step[0]}))
-			await _frames(3)
-			var now: float = turned.call()
-			var still: bool = _world.get_brick(deck.id).transform.is_equal_approx(deck_at)
-			_check("turned %+d: the wheel stands %+.1f degrees from where it was built, for %+d, the chassis %s: %s"
-				% [int(step[0]), now, int(step[1]), "where it was" if still else "MOVED",
-					said.left(110).replace("\n", " | ")],
-				said.contains("Moved") and absf(now - float(step[1])) < 1.0 and still)
-		_builder.forget_history()
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		trial.shared_mechanism = _grab.get("_mechanism")
+		if trial.begin(brick.id, brick.transform.origin) == "moves" and trial.linkage != null \
+				and not trial.linkage.racks.is_empty():
+			driver = brick.id
+		break
+	var anchor: int = int(bodies.body_of[driver])
+	while bodies.parent_of.has(anchor):
+		anchor = int(bodies.parent_of[anchor])
+	var anchor_part: int = int((bodies.members[anchor] as PackedInt64Array)[0])
+	var anchor_at: Transform3D = _world.get_brick(anchor_part).transform
+	var rack_at: Vector3 = _world.get_brick(mesh.rack).transform.origin
+	var before: Dictionary = _snapshot()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var first := Vector3.ZERO
+	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": step[0]}))
+		await _frames(3)
+		var went: Vector3 = _world.get_brick(mesh.rack).transform.origin - rack_at
+		var still: bool = _world.get_brick(anchor_part).transform.is_equal_approx(anchor_at)
+		var ok: bool = said.contains("Moved") and still
+		var how: String = ""
+		if str(step[1]) == "one way":
+			first = went
+			ok = ok and went.length() > 0.5
+			how = "the rack %.2f LDU" % went.length()
+		elif str(step[1]) == "the other way":
+			ok = ok and went.length() > 0.5 and went.dot(first) < 0.0
+			how = "the rack %.2f LDU the other side of where it stood" % (went.length() * signf(-went.dot(first)))
+		else:
+			var most: float = 0.0
+			for key: Variant in before:
+				var now: BrickWorld.Brick = _world.get_brick(int(key))
+				if now != null:
+					most = maxf(most, (before[key] as Transform3D).origin.distance_to(now.transform.origin))
+			ok = ok and most < 0.1
+			how = "every part back where it stood to %.3f LDU" % most
+		_check("%s: #%d %s turned %+d (%s): %s, what stays %s: %s" % [name, driver,
+			_world.get_brick(driver).part_id, int(step[0]), step[1], how,
+			"still" if still else "MOVED", said.left(90).replace("\n", " | ")], ok)
+	_builder.forget_history()
+
+
+## A part that will not move says what holds it, part by part. The kart
+## with a round brick 2 x 2 (3941) on its deck's studs over its steering
+## column: the brick's axle hole grips the column and its underside takes
+## the deck's studs, so the column cannot turn, as a real one could not.
+## move_part and the status bar name the brick and the deck's studs; before,
+## move_part said "held rigidly to what stays (26 bodies, 30 joints ...):
+## nothing it is built on turns" and the bar said nothing at all.
+func _held_says() -> void:
+	print("\nwhat holds a part that will not move: the kart's column under a round brick")
+	await _clean_slate()
+	_main.call("clear_model")
+	await _frames(3)
+	var design: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://tests/fixtures/mcpwalk/steering_kart.json"))
+	(design["add"] as Array).append({"part": "3941", "color": 4, "x": 11, "y": 10, "z": 6})
+	var assistant: Assistant = _main.get("_assistant")
+	var built: String = _text_of(await assistant.use_tool("edit_model", design))
+	var wheel: BrickWorld.Brick = null
+	var cap: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "2819":
+			wheel = brick
+		elif brick.part_id == "3941":
+			cap = brick
+	_check("the kart builds with a round brick on its column: %s" % built.left(40),
+		wheel != null and cap != null)
+	if wheel == null or cap == null:
+		return
+	var before: Dictionary = _snapshot()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = assistant
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % wheel.id, "degrees": 30}))
+	await _frames(3)
+	print("    said: %s" % said)
+	_check("move_part names what holds the column: the round brick #%d and the deck's studs" % cap.id,
+		said.contains("will not move") and said.contains("#%d" % cap.id)
+			and said.contains("the studs of the Technic Plate") and _snapshot() == before)
+	# The status bar, as a press with Select takes hold (main.gd's
+	# _grab_on_joint): refused, carried as a part, and saying why.
+	_frame_on(PackedInt64Array())
+	await _frames(3)
+	var taken: bool = _grab.press(wheel.id, _camera.unproject_position(wheel.transform.origin), {}, false)
+	print("    the bar: %s" % _grab.last_words)
+	_check("a press on the steering wheel is carried as a part and the bar says what holds it",
+		not taken and _grab.last_words.contains("#%d" % cap.id) and _grab.last_words.contains("the studs of the Technic Plate"))
+	# A train held between two things that stay says what they are: the
+	# round brick taken off, the deck and a front tyre locked (Lock parts),
+	# the pivot's gear is held with the front axle, and the column's gears
+	# lock between it and the deck.
+	_builder.forget_history()
+	await assistant.use_tool("edit_model", {"remove": [cap.id]})
+	await _frames(3)
+	var tyre: int = 0
+	var pivot_at := Vector3.INF
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "6536":
+			pivot_at = brick.transform.origin
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "58090" and (tyre == 0 or brick.transform.origin.distance_to(pivot_at)
+				< _world.get_brick(tyre).transform.origin.distance_to(pivot_at)):
+			tyre = brick.id
+	var deck: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3738":
+			deck = brick.id
+	_builder.locked[tyre] = true
+	_builder.locked[deck] = true
+	var locked_said: String = str(await tools.run("move_part", {"part": "#%d" % wheel.id, "degrees": 30}))
+	print("    said: %s" % locked_said)
+	_check("with the deck #%d and a front tyre #%d locked, the column's gears lock and move_part names both" % [deck, tyre],
+		locked_said.contains("gears lock") and locked_said.contains("(#%d) is locked" % tyre)
+			and locked_said.contains("(#%d) is locked" % deck))
+	# Unlocked, which changes no revision, the reading is taken again: it was
+	# kept, and the train stayed locked by parts no longer locked.
+	_builder.locked.clear()
+	var free_said: String = str(await tools.run("move_part", {"part": "#%d" % wheel.id, "degrees": 30}))
+	await _frames(3)
+	_check("unlocked again, the steering turns: %s" % free_said.left(60).replace("\n", " | "),
+		free_said.contains("Moved"))
+	_builder.forget_history()
 
 
 func _session() -> void:
