@@ -319,6 +319,15 @@ whole cycle.
   now takes the name the catalogue gives that number, so 42081-1's tyre is
   read as a tyre and no longer stands on a baseplate stud, and 42110-1's
   steering arms are found as steering arms.
+- A part goes where you point it in more of a real set. On a jumper
+  plate's middle stud, or on a part that stands on one, a part sits on
+  that stud, where it went half a stud aside. A curved slope whose flared
+  sides make it wider than its studs (the cab roof of 8643-1) sits on its
+  studs, where it went half a stud aside. Aimed at the side of a part, a
+  part goes against it rather than half inside it, at the plate you point
+  at, and not up onto what overhangs it: a 1 x 12 beside a 1 x 2 under the
+  end of a 1 x 4. And a wheel, a bush or a beam goes on an axle anywhere
+  along it, where it went on only at the axle's end.
 - What you set on a step stays on that step. A step's turn, zoom, size,
   page break, page alone, parts list, turn sign, placed picture, parts
   list and number, words, pictures and arrows moved onto the next step

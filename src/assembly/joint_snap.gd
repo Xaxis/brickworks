@@ -85,6 +85,10 @@ class End extends RefCounted:
 	## A tyre or a rim: half its round's length.
 	var reach: float = 0.0
 	var radius: float = 0.0
+	## An axle's tip: how far its shaft runs back from [member at], for a
+	## part that is an axle and nothing else, whose hole goes on anywhere
+	## along it. 0 for every other end.
+	var back: float = 0.0
 	## The brick it belongs to, for an end on a part already down.
 	var brick: int = 0
 
@@ -110,6 +114,7 @@ class End extends RefCounted:
 		out.axis = (where.basis * axis).normalized()
 		out.reach = reach
 		out.radius = radius
+		out.back = back
 		out.brick = brick_id
 		return out
 
@@ -121,6 +126,8 @@ class End extends RefCounted:
 			return at
 		if is_round():
 			return at + axis * (reach * 0.5)
+		if is_male() and reach < COLLAR:
+			return at - axis * 5.0
 		return aimed(Vector3.ZERO, Vector3.FORWARD)
 
 	## The point a person points at to mean this end: a hole's middle,
@@ -133,6 +140,9 @@ class End extends RefCounted:
 		if is_male():
 			if reach >= COLLAR:
 				return at + axis * minf(reach, BrickLattice.STUD) * 0.5
+			# Anywhere along an axle's shaft: a wheel goes on in its middle.
+			if back > 0.0:
+				return at + axis * clampf(along_nearest(from, way), -back, -5.0)
 			return at - axis * 5.0
 		return at + axis * clampf(along_nearest(from, way), 0.0, reach)
 
@@ -213,6 +223,16 @@ static func ends_of(part: Lbm.PartMesh) -> Array:
 		if not _repeats(out, end):
 			out.append(end)
 	out.append_array(_wraps(part))
+	# An axle and nothing else: its two tips, back to back on one line,
+	# each with the shaft behind it, along which a hole goes on anywhere.
+	if out.size() == 2 and (out[0] as End).kind == "axle" and (out[1] as End).kind == "axle":
+		var a: End = out[0]
+		var b: End = out[1]
+		var gap: Vector3 = b.at - a.at
+		if a.axis.dot(b.axis) < -0.999 and gap.length() > 1.0 \
+				and (gap - a.axis * gap.dot(a.axis)).length() < 0.5 and gap.dot(a.axis) < 0.0:
+			a.back = gap.length()
+			b.back = gap.length()
 	_ends[key] = out
 	return out
 
@@ -413,6 +433,14 @@ static func ways(held: End, site: End, from: Vector3, way: Vector3) -> Array:
 	var near: int = 1 if site.axis.dot(from - middle) >= 0.0 else -1
 	if held.is_male():
 		return [[near, 0.0], [-near, 0.0]]
+	if held.is_hole() and site.kind == "axle" and site.back > 0.0:
+		# Along an axle to where the pointer is, a whole LDU at a time: from
+		# its hole just on the tip to its far side at the other tip. A wheel
+		# or a bush goes on an axle anywhere along it (8841-1's belt wheel
+		# halfway along its axle; the 1 x 4 on the axle's last 11 LDU).
+		var wanted: float = -site.along_nearest(from, way) - held.reach
+		var slide_on: float = clampf(roundf(wanted), 1.0 - held.reach, site.back - held.reach)
+		return [[1, slide_on], [-1, slide_on]]
 	if held.is_hole() or held.is_wrap():
 		return [[1, 0.0], [-1, 0.0]]
 	var length: float = held.reach
@@ -461,7 +489,7 @@ static func pose(held: End, site: End, side: int, slide: float, roll: float,
 		# Over a pin, against its collar; over an axle's tip, flush with it.
 		facing = along * side
 		target = site.at + site.axis * held.reach if site.reach >= COLLAR \
-			else site.at - site.axis * held.reach
+			else site.at - site.axis * (held.reach + slide)
 	elif held.is_wrap():
 		# A tyre round a rim, or a rim into a tyre: the middles of their
 		# rounds together, either way round.
@@ -532,6 +560,8 @@ static func site_grid(library: PartLibrary) -> BrickGrid:
 			var room := AABB(placed.aimed(Vector3.ZERO, Vector3.FORWARD), Vector3.ZERO)
 			if placed.is_round():
 				room = AABB(placed.at, Vector3.ZERO).expand(placed.at + placed.axis * placed.reach)
+			elif placed.back > 0.0:
+				room = AABB(placed.at, Vector3.ZERO).expand(placed.at - placed.axis * placed.back)
 			box = room if ends.is_empty() else box.merge(room)
 			ends.append(placed)
 		return [box.grow(REACH + 0.5) if not ends.is_empty() else null, ends, false])

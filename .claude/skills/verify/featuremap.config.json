@@ -2096,7 +2096,7 @@
       "kind": "cli",
       "label": "placing probe",
       "entry": "src/dev/placing_probe.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/placing_probe.gd  (each click sent as a browser sends one: 35 across a plate's edge, a clip plate, a bar in its clip, a hinge, slopes, a pin in a hole and 8841-1's Technic plates swung onto their axle, each put where its ghost stood; -- only=edge|parts|balance)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a -s \"-screen 0 1400x900x24\" godot --path . --resolution 1400x900 --script src/dev/placing_probe.gd  (each click sent as a browser sends one: 35 across a plate's edge, a clip plate, a bar in its clip, a hinge, slopes, a pin in a hole and 8841-1's Technic plates swung onto their axle, each put where its ghost stood; a tail fin on jumpers' middle studs, a flared roof, a beam beside a brick under an overhang, a wheel halfway along its axle; -- only=edge|parts|balance|wheels|wholeset)",
       "area": "building"
     },
     {

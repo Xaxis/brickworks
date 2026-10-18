@@ -309,3 +309,54 @@ def test_a_build_measured_must_offer_every_part():
         {"id": "6157", "reachable": False}, {"id": "3001", "reachable": True}, {"id": "3023"}]}))
     assert cadtask.web_parts_offered(catalogue) == (2, 3)
     assert cadtask.web_parts_offered(folder / "none.json") == (0, 0)
+
+
+# -- the build flow's hand (tools/web/cad_task_flow.mjs) --------------------------
+
+def _flow(script: str):
+    """[script] run as a module beside the flow, its printed JSON back. Skipped
+    where node, the flow's browser modules or the set files are not here."""
+    import json
+    import shutil
+    import subprocess
+
+    import pytest
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("no node")
+    run = subprocess.run([node, "--input-type=module", "-e", script], cwd=ROOT,
+                         capture_output=True, text=True, timeout=120)
+    if "ERR_MODULE_NOT_FOUND" in run.stderr or "ENOENT" in run.stderr:
+        pytest.skip("the flow's browser modules or the set files are not here")
+    assert run.returncode == 0, run.stderr
+    return json.loads(run.stdout)
+
+
+def test_a_part_on_its_side_is_aimed_at_by_its_underside():
+    # 5762-1's lights stand on their sides in clip plates' rings, their
+    # undersides on the rings: the spot to point at is along the part's own
+    # down, not under it, where the floor is, and a stud's height out from
+    # its underside, which the ring reaches 3 LDU into (2026-10-18).
+    foot = _flow(
+        "import { footOf } from './tools/web/cad_task_flow.mjs';"
+        "const light = { id: '6141', m: [0, 0, -1, -1, 0, 0, 0, 1, 0] };"
+        "const plate = { id: '3023', m: [1, 0, 0, 0, 1, 0, 0, 0, 1] };"
+        "const own = () => [[-10, -8, -10], [10, 4, 10]];"
+        "console.log(JSON.stringify([footOf(light, own), footOf(plate, own)]));")
+    assert [abs(v) for v in foot[0]] == [0, 0, 4]
+    assert foot[1] == [0, -8, 0]
+
+
+def test_a_beam_is_hung_from_its_middle_out():
+    # 8841-1's top beam: a 1 x 4 on the axle, the 1 x 2 under its middle,
+    # then each 1 x 12 beside the 1 x 2, and only then each plate under the
+    # joint of the 1 x 2 and a 1 x 12. Lowest first put the plates first,
+    # under the 1 x 2 alone, and the 1 x 12 under the 1 x 4's end stud.
+    order = _flow(
+        "import { readFileSync } from 'node:fs';"
+        "import { readSet, handOrders } from './tools/web/cad_task_flow.mjs';"
+        "const set = readSet(readFileSync('vendor/omr/files/8841-1_Balance.mpd', 'utf8'));"
+        "console.log(JSON.stringify(handOrders(set)[0].map((p) => `${p.id}@${p.at[0]},${p.at[1]}`)));")
+    at = order.index
+    assert at("3701@0,-312") < at("3700@0,-288") < at("3895@-140,-288") < at("3710@-40,-264"), order
+    assert at("3700@0,-288") < at("3895@140,-288") < at("3710@40,-264"), order
