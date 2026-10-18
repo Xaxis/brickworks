@@ -490,7 +490,7 @@ const MADE_HOSE := """0 A tube from the floor to an arm on a hinge
 1 14 0 -72 10 1 0 0 0 1 0 0 0 1 3938.dat
 1 1 0 -96 10 1 0 0 0 1 0 0 0 1 3004.dat
 1 1 0 -120 10 1 0 0 0 1 0 0 0 1 3700.dat
-1 7 70 -24 80 1 0 0 0 1 0 0 0 1 3700.dat
+1 7 60 -24 90 1 0 0 0 1 0 0 0 1 3700.dat
 """
 
 
@@ -674,10 +674,10 @@ func _hose_made() -> void:
 		var anchor: Flex.Anchor = holes[n]
 		ports.append(Flex.port_for("pneumatic_tube", anchor, Flex.side_toward(anchor,
 			(holes[1 - n] as Flex.Anchor).at, 1), n))
-	# As FlexFollow measures how far a hose must reach: its tips' short runs
-	# out of the holes and the line between (Flex.ends_of_item reads 2 LDU).
-	var taut: float = ((ports[0] as Flex.Port).tip + (ports[0] as Flex.Port).out * 2.0).distance_to(
-		(ports[1] as Flex.Port).tip + (ports[1] as Flex.Port).out * 2.0) + 4.0
+	# Its straight runs through the holes and the line between: as short as it
+	# goes (the layout lays it no shorter than its curve between the runs).
+	var taut: float = (ports[0] as Flex.Port).start().distance_to((ports[1] as Flex.Port).start()) \
+		+ (ports[0] as Flex.Port).lead + (ports[1] as Flex.Port).lead
 	var short: Flex.Laid = Flex.lay_swept("pneumatic_tube", ports[0], ports[1], taut * 1.03)
 	var adds: Array = []
 	for piece: Dictionary in short.pieces:
@@ -699,8 +699,18 @@ func _hose_made() -> void:
 				break
 		if pull.flex != null and not pull.flex.items.is_empty():
 			var its: FlexFollow.Item = pull.flex.items[0]
-			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f" % [
-				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach])
+			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f; loose %s, stretched there %s, %d tests" % [
+				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach,
+				its.loose, pull.flex.stretched(pull.placed) != null, pull.tests])
+			for holder: int in (Array(its.holders) if "--debug" in OS.get_cmdline_user_args() else []):
+				var at: int = int(pull.bodies.body_of.get(holder, -1))
+				var walk := PackedInt64Array([at])
+				while pull.bodies.parent_of.has(at):
+					at = int(pull.bodies.parent_of[at])
+					walk.append(at)
+				print("      holder #%d %s: up %s, why %s, hangs %s" % [holder, _world.get_brick(holder).part_id
+					if _world.get_brick(holder) != null else "?", walk, pull.bodies.anchor_why.get(at, []),
+					FlexFollow._hangs(pull.bodies, holder)])
 		else:
 			print("    no hose bent")
 		print("    turned %s: %s, to %.1f°, %s%s" % ["back" if way < 0.0 else "on", began, pull.angle,

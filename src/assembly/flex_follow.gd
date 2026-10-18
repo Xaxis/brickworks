@@ -199,6 +199,7 @@ func _item_of(bodies: Bodies, one: int, moving: Dictionary, any: bool = false) -
 		if best != 0:
 			item.holders_rest[n] = world.get_brick(best).transform
 			item.loose = item.loose or FlexFollow._hangs(bodies, best)
+			ends[n] = _in_its_connector(kind, ends[n], best, n)
 	if item.holders[0] == 0 and item.holders[1] == 0:
 		return null
 	var carried: bool = moving.has(keys[0])
@@ -267,6 +268,30 @@ func _item_of(bodies: Bodies, one: int, moving: Dictionary, any: bool = false) -
 		from = 1 - from
 	item.name = "the %s from %s" % [str(spec["label"]).to_lower(), bodies._part_named(item.holders[from])]
 	return item
+
+
+## [param port], an end read off the hose's own pieces, with the straight run
+## it has in the connector of [param holder] it is in, as Flex lays one there
+## (Flex.port_for: through a pin hole to 2 LDU past its mouth), matched as
+## Reshape matches an end to its connector. Read off the pieces, every end
+## ran straight 2 LDU: a tube between two holes side by side could reach 12
+## LDU further than it does, and the made arm met the tower before the tube
+## held it. Unmatched (another tool's end not on a connector's place), as read.
+func _in_its_connector(kind: String, port: Flex.Port, holder: int, n: int) -> Flex.Port:
+	var brick: BrickWorld.Brick = world.get_brick(holder)
+	if brick == null:
+		return port
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+	var takes: Array = Flex.KINDS[kind].get("takes", [])
+	for anchor: Flex.Anchor in Flex.anchors_of(library.mesh_for(brick.part_id), brick.transform, holder,
+			info != null and info.name.contains("Pneumatic")):
+		if not takes.has(anchor.kind):
+			continue
+		for side: int in [1, -1]:
+			var trial: Flex.Port = Flex.port_for(kind, anchor, side, n)
+			if trial.tip.distance_to(port.tip) < 1.0 and trial.out.dot(port.out) > 0.99:
+				return Flex.free_port(port.tip, port.out, trial.lead)
+	return port
 
 
 ## A piece of the model this small, held by nothing (no part on the

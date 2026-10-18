@@ -2529,7 +2529,9 @@ whole as before.
 moves and the other by one that does not is read as an item: its kind
 (`Flex.strung`, so LDCad's 165 is the tube's end), its two ends off its own
 end pieces (`Flex.ends_of_item`), the part across the hose's joint nearest
-each tip, its length along its pieces as they lie, end to end, and its bend
+each tip, how far each end runs straight in that part's connector (matched
+as Reshape matches one, `FlexFollow._in_its_connector`: a pin hole's, to 2
+LDU past its mouth; read off the pieces alone every end ran 2 LDU), its length along its pieces as they lie, end to end, and its bend
 (`Flex.fit_bend`, as Reshape reads one, now from one to seven bend points).
 The bends of every hose in the model are read ahead with the bodies, on the
 worker (`GrabDrag._read_all`, `FlexFollow.fit_all`): read at a drag's first
@@ -2612,11 +2614,17 @@ Each kept is one undo step, and the undo puts every part back exactly; the
 made tube and 42080-1's saved and opened again lie where they were kept, to
 0.000 LDU. 42080-1 was written whole (the arm's copy of a sub-model made its
 own), and the tube's sub-model has 37 `PATH_POINT`s, its first and last on
-its caps to 0.000 LDU. A tube laid as short as the layout lays it between
-the made model's two holes stops the arm at 23.5°, where it would have to
-reach 152.99 LDU and is 152.51; move_part says "it stopped where the
-pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it, pulled to
-its full length". Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
+its caps to 0.000 LDU. A tube laid 3% longer than its straight runs
+through the made model's two holes and the line between stops the arm at
+7.8°, where it would have to reach 155.28 LDU and is 154.78; move_part says "it stopped where
+the pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it,
+pulled to its full length". That check failed at the first G10 head: with
+every end read as running 2 LDU straight, the tube could bend 10 LDU sooner
+in each hole than it does, so it reached 12 LDU further than its holes let
+it, and the arm met the tower first; and the made model's floor brick stood
+off the baseplate's stud grid, held by nothing, so the tube to it read as
+hanging. Each end's run is now its connector's, and the brick stands on the
+studs. Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
 (42080-1, 42043-1) on the worker. Read back by the layout where they lay, the
 tubes are 2.5 LDU (42050-1), 11.5 (42080-1, seven bend points) and 49 LDU
 (42043-1, one) off where LDCad drew them: at the first frame of a drag a
