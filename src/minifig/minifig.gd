@@ -1233,6 +1233,7 @@ static var _partners: Dictionary = {}      ## part id -> the other side's part i
 static var _family_pairs: Dictionary = {}  ## right family -> left family and back
 static var _paired: Dictionary = {}        ## part id -> true, offered as another's pair
 static var _index_made: int = -1           ## how many made parts the library had
+static var _index_parts: int = -1          ## and how many parts
 
 
 ## Sort every real minifigure part of a library into its slot, once.
@@ -1247,6 +1248,7 @@ static func _index(library: PartLibrary, sorted: Array = []) -> void:
 		found = []
 		_sort_into(found, library, null)
 	_index_made = library.custom.size()
+	_index_parts = library.parts.size()
 	_slot_of.clear()
 	_by_name.clear()
 	_names.clear()
@@ -1281,7 +1283,29 @@ static func _index(library: PartLibrary, sorted: Array = []) -> void:
 
 
 static func _indexed_for(library: PartLibrary) -> bool:
-	return _index_of == library.get_instance_id() and _index_made == library.custom.size()
+	if _index_of != library.get_instance_id():
+		return false
+	return _index_made == library.custom.size() or _made_since_change_nothing(library)
+
+
+## Whether the parts made since the index was sorted leave it as sorting it
+## again would: each new to the library, replacing none, and none a real
+## figure part, which is all the index holds. A file's own stickers and
+## prints sorted all 29,000 parts again the first time a figure was asked
+## about after it was opened: 85 ms a file, most of what finding a model's
+## sub-assemblies cost over the steps score's proof files (2026-10-17).
+static func _made_since_change_nothing(library: PartLibrary) -> bool:
+	var made: int = library.custom.size()
+	if made < _index_made or library.parts.size() - _index_parts != made - _index_made:
+		return false
+	var ids: Array = library.custom.keys()
+	for at: int in range(_index_made, made):
+		var info: PartLibrary.PartInfo = library.parts.get(ids[at])
+		if info == null or _real(info) and not slot_for(info).is_empty():
+			return false
+	_index_made = made
+	_index_parts = library.parts.size()
+	return true
 
 
 ## The library's figure parts by slot, by plain name and by short name, into
