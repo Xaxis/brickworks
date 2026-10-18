@@ -16,7 +16,18 @@
 // the turret is dragged round on its turntable, carrying the arm. Beside it a
 // four-bar lies flat, two cranks pinned to a beam 15 and a coupler across
 // their ends: a crank dragged round turns the other one by the loop (Linkage),
-// as a steering's arms turn. Fails if
+// as a steering's arms turn. Left of the crane a beam 7 hangs on a pin without
+// friction from a Technic brick on a tower: dragged out and let go, it swings
+// under its own weight, back and forth, and comes to rest hanging (Swing).
+// The page asks for the handles (window.brickworksGrabAsk): the app finds
+// them only when asked.
+//
+//   ... --big=vendor/omr/files/42082-1.mpd --only-big
+//
+// opens that model instead and, the page not asking for handles as a
+// person's never does, times its frames standing still for --seconds (20):
+// the handles were found twice a second for every model, raycasting each
+// body's parts, and held a 4,000-part model's frames 180 to 460 ms. Fails if
 // nothing turns, the arm does not come back on undo, the app's own work in a
 // drag frame passes --work ms (33), the page stops answering for longer than
 // --stall ms (5000: a hang), or a script error reaches the console. Pictures
@@ -66,12 +77,22 @@ writeFileSync(model, [
   "1 0 200 -10 60 0 -1 0 1 0 0 0 0 1 3673.dat",
   "1 0 280 -30 -60 0 -1 0 1 0 0 0 0 1 3673.dat",
   "1 0 280 -30 60 0 -1 0 1 0 0 0 0 1 3673.dat",
+  // The pendulum, left of the crane: a tower of six 2x4 bricks, a Technic
+  // brick 1x4 with holes on it, and a beam 7 hanging on a pin without
+  // friction in front of it.
+  ...Array.from({ length: 6 }, (_, k) => `1 4 -120 ${-24 * (k + 1)} 10 1 0 0 0 1 0 0 0 1 3001.dat`),
+  "1 7 -120 -168 0 1 0 0 0 1 0 0 0 1 3701.dat",
+  "1 0 -120 -158 -10 0 0 -1 0 1 0 1 0 0 3673.dat",
+  "1 14 -120 -98 -20 -1 0 0 0 0 1 0 1 0 32524.dat",
   "",
 ].join("\n"));
+const PARTS = 23;
 
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
+// The app finds the grab handles only when a page asks for them.
+await page.addInitScript(() => { window.brickworksGrabAsk = true; });
 page.choosers = [];
 page.on("filechooser", (chooser) => page.choosers.push(chooser));
 const errors = [];
@@ -173,14 +194,139 @@ async function drag(from, by, steps, picture) {
 }
 
 const timings = {};
+// A Chromium performance trace of one stretch of the flow, to FILE.
+const TRACED = ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "gpu",
+  "disabled-by-default-devtools.timeline.frame", "v8.execute", "blink", "cc", "viz"];
+async function traceStart(file) {
+  if (file) await browser.startTracing(page, { path: String(file), screenshots: false, categories: TRACED });
+}
+async function traceStop(file) {
+  if (file) await browser.stopTracing();
+}
+// The page's frames, timed by requestAnimationFrame for [seconds]: the
+// longest gaps, and how many passed 50 and 100 ms.
+async function frameGaps(seconds) {
+  return page.evaluate((ms) => new Promise((done) => {
+    const gaps = [];
+    let last = performance.now();
+    const end = last + ms;
+    const tick = (now) => {
+      gaps.push(now - last);
+      last = now;
+      if (now < end) requestAnimationFrame(tick);
+      else {
+        gaps.sort((a, b) => b - a);
+        done({ frames: gaps.length, longest: gaps.slice(0, 5).map(Math.round),
+          over50: gaps.filter((g) => g > 50).length, over100: gaps.filter((g) => g > 100).length });
+      }
+    };
+    requestAnimationFrame(tick);
+  }), seconds * 1000);
+}
+// The frames the app drew from FROM ({drawn, at}) until it stops drawing:
+// {frames, seconds, per_second}. A page's requestAnimationFrame comes every
+// 17 ms whether or not the app draws, and a drag draws only when the pointer
+// moves, so the gaps between the page's frames are mostly frames with
+// nothing drawn (window.brickworksGrab.drawn, said twice a second at most).
+async function drawnFrom() {
+  const now = await grab();
+  return { drawn: now.drawn || 0, at: Date.now() };
+}
+async function drawnUntilStill(from) {
+  let last = await grab();
+  let changedAt = Date.now();
+  for (let n = 0; n < 240; n++) {
+    await page.waitForTimeout(250);
+    const now = await grab();
+    if (now.drawn !== last.drawn) {
+      last = now;
+      changedAt = Date.now();
+    } else if (Date.now() - changedAt > 1500) break;
+  }
+  const frames = (last.drawn || 0) - from.drawn;
+  const seconds = Math.max((changedAt - from.at) / 1000, 0.001);
+  return { frames, seconds: Number(seconds.toFixed(2)), per_second: Number((frames / seconds).toFixed(2)) };
+}
+// The page's frames recorded from now until read: their gaps, by
+// requestAnimationFrame, while something else goes on.
+async function startGaps() {
+  await page.evaluate(() => {
+    window.__gaps = [];
+    window.__gapsOn = true;
+    let last = performance.now();
+    const tick = (now) => {
+      window.__gaps.push(now - last);
+      last = now;
+      if (window.__gapsOn) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+async function readGaps() {
+  return page.evaluate(() => {
+    window.__gapsOn = false;
+    const gaps = window.__gaps.slice(1);
+    const total = gaps.reduce((a, b) => a + b, 0);
+    gaps.sort((a, b) => a - b);
+    return { frames: gaps.length, mean: Math.round(total / Math.max(gaps.length, 1)),
+      median: Math.round(gaps[Math.floor(gaps.length / 2)] || 0), worst: Math.round(gaps[gaps.length - 1] || 0) };
+  });
+}
+if (args.big) {
+  try {
+    await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
+    check(Boolean(await where("open", 400)), "the app came up");
+    await page.waitForTimeout(Number(args.load || 15000));
+    await page.evaluate(() => { window.brickworksGrabAsk = false; });
+    await open(path.resolve(args.big));
+    const opened = await until(state, (s) => (s.bricks || 0) > 500 && !/arriving|opening|reading/i.test(s.said || ""), 900);
+    check(Boolean(opened), `${path.basename(args.big)} opened: ${(await state()).bricks} parts`);
+    // Read for a grab (GrabDrag reads a model's joints once it stands still),
+    // and quiet: its parts arrived and drawn, five seconds in a row with no
+    // frame past 100 ms (a big model drawn in software takes a while).
+    await until(grab, (g) => g.ready, 300);
+    let quiet = null;
+    for (let n = 0; n < 36 && !quiet; n++) {
+      const probe = await frameGaps(5);
+      if (probe.over100 === 0) quiet = probe;
+    }
+    check(Boolean(quiet), "the page went quiet once the model was in");
+    const seconds = Number(args.seconds || 20);
+    // Found so far (the page asked as it loaded, before this model).
+    const foundBefore = (await grab()).handles_found;
+    const gaps = await frameGaps(seconds);
+    console.log(`      standing still ${seconds} s, the page not asking: ${gaps.frames} frames, longest `
+      + `${gaps.longest.join(", ")} ms; ${gaps.over50} past 50 ms, ${gaps.over100} past 100 ms`);
+    timings.big = { model: path.basename(args.big), ...gaps };
+    const unasked = await grab();
+    check((unasked.handles || []).length === 0 && unasked.handles_found === foundBefore,
+      `no handles found while the page does not ask (${(unasked.handles || []).length}; found ${unasked.handles_found} `
+      + `times in all, ${foundBefore} before)`);
+    check(gaps.over100 === 0, `no frame past 100 ms standing still on ${path.basename(args.big)} (${gaps.over100})`);
+    // Asked, they are found once, and not again while nothing changes.
+    await page.evaluate(() => { window.brickworksGrabAsk = true; });
+    const askedGaps = await frameGaps(10);
+    const asked = await grab();
+    console.log(`      asked for 10 s: found ${asked.handles_found} time(s), the last in ${asked.handles_ms} ms, `
+      + `${(asked.handles || []).length} handles; frames longest ${askedGaps.longest.join(", ")} ms`);
+    timings.big_asked = { found: asked.handles_found, ms: asked.handles_ms, ...askedGaps };
+    check(asked.handles_found === foundBefore + 1,
+      `asked, they are found once and kept while nothing changes (${asked.handles_found - foundBefore})`);
+    await shot("big.png");
+  } catch (trouble) {
+    check(false, `stopped: ${trouble.message}`);
+    await shot("stopped.png");
+  }
+}
 try {
+  if (args["only-big"]) throw new Error("only the big model was asked for");
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   check(Boolean(await where("open", 400)), "the app came up");
   await page.waitForTimeout(Number(args.load || 15000));
   let opened = null;
   for (let attempt = 0; attempt < 3 && !opened; attempt++) {
     await open(model);
-    opened = await until(state, (s) => s.bricks === 14 && !/arriving/.test(s.said || ""), 240);
+    opened = await until(state, (s) => s.bricks === PARTS && !/arriving/.test(s.said || ""), 240);
     if (!opened) await page.waitForTimeout(15000);
   }
   check(Boolean(opened), `the crane opened: ${(await state()).bricks} parts`);
@@ -196,7 +342,14 @@ try {
   const revision = (await grab()).revision;
 
   // The arm, up on its hinge.
+  await startGaps();
+  await traceStart(args["trace-drag"]);
   const up = await drag(arm, { x: 0, y: -160 }, 24, "2_arm_mid_drag.png");
+  await traceStop(args["trace-drag"]);
+  const dragGaps = await readGaps();
+  console.log(`      the page's frames during the arm's drag: ${dragGaps.frames}, gaps median ${dragGaps.median}, `
+    + `mean ${dragGaps.mean}, worst ${dragGaps.worst} ms`);
+  timings.drag_frames = dragGaps;
   check(Boolean(up.mid && up.mid.grabbing && Math.abs(up.mid.angle || 0) > 5),
     `while the button is down the arm turns on its hinge: ${up.mid && up.mid.angle}° (${up.mid && up.mid.what})`);
   const after = await until(grab, (g) => !g.grabbing && g.revision !== revision, 10);
@@ -212,9 +365,10 @@ try {
   await shot("3_arm_after.png");
   const moved = (await until(grab, (g) => (g.handles || []).length >= 2, 10)).handles
     .find((h) => h.id === arm.id);
-  // A 30 degree turn on the hinge moves the arm's middle a dozen or so
-  // pixels at this distance: well past the 2 the undo is held to below.
-  check(Boolean(moved) && Math.hypot(moved.x - arm.x, moved.y - arm.y) > 8,
+  // A 30 degree turn on the hinge moves the arm's middle 7 pixels or so at
+  // this distance (a dozen before the pendulum widened the frame): well
+  // past the 2 the undo is held to below.
+  check(Boolean(moved) && Math.hypot(moved.x - arm.x, moved.y - arm.y) > 5,
     `the arm stands somewhere else now (${moved && moved.x},${moved && moved.y} from ${arm.x},${arm.y})`);
 
   // Undo: back where it was.
@@ -270,9 +424,119 @@ try {
       `the loop carried what the crank does not hold: ${moved.map((h) => h.part).join(", ") || "nothing"} moved`);
     await shot("7_fourbar_after.png");
   }
+
+  // The pendulum: dragged out and let go, it swings, and is kept at rest.
+  // Timed in one swing with no picture taken (a picture in a browser drawing
+  // in software holds the page's frames for seconds), drawn in a second.
+  const isBeam = (h) => h.part === "32524" && h.x < arm.x;
+  const swingOnce = async (pictures) => {
+    const hung = await until(grab, (g) => !g.grabbing && !g.swinging && (g.handles || []).some(isBeam), 20);
+    const beam = hung && hung.handles.find(isBeam);
+    if (!beam) return null;
+    await page.mouse.move(beam.x, beam.y, { steps: 3 });
+    await page.waitForTimeout(600);
+    await heartbeat();
+    await page.mouse.down();
+    for (let n = 1; n <= 16; n++) {
+      await page.mouse.move(beam.x + 150 * n / 16, beam.y - 40 * n / 16);
+      await page.waitForTimeout(60);
+    }
+    await page.waitForTimeout(400);
+    const held = await grab();
+    if (!pictures) await startGaps();
+    // --trace=FILE: a Chromium performance trace of the swing, release to rest.
+    if (!pictures) await traceStart(args.trace);
+    await page.mouse.up();
+    let seen = false;
+    let shots = 0;
+    for (let n = 0; n < 400; n++) {
+      const now = await grab();
+      if (now.swinging) {
+        seen = true;
+        if (pictures && shots < 2) await shot(`8_pendulum_swinging_${shots++}.png`);
+      } else if (seen || n > 10) break;
+      await page.waitForTimeout(150);
+    }
+    // Drawn in software a frame of this model takes 0.5 to 3 s on a loaded
+    // box, and a picture as long again: the swing's 3 s, drawn a quarter
+    // second a frame at most, came to rest after the minute this waited.
+    const rested = await until(grab, (g) => !g.swinging && /came to rest/.test(g.said || ""), 180);
+    if (!pictures) await traceStop(args.trace);
+    const stall = await page.evaluate(() => Math.round(window.__beat.worst));
+    const gaps = pictures ? null : await readGaps();
+    return { held, seen, rested, stall, gaps };
+  };
+  const timed = await swingOnce(false);
+  if (check(Boolean(timed), "the pendulum's beam is there to take hold of")) {
+    const { held, seen, rested, stall, gaps } = timed;
+    console.log(`      the page's frames from the release to rest: ${gaps.frames}, gaps median ${gaps.median}, `
+      + `mean ${gaps.mean}, worst ${gaps.worst} ms`);
+    check(Boolean(held && held.grabbing) && Math.abs(held.angle || 0) > 10,
+      `the beam turns out on its free pin: ${held && held.angle}°`);
+    check(seen, "let go, it swings");
+    check(Boolean(rested), `and comes to rest, said: "${rested && rested.said}"`);
+    check(Boolean(rested) && Number(rested.swing_worst_ms) <= workLimit,
+      `the app's own work in a swing frame stays under ${workLimit} ms: mean ${rested && rested.swing_mean_ms}, `
+      + `worst ${rested && rested.swing_worst_ms} ms over ${rested && rested.swing_frames} frames`);
+    check(stall <= stallLimit, `the page did not hang in the swing: its longest wait ${stall} ms`);
+    // A frame steps the swing at most a quarter second and 8 ms of the app's
+    // work: where the page draws slower than that (software drawing on a
+    // loaded box), the swing is drawn slower than it is.
+    console.log(`      the swing: ${rested && rested.swing_s} s simulated, drawn over ${rested && rested.swing_clock_s} s `
+      + `on the clock in ${rested && rested.swing_frames} frames`);
+    // The bar: a swing drawn at 15 frames a second at least, or as fast as
+    // the page draws the view turning, whichever is slower.
+    const perSecond = rested ? rested.swing_frames / Math.max(rested.swing_clock_s, 0.001) : 0;
+    timings.swing_fps = perSecond;
+    timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,
+      worst_ms: rested && rested.swing_worst_ms, stall_ms: stall, simulated_s: rested && rested.swing_s,
+      clock_s: rested && rested.swing_clock_s, page_frames: gaps };
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(2500);
+    const drawn = await swingOnce(true);
+    check(Boolean(drawn && drawn.rested), "swung again for its pictures, and at rest again");
+    await shot("9_pendulum_rest.png");
+    // For reference, the page's frames while every frame is drawn anew and
+    // nothing of the grab runs: the view turned by a right-drag, a move each
+    // frame for three seconds.
+    await page.mouse.move(700, 450);
+    await page.waitForTimeout(1500);
+    const viewFrom = await drawnFrom();
+    await startGaps();
+    await traceStart(args["trace-view"]);
+    await page.mouse.down({ button: "right" });
+    const began = Date.now();
+    for (let n = 0; Date.now() - began < 3000; n++) {
+      await page.mouse.move(700 + 120 * Math.sin(n / 10), 450);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up({ button: "right" });
+    await traceStop(args["trace-view"]);
+    const turning = await readGaps();
+    const viewDrawn = await drawnUntilStill(viewFrom);
+    console.log(`      for reference, the page's frames while the view turns: ${turning.frames}, gaps median `
+      + `${turning.median}, mean ${turning.mean}, worst ${turning.worst} ms; the app drew ${viewDrawn.frames} `
+      + `in ${viewDrawn.seconds} s, ${viewDrawn.per_second} a second`);
+    timings.view_turning_frames = turning;
+    timings.view_turning_drawn = viewDrawn;
+    // Like with like: frames the app drew a second, the swing's and the
+    // view turning's. The page's median gap, the bar until 2026-10-17, is
+    // mostly frames with nothing to draw: on SwiftShader every drawn frame
+    // of this model costs the same, a drag's, a swing's or a turn's
+    // (MECHANISMS section 14). The two are timed a minute apart on a shared
+    // box. Said, not gated: the rate is SwiftShader's on a loaded CPU, a turn
+    // timed a minute later drew 1.0 one run and 2.4 the next, and the swing
+    // fell short of three quarters of it once in two. What the app controls,
+    // its own work in a swing frame, is gated above.
+    console.log(`      drawn a second: the swing ${timings.swing_fps.toFixed(1)}, `
+      + `the view turning ${viewDrawn.per_second.toFixed(1)}`);
+    await page.waitForTimeout(1500);
+  }
 } catch (trouble) {
-  check(false, `stopped: ${trouble.message}`);
-  await shot("stopped.png");
+  if (!args["only-big"]) {
+    check(false, `stopped: ${trouble.message}`);
+    await shot("stopped.png");
+  }
 }
 writeFileSync(path.join(out, "timings.json"), JSON.stringify(timings, null, 2));
 check(errors.length === 0, `no script errors (${errors.slice(0, 3).join(" | ")})`);

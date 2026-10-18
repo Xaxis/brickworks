@@ -1090,7 +1090,7 @@
       "id": "lib:a model that tips falls",
       "kind": "lib",
       "entry": "src/assembly/topple.gd",
-      "reach": "godot --headless --path . --script src/dev/grab_probe.gd -- --only=tipping   (by hand: on no floor, swing a section out past the model's edge and let go)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=falling   (by hand: on no floor, swing a section out past the model's edge and let go; -- --only=tipping scans real sets headless)",
       "area": "building",
       "tests": []
     },
@@ -1648,6 +1648,14 @@
       "entry": "src/ai/shot_ruler.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:swinging on a free joint",
+      "kind": "lib",
+      "entry": "src/assembly/swing.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
+      "area": "building",
       "tests": []
     },
     {

@@ -82,9 +82,18 @@ whole cycle.
   freedom says it is locked. An engine's piston now slides in its
   cylinder.
 - A model turned past its edge falls over when let go, about the edge it
-  tips over, until it lies on the floor, in half a second and in the same
-  undo step: "tipped over to the left and lies on its side". A model
-  standing on a baseplate's studs does not, and says the studs hold it.
+  tips over, until it lies on the floor, in the same undo step: "tipped
+  over to the left and lies on its side". A model standing on a
+  baseplate's studs does not, and says the studs hold it.
+- Let go, a part on a free joint swings. An arm on a pin without friction
+  ridges, an axle in a round hole or a free turntable swings down past
+  where it hangs and back, a little less each time as the joint's friction
+  takes its share, and comes to rest hanging; an arm on two such pins
+  swings as a double pendulum. It stops dead where it meets the model. A
+  click catches it where it is. A model that tips falls as a body falls,
+  slowly at first and faster as it goes, rather than in a fixed half
+  second, and what hangs on a free joint in it swings on as it lands.
+  move_part says how it swung and where it came to rest.
 - What hangs on a gear that turns goes round with it, and every joint
   without friction inside what moved swings down when let go, not only the
   one dragged.

@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab4-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab5-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -146,6 +146,12 @@ func _run() -> void:
 		await _scissor_case()
 	if only.is_empty() or only == "falling":
 		await _made_fall()
+	if only.is_empty() or only == "swing":
+		await _swing_case()
+	if only.is_empty() or only == "swing" or only == "double":
+		await _double_case()
+	if only.is_empty() or only == "falling" or only == "landing":
+		await _landing_case()
 	if only.is_empty() or only == "follow":
 		var gear_sets: Array = []
 		for arg: String in args:
@@ -2568,6 +2574,13 @@ func _made_fall() -> void:
 	var fell: float = rad_to_deg(up_before.angle_to(up_after))
 	_check("falling: it turned %.2f° about its edge, as the hand works out (%.2f°)" % [fell, hand["angle"]],
 		absf(fell - float(hand["angle"])) < 1.5)
+	hand["floor"] = floor_y
+	# Posed as it was let go: the arm where the drag left it, the rest where
+	# it stood.
+	var let_go: Dictionary = before.duplicate()
+	for key: Variant in placed:
+		let_go[key] = placed[key]
+	await _fall_time_check("falling", let_go, hand)
 	# The contact: the corner found by hand is on the floor, and so is the edge.
 	var lowest: float = _lowest()
 	var corner_now: Vector3 = _corner_now(int(hand["key"]), int(hand["index"]))
@@ -2632,6 +2645,724 @@ func _made_fall() -> void:
 		await _shot("falling", "5_on_baseplate")
 	_builder.undo()
 	await _frames(3)
+
+
+## A made pendulum: a Technic beam 7 (32524) hanging on a pin without
+## friction (3673) from the middle hole of a Technic brick 1x4 (3701) on a
+## tower of twelve 2x4 bricks, the beam in front of the tower with nothing
+## in its way. With [param wall], a column of ten 1x2 bricks stands in its
+## swing on one side; with [param double], a second beam 7 hangs on a second
+## free pin from the first one's foot. On no floor. LDraw's units, y down.
+static func _pendulum_ldr(wall: bool, double: bool) -> String:
+	var lines := PackedStringArray(["0 A beam on a free pin", "0 Name: made_pendulum.ldr",
+		"0 !BRICKWORKS FLOOR NONE"])
+	for k: int in range(1, 13):
+		lines.append("1 4 0 %d -10 1 0 0 0 1 0 0 0 1 3001.dat" % (-24 * k))
+	lines.append("1 7 0 -312 0 1 0 0 0 1 0 0 0 1 3701.dat")
+	lines.append("1 0 0 -302 10 0 0 -1 0 1 0 1 0 0 3673.dat")
+	lines.append("1 14 0 -242 20 -1 0 0 0 0 1 0 1 0 32524.dat")
+	if double:
+		lines.append("1 0 0 -182 30 0 0 -1 0 1 0 1 0 0 3673.dat")
+		lines.append("1 1 0 -122 40 -1 0 0 0 0 1 0 1 0 32524.dat")
+	if wall:
+		for k: int in range(1, 11):
+			lines.append("1 1 100 %d 20 1 0 0 0 1 0 0 0 1 3004.dat" % (-24 * k))
+	return "\n".join(lines) + "\n"
+
+
+## Look at the made pendulum from the side its beams hang on, a little above.
+func _look_at_beams(bodies: Bodies, beam: int) -> void:
+	var tower := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3701":
+			tower = brick.transform.origin
+	var key: int = int((bodies.members[beam] as PackedInt64Array)[0])
+	for one: int in bodies.members[beam]:
+		if _world.get_brick(one).part_id == "32524":
+			key = one
+	var side: Vector3 = _world.get_brick(key).transform.origin - tower
+	side.y = 0.0
+	_camera.look_from((side.normalized() + Vector3(0.1, 0.18, 0.0)).normalized())
+	_frame_on(PackedInt64Array())
+	await _frames(15)
+	await _camera_still()
+
+
+func _write(path: String, text: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+## The free pins of the open model, outermost last: [link, child body].
+func _free_pins(bodies: Bodies) -> Array:
+	var out: Array = []
+	for link: Bodies.Link in bodies.links:
+		if link.kind != "pin" or link.holds:
+			continue
+		var child: int = link.b if bodies.parent_link.get(link.b) == link else link.a
+		out.append([link, child])
+	out.sort_custom(func(x: Array, y: Array) -> bool:
+		return bodies.parts_of(bodies.beyond(int(x[1]))).size() > bodies.parts_of(bodies.beyond(int(y[1]))).size())
+	return out
+
+
+## Press on [param moving] and drag it [param degrees] about its joint in
+## 5° frames, as a person does; the grab, or null. [param away_from], when
+## given, picks the way that takes its centre of mass away from that point.
+func _drag_out(moving: PackedInt64Array, bodies: Bodies, degrees: float,
+		away_from: Variant = null) -> Grab:
+	await _camera_still()
+	var press: Dictionary = _press_point(moving, bodies)
+	if press.is_empty():
+		_check("the part to drag is under the pointer", false)
+		return null
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null or grab.state != "moves":
+		_check("a drag on it turns it on its joint (%s; pressed #%d %s, carried %s)" % [_grab.last_words,
+			int(press["brick"]), _world.get_brick(int(press["brick"])).part_id, _main.get("_dragging_part")], false)
+		await _button(_last_screen, false)
+		return null
+	var way: float = 1.0
+	if away_from != null:
+		var plus: Vector3 = _centre_of(grab.transforms_at(20.0))
+		var minus: Vector3 = _centre_of(grab.transforms_at(-20.0))
+		if minus.distance_to(away_from) > plus.distance_to(away_from):
+			way = -1.0
+	var steps: int = maxi(1, ceili(absf(degrees) / 5.0))
+	var hold: Vector3 = grab._hold
+	for n: int in range(1, steps + 1):
+		var turned: Vector3 = _about(grab.pivot, grab.axis, way * degrees * n / steps) * hold
+		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
+	await create_timer(0.06).timeout
+	await _move(_last_screen + Vector2(0.5, 0), MOUSE_BUTTON_MASK_LEFT)
+	return grab
+
+
+## A pendulum worked by hand from the parts [param grab] moves where they
+## stand: each part's mass (Stability's), its middle, its box; the moment of
+## inertia about the joint's line, Σ m (r² + (a² + b²)/12) for the box's two
+## sides across it; the centre of mass's distance d from the line; the
+## small-swing period 2π√(I/(m g d)); where it hangs; the friction's dead
+## band asin(μ r/d) and the swing it loses each half, 2 μ r/d.
+func _pendulum_by_hand(grab: Grab) -> Dictionary:
+	var u: Vector3 = grab.axis.normalized()
+	var p: Vector3 = grab.pivot
+	var m: float = 0.0
+	var inertia: float = 0.0
+	var sum := Vector3.ZERO
+	var said := PackedStringArray()
+	for key: int in grab.moving:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		var g: float = Stability.grams(info)
+		var at: Transform3D = grab.placed[key]
+		var c: Vector3 = at * info.bounds.get_center()
+		var off: Vector3 = (c - p) - u * (c - p).dot(u)
+		# The box's own: its sides across the line, in its own frame.
+		var local: Vector3 = at.basis.orthonormalized().inverse() * u
+		var size: Vector3 = info.bounds.size
+		var own: float = g / 12.0 * (local.x * local.x * (size.y * size.y + size.z * size.z)
+			+ local.y * local.y * (size.x * size.x + size.z * size.z)
+			+ local.z * local.z * (size.x * size.x + size.y * size.y))
+		inertia += g * off.length_squared() + own
+		m += g
+		sum += c * g
+		said.append("%s %.2f g at %.1f LDU (own %.0f)" % [brick.part_id, g, off.length(), own])
+	var centre: Vector3 = sum / m
+	var out: Vector3 = (centre - p) - u * (centre - p).dot(u)
+	var d: float = out.length()
+	var down: Vector3 = Vector3.DOWN - u * Vector3.DOWN.dot(u)
+	var to_bottom: float = rad_to_deg(atan2(u.dot(out.cross(down)), out.dot(down)))
+	var t0: float = TAU * sqrt(inertia / (m * Swing.GRAVITY * d))
+	return {"m": m, "I": inertia, "d": d, "T0": t0, "to_bottom": to_bottom,
+		"bottom": grab.angle + to_bottom, "dead": rad_to_deg(asin(Swing.MU * Swing.BEARING / d)),
+		"loss": rad_to_deg(2.0 * Swing.MU * Swing.BEARING / d), "parts": ", ".join(said)}
+
+
+## The complete elliptic integral of the first kind, K(k), by the
+## arithmetic-geometric mean: a pendulum let go θ0 out swings with period
+## 4 √(I/(m g d)) K(sin(θ0/2)).
+static func _elliptic_k(k: float) -> float:
+	var a: float = 1.0
+	var b: float = sqrt(1.0 - k * k)
+	for _n: int in 30:
+		var next_a: float = (a + b) * 0.5
+		b = sqrt(a * b)
+		a = next_a
+	return PI / (2.0 * a)
+
+
+## Wait out a swing, drawing pictures every [param every] frames while it
+## lasts (windowed): the angles drawn, frame by frame.
+func _watch_swing(name: String, every: int, most: int) -> PackedFloat64Array:
+	var angles := PackedFloat64Array()
+	var shots: int = 0
+	var frames: int = 0
+	var swinging: Grab = _grab.get("_swinging")
+	while _grab.is_swinging() and frames < 60000:
+		if swinging != null:
+			angles.append(swinging.angle)
+		if _windowed and every > 0 and frames % every == 0 and shots < most:
+			await _shot(name, "seq_%02d" % shots)
+			shots += 1
+		await process_frame
+		frames += 1
+	await _frames(3)
+	return angles
+
+
+## Swinging on release. The made pendulum dragged 10° out and let go swings
+## as a pendulum: its period against 2π√(I/(m g d)) worked by hand from its
+## parts; the swing it loses each half against the friction's 2μr/d; where
+## it comes to rest against where statics hangs it (within its friction's
+## dead band asin(μr/d)) and against the settle that came before; its energy
+## never above where it was let go; one undo step. Then 75° out, pictures of
+## the swing and its period against the elliptic integral. Then a column in
+## its way: it stops dead where the room test says. Then over MCP.
+func _swing_case() -> void:
+	print("\nswinging: a beam 7 on a pin without friction, let go 30° out")
+	var path: String = OUT.path_join("made_pendulum.ldr")
+	_write(path, _pendulum_ldr(false, false))
+	if not await _open(path):
+		_check("swinging: the made pendulum opens", false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var pins: Array = _free_pins(bodies)
+	_check("swinging: the beam hangs on a pin without friction (%d free)" % pins.size(), pins.size() == 1)
+	if pins.is_empty():
+		return
+	var beam: int = int(pins[0][1])
+	await _look_at_beams(bodies, beam)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var grab: Grab = await _drag_out(bodies.members[beam], bodies, 30.0)
+	if grab == null:
+		return
+	var hand: Dictionary = _pendulum_by_hand(grab)
+	var amplitude: float = absf(float(hand["to_bottom"]))
+	print("    by hand: %s; m %.3f g, d %.2f LDU, I %.1f g·LDU²: T0 = 2π√(I/(m g d)) = %.4f s"
+		% [hand["parts"], hand["m"], hand["d"], hand["I"], hand["T0"]])
+	print("    let go %.2f° from hanging (%.2f°); dead band asin(μr/d) = %.2f°, loss 2μr/d = %.3f° a half swing"
+		% [amplitude, hand["bottom"], hand["dead"], hand["loss"]])
+	# Where the settle that came before leaves it, from the same pose.
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	trial.begin(int((bodies.members[beam] as PackedInt64Array)[0]), grab._hold)
+	trial.turn_to(grab.angle)
+	trial._settle_joint()
+	var statics: float = trial.angle
+	await _button(_last_screen, false)
+	_check("swinging: let go, it swings (%s)" % _grab.last_words, _grab.is_swinging())
+	var drawn: PackedFloat64Array = await _watch_swing("swing_small", 0, 0)
+	var swing: Swing = _grab.last_swing
+	if swing == null:
+		_check("swinging: a swing ran", false)
+		return
+	var halves: PackedFloat64Array = swing.half_periods()
+	# The ends of its swings, as distances from hanging.
+	var q_bottom: float = deg_to_rad(float(hand["to_bottom"]))
+	var ends := PackedFloat64Array([absf(q_bottom)])
+	for turn: Array in swing.turns:
+		ends.append(absf(float(turn[1]) - q_bottom))
+	# Each half swing against the period by hand at its mean amplitude: the
+	# small-swing 2π√(I/(m g d)), lengthened by the elliptic integral,
+	# 2K(sin(θ/2))/π, which is 1 + θ²/16 for small θ.
+	var counted: int = 0
+	var off_most: float = 0.0
+	var mean_half: float = 0.0
+	var mean_expect: float = 0.0
+	for n: int in halves.size():
+		if n + 2 >= ends.size():
+			break
+		var a: float = (ends[n + 1] + ends[n + 2]) * 0.5
+		var expect_half: float = float(hand["T0"]) / PI * _elliptic_k(sin(a * 0.5))
+		off_most = maxf(off_most, absf(halves[n] - expect_half) / expect_half)
+		mean_half += halves[n]
+		mean_expect += expect_half
+		counted += 1
+	print("    swung %.2f s simulated, %.2f s on the clock, %d frames drawn; %d half swings, ends %s°"
+		% [swing.time, _grab.swing_clock_s, drawn.size(), halves.size(),
+		", ".join(Array(ends).map(func(e: float) -> String: return "%.2f" % rad_to_deg(e)))])
+	_check(("swinging: its period %.4f s over %d half swings against T0 = 2π√(I/(m g d)) = %.4f s by hand, "
+		+ "lengthened for each swing's amplitude to %.4f s: %.2f%% off, the worst half %.2f%%") % [
+		2.0 * mean_half / maxi(counted, 1), counted, hand["T0"], 2.0 * mean_expect / maxi(counted, 1),
+		100.0 * absf(mean_half - mean_expect) / maxf(mean_expect, 1e-9), 100.0 * off_most],
+		counted >= 3 and absf(mean_half - mean_expect) / maxf(mean_expect, 1e-9) < 0.01 and off_most < 0.03)
+	var losses: float = 0.0
+	var lost_n: int = mini(ends.size() - 1, 6)
+	for n: int in lost_n:
+		losses += rad_to_deg(ends[n] - ends[n + 1]) / lost_n
+	_check("swinging: it loses %.3f° a half swing to the pin's friction; 2μr/d by hand %.3f°" % [losses,
+		hand["loss"]], lost_n >= 3 and absf(losses - float(hand["loss"])) / float(hand["loss"]) < 0.1)
+	var end: float = grab.angle
+	_check("swinging: it comes to rest at %.2f°, %.2f° from hanging straight (%.2f°), within its friction's dead band %.2f°"
+		% [end, absf(end - float(hand["bottom"])), hand["bottom"], hand["dead"]],
+		absf(end - float(hand["bottom"])) <= float(hand["dead"]) + 0.05)
+	_check("swinging: where the settle before it put it (%.2f°), to within that band" % statics,
+		absf(end - statics) <= float(hand["dead"]) + 0.5)
+	_check("swinging: its energy never stood above where it was let go (%.4f%% of what it lost)"
+		% (100.0 * swing.energy_rise_share()), swing.energy_rise_share() < 0.01)
+	print("    said: %s" % _grab.last_words)
+	_check("swinging: it says it swung and where it came to rest", _grab.last_words.contains("back and forth")
+		and _grab.last_words.contains("came to rest at"))
+	_check("swinging: the drag and the swing are one step to undo (%s)" % (_builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+	_timings["swing_small"] = {"frames": _grab.swing_frames, "worst_ms": _grab.swing_worst_ms,
+		"mean_ms": _grab.swing_mean_ms, "simulated_s": swing.time, "clock_s": _grab.swing_clock_s,
+		"tests": swing.tests, "worst_test_ms": swing.worst_test_ms}
+	_check("swinging: its frames' own work mean %.2f ms, worst %.2f ms (%d frames, %d room tests, the worst %.2f ms)"
+		% [_grab.swing_mean_ms, _grab.swing_worst_ms, _grab.swing_frames, swing.tests, swing.worst_test_ms],
+		_grab.swing_worst_ms < 33.0)
+	_builder.undo()
+	await _frames(3)
+	_check("swinging: one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+
+	# 75° out: pictures of the swing, and its first swings' period against
+	# the elliptic integral.
+	print("\nswinging: let go 75° out, pictures")
+	_grab._ready_now()
+	bodies = _grab._bodies
+	grab = await _drag_out(bodies.members[int(_free_pins(bodies)[0][1])], bodies, 75.0)
+	if grab == null:
+		return
+	hand = _pendulum_by_hand(grab)
+	amplitude = absf(float(hand["to_bottom"]))
+	if _windowed:
+		await _shot("swing_big", "0_held")
+	await _button(_last_screen, false)
+	drawn = await _watch_swing("swing_big", 4, 12)
+	swing = _grab.last_swing
+	halves = swing.half_periods()
+	var first: float = halves[0] if not halves.is_empty() else 0.0
+	# The first half swing goes from θ0 out to a little less the other side:
+	# its half period by the mean of the two.
+	var other: float = absf(float(swing.turns[0][1]) - deg_to_rad(float(hand["to_bottom"]))) \
+		if not swing.turns.is_empty() else 0.0
+	var mean_amp: float = (deg_to_rad(amplitude) + other) * 0.5
+	var big: float = 2.0 * sqrt(float(hand["I"]) / (float(hand["m"]) * Swing.GRAVITY * float(hand["d"]))) \
+		* _elliptic_k(sin(mean_amp * 0.5))
+	_check("swinging: the first half swing from %.1f° takes %.4f s; 2√(I/(m g d))·K(sin(θ/2)) by hand %.4f s, %.2f%% off"
+		% [amplitude, first, big, 100.0 * absf(first - big) / maxf(big, 1e-6)], absf(first - big) / maxf(big, 1e-6) < 0.02)
+	print("    said: %s" % _grab.last_words)
+	_check("swinging: from 75° it comes to rest within its dead band of hanging (%.2f° off, band %.2f°)"
+		% [absf(grab.angle - float(hand["bottom"])), hand["dead"]],
+		absf(grab.angle - float(hand["bottom"])) <= float(hand["dead"]) + 0.05)
+	_timings["swing_big"] = {"frames": _grab.swing_frames, "worst_ms": _grab.swing_worst_ms,
+		"mean_ms": _grab.swing_mean_ms, "simulated_s": swing.time, "clock_s": _grab.swing_clock_s,
+		"tests": swing.tests}
+	print("    frames: own work mean %.2f ms, worst %.2f ms over %d; %.2f s simulated in %.2f s on the clock"
+		% [_grab.swing_mean_ms, _grab.swing_worst_ms, _grab.swing_frames, swing.time, _grab.swing_clock_s])
+	if _windowed:
+		await _shot("swing_big", "9_rest")
+	_builder.undo()
+	await _frames(3)
+
+	# Caught by a press half way.
+	grab = await _drag_out(bodies.members[int(_free_pins(bodies)[0][1])], bodies, 60.0)
+	if grab != null:
+		depth = _builder.history_depth()
+		await _button(_last_screen, false)
+		await create_timer(0.15).timeout
+		var caught_at: float = (_grab.get("_swinging") as Grab).angle if _grab.is_swinging() else NAN
+		await _button(_last_screen, true)
+		await _button(_last_screen, false)
+		await _frames(3)
+		print("    caught: %s" % _grab.last_words)
+		_check("swinging: a press caught it where it was (%.1f°), kept as one step" % caught_at,
+			not _grab.is_swinging() and _grab.last_words.contains("caught by a press")
+			and _builder.history_depth() == depth + 1)
+		while _builder.history_depth() > depth:
+			_builder.undo()
+		await _frames(3)
+
+	# Over MCP: move_part says it swung and where it rests.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var key: int = int((bodies.members[int(_free_pins(bodies)[0][1])] as PackedInt64Array)[0])
+	depth = _builder.history_depth()
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % key, "degrees": 40}))
+	print("    move_part #%d degrees=40 said: %s" % [key, said.replace("\n", " | ")])
+	_check("swinging: over MCP move_part says it swung and where it came to rest",
+		said.contains("swung down under its own weight") and said.contains("came to rest at"))
+	_check("swinging: over MCP one step", _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	_check("swinging: over MCP one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+
+	# A column in its way: it stops dead where the room test says.
+	print("\nswinging: a column of bricks in its swing")
+	path = OUT.path_join("made_pendulum_wall.ldr")
+	_write(path, _pendulum_ldr(true, false))
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	bodies = _grab._bodies
+	beam = int(_free_pins(bodies)[0][1])
+	var column := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3004":
+			column = brick.transform.origin
+	await _look_at_beams(bodies, beam)
+	# Where a turn towards the column stops, the room test's, in 2° frames
+	# from hanging as a drag would.
+	var probe := Grab.new()
+	probe.world = _world
+	probe.builder = _builder
+	probe.library = _library
+	probe.bodies = bodies
+	var beam_key: int = int((bodies.members[beam] as PackedInt64Array)[0])
+	probe.begin(beam_key, _world.get_brick(beam_key).transform.origin)
+	var toward: float = 1.0 if _centre_of(probe.transforms_at(20.0)).distance_to(column) \
+		< _centre_of(probe.transforms_at(-20.0)).distance_to(column) else -1.0
+	var wall_at: float = NAN
+	for n: int in range(1, 70):
+		probe.turn_to(toward * 2.0 * n)
+		if probe.stopped:
+			wall_at = probe.angle
+			break
+	print("    a turn towards the column stops at %.2f°" % wall_at)
+	depth = _builder.history_depth()
+	before = _snapshot()
+	grab = await _drag_out(bodies.members[beam], bodies, 60.0, column)
+	if grab == null:
+		return
+	var let_go: float = grab.angle
+	await _button(_last_screen, false)
+	drawn = await _watch_swing("swing_wall", 3, 8)
+	swing = _grab.last_swing
+	var first_end: float = let_go + rad_to_deg(float(swing.turns[0][1])) if not swing.turns.is_empty() else NAN
+	print("    said: %s" % _grab.last_words)
+	_check("swinging: it stops dead at the column, its first swing ending at %.2f°, where the room test stops a turn (%.2f°)"
+		% [first_end, wall_at], swing.stops >= 1 and absf(first_end - wall_at) <= 0.5)
+	_check("swinging: it says it met the model", _grab.last_words.contains("met the model"))
+	_builder.undo()
+	await _frames(3)
+	_check("swinging: one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+
+
+## Two beams on two free pins, the inner one dragged 60° out and let go:
+## they swing together as a double pendulum, its energy never above where
+## it was let go, and come to rest where the settle before it put them (each
+## hanging straight within its friction's band), as one step.
+func _double_case() -> void:
+	print("\ndouble pendulum: two beams 7 on two pins without friction, the inner one let go 60° out")
+	var path: String = OUT.path_join("made_double.ldr")
+	_write(path, _pendulum_ldr(false, true))
+	if not await _open(path):
+		_check("double pendulum: the model opens", false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var pins: Array = _free_pins(bodies)
+	_check("double pendulum: two pins without friction (%d)" % pins.size(), pins.size() == 2)
+	if pins.size() < 2:
+		return
+	var inner: int = int(pins[0][1])
+	await _look_at_beams(bodies, inner)
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	var outer_key: int = int((bodies.members[int(pins[1][1])] as PackedInt64Array)[0])
+	# Press on the inner beam itself, not the outer.
+	var grab: Grab = await _drag_out(bodies.members[inner], bodies, 60.0)
+	if grab == null:
+		return
+	var trial := Grab.new()
+	trial.world = _world
+	trial.builder = _builder
+	trial.library = _library
+	trial.bodies = bodies
+	trial.begin(int((bodies.members[inner] as PackedInt64Array)[0]), grab._hold)
+	trial.turn_to(grab.angle)
+	trial.settle()
+	var static_outer: Vector3 = (trial.placed[outer_key] as Transform3D).origin
+	var static_inner: float = trial.angle
+	if _windowed:
+		await _shot("double", "0_held")
+	await _button(_last_screen, false)
+	var drawn: PackedFloat64Array = await _watch_swing("double", 3, 14)
+	var swing: Swing = _grab.last_swing
+	print("    said: %s" % _grab.last_words)
+	_check("double pendulum: both joints swing together (%d joints)" % (swing.joints.size() if swing else 0),
+		swing != null and swing.joints.size() == 2)
+	if swing == null:
+		return
+	var outer_now: Vector3 = _world.get_brick(outer_key).transform.origin
+	# Each pin holds within asin(μr/d) of hanging, d the centre of mass of what
+	# it carries from its line (about 120 and 60 LDU here): 0.9° and 1.7°,
+	# at 180 and 60 LDU from the outer beam's middle, 2.7 and 1.8 LDU.
+	var band: float = 8.0
+	_check("double pendulum: the outer beam comes to rest %.2f LDU from where the settle before it hangs it (inner %.2f° against %.2f°)"
+		% [outer_now.distance_to(static_outer), grab.angle, static_inner], outer_now.distance_to(static_outer) <= band)
+	_check("double pendulum: its energy never stood above where it was let go (%.4f%% of what it lost)"
+		% (100.0 * swing.energy_rise_share()), swing.energy_rise_share() < 0.01)
+	_check("double pendulum: it says a chain swung", _grab.last_words.contains("chain of 2 free joints"))
+	_check("double pendulum: one step to undo (%s)" % (_builder.history_words(1)[0]
+		if _builder.history_depth() > depth else "none"), _builder.history_depth() == depth + 1)
+	_timings["double"] = {"frames": _grab.swing_frames, "worst_ms": _grab.swing_worst_ms,
+		"mean_ms": _grab.swing_mean_ms, "simulated_s": swing.time, "clock_s": _grab.swing_clock_s,
+		"tests": swing.tests, "worst_test_ms": swing.worst_test_ms}
+	_check("double pendulum: its frames' own work mean %.2f ms, worst %.2f ms (%d frames; %.2f s simulated, %.2f on the clock)"
+		% [_grab.swing_mean_ms, _grab.swing_worst_ms, _grab.swing_frames, swing.time, _grab.swing_clock_s],
+		_grab.swing_worst_ms < 33.0)
+	if _windowed:
+		await _shot("double", "9_rest")
+	_builder.undo()
+	await _frames(3)
+	_check("double pendulum: one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+
+
+## How long a rigid model posed as [param placed] takes to fall about the
+## edge [param hand] found (_fall_by_hand: its point and line, the angle it
+## falls), worked by hand: its moment of inertia about the edge from each
+## part's mass and box, Σ m (r² + its box's own about the line); its centre
+## of mass r from the edge, φ0 past upright; from rest, energy gives
+## θ'² = 2 m g r (cos φ0 − cos(φ0 + θ)) / I, and the time is the integral of
+## dθ/θ' to the angle it falls (by Simpson's rule, θ = s² taking out the
+## start's 1/√θ).
+func _fall_time_by_hand(placed: Dictionary, hand: Dictionary) -> Dictionary:
+	var a: Vector3 = hand["point"]
+	var u: Vector3 = (hand["line"] as Vector3).normalized()
+	var out: Vector3 = hand["out"]
+	var m: float = 0.0
+	var inertia: float = 0.0
+	var sum := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var g: float = Stability.grams(info)
+		var at: Transform3D = placed.get(brick.id, brick.transform)
+		var c: Vector3 = at * info.bounds.get_center()
+		var local: Vector3 = at.basis.orthonormalized().inverse() * u
+		var size: Vector3 = info.bounds.size
+		var own: float = g / 12.0 * (local.x * local.x * (size.y * size.y + size.z * size.z)
+			+ local.y * local.y * (size.x * size.x + size.z * size.z)
+			+ local.z * local.z * (size.x * size.x + size.y * size.y))
+		var r: Vector3 = (c - a) - u * (c - a).dot(u)
+		inertia += g * r.length_squared() + own
+		m += g
+		sum += c * g
+	var w: Vector3 = (sum / m - a)
+	w -= u * w.dot(u)
+	var r: float = w.length()
+	var phi0: float = atan2(w.dot(out), w.y)
+	var fall: float = deg_to_rad(float(hand["angle"]))
+	var k: float = 2.0 * m * Swing.GRAVITY * r / inertia
+	var top: float = sqrt(fall)
+	var n: int = 2000
+	var total: float = 0.0
+	for i: int in n + 1:
+		var s: float = top * i / n
+		var f: float
+		if i == 0:
+			f = 2.0 / sqrt(k * sin(phi0))
+		else:
+			f = 2.0 * s / sqrt(k * (cos(phi0) - cos(phi0 + s * s)))
+		total += f * (1.0 if i == 0 or i == n else (4.0 if i % 2 == 1 else 2.0))
+	return {"seconds": total * top / n / 3.0, "m": m, "I": inertia, "r": r, "phi0": rad_to_deg(phi0)}
+
+
+## The fall just shown against the hand: its simulated time (Topple.timed)
+## against the integral, its drawn frames never through the floor, and the
+## clock it took: checked when [param pictured] is false (a picture taken
+## during the fall holds its frames, and the last frame ends it late).
+func _fall_time_check(name: String, placed: Dictionary, hand: Dictionary, pictured: bool = false) -> void:
+	var by_hand: Dictionary = _fall_time_by_hand(placed, hand)
+	print("    by hand: m %.2f g, its centre of mass %.1f LDU from the edge and %.2f° past upright, I about the edge %.0f g·LDU²: falls %.2f° in %.4f s"
+		% [by_hand["m"], by_hand["r"], by_hand["phi0"], by_hand["I"], hand["angle"], by_hand["seconds"]])
+	var off: float = absf(_grab.fall_seconds - float(by_hand["seconds"])) / float(by_hand["seconds"])
+	_check("%s: it falls in %.4f s, a rigid body turning about its edge from rest; the integral by hand %.4f s, %.2f%% off"
+		% [name, _grab.fall_seconds, by_hand["seconds"], 100.0 * off], off < 0.02)
+	if pictured:
+		print("    drawn falling over %.3f s on the clock (%.3f s simulated), with pictures taken during it"
+			% [_grab.fall_clock_s, _grab.fall_seconds])
+	else:
+		_check("%s: drawn falling over %.3f s on the clock (%.3f s simulated), not a fixed half second"
+			% [name, _grab.fall_clock_s, _grab.fall_seconds], absf(_grab.fall_clock_s - _grab.fall_seconds) < 0.1)
+	var floor_y: float = float(hand.get("floor", _lowest()))
+	_check("%s: no frame of it went through the floor (lowest corner drawn %.2f LDU from it)"
+		% [name, _grab.fall_lowest - floor_y], _grab.fall_lowest >= floor_y - 1.0)
+
+
+## The made crane, its arm two bricks longer, on a tower one brick taller, its fourth course two
+## Technic bricks 1 x 2 with holes (3700) turned across, and from the outer
+## hole a short beam (32523, a beam 3) on a pin without friction, beside the
+## tower: the arm on its hinge holds, the beam swings. The tower is the
+## heavier body and stays. LDraw's units, y down.
+const MADE_CRANE_SWING := """0 A tall arm on a hinge on a 2x2 tower, a beam hung at its side
+0 Name: made_crane_swing.ldr
+0 !BRICKWORKS FLOOR NONE
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 -10 -96 0 0 0 1 0 1 0 -1 0 0 3700.dat
+1 7 10 -96 0 0 0 1 0 1 0 -1 0 0 3700.dat
+1 4 0 -120 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -144 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 0 -144 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 0 -168 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -192 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -216 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -240 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -264 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -288 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -312 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 0 -20 -86 0 1 0 0 0 1 0 0 0 1 3673.dat
+1 14 -30 -66 0 0 1 0 0 0 1 1 0 0 32523.dat
+"""
+
+
+## Falling with motion and landing: the made crane with a beam hung at its
+## arm's top, the arm dragged out 90° on its hinge (which holds) and let go.
+## Past its edge, the model falls at once about it as a body falls (its time
+## against the integral by hand), the beam held as it falls; it lands where
+## Topple says; and the beam, carried round by the fall, swings on in its new
+## lie until it hangs within its friction of straight down. One step to undo.
+func _landing_case() -> void:
+	print("\nfalling and landing: the made crane with a beam 3 on a free pin at its tower's side, on no floor")
+	var path: String = OUT.path_join("made_crane_swing.ldr")
+	_write(path, MADE_CRANE_SWING)
+	if not await _open(path):
+		_check("landing: the model opens", false)
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	print("    %s" % bodies.summary())
+	var hinge: Bodies.Link = null
+	for link: Bodies.Link in bodies.links:
+		if link.kind == "hinge":
+			hinge = link
+	var pins: Array = _free_pins(bodies)
+	_check("landing: an arm on a hinge, a beam on a free pin at the tower's side (%d free)" % pins.size(),
+		hinge != null and pins.size() == 1)
+	if hinge == null or pins.is_empty():
+		return
+	var arm: int = hinge.b if bodies.parent_link.get(hinge.b) == hinge else hinge.a
+	var beam_key: int = 0
+	for key: int in bodies.members[int(pins[0][1])]:
+		if _world.get_brick(key).part_id == "32523":
+			beam_key = key
+	var base_key: int = int((bodies.members[int(bodies.anchors.keys()[0])] as PackedInt64Array)[0])
+	var floor_y: float = _lowest()
+	_camera.look_from(Vector3(-1.0, 0.4, 0.3).normalized())
+	_frame_on(PackedInt64Array())
+	await _frames(15)
+	await _camera_still()
+	var before: Dictionary = _snapshot()
+	var depth: int = _builder.history_depth()
+	# Out the way that carries the weight past the tower's edge.
+	var probe := Grab.new()
+	probe.world = _world
+	probe.builder = _builder
+	probe.library = _library
+	probe.bodies = bodies
+	var arm_key: int = int((bodies.members[arm] as PackedInt64Array)[0])
+	probe.begin(arm_key, _world.get_brick(arm_key).transform.origin)
+	var base_centre: Vector3 = _centre_of({})
+	var plus: Vector3 = _centre_of(probe.transforms_at(60.0))
+	var minus: Vector3 = _centre_of(probe.transforms_at(-60.0))
+	var away: Vector3 = base_centre + (plus - base_centre if Vector2(plus.x - base_centre.x, plus.z - base_centre.z).length()
+		< Vector2(minus.x - base_centre.x, minus.z - base_centre.z).length() else minus - base_centre) * 10.0
+	# _drag_out picks the way taking it away from a point: the point behind.
+	var behind: Vector3 = base_centre - (away - base_centre)
+	var grab: Grab = await _drag_out(bodies.members[arm], bodies, 90.0, behind)
+	if grab == null:
+		return
+	print("    posed to %.1f°" % grab.angle)
+	if _windowed:
+		await _shot("landing", "00_held")
+	await _button(_last_screen, false)
+	var swung_first: bool = _grab.is_swinging()
+	var shots: int = 0
+	var frames: int = 0
+	var fall_from: Dictionary = {}
+	var fell_seen: bool = false
+	var landed_swing: bool = false
+	var started: int = Time.get_ticks_msec()
+	while (_grab.is_settling()) and Time.get_ticks_msec() - started < 60000:
+		if _grab.is_falling() and not fell_seen:
+			fell_seen = true
+			fall_from = (_grab.get("_falling") as Dictionary)["from"]
+		if fell_seen and not _grab.is_falling() and _grab.is_swinging():
+			landed_swing = true
+		if _windowed and frames % 3 == 0 and shots < 30:
+			await _shot("landing", "seq_%02d" % shots)
+			shots += 1
+		await process_frame
+		frames += 1
+	await _frames(3)
+	print("    said: %s" % _grab.last_words)
+	_check("landing: let go past its edge on a hinge that holds, it falls at once, the beam held as it falls",
+		not swung_first and fell_seen and _grab.last_words.contains("tipped over to the"))
+	if fell_seen:
+		var hand: Dictionary = _fall_by_hand(fall_from)
+		hand["floor"] = floor_y
+		print("    by hand: past the %s edge by %.1f LDU; first down %s, %.1f out and %.1f up: %.2f°"
+			% [hand["edge"], hand["past"], hand["corner"], hand["u"], hand["h"], hand["angle"]])
+		var up_before: Vector3 = (fall_from[base_key] as Transform3D).basis.y.normalized()
+		var up_after: Vector3 = _world.get_brick(base_key).transform.basis.y.normalized()
+		var fell: float = rad_to_deg(up_before.angle_to(up_after))
+		_check("landing: it turned %.2f° about its edge, where the hand puts it down (%.2f°)" % [fell, hand["angle"]],
+			absf(fell - float(hand["angle"])) < 1.5)
+		await _fall_time_check("landing", fall_from, hand, _windowed)
+	_check("landing: as it landed the beam swung on in its new lie, and it says so", landed_swing
+		and _grab.last_words.contains("as it landed"))
+	# The beam hangs: its centre of mass under its pin, within its friction.
+	var beam: BrickWorld.Brick = _world.get_brick(beam_key)
+	var info: PartLibrary.PartInfo = _library.parts.get(beam.part_id)
+	_grab._ready_now()
+	var lying: Array = _free_pins(_grab._bodies)
+	var pin_link: Bodies.Link = lying[0][0] if not lying.is_empty() else hinge
+	var pin_point: Vector3 = pin_link.point
+	var pin_axis: Vector3 = pin_link.axis.normalized()
+	var hang: Vector3 = beam.transform * info.bounds.get_center() - pin_point
+	hang -= pin_axis * hang.dot(pin_axis)
+	var down: Vector3 = Vector3.DOWN - pin_axis * Vector3.DOWN.dot(pin_axis)
+	var off: float = rad_to_deg(hang.angle_to(down))
+	var dead: float = rad_to_deg(asin(Swing.MU * Swing.BEARING / maxf(hang.length(), 1.0)))
+	_check("landing: the beam hangs %.2f° from straight down below its pin, within its friction's band (%.2f°)"
+		% [off, dead], off <= dead + 0.5)
+	_check("landing: it lies on the floor it stood on (lowest point %.1f LDU, the floor %.1f)" % [_lowest(), floor_y],
+		absf(_lowest() - floor_y) <= 2.0)
+	_check("landing: the drag, the swing, the fall and the landing are one step to undo (%s)" % (
+		_builder.history_words(1)[0] if _builder.history_depth() > depth else "none"),
+		_builder.history_depth() == depth + 1)
+	_timings["landing"] = {"fall_s": _grab.fall_seconds, "fall_clock_s": _grab.fall_clock_s,
+		"swing_frames": _grab.swing_frames, "swing_worst_ms": _grab.swing_worst_ms,
+		"swing_mean_ms": _grab.swing_mean_ms}
+	if _windowed:
+		_frame_on(PackedInt64Array())
+		await _frames(10)
+		await _shot("landing", "99_rest")
+	_builder.undo()
+	await _frames(3)
+	_check("landing: one undo stands it up again exactly (%s)" % _differs(before), _differs(before) == "none differs")
+	# Over MCP: the same turn, the same story in words.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	depth = _builder.history_depth()
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % arm_key, "degrees": grab.angle}))
+	print("    move_part #%d degrees=%.0f said: %s" % [arm_key, grab.angle, said.replace("\n", " | ")])
+	_check("landing: over MCP it says the model fell and for how long, and the beam swung as it landed",
+		said.contains("falling for") and said.contains("As it landed") and said.contains("swung down"))
+	_check("landing: over MCP one step", _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	_check("landing: over MCP one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
 
 
 ## A made train: an 8 tooth crank driving a 24 tooth gear on a Technic
@@ -2820,6 +3551,10 @@ func _fall_by_hand(placed: Dictionary) -> Dictionary:
 				"corner": "a point of %s" % _world.get_brick(int(c[0])).part_id}
 	best["edge"] = str(standing["edge"])
 	best["past"] = -float(standing["margin"])
+	best["point"] = a
+	best["line"] = Vector3(ends[1].x - ends[0].x, 0.0, ends[1].y - ends[0].y).normalized() \
+		if ends.size() > 1 else out.cross(Vector3.UP)
+	best["out"] = out
 	return best
 
 

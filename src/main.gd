@@ -5510,6 +5510,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# it comes up. A drag moves the view (or with Ctrl draws a box) and
 	# places nothing; a click places, selects, or does what the tool does.
 	if button.pressed:
+		# A section swinging on a free joint is caught where it is.
+		if _grab_drag != null and _grab_drag.is_swinging():
+			_grab_drag.catch()
 		_box_dropped = false
 		_box_began = false
 		_left_spent = false
