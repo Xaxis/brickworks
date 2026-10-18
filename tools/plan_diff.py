@@ -10,6 +10,13 @@ compared.
 Every step's every field is compared: its bricks, parts, section, callout
 fields, copies, the author's step it is, and the step player's view (the
 direction and the box framed). Prints each file that differs and how.
+
+A plan moves with its parts as well as with the planner: a dump made since
+2026-10-17 says which catalogue it read and a digest of each file's parts'
+geometry, and a file whose parts' geometry differs between the two is said
+so. Two dumps of one checkout, either side of a 13 minutes in which the
+shared catalogue gave 421 wheels and tyres other covers, differed in 7 files
+for that alone (docs/INSTRUCTIONS.md, samebooklet).
 """
 import json
 import sys
@@ -27,13 +34,19 @@ def rows(path):
             r = json.loads(line)
             if "file" in r:
                 out[r["file"]] = r
+            elif "catalogue" in r:
+                out[None] = r
     return out
 
 
 before, after = rows(sys.argv[1]), rows(sys.argv[2])
+read = [run.pop(None, {}).get("catalogue") for run in (before, after)]
+if None not in read and read[0] != read[1]:
+    print(f"the two read different catalogues ({read[0]}, {read[1]})")
 files = [f for f in before if f in after]
 missing = [f for f in before if f not in after] + [f for f in after if f not in before]
 differ = 0
+moved_parts = 0
 steps = 0
 callouts = 0
 for f in files:
@@ -59,6 +72,11 @@ for f in files:
                 break
     if bad:
         differ += 1
+        a, b = before[f].get("geometry"), after[f].get("geometry")
+        if a is not None and b is not None and a != b:
+            moved_parts += 1
+            bad.append("and its parts' geometry differs")
         print(f, "; ".join(bad))
-print(f"{len(files)} files compared, {differ} differ, {len(missing)} missing on one side; "
+print(f"{len(files)} files compared, {differ} differ ({moved_parts} of them with other parts' "
+      f"geometry), {len(missing)} missing on one side; "
       f"{steps} steps and {callouts} callouts compared (four plans a file)")

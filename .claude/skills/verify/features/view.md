@@ -776,7 +776,15 @@ picture the assistant is shown.
   where, and the steps and callouts compared. `--time` times
   `Instructions.plan` alone on each file as opened. Over the 100 proof and
   100 tune files, 607928d against the planspeed change: 0 of 200 differ,
-  87,856 steps (`bench/results/planspeed-2026-10-17/`).
+  87,856 steps (`bench/results/planspeed-2026-10-17/`). A plan moves with
+  its parts too: a dump's first line is the md5 of the catalogue it read and
+  each file's row has `geometry`, a digest of its parts' mesh files (of the
+  text of a part the file carries); `plan_diff.py` says when the two read
+  different catalogues and which differing files' parts differ (samebooklet,
+  2026-10-17: for 13 minutes that day the shared catalogue gave 421 wheels
+  and tyres other covers, and two dumps of one checkout either side of it
+  differed in 7 files). In one process, shuffled or in reverse, m73 plans
+  each of the 200 the same (`bench/results/samebooklet-2026-10-17/`).
 - `cad task frames` and `cad task frames in a browser`
   (`src/dev/cadtask_frames.gd`, `tools/web/cad_frames.mjs`; run by
   `tools/bench/cadtask.py frames`, written up in `docs/CADTASK.md`): the frames
