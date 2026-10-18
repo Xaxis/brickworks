@@ -216,6 +216,27 @@ func _awkward() -> void:
 			_check("the Technic brick has a hole to aim at", false)
 	await _shot("hinge_slopes_pin")
 
+	# A corner plate round what stands in its missing corner: 8643-1's step 2
+	# lays two 2420s on its 4 x 4 plate, their missing corners round the arm
+	# of a wheel holder (6157) beside it. By its box a 2420 stood on the arm,
+	# a plate up; by its cover it lies on the plate (Builder._sinks_by).
+	_main.call("clear_model")
+	_put_ldr("3031", 8, [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("6157", 0, [0, -16, -60, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, 0, -60), Vector3(120, 40, 160)))
+	await _frames(40)
+	await _hold("2420")
+	var corner: Lbm.PartMesh = _library.mesh_for("2420")
+	for want: Array in [[-10, -16, -30, -1, 0, 0, 0, 1, 0, 0, 0, -1],
+			[10, -16, -30, 0, 0, 1, 0, 1, 0, -1, 0, 0]]:
+		var at: Transform3D = _ldr(want)
+		await _turn_to(at.basis)
+		# At its corner stud, the plate's own origin, on the plate under it.
+		var foot: Vector3 = at.origin + Vector3(0, (at * corner.bounds).abs().position.y
+			- at.origin.y, 0)
+		await _one("2420 corner plate round the wheel holder's arm", _screen(foot), at)
+	await _shot("corner_plate")
+
 
 ## 8841-1 Balance's step 4: two Technic plates (4262) hang from an axle in
 ## the end of a Technic brick, their lower holes on two pins. Each is off

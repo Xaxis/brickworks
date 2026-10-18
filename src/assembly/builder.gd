@@ -2260,12 +2260,12 @@ func _settle(
 			return Transform3D(basis, Vector3(snapped.x, hung, snapped.z))
 
 	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
+	var y: float = rest_cell * BrickLattice.CELL - box.position.y \
+		- _sinks_by(part, basis, snapped, rest_cell) * BrickLattice.CELL
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies.
 	if hit.is_valid() and hit.normal.y == 0:
-		rest_cell = maxi(rest_cell, hit.adjacent().y)
-
-	var y: float = rest_cell * BrickLattice.CELL - box.position.y
+		y = maxf(y, hit.adjacent().y * BrickLattice.CELL - box.position.y)
 	# On its plate, not on what hangs below it, where that leaves room: the
 	# clip plates of 5762-1's step 4 hang their clips 2 LDU below the plate,
 	# over the edge of the plate they stand on, and stood 2 LDU up by their
@@ -2278,6 +2278,26 @@ func _settle(
 				and room_for(held_part, at):
 			return at
 	return Transform3D(basis, Vector3(snapped.x, y, snapped.z))
+
+
+## How many cells lower a part rests by its own cover than by its box, at
+## [param snapped] across, where its box rests on [param rest_cell]: the
+## cover's boxes each on what is under its own columns. A part that is not
+## a box has room its box has not: 2420, a corner plate, goes round a wheel
+## holder's arm with its missing corner, and by its box it stood on the
+## arm, a plate up (8643-1's step 2, 2026-10-17). 0 for a part whose cover
+## fills its box across, which is every plain part.
+func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> int:
+	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
+		Vector3(snapped.x, 0.0, snapped.z)))
+	if cover.size() <= 6:
+		return 0
+	var low: int = 1 << 30
+	var n: int = 1
+	while n < cover.size():
+		low = mini(low, cover[n])
+		n += 6
+	return maxi(rest_cell - low - lattice.rise_onto(cover, GROUND_CELL), 0)
 
 
 ## Where on the stud grid a part goes across, by its sockets, when its box

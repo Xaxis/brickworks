@@ -799,6 +799,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   upright part of the CAD task's three sets against where its file has it
   across the grid: 97 of 140 by the sockets' rule, 87 by the box alone,
   worse for none.
+- `rests by its own shape` (`Builder._sinks_by`, 2026-10-17): a part
+  dropped onto what is under it rests where each box of its cover meets what
+  is under that box's own columns (`BrickLattice.rise_onto`, as a copy in
+  hand rests), not where its box's rectangle first meets something. A part
+  that is not a box has room its box has not: 8643-1's two 2420 corner
+  plates go round the arm of a wheel holder (6157) in their missing corners,
+  and by their box they stood on the arm, a plate up, in the build flow and
+  by hand. Only ever lower than by the box, never below what is under it;
+  every plain part, one box across, rests as before. Probe: `placing_probe
+  -- only=parts` (the two corner plates beside a 6157, as the set has them,
+  aimed at their corner studs; fails with the rule undone).
 - `what the ghost shows is where it goes` (`Main._true_point`, 2026-10-16):
   a click aims before it puts (a finger has no move before it), and in a
   browser the click was aimed somewhere else: Godot reads a move from the

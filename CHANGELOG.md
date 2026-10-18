@@ -210,6 +210,10 @@ whole cycle.
 
 ### Fixed
 
+- A part that is not a box lies where its own shape has room. A 2 x 2
+  corner plate put on a plate beside the arm of a wheel holder, its missing
+  corner round the arm, stood a plate up on the arm, and could not be put
+  where 8643-1's booklet has it.
 - A model without steps of its own, given the worked-out ones by its first
   booklet edit, built the second copy of a sub-model (10016-1's second
   wheels) differently once it was saved and opened again.
