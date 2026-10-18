@@ -104,6 +104,17 @@ async function press(name) {
 }
 const timeline = async () => (await state()).timeline || {};
 const look = async () => (await timeline()).look || "";
+// The row as it says once it says what the test wants, or as it last said:
+// the page is told what the window says twice a second, so a row read once
+// straight after a press can still say the step before it (m73's preview).
+async function says(test, seconds = 15) {
+  let now = await look();
+  for (let n = 0; n < seconds * 2 && !test(now); n++) {
+    await page.waitForTimeout(500);
+    now = await look();
+  }
+  return now;
+}
 async function open(file) {
   const at = await where("open");
   for (let n = 0; n < 3; n++) {
@@ -183,26 +194,29 @@ try {
   ok(await toStep(3), `Right arrow to step 3: "${(await timeline()).caption}"`);
 
   await press("booklet_turn_right");
-  ok(/turned 45°/.test(await look()), `Turn right: the row says "${await look()}"`);
+  const turned = await says((l) => /turned 45°/.test(l));
+  ok(/turned 45°/.test(turned), `Turn right: the row says "${turned}"`);
   await press("booklet_zoom_in");
-  ok(/zoom 1\.25x/.test(await look()), `Zoom in: "${await look()}"`);
+  const zoomed = await says((l) => /zoom 1\.25x/.test(l));
+  ok(/zoom 1\.25x/.test(zoomed), `Zoom in: "${zoomed}"`);
   await shot("1_step_3_turned_zoomed.png");
   await page.keyboard.press("Control+z");
-  await page.waitForTimeout(1500);
-  ok(!/zoom/.test(await look()) && /turned 45°/.test(await look()),
-    `Ctrl-Z takes the zoom off and only that: "${await look()}"`);
+  const undone = await says((l) => !/zoom/.test(l) && /turned 45°/.test(l));
+  ok(!/zoom/.test(undone) && /turned 45°/.test(undone),
+    `Ctrl-Z takes the zoom off and only that: "${undone}"`);
   await page.keyboard.press("Control+Shift+z");
-  await page.waitForTimeout(1500);
-  ok(/zoom 1\.25x/.test(await look()), `Ctrl-Shift-Z puts it back: "${await look()}"`);
+  const redone = await says((l) => /zoom 1\.25x/.test(l));
+  ok(/zoom 1\.25x/.test(redone), `Ctrl-Shift-Z puts it back: "${redone}"`);
 
   ok(await toStep(4), `step 4: "${(await timeline()).caption}"`);
   await press("booklet_new_page");
-  ok(/new page/.test(await look()), `New page: "${await look()}"`);
+  const paged = await says((l) => /new page/.test(l));
+  ok(/new page/.test(paged), `New page: "${paged}"`);
   ok(await toStep(5), `step 5: "${(await timeline()).caption}"`);
   await press("booklet_alone");
   await press("booklet_parts");
-  ok(/a page alone/.test(await look()) && /no parts list/.test(await look()),
-    `Alone and Parts list off: "${await look()}"`);
+  const alone = await says((l) => /a page alone/.test(l) && /no parts list/.test(l));
+  ok(/a page alone/.test(alone) && /no parts list/.test(alone), `Alone and Parts list off: "${alone}"`);
   await press("booklet_per_page");
   await press("booklet_per_page");
   // Waited for: the page is told what the window says twice a second, and
@@ -218,8 +232,9 @@ try {
   await page.keyboard.press("Control+z");
   const unmerged = await until((s) => new RegExp(`of ${total}\\b`).test((s.timeline || {}).caption || ""), 30);
   ok(Boolean(unmerged), `Ctrl-Z unmerges: "${(await timeline()).caption}"`);
-  ok(await toStep(5) && /a page alone/.test(await look()),
-    `...and step 5 is still alone: "${await look()}"`);
+  const back5 = await toStep(5);
+  const still = await says((l) => /a page alone/.test(l));
+  ok(back5 && /a page alone/.test(still), `...and step 5 is still alone: "${still}"`);
 
   // The page by hand: step 4's page in Lay out page…, its picture dragged by
   // the mouse and let go a millimetre and a half below the top margin, which
