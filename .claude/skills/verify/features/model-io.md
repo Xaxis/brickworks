@@ -565,7 +565,8 @@ Runtime:
 # takes it back (the "seating an old model" section)
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
-#   also: the build order is written as 0 STEP, and the autosave skips it
+#   also: the build order is written as 0 STEP (a 1 x 1 plate in a step before
+#   the 3 x 3 that hides it), and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given
 godot --headless --path . --script src/dev/example_name_probe.gd  # new work, its own name
 godot --headless --path . --script src/dev/restore_probe.gd  # a failed design changes nothing
