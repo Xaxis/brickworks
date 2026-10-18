@@ -2417,7 +2417,12 @@ the column alone. Its pinion stood 7.9 LDU across the rack's middle, within
 the 7 + 1 the reading allows, and 8.6 once the rack had tipped 3.5 degrees
 on its track rod. Allowed half a gear's face (4 LDU) the pinion is read in
 its rack again, and the loop it closes then reads 58 joints where it read 75
-and "has no freedom". That is the next unit's.
+and "has no freedom": read again after the turn, the tow ball pin 6628 in
+its cross block (42003) is no longer a joint (226 bodies for 227) and an
+axle joint the build did not read appears. Choosing a lone pin's part by
+number rather than by the order the joints are read changed the whole
+reading (235 bodies, the steering's loops too big to solve), so it is left.
+That is the next unit's.
 
 **The session again.** The walk-through's kart task was run again on this
 build, the way mcpwalk ran it (`claude -p` with only the app's MCP, on the
