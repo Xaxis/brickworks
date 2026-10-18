@@ -1907,11 +1907,15 @@ the 3D off for two seconds brought a drag back to 107 to 118 ms three times
 at load 42 or under, and not at 54.
 
 grab_flow judged the swing against the page's median gap while the view
-turned; it now judges it against the frames the app drew while the view
-turned, a second: the swing must draw at least three quarters of that rate,
-or of 15 a second if that is lower (the two are timed a minute apart on a
-shared box). Fifteen a second for this model drawn in software would take
-SwiftShader a tenth of the work it does a frame now.
+turned. It now says both in frames the app drew a second and gates neither:
+the rate is SwiftShader's on a loaded CPU (a turn drew 1.0 a second one run
+and 2.4 the next), and three quarters of the turn's rate failed the swing in
+one run of two with nothing changed. What it gates is what the app controls,
+as for a drag: its own work in a swing frame (under 33 ms; 0.30 ms on
+average on the desktop), no page wait past 5 s, and the swing coming to
+rest. Fifteen a second for this model drawn in software would take
+SwiftShader a tenth of the work it does a frame now; a browser drawing on a
+graphics card is not held by it.
 
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)

@@ -734,10 +734,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   build before the page had to ask drew 20, each over a second. The swing
   also reports its frames against turning the view, both in frames the app
   drew a second (`window.brickworksGrab.drawn`; the page's median gap is
-  mostly frames with nothing drawn), and fails under three quarters of the
-  view's drawn rate, or of 15 a second if that is lower: on SwiftShader on
+  mostly frames with nothing drawn), said and not gated: on SwiftShader on
   this box every drawn frame of the crane, a swing's, a turn's or a drag's,
-  costs 0.1 to 1 s with the same WebGL calls (MECHANISMS §14).
+  costs 0.1 to 1 s with the same WebGL calls (MECHANISMS §14). The swing is
+  gated on the app's own work in its frames (under 33 ms), no page wait
+  past 5 s, and coming to rest.
   `--trace=FILE`, `--trace-drag=FILE`, `--trace-view=FILE`
   write Chromium performance traces of the swing, the arm's drag and the view
   turning. In `preview_checks.sh`'s map as
