@@ -59,6 +59,14 @@ seam had been counted twice), and 92 of the library's 118 tyres open
 through their narrowest bore, from 31. The build flow puts 8841-1's
 first 8 down exactly, its pins aimed at their holes.
 
+**That evening (section 8)** the three sets were built whole through the
+interface for the first time: the plane 45 of its 52 parts exactly where
+the booklet has them, 8643-1 57 of 61, 8841-1 23 of 63 (11,
+11 and 9 before, each run stopped where every part after stood on one not
+put). A corner plate now goes round what is in its missing corner, and a
+part that hangs below the part a model was built up from (a car's
+bracket, wheels and tyres) goes on and the model rises to stand on it.
+
 ## 1. Files opened, saved and opened again
 
 **What was run.** 48 real sets' files from the LDraw model repository
@@ -1548,6 +1556,146 @@ page that take it, nearest where it goes first, R and T until its ghost
 stands at the file's place and turn, as a person turns a pin round in its
 hole.
 
+## 8. Whole sets (2026-10-17, evening)
+
+Until now the build flow was run on the first 8 to 10 parts of a set. Here
+all of 5762-1 (52 parts), 8643-1 (61) and 8841-1 (63) were built through
+the interface, each in its own browser on a port of its own, on m69 (the
+tyres unit) and then on this unit's fixes. Everything is in
+`bench/results/wholeset-2026-10-17/`: `before/`, `after1/` (the first
+fixes), `after2/` (all the app's fixes; the plane on the final flow) and
+`after3/` (8643-1 and 8841-1 on the final flow), each set's `build.log`,
+`build.json`, `*_parts.jsonl` and pictures, and the probes' logs beside
+them.
+
+**Before → after** (parts exact of the set's whole, actions a part, seconds
+a part on this box; exact is the file's number, colour, place to the LDU
+and turn). *Before* is m69 as it shipped, each run stopped once every part
+left stood on one that had not gone down; *after* is all of this unit's
+fixes (the plane in `after2/`, 8643-1 and 8841-1 in `after3/`):
+
+| set | before | after | actions a part, before → after | s a part, before → after | typed in Properties |
+|---|---|---|---|---|---|
+| 5762-1 Plane (52) | 11 of the first 16 (then the wedge plates and the lights; stopped there) | **45** | 17.7 → 25.0 | 38 → 44 | 2 (a bracket's height, a slope at the top) |
+| 8643-1 (61) | 11 of the first 15 (then the corner plates and the bracket; stopped there) | **57** | 16.1 → 22.8 | 38 → 39 | 1 (a roof slope's place) |
+| 8841-1 Balance (63) | 9 of the first 26 (every part after its first 3701 on the tower that was not built; stopped there) | **23** (47 tried in the 70 minutes; the last 16 not reached) | 22.9 → 52.4 | 42 → 92 | 3 (the 1 x 16 column on its pins, the top brick, a bush) |
+
+Between them, on the first fixes (`after1/`, the app's two first rules
+and the flow's order and aim): the plane 31 of 52 (its 4488s sank a plate
+into the wing there, which the socket rule below put right), and 8643-1
+on all the app's fixes but the flow's side views and holding rule
+(`after2/`) 55 of 61, the model rising twice to stand on its bracket and
+its tyres.
+
+**What is left, set by set.** Each of these was seen in the runs and in
+their pictures; none was found to its cause in the time.
+
+- *5762-1:* the four round 1 x 1 plates in the clip plates' rings (the
+  lights at the nose): the ghost of a 6141 does not go into a ring from
+  where the flow points (offgrid_probe aims at the ring itself, and puts
+  them), and typed to the ring's place it is refused, no room. The tail's
+  slope (4286) stood half a stud aside (x 10 where the file has 0), and
+  the tail's 1 x 1 x 5/3 (3065) a plate up on what is behind it. One of
+  the three jumper plates went down a stud along from its place.
+- *8643-1:* a 1 x 4 plate on the side studs of the front brackets (step
+  4), the second 1 x 4 brick of the cab (step 7) and the curved slope on
+  it, and one tyre. Typed to its place, the cab's brick was refused, no
+  room. The far side's wheels, behind the body from the default view, all
+  went on from the tipped side view; in the run before it was tipped
+  (`after2/`) one wheel and its tyre did not.
+- *8841-1:* the beam across the top of the two columns and what hangs from
+  it. The beam is two 1 x 12 Technic bricks and a 1 x 2 on the axle
+  through the columns, held by plates over and under them; the flow puts
+  the plates under first, held by nothing, and the bricks then stand on
+  the 1 x 4 brick on top instead of under it. Without the beam the pans'
+  axles have no hole to go in, so neither pan (18 parts) was built; the
+  pans' own parts went down where `offgrid_probe` puts them, by the
+  pointer and typed (section 7). The 1 x 16 column on its pins and the top
+  brick were typed to their places.
+
+So no set was built whole. The plane and the car are near (45 and
+57 of their parts exactly where the booklet has them); the balance
+is held back by one assembly the flow has no order for, and by what hangs
+from it, and its run spent its 70 minutes (52 actions and 92 s a part) on
+R, T, side views and typing for parts with nothing yet to hold them. The
+pictures: `after2/5762/5762-1_Plane_side_by_side.png`,
+`after3/8643/8643-1_Combination-with-8644_side_by_side.png`,
+`after3/8841/8841-1_Balance_side_by_side.png`, each looked at.
+
+**What stopped a whole set, and why.** Each gap found in the browser was
+taken to its cause in the app or in the flow, and fixed in general.
+
+- *A corner plate stood a plate up* (app). 8643-1's step 2 lays two 2 x 2
+  corner plates (2420) on its 4 x 4 plate with their missing corners round
+  the arm of a wheel holder (6157). The drop asked what was under the
+  part's whole box, and the arm is under the box's missing corner. Each box
+  of the part's cover now rests on what is under its own columns
+  (`Builder._sinks_by`, `BrickLattice.rise_onto`, as a copy in hand already
+  rested): only ever lower than by the box, and a plain part, one box
+  across, rests as before. Only where the part is held by its sockets
+  there, though: the first run of it sank 5762-1's two 4488s a plate into
+  the wing they stand on by the block their sockets are under, because the
+  wedge plate's cover falls short of its slanted edge
+  (`Builder._seated_by_sockets`).
+- *Nothing could hang below the part a model was built up from* (app). The
+  flow, like a person, puts the first part on the ground and builds on it.
+  8643-1's front bracket hangs its arm 4 LDU below that part, its 8 wheels
+  3 and its 8 tyres 8; 5762-1's two propellers 5. The ghost stood
+  on the floor instead, or a joint refused the place: 20 of the two sets'
+  113 parts could not go where the booklet has them. Where the model holds
+  a part (it rests on a part of it, on its joint, under it, on its side
+  studs) the ghost may now go below the ground, the floor's baseplate not
+  in its way; put down, the model rises by whole cells to stand on it, in
+  the same undo step, and the status line says how far
+  (`Builder._held_below_ground`, `_stand_on_the_ground`). The set's file
+  stands on its tyres the same way when it is opened.
+- *A brick was tried before the plate it stands on* (flow). A step's parts
+  went lowest first, but a part whose middle was "inside" a bigger part
+  after it, and a plate's origin is its top, the underside of the brick on
+  it: 8841-1's first 3701 went before the plate under it, into the air. A
+  part's middle is now the middle of its box.
+- *A balance's pans were begun in the air* (flow). Lowest first put each
+  pan's plate first, 80 LDU under the arms it hangs from, and the top
+  beam's plates beside the columns, held by nothing. Of the parts left,
+  the lowest held by what is down already (into it, on it or under it, not
+  only beside it) goes first, asked in
+  a swung part's own frame where it is off the square (a 4262 at 66 degrees
+  has a box across the world's axes much bigger than it); a part that
+  touches goes before the part its middle is in (a pin hung from an arm
+  before the connector on it).
+- *A brick aimed at the air above where it goes* (flow). The pointer went
+  to the part's origin, and a brick's origin is its top, 24 LDU over the
+  plate it goes on: on a stack one stud wide the line from the eye went
+  past the stack. A person points at the spot on what the part stands on:
+  the flow now aims under the origin at the bottom of the part first, then
+  at the origin as before. And where the ghost fell past what it goes on
+  onto something lower (the floor beyond a wing it overhangs, 5762-1's
+  wedge plates), the pointer is moved across on the level it fell to.
+- *A Technic brick on its side was never tried on its pins* (flow). Only a
+  part with a pin, an axle, a tyre or a rim was aimed at joints. A part
+  with holes and no pin of its own is aimed at the pins under where it
+  goes once the studs would not take it (8841-1's 1 x 16 standing on two
+  pins, whose middle is 100 LDU from them: joints anywhere over the part's
+  place on the page count, not only near its middle).
+- *A wheel on the far side was behind the car* (flow). The view stayed
+  where New left it, and the line from the eye to a pin on the far side
+  met the body first. A part not down after its tries is tried again from
+  its own side of the model, a view key (1 to 4) tipped up 20 degrees by
+  Up twice, as a person turns the view, and the default view (0) after.
+  (The key's own view is level with the ground, and the runs of 8643-1 and
+  8841-1 below, begun before the Up presses were added, aimed from it: a
+  line from it a little high met nothing short of the horizon.)
+- *Parts off the grid were skipped* (flow). Off the 24 turns or off the
+  whole LDU, a part was a gap before it was tried. It is held at the
+  nearest of the 24 and tried: on a joint the app swings a part onto a
+  second one, and puts a part on one off the lattice in that part's frame.
+  Where the pointer cannot say it, the part goes down where its ghost may
+  go within 60 LDU of its place, is selected by a click on it, and its
+  Hinge and X, Y, Z are typed in Properties, as offgrid_probe types them
+  and as Studio's hinge tool and a typed move say it; read back from where
+  the app says the part stands, and undone when it does not come there.
+  Each typed part is listed in `build.json` (`typed`).
+
 ## The gaps, by how much a builder would feel them
 
 Rewritten on 2026-10-17 from the run of section 6, most felt first. The
@@ -1568,15 +1716,29 @@ first run's thirteen are kept below, each with what closed it.
    aims, looks and aims again. By the model a part takes 7.5 to 12.2 s here
    and 9.4 to 12.4 s in Studio, steps marked or not within a second of
    that; a measured hand against Studio's has not been timed.
-4. **The build flow's actions a part on Technic.** 8841-1's first 8 went
-   down exactly (section 7), but at 23.5 actions a part in the runs
-   measured, against 11.5 for its first 5 in section 6: 77 presses on its
-   second brick, gone round a pin's collar as a tyre. Rounds of 8 are no
-   tyres or rims now, but the browser build has not been run on that.
-5. **The plane's wedge plates and the propeller on its slope** would not
-   come to their place in eight aims in the whole plane's run (section 5).
-   Not run again here: the whole plane takes 40 minutes of the box.
-6. **Places off the grid take a typed number where the pointer cannot say
+4. **The build flow's actions a part on whole sets** are 22 to 25
+   (section 8), where its first 8 to 16 parts took 13 to 18: R and T on a
+   joint until a wheel or a pin stands turned as the file has it, a part
+   tried again from its side of the model, and numbers typed.
+5. **No set is built whole through the interface yet** (section 8): the
+   plane 45 of 52, 8643-1 57 of 61, 8841-1 23 of 63. Left: the
+   plane's lights in their clip rings and its tail; a plate on a bracket's
+   side studs and the car's cab; the balance's top beam, held by plates
+   over and under it, and the pans that hang from it.
+6. **A wedge plate's cover falls short of its slanted edge** (section 8):
+   5762-1's 4488 stands on the wing by a block the cover does not reach.
+   The drop now keeps to the part's box there (only where its sockets
+   meet what is under them does it rest by its cover), so it goes where
+   the set has it; the cover itself is unchanged. Making it reach the edge
+   is a change to `tools/ldraw/occupancy.py` and a rebuild of the wedge
+   plates' covers (`tools/build_meshes.py --only`, merged by
+   `tools/merge_subbuild.py`, uploaded as the tyres were), not done here.
+7. **A part put where the pointer cannot say it costs a person typing.**
+   Section 8's runs typed 1 of the car's parts, 3 of the
+   balance's and 2 of the plane's in Properties (a 1 x 16 column on its
+   pins, a brick on top of a beam, a bracket's height), about 25 actions
+   each. Studio's snapping may find some of them unasked.
+8. **Places off the grid take a typed number where the pointer cannot say
    it.** Section 7: all 39 put, 19 where the file has them by the pointer
    alone (11 in section 6) and the rest with a number typed in Properties (a
    light 1 LDU out of its clip, a wheel's or a propeller's place along its
@@ -1585,6 +1747,19 @@ first run's thirteen are kept below, each with what closed it.
 
 **Closed:**
 
+- *A corner plate stood a plate up* (section 8): the drop asked what was
+  under the part's whole box; each box of its cover now rests on what is
+  under it, where its sockets meet it. 8643-1's two 2420s and its three
+  brackets go where the booklet has them.
+- *Nothing could hang below the part a model was built up from*
+  (section 8): 8643-1's bracket, wheels and tyres, 5762-1's propellers.
+  The model rises to stand on such a part, one undo with the put.
+- *The plane's wedge plates* (section 5's gap): the pointer moved across
+  on the level the ghost fell to, not towards its place in the air above
+  it (section 8).
+- *The build flow's order and aim on Technic* (section 7's gap 4): a brick
+  before the plate it stands on, a balance's pans begun in the air, a
+  Technic brick on its side never tried on pins (section 8).
 - *Pins aimed like bricks* (section 6's 4): the flow put a step's parts
   lowest first, pins before their bricks, and aimed every part as a brick.
   A part now goes after the part its middle is in, and a pin is aimed at
@@ -1637,7 +1812,14 @@ python3 tools/bench/cadtask.py roundtrip   # or one: roundtrip, frames, build, r
 
 `frames --platform web --only step,undo` measures those acts again and keeps
 the rest; `build --only 5762-1 --most 8 --minutes 8` builds one set's first
-parts. On this box, at load 40, the round trip took 20 minutes, the frames an
+parts, and `build --only 8841-1 --most 0 --minutes 60` a whole set (an hour
+of this box at load 40). To build the three at once, as section 8 did, run
+each in its own process with `CADTASK_PORT` set to a port of its own, or
+serve the export (`tools/web/serve.py build/web PORT --parts
+assets/generated/parts --delay 0`) and run `tools/web/cad_task_flow.mjs
+--sets=… --most=0 --minutes=60 --url=…` under `heavy` for each; a file
+named `stop` in a run's `--out` ends it after the part in hand and still
+reads the model back. On this box, at load 40, the round trip took 20 minutes, the frames an
 hour (the 5,025-part model most of it) and two sets' first 8 parts 15
 minutes, each after a wait of 10 to 30 minutes for a slot.
 
