@@ -1005,6 +1005,18 @@ in, which adds a little). So reading the covers twice for a model on its
 stand is not where the time is, but on 76161 alone; the pictures and the
 covers of every model are. What is left says what might.
 
+**In the app.** In a browser on a local web export, `booklet_flow` opened
+8032 with its steps taken out and its booklet arrived, 29 pages, its
+knuckles' callouts in it, no script error. A step of 75969's Timeline
+(`cad_frames --only=step --gate`) took 11 to 38 ms of the app's own work a
+frame, where the release check before this change saw 6 to 18 ms, both far
+under the 200 allowed and at different loads: stepping does not plan.
+`progress_probe`, Orthanc's Timeline (9,541 parts), back to back at load
+about 40: worked out in 10.6 s, the order 7.1 s of it, where before took
+14.8 s and 10.5 s. Both runs fail its budget, the longest frame 219 ms here
+and 252 ms before against 200, the longest of the app's own work 182 ms and
+222 ms, both "Showing the first step"; instr4 saw 160 ms at a lower load.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the
