@@ -744,6 +744,11 @@ func _page_over_mcp(base: String) -> void:
 		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TEXT 20 170 70 10 4.5 Turn the model round",
 		base)
 	history = _history()
+	said = str(await tools.run("edit_booklet", {"step": pick.number, "highlight": false}))
+	diff = _edited("edit_booklet highlight false (\"%s\")" % said.left(80), base, history)
+	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS HIGHLIGHT OFF", base)
+	history = _history()
 	said = str(await tools.run("edit_booklet", {"step": pick.number, "place": {"item": "picture",
 		"x": 60}}))
 	_check("edit_booklet place without y refuses, no undo step (\"%s\")" % said.left(70),

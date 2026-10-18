@@ -110,11 +110,26 @@ static func callout_on(world: BrickWorld, section: String) -> bool:
 ## or before it ({"turn": [x, y, z], "how": ...}), or {} for the usual view
 ## (none, or "end").
 static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary:
+	if world.step_looks.is_empty() or step < 0:
+		return {}
 	var definition: String = definition_of(section)
+	# The turned steps at or before it, read off the looks (a few), not
+	# asked of every step before it: the step player asks on every page
+	# turn, and a castle has a thousand steps.
+	var head: String = definition + "|"
+	var turned: Array = []
+	for name: String in world.step_looks:
+		if not name.begins_with(head):
+			continue
+		var tail: String = name.substr(head.length())
+		if tail.is_valid_int() and tail.to_int() <= step \
+				and (world.step_looks[name] as Dictionary).has("turn"):
+			turned.append(tail.to_int())
+	turned.sort()
 	var found: Dictionary = {}
 	var added := Vector3.ZERO
-	for at: int in range(0, step + 1):
-		var look: Dictionary = world.step_looks.get(key(definition, at), {})
+	for at: int in turned:
+		var look: Dictionary = world.step_looks[key(definition, at)]
 		if not look.has("turn"):
 			continue
 		if str(look["turn"]) == "end":

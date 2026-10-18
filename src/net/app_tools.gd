@@ -290,8 +290,8 @@ func definitions() -> Array:
 				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
 				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
 				+ "(item picture, parts, callout or number; note with index= for words or a "
-				+ "picture added; remove=true takes a note off, at=null an item back to where "
-				+ "the booklet lays it); text= puts words on the step's page. booklet_layout "
+				+ "picture added; remove=true takes a note off, back=true puts an item back "
+				+ "where the booklet lays it); text= puts words on the step's page. booklet_layout "
 				+ "says where each is. A model with no steps of its own is given the "
 				+ "worked-out ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,

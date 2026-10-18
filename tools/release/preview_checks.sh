@@ -28,7 +28,9 @@ declare -A CMD=(
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
-  # and undone by the timeline's buttons and keys; its booklet and file say so.
+  # and undone by the timeline's buttons and keys, a page laid out by the
+  # mouse (a picture dragged onto the margin, a parts list's corner, words
+  # and a picture added); its booklet and file say so.
   [booklet_edit]="tools/web/booklet_edit_flow.mjs --url=$P/app $B --model=$R/vendor/omr/files/106-1.mpd --out=$S/${TAG}_booklet_edit_web"
   [flex_pose]="tools/web/flex_pose_flow.mjs --url=$P/app $B --out=$S/${TAG}_flex_pose_web"
   [grab]="tools/web/grab_flow.mjs --url=$P/app $B --out=$S/${TAG}_grab_web"
