@@ -1351,6 +1351,14 @@
       "tests": []
     },
     {
+      "id": "lib:hoses follow a grab",
+      "kind": "lib",
+      "entry": "src/assembly/flex_follow.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=hoses   (by hand: open 42080-1 and raise the crane's arm; its pneumatic tubes from the cab bend and follow; drag an arm a tube is too short for and it stops, the status bar naming the tube)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "lib:keep a run to a list of parts",
       "kind": "lib",
       "entry": "src/parts/parts_only.gd",

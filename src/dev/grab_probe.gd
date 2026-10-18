@@ -477,8 +477,6 @@ const HOSES: Array = [
 		"pneumaticHose-19", -6.0],
 	["42050-1: a ribbed hose to the engine turned on its axle", "res://vendor/omr/files/42050-1.mpd",
 		"technicRibHoseLQ-1", 20.0],
-	["8110-1: the crane's tube from its valve to a cylinder on the arm", "res://vendor/omr/files/8110-1.mpd",
-		"pneumaticHoseLQ-6", 8.0],
 ]
 
 ## A made model: a tower on the floor with an arm on a hinge, a Technic brick
