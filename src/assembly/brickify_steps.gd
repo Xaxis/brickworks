@@ -322,11 +322,34 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 		var links: Array = []
 		for key: int in side:
 			links.append([key / count + 1, key % count + 1])
+		# The whole build first: a stud joint past its load in it is the build's,
+		# which no order changes, and is not held against a step whose build has
+		# it too. Held against them, the temple scene at 48 studs, 35 joints
+		# over as laid, went from 82 courses to 19 steps of 570 parts each.
+		var whole := Balance.new()
+		whole.library = library
+		whole.lattice = lattice
+		var all: Array = []
+		for brick: BrickWorld.Brick in bricks:
+			if not bound[brick.id - 1].is_empty():
+				all.append(brick)
+		var weighed_whole: Balance.Report = whole.measure(all, [], links, contacts)
+		var the_builds: Dictionary = {}    ## "beyond:held" -> true, past its load as laid
+		if not weighed_whole.empty:
+			plan.whole_stands = weighed_whole.margin >= 0.0 and weighed_whole.over == 0 \
+				and weighed_whole.adrift == 0
+			plan.whole_over = weighed_whole.over
+			for one: Balance.JointLoad in weighed_whole.joints:
+				if one.ratio > 1.0:
+					the_builds["%d:%d" % [one.beyond, one.held_by]] = true
 		var standing: Array = []
 		for n: int in steps:
 			standing.append_array(by_step[n])
 			if (by_step[n] as Array).is_empty():
 				keep[n] = 0
+				continue
+			if n == steps - 1:
+				plan.weighed += 1
 				continue
 			var balance := Balance.new()
 			balance.library = library
@@ -335,11 +358,11 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 			if report.empty:
 				continue
 			plan.weighed += 1
-			var stands: bool = report.margin >= 0.0 and report.over == 0 and report.adrift == 0
-			if n == steps - 1:
-				plan.whole_stands = stands
-				plan.whole_over = report.over
-				continue
+			var over: int = 0
+			for one: Balance.JointLoad in report.joints:
+				if one.ratio > 1.0 and not the_builds.has("%d:%d" % [one.beyond, one.held_by]):
+					over += 1
+			var stands: bool = report.margin >= 0.0 and over == 0 and report.adrift == 0
 			if stands:
 				plan.stood += 1
 				plan.least_margin = minf(plan.least_margin, report.margin)
@@ -349,8 +372,8 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 			if plan.why_merged.size() < 6:
 				plan.why_merged.append("step %d: %s" % [n + 1, ("tips, %s studs past the %s edge"
 					% [Balance.studs(-report.margin), report.edge]) if report.margin < 0.0
-					else ("%d joint%s past its load" % [report.over, "" if report.over == 1
-						else "s"]) if report.over > 0 else "%d part%s adrift" % [report.adrift,
+					else ("%d joint%s past its load" % [over, "" if over == 1
+						else "s"]) if over > 0 else "%d part%s adrift" % [report.adrift,
 						"" if report.adrift == 1 else "s"]])
 	var renumber := PackedInt32Array()
 	renumber.resize(steps)

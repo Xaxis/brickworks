@@ -271,9 +271,14 @@ func _steps_for(path: String, studs: int, up: String, lists: bool = false) -> vo
 			and balance.over == 0
 		if pieces > 1 and grounded:
 			grounds += 1
-		# The last is the whole build: its joints are as it was laid.
+		# The last is the whole build: its joints are as it was laid. And a
+		# partial build may carry no more joints past their load than the
+		# whole does as laid: those are the build's, which no order changes.
 		var last: bool = at == main_steps.size() - 1
 		if last and balance != null and not plan.whole_stands and balance.margin >= 0.0:
+			stands = true
+		if balance != null and not balance.empty and balance.margin >= 0.0 \
+				and balance.over > 0 and balance.over <= as_laid:
 			stands = true
 		if not bool(report.get("ok", false)) or floats > 0 or (pieces == 1 and not stands) \
 				or (pieces > 1 and not grounded):
