@@ -53,7 +53,9 @@ picture the assistant is shown.
   an edge or corner from between two or three (`CadCamera.look_from`); a drag
   on it turns the view. Its four arrows turn a step a click (held, they keep
   turning; dragged, they follow), and under it a pad slides (click an arrow
-  of it, or drag), − and + zoom, and the last fits. Each is published to the
+  of it, or drag), − and + zoom, and the last fits. A click is quick by what
+  the frames saw (`NavButton._still_at`): one across a slow frame is a click
+  (`src/dev/slow_frames_probe.gd`). Each is published to the
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`

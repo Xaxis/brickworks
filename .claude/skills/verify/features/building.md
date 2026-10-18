@@ -25,7 +25,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   command, greyed where it would do nothing. It did nothing (2026-10-12). The mode is always on the toolbar (Select or Place lit, Place's
   tooltip naming the part), in the status bar's hint and in the pointer.
   `tools/web/controls_flow.mjs` counts a person's first tasks in clicks and keys
-  on a build, the old way (`--recipe=old`) or this one.
+  on a build, the old way (`--recipe=old`) or this one. On a touch screen a
+  finger held 0.48 s on a part, with a part in hand, takes it off; held is what
+  the frames saw (`main.gd` `_touch_still_at`), so a tap across one slow frame
+  is a tap (`src/dev/slow_frames_probe.gd`, windowed on the GPU).
 - `box select`: `Ctrl`-drag (`Cmd` on a Mac) from empty space, and every brick
   whose screen position falls inside the box is selected (Shift adds to the
   selection). A plain drag there turns the view instead (`left-button

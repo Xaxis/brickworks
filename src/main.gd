@@ -5048,6 +5048,8 @@ func _process_main(_delta: float) -> void:
 	_steer_from_keys(_delta)
 	if _press_brick != 0:
 		_press_still_ms = Time.get_ticks_msec()
+	if _touch_index != -1:
+		_touch_still_at = Time.get_ticks_msec()
 	if not _viewing.is_empty():
 		_view_hover()
 	else:
@@ -5129,6 +5131,11 @@ const HOLD_MS := 480
 
 var _touch_down_at: int = 0
 var _touch_index: int = -1
+## The last frame that saw that finger still down, ms: a hold is what the
+## frames saw, as a press held for a chain is (_press_still_ms). On a phone
+## drawing a frame a second a tap's down and up come a frame apart, and
+## timed by the clock it read as a hold and took a brick off.
+var _touch_still_at: int = 0
 
 ## A left press on a part with the Select tool, not yet a click or a drag:
 ## the part, where the press was, and whether it copies (Ctrl).
@@ -5405,6 +5412,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _touch_index == -1:
 				_touch_index = touch.index
 				_touch_down_at = Time.get_ticks_msec()
+				_touch_still_at = _touch_down_at
 			return
 
 		if touch.index != _touch_index:
@@ -5424,7 +5432,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# swallowed, and is not a hold either.
 		if not _camera.last_touch_was_a_tap():
 			return
-		if Time.get_ticks_msec() - _touch_down_at < HOLD_MS:
+		if _touch_still_at - _touch_down_at < HOLD_MS:
 			return
 
 		_builder.update_preview(
