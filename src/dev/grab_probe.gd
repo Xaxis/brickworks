@@ -3873,12 +3873,15 @@ func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, 
 	var let_go_at: float = grab.angle
 	await _button(_last_screen, false)
 	# The pointer's own rate over its last tenth of a second, by the probe's
-	# clock: what the grab reads from the moves it was given.
+	# clock: what the grab reads from the moves it was given. From the last
+	# move at least that long before the end: on a loaded box a frame took
+	# longer, the last tenth held the last move alone, and the rate read
+	# 0 / 0.001 (rel-m79, "against the pointer's 0").
 	var t_end: float = float(asked[asked.size() - 1][0])
-	var first: Array = asked[asked.size() - 1]
-	for one: Array in asked:
-		if t_end - float(one[0]) <= 0.1:
-			first = one
+	var first: Array = asked[0]
+	for n: int in range(asked.size() - 2, -1, -1):
+		if t_end - float(asked[n][0]) >= 0.1:
+			first = asked[n]
 			break
 	var measured: float = (float(asked[asked.size() - 1][1]) - float(first[1])) / maxf(t_end - float(first[0]), 0.001)
 	print("    flicked at %.0f° a second for %.2f s in %d moves; the grab read %.0f° a second" % [measured, seconds,
