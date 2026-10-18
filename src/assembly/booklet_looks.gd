@@ -976,7 +976,10 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 			var how := PackedStringArray()
 			if not entry.look.is_empty():
 				var named: String = entry.look.get_slice("|", 0)
-				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int())
+				# A callout's step on its own pages: what was placed on its page
+				# only; its view is the callout's.
+				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int(),
+					entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
 			if entry.callout != null:
@@ -1002,10 +1005,13 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 
 ## How a step's look reads, for the timeline and a session: "turned 90°,
 ## zoom 1.5x, new page", or "".
-static func said(world: BrickWorld, section: String, step: int) -> String:
+static func said(world: BrickWorld, section: String, step: int, placed_only: bool = false) -> String:
 	var parts := PackedStringArray()
-	var turn: Dictionary = turn_at(world, section, step)
+	var turn: Dictionary = turn_at(world, section, step) if not placed_only else {}
 	var own: Dictionary = of(world, section, step)
+	if placed_only:
+		own = {"place": own.get("place", {}), "notes": own.get("notes", []),
+			"arrows": own.get("arrows", [])}
 	if not turn.is_empty():
 		var by: Vector3 = _vector(turn["turn"])
 		var bits := PackedStringArray()

@@ -51,6 +51,11 @@ var _overlapped: Dictionary = {}
 ## when the page changes before it is done.
 var _shots: Dictionary = {}
 var _part_shots: Dictionary = {}
+## A callout's own page, by number -> the number of the model's step that
+## puts the callout on, whose drawing draws the callout's pages.
+var _attach_of: Dictionary = {}
+## The callout's own page shown, by number, or -1.
+var _callout_shown: int = -1
 var _drawing: Working.Job = null
 
 var _canvas: Control
@@ -190,6 +195,7 @@ func open() -> void:
 	_shell = app.get("_shell")
 	_shots.clear()
 	_part_shots.clear()
+	_callout_shown = -1
 	visible = true
 	var steps: StepsBar = app.get("_steps")
 	var at: Instructions.Step = steps.booklet_step() if steps != null else null
@@ -254,14 +260,32 @@ func _lay_out(number: int) -> void:
 	_plan = maker.plan
 	maker.queue_free()
 	_pages = []
+	# The pages of steps, and a sub-assembly's own pages (a callout built on
+	# pages of its own), each with the step of the model that puts it on.
+	_attach_of.clear()
+	var attaching: Dictionary = {}
 	for page: Booklet.Page in pages:
-		if page.kind == "steps":
+		for entry: Booklet.Entry in page.entries:
+			if entry.callout != null and not entry.callout.inline:
+				for step: Booklet.Entry in entry.callout.steps:
+					attaching[step] = entry.number
+	for page: Booklet.Page in pages:
+		if page.kind == "steps" or page.kind == "callout":
 			_pages.append(page)
+			if page.kind == "callout" and not page.entries.is_empty():
+				_attach_of[page.number] = int(attaching.get(page.entries[0], -1))
+	# The page of steps the step is on; a callout's own page shown stays
+	# shown, its steps being numbered from 1 again.
 	_at = 0
 	for index: int in _pages.size():
+		if _pages[index].kind != "steps":
+			continue
 		for entry: Booklet.Entry in _pages[index].entries:
 			if entry.number == number:
 				_at = index
+	for index: int in _pages.size():
+		if _pages[index].kind == "callout" and _pages[index].number == _callout_shown:
+			_at = index
 	var builder: Builder = app.get("_builder")
 	_seen_history = [builder._history.size(), builder._redo.size()]
 	_laying = false
@@ -287,11 +311,13 @@ func _show_page() -> void:
 		_canvas.queue_redraw()
 		return
 	var page: Booklet.Page = _pages[_at]
+	_callout_shown = page.number if page.kind == "callout" else -1
 	var numbers := PackedStringArray()
 	for number: int in _page_steps():
 		numbers.append(str(number))
-	_title.text = "Page %d (step%s %s)" % [page.number, "" if numbers.size() == 1 else "s",
-		", ".join(numbers)]
+	_title.text = "Page %d (%sstep%s %s)" % [page.number,
+		("the %s, built on its own: " % page.name) if page.kind == "callout" else "",
+		"" if numbers.size() == 1 else "s", ", ".join(numbers)]
 	for entry: Booklet.Entry in page.entries:
 		var index: int = int(entry.get_meta("step", -1))
 		var step: Instructions.Step = _plan[index] if index >= 0 and index < _plan.size() else null
@@ -352,8 +378,14 @@ func _draw_pictures() -> void:
 		_drawing.cancelled = true
 	_drawing = null
 	var numbers: Dictionary = {}
-	for number: int in _page_steps():
-		numbers[number] = true
+	var shown: Booklet.Page = _pages[_at] if _at >= 0 and _at < _pages.size() else null
+	if shown != null and shown.kind == "callout":
+		# A callout's own page is drawn with the step that puts it on.
+		if int(_attach_of.get(shown.number, -1)) >= 0:
+			numbers[int(_attach_of[shown.number])] = true
+	else:
+		for number: int in _page_steps():
+			numbers[number] = true
 	if numbers.is_empty() or DisplayServer.get_name() == "headless":
 		return
 	var job := Working.Job.new()
@@ -370,8 +402,10 @@ func _draw_pictures() -> void:
 		return
 	_drawing = null
 	for page: Booklet.Page in pages:
+		if shown == null or page.number != shown.number:
+			continue
 		for entry: Booklet.Entry in page.entries:
-			if not numbers.has(entry.number) or entry.image.is_empty():
+			if entry.image.is_empty():
 				continue
 			var cells: Array = []
 			if entry.callout != null and entry.callout.inline:
@@ -379,11 +413,17 @@ func _draw_pictures() -> void:
 					var cell: Rect2 = entry.callout.cells[index]
 					cells.append([_texture(entry.callout.images[index]),
 						Rect2(cell.position - entry.callout.box.position, cell.size)])
-			_shots[entry.number] = {"picture": _texture(entry.image), "cells": cells}
+			_shots[_shot_key(page.number, entry.number)] = {"picture": _texture(entry.image), "cells": cells}
 	for key: String in document.parts:
 		if not _part_shots.has(key):
 			_part_shots[key] = _texture(str(document.parts[key]))
 	_canvas.queue_redraw()
+
+
+## The drawn pictures of step [param number] on page [param page]: a
+## callout's own pages number their steps from 1 again.
+static func _shot_key(page: int, number: int) -> String:
+	return "%d:%d" % [page, number]
 
 
 ## A picture as a data URI, as a texture.
@@ -516,6 +556,11 @@ func _draw_page() -> void:
 		false, 1.0)
 	if _at >= 0 and _at < _pages.size():
 		var page: Booklet.Page = _pages[_at]
+		if page.kind == "callout":
+			# A sub-assembly's own page: its frame, as Booklet._page draws it.
+			_canvas.draw_rect(Rect2(page.frame.position * k, page.frame.size * k), Color8(255, 248, 222))
+			_canvas.draw_rect(Rect2(page.frame.position * k, page.frame.size * k), INK, false,
+				maxf(1.0, 0.5 * k))
 		if not page.banner.is_empty():
 			_canvas.draw_rect(Rect2(Vector2(Booklet.MARGIN, Booklet.MARGIN) * k,
 				Vector2(area.size.x, Booklet.BANNER - 3.0) * k), Color8(35, 82, 124))
@@ -545,7 +590,7 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 	var entry: Booklet.Entry = item["entry"]
 	match str(item["kind"]):
 		"picture":
-			var drawn: Texture2D = (_shots.get(entry.number, {}) as Dictionary).get("picture")
+			var drawn: Texture2D = (_shots.get(_shot_key(entry.page, entry.number), {}) as Dictionary).get("picture")
 			if drawn != null:
 				# As Instructions draws it, stretched with its box while dragged.
 				_canvas.draw_texture_rect(drawn, rect, false)
@@ -590,7 +635,7 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 			_canvas.draw_rect(rect, INK, false, maxf(1.0, 0.4 * k))
 			var scale_by: Vector2 = (item["rect"] as Rect2).size \
 				/ entry.callout.box.size.max(Vector2(1, 1))
-			for cell: Array in (_shots.get(entry.number, {}) as Dictionary).get("cells", []):
+			for cell: Array in (_shots.get(_shot_key(entry.page, entry.number), {}) as Dictionary).get("cells", []):
 				if cell[0] != null:
 					var at: Rect2 = cell[1]
 					_canvas.draw_texture_rect(cell[0], Rect2(rect.position + at.position * scale_by * k,
@@ -1115,7 +1160,9 @@ func page_state() -> Dictionary:
 		# The arrows on it, by name: [x1, y1, x2, y2 (, bx, by)], colour, width.
 		"arrows": _arrows_state(), "arrow_mode": _arrow_mode,
 		# The page's steps whose pictures are drawn on it so far.
-		"drawn": _page_steps().filter(func(number: int) -> bool: return _shots.has(number))}
+		"drawn": _page_steps().filter(func(number: int) -> bool:
+			return _shots.has(_shot_key(_pages[_at].number if _at >= 0 and _at < _pages.size() else 0, number))),
+		"kind": _pages[_at].kind if _at >= 0 and _at < _pages.size() else ""}
 
 
 func _arrows_state() -> Dictionary:

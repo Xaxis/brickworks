@@ -483,7 +483,7 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 		if step.attaches():
 			var first: int = int(_ranks[index - pending.size()][0]) if not pending.is_empty() else from
 			_ranks[index] = [first, rank]
-			entry.callout = _callout(step, pending, lots)
+			entry.callout = _callout(step, pending, lots, index - pending.size())
 			entry.lots = _lots_of(step.copies[0], lots, step.copies.size())
 			# An author's step puts on its own parts with the sub-assembly.
 			entry.lots.append_array(_lots_of(step.brick_ids, lots))
@@ -516,16 +516,26 @@ func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
 	entry.zoom = clampf(float(own.get("zoom", 1.0)), 0.25, 4.0)
 	entry.size = clampf(float(own.get("size", 1.0)), 0.4, 3.0)
 	entry.page_break = str(own.get("page", ""))
-	entry.place = own.get("place", {})
-	entry.notes = own.get("notes", [])
-	entry.drawn_arrows = own.get("arrows", [])
-	entry.room = BookletLooks.rect_of(own["panel"]) if own.has("panel") else Rect2()
+	_hand_look(entry, step)
 	entry.sign_off = not bool(own.get("sign", true))
 	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
 	if not turn.is_empty():
 		entry.fixed = true
 		entry.from = BookletLooks.direction(turn)
 	return own
+
+
+## What its designer placed on [param step]'s page (BookletLooks "place",
+## "notes", "arrows" and the room they were placed in), put on [param entry].
+func _hand_look(entry: Booklet.Entry, step: Instructions.Step) -> void:
+	if step.authored_step < 0:
+		return
+	var own: Dictionary = BookletLooks.of(_world, step.authored_in, step.authored_step)
+	entry.look = BookletLooks.key(BookletLooks.definition_of(step.authored_in), step.authored_step)
+	entry.place = own.get("place", {})
+	entry.notes = own.get("notes", [])
+	entry.drawn_arrows = own.get("arrows", [])
+	entry.room = BookletLooks.rect_of(own["panel"]) if own.has("panel") else Rect2()
 
 
 ## The groups whose hidden colour has gone in by now, by label, and the
@@ -557,7 +567,7 @@ func _marks_in(ids: PackedInt64Array, shown: Dictionary) -> Array:
 ## A callout's own stage — the first copy, in the order its steps build
 ## it — and its steps as entries.
 func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
-		lots: Dictionary) -> Booklet.Callout:
+		lots: Dictionary, first: int = -1) -> Booklet.Callout:
 	var callout := Booklet.Callout.new()
 	callout.name = attach.assembly
 	callout.times = attach.times
@@ -584,6 +594,12 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		entry.from = callout.from
 		entry.subject = callout.subject
 		entry.lots = _lots_of(built[at].shown_ids, lots)
+		if first >= 0:
+			entry.set_meta("step", first + at)
+		# Laid out by hand when it has pages of its own: what its designer
+		# placed on its page, as a step of the model's (the rest of the
+		# step's look, a turn or a zoom, is the callout's own).
+		_hand_look(entry, built[at])
 		callout.steps.append(entry)
 	_callouts[callout] = [stage, spans]
 	return callout
@@ -870,7 +886,7 @@ func _draw(entry: Booklet.Entry) -> void:
 			var sub_size: Vector2i = sub.pixels(px_per_mm)
 			var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
 				int(part[1]), int(part[0]), sub.view(px_per_mm), sub_size)
-			sub.image = _data_uri(sub_shot.image, CALLOUT_PAGE_COLOUR)
+			sub.image = _data_uri(sub_shot.image, Color(0, 0, 0, 0) if sub.clear else CALLOUT_PAGE_COLOUR)
 			_note("step %d, %s step %d" % [entry.number, callout.name, sub.number],
 				sub_size, sub_shot, sub.free, sub.rect)
 	callout.images.clear()

@@ -510,7 +510,7 @@ static func _settle(page: Page) -> void:
 		if under.is_empty():
 			kept.append(thing)
 			continue
-		var spot: Array = _free_spot(thing["rect"], kept, not page.banner.is_empty(),
+		var spot: Array = _free_spot(thing["rect"], kept, _room_of(page),
 			str(thing["kind"]) in ["picture", "callout", "image"])
 		var said: Dictionary = {"step": (thing["entry"] as Entry).number, "item": thing["kind"],
 			"on_step": (under["entry"] as Entry).number, "on_item": under["kind"],
@@ -524,6 +524,17 @@ static func _settle(page: Page) -> void:
 			_move_thing(thing, spot[0], float(spot[1]))
 			thing["rect"] = spot[0]
 		kept.append(thing)
+
+
+## The part of [param page] things may be moved into: inside its margins,
+## under its banner; inside the frame of a callout's own page.
+static func _room_of(page: Page) -> Rect2:
+	if page.kind == "callout":
+		return page.frame.grow(-2.0)
+	var area: Rect2 = content()
+	if not page.banner.is_empty():
+		area = Rect2(area.position + Vector2(0.0, BANNER), area.size - Vector2(0.0, BANNER))
+	return area
 
 
 ## Two things overlap where they share more than this, in mm, both ways.
@@ -617,10 +628,7 @@ static func _under(rect: Rect2, kept: Array) -> Dictionary:
 
 ## The nearest room on the page, on a 2 mm grid from where [param rect] was,
 ## that overlaps none of [param kept]: [rect, scale], or [].
-static func _free_spot(rect: Rect2, kept: Array, banner: bool, can_shrink: bool) -> Array:
-	var area: Rect2 = content()
-	if banner:
-		area = Rect2(area.position + Vector2(0.0, BANNER), area.size - Vector2(0.0, BANNER))
+static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool) -> Array:
 	for scale: float in ([1.0, 0.85, 0.7, 0.55] if can_shrink else [1.0]):
 		var size: Vector2 = rect.size * scale
 		if size.x > area.size.x or size.y > area.size.y:
@@ -843,6 +851,7 @@ static func _callout_pages(callout: Callout, progress: float) -> Array[Page]:
 		var run: Array[Entry] = callout.steps.slice(at, mini(at + 4, callout.steps.size()))
 		var page := _best_page(run, area, true)
 		page.frame = frame
+		_settle(page)
 		page.times = callout.times
 		page.name = callout.name
 		page.progress = progress
