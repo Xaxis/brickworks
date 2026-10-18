@@ -1,0 +1,46 @@
+0 FILE row.ldr
+0 Row of steps
+0 Name: row.ldr
+0 Author: A. Builder
+0 !LDRAW_ORG Unofficial_Model
+0 // Made by hand for booklet_edit_probe's settings that stay with their step.
+0 // Seven steps of the model's own, each two 2 x 2 bricks of one colour side by
+0 // side on the ground, none standing on another, so any step can go earlier or
+0 // later: red, blue, yellow, green (which also puts the pair on the green
+0 // bricks), white, black, orange. The pair is a sub-model built in steps of
+0 // its own, a callout: two 2 x 2 bricks side by side, one a step, so either
+0 // can go first, and a 2 x 4 plate across them.
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 1 60 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 1 60 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 14 120 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 14 120 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 2 180 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 180 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+1 16 180 -24 0 1 0 0 0 1 0 0 0 1 pair.ldr
+0 STEP
+1 15 240 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 15 240 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 0 300 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 0 300 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 25 360 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 25 360 -24 60 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+0 NOFILE
+0 FILE pair.ldr
+0 Pair
+0 Name: pair.ldr
+0 Author: A. Builder
+1 70 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 72 0 -24 40 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 71 0 -32 20 0 0 1 0 1 0 -1 0 0 3020.dat
+0 STEP
+0 NOFILE

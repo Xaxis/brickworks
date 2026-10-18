@@ -261,6 +261,13 @@ func _lay_out(number: int) -> void:
 	var pages: Array[Booklet.Page] = await maker.lay_out_only(_world, store.scenery, "Model")
 	_plan = maker.plan
 	maker.queue_free()
+	# A picture kept for a page and number that another step has now.
+	for page: Booklet.Page in pages:
+		for entry: Booklet.Entry in page.entries:
+			var key: String = _shot_key(page.number, entry.number)
+			if _shots.has(key) and str((_shots[key] as Dictionary).get("of", "")) \
+					!= _step_said(entry, _plan):
+				_shots.erase(key)
 	_pages = []
 	# The pages of steps, and a sub-assembly's own pages (a callout built on
 	# pages of its own), each with the step of the model that puts it on.
@@ -399,6 +406,7 @@ func _draw_pictures() -> void:
 	app.add_child(maker)
 	var pages: Array[Booklet.Page] = await maker.draw_steps(_world, store.scenery, "Model", numbers)
 	var document: Booklet.Document = maker.document
+	var drawn: Array[Instructions.Step] = maker.plan
 	maker.queue_free()
 	if job.cancelled or not visible or document == null:
 		return
@@ -415,7 +423,8 @@ func _draw_pictures() -> void:
 					var cell: Rect2 = entry.callout.cells[index]
 					cells.append([_texture(entry.callout.images[index]),
 						Rect2(cell.position - entry.callout.box.position, cell.size)])
-			_shots[_shot_key(page.number, entry.number)] = {"picture": _texture(entry.image), "cells": cells}
+			_shots[_shot_key(page.number, entry.number)] = {"picture": _texture(entry.image),
+				"cells": cells, "of": _step_said(entry, drawn)}
 	for key: String in document.parts:
 		if not _part_shots.has(key):
 			_part_shots[key] = _texture(str(document.parts[key]))
@@ -426,6 +435,16 @@ func _draw_pictures() -> void:
 ## callout's own pages number their steps from 1 again.
 static func _shot_key(page: int, number: int) -> String:
 	return "%d:%d" % [page, number]
+
+
+## Which step [param entry] of [param plan] is, by its parts: a picture kept
+## under its page and number is of another step once the steps have moved
+## (Earlier, a merge, undone), and is not shown while its own is drawn.
+static func _step_said(entry: Booklet.Entry, plan: Array[Instructions.Step]) -> String:
+	var index: int = int(entry.get_meta("step", -1))
+	if index < 0 or index >= plan.size():
+		return ""
+	return "%s|%s" % [str(plan[index].brick_ids), str(plan[index].copies)]
 
 
 ## A picture as a data URI, as a texture.

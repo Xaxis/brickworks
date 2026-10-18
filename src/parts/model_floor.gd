@@ -128,6 +128,8 @@ static func read(text: String) -> ModelFloor:
 ## [param text] with the floor's line in the head of its model: after the
 ## title, the name and the author, before the first blank line (or the
 ## first part, in a file written elsewhere). Any floor line it had goes.
+## Before a ROTSTEP that turns the first step, which the booklet's lines put
+## before the first part: after it, each save moved the line past it.
 func written_into(text: String) -> String:
 	var lines: PackedStringArray = text.split("\n")
 	var kept := PackedStringArray()
@@ -138,7 +140,7 @@ func written_into(text: String) -> String:
 	for n: int in kept.size():
 		var line: String = kept[n].strip_edges()
 		if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-				or line == "0 STEP"):
+				or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
 			at = n
 			break
 	kept.insert(at, to_meta())

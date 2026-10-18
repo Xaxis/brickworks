@@ -1601,6 +1601,12 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 				break
 		if all_in:
 			level = at.authored_in
+	# Each step's look goes with its parts (BookletLooks.follow): read before
+	# ensure, which numbers the steps again when it gives a part put on since
+	# a step, and a step whose parts were all taken off is a number with
+	# nothing in it until then. Read after, the next step's parts had that
+	# step's look (mcpwalk t2).
+	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
 	var where: Array = _step_at(at)
 	if op in ["earlier", "later"] and int(where[1]) >= 0:
@@ -1609,8 +1615,17 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		if not blocked.is_empty():
 			_take_back(undo)
 			return blocked
-	# Each step's look goes with its parts (BookletLooks.follow).
-	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
+	# What the edit takes out of its step: a step keeps its look with the
+	# parts it keeps.
+	var taken: Dictionary = {}
+	if op in ["prev", "next", "new"]:
+		for items: Variant in AuthorSteps._selected(world, ids, level, skip).values():
+			for item: Dictionary in items:
+				taken[BookletLooks.item_name(item)] = true
+	elif op == "delete" and int(where[1]) >= 0:
+		for item: Dictionary in AuthorSteps.items_of(world, str(where[0]), skip):
+			if int(item["step"]) == int(where[1]):
+				taken[BookletLooks.item_name(item)] = true
 	var count: int = ids.size()
 	var words: String = ""
 	match op:
@@ -1638,7 +1653,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 			words = "took out step %d; its parts are in the step %s" % [number,
 				"before" if int(where[1]) > 0 else "after"]
 			number = maxi(number - 1, 1)
-	undo.append_array(BookletLooks.follow(world, looked, skip))
+	undo.append_array(BookletLooks.follow(world, looked, skip, taken))
 	undo = AuthorSteps.squash(undo)
 	if undo.is_empty():
 		return "the steps are as they were"
@@ -1683,7 +1698,12 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number
 	var skip: Dictionary = store.scenery
+	# Giving the model's new parts their steps may number the steps again:
+	# every step's look goes with its parts first, as a step edit's does.
+	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	if not undo.is_empty():
+		undo.append_array(BookletLooks.follow(world, looked, skip))
 	var where: Array = _step_at(at)
 	var section: String = str(where[0])
 	var step: int = int(where[1])
@@ -2012,7 +2032,17 @@ func _close_step(level: String, skip: Dictionary) -> String:
 func _step_at(at: Instructions.Step) -> Array:
 	if at == null:
 		return ["", -1]
+	# Read off its parts as they are now: giving the model's new parts their
+	# steps (AuthorSteps.ensure) numbers the steps again where a step's parts
+	# were all taken off, and the number the timeline had was the next step's.
+	if at.authored_step >= 0 and not at.brick_ids.is_empty():
+		var own: BrickWorld.Brick = world.get_brick(at.brick_ids[0])
+		if own != null and own.step >= 0 and Assemblies.path_of(own) == at.authored_in:
+			return [at.authored_in, own.step]
 	if at.authored_step >= 0:
+		var unit: String = BookletLooks.attached(world, at, at.authored_in)
+		if not unit.is_empty() and world.unit_steps.has(unit):
+			return [at.authored_in, int(world.unit_steps[unit])]
 		return [at.authored_in, at.authored_step]
 	var ids: PackedInt64Array = at.brick_ids if not at.brick_ids.is_empty() \
 		else (at.copies[0] if not at.copies.is_empty() else PackedInt64Array())

@@ -179,6 +179,9 @@ func _run() -> void:
 		return
 	if _only.is_empty() or _only == "gatehouse":
 		await _gatehouse()
+	if _only.is_empty() or _only == "stay":
+		await _settings_stay(false)
+		await _settings_stay(true)
 	for set: Array in SETS:
 		if _only.is_empty() or str(set[1]) == _only:
 			await _one_set(str(set[0]), str(set[1]))
@@ -253,6 +256,385 @@ static func _main_steps(text: String) -> Array:
 		now.sort()
 		steps.append(" ".join(now))
 	return steps
+
+
+# -- what is set on a step stays on it ------------------------------------------------
+
+
+const YELLOW := 14
+const BLACK := 0
+const GREEN := 2
+const BLUE := 1
+const WHITE := 15
+## The pair's second part, whose step in the pair is given a setting of its own.
+const PAIR_SECOND := 72
+## The settings the yellow, black and pair steps were given, as kept (_plain).
+var _want: Dictionary = {}
+
+
+## Whatever a designer sets on a step stays with that step, however the steps
+## move. A session over MCP (mcpwalk t2, 2026-10-17) gave one step a page alone
+## and a zoom and the next a new page and an arrow, took the first step's parts
+## off and put them back, and merged and moved steps: both steps' settings came
+## out on the step after their own. Here, on row.mpd (seven steps of two bricks
+## of a colour, none on another, and a pair of 1 x 1s built in two steps of its
+## own), the yellow step is given every kind of setting a step has, by the
+## Booklet row's commands, the page editor's and edit_booklet; the black step
+## and the pair's second step a few of their own; and the booklet and the
+## pair's callout theirs. Then the yellow step is moved every way, on the
+## timeline and over MCP: earlier, later, merged with the next and the one
+## before merged into it, split, a part moved out of it and one into it, the
+## step before it taken out, that step's parts taken off the model and a part
+## put on (t2), the black step and the pair's step moved; each undone and
+## redone. After each, the step the yellow brick is in has exactly the yellow
+## settings and is seen from its turn, the black step its own, the pair's its
+## own, and no other step has any; undone, the file is as it was. Then saved
+## and opened again, with the step before taken off first. [param whole] does
+## it all on a copy of row.mpd made here (Author: Brickworks), which a save
+## writes whole (LdrModel.write_tree) rather than back over the file
+## (SourceFile).
+func _settings_stay(whole: bool) -> void:
+	_name = "row_whole" if whole else "row"
+	print("")
+	print("row.mpd%s: what is set on a step stays with it, however the steps move"
+		% (", written whole" if whole else ""))
+	var path: String = "res://tests/fixtures/steps/row.mpd"
+	if whole:
+		var text: String = FileAccess.get_file_as_string(path).replace(
+			"0 Author: A. Builder", "0 Author: Brickworks")
+		var cut: int = text.find("\n", text.find("0 Author: Brickworks")) + 1
+		text = text.substr(0, cut) + LdrModel.AUTHORED_META + "\n" + text.substr(cut)
+		path = _out.path_join("row_whole.mpd")
+		var copy: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+		copy.store_string(text)
+		copy.close()
+	await _open(path)
+	await _timeline()
+	_steps.set_mode(StepsBar.AUTHORS)
+	await _frames(2)
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	await _set_everything(tools)
+	_stayed("as set")
+	if _booklets and not whole:
+		await _pictures_follow()
+		# The booklet before and after the yellow step goes earlier, to print
+		# and look at: row_before_move.html, row_after_earlier.html.
+		await _booklet("before_move")
+		_shell.change_steps("earlier", [], _step_of(YELLOW))
+		await _booklet("after_earlier")
+		_builder.undo()
+		await _frames(2)
+		_steps.refresh()
+	var base: String = _save()
+	# The timeline's commands (Shell.change_steps, as its buttons and keys
+	# call it) and edit_steps over MCP, each on the step as the timeline shows
+	# it now.
+	await _moved("Earlier on the yellow step", base, func() -> String:
+		return _shell.change_steps("earlier", [], _step_of(YELLOW)))
+	await _moved("edit_steps later on the yellow step", base, func() -> String:
+		return str(await tools.run("edit_steps", {"op": "later",
+			"step": _step_of(YELLOW).number})))
+	await _moved("Merge with next on the yellow step", base, func() -> String:
+		return _shell.change_steps("merge", [], _step_of(YELLOW)))
+	await _moved("edit_steps merge on the step before the yellow", base, func() -> String:
+		return str(await tools.run("edit_steps", {"op": "merge",
+			"step": _step_of(BLUE).number})))
+	await _moved("New step from the yellow step's second brick (a split)", base, func() -> String:
+		return _shell.change_steps("new", [_part(YELLOW, true).id], _step_of(YELLOW)))
+	await _moved("edit_steps new of the yellow step's second brick", base, func() -> String:
+		return str(await tools.run("edit_steps", {"op": "new",
+			"bricks": [_part(YELLOW, true).id]})))
+	await _moved("Shift-] on the yellow step's second brick (a part moved out)", base,
+		func() -> String:
+			return _shell.change_steps("next", [_part(YELLOW, true).id], _step_of(YELLOW)))
+	await _moved("edit_steps prev on a green brick (a part moved into the yellow step)", base,
+		func() -> String:
+			return str(await tools.run("edit_steps", {"op": "prev",
+				"bricks": [_part(GREEN).id]})))
+	await _moved("Delete step on the blue step before it", base, func() -> String:
+		return _shell.change_steps("delete", [], _step_of(BLUE)))
+	await _moved("edit_steps later on the black step", base, func() -> String:
+		return str(await tools.run("edit_steps", {"op": "later",
+			"step": _step_of(BLACK).number})))
+	await _moved("Earlier on the pair's second step", base, func() -> String:
+		return _shell.change_steps("earlier", [], _step_of(PAIR_SECOND)))
+	await _reopened("saved and opened again with nothing moved")
+	# t2: a step's parts taken off the model, saved and opened again; then
+	# another's, a part put on and any step edit, which gives the new part a
+	# step and numbers the steps again.
+	var assistant: Node = _main.get("_assistant")
+	var said: String = str(await assistant._run_tool({"name": "edit_model",
+		"input": {"remove": [_part(BLUE).id, _part(BLUE, true).id]}}))
+	await _frames(2)
+	_stayed("edit_model took the blue step's parts off (\"%s\")" % said.get_slice("\n", 0).left(40))
+	await _reopened("...saved and opened again")
+	said = str(await assistant._run_tool({"name": "edit_model", "input": {"remove": [
+		_part(4).id, _part(4, true).id]}}))
+	await _frames(2)
+	_stayed("...edit_model took the red step's parts off too (\"%s\")"
+		% said.get_slice("\n", 0).left(40))
+	said = str(await assistant._run_tool({"name": "edit_model", "input": {"add": [
+		{"part": "3003", "color": 25, "x": 0, "y": 0, "z": 8}]}}))
+	await _frames(2)
+	_stayed("...edit_model put an orange brick on (\"%s\")" % said.get_slice("\n", 0).left(40))
+	var white: int = _number_of(WHITE)
+	var black: int = _number_of(BLACK)
+	said = str(await tools.run("edit_steps", {"op": "later", "step": white}))
+	_stayed("...then edit_steps later on the white step (\"%s\")" % said)
+	_check("...the white step went later (%d, now %d) and the black earlier (%d, now %d)"
+		% [white, _number_of(WHITE), black, _number_of(BLACK)],
+		_number_of(WHITE) == white + 1 and _number_of(BLACK) == black - 1)
+	said = _shell.change_steps("merge", [], _step_of(YELLOW))
+	_stayed("...then Merge with next on the yellow step (\"%s\")" % said)
+	await _reopened("...saved and opened again")
+
+
+## The yellow step given every setting a step can have, the black step and the
+## pair's second step a few of their own, the booklet and the pair's callout
+## theirs: by the Booklet row's commands (Shell.change_look), edit_booklet over
+## MCP, and the page editor's ops with the step's room on its page.
+func _set_everything(tools: AppTools) -> void:
+	# A turn of the yellow step's own: Turn right on it, Usual view on the step
+	# after it, so no other step is seen turned.
+	for op: String in ["turn_right", "zoom_in", "bigger", "alone", "parts", "sign"]:
+		var said: String = _shell.change_look(op, _step_of(YELLOW))
+		_check("%s on the yellow step: \"%s\"" % [op.capitalize(), said], _history() > 0)
+	_shell.change_look("usual_view", _step_of(GREEN))
+	for input: Dictionary in [
+			{"place": {"item": "picture", "x": 40, "y": 30, "w": 120, "h": 90}},
+			{"place": {"item": "parts", "x": 10, "y": 12, "w": 60}},
+			{"place": {"item": "number", "x": 12, "y": 150}},
+			{"text": {"words": "Yellow, on its own", "x": 20, "y": 170, "w": 70, "h": 10, "size": 4.5}},
+			{"arrow": {"x1": 150, "y1": 40, "x2": 120, "y2": 80, "colour": "red", "width": 0.9}}]:
+		var given: Dictionary = input.duplicate()
+		given["step"] = _step_of(YELLOW).number
+		var said: String = str(await tools.run("edit_booklet", given))
+		_check("edit_booklet %s on the yellow step: \"%s\"" % [JSON.stringify(input).left(50),
+			said.left(70)], not said.begins_with("There is no") and not said.contains("needs"))
+	var image := Image.create(4, 4, false, Image.FORMAT_RGB8)
+	image.fill(Color(0.9, 0.7, 0.1))
+	var said: String = _shell.change_look("image", _step_of(YELLOW), {
+		"data": Marshalls.raw_to_base64(image.save_png_to_buffer()), "kind": "png",
+		"at": [200.0, 160.0, 30.0, 20.0]})
+	_check("a picture put on the yellow step's page: \"%s\"" % said, said.contains("picture put"))
+	said = str(await tools.run("edit_booklet", {"step": _step_of(BLACK).number, "page": "new",
+		"zoom": 0.8}))
+	_check("edit_booklet on the black step: \"%s\"" % said.left(80), said.contains("new page"))
+	said = str(await tools.run("edit_booklet", {"step": _step_of(BLACK).number,
+		"arrow": {"x1": 30, "y1": 30, "x2": 60, "y2": 60, "colour": "black", "width": 1.4}}))
+	_check("edit_booklet arrow on the black step: \"%s\"" % said.left(80), said.contains("arrow"))
+	said = _shell.change_look("zoom_in", _step_of(PAIR_SECOND))
+	said = _shell.change_look("zoom_in", _step_of(PAIR_SECOND))
+	_check("Zoom in twice on the pair's second step: \"%s\"" % said, said.contains("1.5x"))
+	var attach: Instructions.Step = null
+	for one: Instructions.Step in _steps.steps():
+		if one.attaches() and one.callout_step == 0 \
+				and not BookletLooks.attached(_world, one, one.authored_in).is_empty():
+			attach = one
+	said = _shell.change_look("callout", attach) if attach != null else "no step puts the pair on"
+	_check("Callout on the step that puts the pair on: \"%s\"" % said,
+		said.contains("pages of its own"))
+	said = str(await tools.run("edit_booklet", {"step": 1, "per_page": 2, "highlight": false}))
+	_want = {"yellow": _plain(_look_of(YELLOW)), "black": _plain(_look_of(BLACK)),
+		"pair": _plain(_look_of(PAIR_SECOND)), "booklet": _plain(BookletLooks.booklet(_world)),
+		"callout": BookletLooks.callout_on(_world, Assemblies.path_of(_part(PAIR_SECOND)))}
+	var yellow: Dictionary = _want["yellow"]
+	_check("the yellow step has every setting a step has: %s" % ", ".join(PackedStringArray(
+		yellow.keys())), yellow.has_all(["zoom", "size", "page", "parts", "sign", "place", "notes",
+			"arrows", "panel"]) and (yellow["place"] as Dictionary).size() == 3
+		and (yellow["notes"] as Array).size() == 2 and not _turn_of(YELLOW).is_empty())
+	_check("...the black step %s, the pair's second %s, the booklet %s, the pair's callout off"
+		% [JSON.stringify(_want["black"]).left(60), JSON.stringify(_want["pair"]),
+			JSON.stringify(_want["booklet"])], (_want["black"] as Dictionary).has_all(["page",
+			"zoom", "arrows"]) and (_want["pair"] as Dictionary).has("zoom")
+		and (_want["booklet"] as Dictionary).has_all(["per_page", "highlight"])
+		and not bool(_want["callout"]))
+
+
+## Lay out page… up on a page of two steps, its pictures drawn, and the
+## second step put earlier: the page laid out again shows no step with a
+## picture drawn of another (the pictures are kept by page and number, and
+## the number is another step's now). Undone after.
+func _pictures_follow() -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	var pick: Booklet.Entry = null
+	for page: Booklet.Page in await _laid():
+		if page.kind == "steps" and page.entries.size() >= 2:
+			pick = page.entries[1]
+			break
+	if pick == null:
+		_check("a page of two steps to move one of", false)
+		return
+	_go(pick.number)
+	await editor.open()
+	await _until_laid(editor)
+	for _n: int in 1200:
+		var state: Dictionary = editor.page_state()
+		if (state.get("drawn", []) as Array).size() == (state.get("steps", []) as Array).size():
+			break
+		await process_frame
+	var history: int = _history()
+	var said: String = _shell.change_steps("earlier", [], _go(pick.number))
+	await _frames(4)
+	await _until_laid(editor)
+	var page: Booklet.Page = editor._pages[editor._at]
+	var stale := PackedStringArray()
+	for entry: Booklet.Entry in page.entries:
+		var key: String = PageEditor._shot_key(page.number, entry.number)
+		if editor._shots.has(key) and str((editor._shots[key] as Dictionary).get("of", "")) \
+				!= PageEditor._step_said(entry, editor._plan):
+			stale.append(str(entry.number))
+	_check("Earlier on step %d with its page up (\"%s\"): no step on page %d shows another's picture (%s)"
+		% [pick.number, said, page.number, ", ".join(stale) if not stale.is_empty() else "none"],
+		_history() == history + 1 and stale.is_empty())
+	editor.close()
+	while _history() > history:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+
+
+## [param what] done by [param edit], then checked (_stayed); undone and
+## checked, the file as [param base]; redone and checked; and undone again.
+func _moved(what: String, base: String, edit: Callable) -> void:
+	var history: int = _history()
+	var said: String = str(await edit.call())
+	_check("%s: \"%s\", one undo step" % [what, said.left(70)], _history() == history + 1)
+	_stayed("...")
+	_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_stayed("...undone")
+	_check("...undone, the file as it was", _save() == base)
+	_builder.redo()
+	await _frames(2)
+	_steps.refresh()
+	_stayed("...redone")
+	_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+
+
+## Saved, opened again from the file it saved, and checked; saved again, the
+## same text.
+func _reopened(what: String) -> void:
+	var text: String = _save()
+	var file: String = _out.path_join("%s_saved.mpd" % _name)
+	var writing: FileAccess = FileAccess.open(file, FileAccess.WRITE)
+	writing.store_string(text)
+	writing.close()
+	await _open(file)
+	await _timeline()
+	_stayed(what)
+	var again: String = _save()
+	var diff: Array = _diff(text, again)
+	_check("...and saved again, the same text (out %s, in %s)" % [_few(diff[0]), _few(diff[1])],
+		again == text)
+
+
+## Each setting on the step it was set on and no other (_settings_stay).
+func _stayed(when: String) -> void:
+	_steps.refresh()
+	var keys: Dictionary = {}
+	var wrong := PackedStringArray()
+	for colour: int in [YELLOW, BLACK, PAIR_SECOND]:
+		var brick: BrickWorld.Brick = _part(colour)
+		var name: String = {YELLOW: "yellow", BLACK: "black", PAIR_SECOND: "pair"}[colour]
+		if brick == null:
+			wrong.append("no %s part" % name)
+			continue
+		keys[BookletLooks.key(BookletLooks.definition_of(Assemblies.path_of(brick)), brick.step)] = name
+		var now: Dictionary = _plain(_look_of(colour))
+		if JSON.stringify(now) != JSON.stringify(_want[name]):
+			wrong.append("the %s step's are %s" % [name, JSON.stringify(now).left(160)])
+	var seen: Dictionary = _turn_of(YELLOW)
+	if seen.is_empty() or not is_equal_approx(float((seen["turn"] as Array)[1]), 45.0):
+		wrong.append("the yellow step is seen from %s" % JSON.stringify(seen))
+	for colour: int in [4, BLUE, GREEN, WHITE, BLACK, 25, 71]:
+		var brick: BrickWorld.Brick = _part(colour)
+		if brick != null and not _turn_of(colour).is_empty() \
+				and brick.step != _part(YELLOW).step:
+			wrong.append("a %d part is seen from %s" % [colour, JSON.stringify(_turn_of(colour))])
+	for name: String in _world.step_looks:
+		var tail: String = name.get_slice("|", 1)
+		if not tail.is_valid_int() or keys.has(name):
+			continue
+		if not _plain(_world.step_looks[name]).is_empty():
+			wrong.append("%s has %s" % [name, JSON.stringify(_plain(_world.step_looks[name])).left(100)])
+	if JSON.stringify(_plain(BookletLooks.booklet(_world))) != JSON.stringify(_want["booklet"]):
+		wrong.append("the booklet's are %s" % JSON.stringify(BookletLooks.booklet(_world)))
+	if _part(PAIR_SECOND) != null \
+			and BookletLooks.callout_on(_world, Assemblies.path_of(_part(PAIR_SECOND))) \
+				!= bool(_want["callout"]):
+		wrong.append("the pair's callout is on")
+	_check("%s: each setting on its own step (yellow step %d, black %d)%s" % [when,
+		_number_of(YELLOW), _number_of(BLACK), "" if wrong.is_empty() else ": " + "; ".join(wrong)],
+		wrong.is_empty())
+
+
+## The first part of [param colour] (the one nearer the front, z 0), or with
+## [param second] the other.
+func _part(colour: int, second: bool = false) -> BrickWorld.Brick:
+	var found: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.color_code == colour and not _store.scenery.has(brick.id):
+			found.append(brick)
+	if found.is_empty():
+		return null
+	found.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.z < b.transform.origin.z)
+	return found[mini(1 if second else 0, found.size() - 1)]
+
+
+## The look kept for the step the first part of [param colour] is in.
+func _look_of(colour: int) -> Dictionary:
+	var brick: BrickWorld.Brick = _part(colour)
+	if brick == null:
+		return {}
+	return BookletLooks.of(_world, Assemblies.path_of(brick), brick.step)
+
+
+func _turn_of(colour: int) -> Dictionary:
+	var brick: BrickWorld.Brick = _part(colour)
+	if brick == null:
+		return {}
+	return BookletLooks.turn_at(_world, Assemblies.path_of(brick), brick.step)
+
+
+## The timeline's step that the first part of [param colour] is in.
+func _step_of(colour: int) -> Instructions.Step:
+	_steps.refresh()
+	var brick: BrickWorld.Brick = _part(colour)
+	for step: Instructions.Step in _steps.steps():
+		if brick != null and step.brick_ids.has(brick.id):
+			return step
+	return null
+
+
+func _number_of(colour: int) -> int:
+	var step: Instructions.Step = _step_of(colour)
+	return step.number if step != null else -1
+
+
+## A look as it is compared: its turn left to turn_at, every number to a
+## tenth.
+static func _plain(look: Variant) -> Variant:
+	if look is Dictionary:
+		var out: Dictionary = {}
+		var names: Array = (look as Dictionary).keys()
+		names.sort()
+		for name: Variant in names:
+			if str(name) in ["turn", "how", "line"]:
+				continue
+			out[name] = _plain(look[name])
+		return out
+	if look is Array:
+		return (look as Array).map(func(value: Variant) -> Variant: return _plain(value))
+	if look is float or look is int:
+		return snappedf(float(look), 0.1)
+	return look
 
 
 # -- one set -----------------------------------------------------------------------

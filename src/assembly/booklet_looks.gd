@@ -273,38 +273,72 @@ static func _usual(field: String, value: Variant) -> bool:
 
 ## What each section's items were in, before a step edit, to carry the
 ## looks with them after it ([method follow]): definition -> {item: step},
-## read from the first copy of each sub-model.
+## read from the first copy of each sub-model. Taken before anything numbers
+## the steps again, AuthorSteps.ensure included: a look is the step's, and
+## the step is its parts, not its number.
 static func items_by_step(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	var turns: Dictionary = {}
-	var sections: Array = AuthorSteps.paths_in(world, skip).keys()
-	sections.sort()
-	sections.push_front("")
-	for section: String in sections:
+	var own: Dictionary = {}
+	for section: String in first_copies(world, skip):
 		var definition: String = definition_of(section)
-		if out.has(definition):
-			continue
 		var items: Dictionary = {}
 		for item: Dictionary in AuthorSteps.items_of(world, section, skip):
-			var named: String = ("b%d" % int(item["brick"])) if item.has("brick") \
-				else "u" + Assemblies.leaf(str(item["unit"]))
-			items[named] = int(item["step"])
+			items[item_name(item)] = int(item["step"])
 		out[definition] = items
 		var seen: Dictionary = {}
+		var turned: Dictionary = {}
 		for step: int in AuthorSteps.steps_in(world, section, skip):
 			var turn: Dictionary = turn_at(world, section, step)
 			if not turn.is_empty():
 				seen[step] = turn
+			# A ROTSTEP turning it; not one putting the usual view back,
+			# which a step edit writes wherever the view goes back.
+			var look: Dictionary = of(world, section, step)
+			if look.has("turn") and str(look["turn"]) != "end":
+				turned[step] = true
 		turns[definition] = seen
+		own[definition] = turned
 	out["@turns"] = turns
+	out["@own"] = own
 	return out
+
+
+## The section each step look's definition is read from: the model's own ("")
+## and the first copy of each sub-model, by path.
+static func first_copies(world: BrickWorld, skip: Dictionary = {}) -> Array:
+	var sections: Array = AuthorSteps.paths_in(world, skip).keys()
+	sections.sort()
+	sections.push_front("")
+	var out: Array = []
+	var seen: Dictionary = {}
+	for section: String in sections:
+		var definition: String = definition_of(section)
+		if not seen.has(definition):
+			seen[definition] = true
+			out.append(section)
+	return out
+
+
+## An item of AuthorSteps.items_of as [method items_by_step] names it: a part
+## by its id, a sub-model's copy by its name.
+static func item_name(item: Dictionary) -> String:
+	return ("b%d" % int(item["brick"])) if item.has("brick") \
+		else "u" + Assemblies.leaf(str(item["unit"]))
 
 
 ## After a step edit: each step's look moved to the step most of its parts
 ## went to, the earlier of two where two now share one (merged, the first
 ## step's choices kept and the second's added where the first had none),
-## and one whose parts all went nowhere dropped. Returns the undo.
-static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {}) -> Array:
+## and one whose parts all went nowhere dropped. [param taken] names the
+## items the edit took out of their steps (the selection a part move or a
+## split moves, a deleted step's): a step keeps its look with the parts it
+## kept, and goes with the taken ones only when none are left. A look on a
+## step that had no parts when [param before] was read is a step that is
+## gone (its parts taken off the model): it is dropped, not left on
+## whatever step now has its number. Returns the undo.
+static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
+		taken: Dictionary = {}) -> Array:
 	var any_step: bool = false
 	for name: String in world.step_looks:
 		if not name.ends_with("|*") and name != BOOKLET and name != DATA:
@@ -331,14 +365,18 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {})
 		var then: Dictionary = before.get(definition, {})
 		var now: Dictionary = after.get(definition, {})
 		var votes: Dictionary = {}
+		var kept_any: bool = false
 		for item: String in then:
-			if int(then[item]) == step and now.has(item):
+			if int(then[item]) == step and now.has(item) and not taken.has(item):
+				kept_any = true
+				break
+		for item: String in then:
+			if int(then[item]) == step and now.has(item) and not (kept_any and taken.has(item)):
 				votes[int(now[item])] = int(votes.get(int(now[item]), 0)) + 1
 		if votes.is_empty():
-			# A step nobody had parts in: kept where it was, if it still is.
-			if then.values().has(step) or not now.values().has(step):
-				continue
-			votes[step] = 1
+			# A step with no parts (taken off the model since its look was
+			# set), or whose parts all went: gone, and its look with it.
+			continue
 		var best: int = -1
 		for to: int in votes:
 			if best < 0 or int(votes[to]) > int(votes[best]) \
@@ -359,7 +397,7 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {})
 					kept[field] = look[field]
 		else:
 			moved[target] = look
-	_turns_follow(moved, before, after)
+	_turns_follow(moved, before, after, taken)
 	if moved == was:
 		return []
 	world.step_looks = moved
@@ -369,10 +407,16 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {})
 ## Each step's turn after a step edit is the one its parts were seen from
 ## before it ([method items_by_step]'s "turns"), written again only where it
 ## changes from the step before: a ROTSTEP ending an empty step, which the
-## edit takes out, gives its turn to the step it turned. A turn written as
-## it was keeps its line.
-static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictionary) -> void:
+## edit takes out, gives its turn to the step it turned. Parts [param taken]
+## into a step that has its own are seen as it is. Two steps made one (a
+## merge) are seen from the first's turn if it had one of its own (a
+## ROTSTEP that turns, not one that ends a turn), else the second's, as the
+## rest of a merged look is kept; else as most of their parts were. A turn
+## written as it was keeps its line.
+static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictionary,
+		taken: Dictionary = {}) -> void:
 	var turns: Dictionary = before.get("@turns", {})
+	var owns: Dictionary = before.get("@own", {})
 	for definition: String in after:
 		if definition.begins_with("@"):
 			continue
@@ -381,23 +425,43 @@ static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictiona
 		if then == now:
 			continue
 		var seen: Dictionary = turns.get(definition, {})
+		var own: Dictionary = owns.get(definition, {})
 		var steps: Dictionary = {}
 		for item: String in now:
 			steps[int(now[item])] = true
 		var order: Array = steps.keys()
 		order.sort()
-		# Each new step's turn: what most of its parts were seen from.
 		var want: Dictionary = {}
 		for step: int in order:
-			var votes: Dictionary = {}
+			# The steps its parts came from: those it kept, without the ones
+			# taken into it, when it kept any.
+			var from: Dictionary = {}
 			for item: String in now:
-				if int(now[item]) == step and then.has(item):
-					var was: String = JSON.stringify(seen.get(int(then[item]), {}))
-					votes[was] = int(votes.get(was, 0)) + 1
+				if int(now[item]) == step and then.has(item) and not taken.has(item):
+					from[int(then[item])] = int(from.get(int(then[item]), 0)) + 1
+			if from.is_empty():
+				for item: String in now:
+					if int(now[item]) == step and then.has(item):
+						from[int(then[item])] = int(from.get(int(then[item]), 0)) + 1
+			var olds: Array = from.keys()
+			olds.sort()
 			var best: String = "{}"
-			for one: String in votes:
-				if not votes.has(best) or int(votes[one]) > int(votes[best]):
-					best = one
+			var chosen: bool = false
+			if olds.size() > 1:
+				for old: int in olds:
+					if own.has(old):
+						best = JSON.stringify(seen.get(old, {}))
+						chosen = true
+						break
+			if not chosen:
+				# What most of its parts were seen from.
+				var votes: Dictionary = {}
+				for old: int in olds:
+					var was: String = JSON.stringify(seen.get(old, {}))
+					votes[was] = int(votes.get(was, 0)) + int(from[old])
+				for one: String in votes:
+					if not votes.has(best) or int(votes[one]) > int(votes[best]):
+						best = one
 			want[step] = JSON.parse_string(best)
 		# The lines that said them, kept by what they said.
 		var lines: Dictionary = {}
@@ -431,6 +495,61 @@ static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictiona
 
 
 # -- reading and writing the file ---------------------------------------------
+
+
+## The looks keyed as a file written whole numbers its steps (ModelStore's
+## LdrModel.write_tree and write_ldr): each section's steps one after
+## another, none empty. A step whose parts were all taken off the model is a
+## number with nothing in it here (BrickWorld.Brick.step) and no step
+## there; written as kept, each look after it went on the step after its
+## own, and the file opened again had them there. What was set on a step
+## that is gone goes with it, and each step is seen from what it is seen
+## from now. The looks themselves where no section has an empty step. A
+## file written back over (SourceFile) keeps the empty step, and its looks
+## as they are.
+static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+	var looks: Dictionary = world.step_looks
+	if looks.is_empty():
+		return looks
+	var gapped: Dictionary = {}     ## definition -> [its first copy, its steps in order]
+	for section: String in first_copies(world, skip):
+		var steps: Array = AuthorSteps.steps_in(world, section, skip)
+		if not steps.is_empty() and int(steps[steps.size() - 1]) + 1 != steps.size():
+			gapped[definition_of(section)] = [section, steps]
+	if gapped.is_empty():
+		return looks
+	var out: Dictionary = {}
+	for name: String in looks:
+		var definition: String = name.get_slice("|", 0)
+		var tail: String = name.get_slice("|", 1)
+		if not gapped.has(definition) or not tail.is_valid_int():
+			out[name] = looks[name]
+			continue
+		var at: int = (gapped[definition][1] as Array).find(tail.to_int())
+		if at < 0:
+			continue
+		var look: Dictionary = (looks[name] as Dictionary).duplicate(true)
+		for field: String in ["turn", "how", "line"]:
+			look.erase(field)
+		if not look.is_empty():
+			out[key(definition, at)] = look
+	for definition: String in gapped:
+		var section: String = gapped[definition][0]
+		var steps: Array = gapped[definition][1]
+		var state: Dictionary = {}
+		for at: int in steps.size():
+			var turn: Dictionary = turn_at(world, section, int(steps[at]))
+			if JSON.stringify(turn) == JSON.stringify(state):
+				continue
+			var look: Dictionary = out.get(key(definition, at), {})
+			if turn.is_empty():
+				look["turn"] = "end"
+			else:
+				look["turn"] = turn["turn"]
+				look["how"] = str(turn.get("how", "REL"))
+			out[key(definition, at)] = look
+			state = turn
+	return out
 
 
 ## The looks a model's file gives its steps, keyed as BrickWorld keeps them
@@ -666,7 +785,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2] in WORDS:
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
-			_step_lines(out, looks, definition, step, eol, wrote)
+			_step_lines(out, looks, definition, step, any_part, eol, wrote)
 			out.append(_ending(raw, looks, definition, step + 1, eol))
 			step += 1
 			any_part = false
@@ -747,7 +866,7 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 	var extra := PackedStringArray()
 	var look: Dictionary = looks.get(key(definition, step), {})
 	if any_part or not look.is_empty():
-		_step_lines(extra, looks, definition, step, eol, wrote)
+		_step_lines(extra, looks, definition, step, any_part, eol, wrote)
 	# A sub-model's callout, said once in it.
 	var whole: Dictionary = looks.get(definition + "|*", {})
 	if not definition.is_empty() and whole.has("callout") and not bool(whole["callout"]) \
@@ -758,15 +877,19 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 		out.insert(trailing + n, extra[n])
 
 
-## The app's own lines for one step, before the line that ends it.
+## The app's own lines for one step, before the line that ends it. A
+## sub-model's callout and the booklet's own lines go in its first step with
+## a part in it ([param parts]): not in the step a ROTSTEP before the first
+## part ends, which the file opened again has no part in, so the lines went
+## up above that ROTSTEP on the next save.
 static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: String,
-		step: int, eol: String, wrote: Dictionary) -> void:
-	if step == 0 and not definition.is_empty():
+		step: int, parts: bool, eol: String, wrote: Dictionary) -> void:
+	if parts and not definition.is_empty():
 		var whole: Dictionary = looks.get(definition + "|*", {})
 		if whole.has("callout") and not bool(whole["callout"]) and not wrote.has(definition + "|*"):
 			out.append(META + "CALLOUT OFF" + eol)
 			wrote[definition + "|*"] = true
-	if definition.is_empty() and step == 0 and looks.has(BOOKLET) and not wrote.has(BOOKLET):
+	if definition.is_empty() and parts and looks.has(BOOKLET) and not wrote.has(BOOKLET):
 		var whole: Dictionary = looks[BOOKLET]
 		var before: int = out.size()
 		_booklet_lines(out, whole, eol)

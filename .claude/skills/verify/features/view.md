@@ -1062,7 +1062,30 @@ picture the assistant is shown.
   brick, Ctrl-Z, Shift-] again; the export four steps of the model's own, the
   blue brick's ending in its ROTSTEP, read as LDraw reads it: a ROTSTEP ends a
   step as STEP does, which steps_flow's reader missed in m65; `--only=gatehouse`
-  alone), then opens 30050-1 (ROTSTEPs, ABS), 106-1 and 10016-1 (no steps) as
+  alone), then what is set on a step stays on it (`_settings_stay`,
+  `--only=stay`, headless with `--no-booklet` in about 3 minutes):
+  `tests/fixtures/steps/row.mpd` (seven steps of two bricks of a colour,
+  none on another, a pair of 1 x 1s with two steps of its own). The yellow
+  step gets every kind of setting a step has (turn, zoom, size, page alone,
+  parts off, sign off, picture, parts and number placed, words, a picture,
+  an arrow) by the Booklet row and `edit_booklet`; the black and the pair's
+  second step get a few; the booklet gets two a page and no outline. Then
+  the yellow step is moved every way on the timeline and by `edit_steps`
+  (earlier, later, merge with next, the one before merged into it, split
+  twice, a part moved out and one in, Delete step before it), the black
+  and the pair's step are moved, each undone and redone. After each, the
+  step holding the yellow brick has exactly its settings and its turn, the
+  others theirs, no other step any, and the undo gives the file back. Then
+  mcpwalk t2: a step's parts taken off by `edit_model`, saved and opened
+  again, another's taken off, a part put on, `edit_steps later` (the step
+  asked moves, not the next) and a merge, saved and opened again (the same
+  settings, and saved again the same text). It does this on the file
+  written back over and on a copy written whole (Author: Brickworks): 181
+  checks, of which 19 fail on the code before stepsettings. Windowed, it
+  also puts a step earlier with Lay out page… up on its page and checks no
+  step there shows a picture drawn of another (`_pictures_follow`), and
+  writes `row_before_move.html` and `row_after_earlier.html` to print. Then it opens
+  30050-1 (ROTSTEPs, ABS), 106-1 and 10016-1 (no steps) as
   File, Open does; checks a file
   opened and saved unchanged is the file; merges, splits, reorders (and is
   refused where a step stands on the one before), moves a part, each one
@@ -1146,8 +1169,12 @@ picture the assistant is shown.
   outline's orange pixels on and off); `booklet_edit_flow.mjs` drags the
   picture onto the margin and the parts list's corner by the mouse in a
   browser, adds words and a picture through the file chooser, draws an
-  arrow, Ctrl-Z / Ctrl-Shift-Z, and reads the printed page (`path.drawn-arrow`)
-  and the exported file (ARROW, PANEL).
+  arrow, Ctrl-Z / Ctrl-Shift-Z, then puts that step Later on the timeline
+  (Earlier where the next stands on it), and reads the row of the moved step
+  (still a new page) and of the step it swapped with (still alone), the
+  printed page of the moved step's new number (the picture as dragged, the
+  words, the picture and `path.drawn-arrow`, none on any other page) and the
+  exported file (ARROW, PANEL).
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

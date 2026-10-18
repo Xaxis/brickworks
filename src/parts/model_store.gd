@@ -1368,7 +1368,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
-	text = _with_looks(text)
+	text = _with_looks(text, true)
 	if model != world:
 		model.free()
 	made.append(with_set(text, from_set))
@@ -1376,15 +1376,17 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 
 ## [param text] with how the booklet shows each step written into it
 ## (BookletLooks): ROTSTEP for a turn, the app's own lines for the rest. A
-## model with no steps of its own is left alone.
-func _with_looks(text: String) -> String:
+## model with no steps of its own is left alone. [param whole]: the text was
+## written whole, its steps one after another with none empty
+## (BookletLooks.as_written), not written back over the file it came from.
+func _with_looks(text: String, whole: bool = false) -> String:
 	if world.step_looks.is_empty() and not AuthorSteps.any(world, scenery):
 		return text
 	if world.step_looks.is_empty() and not BookletLooks._written_in(text):
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
-	return BookletLooks.written_into(text, world.step_looks, parsed._assembly_names(),
-		LdrModel._key(parsed.main.name))
+	return BookletLooks.written_into(text, BookletLooks.as_written(world, scenery) if whole
+		else world.step_looks, parsed._assembly_names(), LdrModel._key(parsed.main.name))
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)
