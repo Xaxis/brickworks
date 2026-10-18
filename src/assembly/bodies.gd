@@ -532,8 +532,8 @@ func _read() -> void:
 ## Each piece of the model that nothing holds where it is (no part of it
 ## on the baseplate's studs, none locked) and that is lodged in another
 ## piece (a part of it shares cells with a part of the other) is held by
-## what it is lodged in: its part joined to the part it shares most cells
-## with. A piece of one part is an axle in a pin's stop bush or in an axle
+## what it is lodged in: its part joined to the part whose box its own is
+## most into. A piece of one part is an axle in a pin's stop bush or in an axle
 ## joiner, whose axle holes the connectors do not name on the part's own
 ## line (32054, 26287), or a gear a model file carries as a part of its own
 ## ("42080 - 18575") on its axle; a bigger one, a log held up in a
@@ -567,7 +567,9 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if biggest < 0 or (parts_of_piece[piece] as Array).size() > (parts_of_piece[biggest] as Array).size():
 			biggest = piece
 	var bending: Dictionary = {}   ## part -> true: a hose, a string, a chain
+	var world_box: Dictionary = {}   ## part -> its box where it stands
 	for entry: Array in entries:
+		world_box[int(entry[0])] = (entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds
 		if Bodies.bends(library, str(entry[3])):
 			bending[int(entry[0])] = true
 			held[Bodies._piece_find(up, _find(int(entry[0])))] = true
@@ -579,7 +581,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if piece == biggest or held.has(piece) or keys.size() > LODGE_MOST:
 			continue
 		var best: int = 0
-		var most: int = 0
+		var most: float = -1.0
 		var from: int = 0
 		for key: int in keys:
 			var boxes: PackedInt32Array = lattice.boxes_of(key)
@@ -589,8 +591,10 @@ func _lodge(entries: Array, candidates: Array) -> void:
 				if not _up.has(other) or bending.has(other) \
 						or Bodies._piece_find(up, _find(other)) == Bodies._piece_find(up, _find(key)):
 					continue
-				var shared: int = BrickLattice.shared_cells(boxes, lattice.boxes_of(other))
-				if shared > most or (shared == most and shared > 0 and other < best):
+				# How far into each other their boxes are, the room they share:
+				# counting their shared cells cost 42081-1's reading 5 s.
+				var shared: float = (world_box[key] as AABB).intersection(world_box[other]).get_volume()
+				if shared > most or (is_equal_approx(shared, most) and other < best):
 					most = shared
 					best = other
 					from = key
