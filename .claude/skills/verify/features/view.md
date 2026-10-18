@@ -656,7 +656,23 @@ picture the assistant is shown.
   now is: steps with a hidden new thing 14.5% to 12.1%, steps with a floating
   thing 10.3% to 7.5%, things put in under 6.3% to 5.7%, the build check's
   floating 12.2% to 8.0%, steps of one thing 23.3% to 19.5%, tau 0.30 to
-  0.28; planning about twice main's.
+  0.28; planning about twice main's. Then (2026-10-17, planner2): what hides
+  a step's part is looked for in the cells of space near it
+  (`Pictures._built`, `_cover`), a part on studs is asked about covers only
+  against parts no stud seats, and `_steadier` reads what a region waits on
+  only when another region has a part ready, all three changing no step; a
+  loop gives up a pin's, a side stud's or a pressed-up plate's need across a
+  sub-assembly before the sub-assembly (`_ease`, level 3); and a sub-model
+  off the table joined to the rest is a sub-assembly though it waits on
+  nothing outside (`_holds_together`). `instructions_probe` holds 71200's
+  subModel-4 and 8032's steering knuckles to callouts. On the held-out
+  sample, judged once against 82e027d: the authors' sub-assemblies built on
+  the side 51.1% to 54.2%, steps with a hidden new thing 12.1% to 11.4%,
+  things put in under 5.7% to 5.3%, steps with a floating thing 7.5% to
+  7.7% (within noise), tau 0.284 to 0.285; planning still about twice
+  main's. The steps score's build check stands the table where the parts
+  reach (`Lbm.PartMesh.lowest_at`), not at the lowest box, which a turned
+  wheel's hangs below: the authors' own row 6.3% to 0.9%.
   Sub-assemblies are built on the side, as a real booklet's callouts are: a
   minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
   places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
@@ -673,8 +689,9 @@ picture the assistant is shown.
   wing on its edge is built brick on brick in its own frame. A flexible thing
   inside one goes in as one there too (`Assembly.bundles`). A loop that would cost one its
   callout gives up the needs guessed from touching boxes first, then those
-  read off a box, and only then the smallest assembly on it (`_contract`,
-  `_ease`). A flexible thing drawn in pieces outside a callout goes in as one
+  read off a box, then any but a stud's across a sub-assembly on it (a pin's,
+  a side stud's, a pressed-up plate's), and only then the smallest assembly
+  on it (`_contract`, `_ease`). A flexible thing drawn in pieces outside a callout goes in as one
   part (`_find_bundles`, `Assembly.whole`). Each stands in the main build as one node; its
   own steps (`Step.in_callout()`, up to `CALLOUT_PER_STEP`, a figure in one)
   come just before the step that puts it on (`Step.attaches()`, no bricks of

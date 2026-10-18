@@ -65,6 +65,20 @@ chose for real sets, says what the measure showed, and what changed.
   and tau 0.30 to **0.28** (paired -0.016, -0.057 to +0.022). Hidden misses
   12% by a tenth and tau 0.30 by two hundredths (After). A first pass, with
   wheels on early, had judged tau at 0.25 and 0.26.
+- **The callouts back** (2026-10-17, later). Reading the covers had cost
+  the authors' sub-assemblies in two ways: a loop of a pin's or a side
+  stud's needs gave the callout up, and a sub-model waiting on nothing
+  outside it read as the start of the model. Both are fixed; on tune 53.0%
+  to **57.6%** of the authors' sub-assemblies are built on the side, more in
+  27 files and fewer in none; on the held-out sample, judged once, 51.1% to
+  **54.2%** (paired +3.1, +1.8 to +5.1), and steps with a hidden new thing
+  12.1% to **11.4%** (-0.8, -1.4 to -0.2), under the 12% asked. Tau did not
+  come back with them (0.284 to 0.285, short of 0.30), and planning still
+  takes about twice main's time, where 1.2 times was asked (After). The
+  authors' own row of the build check had risen because a turned wheel's
+  box set the table under every part: at the table where the parts reach,
+  an author's step leaves 0.9% of what it adds floating on proof and none
+  on tune, against 3.1% and 6.0% on the floor.
 - **Pages.** A small model is no longer cut into "Part 1" and "Part 2": 918
   Space Transport's booklet lost a one-step page and a repeated banner. A
   section that touches nothing built before it is drawn on its own: 7636's
@@ -506,6 +520,43 @@ cost, later on 2026-10-17:
     one step, then "the rest", two banners on one page.
     `instructions_probe` checks one at the start and one at the end.
 
+Then the callouts back, and less walking in what planning reads, 2026-10-17
+(planner2). The first three change no step: the 100 tune files plan step for
+step as before.
+
+31. **What hides a step's part is looked for near it** (`Pictures._built`,
+    `in_front`, `_cover`, `_covered`). The parts built so far were kept by
+    the squares of the front picture they land in, so every part along a line
+    of sight across a big model was looked at for each part asked about, to
+    find the few within a stud and a bit of it; they are kept by the cells of
+    space their boxes fill now. And a part's pixels left in sight are worked
+    out by walking the smaller of the two sets each time, where each pixel
+    asked every part in front of it in turn.
+32. **A part on studs is asked about covers only against parts no stud
+    seats** (`_contacts_of`), which is all the pairing kept; it was asked
+    about every part near it, and turned away those on studs one by one.
+33. **What a region waits on is read only when another region has a part
+    ready that would stand** (`_steadier`). In the hand, one region, every
+    part left was read at every step's start, for nothing.
+34. **A loop gives up a pin's, a side stud's or a pressed-up plate's need
+    across a sub-assembly before the sub-assembly** (`_ease`, a third level
+    after the guesses and the boxes). Which of two pinned parts goes first is
+    a choice the plan made, and so is a part's waiting on what holds it from
+    the side, or a plate's on what it is pressed up under; only a stud's,
+    which says what rests on what, is kept. Such loops had cost Vernie its
+    arms, pinned to its body; 70816 two walls, a plate pressed up under a
+    part standing on them; 8143 eight four-part assemblies; 21046 six.
+35. **A sub-model off the table and joined to the rest is a sub-assembly,
+    though nothing of it waits on the rest** (`_holds_together`). Read off
+    the covers, 7130's wings, 8032's steering knuckles, 8062's and 8022's
+    small sub-models waited on nothing outside them, so they counted as the
+    start of the model, built in place, where their authors build them on
+    the side. One on the table still counts so: two plates lying there are
+    the start of the model, not a callout. `instructions_probe` holds
+    71200's subModel-4 (34) and 8032's knuckles (35) to callouts.
+36. **The measure: the build check's table stands where the parts reach**
+    (`steps_score.gd` `_check_floating`), not at the lowest box (After).
+
 ## After
 
 ### The author's steps and Technic pins (2026-10-15)
@@ -837,6 +888,123 @@ took 76161's order (the step pictures and the choosing) from 3.0 s to under
 the rest (Orthanc's Timeline, 9,541 parts: 11.2 s, no frame over 160 ms
 against the budget of 200, `progress_probe`).
 
+### The callouts back, and the build check's table (2026-10-17, planner2)
+
+Asked for: planning back to 1.2 times main's time, the authors'
+sub-assemblies the covers had cost, steps with a hidden new thing at most
+12% on proof, and why the authors' own row of the build check rose. Before
+is 82e027d (the section above, as merged); 31 to 36 above are the change.
+
+**The callouts.** On tune, the 18 files that built fewer of their authors'
+sub-assemblies than main had lost them two ways. Over 20 of the files whose
+callouts changed, planned as opened, main kept 396 sub-assemblies and
+before 365: 20 more were given up on a loop, of a pin, a side stud or a
+plate pressed up under a part (34), and 11 were no longer found, since
+nothing in them waited on the rest (35). After: 415, and 3 still not found
+(7325's temple and 40274's stand, on the table, and 71200's subModel-7).
+Over all 100 tune files, the authors' sub-assemblies built on
+the side went from 53.0% to **57.6%** (paired +4.6, +2.6 to +6.8), more in
+27 files and fewer in none; the 18 files build 362 of them, where main built
+344 and before 305. Their order did not come back with them: tau over the 18
+summed 4.49 on main, 4.17 before, 3.91 after, and on all of tune 0.290 to
+0.292 (+0.001, -0.013 to +0.016). Building the author's sub-assembly on the
+side is not building it when the author does: 8032's knuckles are callouts
+again and its tau is 0.04, where main's was 0.49, because the author builds
+the frame first.
+
+**The build check's table.** The authors' own row rose (3.1% to 6.3% on
+proof, 6.0% to 7.8% on tune) because the measure was wrong, not the
+authors. The check stood the model on a table at its lowest box, and a
+turned part's box hangs below the part wherever it does not fill it: 8810's
+tyre box reaches 9.6 LDU under the tyre, 6716's wagon wheel 8.7. More than
+two cells under every part, nothing stood on the table, and the check called
+every part a sampled step added floating: all of 7410's, 60059's and
+6799's on tune (363 parts, every one the row counted), and 6716's, 8810's,
+9471's and 40138's on proof. The table now stands where the parts reach
+(`Lbm.PartMesh.lowest_at`, which the check itself stands a part by). With
+it the authors' row on tune is **0.0%**, where the floor under the finished
+model gives 6.0%: at the table, nothing an author's step adds floats.
+
+**Proof**, judged once at the end: before is 82e027d, after is this change,
+both scored with the measure as it now is, side by side; the interval is
+after's. The paired change, file by file (`compare`): the authors'
+sub-assemblies built on the side +3.1 (+1.8 to +5.1), more in 19 files and
+fewer in none; steps with a hidden new thing -0.8 (-1.4 to -0.2); things put
+in under -0.4 (-0.8 to -0.1); parts the build check calls floating -0.2
+(-0.6 to +0.0); steps with a floating thing +0.2 (-0.3 to +0.9); tau +0.001
+(-0.014 to +0.018), better in 9 files and worse in 10; planned as opened,
+the other 81 come out the same step for step.
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.94 → **0.94 (0.90–0.97)** | 0.28 → **0.29 (0.21–0.36)** | 0.28 → **0.28 (0.21–0.35)** | 0.25 |
+| author's same-step pairs kept together | 100.0% | 95.2% → **95.2% (88.3–98.6)** | 23.1% → **23.5% (12.3–42.1)** | 21.1% → **21.1% (10.4–39.6)** | 9.0% |
+| steps for each of the author's | 1.00 | 1.00 → **1.00 (1.00–1.03)** | 1.05 → **1.06 (0.99–1.22)** | 0.87 → **0.87 (0.79–1.00)** | 0.77 |
+| steps of one thing | 19.9% | 20.9% → **20.9%** | 19.5% → **19.4%** | 20.8% → **20.8%** | 0.2% |
+| author's sub-assemblies built on the side | 97.9% | 54.0% → **54.3% (41.0–68.2)** | 51.1% → **54.2% (41.0–68.1)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.7% | 9.9% → **9.9% (7.9–11.8)** | 12.1% → **11.4% (9.0–14.1)** | 20.6% → **20.6% (17.4–23.5)** | 21.2% |
+| things put in under one already there | 0.9% | 5.3% → **5.2% (3.9–6.7)** | 5.7% → **5.3% (3.4–8.4)** | 19.3% → **19.3% (12.8–26.7)** | 26.3% |
+| things floating at their step | 0.7% | 3.1% → **3.1% (2.1–4.3)** | 6.8% → **7.0% (4.5–10.0)** | 10.7% → **10.7% (6.9–15.0)** | 14.6% |
+| steps with a floating thing | 1.3% | 4.3% → **4.3% (3.1–5.5)** | 7.5% → **7.7% (5.5–10.2)** | 11.4% → **11.4% (8.1–14.9)** | 27.0% |
+| ...the floor and a piece begun as the table, as 2026-10-16 | 1.3% | 5.0% → **5.0% (3.7–6.3)** | 8.4% → **8.5% (6.2–11.1)** | 12.2% → **12.2% (8.9–15.8)** | 26.5% |
+| ...and no stud from the side holding, as before | 3.4% | 6.6% → **6.6% (5.1–8.1)** | 9.2% → **9.6% (7.0–12.6)** | 13.0% → **13.0% (9.8–16.6)** | 26.2% |
+| parts the build check calls floating at sampled steps | 0.9% | – | 6.1% → **5.9% (2.3–10.7)** | 11.5% → **11.5% (4.9–19.4)** | – |
+| ...the ground the floor under the finished model, as before | 3.1% | – | 15.8% → **15.3% (8.7–24.2)** | 26.0% → **26.0% (16.2–37.3)** | – |
+| steps in all | 11,930 | 12,243 → 12,247 | 12,557 → 12,754 | 10,491 → 10,491 | 7,356 |
+
+Against what was asked: steps with a hidden new thing **11.4%** (at most
+12%) is met. Tau, **0.285**, is not (0.30): the callouts came back and the
+order did not. Steps with a floating thing went from 7.5% to 7.7%, within
+its noise, where it was to be at least as good. The authors' own build check
+row is **0.9%** at the table (6.3% by the box before), against 3.1% on the
+floor under the finished model.
+
+**Tune**, against before with the measure as it now is, the same minutes
+(the "before" here differs from the section above only in the build check's
+row). The paired change: the authors' sub-assemblies built on the side
++4.6 (+2.6 to +6.8), things put in under -0.7 (-1.0 to -0.4), steps with a
+hidden new thing -0.3 (-0.6 to +0.1), things floating -0.5 (-1.6 to +0.4),
+tau +0.001 (-0.013 to +0.016), better in 16 files and worse in 14.
+
+| Measure | the author's | the booklet's reading of them, before → after | ours, before → after | ours, no sub-models, before → after | bottom up |
+|---|---:|---:|---:|---:|---:|
+| Kendall tau-b against the author | 1.00 | 0.90 → **0.90 (0.85–0.94)** | 0.29 → **0.29 (0.22–0.36)** | 0.26 → **0.26 (0.20–0.33)** | 0.23 |
+| author's same-step pairs kept together | 100.0% | 92.9% → **93.0% (81.8–98.4)** | 68.3% → **68.5% (32.1–84.4)** | 65.6% → **65.6% (27.8–83.3)** | 4.1% |
+| steps for each of the author's | 1.00 | 1.02 → **1.02 (1.00–1.05)** | 1.11 → **1.18 (0.96–1.37)** | 0.93 → **0.93 (0.85–1.12)** | 0.83 |
+| steps of one thing | 18.5% | 20.4% → **20.4%** | 17.9% → **17.6%** | 16.6% → **16.6%** | 0.2% |
+| author's sub-assemblies built on the side | 97.4% | 58.7% → **59.3% (49.8–68.6)** | 53.0% → **57.6% (47.9–67.1)** | 0.0% → **0.0% (0.0–0.0)** | 0.0% |
+| steps with a hidden new thing | 6.0% | 8.3% → **8.2% (6.7–10.0)** | 10.6% → **10.4% (8.4–12.5)** | 18.5% → **18.5% (15.8–21.1)** | 23.0% |
+| things put in under one already there | 1.2% | 6.9% → **6.7% (5.0–8.8)** | 6.3% → **5.7% (4.0–7.7)** | 16.0% → **16.0% (12.8–20.0)** | 26.2% |
+| things floating at their step | 1.2% | 3.4% → **3.4% (2.0–5.1)** | 5.6% → **5.1% (3.4–6.8)** | 6.9% → **6.9% (4.6–9.1)** | 14.0% |
+| steps with a floating thing | 1.2% | 4.4% → **4.4% (2.9–6.1)** | 6.7% → **6.7% (5.1–8.2)** | 9.2% → **9.2% (6.8–11.7)** | 27.6% |
+| ...the floor and a piece begun as the table, as 2026-10-16 | 1.2% | 5.5% → **5.4% (3.7–7.3)** | 7.7% → **7.5% (5.7–9.3)** | 11.3% → **11.3% (8.3–14.4)** | 26.8% |
+| ...and no stud from the side holding, as before | 2.9% | 7.5% → **7.4% (5.8–9.2)** | 10.3% → **9.7% (8.0–11.5)** | 14.8% → **14.8% (11.6–18.3)** | 29.5% |
+| parts the build check calls floating at sampled steps | 0.0% | – | 3.6% → **3.9% (0.9–8.0)** | 8.1% → **8.1% (2.7–15.2)** | – |
+| ...the ground the floor under the finished model, as before | 6.0% | – | 12.3% → **12.2% (5.2–21.2)** | 19.9% → **19.9% (10.6–31.3)** | – |
+| steps in all | 9,650 | 10,075 → 10,061 | 10,488 → 10,652 | 8,273 → 8,273 | 6,692 |
+
+**Planning** did not come back to 1.2 times main's. Back to back on this
+machine, `Instructions.plan` alone on the 100 proof files as opened, main
+(d24d4d6), before and this one after another, twice, at load 33 to 48:
+
+| | main | before | after |
+|---|---:|---:|---:|
+| the 100 proof files, first run | 16.4 s | 37.5 s (2.3 times) | 42.2 s (2.6 times) |
+| the 100 proof files, second run | 25.1 s | 55.3 s (2.2 times) | 42.7 s (1.7 times) |
+| 76161 (2,398 parts), first run | 0.96 s | 3.34 s | 3.06 s |
+| 76161, second run | 1.76 s | 4.10 s | 3.25 s |
+
+The load rose from 40 to 48 as the first run's "after" ran, so neither run
+says more than that the three changes that keep every step (31 to 33) took
+off a little, not half. Stage by stage over the same 100 files, against main:
+what rests on what 3.2 s to 10.0 s (the covers, 7.0 s of it), the order on
+the model 1.2 s to 9.4 s and in the hand 1.1 s to 6.5 s (the step pictures,
+9.2 s, most of it drawing each part's box a pixel at a time), a model on its
+stand read again in its frame 1.8 s to 2.7 s (ours timed with its own clocks
+in, which adds a little). So reading the covers twice for a model on its
+stand is not where the time is, but on 76161 alone; the pictures and the
+covers of every model are. What is left says what might.
+
 ## The pages
 
 Booklets of three proof models with their steps taken out, made on the
@@ -984,6 +1152,25 @@ frame first.
 
 ![8032 after, page 3](instructions/8032-after-page3.webp)
 
+Then the callouts back (2026-10-17, planner2): three tune models with their
+steps taken out, made on the desktop on the GPU with 82e027d and with this
+change, and read page by page.
+
+8032 Cabrio (186 parts), before: step 1 is the steering knuckle built in
+place, under "the rest", and the second knuckle the same way later.
+
+![8032 before, page 2](instructions/8032-planner2-before-page2.webp)
+
+After: each knuckle is a callout of two steps, as its author builds it
+("Cabrio Sub 6a", "Cabrio Sub 7"), put on in steps 1 and 2, and the long
+red beam joins them at step 2. 29 steps where there were 39. What reads
+badly: step 1 puts on, beside the first knuckle, two red beams standing on
+end, and the right one stands alone, joined to nothing, until a later step.
+
+![8032 after, page 2](instructions/8032-planner2-after-page2.webp)
+![8032 after, page 3](instructions/8032-planner2-after-page3.webp)
+
+
 ## What is left
 
 - **Order.** Ours reads what the file's shape says and not what its author
@@ -995,12 +1182,13 @@ frame first.
 - **Order, again.** Wheels last won most of tau back (0.26 to 0.28 on
   proof, 0.275 to 0.290 on tune), short of main's 0.30. Reading what rests
   on what off the covers still moves tau by up to 0.8 in a file, either way,
-  and costs the author's sub-assemblies a little (54.7% to 53.0% on tune):
-  18 tune files build fewer of them on the side, and those files lost 0.82 of
-  tau between them. The likely cause, not yet confirmed, is a loop the new
-  supports make, on which `_contract` gives the callout up. Giving such a
-  loop up before a callout, as `_ease` does for guessed supports, was asked
-  for this round and not done; it is the next thing to try.
+  and had cost the author's sub-assemblies a little (54.7% to 53.0% on
+  tune). Those are back (57.6%, 34 and 35 above: a loop of a pin's or a side
+  stud's needs, and a sub-model waiting on nothing outside it), and the
+  order did not come back with them (tau 0.290 to 0.292 on tune): a callout
+  built when the author does not build it is still out of the author's
+  order. When each sub-assembly goes on is what is left, and the shape does
+  not say it.
 - **Every step buildable.** On the held-out sample one step in thirteen
   still floats something (7.5%), against one in eighty for authors, and 5.7%
   of things go in under one already there, against 0.9%; one step in eight
@@ -1014,10 +1202,17 @@ frame first.
     stands.
   - **The app's build check** calls 4% of the parts our sampled steps add
     floating (17% before), against 3% of the authors'.
-- **The covers cost time**: planning takes about twice main's (76161 1.9 s
-  to about 4 s, back to back at load), most of it now reading the covers,
-  twice for a model on its stand. Reading them once and turning the answer
-  into the stand's frame is open.
+- **The step pictures and the covers cost time**: planning still takes
+  about twice main's. Over the 100 proof files, stage by stage against main,
+  the extra is the step pictures (the order on the model 1.2 s to 9.4 s, in
+  the hand 1.1 s to 6.5 s, most of it drawing each part's box a pixel at a
+  time and comparing pixels) and the covers (what rests on what 3.2 s to
+  10.0 s); reading the covers a second time for a model on its stand is
+  0.9 s of the hundred files, most of it 76161's. Walking less of either
+  (31 to 33) changed little: what costs is the drawing and the comparing
+  themselves, a dictionary entry at a time in GDScript. Drawing each face as
+  a polygon and taking what hides it away natively (Geometry2D's clipping),
+  and comparing covers in native code, is what is open.
 - **Sub-assemblies.** Ours builds on the side sub-models of at most 60
   parts and under 30% of the model (`ASSEMBLY_MOST`), a sub-model put on
   at an angle up to half the model, and one the model places itself at any
