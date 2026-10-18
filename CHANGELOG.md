@@ -50,6 +50,17 @@ whole cycle.
 - A universal joint at an angle turns its far shaft unevenly, ahead of the
   near one and behind it within each half turn, as a real one does, and
   the gears past it with it; it turned them at the average rate.
+- Hoses bend and follow what they join. Raise an arm, swing a cylinder or
+  turn a turret that one end of a pneumatic tube, a ribbed hose, a
+  flex-system hose, a flexible axle or a string is in, and the hose is laid
+  again between its two fittings as it moves, as long as it was and bent
+  the way it was: on 42080-1's crane the tubes from the cab follow the arm
+  up. Before, the hose stayed where it was drawn and its end came out of
+  its fitting. A hose has a length: pulled as far as it reaches it holds
+  what it joins, and the status bar and move_part say which hose holds it.
+  The hose is part of the move's one undo step. Saved, a hose LDCad laid
+  keeps LDCad's path in the file, where the hose now lies, so LDCad opens
+  it bent as it was left.
 
 ### Changed
 

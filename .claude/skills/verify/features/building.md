@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab -->
 
 ## Sub-features
 
@@ -834,6 +834,38 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
   flicked the same way staying where it was let go (spin= says it does not
   coast). Each fails with its fix taken out.
+- `hoses follow a grab` (`src/assembly/flex_follow.gd`, `FlexFollow`;
+  MECHANISMS §18): a pneumatic tube, a ribbed hose, a flex-system hose, a
+  flexible axle or a string (Flex's swept kinds, and the same parts LDCad laid:
+  165 and 166 read as 71533k01 and k03, 79 and 80 as 71944k01 and k02) whose
+  one end is held by a part a grab moves and the other by one it does not is
+  read at the press (`Grab._chosen`): its ends off its own end pieces
+  (`Flex.ends_of_item`, which way each points told by its pieces, LDCad's
+  bulged end being the other way round), the part across the hose's joint
+  nearest each tip, its length along its pieces, its bend (`Flex.fit_bend`, as
+  Reshape reads one). Each drawn frame (`Grab.drawn`, from every
+  `world.set_drawn` of a drag, a swing, a coast, a settle) it is laid again
+  between its ends' new places by `Flex.lay_swept`, its bend points carried by
+  both ends, the length search started from the last frame's (`hint`) and the
+  path drawn by at most 160 points (`FlexFollow.POINTS`). A pose that puts its
+  ends further apart than it reaches (straight runs plus the line between)
+  is no pose (`Grab._test`): the drag stops there and the status bar and
+  move_part say "the pneumatic tube from the … holds it". Kept, it moves piece
+  for piece, or is laid afresh in its place (`FlexFollow.swap`) when its layout
+  lays more or fewer pieces, own end parts and colours kept, in the grab's one
+  undo step. Saved, a hose LDCad laid gets its `PATH_POINT`s and `PATH_CAP`s
+  where it now lies (`src/parts/ldcad_path.gd`), in a file written back over
+  its source and in one written whole. `grab_probe -- --only=hoses` (windowed
+  for pictures; `--hose=made|42080|42043|42050`, `--debug` prints the fit): a
+  tube the app lays from the floor to an arm on a hinge, turned 20° (its ends
+  in their holes, its length kept), kept, one undo, saved and opened again,
+  then a tube 3% longer than the way between its holes stopping the arm
+  and named by move_part; 42080-1's arm lowered 6° with its tubes from the cab
+  (its T-pieces, held by nothing, hold nothing by a tube's length)
+  (saved and reopened, LDCad's path between the new ends), 42043-1's cylinder,
+  42050-1's ribbed hoses.
+  `grab_probe -- --flex-survey FILE...` lists every
+  flexible thing held at both ends and the joint between its ends (FLEX rows).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
@@ -843,7 +875,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and comes to rest, and the swing's own frame cost is read from the page;
   then takes a gear 40 on a free axle by its rim, turns it round at half a
   turn a second by the clock and lets go turning: it coasts and says how far
-  (`coast_deg_s` on the page), its coasting frames' own work under 33 ms
+  (`coast_deg_s` on the page), its coasting frames' own work under 33 ms;
+  then opens a tube laid from the floor to an arm on a hinge
+  (`tests/fixtures/grab10/made_hose.ldr`) and drags the arm: the page says the
+  tube was laid again (`hoses`, `hose_worst_ms`) and the drag frames' own work
+  stays under 33 ms
   (eight handles at most; the page asks for them with
   `window.brickworksGrabAsk`, and the app finds none unless asked); the
   app's frame cost of a drag and the page's longest wait. `--big=FILE

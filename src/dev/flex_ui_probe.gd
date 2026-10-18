@@ -269,7 +269,7 @@ func _saved_and_reshaped() -> void:
 	var laid_again: Flex.Laid = _flex._compute()
 	var worst: float = 0.0
 	for point: Vector3 in shape:
-		worst = maxf(worst, point.distance_to(laid_again.path.at(FlexTool._along(laid_again.path,
+		worst = maxf(worst, point.distance_to(laid_again.path.at(Flex.along_of(laid_again.path,
 			point))))
 	_check("laid again from what was read, it lies within %.1f LDU of where it was" % worst,
 		worst < 6.0)

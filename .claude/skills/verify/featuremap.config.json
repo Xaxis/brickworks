@@ -2287,6 +2287,13 @@
       "entry": "src/assembly/swing.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=coast   (by hand: on a gear or a wheel on a free axle, drag it round and let go while it turns; it coasts and stops against its bearing's friction)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "hoses follow a grab",
+      "entry": "src/assembly/flex_follow.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=hoses   (by hand: open 42080-1 and raise the crane's arm; its pneumatic tubes from the cab bend and follow; drag an arm a tube is too short for and it stops, the status bar naming the tube)",
+      "area": "building"
     }
   ]
 }

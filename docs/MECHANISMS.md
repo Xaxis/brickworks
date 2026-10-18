@@ -2623,3 +2623,182 @@ local export was made, and the flow waited on the box past the time box).
 8283-1 is the one set the sweep could not read to the end: turning it made
 a copy of a shared sub-assembly its own, which gives its parts new
 numbers, and the row is empty.
+## 18. Hoses that follow what they join (G10)
+
+G7 let a hose bend rather than hold what it joins (`Bodies.flexible`), and
+left it where it was drawn: raise 42080-1's crane arm and the tubes from the
+cab stayed put, their ends out of the fittings on the arm (§16). G10 lays
+each such hose again as the section moves.
+
+**The cases.** `grab_probe -- --flex-survey` over 22 sets with pneumatic
+parts, hoses, strings or chains lists every flexible thing held at both ends
+and the joints between the two bodies holding them
+(`bench/results/grab10-2026-10-18/flex_survey.txt`). 96 hoses in 9 sets are
+held at both ends; 51 of them have a joint between their ends, so a grab
+moves one end and not the other. The other 45 run between parts that are
+pieces of their own (a T-piece or a valve no joint holds), each with its own
+anchor: a grab of either moves one end too.
+
+| set | what bends | its two ends | what moves one end |
+|---|---|---|---|
+| 42080-1 | 15 pneumatic tubes LDCad laid (165 and 166, read as 71533k01 and k03) | the cab's valve u9417 and the hose connectors on the arm (LQ-11, LQ-12); the arm head's cylinder 2947b and its connectors (LQ-9, LQ-10); a connector and a cross block across the turret (LQ-1) | the arm on its pin (493 to 606 parts, raised by its two cylinders); the arm head on its turntable (132); the head's cylinder on its axle; the turret on its turntable (1,346) |
+| 42043-1 | 14 pneumatic tubes | connectors on the arm and the 2 x 11 and 1 x 11 cylinders (19, 20, 22, 23); a pin and a cross block (1) | each cylinder on its axle or pin (3 or 4 parts) |
+| 42053-1 | 15 pneumatic tubes | the valves 47223 and the cylinders 19466 (LQ-07 to 10); the valves and the grabber's cylinder (LQ-11 to 14) | the cylinders on their axles; the boom (266 parts); the grabber |
+| 8110-1 | 9 pneumatic tubes | the valves on the crane arm and the curved cylinders 47224 (LQ-5 to 8) | the cylinders on their pins; the crane arm on its axle (501 parts) |
+| 8868-1 | 13 pneumatic tubes | the gripper's flex-system hoses and its 1 x 5 cylinder | the gripper's hinges |
+| 8851-1 | 8 pneumatic tubes | the T-pieces on hinges and a brick 1 x 16, a valve | the T-pieces on their hinges |
+| 8854-1 | 6 pneumatic tubes | the valve, T-pieces and cylinders 2793, all pieces of their own | either piece |
+| 42050-1 | 9 ribbed hoses LDCad laid (79 and 80, read as 71944k01 and k02) | pins and cross blocks on the engine and the frame | the engine's cone on its axle (23 parts) |
+| 42029-1 | 2 ribbed hoses | pins on the pickup's panel and its frame | the panel (44 parts), in a loop of 44 joints too big to solve: the grab is refused |
+
+Strings: no set surveyed has a string with end studs (71149) held at both
+ends; 42042-1's winch rope and 42082-1's rope are skins LDCad drew, one mesh
+each, which no layout here lays (CADTASK). Chains: every chain in the sets
+(8838-1, 8835-1, 42035-1, 8844-1, 42050-1, 10124-1) is held by no joint, link
+or sprocket, so no grab parts it, and none has its sprockets on two bodies a
+grab moves apart. A chain already couples its sprockets in the gear reading
+(`Mechanism._find_chains`, §2): turning one turns the others. Laying a chain
+again as its sprockets move is left. LSynth hoses (8273-1, 8275-1) and
+8049-1's tubes, whose middles are skins, are not Flex's kinds and are carried
+whole as before.
+
+**How it follows** (`src/assembly/flex_follow.gd`). At the press
+(`Grab._chosen`) every flexible body whose one end is held by a part that
+moves and the other by one that does not is read as an item: its kind
+(`Flex.strung`, so LDCad's 165 is the tube's end), its two ends off its own
+end pieces (`Flex.ends_of_item`), the part across the hose's joint nearest
+each tip, its length along its pieces as they lie, end to end, and its bend
+(`Flex.fit_bend`, as Reshape reads one, now from one to seven bend points).
+The bends of every hose in the model are read ahead with the bodies, on the
+worker (`GrabDrag._read_all`, `FlexFollow.fit_all`): read at a drag's first
+frame, 42080-1's six tubes held it half a second. Each drawn frame of a
+drag, a swing, a coast or a settle (`Grab.drawn`, wherever the window draws
+a grab) each item is laid again by its kind's own layout (`Flex.lay_swept`)
+between where its ends' holders put its tips, the way each leaves turned
+with them, its bend points carried by both ends, each by as much as it is
+near that end. One whose ends move alike is carried whole. Its pieces are
+drawn slot for slot onto its own; kept (`Grab.commit`), it is moved piece by
+piece where the layout lays as many, and otherwise laid afresh in its place,
+its own end parts and colours kept (`FlexFollow.swap`), in the move's one
+undo step.
+
+Three things the reading found. LDCad puts a pneumatic tube's bulged end
+(71533k01) on the other way round from the end Flex lays (71533k02): read as
+Flex's, each end left its fitting backwards, into the valve, and the tube was
+read back 15 to 21 LDU off where it lay. Which way an end points is now read
+from the piece next to it (`Flex._faces_away`), and an own end the other way
+round is laid turned half round (`FlexFollow._own_end`). LDCad lays a ribbed
+hose's rings closer than their pitch (42050-1's 4.8 LDU apart, not 6.25):
+its length by its rings was a quarter too long, so a hose's length is
+measured along its pieces, its rings' count used only where the two agree.
+And the layout's end tangents were never shorter than a fifth of the whole
+gap between the ends, which with bend points near the ends overshot each
+one: the least is now a fifth of the way to the next point the curve goes
+through, which changes nothing for a hose without bend points or one that
+fitted before.
+
+**A hose has a length.** A pose that would put a hose's ends further apart
+than it reaches is no pose (`Grab._test`, `FlexFollow.stretched`): how far it
+must reach is its tips' straight runs and the line between them, and near
+its length (within 15%) the shortest curve its layout lays there, which
+cannot cut straight across ends that leave their holes side by side; a hose
+drawn taut in a file may reach as far as it does where it stands. Not
+through its bend points: they lie on the hose as it was read, and a curve
+through them is as long as the hose already (42080-1's arm lowered by 4 LDU
+of rod read a tube as pulled to its length). Where the curve through them
+would come out longer than the hose, it straightens, laid between its ends
+alone. A hose to a small piece no joint holds (Bodies reaches it from no
+anchor: 42080-1's T-pieces, joined to the model by tubes alone) is laid to
+it and holds nothing by its length (`FlexFollow._hangs`): the T-piece would
+come with it, and stood where it was drawn, its tube held the arm 3° down.
+The turn is
+bisected back as a collision is, a swing or a coast stops dead there, and the
+status bar says "stopped: the pneumatic tube from the Technic Brick 1 x 2 with
+Hole (#7) holds it"; move_part, "it stopped where the pneumatic tube from …
+holds it, pulled to its full length".
+
+**Saved.** A hose LDCad laid keeps its path: when a sub-model of the file
+was an LDCad path of parts and its end caps no longer stand where the file
+had them, its `PATH_POINT`s are written along its pieces as they lie, a point
+about every 20 LDU pointing along the hose (LDCad's point runs along its own
+-y), its control points a third of the way to its neighbours, and its
+`PATH_CAP`s on its end pieces (`src/parts/ldcad_path.gd`), in a file
+written whole (a copy of a sub-model made its own, which posing 42080-1's arm
+does), where the path lines were lost before, and in one written back over
+its source, where they are replaced in place (no probe case writes that one
+yet). A path untouched is left byte for byte.
+
+**It stays fast.** A hose laid again is drawn by at most 100 points
+(`FlexFollow.POINTS`; three quarters of an LDU apart on a short hose, as
+Flex draws one, 7 on 42080-1's 700 LDU tubes), its length search started
+from the last frame's (`Flex._rising_root`: two or three tries where
+bisecting from nothing takes fifty, each length worked out without making
+the curve, `Flex._curve_length`), and how tight it bends left out of a
+drag's frame.
+
+**Measured** (`grab_probe -- --only=hoses`, windowed, on a box at load 30 to
+40; `bench/results/grab10-2026-10-18`):
+
+| case | what moved | its ends against their fittings | its length | laid again, a frame |
+|---|---|---|---|---|
+| a tube the app laid from the floor to an arm on a hinge | the arm, 20° | 0.000 LDU | 179.92 of 179.97 | 1.0 to 1.2 ms |
+| 42080-1, the cab's tube LQ-12 (709 LDU) | the arm lowered 6° on its pin, in its loop of 11 joints; 6 tubes bent | 0.000 | 708.93 of 709.10 | 8.0 ms for six (1.3 a tube) |
+| 42043-1, the arm's tube 19 (493 LDU) | its cylinder −6° on its axle; 2 tubes | 0.000 | 492.80 of 492.92 | 2.7 ms for two |
+| 42050-1, ribbed hose 1 (149 LDU) | the engine's cone 19.9° on its axle; 8 hoses | 0.007 | 147.86 of 149.03 | 9.0 ms for eight (1.1 a hose) |
+
+Each kept is one undo step, and the undo puts every part back exactly; the
+made tube and 42080-1's saved and opened again lie where they were kept, to
+0.000 LDU. 42080-1 was written whole (the arm's copy of a sub-model made its
+own), and the tube's sub-model has 37 `PATH_POINT`s, its first and last on
+its caps to 0.000 LDU. A tube laid as short as the layout lays it between
+the made model's two holes stops the arm at 23.5°, where it would have to
+reach 152.99 LDU and is 152.51; move_part says "it stopped where the
+pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it, pulled to
+its full length". Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
+(42080-1, 42043-1) on the worker. Read back by the layout where they lay, the
+tubes are 2.5 LDU (42050-1), 11.5 (42080-1, seven bend points) and 49 LDU
+(42043-1, one) off where LDCad drew them: at the first frame of a drag a
+hose moves into the layout's curve by that much.
+
+In a browser (`tools/web/grab_flow.mjs` on a local web export, SwiftShader),
+the made tube's arm dragged 16°: the page says one tube was laid again, at
+most 7.7 ms a frame, and the drag frames' own work was 4.8 ms on average and
+9.6 at worst over 19 frames, under the 33 ms gate. The app drew a frame
+for 19 of the drag's 20 moves, 60 ms apart on the clock, so it kept up with
+the pointer there; said, not gated. The flow's other cases passed but one:
+the pendulum's swing, with no hose in it, kept the page waiting 36.6 s on the
+loaded box (its gate is 5 s).
+
+With FlexFollow taken out (once, by a switch since removed), the made case
+fails at once: the arm's grab bends no tube (0 read), and every check after
+it stands on that. And 42080-1's cylinder case, with it out, drew the rod in
+to the end of its stroke (−70.44 LDU); with it in, before T-pieces held by
+nothing were let hang, a tube from one held the arm at −4.00.
+
+**Left for later.** 42043-1's tube 19 is read back by the layout only to
+49 LDU: LDCad routed it tighter than a pneumatic tube bends, and the kink
+penalty of the fit (as Reshape scores it) keeps one bend point, so the tube
+jumps into the layout's curve at the first frame. A T-piece or a valve held
+by nothing stays where it was drawn while its tubes are laid to it; carried
+by its tubes, it would come along. A chain is not laid again as its
+sprockets move apart (no set's chain has its sprockets on two bodies a grab
+parts). Skins (a rope, a band) and LSynth hoses are not Flex's kinds and are
+carried whole. A grab by its chain of joints (`GrabChain`) and Pose's
+sliders bend no hose. A hose hanging from what moves still reads its far end
+as a loop (`Bodies.loops_out`), so a hinge with a tube on it says "in a loop
+of 1 joints, closed by 0", as it has since G7. In a browser a tube's own
+piece is offered as a handle to take hold of ("71533k03 on its hinge").
+
+**The whole probe** (`grab_probe`, windowed) ran 402 checks, 368 before G10:
+400 passed. The two that failed were the actuators' "kept where it was let
+go": 42024-1's, which has no hose, passed in both runs since; 42080-1's was
+a tube from a T-piece held by nothing holding the arm (above), and with that
+fixed the actuators' run passes all 38. The whole probe was not run again
+after the last two fixes (the T-pieces, and a hose straightening where its
+bend points would overstretch it); the hoses' and the actuators' runs were.
+42080-1's cylinder drag now lays six tubes a frame: its own work a frame was
+20.5 ms on average, 32.4 at the 95th per cent and 43.1 at worst on a box at
+load 30 to 40 (G7 measured 9.5 to 12.7, 13.5 to 19.8 and 15 to 22), within
+the case's gate on the mean and the 95th per cent. flex_probe, flex_ui_probe
+(its reshape check reads `Flex.along_of` now), mechanism_probe and
+simulate_probe (41) pass.

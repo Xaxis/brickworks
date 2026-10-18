@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab9-2026-10-18"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab10-2026-10-18"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -95,6 +95,12 @@ func _run() -> void:
 		for file: String in args:
 			if file.ends_with(".mpd") or file.ends_with(".ldr"):
 				await _survey(file if file.begins_with("res://") else "res://" + file)
+		quit(0)
+		return
+	if "--flex-survey" in args:
+		for file: String in args:
+			if file.ends_with(".mpd") or file.ends_with(".ldr"):
+				await _flex_survey(file if file.begins_with("res://") else "res://" + file)
 		quit(0)
 		return
 	if "--gears" in args:
@@ -232,6 +238,17 @@ func _run() -> void:
 			await _steer_set(one)
 	if only.is_empty() or only == "stays":
 		await _what_stays()
+	if only.is_empty() or only == "hoses" or only == "hose":
+		# --hose=WORD runs only the cases whose name has it ("made" the made one).
+		var asked_hose: String = ""
+		for arg: String in args:
+			if arg.begins_with("--hose="):
+				asked_hose = arg.trim_prefix("--hose=")
+		if asked_hose.is_empty() or asked_hose == "made":
+			await _hose_made()
+		for one: Array in HOSES:
+			if asked_hose.is_empty() or str(one[0]).contains(asked_hose):
+				await _hose_set(one[0], one[1], one[2], one[3], one[4] if one.size() > 4 else "")
 	if only.is_empty() or only == "big":
 		await _big()
 	if Grab.check_covers:
@@ -391,6 +408,548 @@ func _survey(path: String) -> void:
 					for c: Lbm.Connector in mesh.connectors:
 						print("      %s %s at %s way %s len %s r %s" % [c.kind, c.gender, c.position,
 							c.axis, c.length, c.radius])
+
+
+## Every flexible thing in [param path] whose ends are held by two bodies
+## (Bodies.flexible), and the joint between those two bodies that moves one
+## end and not the other: a row each, "FLEX|set|item|kind|parts|end one|end
+## other|what moves|on what".
+func _flex_survey(path: String) -> void:
+	if not await _open(path):
+		return
+	var bodies: Bodies = _bodies()
+	var source: SourceFile = _store.call("_live_source")
+	var rows: int = 0
+	for one: int in bodies.flexible:
+		var keys: PackedInt64Array = bodies.members[one]
+		var first: BrickWorld.Brick = _world.get_brick(keys[0])
+		var item: String = Assemblies.path_of(first)
+		var family: String = Flex.strung(_library, first.part_id)
+		var parts: Dictionary = {}
+		for key: int in keys:
+			var id: String = _world.get_brick(key).part_id
+			parts[id] = int(parts.get(id, 0)) + 1
+		var held: Dictionary = {}   ## other body -> [kind, its part, our part]
+		for link: Bodies.Link in bodies.touching.get(one, []):
+			var other: int = link.other(one)
+			if bodies.flexible.has(other) or held.has(other):
+				continue
+			var pair: Array = link.pairs[0]
+			var ours: int = int(pair[0]) if int(bodies.body_of[int(pair[0])]) == one else int(pair[1])
+			var theirs: int = int(pair[1]) if ours == int(pair[0]) else int(pair[0])
+			held[other] = [link.kind, theirs, ours]
+		var ldcad: bool = source != null and not first.unit.is_empty() \
+			and source.flexible.has(str(source.unit_sections.get(first.unit, "")))
+		var said := PackedStringArray()
+		for id: String in parts:
+			said.append("%s x%d" % [id, parts[id]])
+		if held.size() < 2:
+			print("FLEXONE|%s|%s|%s|%s|%s|held by %d body" % [path.get_file(), item, family,
+				"ldcad" if ldcad else "", ", ".join(said), held.size()])
+			continue
+		var others: Array = held.keys()
+		var a: int = others[0]
+		var b: int = others[1]
+		# The joint between the two: up from each to where they meet.
+		var up_a: Array = [a]
+		while bodies.parent_of.has(up_a[up_a.size() - 1]):
+			up_a.append(bodies.parent_of[up_a[up_a.size() - 1]])
+		var up_b: Array = [b]
+		while bodies.parent_of.has(up_b[up_b.size() - 1]):
+			up_b.append(bodies.parent_of[up_b[up_b.size() - 1]])
+		var meet: int = -1
+		for body: int in up_a:
+			if up_b.has(body):
+				meet = body
+				break
+		var joints := PackedStringArray()
+		if meet < 0:
+			joints.append("two pieces, each with its own anchor")
+		else:
+			for side: Array in [up_a, up_b]:
+				for body: int in side:
+					if body == meet:
+						break
+					var link: Bodies.Link = bodies.parent_link[body]
+					joints.append("%s moves %s" % [link.kind, bodies.named(bodies.beyond(body))])
+		var end_words := func(other: int) -> String:
+			var row: Array = held[other]
+			var brick: BrickWorld.Brick = _world.get_brick(int(row[1]))
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			return "%s #%d (%s) by %s" % [info.name if info != null else brick.part_id, int(row[1]),
+				brick.part_id, row[0]]
+		print("FLEX|%s|%s|%s|%s|%s|%s|%s|%s" % [path.get_file(), item, family, "ldcad" if ldcad else "",
+			", ".join(said), end_words.call(a), end_words.call(b), "; ".join(joints)])
+		rows += 1
+	print("FLEXSET|%s|%d parts|%d flexible bodies|%d held at both ends" % [path.get_file(),
+		_world.brick_count(), bodies.flexible.size(), rows])
+
+
+# -- hoses that follow (G10) -------------------------------------------------------
+
+
+## Real sets whose grab moves a section a laid hose is held by at one end:
+## [name, set, a word of the hose's sub-model, the turn, what is asked of
+## the save]. The joint turned is the one below where the bodies holding the
+## hose's two ends meet in the tree, on the first end's side.
+const HOSES: Array = [
+	["42080-1: the crane's arm lowered on its pin, its tubes from the cab", "res://vendor/omr/files/42080-1.mpd",
+		"pneumaticHoseLQ-12", -6.0, "ldcad"],
+	["42043-1: the arm's second section on its cylinder", "res://vendor/omr/files/42043-1.mpd",
+		"pneumaticHose-19", -6.0],
+	["42050-1: a ribbed hose to the engine turned on its axle", "res://vendor/omr/files/42050-1.mpd",
+		"technicRibHoseLQ-1", 20.0],
+]
+
+## A made model: a tower on the floor with an arm on a hinge, a Technic brick
+## with a hole on the arm and one on the floor beside it, for a tube laid
+## between the holes. LDraw's own units, y down.
+const MADE_HOSE := """0 A tube from the floor to an arm on a hinge
+0 Name: made_hose.ldr
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -72 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 0 -72 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 0 -96 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -120 10 1 0 0 0 1 0 0 0 1 3700.dat
+1 7 70 -24 80 1 0 0 0 1 0 0 0 1 3700.dat
+"""
+
+
+## A hose's pieces: the world's bricks under [param path], placed as [param
+## drawn] has them where it does, read as Flex reads them.
+func _hose_pieces(path: String, drawn: Dictionary = {}) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path:
+			out.append({"part": brick.part_id, "at": drawn.get(brick.id, brick.transform),
+				"id": brick.id, "color": brick.color_code})
+	return out
+
+
+## A hose's ends and how long it is, tip to tip along its pieces.
+func _hose_shape(kind: String, pieces: Array) -> Dictionary:
+	var ends: Array = Flex.ends_of_item(kind, pieces)
+	if ends.size() != 2:
+		return {}
+	var line: PackedVector3Array = Flex.centreline(kind, pieces, (ends[0] as Flex.Port).tip)
+	var run: float = 0.0
+	var last: Vector3 = (ends[0] as Flex.Port).tip
+	for point: Vector3 in line:
+		run += point.distance_to(last)
+		last = point
+	run += last.distance_to((ends[1] as Flex.Port).tip)
+	return {"ends": ends, "length": run}
+
+
+## How far the ends read off a hose's own [param pieces] are from where the
+## parts holding them put them in [param at]: each holder's move applied to
+## where its end's tip stood. The worst of the two, LDU.
+func _ends_held(item: FlexFollow.Item, pieces: Array, at: Dictionary) -> float:
+	var shape: Dictionary = _hose_shape(item.kind, pieces)
+	if shape.is_empty():
+		return INF
+	var worst: float = 0.0
+	for n: int in 2:
+		var holder: int = item.holders[n]
+		var move := Transform3D.IDENTITY
+		if holder != 0 and at.has(holder):
+			move = (at[holder] as Transform3D) * (item.holders_rest[n] as Transform3D).affine_inverse()
+		var wanted: Vector3 = move * (item.ends[n] as Flex.Port).tip
+		var best: float = INF
+		for port: Flex.Port in shape["ends"]:
+			best = minf(best, port.tip.distance_to(wanted))
+		worst = maxf(worst, best)
+	return worst
+
+
+## Two shapes of one hose alike, whatever the model was lifted by when it
+## opened: the gap between their tips and their lengths, LDU.
+static func _shapes_differ(a: Dictionary, b: Dictionary) -> float:
+	if a.is_empty() or b.is_empty():
+		return INF
+	var a0: Vector3 = (a["ends"][0] as Flex.Port).tip
+	var a1: Vector3 = (a["ends"][1] as Flex.Port).tip
+	var b0: Vector3 = (b["ends"][0] as Flex.Port).tip
+	var b1: Vector3 = (b["ends"][1] as Flex.Port).tip
+	return absf(a0.distance_to(a1) - b0.distance_to(b1)) + absf(float(a["length"]) - float(b["length"]))
+
+
+func _two_holes() -> Array:
+	var holes: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3700":
+			holes.append(brick.id)
+	var anchors: Array = []
+	for anchor: Flex.Anchor in Flex.anchors_in(_world, _library, "pneumatic_tube"):
+		if holes.has(anchor.brick) and not anchors.any(func(a: Flex.Anchor) -> bool:
+				return a.brick == anchor.brick):
+			anchors.append(anchor)
+	return anchors
+
+
+## A grab as the app makes one at a press: the bodies, the gear trains and the
+## hoses' bends read ahead (GrabDrag._ready_now), [param bodies] when given.
+func _new_grab(bodies: Bodies = null) -> Grab:
+	_grab._ready_now()
+	var held := Grab.new()
+	held.world = _world
+	held.builder = _builder
+	held.library = _library
+	held.bodies = bodies if bodies != null else _grab._bodies
+	held.hose_fits = _grab._hose_fits
+	held.shared_mechanism = _grab._mechanism
+	return held
+
+
+func _part_numbered(part_id: String) -> int:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			return brick.id
+	return 0
+
+
+## A tube laid by the app from a hole on the floor to one on an arm on a
+## hinge: turned, it follows; kept, one step to undo; saved and opened
+## again, where it was kept; pulled further than it reaches, it holds the
+## arm and is named.
+func _hose_made() -> void:
+	print("\nhoses: a tube laid from the floor to an arm on a hinge")
+	var file: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose.ldr")
+	DirAccess.make_dir_recursive_absolute(file.get_base_dir())
+	var out := FileAccess.open(file, FileAccess.WRITE)
+	out.store_string(MADE_HOSE)
+	out.close()
+	if not await _open(file):
+		_check("hoses: the made model opens", false)
+		return
+	var flex_tool: FlexTool = _main.get("_flex")
+	var anchors: Array = _two_holes()
+	var laid: Flex.Laid = await flex_tool.lay("pneumatic_tube", anchors, [], 0) if anchors.size() == 2 else null
+	_check("hoses: a pneumatic tube is laid between the two holes (%s)" % ("none" if laid == null
+		else "%d pieces %s" % [laid.pieces.size(), ", ".join(laid.warnings)]),
+		laid != null and laid.warnings.is_empty())
+	if laid == null:
+		return
+	var item_path: String = flex_tool.laid_item()
+	_builder.forget_history()
+	await _frames(3)
+	# As laid, for a browser's grab (tests/fixtures/grab10/made_hose.ldr).
+	_store.save_file(OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose_laid.ldr"), "made_hose")
+	var arm: int = _part_numbered("3004")
+	var before: Dictionary = _snapshot()
+	var rest_shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path))
+	var held := _new_grab()
+	var state: String = held.begin(arm, _world.get_brick(arm).transform.origin)
+	_check("hoses: the arm moves on its hinge (%s), and the tube is one it bends (%d)" % [state,
+		held.flex.items.size() if held.flex != null else 0], state == "moves" and held.flex != null
+		and held.flex.items.size() == 1)
+	if held.flex == null or held.flex.items.is_empty():
+		return
+	var item: FlexFollow.Item = held.flex.items[0]
+	# A degree a frame, as a drag goes.
+	var worst_ms: float = 0.0
+	for step: int in 20:
+		held.turn_to(float(step + 1))
+		var began: int = Time.get_ticks_usec()
+		held.drawn()
+		worst_ms = maxf(worst_ms, float(Time.get_ticks_usec() - began) / 1000.0)
+	var drawn: Dictionary = held.drawn()
+	var miss: float = _ends_held(item, _hose_pieces(item_path, drawn), drawn)
+	var shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path, drawn))
+	print("    turned %.1f°: ends %.3f LDU from their holes, %.2f LDU long against %.2f; laid again in %.2f ms at worst"
+		% [held.angle, miss, float(shape.get("length", 0.0)), float(rest_shape["length"]), worst_ms])
+	_check("hoses: turned 20°, the tube's ends stay in their holes (%.3f LDU)" % miss, miss < 0.3)
+	_check("hoses: and it is as long as it was (%.2f against %.2f LDU)" % [float(shape.get("length", 0.0)),
+		float(rest_shape["length"])], absf(float(shape.get("length", 0.0)) - float(rest_shape["length"])) < 1.0)
+	_check("hoses: laying it again costs a few ms a frame (%.2f ms at worst)" % worst_ms, worst_ms <= 2.0)
+	var moved: int = held.commit(held.step_words())
+	await _frames(2)
+	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
+	_check("hoses: kept, its pieces stand where it was drawn, ends in their holes (%.3f LDU, %d parts moved)"
+		% [kept_miss, moved], kept_miss < 0.3 and moved > 0)
+	_check("hoses: one step to undo (%s)" % (_builder.history_words(1)[0] if _builder.history_depth() > 0
+		else "none"), _builder.history_depth() == 1)
+	_builder.undo()
+	await _frames(2)
+	_check("hoses: one undo puts the tube and the arm back exactly (%s)" % _differs(before),
+		_differs(before) == "none differs")
+	_builder.redo()
+	await _frames(2)
+	var kept_shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path))
+	var saved: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/made_hose_turned.ldr")
+	if _store.save_file(saved, "made_hose_turned") and await _open(saved):
+		var again: Dictionary = {}
+		for path: String in Flex.items_in(_world):
+			again = _hose_shape("pneumatic_tube", _hose_pieces(path))
+		var off: float = _shapes_differ(kept_shape, again)
+		_check("hoses: saved and opened again, the tube is laid as it was kept (%.3f LDU)" % off, off < 0.1)
+	else:
+		_check("hoses: saved and opened again", false)
+	# Pulled too far: a tube 3% longer than the way between its holes
+	# holds the arm, and says so.
+	await _open(file)
+	await flex_tool.lay("pneumatic_tube", _two_holes(), [], 0)
+	var holes: Array = _two_holes()
+	var ports: Array = []
+	for n: int in 2:
+		var anchor: Flex.Anchor = holes[n]
+		ports.append(Flex.port_for("pneumatic_tube", anchor, Flex.side_toward(anchor,
+			(holes[1 - n] as Flex.Anchor).at, 1), n))
+	# As FlexFollow measures how far a hose must reach: its tips' short runs
+	# out of the holes and the line between (Flex.ends_of_item reads 2 LDU).
+	var taut: float = ((ports[0] as Flex.Port).tip + (ports[0] as Flex.Port).out * 2.0).distance_to(
+		(ports[1] as Flex.Port).tip + (ports[1] as Flex.Port).out * 2.0) + 4.0
+	var short: Flex.Laid = Flex.lay_swept("pneumatic_tube", ports[0], ports[1], taut * 1.03)
+	var adds: Array = []
+	for piece: Dictionary in short.pieces:
+		adds.append({"part": piece["part"], "color": 0, "at": piece["at"], "path": flex_tool.laid_item()})
+	var old := PackedInt64Array()
+	for piece: Dictionary in _hose_pieces(flex_tool.laid_item()):
+		old.append(int(piece["id"]))
+	_builder.swap_bricks(old, adds)
+	_builder.forget_history()
+	await _frames(2)
+	arm = _part_numbered("3004")
+	var words: String = ""
+	for way: float in [-1.0, 1.0]:
+		var pull := _new_grab()
+		var began: String = pull.begin(arm, _world.get_brick(arm).transform.origin)
+		for step: int in 170:
+			pull.turn_to(way * float(step + 1))
+			if pull.stopped:
+				break
+		if pull.flex != null and not pull.flex.items.is_empty():
+			var its: FlexFollow.Item = pull.flex.items[0]
+			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f" % [
+				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach])
+		else:
+			print("    no hose bent")
+		print("    turned %s: %s, to %.1f°, %s%s" % ["back" if way < 0.0 else "on", began, pull.angle,
+			"stopped" if pull.stopped else "not stopped", (" by " + pull.stretch_words) if not pull.stretch_words.is_empty()
+			else (" meeting #%d" % int(pull.blocked_by[1]) if pull.blocked_by.size() > 1 else "")])
+		if not pull.stopped or pull.stretch_words.is_empty() or pull.flex == null:
+			continue
+		words = pull.stretch_words
+		var still: FlexFollow.Item = pull.flex.items[0]
+		var reach: float = pull.flex._reach_of(still, pull.placed)
+		print("    pulled %s: stopped at %.1f°, its ends' runs and the line between them %.2f LDU, the tube %.2f"
+			% ["back" if way < 0.0 else "on", pull.angle, reach, still.length])
+		_check("hoses: it stops where the tube is pulled to its length (%.2f of %.2f LDU)" % [reach,
+			still.length], reach <= still.reach + FlexFollow.SLACK and reach > still.reach - 3.0)
+		var tell: String = str(_grab.call("for_session", {"part": "#%d" % arm, "degrees": way * 170.0}))
+		print("    move_part: %s" % tell.replace("\n", " | "))
+		_check("hoses: move_part names the tube that holds it", tell.contains("pneumatic tube from"))
+		while _builder.history_depth() > 0:
+			_builder.undo()
+		break
+	_check("hoses: pulled too far, the arm stops and the tube is named as what holds it (%s)" % words,
+		words.begins_with("the pneumatic tube from"))
+	await _clean_slate()
+
+
+## A real set's hose bent by turning the joint between its two ends:
+## pictures before and after, its ends in their fittings, its length, one
+## undo; for [param ask] "ldcad", saved and opened again with LDCad's path
+## written between its new ends.
+func _hose_set(name: String, path: String, word: String, degrees: float, ask: String) -> void:
+	print("\nhoses: %s" % name)
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var hose: int = -1
+	var item_path: String = ""
+	for one: int in bodies.flexible:
+		var first: BrickWorld.Brick = _world.get_brick((bodies.members[one] as PackedInt64Array)[0])
+		if Assemblies.path_of(first).contains(word):
+			hose = one
+			item_path = Assemblies.path_of(first)
+			break
+	if hose < 0:
+		_check("%s: the hose %s is read as one that bends" % [name, word], false)
+		return
+	# The two bodies holding its ends, and the body just below where they
+	# meet in the tree, on the first one's side.
+	var held_by: Array = []
+	for link: Bodies.Link in bodies.touching.get(hose, []):
+		var other: int = link.other(hose)
+		if not bodies.flexible.has(other) and not held_by.has(other):
+			held_by.append(other)
+	var grab_at: int = 0
+	for side: int in [0, 1]:
+		if held_by.size() < 2 or grab_at != 0:
+			break
+		var up: Array = [held_by[1 - side]]
+		while bodies.parent_of.has(up[up.size() - 1]):
+			up.append(bodies.parent_of[up[up.size() - 1]])
+		var at: int = held_by[side]
+		var below: int = -1
+		while not up.has(at) and bodies.parent_of.has(at):
+			below = at
+			at = int(bodies.parent_of[at])
+		if below >= 0 and up.has(at):
+			grab_at = int((bodies.members[below] as PackedInt64Array)[0])
+	_check("%s: a joint between the hose's two ends is found" % name, grab_at != 0)
+	if grab_at == 0:
+		return
+	var before: Dictionary = _snapshot()
+	var held := _new_grab(bodies)
+	var state: String = held.begin(grab_at, _world.get_brick(grab_at).transform.origin)
+	print("    every hose's bend read ahead with the bodies in %s ms" % str(_grab.ready_took.get("hoses", "?")))
+	var item: FlexFollow.Item = null
+	if held.flex != null:
+		for one: FlexFollow.Item in held.flex.items:
+			if one.path == item_path:
+				item = one
+	print("    grabbed #%d %s: %s, %s; it bends %d hoses, read in %.1f ms" % [grab_at,
+		_world.get_brick(grab_at).part_id, state, held.said if state == "moves" else held.why,
+		held.flex.items.size() if held.flex != null else 0, held.flex.read_ms if held.flex != null else 0.0])
+	_check("%s: the grab moves (%s) and bends the hose (%s)" % [name, state, item.name if item != null
+		else "not read"], state == "moves" and item != null)
+	if item == null:
+		return
+	# The hose and what moves it, as far as a few hundred parts of it.
+	var view: PackedInt64Array = item.slots.duplicate()
+	for key: int in held.moving:
+		if view.size() < item.slots.size() + 300:
+			view.append(key)
+	_frame_on(view)
+	await _camera_still()
+	if _windowed:
+		await _shot("hose_" + path.get_file().get_basename(), "before")
+	var rest_shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path))
+	var worst_ms: float = 0.0
+	var first_ms: float = -1.0
+	var rest_ms: float = 0.0
+	var steps: int = maxi(roundi(absf(degrees) * 2.0), 1)
+	for step: int in steps:
+		held.turn_to(degrees * float(step + 1) / float(steps))
+		var began: int = Time.get_ticks_usec()
+		held.drawn()
+		var took: float = float(Time.get_ticks_usec() - began) / 1000.0
+		if first_ms < 0.0:
+			first_ms = took
+		else:
+			rest_ms = maxf(rest_ms, took)
+		worst_ms = maxf(worst_ms, took)
+	var drawn: Dictionary = held.drawn()
+	if "--debug" in OS.get_cmdline_user_args():
+		print("    stopped %s %s" % [held.stopped, held.stretch_words])
+		for one: FlexFollow.Item in held.flex.items:
+			print("      %s: reaches %.2f there, %.2f at rest, %.2f long, may reach %.2f; %d pieces, %d bend points, %s, loose %s"
+				% [one.name, held.flex._reach_of(one, held.placed), held.flex._reach_of(one, {}), one.length,
+				one.reach, one.slots.size(), one.controls.size(), one.path, one.loose])
+			for holder: int in one.holders:
+				var at: int = int(bodies.body_of.get(holder, -1))
+				while bodies.parent_of.has(at):
+					at = int(bodies.parent_of[at])
+				var rigid: Array = bodies.beyond(at).filter(func(b: int) -> bool: return not bodies.flexible.has(b))
+				print("        holder #%d: anchor %d %s, %d parts of its own, %d with hoses" % [holder, at,
+					bodies.anchor_why.get(at, []), bodies.parts_of(rigid).size(), bodies.parts_of(bodies.beyond(at)).size()])
+	var miss: float = _ends_held(item, _hose_pieces(item_path, drawn), drawn)
+	var shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path, drawn))
+	var at_rest: Flex.Laid = Flex.lay_swept(item.kind, item.ends[0], item.ends[1], item.real, item.controls)
+	var fit: float = Flex.farthest_off(item.line, at_rest)
+	if "--debug" in OS.get_cmdline_user_args():
+		var worst_at: float = 0.0
+		var worst_off: float = 0.0
+		for point: Vector3 in item.line.points:
+			var off: float = point.distance_to(at_rest.path.at(Flex.along_of(at_rest.path, point)))
+			if off > worst_off:
+				worst_off = off
+				worst_at = Flex.along_of(item.line, point) / item.line.total()
+		print("    fit: worst %.2f LDU at %.2f of the way; tips %s %s, out %s %s, leads %.1f %.1f; line %d points %.1f long, from %s to %s; laid %.1f long, k %.1f%s"
+			% [worst_off, worst_at, (item.ends[0] as Flex.Port).tip, (item.ends[1] as Flex.Port).tip,
+			(item.ends[0] as Flex.Port).out, (item.ends[1] as Flex.Port).out, (item.ends[0] as Flex.Port).lead,
+			(item.ends[1] as Flex.Port).lead, item.line.points.size(), item.line.total(), item.line.points[0],
+			item.line.points[item.line.points.size() - 1], at_rest.path.total(), at_rest.k,
+			" (" + ", ".join(at_rest.warnings) + ")" if not at_rest.warnings.is_empty() else ""])
+		print("    first laying %.1f ms (the bend read then), the rest %.2f ms at worst" % [first_ms, rest_ms])
+	print(("    turned %.2f° of %.1f: ends %.3f LDU from their fittings, %.2f LDU long against %.2f; "
+		+ "read again where it lay to %.2f LDU with %d bend points; %.2f ms a laying at worst; %s") % [held.angle,
+		degrees, miss, float(shape.get("length", 0.0)), float(rest_shape.get("length", 0.0)), fit,
+		item.controls.size(), worst_ms, "kept as its own pieces" if item.exact()
+		else "laid afresh when kept (%d pieces for %d)" % [item.laid.pieces.size(), item.slots.size()]])
+	_check("%s: its ends stay in their fittings as the section moves (%.3f LDU)" % [name, miss], miss < 0.5)
+	var length_was: float = float(rest_shape.get("length", 0.0))
+	_check("%s: it keeps its length (%.2f against %.2f LDU)" % [name, float(shape.get("length", 0.0)),
+		length_was], absf(float(shape.get("length", 0.0)) - length_was) < maxf(1.0, length_was * 0.01))
+	var bent: int = held.flex.items.size()
+	_check("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms at worst, %.2f a hose)" % [
+		name, bent, worst_ms, worst_ms / float(bent)], worst_ms / float(bent) <= 2.0)
+	_timings["hoses_" + path.get_file().get_basename()] = {"hoses": bent, "worst_ms": worst_ms,
+		"first_ms": first_ms, "fit_off_ldu": fit, "bend_points": item.controls.size(),
+		"read_ahead_ms": _grab.ready_took.get("hoses", -1)}
+	var moved: int = held.commit(held.step_words())
+	await _frames(3)
+	if _windowed:
+		await _shot("hose_" + path.get_file().get_basename(), "after")
+	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
+	_check("%s: kept, its ends are in their fittings (%.3f LDU, %d parts moved)" % [name, kept_miss, moved],
+		kept_miss < 0.5)
+	if ask == "ldcad":
+		var kept_shape: Dictionary = _hose_shape(item.kind, _hose_pieces(item_path))
+		var saved: String = OS.get_user_data_dir().path_join("sessions/probe/grab10/%s" % path.get_file())
+		var wrote: bool = _store.save_file(saved, path.get_file().get_basename())
+		var meta: Dictionary = _ldcad_path_of(FileAccess.get_file_as_string(saved) if wrote else "",
+			item_path, kept_shape)
+		print("    saved: %s" % meta.get("said", ""))
+		_check("%s: saved, LDCad's path in the file runs between the hose's new ends (%s)" % [name,
+			meta.get("said", "")], bool(meta.get("follows", false)))
+		if wrote and await _open(saved):
+			var off: float = _shapes_differ(kept_shape, _hose_shape(item.kind, _hose_pieces(item_path)))
+			_check("%s: saved and opened again, the hose is laid as it was kept (%.3f LDU)" % [name, off],
+				off < 0.1)
+		else:
+			_check("%s: saved and opened again" % name, false)
+		await _clean_slate()
+		return
+	_builder.undo()
+	await _frames(2)
+	_check("%s: one undo puts the hose and the section back exactly (%s)" % [name, _differs(before)],
+		_differs(before) == "none differs")
+	await _clean_slate()
+
+
+## LDCad's path in the saved [param text] for the sub-model [param item_path]
+## is in: its points, and whether its first and last are the hose's two tips
+## as [param kept] has them (the app's axes; the file's are LDraw's, y and z
+## the other way), its caps on them too.
+func _ldcad_path_of(text: String, item_path: String, kept: Dictionary) -> Dictionary:
+	var key: String = Assemblies.definition(Assemblies.leaf(item_path)).to_lower()
+	var inside: bool = false
+	var points: Array = []
+	var caps: Array = []
+	for line: String in text.split("\n"):
+		var said: String = line.strip_edges()
+		if said.begins_with("0 FILE "):
+			# "42080 - pneumaticHoseLQ-12.ldr", or written whole
+			# "pneumatic_hose_lq_12.ldr", for the sub-model pneumaticHoseLQ-12.
+			inside = LdcadPath._letters(said.substr(7).get_basename()).ends_with(LdcadPath._letters(key))
+		elif inside and said.begins_with("0 !LDCAD PATH_POINT"):
+			points.append(_pos_ori(said))
+		elif inside and said.begins_with("0 !LDCAD PATH_CAP"):
+			caps.append(_pos_ori(said))
+	if points.size() < 2 or caps.size() != 2 or kept.is_empty():
+		return {"said": "%d points and %d caps in section %s" % [points.size(), caps.size(), key]}
+	var first: Vector3 = points[0]
+	var last: Vector3 = points[points.size() - 1]
+	var on_caps: float = first.distance_to(caps[0]) + last.distance_to(caps[1])
+	# Its length along its points against the hose's: the tips' gap here.
+	var gap_file: float = first.distance_to(last)
+	var gap_kept: float = (kept["ends"][0] as Flex.Port).tip.distance_to((kept["ends"][1] as Flex.Port).tip)
+	return {"follows": on_caps < 0.05 and absf(gap_file - gap_kept) < 0.1,
+		"said": "%d points, its ends on its caps to %.3f LDU and %.2f LDU apart, the hose's tips %.2f" % [
+			points.size(), on_caps, gap_file, gap_kept]}
+
+
+static func _pos_ori(line: String) -> Vector3:
+	var at: int = line.find("[posOri=")
+	if at < 0:
+		return Vector3.INF
+	var numbers: PackedStringArray = line.substr(at + 8, line.find("]", at) - at - 8).split(" ", false)
+	return Vector3(float(numbers[0]), float(numbers[1]), float(numbers[2]))
 
 
 func _parts_said(bodies: Bodies, link: Bodies.Link) -> String:
