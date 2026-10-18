@@ -40,6 +40,16 @@ func _initialize() -> void:
 		{"part": "3001", "colour": 14, "at": Vector3(40, 48, 0), "turn": 1},
 		{"part": "3024", "colour": 2, "at": Vector3(-60, 24, 40), "turn": 2},
 		{"part": "3068b", "colour": 47, "at": Vector3(80, 24, -40), "turn": 3},
+		# And a model whose order has to survive the save: a 1 x 1 plate with
+		# a 3 x 3 on its stud. Put in together, the 3 x 3 hides the 1 x 1 from
+		# the front and the back, and a builder cannot see where it goes, so
+		# the booklet puts the 3 x 3 in the step after (docs/INSTRUCTIONS.md,
+		# 17). The four parts above plan as one step since 2026-10-17
+		# (cfbe8b1b: a step takes what is near any of its parts), and one step
+		# has no STEP line to write; so would a brick on a brick on a brick,
+		# three parts and none of them hidden.
+		{"part": "3024", "colour": 15, "at": Vector3(200, 8, 0), "turn": 0},
+		{"part": "11212", "colour": 1, "at": Vector3(200, 16, 0), "turn": 0},
 	]
 	for entry: Dictionary in wanted:
 		var at := Transform3D(
@@ -61,9 +71,11 @@ func _initialize() -> void:
 	# the autosave fires a second after every change.
 	var saved: String = store.to_text("round trip", true)
 	var auto: String = store.to_text("round trip", false)
-	_expect(saved.count("0 STEP") > 0,
-		"a saved model carries its build order (%d STEP lines)"
-		% saved.count("0 STEP"))
+	var small_step: int = _step_in(saved, 15, "3024")
+	var over_step: int = _step_in(saved, 1, "11212")
+	_expect(small_step >= 0 and over_step > small_step,
+		"a saved model carries its build order: the 1 x 1 plate in step %d, the 3 x 3 on it in step %d (%d STEP lines)"
+		% [small_step + 1, over_step + 1, saved.count("0 STEP")])
 	_expect(auto.count("0 STEP") == 0,
 		"the autosave does not pay for it (%d STEP lines)"
 		% auto.count("0 STEP"))
@@ -288,6 +300,20 @@ static func _same_basis(a: Basis, b: Basis) -> bool:
 		if a[n].distance_to(b[n]) > 0.001:
 			return false
 	return true
+
+
+## Which step of [param text] (from 0, counted by its STEP lines) puts in
+## the first [param part] in [param colour], or -1.
+func _step_in(text: String, colour: int, part: String) -> int:
+	var step: int = 0
+	for line: String in text.split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() == 2 and words[0] == "0" and words[1] == "STEP":
+			step += 1
+		elif words.size() >= 15 and words[0] == "1" and words[1] == str(colour) \
+				and words[14].to_lower() == part + ".dat":
+			return step
+	return -1
 
 
 func _expect(condition: bool, detail: String) -> void:

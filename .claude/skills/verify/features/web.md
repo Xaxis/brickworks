@@ -225,7 +225,8 @@ plan with Claude as the client.
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
   "This tab is k7qd (“Castle”). Say it to Claude to work here."; "No Claude
   chat is working in this tab." / "A Claude chat is working here: since 14:05,
-  last: changed the model, 2 min ago." / "2 Claude chats are working in this
+  last: changed the model at 14:07." (a time of day, so nothing on it runs on
+  a timer: `chat_probe`) / "2 Claude chats are working in this
   tab…" with Keep this one beside each (`ClaudeConnector.keep_chat`). New chat
   for this tab opens `https://claude.ai/new?q=` with
   `ClaudeConnector.first_message` ("Use my Brickworks tab k7qd (“Castle”) for

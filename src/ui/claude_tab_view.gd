@@ -93,15 +93,10 @@ func setup(with: ClaudeConnector) -> void:
 	connector.chats_changed.connect(func(_now: Array) -> void: show_now())
 	connector.listening.connect(func(_on: bool, _address: String) -> void: show_now())
 	connector.connections_changed.connect(func(_now: Array) -> void: show_now())
-	# Its "2 min ago" kept true while it is on screen, twice a minute: never
-	# every frame, which in a browser drawing in software costs whole seconds.
-	var clock := Timer.new()
-	clock.wait_time = 30.0
-	clock.autostart = true
-	clock.timeout.connect(func() -> void:
-		if is_visible_in_tree():
-			show_now())
-	add_child(clock)
+	# No clock: a chat's last call is said by the time of day it came, which
+	# stays true. A Timer kept "2 min ago" true twice a minute, and so the
+	# rows were made again and the window drawn again between Claude's calls,
+	# which in a browser drawing in software is seconds of it (chat_probe).
 	visibility_changed.connect(func() -> void:
 		if is_visible_in_tree():
 			show_now())
@@ -197,7 +192,7 @@ func show_now() -> void:
 	_start.tooltip_text = "Opens claude.ai on a new chat whose first message names %s" % tab
 
 
-## One chat, in words: "since 14:05, last Built “Castle”, 2 min ago".
+## One chat, in words: "since 14:05, last: built “Castle” at 14:07".
 static func chat_words(one: Variant) -> String:
 	if not one is Dictionary:
 		return ""
@@ -207,7 +202,9 @@ static func chat_words(one: Variant) -> String:
 	if did.is_empty() and not str(it.get("did", "")).is_empty():
 		did = ConnectorForm.said(str(it["did"]))
 	if not did.is_empty():
-		said += ", last: %s, %s" % [did.left(1).to_lower() + did.substr(1), _ago(str(it.get("last", "")))]
+		var at: String = _clock(str(it.get("last", "")))
+		said += ", last: %s %s" % [did.left(1).to_lower() + did.substr(1),
+			at if at == "just now" else "at " + at]
 	else:
 		said += ", nothing done here yet"
 	return said
@@ -238,18 +235,6 @@ static func _clock(iso: String) -> String:
 	var local: int = utc + int(Time.get_time_zone_from_system().get("bias", 0)) * 60
 	var then: Dictionary = Time.get_datetime_dict_from_unix_time(local)
 	return "%02d:%02d" % [then.hour, then.minute]
-
-
-static func _ago(iso: String) -> String:
-	if iso.length() < 19:
-		return "just now"
-	var s: int = int(Time.get_unix_time_from_system()) \
-		- int(Time.get_unix_time_from_datetime_string(iso.substr(0, 19)))
-	if s < 60:
-		return "just now"
-	if s < 5400:
-		return "%d min ago" % roundi(s / 60.0)
-	return "%d h ago" % roundi(s / 3600.0)
 
 
 func _dotted(text: String, colour: Color) -> HBoxContainer:

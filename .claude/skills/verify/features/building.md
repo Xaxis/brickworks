@@ -233,7 +233,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   window, Properties, the assistant, Account, Settings, Render) rested on control
   by control, a click through each tooltip that covers something clickable caught
   at that control with the pointer over it, and the menus' rows that cover the row
-  under them said. Fails on b79d427: the click in one go pressed nothing.
+  under them said. Fails on b79d427: the click in one go pressed nothing. On
+  Xvfb it moves the system's pointer with its events (as `cursor_probe` does):
+  the app's look-again replay (`Cursors._process`) goes where the system says
+  the pointer is, and with it left mid-screen no tooltip in the window came.
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
