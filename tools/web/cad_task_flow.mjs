@@ -884,8 +884,13 @@ function contactsOf(part) {
     // sharing a face on the other two.
     if (ov[a] < -1 || ov[a] > 4.5 || [0, 1, 2].some((i) => i !== a && ov[i] < 2)) continue;
     const up = (pb[0][a] + pb[1][a]) > (qb[0][a] + qb[1][a]);
+    // Against a side, at the lowest plate of where they meet: the app puts
+    // a part against a side at the plate the pointer is on, and at the
+    // middle of a brick's side a 1 x 12 went a plate up, into the 1 x 4 over
+    // it, and so up onto it (8841-1's beam, 2026-10-18).
     const point = [0, 1, 2].map((i) => (i === a ? (up ? pb[0][i] - 0.5 : pb[1][i] + 0.5)
-      : (Math.max(pb[0][i], qb[0][i]) + Math.min(pb[1][i], qb[1][i])) / 2) + shiftToApp[i]);
+      : i === 1 && a !== 1 ? Math.max(pb[0][1], qb[0][1]) + 4
+        : (Math.max(pb[0][i], qb[0][i]) + Math.min(pb[1][i], qb[1][i])) / 2) + shiftToApp[i]);
     const area = [0, 1, 2].filter((i) => i !== a).reduce((t, i) => t * ov[i], 1);
     out.push({ point, under: a === 1 && !up, area, id: q.id });
   }
