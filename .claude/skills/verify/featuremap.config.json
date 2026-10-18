@@ -2208,7 +2208,7 @@
       "kind": "lib",
       "label": "linear actuators",
       "entry": "assets/ldraw/gears.json",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator out and in; move_part a small actuator's input degrees=360)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator, or of 42080-1's pneumatic cylinders, out and in; move_part a small actuator's input degrees=360)",
       "area": "building"
     },
     {
@@ -2280,6 +2280,13 @@
       "entry": "src/assembly/brickify_stock.gd",
       "reach": "XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd",
       "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "coasting when flung",
+      "entry": "src/assembly/swing.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=coast   (by hand: on a gear or a wheel on a free axle, drag it round and let go while it turns; it coasts and stops against its bearing's friction)",
+      "area": "building"
     }
   ]
 }

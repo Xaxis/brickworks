@@ -39,6 +39,15 @@
 ##            within asin(μ r / d) of hanging straight (d its centre of
 ##            mass's distance from the line), or pressed against what
 ##            stopped it.
+##
+## Let go while it moves (a fling, [method fling]), it starts at the rate the
+## pointer gave it and coasts: a wheel on its axle or a turntable spins on,
+## slowing against its bearing's friction. A gear train the grabbed joint
+## drives is part of the motion as geared segments ([method add_geared]): each
+## gear turns about its own line at the train's ratio, so its inertia counts
+## as the ratio squared and its bearing's friction as the ratio, as a gear
+## train's reflected inertia and losses do. Its own losses in the teeth are
+## not counted (docs/MECHANISMS.md §16).
 ## Pure but for the room test it is handed.
 class_name Swing
 extends RefCounted
@@ -79,7 +88,16 @@ class Joint extends RefCounted:
 	var chain := PackedInt32Array()
 	## Grams carried, everything beyond it.
 	var grams: float = 0.0
-	## The furthest any part beyond it reaches from its point, LDU.
+	## What its friction acts on, reflected to its turn, g·LDU: the grams it
+	## carries times its [member bearing], and each geared segment's grams
+	## times a pin's bearing and its ratio (a gear's own axle carries it,
+	## turning ratio times as fast).
+	var load: float = 0.0
+	## Where it bears, its radius, LDU: a pin's or an axle's [constant
+	## BEARING]; a turntable's ring wider.
+	var bearing: float = BEARING
+	## The furthest any part beyond it reaches from its point, LDU (a geared
+	## segment's times its ratio: how fast it goes a radian of this joint).
 	var reach: float = 0.0
 	## Its friction torque, g·LDU²/s².
 	var friction: float = 0.0
@@ -98,6 +116,14 @@ class Segment extends RefCounted:
 	var inertia := Basis(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO)
 	## Brick id -> Transform3D where it was let go.
 	var start: Dictionary = {}
+	## A gear the train turns, with what rides on it: it turns about its own
+	## line ([member turn_point], [member turn_axis]) at [member ratio] times
+	## its joint's rate, not with its joint's frame. Its joint is the train's
+	## driver, a joint that nothing else carries.
+	var geared: bool = false
+	var turn_point := Vector3.ZERO
+	var turn_axis := Vector3.UP
+	var ratio: float = 1.0
 
 
 var joints: Array[Joint] = []
@@ -122,6 +148,11 @@ var turns: Array = []
 ## never adds energy (semi-implicit Euler's wobbles by a part in a thousand
 ## about the true value; an explicit step's grows each swing).
 var energy_rise: float = 0.0
+## The first joint's rate as it was let go, rad/s: a fling, 0 from rest.
+var flung: float = 0.0
+## How far the first joint turned in all, radians, either way: a coast's
+## turns.
+var travel: float = 0.0
 ## Room tests run, and the costliest, ms.
 var tests: int = 0
 var worst_test_ms: float = 0.0
@@ -204,15 +235,35 @@ func add_segment(joint: int, start: Dictionary, lumped: Dictionary) -> void:
 	segments.append(one)
 
 
+## A gear the train turns, and what rides on it, driven by [param joint] (a
+## joint nothing carries): it turns about the line through [param point]
+## along [param spin], at |spin| radians a radian of the joint.
+func add_geared(joint: int, start: Dictionary, lumped: Dictionary, point: Vector3, spin: Vector3) -> void:
+	add_segment(joint, start, lumped)
+	var one: Segment = segments[segments.size() - 1]
+	one.geared = true
+	one.turn_point = point
+	one.turn_axis = spin.normalized()
+	one.ratio = spin.length()
+
+
 ## Once the joints and segments are in: what each joint carries, how far it
 ## reaches, its friction.
 func ready_up(world: BrickWorld, library: PartLibrary) -> void:
 	for one: Joint in joints:
 		one.grams = 0.0
+		one.load = 0.0
 		one.reach = 0.0
 	for segment: Segment in segments:
-		for j: int in joints[segment.joint].chain:
-			joints[j].grams += segment.grams
+		var on: PackedInt32Array = joints[segment.joint].chain
+		if segment.geared:
+			on = PackedInt32Array([segment.joint])
+		for j: int in on:
+			if segment.geared:
+				joints[j].load += segment.grams * segment.ratio * BEARING
+			else:
+				joints[j].grams += segment.grams
+				joints[j].load += segment.grams * joints[j].bearing
 			for key: Variant in segment.start:
 				var brick: BrickWorld.Brick = world.get_brick(int(key))
 				var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
@@ -220,8 +271,14 @@ func ready_up(world: BrickWorld, library: PartLibrary) -> void:
 					continue
 				var placed: Transform3D = segment.start[key]
 				for corner: int in 8:
-					joints[j].reach = maxf(joints[j].reach,
-						(placed * mesh.bounds.get_endpoint(corner)).distance_to(joints[j].point))
+					var corner_at: Vector3 = placed * mesh.bounds.get_endpoint(corner)
+					if segment.geared:
+						# Off its own line, at its ratio.
+						var off: Vector3 = corner_at - segment.turn_point
+						off -= segment.turn_axis * off.dot(segment.turn_axis)
+						joints[j].reach = maxf(joints[j].reach, off.length() * segment.ratio)
+					else:
+						joints[j].reach = maxf(joints[j].reach, corner_at.distance_to(joints[j].point))
 	set_mu(mu)
 
 
@@ -229,7 +286,26 @@ func ready_up(world: BrickWorld, library: PartLibrary) -> void:
 func set_mu(value: float) -> void:
 	mu = value
 	for one: Joint in joints:
-		one.friction = mu * BEARING * one.grams * GRAVITY
+		one.friction = mu * one.load * GRAVITY
+
+
+## Where [param joined] bears, its radius, LDU: a pin's, an axle's or a
+## stud's [constant BEARING]; a turntable's top bears on its base over its
+## disc, taken as a flat disc under even pressure, whose friction acts at two
+## thirds of its radius (a ring at its rim would be half as much again).
+static func bearing_of(joined: Bodies.Link) -> float:
+	if joined != null and joined.kind == "turntable" and joined.radius * 2.0 / 3.0 > BEARING:
+		return joined.radius * 2.0 / 3.0
+	return BEARING
+
+
+## Let go turning at [param rate] rad/s on its first joint, as the pointer
+## had it moving: it carries on at that rate and coasts.
+func fling(rate: float) -> void:
+	if joints.is_empty():
+		return
+	qd[0] = rate
+	flung = rate
 
 
 ## Where each joint's frame stands at [param turns]: Transform3D per joint,
@@ -246,12 +322,23 @@ func frames_at(turns: PackedFloat64Array) -> Array[Transform3D]:
 	return out
 
 
+## Where [param segment] stands at [param turns], its joints' frames
+## [param frames]: its joint's frame, or a geared one turned about its own
+## line.
+func _frame_of(segment: Segment, frames: Array[Transform3D], turns: PackedFloat64Array) -> Transform3D:
+	if not segment.geared:
+		return frames[segment.joint]
+	return Transform3D(Basis.IDENTITY, segment.turn_point) \
+		* Transform3D(Basis(segment.turn_axis, segment.ratio * turns[segment.joint]), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -segment.turn_point)
+
+
 ## Every part that swings, where [param turns] puts it.
 func pose_at(turns: PackedFloat64Array) -> Dictionary:
 	var frames: Array[Transform3D] = frames_at(turns)
 	var out: Dictionary = {}
 	for segment: Segment in segments:
-		var frame: Transform3D = frames[segment.joint]
+		var frame: Transform3D = _frame_of(segment, frames, turns)
 		for key: Variant in segment.start:
 			out[key] = frame * (segment.start[key] as Transform3D)
 	return out
@@ -296,10 +383,26 @@ func dynamics(turns: PackedFloat64Array, rates: PackedFloat64Array) -> Array:
 	var potential: float = 0.0
 	var down := Vector3(0.0, -GRAVITY, 0.0)
 	for segment: Segment in segments:
-		var frame: Transform3D = frames[segment.joint]
+		var frame: Transform3D = _frame_of(segment, frames, turns)
 		var c: Vector3 = frame * segment.centre
 		var turn: Basis = frame.basis
 		var inertia: Basis = turn * segment.inertia * turn.transposed()
+		if segment.geared:
+			# A gear on its own line at the train's ratio: one column, its
+			# joint's. Its speed is the ratio's, so its inertia counts as the
+			# ratio squared; on a fixed line no velocity term pushes it round
+			# (the centripetal pull is square to its turn).
+			var j: int = segment.joint
+			var own: Vector3 = segment.turn_axis * segment.ratio
+			var column: Vector3 = own.cross(c - segment.turn_point)
+			var gv: Vector3 = column * rates[j]
+			var gw: Vector3 = own * rates[j]
+			var pull: Vector3 = (down - gw.cross(gv)) * segment.grams
+			force[j] += column.dot(pull) - own.dot(gw.cross(inertia * gw))
+			mass[j * n + j] += segment.grams * column.dot(column) + own.dot(inertia * own)
+			kinetic += 0.5 * (segment.grams * gv.dot(gv) + gw.dot(inertia * gw))
+			potential += segment.grams * GRAVITY * c.y
+			continue
 		var chain: PackedInt32Array = joints[segment.joint].chain
 		var jv: Array[Vector3] = []
 		var v := Vector3.ZERO
@@ -427,6 +530,7 @@ func step() -> void:
 		next[j] = q[j] + STEP * free[j]
 		if absf(free[j]) * maxf(joints[j].reach, 1.0) > STILL_SPEED:
 			moved = true
+	var was: float = q[0]
 	qd = free
 	time += STEP
 	# The room test, each time the furthest point has gone TEST_LDU.
@@ -443,6 +547,7 @@ func step() -> void:
 			q = next
 	else:
 		q = next
+	travel += absf(q[0] - was)
 	# The ends of the first joint's swings.
 	var way_now: int = signi(int(signf(qd[0])))
 	if way_now != 0 and _last_way != 0 and way_now != _last_way:
@@ -514,10 +619,15 @@ func carry(spin: Vector3, about: Vector3) -> void:
 	momentum.resize(n)
 	var frames: Array[Transform3D] = frames_at(q)
 	for segment: Segment in segments:
-		var frame: Transform3D = frames[segment.joint]
+		var frame: Transform3D = _frame_of(segment, frames, q)
 		var c: Vector3 = frame * segment.centre
 		var inertia: Basis = frame.basis * segment.inertia * frame.basis.transposed()
 		var v: Vector3 = spin.cross(c - about)
+		if segment.geared:
+			var own: Vector3 = segment.turn_axis * segment.ratio
+			momentum[segment.joint] += segment.grams * own.cross(c - segment.turn_point).dot(v) \
+				+ own.dot(inertia * spin)
+			continue
 		for i: int in joints[segment.joint].chain:
 			var parent: int = joints[i].parent
 			var carried: Transform3D = frames[parent] if parent >= 0 else Transform3D.IDENTITY
@@ -569,6 +679,24 @@ func words() -> String:
 	if time <= STILL_S + STEP * 2.0 and stops == 0:
 		return ""
 	var out: String
+	if absf(flung) > 0.0:
+		# Let go while it moved: how fast, how far it coasted, how long.
+		out = "let go turning at %s turns a second, it coasted %s turns in %s s against its bearing's friction" % [
+			Balance.tidy(absf(flung) / TAU), Balance.tidy(travel / TAU), Balance.tidy(time - STILL_S)]
+		# A turn back is a swing when it goes a degree or more before the next:
+		# a train's stop can rock it back by a hair.
+		var back: int = 0
+		for k: int in turns.size():
+			var to: float = float(turns[k + 1][1]) if k + 1 < turns.size() else q[0]
+			if absf(to - float(turns[k][1])) >= deg_to_rad(1.0):
+				back += 1
+		if back > 0:
+			out += ", swinging back and forth %d time%s" % [back, "" if back == 1 else "s"]
+		if stops > 0:
+			out += ", stopping dead where it met the model %s" % ("once" if stops == 1 else "%d times" % stops)
+		if time >= MOST_S:
+			out += "; still turning after %d s, kept where it was" % roundi(MOST_S)
+		return out
 	if swings == 0:
 		out = "swung down under its own weight in %s s" % Balance.tidy(time - STILL_S)
 	else:

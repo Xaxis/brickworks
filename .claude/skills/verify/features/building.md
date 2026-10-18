@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung -->
 
 ## Sub-features
 
@@ -637,6 +637,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (rubber, no socket: 8054-1's steering wheel, a rim with its tyre, read as
   held by two dash studs, locked its column); a lone pin is part of the
   first thing it is in.
+  tyre is one with its wheel; a lone pin is part of the first thing it is in
+  (which pins are alone is read before any is joined). A piece nothing holds
+  where it is (no part on the baseplate's studs, none locked; not the
+  biggest, at most 300 parts) lodged in another is held by what it is lodged
+  in (`Bodies._lodge`, MECHANISMS §16): an axle in a pin's stop bush or a
+  joiner, a gear a file carries as a part of its own, a log in a gripper.
+  A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
+  nothing on and is tested for room by nothing (`Bodies.flexible`).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket), else the heaviest body. Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
@@ -699,16 +707,26 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   MECHANISMS §15): every frame the shaft past each joint turns as the one
   before it (in line, one for one), with pictures of the driveline drawn
   alone before and after (`u_before`, `u_turned`). `--worm-set=FILE` tries
-  another set.
+  another set. A joint at an angle turns its far shaft and the gears past
+  it by Cardano's relation (`Grab._cardan`; MECHANISMS §16): `grab_probe --
+  --only=cardan` (headless will do) makes 8062-1's joint with its far half
+  turned 30°, both towers locked, turns the crank two turns, and holds the
+  far shaft to tan ψ2 = tan ψ1 cos β worked by hand (the mean is 4.1° off).
 - `linear actuators` (the gear table's `actuators`, `Bodies._actuators`,
   `Racks.screws`; MECHANISMS §13): a rod in its actuator or cylinder slides
   and does not turn, never past the stroke the library's contracted and
   extended files draw (`tools/gears.py check`, `tests/test_gears.py`); in a
   loop it is a joint of the tree; the small actuator's input drives the rod
   a stroke over 19.9 turns; the loop's other joints are held by the screw,
-  said. `grab_probe -- --only=actuators` (windowed): 42081-1's digging arm
-  and 42024-1's small actuator, the rod dragged past both ends, the arm
-  against the law of cosines by hand, the drag's own work a frame (mean and
+  said; a pneumatic cylinder has no screw, so what its rod raises taken
+  hold of and turned draws the rod (MECHANISMS §16).
+  `grab_probe -- --only=actuators` (windowed): 42081-1's digging arm,
+  42024-1's small actuator and 42080-1's crane on its two pneumatic
+  cylinders (their rods pinned to the cab: the pointer drags the cylinder
+  along its rod), the rod dragged past both ends, the arm
+  against the law of cosines by hand, nothing it carries left behind (no
+  part that stays lodged in one that moved, with no joint between them; a
+  hose bends), the drag's own work a frame (mean and
   95% under 33 ms: about 11 and 18 on 42081-1, 10 and 23 on 42024-1, from
   253 and 148 mean before G6; the worst frame is printed, and passes 33 now
   and then on a loaded box), let go checked and kept in under 10 s (about 6
@@ -755,13 +773,37 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   two beams on two free pins swinging together, the outer coming to rest
   where the settle hangs it, with pictures. The swing's own frame cost is
   checked under 33 ms and written to timings.json.
+- `coasting when flung` (`Grab.fling_rate`, `Swing.fling`, `Swing.add_geared`;
+  MECHANISMS §16): let go while the pointer turns it, a section on a free
+  joint starts at the pointer's rate (the slope of the turn against the
+  clock over its last steady moves, within 0.1 s; still for 60 ms, or slower
+  than 11° a second, is from rest) and coasts against its bearing's
+  friction; a gear train the joint drives turns with it, each gear at its
+  ratio (its inertia times the ratio squared, its bearing's friction times
+  the ratio); a turntable bears at two thirds of its disc's radius. A joint
+  that holds by friction does not coast. The status bar says "coasting at
+  1.8 turns a second, 2.3 turns so far"; the step "let go turning at …, it
+  coasted … turns in … s against its bearing's friction, and came to rest
+  at …";
+  `move_part spin=` (degrees a second) over MCP.
+  `grab_probe -- --only=coast` (windowed): a made gear 40 on an axle turned
+  by the pointer at 1,080° a second by the clock and let go turning, its
+  start against the pointer's rate, its coast against ω²/2α and ω/α worked
+  by hand from its parts, then the same with a gear 8 it drives (the 8 at
+  rest where five times the 40's turn puts it), a picture mid-coast and at
+  rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
+  flicked the same way staying where it was let go (spin= says it does not
+  coast). Each fails with its fix taken out.
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,
   takes the arm by mouse where `window.brickworksGrab.handles` says it is,
   drags it up (turns on its hinge mid-drag, kept on release, said), Ctrl+Z
   puts it back, then turns the turret on its turntable, then drags a crank of
   a flat four-bar beside it round and the loop carries the coupler and the
   other crank, then drags a beam 3 on a free pin out and lets go: it swings
-  and comes to rest, and the swing's own frame cost is read from the page
+  and comes to rest, and the swing's own frame cost is read from the page;
+  then takes a gear 40 on a free axle by its rim, turns it round at half a
+  turn a second by the clock and lets go turning: it coasts and says how far
+  (`coast_deg_s` on the page), its coasting frames' own work under 33 ms
   (eight handles at most; the page asks for them with
   `window.brickworksGrabAsk`, and the app finds none unless asked); the
   app's frame cost of a drag and the page's longest wait. `--big=FILE

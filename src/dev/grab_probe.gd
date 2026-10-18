@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab6-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab7-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -156,6 +156,10 @@ func _run() -> void:
 		await _double_case()
 	if only.is_empty() or only == "falling" or only == "landing":
 		await _landing_case()
+	if only.is_empty() or only == "coast":
+		await _coast_case()
+	if only.is_empty() or only == "cardan":
+		await _cardan_case()
 	if only.is_empty() or only == "follow":
 		var gear_sets: Array = []
 		for arg: String in args:
@@ -1906,6 +1910,7 @@ func _cardan_shot(keys: PackedInt64Array, near: PackedInt64Array, name: String, 
 const ACTUATORS: Array = [
 	["actuator: a wheel loader's arm", "res://vendor/omr/files/42081-1.mpd", true],
 	["actuator: a small one, and its input", "res://vendor/omr/files/42024-1.mpd", false],
+	["cylinders: a forest machine's crane on two pneumatic cylinders", "res://vendor/omr/files/42080-1.mpd", true],
 ]
 ## Tried and not passing, run with --actuator-set=: 42006-1's boom closes its
 ## triangle to 0.006° but stops 3.4 LDU out and 13.3 in, a beam 5 of the boom
@@ -1979,7 +1984,7 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	var chosen: Bodies.Link = null
 	var tri: Dictionary = {}
 	for link: Bodies.Link in bodies.links:
-		if link.kind != "actuator":
+		if link.kind != "actuator" and link.kind != "cylinder":
 			continue
 		var found: Dictionary = _actuator_triangle(bodies, link)
 		print("    actuator %s~%s: slide %s, %s" % [_world.get_brick(int(link.pairs[0][0])).part_id,
@@ -1988,6 +1993,7 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		if chosen == null and not found.is_empty():
 			chosen = link
 			tri = found
+	print("    %s; %d pieces held by what they are lodged in" % [bodies.summary(), bodies.lodged])
 	_check("%s: a linear actuator raises something by a loop here" % name, chosen != null)
 	if chosen == null:
 		return
@@ -2032,14 +2038,29 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
 		and grab.mode == "slide" and grab.linkage != null)
 	if grab == null or grab.state != "moves" or grab.linkage == null:
+		var tried := Grab.new()
+		tried.world = _world
+		tried.builder = _builder
+		tried.library = _library
+		tried.bodies = bodies
+		tried.shared_mechanism = _grab._mechanism
+		print("    (a grab of the rod reads %s: %s)" % [tried.begin(rod_key, _world.get_brick(rod_key).transform.origin),
+			tried.said if tried.why.is_empty() else tried.why])
 		await _button(screen, false)
 		return
 	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(), grab.moving.size()])
 	var hold: Vector3 = grab._hold
-	var sense: float = signf(grab.axis.dot(way))
+	# The pointer drags the slide's far side along the line: the rod out of
+	# its body, or, where the tree hangs the body from the rod (42080-1's
+	# cylinders, their rods pinned to the cab), the body along the rod, so
+	# the rod goes in as the pointer goes out.
+	var flip: float = 1.0 if bodies.parent_link.get(int(bodies.body_of[rod_key])) == chosen else -1.0
+	# What the actuator raises: the triangle's body that moves with the drag.
+	var boom_key: int = y_key if grab.moving.has(y_key) or not grab.moving.has(x_key) else x_key
 	var targets: Array = []
-	var top: float = stroke - out_by + 16.0
-	var bottom: float = -out_by - 16.0
+	# Past both ends of the stroke, whichever side the pointer drags.
+	var top: float = stroke - out_by + 16.0 if flip > 0.0 else out_by + 16.0
+	var bottom: float = -out_by - 16.0 if flip > 0.0 else -(stroke - out_by) - 16.0
 	var at: float = 0.0
 	while at < top:
 		at += 4.0
@@ -2091,12 +2112,12 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		most = maxf(most, e)
 		least = minf(least, e)
 		outside = maxf(outside, maxf(-(out_by + e), out_by + e - stroke))
-		if not grab.stopped and absf(e - target) < 1.0:
+		if not grab.stopped and absf(e - flip * target) < 1.0:
 			followed += 1
 		elif grab.stopped and not stop_said.has(signf(target)):
 			stop_said[signf(target)] = true
 			var at_end: bool = absf(e - (stroke - out_by)) < 0.05 or absf(e + out_by) < 0.05
-			print("      (stopped at %.2f LDU asked %.0f: %s%s)" % [e, target, "the end of its stroke" if at_end
+			print("      (stopped at %.2f LDU asked %.0f: %s%s)" % [e, flip * target, "the end of its stroke" if at_end
 				else ("its loop closes no further" if grab.loop_short else "it meets the model"),
 				"" if at_end or grab.blocked_by.size() != 2
 				else ", #%d %s meets #%d %s" % [int(grab.blocked_by[0]), _world.get_brick(int(grab.blocked_by[0])).part_id,
@@ -2146,6 +2167,10 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		% [name, own_mean, own_95, sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0],
 		not own.is_empty() and own_mean <= 33.0 and own_95 <= 33.0)
 	_timings[name + " " + path.get_file()]["p95_ms"] = snappedf(own_95, 0.01)
+	var behind: Array = _left_behind(grab, bodies)
+	_check("%s: nothing it carries is left behind: %d parts moved, %s" % [name, grab.changed().size(),
+		"none lodged in them stays" if behind.is_empty() else "%d stay lodged in them: %s" % [behind.size(),
+		", ".join(behind.slice(0, 6))]], behind.is_empty() and not grab.changed().is_empty())
 	var pose_file := FileAccess.open(OUT.path_join("poses_%s.json" % path.get_file().get_basename()), FileAccess.WRITE)
 	if pose_file != null:
 		pose_file.store_string(JSON.stringify({"keys": pose_keys, "frames": poses}))
@@ -2164,7 +2189,8 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	_check("%s: let go, it is checked and kept in %.1f s" % [name, kept_in], kept_in <= 10.0)
 	# Kept where it was let go. A stop met earlier in the drag and not yet
 	# found was found at the release, and 42081-1's arm let go 20 LDU out was
-	# kept 60 in, at that stop.
+	# kept 60 in, at that stop; 42080-1's arm, its saw's drive gear read as a
+	# piece of its own and left standing, was put back near where it began.
 	var now_at := func(key: int) -> Transform3D:
 		return _world.get_brick(key).transform * (grab.rest[key] as Transform3D).affine_inverse()
 	var kept_rel: Transform3D = (now_at.call(body_key) as Transform3D).affine_inverse() * now_at.call(rod_key)
@@ -2181,23 +2207,81 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	# The boom taken hold of: the actuator's screw holds it.
 	_grab._ready_now()
 	bodies = _grab._bodies
-	var boom: int = int(bodies.body_of[y_key])
+	var boom: int = int(bodies.body_of[boom_key])
 	var trial := Grab.new()
 	trial.world = _world
 	trial.builder = _builder
 	trial.library = _library
 	trial.bodies = bodies
 	trial.shared_mechanism = _grab._mechanism
-	var boom_part: int = y_key
+	var boom_part: int = boom_key
 	for key: int in bodies.members[boom]:
 		if key != rod_key:
 			boom_part = key
 			break
 	var state: String = trial.begin(boom_part, _world.get_brick(boom_part).transform.origin)
+	if chosen.kind == "cylinder":
+		# No screw holds a cylinder: what its rod raises, taken hold of and
+		# turned, draws the rod along its cylinder, within its stroke, the
+		# loop with it, as a drag on the rod does.
+		trial.budget_ms = INF
+		var turned_to: float = 0.0
+		if state == "moves" and trial.mode == "turn":
+			turned_to = trial.turn_to(trial.angle + 4.0)
+			if absf(turned_to) < 0.5:
+				turned_to = trial.turn_to(trial.angle - 4.0)
+		var moved_by := func(key: int) -> Transform3D:
+			var stood: Transform3D = trial.rest.get(key, _world.get_brick(key).transform)
+			return (trial.placed.get(key, stood) as Transform3D) * stood.affine_inverse()
+		var rel_now: Transform3D = (moved_by.call(body_key) as Transform3D).affine_inverse() * moved_by.call(rod_key)
+		var slid: float = way.dot(rel_now * rod_rest - rod_rest)
+		var by_hand_turn: float = _triangle_turn(tri, way, slid)
+		_check(("%s: what it raises taken hold of and turned %.2f° draws the rod %.2f LDU along its cylinder, the "
+			+ "triangle by hand %.2f° for that (%s)") % [name, turned_to, slid, by_hand_turn,
+			trial.said if trial.why.is_empty() else trial.why], state == "moves" and trial.linkage != null
+			and absf(turned_to) > 0.5 and absf(slid) > 0.1 and slid >= -out_by - 0.05 and slid <= stroke - out_by + 0.05)
+		return
 	_check("%s: the boom taken hold of does not move: %s" % [name, trial.why.get_slice("(", 0).strip_edges()
 		if not trial.why.is_empty() else trial.said], state == "locked" and trial.why.contains("self-locking"))
 	# The input turned over MCP, where it is a part of its own.
 	await _input_turned(name, bodies)
+
+
+## What a grab left behind: each part that stands still while one it is
+## lodged in (their covers share cells where they stood) has moved, when it
+## is in a piece of the model of its own, joined by no joint to the part
+## that moved, so nothing but that part could have held it; not a hose,
+## which bends. A part of the standing model beside one that moves (42024-1's
+## angle connector on its own hinge, by a beam 3 turning on its pins) stays
+## rightly. As "#key part (in #key part)". 42080-1's arm left an axle 3, an
+## axle 5, a joiner, its saw's drive gear and the log in its gripper.
+func _left_behind(grab: Grab, bodies: Bodies) -> Array:
+	var piece_of: Dictionary = {}
+	for start: int in bodies.members:
+		if piece_of.has(start):
+			continue
+		piece_of[start] = start
+		var frontier: Array = [start]
+		while not frontier.is_empty():
+			var at: int = frontier.pop_back()
+			for l: Bodies.Link in bodies.touching.get(at, []):
+				if not piece_of.has(l.other(at)):
+					piece_of[l.other(at)] = start
+					frontier.append(l.other(at))
+	var out: Array = []
+	var seen: Dictionary = {}
+	for key: Variant in grab.changed():
+		var mine: int = int(bodies.body_of.get(int(key), -1))
+		for other: int in _builder.lattice.blockers_boxes(_builder.lattice.boxes_of(int(key)), int(key), {}):
+			if grab.placed.has(other) or _store.scenery.has(other) or seen.has(other):
+				continue
+			var theirs: int = int(bodies.body_of.get(other, -1))
+			if bodies.flexible.has(theirs) or piece_of.get(theirs, -1) == piece_of.get(mine, -2):
+				continue
+			seen[other] = true
+			out.append("#%d %s (in #%d %s)" % [other, _world.get_brick(other).part_id, int(key),
+				_world.get_brick(int(key)).part_id])
+	return out
 
 
 ## A small linear actuator's input turned a whole turn over MCP (move_part
@@ -3491,6 +3575,464 @@ func _landing_case() -> void:
 	_builder.undo()
 	await _frames(3)
 	_check("landing: over MCP one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
+
+
+# -- flick to spin, and coast ----------------------------------------------------------
+
+## A flywheel made here: a Technic gear 40 (3649) on an axle 4 (3705) in a
+## Technic brick 1 x 6 with holes (3894) on a tower of three bricks 1 x 6.
+## [constant MADE_TRAIN_GEAR] adds an 8 tooth gear (3647) on a second axle
+## three holes along, meshing with the 40: a train that turns the 8 five
+## times as fast. LDraw's units, y down.
+const MADE_FLYWHEEL := """0 A flywheel: a gear 40 on an axle
+0 Name: made_flywheel.ldr
+0 !BRICKWORKS FLOOR NONE
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3009.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3009.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3009.dat
+1 7 0 -96 0 1 0 0 0 1 0 0 0 1 3894.dat
+1 0 -40 -86 0 0 0 -1 0 1 0 1 0 0 3705.dat
+1 7 -40 -86 -20 1 0 0 0 1 0 0 0 1 3649.dat
+"""
+const MADE_TRAIN_GEAR := """1 0 20 -86 0 0 0 -1 0 1 0 1 0 0 3705.dat
+1 7 20 -86 -20 1 0 0 0 1 0 0 0 1 3647.dat
+"""
+## How fast the pointer turns the flywheel before it lets go, degrees a
+## second (three turns a second), and for how long, s.
+const FLICK_RATE := 1080.0
+const FLICK_S := 0.3
+
+
+## Flick to spin, and coast: the made flywheel taken by its rim and turned
+## by the pointer at a steady rate by the clock, let go while it turns. It
+## carries on at the pointer's rate, slows against its bearing's friction
+## and stops where the parts say by hand; then the same with a gear 8 it
+## drives five times as fast, whose inertia counts 25 times and its
+## bearing's friction 5 times, so the train coasts less far, as worked by
+## hand from the teeth; a picture mid-coast; over MCP (move_part spin=); a
+## hinge, which holds by friction, flicked the same way stays where it is
+## let go.
+func _coast_case() -> void:
+	for train: bool in [false, true]:
+		var name: String = "coast: %s" % ("a gear 40 driving a gear 8" if train else "a flywheel")
+		print("\n%s" % name)
+		var path: String = OUT.path_join("made_%s.ldr" % ("train" if train else "flywheel"))
+		_write(path, MADE_FLYWHEEL + (MADE_TRAIN_GEAR if train else ""))
+		if not await _open(path):
+			_check("%s: the made model opens" % name, false)
+			continue
+		_grab._ready_now()
+		var bodies: Bodies = _grab._bodies
+		var big: int = 0
+		var small: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == "3649":
+				big = brick.id
+			elif brick.part_id == "3647":
+				small = brick.id
+		var wheel: int = int(bodies.body_of[big])
+		var link: Bodies.Link = bodies.parent_link.get(wheel)
+		print("    %s; the 40's joint: %s" % [bodies.summary(), "none" if link == null else "%s, %s" % [link.kind,
+			"holds" if link.holds else "turns freely"]])
+		if link == null:
+			_check("%s: the 40 turns on a joint" % name, false)
+			continue
+		# From the side the gears are on (LDraw's -z is the view's +z).
+		_camera.look_from(Vector3(0.15, 0.25, 1.0).normalized())
+		_frame_on(PackedInt64Array())
+		await _frames(15)
+		await _camera_still()
+		var before: Dictionary = _snapshot()
+		var depth: int = _builder.history_depth()
+		var flick: Array = await _flick(bodies.members[wheel], bodies, FLICK_RATE, FLICK_S, name)
+		var grab: Grab = flick[0]
+		if grab == null:
+			continue
+		var swinging: Grab = _grab.get("_swinging")
+		var swing: Swing = swinging.swing if swinging != null else null
+		# Within 15%: the pointer's rate is the probe's, by when it asked for
+		# each move; the app reads each move a frame later, when it comes, and
+		# on a loaded box one frame late in the last tenth of a second moved
+		# the reading 11% (1,195° a second). On a quiet box it reads to 1%.
+		_check("%s: let go while it turns, it carries on at the pointer's speed: %.0f° a second against the pointer's %.0f"
+			% [name, absf(rad_to_deg(swing.flung)) if swing != null else 0.0, float(flick[1])], swing != null
+			and absf(absf(rad_to_deg(swing.flung)) - float(flick[1])) <= float(flick[1]) * 0.15)
+		if swing == null:
+			await _settled()
+			continue
+		# Mid-coast: the status line says it, and a picture.
+		var said_mid: String = ""
+		var shot: bool = false
+		var waited: int = Time.get_ticks_msec()
+		while _grab.is_swinging() and Time.get_ticks_msec() - waited < 60000:
+			if not shot and swing.time > 0.12:
+				shot = true
+				said_mid = str(_grab.get("_said"))
+				if _windowed:
+					await _clean_shot("coast " + ("train" if train else "flywheel"), "2_mid")
+			await process_frame
+		await _settled()
+		print("    mid-coast the status line said: %s" % said_mid)
+		_check("%s: while it coasts the status line says so: %s" % [name, said_mid], said_mid.contains("coasting at"))
+		# By hand from the parts and the teeth.
+		var turning: Array = [[bodies.parts_of([wheel]), link.point, link.axis.normalized(), 1.0]]
+		if train:
+			var other: int = int(bodies.body_of[small])
+			var teeth_big: float = float(Mechanism.spec_of("3649")["teeth"])
+			var teeth_small: float = float(Mechanism.spec_of("3647")["teeth"])
+			var other_link: Bodies.Link = bodies.parent_link.get(other)
+			turning.append([bodies.parts_of([other]), other_link.point, other_link.axis.normalized(),
+				teeth_big / teeth_small])
+		var hand: Dictionary = _coast_by_hand(turning, absf(swing.flung))
+		print("    by hand: I %.0f g·LDU² (the 40's %.0f), friction %.0f g·LDU²/s², %.2f rad/s² against it: from %.2f rad/s it coasts %.4f turns in %.4f s"
+			% [hand["I"], hand["I_first"], hand["friction"], hand["alpha"], absf(swing.flung), hand["turns"], hand["seconds"]])
+		var coasted: float = swing.travel / TAU
+		var took: float = swing.time - Swing.STILL_S
+		print("    it coasted %.4f turns in %.4f s; %s" % [coasted, took, _grab.last_words])
+		_check("%s: it coasts %.3f turns, by hand %.3f (ω² / 2α, α its bearings' friction over its inertia%s)"
+			% [name, coasted, float(hand["turns"]), ", the 8's counted at 5 and 25 times" if train else ""],
+			absf(coasted - float(hand["turns"])) <= float(hand["turns"]) * 0.01)
+		_check("%s: and stops after %.3f s, by hand %.3f (ω / α)" % [name, took, float(hand["seconds"])],
+			absf(took - float(hand["seconds"])) <= float(hand["seconds"]) * 0.02 + 0.002)
+		_timings[name] = {"flung_deg_s": rad_to_deg(swing.flung), "coast_turns": coasted, "by_hand_turns": hand["turns"],
+			"coast_s": took, "by_hand_s": hand["seconds"], "swing_frames": _grab.swing_frames,
+			"swing_mean_ms": _grab.swing_mean_ms, "swing_worst_ms": _grab.swing_worst_ms,
+			"clock_s": _grab.swing_clock_s}
+		_check("%s: its own work a coasting frame, mean %.2f ms, worst %.2f, within a 33 ms frame" % [name,
+			_grab.swing_mean_ms, _grab.swing_worst_ms], _grab.swing_frames > 0 and _grab.swing_mean_ms <= 33.0
+			and _grab.swing_worst_ms <= 33.0)
+		_check("%s: let go, it says how it spun and where it stopped: %s" % [name, _grab.last_words],
+			_grab.last_words.contains("coasted") and _grab.last_words.contains("came to rest at"))
+		if train:
+			# The 8 turned five times the 40's turn, the other way, by its teeth.
+			var turned_big: float = _turn_about(_world.get_brick(big).transform.basis
+				* (before[big] as Transform3D).basis.inverse(), Vector3(0, 0, 1))
+			var turned_small: float = _turn_about(_world.get_brick(small).transform.basis
+				* (before[small] as Transform3D).basis.inverse(), Vector3(0, 0, 1))
+			var whole: float = grab.angle * signf(grab.axis.z)
+			var want: float = wrapf(-5.0 * whole, -180.0, 180.0)
+			print("    the 40 stands %.3f° round (%.3f° in all), the 8 %.3f°; by the teeth the 8 is %.3f° round" % [
+				turned_big, whole, turned_small, want])
+			_check("%s: at rest the 8 stands where five times the 40's turn puts it, to %.4f°" % [name,
+				absf(wrapf(turned_small - want, -180.0, 180.0))], absf(wrapf(turned_small - want, -180.0, 180.0)) < 0.05)
+		_check("%s: let go, the drag and the coast are one step to undo" % name, _builder.history_depth() == depth + 1)
+		if _windowed:
+			await _clean_shot("coast " + ("train" if train else "flywheel"), "3_rest")
+		_builder.undo()
+		await _frames(3)
+		_check("%s: one undo puts it back exactly (%s)" % [name, _differs(before)], _differs(before) == "none differs")
+		# Over MCP: let go at a speed, and the answer says how it spun.
+		var tools := AppTools.new()
+		tools.app = _main
+		tools.assistant = _main.get("_assistant")
+		depth = _builder.history_depth()
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % big, "spin": 720.0}))
+		print("    move_part #%d spin=720 said: %s" % [big, said.replace("\n", " | ")])
+		var hand_mcp: Dictionary = _coast_by_hand(turning, deg_to_rad(720.0))
+		var last: Swing = _grab.last_swing
+		_check("%s: over MCP let go at 720° a second it coasts %.3f turns, by hand %.3f, and says so" % [name,
+			last.travel / TAU if last != null else 0.0, float(hand_mcp["turns"])], last != null
+			and absf(last.travel / TAU - float(hand_mcp["turns"])) <= float(hand_mcp["turns"]) * 0.01
+			and said.contains("coasted") and said.contains("came to rest at"))
+		_check("%s: over MCP one step" % name, _builder.history_depth() == depth + 1)
+		_builder.undo()
+		await _frames(3)
+	await _hinge_flick()
+
+
+## A hinge holds by friction: flicked as the flywheel is, it stays where the
+## pointer let it go and does not coast; over MCP, spin= says so.
+func _hinge_flick() -> void:
+	var name: String = "coast: a hinge holds"
+	print("\n%s" % name)
+	if not await _open("res://vendor/omr/files/4096-1_Crane.mpd"):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var chosen: Dictionary = _choose(bodies, "hinge")
+	if chosen.is_empty():
+		_check("%s: the crane has a hinge" % name, false)
+		return
+	var child: int = chosen["child"]
+	_frame_on(PackedInt64Array())
+	await _frames(15)
+	await _camera_still()
+	var depth: int = _builder.history_depth()
+	var flick: Array = await _flick(bodies.members[child], bodies, 180.0, 0.2, name)
+	var grab: Grab = flick[0]
+	if grab == null:
+		return
+	var let_go_at: float = float(flick[2])
+	await _settled()
+	_check("%s: flicked at %.0f° a second and let go at %.1f°, it does not coast: %s" % [name, float(flick[1]),
+		let_go_at, _grab.last_words], not _grab.last_words.contains("coasted")
+		and absf(grab.angle - let_go_at) < 0.01)
+	_check("%s: one step to undo" % name, _builder.history_depth() == depth + 1)
+	_builder.undo()
+	await _frames(3)
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var part: int = int((bodies.members[child] as PackedInt64Array)[0])
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % part, "degrees": 10.0, "spin": 360.0}))
+	print("    move_part #%d degrees=10 spin=360 said: %s" % [part, said.replace("\n", " | ")])
+	_check("%s: over MCP spin= says it does not coast" % name, said.contains("does not coast"))
+	if _builder.history_depth() > depth:
+		_builder.undo()
+		await _frames(3)
+
+
+## Press on [param ids] and turn it about its joint with the pointer at
+## [param rate] degrees a second by the clock for [param seconds], then let
+## go while it still turns: [the grab or null, the pointer's rate over its
+## last tenth of a second by the probe's own clock, the turn as it was let
+## go].
+func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, name: String) -> Array:
+	var joined: Bodies.Link = bodies.parent_link[int(bodies.body_of[int(ids[0])])]
+	var press: Dictionary = _press_off_line(ids, joined.point, joined.axis.normalized())
+	if press.is_empty():
+		press = _press_point(ids, bodies)
+	if press.is_empty():
+		_check("%s: the part to flick is under the pointer" % name, false)
+		return [null, 0.0, 0.0]
+	var screen: Vector2 = press["screen"]
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	var grab: Grab = _grab.grab
+	if grab == null or grab.state != "moves" or grab.mode != "turn":
+		_check("%s: a drag on it turns it on its joint (%s)" % [name, _grab.last_words], false)
+		await _button(_last_screen, false)
+		return [null, 0.0, 0.0]
+	var hold: Vector3 = grab._hold
+	var began: int = Time.get_ticks_usec()
+	var asked: Array = []   ## [s, degrees]
+	var start: float = grab.angle
+	while true:
+		var t: float = float(Time.get_ticks_usec() - began) / 1000000.0
+		var target: float = start + rate * t
+		asked.append([t, target])
+		await _move(_camera.unproject_position(_about(grab.pivot, grab.axis, target) * hold), MOUSE_BUTTON_MASK_LEFT)
+		if t >= seconds:
+			break
+	var let_go_at: float = grab.angle
+	await _button(_last_screen, false)
+	# The pointer's own rate over its last tenth of a second, by the probe's
+	# clock: what the grab reads from the moves it was given.
+	var t_end: float = float(asked[asked.size() - 1][0])
+	var first: Array = asked[asked.size() - 1]
+	for one: Array in asked:
+		if t_end - float(one[0]) <= 0.1:
+			first = one
+			break
+	var measured: float = (float(asked[asked.size() - 1][1]) - float(first[1])) / maxf(t_end - float(first[0]), 0.001)
+	print("    flicked at %.0f° a second for %.2f s in %d moves; the grab read %.0f° a second" % [measured, seconds,
+		asked.size(), rad_to_deg(_grab.held_fling)])
+	return [grab, absf(measured), let_go_at]
+
+
+## A train coasting, by hand from its parts: each part's mass (Stability's)
+## and its moment of inertia about its own axle, its mass spread through its
+## box (Σ m (d² + (a² + b²)/12) for the box's sides across the axle); each
+## body counted at its ratio to the driver by the teeth, its inertia times
+## the ratio squared and its bearing's friction, μ r m g, times the ratio.
+## From [param rate], rad/s, at a steady α = friction / inertia it coasts
+## rate² / 2α radians in rate / α seconds. [param turning]: [[keys, a point
+## on its axle, its axle's way, its ratio]].
+func _coast_by_hand(turning: Array, rate: float) -> Dictionary:
+	var inertia: float = 0.0
+	var friction: float = 0.0
+	var first: float = 0.0
+	for one: Array in turning:
+		var p: Vector3 = one[1]
+		var u: Vector3 = one[2]
+		var ratio: float = one[3]
+		var mine: float = 0.0
+		for key: int in one[0]:
+			var brick: BrickWorld.Brick = _world.get_brick(key)
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			var g: float = Stability.grams(info)
+			var at: Transform3D = brick.transform
+			var c: Vector3 = at * info.bounds.get_center()
+			var off: Vector3 = (c - p) - u * (c - p).dot(u)
+			var local: Vector3 = at.basis.orthonormalized().inverse() * u
+			var size: Vector3 = info.bounds.size
+			var own: float = g / 12.0 * (local.x * local.x * (size.y * size.y + size.z * size.z)
+				+ local.y * local.y * (size.x * size.x + size.z * size.z)
+				+ local.z * local.z * (size.x * size.x + size.y * size.y))
+			mine += g * off.length_squared() + own
+			friction += Swing.MU * Swing.BEARING * Swing.GRAVITY * g * absf(ratio)
+		inertia += mine * ratio * ratio
+		if first == 0.0:
+			first = mine
+	var alpha: float = friction / inertia
+	return {"I": inertia, "I_first": first, "friction": friction, "alpha": alpha,
+		"turns": rate * rate / (2.0 * alpha) / TAU, "seconds": rate / alpha}
+
+
+# -- a universal joint at an angle ------------------------------------------------------
+
+## A crank turning a shaft through a universal joint, made here from
+## 8062-1's winch (its sub-model Crane Sub 26 4): an axle 4 in a Technic
+## brick 1 x 4 with holes on a tower, a gear 8 on it driven by a gear 8 on a
+## crank axle 3 beside it, a universal joint (3712, 3326a, 3712), and the far
+## shaft, an axle 4 with a gear 8 on it, in a Technic brick 1 x 4 on a tower
+## of its own. Straight,
+## the shafts are in line; [method _cardan_case] turns the far half about the
+## near end's pin by [constant CARDAN_BETA]. LDraw's units, y down.
+const MADE_CARDAN := """0 A crank turns a shaft through a universal joint
+0 Name: made_cardan.ldr
+0 !BRICKWORKS FLOOR NONE
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3705.dat
+1 7 -10 -10 0 0 0 1 0 1 0 -1 0 0 3701.dat
+1 4 -10 14 0 0 0 1 0 1 0 -1 0 0 3010.dat
+1 4 -10 38 0 0 0 1 0 1 0 -1 0 0 3010.dat
+1 7 10 0 0 0 0 1 0 1 0 -1 0 0 3647.dat
+1 0 10 0 20 1 0 0 0 1 0 0 0 1 4519.dat
+1 7 10 0 20 0 0 1 0 1 0 -1 0 0 3647.dat
+1 7 -30 0 0 0 0 1 0 1 0 -1 0 0 3712.dat
+1 7 -60 0 0 0 0 1 0 1 0 -1 0 0 3326a.dat
+1 7 -90 0 0 0 0 -1 -1 0 0 0 1 0 3712.dat
+1 0 -120 0 0 1 0 0 0 1 0 0 0 1 3705.dat
+1 7 -140 0 0 0 0 1 0 1 0 -1 0 0 3647.dat
+1 7 -110 -10 0 0 0 1 0 1 0 -1 0 0 3701.dat
+1 4 -110 14 0 0 0 1 0 1 0 -1 0 0 3010.dat
+1 4 -110 38 0 0 0 1 0 1 0 -1 0 0 3010.dat
+"""
+## The made joint's angle between its shafts, degrees.
+const CARDAN_BETA := 30.0
+
+
+## Turn the made crank round through the universal joint at an angle: the
+## far shaft against Cardano's relation, tan ψ2 = tan ψ1 cos β (ψ1 the near
+## end's pin from square to the shafts' plane, ψ2 the far end's pin from that
+## plane), worked by hand from where the joint's parts stand, every 10° of two
+## turns of the near shaft; and against the mean the gear reading gives (one
+## for one), which it runs ahead of and behind.
+func _cardan_case() -> void:
+	var name: String = "universal joint at %.0f°" % CARDAN_BETA
+	print("\n%s" % name)
+	var straight: String = OUT.path_join("made_cardan_straight.ldr")
+	_write(straight, MADE_CARDAN)
+	if not await _open(straight):
+		_check("%s: the made joint opens" % name, false)
+		return
+	_grab._ready_now()
+	var found: Array = _grab._bodies.universals()
+	_check("%s: the joint is read as a universal joint, straight" % name, found.size() == 1)
+	if found.size() != 1:
+		print("    %s" % _grab._bodies.summary())
+		for link: Bodies.Link in _grab._bodies.links:
+			print("    %s %s at %s way %s" % [link.kind, _parts_said(_grab._bodies, link), link.point.snapped(Vector3.ONE * 0.1),
+				link.axis.snapped(Vector3.ONE * 0.01)])
+		return
+	# The near end's pin: the link between the cross and the end on the near
+	# shaft (x above the crossing).
+	var at: Vector3 = found[0][3]
+	var pin: Bodies.Link = found[0][1]
+	for link: Bodies.Link in [found[0][1], found[0][2]]:
+		var end: int = link.other(int(found[0][0]))
+		if _world.get_brick(int((_grab._bodies.members[end] as PackedInt64Array)[0])).transform.origin.x \
+				> at.x + 1.0:
+			pin = link
+	# Turned in LDraw's frame: its y and z are the view's turned round, and the
+	# model was set on the floor (the near axle stands at LDraw's origin).
+	var flip := Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1))
+	var origin := Vector3.ZERO
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3705":
+			origin = brick.transform.origin
+			break
+	var at_ldraw: Vector3 = flip * (at - origin)
+	var turn := Transform3D(Basis.IDENTITY, at_ldraw) \
+		* Transform3D(flip * Basis(pin.axis.normalized(), deg_to_rad(CARDAN_BETA)) * flip, Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -at_ldraw)
+	var lines := PackedStringArray()
+	for line: String in MADE_CARDAN.split("\n"):
+		var bits: PackedStringArray = line.split(" ", false)
+		if bits.size() < 15 or bits[0] != "1" or float(bits[2]) > -59.0:
+			lines.append(line)
+			continue
+		var placed := Transform3D(Basis(Vector3(float(bits[5]), float(bits[8]), float(bits[11])),
+			Vector3(float(bits[6]), float(bits[9]), float(bits[12])),
+			Vector3(float(bits[7]), float(bits[10]), float(bits[13]))),
+			Vector3(float(bits[2]), float(bits[3]), float(bits[4])))
+		var moved: Transform3D = turn * placed
+		var m: Basis = moved.basis
+		lines.append("1 %s %.4f %.4f %.4f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %s" % [bits[1],
+			moved.origin.x, moved.origin.y, moved.origin.z, m.x.x, m.y.x, m.z.x, m.x.y, m.y.y, m.z.y,
+			m.x.z, m.y.z, m.z.z, bits[14]])
+	var angled: String = OUT.path_join("made_cardan.ldr")
+	_write(angled, "\n".join(lines))
+	if not await _open(angled):
+		return
+	# Both towers stay: their parts locked (the far one stands turned).
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3010" or brick.part_id == "3701":
+			_builder.locked[brick.id] = true
+	_grab._ready_now()
+	var crank: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "4519":
+			crank = brick.id
+	var grab := Grab.new()
+	grab.world = _world
+	grab.builder = _builder
+	grab.library = _library
+	grab.bodies = _grab._bodies
+	grab.shared_mechanism = _grab._mechanism
+	var state: String = grab.begin(crank, _world.get_brick(crank).transform.origin)
+	var joint: Dictionary = grab.mechanism.universals[0] if grab.mechanism != null \
+		and not grab.mechanism.universals.is_empty() else {}
+	_check("%s: the crank drives the shaft through the joint (%s %s; %s)" % [name, state, grab.said,
+		grab.gear_note], state == "moves" and not joint.is_empty())
+	if joint.is_empty():
+		print("    %s; universals read %d; gear reading: %s" % [_grab._bodies.summary(), _grab._bodies.universals().size(),
+			grab.mechanism.summary() if grab.mechanism != null else "none"])
+		if grab.mechanism != null:
+			print("    floating %s; %s" % [grab.mechanism.floating, grab.mechanism.describe().replace("\n", " | ")])
+		_builder.locked.clear()
+		return
+	var a: Vector3 = (joint["way_one"] as Vector3).normalized()
+	var b: Vector3 = (joint["way_other"] as Vector3).normalized()
+	var beta: float = a.angle_to(b)
+	var normal: Vector3 = a.cross(b).normalized()
+	var p0: Vector3 = (joint["pin_one"] as Vector3).normalized()
+	# ψ1 where it stood: the near pin from square to the shafts' plane.
+	var psi_rest: float = atan2(a.dot(normal.cross(p0)), normal.dot(p0))
+	var near_key: int = int(joint["end_one"])
+	var far_key: int = int(joint["end_other"])
+	var worst: float = 0.0
+	var worst_mean: float = 0.0
+	var poses: int = 0
+	for step: int in range(1, 37):
+		var asked: float = 20.0 * step
+		grab.turn_to(asked)
+		if grab.stopped:
+			break
+		var near_turn: float = deg_to_rad(_turn_about((grab.placed[near_key] as Transform3D).basis
+			* (grab.rest[near_key] as Transform3D).basis.inverse(), a))
+		var far_turn: float = deg_to_rad(_turn_about((grab.placed[far_key] as Transform3D).basis
+			* (grab.rest[far_key] as Transform3D).basis.inverse(), b))
+		# By hand: tan ψ2 = tan ψ1 cos β, from where each stood.
+		var psi1: float = psi_rest + near_turn
+		var psi2: float = atan2(cos(beta) * sin(psi1), cos(psi1))
+		var psi2_rest: float = atan2(cos(beta) * sin(psi_rest), cos(psi_rest))
+		var by_hand: float = wrapf(psi2 - psi2_rest, -PI, PI)
+		worst = maxf(worst, absf(rad_to_deg(wrapf(far_turn - by_hand, -PI, PI))))
+		worst_mean = maxf(worst_mean, absf(rad_to_deg(wrapf(near_turn - by_hand, -PI, PI))))
+		poses += 1
+		if step == 6 and _windowed:
+			_world.set_drawn(grab.placed)
+			_frame_on(PackedInt64Array())
+			await _frames(10)
+			await _clean_shot("cardan", "2_turned")
+			_world.set_drawn({})
+	print("    β %.2f°; the mean (one for one) is off Cardano's relation by up to %.3f° over %d poses" % [
+		rad_to_deg(beta), worst_mean, poses])
+	_check("%s: in %d poses through two turns the far shaft stands where Cardano's relation puts it, to %.4f°"
+		% [name, poses, worst], poses >= 30 and worst < 0.05 and worst_mean > 1.0)
+	_builder.locked.clear()
 
 
 ## A made train: an 8 tooth crank driving a 24 tooth gear on a Technic

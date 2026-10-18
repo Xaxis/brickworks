@@ -307,6 +307,10 @@ func _chosen() -> String:
 			linkage = null
 			return _refuse("locked", _worm_words(held_by))
 	skip = moving.duplicate()
+	# A hose bends out of the way, and is not tested where it is carried.
+	for one: int in bodies.flexible:
+		for key: int in bodies.members.get(one, PackedInt64Array()):
+			skip[key] = true
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
 			if ours.has(joined.other(one)):
@@ -771,6 +775,9 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 		var driven: Dictionary = mechanism.pose_of(deg_to_rad(degrees) * _drive_sign, coupled)
 		for key: int in coupled:
 			out[key] = driven[key]
+		# A universal joint at an angle turns its far shaft by Cardano's
+		# relation, not the gear reading's mean.
+		_cardan(out, deg_to_rad(degrees) * _drive_sign)
 		# What hangs on a driven body goes round with it.
 		for key: int in followers:
 			var carrier: int = followers[key]
@@ -814,6 +821,124 @@ func _pose_crosses(out: Dictionary) -> void:
 				out[key] = move * (rest[key] as Transform3D)
 
 
+## A universal joint whose shafts stand further apart than this, radians
+## (half a degree), turns its far shaft by Cardano's relation, not the mean.
+const CARDAN_LEAST := 0.0087
+
+
+## A universal joint at an angle turns its far shaft unevenly: the far end's
+## pin stays square to the near end's pin and to the far shaft, so with the
+## near shaft turned θ1 the far one is turned where that pin then lies,
+## tan θ2 = tan θ1 cos β from where the near pin lies in the shafts' plane
+## (Cardano's relation), running ahead and behind the near one within each
+## half turn. The gear reading turns it one for one (the mean, exact only in
+## line); the difference is turned onto the far shaft and onto every gear it
+## turns, each by its ratio to it, about its own axle. Where the far side is
+## not shafts and gears on axles that stand (one on a carrier, or a loop
+## back to the near side), the mean is kept. [param out]: brick id ->
+## Transform3D, as [method transforms_at] has it; [param driver_turn]: the
+## gear reading's driver angle, radians.
+func _cardan(out: Dictionary, driver_turn: float) -> void:
+	var angled: Array = []   ## [joint, its far side]
+	for joint: Dictionary in mechanism.universals:
+		var a: Vector3 = (joint["way_one"] as Vector3).normalized()
+		var b: Vector3 = (joint["way_other"] as Vector3).normalized()
+		if a.angle_to(b) >= CARDAN_LEAST:
+			angled.append([joint, _far_side(joint)])
+	for one: Array in angled:
+		for other: Array in angled:
+			# Two at an angle one after the other (a cardan shaft's two ends):
+			# the second's near shaft is the first's uneven far one. Not
+			# worked out: both keep the mean.
+			if one != other and (other[1] as Dictionary).has(int((one[0] as Dictionary)["one"])):
+				return
+	for one: Array in angled:
+		var joint: Dictionary = one[0]
+		var far: Dictionary = one[1]
+		if far.is_empty():
+			continue
+		var a: Vector3 = (joint["way_one"] as Vector3).normalized()
+		var b: Vector3 = (joint["way_other"] as Vector3).normalized()
+		var near_turn: float = mechanism.omega(int(joint["one"])).dot(a) * driver_turn
+		var mean: float = mechanism.omega(int(joint["other"])).dot(b) * driver_turn
+		var exact: float = Grab.cardan_turn(near_turn, a, b, joint["pin_one"], joint["pin_other"])
+		var behind: float = exact - mean
+		if absf(behind) < 1e-7:
+			continue
+		for body: int in far:
+			var line: Mechanism.Joint = mechanism.joint_of(body)
+			var turn := Transform3D(Basis.IDENTITY, line.point) \
+				* Transform3D(Basis(line.way.normalized(), behind * float(far[body])), Vector3.ZERO) \
+				* Transform3D(Basis.IDENTITY, -line.point)
+			for key: int in mechanism.bodies.get(body, []):
+				if out.has(key):
+					out[key] = turn * (out[key] as Transform3D)
+
+
+## The far shaft of [param joint] and every body the gear reading turns from
+## it, each with its turn about its own axle for a radian of the far shaft
+## about its line: body -> ratio. {} when one of them turns on a carrier, or
+## the near side is reached again from the far one (the far shaft is driven
+## some other way too).
+func _far_side(joint: Dictionary) -> Dictionary:
+	var near: int = int(joint["one"])
+	var far_shaft: int = int(joint["other"])
+	var b: Vector3 = (joint["way_other"] as Vector3).normalized()
+	var linked: Dictionary = {}   ## body -> bodies its gears mesh with
+	for coupling: Mechanism.Coupling in mechanism.couplings:
+		for pair: Array in [[coupling.one.body, coupling.other.body], [coupling.other.body, coupling.one.body]]:
+			if not linked.has(pair[0]):
+				linked[pair[0]] = []
+			(linked[pair[0]] as Array).append(pair[1])
+	for other: Dictionary in mechanism.universals:
+		if other == joint:
+			continue
+		for pair: Array in [[int(other["one"]), int(other["other"])], [int(other["other"]), int(other["one"])]]:
+			if not linked.has(pair[0]):
+				linked[pair[0]] = []
+			(linked[pair[0]] as Array).append(pair[1])
+	var seen: Dictionary = {far_shaft: true}
+	var frontier: Array = [far_shaft]
+	while not frontier.is_empty():
+		var at: int = frontier.pop_back()
+		for next: int in linked.get(at, []):
+			if next == near:
+				return {}
+			if not seen.has(next):
+				seen[next] = true
+				frontier.append(next)
+	var per: float = mechanism.omega(far_shaft).dot(b)
+	if absf(per) < 1e-9:
+		return {}
+	var out: Dictionary = {}
+	for body: int in seen:
+		if mechanism.path(body).size() != 1:
+			return {}
+		var line: Mechanism.Joint = mechanism.joint_of(body)
+		out[body] = mechanism.omega(body).dot(line.way.normalized()) / per
+	return out
+
+
+## The far shaft's turn about [param b] for the near shaft's [param near]
+## radians about [param a] from where they stood, the near end's pin along
+## [param pin_one] then and the far end's along [param pin_other]: the far
+## pin is square to the near pin and to the far shaft. Unwrapped about the
+## near turn, from which it differs by less than a quarter turn.
+static func cardan_turn(near: float, a: Vector3, b: Vector3, pin_one: Vector3, pin_other: Vector3) -> float:
+	var p0: Vector3 = pin_one.normalized()
+	var q0: Vector3 = pin_other.normalized()
+	var p: Vector3 = p0.rotated(a, near)
+	var q: Vector3 = b.cross(p)
+	if q.length() < 1e-9:
+		return near
+	q = q.normalized()
+	# The far pin as it stood is one of the two square to both: keep its side.
+	if b.cross(p0).dot(q0) < 0.0:
+		q = -q
+	var raw: float = atan2(b.dot(q0.cross(q)), q0.dot(q))
+	return near + wrapf(raw - near, -PI, PI)
+
+
 ## Whether every part that moves has room at [param at]: nothing in the
 ## way but what it is joined to, and nothing through the floor.
 func has_room(at: Dictionary) -> bool:
@@ -841,7 +966,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 			break
 		var key: int = keys[n]
 		n += 1
-		if _on_the_line.has(key):
+		if _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -1594,10 +1719,87 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 				turn_to(_pointer_loop(screen, eye))
 			else:
 				turn_to(_pointer_angle(origin, direction, screen, eye))
+			_note_turn(Time.get_ticks_usec())
 		"slide":
 			slide_to(_pointer_along(origin, direction))
 		"ball":
 			ball_to(_pointer_twist(origin, direction))
+
+
+## Where the turn stood at each of the pointer's last moves: [usec, degrees].
+var _turns_seen: Array = []
+## A fling's speed is read from the pointer's moves in at most this long
+## before it let go, ms.
+const FLING_WINDOW_MS := 100.0
+## The pointer's last move this long or more before the button came up, ms,
+## and twice its last gap: it stood still, and let go from rest.
+const FLING_STILL_MS := 60.0
+## A gap between two moves longer than this, ms, in which the turn went
+## slower than [constant FLING_LEAST], is where the pointer paused: what
+## came before it is not this fling. Not every long gap: a browser drawing
+## in software moves the pointer a few times a second, and its speed is read
+## over those moves.
+const FLING_PAUSE_MS := 40.0
+## Slower than this, rad/s (11° a second), the pointer was held still: a
+## hand's drift as it lets go is not a fling.
+const FLING_LEAST := 0.2
+## A fling faster than this is taken as this, rad/s (ten turns a second): a
+## frame held up makes one move of the pointer look like a flick.
+const FLING_MOST := TAU * 10.0
+
+
+## The turn now, as the pointer last left it, at [param usec].
+func _note_turn(usec: int) -> void:
+	_turns_seen.append([usec, angle])
+	if _turns_seen.size() > 24:
+		_turns_seen.pop_front()
+
+
+## How fast the pointer was turning the joint as the button came up at
+## [param now_usec], rad/s about [member axis]: the slope of the turn
+## against the clock over the pointer's last moves (least squares), the turn
+## as the parts went (a stop the model met is not a fling). 0 when the
+## pointer stood still before it let go.
+func fling_rate(now_usec: int) -> float:
+	if mode != "turn" or _turns_seen.size() < 2:
+		return 0.0
+	var last: Array = _turns_seen[_turns_seen.size() - 1]
+	var gap: float = float(int(last[0]) - int(_turns_seen[_turns_seen.size() - 2][0])) / 1000.0
+	if gap <= 0.0 or float(now_usec - int(last[0])) / 1000.0 > maxf(FLING_STILL_MS, gap * 2.0):
+		return 0.0
+	var ts := PackedFloat64Array([0.0])
+	var degs := PackedFloat64Array([float(last[1])])
+	# The last tenth of a second, or the last three moves where they come
+	# further apart, back to where the pointer paused.
+	var window: float = maxf(FLING_WINDOW_MS, gap * 3.0)
+	for n: int in range(_turns_seen.size() - 2, -1, -1):
+		var one: Array = _turns_seen[n]
+		var next: Array = _turns_seen[n + 1]
+		var this_gap: float = float(int(next[0]) - int(one[0])) / 1000.0
+		var back: float = float(int(last[0]) - int(one[0])) / 1000.0
+		var went: float = deg_to_rad(absf(float(next[1]) - float(one[1])))
+		if back > window or (this_gap > FLING_PAUSE_MS and went / (this_gap / 1000.0) < FLING_LEAST):
+			break
+		ts.append(-back / 1000.0)
+		degs.append(float(one[1]))
+	if ts.size() < 2:
+		return 0.0
+	var mean_t: float = 0.0
+	var mean_d: float = 0.0
+	for n: int in ts.size():
+		mean_t += ts[n] / ts.size()
+		mean_d += degs[n] / ts.size()
+	var top: float = 0.0
+	var bottom: float = 0.0
+	for n: int in ts.size():
+		top += (ts[n] - mean_t) * (degs[n] - mean_d)
+		bottom += (ts[n] - mean_t) * (ts[n] - mean_t)
+	if bottom <= 0.0:
+		return 0.0
+	var rate: float = deg_to_rad(top / bottom)
+	if absf(rate) < FLING_LEAST:
+		return 0.0
+	return clampf(rate, -FLING_MOST, FLING_MOST)
 
 
 ## Where the pointer says the joint is turned, degrees, unwrapped so a turn
@@ -1953,16 +2155,33 @@ var landing_depth: int = 0
 var landing_said: String = ""
 
 
-## Set up [member swing] from where it was let go. False when nothing it
-## carries swings (every joint holds, or it is not a case a swing takes).
-func swing_begin() -> bool:
+## Set up [member swing] from where it was let go, turning at [param fling]
+## rad/s about [member axis] as the pointer had it (fling_rate): it carries
+## on at that rate and coasts. False when nothing it carries swings (every
+## joint holds, or it is not a case a swing takes). A gear train the grab
+## drives turns with it, each gear at its ratio, when no bearing of the
+## train holds by friction.
+func swing_begin(fling: float = 0.0) -> bool:
 	swing = null
 	_swing_index.clear()
+	train_held = false
 	if state != "moves" or mode != "turn" or linkage != null or grams <= 0.0 or unchecked:
 		return false
-	if not coupled.is_empty() or not followers.is_empty() or moving.size() > SWING_MOST_PARTS:
+	if moving.size() + followers.size() > SWING_MOST_PARTS:
 		return false
 	if bodies.parent_link.get(body) != link:
+		return false
+	var train: Array = []
+	if not coupled.is_empty():
+		# The train turns with the grabbed joint: it swings only when that joint
+		# and every bearing of the train turns freely.
+		if mechanism == null or not Grab._swings(link):
+			return false
+		if _train_holds():
+			train_held = true
+			return false
+		train = _train_parts()
+	elif not followers.is_empty():
 		return false
 	_ours.clear()
 	for one: int in moving_bodies:
@@ -1979,8 +2198,76 @@ func swing_begin() -> bool:
 	if free.is_empty():
 		return false
 	_let_go_at = angle
-	_make_swing(free)
+	_make_swing(free, train)
+	if fling != 0.0 and _swing_index.has(body) and int(_swing_index[body]) == 0:
+		swing.fling(fling)
 	return true
+
+
+## A bearing of the train the grab drives holds by friction (a gear pinned on
+## with a friction pin): it stays where it is let go, as the grabbed joint
+## would. Set by [method swing_begin].
+var train_held: bool = false
+
+
+## Whether a gear the grab drives turns on a joint that holds by friction:
+## [Bodies]' joints of its body on the gear reading's line for it.
+func _train_holds() -> bool:
+	var seen: Dictionary = {}
+	for key: int in coupled:
+		var one: int = int(bodies.body_of.get(key, -1))
+		var turning: Mechanism.Joint = mechanism.joint_of(mechanism.body_of(key))
+		if one < 0 or seen.has(one) or turning == null:
+			continue
+		seen[one] = true
+		for joined: Bodies.Link in bodies.touching.get(one, []):
+			if joined.axis != Vector3.ZERO and joined.turns and joined.holds \
+					and Bodies._same_line(joined.point, joined.axis, turning.point, turning.way):
+				return true
+	return false
+
+
+## The gears the grab drives and what rides on each, as the swing's geared
+## segments: [keys, a point on its line, its spin (radians a radian of the
+## grabbed joint, about its own line)] where it was let go. The spin is the
+## gear reading's rate (Mechanism.omega); the line, its joint's where it
+## turns on an axle in what stands, else the line it then turns about (a
+## gear on a carrier the train turns), read off where the train puts its
+## middle a hundredth of a radian either side.
+func _train_parts() -> Array:
+	var by_body: Dictionary = {}   ## gear reading's body -> keys
+	for key: int in coupled:
+		var one: int = mechanism.body_of(key)
+		if not by_body.has(one):
+			by_body[one] = []
+		(by_body[one] as Array).append(key)
+	for key: int in followers:
+		var one: int = mechanism.body_of(int(followers[key]))
+		if not by_body.has(one):
+			by_body[one] = []
+		(by_body[one] as Array).append(key)
+	var out: Array = []
+	var h: float = 0.01
+	var at: float = deg_to_rad(angle) * _drive_sign
+	for one: int in by_body:
+		var keys: Array = by_body[one]
+		var spin: Vector3 = mechanism.omega(one) * _drive_sign
+		if spin.length() < 1e-6:
+			continue
+		var path: Array = mechanism.path(one)
+		var point: Vector3
+		if path.size() == 1:
+			point = (path[0] as Mechanism.Joint).point
+		else:
+			var key: int = int(keys[0])
+			var middle: Vector3 = library.mesh_for(world.get_brick(key).part_id).bounds.get_center()
+			var before: Vector3 = (mechanism.pose_of(at - h * _drive_sign, {key: true})[key] as Transform3D) * middle
+			var after: Vector3 = (mechanism.pose_of(at + h * _drive_sign, {key: true})[key] as Transform3D) * middle
+			var now: Vector3 = (placed[key] as Transform3D) * middle
+			# A turn ω about a line through p moves c at ω × (c - p).
+			point = now + spin.cross((after - before) / (2.0 * h)) / spin.length_squared()
+		out.append([keys, point, spin])
+	return out
 
 
 ## Whether a joint swings when let go: it turns on a line, freely (no
@@ -2062,8 +2349,9 @@ func land_begin(spin: Vector3, about: Vector3) -> bool:
 
 
 ## [member swing] from [param free] (child body -> its link), each joint's
-## line where [member placed] has it.
-func _make_swing(free: Dictionary) -> void:
+## line where [member placed] has it, and the gear train the grabbed joint
+## drives, [param train] ([method _train_parts]), turning with it.
+func _make_swing(free: Dictionary, train: Array = []) -> void:
 	var order: Array = free.keys()
 	order.sort_custom(func(x: int, y: int) -> bool: return _depth(x) < _depth(y))
 	var made := Swing.new()
@@ -2084,6 +2372,7 @@ func _make_swing(free: Dictionary) -> void:
 			parent = _swing_joint_of(carrier)
 		_swing_index[child] = made.add_joint(point, way, parent,
 			bodies.named(bodies.beyond(child)).get_slice(",", 0))
+		made.joints[int(_swing_index[child])].bearing = Swing.bearing_of(joined)
 	var by_joint: Dictionary = {}   ## joint index -> brick ids
 	for one: int in moving_bodies:
 		var j: int = _swing_joint_of(one)
@@ -2097,6 +2386,13 @@ func _make_swing(free: Dictionary) -> void:
 		for key: int in by_joint[j]:
 			start[key] = placed[key]
 		made.add_segment(j, start, Swing.lump(world, library, by_joint[j], placed))
+	if _swing_index.has(body):
+		for gear: Array in train:
+			var start: Dictionary = {}
+			for key: int in gear[0]:
+				start[key] = placed[key]
+			made.add_geared(int(_swing_index[body]), start, Swing.lump(world, library, gear[0], placed),
+				gear[1], gear[2])
 	made.ready_up(world, library)
 	made.room = func(at: Dictionary) -> int:
 		var whole: Dictionary = placed.duplicate()
@@ -2143,6 +2439,8 @@ func swing_pose() -> void:
 	var at: Dictionary = swing.pose()
 	for key: Variant in at:
 		placed[key] = at[key]
+	if mechanism != null and not coupled.is_empty():
+		_pose_crosses(placed)
 	if _swing_index.has(body):
 		angle = _let_go_at + rad_to_deg(swing.q[int(_swing_index[body])])
 
@@ -2162,14 +2460,56 @@ func swing_words() -> String:
 			names.append(one.name)
 		return "%s inside it %s" % [", ".join(names), said]
 	var hangs: String = ""
-	if swing.stops == 0 or swing.joints[int(_swing_index[body])].pressed == 0:
-		hangs = ", hanging within its friction of straight down"
-	else:
+	if swing.stops > 0 and swing.joints[int(_swing_index[body])].pressed != 0:
 		hangs = ", resting against what it met"
+	elif _balanced():
+		# Its weight on its line: nothing turns it but the pointer, and its
+		# bearing's friction alone stops it.
+		hangs = ", stopped by its bearing's friction"
+	else:
+		hangs = ", hanging within its friction of straight down"
 	var out: String = "%s, and came to rest at %d°%s" % [said, roundi(angle), hangs]
+	if absf(swing.flung) > 0.0:
+		out = "%s, and came to rest at %d° (%s round from where it was taken hold of)%s" % [said, roundi(angle),
+			Grab._turns_words(angle), "" if hangs == ", stopped by its bearing's friction" else hangs]
+	if not coupled.is_empty():
+		out += "; the gears it drives turned with it, each by its teeth"
 	if swing.joints.size() > 1:
 		out += " (a chain of %d free joints, swinging together)" % swing.joints.size()
 	return out
+
+
+## Whether the swing's grabbed joint carries its weight on its line, or so
+## near it that its friction holds it at any turn: a wheel on its axle, a
+## gear train, a turntable standing upright. The most gravity can turn it
+## by, each segment's weight times how far its centre stands off its line
+## (times the line's lean from upright, times a gear's ratio), is no more
+## than its friction.
+func _balanced() -> bool:
+	if swing == null or not _swing_index.has(body):
+		return false
+	var j: int = int(_swing_index[body])
+	var joint: Swing.Joint = swing.joints[j]
+	var most: float = 0.0
+	var frames: Array[Transform3D] = swing.frames_at(swing.q)
+	for segment: Swing.Segment in swing.segments:
+		if not segment.geared and not swing.joints[segment.joint].chain.has(j):
+			continue
+		var frame: Transform3D = swing._frame_of(segment, frames, swing.q)
+		var line: Vector3 = segment.turn_axis if segment.geared else joint.axis
+		var on: Vector3 = segment.turn_point if segment.geared else joint.point
+		var off: Vector3 = frame * segment.centre - on
+		off -= line * off.dot(line)
+		most += segment.grams * Swing.GRAVITY * off.length() * line.cross(Vector3.UP).length() \
+			* (segment.ratio if segment.geared else 1.0)
+	return most <= joint.friction
+
+
+## How far round [param degrees] is, in words: "35°", "4.1 turns".
+static func _turns_words(degrees: float) -> String:
+	if absf(degrees) < 360.0:
+		return "%d°" % roundi(absf(degrees))
+	return "%s turns" % Balance.tidy(absf(degrees) / 360.0)
 
 
 ## Put every part that moved where it now stands, as one step to undo,

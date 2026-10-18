@@ -1931,7 +1931,7 @@ parts were in, the page not asking: before, 20 frames in 20 s, each 1.18 to
 on that model, and not again while nothing changes (`grab_flow --big=…
 --only-big`).
 
-**Left for later.** Spinning and coasting (S2's next): a wheel or a gear train
+**Left for later.** Spinning and coasting (S2's next; done in §16): a wheel or a gear train
 spun by a drag and let go, coasting down against its bearings' friction,
 needs the train's inertia reflected through its ratios and a fling's speed
 read from the pointer (a release now starts from rest). A joint swinging
@@ -2081,7 +2081,8 @@ so it was left). A loop's worst frame is near 33 ms on a loaded box (42024-1's
 25.5 to 35.9 over three runs, at the end of its rod's stroke, where the rest of
 the loop is bisected; the 95th percentile stays under 23); a person's drag of
 more than 4 LDU a frame takes more steps. A universal joint at an angle turns its far shaft by
-Cardano's ratio, not its mean, and none in the probe's sets stands at one.
+Cardano's ratio, not its mean, and none in the probe's sets stands at one
+(§16 does it, on a made one).
 
 42080-1's pneumatic cylinders still do not move; taken apart, three things
 hold them, and a trial of the first two is kept beside the results
@@ -2105,4 +2106,206 @@ hold them, and a trial of the first two is kept beside the results
   drivetrain, not from the arm. A section this big is tested within 10 ms a
   frame, so the drag shows the arm through them, and let go, the release's
   whole test finds them and puts the arm back near where it began. Until the
-  drivetrain on the arm goes with the arm, the trial is left out.
+  drivetrain on the arm goes with the arm, the trial is left out. (§16: they
+  hung from nothing; the joints joined them to nothing at all.)
+
+## 16. Pneumatic cylinders, a flick that coasts, and a universal joint at an angle (G7)
+
+G6 left 42080-1's pneumatic cylinders still: taken apart, three things held
+them (§15), and a trial of the first two moved the rod but left a gear on
+the arm in the air. G7 finds the third and moves them, and then lets a part
+let go while it turns carry on turning (S2's next, §14).
+
+**What held the cylinders.** The first two are the trial's, kept: which
+pins are keyed to nothing is read before any is joined, and a hose, a tube
+or a chain (`Flex.strung`, every part of its body) bends: it closes no loop,
+carries nothing on from where it hangs, and is tested for room by nothing
+(`Bodies.flexible`). The third was not the saw's drivetrain. The parts left
+standing were joined to nothing at all, each a piece of the model of its
+own, anchored where it stood (found by listing each part that stayed while
+a part it was lodged in moved, and the connectors round it):
+
+- an axle 3 and an axle 5 in pins with stop bushes (32054): the bush's axle
+  hole is on the pin's own line, and Mechanism takes a hole on a part's own
+  shaft line for the notch an older catalogue read as a hole
+  (`Mechanism._holes_of`), so no axle is ever read in it;
+- an axle joiner 3L (26287), whose connectors name an axle hole in its
+  middle and a bore too narrow for an axle, so the axles in its ends are not
+  read in it;
+- the saw's drive gear, a 20 tooth double bevel the file carries as a part
+  of its own ("42080 - 18575", unofficial when it was drawn), whose
+  connectors are read off its drawing without its axle hole;
+- the log the gripper holds up, a piece of 15 parts standing on nothing.
+
+A part no joint names cannot float in a real model: what it is pushed into
+holds it. `Bodies._lodge`: a piece of the model that nothing holds where it
+is (no part of it on the baseplate's studs, none locked), not the biggest
+piece and of no more than 300 parts, whose part shares lattice cells with a
+part of another piece, is joined to the part whose box its own is most into
+(counting their shared cells instead cost 42081-1's reading 5 s). On
+42080-1 41 pieces are held so; the gear turns with its axle, the log goes up
+with the gripper. Not a piece with a hose, a string or a chain in it, nor into
+one (`Bodies.bends`): it hangs on what bends. The first run of the whole
+probe found 42042-1's hook block, on its winch's rope, joined to the drum the
+rope's end was lodged in: it went round with the drum, met the model at
+once, and the winch's worm would not turn. Not the connectors themselves:
+the stop bush's hole and the joiner's ends are the catalogue's to name
+(tools/ldraw/connectivity.py and a mesh rebuild), and `_holes_of`'s rule
+guards against the old notch.
+
+Measured with the pointer (`grab_probe -- --only=actuators`, windowed), the
+rod drawn 4 LDU a frame past both ends and back. Its rod is pinned to the
+cab, so the cylinder hangs from the rod in the tree and a drag on the rod
+draws the cylinder along it, the arm with it:
+
+| | 42080-1's crane, two cylinders in a loop of 11 joints |
+|---|---|
+| what moves | 606 parts: the arm, its saw, the gripper and the log (587 in the trial, the gear and the log left standing) |
+| travel | out to the end of its stroke, 49.56 LDU, and in to −68.00, 2.44 short of its other end, where the foot of the log in the gripper meets the baseplate |
+| the arm against the law of cosines | 85 poses, worst 0.0024° to 0.0036° over three runs |
+| left behind | none: no part that stays is lodged in one that moved while in a piece of its own (9 with `_lodge` taken out: the axles, the joiner, the gear and the log) |
+| the drag's own work a frame | mean 9.5 to 12.7 ms, 95% 13.5 to 19.8, worst 15.0 to 22.0 |
+| let go | checked and kept in 1.5 to 2.8 s, where it was let go (with `_lodge` out the log met the gripper and it was kept 0.6 LDU off) |
+| what it raises, taken hold of | the arm turned 4.00° on its pin draws the rod 9.98 LDU along its cylinder, the triangle turning 4.00° for that by hand |
+
+A cylinder has no screw: what its rod raises, taken hold of and turned,
+draws the rod along its cylinder, the loop with it. With its valve shut the
+air would hold it, springing a little; which way a valve stands is not
+read, and a cylinder moves as one open to the air does.
+
+**Left for later.** A hose is not laid again as what it joins moves: one
+between the cab and the arm stays where it lay, its end parting from the
+fitting on the arm. The stop bush's and the joiner's axle holes named in
+the catalogue. The valve's position.
+
+**Flick to spin, and coast.** A grab notes the turn at each of the
+pointer's moves, with the clock (`Grab._note_turn`). Let go, its speed is
+the slope of the turn against the clock over the last moves, by least
+squares (`Grab.fling_rate`): those within a tenth of a second, or the last
+three where they come further apart (a browser drawing in software moves it
+a few times a second), back to where it paused (a gap over 40 ms in which it
+went slower than 11° a second). The first rule cut the moves at any gap one
+and a half times another's, and on a loaded box, frames 10 to 50 ms apart,
+it read a 1,080° a second flick as 619 and 639. Still for 60 ms, or for twice
+its last gap, before the button came up, it is let go from rest; slower
+than 11° a second the hand only drifted; faster than ten turns a second is
+taken as ten, a frame held up making one move look like a flick. It is the
+turn as the parts went, not as the pointer asked: a stop the model met is
+not a fling.
+
+The swing (§14) then starts at that speed (`Swing.fling`) and coasts:
+gravity, its bearing's friction, the room test, at rest as before. A gear
+train the grabbed joint drives turns with it (`Swing.add_geared`): each body
+of the gear reading the grab drives is a segment turning about its own line
+at the train's ratio, so the equations count its inertia times the ratio
+squared and its bearing's friction, μ r m g, times the ratio, which is what
+a train's inertia and losses reflected to its driver are. A gear on a
+carrier the train turns is read about the line it turns about as it is let
+go. A train coasts when the grabbed joint and every bearing of the train
+turn freely; one gear pinned on with a friction pin holds it all
+(`Grab._train_holds`). A section of more than 40 parts settles as before.
+
+What it is made of, besides §14's mass, inertia and μ:
+
+| quantity | taken as | how sure |
+|---|---|---|
+| the speed let go at | the pointer's, as above | as the pointer's moves are timed: a frame's time (17 ms) |
+| a gear's bearing | its own axle's, μ r m g with r a pin's 2.4 mm and m the grams it turns with | the push of the teeth on its axle adds to it and is not counted, nor the teeth's own sliding (a few per cent a mesh for spur gears), so a real train coasts somewhat less far |
+| a turntable's bearing | its top on its base, a flat disc under even pressure, at two thirds of its round's radius | a ring at the rim would be half as much again: its coast is good to about that |
+| the air | not counted | a gear 40 at three turns a second, taken as a disc, loses to the air about half a per cent of what its bearing takes; its teeth stir more, still a few per cent |
+| mass and inertia | §14's: Stability's grams, spread through each part's box | read as a brick's walls and top, a gear's grams are not checked against a weighing. A gear alone coasts as far whatever it weighs (its friction and its inertia both go as its mass); a train's share of each gear goes as their masses' ratio |
+| μ | 0.3 (0.2 to 0.4) | a coast's turns and time go as 1/μ: good to about a factor of 1.5 either way |
+
+Measured with the pointer (`grab_probe -- --only=coast`, windowed): a made
+gear 40 (3649) on an axle 4 in a Technic brick 1 x 6, taken by its rim and
+turned at 1,080° a second by the clock for 0.3 s, let go turning; then the
+same with a gear 8 on a second axle that it turns five times as fast. By
+hand from the parts (each part's mass spread through its box, about its own
+axle), the ratio from the teeth (40/8): the train's inertia I = I₄₀ + 25 I₈,
+its friction μ r g (m₄₀ + 5 m₈), α = friction / I; from ω it coasts ω²/2α
+radians in ω/α seconds.
+
+| | flywheel | 40 driving 8 |
+|---|---|---|
+| let go at, against the pointer's 1,080° a second | 1,082° and 1,069° in two runs | 1,072° and 1,087° |
+| inertia about the 40's axle; friction | 12,371 g·LDU²; 324,323 g·LDU²/s² | 14,077; 569,278 |
+| coasted, by hand | 1.080 turns, 1.082 | 0.688 turns, 0.689 |
+| for, by hand | 0.719 s, 0.720 | 0.462 s, 0.463 |
+| the 8 at rest against five times the 40's turn | | to 0.0000° |
+| move_part spin=720, by hand | 0.478 turns, 0.479 | 0.310 turns, 0.311 |
+| its own work a coasting frame, mean and worst | 0.29 ms, 1.91 | 0.39 ms, 3.02 |
+
+Through its teeth the 8 brings 1.76 times the 40's friction and 14% more
+inertia: the train coasts two thirds as far as the gear alone. The hand
+form is worked from the same masses and boxes as the app's, so it checks
+the integration and the reflection through the ratio, not the masses.
+With the pointer's speed taken out (let go from rest) the gear does not
+coast and three checks fail; with the 8 left out of the motion, move_part's
+coast is 0.478 turns against the train's 0.311 and fails. 4096's hinge
+flicked the same way stays where it was let go, and move_part spin= says it
+does not coast.
+
+**In the app.** The status bar says it while it coasts, "coasting at 1.8
+turns a second, 2.3 turns so far", ten times a second; let go, "let go
+turning at 3.0 turns a second, it coasted 1.1 turns in 0.81 s against its
+bearing's friction, and came to rest at 512° (1.4 turns round from where it
+was taken hold of)". A click catches it, Escape puts it back, and the drag and
+the coast are one undo step, as a swing's. Over MCP, `move_part spin=`
+(degrees a second, after degrees= if given) lets it go turning and says how
+it spun and where it came to rest. In a browser (grab_flow, the local web
+export drawn by SwiftShader), a gear 40 lying flat on a free axle, turned
+round its axle's point on the page at half a turn a second by the clock and
+let go, coasted and said so, its own work in a coasting frame 1.2 to 4.4 ms
+on average and 1.8 to 8.6 at worst over three runs; the page drew one to
+three frames a second there, so the pointer was read that often and the
+speed let go at was read as 50°, −38° and 207° a second against 180 (a turn
+of more than half a circle between two reads is taken the short way round;
+the first two runs also circled the axle's end, below the gear). Said, not gated, as
+§14 says of that page's rate; on a page drawn at frame rate the probe's
+reading holds. The handles the page asks for now say where their joint's
+line is on the page (`pivot_x`, `pivot_y`), for a test to drag round it.
+
+**Left for later.** A slide flicked along its line does not coast, nor a
+ball, a loop or a click hinge. A section of more than 40 parts. A joint
+that swings while the model falls (§14). μ and a gear mesh's losses
+measured on the bench. In a browser drawing in software the pointer is read
+a few times a second, and a pointer held still for less than two of those
+before letting go reads as a flick.
+
+**A universal joint at an angle.** The gear reading turns the shaft past a
+universal joint one for one (§15), exact for shafts in line and, for shafts
+at an angle β, the mean of what they do: the far end's pin stays square to
+the near end's pin and to the far shaft, so the far shaft runs ahead of the
+near one and behind it within each half turn, tan ψ2 = tan ψ1 cos β, ψ1 the
+near pin's turn from square to the plane of the two shafts and ψ2 the far
+pin's from that plane (Cardano's relation). Each frame a grab now turns the
+far shaft where its pin then lies (`Grab._cardan`, `Grab.cardan_turn`, worked
+from the pins' lines, so no reference is assumed), and every gear it drives
+by its ratio to it, about its own axle. Where the far side is more than
+shafts and gears on axles that stand (a gear on a carrier the train turns),
+or reaches back to the near side, the mean is kept; so do two joints at an
+angle one after the other (a cardan shaft's two ends, whose unevenness
+cancels when they are phased), not worked out. How far round a real joint goes before its forks meet
+its cross is the room test's to say, as for any part.
+
+None of the probe's sets has a joint at an angle in a gear train, so the
+probe makes one (`grab_probe -- --only=cardan`): 8062-1's winch joint (two
+3712 ends and a 3326a cross), a crank driving its near shaft through two
+gears 8, and the far shaft with a gear 8 on it in a Technic brick on a tower
+of its own, the far half turned 30° about the near end's pin, both towers
+locked. The crank turned two turns in 20° steps: in 36 poses the far shaft
+stood where Cardano's relation puts it, worked by hand from where the
+joint's parts stand, to 0.0001°; the mean, one for one, is off it by up to
+4.095° (sampled every 20°; the most the relation allows at 30° is
+arctan((1 − cos β) / (2 √cos β)) = 4.12°), and with `_cardan` taken out the
+check fails by that. Reading the made joint found a shaft of two parts (the
+far end on its axle, turning in a hole on a line through the crossing) read
+as a second cross; a cross is now one pinned into both its ends, by hinges
+or pins (`Bodies.universals`).
+
+**The whole probe** (`grab_probe`, windowed) passes 320 checks, 279 before
+G7. Its four-bar's drawing share of a frame (§13) failed twice with other
+runs beside it on the box (8.2 and 8.3 ms, the idle frame itself 20 ms) and
+passed with none (−0.3 ms): the box's load, as §13 says. The reading of the
+model's bodies on 42081-1 is 7.0 s against 6.6 s without lodging, on a
+worker, on a loaded box.

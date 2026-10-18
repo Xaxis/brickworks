@@ -31,6 +31,25 @@ whole cycle.
   pages are among the pages of Lay out page…, and its steps'
   pictures, parts lists and numbers are dragged and sized, and words,
   pictures and arrows added, as on any page.
+- Pneumatic cylinders move. Drag a cylinder's rod, or the arm it raises,
+  and the rod slides in and out along its stroke and stops at its ends,
+  with everything the arm carries: on 42080-1's crane the arm rises with
+  its saw, its gripper and the log in the gripper. Parts the joints read as
+  joined to nothing, an axle in a pin's stop bush, an axle joiner, a gear a
+  file carries as a part of its own, a log held in a gripper, are held by
+  what they sit in and no longer stay in the air. A hose bends rather than
+  holding what it joins.
+- Flick a wheel, a gear train or a turntable and let go while it turns: it
+  keeps turning at the speed you gave it and slows to a stop against its
+  bearings' friction. The gears it drives count through their ratios, so a
+  gear that turns a small one fast coasts less far than it would alone. The
+  status bar says how fast it coasts, and the step says how far it spun and
+  where it stopped. A part on a joint that holds, a hinge or a pin with
+  friction ridges, stays where it is let go. move_part spin= lets a part go
+  turning over MCP.
+- A universal joint at an angle turns its far shaft unevenly, ahead of the
+  near one and behind it within each half turn, as a real one does, and
+  the gears past it with it; it turned them at the average rate.
 
 ### Changed
 
