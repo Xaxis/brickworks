@@ -494,7 +494,7 @@ func _own_copies(held: Grab) -> String:
 		return ""
 	# The hoses it bends where it puts them, so their copies count; and a hose
 	# laid again has changed shape, not only moved, though every piece moved.
-	held.drawn()
+	held.drawn(true)
 	var bent: Dictionary = {}
 	if held.flex != null:
 		for item: FlexFollow.Item in held.flex.items:
@@ -1080,6 +1080,11 @@ func _process(_delta: float) -> void:
 	# let go, before it is kept.
 	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
 		grab.verify_step()
+		world.set_drawn(grab.drawn())
+	# Hoses carried while the pointer moved, laid while it rests, a frame's
+	# budget at a time (FlexFollow.lay_into).
+	elif grab != null and grab.flex != null and grab.flex.carried_now > 0 \
+			and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
 		world.set_drawn(grab.drawn())
 	if _laying != null:
 		var began: int = Time.get_ticks_usec()

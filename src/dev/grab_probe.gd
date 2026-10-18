@@ -522,6 +522,11 @@ const HOSES: Array = [
 		"technicRibHoseLQ-1", 20.0],
 ]
 
+## What laying a grab's hoses again may cost a drag's frame, ms: the budget
+## (FlexFollow.BUDGET_MS, 2) and what is carried past it. Laid every one
+## every frame, 42080-1's six took 8.
+const HOSES_FRAME_MS := 3.5
+
 ## A made model: a tower on the floor with an arm on a hinge, a Technic brick
 ## with a hole on the arm and one on the floor beside it, for a tube laid
 ## between the holes. LDraw's own units, y down.
@@ -533,7 +538,7 @@ const MADE_HOSE := """0 A tube from the floor to an arm on a hinge
 1 14 0 -72 10 1 0 0 0 1 0 0 0 1 3938.dat
 1 1 0 -96 10 1 0 0 0 1 0 0 0 1 3004.dat
 1 1 0 -120 10 1 0 0 0 1 0 0 0 1 3700.dat
-1 7 70 -24 80 1 0 0 0 1 0 0 0 1 3700.dat
+1 7 60 -24 90 1 0 0 0 1 0 0 0 1 3700.dat
 """
 
 
@@ -675,6 +680,12 @@ func _hose_made() -> void:
 		var began: int = Time.get_ticks_usec()
 		held.drawn()
 		worst_ms = maxf(worst_ms, float(Time.get_ticks_usec() - began) / 1000.0)
+	var rests: int = 0
+	while held.flex != null and held.flex.carried_now > 0 and rests < 30:
+		var resting: int = Time.get_ticks_usec()
+		held.drawn()
+		worst_ms = maxf(worst_ms, float(Time.get_ticks_usec() - resting) / 1000.0)
+		rests += 1
 	var drawn: Dictionary = held.drawn()
 	var miss: float = _ends_held(item, _hose_pieces(item_path, drawn), drawn)
 	var shape: Dictionary = _hose_shape("pneumatic_tube", _hose_pieces(item_path, drawn))
@@ -684,6 +695,8 @@ func _hose_made() -> void:
 	_check("hoses: and it is as long as it was (%.2f against %.2f LDU)" % [float(shape.get("length", 0.0)),
 		float(rest_shape["length"])], absf(float(shape.get("length", 0.0)) - float(rest_shape["length"])) < 1.0)
 	_check("hoses: laying it again costs a few ms a frame (%.2f ms at worst)" % worst_ms, worst_ms <= 2.0)
+	_check("hoses: and fits a drag's frame (%.2f ms at worst, the budget %.1f)" % [worst_ms, FlexFollow.BUDGET_MS],
+		worst_ms <= HOSES_FRAME_MS)
 	var moved: int = held.commit(held.step_words())
 	await _frames(2)
 	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
@@ -717,10 +730,10 @@ func _hose_made() -> void:
 		var anchor: Flex.Anchor = holes[n]
 		ports.append(Flex.port_for("pneumatic_tube", anchor, Flex.side_toward(anchor,
 			(holes[1 - n] as Flex.Anchor).at, 1), n))
-	# As FlexFollow measures how far a hose must reach: its tips' short runs
-	# out of the holes and the line between (Flex.ends_of_item reads 2 LDU).
-	var taut: float = ((ports[0] as Flex.Port).tip + (ports[0] as Flex.Port).out * 2.0).distance_to(
-		(ports[1] as Flex.Port).tip + (ports[1] as Flex.Port).out * 2.0) + 4.0
+	# Its straight runs through the holes and the line between: as short as it
+	# goes (the layout lays it no shorter than its curve between the runs).
+	var taut: float = (ports[0] as Flex.Port).start().distance_to((ports[1] as Flex.Port).start()) \
+		+ (ports[0] as Flex.Port).lead + (ports[1] as Flex.Port).lead
 	var short: Flex.Laid = Flex.lay_swept("pneumatic_tube", ports[0], ports[1], taut * 1.03)
 	var adds: Array = []
 	for piece: Dictionary in short.pieces:
@@ -742,8 +755,18 @@ func _hose_made() -> void:
 				break
 		if pull.flex != null and not pull.flex.items.is_empty():
 			var its: FlexFollow.Item = pull.flex.items[0]
-			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f" % [
-				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach])
+			print("    its reach there %.2f, at rest %.2f, the tube %.2f long, may reach %.2f; loose %s, stretched there %s, %d tests" % [
+				pull.flex._reach_of(its, pull.placed), pull.flex._reach_of(its, {}), its.length, its.reach,
+				its.loose, pull.flex.stretched(pull.placed) != null, pull.tests])
+			for holder: int in (Array(its.holders) if "--debug" in OS.get_cmdline_user_args() else []):
+				var at: int = int(pull.bodies.body_of.get(holder, -1))
+				var walk := PackedInt64Array([at])
+				while pull.bodies.parent_of.has(at):
+					at = int(pull.bodies.parent_of[at])
+					walk.append(at)
+				print("      holder #%d %s: up %s, why %s, hangs %s" % [holder, _world.get_brick(holder).part_id
+					if _world.get_brick(holder) != null else "?", walk, pull.bodies.anchor_why.get(at, []),
+					FlexFollow._hangs(pull.bodies, holder)])
 		else:
 			print("    no hose bent")
 		print("    turned %s: %s, to %.1f°, %s%s" % ["back" if way < 0.0 else "on", began, pull.angle,
@@ -854,6 +877,12 @@ func _hose_set(name: String, path: String, word: String, degrees: float, ask: St
 		else:
 			rest_ms = maxf(rest_ms, took)
 		worst_ms = maxf(worst_ms, took)
+	var rests: int = 0
+	while held.flex != null and held.flex.carried_now > 0 and rests < 30:
+		var resting: int = Time.get_ticks_usec()
+		held.drawn()
+		worst_ms = maxf(worst_ms, float(Time.get_ticks_usec() - resting) / 1000.0)
+		rests += 1
 	var drawn: Dictionary = held.drawn()
 	if "--debug" in OS.get_cmdline_user_args():
 		print("    stopped %s %s" % [held.stopped, held.stretch_words])
@@ -899,6 +928,10 @@ func _hose_set(name: String, path: String, word: String, degrees: float, ask: St
 	var bent: int = held.flex.items.size()
 	_check("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms at worst, %.2f a hose)" % [
 		name, bent, worst_ms, worst_ms / float(bent)], worst_ms / float(bent) <= 2.0)
+	# Laid every one every frame, 42080-1's six took 8 ms on a quiet box and
+	# 77 on a loaded one: past the budget the rest are carried a frame.
+	_check("%s: and they fit a drag's frame (%.2f ms at worst, the budget %.1f; %d frames to lay every one at rest)"
+		% [name, worst_ms, FlexFollow.BUDGET_MS, rests], worst_ms <= HOSES_FRAME_MS)
 	_timings["hoses_" + path.get_file().get_basename()] = {"hoses": bent, "worst_ms": worst_ms,
 		"first_ms": first_ms, "fit_off_ldu": fit, "bend_points": item.controls.size(),
 		"read_ahead_ms": _grab.ready_took.get("hoses", -1)}

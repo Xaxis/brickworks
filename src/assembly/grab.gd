@@ -2675,9 +2675,11 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 	# The hoses laid where they are kept; one laid as more or fewer pieces
 	# than it has is laid afresh in its place, in the same step.
 	var swapping: Dictionary = {}
+	var hose_keys: Dictionary = {}
 	if flex != null:
-		flex.lay_into(placed)
+		flex.lay_into(placed, true)
 		swapping = flex.swapped()
+		hose_keys = flex.keys()
 	for key: int in placed:
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		if brick == null or swapping.has(key):
@@ -2691,7 +2693,8 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 		world.move_brick(key, to)
 		builder.lattice.release(key)
 		# Worked out ahead, a share a frame, for a big section (GrabDrag).
-		var boxes: Variant = cells.get(key)
+		# Not a hose's: its cells were worked out where a drag drew it.
+		var boxes: Variant = cells.get(key) if not hose_keys.has(key) else null
 		builder.lattice.occupy_boxes(key, boxes if boxes != null
 			else builder.boxes_for(library.mesh_for(brick.part_id), to))
 	var moved: int = steps.size() + swapping.size()
@@ -2702,10 +2705,11 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 
 
 ## [member placed] with the hoses this grab bends laid where it puts their
-## ends ([FlexFollow]): what is drawn.
-func drawn() -> Dictionary:
+## ends ([FlexFollow]): what is drawn. Within a frame's budget unless
+## [param full], as each is kept.
+func drawn(full: bool = false) -> Dictionary:
 	if flex != null:
-		flex.lay_into(placed)
+		flex.lay_into(placed, full)
 	return placed
 
 

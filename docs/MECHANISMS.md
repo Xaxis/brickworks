@@ -2667,7 +2667,9 @@ whole as before.
 moves and the other by one that does not is read as an item: its kind
 (`Flex.strung`, so LDCad's 165 is the tube's end), its two ends off its own
 end pieces (`Flex.ends_of_item`), the part across the hose's joint nearest
-each tip, its length along its pieces as they lie, end to end, and its bend
+each tip, how far each end runs straight in that part's connector (matched
+as Reshape matches one, `FlexFollow._in_its_connector`: a pin hole's, to 2
+LDU past its mouth; read off the pieces alone every end ran 2 LDU), its length along its pieces as they lie, end to end, and its bend
 (`Flex.fit_bend`, as Reshape reads one, now from one to seven bend points).
 The bends of every hose in the model are read ahead with the bodies, on the
 worker (`GrabDrag._read_all`, `FlexFollow.fit_all`): read at a drag's first
@@ -2728,13 +2730,28 @@ does), where the path lines were lost before, and in one written back over
 its source, where they are replaced in place (no probe case writes that one
 yet). A path untouched is left byte for byte.
 
-**It stays fast.** A hose laid again is drawn by at most 100 points
+**It stays fast.** A hose kept is laid by at most 100 points
 (`FlexFollow.POINTS`; three quarters of an LDU apart on a short hose, as
 Flex draws one, 7 on 42080-1's 700 LDU tubes), its length search started
-from the last frame's (`Flex._rising_root`: two or three tries where
+from the last laying's (`Flex._rising_root`: two or three tries where
 bisecting from nothing takes fifty, each length worked out without making
-the curve, `Flex._curve_length`), and how tight it bends left out of a
-drag's frame.
+the curve, `Flex._curve_length`), and how tight it bends left out. Laid
+every one every frame that way, 42080-1's six tubes cost its cylinder's drag
+8 ms a frame on a quiet box and 77 on a loaded one (13 a tube), and its drag
+frames 20.5 ms on average where G7's were 9.5 to 12.7: on the web build,
+which has one thread, a stall every frame. So a drag's frame lays hoses for
+2 ms at most (`FlexFollow.BUDGET_MS`), at least one, the longest waiting
+first, each by 50 points (`DRAG_POINTS`); a hose not laid that frame is
+carried from where it was last laid, each piece by its two ends' moves since,
+blended by how far along it is (`FlexFollow._carry`), so its ends stay in
+their fittings exactly and only its middle lags a frame or two. While the
+pointer rests the window lays the rest, a budget a frame (`GrabDrag._process`).
+Kept, every hose is laid in full as before (`Grab.commit`, `Grab.drawn(true)`
+for the copies made their own), so what is kept, saved and undone is the
+same. Of the ways to make it fit, this one keeps the layout the kept hose
+has and the cost of a frame bounded whatever the number of hoses; laying
+only those whose ends moved against each other was already so, and a
+cheaper layout alone (fewer points) still grows with the hoses.
 
 **Measured** (`grab_probe -- --only=hoses`, windowed, on a box at load 30 to
 40; `bench/results/grab10-2026-10-18`):
@@ -2750,11 +2767,17 @@ Each kept is one undo step, and the undo puts every part back exactly; the
 made tube and 42080-1's saved and opened again lie where they were kept, to
 0.000 LDU. 42080-1 was written whole (the arm's copy of a sub-model made its
 own), and the tube's sub-model has 37 `PATH_POINT`s, its first and last on
-its caps to 0.000 LDU. A tube laid as short as the layout lays it between
-the made model's two holes stops the arm at 23.5°, where it would have to
-reach 152.99 LDU and is 152.51; move_part says "it stopped where the
-pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it, pulled to
-its full length". Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
+its caps to 0.000 LDU. A tube laid 3% longer than its straight runs
+through the made model's two holes and the line between stops the arm at
+7.8°, where it would have to reach 155.28 LDU and is 154.78; move_part says "it stopped where
+the pneumatic tube from the Technic Brick 1 x 2 with Hole (#7) holds it,
+pulled to its full length". That check failed at the first G10 head: with
+every end read as running 2 LDU straight, the tube could bend 10 LDU sooner
+in each hole than it does, so it reached 12 LDU further than its holes let
+it, and the arm met the tower first; and the made model's floor brick stood
+off the baseplate's stud grid, held by nothing, so the tube to it read as
+hanging. Each end's run is now its connector's, and the brick stands on the
+studs. Every hose's bend is read ahead in 0.08 s (42050-1) to 0.7 s
 (42080-1, 42043-1) on the worker. Read back by the layout where they lay, the
 tubes are 2.5 LDU (42050-1), 11.5 (42080-1, seven bend points) and 49 LDU
 (42043-1, one) off where LDCad drew them: at the first frame of a drag a
@@ -3061,3 +3084,19 @@ back (above: a loop's idle freedoms, and parts meeting on the way back);
 loops with no freedom (57: a boom in a frame of pins), and what swings down
 under its weight on the way back, which is right, and which the sweep counts
 as not back.
+**Fitting a frame, measured** (`grab_probe -- --only=hoses` at load 20 to 23
+of 24 cores; `bench/results/grab10-2026-10-18`). Laying every hose every
+frame, 42080-1's six tubes took 8.2 ms of a frame here and 77 at worst on a
+loaded box, its cylinder's drag 20.5 ms a frame on average and 43.1 at worst,
+and a browser's frame with the made tube 7.7 ms for the tube. Within the
+budget: 42080-1's six 3.2 ms at worst (0.5 a tube), 42043-1's two 1.9,
+42050-1's eight 2.7, the made tube 0.4; every one laid within one or two
+frames of the pointer resting. 42080-1's cylinder drag (the whole probe):
+12.5 ms a frame on average, 16.9 at the 95th per cent, 17.2 at worst, back
+with G7's 9.5 to 12.7. In a browser (grab_flow on a local export) the tube
+costs at most 2.7 ms a frame and the drag frame 2.1 ms on average, 3.9 at
+worst; every check passed. The probe now fails a frame whose hoses take
+more than 3.5 ms: laid every one every frame, 42080-1's took 10.3 and failed
+it. The whole probe ran 406 checks at load 30 to 37 and failed five, all
+timing: the four-bar's drawing share and the hose frames; each passes run
+alone at low load.
