@@ -1835,9 +1835,17 @@ const WIDE_SLACK := 1.5
 ## that nothing of the part comes inside anywhere along it, at the
 ## narrowest of the bores on the line.
 static func _wide_bores(grid: Grid, connectors: Array) -> Array:
-	var lines: Array = []
 	if grid.count() == 0:
-		return lines
+		return []
+	return _wide_lines(connectors).filter(
+		func(line: Array) -> bool: return not _filled_near(grid, line))
+
+
+## occupancy._wide_lines: the lines of a part's bores wider than a pin's,
+## all the way round, across the stud axis and square to the part, each at
+## the narrowest of the bores on it, as [point, unit axis, [], radius].
+static func _wide_lines(connectors: Array) -> Array:
+	var lines: Array = []
 	for c: Array in connectors:
 		if c[0] != "bore" or float(c[9]) <= WIDE_BORE or _arc(c) < 1.0 - 1e-6 \
 				or absf(float(c[6])) >= 0.99 or float(c[8]) <= 0.0:
@@ -1856,7 +1864,202 @@ static func _wide_bores(grid: Grid, connectors: Array) -> Array:
 				break
 		if not joined:
 			lines.append([point, axis, [], float(c[9])])
-	return lines.filter(func(line: Array) -> bool: return not _filled_near(grid, line))
+	return lines
+
+
+## occupancy.clear_bores: the part without the cells inside a wide bore
+## (its round over its length, and the narrowest round on its line all
+## along it) whose middles see out of it along the line,
+## past the last face the line meets or before the first: 56891's lugs,
+## shells that run into its inner ring without closing against it, closed
+## its hole up the voxeliser's columns.
+func _clear_bores(grid: Grid, connectors: Array) -> Grid:
+	var rounds: Array = []
+	for line: Array in _wide_lines(connectors):
+		var axis: PackedFloat64Array = line[1]
+		var n: int = 0
+		for k: int in [1, 2]:
+			if absf(axis[k]) > absf(axis[n]):
+				n = k
+		if absf(axis[n]) > 0.999:
+			rounds.append([n, line[0], float(line[3]), -INF, INF])
+	rounds.append_array(_wide_rounds(connectors))
+	return _see_through(grid, rounds)
+
+
+## occupancy._wide_rounds: each bore wider than a pin's, all the way round,
+## across the stud axis and square to the part, as [axis, a point on its
+## line, radius, from, to along the axis] in the app's axes.
+static func _wide_rounds(connectors: Array) -> Array:
+	var out: Array = []
+	for c: Array in connectors:
+		if c[0] != "bore" or float(c[9]) <= WIDE_BORE or _arc(c) < 1.0 - 1e-6 \
+				or absf(float(c[6])) >= 0.99 or float(c[8]) <= 0.0:
+			continue
+		var axis := PackedFloat64Array([float(c[5]), -float(c[6]), -float(c[7])])
+		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
+		var n: int = 0
+		for k: int in [1, 2]:
+			if absf(axis[k]) > absf(axis[n]):
+				n = k
+		if length < 1e-9 or absf(axis[n]) / length <= 0.999:
+			continue
+		var point := PackedFloat64Array([float(c[2]), -float(c[3]), -float(c[4])])
+		var a: float = point[n]
+		var b: float = a + float(c[8]) * axis[n] / length
+		out.append([n, point, float(c[9]), minf(a, b), maxf(a, b)])
+	return out
+
+
+## occupancy.open_ring: [method _ring_bore], and where a part with no
+## connector is not a ring only because cells in its hole see out of it
+## along the line, [the part without them, its bore]; otherwise [the part
+## as it was, the ring or []].
+func _open_ring(grid: Grid) -> Array:
+	var ring: Array = _ring_bore(grid)
+	if not ring.is_empty() or _tri.is_empty() or grid.count() == 0:
+		return [grid, ring]
+	var low := PackedFloat64Array([INF, INF, INF])
+	var high := PackedFloat64Array([-INF, -INF, -INF])
+	for v: int in _tri.size() / 3:
+		var p := PackedFloat64Array([_tri[v * 3], -_tri[v * 3 + 1], -_tri[v * 3 + 2]])
+		for k: int in 3:
+			low[k] = minf(low[k], p[k])
+			high[k] = maxf(high[k], p[k])
+	var centre := PackedFloat64Array([(low[0] + high[0]) / 2.0, (low[1] + high[1]) / 2.0,
+		(low[2] + high[2]) / 2.0])
+	for n: int in [2, 0]:
+		var u: int = 0 if n == 2 else 1
+		var w: int = 1 if n == 2 else 2
+		var radius: float = INF
+		for v: int in _tri.size() / 3:
+			var p := PackedFloat64Array([_tri[v * 3], -_tri[v * 3 + 1], -_tri[v * 3 + 2]])
+			var pu: float = p[u] - centre[u]
+			var pw: float = p[w] - centre[w]
+			radius = minf(radius, sqrt(pu * pu + pw * pw))
+		if radius <= RING_BORE:
+			continue
+		var opened: Grid = _see_through(grid, [[n, centre, radius, -INF, INF]])
+		if opened.count() == grid.count():
+			continue
+		ring = _ring_bore(opened)
+		if not ring.is_empty():
+			return [opened, ring]
+	return [grid, []]
+
+
+## occupancy._see_through: the part without the cells inside each round,
+## [axis (0, 1 or 2), a point on its line, radius, from, to along the axis],
+## whose middles see out of the part along the line: past the last face the
+## line through them meets, or before the first, or on a line that meets
+## none. A face's edges count as meeting it.
+func _see_through(grid: Grid, rounds: Array) -> Grid:
+	if grid.count() == 0 or rounds.is_empty() or _tri.is_empty():
+		return grid
+	var out: Grid = grid.copy()
+	var s: Vector3i = grid.shape
+	var size: Array[int] = [s.x, s.y, s.z]
+	var origin: Array[int] = [grid.origin.x, grid.origin.y, grid.origin.z]
+	var count: int = _tri.size() / 9
+	for round: Array in rounds:
+		var n: int = round[0]
+		var point: PackedFloat64Array = round[1]
+		var radius: float = round[2]
+		var from: float = round[3]
+		var to: float = round[4]
+		var u: int = 0 if n != 0 else 1
+		var w: int = 2 if n != 2 else 1
+		# The lines along the axis with a cell of the part in the round on them.
+		var wanted := PackedByteArray()
+		wanted.resize(size[u] * size[w])
+		var any: bool = false
+		var at := [0, 0, 0]
+		for iu: int in size[u]:
+			var cu: float = (float(iu + origin[u]) + 0.5) * CELL
+			for iw: int in size[w]:
+				var cw: float = (float(iw + origin[w]) + 0.5) * CELL
+				if (cu - point[u]) * (cu - point[u]) + (cw - point[w]) * (cw - point[w]) \
+						> radius * radius:
+					continue
+				at[u] = iu
+				at[w] = iw
+				for k: int in size[n]:
+					var cn: float = (float(k + origin[n]) + 0.5) * CELL
+					if cn < from or cn > to:
+						continue
+					at[n] = k
+					if out.at(at[0], at[1], at[2]) == 1:
+						wanted[iu * size[w] + iw] = 1
+						any = true
+						break
+		if not any:
+			continue
+		var first := PackedFloat64Array()
+		first.resize(size[u] * size[w])
+		first.fill(INF)
+		var last := PackedFloat64Array()
+		last.resize(size[u] * size[w])
+		last.fill(-INF)
+		for t: int in count:
+			var au: float = _app(t, 0, u)
+			var aw: float = _app(t, 0, w)
+			var bu: float = _app(t, 1, u)
+			var bw: float = _app(t, 1, w)
+			var tu: float = _app(t, 2, u)
+			var tw: float = _app(t, 2, w)
+			var area: float = (bu - au) * (tw - aw) - (bw - aw) * (tu - au)
+			if absf(area) <= 1e-12:
+				continue
+			var an: float = _app(t, 0, n)
+			var bn: float = _app(t, 1, n)
+			var tn: float = _app(t, 2, n)
+			var lo_u: float = minf(minf(au, bu), tu) - ON_EDGE
+			var hi_u: float = maxf(maxf(au, bu), tu) + ON_EDGE
+			var lo_w: float = minf(minf(aw, bw), tw) - ON_EDGE
+			var hi_w: float = maxf(maxf(aw, bw), tw) + ON_EDGE
+			var i0: int = maxi(0, floori(lo_u / CELL) - origin[u] - 1)
+			var i1: int = mini(size[u] - 1, floori(hi_u / CELL) - origin[u] + 1)
+			var k0: int = maxi(0, floori(lo_w / CELL) - origin[w] - 1)
+			var k1: int = mini(size[w] - 1, floori(hi_w / CELL) - origin[w] + 1)
+			for iu: int in range(i0, i1 + 1):
+				var qu: float = (float(iu + origin[u]) + 0.5) * CELL
+				if qu < lo_u or qu > hi_u:
+					continue
+				for iw: int in range(k0, k1 + 1):
+					var column: int = iu * size[w] + iw
+					if wanted[column] == 0:
+						continue
+					var qw: float = (float(iw + origin[w]) + 0.5) * CELL
+					if qw < lo_w or qw > hi_w:
+						continue
+					var w0: float = ((bu - qu) * (tw - qw) - (bw - qw) * (tu - qu)) / area
+					var w1: float = ((tu - qu) * (aw - qw) - (tw - qw) * (au - qu)) / area
+					var w2: float = 1.0 - w0 - w1
+					if w0 >= -1e-9 and w1 >= -1e-9 and w2 >= -1e-9:
+						var cross: float = w0 * an + w1 * bn + w2 * tn
+						first[column] = minf(first[column], cross)
+						last[column] = maxf(last[column], cross)
+		for iu: int in size[u]:
+			for iw: int in size[w]:
+				var column: int = iu * size[w] + iw
+				if wanted[column] == 0:
+					continue
+				at[u] = iu
+				at[w] = iw
+				for k: int in size[n]:
+					var cn: float = (float(k + origin[n]) + 0.5) * CELL
+					if cn < from or cn > to or (cn <= last[column] and cn >= first[column]):
+						continue
+					at[n] = k
+					out.put(at[0], at[1], at[2], 0)
+	return out
+
+
+## Corner [param c] of triangle [param t] along the app's axis [param n]:
+## LDraw's y and z the other way.
+func _app(t: int, c: int, n: int) -> float:
+	var v: float = _tri[(t * 3 + c) * 3 + n]
+	return v if n == 0 else -v
 
 
 ## occupancy.RING_BORE: the narrowest round a ring's hole may be and be a
@@ -2758,9 +2961,19 @@ static func _hull(points: PackedInt64Array) -> Array:
 	return out
 
 
+## occupancy.WHOLE_STUDS: how far a footprint may be from whole studs across
+## and still be whole, LDU.
+const WHOLE_STUDS := 0.4
+
+
 ## Where a stud from below can go: the lowest plate's footprint with its
-## voids filled, divided into stud squares, each kept if half covered.
-static func _bottom_sockets(grid: Grid) -> Array:
+## voids filled, divided into stud squares, each kept if half covered. The
+## squares from the footprint's edge where it is whole studs across, and on
+## the part's own upright studs where it is not ([param widths], its bounds
+## across x and z, where they are a little narrower than its cells): as
+## occupancy.bottom_sockets.
+static func _bottom_sockets(grid: Grid, connectors: Array = [],
+		widths: PackedFloat64Array = PackedFloat64Array()) -> Array:
 	if grid.count() == 0:
 		return []
 	var s: Vector3i = grid.shape
@@ -2790,14 +3003,34 @@ static func _bottom_sockets(grid: Grid) -> Array:
 	var step: int = maxi(1, _rint(20.0 / CELL))
 	var base_x: int = -1
 	var base_z: int = 1 << 30
+	var last_x: int = -1
+	var last_z: int = -1
 	for x: int in s.x:
 		for z: int in s.z:
 			if footprint[x * s.z + z] == 1:
 				if base_x < 0:
 					base_x = x
 				base_z = mini(base_z, z)
+				last_x = x
+				last_z = maxi(last_z, z)
 	if base_x < 0:
 		return []
+	var base: Array[int] = [base_x, base_z]
+	var last: Array[int] = [last_x, last_z]
+	var start: Array[int] = [grid.origin.x, grid.origin.z]
+	for n: int in 2:
+		var across: float = float(last[n] - base[n] + 1) * CELL
+		if not widths.is_empty() and across - 2.0 * CELL < widths[n] and widths[n] < across:
+			across = widths[n]
+		if absf(across - float(_rint(across / 20.0)) * 20.0) <= WHOLE_STUDS:
+			continue
+		var phase: Variant = _stud_phase(connectors, n)
+		if phase == null:
+			continue
+		var edge: int = _rint((float(phase) - 10.0) / CELL) - start[n]
+		base[n] = base[n] - posmod(base[n] - edge, step)
+	base_x = base[0]
+	base_z = base[1]
 	var counts: Dictionary = {}
 	var order: Array = []
 	for x: int in s.x:
@@ -2818,6 +3051,25 @@ static func _bottom_sockets(grid: Grid) -> Array:
 			(float(grid.origin.z + base_z + key.y * step) + step * 0.5) * CELL])
 	sockets.sort_custom(PartForge._before)
 	return sockets
+
+
+## occupancy._stud_phase: where the part's upright studs stand across the
+## app's x (0) or z (1), modulo a stud: the most of them, the least phase
+## of those as many, or null where it has none.
+static func _stud_phase(connectors: Array, n: int) -> Variant:
+	var phases: Dictionary = {}
+	for c: Array in connectors:
+		if c[0] != "stud" or c[1] != "male" or -float(c[6]) < 0.99:
+			continue
+		var along: float = float(c[2]) if n == 0 else -float(c[4])
+		var phase: float = fposmod(float(_rint(along / CELL)) * CELL, 20.0)
+		phases[phase] = int(phases.get(phase, 0)) + 1
+	var best: Variant = null
+	for phase: float in phases:
+		if best == null or int(phases[phase]) > int(phases[best]) \
+				or (int(phases[phase]) == int(phases[best]) and phase < float(best)):
+			best = phase
+	return best
 
 
 # -- the whole of it -----------------------------------------------------------
@@ -3191,11 +3443,14 @@ func _build(text: String, id: String, others: Dictionary,
 		for socket: Vector2 in cover.sockets:
 			result.sockets.append([socket.x, socket.y])
 	else:
-		var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found), found)
+		var solid: Grid = _clear_bores(_fill_cavities(_remove_studs(_voxelise(), found), found),
+			found)
 		# A part with no connector at all that is a ring: its hole a bore
-		# (occupancy.ring_bore, and build_meshes after it).
+		# (occupancy.open_ring, and build_meshes after it).
 		if found.is_empty():
-			var ring: Array = _ring_bore(solid)
+			var opened: Array = _open_ring(solid)
+			solid = opened[0]
+			var ring: Array = opened[1]
 			if not ring.is_empty():
 				found = [ring]
 				result.connector_counts["bore"] = 1
@@ -3203,7 +3458,9 @@ func _build(text: String, id: String, others: Dictionary,
 					-float(ring[4]), ring[5], -float(ring[6]), -float(ring[7]), ring[8], ring[9]])
 		result.cells = solid.count()
 		result.boxes = _to_boxes(solid, found)
-		result.sockets = _bottom_sockets(solid)
+		result.sockets = _bottom_sockets(solid, found, PackedFloat64Array([
+			result.bounds_max[0] - result.bounds_min[0],
+			result.bounds_max[2] - result.bounds_min[2]]))
 
 	result.lbm = encode(surfaces, result.bounds_min, result.bounds_max,
 		result.connectors, result.boxes, result.sockets)

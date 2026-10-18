@@ -624,6 +624,15 @@ def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole
     """
     if occupancy.cell_count == 0:
         return []
+    grid = occupancy.to_grid()
+    return [line for line in _wide_lines(connections)
+            if not _filled_near(occupancy, grid, line)]
+
+
+def _wide_lines(connections: list[Connection]) -> list[Hole]:
+    """The lines of a part's bores wider than a pin's, all the way round,
+    across the stud axis and square to the part, each at the narrowest of
+    the bores on it, whole: where a tyre's hole may be ([wide_bores])."""
     lines: list[Hole] = []
     for c in connections:
         if (c.kind is not ConnectorKind.BORE or c.radius <= WIDE_BORE
@@ -641,8 +650,162 @@ def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole
                 break
         else:
             lines.append(Hole(point=point, axis=axis, span=None, radius=c.radius))
-    grid = occupancy.to_grid()
-    return [line for line in lines if not _filled_near(occupancy, grid, line)]
+    return lines
+
+
+def clear_bores(
+    mesh: Mesh, occupancy: Occupancy, connections: list[Connection],
+) -> Occupancy:
+    """Take out of a part the cells inside a wide bore whose middles see out
+    of the part along its line: no face of the part crosses the line from
+    the cell on, one way or the other. Inside any surface a line from it
+    meets it, so such a cell is air. Inside a wide bore is inside its round
+    over its length ([_wide_rounds]), and inside the narrowest round on its
+    line anywhere along it ([_wide_lines]): 69912's bores are short rings
+    at its sidewalls, and its hole was closed between them.
+
+    The voxeliser asks one line only, up each column, and a tread drawn as
+    shells that overlap without closing each other leaves a column inside
+    from the shell it entered across the hole: 56891's lugs run into its
+    inner ring, and the columns at x = 9 and -9 were solid right across its
+    hole, so it was closed from one sidewall to the other and no rim went
+    in. Up its column the ray enters twice and leaves once; along the tyre's
+    axle the line through the same cells meets nothing, or only the lip in
+    the middle of the tyre, on the far side of them.
+
+    Only ever takes cells away, and only inside a wide bore: a tyre's or a
+    wheel's, where a rim or a hub goes.
+    """
+    lines = [(int(np.argmax(np.abs(line.axis))), line.point, line.radius, -np.inf, np.inf)
+             for line in _wide_lines(connections)
+             if float(np.abs(line.axis).max()) > 0.999]
+    return _see_through(mesh, occupancy, lines + _wide_rounds(connections))
+
+
+def _wide_rounds(
+    connections: list[Connection],
+) -> list[tuple[int, np.ndarray, float, float, float]]:
+    """Each bore of a part wider than a pin's, all the way round, across the
+    stud axis and square to the part, as (the axis it runs along, a point on
+    its line, its radius, where it starts and ends along the axis), in the
+    application's axes."""
+    out: list[tuple[int, np.ndarray, float, float, float]] = []
+    for c in connections:
+        if (c.kind is not ConnectorKind.BORE or c.radius <= WIDE_BORE
+                or c.arc < 1.0 - 1e-6 or abs(c.axis.y) >= 0.99 or c.length <= 0.0):
+            continue
+        axis = np.array([c.axis.x, -c.axis.y, -c.axis.z])
+        length = float(np.linalg.norm(axis))
+        if length < 1e-9 or float(np.abs(axis).max()) / length <= 0.999:
+            continue
+        n = int(np.argmax(np.abs(axis)))
+        point = np.array([c.position.x, -c.position.y, -c.position.z])
+        a = float(point[n])
+        b = a + c.length * float(axis[n]) / length
+        out.append((n, point, c.radius, min(a, b), max(a, b)))
+    return out
+
+
+def open_ring(mesh: Mesh, occupancy: Occupancy) -> tuple[Occupancy, Connection | None]:
+    """[ring_bore], and where a part with no connector is not a ring only
+    because cells in its hole see out of it along the line ([clear_bores]),
+    the part without them and its bore. Otherwise the part as it was.
+
+    23798, 32003, 3740, 11957, 4410, 92912 and 32078 are tyres drawn with no
+    bore whose own shells closed their holes up the voxeliser's columns:
+    tens of thousands of cells inside 23798's, every one of which sees out
+    along its axle. Only a part that is then a ring is changed.
+    """
+    ring = ring_bore(mesh, occupancy)
+    if ring is not None or not mesh.triangles or occupancy.cell_count == 0:
+        return occupancy, ring
+    points = np.array([(p.x, -p.y, -p.z) for t in mesh.triangles for p in (t.a, t.b, t.c)])
+    centre = (points.min(axis=0) + points.max(axis=0)) / 2.0
+    for n in (2, 0):
+        u, w = [k for k in range(3) if k != n]
+        radius = float(np.sqrt((points[:, u] - centre[u]) ** 2
+                               + (points[:, w] - centre[w]) ** 2).min())
+        if radius <= RING_BORE:
+            continue
+        opened = _see_through(mesh, occupancy, [(n, centre, radius, -np.inf, np.inf)])
+        if opened.cell_count == occupancy.cell_count:
+            continue
+        ring = ring_bore(mesh, opened)
+        if ring is not None:
+            return opened, ring
+    return occupancy, None
+
+
+def _see_through(
+    mesh: Mesh, occupancy: Occupancy,
+    rounds: list[tuple[int, np.ndarray, float, float, float]],
+) -> Occupancy:
+    """The part without the cells inside each round (axis, a point on its
+    line, radius, from, to along the axis) whose middles see out of the part
+    along the line: past the last face the line through them meets, or
+    before the first, or on a line that meets none."""
+    if occupancy.cell_count == 0 or not rounds or not mesh.triangles:
+        return occupancy
+    tri = np.array([[(p.x, -p.y, -p.z) for p in (t.a, t.b, t.c)]
+                    for t in mesh.triangles], dtype=np.float64)
+    grid = occupancy.to_grid().copy()
+    centres = [(np.arange(occupancy.shape[n]) + occupancy.origin[n] + 0.5) * CELL
+               for n in range(3)]
+    for n, point, radius, low, high in rounds:
+        u, w = [k for k in range(3) if k != n]
+        cu, cw = np.meshgrid(centres[u], centres[w], indexing="ij")
+        inside = (cu - point[u]) ** 2 + (cw - point[w]) ** 2 <= radius * radius
+        along = (centres[n] >= low) & (centres[n] <= high)
+        # The cells of the part in the round, and the lines they are on.
+        view = np.moveaxis(grid, n, 2)
+        wanted = view & inside[:, :, None] & along[None, None, :]
+        lines = wanted.any(axis=2)
+        if not lines.any():
+            continue
+        iu, iw = np.nonzero(lines)
+        first, last = _crossings(tri, n, u, w, centres[u][iu], centres[w][iw])
+        out = np.zeros(view.shape, dtype=bool)
+        out[iu, iw, :] = (centres[n][None, :] > last[:, None]) \
+            | (centres[n][None, :] < first[:, None])
+        view &= ~(wanted & out)
+    return Occupancy(
+        origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))
+
+
+def _crossings(
+    tri: np.ndarray, n: int, u: int, w: int, pu: np.ndarray, pw: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """For each point (pu, pw) across the line along axis n, the first and
+    the last place along it that a triangle meets the line through it, its
+    edges included: (inf, -inf) where none does."""
+    first = np.full(pu.shape, np.inf)
+    last = np.full(pu.shape, -np.inf)
+    au, aw, an = tri[:, 0, u], tri[:, 0, w], tri[:, 0, n]
+    bu, bw, bn = tri[:, 1, u], tri[:, 1, w], tri[:, 1, n]
+    cu, cw, cn = tri[:, 2, u], tri[:, 2, w], tri[:, 2, n]
+    area = (bu - au) * (cw - aw) - (bw - aw) * (cu - au)
+    lo_u = np.minimum(np.minimum(au, bu), cu) - ON_EDGE
+    hi_u = np.maximum(np.maximum(au, bu), cu) + ON_EDGE
+    lo_w = np.minimum(np.minimum(aw, bw), cw) - ON_EDGE
+    hi_w = np.maximum(np.maximum(aw, bw), cw) + ON_EDGE
+    for t in np.nonzero(np.abs(area) > 1e-12)[0]:
+        near = (pu >= lo_u[t]) & (pu <= hi_u[t]) & (pw >= lo_w[t]) & (pw <= hi_w[t])
+        if not near.any():
+            continue
+        qu, qw = pu[near], pw[near]
+        w0 = ((bu[t] - qu) * (cw[t] - qw) - (bw[t] - qw) * (cu[t] - qu)) / area[t]
+        w1 = ((cu[t] - qu) * (aw[t] - qw) - (cw[t] - qw) * (au[t] - qu)) / area[t]
+        w2 = 1.0 - w0 - w1
+        # An edge counts as met: a line on one keeps its cells.
+        slack = 1e-9
+        hit = (w0 >= -slack) & (w1 >= -slack) & (w2 >= -slack)
+        if not hit.any():
+            continue
+        at = (w0 * an[t] + w1 * bn[t] + w2 * cn[t])[hit]
+        idx = np.nonzero(near)[0][hit]
+        first[idx] = np.minimum(first[idx], at)
+        last[idx] = np.maximum(last[idx], at)
+    return first, last
 
 
 ## The narrowest round a ring's hole may be and be a tyre's, in LDU: wider
@@ -863,9 +1026,15 @@ def remove_studs(
         origin=occupancy.origin, shape=shape, bits=grid.reshape(-1)).trim()
 
 
+## How far a footprint may be from whole studs across and still be whole,
+## LDU: a brick's clearance (BrickLattice.CLEARANCE).
+WHOLE_STUDS = 0.4
+
+
 def bottom_sockets(
-    occupancy: Occupancy, *, cell: float = CELL, pitch: float = 20.0,
-    coverage: float = 0.5,
+    occupancy: Occupancy, connections: list[Connection] | None = None,
+    widths: tuple[float, float] | None = None,
+    *, cell: float = CELL, pitch: float = 20.0, coverage: float = 0.5,
 ) -> list[tuple[float, float]]:
     """Stud-lattice positions on the underside that can receive a stud.
 
@@ -922,8 +1091,35 @@ def bottom_sockets(
     # puts its studs at odd multiples of 10 LDU and a 1x1 brick puts its one
     # stud at zero. Measuring squares from the part's own edge gets both
     # right, and is what "a brick two studs wide" actually means.
-    base_x = int(xs.min())
-    base_z = int(zs.min())
+    #
+    # Only where the footprint is whole studs across, though: as it is drawn
+    # where the part's bounds (``widths``, across x and z) are its width, a
+    # little narrower than its cells, which round it out to the lattice by
+    # up to a cell either side. A flared or curved
+    # edge is not whole. 50949, a 1 x 2 plate with a grille four studs wide
+    # whose ends are drawn in, is 72 LDU across under its grille, and squares
+    # from that edge put its sockets at x -26, -6 and 14, between the studs
+    # of the roof it sits on, so it was never seated by them; 50948, the
+    # roof, is 58.5 across with its flares, 60 in cells, and its were laid
+    # three across where the bricks under it stand two. Across such an axis
+    # the squares are laid on the part's own top studs (_stud_phase). Bounds
+    # wider than the footprint are something else's: a trophy's handles, a
+    # Minion's head over its 2 x 2 neck.
+    base = [int(xs.min()), int(zs.min())]
+    for n, (cells, start) in enumerate(((xs, ox), (zs, oz))):
+        across = (int(cells.max()) - int(cells.min()) + 1) * cell
+        if widths is not None and across - 2.0 * cell < widths[n] < across:
+            across = widths[n]
+        if abs(across - round(across / pitch) * pitch) <= WHOLE_STUDS:
+            continue
+        phase = _stud_phase(connections or [], n, cell, pitch)
+        if phase is None:
+            continue
+        # The grid index of an edge of a square whose middle is on the studs'
+        # line, and the nearest such edge at or before the footprint's own.
+        edge = int(round((phase - pitch / 2.0) / cell)) - start
+        base[n] = int(cells.min()) - (int(cells.min()) - edge) % step
+    base_x, base_z = base
 
     counts: dict[tuple[int, int], int] = {}
     for x, z in zip(xs, zs):
@@ -941,6 +1137,26 @@ def bottom_sockets(
         ))
 
     return sorted(sockets)
+
+
+def _stud_phase(
+    connections: list[Connection], n: int, cell: float, pitch: float,
+) -> float | None:
+    """Where the part's upright studs stand across its axis ``n`` (0 for x,
+    1 for z, the application's), modulo a stud: the most of them, or None
+    where it has none. On the lattice, as everything else is."""
+    phases: dict[float, int] = {}
+    for c in connections:
+        # extract() is in LDraw's axes: a stud pointing up has -y.
+        if c.kind is not ConnectorKind.STUD or c.gender is not Gender.MALE \
+                or -c.axis.y < 0.99:
+            continue
+        along = c.position.x if n == 0 else -c.position.z
+        phase = (round(along / cell) * cell) % pitch
+        phases[phase] = phases.get(phase, 0) + 1
+    if not phases:
+        return None
+    return max(phases, key=lambda p: (phases[p], -p))
 
 
 def collides(a: Occupancy, b: Occupancy, offset: tuple[int, int, int]) -> bool:

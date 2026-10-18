@@ -292,6 +292,19 @@ whole cycle.
 
 ### Fixed
 
+- Tyres whose own drawing closed their hole go round a rim. Some tyres are
+  drawn as pieces that run into each other without closing, and the space
+  each part takes was read as solid right across the tyre's hole, so no rim
+  could go in and the tyre's ghost never went round one: 56891, and 22 more
+  of the library's 118 tyres, seven of them drawn with no hole at all
+  (23798, a tractor's, among them). Space inside a tyre's hole that a line
+  along its axle sees straight through is empty now. Parts made in the app
+  are built the same way.
+- A part whose underside is not whole studs across takes studs on its own
+  stud grid. The places it takes studs were measured from the edge of its
+  underside, so a flared or rounded edge put them off its studs by up to
+  half a stud: minifigure heads and hips, wings with a chamfer, 8643-1's
+  cab top (50949) and some 1,250 other parts.
 - A quick drag in a slow browser grabs the part as it should. Pressed and
   dragged at once, a part was taken by its chain of joints instead, as if
   held still first, whenever a frame took longer than 0.4 s to draw: the

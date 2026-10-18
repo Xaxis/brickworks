@@ -1234,3 +1234,70 @@ def test_an_arch_with_a_free_line_through_it_is_no_ring() -> None:
     It gets no bore."""
     _cells, connectors = _built_cover("67503c01.dat")
     assert connectors == []
+
+
+@needs_numpy
+def test_a_tyre_of_shells_that_overlap_is_open_through_its_bore() -> None:
+    """56891's lugs are shells that run into its inner ring without closing
+    against it. Up the columns at x = 9 and -9 the voxeliser's ray went in
+    twice and out once, and they were solid right across its hole from one
+    sidewall to the other, so no rim went in. Along the tyre's axle the line
+    through those cells meets nothing: they are air now
+    (occupancy.clear_bores), and the hole is open as wide as its narrowest
+    bore, 19 LDU, with its tread all there."""
+    cells, connectors = _built_cover("56891.dat")
+    narrowest = min(c.radius for c in connectors if c.kind == "bore")
+    assert narrowest == pytest.approx(19.0, abs=0.01)
+    assert not _near_axis(cells, narrowest - occ.WIDE_SLACK)
+    assert len(_near_axis(cells, 30.0)) > 1000
+
+
+@needs_numpy
+def test_a_tyre_with_no_bore_closed_by_its_own_shells_is_a_ring() -> None:
+    """32003 is drawn with no primitive, and its own shells closed its hole
+    up the voxeliser's columns: 32,160 cells inside it, each of which sees
+    out of the tyre along its axle. With them taken away it is a ring
+    (occupancy.open_ring), so its hole is a bore a rim goes in, and open."""
+    cells, connectors = _built_cover("32003.dat")
+    assert [c.kind for c in connectors] == ["bore"]
+    bore = connectors[0]
+    assert bore.radius == pytest.approx(47.5, abs=0.5)
+    assert abs(bore.axis[2]) == pytest.approx(1.0)
+    assert not _near_axis(cells, bore.radius - occ.WIDE_SLACK)
+
+
+def _built_sockets(part: str) -> list:
+    """A part's sockets as the mesh build writes them."""
+    import build_meshes
+    from ldraw import meshfile
+
+    if build_meshes._LIBRARY is None:
+        build_meshes._init(str(LDRAW_ROOT))
+    _id, blob, record = build_meshes._convert(part)
+    assert blob is not None, record
+    return sorted((round(x, 3), round(z, 3)) for x, z in meshfile.read(blob).sockets)
+
+
+@needs_numpy
+def test_a_part_not_whole_studs_across_has_its_sockets_on_its_studs() -> None:
+    """50949 is a 1 x 2 plate with a grille four studs wide whose ends are
+    drawn in: 72 LDU across under the grille. Squares from that edge put its
+    sockets at x -26, -6 and 14, between the studs of the roof it sits on in
+    8643-1, so it was never seated by them and was typed in every run. Its
+    squares are laid on its own studs (x 10 and -10) now, four under the
+    grille."""
+    assert _built_sockets("50949.dat") == [(-30.0, 20.0), (-10.0, 20.0),
+                                           (10.0, 20.0), (30.0, 20.0)]
+
+
+@needs_numpy
+def test_a_flared_part_has_its_sockets_where_the_bricks_under_it_stand() -> None:
+    """50948, 8643-1's cab roof, is 58.5 LDU across with its flares, 60 in
+    cells, and its sockets were laid three across (x -20, 0, 20) where the
+    two 1 x 4 bricks under it stand at x 10 and -10, under its two studs. Not
+    whole studs as it is drawn, its sockets are on its studs now. A part
+    whose bounds are wider than its footprint keeps the footprint's edge: a
+    Minion's head bulges to 44 LDU over its 2 x 2 neck."""
+    assert sorted({x for x, _z in _built_sockets("50948.dat")}) == [-10.0, 10.0]
+    assert _built_sockets("67649p03.dat") == [(-10.0, -10.0), (-10.0, 10.0),
+                                              (10.0, -10.0), (10.0, 10.0)]

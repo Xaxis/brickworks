@@ -40,3 +40,11 @@
 30648
 # A tyre drawn with no primitive: its hole a bore (occupancy.ring_bore).
 3483
+# A tyre whose shells close its hole up the voxeliser's columns, cleared
+# where the cells see out along its bore (occupancy.clear_bores), and one
+# drawn with no primitive that is a ring once they are (open_ring).
+56891
+3740
+# Not whole studs across: sockets on the part's own studs (bottom_sockets).
+50949
+50948

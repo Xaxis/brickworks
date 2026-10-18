@@ -1930,6 +1930,74 @@ the controls' connectors unmoved) and upload as the tyres were (section 7).
 Then 50949 goes on by its ghost, and 50948 by its sockets as well as by
 its studs.
 
+## 10. The covers known to be wrong (2026-10-18)
+
+Three covers were known to be wrong: tyres closed through their bores
+(gap 5), sockets off a part's own studs (gap 2) and a wedge plate's cover
+short of its slanted edge (gap 8). Each was measured before anything was
+changed. The rebuilt covers are a sub-build waiting to be merged and
+uploaded between releases (`bench/results/covers2-2026-10-18/PLAN.md`),
+tested first in a private copy of the catalogue that nothing else reads.
+
+- *A tyre closed by its own drawing.* 56891's lugs are shells that run
+  into its inner ring without closing against it. Up the voxeliser's
+  column at x = 9 the ray goes into a lug, then into the ring, and out of
+  the ring only, so by its count it is inside right across the hole, and
+  the columns at x = 9 and -9 were solid from one sidewall to the other:
+  none of its bores was bare, it had no tyre end, and its ghost never went
+  round a rim. Along the tyre's axle the line through the same cells meets
+  no face at all, and over the wider bores either side of its middle
+  (21 LDU) only the lip in the middle, on the far side. A cell inside a wide
+  bore whose middle sees out of the part along the bore's line, one way or
+  the other, is air now (`occupancy.clear_bores`): inside any surface a line
+  from it meets it. Inside a wide bore is its round over its length, and the
+  narrowest round on its line all along it (69912's bores are short rings
+  at its sidewalls, and its hole was closed between them). It only takes
+  cells away, and only there. A tyre drawn with no primitive gets the same
+  along its middle where that makes it a ring (`open_ring`): 23798, 32003,
+  3740, 11957, 4410, 92912 and 32078 held cells in their holes, tens of
+  thousands in most, every one of which sees out. Of the catalogue's 118 tyres
+  26 were closed by the tyres unit's measure; 3 are now (2346b, 3634 and
+  u9192, whose sidewall lips stand inside their narrowest bore: the line
+  along it meets them). Over the 559 tyres and wheels, 219 covers lose
+  cells, 15 of them tyres given a bore as rings. `PartForge` does the same,
+  byte for byte (`element_files_probe` builds 56891 and 3740).
+- *Sockets on the part's own studs.* `bottom_sockets` laid its stud
+  squares from the edge of the part's lowest plate. Where that is not
+  whole studs across, as the part is drawn, they are laid on the part's own
+  upright studs now. 50949's grille is 72 LDU across: its sockets were at
+  x -26, -6 and 14, between the roof's studs, and are at -30, -10, 10 and
+  30. Put on the cab by its ghost it still rests 14 LDU high, as before:
+  a check of it in `placing_probe` failed on the new covers as on the old
+  and was taken out, the cause not found in the time (its plate's
+  underside, a plate above its grille, has no sockets: a part's sockets are
+  its lowest plate's only, as the 4488's below are). 50948 is 58.5 across
+  with its flares, 60 in cells: its sockets were
+  three across and are two, over the bricks it stands on. The drawn width
+  counts only where it is a little narrower than the cells: a trophy's
+  handles or a Minion's head over its 2 x 2 neck are not its footprint.
+  Over the catalogue's own covers the rule moves 2,014 parts' sockets:
+  559 minifigure heads (a 24 LDU neck, its socket at -2, -2 under a stud at
+  0, 0), hips and legs, figures, wings with a chamfer, boat hulls. The
+  1,261 whose new sockets were measured (by their voxels, or by an exact
+  cover) are in the sub-build; 899 past the box limit wait for the next
+  full build, 50948 among them (`placing_probe` puts it by its studs, as
+  before).
+- *The wedge plate is not short.* 5762-1's 4488s were said to stand on
+  the wing by a block the wing's cover does not reach. The wing's cover
+  reaches its straight edge exactly, and along its slanted edge leaves out
+  only the cells whose middles are on the slanted face, as every slanted
+  seam does (two wedges laid edge to edge would overlap otherwise). In the
+  set's file the 4488's block, with its sockets, stands in front of the
+  wing's straight edge, past it, level with its top, and its plate a plate
+  over the wing: by the covers it touches nothing but the grille, the light
+  and the propeller on it, and the tile beside it is a plate lower. The
+  nacelle is a plate above anything that could hold it. A 4488 put on the
+  wing goes a plate lower, its plate on the wing's front studs (in 5762-1's
+  speedboat the same part rests on a wedge plate and a 2 x 4); the app keeps
+  the file's place only because its sockets, under the block, have
+  nothing under them (`Builder._seated_by_sockets`). No cover changed.
+
 ## The gaps, by how much a builder would feel them
 
 Rewritten on 2026-10-18 from the runs of section 9, most felt first. The
@@ -1944,14 +2012,14 @@ first run's thirteen are kept below, each with what closed it.
    forward; the car's plate on its right bracket's side studs and its two
    right tyres, which every run missed from that side; the balance's two plates on its second column's underside, and its
    last 38 parts, not tried in the time.
-2. **A part's sockets on the wrong grid** (section 9): the pipeline lays a
-   part's sockets from the edge of its lowest plate, and a part whose
-   footprint is not whole studs across gets them on that guess. 8643-1's
-   cab top (50949) is never seated by them and rests 14 LDU high; it is
-   typed in every run. The app now takes a flared part's phase from its
-   own studs, so the roof under it goes by its ghost, but the sockets wait
-   for the change to `tools/ldraw/occupancy.py` and the sub-build that
-   section 9 plans.
+2. **A part's sockets on the wrong grid, until the covers are uploaded**
+   (sections 9 and 10): the pipeline laid a part's sockets from the edge
+   of its lowest plate, and 8643-1's cab top (50949) rested 14 LDU high
+   and was typed in every run. Its sockets are on its studs now, but it
+   still rests high (section 10). Fixed in `tools/ldraw/occupancy.py` and
+   rebuilt for 1,261 parts in section 10's sub-build, which waits to be
+   merged and uploaded; 899 parts past the box limit (50948, the roof,
+   among them) wait for the next full build.
 3. **A long Technic brick on pins or an axle by the right hole takes many
    presses.** A 1 x 16 on two pins has 30 ways on (each hole, either face);
    T steps through them one at a time, and the app's own pick of the way
@@ -1963,20 +2031,22 @@ first run's thirteen are kept below, each with what closed it.
    (section 9), where its first 8 to 16 parts took 13 to 18: R and T on a
    joint, a part tried again from its side or from below, the faces of
    what it meets aimed at, and numbers typed.
-5. **26 of the library's 118 tyres are still closed through their
-   narrowest bore** (section 7), and the rest of the library's covers the
-   seam rule changes (about 13%) wait for the next full build. A tyre
-   drawn with no bore has no tyre end either, so its ghost does not go
-   round a rim.
+5. **3 of the library's 118 tyres are still closed through their
+   narrowest bore** (section 10, from 26 once its sub-build is merged):
+   2346b, 3634 and u9192, whose sidewall lips stand inside it. The rest of
+   the library's wide bores, and the covers the seam rule changes (about
+   13%), wait for the next full build.
 6. **Studio has still never been run beside it.** Every Studio number is
    modelled (section 3); Wine needs a password on this box.
 7. **The actions a part** are 11.5 to 17.6 in section 6's measured builds
    of the first parts against 7.8 to 15.9 modelled (`REPORT.md`); a
    measured hand against Studio's has not been timed.
-8. **A wedge plate's cover falls short of its slanted edge** (section 8):
-   the drop keeps to the part's box there; making the cover reach the
-   edge is a change to `tools/ldraw/occupancy.py` and a rebuild of the
-   wedge plates' covers, not done here.
+8. **5762-1's nacelles stand where the file has them, a plate above the
+   wing** (section 10): not a wedge plate's cover, which reaches its
+   edges. The file's 4488s touch nothing that holds them; the app keeps
+   that place because their sockets are under the block that stands past
+   the wing. A part's sockets are its lowest plate's only, so the 4488's
+   plate, which takes the wing's studs in the hand, has none.
 9. **A part put where the pointer cannot say it costs a person typing.**
    Section 9's runs typed 1 of the plane's parts, 2 of the car's and
    1 of the balance's in Properties (a 1 x 2's height, a cab top on
