@@ -319,6 +319,11 @@ plan with Claude as the client.
   longest. Fails when one that should show the bar does not
   within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
   work of its own over `--budget` ms (250) in one go, or a bar is left up.
+  `--model=FILE --parts=N` opens FILE (N parts) where Orthanc is opened:
+  with `--only=timeline` and a model whose author's steps are taken out, the
+  timeline's total is the planner's time in the browser
+  (`Instructions.plan_paced`; planspeed, 2026-10-17, 76161 without its
+  `STEP` lines, `bench/results/planspeed-2026-10-17/`).
   What the long frames at a job's end were, which no timer had caught
   (2026-10-15): Brickify put the whole bunny down in its last frame (its
   slice was asked before each part but spent only by putting them down); the
