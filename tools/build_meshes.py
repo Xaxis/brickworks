@@ -131,6 +131,12 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         connections = extract_connections(_LIBRARY, name)
         solid = occ.fill_cavities(
             occ.remove_studs(occ.voxelise(mesh), connections), connections)
+        # A part with no connector at all that is a ring: a tyre drawn with
+        # no primitive, given its hole as a bore (occupancy.ring_bore).
+        if not connections:
+            ring = occ.ring_bore(mesh, solid)
+            if ring is not None:
+                connections = [ring]
 
         counts: dict[str, int] = {}
         for connection in connections:

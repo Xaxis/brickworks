@@ -197,6 +197,10 @@ def summary(part_id: str, blob: bytes) -> dict:
     connections = extract(library, name)
     solid = occ.fill_cavities(
         occ.remove_studs(occ.voxelise(mesh), connections), connections)
+    if not connections:
+        ring = occ.ring_bore(mesh, solid)
+        if ring is not None:
+            connections = [ring]
     # A shaft or a bore also has a length and a radius, and they are what
     # the checker matches on, so they are compared too.
     connectors = sorted(

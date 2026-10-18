@@ -45,6 +45,7 @@ from scipy.spatial import ConvexHull, QhullError
 from .connectivity import ConnectorKind, Gender
 from .connectivity import Connection
 from .geometry import Mesh
+from .parser import Vec3
 
 # Lattice pitch in LDU.  See the module docstring for why this and not 20.
 CELL = 2.0
@@ -642,6 +643,62 @@ def wide_bores(occupancy: Occupancy, connections: list[Connection]) -> list[Hole
             lines.append(Hole(point=point, axis=axis, span=None, radius=c.radius))
     grid = occupancy.to_grid()
     return [line for line in lines if not _filled_near(occupancy, grid, line)]
+
+
+## The narrowest round a ring's hole may be and be a tyre's, in LDU: wider
+## than a Technic hole's counterbore and a pin's collar, both 8 across
+## (JointSnap.WIDE).
+RING_BORE = 8.5
+
+
+def ring_bore(mesh: Mesh, occupancy: Occupancy) -> Connection | None:
+    """The hole of a part with no connector at all that is a ring round a
+    line along x or z through its middle: a tyre drawn with no primitive
+    (3483, 32296, 4410 and 38 more), as a bore through it as wide as its
+    nearest point to the line, or None.
+
+    Such a tyre was joined to nothing, so its rim turned inside it as it
+    stood still. That went unseen while its cover closed its hole and held
+    a few of the rim's cells: an overlap where a part stands is forgiven.
+    Its hole open, 8020-1's and 8808-1's steering stopped against their own
+    tyres at once. A bore makes it a round on its rim's shaft (Joints.rounds)
+    and a tyre its ghost puts round a rim (JointSnap).
+
+    A ring: its hole open (nothing of its cover nearer the line than the
+    round, less WIDE_SLACK) and its cells all round the line.
+    """
+    if not mesh.triangles or occupancy.cell_count == 0:
+        return None
+    points = np.array([(p.x, -p.y, -p.z) for t in mesh.triangles for p in (t.a, t.b, t.c)])
+    low, high = points.min(axis=0), points.max(axis=0)
+    centre = (low + high) / 2.0
+    cells = (np.argwhere(occupancy.to_grid()) + np.array(occupancy.origin) + 0.5) * CELL
+    for n in (2, 0):
+        u, w = [k for k in range(3) if k != n]
+        pu = points[:, u] - centre[u]
+        pw = points[:, w] - centre[w]
+        radius = float(np.sqrt(pu * pu + pw * pw).min())
+        if radius <= RING_BORE:
+            continue
+        du = cells[:, u] - centre[u]
+        dw = cells[:, w] - centre[w]
+        if float(np.sqrt(du * du + dw * dw).min()) < radius - WIDE_SLACK:
+            continue
+        half = radius / 2.0
+        if not ((du > half).any() and (du < -half).any()
+                and (dw > half).any() and (dw < -half).any()):
+            continue
+        start = centre.copy()
+        start[n] = low[n]
+        way = np.zeros(3)
+        way[n] = 1.0
+        # Connections are in LDraw's axes: y and z the other way.
+        return Connection(
+            kind=ConnectorKind.BORE, gender=Gender.FEMALE,
+            position=Vec3(float(start[0]), float(-start[1]), float(-start[2])),
+            axis=Vec3(float(way[0]), float(-way[1]), float(-way[2])), source="ring",
+            length=float(high[n] - low[n]), radius=radius, arc=1.0)
+    return None
 
 
 def _on_line(point: np.ndarray, axis: np.ndarray, line: Hole) -> bool:

@@ -1859,6 +1859,68 @@ static func _wide_bores(grid: Grid, connectors: Array) -> Array:
 	return lines.filter(func(line: Array) -> bool: return not _filled_near(grid, line))
 
 
+## occupancy.RING_BORE: the narrowest round a ring's hole may be and be a
+## tyre's, LDU.
+const RING_BORE := 8.5
+
+
+## occupancy.ring_bore: the hole of a part with no connector at all that is
+## a ring round a line along x or z through its middle, as a bore through it
+## as wide as its nearest point to the line: [kind, gender, x, y, z, axis x,
+## y, z, length, radius, arc] in LDraw's axes, or [] for none.
+func _ring_bore(grid: Grid) -> Array:
+	if _tri.is_empty() or grid.count() == 0:
+		return []
+	var points: Array = []
+	var low := PackedFloat64Array([INF, INF, INF])
+	var high := PackedFloat64Array([-INF, -INF, -INF])
+	for v: int in _tri.size() / 3:
+		var p := PackedFloat64Array([_tri[v * 3], -_tri[v * 3 + 1], -_tri[v * 3 + 2]])
+		points.append(p)
+		for k: int in 3:
+			low[k] = minf(low[k], p[k])
+			high[k] = maxf(high[k], p[k])
+	var centre := PackedFloat64Array([(low[0] + high[0]) / 2.0, (low[1] + high[1]) / 2.0,
+		(low[2] + high[2]) / 2.0])
+	var s: Vector3i = grid.shape
+	var cells: Array = []
+	for x: int in s.x:
+		for y: int in s.y:
+			for z: int in s.z:
+				if grid.bits[(x * s.y + y) * s.z + z] == 1:
+					cells.append(PackedFloat64Array([(float(x + grid.origin.x) + 0.5) * CELL,
+						(float(y + grid.origin.y) + 0.5) * CELL,
+						(float(z + grid.origin.z) + 0.5) * CELL]))
+	for n: int in [2, 0]:
+		var u: int = 0 if n == 2 else 1
+		var w: int = 1 if n == 2 else 2
+		var radius: float = INF
+		for p: PackedFloat64Array in points:
+			var pu: float = p[u] - centre[u]
+			var pw: float = p[w] - centre[w]
+			radius = minf(radius, sqrt(pu * pu + pw * pw))
+		if radius <= RING_BORE:
+			continue
+		var nearest: float = INF
+		var sides: int = 0
+		var half: float = radius / 2.0
+		for m: PackedFloat64Array in cells:
+			var du: float = m[u] - centre[u]
+			var dw: float = m[w] - centre[w]
+			nearest = minf(nearest, sqrt(du * du + dw * dw))
+			sides |= (1 if du > half else 0) | (2 if du < -half else 0) \
+				| (4 if dw > half else 0) | (8 if dw < -half else 0)
+		if nearest < radius - WIDE_SLACK or sides != 15:
+			continue
+		var start := centre.duplicate()
+		start[n] = low[n]
+		var way := PackedFloat64Array([0.0, 0.0, 0.0])
+		way[n] = 1.0
+		return ["bore", "female", start[0], -start[1], -start[2], way[0], -way[1], -way[2],
+			high[n] - low[n], radius, 1.0]
+	return []
+
+
 ## occupancy._on_line: whether a bore at [param point] going [param axis] is
 ## on a line's.
 static func _on_line(point: PackedFloat64Array, axis: PackedFloat64Array, line: Array) -> bool:
@@ -3111,6 +3173,15 @@ func _build(text: String, id: String, others: Dictionary,
 			result.sockets.append([socket.x, socket.y])
 	else:
 		var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found), found)
+		# A part with no connector at all that is a ring: its hole a bore
+		# (occupancy.ring_bore, and build_meshes after it).
+		if found.is_empty():
+			var ring: Array = _ring_bore(solid)
+			if not ring.is_empty():
+				found = [ring]
+				result.connector_counts["bore"] = 1
+				result.connectors.append(["bore", "female", ring[2], -float(ring[3]),
+					-float(ring[4]), ring[5], -float(ring[6]), -float(ring[7]), ring[8], ring[9]])
 		result.cells = solid.count()
 		result.boxes = _to_boxes(solid, found)
 		result.sockets = _bottom_sockets(solid)

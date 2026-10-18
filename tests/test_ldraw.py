@@ -1205,3 +1205,22 @@ def test_a_seam_over_a_hollow_is_counted_once() -> None:
     column = [c for c in cells if c[0] == -13 and c[2] == 3]
     assert len(column) <= 8, column
     assert len([c for c in cells if c[0] == -13 and c[2] == -4]) >= 30
+
+
+@needs_numpy
+def test_a_tyre_drawn_with_no_primitive_has_its_hole_as_a_bore() -> None:
+    """3483 is drawn with no primitive and had no connector, so it was joined
+    to nothing: on 8020-1's and 8808-1's steering its rim turned inside it
+    as it stood still, unseen while its cover closed its hole, and stopped
+    against it at once when the hole was opened. Its hole is a bore now,
+    19 LDU across its whole width, as its rim's shaft is, so the two are a
+    round on a round."""
+    _cells, connectors = _built_cover("3483.dat")
+    assert len(connectors) == 1
+    bore = connectors[0]
+    assert bore.kind == "bore" and bore.gender == "female"
+    assert bore.radius == pytest.approx(19.0, abs=0.01)
+    assert bore.length == pytest.approx(18.0, abs=0.01)
+    assert abs(bore.axis[2]) == pytest.approx(1.0)
+    rim = [c for c in _built_cover("3482.dat")[1] if c.kind == "shaft"]
+    assert any(abs(c.radius - bore.radius) <= 1.0 for c in rim)
