@@ -283,6 +283,11 @@ func _one_set(path: String, name: String) -> void:
 		await _over_mcp(base)
 		await _page_by_hand(base)
 		await _page_over_mcp(base)
+		await _follows(base)
+		await _overlap_said(base)
+		await _arrows(base)
+		await _signs(base)
+		await _callout_by_hand(base)
 		# 30050-1 turns its sub-models with ROTSTEPs of its own.
 		_step_player("as opened", name == "30050-1")
 	else:
@@ -565,10 +570,10 @@ func _over_mcp(base: String) -> void:
 		said.begins_with("There is no step") and _history() == history)
 
 
-static func _line_with(text: String, part: String) -> String:
+static func _line_with(text: String, part: String, most: int = 150) -> String:
 	for line: String in text.split("\n"):
 		if line.contains(part):
-			return line.strip_edges().left(150)
+			return line.strip_edges().left(most)
 	return ""
 
 
@@ -635,8 +640,7 @@ func _page_by_hand(base: String) -> void:
 		% [str(placed[1]) if not placed.is_empty() else "?", Booklet.MARGIN, _mm(want)],
 		not placed.is_empty() and is_equal_approx(float(placed[1]), Booklet.MARGIN)
 		and absf(float(placed[0]) - want.position.x) < 0.6)
-	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-		and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE PICTURE "), base)
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS PLACE PICTURE "), base)
 	await _until_laid(editor)
 	# The parts list, widened by its corner.
 	name = "page_parts_%d" % first
@@ -656,8 +660,7 @@ func _page_by_hand(base: String) -> void:
 		var wide: Array = editor.page_state().get("items", {}).get(name, [])
 		diff = _edited("%s the parts list's corner by 24 mm: %s to %s" % ["dragged" if mouse else "moved",
 			_mm(was), str(wide)], base, history)
-		await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-			and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE PARTS "), base)
+		await _judge(diff, _put_one(diff, "0 !BRICKWORKS PLACE PARTS "), base)
 		await _until_laid(editor)
 	else:
 		print("  (step %d has no parts list on its page)" % first)
@@ -668,8 +671,7 @@ func _page_by_hand(base: String) -> void:
 	was = editor._items[at]["rect"]
 	await editor.place(at, Rect2(was.position + Vector2(0.0, 40.0), was.size))
 	diff = _edited("step %d's number moved 40 mm down" % first, base, history)
-	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-		and str(diff[1][0]).strip_edges().begins_with("0 !BRICKWORKS PLACE NUMBER "), base)
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS PLACE NUMBER "), base)
 	await _until_laid(editor)
 	# Words, added by the page's own button and typed over.
 	history = _history()
@@ -678,8 +680,7 @@ func _page_by_hand(base: String) -> void:
 	_check("...shown on the page: %s" % str(editor.page_state().get("items", {}).keys().filter(
 		func(item: String) -> bool: return item.begins_with("page_text"))),
 		editor.page_state().get("items", {}).has("page_text_%d_0" % first))
-	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TEXT 150 160 90 14 5 Build two of these",
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS TEXT 150 160 90 14 5 Build two of these", true),
 		base)
 	await _until_laid(editor)
 	# A picture of the designer's.
@@ -697,8 +698,9 @@ func _page_by_hand(base: String) -> void:
 		return str(line).strip_edges() == "0 !DATA " + BookletLooks.IMAGE_PREFIX + "1.jpg")
 	var rest: Array = put.filter(func(line: Variant) -> bool:
 		return not str(line).begins_with("0 !: ") and not str(line).strip_edges().is_empty())
-	await _judge(diff, (diff[0] as Array).is_empty() and image_line and data_line and rest.size() == 2,
-		base)
+	await _judge(diff, (diff[0] as Array).is_empty() and image_line and data_line and rest.size() == 3
+		and _put_one([[], rest.filter(func(line: Variant) -> bool:
+			return not str(line).begins_with("0 !DATA"))], "0 !BRICKWORKS IMAGE "), base)
 	await _until_laid(editor)
 	# The new parts' outline, off for the booklet.
 	history = _history()
@@ -731,8 +733,7 @@ func _page_over_mcp(base: String) -> void:
 	var layout: String = str(await tools.run("booklet_layout", {}))
 	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
 		_line_with(layout, "%d (" % pick.number).contains("picture at 60, 30 mm (150 wide, 110 high)"))
-	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS PLACE PICTURE 60 30 150 110", base)
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS PLACE PICTURE 60 30 150 110", true), base)
 	history = _history()
 	said = str(await tools.run("edit_booklet", {"step": pick.number,
 		"text": {"words": "Turn the model round", "x": 20, "y": 170, "w": 70, "h": 10, "size": 4.5}}))
@@ -740,8 +741,7 @@ func _page_over_mcp(base: String) -> void:
 	layout = str(await tools.run("booklet_layout", {}))
 	_check("...booklet_layout says it: %s" % _line_with(layout, "%d (" % pick.number),
 		_line_with(layout, "%d (" % pick.number).contains("text \"Turn the model round\" at 20, 170 mm"))
-	await _judge(diff, (diff[0] as Array).is_empty() and (diff[1] as Array).size() == 1
-		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TEXT 20 170 70 10 4.5 Turn the model round",
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS TEXT 20 170 70 10 4.5 Turn the model round", true),
 		base)
 	history = _history()
 	said = str(await tools.run("edit_booklet", {"step": pick.number, "highlight": false}))
@@ -753,6 +753,575 @@ func _page_over_mcp(base: String) -> void:
 		"x": 60}}))
 	_check("edit_booklet place without y refuses, no undo step (\"%s\")" % said.left(70),
 		said.contains("needs x and y") and _history() == history)
+
+
+## What is placed goes with its step. A step's picture placed by hand in its
+## room on the page, words put on its page; then two steps before it merged,
+## so the pages flow again and the step lands in another room: its picture
+## and words are in that room, where they were in the old one, and nothing on
+## any page lies on anything else. Every undo back gives the file back.
+func _follows(base: String) -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	var laid: Array[Booklet.Page] = await _laid()
+	var target: Booklet.Entry = null
+	for page: Booklet.Page in laid:
+		if page.kind == "steps" and page.number > 2 and page.entries.size() >= 2:
+			target = page.entries[page.entries.size() - 1]
+			break
+	if target == null:
+		_check("a page of two steps or more to lay out by hand", false)
+		return
+	var history: int = _history()
+	var room: Rect2 = target.panel
+	var want := Rect2(room.position + room.size * Vector2(0.38, 0.12), room.size * 0.6)
+	_go(target.number)
+	await editor.open()
+	await _until_laid(editor)
+	var at: int = editor.item_named("page_picture_%d" % target.number)
+	if at < 0:
+		_check("step %d's picture on Lay out the page" % target.number, false)
+		editor.close()
+		return
+	await editor.place(at, want)
+	await _until_laid(editor)
+	var words: String = _shell.change_look("text", _go(target.number), {"text": "Mind the hinge",
+		"at": [room.position.x + 2.0, room.end.y - 10.0, 46.0, 8.0], "size": 4.0,
+		"room": BookletLooks.said_rect(room)})
+	editor.close()
+	var saved: String = _save()
+	_check("step %d's picture placed in its room %s at %s, and words (\"%s\"): the file says the room"
+		% [target.number, _mm(room), _mm(want), words],
+		saved.contains("0 !BRICKWORKS PANEL %s" % BookletLooks._numbers_said(BookletLooks.said_rect(room)))
+		and _history() == history + 2)
+	# The two steps before its page merged, and the next pair, until the step
+	# lands in another room.
+	var own: Array[Instructions.Step] = _own_steps()
+	var moved: Booklet.Entry = null
+	var merged: String = ""
+	for n: int in own.size() - 1:
+		if own[n + 1].number >= target.number - 1:
+			break
+		if own[n + 1].authored_in != own[n].authored_in or _seen_as(own[n]) != _seen_as(own[n + 1]):
+			continue
+		var before: int = _history()
+		merged = _shell.change_steps("merge", [], _go(own[n].number))
+		if _history() == before:
+			continue
+		for page: Booklet.Page in await _laid():
+			for entry: Booklet.Entry in page.entries:
+				if page.kind == "steps" and entry.place.has("picture"):
+					moved = entry
+		if moved != null and not BookletLooks.same_room(moved.panel, room):
+			merged = "step %d merged with the next (\"%s\")" % [own[n].number, merged]
+			break
+		moved = null
+		_builder.undo()
+		await _frames(2)
+		_steps.refresh()
+	if moved == null:
+		# No merge before it moves it (a short booklet): the step given a page
+		# alone, which gives it the whole page.
+		merged = _shell.change_look("alone", _go(target.number))
+		for page: Booklet.Page in await _laid():
+			for entry: Booklet.Entry in page.entries:
+				if page.kind == "steps" and entry.place.has("picture"):
+					moved = entry
+		if moved != null and BookletLooks.same_room(moved.panel, room):
+			moved = null
+	if moved == null:
+		_check("a merge before step %d that moves it to another room" % target.number, false)
+	else:
+		var went: Rect2 = BookletLooks._moved(want, room, moved.panel)
+		var note: Rect2 = BookletLooks.rect_of((moved.notes[0] as Dictionary).get("at", [])) \
+			if not moved.notes.is_empty() else Rect2()
+		_check("%s: step %d (now %d) went from room %s to %s, its picture with it (%s, want %s), its words in its room (%s)"
+			% [merged, target.number, moved.number, _mm(room), _mm(moved.panel), _mm(moved.rect),
+				_mm(went), _mm(note)],
+			moved.rect.position.distance_to(went.position) < 0.3
+			and moved.rect.size.distance_to(went.size) < 0.3
+			and moved.panel.grow(1.0).encloses(Booklet.ink_of(moved))
+			and moved.panel.grow(1.0).encloses(note))
+		var on_top: String = _on_top(await _laid())
+		_check("...and nothing on any page lies on anything else: %s" % on_top, on_top == "none")
+	while _history() > history:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("...undone, the file as it was", _save() == base and _history() == history)
+
+
+## Two items dropped on each other: on a page of two steps, the second
+## step's picture dragged onto the first's model. The page says so, outlines
+## it in red, and lays out nothing on anything else; the file keeps the
+## picture where it was dropped.
+func _overlap_said(base: String) -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	var laid: Array[Booklet.Page] = await _laid()
+	var page: Booklet.Page = null
+	for one: Booklet.Page in laid:
+		if one.kind == "steps" and one.entries.size() >= 2:
+			page = one
+			break
+	if page == null:
+		_check("a page of two steps to drop one on the other", false)
+		return
+	var first: Booklet.Entry = page.entries[0]
+	var second: Booklet.Entry = page.entries[1]
+	var history: int = _history()
+	_go(second.number)
+	await editor.open()
+	await _until_laid(editor)
+	var at: int = editor.item_named("page_picture_%d" % second.number)
+	var ink: Rect2 = Booklet.ink_of(first)
+	if DisplayServer.get_name() != "headless":
+		# Dragged by the mouse over step 1's model and held: the page says so
+		# before it is let go.
+		var control: Control = editor._items[at]["control"]
+		var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+		var scale: Vector2 = Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size
+		var from: Vector2 = control.get_global_rect().get_center()
+		var to: Vector2 = from + (ink.get_center() - second.rect.get_center()) * k
+		var down := InputEventMouseButton.new()
+		down.button_index = MOUSE_BUTTON_LEFT
+		down.pressed = true
+		down.position = from * scale
+		down.global_position = down.position
+		Input.parse_input_event(down)
+		await _frames(3)
+		for n: int in range(1, 9):
+			var step := InputEventMouseMotion.new()
+			step.position = from.lerp(to, n / 8.0) * scale
+			step.global_position = step.position
+			step.button_mask = MOUSE_BUTTON_MASK_LEFT
+			Input.parse_input_event(step)
+			await _frames(2)
+		var held: String = str(editor.page_state().get("said", ""))
+		_check("step %d's picture held over step %d's model: \"%s\"" % [second.number, first.number,
+			held.left(90)], held.begins_with("Over "))
+		var up := InputEventMouseButton.new()
+		up.button_index = MOUSE_BUTTON_LEFT
+		up.pressed = false
+		up.position = to * scale
+		up.global_position = up.position
+		Input.parse_input_event(up)
+		await _frames(4)
+		await _until_laid(editor)
+	else:
+		await editor.place(at, Rect2(ink.get_center() - second.rect.size * 0.25, second.rect.size * 0.5))
+	await _until_laid(editor)
+	var state: Dictionary = editor.page_state()
+	var after: Array[Booklet.Page] = await _laid()
+	var now: Booklet.Page = null
+	for one: Booklet.Page in after:
+		if one.number == page.number:
+			now = one
+	_check("step %d's picture dropped on step %d's: the page says \"%s\", %s outlined" % [
+		second.number, first.number, str(state.get("said", "")).left(110),
+		str((state.get("overlaps", {}) as Dictionary).keys())],
+		str(state.get("said", "")).begins_with("Overlapping:")
+		and not (state.get("overlaps", {}) as Dictionary).is_empty())
+	_check("...laid out with nothing on anything else (%s), step %d's picture where it was dropped"
+		% [_on_top(after), second.number], now != null and _on_top(after) == "none"
+		and (now.entries[1] as Booklet.Entry).place.has("picture"))
+	if DisplayServer.get_name() != "headless":
+		for _n: int in 3000:
+			if (editor.page_state().get("drawn", []) as Array).size() == now.entries.size():
+				break
+			await process_frame
+		await _frames(4)
+		var shot: Image = root.get_texture().get_image()
+		if shot != null:
+			shot.save_png(_out.path_join("%s_page_editor_overlap.png" % _name))
+	editor.close()
+	_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("...undone, the file as it was", _save() == base and _history() == history)
+
+
+## The designer's own arrows, on Lay out the page: Draw an arrow pressed and
+## a drag on the page from where it starts to where it points, its middle
+## dragged to bend it, Arrow colour and Arrow width, Ctrl-Z; then one over
+## MCP, which booklet_layout lists. Each one undo and the file's one line
+## (with the step's room the first time), and the file back at the end.
+func _arrows(base: String) -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	var own: Array[Instructions.Step] = _own_steps(2)
+	var pick: Instructions.Step = own[mini(1, own.size() - 1)]
+	var history: int = _history()
+	var start: int = history
+	_go(pick.number)
+	await editor.open()
+	await _until_laid(editor)
+	var mouse: bool = DisplayServer.get_name() != "headless"
+	var from := Vector2(40.0, 60.0)
+	var to := Vector2(90.0, 95.0)
+	var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+	var origin: Vector2 = editor._canvas.get_global_rect().position
+	if mouse:
+		await _click((editor.controls_by_name()["page_add_arrow"] as Control).get_global_rect().get_center())
+		_check("Draw an arrow pressed: the page is ready to draw on", bool(editor.page_state().get("arrow_mode", false)))
+		await _drag_mouse(origin + from * k, origin + to * k)
+	else:
+		await editor.add_arrow(from, to)
+	await _until_laid(editor)
+	var arrows: Dictionary = editor.page_state().get("arrows", {})
+	var diff: Array = _edited("an arrow %s from %s to %s mm on page %d: %s" % [
+		"dragged by the mouse" if mouse else "drawn", from, to, int(editor.page_state().get("page", 0)),
+		JSON.stringify(arrows)], base, history)
+	var line: Array = (diff[1] as Array).filter(func(one: Variant) -> bool:
+		return str(one).begins_with("0 !BRICKWORKS ARROW "))
+	var words: PackedStringArray = str(line[0]).strip_edges().split(" ") if not line.is_empty() \
+		else PackedStringArray()
+	_check("...the file says it: %s" % (str(line[0]).strip_edges() if not line.is_empty() else "no ARROW line"),
+		_put_one(diff, "0 !BRICKWORKS ARROW RED 0.9 ") and words.size() == 9
+		and Vector2(words[5].to_float(), words[6].to_float()).distance_to(from) < Booklet.SNAP + 0.2
+		and Vector2(words[7].to_float(), words[8].to_float()).distance_to(to) < Booklet.SNAP + 0.2
+		and arrows.size() == 1)
+	var name: String = arrows.keys()[0] if not arrows.is_empty() else ""
+	var at: int = editor.item_named(name)
+	if at < 0:
+		editor.close()
+		while _history() > start:
+			_builder.undo()
+		return
+	editor._select(at)
+	await _frames(3)
+	# Its middle dragged 15 mm aside: bent.
+	history = _history()
+	var shown: Array = (editor.page_state().get("arrows", {})[name] as Dictionary)["at"]
+	var middle := Vector2((float(shown[0]) + float(shown[2])) * 0.5, (float(shown[1]) + float(shown[3])) * 0.5)
+	var aside: Vector2 = Vector2(float(shown[3]) - float(shown[1]), float(shown[0]) - float(shown[2])).normalized() * 15.0
+	if mouse:
+		var handle: Control = editor.controls_by_name().get("page_arrow_bend")
+		await _drag_mouse(handle.get_global_rect().get_center(), handle.get_global_rect().get_center() + aside * k)
+	else:
+		editor._shell.change_look("arrow_edit", editor._items[at]["step"], {"index": 0,
+			"at": shown.slice(0, 4) + [middle.x + aside.x, middle.y + aside.y],
+			"room": BookletLooks.said_rect((editor._items[at]["entry"] as Booklet.Entry).panel)})
+		await editor._lay_out(pick.number)
+	await _until_laid(editor)
+	var bent: Array = ((editor.page_state().get("arrows", {}) as Dictionary).get(name, {}) as Dictionary).get("at", [])
+	_check("...its middle dragged %.0f mm aside: bent through %s, want near %s, one undo step (%d)"
+		% [aside.length(), str(bent.slice(4)), middle + aside, _history() - history],
+		bent.size() == 6 and Vector2(float(bent[4]), float(bent[5])).distance_to(middle + aside) < 1.0
+		and _history() == history + 1 and _line_with(_save(), "!BRICKWORKS ARROW").strip_edges()
+			.split(" ").size() == 11)
+	# Colour and width by the page's buttons.
+	history = _history()
+	at = editor.item_named(name)
+	editor._select(at)
+	if mouse:
+		await _click((editor.controls_by_name()["page_arrow_colour"] as Control).get_global_rect().get_center())
+	else:
+		await editor._pressed("page_arrow_colour")
+	await _until_laid(editor)
+	at = editor.item_named(name)
+	editor._select(at)
+	if mouse:
+		await _click((editor.controls_by_name()["page_arrow_width"] as Control).get_global_rect().get_center())
+	else:
+		await editor._pressed("page_arrow_width")
+	await _until_laid(editor)
+	var styled: Dictionary = (editor.page_state().get("arrows", {}) as Dictionary).get(name, {})
+	var saved: String = _save()
+	_check("Arrow colour and Arrow width: %s, %s mm, two undo steps (%d); the file: %s" % [
+		styled.get("colour", "?"), styled.get("width", "?"), _history() - history,
+		_line_with(saved, "!BRICKWORKS ARROW").strip_edges()],
+		str(styled.get("colour", "")) == "black" and is_equal_approx(float(styled.get("width", 0.0)), 1.4)
+		and _history() == history + 2 and _line_with(saved, "!BRICKWORKS ARROW").strip_edges().begins_with("0 !BRICKWORKS ARROW BLACK 1.4 "))
+	if mouse:
+		await _key(KEY_Z, true)
+		await _until_laid(editor)
+	else:
+		_builder.undo()
+		await editor._lay_out(pick.number)
+	styled = (editor.page_state().get("arrows", {}) as Dictionary).get(name, {})
+	_check("...Ctrl-Z: the width back, the colour kept (%s, %s mm)" % [styled.get("colour", "?"),
+		styled.get("width", "?")], str(styled.get("colour", "")) == "black"
+		and is_equal_approx(float(styled.get("width", 0.0)), 0.9))
+	if mouse:
+		var shot: Image = root.get_texture().get_image()
+		if shot != null:
+			shot.save_png(_out.path_join("%s_page_editor_arrow.png" % _name))
+	editor.close()
+	while _history() > start:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("...undone, the file as it was", _save() == base)
+	# Over MCP.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	history = _history()
+	var said: String = str(await tools.run("edit_booklet", {"step": pick.number,
+		"arrow": {"x1": 30, "y1": 40, "x2": 70, "y2": 80, "bx": 60, "by": 45, "colour": "black"}}))
+	diff = _edited("edit_booklet arrow from 30, 40 to 70, 80 through 60, 45, black (\"%s\")" % said.left(90),
+		base, history)
+	var layout: String = str(await tools.run("booklet_layout", {}))
+	var listed: String = _line_with(layout, "%d (" % pick.number, 4000)
+	_check("...booklet_layout lists it: %s" % listed.substr(maxi(0, listed.find("arrow") - 10), 120),
+		listed.contains("a black arrow from 30, 40 to 70, 80 mm, bent through 60, 45, 0.9 mm wide"))
+	await _judge(diff, _put_one(diff, "0 !BRICKWORKS ARROW BLACK 0.9 30 40 70 80 60 45", true), base)
+	said = str(await tools.run("edit_booklet", {"step": pick.number, "arrow": {"x1": 30}}))
+	_check("edit_booklet arrow without its points refuses, no undo step (\"%s\")" % said.left(70),
+		said.contains("where it starts") and _history() == history)
+
+
+## The turn sign. A step tilted 30 degrees lower than the one before has
+## none (under the 45 a turn over needs); 60 lower has one, under its
+## number. Taken off (TURN_SIGN OFF, one line, one undo), it is off; on Lay
+## out the page it is a faint sign that Put back puts back and Delete takes
+## off again; over MCP sign=false takes it off and booklet_layout says so.
+func _signs(base: String) -> void:
+	var own: Array[Instructions.Step] = _own_steps(1)
+	var pick: Instructions.Step = null
+	for n: int in range(2, own.size() - 1):
+		if own[n].authored_in == own[n - 1].authored_in and _seen_as(own[n]) == _seen_as(own[n - 1]):
+			pick = own[n]
+			break
+	if pick == null:
+		_check("a step seen as the one before it, to tilt", false)
+		return
+	var start: int = _history()
+	var number: int = pick.number
+	_shell.change_look("tilt_down", _go(number))
+	_shell.change_look("tilt_down", _go(number))
+	var entry: Booklet.Entry = _entry_in(await _laid(), number)
+	_check("step %d tilted 30° lower than step %d: no turn sign (%s)" % [number, number - 1,
+		BookletLooks.said(_world, pick.authored_in, pick.authored_step)],
+		entry != null and not entry.turned)
+	_shell.change_look("tilt_down", _go(number))
+	_shell.change_look("tilt_down", _go(number))
+	entry = _entry_in(await _laid(), number)
+	_check("...60° lower: the turn sign, under its number (%s)" % [_mm(Booklet.sign_rect(entry))
+		if entry != null else "?"], entry != null and entry.turned
+		and Booklet.sign_rect(entry).position.y >= entry.number_at.y + entry.number_size
+		and absf(Booklet.sign_rect(entry).position.x - entry.number_at.x) < 0.01)
+	var before: String = _save()
+	var history: int = _history()
+	var said: String = _shell.change_look("sign", _go(number))
+	var diff: Array = _edited("its sign taken off (\"%s\")" % said, before, history)
+	entry = _entry_in(await _laid(), number)
+	_check("...the file: %s; laid out without it" % str(diff[1]), (diff[0] as Array).is_empty()
+		and (diff[1] as Array).size() == 1
+		and str(diff[1][0]).strip_edges() == "0 !BRICKWORKS TURN_SIGN OFF"
+		and entry != null and not entry.turned and entry.sign_off)
+	# On Lay out the page: put back, and taken off again.
+	var editor: PageEditor = _main.get("_page_editor")
+	_go(number)
+	await editor.open()
+	await _until_laid(editor)
+	var name: String = "page_sign_%d" % number
+	var at: int = editor.item_named(name)
+	var mouse: bool = DisplayServer.get_name() != "headless"
+	if at >= 0:
+		editor._select(at)
+		if mouse:
+			await _click((editor.controls_by_name()["page_put_back"] as Control).get_global_rect().get_center())
+		else:
+			await editor._pressed("page_put_back")
+		await _until_laid(editor)
+		var back: bool = not _save().contains("TURN_SIGN OFF")
+		at = editor.item_named(name)
+		if at >= 0:
+			editor._select(at)
+			if mouse:
+				await _click((editor._items[at]["control"] as Control).get_global_rect().get_center())
+				await _key(KEY_DELETE)
+			else:
+				await editor._pressed("page_put_back")
+			await _until_laid(editor)
+		_check("Lay out the page: the faint sign put back (%s), and Delete takes it off again (%s)"
+			% [back, _save().contains("TURN_SIGN OFF")], back and _save().contains("TURN_SIGN OFF")
+			and _history() == history + 3)
+		if mouse:
+			var shot: Image = root.get_texture().get_image()
+			if shot != null:
+				shot.save_png(_out.path_join("%s_page_editor_sign.png" % _name))
+	else:
+		_check("Lay out the page shows step %d's sign, off" % number, false)
+	editor.close()
+	# Over MCP.
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	said = str(await tools.run("edit_booklet", {"step": number, "sign": true}))
+	var on: bool = not _save().contains("TURN_SIGN OFF")
+	said = str(await tools.run("edit_booklet", {"step": number, "sign": false}))
+	var layout: String = str(await tools.run("booklet_layout", {}))
+	_check("edit_booklet sign=true puts it back (%s), sign=false takes it off: \"%s\"" % [on,
+		said.left(90)], on and _save().contains("TURN_SIGN OFF")
+		and _line_with(layout, "%d (" % number, 4000).contains("no turn sign"))
+	while _history() > start:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("...undone, the file as it was", _save() == base)
+
+
+## A callout's own page laid out by hand: a sub-assembly built on pages of
+## its own (its callout turned off), Lay out the page shown on that page
+## (Next page), its first step's picture dragged, and an arrow drawn; each
+## one undo, its line in the sub-model's part of the file; laid out again,
+## the picture where it was put. Undone, the file as it was.
+func _callout_by_hand(base: String) -> void:
+	var unit: String = ""
+	var attach: Instructions.Step = null
+	for one: Instructions.Step in _steps.steps():
+		if one.attaches() and one.callout_step == 0 \
+				and not BookletLooks.attached(_world, one, one.authored_in).is_empty():
+			attach = one
+			unit = BookletLooks.definition_of(BookletLooks.attached(_world, one, one.authored_in))
+			break
+	if attach == null:
+		print("  (no sub-assembly to build on pages of its own)")
+		return
+	var start: int = _history()
+	_shell.change_look("callout", _go(attach.number))
+	var editor: PageEditor = _main.get("_page_editor")
+	_go(attach.number)
+	await editor.open()
+	await _until_laid(editor)
+	# Its own pages come before the page of the step that puts it on:
+	# Previous page or Next page to the first of them.
+	var target: int = -1
+	for one: Booklet.Page in editor._pages:
+		if one.kind == "callout" and target < 0:
+			target = one.number
+	var page: int = -1
+	for n: int in 30:
+		var now: int = int(editor.page_state().get("page", -1))
+		if str(editor.page_state().get("kind", "")) == "callout":
+			page = now
+			break
+		if target < 0:
+			break
+		var button: String = "page_prev" if now > target else "page_next"
+		if DisplayServer.get_name() != "headless":
+			await _click((editor.controls_by_name()[button] as Control).get_global_rect().get_center())
+		else:
+			editor._pressed(button)
+		await _frames(2)
+		if int(editor.page_state().get("page", -1)) == now:
+			break
+	var state: Dictionary = editor.page_state()
+	_check("Lay out the page, Previous or Next page to the %s's own page: page %d, \"%s\", %d items" % [unit, page,
+		editor._title.text, (state.get("items", {}) as Dictionary).size()],
+		page > 0 and (state.get("items", {}) as Dictionary).has("page_picture_1"))
+	if page <= 0:
+		editor.close()
+		while _history() > start:
+			_builder.undo()
+		return
+	var history: int = _history()
+	var at: int = editor.item_named("page_picture_1")
+	var was: Rect2 = editor._items[at]["rect"]
+	var frame: Rect2 = editor._pages[editor._at].frame
+	var want := Rect2(frame.position + Vector2(60.0, 30.0), Vector2(90.0, 70.0))
+	if DisplayServer.get_name() != "headless":
+		var control: Control = editor._items[at]["control"]
+		var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+		var from: Vector2 = control.get_global_rect().get_center()
+		await _drag_mouse(from, from + (want.position - was.position) * k)
+		await _until_laid(editor)
+		at = editor.item_named("page_picture_1")
+		if at >= 0:
+			await editor.place(at, Rect2(editor._items[at]["rect"].position, want.size))
+	else:
+		await editor.place(at, want)
+	await _until_laid(editor)
+	var placed: Array = (editor.page_state().get("items", {}) as Dictionary).get("page_picture_1", [])
+	var keyed: String = ""
+	for name: String in _world.step_looks:
+		if name.begins_with(unit + "|") and (_world.step_looks[name] as Dictionary).has("place"):
+			keyed = name
+	_check("...its first step's picture dragged and sized: at %s, page %d still shown; kept on the %s's step (%s) and in the file: %s" % [
+		str(placed), int(editor.page_state().get("page", -1)), unit, keyed,
+		_line_with(_save(), "!BRICKWORKS PLACE PICTURE")],
+		not placed.is_empty() and int(editor.page_state().get("page", -1)) == page
+		and not keyed.is_empty() and _save().contains("0 !BRICKWORKS PLACE PICTURE")
+		and _history() >= history + 1)
+	var drawn: String = await editor.add_arrow(want.position + Vector2(-30.0, 40.0), want.get_center())
+	_check("...an arrow drawn on it (\"%s\"): %s" % [drawn.left(70), _line_with(_save(), "!BRICKWORKS ARROW")],
+		(editor.page_state().get("arrows", {}) as Dictionary).size() == 1
+		and int(editor.page_state().get("page", -1)) == page)
+	var laid: Array[Booklet.Page] = await _laid()
+	var entry: Booklet.Entry = null
+	for one: Booklet.Page in laid:
+		if one.number == page and one.kind == "callout":
+			entry = one.entries[0]
+	_check("...laid out again: the %s's step 1 at %s, %d arrow" % [unit,
+		_mm(entry.rect) if entry != null else "?", entry.drawn_arrows.size() if entry != null else 0],
+		entry != null and entry.place.has("picture") and entry.drawn_arrows.size() == 1
+		and entry.rect.position.distance_to(Vector2(float(placed[0]), float(placed[1]))) < 0.2)
+	if DisplayServer.get_name() != "headless":
+		for _n: int in 3000:
+			if not (editor.page_state().get("drawn", []) as Array).is_empty():
+				break
+			await process_frame
+		await _frames(4)
+		var shot: Image = root.get_texture().get_image()
+		if shot != null:
+			shot.save_png(_out.path_join("%s_page_editor_callout.png" % _name))
+	editor.close()
+	while _history() > start:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("...undone, the file as it was", _save() == base)
+
+
+## Step [param number]'s entry on [param pages] of steps, or null.
+static func _entry_in(pages: Array, number: int) -> Booklet.Entry:
+	for page: Booklet.Page in pages:
+		if page.kind != "steps":
+			continue
+		for entry: Booklet.Entry in page.entries:
+			if entry.number == number:
+				return entry
+	return null
+
+
+## The booklet's pages laid out now, without pictures.
+func _laid() -> Array[Booklet.Page]:
+	var maker := BookletMaker.new()
+	maker.library = _library
+	_main.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(_world, _store.scenery, _name)
+	maker.queue_free()
+	return pages
+
+
+## What lies on what on [param pages] of steps (Booklet.things_on): "none",
+## or the first few.
+static func _on_top(pages: Array) -> String:
+	var found := PackedStringArray()
+	for page: Booklet.Page in pages:
+		if page.kind != "steps":
+			continue
+		var things: Array = Booklet.things_on(page)
+		for a: int in things.size():
+			for b: int in range(a + 1, things.size()):
+				var shared: Rect2 = (things[a]["rect"] as Rect2).intersection(things[b]["rect"])
+				if shared.size.x > Booklet.OVERLAP and shared.size.y > Booklet.OVERLAP:
+					found.append("page %d: step %d's %s on step %d's %s" % [page.number,
+						(things[b]["entry"] as Booklet.Entry).number, things[b]["kind"],
+						(things[a]["entry"] as Booklet.Entry).number, things[a]["kind"]])
+	return "none" if found.is_empty() else ", ".join(found.slice(0, 3))
+
+
+## Whether [param diff] (lines out, lines in) is one line put in that says
+## [param line] (begins with it, or is it when [param exact]), with the
+## PANEL line the step's first thing placed on its page brings: the room
+## the step has on its page, which what is placed goes with.
+static func _put_one(diff: Array, line: String, exact: bool = false) -> bool:
+	var put: Array = (diff[1] as Array).map(func(one: Variant) -> String: return str(one).strip_edges())
+	var rooms: Array = put.filter(func(one: String) -> bool: return one.begins_with("0 !BRICKWORKS PANEL "))
+	var rest: Array = put.filter(func(one: String) -> bool: return not one.begins_with("0 !BRICKWORKS PANEL "))
+	return (diff[0] as Array).is_empty() and rooms.size() == 1 and rest.size() == 1 \
+		and (str(rest[0]) == line if exact else str(rest[0]).begins_with(line))
 
 
 ## The step player (Build it, a shared link) sees each step from where its
@@ -795,10 +1364,13 @@ static func _orange(entries: Dictionary) -> int:
 	for number: Variant in numbers.slice(0, 8):
 		var entry: Booklet.Entry = entries[number][0]
 		var uri: String = entry.image
-		if not uri.begins_with("data:image/jpeg;base64,"):
-			continue
 		var image := Image.new()
-		if image.load_jpg_from_buffer(Marshalls.base64_to_raw(uri.get_slice(",", 1))) != OK:
+		# A page laid out by hand has its pictures clear behind the model, in WebP.
+		var read: int = image.load_jpg_from_buffer(Marshalls.base64_to_raw(uri.get_slice(",", 1))) \
+			if uri.begins_with("data:image/jpeg;base64,") else (
+				image.load_webp_from_buffer(Marshalls.base64_to_raw(uri.get_slice(",", 1)))
+				if uri.begins_with("data:image/webp;base64,") else ERR_FILE_UNRECOGNIZED)
+		if read != OK:
 			continue
 		var data: PackedByteArray = image.get_data()
 		var channels: int = 4 if image.get_format() == Image.FORMAT_RGBA8 else 3
@@ -913,11 +1485,23 @@ func _all_looks(name: String, before: Dictionary) -> void:
 	picture.fill_rect(Rect2i(10, 10, 40, 40), Color(1.0, 0.85, 0.1, 0.0))
 	_shell.change_look("image", heads, {"data": Marshalls.raw_to_base64(picture.save_png_to_buffer()),
 		"kind": "png", "at": [200, 150, 48, 32]})
+	# And an arrow of the designer's, bent, pointing into the picture.
+	_shell.change_look("arrow", heads, {"at": [40, 120, 125, 95, 80, 125], "colour": "red",
+		"width": 0.9})
 	var outlined: bool = name != "30050-1"
 	if not outlined:
 		_shell.change_look("highlight", heads)
 	_check("...and the page by hand, each its own undo step (%d)" % (_history() - history),
-		_history() - history == 5 + (0 if outlined else 1))
+		_history() - history == 6 + (0 if outlined else 1))
+	# And the callout built on pages of its own: its first step's picture placed.
+	var callout_step: Instructions.Step = null
+	for one: Instructions.Step in _steps.steps():
+		if one.callout_step > 0 and one.authored_step >= 0 and not off.is_empty() \
+				and BookletLooks.definition_of(one.authored_in) == off:
+			callout_step = one
+			break
+	if callout_step != null:
+		_shell.change_look("place", callout_step, {"item": "picture", "at": [80, 40, 110, 90]})
 	var looks: Dictionary = _world.step_looks.duplicate(true)
 	var saved: String = _save()
 	var timeline: Array = _captions()
@@ -954,6 +1538,7 @@ func _all_looks(name: String, before: Dictionary) -> void:
 		and saved.contains("0 !BRICKWORKS TEXT 12 150 90 20 5 Build the wheels first,\\nthen the frame")
 		and saved.contains("0 !BRICKWORKS IMAGE 200 150 48 32 " + BookletLooks.IMAGE_PREFIX + "1.png")
 		and saved.contains("0 !DATA " + BookletLooks.IMAGE_PREFIX + "1.png")
+		and saved.contains("0 !BRICKWORKS ARROW RED 0.9 40 120 125 95 80 125")
 		and (outlined or saved.contains("0 !BRICKWORKS HIGHLIGHT OFF")))
 	_step_player("after the turn, saved and opened again")
 	# Laid out without pictures: the page by hand where it was put, and the
@@ -1003,14 +1588,47 @@ func _all_looks(name: String, before: Dictionary) -> void:
 		var page_number: int = (drawn_head[1] as Booklet.Page).number
 		var from: int = html.find("id=\"page-%d\"" % page_number)
 		section = html.substr(from, html.find("</section>", from) - from) if from >= 0 else ""
-	_check("the booklet's page %s: step %d's picture at %s, the words and the picture on it" % [
+	# The added picture where it was put, or, where that lies on the model
+	# in the step's picture, moved off it and said so.
+	var image_moved: bool = not drawn_head.is_empty() and (drawn_head[1] as Booklet.Page).overlaps.any(
+		func(one: Dictionary) -> bool: return str(one["item"]) == "image" and bool(one["moved"]))
+	_check("the booklet's page %s: step %d's picture at %s, the words and the picture on it%s" % [
 		str((drawn_head[1] as Booklet.Page).number) if not drawn_head.is_empty() else "?",
-		int(picks["new"]), _mm((drawn_head[0] as Booklet.Entry).rect) if not drawn_head.is_empty() else "?"],
+		int(picks["new"]), _mm((drawn_head[0] as Booklet.Entry).rect) if not drawn_head.is_empty() else "?",
+		" (moved off the model)" if image_moved else ""],
 		not drawn_head.is_empty()
 		and (drawn_head[0] as Booklet.Entry).rect.is_equal_approx(Rect2(120, 40, 130, 120))
 		and section.contains("--x:120.0;--y:40.0;--w:130.0;--h:120.0")
 		and section.contains("Build the wheels first,<br>then the frame")
-		and section.contains("--x:200.0;--y:150.0;--w:48.0;--h:32.0") and section.contains("data:image/png;base64,"))
+		and (image_moved or section.contains("--x:200.0;--y:150.0;--w:48.0;--h:32.0"))
+		and section.contains("data:image/png;base64,"))
+	# The arrow printed on that page, over all, and none in the booklet before
+	# any was drawn: a file without arrows prints as it did.
+	var before_html: String = FileAccess.get_file_as_string(_out.path_join("%s_before.html" % name))
+	_check("...the arrow printed on it (%d drawn on the page), none in the booklet before (%d)" % [
+		section.count("class=\"drawn-arrow\""), before_html.count("drawn-arrow")],
+		section.count("class=\"drawn-arrow\"") == 1
+		and section.contains("d=\"M40.0 120.0 Q77.5 142.5") and before_html.count("drawn-arrow") == 0)
+	# The picture placed over the right of the page: the step beside it on
+	# its page moved off it, and nothing printed on anything else.
+	var said_over := PackedStringArray()
+	for page: Booklet.Page in pages:
+		if not page.overlaps.is_empty():
+			said_over.append("page %d: %s" % [page.number, Booklet.overlaps_said(page)])
+	_check("...printed with nothing on anything else (%s); moved off: %s" % [_on_top(pages),
+		"; ".join(said_over).left(160) if not said_over.is_empty() else "nothing"],
+		_on_top(pages) == "none")
+	# A turn sign under the number of every step turned from the one before
+	# it, and of no other; the step turned 90° has one.
+	var signed: int = 0
+	for page: Booklet.Page in document.pages:
+		for entry: Booklet.Entry in page.entries:
+			signed += int(entry.turned)
+	var turn_entry: Array = (made["entries"] as Dictionary).get(int(picks["turn"]), [])
+	_check("...a turn sign on each of the %d steps turned from the one before (%d printed), step %d's among them"
+		% [signed, html.count("class=\"turn-sign\""), int(picks["turn"])],
+		signed == html.count("class=\"turn-sign\"") and not turn_entry.is_empty()
+		and (turn_entry[0] as Booklet.Entry).turned)
 	var orange_before: int = _orange(before.get("entries", {}))
 	var orange_after: int = _orange(made["entries"])
 	if outlined:
@@ -1065,6 +1683,15 @@ func _all_looks(name: String, before: Dictionary) -> void:
 			if page.kind == "callout" and page.name == off:
 				framed = true
 		_check("...the %s built on pages of its own" % off, framed)
+		if callout_step != null:
+			var own_page: String = ""
+			for page: Booklet.Page in pages:
+				if page.kind == "callout" and page.name == off and own_page.is_empty():
+					var from: int = html.find("id=\"page-%d\"" % page.number)
+					own_page = html.substr(from, html.find("</section>", from) - from) if from >= 0 else ""
+			_check("...its first step's picture printed where it was placed on its own page (%s)"
+				% ("at 80, 40" if own_page.contains("--x:80.0;--y:40.0;--w:110.0;--h:90.0") else "not there"),
+				own_page.contains("--x:80.0;--y:40.0;--w:110.0;--h:90.0"))
 	# Laid out without pictures, as booklet_layout reads it: the same pages.
 	var maker := BookletMaker.new()
 	maker.library = _library
