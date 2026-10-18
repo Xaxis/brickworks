@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_a_pin_goes_in_last(world, library)
 	_built_on_the_side(world, library)
 	_a_published_model(world, library)
+	_callouts_kept(world, library)
 	_wheels_go_on_last(world, library)
 	_floating_detail(world, library)
 	_studs_read_alike(world, library)
@@ -370,6 +371,35 @@ func _a_published_model(world: BrickWorld, library: PartLibrary) -> void:
 	var carrying: int = _attach_pages("31009", steps, world, library)
 	_assert("a step that puts one on puts on the parts beside it too (%d steps do)" % carrying,
 		carrying > 0)
+
+
+## Two more of the repository's, whose authors build sub-models on the side
+## that reading the covers had cost their callouts: 71200's subModel-4 on a
+## loop of side studs, each part waiting on what holds it from the side, and
+## 8032's steering knuckles, joined to the car by pins and waiting on nothing
+## outside them. Skipped when the repository has not been fetched.
+func _callouts_kept(world: BrickWorld, library: PartLibrary) -> void:
+	for want: Array in [["71200-1.mpd", ["subModel-4"]],
+			["8032-1_Cabrio.mpd", ["Cabrio Sub 6a", "Cabrio Sub 7"]]]:
+		var path: String = "res://vendor/omr/files/" + str(want[0])
+		if not FileAccess.file_exists(path):
+			print("\n  SKIP %s: vendor/omr is not here" % want[0])
+			continue
+		_load(world, library, LdrModel.load_file(path))
+		var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+		var callouts: Dictionary = {}
+		var placed: Dictionary = {}
+		for step: Instructions.Step in steps:
+			if step.in_callout():
+				callouts[step.assembly] = true
+			for brick_id: int in step.brick_ids:
+				placed[brick_id] = true
+		print("\n  %s, %d parts in %d steps" % [want[0], world.brick_count(), steps.size()])
+		_assert("%s: every brick placed (%d of %d)" % [want[0], placed.size(),
+			world.brick_count()], placed.size() == world.brick_count())
+		_assert("%s builds %s on the side (callouts: %s)" % [want[0], ", ".join(want[1]),
+			", ".join(callouts.keys())],
+			(want[1] as Array).all(func(name: String) -> bool: return callouts.has(name)))
 
 
 ## The steps that put a sub-assembly on: each one's loose parts (brick_ids)

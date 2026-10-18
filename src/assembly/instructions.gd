@@ -302,16 +302,18 @@ class Pictures extends RefCounted:
 	## A new part shows at least this much of itself, from one side or the
 	## other: the steps score's SEEN.
 	const SEEN := 0.1
-	## The squares, in pixels, that the parts built so far are kept in by
-	## where they land in the front view.
-	const SQUARE := 8.0
+	## The cells, in LDU, that the parts built so far are kept in by their
+	## boxes. Kept by where they landed in the front view, every part of a big
+	## model along a line of sight was looked at for each part asked about,
+	## to find the few near it: most of what the step pictures cost.
+	const CELL := 40.0
 	## How far, in LDU, an earlier part may be from one and still count as
 	## in front of it: a stud and a bit.
 	const IN_FRONT := 24.0
 	var _frames: Array = []          ## [view, right, up] per view
 	var _own: Dictionary = {}        ## node id -> [{pixel: depth}, {pixel: depth}]
 	var _span: Dictionary = {}       ## node id -> [Rect2, Rect2, Vector2, Vector2]
-	var _built: Dictionary = {}      ## Vector2i -> the parts of earlier steps landing there
+	var _built: Dictionary = {}      ## Vector3i -> the parts of earlier steps there
 	var _before: Dictionary = {}     ## node id -> earlier parts that may be in front of it
 	var _step: Array = []            ## the parts of the step being filled
 	## node id -> the pixels of it still in sight in each view, with their
@@ -361,11 +363,7 @@ class Pictures extends RefCounted:
 		for other: Node2 in theirs:
 			var open: Array = _open[other.id]
 			for v: int in 2:
-				var left: Dictionary = open[v]
-				var over: Dictionary = mine[v]
-				for pixel: int in left.keys():
-					if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
-						left.erase(pixel)
+				_cover(open[v], mine[v])
 
 	## A step is done: its parts are built, and may stand in front of the
 	## next steps'.
@@ -374,14 +372,19 @@ class Pictures extends RefCounted:
 		_open.clear()
 		_step.clear()
 		for node: Node2 in step:
-			var rect: Rect2 = span_of(node)[0]
-			for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
-				for y: int in range(floori(rect.position.y / SQUARE),
-						floori(rect.end.y / SQUARE) + 1):
-					var key := Vector2i(x, y)
-					if not _built.has(key):
-						_built[key] = []
-					(_built[key] as Array).append(node)
+			for key: Vector3i in _cells_of(node.box):
+				if not _built.has(key):
+					_built[key] = []
+				(_built[key] as Array).append(node)
+
+	## The cells [param box] reaches into.
+	static func _cells_of(box: AABB) -> Array[Vector3i]:
+		var out: Array[Vector3i] = []
+		for x: int in range(floori(box.position.x / CELL), floori(box.end.x / CELL) + 1):
+			for y: int in range(floori(box.position.y / CELL), floori(box.end.y / CELL) + 1):
+				for z: int in range(floori(box.position.z / CELL), floori(box.end.z / CELL) + 1):
+					out.append(Vector3i(x, y, z))
+		return out
 
 	## The parts of earlier steps near [param node] that land on it in both
 	## pictures and come nearer the eye than its furthest point in both.
@@ -389,23 +392,21 @@ class Pictures extends RefCounted:
 		if _before.has(node.id):
 			return _before[node.id]
 		var mine: Array = span_of(node)
-		var rect: Rect2 = mine[0]
 		var seen: Dictionary = {}
 		var out: Array = []
 		# Near it: a tower across the model does not hide a plate from both
 		# sides, and on a big model everything in front of it is hundreds.
 		var near: AABB = node.box.grow(IN_FRONT)
-		for x: int in range(floori(rect.position.x / SQUARE), floori(rect.end.x / SQUARE) + 1):
-			for y: int in range(floori(rect.position.y / SQUARE), floori(rect.end.y / SQUARE) + 1):
-				for other: Node2 in _built.get(Vector2i(x, y), []):
-					if seen.has(other.id):
-						continue
-					seen[other.id] = true
-					var theirs: Array = span_of(other)
-					if near.intersects(other.box) and meet(node, other) \
-							and (theirs[2] as Vector2).y > (mine[2] as Vector2).x \
-							and (theirs[3] as Vector2).y > (mine[3] as Vector2).x:
-						out.append(other)
+		for key: Vector3i in _cells_of(near):
+			for other: Node2 in _built.get(key, []):
+				if seen.has(other.id):
+					continue
+				seen[other.id] = true
+				var theirs: Array = span_of(other)
+				if near.intersects(other.box) and meet(node, other) \
+						and (theirs[2] as Vector2).y > (mine[2] as Vector2).x \
+						and (theirs[3] as Vector2).y > (mine[3] as Vector2).x:
+					out.append(other)
 		_before[node.id] = out
 		return out
 
@@ -458,25 +459,45 @@ class Pictures extends RefCounted:
 		var near: Array = _step.filter(func(one: Node2) -> bool:
 			return one != node and meet(one, node))
 		near.append_array(in_front(node))
-		var theirs: Array = near.map(func(other: Node2) -> Array: return pixels_of(other))
 		var mine: Array = pixels_of(node)
 		var out: Array = []
 		for v: int in 2:
-			var left: Dictionary = {}
-			var nearest: Dictionary = mine[v]
-			for pixel: int in nearest:
-				var depth: float = nearest[pixel]
-				var covered: bool = false
-				for other: Array in theirs:
-					var at: Dictionary = other[v]
-					if at.has(pixel) and float(at[pixel]) > depth:
-						covered = true
-						break
-				if not covered:
-					left[pixel] = depth
+			var left: Dictionary = (mine[v] as Dictionary).duplicate()
+			for other: Node2 in near:
+				if left.is_empty():
+					break
+				_cover(left, pixels_of(other)[v])
 			out.append(left)
 		_open[node.id] = out
 		return out
+
+	## Takes out of [param left] the pixels [param over] covers, nearer the
+	## eye. Walking the smaller of the two: a 1 x 1 plate in front of a
+	## baseplate is a handful of pixels, not a thousand. Every part in front
+	## of each pixel of the one asked about, in turn, was most of what the
+	## step pictures cost (76161's 2,398 parts, 490 ms of 630).
+	static func _cover(left: Dictionary, over: Dictionary) -> void:
+		if over.size() < left.size():
+			for pixel: int in over:
+				if left.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					left.erase(pixel)
+		else:
+			for pixel: int in left.keys():
+				if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					left.erase(pixel)
+
+	## How many of [param left]'s pixels [param over] covers, nearer the eye.
+	static func _covered(left: Dictionary, over: Dictionary) -> int:
+		var count: int = 0
+		if over.size() < left.size():
+			for pixel: int in over:
+				if left.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					count += 1
+		else:
+			for pixel: int in left:
+				if over.has(pixel) and float(over[pixel]) > float(left[pixel]):
+					count += 1
+		return count
 
 	## Whether [param node] would hide one of [param step], parts the step
 	## being filled holds that show now.
@@ -495,11 +516,7 @@ class Pictures extends RefCounted:
 			var after: float = 0.0
 			for v: int in 2:
 				var left: Dictionary = open[v]
-				var covering: Dictionary = over[v]
-				var still: int = 0
-				for pixel: int in left:
-					if not (covering.has(pixel) and float(covering[pixel]) > float(left[pixel])):
-						still += 1
+				var still: int = left.size() - _covered(left, over[v])
 				var whole: float = float((total[v] as Dictionary).size())
 				before = maxf(before, float(left.size()) / whole)
 				after = maxf(after, float(still) / whole)
@@ -1507,7 +1524,12 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 	# By the plan and the height of each part's top, as _boxes_under keeps
 	# them: what rests on a part has its underside near that part's top.
 	const LAYER := 8.0
+	# Every part, and apart those no stud seats: a part on studs is asked only
+	# about those, since two parts on studs are read by their studs. Asked
+	# about every part near it, most of them on studs too, it was most of
+	# what reading the covers cost.
 	var grid: Dictionary = {}
+	var loose: Dictionary = {}
 	for index: int in nodes.size():
 		if job != null and job.due():
 			await job.next()
@@ -1520,6 +1542,10 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			if not grid.has(key):
 				grid[key] = []
 			(grid[key] as Array).append(index)
+			if not node.seated:
+				if not loose.has(key):
+					loose[key] = []
+				(loose[key] as Array).append(index)
 	# Each part's cover, its cover lifted a cell, and both their bounds:
 	# worked out only for a part that is asked about.
 	var covers: Dictionary = {}
@@ -1555,9 +1581,10 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 		var lowest: int = floori((node.box.position.y - 2.5) / LAYER)
 		var highest: int = floori((node.box.end.y + 2.5) / LAYER)
 		var seen: Dictionary = {}
+		var near: Dictionary = loose if node.seated else grid
 		for cell: Vector2i in _cells(node.box, BUCKET):
 			for layer: int in range(lowest, highest + 1):
-				for other: int in grid.get(Vector3i(cell.x, cell.y, layer), []):
+				for other: int in near.get(Vector3i(cell.x, cell.y, layer), []):
 					if other == index or seen.has(other):
 						continue
 					seen[other] = true
@@ -1809,6 +1836,9 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 		world: BrickWorld, library: PartLibrary, job: Working.Job) -> void:
 	var tops: Dictionary = {}
 	var inner: Dictionary = {}
+	var floor_y: float = INF
+	for node: Node2 in nodes:
+		floor_y = minf(floor_y, node.box.position.y)
 	for node: Node2 in nodes:
 		if job != null and job.due():
 			await job.next()
@@ -1847,7 +1877,8 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 				return
 		var members: Array = tops[top]
 		var figure: bool = _is_figure(members, world, library)
-		if figure or _holds_together(members, nodes.size(), _turned(members, world), true):
+		if figure or _holds_together(members, nodes.size(), _turned(members, world), true,
+				floor_y):
 			found.append(_assembly(top, members, figure, world))
 			continue
 		for sub: String in inner:
@@ -1859,7 +1890,8 @@ static func _find_assemblies_into(found: Array[Assembly], nodes: Array[Node2],
 					return
 			var parts: Array = inner[sub]
 			var sub_figure: bool = _is_figure(parts, world, library)
-			if sub_figure or _holds_together(parts, nodes.size(), _turned(parts, world)):
+			if sub_figure or _holds_together(parts, nodes.size(), _turned(parts, world), false,
+					floor_y):
 				found.append(_assembly(sub, parts, sub_figure, world))
 
 
@@ -1984,7 +2016,7 @@ static func _is_figure(members: Array, world: BrickWorld,
 ## in under a part already there were turned parts of a sub-model too big
 ## to be a callout, and their authors put in none (docs/INSTRUCTIONS.md).
 static func _holds_together(members: Array, total: int, turned: bool = false,
-		top: bool = false) -> bool:
+		top: bool = false, floor_y: float = -INF) -> bool:
 	if members.size() < 2:
 		return false
 	if turned:
@@ -1997,6 +2029,19 @@ static func _holds_together(members: Array, total: int, turned: bool = false,
 		own[node.id] = true
 	var attached: bool = members.any(func(node: Node2) -> bool:
 		return Array(node.needs).any(func(need: int) -> bool: return not own.has(need)))
+	# Or off the table and joined to the rest, by a stud, a pin, a side stud or
+	# its cover, though nothing of it waits on the rest: once what rests on
+	# what was read off the covers, 7130's wings, put on the hull at an angle,
+	# and 8032's steering knuckle waited on nothing outside them, and were
+	# built in place where their authors build them on the side.
+	if not attached and members.all(func(node: Node2) -> bool:
+			return node.box.position.y > floor_y + 2.0):
+		attached = members.any(func(node: Node2) -> bool:
+			for list: PackedInt64Array in [node.carries, node.held_by, node.joined, node.contacts]:
+				for other: int in list:
+					if not own.has(other):
+						return true
+			return false)
 	if not attached:
 		return false
 	# One piece: every part touches another, by their boxes grown by a
@@ -2229,9 +2274,9 @@ static func _contract_into(out: Array[Node2], nodes: Array[Node2],
 		if caught.is_empty():
 			out.assign(built)
 			return
-		if eased < 2:
+		if eased < 3:
 			eased += 1
-			_ease(looped, nodes, member_of, eased == 2)
+			_ease(looped, nodes, member_of, eased)
 			continue
 		caught.sort_custom(func(a: Assembly, b: Assembly) -> bool:
 			return a.members.size() < b.members.size())
@@ -2244,25 +2289,47 @@ static func _contract_into(out: Array[Node2], nodes: Array[Node2],
 
 
 ## Give up the guessed needs on a loop: between two parts both on it, or in
-## an assembly on it. With [param boxes], what a part with no studs rests
-## on by its box as well.
+## an assembly on it. From [param level] 2, what a part with no studs rests
+## on by its box as well. From 3, any need into or out of a sub-assembly on
+## the loop but a stud's: a pin's or an axle's, which of two parts goes
+## first is a choice the plan made, and so is a part's waiting on what holds
+## it from the side or a plate's on what it is pressed up under. A loop of
+## those cost 18 of the 100 tune files 39 of their author's sub-assemblies
+## (Vernie's arms, pinned to its body; 70816's walls, a plate pressed up
+## under a part that stands on them), and with them their order.
 static func _ease(looped: Dictionary, nodes: Array[Node2], member_of: Dictionary,
-		boxes: bool) -> void:
+		level: int) -> void:
 	var on_loop := func(id: int) -> bool:
 		var made: Assembly = member_of.get(id)
 		return looped.has(made.node.id if made != null else id)
+	var by_id: Dictionary = {}
+	if level >= 3:
+		for node: Node2 in nodes:
+			by_id[node.id] = node
 	for node: Node2 in nodes:
-		if (node.weak.is_empty() and (not boxes or node.boxed.is_empty())) \
+		if (level < 3 and node.weak.is_empty() and (level < 2 or node.boxed.is_empty())) \
 				or not on_loop.call(node.id):
 			continue
 		var kept := PackedInt64Array()
 		for need: int in node.needs:
-			if (node.weak.has(need) or (boxes and node.boxed.has(need))) \
-					and on_loop.call(need) and (member_of.get(need) == null
-						or member_of.get(need) != member_of.get(node.id)):
+			var apart: bool = member_of.get(need) == null \
+				or member_of.get(need) != member_of.get(node.id)
+			if apart and on_loop.call(need) and (node.weak.has(need)
+					or (level >= 2 and node.boxed.has(need))
+					or (level >= 3 and _soft(node, need, by_id, member_of))):
 				continue
 			kept.append(need)
 		node.needs = kept
+
+
+## Whether [param node]'s need of [param need] crosses a sub-assembly's edge
+## and is not a stud's: it does not rest on the other's studs, nor the other
+## on its own turned over.
+static func _soft(node: Node2, need: int, by_id: Dictionary, member_of: Dictionary) -> bool:
+	if member_of.get(node.id) == null and member_of.get(need) == null:
+		return false
+	var other: Node2 = by_id.get(need)
+	return other != null and not other.carries.has(node.id)
 
 
 static func _mapped(needs: PackedInt64Array, member_of: Dictionary,
@@ -2616,19 +2683,25 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 ## [method _next] borrows and moves. Empty when there is none.
 static func _steadier(ready: Dictionary, remaining: Dictionary, last_at: Vector3,
 		have_last: bool, current: String, joins: Callable) -> Array:
-	var wanted: Dictionary = {}
-	for node: Node2 in remaining.values():
-		if node.region != current:
-			continue
-		for need: int in node.after:
-			if remaining.has(need):
-				wanted[need] = true
 	# From another region: this one's were all looked at for the step's first.
-	var borrowed: Node2 = _best(ready, last_at, have_last, false,
-		func(node: Node2) -> bool: return node.region != current and wanted.has(node.id), false,
-		joins, [], true)
-	if borrowed != null:
-		return [borrowed, BORROWED]
+	# What this one waits on is asked only when another region has a part
+	# ready that joins what stands: in the hand, one region, it was every part
+	# left read at every step's start, for nothing.
+	var elsewhere: bool = ready.values().any(func(node: Node2) -> bool:
+		return node.region != current and joins.call(node))
+	if elsewhere:
+		var wanted: Dictionary = {}
+		for node: Node2 in remaining.values():
+			if node.region != current:
+				continue
+			for need: int in node.after:
+				if remaining.has(need):
+					wanted[need] = true
+		var borrowed: Node2 = _best(ready, last_at, have_last, false,
+			func(node: Node2) -> bool: return node.region != current and wanted.has(node.id),
+			false, joins, [], true)
+		if borrowed != null:
+			return [borrowed, BORROWED]
 	if not STEADIER_MOVES:
 		return []
 	var moved: Node2 = _best(ready, last_at, have_last, false,

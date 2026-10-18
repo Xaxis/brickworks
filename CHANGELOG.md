@@ -202,6 +202,11 @@ whole cycle.
   its own lowest point), and steps of one part from 23.3% to 19.5%; the
   order agrees with the sets' own about as well (Kendall tau 0.30 to 0.28,
   within its noise). Working the steps out takes about twice as long.
+- A booklet builds more of a set's own sub-assemblies on the side again, as
+  callouts: a robot's arms pinned to its body, a car's steering knuckles,
+  a ship's wings. On 100 real sets nobody tuned on, 54% of the sets' own
+  sub-assemblies are built on the side, from 51%, and steps with a hidden
+  new part went from 12.1% to 11.4%.
 
 ### Fixed
 
