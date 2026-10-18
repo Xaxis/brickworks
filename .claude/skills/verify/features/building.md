@@ -817,7 +817,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   MECHANISMS §16): let go while the pointer turns it, a section on a free
   joint starts at the pointer's rate (the slope of the turn against the
   clock over its last steady moves, within 0.1 s; still for 60 ms, or slower
-  than 11° a second, is from rest) and coasts against its bearing's
+  than 11° a second, is from rest; still is what the frames saw,
+  `GrabDrag._held_seen_usec`, so a release read a slow frame late still
+  coasts: `grab_probe -- --only=coast`, "let go across a 600 ms frame") and coasts against its bearing's
   friction; a gear train the joint drives turns with it, each gear at its
   ratio (its inertia times the ratio squared, its bearing's friction times
   the ratio); a turntable bears at two thirds of its disc's radius. A joint

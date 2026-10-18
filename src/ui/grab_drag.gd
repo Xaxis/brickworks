@@ -138,6 +138,9 @@ var last_swing: Swing = null
 var held_fling: float = 0.0
 ## When the swing's line was last said, ms.
 var _swing_told_at: int = 0
+## The last frame that saw a grab held, usec: how long the pointer stood
+## still before letting go is what the frames saw (Grab.fling_rate).
+var _held_seen_usec: int = 0
 
 
 ## A drag began on [param brick_id] at [param screen]. True when the drag
@@ -146,6 +149,7 @@ var _swing_told_at: int = 0
 func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: bool = false) -> bool:
 	if world == null or camera == null:
 		return false
+	_held_seen_usec = Time.get_ticks_usec()
 	var origin: Vector3 = camera.ray_origin(screen)
 	var direction: Vector3 = camera.ray_normal(screen)
 	var hit: BrickLattice.Hit = builder.lattice.raycast(origin, direction)
@@ -332,7 +336,10 @@ func release() -> String:
 	if held.state != "moves":
 		return held.why
 	# Let go while the pointer was turning it: it carries on at that rate.
-	held_fling = held.fling_rate(Time.get_ticks_usec())
+	# Still is what a frame saw: the last frame that found it held, not the
+	# clock at the release, which a slow frame between the last move and
+	# the button coming up (a browser drawing in software) made a stop.
+	held_fling = held.fling_rate(_held_seen_usec)
 	if held.unchecked:
 		# Checked from here, then kept: on a worker where there are threads,
 		# else a frame at a time (_process).
@@ -1034,6 +1041,8 @@ var _told_page_at: int = 0
 
 
 func _process(_delta: float) -> void:
+	if grab != null:
+		_held_seen_usec = Time.get_ticks_usec()
 	_ready_ahead()
 	if _swinging != null:
 		_swing_frame()

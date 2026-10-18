@@ -612,7 +612,11 @@ try {
     check(Boolean(heldMid && heldMid.grabbing) && Math.abs(heldMid.angle || 0) > 5,
       `the flywheel turns on its axle while the button is down: `
       + `${heldMid && heldMid.angle}° (${heldMid && heldMid.what})`);
-    check(Boolean(rested), `let go while it turns, it coasts and says how far: "${rested && rested.said}"`);
+    if (!check(Boolean(rested), `let go while it turns, it coasts and says how far: "${rested && rested.said}"`)) {
+      const now = await grab();
+      console.log(`        held at the release: ${heldMid && heldMid.angle}°; coasting seen: ${Boolean(coasting)}; `
+        + `now: swinging ${now.swinging}, grabbing ${now.grabbing}, let go at ${now.coast_deg_s}° a second, said "${now.said}"`);
+    }
     console.log(`      let go at ${rested && rested.coast_deg_s}° a second (the mouse went round at 180), `
       + `${rested && rested.swing_s} s simulated over ${rested && rested.swing_clock_s} s on the clock in `
       + `${rested && rested.swing_frames} frames`);

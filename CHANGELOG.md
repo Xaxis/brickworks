@@ -298,7 +298,9 @@ whole cycle.
   hold was timed from the press to the first move the app read, a frame
   apart. It is now timed by what the frames saw. The same went for a
   finger's tap on a slow phone, which read as a hold and took the part off,
-  and a click on the view cube's arrows and zoom, which did nothing.
+  a click on the view cube's arrows and zoom, which did nothing, and a
+  flywheel let go while it turned, which a slow frame before the release
+  made stop dead instead of coasting.
 
 - Eight more real sets steer both ways and back: 42050-1, 8258-1, 8273-1
   and its Utility Cargo Truck, 8289-1 and its Tow Truck, 9395-1 and
