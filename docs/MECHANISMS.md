@@ -2484,3 +2484,142 @@ that call, not where the part stands from where it was built, and one
 session had to check with a picture; and look_at_model lists a wheel turned
 and turned back by a few ten-millionths as standing a stud off (its axis at
 z 9 for 10), which sent a session to look again.
+
+## 18. Every real set's steering, swept (G9)
+
+G8 turned the six steerings in grab_probe's sets both ways and back, and
+tried eight more of the OMR's: all eight failed. G9 asks it of every set
+the OMR has with a steering, and takes the failures to their causes, most
+sets first.
+
+**The sweep** (`tools/steer_sweep.py`, over `grab_probe -- --only=sweep`).
+A set has a steering when its file has a steering arm (a part named
+Steering Arm, Steering Wheel Bearing, Wheel Spindle Steering Arm or
+Steering Wheel Hub), a steering rack (any Technic gear rack but the plain
+1 x 4), or a 1 x 4 rack and a gear that may stand in it: 181 of the OMR's
+1,576 files. Each is opened headless and its steering turned over MCP as a
+session turns one: the steering wheel where turning it reaches the rack,
+else the pinion's column, else a steering arm on its kingpin; +30, −60 and
++30 degrees from where it stands. It steers when each turn moves it, the
+rack (or the far arm) goes one way and then the other, what stays never
+moves, and the last turn puts every part back within 0.02 LDU. Twelve
+files have only a 1 x 4 rack that no pinion stands in (a lift, a slide) and
+are not counted. Four jobs under `heavy`, about 15 minutes on a loaded box;
+a set that takes longer than the timeout is stopped and said so (none
+did). The rows (what was turned, what each turn said, how far the rack
+went, what stays and why, and for a pinion what its rack is one body with)
+and the table are in bench/results/grab9-2026-10-18 (`sweep_before.md`,
+`sweep_after.md`; `--shots` takes pictures from above, windowed).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (m78; `sweep_before`) | 25 of 168 |
+| the biggest body stays, the tyre named (`sweep_anchor`) | 25 of 169 |
+| and a block with pins on two lines not a pin (`sweep_fix1`) | 33 of 169 |
+| and a heavier body standing on the floor stays (`sweep_after`) | 33 of 169 |
+
+No set that steered stopped steering at any step. One set more is counted
+once parts are named by their number: 42110-1 carries its steering arms as
+parts of its own described only "23801"; named from the catalogue
+(Technic Steering Wheel Bearing with 2 Pegholes and 2 Slotted Axlehole
+Arms), they are found and turned, and the far arm does not follow.
+
+The failures before, by cause, as the table groups them: the pinion turned
+and its rack did not, the rack one body with what the pinion turns in (37);
+the rack or the far arm did not move (30); not back where it stood (17);
+the loop has no freedom (15); something in the way at once (15); a steering
+arm hanging on a ball in a loop (8); loops too big to solve as it moves
+(7); a rack the gear table does not list (7: 18940 and 18942); held
+rigidly (4); held by a worm or a screw (2); what stays moved (1).
+
+**A block with pins on two lines is not a pin.** The biggest group was the
+rack held still with the pinion's bearing. What made them one, followed
+join by join from the rack to the part the pinion turns in (`grab_probe --
+--only=steerdebug --steer-set=FILE`), went again and again through the
+lone pin rule: a pin keyed to nothing is part of the first thing it is in
+(§10, Mechanism's rule). The cross block with four pins (48989) is named a
+pin and keyed to nothing, so it was joined to whatever it was first read
+in: on 42050-1 two of them, each pinned into the rack's hole and into the
+two beams 7 the pinion's long pin goes through, made the rack, the beams
+and the pinion's bearing one body. A part whose pins stand on more than one
+line is not a pin: held on two lines it is held by that rule, and on one it
+turns (`Bodies._pins_on_lines`). Eight sets steer that did not, none that
+did stopped, and four more move where they did not: 42050-1, 8258-1,
+8273-1 and its Utility Cargo Truck, 8289-1 and its Tow Truck, 9395-1 and
+9397-1's Snowplow steer; 8274-1 (back to 0.022 LDU), 8285-1, 9393-1 and
+42075-1 now move and fall short on the way back. grab_probe's steering run
+has 42050-1 and 8273-1 in it; both fail without the change, as the sweep
+before says (the pinion turned, its rack did not).
+
+**What stays.** When a person grabs one part of a model, the rest stays
+where it is. What stays is, in order (`Bodies._anchor_and_grow`):
+
+1. a part the person locked, its body;
+2. what stands on the baseplate's studs (a stud in one of its sockets;
+   never a tyre);
+3. the biggest body: the one with the most parts, between two of a size the
+   heavier. This is how the gear reading takes its ground
+   (`Mechanism._largest`), so the two agree;
+4. unless a body standing on the floor is heavier than it: one that
+   reaches down to within 2 LDU of where its piece is lowest, not by a
+   tyre, which rolls. It holds the model where it stands by its weight. A
+   crane of a few bricks stands on its tower, though its arm has more
+   parts.
+
+Not the heaviest outright, as it was: a part is weighed by its box
+(`Stability.grams`), right for a brick and far out for a shell, whose box
+is mostly air. 42081-1's bucket (15265, a curved shell) weighs 535 g by its
+box, more than the loader's frame of 145 parts (205 g). Its tyre, which the
+file carries as its own part described only "23798", now takes the name
+the catalogue gives that number (Tyre 44/ 58 x 56 R Tractor;
+`CustomParts.add`), so it is read as a tyre: it stands on no stud, and it
+is held on its rim. Before, it stood on a baseplate stud by its tread's
+gaps and anchored the loader by chance; named, with the heaviest body
+anchoring, the bucket stayed and drawing the arm's rod swung the loader
+round it (§17). Now the frame stays and the arm moves as before
+(`grab_probe -- --only=actuators`, 38 checks). `-- --only=stays` checks the
+tyre's name and that what stays is the biggest body, not the bucket's; with
+the heaviest rule back it fails: what stays is then the bucket's body, of 9
+parts. The floor is there for the made crane of the falling case (a tall
+arm of seven parts on a tower of five 2 x 2 bricks, on no floor): by parts
+alone the arm stayed and the tower swung, and the case's six checks
+failed. Taking the biggest body that stands on the floor first, whatever
+it weighs, failed three others in the full run: 42042-1's tower crane's
+worm turned no gear, dragging the made scissor lift's foot moved its base
+(the beam 15, 26 parts) instead, and the made gear 40 coasted at 1,326° a
+second for the pointer's 1,080. So the floor wins only by weight.
+
+**Tried and left.** Two things looked like the steering arms that hang on
+a ball (10295-1, 42021-1, 42124-1, 4404-1, 9392-1, 8880-1's F1 racer):
+growing the tree of joints along balls last, so an arm hangs on its kingpin
+and its track rod's ball closes the loop; and reading two balls between
+the same two bodies, their middles on one line, as a hinge on that line
+(15460's kingpin is a ball above and a ball below). Neither moved any of
+the seven, and both were taken out again.
+
+**Left for later**, by the after table's groups, with sets to start from:
+a rack on a plate's studs, held with the frame (8448-1's five models, 32185
+on a 2 x 10 plate; 8081-1, 6574 on a 2 x 2; 854-1, 3743 on a stack of
+plates); 1980s steering racks (2790a in its holder 2791a, eleven files of
+8022, 8024, 8815, 8820 and 8832) and 42043-1's 18942 in its housing 18940,
+which the gear table does not list and which slide in a housing of their
+own; steering arms on balls (above); loops too big to solve (42024-1,
+42029-1, 42070-1); and the 21 that turn and do not come back within 0.02
+LDU. The other moving things (turntables, doors and ramps, booms) were not
+swept.
+
+**Proved** (bench/results/grab9-2026-10-18), on a box at load 30 to 50:
+`grab_probe` windowed, twice: 371 of 373 checks and 374 of 376. The two
+that failed each time were different and each is a timing check (a loader
+arm let go at the end of its stroke kept 0.35 LDU short, the big model's
+section read before its parts had loaded, the four-bar's drawing 7.7 ms
+over its 4, the gear 40's start against the pointer's rate); each passes
+run alone (`--only=actuators` 38, `--only=big` 5) or in the other full
+run. mechanism_probe 54, mechanism_sets, simulate_probe 41, element_probe
+and app_tools_probe pass; the MCP is in step with the app. Pictures of
+42050-1, 8273-1 and 9395-1 from above, cut over the rack, before and
+turned each way (`steer_*.png`). Not run: tools/web/grab_flow.mjs (the
+local export was made, and the flow waited on the box past the time box).
+8283-1 is the one set the sweep could not read to the end: turning it made
+a copy of a shared sub-assembly its own, which gives its parts new
+numbers, and the row is empty.

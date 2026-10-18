@@ -281,6 +281,25 @@ whole cycle.
 
 ### Fixed
 
+- Eight more real sets steer both ways and back: 42050-1, 8258-1, 8273-1
+  and its Utility Cargo Truck, 8289-1 and its Tow Truck, 9395-1 and
+  9397-1's Snowplow. Their steering wheel turned and their rack did not: a
+  cross block with four pins was read as one pin, joined to the first thing
+  it was in, and that made the rack one with the beams the pinion turns in.
+  A part with pins on more than one line is no longer read as a pin. Every
+  set the OMR has with a steering is now turned both ways and back by
+  `tools/steer_sweep.py`, which writes a table of what steers and why the
+  rest do not.
+- What stays when you move a part of a model is chosen on purpose, not by
+  weight alone. It is a part you locked, else what stands on the
+  baseplate's studs, else the body with the most parts, unless something
+  standing on the floor (not a tyre, which rolls) is heavier. It used to be
+  the heaviest body, and a part is weighed by its box: 42081-1's bucket, a
+  curved shell, came to 535 g and outweighed the loader's frame. A part a
+  model file carries as its own, described only by its number ("23798"),
+  now takes the name the catalogue gives that number, so 42081-1's tyre is
+  read as a tyre and no longer stands on a baseplate stud, and 42110-1's
+  steering arms are found as steering arms.
 - What you set on a step stays on that step. A step's turn, zoom, size,
   page break, page alone, parts list, turn sign, placed picture, parts
   list and number, words, pictures and arrows moved onto the next step
