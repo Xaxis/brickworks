@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe -->
 
 ## Sub-features
 
@@ -759,6 +759,20 @@ picture the assistant is shown.
   stud and a car body before its wheels; the maths is pinned
   by `tests/test_steps_score.py` (scipy's own tau-b example, every pair
   against the definition).
+- `the same plans from two checkouts` (`src/dev/plan_dump.gd`,
+  `tools/plan_diff.py`, 2026-10-17, planspeed): a change meant only to make
+  planning faster must not move a step, and the steps score's measures can
+  stay put while steps move. `plan_dump.gd -- --dump --out=F --list=FILES`
+  (a `res://` path a line; under an `XDG_DATA_HOME` of its own) writes four
+  plans a file: as opened, the author's as the booklet draws them, and ours
+  with the parts shuffled with and without their sub-models as the steps
+  score plans them, each step's every field and the step player's view of
+  each page (`BuildSteps.view`). Copy the script into an older checkout to
+  dump that one; `tools/plan_diff.py A B` prints each file that differs and
+  where, and the steps and callouts compared. `--time` times
+  `Instructions.plan` alone on each file as opened. Over the 100 proof and
+  100 tune files, 607928d against the planspeed change: 0 of 200 differ,
+  87,856 steps (`bench/results/planspeed-2026-10-17/`).
 - `cad task frames` and `cad task frames in a browser`
   (`src/dev/cadtask_frames.gd`, `tools/web/cad_frames.mjs`; run by
   `tools/bench/cadtask.py frames`, written up in `docs/CADTASK.md`): the frames

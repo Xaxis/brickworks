@@ -2009,6 +2009,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "the same plans from two checkouts",
+      "entry": "tools/plan_diff.py",
+      "reach": "XDG_DATA_HOME=.scratch-data godot --headless --path . --script src/dev/plan_dump.gd -- --dump --out=A.jsonl --list=FILES in each checkout (copy src/dev/plan_dump.gd into an older one), then python3 tools/plan_diff.py A.jsonl B.jsonl   (minutes, under heavy; --time times Instructions.plan alone)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "tooltips let clicks through",
       "entry": "src/ui/tooltips.gd",
