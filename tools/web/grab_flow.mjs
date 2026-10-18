@@ -484,8 +484,7 @@ try {
     // loaded box), the swing is drawn slower than it is.
     console.log(`      the swing: ${rested && rested.swing_s} s simulated, drawn over ${rested && rested.swing_clock_s} s `
       + `on the clock in ${rested && rested.swing_frames} frames`);
-    // The bar: a swing drawn at 15 frames a second at least, or as fast as
-    // the page draws the view turning, whichever is slower.
+    // Drawn frames a second, said against the view turning's below.
     const perSecond = rested ? rested.swing_frames / Math.max(rested.swing_clock_s, 0.001) : 0;
     timings.swing_fps = perSecond;
     timings.swing = { frames: rested && rested.swing_frames, mean_ms: rested && rested.swing_mean_ms,

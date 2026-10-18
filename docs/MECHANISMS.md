@@ -1945,11 +1945,6 @@ second on this box; what in SwiftShader's 2.5 to 3.5 CPU-seconds a frame is
 worth cutting (the 4096² shadow atlas, the multisampled blits, the
 interface) is measured nowhere yet, and only on a box not shared with forty
 other jobs would the measure mean much.
-can honestly mean), and how much a section bounces. Why a swing's frames in
-a browser drawing in software cost SwiftShader about a second each when
-turning the view's cost 33 to 130 ms (above): the next step is a trace with
-the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
-SwiftShader's, to see which draw it is.
 
 ## 15. Big loops at frame rate, and universal joints (G6)
 

@@ -247,10 +247,6 @@ whole cycle.
 - A model without steps of its own, given the worked-out ones by its first
   booklet edit, built the second copy of a sub-model (10016-1's second
   wheels) differently once it was saved and opened again.
-- In a browser, a step of the timeline on a big model is quick again. Since
-  parts could be grabbed and moved on their joints, the page looked for
-  every part's drag handle twice a second, and a step on a 925-part model
-  took 6 s.
 - A universal joint passes a turn on. Turning 8062-1's crane winch turns
   the shafts past its two universal joints with it, the joints' crosses
   turning between their ends; it did not move at all, the cross meeting the
