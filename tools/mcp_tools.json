@@ -4182,11 +4182,14 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page. booklet_layout says where each is. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "callout": {
+          "type": "boolean"
+        },
+        "highlight": {
           "type": "boolean"
         },
         "page": {
@@ -4209,11 +4212,74 @@
           ],
           "type": "integer"
         },
+        "place": {
+          "description": "{item, x, y, w, h, index, remove}: w and h kept when omitted",
+          "properties": {
+            "back": {
+              "description": "true: where the booklet lays it out again",
+              "type": "boolean"
+            },
+            "h": {
+              "type": "number"
+            },
+            "index": {
+              "description": "which note, from 0, for item note",
+              "type": "integer"
+            },
+            "item": {
+              "enum": [
+                "picture",
+                "parts",
+                "callout",
+                "number",
+                "note"
+              ],
+              "type": "string"
+            },
+            "remove": {
+              "type": "boolean"
+            },
+            "w": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
         "size": {
           "type": "number"
         },
         "step": {
           "type": "integer"
+        },
+        "text": {
+          "description": "{words, x, y, w, h, size}: mm, size the letters' height (4 when omitted)",
+          "properties": {
+            "h": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number"
+            },
+            "words": {
+              "type": "string"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "tilt": {
           "description": "degrees higher (-60 to 45)",

@@ -261,8 +261,11 @@ try {
     if (moved && moved.items[parts]) {
       const box = await where(parts);
       await page.mouse.click(box.x, box.y);
-      await page.waitForTimeout(800);
-      const corner = await where("page_resize");
+      ok(Boolean(await laid((s) => s.selected === parts)), `a click on the parts list selects it`);
+      // Its corner, from the box itself: the handle's place as last told can
+      // still be the picture's corner while the page's pictures are drawn
+      // (a slow frame on SwiftShader), and a drag there sized the picture.
+      const corner = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
       const narrow = moved.items[parts][2];
       await page.mouse.move(corner.x, corner.y);
       await page.mouse.down();
@@ -290,6 +293,7 @@ try {
     if (chooser) await chooser.setFiles(resolve("assets/icon.png"));
     const pictured = await laid((s) => Object.keys(s.items).some((n) => n.startsWith("page_image_4")));
     ok(Boolean(pictured), `Add a picture… from a file puts it on the page (${chooser ? "a file chooser came up" : "no file chooser"})`);
+    await page.waitForTimeout(3000);
     await shot("4_page_editor_after.png");
     await page.keyboard.press("Control+z");
     const unpictured = await laid((s) => !Object.keys(s.items).some((n) => n.startsWith("page_image_4")));

@@ -135,8 +135,8 @@ of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
-booklet's per_page=, as the timeline's Booklet row does; place= moves an \
-item on the page and text= adds words, in page mm.
+booklet's per_page=, as the timeline's Booklet row does; place= and text= \
+lay a page out by hand.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.

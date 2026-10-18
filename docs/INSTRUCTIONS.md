@@ -1144,8 +1144,10 @@ round the new parts when on (6,093 pixels of it in 106-1's first steps)
 and none when off (30050-1, 0 against 3,865). `booklet_edit_flow.mjs` does it
 in a browser by the mouse: the picture dragged onto the margin, the parts
 list's corner, words typed, a picture through the file chooser, Ctrl-Z and
-Ctrl-Shift-Z, the PDF and the exported file. The round trip on 30 real
-sets' files (`tools/bench/cadtask.py roundtrip`) is unchanged.
+Ctrl-Shift-Z, the PDF and the exported file. The round trip on real sets'
+files (`tools/bench/cadtask.py roundtrip`, 54 now) writes back all 54
+exactly with the steps kept in all 44 that have them, and the 30 of the
+booklet by hand's run judge as they did then, but for their times.
 
 What reads badly: the band is about two thirds of a millimetre, enough on
 a light part and thin on a black one beside other black parts; a page laid
