@@ -372,8 +372,9 @@ func definitions() -> Array:
 			"name": "move_part",
 			"description": ("Move a part about its joint as the person's drag on it does: its "
 				+ "whole rigid body and everything beyond it turn on the joint between it and "
-				+ "what stays (a locked part, what stands on the baseplate, else the heaviest "
-				+ "body): a hinge, a clip on a bar, a turntable, a pin or an axle in a round "
+				+ "what stays (a locked part, what stands on the baseplate, else the body "
+				+ "with the most parts, or a heavier one standing on the floor): a hinge, a "
+				+ "clip on a bar, a turntable, a pin or an axle in a round "
 				+ "hole, a ball, a 1x1 round part on one stud. part= a part's number "
 				+ "(look_at_model) or a sub-assembly's name. With nothing else it changes "
 				+ "nothing and says what would move, on what, and how the model stands. "

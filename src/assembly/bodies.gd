@@ -30,8 +30,11 @@
 ##
 ## Each piece of the model that holds together by joints has an anchor: the
 ## part of it that stays when the rest is moved. A part the person locked
-## (Lock parts) anchors its body; else the bodies standing on the baseplate's
-## studs; else the heaviest body. A car's chassis stays and its wheels turn;
+## (Lock parts) anchors its body; else the bodies on the baseplate's studs
+## (a stud in one of their sockets); else the biggest body, the one with the
+## most parts, unless a body standing on the floor (reaching down to where
+## its piece is lowest, not by a tyre) is heavier. A car's chassis stays and
+## its wheels turn;
 ## a crane's base stays and its boom swings. The tree of joints is grown
 ## out from the anchors, so each other body has the one joint between it and
 ## the anchor nearest it ([member parent_link]) and everything beyond.
@@ -51,6 +54,9 @@ const SAME_LINE := 1.5
 const MOST_BOXES := 400
 ## A part a single stud across: its footprint no wider than this, LDU.
 const ONE_STUD := 22.0
+## A body stands on the floor when it reaches within this of where its piece
+## is lowest, LDU.
+const STANDS := 2.0
 
 
 ## One joint between two bodies.
@@ -128,7 +134,9 @@ var touching: Dictionary = {}
 ## Body -> true for each anchor.
 var anchors: Dictionary = {}
 ## Anchor body -> why it stays, [kind, a part]: "locked" (the part the person
-## locked), "studs" (the part on the baseplate's studs), "heaviest".
+## locked), "studs" (the part on the baseplate's studs), "biggest" (the body
+## with the most parts), "floor" (a body standing on the floor, heavier than
+## the biggest).
 var anchor_why: Dictionary = {}
 ## Body -> the Link between it and its parent (towards the anchor).
 var parent_link: Dictionary = {}
@@ -176,6 +184,20 @@ static func read(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 	out.locked = held
 	out._read()
 	return out
+
+
+## Whether [param key]'s part has shafts on more than one line: a block
+## with pins on two sides, not one pin.
+func _pins_on_lines(key: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null:
+		return false
+	var shafts: Array = Joints._lines_of(mesh)[0]
+	for line: Array in shafts:
+		if not Bodies._same_line(line[1], line[2], shafts[0][1], shafts[0][2]):
+			return true
+	return false
 
 
 ## Whether a part is a tyre, by its name.
@@ -519,9 +541,13 @@ func _read() -> void:
 	# changed was not found among the sizes and was taken for one alone.
 	# 42080-1's rod eye held by an axle pin keyed into its boom was joined to
 	# that pin's piece, and its pneumatic cylinder could not slide.
+	# A part with pins on more than one line (a cross block with four pins,
+	# 48989) is not a pin: held on two lines it is held, and on one it turns.
+	# Joined to the first thing it was in, 42050-1's two such blocks made
+	# its steering rack one with the beams its pinion turns in.
 	var lone: Array = []
 	for pin: int in pin_rows:
-		if int(sizes.get(_find(pin), 1)) == 1:
+		if int(sizes.get(_find(pin), 1)) == 1 and not _pins_on_lines(pin):
 			lone.append(pin)
 	for pin: int in lone:
 		_join(pin, int((pin_rows[pin] as Array)[0]), "pin")
@@ -765,13 +791,40 @@ func _anchor_and_grow() -> void:
 						anchor_why[body] = ["studs", key]
 						break
 		if not _any_of(piece, anchor_why):
+			# The biggest body: the most parts, as the gear reading takes its
+			# ground (Mechanism._largest); between two of a size, the heavier.
+			# Not the heaviest outright: a part is weighed by its box
+			# (Stability.grams), and a shell's box is mostly air. 42081-1's
+			# bucket (15265), weighed at 535 g, outweighed the loader's frame,
+			# and drawing the arm's rod swung the loader round the arm.
 			var best: int = piece[0]
 			for body: int in piece:
-				if float(grams.get(body, 0.0)) > float(grams.get(best, 0.0)) \
-						or (is_equal_approx(float(grams.get(body, 0.0)), float(grams.get(best, 0.0)))
-							and body < best):
+				if Bodies._bigger(_size_of(body), float(grams.get(body, 0.0)), body,
+						_size_of(best), float(grams.get(best, 0.0)), best):
 					best = body
-			anchor_why[best] = ["heaviest", 0]
+			# Unless what stands on the floor outweighs it: a body reaching
+			# down to where its piece is lowest (not by a tyre, which rolls)
+			# holds the model there by its weight. A crane of a few bricks
+			# stands on its tower, though its arm has more parts.
+			var lowest: Dictionary = {}   ## body -> its lowest point, LDU up, no tyre's
+			var floor_y: float = INF
+			for body: int in piece:
+				for key: int in members[body]:
+					var brick: BrickWorld.Brick = world.get_brick(key)
+					var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+					if info == null:
+						continue
+					var bottom: float = (brick.transform * info.bounds).position.y
+					floor_y = minf(floor_y, bottom)
+					if not _is_tyre(info):
+						lowest[body] = minf(float(lowest.get(body, INF)), bottom)
+			var why: String = "biggest"
+			for body: int in piece:
+				if float(lowest.get(body, INF)) <= floor_y + STANDS \
+						and float(grams.get(body, 0.0)) > float(grams.get(best, 0.0)):
+					best = body
+					why = "floor"
+			anchor_why[best] = [why, 0]
 	for body: int in anchor_why:
 		anchors[body] = true
 	# Breadth first from every anchor at once: each body hangs from the one
@@ -841,6 +894,21 @@ func _anchor_and_grow() -> void:
 		if not children.has(parent):
 			children[parent] = []
 		(children[parent] as Array).append(child)
+
+
+func _size_of(body: int) -> int:
+	return (members.get(body, PackedInt64Array()) as PackedInt64Array).size()
+
+
+## Whether a body of [param parts] parts and [param weight] grams is bigger
+## than another: more parts, else heavier, else the first read.
+static func _bigger(parts: int, weight: float, body: int, other_parts: int, other_weight: float,
+		other: int) -> bool:
+	if parts != other_parts:
+		return parts > other_parts
+	if not is_equal_approx(weight, other_weight):
+		return weight > other_weight
+	return body < other
 
 
 ## Whether any of [param piece]'s bodies is a key of [param among].
@@ -949,7 +1017,10 @@ func stays_words(body: int) -> String:
 			return "%s is locked" % _part_named(at)
 		"studs":
 			return "%s stands on the baseplate's studs" % _part_named(at)
-	return "the body of %s is the heaviest of the model" % named([body]).get_slice(",", 0)
+		"floor":
+			return "the body of %s stands on the floor" % named([body]).get_slice(",", 0)
+	return "the body of %s is the biggest of the model (%d parts)" % [named([body]).get_slice(",", 0),
+		_size_of(body)]
 
 
 ## [param one] and [param other] made one body for [param why] (as [member

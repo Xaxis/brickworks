@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab8-2026-10-18"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab9-2026-10-18"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -111,6 +111,26 @@ func _run() -> void:
 			# Every turned part asked where something is is also worked out
 			# whole, and the two answers compared (Grab.check_covers).
 			Grab.check_covers = true
+	if only == "steerdebug":
+		for arg: String in args:
+			if arg.begins_with("--steer-set="):
+				await _steer_debug("res://" + arg.trim_prefix("--steer-set="))
+		quit(0)
+		return
+	if only == "sweep":
+		# The steering sweep (tools/steer_sweep.py): rows, not checks.
+		var swept: Array = []
+		var sweep_out: String = OUT.path_join("sweep.jsonl")
+		for arg: String in args:
+			if arg.begins_with("--list="):
+				for line: String in FileAccess.get_file_as_string(arg.trim_prefix("--list=")).split("\n"):
+					if not line.strip_edges().is_empty():
+						swept.append("res://" + line.strip_edges())
+			if arg.begins_with("--sweep-out="):
+				sweep_out = arg.trim_prefix("--sweep-out=")
+		await _steer_sweep(swept, sweep_out)
+		quit(0)
+		return
 	for case: Array in CASES:
 		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
@@ -210,6 +230,8 @@ func _run() -> void:
 				asked_steering.append("res://" + arg.trim_prefix("--steer-set="))
 		for one: String in (STEERING if asked_steering.is_empty() else asked_steering):
 			await _steer_set(one)
+	if only.is_empty() or only == "stays":
+		await _what_stays()
 	if only.is_empty() or only == "big":
 		await _big()
 	if Grab.check_covers:
@@ -4679,6 +4701,10 @@ const STEERING: Array = [
 	"res://vendor/omr/files/8054-1_Model-C.mpd",
 	"res://vendor/omr/files/8828-1_Grader.mpd",
 	"res://vendor/omr/files/8062-1_Truck-with-Motorbike.mpd",
+	# G9 (MECHANISMS §18): a rack held by cross blocks with four pins
+	# (48989), and one on jumper plates on half pins held so.
+	"res://vendor/omr/files/42050-1.mpd",
+	"res://vendor/omr/files/8273-1.mpd",
 ]
 
 
@@ -4749,6 +4775,433 @@ func _steer_set(path: String) -> void:
 			_world.get_brick(driver).part_id, int(step[0]), step[1], how,
 			"still" if still else "MOVED", said.left(90).replace("\n", " | ")], ok)
 	_builder.forget_history()
+
+
+## What stays when a part is moved (G9, MECHANISMS §18): with nothing locked,
+## nothing on the baseplate's studs and nothing but tyres on the floor, the
+## body with the most parts, not the heaviest by boxes (the made crane of
+## the falling case stands on its tower, the floor rule's case). 42081-1's tyre, which its file describes only as
+## "23798", is named as the catalogue names it, and stands on no stud; its
+## loader's bucket (15265, a shell weighed by its box at 535 g) is not what
+## stays: the frame is, and drawing the arm's rod moves the arm (the
+## actuators case).
+func _what_stays() -> void:
+	print("\nwhat stays: the biggest body, a tyre named by its number")
+	if not await _open("res://vendor/omr/files/42081-1.mpd"):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var tyre_name: String = ""
+	var bucket: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id.ends_with("23798"):
+			tyre_name = (_library.parts.get(brick.part_id) as PartLibrary.PartInfo).name
+		if brick.part_id == "15265":
+			bucket = brick.id
+	_check("42081-1's tyre \"23798\" is named as the catalogue names it: %s" % tyre_name,
+		tyre_name == "Tyre 44/ 58 x 56 R Tractor")
+	if bucket == 0:
+		_check("42081-1 has its bucket", false)
+		return
+	var anchor: int = int(bodies.body_of[bucket])
+	while bodies.parent_of.has(anchor):
+		anchor = int(bodies.parent_of[anchor])
+	var piece: Array = [anchor]
+	var seen: Dictionary = {anchor: true}
+	var head: int = 0
+	while head < piece.size():
+		for link: Bodies.Link in bodies.touching.get(piece[head], []):
+			if not seen.has(link.other(piece[head])):
+				seen[link.other(piece[head])] = true
+				piece.append(link.other(piece[head]))
+		head += 1
+	var most: int = 0
+	var heaviest: int = anchor
+	for body: int in piece:
+		most = maxi(most, (bodies.members[body] as PackedInt64Array).size())
+		if float(bodies.grams.get(body, 0.0)) > float(bodies.grams.get(heaviest, 0.0)):
+			heaviest = body
+	var why: Array = bodies.anchor_why.get(anchor, [])
+	_check("what stays is the biggest body, %d parts of %d bodies' %d, %s; the heaviest by boxes (%.0f g) is %s" % [
+		(bodies.members[anchor] as PackedInt64Array).size(), piece.size(), bodies.parts_of(piece).size(),
+		bodies.stays_words(anchor), float(bodies.grams.get(heaviest, 0.0)),
+		"the bucket's" if int(bodies.body_of[bucket]) == heaviest else "another"],
+		not why.is_empty() and str(why[0]) == "biggest" and (bodies.members[anchor] as PackedInt64Array).size() == most
+			and int(bodies.body_of[bucket]) != anchor)
+	_builder.forget_history()
+
+
+## The steering sweep (G9, tools/steer_sweep.py runs it over every OMR set
+## with a steering): each set in [param paths] opened and its steering turned
+## +30, -60 and +30 over MCP from where it stands, as [method _steer_set]
+## turns one, and a row written to [param out_path] (a JSON line a set,
+## and one before it begins, so a set that hangs is known): which steering
+## was found and turned, what each turn said, how far the rack (or the far
+## steering arm) went, whether what stays stayed, and how far the last turn
+## left any part from where it stood. Nothing is checked: the table is the
+## result.
+func _steer_sweep(paths: Array, out_path: String) -> void:
+	for path: String in paths:
+		var name: String = path.get_file().get_basename()
+		print("\nsweep: %s" % name)
+		_sweep_line(out_path, {"set": name, "begin": true})
+		var started: int = Time.get_ticks_msec()
+		var row: Dictionary = await _sweep_one(path)
+		row["set"] = name
+		row["ms"] = Time.get_ticks_msec() - started
+		print("    %s: %s" % ["steers" if bool(row.get("steers", false)) else "fails", str(row.get("cause", ""))])
+		_sweep_line(out_path, row)
+		_builder.forget_history()
+
+
+## What a steering's pinion and rack are read as, for finding why one does
+## not turn (--only=steerdebug --steer-set=FILE): the rack's body and its
+## joints, what the pinion's turn is read as, and what a turn of 30 does.
+func _steer_debug(path: String) -> void:
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	var named := func(key: int) -> String:
+		var brick: BrickWorld.Brick = _world.get_brick(key)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+		return "#%d %s (%s)" % [key, brick.part_id if brick != null else "?", info.name if info != null else "?"]
+	var body_words := func(body: int) -> String:
+		var ids: PackedInt64Array = bodies.members.get(body, PackedInt64Array())
+		var parts := PackedStringArray()
+		for key: int in ids.slice(0, 10):
+			parts.append(_world.get_brick(key).part_id)
+		return "body %d (%d parts%s%s): %s" % [body, ids.size(), ", ANCHOR " + bodies.stays_words(body)
+			if bodies.anchors.has(body) else "", ", parent %d by %s" % [int(bodies.parent_of[body]),
+			(bodies.parent_link[body] as Bodies.Link).kind] if bodies.parent_of.has(body) else "", " ".join(parts)]
+	print("  %s" % bodies.summary())
+	for mesh: Racks.Pinion in bodies.racks():
+		print("  pinion %s in rack %s, off %.2f, rate %.3f%s" % [named.call(mesh.gear), named.call(mesh.rack),
+			mesh.off, mesh.rate, " (screw)" if mesh.screw else ""])
+		# Every shaft in a hole near the rack, and its line against the rack's.
+		var rack_at: Vector3 = _world.get_brick(mesh.rack).transform.origin
+		var near: Array = []
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.transform.origin.distance_to(rack_at) < 90.0 and bodies.body_of.has(brick.id):
+				near.append([brick.id, brick.transform, _library.mesh_for(brick.part_id), brick.part_id, ""])
+		print("    the rack's line %s" % mesh.line.snapped(Vector3.ONE * 0.01))
+		if _windowed and not mesh.screw:
+			var alone: Dictionary = {}
+			var ids := PackedInt64Array()
+			for one: Array in near:
+				if (one[1] as Transform3D).origin.distance_to(rack_at) < 70.0:
+					alone[int(one[0])] = true
+					ids.append(int(one[0]))
+			_world.show_only(alone)
+			for view: Array in [["above", Vector3(0.1, 1.0, 0.2)], ["front", Vector3(0.3, 0.5, 1.0)],
+					["side", Vector3(1.0, 0.4, 0.2)]]:
+				_frame_on(ids)
+				_camera.look_from(view[1])
+				await _camera_still()
+				await _shot("rack_%s_%d" % [path.get_file().get_basename(), mesh.rack], view[0])
+			_world.show_only({})
+		for one: Array in Joints.through(near):
+			print("    shaft %s in %s: %s, its line %s (%.2f along the rack's), ends %.0f..%.0f at %.0f, bodies %d/%d" % [
+				named.call(int(one[0])), named.call(int(one[1])), one[2], (one[4] as Vector3).snapped(Vector3.ONE * 0.01),
+				absf((one[4] as Vector3).dot(mesh.line)), float(one[5]), float(one[6]), float(one[7]),
+				int(bodies.body_of[int(one[0])]), int(bodies.body_of[int(one[1])])])
+		# What holds the rack to what the pinion turns in, join by join.
+		var pinion_body: int = int(bodies.body_of[mesh.gear])
+		var bearing: Bodies.Link = bodies.parent_link.get(pinion_body)
+		if bearing != null and int(bodies.body_of[mesh.rack]) == bearing.other(pinion_body):
+			for pair: Array in bearing.pairs:
+				var held_in: int = int(pair[0]) if int(bodies.body_of[int(pair[0])]) != pinion_body else int(pair[1])
+				print("    the pinion turns in %s; from the rack to it:" % named.call(held_in))
+				for step: Array in bodies._path(mesh.rack, held_in):
+					print("      %s" % bodies._join_words(int(step[0]), int(step[1]), str(step[2])))
+				break
+		for end: int in [mesh.rack, mesh.gear]:
+			var body: int = int(bodies.body_of[end])
+			print("    %s" % body_words.call(body))
+			for link: Bodies.Link in bodies.touching.get(body, []):
+				var other: int = link.other(body)
+				print("      %s to %s, slide %s, %s" % [link.kind, body_words.call(other), link.slide,
+					"closing" if bodies.closing.has(link) else "tree"])
+			print("      held: %s" % bodies.held_words(end).left(400))
+			for edge: Array in bodies.joined_by.get(end, []):
+				print("      joined to %s by %s" % [named.call(int(edge[0])), edge[1]])
+				if end == mesh.rack:
+					for next: Array in bodies.joined_by.get(int(edge[0]), []):
+						if int(next[0]) != end:
+							print("        which is joined to %s by %s" % [named.call(int(next[0])), next[1]])
+			if end == mesh.rack:
+				for pair: Variant in bodies.pressed_on:
+					if (pair as Vector2i).x == end or (pair as Vector2i).y == end:
+						print("      pressed on: %s" % pair)
+				for one: Array in bodies.overruled:
+					if int(one[0]) == end or int(one[1]) == end:
+						print("      overruled: %s %s %s" % [named.call(int(one[0])), named.call(int(one[1])), one[2]])
+	for brick: BrickWorld.Brick in _world.bricks():
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		if info != null and _steering_arm(info.name) and bodies.body_of.has(brick.id):
+			print("  arm %s: %s" % [named.call(brick.id), body_words.call(int(bodies.body_of[brick.id]))])
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--turn="):
+			var key: int = int(arg.trim_prefix("--turn="))
+			var trial := Grab.new()
+			trial.world = _world
+			trial.builder = _builder
+			trial.library = _library
+			trial.bodies = bodies
+			trial.shared_mechanism = _grab.get("_mechanism")
+			var state: String = trial.begin(key, _world.get_brick(key).transform.origin)
+			print("  begin %s: %s %s / %s" % [named.call(key), state, trial.said, trial.why])
+			if trial.linkage != null:
+				print("    loop: %s; moves %s; racks %d" % [trial.linkage.said(), trial.linkage.moved,
+					trial.linkage.racks.size()])
+				for n: int in trial.linkage.links.size():
+					var joined: Bodies.Link = trial.linkage.links[n]
+					print("      joint %d: %s %d-%d at %s axis %s" % [n, joined.kind, joined.a, joined.b,
+						joined.point, joined.axis])
+			if state == "moves":
+				var got: float = trial.turn_to(30.0)
+				var changed: int = 0
+				for one: Variant in trial.placed:
+					if not (trial.placed[one] as Transform3D).is_equal_approx(trial.rest[one]):
+						changed += 1
+				print("    turn_to 30: %.2f, stopped %s, short %s, %d parts placed, %d changed" % [got,
+					trial.stopped, trial.loop_short, trial.placed.size(), changed])
+
+
+func _sweep_line(out_path: String, row: Dictionary) -> void:
+	var file := FileAccess.open(out_path, FileAccess.READ_WRITE if FileAccess.file_exists(out_path)
+		else FileAccess.WRITE)
+	if file == null:
+		return
+	file.seek_end()
+	file.store_line(JSON.stringify(row))
+	file.close()
+
+
+## A steering arm by its name: what turns on a kingpin and steers a wheel.
+static func _steering_arm(name: String) -> bool:
+	return name.contains("Steering Arm") or name.contains("Steering Wheel Bearing") \
+		or name.contains("Wheel Spindle Steering") or name.contains("Steering Wheel Hub")
+
+
+func _sweep_one(path: String) -> Dictionary:
+	var row: Dictionary = {"steers": false, "cause": "", "steps": []}
+	if not await _open(path):
+		row["cause"] = "did not open"
+		return row
+	row["parts"] = _world.brick_count()
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	if bodies == null:
+		row["cause"] = "its joints were not read"
+		return row
+	row["bodies"] = bodies.members.size()
+	var read_racks: Dictionary = {}
+	var unread_racks: Dictionary = {}
+	var arms: Array = []
+	var wheels: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		var part_name: String = info.name if info != null else ""
+		if not bodies.body_of.has(brick.id):
+			continue
+		if Racks.is_rack(brick.part_id):
+			read_racks[brick.part_id] = true
+		elif part_name.contains("Gear Rack") or part_name.contains("Steering Rack"):
+			unread_racks[brick.part_id] = true
+		if _steering_arm(part_name):
+			arms.append(brick.id)
+		if part_name.contains("Steering Wheel") and not _steering_arm(part_name):
+			wheels.append(brick.id)
+	row["racks"] = read_racks.keys()
+	row["racks_unread"] = unread_racks.keys()
+	row["arms"] = arms.size()
+	var meshes: Array[Racks.Pinion] = []
+	for mesh: Racks.Pinion in bodies.racks():
+		if not mesh.screw:
+			meshes.append(mesh)
+	row["pinions"] = meshes.size()
+	# The steering's rack: one whose body is joined to a steering arm's, else
+	# the first.
+	var arm_bodies: Dictionary = {}
+	for arm: int in arms:
+		arm_bodies[int(bodies.body_of[arm])] = true
+	var mesh: Racks.Pinion = null
+	for one: Racks.Pinion in meshes:
+		var rack_body: int = int(bodies.body_of[one.rack])
+		for link: Bodies.Link in bodies.touching.get(rack_body, []):
+			if arm_bodies.has(link.other(rack_body)):
+				mesh = one
+				break
+		if mesh != null:
+			break
+	if mesh == null and not meshes.is_empty():
+		mesh = meshes[0]
+	var trial_of := func(id: int) -> Grab:
+		var trial := Grab.new()
+		trial.world = _world
+		trial.builder = _builder
+		trial.library = _library
+		trial.bodies = bodies
+		trial.shared_mechanism = _grab.get("_mechanism")
+		trial.set_meta("state", trial.begin(id, _world.get_brick(id).transform.origin))
+		return trial
+	var driver: int = 0
+	var follower: int = 0
+	var kind: String = ""
+	if mesh != null:
+		driver = mesh.gear
+		follower = mesh.rack
+		kind = "pinion"
+		for wheel: int in wheels:
+			var trial: Grab = trial_of.call(wheel)
+			if trial.linkage != null and not trial.linkage.racks.is_empty():
+				driver = wheel
+				kind = "wheel"
+				break
+	elif not arms.is_empty():
+		# No pinion in a rack: the steering is turned at an arm, on its
+		# kingpin, and the arm furthest from it must turn too.
+		for arm: int in arms:
+			var trial: Grab = trial_of.call(arm)
+			if str(trial.get_meta("state", "")) == "moves":
+				driver = arm
+				kind = "arm"
+				break
+		if driver == 0:
+			driver = arms[0]
+			kind = "arm"
+		var far: float = -1.0
+		for arm: int in arms:
+			if int(bodies.body_of[arm]) == int(bodies.body_of[driver]):
+				continue
+			var gap: float = _world.get_brick(arm).transform.origin.distance_to(
+				_world.get_brick(driver).transform.origin)
+			if gap > far:
+				far = gap
+				follower = arm
+	if driver == 0:
+		row["cause"] = "no steering read: %s" % ("its racks are not in the gear table (%s)"
+			% ", ".join(PackedStringArray(unread_racks.keys())) if not unread_racks.is_empty()
+			else "no pinion stands in its rack (%s)" % ", ".join(PackedStringArray(read_racks.keys()))
+			if not read_racks.is_empty() else "no rack and no steering arm")
+		return row
+	row["kind"] = kind
+	if mesh != null:
+		# What the rack is one body with, and why: for grouping the failures.
+		var rack_body: int = int(bodies.body_of[mesh.rack])
+		var joins := PackedStringArray()
+		for edge: Array in bodies.joined_by.get(mesh.rack, []):
+			joins.append("%s:%s" % [_world.get_brick(int(edge[0])).part_id, str(edge[1]).get_slice(":", 0)])
+		row["rack_joins"] = ", ".join(joins)
+		row["rack_body"] = "%d parts%s%s" % [(bodies.members[rack_body] as PackedInt64Array).size(),
+			", what stays" if bodies.anchors.has(rack_body) else "",
+			", on its %s" % (bodies.parent_link[rack_body] as Bodies.Link).kind
+			if bodies.parent_link.has(rack_body) else ""]
+		row["rack_held"] = bodies.held_words(mesh.rack).left(300)
+	row["driver"] = "#%d %s" % [driver, _world.get_brick(driver).part_id]
+	row["follower"] = "#%d %s" % [follower, _world.get_brick(follower).part_id] if follower != 0 else ""
+	var anchor: int = int(bodies.body_of[driver])
+	while bodies.parent_of.has(anchor):
+		anchor = int(bodies.parent_of[anchor])
+	var anchor_part: int = int((bodies.members[anchor] as PackedInt64Array)[0])
+	row["stays"] = bodies.stays_words(anchor)
+	var anchor_at: Transform3D = _world.get_brick(anchor_part).transform
+	var follower_at: Transform3D = _world.get_brick(follower).transform if follower != 0 else Transform3D()
+	var before: Dictionary = _snapshot()
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var first := Vector3.ZERO
+	var first_turn: float = 0.0
+	var ok: bool = true
+	# Pictures from above, before and turned each way (--sweep-shots, windowed).
+	var shots: bool = _windowed and "--sweep-shots" in OS.get_cmdline_user_args()
+	var set_name: String = path.get_file().get_basename()
+	# From above, cut just over the rack (or the far arm), framed on what is
+	# within 20 studs of it across: the rack, its arms and the wheels.
+	var cut := Plane()
+	var framed := PackedInt64Array()
+	if shots:
+		var middle: BrickWorld.Brick = _world.get_brick(follower if follower != 0 else driver)
+		var top: float = (middle.transform * _library.parts[middle.part_id].bounds).end.y
+		cut = Plane(Vector3.UP, top + 4.0)
+		for brick: BrickWorld.Brick in _world.bricks():
+			var gap: Vector3 = brick.transform.origin - middle.transform.origin
+			if not _store.scenery.has(brick.id) and Vector2(gap.x, gap.z).length() < 160.0 \
+					and brick.transform.origin.y < top + 4.0:
+				framed.append(brick.id)
+	var picture := func(when: String) -> void:
+		_world.set_cut(true, cut, false)
+		_frame_on(framed)
+		_camera.look_from(Vector3(0.05, 1.0, 0.12).normalized())
+		await _camera_still()
+		await _frames(3)
+		await _shot("steer_%s" % set_name, when)
+		_world.set_cut(false)
+	if shots:
+		await picture.call("0_before")
+	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": step[0]}))
+		await _frames(2)
+		if shots and str(step[1]) != "back":
+			await picture.call("1_turned_+30" if str(step[1]) == "one way" else "2_turned_-30")
+		var still: bool = _world.get_brick(anchor_part).transform.is_equal_approx(anchor_at)
+		var moved: bool = said.contains("Moved")
+		var went: Vector3 = Vector3.ZERO
+		var turned: float = 0.0
+		if follower != 0:
+			var now: Transform3D = _world.get_brick(follower).transform
+			went = now.origin - follower_at.origin
+			var relative: Basis = now.basis * follower_at.basis.inverse()
+			turned = rad_to_deg(relative.get_rotation_quaternion().get_angle())
+		var record: Dictionary = {"asked": step[0], "said": said.replace("\n", " | ").left(700),
+			"moved": moved, "stays_still": still}
+		var step_ok: bool = moved and still
+		if kind == "arm":
+			record["follower_deg"] = snappedf(turned, 0.01)
+			if str(step[1]) == "one way":
+				first_turn = turned
+				step_ok = step_ok and turned > 1.0
+			elif str(step[1]) == "the other way":
+				step_ok = step_ok and turned > 1.0
+		else:
+			record["rack_ldu"] = snappedf(went.length() * (signf(went.dot(first)) if first != Vector3.ZERO else 1.0), 0.01)
+			if str(step[1]) == "one way":
+				first = went
+				step_ok = step_ok and went.length() > 0.5
+			elif str(step[1]) == "the other way":
+				step_ok = step_ok and went.length() > 0.5 and went.dot(first) < 0.0
+		if str(step[1]) == "back":
+			var most: float = 0.0
+			var worst: int = 0
+			for key: Variant in before:
+				var now_brick: BrickWorld.Brick = _world.get_brick(int(key))
+				if now_brick != null:
+					var off: float = (before[key] as Transform3D).origin.distance_to(now_brick.transform.origin)
+					if off > most:
+						most = off
+						worst = int(key)
+			record["back_ldu"] = snappedf(most, 0.0001)
+			if worst != 0:
+				record["worst"] = "#%d %s" % [worst, _world.get_brick(worst).part_id]
+			row["back_ldu"] = record["back_ldu"]
+			step_ok = step_ok and most <= 0.02
+		record["ok"] = step_ok
+		(row["steps"] as Array).append(record)
+		if not step_ok and ok:
+			ok = false
+			# What it said after what moves: the refusal, or how it moved.
+			var why: String = said.get_slice("\n", 1) if said.contains("\n") else said
+			if moved and not still:
+				why = "what stays moved (%s)" % row["stays"]
+			elif moved and str(step[1]) == "back":
+				why = "back to %.3f LDU, %s" % [float(record["back_ldu"]), str(record.get("worst", ""))]
+			elif moved:
+				why = "the %s did not go %s: %s" % ["far arm" if kind == "arm" else "rack", step[1], why]
+			row["cause"] = "%s turned %+d: %s" % [step[1], int(step[0]), why]
+	row["steers"] = ok
+	return row
 
 
 ## The G8 re-run's own kart (steering_kart2.ldr, saved from its session's app

@@ -6,8 +6,8 @@
 ## hinging, moving, otherwise interactive part with perfect physics/support/
 ## structure simulation". What moves is read by [Bodies]: the grabbed part's
 ## rigid body and everything beyond it, turned on the one joint between it
-## and the anchor (what stays: a locked part, the baseplate, else the
-## heaviest body). Grabbing a joint's anchored half moves its other half.
+## and the anchor (what stays: a locked part, what stands on the baseplate's
+## studs, else the biggest body). Grabbing a joint's anchored half moves its other half.
 ##
 ## How it moves is the joint's:
 ##   turn   a hinge, a clip, a turntable, a pin or an axle, a round stud:
