@@ -307,6 +307,10 @@ func _chosen() -> String:
 			linkage = null
 			return _refuse("locked", _worm_words(held_by))
 	skip = moving.duplicate()
+	# A hose bends out of the way, and is not tested where it is carried.
+	for one: int in bodies.flexible:
+		for key: int in bodies.members.get(one, PackedInt64Array()):
+			skip[key] = true
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
 			if ours.has(joined.other(one)):
@@ -841,7 +845,7 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 			break
 		var key: int = keys[n]
 		n += 1
-		if _on_the_line.has(key):
+		if _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)

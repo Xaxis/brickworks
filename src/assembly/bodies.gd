@@ -132,6 +132,9 @@ var parent_of: Dictionary = {}
 var children: Dictionary = {}
 ## Links the tree did not grow along: each closes a loop.
 var closing: Array[Link] = []
+## Bodies of flexible pieces, a hose's or a chain's (Flex.strung): they
+## close no loop, and bend out of what moves (Grab).
+var flexible: Dictionary = {}
 ## The world revision this was read at.
 var revision: int = -1
 ## How long the reading took, ms.
@@ -423,6 +426,10 @@ func _read() -> void:
 			if _up.has(int(one)) and _up.has(int(other)):
 				_join(int(one), int(other))
 
+	# A piece nothing holds where it is, lodged in another, is held by what
+	# it is lodged in: an axle in a pin's stop bush, a log in a gripper's
+	# claws ([method _lodge]).
+	_lodge(entries, candidates)
 	# A pin keyed to nothing is part of the first thing it is in, and what
 	# else it is in turns against that on its line (Mechanism's rule): a
 	# beam pinned to a frame turns on the frame, the pin with the frame.
@@ -430,9 +437,17 @@ func _read() -> void:
 	for entry: Array in entries:
 		var root: int = _find(int(entry[0]))
 		sizes[root] = int(sizes.get(root, 0)) + 1
+	# Which pins are keyed to nothing is read before any is joined: asked as
+	# each was joined, a pin in a piece whose root the joining had just
+	# changed was not found among the sizes and was taken for one alone.
+	# 42080-1's rod eye held by an axle pin keyed into its boom was joined to
+	# that pin's piece, and its pneumatic cylinder could not slide.
+	var lone: Array = []
 	for pin: int in pin_rows:
 		if int(sizes.get(_find(pin), 1)) == 1:
-			_join(pin, int((pin_rows[pin] as Array)[0]))
+			lone.append(pin)
+	for pin: int in lone:
+		_join(pin, int((pin_rows[pin] as Array)[0]))
 	# Two joints between the same two bodies on different lines hold them.
 	var changed: bool = true
 	while changed:
@@ -510,6 +525,120 @@ func _read() -> void:
 	took_ms = Time.get_ticks_msec() - started
 
 
+## Each piece of the model that nothing holds where it is (no part of it
+## on the baseplate's studs, none locked) and that is lodged in another
+## piece (a part of it shares cells with a part of the other) is held by
+## what it is lodged in: its part joined to the part it shares most cells
+## with. A piece of one part is an axle in a pin's stop bush or in an axle
+## joiner, whose axle holes the connectors do not name on the part's own
+## line (32054, 26287), or a gear a model file carries as a part of its own
+## ("42080 - 18575") on its axle; a bigger one, a log held up in a
+## gripper's claws. Read as pieces of their own, they stayed where they
+## stood while what held them moved: 42080-1's arm left an axle 3, an axle
+## 5, a joiner, its saw's drive gear and the log in its gripper in the air.
+## Not the biggest piece, nor one of more than [constant LODGE_MOST] parts:
+## the model is not held by what it holds. [param candidates] as [method
+## _read] gathers joints. How many were joined is [member lodged].
+func _lodge(entries: Array, candidates: Array) -> void:
+	lodged = 0
+	var up: Dictionary = {}   ## body root -> its piece, a union-find of its own
+	for entry: Array in entries:
+		var root: int = _find(int(entry[0]))
+		up[root] = root
+	for c: Array in candidates:
+		if up.has(_find(int(c[0]))) and up.has(_find(int(c[1]))):
+			Bodies._piece_join(up, _find(int(c[0])), _find(int(c[1])))
+	var parts_of_piece: Dictionary = {}   ## piece -> Array of part keys
+	var held: Dictionary = {}
+	for entry: Array in entries:
+		var key: int = int(entry[0])
+		var piece: int = Bodies._piece_find(up, _find(key))
+		if not parts_of_piece.has(piece):
+			parts_of_piece[piece] = []
+		(parts_of_piece[piece] as Array).append(key)
+		if _standing.has(key) or locked.has(key):
+			held[piece] = true
+	var biggest: int = -1
+	for piece: int in parts_of_piece:
+		if biggest < 0 or (parts_of_piece[piece] as Array).size() > (parts_of_piece[biggest] as Array).size():
+			biggest = piece
+	var bending: Dictionary = {}   ## part -> true: a hose, a string, a chain
+	for entry: Array in entries:
+		if Bodies.bends(library, str(entry[3])):
+			bending[int(entry[0])] = true
+			held[Bodies._piece_find(up, _find(int(entry[0])))] = true
+	for piece: int in parts_of_piece:
+		var keys: Array = parts_of_piece[piece]
+		# A piece with a hose, a string or a chain in it hangs on it: 42042-1's
+		# hook block on its winch's string, joined to the drum the string's end
+		# was lodged in, went round with the drum.
+		if piece == biggest or held.has(piece) or keys.size() > LODGE_MOST:
+			continue
+		var best: int = 0
+		var most: int = 0
+		var from: int = 0
+		for key: int in keys:
+			var boxes: PackedInt32Array = lattice.boxes_of(key)
+			if boxes.is_empty():
+				continue
+			for other: int in lattice.blockers_boxes(boxes, key, {}):
+				if not _up.has(other) or bending.has(other) \
+						or Bodies._piece_find(up, _find(other)) == Bodies._piece_find(up, _find(key)):
+					continue
+				var shared: int = BrickLattice.shared_cells(boxes, lattice.boxes_of(other))
+				if shared > most or (shared == most and shared > 0 and other < best):
+					most = shared
+					best = other
+					from = key
+		if best == 0:
+			continue
+		var into: int = Bodies._piece_find(up, _find(best))
+		_join(from, best)
+		lodged_in[from] = best
+		var root: int = _find(from)
+		if not up.has(root):
+			up[root] = root
+		Bodies._piece_join(up, root, into)
+		Bodies._piece_join(up, root, piece)
+		lodged += 1
+
+
+## Whether [param part_id] bends: a hose's, a tube's, a string's or a
+## chain's piece (Flex.strung), or a flexible part a file draws whole (its
+## skin, CustomParts.SKIN_CATEGORY: 42042-1's winch rope).
+static func bends(parts: PartLibrary, part_id: String) -> bool:
+	if not Flex.strung(parts, part_id).is_empty():
+		return true
+	var info: PartLibrary.PartInfo = parts.parts.get(part_id) if parts != null else null
+	return info != null and info.category == CustomParts.SKIN_CATEGORY
+
+
+## A piece at most this many parts may be held by what it is lodged in.
+const LODGE_MOST := 300
+
+
+static func _piece_find(up: Dictionary, at: int) -> int:
+	var x: int = at
+	while int(up.get(x, x)) != x:
+		x = int(up.get(x, x))
+	up[at] = x
+	return x
+
+
+static func _piece_join(up: Dictionary, one: int, other: int) -> void:
+	var a: int = Bodies._piece_find(up, one)
+	var b: int = Bodies._piece_find(up, other)
+	if a != b:
+		up[maxi(a, b)] = mini(a, b)
+
+
+## Parts no joint named that were held by what they are lodged in ([method
+## _lodge]).
+var lodged: int = 0
+## Each piece's part that was lodged -> the part it was joined to.
+var lodged_in: Dictionary = {}
+
+
 ## Each piece's anchor, and the tree grown from them.
 func _anchor_and_grow() -> void:
 	anchors.clear()
@@ -565,6 +694,21 @@ func _anchor_and_grow() -> void:
 		reached[body] = true
 		queue.append(body)
 	var used: Dictionary = {}
+	# A flexible tube, a hose, a chain is drawn as rigid pieces but bends:
+	# held at both ends it closes no loop, and carries nothing on from where
+	# it hangs. A pneumatic cylinder's tubes, each joined to its ports and to
+	# a valve, locked its loop, and what the tubes reached at their far end
+	# hung from them and stayed when the arm it is on was raised.
+	flexible.clear()
+	for body: int in members:
+		var strung: bool = true
+		for key: int in members[body]:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			if brick == null or Flex.strung(library, brick.part_id).is_empty():
+				strung = false
+				break
+		if strung:
+			flexible[body] = true
 	var head: int = 0
 	while head < queue.size():
 		var at: int = queue[head]
@@ -575,7 +719,12 @@ func _anchor_and_grow() -> void:
 			used[link] = true
 			var next: int = link.other(at)
 			if reached.has(next):
-				closing.append(link)
+				if not flexible.has(at) and not flexible.has(next):
+					closing.append(link)
+				continue
+			if flexible.has(at):
+				# Reached from its far end, or its own piece's anchor, later.
+				used.erase(link)
 				continue
 			reached[next] = true
 			parent_link[next] = link

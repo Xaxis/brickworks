@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab6-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab7-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -1902,6 +1902,7 @@ func _cardan_shot(keys: PackedInt64Array, near: PackedInt64Array, name: String, 
 const ACTUATORS: Array = [
 	["actuator: a wheel loader's arm", "res://vendor/omr/files/42081-1.mpd", true],
 	["actuator: a small one, and its input", "res://vendor/omr/files/42024-1.mpd", false],
+	["cylinders: a forest machine's crane on two pneumatic cylinders", "res://vendor/omr/files/42080-1.mpd", true],
 ]
 ## Tried and not passing, run with --actuator-set=: 42006-1's boom closes its
 ## triangle to 0.006° but stops 3.4 LDU out and 13.3 in, a beam 5 of the boom
@@ -1975,7 +1976,7 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	var chosen: Bodies.Link = null
 	var tri: Dictionary = {}
 	for link: Bodies.Link in bodies.links:
-		if link.kind != "actuator":
+		if link.kind != "actuator" and link.kind != "cylinder":
 			continue
 		var found: Dictionary = _actuator_triangle(bodies, link)
 		print("    actuator %s~%s: slide %s, %s" % [_world.get_brick(int(link.pairs[0][0])).part_id,
@@ -1984,6 +1985,7 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		if chosen == null and not found.is_empty():
 			chosen = link
 			tri = found
+	print("    %s; %d pieces held by what they are lodged in" % [bodies.summary(), bodies.lodged])
 	_check("%s: a linear actuator raises something by a loop here" % name, chosen != null)
 	if chosen == null:
 		return
@@ -2028,14 +2030,29 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		_grab.last_words if grab == null else grab.said], grab != null and grab.state == "moves"
 		and grab.mode == "slide" and grab.linkage != null)
 	if grab == null or grab.state != "moves" or grab.linkage == null:
+		var tried := Grab.new()
+		tried.world = _world
+		tried.builder = _builder
+		tried.library = _library
+		tried.bodies = bodies
+		tried.shared_mechanism = _grab._mechanism
+		print("    (a grab of the rod reads %s: %s)" % [tried.begin(rod_key, _world.get_brick(rod_key).transform.origin),
+			tried.said if tried.why.is_empty() else tried.why])
 		await _button(screen, false)
 		return
 	print("    %s; %d joints, moving %d parts" % [grab.linkage.said(), grab.linkage.links.size(), grab.moving.size()])
 	var hold: Vector3 = grab._hold
-	var sense: float = signf(grab.axis.dot(way))
+	# The pointer drags the slide's far side along the line: the rod out of
+	# its body, or, where the tree hangs the body from the rod (42080-1's
+	# cylinders, their rods pinned to the cab), the body along the rod, so
+	# the rod goes in as the pointer goes out.
+	var flip: float = 1.0 if bodies.parent_link.get(int(bodies.body_of[rod_key])) == chosen else -1.0
+	# What the actuator raises: the triangle's body that moves with the drag.
+	var boom_key: int = y_key if grab.moving.has(y_key) or not grab.moving.has(x_key) else x_key
 	var targets: Array = []
-	var top: float = stroke - out_by + 16.0
-	var bottom: float = -out_by - 16.0
+	# Past both ends of the stroke, whichever side the pointer drags.
+	var top: float = stroke - out_by + 16.0 if flip > 0.0 else out_by + 16.0
+	var bottom: float = -out_by - 16.0 if flip > 0.0 else -(stroke - out_by) - 16.0
 	var at: float = 0.0
 	while at < top:
 		at += 4.0
@@ -2087,12 +2104,12 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		most = maxf(most, e)
 		least = minf(least, e)
 		outside = maxf(outside, maxf(-(out_by + e), out_by + e - stroke))
-		if not grab.stopped and absf(e - target) < 1.0:
+		if not grab.stopped and absf(e - flip * target) < 1.0:
 			followed += 1
 		elif grab.stopped and not stop_said.has(signf(target)):
 			stop_said[signf(target)] = true
 			var at_end: bool = absf(e - (stroke - out_by)) < 0.05 or absf(e + out_by) < 0.05
-			print("      (stopped at %.2f LDU asked %.0f: %s%s)" % [e, target, "the end of its stroke" if at_end
+			print("      (stopped at %.2f LDU asked %.0f: %s%s)" % [e, flip * target, "the end of its stroke" if at_end
 				else ("its loop closes no further" if grab.loop_short else "it meets the model"),
 				"" if at_end or grab.blocked_by.size() != 2
 				else ", #%d %s meets #%d %s" % [int(grab.blocked_by[0]), _world.get_brick(int(grab.blocked_by[0])).part_id,
@@ -2142,6 +2159,10 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		% [name, own_mean, own_95, sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0],
 		not own.is_empty() and own_mean <= 33.0 and own_95 <= 33.0)
 	_timings[name + " " + path.get_file()]["p95_ms"] = snappedf(own_95, 0.01)
+	var behind: Array = _left_behind(grab, bodies)
+	_check("%s: nothing it carries is left behind: %d parts moved, %s" % [name, grab.changed().size(),
+		"none lodged in them stays" if behind.is_empty() else "%d stay lodged in them: %s" % [behind.size(),
+		", ".join(behind.slice(0, 6))]], behind.is_empty() and not grab.changed().is_empty())
 	var pose_file := FileAccess.open(OUT.path_join("poses_%s.json" % path.get_file().get_basename()), FileAccess.WRITE)
 	if pose_file != null:
 		pose_file.store_string(JSON.stringify({"keys": pose_keys, "frames": poses}))
@@ -2160,7 +2181,8 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	_check("%s: let go, it is checked and kept in %.1f s" % [name, kept_in], kept_in <= 10.0)
 	# Kept where it was let go. A stop met earlier in the drag and not yet
 	# found was found at the release, and 42081-1's arm let go 20 LDU out was
-	# kept 60 in, at that stop.
+	# kept 60 in, at that stop; 42080-1's arm, its saw's drive gear read as a
+	# piece of its own and left standing, was put back near where it began.
 	var now_at := func(key: int) -> Transform3D:
 		return _world.get_brick(key).transform * (grab.rest[key] as Transform3D).affine_inverse()
 	var kept_rel: Transform3D = (now_at.call(body_key) as Transform3D).affine_inverse() * now_at.call(rod_key)
@@ -2177,23 +2199,81 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	# The boom taken hold of: the actuator's screw holds it.
 	_grab._ready_now()
 	bodies = _grab._bodies
-	var boom: int = int(bodies.body_of[y_key])
+	var boom: int = int(bodies.body_of[boom_key])
 	var trial := Grab.new()
 	trial.world = _world
 	trial.builder = _builder
 	trial.library = _library
 	trial.bodies = bodies
 	trial.shared_mechanism = _grab._mechanism
-	var boom_part: int = y_key
+	var boom_part: int = boom_key
 	for key: int in bodies.members[boom]:
 		if key != rod_key:
 			boom_part = key
 			break
 	var state: String = trial.begin(boom_part, _world.get_brick(boom_part).transform.origin)
+	if chosen.kind == "cylinder":
+		# No screw holds a cylinder: what its rod raises, taken hold of and
+		# turned, draws the rod along its cylinder, within its stroke, the
+		# loop with it, as a drag on the rod does.
+		trial.budget_ms = INF
+		var turned_to: float = 0.0
+		if state == "moves" and trial.mode == "turn":
+			turned_to = trial.turn_to(trial.angle + 4.0)
+			if absf(turned_to) < 0.5:
+				turned_to = trial.turn_to(trial.angle - 4.0)
+		var moved_by := func(key: int) -> Transform3D:
+			var stood: Transform3D = trial.rest.get(key, _world.get_brick(key).transform)
+			return (trial.placed.get(key, stood) as Transform3D) * stood.affine_inverse()
+		var rel_now: Transform3D = (moved_by.call(body_key) as Transform3D).affine_inverse() * moved_by.call(rod_key)
+		var slid: float = way.dot(rel_now * rod_rest - rod_rest)
+		var by_hand_turn: float = _triangle_turn(tri, way, slid)
+		_check(("%s: what it raises taken hold of and turned %.2f° draws the rod %.2f LDU along its cylinder, the "
+			+ "triangle by hand %.2f° for that (%s)") % [name, turned_to, slid, by_hand_turn,
+			trial.said if trial.why.is_empty() else trial.why], state == "moves" and trial.linkage != null
+			and absf(turned_to) > 0.5 and absf(slid) > 0.1 and slid >= -out_by - 0.05 and slid <= stroke - out_by + 0.05)
+		return
 	_check("%s: the boom taken hold of does not move: %s" % [name, trial.why.get_slice("(", 0).strip_edges()
 		if not trial.why.is_empty() else trial.said], state == "locked" and trial.why.contains("self-locking"))
 	# The input turned over MCP, where it is a part of its own.
 	await _input_turned(name, bodies)
+
+
+## What a grab left behind: each part that stands still while one it is
+## lodged in (their covers share cells where they stood) has moved, when it
+## is in a piece of the model of its own, joined by no joint to the part
+## that moved, so nothing but that part could have held it; not a hose,
+## which bends. A part of the standing model beside one that moves (42024-1's
+## angle connector on its own hinge, by a beam 3 turning on its pins) stays
+## rightly. As "#key part (in #key part)". 42080-1's arm left an axle 3, an
+## axle 5, a joiner, its saw's drive gear and the log in its gripper.
+func _left_behind(grab: Grab, bodies: Bodies) -> Array:
+	var piece_of: Dictionary = {}
+	for start: int in bodies.members:
+		if piece_of.has(start):
+			continue
+		piece_of[start] = start
+		var frontier: Array = [start]
+		while not frontier.is_empty():
+			var at: int = frontier.pop_back()
+			for l: Bodies.Link in bodies.touching.get(at, []):
+				if not piece_of.has(l.other(at)):
+					piece_of[l.other(at)] = start
+					frontier.append(l.other(at))
+	var out: Array = []
+	var seen: Dictionary = {}
+	for key: Variant in grab.changed():
+		var mine: int = int(bodies.body_of.get(int(key), -1))
+		for other: int in _builder.lattice.blockers_boxes(_builder.lattice.boxes_of(int(key)), int(key), {}):
+			if grab.placed.has(other) or _store.scenery.has(other) or seen.has(other):
+				continue
+			var theirs: int = int(bodies.body_of.get(other, -1))
+			if bodies.flexible.has(theirs) or piece_of.get(theirs, -1) == piece_of.get(mine, -2):
+				continue
+			seen[other] = true
+			out.append("#%d %s (in #%d %s)" % [other, _world.get_brick(other).part_id, int(key),
+				_world.get_brick(int(key)).part_id])
+	return out
 
 
 ## A small linear actuator's input turned a whole turn over MCP (move_part
