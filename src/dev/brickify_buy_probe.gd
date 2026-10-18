@@ -10,10 +10,11 @@ extends SceneTree
 ## the share drawn from it and what that costs in colour.
 ##
 ##   XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd \
-##       [-- --models=FILE@STUDS@UP,... --out=DIR]
+##       [-- --models=FILE@STUDS@UP,... | --models-file=LIST --out=DIR --steps-only]
 ##
 ## With --out, each build is saved there as <name>_<studs>.ldr with its steps,
-## and the numbers as buy.json.
+## and the numbers as buy.json. --steps-only lays each model and weighs its
+## steps, and no more: the bench's fourteen at two sizes.
 
 var _failures: int = 0
 var _library: PartLibrary
@@ -24,6 +25,7 @@ var _store: ModelStore
 var _exports: Exports
 var _out: String = ""
 var _numbers: Dictionary = {}
+var _steps_only: bool = false
 ## Where the lists are written: never the person's Downloads.
 var _lists: String = ""
 
@@ -42,11 +44,15 @@ func _run() -> void:
 	var models: Array = [["res://tests/fixtures/brickify/bunny.obj", 24, "+Y"],
 		["res://tests/fixtures/brickify/fox.obj", 24, "+Y"]]
 	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--out="):
+		if arg == "--steps-only":
+			_steps_only = true
+		elif arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
-		elif arg.begins_with("--models="):
+		elif arg.begins_with("--models=") or arg.begins_with("--models-file="):
+			var listed: String = arg.trim_prefix("--models=") if arg.begins_with("--models=") \
+				else FileAccess.get_file_as_string(arg.trim_prefix("--models-file=")).strip_edges()
 			models = []
-			for one: String in arg.trim_prefix("--models=").split(","):
+			for one: String in listed.split(","):
 				var bits: PackedStringArray = one.split("@")
 				models.append([bits[0], int(bits[1]) if bits.size() > 1 else 24,
 					bits[2] if bits.size() > 2 else "+Y"])
@@ -90,12 +96,10 @@ func _run() -> void:
 	for entry: Array in models:
 		await _steps_for(str(entry[0]), int(entry[1]), str(entry[2]), first)
 		first = false
-	await _from_collection(str(models[0][0]), int(models[0][1]), str(models[0][2]))
+	if not _steps_only:
+		await _from_collection(str(models[0][0]), int(models[0][1]), str(models[0][2]))
 
-	if not _out.is_empty():
-		var file := FileAccess.open(_out.path_join("buy.json"), FileAccess.WRITE)
-		file.store_string(JSON.stringify(_numbers, "  "))
-		file.close()
+	_save_numbers()
 	print("")
 	print("brickify_buy_probe: %s" % ("ok" if _failures == 0 else "%d FAIL" % _failures))
 	quit(1 if _failures > 0 else 0)
@@ -108,7 +112,7 @@ func _steps_for(path: String, studs: int, up: String, lists: bool = false) -> vo
 	var name: String = path.get_file().get_basename().to_snake_case()
 	print("")
 	print("  %s at %d studs" % [name, studs])
-	var mesh: MeshFile = MeshFile.read(FileAccess.get_file_as_bytes(path), path.get_file())
+	var mesh: MeshFile = _read(path)
 	if mesh == null or not mesh.error.is_empty():
 		_check("%s reads: %s" % [path, mesh.error if mesh != null else "no file"], false)
 		return
@@ -145,6 +149,9 @@ func _steps_for(path: String, studs: int, up: String, lists: bool = false) -> vo
 			as_laid]], plan.weighed >= plan.steps and plan.stood == plan.steps - 1)
 	record["whole_stands"] = plan.whole_stands
 	record["whole_over"] = plan.whole_over
+	if _steps_only:
+		_save_numbers()
+		return
 	_check("every part has a step and none is held by nothing: %d unheld, %d put after their course"
 		% [plan.unheld, plan.later], plan.unheld == 0)
 	laid["steps"] = plan
@@ -331,7 +338,7 @@ func _from_collection(path: String, studs: int, up: String) -> void:
 		pieces += int(on_hand[key])
 	_check("the collection: set 10698, %d pieces in %d lots" % [pieces, on_hand.size()],
 		pieces >= 780 and pieces <= 800)
-	var mesh: MeshFile = MeshFile.read(FileAccess.get_file_as_bytes(path), path.get_file())
+	var mesh: MeshFile = _read(path)
 	var options := Brickify.Options.new()
 	options.studs = studs
 	options.up = up
@@ -441,3 +448,25 @@ func _each_on_the_ground(partial: Assistant.Model, pieces: Array) -> bool:
 		if low > lowest + 0.01:
 			return false
 	return true
+
+
+## The numbers so far, as buy.json in --out: kept as each model is done.
+func _save_numbers() -> void:
+	if _out.is_empty():
+		return
+	var file := FileAccess.open(_out.path_join("buy.json"), FileAccess.WRITE)
+	file.store_string(JSON.stringify(_numbers, "  "))
+	file.close()
+
+
+## A model file read as a picked one is, with what it names beside it (an
+## OBJ's .mtl and its picture, a .gltf's .bin).
+func _read(path: String) -> MeshFile:
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var extras: Dictionary = {}
+	for _round: int in 2:
+		for wanted: String in MeshFile.companions(bytes, path.get_file(), extras):
+			var beside: String = path.get_base_dir().path_join(wanted)
+			if not extras.has(wanted) and FileAccess.file_exists(beside):
+				extras[wanted] = FileAccess.get_file_as_bytes(beside)
+	return MeshFile.read(bytes, path.get_file(), extras)

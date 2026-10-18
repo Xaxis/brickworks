@@ -1159,6 +1159,22 @@
       "tests": []
     },
     {
+      "id": "lib:brickify from a collection",
+      "kind": "lib",
+      "entry": "src/assembly/brickify_stock.gd",
+      "reach": "XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd",
+      "area": "brickify",
+      "tests": []
+    },
+    {
+      "id": "lib:brickify steps",
+      "kind": "lib",
+      "entry": "src/assembly/brickify_steps.gd",
+      "reach": "XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd",
+      "area": "brickify",
+      "tests": []
+    },
+    {
       "id": "lib:browser keeps the models",
       "kind": "lib",
       "entry": "src/net/storage_keep.gd",

@@ -1023,6 +1023,20 @@
     },
     {
       "kind": "lib",
+      "label": "brickify steps",
+      "entry": "src/assembly/brickify_steps.gd",
+      "reach": "XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "brickify from a collection",
+      "entry": "src/assembly/brickify_stock.gd",
+      "reach": "XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/brickify_buy_probe.gd",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
       "label": "3d model files",
       "entry": "src/parts/mesh_file.gd",
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",

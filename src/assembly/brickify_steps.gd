@@ -34,9 +34,11 @@ const FEWEST := 8
 const THIN_PLATES := 3
 ## A plate in the lattice's cells, which are 2 LDU.
 const PLATE_CELLS := 4
-## A panel of fewer parts is no sub-assembly: a tile on a side stud goes in
-## with the course its brick is in.
-const PANEL_FEWEST := 2
+## A panel of fewer parts is no sub-assembly: a tile on a side stud, or two
+## or three plates on their side, go in where they stand with the course
+## their brick is in. Built on the side, the 48-stud Stanford bunny's 108
+## panels of two and three parts were 108 pages of callouts.
+const PANEL_FEWEST := 4
 ## Steps not reached, while it is worked out.
 const NEVER := 0x7FFFFFFF
 
@@ -90,12 +92,15 @@ class Plan extends RefCounted:
 		if weighed > 0:
 			out += "; every step's build stands" if stood == steps - 1 \
 				else "; %d of %d steps' builds stand" % [stood, steps - 1]
-			if not whole_stands:
-				out += (" (the whole build has %d stud joint%s past its working load, as it was "
-					+ "laid)") % [whole_over, "" if whole_over == 1 else "s"]
 		if merged > 0:
 			out += " (%d course%s put in with the next, which would not have)" % [merged,
 				"" if merged == 1 else "s"]
+		if weighed > 0 and not whole_stands and whole_over == 0:
+			out += "; the whole build does not stand by Balance, as it was laid"
+		elif weighed > 0 and not whole_stands:
+			out += ("; the whole build has %d stud joint%s past %s working load, as it was "
+				+ "laid") % [whole_over, "" if whole_over == 1 else "s",
+				"its" if whole_over == 1 else "their"]
 		return out
 
 
@@ -241,6 +246,13 @@ static func of(model: Assistant.Model, checker: Assistant, weigh: bool = true) -
 			in_course = 0
 		course_of[at] = course
 		in_course += int(at_level[at])
+	# The top's few parts in with the course under them: a step of one plate
+	# on an ear's tip ended the Stanford bunny's booklet.
+	if course > 0 and in_course < FEWEST:
+		for at: int in levels:
+			if int(course_of[at]) == course:
+				course_of[at] = course - 1
+		course -= 1
 	plan.courses = course + 1
 
 	# The step each part can go in: the least, over every way down, of the
