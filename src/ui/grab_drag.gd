@@ -1367,10 +1367,10 @@ func _find_handles() -> Array:
 			spot.erase("screen")
 			spot["x"] = roundi(at.x)
 			spot["y"] = roundi(at.y)
-			# Where its joint's point is on the page, to turn it round that.
-			var link: Bodies.Link = _bodies.parent_link[body]
-			if not camera.is_position_behind(link.point):
-				var pivot: Vector2 = to_window * camera.unproject_position(link.point) / per_css
+			# Where its joint's line is on the page, to turn it round that.
+			if spot.has("pivot"):
+				var pivot: Vector2 = to_window * (spot["pivot"] as Vector2) / per_css
+				spot.erase("pivot")
 				spot["pivot_x"] = roundi(pivot.x)
 				spot["pivot_y"] = roundi(pivot.y)
 			out.append(spot)
@@ -1408,5 +1408,14 @@ func _handle(body: int, link: Bodies.Link) -> Variant:
 			var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
 				camera.ray_normal(screen))
 			if hit.is_valid() and hit.brick_id == key:
-				return {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+				var found: Dictionary = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
+				# Its joint's line where the spot turns about it: the middle of
+				# the circle a drag round it draws on the page.
+				var middle: Vector3 = link.point
+				if link.axis != Vector3.ZERO:
+					var way: Vector3 = link.axis.normalized()
+					middle = link.point + way * (spot - link.point).dot(way)
+				if not camera.is_position_behind(middle):
+					found["pivot"] = camera.unproject_position(middle)
+				return found
 	return null
