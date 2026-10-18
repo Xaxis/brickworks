@@ -2280,6 +2280,19 @@ func _settle(
 		snapped = Vector3(
 			round((target.x - on.x) / BrickLattice.STUD) * BrickLattice.STUD + on.x, target.y,
 			round((target.z - on.y) / BrickLattice.STUD) * BrickLattice.STUD + on.y)
+	if snap_across >= BrickLattice.STUD - 0.01:
+		snapped = _on_its_own_grid(part, basis, box, footprint, target, snapped, phase != null)
+	# On the studs of the part aimed at, where those stand off the grid.
+	if snap_across >= BrickLattice.STUD - 0.01 and hit.is_valid() and hit.normal.y > 0:
+		var seated: Variant = _on_studs_off_the_grid(part, basis, hit, target)
+		if seated != null:
+			snapped = Vector3((seated as Vector3).x, snapped.y, (seated as Vector3).z)
+	# Against a side face, out from it until its near side meets the face, as
+	# a carried group goes. Its middle in the cell beside the face, a part
+	# longer than a stud across the face stood half inside the part aimed at
+	# and was refused: 8841-1's 1 x 12 beam beside the 1 x 2 at its middle.
+	if hit.is_valid() and hit.normal.y == 0:
+		snapped = _out_from_face(part, basis, snapped, hit)
 
 	# Then drop it: the resting height is the highest surface under any
 	# column the part covers, so a part laid across a step sits on the step
@@ -2324,9 +2337,20 @@ func _settle(
 	var y: float = rest_cell * BrickLattice.CELL - box.position.y \
 		- _sinks_by(part, basis, snapped, rest_cell) * BrickLattice.CELL
 	# Placing against a side face should not slide the part down onto the
-	# floor, so a sideways hit keeps the height the face implies.
+	# floor, so a sideways hit keeps the height the face implies, to the
+	# plate the pointer is on, as a carried group keeps it: two LDU off
+	# every course, a beam beside a brick stood a cell or two off it.
 	if hit.is_valid() and hit.normal.y == 0:
-		y = maxf(y, hit.adjacent().y * BrickLattice.CELL - box.position.y)
+		var level: int = BrickLattice._floor_div(hit.adjacent().y,
+			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
+		var beside: float = level * BrickLattice.CELL - box.position.y
+		# Not up onto what overhangs it there: what is over its far end is
+		# not what it is put beside. 8841-1's 1 x 12 beam went beside the 1 x
+		# 2 at its middle and up onto the 1 x 4 over them both.
+		if y > beside + 0.01 and room_for(held_part,
+				Transform3D(basis, Vector3(snapped.x, beside, snapped.z)), false, true):
+			return Transform3D(basis, Vector3(snapped.x, beside, snapped.z))
+		y = maxf(y, beside)
 	elif y + box.position.y <= GROUND_CELL * BrickLattice.CELL + 0.01:
 		# Down on the ground: unless the model holds it lower.
 		var held: Variant = _held_below_ground(part, basis, snapped, y)
@@ -2344,6 +2368,130 @@ func _settle(
 				and room_for(held_part, at):
 			return at
 	return Transform3D(basis, Vector3(snapped.x, y, snapped.z))
+
+
+## [param snapped] put on the stud grid by the part itself where its box's
+## count of studs is not to be trusted. Across an axis its box is not whole
+## studs on (a curved slope's flared sides, 50948 is 58.5 LDU across), its
+## sockets were laid on the box's guess too, so its own top studs say where
+## it goes: 8643-1's cab roof stood half a stud aside. Across an axis it is
+## whole studs on, with no socket on the grid to say otherwise
+## ([param by_sockets] false, and none of its sockets on the half-stud
+## grid), its box's middle goes where the box's count puts a middle, not
+## its origin: 50949's origin is its front row of studs, half a stud from
+## its middle. A plain part, its origin its box's middle, is where it was.
+func _on_its_own_grid(part: Lbm.PartMesh, basis: Basis, box: AABB, footprint: Vector2i,
+		target: Vector3, snapped: Vector3, by_sockets: bool) -> Vector3:
+	if (basis * Vector3.UP).y < 0.99:
+		return snapped
+	var on_grid: bool = false
+	for socket: Vector2 in part.sockets:
+		var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
+		if _on_half_stud(fposmod(at.x, BrickLattice.STUD)) \
+				and _on_half_stud(fposmod(at.z, BrickLattice.STUD)):
+			on_grid = true
+	var out: Vector3 = snapped
+	for axis: int in [0, 2]:
+		var across: float = box.size[axis] / BrickLattice.STUD
+		var whole: bool = absf(across - roundf(across)) * BrickLattice.STUD \
+			<= BrickLattice.CLEARANCE
+		var phase: Variant = null
+		if not whole:
+			for connector: Lbm.Connector in part.connectors:
+				if connector.kind != "stud" or (basis * connector.axis).y < 0.99:
+					continue
+				phase = fposmod(BrickLattice.STUD * 0.5 - (basis * connector.position)[axis],
+					BrickLattice.STUD)
+				break
+		elif not on_grid and not by_sockets:
+			var middle: float = box.position[axis] + box.size[axis] * 0.5
+			var odd: bool = (footprint.x if axis == 0 else footprint.y) % 2 == 1
+			phase = fposmod((BrickLattice.STUD * 0.5 if odd else 0.0) - middle,
+				BrickLattice.STUD)
+		if phase == null:
+			continue
+		var on: float = snappedf(float(phase), 0.5)
+		out[axis] = round((target[axis] - on) / BrickLattice.STUD) * BrickLattice.STUD + on
+	return out
+
+
+## Where the part in hand sits on the studs of the part it is aimed at the
+## top of, when those studs stand off the stud grid: a jumper plate's one
+## stud is half a stud from every other stud, and so is every stud of a
+## part on it. One socket of the part on the stud nearest the pointer, the
+## part as near the pointer as that allows; [x, 0, z] of its origin, or
+## null where the part aimed at has no stud off the grid near the pointer
+## (the grid seats it), the part stands off the lattice ([method
+## _in_frame_of] puts it in that part's frame) or the part in hand has no
+## socket to sit by. 5762-1's tail fin (4286) stands on three jumpers'
+## middle studs, and stood half a stud aside; the slope on top of it was
+## typed.
+func _on_studs_off_the_grid(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.Hit,
+		target: Vector3) -> Variant:
+	if part.sockets.is_empty() or (basis * Vector3.UP).y < 0.99 or world == null:
+		return null
+	var struck: BrickWorld.Brick = world.get_brick(hit.brick_id)
+	if struck == null or scenery.has(hit.brick_id) \
+			or not BrickLattice.is_square_to_grid(struck.transform.basis) \
+			or BrickLattice.is_off_lattice(struck.transform.origin):
+		return null
+	var mesh: Lbm.PartMesh = library.mesh_for(struck.part_id)
+	if mesh == null:
+		return null
+	var stud: Variant = null
+	var nearest: float = BrickLattice.STUD * 1.5
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or (struck.transform.basis * connector.axis).y < 0.99:
+			continue
+		var at: Vector3 = struck.transform * connector.position
+		var half: float = BrickLattice.STUD * 0.5
+		if absf(fposmod(at.x - half + 0.25, BrickLattice.STUD) - 0.25) < 0.5 \
+				and absf(fposmod(at.z - half + 0.25, BrickLattice.STUD) - 0.25) < 0.5:
+			continue
+		var away: float = Vector2(at.x - target.x, at.z - target.z).length()
+		if away < nearest:
+			nearest = away
+			stud = at
+	if stud == null:
+		return null
+	var middle: Vector3 = basis * part.bounds.get_center()
+	var chosen: Variant = null
+	var closest: float = INF
+	for socket: Vector2 in part.sockets:
+		var under: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
+		var place := Vector3((stud as Vector3).x - under.x, 0.0, (stud as Vector3).z - under.z)
+		var off: float = Vector2(place.x + middle.x - target.x, place.z + middle.z - target.z).length()
+		if off < closest:
+			closest = off
+			chosen = place
+	return chosen
+
+
+## [param snapped] pushed out of the side face [param hit] struck, by whole
+## studs, until nothing of the part's cover is on the far side of the face:
+## its near side against the face, as Carry puts a group against one.
+func _out_from_face(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
+		hit: BrickLattice.Hit) -> Vector3:
+	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
+		Vector3(snapped.x, 0.0, snapped.z)))
+	if cover.is_empty():
+		return snapped
+	var axis: int = 0 if hit.normal.x != 0 else 2
+	var way: int = hit.normal.x if axis == 0 else hit.normal.z
+	var face: int = hit.adjacent()[axis] if way > 0 else hit.adjacent()[axis] + 1
+	var lo: int = 1 << 30
+	var hi: int = -(1 << 30)
+	var n: int = 0
+	while n < cover.size():
+		lo = mini(lo, cover[n + axis])
+		hi = maxi(hi, cover[n + 3 + axis])
+		n += 6
+	var past: int = (face - lo) if way > 0 else (hi - face)
+	if past <= 0:
+		return snapped
+	var out: Vector3 = snapped
+	out[axis] += way * ceili(float(past) / BrickLattice.CELLS_PER_STUD) * BrickLattice.STUD
+	return out
 
 
 ## Where the model holds a part below the ground, at [param snapped]

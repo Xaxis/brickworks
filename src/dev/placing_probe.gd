@@ -64,6 +64,8 @@ func _run() -> void:
 		await _balance()
 	if only.is_empty() or only == "wheels":
 		await _wheels()
+	if only.is_empty() or only == "wholeset":
+		await _whole_sets()
 	var path: String = ProjectSettings.globalize_path("res://shots/placing/placing.json")
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -443,6 +445,77 @@ func _wheels() -> void:
 ## Aim at [param at], see the ghost, click as a browser clicks, and check
 ## the part went where the ghost stood (and, given [param want], where the
 ## file has it). The new brick's id, or 0.
+## What stopped the three sets of docs/CADTASK.md being built whole, each by
+## its ghost where the set's file has it (wholeset2-2026-10-18).
+func _whole_sets() -> void:
+	print("  what stopped a whole set, each by its ghost")
+	# 5762-1's tail fin on three jumper plates' middle studs, half a stud off
+	# every other stud, and the slope on its own stud (Builder.
+	# _on_studs_off_the_grid). By the grid it stood half a stud aside.
+	_main.call("clear_model")
+	_put_ldr("3020", 25, [0, -24, 110, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	for z: int in [90, 110, 130]:
+		_put_ldr("3794a", 25, [0, -32, z, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, 0, -170), Vector3(120, 80, 120)))
+	await _frames(40)
+	await _hold("4286")
+	await _turn_to(Basis.IDENTITY)
+	var fin: Transform3D = _ldr([0, -56, 130, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var jumper: Vector3 = _ldr([0, -32, 110, 1, 0, 0, 0, 1, 0, 0, 0, 1]).origin
+	var put_fin: int = await _one("4286 on three jumpers' middle studs", _screen(jumper + Vector3(4, 0, 0)), fin)
+	if put_fin != 0:
+		await _hold("50746")
+		await _turn_to(Basis.IDENTITY)
+		await _one("50746 on the fin's stud", _screen(_top_of(put_fin)), fin)
+	await _shot("jumper_fin")
+
+	# 8643-1's cab roof, a curved slope whose flared sides make it 58.5 LDU
+	# across, on the two 1 x 4 bricks of the cab: by its box and the sockets
+	# laid on it it stood half a stud aside (Builder._on_its_own_grid).
+	_main.call("clear_model")
+	_put_ldr("3010", 0, [-10, -48, 80, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	_put_ldr("3010", 0, [10, -48, 80, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	_camera.frame(AABB(Vector3(-60, 0, -160), Vector3(120, 80, 160)))
+	await _frames(40)
+	await _hold("50948")
+	await _turn_to(Basis.IDENTITY)
+	var roof: Transform3D = _ldr([0, -56, 110, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	await _one("50948 cab roof on two 1 x 4 bricks", _screen(Vector3(-6, 48, roof.origin.z)), roof)
+	await _shot("cab_roof")
+
+	# 8841-1's top beam: a 1 x 12 Technic brick beside the 1 x 2 at its
+	# middle, under the end of the 1 x 4 over them, aimed at the 1 x 2's
+	# side. Its middle in the cell beside the face it stood half in the 1 x 2;
+	# then up on the 1 x 4 over its end (Builder._out_from_face, _settle).
+	_main.call("clear_model")
+	_put_ldr("3701", 4, [0, -128, 10, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("3700", 1, [0, -104, 10, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-280, 40, -40), Vector3(320, 120, 80)))
+	_camera.look_from(Vector3(-0.8, 0.25, 0.55).normalized())
+	await _frames(60)
+	await _hold("3895")
+	await _turn_to(Basis.IDENTITY)
+	var beam: Transform3D = _ldr([-140, -104, 10, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	await _one("3895 beside the 1 x 2, under the 1 x 4's end", _screen(Vector3(-19.5, 84, -10)), beam)
+	await _shot("beam_beside")
+
+	# 8841-1's belt wheel halfway along its axle, aimed at the axle there: a
+	# hole went on an axle only flush with its tip (JointSnap.ways, End.back).
+	_main.call("clear_model")
+	var axle: int = _put_ldr("3706", 0, [0, -102, 1, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	_camera.frame(AABB(Vector3(-60, 60, -80), Vector3(120, 80, 160)))
+	_camera.look_from(Vector3(0.9, 0.3, 0.2).normalized())
+	await _frames(60)
+	await _hold("4185")
+	var wheel: Transform3D = _ldr([0, -102, 10, 0, -1, 0, -1, 0, 0, 0, 0, -1])
+	var row: Dictionary = await _aim_and_put(_screen(wheel.origin + Vector3(0, 6, 0)), false)
+	var made: BrickWorld.Brick = _world.get_brick(int(row.get("id", 0))) if row.get("put") != null else null
+	_check("4185 belt wheel halfway along its axle: put on the axle where it was aimed (ghost %s, wanted %s)"
+		% [row.get("ghost"), _ldr_of(wheel)], made != null and bool(row.get("on_joint", false))
+		and made.transform.origin.distance_to(wheel.origin) < 0.05 and axle != 0)
+	await _shot("wheel_on_axle")
+
+
 func _one(name: String, at: Vector2, want: Variant = null, joint: bool = false) -> int:
 	await _move(at + Vector2(0, 1))
 	var row: Dictionary = await _aim_and_put(at, false)
