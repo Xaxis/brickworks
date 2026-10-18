@@ -2592,13 +2592,28 @@ does), where the path lines were lost before, and in one written back over
 its source, where they are replaced in place (no probe case writes that one
 yet). A path untouched is left byte for byte.
 
-**It stays fast.** A hose laid again is drawn by at most 100 points
+**It stays fast.** A hose kept is laid by at most 100 points
 (`FlexFollow.POINTS`; three quarters of an LDU apart on a short hose, as
 Flex draws one, 7 on 42080-1's 700 LDU tubes), its length search started
-from the last frame's (`Flex._rising_root`: two or three tries where
+from the last laying's (`Flex._rising_root`: two or three tries where
 bisecting from nothing takes fifty, each length worked out without making
-the curve, `Flex._curve_length`), and how tight it bends left out of a
-drag's frame.
+the curve, `Flex._curve_length`), and how tight it bends left out. Laid
+every one every frame that way, 42080-1's six tubes cost its cylinder's drag
+8 ms a frame on a quiet box and 77 on a loaded one (13 a tube), and its drag
+frames 20.5 ms on average where G7's were 9.5 to 12.7: on the web build,
+which has one thread, a stall every frame. So a drag's frame lays hoses for
+2 ms at most (`FlexFollow.BUDGET_MS`), at least one, the longest waiting
+first, each by 50 points (`DRAG_POINTS`); a hose not laid that frame is
+carried from where it was last laid, each piece by its two ends' moves since,
+blended by how far along it is (`FlexFollow._carry`), so its ends stay in
+their fittings exactly and only its middle lags a frame or two. While the
+pointer rests the window lays the rest, a budget a frame (`GrabDrag._process`).
+Kept, every hose is laid in full as before (`Grab.commit`, `Grab.drawn(true)`
+for the copies made their own), so what is kept, saved and undone is the
+same. Of the ways to make it fit, this one keeps the layout the kept hose
+has and the cost of a frame bounded whatever the number of hoses; laying
+only those whose ends moved against each other was already so, and a
+cheaper layout alone (fewer points) still grows with the hoses.
 
 **Measured** (`grab_probe -- --only=hoses`, windowed, on a box at load 30 to
 40; `bench/results/grab10-2026-10-18`):

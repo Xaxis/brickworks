@@ -79,8 +79,16 @@ class Item extends RefCounted:
 	var drawn: Dictionary = {}
 	## The search's start for the next laying (Flex.lay_swept's hint).
 	var hint: float = 0.0
-	## The two ends' moves it was last laid for.
+	## The two ends' moves it was last drawn for.
 	var moved_for: Array = []
+	## The ends' moves it was last laid for, each slot's transform then, and
+	## whether that laying was the one it is kept as (by [method step_for]'s
+	## points) or a drag's (by [constant DRAG_POINTS]').
+	var base_for: Array = []
+	var base: Array = []
+	var fine: bool = false
+	## Frames drawn since it was last laid: the longest waiting is laid first.
+	var waited: int = 0
 	## "the pneumatic tube from the Technic Pneumatic Valve (#45)".
 	var name: String = ""
 
@@ -413,30 +421,99 @@ func _port(item: Item, n: int, move: Transform3D) -> Flex.Port:
 	return Flex.free_port(move * rest.tip, move.basis * rest.out, rest.lead)
 
 
+## A drag frame's layings, ms: past it, what is left of the hoses whose ends
+## moved is carried (below) and laid in the frames after, the longest
+## waiting first. Laid every one every frame, 42080-1's six tubes took 8 ms
+## of a cylinder's drag frame on a quiet box and 77 on a loaded one: a stall
+## every frame in a browser, which has one thread.
+const BUDGET_MS := 2.0
+## A drag's laying draws a hose by at most this many points, and the laying
+## it is kept as by [constant POINTS] (the same curve, drawn finer).
+const DRAG_POINTS := 50.0
+## Laid and carried in the last [method lay_into].
+var laid_now: int = 0
+var carried_now: int = 0
+
+
 ## Lay each item where [param at] (brick id -> Transform3D, a grab's
 ## placed) puts the parts holding its ends, and put its pieces in [param
-## at] too.
-func lay_into(at: Dictionary) -> void:
+## at] too. In a drag's frame within [constant BUDGET_MS] (at least one
+## laid, by [constant DRAG_POINTS]), the rest carried from where they were
+## last laid: each piece by the two ends' moves since, by as much as it is
+## near each, so its ends stay in their fittings. [param full]: every one
+## laid as it is kept (Grab.commit), by [constant POINTS], whatever it costs.
+func lay_into(at: Dictionary, full: bool = false) -> void:
 	var started: int = Time.get_ticks_usec()
+	laid_now = 0
+	carried_now = 0
+	var behind: Array = []
 	for item: Item in items:
 		var moves: Array = [_moved(item, 0, at), _moved(item, 1, at)]
-		if not item.moved_for.is_empty() and _same(moves[0], item.moved_for[0]) \
-				and _same(moves[1], item.moved_for[1]):
-			for key: Variant in item.drawn:
-				at[key] = item.drawn[key]
-			continue
-		item.moved_for = moves
-		item.drawn.clear()
+		var same: bool = not item.moved_for.is_empty() and _same(moves[0], item.moved_for[0]) \
+			and _same(moves[1], item.moved_for[1])
 		if _same(moves[0], moves[1]):
 			# Its ends move together: it goes with them as it is.
-			item.laid = null
-			for n: int in item.slots.size():
-				item.drawn[item.slots[n]] = (moves[0] as Transform3D) * (item.rest[n] as Transform3D)
+			if not same or item.laid != null:
+				item.laid = null
+				item.drawn.clear()
+				for n: int in item.slots.size():
+					item.drawn[item.slots[n]] = (moves[0] as Transform3D) * (item.rest[n] as Transform3D)
+				item.moved_for = moves
+				item.base_for = moves
+				item.base = item.rest
+				item.fine = true
+				item.waited = 0
+		elif not _laid_for(item, moves) or (full and not item.fine):
+			behind.append([item, moves])
+			continue
+		elif not same:
+			_carry(item, moves)
+		for key: Variant in item.drawn:
+			at[key] = item.drawn[key]
+	if not full:
+		behind.sort_custom(func(x: Array, y: Array) -> bool: return (x[0] as Item).waited > (y[0] as Item).waited)
+	for entry: Array in behind:
+		var item: Item = entry[0]
+		var moves: Array = entry[1]
+		if full or laid_now == 0 or float(Time.get_ticks_usec() - started) / 1000.0 < BUDGET_MS:
+			_lay(item, moves[0], moves[1], full)
+			laid_now += 1
 		else:
-			_lay(item, moves[0], moves[1])
+			if item.moved_for.is_empty() or not (_same(moves[0], item.moved_for[0])
+					and _same(moves[1], item.moved_for[1])):
+				_carry(item, moves)
+			item.waited += 1
+			carried_now += 1
+		item.moved_for = moves
 		for key: Variant in item.drawn:
 			at[key] = item.drawn[key]
 	lay_ms = float(Time.get_ticks_usec() - started) / 1000.0
+
+
+## Whether the item was last laid for exactly [param moves].
+static func _laid_for(item: Item, moves: Array) -> bool:
+	return not item.base_for.is_empty() and _same(moves[0], item.base_for[0]) \
+		and _same(moves[1], item.base_for[1])
+
+
+## Draw [param item] carried from where it was last laid (or stood) to
+## [param moves]: each piece by its ends' moves since, blended by how far
+## along it is (in eighths), the first end's piece by the first end's move
+## and the last's by the last's.
+func _carry(item: Item, moves: Array) -> void:
+	var was: Array = item.base_for if not item.base_for.is_empty() \
+		else [Transform3D.IDENTITY, Transform3D.IDENTITY]
+	var from: Array = item.base if not item.base.is_empty() else item.rest
+	var one: Transform3D = (moves[0] as Transform3D) * (was[0] as Transform3D).affine_inverse()
+	var other: Transform3D = (moves[1] as Transform3D) * (was[1] as Transform3D).affine_inverse()
+	var steps: Array = []
+	for k: int in 9:
+		steps.append(one.interpolate_with(other, float(k) / 8.0))
+	var last: int = maxi(item.slots.size() - 1, 1)
+	item.drawn.clear()
+	for n: int in item.slots.size():
+		var move: Transform3D = steps[roundi(float(n) / float(last) * 8.0)]
+		item.drawn[item.slots[n]] = move * (from[n] as Transform3D)
 
 
 ## How finely an item's path is drawn as it is laid again, LDU: its kind's
@@ -451,10 +528,10 @@ static func step_for(item: Item) -> float:
 	return maxf(Flex.SAMPLE, item.length / POINTS)
 
 
-func _lay(item: Item, one: Transform3D, other: Transform3D) -> void:
+func _lay(item: Item, one: Transform3D, other: Transform3D, fine: bool = true) -> void:
 	var a: Flex.Port = _port(item, 0, one)
 	var b: Flex.Port = _port(item, 1, other)
-	var step: float = FlexFollow.step_for(item)
+	var step: float = FlexFollow.step_for(item) if fine else maxf(Flex.SAMPLE, item.length / DRAG_POINTS)
 	if not item.fitted:
 		_fit(item)
 	var controls: PackedVector3Array = _controls_at(item, one, other)
@@ -467,7 +544,18 @@ func _lay(item: Item, one: Transform3D, other: Transform3D) -> void:
 		laid = Flex.lay_swept(item.kind, a, b, item.real, PackedVector3Array(), item.hint, step, false)
 	item.hint = laid.sag if item.kind == "string" else laid.k
 	item.laid = laid
+	item.drawn.clear()
 	_map(item, laid)
+	if item.drawn.size() < item.slots.size():
+		# Laid as no pieces at all: carried as it is.
+		_carry(item, [one, other])
+		return
+	item.base_for = [one, other]
+	item.base = []
+	for slot: int in item.slots:
+		item.base.append(item.drawn[slot])
+	item.fine = fine
+	item.waited = 0
 
 
 ## Read the item's bend off it where it lies (Flex.fit_bend, as Reshape reads

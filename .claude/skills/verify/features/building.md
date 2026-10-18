@@ -827,8 +827,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Reshape reads one). Each drawn frame (`Grab.drawn`, from every
   `world.set_drawn` of a drag, a swing, a coast, a settle) it is laid again
   between its ends' new places by `Flex.lay_swept`, its bend points carried by
-  both ends, the length search started from the last frame's (`hint`) and the
-  path drawn by at most 160 points (`FlexFollow.POINTS`). A pose that puts its
+  both ends, the length search started from the last laying's (`hint`): in a
+  drag's frame for 2 ms at most (`FlexFollow.BUDGET_MS`, by 50 points), the
+  rest carried from their last laying by their ends' moves (`_carry`) and laid
+  in the next frames or while the pointer rests; kept, every one in full (100
+  points, `FlexFollow.POINTS`). A pose that puts its
   ends further apart than it reaches (straight runs plus the line between)
   is no pose (`Grab._test`): the drag stops there and the status bar and
   move_part say "the pneumatic tube from the … holds it". Kept, it moves piece
