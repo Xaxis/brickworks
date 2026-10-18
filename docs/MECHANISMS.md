@@ -2687,3 +2687,20 @@ load 30 to 40 (G7 measured 9.5 to 12.7, 13.5 to 19.8 and 15 to 22), within
 the case's gate on the mean and the 95th per cent. flex_probe, flex_ui_probe
 (its reshape check reads `Flex.along_of` now), mechanism_probe and
 simulate_probe (41) pass.
+
+**Fitting a frame, measured** (`grab_probe -- --only=hoses` at load 20 to 23
+of 24 cores; `bench/results/grab10-2026-10-18`). Laying every hose every
+frame, 42080-1's six tubes took 8.2 ms of a frame here and 77 at worst on a
+loaded box, its cylinder's drag 20.5 ms a frame on average and 43.1 at worst,
+and a browser's frame with the made tube 7.7 ms for the tube. Within the
+budget: 42080-1's six 3.2 ms at worst (0.5 a tube), 42043-1's two 1.9,
+42050-1's eight 2.7, the made tube 0.4; every one laid within one or two
+frames of the pointer resting. 42080-1's cylinder drag (the whole probe):
+12.5 ms a frame on average, 16.9 at the 95th per cent, 17.2 at worst, back
+with G7's 9.5 to 12.7. In a browser (grab_flow on a local export) the tube
+costs at most 2.7 ms a frame and the drag frame 2.1 ms on average, 3.9 at
+worst; every check passed. The probe now fails a frame whose hoses take
+more than 3.5 ms: laid every one every frame, 42080-1's took 10.3 and failed
+it. The whole probe ran 406 checks at load 30 to 37 and failed five, all
+timing: the four-bar's drawing share and the hose frames; each passes run
+alone at low load.
