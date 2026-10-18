@@ -164,7 +164,9 @@ whole cycle.
 
 - A tyre goes on its rim. Aimed at a rim, the tyre in hand snaps round it,
   centred and square, `R` and `T` turning it about the rim and over; a rim
-  goes into a tyre the same way. A tyre's hole is open through it (92 of
+  goes into a tyre the same way. A tyre drawn with no connector of its own
+  is joined to its rim by its round hole, so it turns with its wheel. A
+  tyre's hole is open through it (92 of
   the library's 118 tyres, from 31): a tyre's cover was closed at its
   sidewalls, so the wheel holder's pin ran into it and no tyre could be
   put on its rim, even typed in Properties.

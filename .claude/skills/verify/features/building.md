@@ -613,7 +613,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   joint's half with its studs under the foot is carried by it (a hinge brick
   on a turntable's top). A joint between two parts overrides their shared
   studs and cells (turntable top and base, hinge halves, click halves); a
-  tyre is one with its wheel; a lone pin is part of the first thing it is in.
+  tyre is one with its wheel (a tyre drawn with no connector by the bore
+  `occupancy.ring_bore` gives it), and a stud against a tyre holds nothing
+  (rubber, no socket: 8054-1's steering wheel, a rim with its tyre, read as
+  held by two dash studs, locked its column); a lone pin is part of the
+  first thing it is in.
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket), else the heaviest body. Read ahead once a
   revision, on a worker from 300 parts (`GrabDrag._ready_ahead`).
@@ -718,7 +722,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   outside (`JointSnap._wraps`, the bores or shafts on one line at one size
   as one end); a tyre goes on a rim whose barrel is its hole's size, within
   1 LDU, the middles of their rounds together, either way round (`T`),
-  turned about the rim by `R`, and a rim into a tyre the same way. A wheel
+  turned about the rim by `R`, and a rim into a tyre the same way. A tyre
+  drawn with no primitive, and so with no connector, has its hole as a bore
+  (`occupancy.ring_bore`: a ring round a line along x or z through its
+  middle), so it is joined to its rim (`Joints.rounds`) and turns with its
+  wheel: unjoined, 8020-1's and 8808-1's steering stopped against their own
+  tyres once their holes were open (`grab_probe -- --only=fourbar`,
+  `--only=racks`). A wheel
   that comes with its tyre on has neither end, and goes on its pin or axle
   by its hub as a rim does. Aimed at the rim's middle. The connector aimed at is the one nearest the pointer's
   line, within 12 LDU, and not behind what the line met. `R` turns the part

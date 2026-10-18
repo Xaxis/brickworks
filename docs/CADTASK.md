@@ -1500,6 +1500,49 @@ the hole (23798, 32003, 3740, 11957: the voxels, not the cover), and tyres
 whose sidewall lips stand inside their narrowest bore or whose tread is
 drawn with cracks (11209, 56891), which this measure counts as closed.
 
+**What the open holes broke, found by the release check.** Release m72 ran
+`grab_probe` on these covers: 5 FAILED, all steering, stopped by the model
+from the first frame (8020-1's four-bar, 8808-1's rack and pinion). With
+each changed part's old cover put back in turn, one did it: 3483, a tyre
+drawn with no primitive at all and so with no connector. It was joined to
+nothing, and its rim (3482) turned inside it as it stood still. That went
+unseen while the tyre's cover closed its hole: it held 8 of the rim's cells,
+and an overlap where a part stands is forgiven. Open, it touched the rim
+(995 cells next to each other, none shared), and the rim met it at once. The
+fault was the missing joint, not the open hole: a part with no connector at
+all that is a ring round a line along x or z through its middle now has its
+hole as a bore, as wide as its nearest point to the line
+(`occupancy.ring_bore`; `PartForge` alike, held by `element_files_probe`,
+which builds 3483 too). 3483's is 19 LDU across, its rim's shaft 19, so the
+two are a round on a round (`Joints.rounds`), the tyre turns with its wheel,
+and its ghost goes round a rim like the others. 41 of the catalogue's tyres
+have no connector. A ring is cells in every eighth of the way round the
+line and none further out than four of the hole's radii: with only four
+half-planes asked, 67503c01, a car's canvas roof whose sides hang below its
+middle, was given a bore 9 across, and the sub-build's check that no
+control's connectors move refused the merge. And round: as near the line
+in every eighth, to a quarter: a door's frame (4343), a beard round a
+neck and a wagon's cover were rings round a line, with no round a rim
+goes in. Every part with no connector was built to find what the rule
+changes (7,300 parts with the tyres and wheels, 761 s on 8 workers, and
+the 46 it first found again with the round test, 186 s): 39 parts get a
+bore, 29 tyres, four rubber belts, three traction bands for train wheels,
+a wedge belt wheel's tyre, and two sensor fronts with a round window
+(`subbuild2/rings.txt`). Merged: 436 entries, 419 meshes. Some wheels'
+covers grow from a few dozen boxes to near 2,000 (64712, 15038, 32077):
+the catalogue had them from code older than the coarse covers of
+2026-10-13, and the code before this branch makes the same.
+
+And one more, found by running main's whole `grab_probe` (607928d merged)
+on these covers: it passed, but with one check fewer (262 of the 263 it
+runs on the old ones). 8054-1 Model C's steering wheel is a rim with a
+tyre on its column, and the tyre, now held on its rim (`Bodies`: a tyre
+does not turn on its rim), also touched two studs of the dash, which
+read as holding it: the column, the dash and the chassis became one
+body, so no column turned the pinion through its bevels and the probe
+skipped its gear check. A tyre is rubber with no socket: a stud against
+it holds nothing now (`Bodies`, in its studs).
+
 **Proved** (all in the results folder):
 
 | check | before | now |
