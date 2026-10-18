@@ -1163,3 +1163,74 @@ def test_a_round_plate_with_an_opening_is_open_through_it() -> None:
     cells, _connectors = _built_cover("11833.dat")
     assert not [c for c in cells if c[0] in (-1, 0) and c[2] in (-1, 0)]
     assert (15, -1, 0) in cells
+
+
+def _near_axis(cells: set, within: float) -> list:
+    """Cells whose middles are within ``within`` LDU of a tyre's axle line,
+    its own z through x 0, y 0."""
+    return [c for c in cells if ((2 * c[0] + 1) ** 2 + (2 * c[1] + 1) ** 2) ** 0.5 < within]
+
+
+@needs_numpy
+def test_a_tyre_is_open_through_its_hole() -> None:
+    """50951's tread meets its shoulder on a circle at z 7, a cell's middle,
+    and the column on it crossed both faces there and counted itself inside
+    across the hole: the hole was closed at both sidewalls, so the wheel
+    holder's pin a rim goes on ran into the tyre and no tyre could be put
+    on its rim. Its hole is open from one sidewall to the other now, 12 LDU
+    across at its narrowest, and its tread is still there."""
+    cells, _connectors = _built_cover("50951.dat")
+    assert not _near_axis(cells, 11.0)
+    assert len(_near_axis(cells, 19.0)) > 500
+
+
+@needs_numpy
+def test_a_tyre_past_the_box_limit_keeps_its_hole() -> None:
+    """2857, a tyre 20/46 x 30, is past the box limit and covered at a
+    coarser grain, inside the convex hull of its cells: a disc, its hole and
+    all. The hole is carved out as a Technic hole is, so a rim goes in."""
+    cells, _connectors = _built_cover("2857.dat")
+    assert not _near_axis(cells, 36.0)
+    assert len(_near_axis(cells, 48.0)) > 1000
+
+
+@needs_numpy
+def test_a_seam_over_a_hollow_is_counted_once() -> None:
+    """4215a, a panel 1 x 4 x 3, has edges along x at z 7 under its front,
+    a cell's middle. A column on them crossed both faces they join, and the
+    panel had a wall a cell thick standing in front of its own, the whole
+    height of the panel. That column is its base and the top of its frame
+    now; the panel's own wall, behind it, is all there."""
+    cells, _connectors = _built_cover("4215a.dat")
+    column = [c for c in cells if c[0] == -13 and c[2] == 3]
+    assert len(column) <= 8, column
+    assert len([c for c in cells if c[0] == -13 and c[2] == -4]) >= 30
+
+
+@needs_numpy
+def test_a_tyre_drawn_with_no_primitive_has_its_hole_as_a_bore() -> None:
+    """3483 is drawn with no primitive and had no connector, so it was joined
+    to nothing: on 8020-1's and 8808-1's steering its rim turned inside it
+    as it stood still, unseen while its cover closed its hole, and stopped
+    against it at once when the hole was opened. Its hole is a bore now,
+    19 LDU across its whole width, as its rim's shaft is, so the two are a
+    round on a round."""
+    _cells, connectors = _built_cover("3483.dat")
+    assert len(connectors) == 1
+    bore = connectors[0]
+    assert bore.kind == "bore" and bore.gender == "female"
+    assert bore.radius == pytest.approx(19.0, abs=0.01)
+    assert bore.length == pytest.approx(18.0, abs=0.01)
+    assert abs(bore.axis[2]) == pytest.approx(1.0)
+    rim = [c for c in _built_cover("3482.dat")[1] if c.kind == "shaft"]
+    assert any(abs(c.radius - bore.radius) <= 1.0 for c in rim)
+
+
+@needs_numpy
+def test_an_arch_with_a_free_line_through_it_is_no_ring() -> None:
+    """67503c01, a car's canvas roof, has no connector and a line along its
+    length with nothing within 9 LDU of it, its sides hanging below the
+    line. It is an arch, not a ring a rim goes in: it reaches 80 LDU out.
+    It gets no bore."""
+    _cells, connectors = _built_cover("67503c01.dat")
+    assert connectors == []

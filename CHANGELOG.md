@@ -283,6 +283,19 @@ whole cycle.
   4,000-part model each look held a frame for 180 to 460 ms, and on a
   2,184-part one drawn without a graphics card the page drew one frame a
   second. It now draws sixty.
+- A tyre goes on its rim. Aimed at a rim, the tyre in hand snaps round it,
+  centred and square, `R` and `T` turning it about the rim and over; a rim
+  goes into a tyre the same way. A tyre drawn with no connector of its own
+  is joined to its rim by its round hole, so it turns with its wheel. A
+  tyre's hole is open through it (92 of
+  the library's 118 tyres, from 31): a tyre's cover was closed at its
+  sidewalls, so the wheel holder's pin ran into it and no tyre could be
+  put on its rim, even typed in Properties.
+
+- In a browser, a step of the timeline on a big model is quick again. Since
+  parts could be grabbed and moved on their joints, the page looked for
+  every part's drag handle twice a second, and a step on a 925-part model
+  took 6 s.
 
 - A shared model's Build it draws the steps before the one shown faded
   again in a browser. Since the faster page turns, they were sometimes

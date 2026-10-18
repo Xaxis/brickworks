@@ -157,6 +157,14 @@ static func read(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 	return out
 
 
+## Whether a part is a tyre, by its name.
+static func _is_tyre(info: PartLibrary.PartInfo) -> bool:
+	if info == null:
+		return false
+	var name: String = info.name.to_lower() + " "
+	return name.contains("tyre") or name.contains("tire ")
+
+
 func _find(key: int) -> int:
 	var at: int = key
 	while int(_up.get(at, at)) != at:
@@ -278,7 +286,7 @@ func _read() -> void:
 				kind = "turntable"
 				holds = false
 			# A tyre is held on its wheel: it does not turn on the rim.
-			if names.contains("tyre") or names.contains("tire "):
+			if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
 				_join(a, b)
 				continue
 			# A clip, or a minifigure's hand, slides along the bar it holds;
@@ -367,6 +375,12 @@ func _read() -> void:
 				_standing[on] = true
 			continue
 		if not _up.has(a) or not _up.has(b):
+			continue
+		# A tyre is rubber with no socket: a stud pressed against its tread
+		# holds nothing. Held on its wheel (above), 8054-1's steering wheel,
+		# a rim with its tyre, read as held by the two dash studs its tyre
+		# touches, and its column was locked to the chassis.
+		if _is_tyre(info_of.get(a)) or _is_tyre(info_of.get(b)):
 			continue
 		var pair := Vector2i(mini(a, b), maxi(a, b))
 		if not per_pair.has(pair):

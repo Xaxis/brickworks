@@ -292,6 +292,11 @@ func _aim(part: String, want: Transform3D) -> String:
 		var holder: BrickWorld.Brick = _world.get_brick(site.brick)
 		var middle: Vector3 = (holder.transform * _library.mesh_for(holder.part_id).bounds) \
 			.abs().get_center()
+		# A rim's middle is its own: a tyre goes on from the outside of the
+		# model, where the rim's face is, not across the axle from the far
+		# wheel.
+		if site.is_wrap():
+			middle = _model_middle()
 		var outward: Vector3 = site.axis if (site.middle() - middle).dot(site.axis) >= 0.0 \
 			else -site.axis
 		_camera.look_from((outward + Vector3(0.25, 0.7, 0.35)).normalized())
@@ -417,6 +422,17 @@ func _how_far(want: Transform3D) -> float:
 	for n: int in 3:
 		turned += (ghost.basis[n] - want.basis[n]).length()
 	return ghost.origin.distance_to(want.origin) + (0.0 if turned < 0.01 else 50.0 + turned)
+
+
+## The middle of every part down.
+func _model_middle() -> Vector3:
+	var box := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in _world.bricks():
+		box = AABB(brick.transform.origin, Vector3.ZERO) if first \
+			else box.expand(brick.transform.origin)
+		first = false
+	return box.get_center()
 
 
 static func _off_line(point: Vector3, site: JointSnap.End) -> float:

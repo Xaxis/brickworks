@@ -145,6 +145,68 @@ function appMatrix(m) {
   return [[a, -b, -c], [-d, e, f], [-g, h, i]];
 }
 
+// Each part's box in its own frame, in the app's axes, from the catalogue
+// (assets/generated/catalogue.json): [min, max], or null for one it has not.
+let boxes = null;
+function boxOf(id) {
+  if (!boxes) {
+    boxes = {};
+    try {
+      const cat = JSON.parse(readFileSync(resolve("assets/generated/catalogue.json"), "utf8"));
+      for (const e of cat.parts) boxes[String(e.id).toLowerCase()] = [e.bounds_min, e.bounds_max];
+    } catch { /* no catalogue: the order is lowest first alone */ }
+  }
+  return boxes[id] || null;
+}
+
+// A part of a file where the file has it, as a box in the app's space.
+function placedBox(part, own) {
+  const b = own(part.id);
+  if (!b) return null;
+  const m = appMatrix(part.m);
+  const o = toApp(part.at);
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (let c = 0; c < 8; c++) {
+    const p = [b[c & 1][0], b[(c >> 1) & 1][1], b[(c >> 2) & 1][2]];
+    for (let r = 0; r < 3; r++) {
+      const v = m[r][0] * p[0] + m[r][1] * p[1] + m[r][2] * p[2] + o[r];
+      lo[r] = Math.min(lo[r], v);
+      hi[r] = Math.max(hi[r], v);
+    }
+  }
+  return [lo, hi];
+}
+
+// The order a hand puts a step's parts in: lowest first, as what holds a
+// part goes on before it, but a part whose middle is inside a bigger part
+// of the step after that part (the smallest such: a post standing beside
+// the brick a pin is in reaches round the pin too). A pin goes into a
+// brick's hole once the brick is down, though the pin's middle is lower
+// than the brick's top: 8841-1's step 1 tried its four pins before the
+// bricks they go in, with no hole there for them (2026-10-17).
+export function handOrder(step, own = boxOf) {
+  const low = [...step].sort((p, q) => q.at[1] - p.at[1]);
+  const box = low.map((p) => placedBox(p, own));
+  const size = (b) => (b ? (b[1][0] - b[0][0]) * (b[1][1] - b[0][1]) * (b[1][2] - b[0][2]) : 0);
+  const holders = low.map((p, n) => {
+    const at = toApp(p.at);
+    const round = low.filter((q, k) => k !== n && box[k] && size(box[k]) > size(box[n])
+      && at.every((v, i) => v >= box[k][0][i] - 1 && v <= box[k][1][i] + 1));
+    round.sort((a, b) => size(box[low.indexOf(a)]) - size(box[low.indexOf(b)]));
+    return round.slice(0, 1);
+  });
+  const out = [];
+  const done = new Set();
+  while (out.length < low.length) {
+    const next = low.find((p, n) => !done.has(p) && holders[n].every((q) => done.has(q)))
+      || low.find((p) => !done.has(p));
+    out.push(next);
+    done.add(next);
+  }
+  return out;
+}
+
 // -- the 24 turns in hand (BrickLattice.basis_for) ------------------------------
 
 const FACES = ["up", "+z", "down", "-z", "+x", "-x"];
@@ -407,15 +469,94 @@ async function take(id) {
   return { ok: sameId(id, inHand), held: inHand };
 }
 
+// What each kind of end in hand goes on (JointSnap.TAKES).
+const TAKES = { pin: ["pin_hole"], axle: ["axle_hole", "pin_hole"], pin_hole: ["pin", "axle"],
+  axle_hole: ["axle"], shaft: ["bore"], bore: ["shaft"], tyre: ["rim"], rim: ["tyre"] };
+// The ends of a part that goes into or round another's: a pin, an axle, a
+// tyre, a rim.
+const INTO = new Set(["pin", "axle", "tyre", "rim"]);
+// How near on the page to where the part goes a joint is looked at, px.
+const JOINT_PX = 40;
+// T and R on a joint, as a person turns a pin over and round in its hole
+// until it stands as the booklet shows it: each way onto it first (a pin
+// has four: either end in, from either face), the part held as the file
+// has it, then each again half a turn round, then a quarter either way.
+const ON_JOINT_KEYS = ["t", "t", "t", "t", "r", "r", "r", "r", "t", "t", "t",
+  "t", "r", "r", "t", "t", "t", "t", "r", "r", "r", "r", "t", "t", "t"];
+
+// Whether the ghost stands at [target] turned as [turn] (the app's matrix,
+// rows), to an LDU and a hundredth.
+function standsAt(s, target, turn) {
+  if (!s.ghost || !s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1)) return false;
+  const pose = s.ghost_pose;
+  if (!pose || !turn) return true;
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 3; r++) if (Math.abs(pose[3 + c * 3 + r] - turn[r][c]) > 0.01) return false;
+  }
+  return true;
+}
+
+// The part in hand onto the joint its place is on: the ends of the parts
+// down that its own ends take, nearest on the page to where it goes, each
+// pointed at in turn, and on one, R and T until the ghost stands where the
+// file has it. A pin aimed about a brick goes on the studs; aimed at the
+// hole it goes in (8841-1's pins, 2026-10-17). Null when none takes it.
+async function onItsJoint(target, turn, view, here) {
+  let s = await fresh();
+  const kinds = new Set((s.held_ends || []).flatMap((k) => TAKES[k] || []));
+  if (!kinds.size) return null;
+  const aim = project(target, view, shift);
+  // Looked for only for a part that goes into or round something: a Technic
+  // brick has holes but goes on the studs, and hung on every pin near it
+  // first it took 23 presses (8841-1's second 3702, 2026-10-17).
+  const goes = (s.held_ends || []).some((k) => INTO.has(k));
+  const near = (goes ? s.joints || [] : []).filter((j) => kinds.has(j.kind))
+    .map((j) => ({ ...j, d: Math.hypot(j.x - aim[0], j.y - aim[1]) }))
+    .filter((j) => j.d <= JOINT_PX).sort((a, b) => a.d - b.d).slice(0, 3);
+  // Already on a joint where the pointer is, in the file's place but turned
+  // otherwise: turned there first. On one somewhere else it is not this
+  // part's joint (8841-1's second brick hung on the first one's pin, and
+  // turned there 77 presses, 2026-10-17).
+  const placed = s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1);
+  if (s.on_joint && placed) near.unshift({ x: here[0], y: here[1], here: true });
+  for (const j of near) {
+    if (!j.here) {
+      count.aim_fix += 1;
+      await pointTo(j.x, j.y);
+      s = await fresh();
+    }
+    if (!s.on_joint) continue;
+    for (let n = 0; n <= ON_JOINT_KEYS.length; n++) {
+      if (n > 0) {
+        await key(ON_JOINT_KEYS[n - 1], 300);
+        s = await fresh();
+      }
+      if (!standsAt(s, target, turn) || !s.can_place) continue;
+      // Seen there twice, as below.
+      const again = await fresh();
+      if (!standsAt(again, target, turn) || !again.can_place) continue;
+      const before = again.bricks;
+      count.click += 1;
+      await page.mouse.click(j.x, j.y);
+      const after = await until((now) => now.bricks > before, 8);
+      return after.bricks > before ? { ok: true, at: again.ghost }
+        : { ok: false, why: "the click put nothing down" };
+    }
+  }
+  return null;
+}
+
 let shiftToApp = null;
 let viewRect = [362, 106, 1238, 710];
 async function put(part, view) {
   const want = toApp(part.at);
   if (shiftToApp) {
     const target = want.map((v, i) => v + shiftToApp[i]);
+    const turn = appMatrix(part.m);
     let pointer = project(target, view, shift);
     let last = null;
     let outs = 0;
+    let joint = false;
     for (let n = 0; n < AIMS; n++) {
       // Off the model's part of the window, a click would land on a panel:
       // out a little, as a person zooms out to see where it goes.
@@ -446,7 +587,11 @@ async function put(part, view) {
           continue;
         }
       }
-      if (s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1) && s.can_place) {
+      // On a joint, turned as the file has it too: a pin the other way round
+      // in its hole stands in the same place (8841-1's second pin, 2026-10-17).
+      const turnedRight = !s.on_joint || standsAt(s, target, turn);
+      if (s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1) && s.can_place
+          && turnedRight) {
         const before = s.bricks;
         count.click += 1;
         await page.mouse.click(pointer[0], pointer[1]);
@@ -454,8 +599,17 @@ async function put(part, view) {
         return after.bricks > before ? { ok: true, at: s.ghost }
           : { ok: false, why: "the click put nothing down" };
       }
-      if (s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1) && !s.can_place) {
+      if (s.ghost && s.ghost.every((v, i) => Math.abs(v - target[i]) <= 1) && !s.can_place
+          && turnedRight) {
         return { ok: false, why: "the ghost stands in the file's place but the app says it may not go there" };
+      }
+      // Not there: if it joins by something, onto the joint it goes on, once.
+      if (!joint) {
+        joint = true;
+        const onto = await onItsJoint(target, turn, view, pointer);
+        if (onto) return onto;
+        await pointTo(pointer[0], pointer[1]);
+        s = await fresh();
       }
       if (!s.ghost) {
         pointer = [pointer[0] + (n % 2 ? -7 : 7), pointer[1] + 5];
@@ -577,13 +731,25 @@ function compareParts(file, built, aliases = {}) {
     left.splice(n, 1);
     return true;
   };
-  for (const p of a) {
-    if (takeOne((q) => q.id === p.id && q.colour === p.colour && near(p, q) && same(p, q), p)) why.exact += 1;
-    else if (takeOne((q) => q.id === p.id && near(p, q) && same(p, q))) why.recoloured += 1;
-    else if (takeOne((q) => q.id === p.id && near(p, q))) why.turned += 1;
-    else if (takeOne((q) => q.id === p.id && q.colour === p.colour)) why.moved += 1;
-    else why.missing += 1;
+  // Each kind of match over every part of the file before the next, looser
+  // one: one part at a time, a file part with nothing built in its place
+  // took, as moved, another's that was exact (8841-1's first 8, whose file
+  // lists a plate above before the plate beside it, 2026-10-17).
+  let rest = [...a];
+  const tests = [
+    ["exact", (p, q) => q.id === p.id && q.colour === p.colour && near(p, q) && same(p, q)],
+    ["recoloured", (p, q) => q.id === p.id && near(p, q) && same(p, q)],
+    ["turned", (p, q) => q.id === p.id && near(p, q)],
+    ["moved", (p, q) => q.id === p.id && q.colour === p.colour],
+  ];
+  for (const [kind, test] of tests) {
+    rest = rest.filter((p) => {
+      if (!takeOne((q) => test(p, q), kind === "exact" ? p : null)) return true;
+      why[kind] += 1;
+      return false;
+    });
   }
+  why.missing = rest.length;
   return { shift: by, ...why, extra: left.length, file: a.length, built: b.length,
     steps: sameSteps(pairs) };
 }
@@ -669,7 +835,7 @@ await page.waitForTimeout(8000);
   let stepHas = 0;
   for (let k = 0; k < set.steps.length; k++) {
     // Lowest first, as a hand puts them on: what holds a part before it.
-    const step = [...set.steps[k]].sort((p, q) => q.at[1] - p.at[1]);
+    const step = handOrder(set.steps[k]);
     for (const part of step) {
       if (MOST && done >= MOST) break;
       // Out of time, or told to stop (a file named stop in --out): what is
@@ -792,7 +958,7 @@ await page.waitForTimeout(8000);
       kept: compared ? compared.steps : null },
     pictures: { built: shotBuilt, file: shotFile, side_by_side: `${out}/${stem}_side_by_side.png` },
     // In the order they were tried: each step's lowest first.
-    parts_list: set.steps.map((s, k) => [...s].sort((p, q) => q.at[1] - p.at[1]).map((p) => ({ step: k + 1, id: p.id, colour: p.colour,
+    parts_list: set.steps.map((s, k) => handOrder(s).map((p) => ({ step: k + 1, id: p.id, colour: p.colour,
       turn: turnFor(appMatrix(p.m)) }))).flat(),
     built_parts: builtParts.map((p) => ({ id: p.id, colour: p.colour, at: p.at, m: p.m, step: p.step + 1 })),
   };
