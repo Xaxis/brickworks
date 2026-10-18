@@ -56,6 +56,8 @@ var _part_shots: Dictionary = {}
 var _attach_of: Dictionary = {}
 ## The callout's own page shown, by number, or -1.
 var _callout_shown: int = -1
+## The item the one being dragged is over, or -1.
+var _over: int = -1
 var _drawing: Working.Job = null
 
 var _canvas: Control
@@ -569,7 +571,7 @@ func _draw_page() -> void:
 			int(3.6 * k), INK)
 	for at: int in _items.size():
 		_draw_item(_items[at], k, font)
-		if _overlapped.has(_item_name(at)):
+		if _overlapped.has(_item_name(at)) or at == _over and not _drag.is_empty():
 			var rect: Rect2 = _items[at]["rect"]
 			_canvas.draw_rect(Rect2(rect.position * k, rect.size * k), OVERLAPPED, false, 2.0)
 	if _selected >= 0 and _selected < _items.size():
@@ -924,6 +926,22 @@ func _dragged(event: InputEventMouse) -> void:
 	# dragged is where it prints.
 	item["rect"] = _on_page(snapped["rect"], resize)
 	_guides = snapped["lines"]
+	# Over another thing as it is dragged: said, and outlined, before it is
+	# let go (Booklet._settle moves one of them off the other when it is).
+	_over = -1
+	for at: int in _items.size():
+		if at == _selected or _items[at]["kind"] in ["arrow", "sign"]:
+			continue
+		var solid: Rect2 = _items[at]["rect"]
+		if _items[at]["kind"] == "picture":
+			solid = Booklet.ink_of(_items[at]["entry"])
+		var shared: Rect2 = (item["rect"] as Rect2).intersection(solid)
+		if shared.size.x > Booklet.OVERLAP and shared.size.y > Booklet.OVERLAP:
+			_over = at
+			break
+	if _over >= 0:
+		_say_soft("Over step %d's %s: let go here and one of them is moved off the other." % [
+			(_items[_over]["entry"] as Booklet.Entry).number, Booklet._thing_word(str(_items[_over]["kind"]))])
 	_place_controls()
 	_canvas.queue_redraw()
 
@@ -942,6 +960,7 @@ func _drop() -> void:
 	var item: Dictionary = _items[_selected]
 	var was: Rect2 = _drag["rect"]
 	_drag = {}
+	_over = -1
 	_guides = []
 	var rect: Rect2 = item["rect"]
 	if rect.position.distance_to(was.position) < 0.05 and rect.size.distance_to(was.size) < 0.05:

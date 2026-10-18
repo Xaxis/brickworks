@@ -873,7 +873,41 @@ func _overlap_said(base: String) -> void:
 	await _until_laid(editor)
 	var at: int = editor.item_named("page_picture_%d" % second.number)
 	var ink: Rect2 = Booklet.ink_of(first)
-	await editor.place(at, Rect2(ink.get_center() - second.rect.size * 0.25, second.rect.size * 0.5))
+	if DisplayServer.get_name() != "headless":
+		# Dragged by the mouse over step 1's model and held: the page says so
+		# before it is let go.
+		var control: Control = editor._items[at]["control"]
+		var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+		var scale: Vector2 = Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size
+		var from: Vector2 = control.get_global_rect().get_center()
+		var to: Vector2 = from + (ink.get_center() - second.rect.get_center()) * k
+		var down := InputEventMouseButton.new()
+		down.button_index = MOUSE_BUTTON_LEFT
+		down.pressed = true
+		down.position = from * scale
+		down.global_position = down.position
+		Input.parse_input_event(down)
+		await _frames(3)
+		for n: int in range(1, 9):
+			var step := InputEventMouseMotion.new()
+			step.position = from.lerp(to, n / 8.0) * scale
+			step.global_position = step.position
+			step.button_mask = MOUSE_BUTTON_MASK_LEFT
+			Input.parse_input_event(step)
+			await _frames(2)
+		var held: String = str(editor.page_state().get("said", ""))
+		_check("step %d's picture held over step %d's model: \"%s\"" % [second.number, first.number,
+			held.left(90)], held.begins_with("Over "))
+		var up := InputEventMouseButton.new()
+		up.button_index = MOUSE_BUTTON_LEFT
+		up.pressed = false
+		up.position = to * scale
+		up.global_position = up.position
+		Input.parse_input_event(up)
+		await _frames(4)
+		await _until_laid(editor)
+	else:
+		await editor.place(at, Rect2(ink.get_center() - second.rect.size * 0.25, second.rect.size * 0.5))
 	await _until_laid(editor)
 	var state: Dictionary = editor.page_state()
 	var after: Array[Booklet.Page] = await _laid()
