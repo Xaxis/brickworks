@@ -311,6 +311,11 @@ whole cycle.
   as the part is carried instead; a train whose gears lock names what it
   is held between. It used to say "held rigidly to what stays (26 bodies,
   30 joints ...)", which no one could act on.
+- A steering column with a round brick on it turns back too. Turned 60
+  degrees, the brick brought one of its studs under the gear beside it,
+  and the gear reading took the gear for standing on it: the steering's
+  train was held to the chassis and the turn back turned the column alone.
+  A gear stands on a stud only where the stud is in one of its holes.
 - A part locked or unlocked is read as such by the next grab. The joints
   were read again only when the model changed, so after unlocking, a
   steering stayed locked by parts no longer locked.

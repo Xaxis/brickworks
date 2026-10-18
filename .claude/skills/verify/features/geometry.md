@@ -540,7 +540,9 @@ fix. 31 of 2,828, all in the way, on 2026-10-11.
 `mechanisms` (`src/assembly/mechanism.gd`, docs/MECHANISMS.md phase P1a; no UI or
 MCP tool yet): gear trains read off the parts and turned. It reads the bodies and
 joints from the connectors (an axle keyed in an axle hole, an axle or a pin turning
-in a round hole or a bore its size, studs in sockets, two pins through two beams, a
+in a round hole or a bore its size, studs in sockets, a part resting on studs with no
+socket for them, but a gear only where a stud is in one of its holes (`_in_a_hole`,
+MECHANISMS §17), two pins through two beams, a
 turntable's top on its base, a differential's planet on its casing's stub, a
 driving ring on its ridged joiner and in the clutch gear it is pushed into), the
 gears from `assets/ldraw/gears.json` (see [pipeline](pipeline.md), `check the gear

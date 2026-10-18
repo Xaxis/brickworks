@@ -623,7 +623,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   instead) must name it and the deck's studs (`Bodies.held_words`); the deck
   and a front tyre locked, the gears lock and both are named
   (`Bodies.what_stays`); unlocked, it turns again (`GrabDrag.is_ready` compares
-  the locked parts). `grab_probe -- --only=steering` (in the full run): every
+  the locked parts). `grab_probe -- --only=kart2` (in the full run and in
+  `--only=kart`): the G8 re-run session's own kart, saved from its app where
+  its turn back failed (`steering_kart2.ldr`), turned +60, -120 and +60, its
+  pivot's 24 a third of the wheel's turn the other way each time (a gear on
+  studs stands on them only through its holes, `Mechanism._in_a_hole`).
+  `grab_probe -- --only=steering` (in the full run): every
   steering in the probe's sets (8020-1_Jeep, 8841-1, 8808-1, 8054-1, 8828-1,
   8062-1) turned +30, -60 and +30 over MCP from where it stands: each moves,
   the rack goes one way then the other, every part back within 0.1 LDU, what

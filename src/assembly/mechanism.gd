@@ -512,13 +512,39 @@ func _rest_on_studs(studs: Array) -> void:
 		var lo: Vector3i = _bucket_of(box.position)
 		var hi: Vector3i = _bucket_of(box.end)
 		var inverse: Transform3D = piece.at.affine_inverse()
+		# A gear's face on studs is not held by them, only a stud in one of
+		# its holes is. A session's kart turned its column 60 degrees, and the
+		# round brick on the column brought a stud under the 24 tooth gear on
+		# the pivot beside it: read as standing on it, the pivot was one with
+		# the column, the train was held to the chassis, and the turn back
+		# turned the column alone.
+		var gear_holes: Array = _holes_of(piece.mesh, _shaft_of(piece.mesh)) \
+			if not spec_of(piece.part).is_empty() else []
 		for x: int in range(lo.x, hi.x + 1):
 			for y: int in range(lo.y, hi.y + 1):
 				for z: int in range(lo.z, hi.z + 1):
 					for stud: Array in at_foot.get(Vector3i(x, y, z), []):
 						if stud[0] != key and body_of(stud[0]) != body_of(key) \
-								and _stands_on(piece.mesh, inverse, stud[2], stud[3]):
+								and _stands_on(piece.mesh, inverse, stud[2], stud[3]) \
+								and (spec_of(piece.part).is_empty()
+									or _in_a_hole(gear_holes, inverse, stud[2], stud[3])):
 							_join(key, stud[0])
+
+
+## Whether a stud at [param foot] pointing [param way] is on the line of one
+## of [param holes] ([method _holes_of], in the part's frame, which [param
+## inverse] takes it into).
+static func _in_a_hole(holes: Array, inverse: Transform3D, foot: Vector3, way: Vector3) -> bool:
+	var here: Vector3 = inverse * foot
+	var up: Vector3 = (inverse.basis * way).normalized()
+	for hole: Array in holes:
+		var line: Vector3 = hole[2]
+		if absf(line.dot(up)) < 0.99:
+			continue
+		var gap: Vector3 = here - (hole[1] as Vector3)
+		if (gap - line * gap.dot(line)).length() <= LINE_SLACK:
+			return true
+	return false
 
 
 ## How far inside a part's edge a stud must be to be under it, LDU: a

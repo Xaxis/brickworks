@@ -201,6 +201,8 @@ func _run() -> void:
 		await _steer_twice("kart", "grouped")
 		await _steer_twice("kart_bushes")
 		await _held_says()
+	if only.is_empty() or only == "kart" or only == "kart2":
+		await _steer_kart2()
 	if only.is_empty() or only == "steering":
 		var asked_steering: Array = []
 		for arg: String in args:
@@ -4701,6 +4703,7 @@ func _steer_set(path: String) -> void:
 	var first := Vector3.ZERO
 	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
 		var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": step[0]}))
+		print("    said: %s" % said.get_slice("\n", 0).left(400))
 		await _frames(3)
 		var went: Vector3 = _world.get_brick(mesh.rack).transform.origin - rack_at
 		var still: bool = _world.get_brick(anchor_part).transform.is_equal_approx(anchor_at)
@@ -4724,6 +4727,49 @@ func _steer_set(path: String) -> void:
 		_check("%s: #%d %s turned %+d (%s): %s, what stays %s: %s" % [name, driver,
 			_world.get_brick(driver).part_id, int(step[0]), step[1], how,
 			"still" if still else "MOVED", said.left(90).replace("\n", " | ")], ok)
+	_builder.forget_history()
+
+
+## The G8 re-run's own kart (steering_kart2.ldr, saved from its session's app
+## where the turn back failed): its column's 8 tooth gear drives a 24 on the
+## front axle's pivot, a round tile and a round brick 2 x 2 on the deck round
+## the column. Turned +60, -120 and +60 at the steering wheel, each turn must
+## drive the train: the 24 turns a third of the wheel's turn, the other way,
+## and back to where it was built. The session's turn back turned the column
+## alone and left the front wheels where they were.
+func _steer_kart2() -> void:
+	print("\nmove_part both ways: the G8 re-run's kart, as its session left it")
+	if not await _open("res://tests/fixtures/mcpwalk/steering_kart2.ldr"):
+		return
+	var assistant: Assistant = _main.get("_assistant")
+	var wheel: BrickWorld.Brick = null
+	var pivot: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "2819":
+			wheel = brick
+		elif brick.part_id == "3648b":
+			pivot = brick
+	if wheel == null or pivot == null:
+		_check("the kart has its steering wheel and its pivot's 24", false)
+		return
+	var wheel_at: Basis = wheel.transform.basis
+	var pivot_at: Basis = pivot.transform.basis
+	var yaw := func(id: int, from: Basis) -> float:
+		var relative: Basis = _world.get_brick(id).transform.basis * from.inverse()
+		return rad_to_deg(atan2(-relative.x.z, relative.x.x))
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = assistant
+	for step: Array in [[60.0, 60.0], [-120.0, -60.0], [60.0, 0.0]]:
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % wheel.id, "degrees": step[0]}))
+		await _frames(3)
+		var turned: float = yaw.call(wheel.id, wheel_at)
+		var axle: float = yaw.call(pivot.id, pivot_at)
+		print("    said: %s" % said.get_slice("\n", 0).left(300))
+		_check("kart2 turned %+d: the wheel %+.1f for %+d, the pivot's 24 %+.1f for %+.1f (a third, the other way)"
+			% [int(step[0]), turned, int(step[1]), axle, -float(step[1]) / 3.0],
+			said.contains("Moved") and absf(turned - float(step[1])) < 1.0
+				and absf(axle + float(step[1]) / 3.0) < 1.0)
 	_builder.forget_history()
 
 
