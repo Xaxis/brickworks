@@ -214,6 +214,12 @@ whole cycle.
   corner plate put on a plate beside the arm of a wheel holder, its missing
   corner round the arm, stood a plate up on the arm, and could not be put
   where 8643-1's booklet has it.
+- A part that hangs below the part a model was built up from goes on, and
+  the model rises to stand on it. A bracket whose arm hangs past the bottom
+  plate, a wheel or a tyre lower than the chassis, stood on the floor
+  instead or could not be put at all, so a car built from its booklet could
+  never have its wheels. The status line says how far the model rose, and
+  one undo takes the part off and the model down again.
 - A model without steps of its own, given the worked-out ones by its first
   booklet edit, built the second copy of a sub-model (10016-1's second
   wheels) differently once it was saved and opened again.

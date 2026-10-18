@@ -237,6 +237,51 @@ func _awkward() -> void:
 		await _one("2420 corner plate round the wheel holder's arm", _screen(foot), at)
 	await _shot("corner_plate")
 
+	# Below the ground, held by the model: a bracket on the edge of the plate
+	# the model is built up from, its arm hanging 4 LDU past the plate's
+	# underside, as 8643-1's front bracket (2436a) hangs. Its ghost stood on
+	# its arm, a plate up; it goes where it is aimed, and the model rises to
+	# stand on it, one undo with the put (Builder._held_below_ground,
+	# _stand_on_the_ground).
+	_main.call("clear_model")
+	var plate: int = _put_ldr("3031", 8, [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, -10, -60), Vector3(120, 50, 140)))
+	await _frames(40)
+	await _hold("2436a")
+	await _turn_to(Basis.IDENTITY)
+	var hung: Transform3D = _ldr([0, -16, -30, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var aim: Vector2 = _screen(hung.origin - Vector3(0, 8, 0))
+	await _move(aim + Vector2(0, 1))
+	await _move(aim)
+	var shown: Transform3D = _builder.ghost_transform()
+	_check("2436a bracket: its ghost hangs below the ground where the set has it (%s, %s)" % [
+		_ldr_of(shown), "may go" if _builder.can_place() else "red"],
+		_builder.ghost_place() != null and _builder.can_place()
+		and _near(shown, hung, 0.05, 0.002))
+	var before: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		before[brick.id] = true
+	await _click_whole(aim)
+	var bracket: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not before.has(brick.id):
+			bracket = brick.id
+	_check("...and a click puts it down", bracket != 0)
+	if bracket != 0:
+		var up := Vector3(0, 4, 0)
+		var base_at: Vector3 = _world.get_brick(plate).transform.origin
+		var bracket_at: Vector3 = _world.get_brick(bracket).transform.origin
+		_check("...and the model rose 4 LDU to stand on it (plate at %s, bracket at %s)" % [
+			base_at, bracket_at], base_at.is_equal_approx(Vector3(0, 8, 0) + up)
+			and bracket_at.is_equal_approx(hung.origin + up))
+		await _key(KEY_ESCAPE)
+		await _key(KEY_Z, true)
+		_check("one undo takes the bracket off and the model down again (plate at %s, %d parts)" % [
+			_world.get_brick(plate).transform.origin, _world.brick_count()],
+			_world.get_brick(plate).transform.origin.is_equal_approx(Vector3(0, 8, 0))
+			and _world.get_brick(bracket) == null)
+	await _shot("below_the_ground")
+
 
 ## 8841-1 Balance's step 4: two Technic plates (4262) hang from an axle in
 ## the end of a Technic brick, their lower holes on two pins. Each is off
