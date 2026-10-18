@@ -67,6 +67,15 @@ put). A corner plate now goes round what is in its missing corner, and a
 part that hangs below the part a model was built up from (a car's
 bracket, wheels and tyres) goes on and the model rises to stand on it.
 
+**The next morning (section 9)** each stop was taken to its cause by
+sending the pointer at the stopped part from 6,000 aims: four were parts
+no aim could put (a fin on jumpers' middle studs, a flared roof, a beam
+beside a brick under an overhang, a wheel halfway along an axle), and the
+app now puts each by its ghost; the rest the app could put and the flow
+did not aim as a person aims. The plane went to 49 of 52 exactly and from
+25 actions a part to 18, the car to 58 of 61, the balance to 25
+of 63. Still no set whole: what is left of each is in section 9.
+
 ## 1. Files opened, saved and opened again
 
 **What was run.** 48 real sets' files from the LDraw model repository
@@ -1739,56 +1748,254 @@ taken to its cause in the app or in the flow, and fixed in general.
   the app says the part stands, and undone when it does not come there.
   Each typed part is listed in `build.json` (`typed`).
 
+## 9. Whole sets, the stops taken to their causes (2026-10-18)
+
+Section 8 left the plane at 45 of 52, 8643-1 at 57 of 61 and 8841-1 at
+23 of 63. Here each stop was reproduced on m78 (`4f843e76`: section 8 and
+the tyres unit), taken to its cause, and fixed where a person building by
+hand would feel it: in the app where no pointer could put the part, in
+the flow where the app could and the flow did not aim as a person aims.
+Everything is in `bench/results/wholeset2-2026-10-18/`: `before/` (m78),
+`after2/` (the app's fixes and the flow's but the last two), `after3/`
+(8643-1 with the view's rest, 8841-1 with that and the contact's plate),
+`after1/5762` (the plane on the first fixes, stopped at step 7 for a flow
+fix it found), each run's `build.log`, `build.json`,
+`*_parts.jsonl` and pictures, the probes' logs, and `reach_summary.txt`
+with the scripts in `tools/`. The box ran at a load of 40 to 55 all
+morning, and runs waited up to half an hour for a slot.
+
+**How a stop was taken to its cause.** A run says a part's ghost "would
+not stand there", which is where a search ended, not why. Each stopped
+part was put to a probe of its own (`tools/reach.gd` in the results): the
+set's file opened for the truth, every part the flow puts before it down
+as the file has it, the part in hand turned as the file has it, and the
+pointer's line sent from 48 eyes (12 round, three heights and one from
+below) at 125 points round its place, 6,000 aims, each ghost read. Some
+aims putting the ghost exactly where the file has it means the app can
+and the flow did not aim there; none means the app cannot, and the
+nearest ghost says why (`reach_summary.txt`).
+
+**Before → after** (parts exact of the set's whole, by the flow's check:
+the file's number, colour, place to the LDU and turn; actions and seconds
+a part on this box; typed is in Properties):
+
+| set | before (m78) | after | actions a part | s a part | typed, before → after |
+|---|---|---|---|---|---|
+| 5762-1 Plane (52) | 45 | **49** | 24.96 → 17.81 | 51.0 → 35.4 | 2 → 1 |
+| 8643-1 (61) | 56 | **58** (`after2/`, and `after3/` the same) | 24.59 → 23.28 | 55.5 → 49.4 | 1 → 2 |
+| 8841-1 Balance (63) | 23 (43 tried in its 70 minutes) | **25 of the 25 tried** (`after3/`, stopped at 22 minutes for the time box) | 52.81 → 29.76 | 99.2 → 51.7 | 3 → 1 |
+
+The runs' own lines: `5762-1_Plane: 46/52 put down, 45 exact; 1298
+actions (24.96/part), 50.99 s/part; 6 gaps` before and `50/52 put down,
+49 exact; 926 actions (17.81/part), 35.43 s/part; 2 gaps` after;
+`8643-1_Combination-with-8644: 56/61 put down, 56 exact; 1500 actions
+(24.59/part), 55.47 s/part; 5 gaps` before and `58/61 put down, 58 exact;
+1420 actions (23.28/part), 53.37 s/part; 3 gaps` after; `8841-1_Balance:
+23/43 put down, 23 exact; 2271 actions (52.81/part), 99.22 s/part; 20
+gaps` before and `25/25 put down, 25 exact; 744 actions (29.76/part), 51.66 s/part; 0 gaps` after. No part put exactly before was put
+otherwise after.
+
+**What stopped each, and what changed in the app**
+(`src/assembly/builder.gd`, `joint_snap.gd`; `placing_probe -- only=wholeset`
+puts each, and each check fails with its rule taken out:
+`placing_wholeset_*_out.log`):
+
+- *A part on a jumper's middle stud stood half a stud aside.* 5762-1's
+  tail fin (4286) stands on three jumper plates' middle studs, half a stud
+  off every other stud; the stud grid put it at x ±10, never 0, from every
+  one of the 6,000 aims, and the slope on the fin was typed into the air.
+  A part aimed at the top of a part now sits on that part's studs where
+  they stand off the grid, one socket on the stud nearest the pointer
+  (`_on_studs_off_the_grid`): 445 aims of 6,000 put the fin where the file
+  has it, and 843 the slope on it.
+- *A flared roof stood half a stud aside.* 8643-1's cab roof (50948) is
+  58.5 LDU across with its flares; its box counted three studs and the
+  pipeline laid its sockets on that guess (x −20, 0, 20, where its studs
+  are at ±10), so every aim put it at x ±10. A part whose box is not whole
+  studs across now takes its phase across that axis from its own top studs
+  (`_on_its_own_grid`), and one with no socket on the grid its box's middle
+  where its count of studs puts one: none of 6,000 aims, now 123.
+- *A part aimed at a side face went half into it, then up onto what
+  overhangs it.* 8841-1's beam is a 1 x 12 either side of a 1 x 2, under a
+  1 x 4 that holds each 1 x 12 by one stud. Aimed at the 1 x 2's side, the
+  1 x 12's middle went in the cell beside the face, half inside the 1 x 2;
+  dropped by its whole length, it went up onto the 1 x 4 over its end. A
+  part aimed at a side face now goes against it by whole studs, as a
+  carried group already did (`_out_from_face`), at the plate the pointer is
+  on, and stays beside the face where it has room rather than go up onto
+  what is over its far end: none of 6,000 aims, now 36.
+- *A hole went on an axle only at its tip.* 8841-1's belt wheel (4185) sits
+  halfway along its axle, and the top beam's 1 x 4 has the axle's last
+  11 LDU in its middle hole. An axle and nothing else now has its shaft
+  behind each tip (`JointSnap.End.back`), and a hole on it goes where the
+  pointer is along it, a whole LDU at a time (`JointSnap.ways`); the flow
+  slides it the rest of the way along the joint, as it slides a wheel on
+  its pin. The wheel: none of 6,000 aims, now 2 directly and the rest by
+  the slide.
+
+**And in the flow** (`tools/web/cad_task_flow.mjs`; `tests/test_cadtask.py`
+pins the aim on a part's own down and the beam's order, and both fail on
+the flow before this):
+
+- *A part on its side was aimed under it.* The flow pointed under a part's
+  origin by the world's down, which for 5762-1's lights (round plates on
+  their sides in clip plates' rings) and 8643-1's plates on its brackets'
+  side studs is the floor in front of what holds them. It now points
+  along the part's own down at its underside, and for a part on its side
+  a stud's height out from it: the ring reaches 3 LDU into the plate, and
+  the line to a point inside the ring met the ring's side, not the face
+  whose stud seats the plate. The app put both all along: 49 and 92 of
+  6,000 aims within an LDU for the lights, 136 and 124 exactly for the
+  plates.
+- *A part near the middle was never looked at from a side.* The plane's
+  trans-red 1 x 2 stands behind its two slopes, hidden from the default
+  view; 94 aims put it, none from that view. A part near the middle is now
+  tried from the side it leans to, as one at an end was.
+- *A part was aimed only at its own place.* A part that goes against a
+  face (beside a brick, under a beam) is now also aimed at that face where
+  it meets each part down, most met first, at the lowest plate of a side
+  they share (the app stands a part against a side at the plate pointed
+  at, and from the middle of the 1 x 2's side the 1 x 12 went a plate up,
+  into the 1 x 4, and so up onto it: `after2/8841`), and nudged across it
+  by what its ghost is off (`contactsOf`, `atContacts`); a part that hangs under a
+  part is aimed from below, the model framed first so the eye stays above
+  the floor (8841-1's 1 x 2 under the 1 x 4: 46 aims, all from below).
+- *A beam was begun at its ends.* Of the beam's 1 x 2 and two 1 x 12s at
+  one height, the flow put the 1 x 12 first, which one stud of the 1 x 4
+  holds; and then each plate under a joint, held by the 1 x 2 alone, its
+  middle under the pointer and so under the 1 x 2. Of parts that hang at
+  one height the most held now goes first, and a plate that hangs waits
+  for the parts of its step it also hangs from.
+- *A turned view was aimed from before it came to rest.* On a box at load
+  50 a view key eases in over seconds, and 8643-1's right bracket plate,
+  aimed from its side, was pointed at by the view half way round
+  (`after2/`). The flow now waits for the view to stop.
+
+**What is left, set by set.**
+
+- *5762-1, 49 of 52.* The two lights in the rings and the fin on its
+  jumpers go by their ghosts now, and the slope on the fin; the 1 x 2
+  behind the slopes went down from its side and had its height typed.
+  Left: the two trans-yellow lights stacked on the lights in the rings,
+  and one jumper plate. A light seats on the ring's stud with its
+  underside at the stud's base, an LDU short of where the file has it (the
+  flow's check takes it, to the LDU); the light on it seats on its stud
+  and so stands two LDU short, and typing its Z was refused in the
+  browser, where the app takes the same move in a probe
+  (`tools/reach.gd trymove=`), not found in the time. The jumper went down
+  a stud forward and a plate up, on the 1 x 3 plate beside its place, in
+  both runs, though its ghost was read at its place twice before the click
+  and 304 aims of 6,000 put it there: a click that puts other than the
+  ghost showed, at the edge of the plate beside it.
+- *8643-1, 58 of 61.* The cab's second 1 x 4 brick and its curved roof go
+  by their ghosts now (the roof's top is still typed: its sockets, below).
+  Left: the plate on the right bracket's side studs and the two tyres on
+  that side. Each failed in every run, before and after, from the right
+  side's view, where the probe's aim from that side puts each; the left
+  side's go. Waiting for the view to come to rest (`after3/`) changed nothing there; not found in the time.
+- *8841-1, 25 of 63, every part tried.* Its first step whole for the first
+  time: the top 1 x 4 onto its axle by its ghost, slid along it (typed
+  before), the 1 x 2 under it from below, each 1 x 12 against the 1 x 2's
+  side and each plate under a joint against a 1 x 12's underside (all five
+  gaps before), and then the belt wheel on its axle (a gap before). The run
+  was stopped after its 25th part for the time box, so 38 parts were not
+  tried. Left from `after2/`, which reached step 3: the two plates on the
+  second column's underside (the column lies on its side, and a part's
+  studs into the sockets of a part on its side is a way on the app has
+  not), and the column typed in every run (gap 3).
+
+**Proved beside the runs** (logs in the results): `placing_probe` every
+check (the five new ones too, each failing with its rule taken out),
+`handbuild_probe` (352 ok), `offgrid_probe` (41 parts, every check, after
+the axle slide too), `axle_probe`; in a browser on the export
+`placing_flow.mjs` (8 of 11 parts where their ghosts stood, the hinge top
+red, as on 2026-10-16) and `technic_flow.mjs` (33 ok). `tools/check.sh`:
+99 ok, and `store` (failing on m78 too), `bigmodel` (passing alone), the
+chat card's clock and a big design's frame rate failed at load 45.
+
+**A cover to rebuild (not done here).** 50949, the cab's top, sits on the
+roof's two studs; its sockets in the catalogue are at x −26, −6 and 14,
+off the stud grid, so it is never seated by them and rests 14 LDU high by
+its box (none of 6,000 aims; typed in every run). 50948's are on a
+three-stud grid. Both come from `tools/ldraw/occupancy.py`'s
+`bottom_sockets`, which lays its squares from the edge of the part's
+lowest plate: a part whose footprint is not whole studs across (a flare,
+a curved front) gets them on its own guess. The change: where the
+footprint's width is not whole studs within the 0.4 LDU clearance, take
+the squares' phase from the part's stud and tube primitives. The parts it
+moves are those whose footprint is not whole studs: list them with a pass
+of `bottom_sockets` over the catalogue, sub-build them
+(`tools/build_meshes.py --only <ids>`), merge (`tools/merge_subbuild.py`,
+the controls' connectors unmoved) and upload as the tyres were (section 7).
+Then 50949 goes on by its ghost, and 50948 by its sockets as well as by
+its studs.
+
 ## The gaps, by how much a builder would feel them
 
-Rewritten on 2026-10-17 from the run of section 6, most felt first. The
+Rewritten on 2026-10-18 from the runs of section 9, most felt first. The
 first run's thirteen are kept below, each with what closed it.
 
 **Open, today:**
 
-1. **26 of the library's 118 tyres are still closed through their
-   narrowest bore** (section 7): tyres drawn with no bore whose own geometry
-   fills the hole, and tyres whose lips or cracked treads this measure
-   counts. And the rest of the library's covers the seam rule changes
-   (about 13%) wait for the next full build. A tyre drawn with no bore has
-   no tyre end either, so its ghost does not go round a rim.
-2. **Studio has still never been run beside it.** Every Studio number is
+1. **No set is built whole through the interface yet** (section 9): the
+   plane 49 of 52, 8643-1 58 of 61, 8841-1 25 of 63. Left: the
+   plane's two stacked lights (two LDU short on the lights in the rings,
+   and a typed Z refused in the browser) and a jumper the click put a stud
+   forward; the car's plate on its right bracket's side studs and its two
+   right tyres, which every run missed from that side; the balance's two plates on its second column's underside, and its
+   last 38 parts, not tried in the time.
+2. **A part's sockets on the wrong grid** (section 9): the pipeline lays a
+   part's sockets from the edge of its lowest plate, and a part whose
+   footprint is not whole studs across gets them on that guess. 8643-1's
+   cab top (50949) is never seated by them and rests 14 LDU high; it is
+   typed in every run. The app now takes a flared part's phase from its
+   own studs, so the roof under it goes by its ghost, but the sockets wait
+   for the change to `tools/ldraw/occupancy.py` and the sub-build that
+   section 9 plans.
+3. **A long Technic brick on pins or an axle by the right hole takes many
+   presses.** A 1 x 16 on two pins has 30 ways on (each hole, either face);
+   T steps through them one at a time, and the app's own pick of the way
+   that joins the most stops at 64 tries, short of the far end's holes.
+   8841-1's column is typed after more than a hundred presses in every
+   run. The ways that join as many could be told apart by where the
+   part's body is under the pointer.
+4. **The build flow's actions a part on whole sets** are 17.8 to 29.8
+   (section 9), where its first 8 to 16 parts took 13 to 18: R and T on a
+   joint, a part tried again from its side or from below, the faces of
+   what it meets aimed at, and numbers typed.
+5. **26 of the library's 118 tyres are still closed through their
+   narrowest bore** (section 7), and the rest of the library's covers the
+   seam rule changes (about 13%) wait for the next full build. A tyre
+   drawn with no bore has no tyre end either, so its ghost does not go
+   round a rim.
+6. **Studio has still never been run beside it.** Every Studio number is
    modelled (section 3); Wine needs a password on this box.
-3. **The actions a part** are 11.5 to 17.6 in this run's measured builds
-   against 7.8 to 15.9 modelled for the same parts (`REPORT.md`): the flow
-   aims, looks and aims again. By the model a part takes 7.5 to 12.2 s here
-   and 9.4 to 12.4 s in Studio, steps marked or not within a second of
-   that; a measured hand against Studio's has not been timed.
-4. **The build flow's actions a part on whole sets** are 22 to 25
-   (section 8), where its first 8 to 16 parts took 13 to 18: R and T on a
-   joint until a wheel or a pin stands turned as the file has it, a part
-   tried again from its side of the model, and numbers typed.
-5. **No set is built whole through the interface yet** (section 8): the
-   plane 45 of 52, 8643-1 57 of 61, 8841-1 23 of 63. Left: the
-   plane's lights in their clip rings and its tail; a plate on a bracket's
-   side studs and the car's cab; the balance's top beam, held by plates
-   over and under it, and the pans that hang from it.
-6. **A wedge plate's cover falls short of its slanted edge** (section 8):
-   5762-1's 4488 stands on the wing by a block the cover does not reach.
-   The drop now keeps to the part's box there (only where its sockets
-   meet what is under them does it rest by its cover), so it goes where
-   the set has it; the cover itself is unchanged. Making it reach the edge
-   is a change to `tools/ldraw/occupancy.py` and a rebuild of the wedge
-   plates' covers (`tools/build_meshes.py --only`, merged by
-   `tools/merge_subbuild.py`, uploaded as the tyres were), not done here.
-7. **A part put where the pointer cannot say it costs a person typing.**
-   Section 8's runs typed 1 of the car's parts, 3 of the
-   balance's and 2 of the plane's in Properties (a 1 x 16 column on its
-   pins, a brick on top of a beam, a bracket's height), about 25 actions
-   each. Studio's snapping may find some of them unasked.
-8. **Places off the grid take a typed number where the pointer cannot say
-   it.** Section 7: all 39 put, 19 where the file has them by the pointer
-   alone (11 in section 6) and the rest with a number typed in Properties (a
-   light 1 LDU out of its clip, a wheel's or a propeller's place along its
-   pin, a pan's first 4262 swung to 23.58 degrees). Studio does the same with
-   its hinge tool; its snapping may find some of them unasked.
+7. **The actions a part** are 11.5 to 17.6 in section 6's measured builds
+   of the first parts against 7.8 to 15.9 modelled (`REPORT.md`); a
+   measured hand against Studio's has not been timed.
+8. **A wedge plate's cover falls short of its slanted edge** (section 8):
+   the drop keeps to the part's box there; making the cover reach the
+   edge is a change to `tools/ldraw/occupancy.py` and a rebuild of the
+   wedge plates' covers, not done here.
+9. **A part put where the pointer cannot say it costs a person typing.**
+   Section 9's runs typed 1 of the plane's parts, 2 of the car's and
+   1 of the balance's in Properties (a 1 x 2's height, a cab top on
+   wrong sockets, a column on its pins), about 25 actions each. Studio's
+   snapping may find some of them unasked.
+10. **Places off the grid take a typed number where the pointer cannot
+    say it** (section 7): a pan's first 4262 swung to 23.58 degrees, a
+    wheel's place along its pin. Studio does the same with its hinge tool.
 
 **Closed:**
+
+- *A part on a jumper's middle stud, a flared roof, a part beside a brick
+  under an overhang, a hole along an axle* (section 9): no pointer could
+  put them; each now goes by its ghost (`placing_probe -- only=wholeset`).
+- *The build flow's aim at a part on its side, near the middle, against a
+  face or under a part, and its order for a beam* (section 9): the
+  plane's lights and the car's left bracket plate, the plane's 1 x 2
+  behind its slopes, the car's cab, the balance's top 1 x 4 and the 1 x 2
+  under it.
 
 - *A corner plate stood a plate up* (section 8): the drop asked what was
   under the part's whole box; each box of its cover now rests on what is
