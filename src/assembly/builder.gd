@@ -2550,6 +2550,44 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	return out
 
 
+## The cover [method boxes_for] would give [param part] at [param at], to be
+## asked where something is rather than worked out (BrickLattice.TurnedCover),
+## when it would be worked out afresh: turned, or stretched, and not kept
+## yet. Null when boxes_for has it at hand or works it out quickly (square
+## to the grid, kept, or no cover of its own).
+func turned_cover(part: Lbm.PartMesh, at: Transform3D) -> BrickLattice.TurnedCover:
+	if part == null:
+		return null
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var on_main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
+	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
+	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
+		var exact: Array = [part.get_instance_id(), at.basis]
+		var kept: bool
+		if on_main:
+			kept = _stretched_cache.has(exact)
+		else:
+			_turned_lock.lock()
+			kept = _stretched_off_main.has(exact)
+			_turned_lock.unlock()
+		if kept:
+			return null
+		return BrickLattice.turned_cover(_stretched_boxes(part, stretch), cell, at.basis.orthonormalized())
+	if part.boxes.is_empty() or BrickLattice.is_square_to_grid(at.basis):
+		return null
+	var key: String = "%d|%s" % [part.get_instance_id(), at.basis]
+	var has: bool
+	if on_main:
+		has = _turned_cache.has(key)
+	else:
+		_turned_lock.lock()
+		has = _turned_off_main.has(key)
+		_turned_lock.unlock()
+	if has:
+		return null
+	return BrickLattice.turned_cover(part.boxes, cell, at.basis)
+
+
 ## Whether [method boxes_for] on this thread would work out a turned cover
 ## for [param part] at [param basis] afresh: turned, not stretched, with a
 ## cover, and not kept yet.

@@ -1226,6 +1226,7 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 			ground.append(brick.id)
 	if gears >= 2:
 		mechanism = Mechanism.build(list, ground)
+		mechanism.join_universals(bodies.universals(), bodies)
 	took["gears"] = Time.get_ticks_msec() - clock
 	return [bodies, judge, mechanism, took]
 

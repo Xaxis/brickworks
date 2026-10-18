@@ -62,6 +62,7 @@ func _initialize() -> void:
 	_check("and quicker: %d ms before, %d ms now" % [old_ms / 1000, new_ms / 1000],
 		new_ms * 3 < old_ms)
 	_lattice_answers(rng)
+	_asked_answers(rng)
 	print("")
 	if _failures == 0:
 		print("a turned part takes the cells it always did, quickly")
@@ -160,6 +161,72 @@ func _lattice_answers(rng: RandomNumberGenerator) -> void:
 			"" if wrong.is_empty() else ": " + "; ".join(wrong.slice(0, 3))], wrong.is_empty())
 	_check("and quicker: %d ms by rows, %d ms pair by pair" % [by_rows / 1000, pairwise / 1000],
 		by_rows * 3 < pairwise)
+
+
+## A part of several boxes, as a part's cover is, at a turn.
+static func _a_part(rng: RandomNumberGenerator) -> Array:
+	var boxes: Array[AABB] = []
+	for k: int in rng.randi_range(1, 12):
+		var lo := Vector3(rng.randi_range(-20, 10), rng.randi_range(-12, 2), rng.randi_range(-20, 10))
+		boxes.append(AABB(lo, Vector3(rng.randi_range(1, 20), rng.randi_range(1, 8), rng.randi_range(1, 20))))
+	var basis := Basis(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1),
+		rng.randf_range(-1, 1)).normalized(), rng.randf_range(0.0, TAU))
+	if rng.randf() < 0.3:
+		basis = Basis(Vector3.UP, rng.randf_range(0.0, TAU))
+	return [boxes, basis]
+
+
+## A turned part's cover asked where another part's boxes are
+## (BrickLattice.TurnedCover) says what the whole cover says: whether a cell
+## of it is in them. Against boxes beside it, into it, and just touching it.
+func _asked_answers(rng: RandomNumberGenerator) -> void:
+	var same: int = 0
+	var tried: int = 0
+	var met: int = 0
+	var whole_us: int = 0
+	var asked_us: int = 0
+	var first_difference: String = ""
+	for n: int in 150:
+		var part: Array = _a_part(rng)
+		var origin := Vector3i(rng.randi_range(-50, 50), rng.randi_range(0, 50), rng.randi_range(-50, 50))
+		var t0: int = Time.get_ticks_usec()
+		var whole: PackedInt32Array = BrickLattice.boxes_for_turned(part[0], origin, part[1])
+		whole_us += Time.get_ticks_usec() - t0
+		var bound: PackedInt32Array = BrickLattice._bound_of(whole)
+		var cover: BrickLattice.TurnedCover = BrickLattice.turned_cover(part[0], origin, part[1])
+		for k: int in 12:
+			# Another part's boxes about the cover's bound: some into it, some
+			# beside it, some laid against one of its own boxes' faces.
+			var theirs := PackedInt32Array()
+			for j: int in rng.randi_range(1, 4):
+				var at := Vector3i(rng.randi_range(bound[0] - 6, bound[3] + 2),
+					rng.randi_range(bound[1] - 4, bound[4] + 1), rng.randi_range(bound[2] - 6, bound[5] + 2))
+				if rng.randf() < 0.4 and whole.size() >= 6:
+					# Against a face of one of the cover's boxes.
+					var o: int = rng.randi_range(0, whole.size() / 6 - 1) * 6
+					var axis: int = rng.randi_range(0, 2)
+					at = Vector3i(whole[o], whole[o + 1], whole[o + 2])
+					at[axis] = whole[o + 3 + axis]
+				var size := Vector3i(rng.randi_range(1, 6), rng.randi_range(1, 4), rng.randi_range(1, 6))
+				theirs.append_array([at.x, at.y, at.z, at.x + size.x, at.y + size.y, at.z + size.z])
+			var t1: int = Time.get_ticks_usec()
+			var said: bool = BrickLattice._overlaps_pairwise(whole, theirs)
+			var t2: int = Time.get_ticks_usec()
+			var asked: bool = cover.meets(theirs)
+			asked_us += Time.get_ticks_usec() - t2
+			whole_us += t2 - t1
+			tried += 1
+			if said:
+				met += 1
+			if said == asked:
+				same += 1
+			elif first_difference.is_empty():
+				first_difference = "%s against %d boxes turned %s: whole %s, asked %s" % [theirs,
+					(part[0] as Array).size(), (part[1] as Basis).get_euler(), said, asked]
+	_check("a turned cover asked where another part is says what the whole cover says, %d of %d (%d meet)%s"
+		% [same, tried, met, "" if first_difference.is_empty() else " — " + first_difference], same == tried)
+	_check("and quicker: %d ms worked out whole, %d ms asked" % [whole_us / 1000, asked_us / 1000],
+		asked_us < whole_us)
 
 
 ## A brick of loose boxes round [param at], now and then one empty along an

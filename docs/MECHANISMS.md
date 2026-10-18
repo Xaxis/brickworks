@@ -1722,7 +1722,7 @@ pneumatic cylinders, held to their turret by more than the cylinder; the
 (an actuator's arm in a loop of 25 to 36 joints, 137 to 174 ms a frame;
 42081-1's held one frame 1.9 to 3.1 s, one room test of one large part, and
 let go it was checked and kept in 22 s on a box loaded 41, not yet taken
-apart); whether the
+apart; section 15 takes it apart and does it); whether the
 meetings that stop 42006-1's boom and 42024-1's small actuator short of
 their ends are the real sets' or the room test's 2 LDU cells (not checked
 against the built models); dynamics (S2, P3).
@@ -1945,3 +1945,169 @@ second on this box; what in SwiftShader's 2.5 to 3.5 CPU-seconds a frame is
 worth cutting (the 4096² shadow atlas, the multisampled blits, the
 interface) is measured nowhere yet, and only on a box not shared with forty
 other jobs would the measure mean much.
+can honestly mean), and how much a section bounces. Why a swing's frames in
+a browser drawing in software cost SwiftShader about a second each when
+turning the view's cost 33 to 130 ms (above): the next step is a trace with
+the GPU process's own WebGL calls (`--enable-gpu-service-tracing`), or
+SwiftShader's, to see which draw it is.
+
+## 15. Big loops at frame rate, and universal joints (G6)
+
+G4 left an actuator's arm in a loop of 25 to 36 joints dragging at 137 to
+174 ms a frame, one frame of 42081-1's held 1.9 to 3.1 s, and the arm let go
+checked and kept in 22 s. A person feels that: the arm follows the pointer
+in steps. G6 measured where each frame's time went and took out what was
+spent, and then let a universal joint pass a turn on.
+
+**Where the time went.** Each part of a drag frame timed apart, on the code
+before (`grab_probe -- --only=actuators`, windowed, a box loaded 35 to 45):
+
+- 42081-1's arm, 262 parts in a loop of 25 joints: solving the loop was 1 to
+  3 ms a frame. The room test was the rest, 10 to 60 ms a frame, and 2.8 s
+  each time it came to the arm's Technic panel 15265 at a new turn. A turned
+  part's cover is worked out cell by cell (`BrickLattice.cells_for_turned`,
+  then `compress`) and kept for that part at that turn; in a loop every body
+  turns its own way and to a new turn every frame, so none was ever found
+  kept. 37 covers were worked out in 73 frames, 18.1 s of the drag's 19.3.
+  Let go, the check bisected where it stopped the same way: 15 s of covers.
+- 42024-1's small actuator, 82 parts in a loop of 36 joints: the room test
+  was 0.4 s over the whole drag, and solving the loop 8.2 s of its 8.6:
+  6,096 rounds of Levenberg-Marquardt for 547 closes. Its loop holds the
+  actuator's screw, and the screw's input turns 2.08 radians for each LDU
+  the rod goes, and through a universal joint (62520 and 62519) an axle that
+  turns 1.9. Each 4 LDU step of the rod began 8 radians from where those last
+  closed, more than a turn to cover by derivatives worked out at the start;
+  one close in five took all 24 rounds and did not close, and was then
+  bisected as a stop. 7 of the 49 frames stopped short with nothing in the
+  way and went on the next frame.
+
+**What changed.**
+
+- A turned part whose cover is not kept is asked where something is,
+  rather than worked out whole (`BrickLattice.TurnedCover`). Whether one of
+  its cover's boxes, turned, touches a box of a part near it is the
+  separating axis test of the two boxes: a cell touches a turned box exactly
+  when that test says so of the cell, and a lattice box is its cells. Within
+  0.01 of a cell of touching, the cells there are asked line by line as
+  `cells_for_turned` asks them, so a cell that only just touches is decided
+  the way it always was. `turned_probe` holds it to the whole cover over 1,800
+  random parts and boxes, beside them, into them and laid against their faces:
+  the same answer every time, 37 to 45 times quicker. Asked on real sets with
+  `grab_probe -- --check-covers`, every turned part's test also works out its
+  whole cover and the two are compared: 71 of 71 the same on 42081-1 and
+  42024-1.
+- A section bigger than 40 parts is tested within a frame's share and its
+  stop found on pauses (§10). A slide drawn on past a stop it met is not
+  tested again, as a turn's is not. And a stop met and not yet found is let go
+  once the section stands where its whole test finds room: it was found at
+  the release instead, and 42081-1's arm let go 20 LDU out was kept 60 LDU in,
+  at the stop it had met at the start of the drag; 42024-1's, let go 4 LDU
+  out, 48 in. A test cut short for one pose is not carried on for the next.
+- The loop is solved in steps sized by how fast its joints turn: each step
+  starts where the last one's slope says, as many steps as keep the
+  fastest turning joint within 0.5 radians, the steps on the way closed to
+  0.5 LDU and only the last to the 0.05 every close is held to. A part of the
+  loops that spins on its own, joints whose constraints no other joint moves
+  (the screw's input, the universal joint and the axle it turns: 4 joints, 19
+  rows), is solved after the rest with the rest held, in its own steps: the
+  rest in one or two, the part in sixteen to thirty, each small (`Linkage._reach_parted`;
+  where either does not close, the whole is solved together as before). The
+  normal equations are made from each row's few columns that are not nought,
+  and solved by Cholesky's factoring. A frame asked the loop twice for the
+  same pose (how far it goes, then the parts there) and solved it twice; the
+  second is answered from the first. The derivative of a closing joint that
+  slides now has its line's turning in it.
+- Before testing a turned part's box against each box of a neighbour's
+  cover by the fifteen lines, their boxes square to the grid are compared:
+  apart along one of the grid's three lines, which are three of the fifteen,
+  they are apart.
+
+The drag's own work a frame (`GrabDrag.last_motion_ms`: following the
+pointer, the room test, the loop, drawing, weighing), and the release:
+
+| set | loop | before: mean, worst | after: mean, 95%, worst | let go, checked and kept |
+|---|---|---|---|---|
+| 42081-1 | the digging arm, 262 parts, 25 joints | 252.7 ms, 2,936 ms | 10.4 to 11.1, 14.7 to 18.2, 15.2 to 19.7 ms | 19.0 s, now 3.8 to 6.1 s |
+| 42024-1 | the small actuator's arm, 82 parts, 36 joints | 148.3 ms, 346 ms | 9.0 to 10.7, 17.4 to 22.7, 25.5 to 35.9 ms | 3.0 s, now 0.4 to 0.5 s |
+
+The after figures are three runs of the code as committed, on a box loaded 40
+to 50 (two of the actuators alone, one in the whole run); before is one run of
+the code before, at the same load.
+
+Every frame's pose was written out before and after and set side by side.
+On 42081-1 every part of every one of the 73 frames stands within 0.07 LDU
+of where it stood before (each joint closes to 0.05 LDU, and a part far out
+on the arm moves more for it); the arm against the law of cosines went from
+0.0021° to 0.0073°. On 42024-1, within 0.03 LDU in every frame where both
+followed the pointer; the frames that stopped short with nothing in the way
+now follow it, and the arm stands where the law of cosines puts it to
+0.0166° (0.0002° before; the part solved apart lets the rest settle on a
+slightly different least-squares pose, inside the same 0.05 LDU). The other
+loops of the run (8020-1's four-bar, 8218-1's engine, the five racks, the
+three worms, the scissor lift) pass as before, with 269 checks in all. The
+probe checks the mean and the 95th percentile under 33 ms, the release under
+10 s and the rod kept where it was let go; each fails with its fix taken out.
+
+**A universal joint passes a turn on.** `Bodies` already read a universal
+joint as what it is, a cross pinned into two ends: on 8062-1's crane each
+3326a sits in two 3712s by two hinges, one along y and one along z, their
+lines crossing on the shafts' line. The gear reading did not read hinges, so
+the shaft past the joint was a train of its own. Turning the winch's crank
+turned the near shaft through the worm and its gears; what hung on it went
+round with it rigidly, the cross with it, and the cross met the far end at
+once (§13). Now `Bodies.universals` finds each cross (a body of a part or
+two joined to two others by a turning joint each, the two lines square and
+crossing within 1.5 LDU), and `Mechanism.join_universals` takes it as a
+coupling between the shafts its ends are keyed to, when each shaft turns
+about a line through the crossing square to the line it is pinned on: the
+two shafts turn alike about their lines, the way the turn goes through. A
+shaft held by nothing but the crosses at its two ends (8062-1's axles 6 and
+8, joined by a connector, between its two joints) floats in the gear reading; it is given the line
+between the two crossings, in what the near shaft turns in. The cross is
+drawn from both ends, each of its lines turning with the end it is pinned
+in (`Grab._pose_crosses`). One for one is exact for shafts in line, as
+8062-1's are; for shafts at an angle it is the mean of Cardano's ratio, which
+runs the far shaft ahead and behind within each half turn, and the cross is
+drawn square between its two lines.
+
+The crank turned two turns by the pointer, 72 frames (`grab_probe --
+--only=worms`, 8062-1_Crane now in the run): its 8 tooth gear turns 90° to
+0.0000°, and at each universal joint the shaft before it and the one past it
+turned 90.0° and 90.0°, at most 0.0000° apart in any frame. Pictures of the
+driveline drawn alone, before and after, show both ends and the cross a
+quarter turn round. Without the joining the crank does not move at all, the
+cross meeting its far end in the first frame.
+
+**Left for later.** The arm laid in the lattice at the release still works
+the panel's whole cover out, 3.5 to 4.5 s of the 3.8 to 5.8 on a worker
+while the window draws (a cover worked out by runs along each line of cells
+rather than cell by cell was only 1.3 times quicker, and cut into more boxes,
+so it was left). A loop's worst frame is near 33 ms on a loaded box (42024-1's
+25.5 to 35.9 over three runs, at the end of its rod's stroke, where the rest of
+the loop is bisected; the 95th percentile stays under 23); a person's drag of
+more than 4 LDU a frame takes more steps. A universal joint at an angle turns its far shaft by
+Cardano's ratio, not its mean, and none in the probe's sets stands at one.
+
+42080-1's pneumatic cylinders still do not move; taken apart, three things
+hold them, and a trial of the first two is kept beside the results
+(`bench/results/grab6-2026-10-17/cylinders-trial.patch`):
+
+- `Bodies` joins a pin keyed to nothing to the first part it is in, and
+  asks which pins are alone as it joins them. Joining changes a piece's
+  root, the root is then not among the sizes counted before, and a pin in
+  that piece is taken for one alone: the axle pin at the rod's eye, keyed
+  into the arm, joined the rod to the arm, and the cylinder and the arm's
+  two lines then made the rod and the cylinder one body of 458 parts. Read
+  before joining, each cylinder is read as sliding (250 bodies and 59 loops,
+  from 232 and 40).
+- The cylinders' tubes are rigid pieces joined to their ports and valves,
+  and held at both ends they lock the loop ("closes neither a degree one way
+  nor the other"). Read as bending (closing no loop, carrying nothing on,
+  tested for room by nothing), the rod is drawn out to the end of its stroke
+  and in 12 LDU, the arm against the law of cosines to 0.0031°, 9.5 ms a frame.
+- But a 24 tooth gear and a part beside it on the arm's head stay where they
+  stood as the arm rises: they hang from the frame through the saw's
+  drivetrain, not from the arm. A section this big is tested within 10 ms a
+  frame, so the drag shows the arm through them, and let go, the release's
+  whole test finds them and puts the arm back near where it began. Until the
+  drivetrain on the arm goes with the arm, the trial is left out.

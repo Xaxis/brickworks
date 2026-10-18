@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab5-2026-10-17"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab6-2026-10-17"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -107,6 +107,10 @@ func _run() -> void:
 			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
+		if arg == "--check-covers":
+			# Every turned part asked where something is is also worked out
+			# whole, and the two answers compared (Grab.check_covers).
+			Grab.check_covers = true
 	for case: Array in CASES:
 		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
@@ -187,6 +191,9 @@ func _run() -> void:
 		await _session()
 	if only.is_empty() or only == "big":
 		await _big()
+	if Grab.check_covers:
+		_check("a turned part's cover asked where something is answers as the whole cover does, %d of %d"
+			% [Grab.covers_checked - Grab.covers_differ, Grab.covers_checked], Grab.covers_differ == 0)
 	var file := FileAccess.open(OUT.path_join("timings.json"), FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify(_timings, "  "))
@@ -1592,11 +1599,10 @@ const WORMS: Array = [
 	["worm: a tower crane's winch", "res://vendor/omr/files/42042-1_Tower-Crane.mpd"],
 	["worm: a tractor's sower, on a 24", "res://vendor/omr/files/8063-1_Sower.mpd"],
 	["worm: a log loader's grabber", "res://vendor/omr/files/8049-1.mpd"],
+	["worm: a crane's winch, through two universal joints", "res://vendor/omr/files/8062-1_Crane.mpd"],
 ]
-## Tried and not passing, run with --worm-set=: 8062-1_Crane's winch stops at
-## once, its gear's axle carrying a universal joint whose far end the grab
-## does not turn (a universal joint is not read as passing a turn on);
-## 8258-1's worm stops at 10°, a beam on its axle meeting the beam beside it.
+## Tried and not passing, run with --worm-set=: 8258-1's worm stops at 10°, a
+## beam on its axle meeting the beam beside it.
 
 
 ## Turn a worm by the pointer, as a person turns its crank, two whole turns:
@@ -1651,6 +1657,25 @@ func _worm_case(name: String, path: String) -> void:
 		Mechanism._tidy(chosen.ideal)])
 	var driver: Bodies.Link = bodies.parent_link[worm_body]
 	var line: Vector3 = driver.axis.normalized()
+	# A universal joint the train turns through, pictured where it stood:
+	# the shafts the universal joints join, and their crosses, drawn alone.
+	var cardan := PackedInt64Array()
+	for joint: Dictionary in train.universals:
+		for body: int in [int(joint["one"]), int(joint["other"])]:
+			for key: int in train.bodies.get(body, []):
+				if not cardan.has(key):
+					cardan.append(key)
+		for key: int in joint["cross"]:
+			if not cardan.has(key):
+				cardan.append(key)
+	var first_joint := PackedInt64Array()
+	if not train.universals.is_empty():
+		first_joint.append_array([int(train.universals[0]["end_one"]), int(train.universals[0]["end_other"])])
+		for key: int in train.universals[0]["cross"]:
+			first_joint.append(key)
+	if _windowed and not cardan.is_empty():
+		await _cardan_shot(cardan, first_joint, name.get_slice(":", 0) + " " + path.get_file().get_basename(),
+			"u_before")
 	var around: PackedInt64Array = bodies.parts_of([worm_body, wheel_body])
 	_camera.look_from(Vector3(0.6, 0.7, 1.0).normalized())
 	_frame_on(around)
@@ -1709,6 +1734,12 @@ func _worm_case(name: String, path: String) -> void:
 	var table := PackedStringArray()
 	var mid_shot: bool = false
 	var frame_worst: float = 0.0
+	# Each universal joint's two shafts, their turns about their own lines
+	# as drawn, unwrapped frame to frame: [last one, last other, turned one,
+	# turned other, worst apart].
+	var crossing: Array = []
+	for joint: Dictionary in train.universals:
+		crossing.append([0.0, 0.0, 0.0, 0.0, 0.0])
 	for n: int in range(1, 73):
 		var target: float = 10.0 * n
 		var began: int = Time.get_ticks_usec()
@@ -1731,6 +1762,18 @@ func _worm_case(name: String, path: String) -> void:
 		var w_wheel: Transform3D = (grab.placed.get(wheel_key, grab.rest[wheel_key]) as Transform3D) \
 			* (grab.rest[wheel_key] as Transform3D).affine_inverse()
 		var wheel_turned: float = _turn_about(w_wheel.basis, wheel_axis)
+		for u: int in train.universals.size():
+			var joint: Dictionary = train.universals[u]
+			var turns: Array = crossing[u]
+			for side: int in 2:
+				var end: int = int(joint["end_one" if side == 0 else "end_other"])
+				var w_end: Transform3D = (grab.placed.get(end, _world.get_brick(end).transform) as Transform3D) \
+					* (grab.rest.get(end, _world.get_brick(end).transform) as Transform3D).affine_inverse()
+				var now: float = _turn_about(w_end.basis, joint["way_one" if side == 0 else "way_other"])
+				turns[2 + side] = float(turns[2 + side]) + wrapf(now - float(turns[side]), -180.0, 180.0)
+				turns[side] = now
+			# In line, Cardano's ratio is one for one.
+			turns[4] = maxf(float(turns[4]), absf(float(turns[3]) - float(turns[2])))
 		if absf(worm_turned) < 5.0:
 			continue
 		if sense == 0.0:
@@ -1752,6 +1795,21 @@ func _worm_case(name: String, path: String) -> void:
 	_check("%s: in %d poses its %d tooth gear has turned a tooth for each turn of the worm, 1/%d, to %.4f°"
 		% [name, checked, named_teeth, named_teeth, worst], named_teeth > 0 and checked >= 60 and worst < 0.01
 		and chosen.other.teeth == named_teeth)
+	if _windowed and not cardan.is_empty():
+		await _cardan_shot(cardan, first_joint, name.get_slice(":", 0) + " " + path.get_file().get_basename(),
+			"u_turned")
+	for u: int in train.universals.size():
+		var joint: Dictionary = train.universals[u]
+		var turns: Array = crossing[u]
+		var bent: float = rad_to_deg((joint["way_one"] as Vector3).angle_to(joint["way_other"]))
+		# A universal joint passes the turn on: the shaft past it turns as the
+		# one before it (one for one in line, by Cardano), and its cross stays
+		# between its ends (the room test would stop it there otherwise).
+		_check(("%s: a universal joint (#%d %s to #%d %s, its shafts %.1f° apart) passes the turn on: the shaft "
+			+ "before it turned %.1f°, the one past it %.1f°, at most %.4f° apart") % [name, int(joint["end_one"]),
+			_world.get_brick(int(joint["end_one"])).part_id, int(joint["end_other"]),
+			_world.get_brick(int(joint["end_other"])).part_id, bent, float(turns[2]), float(turns[3]),
+			float(turns[4])], bent < 1.0 and absf(float(turns[2])) > 30.0 and float(turns[4]) < 0.01)
 	print("    drag frames: worst %.1f ms whole (following %.2f ms worst)" % [frame_worst, _grab.worst_follow_ms])
 	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
@@ -1817,6 +1875,23 @@ func _worm_case(name: String, path: String) -> void:
 	await _frames(3)
 	_check("%s: let go, nothing was kept (%s)" % [name, _differs(before)], _builder.history_depth() == depth
 		and _differs(before) == "none differs")
+
+
+## A picture of [param keys] alone, from one side, as a drag has them drawn,
+## close on [param near].
+func _cardan_shot(keys: PackedInt64Array, near: PackedInt64Array, name: String, when: String) -> void:
+	var alone: Dictionary = {}
+	for key: int in keys:
+		alone[key] = true
+	var eye: Transform3D = _camera.global_transform
+	_world.show_only(alone)
+	_camera.look_from(Vector3(0.25, 0.45, 1.0).normalized())
+	_frame_on(near)
+	await _frames(20)
+	await _clean_shot(name, when)
+	_world.show_only({})
+	_camera.global_transform = eye
+	await _frames(5)
 
 
 # -- linear actuators -----------------------------------------------------------------------
@@ -1986,13 +2061,29 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	var frame_worst: float = 0.0
 	var rod_rest: Vector3 = _world.get_brick(rod_key).transform.origin
 	var stop_said: Dictionary = {}
+	# Every frame's pose, for a run before a change to be set against one
+	# after: each moving part's place (poses_<set>.json).
+	var poses: Array = []
+	var pose_keys: Array = grab.moving.keys()
+	pose_keys.sort()
+	# The drag's own work each frame (GrabDrag.last_motion_ms), and where the
+	# rod was at the last.
+	var own := PackedFloat64Array()
+	var last_e: float = 0.0
 	for target: float in targets:
 		var began: int = Time.get_ticks_usec()
 		await _move(_camera.unproject_position(hold + way * target), MOUSE_BUTTON_MASK_LEFT)
 		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
+		own.append(_grab.last_motion_ms)
+		var origins: Array = []
+		for key: int in pose_keys:
+			var o: Vector3 = (grab.placed.get(key, _world.get_brick(key).transform) as Transform3D).origin
+			origins.append([snappedf(o.x, 0.0001), snappedf(o.y, 0.0001), snappedf(o.z, 0.0001)])
+		poses.append({"target": target, "shift": grab.shift, "stopped": grab.stopped, "origins": origins})
 		# As drawn: the rod's place along the actuator against its body.
 		var rel: Transform3D = (moved.call(body_key) as Transform3D).affine_inverse() * moved.call(rod_key)
 		var e: float = way.dot(rel * rod_rest - rod_rest)
+		last_e = e
 		most = maxf(most, e)
 		least = minf(least, e)
 		outside = maxf(outside, maxf(-(out_by + e), out_by + e - stroke))
@@ -2036,13 +2127,46 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	_timings[name + " " + path.get_file()] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
 		"moving": grab.moving.size(), "parts": _world.brick_count()}
+	# Its own work a frame within a frame at 30 a second, the drag's whole
+	# share: 42081-1's arm cost 253 ms a frame on average and held one 2.9 s,
+	# a panel's turned cover worked out whole at each new turn; 42024-1's 148,
+	# its loop solved in steps the screw's input turned eight radians in.
+	var sorted_own: PackedFloat64Array = own.duplicate()
+	sorted_own.sort()
+	var own_mean: float = 0.0
+	for ms: float in own:
+		own_mean += ms / maxf(own.size(), 1.0)
+	var own_95: float = sorted_own[mini(sorted_own.size() - 1, int(sorted_own.size() * 0.95))] \
+		if not sorted_own.is_empty() else 0.0
+	_check("%s: the drag's own work a frame, mean %.1f ms, 95%% %.1f, worst %.1f, within a 33 ms frame"
+		% [name, own_mean, own_95, sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0],
+		not own.is_empty() and own_mean <= 33.0 and own_95 <= 33.0)
+	_timings[name + " " + path.get_file()]["p95_ms"] = snappedf(own_95, 0.01)
+	var pose_file := FileAccess.open(OUT.path_join("poses_%s.json" % path.get_file().get_basename()), FileAccess.WRITE)
+	if pose_file != null:
+		pose_file.store_string(JSON.stringify({"keys": pose_keys, "frames": poses}))
+		pose_file.close()
 	var let_go: int = Time.get_ticks_msec()
 	await _button(_last_screen, false)
 	await _frames(3)
 	# 42081-1's arm, 262 parts, is checked on a worker and its cells laid a
 	# share a frame: on a loaded box that took more than the usual 20 s.
 	await _settled(120000)
-	print("    said: %s (kept in %.1f s)" % [_grab.last_words, float(Time.get_ticks_msec() - let_go) / 1000.0])
+	var kept_in: float = float(Time.get_ticks_msec() - let_go) / 1000.0
+	print("    said: %s (kept in %.1f s)" % [_grab.last_words, kept_in])
+	_timings[name + " " + path.get_file()]["kept_s"] = snappedf(kept_in, 0.01)
+	# Checked and kept in a few seconds: 42081-1's arm took 20.6 to 22 s, its
+	# panel's turned cover worked out whole at every bisection.
+	_check("%s: let go, it is checked and kept in %.1f s" % [name, kept_in], kept_in <= 10.0)
+	# Kept where it was let go. A stop met earlier in the drag and not yet
+	# found was found at the release, and 42081-1's arm let go 20 LDU out was
+	# kept 60 in, at that stop.
+	var now_at := func(key: int) -> Transform3D:
+		return _world.get_brick(key).transform * (grab.rest[key] as Transform3D).affine_inverse()
+	var kept_rel: Transform3D = (now_at.call(body_key) as Transform3D).affine_inverse() * now_at.call(rod_key)
+	var kept_e: float = way.dot(kept_rel * rod_rest - rod_rest)
+	_check("%s: kept where it was let go, the rod %.2f LDU out, let go at %.2f" % [name, kept_e, last_e],
+		absf(kept_e - last_e) < 0.1)
 	_check("%s: let go, it is one step to undo" % name, _builder.history_depth() == depth + 1)
 	if _windowed:
 		await _clean_shot(name.get_slice(":", 0) + " " + path.get_file().get_basename(), "3_after")

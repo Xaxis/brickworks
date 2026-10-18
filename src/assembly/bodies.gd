@@ -725,6 +725,44 @@ var _racks: Array[Racks.Pinion] = []
 var _racks_read: bool = false
 
 
+## Every universal joint's cross, as the joints read it: a body of a part or
+## two joined to two others by a turning joint each, the two lines square to
+## each other and crossing at one point, as a universal joint's centre is
+## pinned into its two ends (3326a in two 3712s, 62519 in two 62520s). Each
+## [the cross's body, the link to one end, the link to the other, where the
+## lines cross]. Whether the ends' shafts turn about lines through that
+## point is the gear reading's to say (Mechanism.join_universals).
+func universals() -> Array:
+	if _universals_read:
+		return _universals
+	_universals_read = true
+	for body: int in members:
+		if (members[body] as PackedInt64Array).size() > 2:
+			continue
+		var turning: Array[Link] = []
+		for link: Link in touching.get(body, []):
+			if link.axis != Vector3.ZERO and link.turns:
+				turning.append(link)
+		if turning.size() != 2 or turning[0].other(body) == turning[1].other(body):
+			continue
+		var u: Vector3 = turning[0].axis.normalized()
+		var v: Vector3 = turning[1].axis.normalized()
+		if absf(u.dot(v)) > 0.05:
+			continue
+		var t: float = Mechanism._crossing(turning[0].point, u, turning[1].point, v)
+		var on_one: Vector3 = turning[0].point + u * t
+		var s: float = Mechanism._crossing(turning[1].point, v, turning[0].point, u)
+		var on_other: Vector3 = turning[1].point + v * s
+		if on_one.distance_to(on_other) > SAME_LINE:
+			continue
+		_universals.append([body, turning[0], turning[1], (on_one + on_other) * 0.5])
+	return _universals
+
+
+var _universals: Array = []
+var _universals_read: bool = false
+
+
 ## The racks and pinions with one half in [param inside] (body -> true) and
 ## the other out of it: a turn of one drives the other.
 func racks_out(inside: Dictionary) -> Array[Racks.Pinion]:

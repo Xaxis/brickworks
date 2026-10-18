@@ -29,6 +29,16 @@ extends RefCounted
 ## this, LDU, nor their lines turned apart by more than this over
 ## [constant AXIS_SCALE] radians (0.15°).
 const CLOSE_TO := 0.05
+## A step on the way to where the driver is asked, not the last, closes to
+## this, LDU: near enough the loop to start the next step from, which is all
+## it is for.
+const ON_THE_WAY := 0.5
+## A step turns no coordinate further than this, radians (29°), as far as
+## the last step's slope says: what a small actuator's screw drives turns 2
+## radians for each LDU its rod goes.
+const MOST_TURN_STEP := 0.5
+## Nor are there more steps than this in one move.
+const MOST_STEPS := 48
 ## A joint's line turned a radian weighs as its point moved this far, LDU:
 ## a stud, about the length a joint's line runs in its holes.
 const AXIS_SCALE := 20.0
@@ -309,6 +319,17 @@ func _read(driver: Bodies.Link, child: int) -> void:
 		ends.append(columns)
 		_gear_ends.append(ends)
 		_gear_kept.append(PackedFloat64Array([0.0, 0.0]))
+	for n: int in links.size():
+		for c: int in ([turn_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2] if _axis[n] == Vector3.ZERO else [])):
+			if not _still.has(c):
+				_turning.append(c)
+	# Which constraints each column moves one end of and not the other.
+	for k: int in closing.size():
+		_own_columns(k, _sides[k][0], _sides[k][1])
+	for k: int in racks.size():
+		_own_columns(RACK_ROWS + k, _rack_sides[k][0], _rack_sides[k][1])
+	for k: int in _gear_ends.size():
+		_own_columns(GEAR_ROWS + k, _joints_on(int(_gear_ends[k][0][0])), _joints_on(int(_gear_ends[k][1][0])))
 	q.resize(cols)
 	q.fill(0.0)
 	kept = q.duplicate()
@@ -353,6 +374,37 @@ func _joints_on(body: int) -> PackedInt32Array:
 		if _index_of.has(link):
 			out.append(int(_index_of[link]))
 	return out
+
+
+## A constraint's rows are numbered: a closing joint by its index, a rack
+## and pinion from RACK_ROWS, a gear mesh from GEAR_ROWS.
+const RACK_ROWS := 100000
+const GEAR_ROWS := 200000
+## Constraints left out of the residual and the derivatives, and columns
+## held where they are besides those a close is asked to hold: while one part
+## of the loops is solved apart from the rest ([method _reach_parted]).
+var _rows_off: Dictionary = {}
+var _hold_also: Dictionary = {}
+## Column -> the constraints it moves one end of and not the other.
+var _moves_rows: Dictionary = {}
+
+
+## Note [param k]'s columns: those of the joints on the way to one end and
+## not the other. A joint on the way to both moves both ends together.
+func _own_columns(k: int, one: PackedInt32Array, other: PackedInt32Array) -> void:
+	for side: int in 2:
+		var mine: PackedInt32Array = one if side == 0 else other
+		var theirs: PackedInt32Array = other if side == 0 else one
+		for n: int in mine:
+			if theirs.has(n):
+				continue
+			for c: int in [turn_col[n], slide_col[n]] + ([turn_col[n] + 1, turn_col[n] + 2]
+					if _axis[n] == Vector3.ZERO else []):
+				if c < 0 or _still.has(c):
+					continue
+				if not _moves_rows.has(c):
+					_moves_rows[c] = {}
+				(_moves_rows[c] as Dictionary)[k] = true
 
 
 ## Drive the slide of the driver's joint rather than its turn.
@@ -447,6 +499,8 @@ func _place(body: int, at: PackedFloat64Array, cache: Dictionary) -> Transform3D
 func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 	var out := PackedFloat64Array()
 	for k: int in closing.size():
+		if _rows_off.has(k):
+			continue
 		var loop: Bodies.Link = closing[k]
 		var wa: Transform3D = _place(loop.a, at, cache)
 		var wb: Transform3D = _place(loop.b, at, cache)
@@ -462,9 +516,11 @@ func _residual(at: PackedFloat64Array, cache: Dictionary) -> PackedFloat64Array:
 		else:
 			out.append_array([gap.x, gap.y, gap.z])
 	for k: int in racks.size():
-		out.append(_rack_residual(k, at, cache))
+		if not _rows_off.has(RACK_ROWS + k):
+			out.append(_rack_residual(k, at, cache))
 	for k: int in _gear_ends.size():
-		out.append(_gear_residual(k, at, cache))
+		if not _rows_off.has(GEAR_ROWS + k):
+			out.append(_gear_residual(k, at, cache))
 	return out
 
 
@@ -535,13 +591,22 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 	var ways: Array[Vector3] = []
 	var points: Array[Vector3] = []
 	var ball_ways: Dictionary = {}   ## joint -> its three lines
+	ways.resize(links.size())
+	points.resize(links.size())
+	# Only the joints the constraints asked are on the way to, while a part is
+	# solved apart: where every joint stands is most of a small part's work.
+	var wanted: Dictionary = _joints_wanted()
 	for n: int in links.size():
+		if not wanted.is_empty() and not wanted.has(n):
+			continue
 		var up: Transform3D = _place(parent_of[n], at, cache)
-		ways.append((up.basis * _axis[n]).normalized() if _axis[n] != Vector3.ZERO else Vector3.ZERO)
-		points.append(up * _point[n])
+		ways[n] = (up.basis * _axis[n]).normalized() if _axis[n] != Vector3.ZERO else Vector3.ZERO
+		points[n] = up * _point[n]
 		if _axis[n] == Vector3.ZERO:
 			ball_ways[n] = _ball_ways(n, at, up)
 	for k: int in closing.size():
+		if _rows_off.has(k):
+			continue
 		var loop: Bodies.Link = closing[k]
 		var wa: Transform3D = _place(loop.a, at, cache)
 		var wb: Transform3D = _place(loop.b, at, cache)
@@ -559,6 +624,13 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 		turns.resize(cols)
 		gaps.fill(Vector3.ZERO)
 		turns.fill(Vector3.ZERO)
+		# And d(ua), for a joint that slides: what is taken off its gap is
+		# along ua, which turns too.
+		var sliding: bool = loop.axis != Vector3.ZERO and _slides(loop)
+		var duas: Array[Vector3] = []
+		if sliding:
+			duas.resize(cols)
+			duas.fill(Vector3.ZERO)
 		var sides: Array = _sides[k]
 		for s: int in 2:
 			var sign: float = 1.0 if s == 0 else -1.0
@@ -574,14 +646,21 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 						var du: Vector3 = w.cross(u)
 						# d(ua × ub) = dua × ub + ua × dub
 						turns[c] += (du.cross(ub) if s == 0 else ua.cross(du)) * AXIS_SCALE
+						if sliding and s == 0:
+							duas[c] += du
 				var w: Vector3 = ways[n]
 				if slide_col[n] >= 0:
 					gaps[slide_col[n]] += w * sign
-		if loop.axis != Vector3.ZERO and _slides(loop):
+		if sliding:
 			# Along its own line the halves may part: that component is not
-			# a residual, and neither is its derivative.
+			# a residual. Its derivative is d(gap − ua (ua · gap)): the gap's
+			# own change less its share along ua, and less what ua's turning
+			# takes off. Without the last, the derivatives of an axle slid
+			# some way through its hole were off by as much as the slide.
+			var raw: Vector3 = pa - pb
+			var along: float = ua.dot(raw)
 			for c: int in cols:
-				gaps[c] -= ua * gaps[c].dot(ua)
+				gaps[c] -= ua * gaps[c].dot(ua) + duas[c] * along + ua * duas[c].dot(raw)
 		for r: int in 3:
 			var row := PackedFloat64Array()
 			row.resize(cols)
@@ -596,6 +675,8 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 					row[c] = turns[c][r]
 				rows.append(row)
 	for k: int in racks.size():
+		if _rows_off.has(RACK_ROWS + k):
+			continue
 		var mesh: Racks.Pinion = racks[k]
 		var ends: Array = _rack_ends[k]
 		var wa: Transform3D = _place(int(ends[0]), at, cache)
@@ -623,6 +704,8 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 	# either gear: its turns are read off angles, and a step of 1e-3 keeps the
 	# difference well above single precision's rounding.
 	for k: int in _gear_ends.size():
+		if _rows_off.has(GEAR_ROWS + k):
+			continue
 		var row := PackedFloat64Array()
 		row.resize(cols)
 		row.fill(0.0)
@@ -636,6 +719,38 @@ func _jacobian(at: PackedFloat64Array, cache: Dictionary) -> Array:
 			row[c] = (_gear_residual(k, up, {}) - _gear_residual(k, down, {})) / 2e-3
 		rows.append(row)
 	return rows
+
+
+## The joints on the way to either end of each constraint not left out
+## (joint -> true), or empty when none is left out: all of them.
+func _joints_wanted() -> Dictionary:
+	if _rows_off.is_empty():
+		return {}
+	if _wanted_for == _rows_off:
+		return _wanted
+	_wanted = {}
+	_wanted_for = _rows_off
+	var lists: Array = []
+	for k: int in closing.size():
+		if not _rows_off.has(k):
+			lists.append_array(_sides[k])
+	for k: int in racks.size():
+		if not _rows_off.has(RACK_ROWS + k):
+			lists.append_array(_rack_sides[k])
+	for k: int in _gear_ends.size():
+		if not _rows_off.has(GEAR_ROWS + k):
+			lists.append(_joints_on(int(_gear_ends[k][0][0])))
+			lists.append(_joints_on(int(_gear_ends[k][1][0])))
+	for one: PackedInt32Array in lists:
+		for n: int in one:
+			_wanted[n] = true
+	if _wanted.is_empty():
+		_wanted[-1] = true
+	return _wanted
+
+
+var _wanted: Dictionary = {}
+var _wanted_for: Dictionary = {}
 
 
 ## The exact derivatives against finite differences at q: the largest
@@ -716,47 +831,62 @@ func _close_with(held: Dictionary) -> bool:
 	var now: float = _worst(r)
 	var lam: float = 1e-3
 	iterations = 0
-	while now > CLOSE_TO * 0.2 and iterations < ITERATIONS:
+	# The columns solved for, and where each is among them (-1: held).
+	var free := PackedInt32Array()
+	var where := PackedInt32Array()
+	where.resize(cols)
+	for c: int in cols:
+		if c != driver_col and not _still.has(c) and not held.has(c) and not _hold_also.has(c):
+			where[c] = free.size()
+			free.append(c)
+		else:
+			where[c] = -1
+	var n: int = free.size()
+	# Closed to a fifth of the tolerance, so the last step stands well inside
+	# it; a step on the way only to within it.
+	var aim: float = _tolerance * 0.2 if _tolerance == CLOSE_TO else _tolerance
+	var at_row := PackedInt32Array()
+	var of_row := PackedFloat64Array()
+	while now > aim and iterations < ITERATIONS and n > 0:
 		iterations += 1
 		var jac: Array = _jacobian(q, cache)
-		var free: Array = []
-		for c: int in cols:
-			if c != driver_col and not _still.has(c) and not held.has(c):
-				free.append(c)
-		var n: int = free.size()
-		if n == 0:
-			break
-		# Normal equations: (JᵀJ + λ diag) dq = −Jᵀr.
-		var a: Array = []
+		# Normal equations: (JᵀJ + λ diag) dq = −Jᵀr, from each row's few
+		# columns that are not nought: a loop's row is moved only by the
+		# joints on the way to its two ends.
+		var a := PackedFloat64Array()
+		a.resize(n * n)
+		a.fill(0.0)
 		var g := PackedFloat64Array()
 		g.resize(n)
-		for i: int in n:
-			var row := PackedFloat64Array()
-			row.resize(n)
-			a.append(row)
+		g.fill(0.0)
 		for k: int in jac.size():
 			var line: PackedFloat64Array = jac[k]
+			at_row.resize(0)
+			of_row.resize(0)
+			for c: int in cols:
+				var v: float = line[c]
+				if v != 0.0 and where[c] >= 0:
+					at_row.append(where[c])
+					of_row.append(v)
 			var rk: float = r[k]
-			for i: int in n:
-				var ji: float = line[free[i]]
-				if ji == 0.0:
-					continue
-				g[i] += ji * rk
-				var row_i: PackedFloat64Array = a[i]
-				for j: int in n:
-					row_i[j] += ji * line[free[j]]
-				a[i] = row_i
+			var m: int = at_row.size()
+			for u: int in m:
+				var i: int = at_row[u]
+				var vi: float = of_row[u]
+				g[i] += vi * rk
+				var base: int = i * n
+				for w: int in m:
+					a[base + at_row[w]] += vi * of_row[w]
 		var stepped: bool = false
 		for _try: int in 6:
-			var m: Array = []
+			var m2: PackedFloat64Array = a.duplicate()
 			for i: int in n:
-				var row: PackedFloat64Array = (a[i] as PackedFloat64Array).duplicate()
-				row[i] += lam * maxf(row[i], 1.0) + 1e-9
-				m.append(row)
-			var dq: PackedFloat64Array = Linkage._solve_linear(m, g)
-			if dq.is_empty():
+				m2[i * n + i] += lam * maxf(a[i * n + i], 1.0) + 1e-9
+			var factored: bool = Linkage._factor(m2, n)
+			if not factored:
 				lam *= 10.0
 				continue
+			var dq: PackedFloat64Array = Linkage._solve_factored(m2, n, g)
 			var trial: PackedFloat64Array = q.duplicate()
 			for i: int in n:
 				trial[free[i]] -= dq[i]
@@ -776,46 +906,51 @@ func _close_with(held: Dictionary) -> bool:
 			break
 	residual = now
 	last_residual = r
-	return now <= CLOSE_TO
+	return now <= _tolerance
 
 
-## Gaussian elimination with partial pivoting; empty when singular.
-static func _solve_linear(m: Array, b: PackedFloat64Array) -> PackedFloat64Array:
-	var n: int = b.size()
-	var rhs: PackedFloat64Array = b.duplicate()
-	for col: int in n:
-		var best: int = col
-		for row: int in range(col + 1, n):
-			if absf((m[row] as PackedFloat64Array)[col]) > absf((m[best] as PackedFloat64Array)[col]):
-				best = row
-		if absf((m[best] as PackedFloat64Array)[col]) < 1e-12:
-			return PackedFloat64Array()
-		if best != col:
-			var swap: Variant = m[col]
-			m[col] = m[best]
-			m[best] = swap
-			var t: float = rhs[col]
-			rhs[col] = rhs[best]
-			rhs[best] = t
-		var pivot_row: PackedFloat64Array = m[col]
-		for row: int in range(col + 1, n):
-			var this_row: PackedFloat64Array = m[row]
-			var f: float = this_row[col] / pivot_row[col]
-			if f == 0.0:
-				continue
-			for k: int in range(col, n):
-				this_row[k] -= f * pivot_row[k]
-			rhs[row] -= f * rhs[col]
-			m[row] = this_row
-	var out := PackedFloat64Array()
-	out.resize(n)
-	for row: int in range(n - 1, -1, -1):
-		var this_row: PackedFloat64Array = m[row]
-		var sum: float = rhs[row]
-		for k: int in range(row + 1, n):
-			sum -= this_row[k] * out[k]
-		out[row] = sum / this_row[row]
-	return out
+## [param m] (n by n, row by row; symmetric and positive definite, as JᵀJ
+## with λ on its diagonal is) factored in place by Cholesky's method, its
+## lower triangle L with L Lᵀ = m. False where a pivot is not above 1e-12.
+## Half the work of elimination with pivoting, on a flat array rather than
+## rows copied.
+static func _factor(m: PackedFloat64Array, n: int) -> bool:
+	for j: int in n:
+		var row_j: int = j * n
+		var d: float = m[row_j + j]
+		for k: int in j:
+			d -= m[row_j + k] * m[row_j + k]
+		if d <= 1e-12:
+			return false
+		d = sqrt(d)
+		m[row_j + j] = d
+		for i: int in range(j + 1, n):
+			var row_i: int = i * n
+			var sum: float = m[row_i + j]
+			for k: int in j:
+				sum -= m[row_i + k] * m[row_j + k]
+			m[row_i + j] = sum / d
+	return true
+
+
+## x with L Lᵀ x = [param b], L as [method _factor] leaves it in [param l].
+static func _solve_factored(l: PackedFloat64Array, n: int, b: PackedFloat64Array) -> PackedFloat64Array:
+	var y := PackedFloat64Array()
+	y.resize(n)
+	for i: int in n:
+		var sum: float = b[i]
+		var row_i: int = i * n
+		for k: int in i:
+			sum -= l[row_i + k] * y[k]
+		y[i] = sum / l[row_i + i]
+	var x := PackedFloat64Array()
+	x.resize(n)
+	for i: int in range(n - 1, -1, -1):
+		var sum: float = y[i]
+		for k: int in range(i + 1, n):
+			sum -= l[k * n + i] * x[k]
+		x[i] = sum / l[i * n + i]
+	return x
 
 
 # -- driving it ------------------------------------------------------------------------
@@ -830,17 +965,76 @@ func kept_value() -> float:
 ## where it cannot close, q stays at the furthest value that does (bisected
 ## to a fiftieth of a step). Returns that value.
 func reach(value: float) -> float:
+	# Asked again from the same pose kept, for the same value or for where it
+	# got to: a frame asks once for how far the loop goes and again for the
+	# pose there (Grab.slide_to, then transforms_at), and solved it twice.
+	# And asked further the same way than it got, where it got short: it stops
+	# where it stopped (a rod drawn on past the end of its stroke).
+	var further: bool = _memo_got != _memo_asked and signf(value - _memo_got) == signf(_memo_asked - _memo_got) \
+		and absf(value - kept[driver_col]) >= absf(_memo_got - kept[driver_col])
+	if _memo_keep == _keeps and _memo_col == driver_col and not _memo_q.is_empty() \
+			and (value == _memo_asked or value == _memo_got or further):
+		q = _memo_q.duplicate()
+		_gear_kept = _memo_gears.duplicate(true)
+		return _memo_got
+	var got: float = _reach(value)
+	_memo_keep = _keeps
+	_memo_col = driver_col
+	_memo_asked = value
+	_memo_got = got
+	_memo_q = q.duplicate()
+	_memo_gears = _gear_kept.duplicate(true)
+	return got
+
+
+## The last [method reach]: from which pose kept ([member _keeps] then),
+## driving which column, asked what, got where, and the pose and gears' turns
+## it left.
+var _keeps: int = 0
+var _memo_keep: int = -1
+var _memo_col: int = -1
+var _memo_asked: float = NAN
+var _memo_got: float = NAN
+var _memo_q := PackedFloat64Array()
+var _memo_gears: Array = []
+
+
+func _reach(value: float) -> float:
 	q = kept.duplicate()
 	_gear_kept = _gear_at_keep.duplicate(true)
 	var from: float = q[driver_col]
 	var step: float = STEP_SLIDE if is_slide() else STEP_TURN
 	var count: int = maxi(1, ceili(absf(value - from) / step))
+	if _slope_col == driver_col and _slope.size() == cols:
+		# As many steps as keep the fastest turning coordinate within a step.
+		var fastest: float = 0.0
+		for c: int in _turning:
+			fastest = maxf(fastest, absf(_slope[c]))
+		count = clampi(ceili(fastest * absf(value - from) / MOST_TURN_STEP), count, maxi(count, MOST_STEPS))
+	var parted: Array = _spinning_part(absf(value - from))
+	if not parted.is_empty():
+		_part_found = parted
+		_part_col = driver_col
+	elif _part_col == driver_col and not _part_found.is_empty() and absf(value - from) > 1e-6:
+		# Found once, the part stays the part: which joints spin on their own
+		# is the loop's shape, and the slope read on the last step can be
+		# read where they turn slowly.
+		parted = _part_found
+	if not parted.is_empty():
+		var got: Variant = _reach_parted(value, parted)
+		if got != null:
+			return float(got)
+		q = kept.duplicate()
+		_gear_kept = _gear_at_keep.duplicate(true)
 	var good: float = from
 	var good_q: PackedFloat64Array = q.duplicate()
 	for n: int in range(1, count + 1):
 		var at: float = lerpf(from, value, float(n) / float(count))
-		q[driver_col] = at
-		if _close() and _within():
+		_tolerance = CLOSE_TO if n == count else ON_THE_WAY
+		var closed: bool = _closes_at(at, good, good_q)
+		_tolerance = CLOSE_TO
+		if closed:
+			_follow_slope(at, good, good_q)
 			good = at
 			good_q = q.duplicate()
 			# The gears' turns unwrapped against this step's, not the first's:
@@ -852,9 +1046,8 @@ func reach(value: float) -> float:
 		var high: float = at
 		for _round: int in 7:
 			var middle: float = (low + high) * 0.5
-			q = good_q.duplicate()
-			q[driver_col] = middle
-			if _close() and _within():
+			if _closes_at(middle, low, good_q):
+				_follow_slope(middle, low, good_q)
 				low = middle
 				good_q = q.duplicate()
 				_keep_gear_turns(q)
@@ -864,6 +1057,236 @@ func reach(value: float) -> float:
 		return low
 	q = good_q
 	return good
+
+
+## The part of the loops that spins on its own, as last found, and for which
+## driving column ([method _spinning_part]); how many steps a unit of the
+## driver its last solve took.
+var _part_found: Array = []
+var _part_col: int = -1
+var _part_rate: float = 0.0
+## How each coordinate went with the driver over the last step that closed,
+## per unit of the driver's, and for which column: where the next step
+## starts from. A small actuator's input turns 2 radians for each LDU its rod
+## goes, and what it drives by a universal joint with it (42024-1): started
+## where the last step left them, each 4 LDU step began 8 radians out, and
+## one in five took 24 rounds and still did not close, stopping the drag
+## there for a frame.
+var _slope := PackedFloat64Array()
+var _slope_col: int = -1
+## The columns that turn: not slides, not held still.
+var _turning := PackedInt32Array()
+## What a close closes to: [constant CLOSE_TO], or on the way
+## [constant ON_THE_WAY].
+var _tolerance: float = CLOSE_TO
+
+
+## Whether the loops close with the driver at [param at], from the pose
+## [param from_q] that closed with it at [param from]: first from there moved
+## on along [member _slope], then, failing that, from there as it is. Leaves
+## q where it closed.
+func _closes_at(at: float, from: float, from_q: PackedFloat64Array, but: Dictionary = {},
+		only: Dictionary = {}) -> bool:
+	if _slope_col == driver_col and _slope.size() == cols:
+		q = from_q.duplicate()
+		var by: float = at - from
+		for c: int in cols:
+			if c != driver_col and not _still.has(c) and not (_try_held and _carrying.has(c)) \
+					and not but.has(c) and (only.is_empty() or only.has(c)):
+				q[c] += _slope[c] * by
+		q[driver_col] = at
+		if _close() and _within():
+			return true
+	q = from_q.duplicate()
+	q[driver_col] = at
+	return _close() and _within()
+
+
+## A part of the loops that spins on its own: the columns that turn faster
+## than a step should for a move of [param span], the constraints they move,
+## and every column that moves only those. [rows (Dictionary), columns
+## (Dictionary)], or empty when there is no such part, or it is all of it.
+## A small actuator's input and what it drives by a universal joint turn 2 to
+## 4 radians for each LDU its rod goes (42024-1): the rest of the loop could
+## be solved in a step where they took twenty, and it does not move them.
+func _spinning_part(span: float) -> Array:
+	if _slope_col != driver_col or _slope.size() != cols or span <= 0.0:
+		return []
+	var rows: Dictionary = {}
+	var fast: int = 0
+	for c: int in _turning:
+		if absf(_slope[c]) * span > MOST_TURN_STEP * 2.0 and not (_try_held and _carrying.has(c)):
+			fast += 1
+			for k: Variant in _moves_rows.get(c, {}):
+				rows[k] = true
+	if fast == 0 or rows.is_empty():
+		return []
+	var part: Dictionary = {}
+	var rest: int = 0
+	for c: int in cols:
+		if c == driver_col or _still.has(c):
+			continue
+		var moves: Dictionary = _moves_rows.get(c, {})
+		var inside: bool = not moves.is_empty()
+		for k: Variant in moves:
+			if not rows.has(k):
+				inside = false
+				break
+		if inside:
+			part[c] = true
+		else:
+			rest += 1
+	# Every fast column in it, and something left to solve first.
+	for c: int in _turning:
+		if absf(_slope[c]) * span > MOST_TURN_STEP * 2.0 and not part.has(c) \
+				and not (_try_held and _carrying.has(c)):
+			return []
+	if part.is_empty() or rest == 0:
+		return []
+	return [rows, part]
+
+
+## [method _reach] in two: the loops but [param parted]'s part first, with
+## its columns held and its constraints left out, in the steps the rest
+## needs; then the part, the rest held, in the steps it needs, the rest drawn
+## along between where it stood and where it now stands. Null where either
+## does not close all the way (then the whole is solved together, as before).
+func _reach_parted(value: float, parted: Array) -> Variant:
+	var rows: Dictionary = parted[0]
+	var part: Dictionary = parted[1]
+	var from: float = q[driver_col]
+	var span: float = absf(value - from)
+	var step: float = STEP_SLIDE if is_slide() else STEP_TURN
+	# The rest.
+	var count: int = maxi(1, ceili(span / step))
+	var fastest: float = 0.0
+	for c: int in _turning:
+		if not part.has(c):
+			fastest = maxf(fastest, absf(_slope[c]))
+	count = clampi(ceili(fastest * span / MOST_TURN_STEP), count, maxi(count, MOST_STEPS))
+	_rows_off = rows
+	_hold_also = part
+	var good: float = from
+	var good_q: PackedFloat64Array = q.duplicate()
+	for n: int in range(1, count + 1):
+		var at: float = lerpf(from, value, float(n) / float(count))
+		_tolerance = CLOSE_TO if n == count else ON_THE_WAY
+		var closed: bool = _closes_at(at, good, good_q, part)
+		_tolerance = CLOSE_TO
+		if closed:
+			_follow_slope(at, good, good_q, part, false)
+			good = at
+			good_q = q.duplicate()
+			_keep_gear_turns(q)
+			continue
+		# Short of it (a rod past the end of its stroke): the furthest that
+		# closes between the last good and here, as _reach has it.
+		var low: float = good
+		var high: float = at
+		for _round: int in 7:
+			var middle: float = (low + high) * 0.5
+			if _closes_at(middle, low, good_q, part):
+				low = middle
+				good_q = q.duplicate()
+				_keep_gear_turns(q)
+			else:
+				high = middle
+		good = low
+		break
+	_rows_off = {}
+	_hold_also = {}
+	if good == from:
+		# The rest closes no further: nor does the whole, which asks more of
+		# it. The part stays where it was kept.
+		q = kept.duplicate()
+		_gear_kept = _gear_at_keep.duplicate(true)
+		return from
+	value = good
+	# The part, the rest drawn along.
+	var rest_from: PackedFloat64Array = kept.duplicate()
+	var rest_to: PackedFloat64Array = good_q.duplicate()
+	fastest = 0.0
+	for c: Variant in part:
+		fastest = maxf(fastest, absf(_slope[int(c)]))
+	# A slope read where a universal joint's cross turns fastest asked for
+	# 168 steps; more than MOST_STEPS only where these do not close. Nor
+	# fewer than half as many a unit as the last time it closed.
+	count = clampi(maxi(ceili(fastest * span / MOST_TURN_STEP), ceili(_part_rate * span * 0.5)), 1, MOST_STEPS)
+	var off: Dictionary = {}
+	for k: int in closing.size():
+		if not rows.has(k):
+			off[k] = true
+	for k: int in racks.size():
+		if not rows.has(RACK_ROWS + k):
+			off[RACK_ROWS + k] = true
+	for k: int in _gear_ends.size():
+		if not rows.has(GEAR_ROWS + k):
+			off[GEAR_ROWS + k] = true
+	var held: Dictionary = {}
+	for c: int in cols:
+		if not part.has(c):
+			held[c] = true
+	_rows_off = off
+	_hold_also = held
+	var gears_from: Array = _gear_kept.duplicate(true)
+	var ok: bool = false
+	# Where the steps were too few for how fast the part turned just then
+	# (its slope read at a slow moment of a universal joint's turn), four
+	# times as many, before the whole is solved together.
+	for steps: int in [count, mini(count * 4, MOST_STEPS * 4)]:
+		var was: float = from
+		var was_q: PackedFloat64Array = kept.duplicate()
+		_gear_kept = gears_from.duplicate(true)
+		ok = true
+		for n: int in range(1, steps + 1):
+			var share: float = float(n) / float(steps)
+			var at: float = lerpf(from, value, share)
+			var start: PackedFloat64Array = was_q.duplicate()
+			for c: int in cols:
+				if not part.has(c):
+					start[c] = lerpf(rest_from[c], rest_to[c], share)
+			_tolerance = CLOSE_TO if n == steps else ON_THE_WAY
+			var closed: bool = _closes_at(at, was, start, {}, part)
+			_tolerance = CLOSE_TO
+			if not closed:
+				ok = false
+				break
+			_follow_slope(at, was, was_q, part, true)
+			was = at
+			was_q = q.duplicate()
+			_keep_gear_turns(q)
+		if ok:
+			_part_rate = float(steps) / maxf(span, 1e-6)
+			break
+		if steps == MOST_STEPS * 4:
+			break
+	_rows_off = {}
+	_hold_also = {}
+	if not ok:
+		return null
+	# Both closed: the whole, to be sure.
+	var whole: float = _worst(_residual(q, {}))
+	if whole > CLOSE_TO or not _within():
+		return null
+	return value
+
+
+## The slope of each coordinate over a step from [param from] (the pose
+## [param from_q]) to [param at], where q now closes.
+func _follow_slope(at: float, from: float, from_q: PackedFloat64Array, part: Dictionary = {},
+		inside: bool = false) -> void:
+	var by: float = at - from
+	if absf(by) < 1e-6:
+		return
+	if _slope.size() != cols or _slope_col != driver_col:
+		_slope.resize(cols)
+		_slope.fill(0.0)
+		_slope_col = driver_col
+	for c: int in cols:
+		# A part solved apart keeps its own slope, and the rest theirs.
+		if not part.is_empty() and part.has(c) != inside:
+			continue
+		_slope[c] = (q[c] - from_q[c]) / by
 
 
 ## Whether every actuator's and cylinder's rod is within its stroke as q
@@ -885,6 +1308,7 @@ func limits_of(c: int) -> Vector2:
 
 ## Keep the pose q stands in as where the next move starts.
 func keep() -> void:
+	_keeps += 1
 	kept = q.duplicate()
 	_keep_gear_turns(q)
 	_gear_at_keep = _gear_kept.duplicate(true)

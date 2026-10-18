@@ -251,6 +251,30 @@ whole cycle.
   parts could be grabbed and moved on their joints, the page looked for
   every part's drag handle twice a second, and a step on a 925-part model
   took 6 s.
+- A universal joint passes a turn on. Turning 8062-1's crane winch turns
+  the shafts past its two universal joints with it, the joints' crosses
+  turning between their ends; it did not move at all, the cross meeting the
+  far end at once. Shafts in line turn one for one; a
+  joint at an angle turns its far shaft at the mean of its ratio.
+
+- A big loop dragged by its linear actuator follows the pointer at frame
+  rate. 42081-1's digging arm, 262 parts in a loop of 25 joints, cost 253 ms
+  a frame on average and held some frames 2.9 s; it now costs 11 ms, and
+  18 at worst. 42024-1's small actuator, in a loop of 36 joints, went from
+  148 ms to 9, and no longer stops for a frame where nothing is in its way.
+  Let go, the arm is checked and kept in 4 to 6 s, from 19.
+
+- A big section dragged into something and back, then let go, is kept
+  where it was let go. It was put back at the place it had met something
+  earlier in the drag: 42081-1's arm let go 20 LDU out was kept 60 LDU in.
+
+- In a browser, a step of the timeline on a big model is quick again, and a
+  big model no longer stutters. Since parts could be grabbed and moved on
+  their joints, the page looked for every part's drag handle twice a second,
+  for a test that was not running: a step on a 925-part model took 6 s, on a
+  4,000-part model each look held a frame for 180 to 460 ms, and on a
+  2,184-part one drawn without a graphics card the page drew one frame a
+  second. It now draws sixty.
 
 - A shared model's Build it draws the steps before the one shown faded
   again in a browser. Since the faster page turns, they were sometimes
