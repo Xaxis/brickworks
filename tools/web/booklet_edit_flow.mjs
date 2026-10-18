@@ -203,7 +203,10 @@ try {
     `Alone and Parts list off: "${await look()}"`);
   await press("booklet_per_page");
   await press("booklet_per_page");
-  ok(/steps a page: 2/.test((await state()).said || ""), `Per page twice: "${(await state()).said}"`);
+  // Waited for: the page is told what the window says twice a second, and
+  // read once straight after the press it said the first press's "1".
+  const twice = await until((s) => /steps a page: 2/.test(s.said || ""), 10);
+  ok(Boolean(twice), `Per page twice: "${(await state()).said}"`);
   await shot("2_step_5_alone.png");
 
   ok(await toStep(6), `step 6: "${(await timeline()).caption}"`);
@@ -248,6 +251,8 @@ try {
       await page.waitForTimeout(120);
     }
     await page.mouse.up();
+    // Past the frames that still show the drag, to the page laid out again.
+    await page.waitForTimeout(2500);
     const moved = await laid((s) => s.items[picture] && Math.abs(s.items[picture][0] - was[0]) > 5);
     const now = moved ? moved.items[picture] : null;
     ok(Boolean(now) && Math.abs(now[1] - 9) < 0.05,
@@ -266,6 +271,7 @@ try {
         await page.waitForTimeout(120);
       }
       await page.mouse.up();
+      await page.waitForTimeout(2500);
       const wider = await laid((s) => s.items[parts] && s.items[parts][2] > narrow + 10);
       ok(Boolean(wider), `the parts list's corner dragged 24 mm: ${narrow} to ${wider ? wider.items[parts][2] : "unchanged"} mm wide`);
     }

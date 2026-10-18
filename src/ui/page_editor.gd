@@ -622,11 +622,22 @@ func _dragged(event: InputEventMouse) -> void:
 	for at: int in _items.size():
 		if at != _selected:
 			others.append(_items[at]["rect"])
-	var snapped: Dictionary = Booklet.snapped_to(moved, others, resize)
-	item["rect"] = snapped["rect"]
+	var snapped: Dictionary = Booklet.snapped_to(_on_page(moved, resize), others, resize)
+	# Kept on the page as the booklet keeps it (Booklet._on_page), so what is
+	# dragged is where it prints.
+	item["rect"] = _on_page(snapped["rect"], resize)
 	_guides = snapped["lines"]
 	_place_controls()
 	_canvas.queue_redraw()
+
+
+## [param rect] on the page: moved onto it, or, [param resize]d by its far
+## corner, no larger than reaches the page's edge.
+static func _on_page(rect: Rect2, resize: bool) -> Rect2:
+	var size: Vector2 = rect.size.min(Booklet.PAGE)
+	if resize:
+		return Rect2(rect.position, size.min(Booklet.PAGE - rect.position))
+	return Rect2(rect.position.clamp(Vector2.ZERO, Booklet.PAGE - size), size)
 
 
 ## The item dropped where it is: one undo.

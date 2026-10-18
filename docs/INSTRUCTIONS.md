@@ -1071,6 +1071,8 @@ page's own pictures and parts a few seconds later, drawn as Instructions
 draws them (the page's steps alone, `BookletMaker.draw_steps`); a picture
 stretches with its box while it is dragged and is drawn again when let go.
 
+![Lay out page… on 30050-1's page 2, its pictures drawn, the new parts outlined](instructions/30050-page-editor.webp)
+
 Over MCP, `edit_booklet` takes `place=` ({item, x, y, w, h} in mm; item
 picture, parts, callout, number, or note with its index) and `text=`
 ({words, x, y, w, h, size}), each one undo; `booklet_layout` says where each
