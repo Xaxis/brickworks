@@ -166,11 +166,19 @@ async function exportLdraw() {
 // Right arrow until the timeline shows step [number] (the window's own key).
 async function toStep(number) {
   for (let n = 0; n < 40; n++) {
-    const caption = (await timeline()).caption || "";
+    const now = await timeline();
+    const caption = now.caption || "";
     const at = Number((caption.match(/^Step (\d+)/) || [])[1] || 0);
     if (at === number) return true;
+    const was = JSON.stringify(now.at);
     await page.keyboard.press(at < number ? "ArrowRight" : "ArrowLeft");
-    await page.waitForTimeout(900);
+    // Read again once the timeline has moved. A browser drawing a frame a
+    // second tells the page a frame after the key: read 0.9 s after it, the
+    // caption still said the step before, the next press went one too far,
+    // and m78's preview merged nothing and read the wrong step's row.
+    for (let w = 0; w < 40 && JSON.stringify((await timeline()).at) === was; w++) {
+      await page.waitForTimeout(300);
+    }
   }
   return false;
 }
@@ -392,7 +400,7 @@ try {
   const carriedLook = await says((l) => /new page/.test(l));
   ok(/new page/.test(carriedLook) && !/alone/.test(carriedLook),
     `...its row still says it starts a new page: "${carriedLook}"`);
-  ok(await toStep(aloneAt), `the alone step, now ${aloneAt}`);
+  ok(await toStep(aloneAt), `the alone step, now ${aloneAt}: "${(await timeline()).caption}"`);
   const aloneLook = await says((l) => /a page alone/.test(l));
   ok(/a page alone/.test(aloneLook) && !/new page/.test(aloneLook),
     `...still alone, no parts list, and not the new page: "${aloneLook}"`);
