@@ -21,10 +21,11 @@ turning it reaches the rack, else the pinion's column, else a steering arm on
 its kingpin; +30, -60 and +30 degrees from where it stands. A set steers when
 each turn moves it, the rack (or the far arm) goes one way and then the other,
 what stays never moves, and the last turn puts every part back within 0.02
-LDU. Each job runs under ~/.claude/claude-core/bin/heavy; a set that takes
+LDU. Each job runs under ~/.claude/claude-core/bin/heavy, with a data folder
+of its own (.scratch-data, never the owner's app data); a set that takes
 longer than --timeout seconds (300) is stopped and said so, and its job goes on
-from the next. Rows go to bench/results/grab9-2026-10-18/sweep_LABEL.jsonl and
-the table to sweep_LABEL.md.
+from the next. Rows go to bench/results/grab11-2026-10-18/sweep_LABEL.jsonl and
+the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18).
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OMR = ROOT / "vendor" / "omr" / "files"
 PARTS = ROOT / "vendor" / "ldraw" / "parts"
 TABLE = ROOT / "assets" / "ldraw" / "gears.json"
-OUT = Path("/mnt/Projects/brickworks/bench/results/grab9-2026-10-18")
+OUT = Path("/mnt/Projects/brickworks/bench/results/grab11-2026-10-18")
 HEAVY = Path.home() / ".claude" / "claude-core" / "bin" / "heavy"
 GPU = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
 
@@ -125,7 +126,8 @@ def cause_of(row: dict) -> str:
         (r"did not go", "the rack (or far arm) did not move"),
         (r"back to", "not back where it stood"),
         (r"already there", "the pinion turned, its rack did not (one body with what it turns in)"),
-        (r"in the way at once", "something is in the way at once"),
+        (r"through the floor at once", "it would go through the floor at once"),
+        (r"in the way at once| meets .* at once", "something is in the way at once"),
         (r"did not move", "it did not move"),
     ]
     for pattern, short in rules:
@@ -144,6 +146,14 @@ def table(label: str, against: str = "") -> str:
     lines.append(f"{len(steers)} of {len(steering)} sets with a steering steer both ways and back"
                  f" ({len(rows)} sets tried; {len(rows) - len(steering)} have a 1 x 4 rack no pinion stands in"
                  f" and no steering arm, and are not counted).")
+    turning = [r for r in steers if r.get("arms", 0) and r.get("kind") != "arm"
+               and any("arms_deg" in s for s in r.get("steps", []))]
+    if turning:
+        follow = [r for r in turning if all(s.get("arms_deg", 0.0) > 1.0 for s in r["steps"][:2])]
+        lines.append(f"Of the {len(turning)} that steer at a pinion and have steering arms, the arms turn with"
+                     f" the rack in {len(follow)}"
+                     + (f" (not in {', '.join(r['set'] for r in turning if r not in follow)})."
+                        if len(follow) < len(turning) else "."))
     if before:
         was = [r for r in before.values() if r.get("steers")]
         lines.append(f"Against {against}: {len(was)} steered then.")
@@ -185,21 +195,25 @@ def table(label: str, against: str = "") -> str:
     return "\n".join(lines) + "\n"
 
 
-def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool = False) -> None:
-    rows_path = OUT / f"sweep_{label}_{job}.jsonl"
-    log = (OUT / f"sweep_{label}_{job}.log").open("a")
+def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool = False,
+             what: str = "sweep") -> None:
+    rows_path = OUT / f"{what}_{label}_{job}.jsonl"
+    log = (OUT / f"{what}_{label}_{job}.log").open("a")
     left = list(sets)
     while left:
-        listing = OUT / f"sweep_{label}_{job}.list"
+        listing = OUT / f"{what}_{label}_{job}.list"
         listing.write_text("".join(f"vendor/omr/files/{s}\n" for s in left))
         done_before = len(rows_path.read_text().splitlines()) if rows_path.exists() else 0
         # Windowed on the GPU lease for pictures; else headless under heavy.
         command = ([str(GPU), "env", "MESA_VK_WSI_DEBUG=sw", "xvfb-run", "-a", "godot", "--path", str(ROOT),
                     "--resolution", "1400x900"] if shots else [str(HEAVY), "godot", "--headless", "--path", str(ROOT)])
         process = subprocess.Popen(
-            command + ["--script", "src/dev/grab_probe.gd", "--", "--only=sweep", f"--list={listing}",
+            command + ["--script", "src/dev/grab_probe.gd", "--", f"--only={what}", f"--list={listing}",
                        f"--sweep-out={rows_path}"] + (["--sweep-shots"] if shots else []),
-            cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
+            # A data folder of its own: user:// is otherwise the owner's app
+            # data, and opening a real set saves the parts it carries there.
+            env=dict(os.environ, XDG_DATA_HOME=str(ROOT / ".scratch-data")))
         began_at = 0.0
         began = ""
         while process.poll() is None:
@@ -233,12 +247,14 @@ def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool 
     log.close()
 
 
-def run(label: str, jobs: int, only: list[str], timeout: float, shots: bool = False) -> None:
+def run(label: str, jobs: int, only: list[str], timeout: float, shots: bool = False,
+        what: str = "sweep", sets: list[str] | None = None, table_of=None) -> None:
     import threading
 
     OUT.mkdir(parents=True, exist_ok=True)
-    sets = only or candidates()
-    for old in OUT.glob(f"sweep_{label}_*"):
+    sets = only or (sets if sets is not None else candidates())
+    table_of = table_of or table
+    for old in OUT.glob(f"{what}_{label}_*"):
         old.unlink()
     sizes = {s: (OMR / s).stat().st_size for s in sets}
     shards: list[list[str]] = [[] for _ in range(jobs)]
@@ -247,22 +263,22 @@ def run(label: str, jobs: int, only: list[str], timeout: float, shots: bool = Fa
         n = load.index(min(load))
         shards[n].append(s)
         load[n] += sizes[s]
-    threads = [threading.Thread(target=_run_job, args=(shard, label, n, timeout, shots))
+    threads = [threading.Thread(target=_run_job, args=(shard, label, n, timeout, shots, what))
                for n, shard in enumerate(shards) if shard]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
-    merged = OUT / f"sweep_{label}.jsonl"
+    merged = OUT / f"{what}_{label}.jsonl"
     with merged.open("w") as out:
         for n in range(jobs):
-            part = OUT / f"sweep_{label}_{n}.jsonl"
+            part = OUT / f"{what}_{label}_{n}.jsonl"
             if part.exists():
                 for line in part.read_text().splitlines():
                     if line.strip() and not json.loads(line).get("begin"):
                         out.write(line + "\n")
-    (OUT / f"sweep_{label}.md").write_text(table(label))
-    print((OUT / f"sweep_{label}.md").read_text().split("\n\n")[1])
+    (OUT / f"{what}_{label}.md").write_text(table_of(label))
+    print((OUT / f"{what}_{label}.md").read_text().split("\n\n")[1])
 
 
 def main(argv: list[str]) -> int:

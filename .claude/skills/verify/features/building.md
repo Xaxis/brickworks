@@ -640,25 +640,49 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the rack goes one way then the other, every part back within 0.1 LDU, what
   stays still; `--steer-set=FILE` for another. 42050-1 and 8273-1 too (G9:
   a block with pins on two lines, 48989, is not a lone pin,
-  `Bodies._pins_on_lines`). Every OMR set with a steering:
-  `tools/steer_sweep.py run LABEL` (181 files, four headless jobs under
-  heavy, ~15 min; `--only=SET,...`, `--shots` windowed with pictures from
-  above) runs `grab_probe -- --only=sweep --list=FILE` and writes
-  `sweep_LABEL.jsonl` and `.md` to bench/results/grab9-2026-10-18; `table
-  LABEL --against=OTHER` sets two side by side (MECHANISMS §18: 25 of 168
-  before G9). Why a rack does not go: `grab_probe -- --only=steerdebug
-  --steer-set=FILE [--turn=ID]` prints the rack's joins to the part its
-  pinion turns in, every shaft near it, and pictures of the rack's
-  neighbourhood when windowed. `-- --only=stays` (in the full run): 42081-1's
-  tyre "23798" named from the catalogue, and what stays the biggest body,
-  not its bucket (535 g by its box).
+  `Bodies._pins_on_lines`). G11 (MECHANISMS §19) adds 42076-1 (half pins in
+  a steering rack's groove, `Bodies._in_a_groove`), 8862-1 (a shaft on a
+  loop's line, `Grab._thin_on`),
+  8832-1 (the round rack 2790a, loose in its holder) and 42043-1 (18942 in
+  its housing 18940). Each turns back by the turn measured from where it
+  stood. `-- --only=moving` (in the full run): 8074-1's crane on its
+  turntable (a cable bends out of the way) and 10220-1's door (what touched
+  as built is forgiven in each later grab) moved +30, -60 and back. `-- --only=meets` (in the full run): a move
+  stopped by the model names the two parts that met (`GrabDrag._met_words`);
+  `-- --only=sockets`: 42111-1's steering links (2739a, sockets drawn as
+  plain rounds) hang on their towballs by ball joints. Every OMR set with a
+  steering: `tools/steer_sweep.py run LABEL` (181 files, four headless jobs
+  under heavy, ~20 min; `--only=SET,...`, `--shots` windowed with pictures
+  from above) runs `grab_probe -- --only=sweep --list=FILE` and writes
+  `sweep_LABEL.jsonl` and `.md` to bench/results/grab11-2026-10-18 (G9's in
+  grab9-2026-10-18); `table LABEL --against=OTHER` sets two side by side
+  (MECHANISMS §19: 33 of 169 before G11). Each row says how far the steering
+  arms turned; every shared sub-assembly is made its own before the turns;
+  each Godot it starts gets a data folder of its own (`.scratch-data`), never
+  the owner's app data (opening a real set saves the parts it carries).
+  The other moving things: `tools/move_sweep.py run LABEL` (the OMR files
+  with a turntable, a door, ramp, hatch, gate, flap or lid, or a crane;
+  `grab_probe -- --only=movesweep`) moves a turntable's top, a door and the
+  biggest boom or arm on a hinge, pin or axle +30, -60 and back, and writes
+  `movesweep_LABEL.jsonl` and `.md`. Why a rack does not go: `grab_probe --
+  --only=steerdebug --steer-set=FILE [--turn=ID or SET:ID] [--pair=A,B]`
+  prints the rack's joins to the part its pinion turns in, every shaft near
+  it, how far a turn's loop closes, where two parts stand and whose studs
+  reach which, and pictures of the rack's neighbourhood when windowed.
+  `-- --only=stays` (in the full run): 42081-1's tyre "23798" named from the
+  catalogue, and what stays the biggest body, not its bucket (535 g by its
+  box).
   Probe: `grab_probe` (real sets, simulated pointer events; windowed, the
   pointer cases need a window); browser: `tools/web/grab_flow.mjs`. Each case
   starts clean (`_clean_slate`: no button down, drag, grab, part in hand or
   selection left by the last) and presses only once the view has stopped
   easing (`_camera_still`); a case that dies on a script error counts as a
   failure. `-- --only=cases` runs the single-joint cases in the full run's
-  order. A turn stopped by the model names the two parts that met.
+  order. A turn stopped by the model names the two parts that met, in the
+  status bar and in move_part's answer. A tyre scrubs on the baseplate and a
+  part that bends (a hose, a cable or rubber band skin) is never in a move's
+  way; what touched where the model was built is forgiven in each later
+  grab as in the first (`Grab._built_touching`).
 - `rigid bodies and joints` (`src/assembly/bodies.gd`): the model as rigid
   bodies (two studs or more, an axle in an axle hole, glue: one body; two
   joints on different lines between two bodies: one body) and the joints
@@ -680,6 +704,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   joiner, a gear a file carries as a part of its own, a log in a gripper.
   A hose, a tube or a chain (`Flex.strung`) bends: it closes no loop, carries
   nothing on and is tested for room by nothing (`Bodies.flexible`).
+  Racks (MECHANISMS §19): a rack in its housing (18942 in 18940) slides on
+  the housing's line ("housing"); studs standing up into a grooved steering
+  rack (87761, 64781) ride in its groove ("groove"); a piece with a rack its
+  pinion holds slides where it rests instead of being lodged ("rests"); the
+  round rack 2790a is loose in its holder; a socket drawn as plain rounds a
+  ball's size holds a ball (`Joints.balls`).
   Each piece's anchor: a locked part's body, else what stands on the
   baseplate (a stud in a socket; never a tyre), else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
