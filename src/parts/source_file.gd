@@ -157,9 +157,12 @@ func _read_sections() -> void:
 		sections[""] = [0, lines.size()]
 
 
-## The section a copy's parts are in: the model's own for "".
+## The section a copy's parts are in: the model's own for "", and for a
+## copy of none a newline, which no section's name can hold. Not a NUL
+## character: the engine says "Unicode parsing error" for one in a script,
+## three lines every run, which crowded the suite's report of what failed.
 func _section_of(unit: String) -> String:
-	return main_key if unit.is_empty() else str(unit_sections.get(unit, "\u0000"))
+	return main_key if unit.is_empty() else str(unit_sections.get(unit, "\n"))
 
 
 ## What of [param placements], parts the app cannot show, a person reads:
