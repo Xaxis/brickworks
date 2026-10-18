@@ -12,8 +12,10 @@
 ## (Booklet._by_hand). What was never dragged stays where the booklet lays
 ## it, so a file without those lines prints as it did.
 ##
-## The pictures are not drawn here: a step's picture is the box its model
-## is fitted to. Instructions draws them.
+## The page shows its boxes at once and the steps' pictures and parts a few
+## seconds later, drawn as Instructions draws them (BookletMaker.draw_steps,
+## the page's steps alone); a picture is stretched with its box while it is
+## dragged and drawn again once it is let go.
 class_name PageEditor
 extends Control
 
@@ -40,6 +42,13 @@ var _laying: bool = false
 ## while the page is up shows on it.
 var _seen_history: Array = []
 var _pictures: Dictionary = {}
+## The page's steps drawn (BookletMaker.draw_steps): number -> {"picture":
+## Texture2D, "cells": [[Texture2D, Rect2 within the callout box]]}; and
+## each part's picture by its lot's key. The drawing under way, to cancel
+## when the page changes before it is done.
+var _shots: Dictionary = {}
+var _part_shots: Dictionary = {}
+var _drawing: Working.Job = null
 
 var _canvas: Control
 var _handle: Control
@@ -106,7 +115,9 @@ func _ready() -> void:
 	_words.placeholder_text = "the selected words"
 	_words.custom_minimum_size = Vector2(240, 0)
 	_words.editable = false
-	_words.text_submitted.connect(func(_text: String) -> void: _reword())
+	# Enter sets the words and gives the keys back to the window, whose
+	# Ctrl-Z is the model's undo and not the box's.
+	_words.text_submitted.connect(func(_text: String) -> void: _words.release_focus())
 	_words.focus_exited.connect(_reword)
 	row.add_child(_words)
 	_named["page_words"] = _words
@@ -148,6 +159,8 @@ func is_open() -> bool:
 func open() -> void:
 	_world = app.get("_world")
 	_shell = app.get("_shell")
+	_shots.clear()
+	_part_shots.clear()
 	visible = true
 	var steps: StepsBar = app.get("_steps")
 	var at: Instructions.Step = steps.booklet_step() if steps != null else null
@@ -156,6 +169,9 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	if _drawing != null:
+		_drawing.cancelled = true
+		_drawing = null
 	_drag = {}
 	_items.clear()
 	_clear_controls()
@@ -262,8 +278,73 @@ func _show_page() -> void:
 	for at: int in _items.size():
 		if _item_name(at) == keep:
 			_select(at)
+	if _selected < 0:
+		# What was selected is gone (undone, or put back): nothing to type into.
+		if _words.has_focus():
+			_words.release_focus()
+		_select(-1)
 	_fit()
 	_say_soft("Drag an item to place it; drag its corner to size it. It snaps to the margins and to the other items.")
+	_draw_pictures()
+
+
+## The page's steps drawn as Instructions draws them, in the background;
+## the page shows them when they are done. Not headless, where nothing is
+## drawn and each picture would be waited for in vain.
+func _draw_pictures() -> void:
+	if _drawing != null:
+		_drawing.cancelled = true
+	_drawing = null
+	var numbers: Dictionary = {}
+	for number: int in _page_steps():
+		numbers[number] = true
+	if numbers.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	var job := Working.Job.new()
+	_drawing = job
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = app.get("_library")
+	maker.job = job
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.draw_steps(_world, store.scenery, "Model", numbers)
+	var document: Booklet.Document = maker.document
+	maker.queue_free()
+	if job.cancelled or not visible or document == null:
+		return
+	_drawing = null
+	for page: Booklet.Page in pages:
+		for entry: Booklet.Entry in page.entries:
+			if not numbers.has(entry.number) or entry.image.is_empty():
+				continue
+			var cells: Array = []
+			if entry.callout != null and entry.callout.inline:
+				for index: int in mini(entry.callout.images.size(), entry.callout.cells.size()):
+					var cell: Rect2 = entry.callout.cells[index]
+					cells.append([_texture(entry.callout.images[index]),
+						Rect2(cell.position - entry.callout.box.position, cell.size)])
+			_shots[entry.number] = {"picture": _texture(entry.image), "cells": cells}
+	for key: String in document.parts:
+		if not _part_shots.has(key):
+			_part_shots[key] = _texture(str(document.parts[key]))
+	_canvas.queue_redraw()
+
+
+## A picture as a data URI, as a texture.
+static func _texture(uri: String) -> Texture2D:
+	var comma: int = uri.find(",")
+	if comma < 0:
+		return null
+	var bytes: PackedByteArray = Marshalls.base64_to_raw(uri.substr(comma + 1))
+	var image := Image.new()
+	var read: int = ERR_FILE_UNRECOGNIZED
+	if uri.begins_with("data:image/jpeg"):
+		read = image.load_jpg_from_buffer(bytes)
+	elif uri.begins_with("data:image/webp"):
+		read = image.load_webp_from_buffer(bytes)
+	else:
+		read = image.load_png_from_buffer(bytes)
+	return ImageTexture.create_from_image(image) if read == OK else null
 
 
 func _add_item(kind: String, rect: Rect2, entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
@@ -367,35 +448,56 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 	var entry: Booklet.Entry = item["entry"]
 	match str(item["kind"]):
 		"picture":
+			var drawn: Texture2D = (_shots.get(entry.number, {}) as Dictionary).get("picture")
+			if drawn != null:
+				# As Instructions draws it, stretched with its box while dragged.
+				_canvas.draw_texture_rect(drawn, rect, false)
+				_dashed(rect, Color(0.24, 0.43, 0.59, 0.5))
+				return
 			_canvas.draw_rect(rect, Color(1, 1, 1, 0.28))
 			_dashed(rect, Color(0.24, 0.43, 0.59, 0.8))
-			# The model's room in it, at the size it is drawn.
+			# The model's room in it, at the size it is drawn, until it is drawn.
 			var need: Vector2 = entry.subject.size * entry.scale
 			var free: Rect2 = Rect2(rect.get_center() - need * k * 0.5, need * k) \
-				if entry.place.has("picture") else Rect2(entry.free.position * k, entry.free.size * k)
+				if entry.place.has("picture") \
+				else Rect2(rect.position + (entry.free.position - entry.rect.position) * k,
+					entry.free.size * k)
 			_canvas.draw_rect(free, Color(0.24, 0.43, 0.59, 0.16))
 			_canvas.draw_string(font, free.get_center() + Vector2(-free.size.x * 0.5, 4),
-				"Step %d's picture" % entry.number, HORIZONTAL_ALIGNMENT_CENTER, free.size.x,
-				int(clampf(3.4 * k, 9, 18)), Color(0.15, 0.3, 0.45))
+				"Step %d's picture (drawing…)" % entry.number, HORIZONTAL_ALIGNMENT_CENTER,
+				free.size.x, int(clampf(3.4 * k, 9, 18)), Color(0.15, 0.3, 0.45))
 		"parts":
 			_canvas.draw_rect(rect, PARTS_COLOUR)
 			_canvas.draw_rect(rect, PARTS_LINE, false, maxf(1.0, 0.35 * k))
-			var x: float = rect.position.x + Booklet.PAD * k
-			var y: float = rect.position.y + Booklet.PAD * k
-			for lot: Booklet.Lot in entry.lots:
-				var cell: Vector2 = lot.size * k
-				if x + cell.x > rect.end.x - Booklet.PAD * k and x > rect.position.x + Booklet.PAD * k + 1:
-					x = rect.position.x + Booklet.PAD * k
-					y += cell.y + Booklet.QUANTITY * k + k
-				if y + cell.y > rect.end.y:
-					break
-				_canvas.draw_rect(Rect2(Vector2(x, y), cell), Color(1, 1, 1, 0.45))
-				_canvas.draw_string(font, Vector2(x, y + cell.y + Booklet.QUANTITY * k),
-					"%dx" % lot.count, HORIZONTAL_ALIGNMENT_LEFT, -1, int(maxf(8, 2.6 * k)), INK)
-				x += maxf(cell.x, Booklet.QUANTITY * 2.0 * k) + Booklet.PAD * k
+			# The parts in the rows the booklet puts them in (Booklet._entry).
+			var y: float = (item["rect"] as Rect2).position.y + Booklet.PAD
+			for row: Array in Booklet._rows(entry.lots, entry.parts_width):
+				var x: float = (item["rect"] as Rect2).position.x + Booklet.PAD
+				var tallest: float = float(row[2])
+				for lot: Booklet.Lot in row[0]:
+					var cell: float = maxf(lot.size.x, Booklet.QUANTITY * 2.0)
+					var spot := Rect2(Vector2(x + (cell - lot.size.x) * 0.5,
+						y + tallest - lot.size.y) * k, lot.size * k)
+					var part: Texture2D = _part_shots.get(lot.key)
+					if part != null:
+						_canvas.draw_texture_rect(part, spot, false)
+					else:
+						_canvas.draw_rect(spot, Color(1, 1, 1, 0.5))
+					_canvas.draw_string(font, Vector2(x, y + tallest + Booklet.QUANTITY) * k,
+						"%dx" % lot.count, HORIZONTAL_ALIGNMENT_LEFT, -1,
+						int(maxf(8, Booklet.QUANTITY * 0.82 * k)), INK)
+					x += cell + Booklet.PAD
+				y += tallest + Booklet.QUANTITY + 1.0
 		"callout":
 			_canvas.draw_rect(rect, CALLOUT_COLOUR)
 			_canvas.draw_rect(rect, INK, false, maxf(1.0, 0.4 * k))
+			var scale_by: Vector2 = (item["rect"] as Rect2).size \
+				/ entry.callout.box.size.max(Vector2(1, 1))
+			for cell: Array in (_shots.get(entry.number, {}) as Dictionary).get("cells", []):
+				if cell[0] != null:
+					var at: Rect2 = cell[1]
+					_canvas.draw_texture_rect(cell[0], Rect2(rect.position + at.position * scale_by * k,
+						at.size * scale_by * k), false)
 			_canvas.draw_string(font, rect.position + Vector2(6, 16), "%s%s" % [
 				entry.callout.name, (" %dx" % entry.callout.times) if entry.callout.times > 1 else ""],
 				HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8, 12, INK)
@@ -462,13 +564,13 @@ func _on_item_input(at: int, event: InputEvent) -> void:
 		var button: InputEventMouseButton = event
 		if button.pressed:
 			_select(at)
-			_drag = {"mode": "move", "from": _canvas.get_local_mouse_position(),
+			_drag = {"mode": "move", "from": _on_canvas(button),
 				"rect": _items[at]["rect"]}
 		elif not _drag.is_empty():
 			_drop()
 		accept_event()
 	elif event is InputEventMouseMotion and not _drag.is_empty():
-		_dragged()
+		_dragged(event as InputEventMouse)
 		accept_event()
 
 
@@ -477,13 +579,13 @@ func _on_handle_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		if (event as InputEventMouseButton).pressed:
-			_drag = {"mode": "resize", "from": _canvas.get_local_mouse_position(),
+			_drag = {"mode": "resize", "from": _on_canvas(event as InputEventMouse),
 				"rect": _items[_selected]["rect"]}
 		elif not _drag.is_empty():
 			_drop()
 		accept_event()
 	elif event is InputEventMouseMotion and not _drag.is_empty():
-		_dragged()
+		_dragged(event as InputEventMouse)
 		accept_event()
 
 
@@ -499,11 +601,18 @@ func _select(at: int) -> void:
 	_canvas.queue_redraw()
 
 
+## Where [param event] is on the page's canvas, in its pixels: read off the
+## event, which a real pointer and one a check sends both carry, and not the
+## viewport's own idea of where the mouse is, which a sent one does not move.
+func _on_canvas(event: InputEventMouse) -> Vector2:
+	return _canvas.get_global_transform().affine_inverse() * event.global_position
+
+
 ## The item under the pointer where the drag has it now, snapped.
-func _dragged() -> void:
+func _dragged(event: InputEventMouse) -> void:
 	var item: Dictionary = _items[_selected]
 	var k: float = _scale()
-	var by: Vector2 = (_canvas.get_local_mouse_position() - (_drag["from"] as Vector2)) / k
+	var by: Vector2 = (_on_canvas(event) - (_drag["from"] as Vector2)) / k
 	var was: Rect2 = _drag["rect"]
 	var resize: bool = _drag["mode"] == "resize"
 	var moved: Rect2 = Rect2(was.position + (Vector2.ZERO if resize else by),
@@ -687,7 +796,9 @@ func page_state() -> Dictionary:
 	return {"page": _pages[_at].number if _at >= 0 and _at < _pages.size() else 0,
 		"steps": _page_steps(), "items": items, "laying": _laying,
 		"selected": _item_name(_selected) if _selected >= 0 else "",
-		"guides": _guides.size()}
+		"guides": _guides.size(),
+		# The page's steps whose pictures are drawn on it so far.
+		"drawn": _page_steps().filter(func(number: int) -> bool: return _shots.has(number))}
 
 
 ## Item [param name]'s index, -1 when the page has none.

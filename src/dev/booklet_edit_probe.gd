@@ -594,6 +594,21 @@ func _page_by_hand(base: String) -> void:
 		", ".join(PackedStringArray(items.keys())).left(120)],
 		items.has("page_picture_%d" % first) and _history() >= 0)
 	var mouse: bool = DisplayServer.get_name() != "headless"
+	if mouse:
+		# The page's own pictures, drawn as Instructions draws them.
+		var began: int = Time.get_ticks_msec()
+		for _n: int in 3000:
+			if (editor.page_state().get("drawn", []) as Array).size() == (state.get("steps", []) as Array).size():
+				break
+			await process_frame
+		_check("...its %d steps' pictures drawn on it, in %.1f s" % [
+			(editor.page_state().get("drawn", []) as Array).size(),
+			(Time.get_ticks_msec() - began) / 1000.0],
+			(editor.page_state().get("drawn", []) as Array).size() == (state.get("steps", []) as Array).size())
+		await _frames(4)
+		var drawn: Image = root.get_texture().get_image()
+		if drawn != null:
+			drawn.save_png(_out.path_join("%s_page_editor_open.png" % _name))
 	# The picture, dragged.
 	var history: int = _history()
 	var name: String = "page_picture_%d" % first
@@ -988,9 +1003,9 @@ func _all_looks(name: String, before: Dictionary) -> void:
 		int(picks["new"]), _mm((drawn_head[0] as Booklet.Entry).rect) if not drawn_head.is_empty() else "?"],
 		not drawn_head.is_empty()
 		and (drawn_head[0] as Booklet.Entry).rect.is_equal_approx(Rect2(120, 40, 130, 120))
-		and section.contains("--x:120;--y:40;--w:130;--h:120")
+		and section.contains("--x:120.0;--y:40.0;--w:130.0;--h:120.0")
 		and section.contains("Build the wheels first,<br>then the frame")
-		and section.contains("--x:200;--y:150;--w:48;--h:32") and section.contains("data:image/png;base64,"))
+		and section.contains("--x:200.0;--y:150.0;--w:48.0;--h:32.0") and section.contains("data:image/png;base64,"))
 	var orange_before: int = _orange(before.get("entries", {}))
 	var orange_after: int = _orange(made["entries"])
 	if outlined:

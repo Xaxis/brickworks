@@ -18,6 +18,10 @@
 // step 5 is alone on one with no parts box, no page has more than two
 // steps, and the PDF printed from it has the booklet's pages. File > Export
 // > LDraw model: Python reads the ROTSTEP and the app's own lines in it.
+// Then step 4's page by hand in Lay out page…: its picture dragged by the
+// mouse onto the top margin, which it snaps to; its parts list widened by its
+// corner; words added and typed; a picture added through the file chooser;
+// Ctrl-Z and Ctrl-Shift-Z on it. The booklet's page 4 and the file say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
 import { launch } from "./browser.mjs";
@@ -212,6 +216,84 @@ try {
   ok(await toStep(5) && /a page alone/.test(await look()),
     `...and step 5 is still alone: "${await look()}"`);
 
+  // The page by hand: step 4's page in Lay out page…, its picture dragged by
+  // the mouse and let go a millimetre and a half below the top margin, which
+  // it snaps onto; its parts list widened by its corner; words added and
+  // typed; a picture added from a file; Ctrl-Z and Ctrl-Shift-Z on it.
+  ok(await toStep(4), `step 4 for its page: "${(await timeline()).caption}"`);
+  await press("booklet_lay_out");
+  const editor = async () => (await state()).page_editor || {};
+  const laid = async (test, seconds = 60) => {
+    for (let n = 0; n < seconds * 2; n++) {
+      const now = await editor();
+      if (now.items && !now.laying && test(now)) return now;
+      await page.waitForTimeout(500);
+    }
+    return null;
+  };
+  const opened4 = await laid((s) => (s.steps || []).includes(4));
+  ok(Boolean(opened4), `Lay out page… opens step 4's page: ${opened4 ? `page ${opened4.page}, steps ${opened4.steps}, ${Object.keys(opened4.items).length} items` : "nothing"}`);
+  if (opened4) {
+    await shot("3_page_editor_before.png");
+    const canvas = await where("page_canvas");
+    const k = canvas.w / 269; // CSS px a millimetre of page
+    const picture = "page_picture_4";
+    const was = opened4.items[picture];
+    const from = await where(picture);
+    const by = { x: 30, y: 9 + 1.5 - was[1] };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    for (let n = 1; n <= 10; n++) {
+      await page.mouse.move(from.x + by.x * k * n / 10, from.y + by.y * k * n / 10);
+      await page.waitForTimeout(120);
+    }
+    await page.mouse.up();
+    const moved = await laid((s) => s.items[picture] && Math.abs(s.items[picture][0] - was[0]) > 5);
+    const now = moved ? moved.items[picture] : null;
+    ok(Boolean(now) && Math.abs(now[1] - 9) < 0.05,
+      `step 4's picture dragged from ${was.slice(0, 2)} by ${by.x}, ${by.y.toFixed(1)} mm: at ${now ? now.slice(0, 2) : "nowhere"}, snapped onto the top margin (9 mm)`);
+    const parts = "page_parts_4";
+    if (moved && moved.items[parts]) {
+      const box = await where(parts);
+      await page.mouse.click(box.x, box.y);
+      await page.waitForTimeout(800);
+      const corner = await where("page_resize");
+      const narrow = moved.items[parts][2];
+      await page.mouse.move(corner.x, corner.y);
+      await page.mouse.down();
+      for (let n = 1; n <= 8; n++) {
+        await page.mouse.move(corner.x + 24 * k * n / 8, corner.y);
+        await page.waitForTimeout(120);
+      }
+      await page.mouse.up();
+      const wider = await laid((s) => s.items[parts] && s.items[parts][2] > narrow + 10);
+      ok(Boolean(wider), `the parts list's corner dragged 24 mm: ${narrow} to ${wider ? wider.items[parts][2] : "unchanged"} mm wide`);
+    }
+    await press("page_add_text");
+    const worded = await laid((s) => Object.keys(s.items).some((n) => n.startsWith("page_text_4")));
+    ok(Boolean(worded), `Add words puts words on the page: ${worded ? Object.keys(worded.items).filter((n) => n.startsWith("page_text")) : "none"}`);
+    await page.keyboard.type("Build both sides alike", { delay: 40 });
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(2500);
+    const picker = new Promise((done) => {
+      page.once("filechooser", done);
+    });
+    page.choosers.length = 0;
+    await press("page_add_image");
+    const chooser = await Promise.race([picker, page.waitForTimeout(20000).then(() => null)]);
+    if (chooser) await chooser.setFiles(resolve("assets/icon.png"));
+    const pictured = await laid((s) => Object.keys(s.items).some((n) => n.startsWith("page_image_4")));
+    ok(Boolean(pictured), `Add a picture… from a file puts it on the page (${chooser ? "a file chooser came up" : "no file chooser"})`);
+    await shot("4_page_editor_after.png");
+    await page.keyboard.press("Control+z");
+    const unpictured = await laid((s) => !Object.keys(s.items).some((n) => n.startsWith("page_image_4")));
+    ok(Boolean(unpictured), "Ctrl-Z takes the picture off, and only that");
+    await page.keyboard.press("Control+Shift+z");
+    const repictured = await laid((s) => Object.keys(s.items).some((n) => n.startsWith("page_image_4")));
+    ok(Boolean(repictured), "Ctrl-Shift-Z puts it back");
+    await press("page_done");
+  }
+
   // The booklet from those choices, in the tab the timeline's Instructions opens.
   const opened = context.waitForEvent("page", { timeout: 30000 });
   await press("steps_booklet");
@@ -246,6 +328,18 @@ try {
       `step 5 alone on its page, no parts box (${five ? `${five.id}: ${five.steps.join(",")}, ${five.boxes} boxes` : "none"})`);
     const most = Math.max(...facts.map((p) => p.steps.length));
     ok(most <= 2, `no page of more than two steps (${most})`);
+    // The page laid out by hand, as printed.
+    const byHand = four ? await tab.evaluate((id) => {
+      const s = document.getElementById(id);
+      const img = [...s.querySelectorAll("img.a")].find((i) => /Step 4/.test(i.alt));
+      return {
+        top: img ? img.style.getPropertyValue("--y") : "",
+        words: s.innerText.includes("Build both sides alike"),
+        picture: [...s.querySelectorAll("img.a")].some((i) => i.src.startsWith("data:image/png")),
+      };
+    }, four.id) : {};
+    ok(parseFloat(byHand.top) === 9 && byHand.words && byHand.picture,
+      `step 4's page as dragged: its picture at the top margin (--y ${byHand.top}), the words and the picture on it`);
     await tab.setViewportSize({ width: 1060, height: 800 });
     await tab.addStyleTag({ content: ".bar { display: none !important; }" });
     for (const p of [three(facts), four, five].filter(Boolean)) {
@@ -271,7 +365,15 @@ text = open(sys.argv[1], encoding="utf-8").read()
 want = ["0 ROTSTEP 0 45 0 REL", "0 !BRICKWORKS ZOOM 1.25", "0 !BRICKWORKS PAGE NEW",
         "0 !BRICKWORKS PAGE ALONE", "0 !BRICKWORKS PARTS OFF", "0 !BRICKWORKS PER_PAGE 2"]
 have = [l.strip() for l in text.splitlines()]
-print(json.dumps({w: w in have for w in want}))
+found = {w: w in have for w in want}
+# The page by hand: the picture placed at the top margin, the parts list
+# widened, the words, and the picture with its embedded file.
+found["PLACE PICTURE x 9"] = any(l.startswith("0 !BRICKWORKS PLACE PICTURE ") and l.split()[5] == "9" for l in have)
+found["PLACE PARTS"] = any(l.startswith("0 !BRICKWORKS PLACE PARTS ") for l in have)
+found["TEXT"] = any(l.startswith("0 !BRICKWORKS TEXT ") and l.endswith("Build both sides alike") for l in have)
+found["IMAGE"] = any(l.startswith("0 !BRICKWORKS IMAGE ") for l in have)
+found["!DATA"] = any(l.startswith("0 !DATA brickworks-page-") for l in have)
+print(json.dumps(found))
 `, saved], { encoding: "utf8" });
     const found = JSON.parse(lines);
     ok(Object.values(found).every(Boolean), `the file says each: ${JSON.stringify(found)}`);

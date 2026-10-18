@@ -49,6 +49,11 @@ var _studio: BookletStudio
 ## The steps the booklet was made from, as planned: an entry's "step" meta
 ## is its index here (the page editor finds a page's steps by it).
 var plan: Array[Instructions.Step] = []
+## Draw the pictures of only these steps, by number ([method draw_steps]):
+## the page being laid out by hand. Empty draws every one.
+var only: Dictionary = {}
+## The parts those steps add, whose pictures their parts boxes need.
+var _wanted_lots: Dictionary = {}
 ## Lay the pages out and draw nothing ([method lay_out_only]): which steps
 ## go on which page, read in a moment where the pictures take minutes.
 var dry: bool = false
@@ -81,6 +86,20 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 ## decided as it draws them; here they are seen from the front.
 func lay_out_only(world: BrickWorld, scenery: Dictionary, title: String) -> Array[Booklet.Page]:
 	dry = true
+	await _make(world, scenery, title)
+	var out: Array[Booklet.Page] = []
+	if document != null:
+		out = document.pages
+	return out
+
+
+## The booklet's pages of steps with the pictures of steps [param numbers]
+## drawn, and no others, their parts' pictures in [member document]'s parts:
+## the page editor's (PageEditor), seconds where the whole booklet is
+## minutes.
+func draw_steps(world: BrickWorld, scenery: Dictionary, title: String,
+		numbers: Dictionary) -> Array[Booklet.Page]:
+	only = numbers
 	await _make(world, scenery, title)
 	var out: Array[Booklet.Page] = []
 	if document != null:
@@ -160,6 +179,17 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		document.images[name] = "data:%s;base64,%s" % [
 			"image/png" if name.ends_with(".png") else "image/jpeg", str(pictures[name])]
 	_lap("staged")
+	if not only.is_empty():
+		for step: Instructions.Step in steps:
+			if not only.has(step.number):
+				continue
+			var ids: Array = Array(step.brick_ids)
+			for copy: PackedInt64Array in step.copies:
+				ids.append_array(Array(copy))
+			for brick_id: int in ids:
+				var brick: BrickWorld.Brick = world.get_brick(brick_id)
+				if brick != null:
+					_wanted_lots[stock.key_of(brick)] = true
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")
 	if _stopped():
@@ -194,7 +224,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 			# well, as a step of the model's own, they had no rank on the
 			# main stage and stopped the booklet with a script error (8022
 			# Tow Truck, 2026-10-16).
-			if entry.in_callout:
+			if entry.in_callout or not only.is_empty() and not only.has(entry.number):
 				continue
 			drawn += 1
 			if drawn % 5 == 1:
@@ -204,6 +234,10 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 			await _draw(entry)
 
 	_lap("steps drawn")
+	if not only.is_empty():
+		document.pages = pages
+		_forget_all()
+		return ""
 	document.pages.append(await _cover())
 	document.pages.append_array(pages)
 	var finished: Booklet.Page = await _finished(pages.size() + 2)
@@ -320,7 +354,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 			continue
 		var extent: Rect2 = BookletStudio.extent([part.bounds], BookletStudio.FRONT)
 		made.size = Booklet.part_size(extent.size)
-		if dry:
+		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
 			lots[key] = made
 			continue
@@ -586,12 +620,20 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	_studio.supersample = 1
 	var count: int = 0
 	var before: Vector3 = BookletStudio.FRONT
+	var last: int = -1
+	for number: Variant in only:
+		last = maxi(last, int(number))
 	for entry: Booklet.Entry in entries:
 		count += 1
 		if count % 10 == 1:
 			_say("Choosing how each step is seen…", entries.size(), count - 1)
 		if _stopped():
 			return
+		# Past the steps being drawn: seen as laid out, from the front.
+		if last >= 0 and entry.number > last:
+			if not entry.fixed:
+				entry.from = BookletStudio.FRONT
+			continue
 		# Seen the way its designer set it: turned where the turn is more
 		# than a glance round from the step before.
 		if entry.fixed:
