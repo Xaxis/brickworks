@@ -1664,6 +1664,11 @@ func edit_look(op: String) -> void:
 	bar.say(change_look(op, steps.booklet_step()))
 
 
+## The edits of what is on a step's page (the page laid out by hand), which
+## keep it with the step's room on the page (change_look's room=).
+const PAGE_OPS: Array[String] = ["place", "text", "image", "note", "arrow", "arrow_edit"]
+
+
 ## How the booklet prints step [param at]: [param op] one of the Booklet
 ## page commands' (turn_left, zoom_in, new_page, ...), or "set" with
 ## [param fields] as BookletLooks keeps them (a session's edit_booklet).
@@ -1687,6 +1692,14 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		return "this step has no parts of its own to set"
 	var name: String = BookletLooks.key(BookletLooks.definition_of(section), step)
 	var own: Dictionary = BookletLooks.of(world, section, step)
+	# The page by hand: what is on the step's page is kept with the room the
+	# step has on it now (room=, from the page as laid out), so it goes with
+	# the step when its page changes. What was placed in another room is
+	# moved into this one first, where the page showed it.
+	var room: Rect2 = BookletLooks.rect_of(fields["room"]) \
+		if fields.get("room") is Array and op in PAGE_OPS else Rect2()
+	if room.size.x > 0.0:
+		own = BookletLooks.rebased(own, room)
 	var turn: Dictionary = BookletLooks.turn_at(world, section, step)
 	var by: Vector3 = BookletLooks._vector(turn.get("turn", [0, 0, 0]))
 	var change: Dictionary = {}
@@ -1828,6 +1841,47 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 				notes.append({"image": file, "at": spot})
 				words = "a picture put on step %d's page" % number
 			change = {"notes": notes}
+		"sign":
+			# The turn sign taken off the step, or put back (BookletLooks
+			# "sign"); sign= says which, else it turns over.
+			var shown: bool = bool(own.get("sign", true))
+			if fields.has("sign"):
+				shown = not bool(fields["sign"])
+			change = {"sign": not shown}
+			words = "step %d's turn sign %s" % [number, "taken off" if shown else "put back"]
+		"arrow":
+			# An arrow drawn on the step's page (BookletLooks "arrows"): at= [x1,
+			# y1, x2, y2] or with a bend [..., bx, by], colour=, width=.
+			var given: Array = fields.get("at", []) if fields.get("at") is Array else []
+			if given.size() < 4:
+				_take_back(undo)
+				return "an arrow needs where it starts and where it points: x1, y1, x2, y2 in mm"
+			var arrows: Array = (own.get("arrows", []) as Array).duplicate(true)
+			var arrow: Dictionary = _arrow_of(given, str(fields.get("colour", "red")),
+				float(fields.get("width", 0.9)))
+			arrows.append(arrow)
+			change = {"arrows": arrows}
+			words = "%s drawn on step %d's page" % [BookletLooks.arrow_said(arrow), number]
+		"arrow_edit":
+			# One of the arrows on the step's page moved, bent, straightened,
+			# recoloured, made wider or narrower, or taken off: index= which.
+			var arrows: Array = (own.get("arrows", []) as Array).duplicate(true)
+			var index: int = int(fields.get("index", -1))
+			if index < 0 or index >= arrows.size():
+				_take_back(undo)
+				return "step %d's page has %d arrows of its own" % [number, arrows.size()]
+			var arrow: Dictionary = arrows[index]
+			if bool(fields.get("remove", false)):
+				arrows.remove_at(index)
+				words = "an arrow taken off step %d's page" % number
+			else:
+				var points: Array = fields["at"] if fields.get("at") is Array \
+					and (fields["at"] as Array).size() >= 4 else arrow["at"]
+				arrow = _arrow_of(points, str(fields.get("colour", arrow.get("colour", "red"))),
+					float(fields.get("width", arrow.get("width", 0.9))))
+				arrows[index] = arrow
+				words = "step %d's arrow now %s" % [number, BookletLooks.arrow_said(arrow)]
+			change = {"arrows": arrows}
 		"note":
 			# One of the words or pictures on the step's page moved, resized,
 			# reworded or taken off: index= which.
@@ -1858,6 +1912,15 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		_:
 			_take_back(undo)
 			return "no booklet edit called %s" % op
+	if room.size.x > 0.0:
+		var any: bool = false
+		for field: String in ["place", "notes", "arrows"]:
+			if not change.has(field) and own.has(field):
+				change[field] = own[field]
+			var now: Variant = change.get(field)
+			if (now is Dictionary or now is Array) and not now.is_empty():
+				any = true
+		change["panel"] = own.get("panel", BookletLooks.said_rect(room)) if any else null
 	if not change.is_empty():
 		undo.append_array(BookletLooks.change(world, target, change))
 	undo = AuthorSteps.squash(undo)
@@ -1874,6 +1937,25 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		camera.look_from(BookletLooks.direction(now) if not now.is_empty()
 			else BookletStudio.FRONT)
 	return words
+
+
+## An arrow as a look keeps it: its points to a tenth of a mm (a bend kept
+## only where it bends the line by a millimetre or more), its colour one a
+## booklet uses and its width the nearest it comes in.
+static func _arrow_of(at: Array, colour: String, width: float) -> Dictionary:
+	var points: Array = []
+	for n: int in mini(at.size(), 6):
+		points.append(snappedf(float(at[n]), 0.1))
+	if points.size() >= 6:
+		var from := Vector2(points[0], points[1])
+		var to := Vector2(points[2], points[3])
+		var bend := Vector2(points[4], points[5])
+		if bend.distance_to(Geometry2D.get_closest_point_to_segment(bend, from, to)) < 1.0:
+			points = points.slice(0, 4)
+	elif points.size() > 4:
+		points = points.slice(0, 4)
+	return {"at": points, "colour": colour.to_lower() if BookletLooks.ARROW_COLOURS.has(colour.to_lower())
+		else "red", "width": BookletLooks.arrow_width(width)}
 
 
 ## An edit's first half put back when its second is refused: a model given

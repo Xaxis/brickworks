@@ -518,6 +518,9 @@ func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
 	entry.page_break = str(own.get("page", ""))
 	entry.place = own.get("place", {})
 	entry.notes = own.get("notes", [])
+	entry.drawn_arrows = own.get("arrows", [])
+	entry.room = BookletLooks.rect_of(own["panel"]) if own.has("panel") else Rect2()
+	entry.sign_off = not bool(own.get("sign", true))
 	var turn: Dictionary = BookletLooks.turn_at(_world, section, step.authored_step)
 	if not turn.is_empty():
 		entry.fixed = true
@@ -613,7 +616,7 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		for entry: Booklet.Entry in entries:
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
-			entry.turned = entry != entries[0] and _round_from(was, entry.from)
+			_sign(entry, entry != entries[0] and _round_from(was, entry.from))
 			was = entry.from
 		return
 	var keep: int = _studio.supersample
@@ -638,7 +641,7 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 		# than a glance round from the step before.
 		if entry.fixed:
 			# The first step is where the reader starts: nothing to turn from.
-			entry.turned = count > 1 and _round_from(before, entry.from)
+			_sign(entry, count > 1 and _round_from(before, entry.from))
 			before = entry.from
 			facing = BookletStudio.FRONT
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
@@ -662,22 +665,46 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 			"other": there, "turned": turn})
 		if turn:
 			facing = other
-			entry.turned = true
 		entry.from = facing
-		if not turn:
-			entry.turned = _round_from(before, entry.from)
+		_sign(entry, turn or _round_from(before, entry.from))
 		before = entry.from
 	_studio.supersample = keep
 
 
+## The turn sign on [param entry] where it is [param due], unless its
+## designer took it off (BookletLooks "sign"); [member Booklet.Entry
+## .sign_off] then says it was due and is off, for the page editor to offer
+## it back.
+static func _sign(entry: Booklet.Entry, due: bool) -> void:
+	var off: bool = entry.sign_off
+	entry.turned = due and not off
+	entry.sign_off = due and off
+	if not due:
+		entry.sign_off = false
+
+
+## How far round, and how far up or down, the view may move from one step
+## to the next before the builder is told to turn the model: past these, a
+## LEGO booklet shows its turn sign, and so does this one.
+const TURN_ROUND := 60.0
+const TURN_OVER := 45.0
+
+
 ## Whether a step seen from [param to] after one seen from [param from] is
-## the model turned round: more than 60 degrees of it.
+## the model turned: more than TURN_ROUND degrees round, or more than
+## TURN_OVER degrees up or down (turned over, to work underneath).
 static func _round_from(from: Vector3, to: Vector3) -> bool:
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
+	if from.length() < 0.01 or to.length() < 0.01:
+		return false
+	var pitch: float = absf(asin(clampf(to.normalized().y, -1.0, 1.0))
+		- asin(clampf(from.normalized().y, -1.0, 1.0)))
+	if pitch > deg_to_rad(TURN_OVER):
+		return true
 	if a.length() < 0.01 or b.length() < 0.01:
 		return false
-	return absf(a.angle_to(b)) > deg_to_rad(60.0)
+	return absf(a.angle_to(b)) > deg_to_rad(TURN_ROUND)
 
 
 ## How much of a step's new parts [param from] shows: [param where] as
@@ -827,7 +854,9 @@ func _draw(entry: Booklet.Entry) -> void:
 	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
 		int(where[1]), view, size)
 	_studio.fade = 0.0
-	entry.image = _data_uri(shot.image, PAGE_COLOUR)
+	# Clear behind the model on a page laid out by hand, where a thing may sit
+	# in the picture's box and must not be painted over.
+	entry.image = _data_uri(shot.image, Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR)
 	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
 	_point_at_small(entry, shot)
 	if entry.callout == null:

@@ -42,6 +42,9 @@ var _laying: bool = false
 ## while the page is up shows on it.
 var _seen_history: Array = []
 var _pictures: Dictionary = {}
+## The items of the page shown that were on top of another, by name: true
+## where the page moved them off it.
+var _overlapped: Dictionary = {}
 ## The page's steps drawn (BookletMaker.draw_steps): number -> {"picture":
 ## Texture2D, "cells": [[Texture2D, Rect2 within the callout box]]}; and
 ## each part's picture by its lot's key. The drawing under way, to cancel
@@ -52,6 +55,12 @@ var _drawing: Working.Job = null
 
 var _canvas: Control
 var _handle: Control
+## The selected arrow's handles: "start", "end", "bend" -> Control.
+var _ends: Dictionary = {}
+## Draw an arrow pressed: the next drag on the page draws one. The arrow
+## being drawn, [start, end] in page mm, while it is.
+var _arrow_mode: bool = false
+var _sketch: Array = []
 var _title: Label
 var _words: LineEdit
 var _said: Label
@@ -65,6 +74,7 @@ const CALLOUT_COLOUR := Color8(255, 243, 200)
 const INK := Color8(21, 25, 30)
 const PICK := Color(0.16, 0.45, 0.95)
 const GUIDE := Color(0.92, 0.18, 0.62)
+const OVERLAPPED := Color(0.86, 0.1, 0.1)
 
 
 func _ready() -> void:
@@ -97,6 +107,12 @@ func _ready() -> void:
 			["page_next", "Next page", "The page after"],
 			["page_add_text", "Add words", "Words of your own on this page; drag them where they go"],
 			["page_add_image", "Add a picture…", "A picture of your own on this page, from a file"],
+			["page_add_arrow", "Draw an arrow", "Then drag on the page from where the arrow "
+				+ "starts to where it points; drag its middle to bend it"],
+			["page_arrow_colour", "Arrow colour", "The selected arrow red, as a booklet points "
+				+ "where a part goes in, or black, as its callout arrows are"],
+			["page_arrow_width", "Arrow width", "The selected arrow thin, as the booklet's own, "
+				+ "or broad"],
 			["page_smaller", "Words smaller", "The selected words smaller"],
 			["page_larger", "Words larger", "The selected words larger"],
 			["page_put_back", "Put back", "The selected item where the booklet lays it out; "
@@ -145,6 +161,19 @@ func _ready() -> void:
 	_handle.draw.connect(_draw_handle)
 	_handle.visible = false
 	_canvas.add_child(_handle)
+	# The selected arrow's ends and middle, each to drag.
+	for which: String in ["start", "end", "bend"]:
+		var point := Control.new()
+		point.mouse_filter = Control.MOUSE_FILTER_STOP
+		point.size = Vector2(14, 14)
+		point.mouse_default_cursor_shape = Control.CURSOR_CROSS
+		point.gui_input.connect(func(event: InputEvent) -> void: _on_point_input(which, event))
+		point.draw.connect(func() -> void:
+			point.draw_circle(point.size * 0.5, 7.0, PICK)
+			point.draw_circle(point.size * 0.5, 4.0, Color.WHITE if which != "bend" else PICK.lightened(0.6)))
+		point.visible = false
+		_canvas.add_child(point)
+		_ends[which] = point
 	_picker = PickImage.new()
 	add_child(_picker)
 	_picker.picked.connect(add_image)
@@ -174,6 +203,9 @@ func close() -> void:
 		_drawing = null
 	_drag = {}
 	_items.clear()
+	_selected = -1
+	_arrow_mode = false
+	_sketch = []
 	_clear_controls()
 
 
@@ -244,7 +276,9 @@ func _page_steps() -> Array:
 
 
 func _show_page() -> void:
-	var keep: String = _item_name(_selected) if _selected >= 0 else ""
+	# What was selected, kept selected when it is on the page again; nothing
+	# when the page was closed since (its items are gone).
+	var keep: String = _item_name(_selected) if _selected >= 0 and _selected < _items.size() else ""
 	_items.clear()
 	_selected = -1
 	_clear_controls()
@@ -269,12 +303,25 @@ func _show_page() -> void:
 		_add_item("number", Rect2(entry.number_at, Vector2(
 			entry.number_size * 0.62 * str(entry.number).length() + 1.0, entry.number_size)),
 			entry, step)
+		# The turn sign under the number where the view turns; taken off, a
+		# faint one to put back.
+		if entry.turned or entry.sign_off:
+			_add_item("sign", Booklet.sign_rect(entry), entry, step)
 		for at: int in entry.notes.size():
 			var note: Dictionary = entry.notes[at]
 			var item: Dictionary = _add_item("text" if note.has("text") else "image",
 				BookletLooks.rect_of(note.get("at", [])), entry, step)
 			item["index"] = at
 			item["note"] = note
+		for at: int in entry.drawn_arrows.size():
+			var points: Array = BookletLooks.arrow_points(entry.drawn_arrows[at])
+			if points.is_empty():
+				continue
+			var item: Dictionary = _add_item("arrow", _arrow_box(points), entry, step)
+			item["index"] = at
+			item["arrow"] = entry.drawn_arrows[at]
+			item["points"] = points
+			item["base"] = item["rect"]
 	for at: int in _items.size():
 		if _item_name(at) == keep:
 			_select(at)
@@ -284,7 +331,16 @@ func _show_page() -> void:
 			_words.release_focus()
 		_select(-1)
 	_fit()
-	_say_soft("Drag an item to place it; drag its corner to size it. It snaps to the margins and to the other items.")
+	# What would have printed on top of something else, and was moved off it
+	# (Booklet._settle): outlined in red, and said.
+	_overlapped.clear()
+	for one: Dictionary in page.overlaps:
+		_overlapped["page_%s_%d%s" % [one["item"], int(one["step"]),
+			("_%d" % int(one["index"])) if one.has("index") else ""]] = bool(one["moved"])
+	if page.overlaps.is_empty():
+		_say_soft("Drag an item to place it; drag its corner to size it. It snaps to the margins and to the other items.")
+	else:
+		_say_soft("Overlapping: " + Booklet.overlaps_said(page) + ".")
 	_draw_pictures()
 
 
@@ -357,19 +413,45 @@ func _add_item(kind: String, rect: Rect2, entry: Booklet.Entry, step: Instructio
 	var at: int = _items.size() - 1
 	control.gui_input.connect(func(event: InputEvent) -> void: _on_item_input(at, event))
 	_canvas.add_child(control)
-	# Words and pictures of the designer's over the step's own items.
+	# Words and pictures of the designer's over the step's own items, and
+	# arrows over all.
 	if kind in ["text", "image"]:
 		control.z_index = 1
+	elif kind == "arrow":
+		control.z_index = 2
+	# Drawing an arrow: the page under the pointer, not the item.
+	if _arrow_mode:
+		control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_canvas.move_child(_handle, -1)
+	for point: Control in _ends.values():
+		_canvas.move_child(point, -1)
 	return item
+
+
+## The box round an arrow's points, to pick it up by: [from, to, bend].
+static func _arrow_box(points: Array) -> Rect2:
+	var box := Rect2(points[0], Vector2.ZERO).expand(points[1])
+	if points[2] != null:
+		box = box.expand(points[2])
+	return box.grow(2.5)
+
+
+## Item [param item]'s arrow as it is shown now: [from, to, bend or null],
+## moved with its box while it is dragged.
+static func _shown_points(item: Dictionary) -> Array:
+	var points: Array = item["points"]
+	var by: Vector2 = (item["rect"] as Rect2).position - (item["base"] as Rect2).position
+	return [points[0] + by, points[1] + by, (points[2] + by) if points[2] != null else null]
 
 
 func _clear_controls() -> void:
 	for child: Node in _canvas.get_children():
-		if child != _handle:
+		if child != _handle and not _ends.values().has(child):
 			child.queue_free()
 			_canvas.remove_child(child)
 	_handle.visible = false
+	for point: Control in _ends.values():
+		point.visible = false
 
 
 ## The item's name, for the page to find it and a check to press it:
@@ -410,9 +492,19 @@ func _place_controls() -> void:
 	if _selected >= 0 and _selected < _items.size():
 		var rect: Rect2 = _items[_selected]["rect"]
 		_handle.position = rect.end * k - _handle.size * 0.5
-		_handle.visible = _items[_selected]["kind"] != "number"
+		_handle.visible = not _items[_selected]["kind"] in ["number", "arrow"]
 	else:
 		_handle.visible = false
+	var arrow: bool = _selected >= 0 and _selected < _items.size() \
+		and _items[_selected]["kind"] == "arrow"
+	for which: String in _ends:
+		var point: Control = _ends[which]
+		point.visible = arrow
+		if arrow:
+			var shown: Array = _shown_points(_items[_selected])
+			var at: Vector2 = shown[0] if which == "start" else (shown[1] if which == "end"
+				else (shown[2] if shown[2] != null else (shown[0] + shown[1]) * 0.5))
+			point.position = at * k - point.size * 0.5
 
 
 func _draw_page() -> void:
@@ -432,9 +524,14 @@ func _draw_page() -> void:
 			int(3.6 * k), INK)
 	for at: int in _items.size():
 		_draw_item(_items[at], k, font)
+		if _overlapped.has(_item_name(at)):
+			var rect: Rect2 = _items[at]["rect"]
+			_canvas.draw_rect(Rect2(rect.position * k, rect.size * k), OVERLAPPED, false, 2.0)
 	if _selected >= 0 and _selected < _items.size():
 		var rect: Rect2 = _items[_selected]["rect"]
 		_canvas.draw_rect(Rect2(rect.position * k, rect.size * k), PICK, false, 2.0)
+	if _sketch.size() == 2:
+		_draw_arrow([_sketch[0], _sketch[1], null], "red", 0.9, k)
 	for guide: Array in _guides:
 		var mm: float = float(guide[1]) * k
 		if str(guide[0]) == "x":
@@ -516,6 +613,52 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				_canvas.draw_texture_rect(texture, rect, false)
 			else:
 				_canvas.draw_rect(rect, Color(0.5, 0.5, 0.5, 0.3))
+		"arrow":
+			var arrow: Dictionary = item["arrow"]
+			_draw_arrow(_shown_points(item), str(arrow.get("colour", "red")),
+				float(arrow.get("width", 0.9)), k)
+		"sign":
+			if entry.turned:
+				# As the booklet prints it (Booklet._turn_sign), drawn plainly.
+				_canvas.draw_rect(rect, Color.WHITE)
+				_canvas.draw_rect(rect, INK, false, maxf(1.0, 0.35 * k))
+				var centre: Vector2 = rect.get_center()
+				var r: float = rect.size.x * 0.36
+				for radii: Vector2 in [Vector2(r * 0.4, r), Vector2(r, r * 0.4)]:
+					var ring := PackedVector2Array()
+					for n: int in 33:
+						var t: float = TAU * n / 32.0
+						ring.append(centre + Vector2(cos(t) * radii.x, sin(t) * radii.y))
+					_canvas.draw_polyline(ring, INK, maxf(1.0, rect.size.x * 0.06), true)
+			else:
+				_dashed(rect, Color(0.3, 0.3, 0.3, 0.5))
+				_canvas.draw_string(font, rect.position + Vector2(2, rect.size.y * 0.55), "sign off",
+					HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 2, int(clampf(2.4 * k, 8, 12)),
+					Color(0.3, 0.3, 0.3, 0.8))
+
+
+## An arrow as the booklet prints it (Booklet.drawn_arrow): through its
+## bend as a curve, a white edge under it, and its head.
+func _draw_arrow(points: Array, colour: String, width: float, k: float) -> void:
+	var from: Vector2 = points[0]
+	var to: Vector2 = points[1]
+	var control: Vector2 = (points[2] as Vector2) * 2.0 - (from + to) * 0.5 \
+		if points[2] != null else (from + to) * 0.5
+	var way: Vector2 = (to - control).normalized()
+	if way == Vector2.ZERO:
+		return
+	var head: float = BookletLooks.arrow_width(width) * 2.9
+	var base: Vector2 = to - way * head * 2.3
+	var line := PackedVector2Array()
+	for n: int in 17:
+		var t: float = n / 16.0
+		line.append(((1.0 - t) * (1.0 - t) * from + 2.0 * (1.0 - t) * t * control + t * t * base) * k)
+	var ink := Color(str(BookletLooks.ARROW_COLOURS.get(colour, BookletLooks.ARROW_COLOURS["red"])))
+	_canvas.draw_polyline(line, Color.WHITE, maxf(1.0, (width + 0.7) * k), true)
+	_canvas.draw_polyline(line, ink, maxf(1.0, width * k), true)
+	var side := Vector2(-way.y, way.x)
+	_canvas.draw_colored_polygon(PackedVector2Array([to * k, (base + side * head) * k,
+		(base - side * head) * k]), ink)
 
 
 func _draw_handle() -> void:
@@ -552,9 +695,113 @@ func _picture(name: String) -> Texture2D:
 
 
 func _on_canvas_input(event: InputEvent) -> void:
+	if _arrow_mode:
+		_drawing_arrow(event)
+		return
 	if event is InputEventMouseButton and event.pressed \
 			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_select(-1)
+
+
+## Draw an arrow: pressed where it starts, dragged to where it points, let
+## go there; each end snapped as an item snaps. One undo, on the step whose
+## room it points into (the page's first step where it points into none).
+func _drawing_arrow(event: InputEvent) -> void:
+	var k: float = _scale()
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		var at: Vector2 = _snap_point(_on_canvas(event as InputEventMouse) / k)
+		if (event as InputEventMouseButton).pressed:
+			_sketch = [at, at]
+		elif _sketch.size() == 2:
+			var from: Vector2 = _sketch[0]
+			_sketch = []
+			_guides = []
+			_canvas.queue_redraw()
+			if from.distance_to(at) < 3.0:
+				return
+			_arrow_mode = false
+			add_arrow(from, at)
+		accept_event()
+	elif event is InputEventMouseMotion and _sketch.size() == 2:
+		_sketch[1] = _snap_point(_on_canvas(event as InputEventMouse) / k)
+		_canvas.queue_redraw()
+		accept_event()
+
+
+## [param at] (page mm) snapped to the margins, the page's middle and the
+## items' edges and middles within Booklet.SNAP, the guides it snapped to
+## shown.
+func _snap_point(at: Vector2) -> Vector2:
+	var others: Array = []
+	for item: Dictionary in _items:
+		if item["kind"] != "arrow":
+			others.append(item["rect"])
+	var snapped: Dictionary = Booklet.snapped_to(Rect2(at, Vector2.ZERO), others)
+	_guides = snapped["lines"]
+	return (snapped["rect"] as Rect2).position
+
+
+## An arrow of the designer's drawn on the page shown, from [param from] to
+## [param to] (page mm), red and as wide as the booklet's red pointer: one
+## undo.
+func add_arrow(from: Vector2, to: Vector2, bend: Variant = null) -> String:
+	var owner: Dictionary = _first()
+	for item: Dictionary in _items:
+		if item["kind"] == "picture" and (item["entry"] as Booklet.Entry).panel.has_point(to):
+			owner = item
+			break
+	if owner.is_empty():
+		return "no page to draw on"
+	var at: Array = [from.x, from.y, to.x, to.y]
+	if bend is Vector2:
+		at.append_array([(bend as Vector2).x, (bend as Vector2).y])
+	var said: String = _change("arrow", owner, {"at": at, "colour": "red", "width": 0.9})
+	_say(said)
+	await _lay_out((owner["entry"] as Booklet.Entry).number)
+	# The new arrow selected, to bend or recolour.
+	for n: int in range(_items.size() - 1, -1, -1):
+		if _items[n]["kind"] == "arrow" and (_items[n]["points"][1] as Vector2).distance_to(to) < 0.6:
+			_select(n)
+			break
+	return said
+
+
+## A drag of the selected arrow's start, end or middle (its bend).
+func _on_point_input(which: String, event: InputEvent) -> void:
+	if _selected < 0 or _selected >= _items.size() or _items[_selected]["kind"] != "arrow":
+		return
+	var item: Dictionary = _items[_selected]
+	var k: float = _scale()
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		if (event as InputEventMouseButton).pressed:
+			_drag = {"mode": "point", "which": which, "points": (item["points"] as Array).duplicate()}
+		elif not _drag.is_empty():
+			var points: Array = item["points"]
+			_drag = {}
+			_guides = []
+			var at: Array = [points[0].x, points[0].y, points[1].x, points[1].y]
+			if points[2] != null:
+				at.append_array([points[2].x, points[2].y])
+			_say(_change("arrow_edit", item, {"index": int(item["index"]), "at": at}))
+			await _lay_out((item["entry"] as Booklet.Entry).number)
+		accept_event()
+	elif event is InputEventMouseMotion and not _drag.is_empty() and _drag.get("mode") == "point":
+		var at: Vector2 = _on_canvas(event as InputEventMouse) / k
+		var was: Array = _drag["points"]
+		var points: Array = was.duplicate()
+		match which:
+			"start":
+				points[0] = _snap_point(at)
+			"end":
+				points[1] = _snap_point(at)
+			"bend":
+				points[2] = at
+		item["points"] = points
+		item["rect"] = _arrow_box(points)
+		item["base"] = item["rect"]
+		_place_controls()
+		_canvas.queue_redraw()
+		accept_event()
 
 
 func _on_item_input(at: int, event: InputEvent) -> void:
@@ -564,8 +811,10 @@ func _on_item_input(at: int, event: InputEvent) -> void:
 		var button: InputEventMouseButton = event
 		if button.pressed:
 			_select(at)
-			_drag = {"mode": "move", "from": _on_canvas(button),
-				"rect": _items[at]["rect"]}
+			# The turn sign stays under its number: selected, to take off.
+			if _items[at]["kind"] != "sign":
+				_drag = {"mode": "move", "from": _on_canvas(button),
+					"rect": _items[at]["rect"]}
 		elif not _drag.is_empty():
 			_drop()
 		accept_event()
@@ -594,7 +843,10 @@ func _select(at: int) -> void:
 	var note: bool = at >= 0 and _items[at]["kind"] == "text"
 	_words.editable = note
 	_words.text = str((_items[at]["note"] as Dictionary).get("text", "")) if note else ""
-	if at >= 0:
+	if at >= 0 and _items[at]["kind"] == "arrow":
+		_say_soft("%s: drag to move it, its ends to point it, its middle to bend it; Arrow colour, Arrow width." \
+			% _item_name(at).trim_prefix("page_"))
+	elif at >= 0:
 		_say_soft("%s: drag to place it, its corner to size it%s." % [_item_name(at).trim_prefix("page_"),
 			", type its words above" if note else ""])
 	_place_controls()
@@ -657,17 +909,32 @@ func _drop() -> void:
 ## laid out again from what the booklet now says.
 func place(at: int, rect: Rect2) -> String:
 	var item: Dictionary = _items[at]
-	var step: Instructions.Step = item["step"]
 	var said: String = ""
 	var numbers: Array = [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
-	if item.has("index"):
-		said = _shell.change_look("note", step, {"index": int(item["index"]), "at": numbers})
+	if item["kind"] == "arrow":
+		# Moved whole, by as much as its box was.
+		item["rect"] = rect
+		var shown: Array = _shown_points(item)
+		var points: Array = [shown[0].x, shown[0].y, shown[1].x, shown[1].y]
+		if shown[2] != null:
+			points.append_array([shown[2].x, shown[2].y])
+		said = _change("arrow_edit", item, {"index": int(item["index"]), "at": points})
+	elif item.has("index"):
+		said = _change("note", item, {"index": int(item["index"]), "at": numbers})
 	else:
-		said = _shell.change_look("place", step, {"item": item["kind"],
+		said = _change("place", item, {"item": item["kind"],
 			"at": numbers.slice(0, int(BookletLooks.ITEMS[item["kind"]]))})
 	_say(said)
 	await _lay_out((item["entry"] as Booklet.Entry).number)
 	return said
+
+
+## A change to what is on [param item]'s step's page (Shell.change_look),
+## kept with the room the step has on the page now, so that it goes with
+## the step when the page changes round it.
+func _change(op: String, item: Dictionary, fields: Dictionary) -> String:
+	fields["room"] = BookletLooks.said_rect((item["entry"] as Booklet.Entry).panel)
+	return _shell.change_look(op, item["step"], fields)
 
 
 func _pressed(name: String) -> void:
@@ -684,23 +951,54 @@ func _pressed(name: String) -> void:
 			add_text("Your words", Rect2(Vector2(Booklet.PAGE.x * 0.5 - 40.0, 150.0), Vector2(80, 12)))
 		"page_add_image":
 			_picker.ask()
+		"page_add_arrow":
+			_arrow_mode = not _arrow_mode
+			_select(-1)
+			for item: Dictionary in _items:
+				(item["control"] as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE \
+					if _arrow_mode else Control.MOUSE_FILTER_STOP
+			_say_soft("Drag on the page from where the arrow starts to where it points."
+				if _arrow_mode else "Drag an item to place it; drag its corner to size it.")
+		"page_arrow_colour", "page_arrow_width":
+			if _selected < 0 or _items[_selected]["kind"] != "arrow":
+				_say_soft("Select an arrow first.")
+				return
+			var item: Dictionary = _items[_selected]
+			var arrow: Dictionary = item["arrow"]
+			var fields: Dictionary = {"index": int(item["index"])}
+			if name == "page_arrow_colour":
+				fields["colour"] = "black" if str(arrow.get("colour", "red")) == "red" else "red"
+			else:
+				var widths: Array[float] = BookletLooks.ARROW_WIDTHS
+				var now: int = widths.find(BookletLooks.arrow_width(float(arrow.get("width", 0.9))))
+				fields["width"] = widths[(now + 1) % widths.size()]
+			var keep: String = _item_name(_selected)
+			_say(_change("arrow_edit", item, fields))
+			await _lay_out((item["entry"] as Booklet.Entry).number)
+			var again: int = item_named(keep)
+			if again >= 0:
+				_select(again)
 		"page_smaller", "page_larger":
 			if _selected >= 0 and _items[_selected]["kind"] == "text":
 				var item: Dictionary = _items[_selected]
 				var size: float = float((item["note"] as Dictionary).get("size", 4.0))
 				size = clampf(size * (0.8 if name == "page_smaller" else 1.25), 1.5, 40.0)
-				_say(_shell.change_look("note", item["step"], {"index": int(item["index"]),
+				_say(_change("note", item, {"index": int(item["index"]),
 					"size": snappedf(size, 0.1)}))
 				await _lay_out((item["entry"] as Booklet.Entry).number)
 		"page_put_back":
 			if _selected < 0:
 				return
 			var item: Dictionary = _items[_selected]
-			if item.has("index"):
-				_say(_shell.change_look("note", item["step"], {"index": int(item["index"]),
+			if item["kind"] == "sign":
+				_say(_shell.change_look("sign", item["step"]))
+			elif item["kind"] == "arrow":
+				_say(_change("arrow_edit", item, {"index": int(item["index"]), "remove": true}))
+			elif item.has("index"):
+				_say(_change("note", item, {"index": int(item["index"]),
 					"remove": true}))
 			else:
-				_say(_shell.change_look("place", item["step"], {"item": item["kind"], "at": null}))
+				_say(_change("place", item, {"item": item["kind"], "at": null}))
 			_selected = -1
 			await _lay_out((item["entry"] as Booklet.Entry).number)
 
@@ -718,7 +1016,7 @@ func add_text(words: String, rect: Rect2, size: float = 4.0) -> String:
 	var first: Dictionary = _first()
 	if first.is_empty():
 		return "no page to put words on"
-	var said: String = _shell.change_look("text", first["step"], {"text": words,
+	var said: String = _change("text", first, {"text": words,
 		"at": [rect.position.x, rect.position.y, rect.size.x, rect.size.y], "size": size})
 	_say(said)
 	await _lay_out((first["entry"] as Booklet.Entry).number)
@@ -751,7 +1049,7 @@ func add_image(image: Image) -> String:
 	if high > 80.0:
 		wide *= 80.0 / high
 		high = 80.0
-	var said: String = _shell.change_look("image", first["step"], {
+	var said: String = _change("image", first, {
 		"data": Marshalls.raw_to_base64(bytes), "kind": "png" if clear else "jpg",
 		"at": [Booklet.PAGE.x - Booklet.MARGIN - wide, Booklet.content().end.y - high, wide, high]})
 	_say(said)
@@ -767,7 +1065,7 @@ func _reword() -> void:
 	var words: String = _words.text.strip_edges()
 	if words.is_empty() or words == str((item["note"] as Dictionary).get("text", "")):
 		return
-	_say(_shell.change_look("note", item["step"], {"index": int(item["index"]), "text": words}))
+	_say(_change("note", item, {"index": int(item["index"]), "text": words}))
 	_lay_out((item["entry"] as Booklet.Entry).number)
 
 
@@ -792,6 +1090,9 @@ func controls_by_name() -> Dictionary:
 		out[_item_name(at)] = _items[at]["control"]
 	if _handle.visible:
 		out["page_resize"] = _handle
+	for which: String in _ends:
+		if (_ends[which] as Control).visible:
+			out["page_arrow_" + which] = _ends[which]
 	return out
 
 
@@ -808,8 +1109,24 @@ func page_state() -> Dictionary:
 		"steps": _page_steps(), "items": items, "laying": _laying,
 		"selected": _item_name(_selected) if _selected >= 0 else "",
 		"guides": _guides.size(),
+		# What was on top of something else, by name (true: moved off it),
+		# and the page's words for it.
+		"overlaps": _overlapped.duplicate(), "said": _said.text,
+		# The arrows on it, by name: [x1, y1, x2, y2 (, bx, by)], colour, width.
+		"arrows": _arrows_state(), "arrow_mode": _arrow_mode,
 		# The page's steps whose pictures are drawn on it so far.
 		"drawn": _page_steps().filter(func(number: int) -> bool: return _shots.has(number))}
+
+
+func _arrows_state() -> Dictionary:
+	var out: Dictionary = {}
+	for at: int in _items.size():
+		if _items[at]["kind"] != "arrow":
+			continue
+		var arrow: Dictionary = _items[at]["arrow"]
+		out[_item_name(at)] = {"at": arrow.get("at", []), "colour": arrow.get("colour", "red"),
+			"width": arrow.get("width", 0.9)}
+	return out
 
 
 ## Item [param name]'s index, -1 when the page has none.

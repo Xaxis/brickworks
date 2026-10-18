@@ -4182,10 +4182,50 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page. booklet_layout says where each is. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or removes one. What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "arrow": {
+          "description": "{x1, y1, x2, y2, bx, by, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change, remove=true to take it off",
+          "properties": {
+            "bx": {
+              "type": "number"
+            },
+            "by": {
+              "type": "number"
+            },
+            "colour": {
+              "enum": [
+                "red",
+                "black"
+              ],
+              "type": "string"
+            },
+            "index": {
+              "type": "integer"
+            },
+            "remove": {
+              "type": "boolean"
+            },
+            "width": {
+              "type": "number"
+            },
+            "x1": {
+              "type": "number"
+            },
+            "x2": {
+              "type": "number"
+            },
+            "y1": {
+              "type": "number"
+            },
+            "y2": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
         "callout": {
           "type": "boolean"
         },
@@ -4250,6 +4290,10 @@
             }
           },
           "type": "object"
+        },
+        "sign": {
+          "description": "false: no turn sign on the step",
+          "type": "boolean"
         },
         "size": {
           "type": "number"
