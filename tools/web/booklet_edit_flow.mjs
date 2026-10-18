@@ -21,7 +21,9 @@
 // Then step 4's page by hand in Lay out page…: its picture dragged by the
 // mouse onto the top margin, which it snaps to; its parts list widened by its
 // corner; words added and typed; a picture added through the file chooser;
-// Ctrl-Z and Ctrl-Shift-Z on it. The booklet's page 4 and the file say so.
+// Ctrl-Z and Ctrl-Shift-Z on it; Draw an arrow and a drag from below its
+// picture to its middle, Ctrl-Z and Ctrl-Shift-Z. The booklet's page 4
+// (the arrow printed on it) and the file (ARROW and the step's PANEL) say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
 import { launch } from "./browser.mjs";
@@ -301,6 +303,35 @@ try {
     await page.keyboard.press("Control+Shift+z");
     const repictured = await laid((s) => Object.keys(s.items).some((n) => n.startsWith("page_image_4")));
     ok(Boolean(repictured), "Ctrl-Shift-Z puts it back");
+    // An arrow of the designer's: Draw an arrow, then a drag on the page from
+    // below and left of step 4's picture to its middle.
+    const box = repictured ? repictured.items[picture] : null;
+    if (box) {
+      const sheet = await where("page_canvas");
+      const left = sheet.x - sheet.w / 2;
+      const top = sheet.y - sheet.h / 2;
+      const tip = { x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 };
+      const tail = { x: Math.max(12, tip.x - 45), y: Math.min(180, tip.y + 35) };
+      await press("page_add_arrow");
+      ok(Boolean(await laid((s) => s.arrow_mode)), "Draw an arrow: the page is ready to draw on");
+      await page.mouse.move(left + tail.x * k, top + tail.y * k);
+      await page.mouse.down();
+      for (let n = 1; n <= 10; n++) {
+        await page.mouse.move(left + (tail.x + (tip.x - tail.x) * n / 10) * k,
+          top + (tail.y + (tip.y - tail.y) * n / 10) * k);
+        await page.waitForTimeout(120);
+      }
+      await page.mouse.up();
+      const drawn = await laid((s) => Object.keys(s.arrows || {}).length > 0);
+      const arrow = drawn ? Object.values(drawn.arrows)[0] : null;
+      ok(Boolean(arrow) && Math.hypot(arrow.at[2] - tip.x, arrow.at[3] - tip.y) < 3,
+        `an arrow dragged from ${tail.x.toFixed(0)}, ${tail.y.toFixed(0)} to ${tip.x.toFixed(0)}, ${tip.y.toFixed(0)} mm: ${arrow ? JSON.stringify(arrow) : "none"}`);
+      await shot("5_page_editor_arrow.png");
+      await page.keyboard.press("Control+z");
+      ok(Boolean(await laid((s) => Object.keys(s.arrows || {}).length === 0)), "Ctrl-Z takes the arrow off");
+      await page.keyboard.press("Control+Shift+z");
+      ok(Boolean(await laid((s) => Object.keys(s.arrows || {}).length === 1)), "Ctrl-Shift-Z puts it back");
+    }
     await press("page_done");
   }
 
@@ -346,10 +377,12 @@ try {
         top: img ? img.style.getPropertyValue("--y") : "",
         words: s.innerText.includes("Build both sides alike"),
         picture: [...s.querySelectorAll("img.a")].some((i) => i.src.startsWith("data:image/png")),
+        arrows: s.querySelectorAll("path.drawn-arrow").length,
       };
     }, four.id) : {};
     ok(parseFloat(byHand.top) === 9 && byHand.words && byHand.picture,
       `step 4's page as dragged: its picture at the top margin (--y ${byHand.top}), the words and the picture on it`);
+    ok(byHand.arrows === 1, `...and the arrow drawn on it, printed (${byHand.arrows})`);
     await tab.setViewportSize({ width: 1060, height: 800 });
     await tab.addStyleTag({ content: ".bar { display: none !important; }" });
     for (const p of [three(facts), four, five].filter(Boolean)) {
@@ -383,6 +416,8 @@ found["PLACE PARTS"] = any(l.startswith("0 !BRICKWORKS PLACE PARTS ") for l in h
 found["TEXT"] = any(l.startswith("0 !BRICKWORKS TEXT ") and l.endswith("Build both sides alike") for l in have)
 found["IMAGE"] = any(l.startswith("0 !BRICKWORKS IMAGE ") for l in have)
 found["!DATA"] = any(l.startswith("0 !DATA brickworks-page-") for l in have)
+found["ARROW"] = any(l.startswith("0 !BRICKWORKS ARROW RED 0.9 ") for l in have)
+found["PANEL"] = any(l.startswith("0 !BRICKWORKS PANEL ") for l in have)
 print(json.dumps(found))
 `, saved], { encoding: "utf8" });
     const found = JSON.parse(lines);

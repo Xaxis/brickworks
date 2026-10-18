@@ -27,7 +27,12 @@
 ## An item not placed is laid out as the booklet lays it. "notes" are what
 ## a designer adds to the step's page: {"text": words, "at": [x, y, w, h],
 ## "size": mm} and {"image": name, "at": [x, y, w, h]}, the picture's bytes
-## in "|data" under its name.
+## in "|data" under its name; "arrows" the arrows they draw on it: {"at":
+## [x1, y1, x2, y2] or with a bend [..., bx, by], "colour": "red" or
+## "black", "width": mm}. "panel" [x, y, w, h] is the room the booklet gave
+## the step on its page when they were placed: they all belong to the step,
+## and when its page changes round it they move and scale with it into its
+## new room ([method rebased]). "sign": false leaves the turn sign off it.
 ##
 ## In the file a turn is LDraw's own rotation step, which MLCad, LPub,
 ## LDCad and Studio read: the line that ends the step is
@@ -39,11 +44,13 @@
 ## step, which other readers pass over: "0 !BRICKWORKS PAGE NEW", "... PAGE
 ## ALONE", "... ZOOM 1.5", "... SIZE 1.25", "... PARTS OFF", and in a
 ## sub-model "... CALLOUT OFF"; "... PER_PAGE 2" and "... HIGHLIGHT OFF" in
-## the model. A page laid out by hand: "... PLACE PICTURE x y w h", "...
-## PLACE PARTS x y w", "... PLACE CALLOUT x y w h", "... PLACE NUMBER x y",
-## "... TEXT x y w h size words" (a line break written \n) and "... IMAGE x
-## y w h name", the picture itself as LDraw's own embedded file, "0 !DATA
-## name" with its base64 in "0 !:" lines, at the end of the file.
+## the model. A page laid out by hand: "... PANEL x y w h" (the step's room
+## then), "... PLACE PICTURE x y w h", "... PLACE PARTS x y w", "... PLACE
+## CALLOUT x y w h", "... PLACE NUMBER x y", "... TEXT x y w h size words"
+## (a line break written \n), "... IMAGE x y w h name" with the picture
+## itself as LDraw's own embedded file, "0 !DATA name" with its base64 in
+## "0 !:" lines, at the end of the file, and "... ARROW RED 0.9 x1 y1 x2 y2
+## [bx by]"; "... TURN_SIGN OFF" on a step whose turn sign was taken off.
 ##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
@@ -54,7 +61,7 @@ extends RefCounted
 const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
-	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE"]
+	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN"]
 const BOOKLET := "|booklet"
 ## The pictures a page shows, by name: {name: base64}.
 const DATA := "|data"
@@ -63,6 +70,14 @@ const DATA := "|data"
 const ITEMS: Dictionary = {"picture": 4, "parts": 3, "callout": 4, "number": 2}
 ## The names a page's picture is kept under in the file, as LDraw's !DATA.
 const IMAGE_PREFIX := "brickworks-page-"
+## The colours an arrow of the designer's comes in: a booklet's red, which
+## points where a part goes in, and the black of its callout arrows.
+const ARROW_COLOURS: Dictionary = {"red": "#d01012", "black": "#15191e"}
+## The widths it comes in, in mm: the callout arrow's, the red pointer's,
+## and a broad one; a width given is snapped to the nearest.
+const ARROW_WIDTHS: Array[float] = [0.45, 0.9, 1.4]
+## Two rooms nearer than this, in mm, are the same room.
+const SAME_ROOM := 0.5
 const ZOOMS: Array[float] = [0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]
 const SIZES: Array[float] = [0.6, 0.8, 1.0, 1.25, 1.5, 2.0]
 ## How far up or down a tilt may go, from level, in degrees.
@@ -245,8 +260,10 @@ static func _usual(field: String, value: Variant) -> bool:
 			return is_equal_approx(float(value), 1.0)
 		"parts", "callout", "highlight":
 			return bool(value)
-		"place", "notes":
+		"place", "notes", "arrows", "panel":
 			return (value is Dictionary or value is Array) and value.is_empty()
+		"sign":
+			return bool(value)
 		"page":
 			return str(value).is_empty() or str(value) == "auto"
 		"per_page":
@@ -331,8 +348,14 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {})
 		var look: Dictionary = (world.step_looks[name] as Dictionary).duplicate(true)
 		if moved.has(target):
 			var kept: Dictionary = moved[target]
+			# The words, pictures and arrows of both steps' pages kept, the
+			# second's moved from its room into the first's.
+			if kept.has("panel") and look.has("panel"):
+				look = rebased(look, rect_of(kept["panel"]))
 			for field: String in look:
-				if not kept.has(field):
+				if field in ["notes", "arrows"] and kept.has(field):
+					kept[field] = (kept[field] as Array) + (look[field] as Array)
+				elif not kept.has(field):
 					kept[field] = look[field]
 		else:
 			moved[target] = look
@@ -508,6 +531,22 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				if not at.is_empty() and words.size() > 7:
 					_note_in(out, key(definition, step), {"image": words[7].to_lower(),
 						"at": at})
+			"PANEL":
+				var at: Array = _numbers(words, 3, 4)
+				if not at.is_empty():
+					_put_in(out, key(definition, step), "panel", at)
+			"ARROW":
+				var colour: String = value.to_lower()
+				if ARROW_COLOURS.has(colour) and words.size() > 4 and words[4].is_valid_float():
+					var points: Array = _numbers(words, 5, 6)
+					if points.is_empty():
+						points = _numbers(words, 5, 4)
+					if not points.is_empty():
+						_note_in(out, key(definition, step), {"at": points, "colour": colour,
+							"width": arrow_width(words[4].to_float())}, "arrows")
+			"TURN_SIGN":
+				if value == "OFF":
+					_put_in(out, key(definition, step), "sign", false)
 	if not data_name.is_empty():
 		pictures[data_name] = "".join(data)
 	# Only the pictures a page shows.
@@ -545,11 +584,12 @@ static func _rest_after(line: String, count: int) -> String:
 	return line.substr(at).strip_edges()
 
 
-static func _note_in(out: Dictionary, name: String, note: Dictionary) -> void:
+static func _note_in(out: Dictionary, name: String, note: Dictionary,
+		field: String = "notes") -> void:
 	var look: Dictionary = out.get(name, {})
-	var notes: Array = look.get("notes", [])
+	var notes: Array = look.get(field, [])
 	notes.append(note)
-	look["notes"] = notes
+	look[field] = notes
 	out[name] = look
 
 
@@ -744,6 +784,10 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append(META + "SIZE " + _number(float(look["size"])) + eol)
 	if look.has("parts") and not bool(look["parts"]):
 		out.append(META + "PARTS OFF" + eol)
+	if look.has("sign") and not bool(look["sign"]):
+		out.append(META + "TURN_SIGN OFF" + eol)
+	if look.has("panel"):
+		out.append(META + "PANEL " + _numbers_said(look["panel"]) + eol)
 	var place: Dictionary = look.get("place", {})
 	for item: String in ITEMS:
 		if place.has(item):
@@ -757,6 +801,10 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 				+ str(note["text"]).replace("\r", "").replace("\n", "\\n").strip_edges() + eol)
 		elif note.has("image"):
 			out.append(META + "IMAGE " + at + " " + str(note["image"]) + eol)
+	for arrow: Variant in look.get("arrows", []):
+		if arrow is Dictionary and (arrow as Dictionary).has("at"):
+			out.append(META + "ARROW %s %s %s" % [str(arrow.get("colour", "red")).to_upper(),
+				_number(arrow_width(float(arrow.get("width", 0.9)))), _numbers_said(arrow["at"])] + eol)
 
 
 ## The line that ends a step, saying the turn of the step after it
@@ -799,6 +847,102 @@ static func rect_of(values: Variant) -> Rect2:
 	return Rect2(got[0], got[1], got[2], got[3])
 
 
+## [param rect] as a look keeps it: [x, y, w, h] to a tenth of a mm.
+static func said_rect(rect: Rect2) -> Array:
+	return [snappedf(rect.position.x, 0.1), snappedf(rect.position.y, 0.1),
+		snappedf(rect.size.x, 0.1), snappedf(rect.size.y, 0.1)]
+
+
+## Whether two rooms on a page are the same one, to SAME_ROOM mm.
+static func same_room(a: Rect2, b: Rect2) -> bool:
+	return a.position.distance_to(b.position) < SAME_ROOM \
+		and a.size.distance_to(b.size) < SAME_ROOM
+
+
+## [param look]'s placed items, words, pictures and arrows moved from the
+## room they were placed in (its "panel") into [param room], the step's
+## room on its page now, and scaled with it: each centre to the same place
+## in the room, each size by the room's smaller change, so a picture keeps
+## its shape. Its "panel" becomes [param room]. A look placed before rooms
+## were kept (no "panel") keeps its places, in page mm, and takes [param
+## room] as the one they were placed in.
+static func rebased(look: Dictionary, room: Rect2) -> Dictionary:
+	var out: Dictionary = look.duplicate(true)
+	if room.size.x < 1.0 or room.size.y < 1.0:
+		return out
+	if not (out.has("place") or out.has("notes") or out.has("arrows")):
+		out.erase("panel")
+		return out
+	if not out.has("panel"):
+		out["panel"] = said_rect(room)
+		return out
+	var from: Rect2 = rect_of(out["panel"])
+	if same_room(from, room) or from.size.x < 1.0 or from.size.y < 1.0:
+		return out
+	var by: Vector2 = room.size / from.size
+	var k: float = minf(by.x, by.y)
+	var place: Dictionary = out.get("place", {})
+	for item: String in place.keys():
+		var at: Array = place[item]
+		match at.size():
+			4:
+				place[item] = said_rect(_moved(rect_of(at), from, room))
+			3:
+				var corner: Vector2 = _moved_point(Vector2(float(at[0]), float(at[1])), from, room)
+				place[item] = [snappedf(corner.x, 0.1), snappedf(corner.y, 0.1),
+					snappedf(float(at[2]) * k, 0.1)]
+			2:
+				var corner: Vector2 = _moved_point(Vector2(float(at[0]), float(at[1])), from, room)
+				place[item] = [snappedf(corner.x, 0.1), snappedf(corner.y, 0.1)]
+	for note: Variant in out.get("notes", []):
+		if note is Dictionary and (note as Dictionary).has("at"):
+			note["at"] = said_rect(_moved(rect_of(note["at"]), from, room))
+			if (note as Dictionary).has("size"):
+				note["size"] = snappedf(clampf(float(note["size"]) * k, 1.5, 40.0), 0.1)
+	for arrow: Variant in out.get("arrows", []):
+		if arrow is Dictionary and (arrow as Dictionary).has("at"):
+			var points: Array = arrow["at"]
+			var moved: Array = []
+			for n: int in range(0, points.size() - 1, 2):
+				var point: Vector2 = _moved_point(Vector2(float(points[n]), float(points[n + 1])),
+					from, room)
+				moved.append_array([snappedf(point.x, 0.1), snappedf(point.y, 0.1)])
+			arrow["at"] = moved
+	out["panel"] = said_rect(room)
+	return out
+
+
+static func _moved(rect: Rect2, from: Rect2, to: Rect2) -> Rect2:
+	var by: Vector2 = to.size / from.size
+	var k: float = minf(by.x, by.y)
+	var centre: Vector2 = to.position + (rect.get_center() - from.position) * by
+	return Rect2(centre - rect.size * k * 0.5, rect.size * k)
+
+
+static func _moved_point(point: Vector2, from: Rect2, to: Rect2) -> Vector2:
+	return to.position + (point - from.position) * (to.size / from.size)
+
+
+## An arrow's points as [from, to, bend or null], in page mm.
+static func arrow_points(arrow: Dictionary) -> Array:
+	var at: Array = arrow.get("at", [])
+	if at.size() < 4:
+		return []
+	var from := Vector2(float(at[0]), float(at[1]))
+	var to := Vector2(float(at[2]), float(at[3]))
+	var bend: Variant = Vector2(float(at[4]), float(at[5])) if at.size() >= 6 else null
+	return [from, to, bend]
+
+
+## The nearest of the widths an arrow comes in to [param width].
+static func arrow_width(width: float) -> float:
+	var best: float = ARROW_WIDTHS[1]
+	for one: float in ARROW_WIDTHS:
+		if absf(one - width) < absf(best - width):
+			best = one
+	return best
+
+
 # -- what the booklet is told ---------------------------------------------------
 
 
@@ -832,7 +976,10 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 			var how := PackedStringArray()
 			if not entry.look.is_empty():
 				var named: String = entry.look.get_slice("|", 0)
-				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int())
+				# A callout's step on its own pages: what was placed on its page
+				# only; its view is the callout's.
+				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int(),
+					entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
 			if entry.callout != null:
@@ -844,6 +991,8 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		var line: String = "  page %d%s: step%s %s" % [page.number,
 			(" (the %s, built on its own)" % page.name) if page.kind == "callout" else "",
 			"" if page.entries.size() == 1 else "s", ", ".join(each)]
+		if not page.overlaps.is_empty():
+			line += "; overlapping: " + Booklet.overlaps_said(page)
 		characters += line.length()
 		if characters > 6000:
 			told.append("  ... booklet_layout {\"from\": %d} for the rest." % page.number)
@@ -856,10 +1005,13 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 
 ## How a step's look reads, for the timeline and a session: "turned 90°,
 ## zoom 1.5x, new page", or "".
-static func said(world: BrickWorld, section: String, step: int) -> String:
+static func said(world: BrickWorld, section: String, step: int, placed_only: bool = false) -> String:
 	var parts := PackedStringArray()
-	var turn: Dictionary = turn_at(world, section, step)
+	var turn: Dictionary = turn_at(world, section, step) if not placed_only else {}
 	var own: Dictionary = of(world, section, step)
+	if placed_only:
+		own = {"place": own.get("place", {}), "notes": own.get("notes", []),
+			"arrows": own.get("arrows", [])}
 	if not turn.is_empty():
 		var by: Vector3 = _vector(turn["turn"])
 		var bits := PackedStringArray()
@@ -903,4 +1055,25 @@ static func said(world: BrickWorld, section: String, step: int) -> String:
 			parts.append("a picture at %s, %s mm, %s x %s" % [_number(snappedf(at.position.x, 0.1)),
 				_number(snappedf(at.position.y, 0.1)), _number(snappedf(at.size.x, 0.1)),
 				_number(snappedf(at.size.y, 0.1))])
+	for arrow: Variant in own.get("arrows", []):
+		if arrow is Dictionary:
+			parts.append(arrow_said(arrow))
+	if own.has("sign") and not bool(own["sign"]):
+		parts.append("no turn sign")
 	return ", ".join(parts)
+
+
+## An arrow as a session reads it: "a red arrow from 20, 30 to 60, 80 mm,
+## bent through 40, 40, 0.9 mm wide".
+static func arrow_said(arrow: Dictionary) -> String:
+	var points: Array = arrow_points(arrow)
+	if points.is_empty():
+		return "an arrow"
+	var from: Vector2 = points[0]
+	var to: Vector2 = points[1]
+	return "a %s arrow from %s, %s to %s, %s mm%s, %s mm wide" % [str(arrow.get("colour", "red")),
+		_number(snappedf(from.x, 0.1)), _number(snappedf(from.y, 0.1)),
+		_number(snappedf(to.x, 0.1)), _number(snappedf(to.y, 0.1)),
+		(", bent through %s, %s" % [_number(snappedf((points[2] as Vector2).x, 0.1)),
+			_number(snappedf((points[2] as Vector2).y, 0.1))]) if points[2] != null else "",
+		_number(arrow_width(float(arrow.get("width", 0.9))))]

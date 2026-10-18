@@ -15,6 +15,33 @@ whole cycle.
 
 ### Added
 
+- Arrows of your own on a booklet page. Lay out page… has Draw an arrow:
+  drag on the page from where the arrow starts to where it points, then
+  drag its middle to bend it, and set it red (where a part goes in) or
+  black, thin or broad. Each is one undo, saved as `0 !BRICKWORKS ARROW`
+  and printed over the page; `edit_booklet arrow=` draws one over MCP and
+  `booklet_layout` lists them. A file without arrows prints as before.
+- The turn sign, where the builder turns the model: a step seen more than
+  60 degrees round, or more than 45 degrees higher or lower, than the step
+  before gets the sign LEGO® booklets use, under its number. On Lay out
+  page… select it and press Delete to take it off (`0 !BRICKWORKS
+  TURN_SIGN OFF`), Put back to have it again; `edit_booklet sign=false`
+  over MCP.
+- A sub-assembly built on pages of its own can be laid out by hand: its
+  pages are among the pages of Lay out page…, and its steps'
+  pictures, parts lists and numbers are dragged and sized, and words,
+  pictures and arrows added, as on any page.
+
+### Changed
+
+- What is placed on a booklet page goes with its step. A step's picture,
+  parts list, number, callout, words, pictures and arrows are kept with the
+  room the step had on its page (`0 !BRICKWORKS PANEL`); when a merge, a
+  page break or steps a page moves the step, they move and scale with it.
+  Where one thing would still lie on another, the page is printed with it
+  moved to the nearest free room, and Lay out page… outlines it in red and
+  says what it was on.
+
 - A booklet page laid out by hand. Lay out page… on the timeline's Booklet
   row (or Build, Booklet page) shows the step's page to scale with its
   pictures: drag a step's picture, its parts list, its callout and its
