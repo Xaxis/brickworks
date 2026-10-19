@@ -346,6 +346,8 @@ cat > .vercel/output/config.json <<EOF
         "Cache-Control": "no-store" } },
     { "src": "/sets/(.*[.]json)", "headers": {
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
