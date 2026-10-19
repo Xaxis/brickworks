@@ -1917,6 +1917,42 @@ rest. Fifteen a second for this model drawn in software would take
 SwiftShader a tenth of the work it does a frame now; a browser drawing on a
 graphics card is not held by it.
 
+**The let-go and the keep, timed (letgo, 2026-10-18).** m79 was held on
+the swing's page wait in grab_flow on its preview: 7.8, 15.0 and 15.7 s,
+where live m78 had waited 2.4 s minutes before. Nothing in m79 costs it.
+Local exports of both, each browser held to cores of its own (`taskset`),
+waited alike: 3.5 s for m79 and 3.7 s for m78 on four cores one after the
+other, 7.6 and 8.0 s on three side by side, 12.1 and 11.4 s on two, both
+failing the 5 s hang gate from three cores down. Unpinned, m79 waited 1.6
+to 2.0 s at load 5 to 21, its preview 1.6 s, and m78 1.6 s at load 23. The
+runs that held m79 were at load 22 to 30; m78 at load 45 had waited 4.0 s.
+
+The wait starts at the release, and it is drawing. A heartbeat in the page
+marked the press, the release and the rest: the long gaps begin at the
+release. Traced from the press, the swing's first five frames each cost
+SwiftShader two WebGL flushes the size of a whole drag frame (3.3 to 4.8 s
+a frame on three cores), and the later ones one. Between them the page's
+timers starve, so a 50 ms heartbeat's longest gap spans two or three
+frames. In each of those frames the app's own work, the trace's script time
+less its waits on the GPU process, was 11 to 15 ms, the keep's frame 39 to
+57 ms and the reading after it 55, the same in both builds. Why the first
+swing frames cost twice a drag frame is not found.
+
+So the app's part is now on the page and gated by itself. `let_go_ms` is
+all of `GrabDrag.release`: the swing set going and the topple check, or the
+pose kept at once. `kept_ms` is all of `_end_swing`: the swing's words,
+the step kept, the model weighed as it stands, and what an edit sets going.
+Each must stay under 100 ms, about when a person sees a click wait
+(`grab_flow --keep=MS`). `ready_ms`, the joints read again once the model
+has stood still a quarter second, must stay under that quarter second
+(`--read=MS`). The crane's, in a browser drawing in software at load 11 to
+21: let go in 0.2 to 0.3 ms, kept in 15 ms (the flywheel's coast in 66),
+read again in 51 to 82 ms. A build whose keep was made 300 ms slower failed
+it (kept in 315 and 367 ms) while the hang gate passed it at 1.7 s. The hang
+gate stays, but it fails m78 as readily as m79 once the browser has three
+cores or fewer; the new gate says whether the app is to blame. The runs and
+their traces are in `bench/results/letgo-2026-10-18/`.
+
 **The handles a browser test takes hold of.** The grab tool told a browser
 page where each joint's part was on the screen (for grab_flow to press on)
 twice a second, raycasting every part of each body, for every model in every
