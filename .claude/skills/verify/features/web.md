@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -622,7 +622,10 @@ plan with Claude as the client.
   with the LDraw and LEGO® notices and a line on reporting a model. Names and
   credits are put in with `textContent`, links built from an id that matches
   `^[A-Za-z0-9]{10}$` only. `data-gallery` on `<html>` says `ready` or `broken`
-  for a check (`asking` while a question is out). Since the directory: a
+  for a check (`asking` while a question is out). Since Tested (2026-10-18):
+  a card marked Tested (`data-tested="yes"`, the four in its title) and a
+  Tested only box (`tested=1` in the address), proven by `tested_flow` (the
+  Tested entry below). Since the directory: a
   search box (asked 350 ms after typing stops, at once on Enter), Filters
   (Kind and Size, filled from the list's own `kinds` and `sizes`; Has
   instructions; Technic or mechanism; open on a screen 760 px wide or more,
@@ -1808,6 +1811,59 @@ version 2"; unpublished, the link, version 1's page and model answer 410,
 neither file is in the bucket and no row is left. Pictures in `--out`.
 `share_view_probe` (above) proves the same in the desktop scene against the
 fake, with `BuildSteps.changed_since` case by case.
+
+**Tested** (`src/assembly/tested.gd`, `api/_tested.js`, `supabase/tested.sql`,
+`tools/web/tested_flow.mjs`, 2026-10-18). The four tests, headless, on
+models whose answers are known:
+
+```sh
+godot --headless --path . --script src/dev/tested_probe.gd
+godot --headless --path . --script src/dev/tested_probe.gd -- --sets vendor/omr/files/10218-1.mpd   # each test, and where the time went
+```
+
+Proves it when it ends "each of the four tests passes a model that should
+and fails one that should not, saying why" with no `FAIL`: 6680-1 stands at
+its 15 steps, every part made in its colour, nothing loose; three bricks
+stacked pass all four; the top one put in before what holds it fails steps
+("Step 2: Brick 2 x 4 is put down in the air"); a brick put in a closed box
+after its roof fails steps as hidden; an arm on a 1 x 2 base fails stands
+("At step 2 it tips over, 1.4 studs past the right edge"); a 1 x 1 brick in
+Light Blue fails parts ("never made in Light Blue"); a brick held by nothing
+fails whole ("1 part loose"); the finding names its file's fingerprint and
+the app's version; 10218-1 (2,042 parts, 190 steps) tested in about 2.2 s.
+
+The SQL, dry (never applied by an agent):
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/tested.sql \
+  --dry --try=tools/tested_try.sql --table=share_tests
+```
+
+Proves it when, before "rolled back, nothing kept": a passed mark makes
+`model_tested` and the card say true and a failed one false; `directory_models`
+with `tested` lists the passed one alone; cleared, it is not tested; the five
+refusals (no such version, passed with a test failed, fewer than four tests,
+an app that is not a version, anybody but the app); a version deleted takes
+its mark; `anon_reads` false, `server_writes` true, `anon_asks` false.
+
+In real browsers, against a local relay holding `share_tests` (which also
+says what the gallery's functions would, `tools/web/held_tables.mjs`):
+
+```sh
+tools/export.sh web
+node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests &
+node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=shots/tested
+```
+
+Proves it when it ends "a model is marked Tested by what the app found, shown
+to all when it passed and only to its owner when not" with no `FAIL`: three
+models tested by `tested_probe --write` and published (passed, failed,
+none); a finding of another file not kept; a visitor sees the mark, the four
+on hover and on a tap, on the passed one's page, its card and its viewer,
+and no mark or failure on the others; Tested only lists the passed one; the
+failed one's owner is told "A step is not reachable: Step 2: …" on its page,
+`?op=mine` says each, `?op=tested` answers nobody else; and a publish from
+the app's own Share panel sends what it found, which the server keeps.
 
 **Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
 each page turn of Build it timed from the finger to the frame, and the first

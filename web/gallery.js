@@ -27,6 +27,7 @@
   const sort = $("sort");
   const instructions = $("instructions");
   const technic = $("technic");
+  const tested = $("tested");
   let page = 0;
   let asking = 0;
   let tag = "";
@@ -82,6 +83,16 @@
     if (Number(model.remixes)) said.push(counted(model.remixes, "remix", "remixes"));
     numbers.textContent = said.join(" · ");
     words.append(name, about, numbers);
+    // Marked Tested: its newest version passed the four tests the app ran
+    // as it was published (api/_tested.js), said on hover.
+    if (model.tested === true) {
+      const mark = document.createElement("small");
+      mark.className = "tested";
+      mark.textContent = "✓ Tested";
+      mark.title = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
+      words.append(mark);
+      link.dataset.tested = "yes";
+    }
     link.append(frame, words);
     return link;
   }
@@ -99,6 +110,7 @@
     if (chosen(size)) asked.set("size", chosen(size));
     if (instructions.checked) asked.set("instructions", "1");
     if (technic.checked) asked.set("technic", "1");
+    if (tested.checked) asked.set("tested", "1");
     if (tag) asked.set("tag", tag);
     if (chosen(sort) && chosen(sort) !== "newest") asked.set("sort", chosen(sort));
     if (tests) asked.set("tests", "1");
@@ -125,6 +137,7 @@
     if (size.value) said.push(size.options[size.selectedIndex].textContent.split(",")[0]);
     if (instructions.checked) said.push("instructions");
     if (technic.checked) said.push("Technic");
+    if (tested.checked) said.push("Tested");
     $("filters-said").textContent = said.join(", ");
     const chips = $("chips");
     chips.replaceChildren();
@@ -150,7 +163,7 @@
       if (reply.status === 400 && !filled && [...question().keys()].length) {
         for (const select of [kind, size, sort]) select.dataset.wanted = "";
         q.value = "";
-        instructions.checked = technic.checked = false;
+        instructions.checked = technic.checked = tested.checked = false;
         tag = "";
         history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
         return next(true);
@@ -210,10 +223,13 @@
   }
   instructions.checked = given.get("instructions") === "1";
   technic.checked = given.get("technic") === "1";
+  tested.checked = given.get("tested") === "1";
   tag = (given.get("tag") || "").slice(0, 24);
   // Open on a screen with room for them, folded on a phone.
   if (window.matchMedia && window.matchMedia("(min-width: 760px)").matches) $("filters").open = true;
-  if (given.get("kind") || given.get("size") || instructions.checked || technic.checked) $("filters").open = true;
+  if (given.get("kind") || given.get("size") || instructions.checked || technic.checked || tested.checked) {
+    $("filters").open = true;
+  }
 
   let typing = 0;
   q.addEventListener("input", () => {
@@ -225,13 +241,14 @@
     clearTimeout(typing);
     ask();
   });
-  for (const control of [kind, size, sort, instructions, technic]) control.addEventListener("change", ask);
+  for (const control of [kind, size, sort, instructions, technic, tested]) control.addEventListener("change", ask);
   $("clear").addEventListener("click", () => {
     q.value = "";
     kind.value = "";
     size.value = "";
     instructions.checked = false;
     technic.checked = false;
+    tested.checked = false;
     tag = "";
     ask();
   });

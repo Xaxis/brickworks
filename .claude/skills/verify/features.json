@@ -927,6 +927,22 @@
       "tests": []
     },
     {
+      "id": "cli:tested browser flow",
+      "kind": "cli",
+      "entry": "tools/web/tested_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests & node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/tested.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:tested probe",
+      "kind": "cli",
+      "entry": "src/dev/tested_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/tested_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the author's steps in a browser",
       "kind": "cli",
       "entry": "tools/web/steps_flow.mjs",
@@ -1704,6 +1720,22 @@
       "entry": "src/assembly/swing.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:the Tested mark kept and shown",
+      "kind": "lib",
+      "entry": "api/_tested.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/tested.sql --dry --try=tools/tested_try.sql --table=share_tests   (then the tested browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:the Tested mark's four tests",
+      "kind": "lib",
+      "entry": "src/assembly/tested.gd",
+      "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
+      "area": "web",
       "tests": []
     },
     {

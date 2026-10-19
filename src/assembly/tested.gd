@@ -25,8 +25,8 @@
 ##   parts   every part is a real element in its colour, as the catalogue's
 ##           colour availability knows it (PartInfo.never_made_in): none in a
 ##           colour it was never made in, none made here, none in a colour
-##           that is not one of LEGO's. A part the catalogue has no colours
-##           for is not held against it, and is counted.
+##           typed in rather than one parts are made in. A part the catalogue
+##           has no colours for is not held against it, and is counted.
 ##   whole   nothing is loose: every part is held to what the model stands on
 ##           through what holds what — studs, pins, axles, clips, hinges,
 ##           balls, a stud from the side, what rests on what — as the steps
@@ -48,7 +48,7 @@ const NAMED := 3
 ## How long the tests may take before the model goes untested, ms: a
 ## 2,042-part set takes about 2.2 s here.
 const MOST_MS := 15000
-## LDraw's direct colours, 0x2RRGGBB: a colour typed in, not one of LEGO's.
+## LDraw's direct colours, 0x2RRGGBB: a colour typed in, not one parts are made in.
 const DIRECT_FROM := 0x2000000
 
 
@@ -375,7 +375,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		var why: String = ""
 		if brick.color_code >= DIRECT_FROM:
-			why = "in a colour LEGO does not make"
+			why = "in a colour typed in, not one parts are made in"
 		elif info == null or info.custom:
 			why = "made here, not a real element"
 		elif info.never_made_in(brick.color_code):

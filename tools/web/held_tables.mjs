@@ -13,10 +13,81 @@
 //
 // Only what the functions ask of these tables: eq. and in. filters, select
 // of named columns, order by one column, limit; insert of one row or
-// several, with the table's own refusals (TABLES below); delete by filter.
-// Kept for the life of the process.
+// several, with the table's own refusals (TABLES below); update and delete
+// by filter. Kept for the life of the process.
+//
+// A held table whose file also changes the database's functions says what
+// they would answer, as the file makes them (TABLES[...].rpc): the real
+// function is asked, and its answer is given what the file adds. For
+// share_tests (supabase/tested.sql), the gallery's cards say whether each is
+// marked Tested, and Tested only lists those that are. Paged after the
+// filter rather than in the database, which the few models of a flow never
+// notice; the file's own paging is proven by its dry run.
+
+/// [ids]' newest versions, from the real share_versions: id -> n.
+async function newestOf(real, base, headers, ids) {
+  if (ids.length === 0) return new Map();
+  const answer = await real(`${base}/rest/v1/share_versions?model=in.(${ids.join(",")})&select=model,n`, { headers });
+  const out = new Map();
+  for (const one of answer.ok ? await answer.json() : []) out.set(one.model, Math.max(out.get(one.model) || 0, one.n));
+  return out;
+}
+
+/// Whether [id] is marked Tested by [rows], as model_tested says.
+const testedBy = (rows, newest, id) => rows.some((row) => row.model === id && row.n === (newest.get(id) ?? 1)
+  && row.passed === true && !row.cleared_at);
+
+const TESTS = ["stands", "steps", "parts", "whole"];
 
 const TABLES = {
+  // supabase/tested.sql
+  share_tests: {
+    key: ["model", "n"],
+    // Its version must be a row of share_versions, as the foreign key says
+    // (by its model: the dry run proves the pair).
+    parent: { column: "model", table: "share_versions", on: "model" },
+    defaults: () => ({ at: new Date().toISOString(), by: "app", cleared_at: null, cleared_why: null }),
+    check(row) {
+      if (!Number.isInteger(row.n) || row.n < 1 || row.n > 100000) return "share_tests_n_check";
+      if (row.by !== "app") return "share_tests_by_check";
+      if (!/^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,6}([-+.][0-9A-Za-z.-]{1,40})?$/.test(String(row.app))) return "share_tests_app_check";
+      if (!/^[0-9a-f]{64}$/.test(String(row.file_hash))) return "share_tests_file_hash_check";
+      if (!Number.isInteger(row.parts) || row.parts < 1 || row.parts > 200000) return "share_tests_parts_check";
+      if (!Number.isInteger(row.steps) || row.steps < 1 || row.steps > 200000) return "share_tests_steps_check";
+      if (!row.tests || typeof row.tests !== "object" || !TESTS.every((name) => name in row.tests)
+          || JSON.stringify(row.tests).length > 8192) return "share_tests_tests_check";
+      if (row.passed !== TESTS.every((name) => row.tests[name]?.ok === true)) return "share_tests_check";
+      if (row.cleared_why !== null && (typeof row.cleared_why !== "string" || row.cleared_why.length < 1
+          || row.cleared_why.length > 280)) return "share_tests_cleared_why_check";
+      return "";
+    },
+    rpc: {
+      async directory_models(real, base, url, init, rows) {
+        const query = JSON.parse(String(init.body || "{}")).query || {};
+        const wanted = query.tested === true;
+        const asked = wanted ? { ...query, size: 49, skip: 0 } : query;
+        const answer = await real(url, { ...init, body: JSON.stringify({ query: asked }) });
+        if (!answer.ok) return answer;
+        let cards = await answer.json();
+        const newest = await newestOf(real, base, init.headers, cards.map((card) => card.id));
+        cards = cards.map((card) => ({ ...card, tested: testedBy(rows, newest, card.id) }));
+        if (wanted) {
+          const skip = Number(query.skip) || 0;
+          cards = cards.filter((card) => card.tested).slice(skip, skip + (Number(query.size) || 25));
+        }
+        return new Response(JSON.stringify(cards), { status: 200, headers: { "content-type": "application/json" } });
+      },
+      async directory_model(real, base, url, init, rows) {
+        const answer = await real(url, init);
+        if (!answer.ok) return answer;
+        const page = await answer.json();
+        if (!page || typeof page !== "object") return new Response(JSON.stringify(page), { status: 200 });
+        const newest = await newestOf(real, base, init.headers, [page.id]);
+        return new Response(JSON.stringify({ ...page, tested: testedBy(rows, newest, page.id) }),
+          { status: 200, headers: { "content-type": "application/json" } });
+      },
+    },
+  },
   // supabase/versions.sql
   share_versions: {
     key: ["model", "n"],
@@ -50,6 +121,15 @@ async function answer(real, base, url, init = {}) {
   const at = url.indexOf("/rest/v1/");
   if (at < 0 || !url.startsWith(base)) return null;
   const [path, search = ""] = url.slice(at + 9).split("?");
+  // A function a held table's file changes: asked of the database, and its
+  // answer given what the file adds.
+  if (path.startsWith("rpc/")) {
+    for (const [name, table] of Object.entries(TABLES)) {
+      const said = held.has(name) && table.rpc?.[path.slice(4)];
+      if (said) return said(real, base, url, init, held.get(name));
+    }
+    return null;
+  }
   if (!held.has(path)) return null;
   const table = TABLES[path];
   const rows = held.get(path);
@@ -102,6 +182,20 @@ async function answer(real, base, url, init = {}) {
       rows.push(row);
     }
     return new Response(null, { status: 201 });
+  }
+  if (method === "PATCH") {
+    if (filters.length === 0) return json(400, { message: "held table: an update names its rows" });
+    const given = JSON.parse(String(init.body || "{}"));
+    const changed = [];
+    for (const row of chosen()) {
+      const after = { ...row, ...given };
+      const broken = table.check(after);
+      if (broken) return json(400, { code: "23514", message: `violates check constraint "${broken}"` });
+      changed.push([row, after]);
+    }
+    for (const [row, after] of changed) Object.assign(row, after);
+    const wants = String(init.headers?.prefer || "").includes("return=representation");
+    return wants ? json(200, changed.map(([row]) => ({ ...row }))) : new Response(null, { status: 204 });
   }
   if (method === "DELETE") {
     if (filters.length === 0) return json(400, { message: "held table: a delete names its rows" });

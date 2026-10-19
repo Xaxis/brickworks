@@ -259,7 +259,7 @@ export function listQuery(query, perPage, mostPages) {
     if (SIZES[size].least) asked.least = SIZES[size].least;
     if (SIZES[size].most) asked.most = SIZES[size].most;
   }
-  for (const [name, column] of [["instructions", "own_steps"], ["technic", "technic"]]) {
+  for (const [name, column] of [["instructions", "own_steps"], ["technic", "technic"], ["tested", "tested"]]) {
     const value = String(query[name] ?? "").toLowerCase();
     if (!value || value === "0" || value === "false") continue;
     if (!YES.has(value)) throw new Unacceptable(`${name} is 1 or left out`);
@@ -287,6 +287,8 @@ export function cardOf(origin, row) {
     id: row.id, name: row.name, author: row.author, parts: row.parts, listed_at: row.listed_at,
     kind: row.kind ?? null, tags: row.tags || [], licence: row.licence ?? null,
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
+    // Its newest version passed the app's four tests (supabase/tested.sql).
+    tested: row.tested === true,
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
