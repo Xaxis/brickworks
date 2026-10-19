@@ -602,7 +602,8 @@ plan with Claude as the client.
   so none is the browser's; a dropdown is the text box with its own arrow),
   a checkbox and radio (`label.choice`), the buttons the site uses (`.cta`,
   `.cta.ghost` and any bare button, `button.link`, `.small`, `.big`), the
-  `dialog` (sign-in, age, report) and `.card`; tokens `--field`,
+  `dialog` (sign-in, age, report), a date (`fieldset.date`: day, month
+  and year dropdowns, /admin's challenge days) and `.card`; tokens `--field`,
   `--control-h` 44, `--control-radius` 10. The copies in `web/directory.css`,
   `web/gallery.html`, `web/download.html`, `web/takedown.html`,
   `web/admin.html` and `web/authorize.html` are gone; the last two now link
@@ -1841,8 +1842,11 @@ node tools/web/design_flow.mjs --url=<preview>                        # a deploy
 
 It visits home, gallery (its filters opened at 390), a model's page (signed
 out: Report it opens the report dialog; signed in: the collect panel, the
-comment form, and I built it's photo form with its file picker), an older
-version, the embed card, a person, a collection, the feed, Account (signed
+comment form, and I built it's photo form with its file picker), the
+stand-in's own model signed in with Enter this month's challenge and its
+dialog (here only: a deployment has none of the stand-in's models), an older
+version, the embed card, a person, a collection, `/challenge` (an open one,
+with Vote for it, Your vote and You voted in this group), the feed, Account (signed
 out: Sign in and its code step; signed in: the age question for an account
 not asked yet), admin, authorize, compare, download, faq, changelog, terms,
 guidelines, privacy, takedown and the 404 page, at 390 and 1280, light and
@@ -1852,7 +1856,8 @@ controls of one kind on a page that differ (fields in type, height,
 corners, border or fill; buttons of one size), and a page wider than 390
 with anything open. It proves it when it ends `design flow: N pages and
 dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
-188, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
+188, 0; with the challenge's page and dialog and /admin's date dropdowns,
+204, 1,464, 204, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
 and api/, given as `--root=`) it fails the age question by name:
 `select#age-month … the browser's own dropdown (appearance auto)`, its
 13.33 px type, and the year box differing from it in type, corners, fill
