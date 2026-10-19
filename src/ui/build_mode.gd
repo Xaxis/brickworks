@@ -19,6 +19,12 @@
 ## from step 3"), with that step a press away; one who had not got that far
 ## is not told anything (BuildSteps.changed_since).
 ##
+## The page's comments (2026-10-18): a count at the right of the top bar,
+## across from Close, for the step on the page ("2 comments", or Comment to
+## add the first); tapped, the step's comments come up from the bottom of
+## the model's part of the window, with a box to add one for somebody who
+## may (StepComments). The cover's are the whole model's.
+##
 ## This only shows a page and says what was pressed; main.gd turns the
 ## page (BuildSteps says what is on it) and keeps the place.
 class_name BuildMode
@@ -72,12 +78,19 @@ var _tiles: Array[ThumbTile] = []
 var _swipe_from: Vector2 = Vector2(-1, -1)
 var _swipe_index: int = -1
 var _pt: float = 0.0
+## The comments on the page's step: the count in the top bar, the panel
+## over the model.
+var comments: StepComments
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	comments = StepComments.new()
+	comments.prefix = "build"
+	comments.area = free_rect
+	add_child(comments)
 	_build_top()
 	_build_bottom()
 	get_viewport().size_changed.connect(_fit)
@@ -127,11 +140,15 @@ func _build_top() -> void:
 		_hide_changed()
 		page_wanted.emit(wanted))
 	_changed.add_child(_changed_go)
-	# As wide as Close, so the words sit in the middle of the window.
-	var balance := Control.new()
+	# As wide as Close, so the words sit in the middle of the window; the
+	# page's comments are counted in it.
+	var balance := CenterContainer.new()
 	balance.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	balance.name = "Balance"
 	row.add_child(balance)
+	comments.remove_child(comments.pill)
+	comments.pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	balance.add_child(comments.pill)
 	_progress = ProgressBar.new()
 	_progress.show_percentage = false
 	_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -249,6 +266,7 @@ func _fit() -> void:
 	fill.set_corner_radius_all(roundi(3.0 * pt))
 	_progress.add_theme_stylebox_override("background", track)
 	_progress.add_theme_stylebox_override("fill", fill)
+	comments.fit(pt, 16.0)
 	_lay_strip()
 
 
@@ -290,6 +308,7 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 	_next.text = "Start" if at == 0 else ("Finish" if at >= of else "Next")
 	_told.text = _telling(at, lots)
 	_told.visible = not _told.text.is_empty()
+	comments.set_step(at)
 	_lay_strip()
 	_shown_at = Time.get_ticks_msec()
 	_pictures_ms = -1
@@ -410,6 +429,7 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	comments.close()
 	if thumbnails != null:
 		thumbnails.watch(self, [] as Array[ThumbTile])
 
@@ -429,7 +449,7 @@ func free_rect() -> Rect2:
 
 func covers(point: Vector2) -> bool:
 	return visible and (_top.get_global_rect().has_point(point)
-		or _bottom.get_global_rect().has_point(point))
+		or _bottom.get_global_rect().has_point(point) or comments.covers(point))
 
 
 ## A finger, or the mouse, drawn across a bar: to the left is Next, to the
@@ -504,6 +524,7 @@ func controls_by_name() -> Dictionary:
 		"build_progress": _progress}
 	if _changed.is_visible_in_tree():
 		named["build_changed_go"] = _changed_go
+	named.merge(comments.controls_by_name())
 	return named
 
 
@@ -521,4 +542,5 @@ func page_state() -> Dictionary:
 			return tile.state == ThumbTile.State.READY).size(),
 		"next": _next.text, "back_enabled": not _back.disabled, "points": sizes,
 		"changed_from": changed_from, "changed": _changed_words.text if _changed.visible else "",
-		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt)}
+		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
+		"comment_step": comments.step}.merged(comments.page_state())
