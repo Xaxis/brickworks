@@ -1,7 +1,8 @@
 # Community rules, and where each is enforced
 
 brickworks.diy has share links, a gallery, profiles, likes, remixes,
-collections, comments, photos of real builds, follows and a feed. These
+collections, comments, photos of real builds, follows and a feed, and
+designers' pages. These
 are the ground rules it stands on (2026-10-18), and the code that keeps each.
 The pages people read are `web/terms.html` (/terms) and
 `web/guidelines.html` (/guidelines); every site page's footer links both,
@@ -35,6 +36,11 @@ the pages say what the site does.
   once, `node --env-file=.env tools/web/needs_backfill.mjs` (`--dry` first
   reads only), which counts what the models published before it need; a
   model published after is counted as it is published.
+- `supabase/designers.sql` after discovery.sql (it reads the tables of
+  builds, comments, tested, trust and follows); until then a profile is as
+  before (no tiles, its models newest first), and the designer's own
+  numbers say "not open on Brickworks yet". Opens are counted by the day
+  from the moment it is applied.
 
 ## The rules
 
@@ -288,6 +294,79 @@ model a page skipped (page 81 of Top builds took 665 ms that way); the
 page is now cut before its cards are made. The CDN keeps both answers 30
 seconds, as the list.
 
+## Designers: what a designer's models earned
+
+`supabase/designers.sql` (2026-10-19), the API in `api/_designers.js`, the
+page in `api/people.js` (`profilePage`, `earnedHtml`, `cardHtml` with
+`earned`), the designer's own numbers in `web/designs.js`.
+
+**A designer's page.** A profile with a model in the gallery
+(`/u/<handle>`) is a designer's: it says Designer, not Builder, and leads
+with what those models earned, as tiles: builds finished and remixes first
+(marked, as the gallery's Top builds weighs them), then Tested, comments,
+models in the gallery and followers. Each number is the sum of what the
+cards below it say, so the page never claims more than its models show:
+
+| Number | Counted as |
+|---|---|
+| Builds finished | `model_stats.builds`: once per device that reached the last step, never a robot's, as every card and Top builds count them |
+| Remixes | published remixes of it, by link or listed, as the card counts them |
+| Tested | its newest version marked Tested |
+| Comments | on its page in this life of its link, shown to a visitor (not hidden, not removed, by an account shown in public), and not the designer's own: an answer to a comment is not one earned (`designer_said`) |
+| Models | listed and credited, as the profile lists them |
+
+The models follow by Top builds, the most built first, and each card says
+its own "3 built · 1 remix · 1 comment", then likes, and its Tested mark;
+never its views. Under the tiles: the model to start with, the first by Top
+builds once somebody built it ("Start with their most built: …, 3 builds
+finished, Tested", with Build it, which opens it in the viewer), and the
+photos other people posted of their builds of these models (Built by
+others), each saying whose build it is. A builder's own photos of their own
+models are not among them. Likes and whom they follow stay as a line under
+the tiles. A profile with nothing in the gallery is as before.
+
+What a builder can do there (follow, report) is unchanged. A build is
+counted by device and nobody's account is kept with it, so a designer's
+own finish on their own device counts once, as it does everywhere else.
+
+**For the designer alone.** Signed in, on their own page (How your models
+are doing, under the follow line) and on Account (`/profile`, Your models,
+as a designer): every model they published, in the gallery or by link,
+credited or not, each with the last 30 days and in all since it was
+shared:
+
+- opens: visitors who opened its page, each once a day, never a robot
+  (`count_view`'s count, kept by the day in `model_opens`);
+- builds finished, remixes and comments, counted as on the page above;
+- who built it: the photos people posted of their builds ("I built it"),
+  up to six, each with its builder's name and a link to their profile.
+
+The busiest first (opens, then builds). Opens are kept by the day from the
+day the file is applied (with what `model_views` still held, today's and
+yesterday's); until 30 days have passed the panel says from when, and "in
+all" is the count since the model was shared.
+
+**Nobody else sees it, and no cache keeps it.** The page the CDN keeps
+(`/u/<handle>`, 30 seconds) is the same bytes for everybody and carries none
+of it: `#designs-mine` is empty and hidden, and `web/designs.js` fills it
+only when `GET /api/people?op=designs&handle=<the page's>` answers that the
+page is the caller's own (asked by anybody else it answers `{"mine":
+false}` and nothing more). The account asked for is the one the sign-in
+proves; nothing in the request can name another. Every answer, a refusal
+included, is `Cache-Control: private, no-store`. In the database the
+numbers come only from `designer_mine`, granted to the service role alone;
+`model_opens` is read by no key, the service role's included.
+
+**What it costs.** In the dry run (`tools/designers_try.sql`), on the live
+project's own data, the owner with the most models (seven): the page 1.5
+to 3.2 ms and the designer's own numbers 3.9 to 6.1 ms, in two runs. On a
+designer made inside it, 303 models with 30 days of opens on each (9,000
+rows), 3,000 builds, 600 comments and 300 photos by twenty people and 100
+remixes, best of three: the page 21 to 31 ms and their own numbers 46 to
+59 ms (185 KB of JSON). Who is shown
+in public is asked once a person, not once a comment or photo: asked of
+every one, the two took 110 to 250 ms.
+
 ## Reports reaching the owner
 
 A report (`api/people.js` `?op=report`, from the Report button or
@@ -449,6 +528,29 @@ counter-notice is by hand for now (`shared_models.barred`).
   collection with a real set in it: each card's share, Parts I own, You
   can build now at 1280 and 390 px, refused signed out, and nothing of it
   for somebody with no collection.
+- `tools/designers_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/designers.sql` after the live files: `count_view` answering the
+  same with the trigger and without it, opens by the day and the last 30
+  (and 7) of them, a designer's page as anybody sees it with and without
+  tests (models, builds, remixes, comments, Tested, photos by others) and
+  each number the same as profile_page's and the sum of directory_models'
+  cards, the comments the same as the model's page shows less the owner's,
+  the designer's own numbers and nobody else's, days held to 1 to 90, an
+  account taken out and one under 13, what model_views held counted in
+  once, the grants, and the timings above, all rolled back.
+  `tests/test_designers.py` holds the file to additions alone, the cards'
+  definitions, the band's and the cards' order, the own numbers to the
+  caller's sign-in and `private, no-store`, and the cached page to none
+  of them.
+- `tools/web/designers_flow.mjs` against `relay_server.mjs
+  --hold=model_opens` (`tools/web/designers_stand_in.mjs` answers
+  designers.sql's two functions over the live project's tables) or a
+  deployment through its API alone: a designer's page signed out, signed
+  in as somebody else and as the designer, at 1280 and 390 px; the tiles
+  the sums of the cards, the castle first, no views; the designer's own
+  numbers on their page and on Account and nobody else's; and every answer
+  of them `private, no-store`, never from the CDN, the same address
+  answering each their own.
 - `tools/web/follows_flow.mjs` against `relay_server.mjs
   --hold=follows,model_comments,build_photos,report_photos --trust-stand-in`
   (`tools/web/follows_stand_in.mjs` answers follows.sql's functions in

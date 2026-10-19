@@ -390,6 +390,14 @@
       "tests": []
     },
     {
+      "id": "cli:designers browser flow",
+      "kind": "cli",
+      "entry": "tools/web/designers_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designers_flow.mjs --url=<preview> --out=DIR   (or a local relay_server.mjs --hold=model_opens until designers.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:discovery browser flow",
       "kind": "cli",
       "entry": "tools/web/discovery_flow.mjs",
@@ -1415,6 +1423,14 @@
       "tests": []
     },
     {
+      "id": "lib:designers' numbers",
+      "kind": "lib",
+      "entry": "supabase/designers.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers.sql --dry --try=tools/designers_try.sql --table=model_opens   (after the live files; the promises around it in tests/test_designers.py; then the designers browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:directory",
       "kind": "lib",
       "entry": "api/_directory.js",
@@ -1849,6 +1865,7 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
+        "tests/test_designers.py",
         "tests/test_discovery.py"
       ]
     },
@@ -1994,6 +2011,14 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a designer's page",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2895,6 +2920,16 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, newest first, each row a link; opening it clears the count on Account)",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "ui:your models as a designer",
+      "kind": "ui",
+      "entry": "web/designs.js",
+      "reach": "signed in, your own /u/<handle> (How your models are doing) and /profile (Your models, as a designer); GET /api/people?op=designs with your sign-in",
+      "area": "web",
+      "tests": [
+        "tests/test_designers.py"
+      ]
     },
     {
       "id": "ui:your profile page",

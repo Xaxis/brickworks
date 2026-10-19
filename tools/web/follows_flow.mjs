@@ -164,6 +164,17 @@ async function digestsOf(owner, ids) {
   return kept;
 }
 
+/// What a profile's page, as served, says of its followers: "1 follower".
+/// A designer's page draws it as a tile, its number apart from its word
+/// (api/people.js earnedHtml), so it is read as a person reads it.
+const followersOn = (html) => (/data-followers[^>]*>([\s\S]*?)<\/(?:li|span)>/.exec(html)?.[1] || "")
+  .replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+/// Whom a profile's page lists under Follows, as served: the handles.
+const followsListed = (html) => {
+  const section = /<section aria-labelledby="follows-h">([\s\S]*?)<\/section>/.exec(html)?.[1] || "";
+  return [...section.matchAll(/href="\/u\/([a-z0-9-]+)"/g)].map((one) => one[1]);
+};
+
 /// The Follow button on the page, as drawn: {shown, text, pressed, said, followers}.
 const followDrawn = (page) => page.evaluate(() => {
   const button = document.querySelector("button[data-follow]");
@@ -239,7 +250,7 @@ try {
     asVisitor.body.followers === 1 && asVisitor.body.you_follow === false && !JSON.stringify(asVisitor.body).includes(BOB));
   check(`Bob sees he follows her: ${asBob.body.you_follow}`, asBob.body.you_follow === true);
   const herPage = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers })).text();
-  check("her page counts him and never names him", /1 follower/.test(herPage) && !herPage.includes(BOB)
+  check("her page counts him and never names him", followersOn(herPage) === "1 follower" && !herPage.includes(BOB)
     && !herPage.includes("Bob Follows"));
   const herList = await api(`/api/people?op=following&handle=${ADA}`);
   check(`whom she follows: nothing shown (${JSON.stringify(herList.body.following)})`,
@@ -396,7 +407,10 @@ try {
   // --- 7. whom Bob follows, shown by his choice ---------------------------
   console.log("Bob shows whom he follows");
   let bobsPage = await (await fetch(`${site}/u/${BOB}?tests=1`, { headers })).text();
-  check("his profile does not list whom he follows, until he chooses", !bobsPage.includes(ADA) && /following 1/.test(bobsPage));
+  // Ada is on his page as the builder of his barn (Built by others), which
+  // is not whom he follows: only the Follows list says that.
+  check("his profile does not list whom he follows, until he chooses", followsListed(bobsPage).length === 0
+    && !bobsPage.includes('id="follows-h"') && /following 1/.test(bobsPage));
   await bobPage.goto(`${site}/profile`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.profile === "ready", "Bob's /profile");
   const boxes = await bobPage.evaluate(() => ({
@@ -409,9 +423,9 @@ try {
   await until(bobPage, () => /Shown/.test(document.getElementById("follows-said")?.textContent || ""), "shown");
   await shot(bobPage, "8_profile_choices.png", true);
   bobsPage = await (await fetch(`${site}/u/${BOB}?tests=1`, { headers })).text();
-  check("chosen: his profile lists Ada under Follows", bobsPage.includes(`href="/u/${ADA}"`) && bobsPage.includes("Ada Follows"));
+  check("chosen: his profile lists Ada under Follows", followsListed(bobsPage).join(",") === ADA && bobsPage.includes("Ada Follows"));
   const herNow = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers })).text();
-  check("hers still only counts him", /1 follower/.test(herNow) && !herNow.includes(BOB));
+  check("hers still only counts him", followersOn(herNow) === "1 follower" && !herNow.includes(BOB));
   const bobList = await api(`/api/people?op=following&handle=${BOB}`);
   check(`whom Bob follows, asked: ${bobList.body.following.map((one) => one.handle).join(", ")}`,
     bobList.body.following.length === 1 && bobList.body.following[0].handle === ADA);
