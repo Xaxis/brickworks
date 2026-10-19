@@ -142,7 +142,9 @@ try {
   ok(await until(async () => (await mine())?.sets === 1 && /added 6020/.test((await mine())?.status || ""),
     90, "set"), `a set typed by number is added and expanded: ${(await mine())?.pieces} pieces in all`);
   const withSet = await mine();
-  ok(withSet.pieces === 27 + 47, `27 loose pieces and the Magic Shop's 47 (${withSet.pieces})`);
+  // Rebrickable's 47, its figure's legs counted as the hips and two legs
+  // LDraw draws them as (tools/collection_data.py, 2026-10-19).
+  ok(withSet.pieces === 27 + 49, `27 loose pieces and the Magic Shop's 49 (${withSet.pieces})`);
   await page.waitForTimeout(3000);
   await shot("2_imported.png");
 
