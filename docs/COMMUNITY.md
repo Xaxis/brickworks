@@ -37,7 +37,9 @@ the pages say what the site does.
 
 Asked once of every account, at its first sign-in after `trust.sql`: on the
 site by `web/account.js` (after a sign-in, and on /profile), in the app by
-`src/ui/sign_in_gate.gd` (the sign-in screen stays up for it). Neutral, as
+`src/ui/sign_in_gate.gd` (the sign-in screen stays up for it after a code
+is typed; a returning visitor is let in at once, and an account from before
+the question has the screen back up to ask it, once). Neutral, as
 the FTC's COPPA guidance asks: the month and year of birth, the same for
 everyone, and nothing about 13 until after the answer. `POST
 /api/account?op=age` turns the date into 13-or-over (`api/_trust.js`,

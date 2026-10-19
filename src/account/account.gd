@@ -67,9 +67,13 @@ var ended: String = ""
 ## Only the deployment decides; the app asks and shows.
 var age_ask: bool = false
 var over_13: Variant = null
-## Asking the deployment who this is, just after a sign-in: the sign-in
-## screen stays up for that one request, so the age question, when there
-## is one, comes before the builder rather than over it.
+## Asking the deployment who this is, just after somebody typed their
+## code: the sign-in screen stays up for that one request, so the age
+## question, when there is one, comes before the builder rather than over
+## it. Not at a start with a kept session, which lets them in at once and
+## puts the screen back up only if there is a question (an account from
+## before it, asked once at its next visit): a returning visitor waits for
+## nothing.
 var asking_who: bool = false
 
 ## What the deployment said about itself: whether it has accounts, and
@@ -212,7 +216,7 @@ func verify_code(with_email: String, code: String) -> String:
 	offline = false
 	state = State.SIGNED_IN
 	changed.emit()
-	_ask_who()
+	_ask_who(true)
 	return ""
 
 
@@ -297,11 +301,12 @@ func _renew() -> String:
 ## admin link) and whether to ask the age question. A failure leaves both
 ## as they were and lets them in: an offline start, or a deployment from
 ## before the question, asks nothing.
-func _ask_who() -> void:
+func _ask_who(hold: bool = false) -> void:
 	if _access.is_empty():
 		return
-	asking_who = true
-	changed.emit()
+	asking_who = hold
+	if hold:
+		changed.emit()
 	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/account",
 		PackedStringArray(["authorization: Bearer " + _access]),
 		HTTPClient.METHOD_GET, "")

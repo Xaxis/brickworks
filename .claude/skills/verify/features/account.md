@@ -69,8 +69,10 @@ they have. A Claude connector belongs to the account that switched it on.
   stands — a second try returns the first — except that an under-13 answer
   is asked again a year on. See [web](web.md) for what it refuses.
 - `the age question in the sign-in screen` (`src/ui/sign_in_gate.gd`,
-  `Account.age_ask`, `over_13`, `asking_who`, `answer_age`): after a sign-in
-  the screen stays up ("Signing you in…") for `/api/account`; when it says
+  `Account.age_ask`, `over_13`, `asking_who`, `answer_age`): after a code is
+  typed the screen stays up ("Signing you in…") for `/api/account`; a start
+  with a kept session lets them in at once and puts the screen back up only
+  to ask (an account from before the question, once). When it says
   `ask`, "One question first: When were you born?", twelve month buttons
   (`age_month_1`…`12`), the year (`age_year`), Carry on (`age_go`), and "The
   date itself is not kept." Under 13, the screen then says what is open and
@@ -328,7 +330,8 @@ screen back with the session gone, and no security-policy refusals. `--master`
 also signs the owner's account in (no email sent) and checks the admin page
 lists the accounts.
 
-`account_flow` answers the age question 13 or over when it is asked (once
+`account_flow` (in the app) and `people_flow` (on the site) answer the age question
+13 or over when it is asked (once
 `supabase/trust.sql` is applied). `tools/web/session.mjs` `mintSession` answers
 it 13 or over for every account it signs in but `MASTER_EMAIL`'s (in the
 database, and in a local stand-in named by `BW_STAND_IN`), so flows that list

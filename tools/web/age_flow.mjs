@@ -281,6 +281,8 @@ try {
   await press(`age_month_${thisMonth}`);
   await press("age_year");
   await app.keyboard.type(String(thisYear - 9), { delay: 30 });
+  // Keys reach the field a frame at a time; a click straight after can land first.
+  await app.waitForTimeout(1500);
   await press("age_go");
   await until(() => Object.keys(window.brickworksControls || {}).includes("age_done"), "what under 13 means", 60);
   await shot(app, "4_app_under_13.png");
@@ -327,6 +329,7 @@ try {
   await press("age_month_6", app2);
   await press("age_year", app2);
   await app2.keyboard.type(String(thisYear - 40), { delay: 30 });
+  await app2.waitForTimeout(1500);
   await press("age_go", app2);
   await until2(() => !(window.brickworksAccount || {}).gated && window.brickworksAccount.over_13 === true, "let in", 60);
   check("13 or over: let straight in, nothing more said", true);

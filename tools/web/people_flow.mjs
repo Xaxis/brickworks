@@ -128,6 +128,15 @@ try {
   const code = await mintCode(visitorEmail);
   await page.fill("dialog.sign-in input", code);
   await page.click('dialog.sign-in button[type="submit"]');
+  // Once supabase/trust.sql is applied, a new account is asked its age once
+  // after signing in (web/account.js), before the like goes: 13 or over here
+  // (tools/web/age_flow.mjs is about the question itself).
+  if (await page.waitForSelector("dialog.age[open]", { timeout: 8000 }).then(() => true).catch(() => false)) {
+    await page.selectOption("#age-month", "3");
+    await page.fill("#age-year", String(new Date().getUTCFullYear() - 30));
+    await page.click("#age-go");
+    check("asked its age once, after signing in", true);
+  }
   await page.waitForFunction(() => document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed") === "true",
     null, { timeout: 30000 }).catch(() => {});
   let state = await page.evaluate(() => ({
