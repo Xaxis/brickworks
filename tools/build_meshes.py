@@ -129,12 +129,13 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         # Occupancy: solid volume for collision, and the underside sockets
         # the primitives cannot tell us about.
         connections = extract_connections(_LIBRARY, name)
-        solid = occ.fill_cavities(
-            occ.remove_studs(occ.voxelise(mesh), connections), connections)
+        solid = occ.clear_bores(mesh, occ.fill_cavities(
+            occ.remove_studs(occ.voxelise(mesh), connections), connections), connections)
         # A part with no connector at all that is a ring: a tyre drawn with
-        # no primitive, given its hole as a bore (occupancy.ring_bore).
+        # no primitive, given its hole as a bore (occupancy.ring_bore), its
+        # hole opened first where its cells see out along it (open_ring).
         if not connections:
-            ring = occ.ring_bore(mesh, solid)
+            solid, ring = occ.open_ring(mesh, solid)
             if ring is not None:
                 connections = [ring]
 
@@ -155,7 +156,8 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         # fails here instead of being written out short.
         part.boxes = [(int(x0), int(y0), int(z0), int(x1), int(y1), int(z1))
                       for x0, y0, z0, x1, y1, z1 in occ.to_boxes(solid, connections)]
-        part.sockets = [(float(x), float(z)) for x, z in occ.bottom_sockets(solid)]
+        part.sockets = [(float(x), float(z)) for x, z in occ.bottom_sockets(
+            solid, connections, (part.size_ldu()[0], part.size_ldu()[2]))]
         part.cell_ldu = occ.CELL
 
         blob = meshfile.write(part)

@@ -195,10 +195,10 @@ def summary(part_id: str, blob: bytes) -> dict:
     mesh = flatten(library, name)
     part = meshfile.build(mesh)
     connections = extract(library, name)
-    solid = occ.fill_cavities(
-        occ.remove_studs(occ.voxelise(mesh), connections), connections)
+    solid = occ.clear_bores(mesh, occ.fill_cavities(
+        occ.remove_studs(occ.voxelise(mesh), connections), connections), connections)
     if not connections:
-        ring = occ.ring_bore(mesh, solid)
+        solid, ring = occ.open_ring(mesh, solid)
         if ring is not None:
             connections = [ring]
     # A shaft or a bore also has a length and a radius, and they are what
@@ -215,7 +215,8 @@ def summary(part_id: str, blob: bytes) -> dict:
         "triangles": part.triangle_count,
         "connectors": connectors,
         "boxes": sorted([int(v) for v in box] for box in occ.to_boxes(solid, connections)),
-        "sockets": sorted([_r(x), _r(z)] for x, z in occ.bottom_sockets(solid)),
+        "sockets": sorted([_r(x), _r(z)] for x, z in occ.bottom_sockets(
+            solid, connections, (part.size_ldu()[0], part.size_ldu()[2]))),
         "cells": solid.cell_count,
         "lbm_sha256": hashlib.sha256(blob).hexdigest(),
     }

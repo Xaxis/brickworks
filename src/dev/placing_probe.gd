@@ -438,6 +438,43 @@ func _wheels() -> void:
 			Vector3.ZERO, Vector3.FORWARD)), null, true)
 	await _shot("wheels")
 
+	# 31037-1's tyre (56891) round its rim (55982), as the set has them. Its
+	# lugs are shells that run into its inner ring, and up two columns of
+	# cells its hole was solid from one sidewall to the other: no bore of it
+	# was bare, so it had no tyre end and its ghost never went round a rim
+	# (occupancy.clear_bores).
+	_main.call("clear_model")
+	var hub_at: Transform3D = _ldr([0, -60, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_put_ldr("55982", 71, [0, -60, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, 0, -60), Vector3(120, 120, 120)))
+	await _frames(40)
+	await _hold("56891")
+	await _turn_to(Basis.IDENTITY)
+	var hub: JointSnap.End = null
+	for site: JointSnap.End in JointSnap.sites_in(_world, _library):
+		if site.kind == "rim" and site.at.distance_to(hub_at.origin) < 1.0:
+			hub = site
+	if hub == null:
+		_check("55982 has a rim to aim a tyre at", false)
+	else:
+		var aim: Vector2 = _screen(hub.aimed(Vector3.ZERO, Vector3.FORWARD))
+		await _move(aim + Vector2(0, 1))
+		await _move(aim)
+		var presses: int = 0
+		while not _near(_builder.ghost_transform(), hub_at, 0.05, 0.002) and presses < 18:
+			await _key(KEY_T if presses % 9 == 8 else KEY_R)
+			presses += 1
+			await _move(aim + Vector2(0, 1))
+			await _move(aim)
+		var said: String = _builder.joint_words()
+		_check("56891 tyre: its ghost round the rim, where the set has it (%s, wanted %s; %d keys; on %s; %s)"
+			% [_ldr_of(_builder.ghost_transform()), _ldr_of(hub_at), presses, said,
+				"may go" if _builder.can_place() else "red"],
+			_builder.ghost_place() != null and _near(_builder.ghost_transform(), hub_at, 0.05, 0.002)
+			and _builder.can_place() and said.begins_with("the rim of"))
+		await _one("56891 tyre round its rim", aim, hub_at, true)
+	await _shot("tyre_on_rim")
+
 
 # -- one part -----------------------------------------------------------------------
 
