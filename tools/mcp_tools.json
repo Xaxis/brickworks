@@ -4472,7 +4472,7 @@
       "readOnlyHint": false,
       "title": "Move a part on its joint"
     },
-    "description": "Move a part about its joint as the person's drag on it does: its whole rigid body and everything beyond it turn on the joint between it and what stays (a locked part, what stands on the baseplate, else the body with the most parts, or a heavier one standing on the floor): a hinge, a clip on a bar, a turntable, a pin or an axle in a round hole, a ball, a 1x1 round part on one stud. part= a part's number (look_at_model) or a sub-assembly's name. With nothing else it changes nothing and says what would move, on what, and how the model stands. degrees= turns it that far from where it is (a ball: about axis=), along= slides it that many studs along a bar or an axle; it stops where it meets the model, gears it drives turn by their teeth, a joint without friction swings down under its own weight once let go, and the answer says what moved and how the model stands then. A part held at both ends (a four-bar, a crank with its rod and piston, a steering's arms) moves as its loop allows, and says so where it locks. spin= lets it go turning that many degrees a second, as a flick does: a wheel, a gear train or a turntable on free bearings coasts and slows against their friction, and the answer says how far it spun and where it stopped. A model turned past its edge falls over and says how it lies, unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws the part to that point by its whole chain of joints back to what stays, each within its range. One undo step.",
+    "description": "Move a part about its joint as the person's drag on it does. With no part= it changes nothing and says what moves in the model: what its link's card says (steering, a boom, doors...) with the part to take hold of, and every part on a joint. With part=, its whole rigid body and everything beyond it turn on the joint between it and what stays (a locked part, what stands on the baseplate, else the body with the most parts, or a heavier one standing on the floor): a hinge, a clip on a bar, a turntable, a pin or an axle in a round hole, a ball, a 1x1 round part on one stud. part= a part's number (look_at_model) or a sub-assembly's name. With nothing else it changes nothing and says what would move, on what, and how the model stands. degrees= turns it that far from where it is (a ball: about axis=), along= slides it that many studs along a bar or an axle; it stops where it meets the model, gears it drives turn by their teeth, a joint without friction swings down under its own weight once let go, and the answer says what moved and how the model stands then. A part held at both ends (a four-bar, a crank with its rod and piston, a steering's arms) moves as its loop allows, and says so where it locks. spin= lets it go turning that many degrees a second, as a flick does: a wheel, a gear train or a turntable on free bearings coasts and slows against their friction, and the answer says how far it spun and where it stopped. A model turned past its edge falls over and says how it lies, unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws the part to that point by its whole chain of joints back to what stays, each within its range. One undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4494,7 +4494,7 @@
           "type": "number"
         },
         "part": {
-          "description": "a part's number, or a sub-assembly's name",
+          "description": "a part's number, or a sub-assembly's name; leave it out to list what moves",
           "type": "string"
         },
         "spin": {
@@ -4511,9 +4511,6 @@
           "type": "array"
         }
       },
-      "required": [
-        "part"
-      ],
       "type": "object"
     },
     "name": "move_part"
@@ -4642,12 +4639,16 @@
       "readOnlyHint": false,
       "title": "Open a model"
     },
-    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "discard_changes": {
           "type": "boolean"
+        },
+        "link": {
+          "description": "a gallery model's link id, or its /m/ address",
+          "type": "string"
         },
         "name": {
           "description": "a model's name from the list",
@@ -4672,7 +4673,7 @@
       "readOnlyHint": true,
       "title": "List the parts"
     },
-    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" says which of their saved models their collection builds.",
+    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" is What can I build?: their saved models, the examples and the official models of real sets, ranked by how much of each they own.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5111,10 +5112,14 @@
       "readOnlyHint": true,
       "title": "Search the gallery"
     },
-    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a collection); each with its link id, part count, credit, licence, how many built it and what moves in it (steering, a boom: anybody can move them on its link). shelves=true: the gallery's front, this week's pick and the small builds, and what the person can build now from their collection. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, and its picture — to learn how it is built. Read-only: nothing on the baseplate changes. Credit its builder and keep to its licence in anything made from it.",
+    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a collection); each with its link id, part count, credit, licence, how many built it and what moves in it (steering, a boom: anybody can move them on its link). shelves=true: the gallery's front, this week's pick and the small builds, and what the person can build now from their collection. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, how many built it, its comments and photos of real builds, and its picture — to learn how it is built. designer=<handle> (a list's \"by Name (@handle)\"): a designer's page, what their models earned and their models. Read-only: nothing on the baseplate changes, and liking, following and commenting are the person's own, on the site. Credit its builder and keep to its licence in anything made from it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "designer": {
+          "description": "a designer's handle, from a list's \"by Name (@handle)\"",
+          "type": "string"
+        },
         "instructions": {
           "description": "only models with their builder's own steps",
           "type": "boolean"
