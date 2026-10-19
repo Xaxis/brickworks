@@ -153,14 +153,10 @@ try {
     // Laid out a frame after it is first told, and keys reach the field a
     // frame at a time: a pause before each, as for the address above.
     await page.waitForTimeout(1500);
-    // Two dropdowns: a click opens each, typing finds the item, Enter takes it.
-    for (const [name, words] of [["age_month", "March"], ["age_year", String(new Date().getUTCFullYear() - 30)]]) {
-      await click(name);
-      await page.keyboard.type(words, { delay: 30 });
-      await page.waitForTimeout(1500);
-      await page.keyboard.press("Enter");
-      await page.waitForTimeout(800);
-    }
+    await click("age_month_3");
+    await click("age_year");
+    await page.keyboard.type(String(new Date().getUTCFullYear() - 30));
+    await page.waitForTimeout(1500);
     await click("age_go");
     inside = await until((s) => s.state === "signed_in" && !s.gated, "let in after the age question");
   }
