@@ -17,6 +17,9 @@ signal failed(why: String)
 ## What the last file picked left out, in a sentence (an LDD part with no
 ## LDraw match): "" when nothing was.
 var notes: String = ""
+## The parts the model opens into: a Studio file's parts it has not got are
+## taken from the file (StudioIo.read).
+var library: PartLibrary
 
 var _dialog: FileDialog
 var _on_bytes: JavaScriptObject
@@ -52,7 +55,7 @@ func take(bytes: PackedByteArray, file_name: String) -> void:
 	notes = ""
 	match file_name.get_extension().to_lower():
 		"io":
-			var read: Dictionary = StudioIo.read(bytes)
+			var read: Dictionary = StudioIo.read(bytes, library)
 			if not str(read["error"]).is_empty():
 				failed.emit(str(read["error"]))
 				return

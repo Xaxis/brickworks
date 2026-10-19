@@ -12,6 +12,15 @@
 ## read: every part has to come out in LDraw's colour, where Studio put it,
 ## in its sub-model and its step, and a part only Studio has is named.
 ##
+## Whole: tests/fixtures/studio/whole_2025.io, whose parts the library has
+## not got all come from the file — a print only BrickLink has (bl_), a Part
+## Designer tile with a decal, and two parts newer than the library, one
+## carried in model2.ldr by BrickLink's number — every one placed, drawn with
+## the file's picture, in LDraw's colours where model2.ldr's are BrickLink's
+## (its black 11, LDraw's light turquoise), filed under "From Studio"; then
+## saved as .mpd and opened into a library that has never seen them, whole
+## and the same. Read as the picker did before, two of the six were left out.
+##
 ## Write: a model exported as .io is a zip that the system's own unzip and
 ## Godot's own zip reader both open, holding model.ldr, .info,
 ## errorPartList.err (and the thumbnail, when there is a screen to draw it).
@@ -44,6 +53,11 @@ var _store: ModelStore
 const BAY_2025 := "res://tests/fixtures/studio/bay_2025.io"
 const BAY_2021 := "res://tests/fixtures/studio/bay_2021.io"
 const CUSTOM := "m1a2b3c4_2025408_163200"
+const WHOLE := "res://tests/fixtures/studio/whole_2025.io"
+const NEW_PRINT := "bl_3068pb9101"
+const NEWER := "3070bpr9104"
+const NEWER_SAME := "65999"
+const WHOLE_DESIGNED := "m5e6f7a8_2025410_120000"
 
 
 func _initialize() -> void:
@@ -84,6 +98,7 @@ func _run() -> void:
 	_read_2021()
 	_read_aes()
 	await _opened_by_the_picker()
+	await _whole()
 	_written()
 	_round_trip("res://models/castle.ldr")
 	_round_trip_of(BAY_2025)
@@ -185,6 +200,7 @@ func _opened_by_the_picker() -> void:
 	picker.picked.connect(func(text: String, file_name: String) -> void:
 		got.append([text, file_name]))
 	picker.failed.connect(func(why: String) -> void: got.append(["", why]))
+	picker.library = _library
 	picker.take(FileAccess.get_file_as_bytes(BAY_2025), "bay_2025.io")
 	_check("the picker takes an .io and hands on its LDraw (%s)"
 		% (got[0][1] if not got.is_empty() else "nothing"),
@@ -218,6 +234,144 @@ func _opened_by_the_picker() -> void:
 	_check("...under its file's name, not the \"Untitled Model\" Studio heads every model "
 		+ "with (%s)" % _store.title, _store.title == "Bay 2025")
 	picker.queue_free()
+
+
+# -- whole --------------------------------------------------------------------
+
+
+## whole_2025.io (make_fixtures.py): every part comes in, the ones the library
+## has not got from the file itself. A print only BrickLink has (bl_), a Part
+## Designer tile with a decal, and two parts newer than the library, which
+## model.ldr names by LDraw's numbers: 3070bpr9104, which model2.ldr carries by
+## BrickLink's (3070bpb9104), and 65999. Each is drawn with its picture, filed
+## as a made part from Studio, and in LDraw's colours where model2.ldr's are
+## BrickLink's. Saved as .mpd, the four go in the file, and it opens whole
+## into a library that has never seen them. Before, the picker carried only
+## the bl_ and Part Designer parts, and the two newer ones were left out.
+func _whole() -> void:
+	print("  whole_2025.io: the parts only the file has, from the file")
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(WHOLE)
+	var before: Dictionary = _store.open_text(str(StudioIo.read(bytes)["text"]), "whole_2025")
+	var left: Dictionary = before.get("missing_ids", {})
+	_check("read as the picker did before, with no library to ask: %d of 6 placed, %s left out"
+		% [int(before["placed"]), ModelStore.named_counts(left)],
+		int(before["placed"]) == 4 and left == {NEWER: 1, NEWER_SAME: 1})
+	var picker := ModelFilePicker.new()
+	picker.library = _library
+	get_root().add_child(picker)
+	var got: Array = []
+	picker.picked.connect(func(text: String, _file_name: String) -> void: got.append(text))
+	picker.take(bytes, "whole_2025.io")
+	picker.queue_free()
+	var read: Dictionary = StudioIo.read(bytes, _library)
+	var carried: PackedStringArray = read.get("studio_parts", PackedStringArray())
+	_check("through the picker it carries the four the library has not got, nothing said "
+		+ "left out: %s%s" % [", ".join(carried), (" (" + picker.notes + ")") if not picker.notes.is_empty()
+		else ""], got.size() == 1 and str(got[0]) == str(read["text"]) and picker.notes.is_empty()
+		and Array(carried) == [NEW_PRINT, WHOLE_DESIGNED, NEWER, NEWER_SAME])
+	if got.is_empty():
+		return
+	var opened: Dictionary = _store.open_text(str(got[0]), "whole_2025")
+	await process_frame
+	_check("all six placed, none left out: %d placed, missing %s" % [int(opened["placed"]),
+		ModelStore.named_counts(opened.get("missing_ids", {}))],
+		int(opened["placed"]) == 6 and int(opened["missing"]) == 0)
+	var colours: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		colours[brick.part_id] = brick.color_code
+	_check("each in LDraw's colour, as model.ldr puts it (%s)" % colours, colours == {"3001": 4,
+		NEW_PRINT: 15, WHOLE_DESIGNED: 14, NEWER: 71, "3068b": 0, NEWER_SAME: 1})
+	var newer: Lbm.PartMesh = _library.mesh_for(NEWER)
+	var same: Lbm.PartMesh = _library.mesh_for(NEWER_SAME)
+	_check("model2.ldr's own colours, BrickLink's, in LDraw's: 3070bpr9104's underside black (0), "
+		+ "not BrickLink's 11 read as LDraw's light turquoise (%s); 65999's top red (4), not "
+		% (newer.surface_colors if newer != null else "no part")
+		+ "BrickLink's 5 read as LDraw's dark pink (%s)" % (same.surface_colors if same != null
+		else "no part"), newer != null and same != null and newer.surface_colors.has(0)
+		and not newer.surface_colors.has(11) and same.surface_colors.has(4)
+		and not same.surface_colors.has(5) and same.surface_colors.has(Lbm.COLOR_INHERIT))
+	var pictures: Dictionary = {NEW_PRINT: _picture_of(WHOLE, "model2.ldr", "3068pb9101.dat"),
+		NEWER: _picture_of(WHOLE, "model2.ldr", "3070bpb9104.dat"),
+		WHOLE_DESIGNED: _picture_of(WHOLE, "customparts/%s.dat" % WHOLE_DESIGNED,
+			WHOLE_DESIGNED + ".dat")}
+	for id: String in pictures:
+		var mesh: Lbm.PartMesh = _library.mesh_for(id)
+		_check("%s is drawn with its picture, the file's own %d bytes, on %d surface%s" % [id,
+			(pictures[id] as PackedByteArray).size(), mesh.prints.size() if mesh != null else 0,
+			"" if mesh != null and mesh.prints.size() == 1 else "s"], mesh != null
+			and not (pictures[id] as PackedByteArray).is_empty()
+			and mesh.print_files.values() == [pictures[id]] and mesh.prints.size() >= 1)
+	var filed: Array = []
+	for id: String in [NEW_PRINT, WHOLE_DESIGNED, NEWER, NEWER_SAME]:
+		var info: PartLibrary.PartInfo = _library.parts.get(id)
+		filed.append("%s: %s" % [id, info.category if info != null else "none"])
+	_check("each a made part in the bin's \"%s\" (%s)" % [StudioDecor.CATEGORY, ", ".join(filed)],
+		filed.all(func(said: String) -> bool: return said.ends_with(": " + StudioDecor.CATEGORY)))
+
+	# Saved as .mpd, and opened where none of them has been seen.
+	var saved: String = _store.to_text("Whole 2025", true)
+	var sections: Array = []
+	for id: String in [NEW_PRINT, WHOLE_DESIGNED, NEWER, NEWER_SAME]:
+		if saved.contains("0 FILE %s.dat" % id):
+			sections.append(id)
+	_check("saved as .mpd, it carries the four (%s) and their %d pictures" % [", ".join(sections),
+		saved.count("0 !DATA ")], sections.size() == 4 and saved.count("0 !DATA ") == 3)
+	var fresh := PartLibrary.new()
+	if not fresh.load_catalogue():
+		_check("a second library loads", false)
+		return
+	var world := BrickWorld.new()
+	world.library = fresh
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = fresh
+	get_root().add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.builder = builder
+	store.library = fresh
+	await process_frame
+	var again: Dictionary = store.open_text(saved, "whole_2025")
+	var looks := PackedStringArray()
+	var alike: bool = true
+	for id: String in [NEW_PRINT, WHOLE_DESIGNED, NEWER, NEWER_SAME]:
+		var was: Lbm.PartMesh = _library.mesh_for(id)
+		var now: Lbm.PartMesh = fresh.mesh_for(id)
+		var info: PartLibrary.PartInfo = fresh.parts.get(id)
+		var same_look: bool = was != null and now != null and info != null and info.custom \
+			and now.triangle_count == was.triangle_count \
+			and now.surface_colors == was.surface_colors \
+			and now.print_files.values() == was.print_files.values() \
+			and now.prints.keys() == was.prints.keys()
+		looks.append("%s %s" % [id, "the same" if same_look else "not the same"])
+		alike = alike and same_look
+	var colours_again: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		colours_again[brick.part_id] = brick.color_code
+	_check("opened again into a library that had never seen them: %d placed, missing %s"
+		% [int(again["placed"]), ModelStore.named_counts(again.get("missing_ids", {}))],
+		int(again["placed"]) == 6 and int(again["missing"]) == 0 and colours_again == colours)
+	_check("...each built from the file, the same triangles, colours and pictures (%s)"
+		% ", ".join(looks), alike)
+	builder.queue_free()
+	world.queue_free()
+	await process_frame
+
+
+## The picture a part of a Studio fixture carries, read straight off its
+## member's text: the last word of the first PE_TEX_INFO after its FILE line.
+static func _picture_of(io_path: String, member: String, file_name: String) -> PackedByteArray:
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(io_path)
+	var text: String = StudioIo._text_of(StudioIo._unpack(bytes, StudioIo._entries(bytes)[member]))
+	var inside: bool = false
+	for line: String in text.split("\n"):
+		if line.strip_edges() == "0 FILE " + file_name:
+			inside = true
+		elif inside and line.begins_with("0 PE_TEX_INFO"):
+			var words: PackedStringArray = line.strip_edges().split(" ")
+			return Marshalls.base64_to_raw(words[words.size() - 1])
+	return PackedByteArray()
 
 
 # -- write --------------------------------------------------------------------

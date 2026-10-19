@@ -49,8 +49,10 @@ static var _crc_table: PackedInt64Array = PackedInt64Array()
 ## of Studio's own it carried}, or an error saying what was wrong. Studio's
 ## own parts the model names — its prints and stickers (bl_…), and parts made
 ## in its Part Designer, from model2.ldr and CustomParts/ — come with it as
-## LDraw parts with their pictures (StudioDecor.carried).
-static func read(bytes: PackedByteArray) -> Dictionary:
+## LDraw parts with their pictures (StudioDecor.carried). Given [param
+## library], so does any other part it names that the library has not got
+## and the file carries.
+static func read(bytes: PackedByteArray, library: PartLibrary = null) -> Dictionary:
 	var entries: Dictionary = _entries(bytes)
 	if entries.has("error"):
 		return {"text": "", "error": str(entries["error"])}
@@ -72,7 +74,7 @@ static func read(bytes: PackedByteArray) -> Dictionary:
 	for name: String in entries:
 		if name.begins_with("customparts/") and name.ends_with(".dat"):
 			custom[name.trim_prefix("customparts/")] = _text_of(_unpack(bytes, entries[name]))
-	var carried: Dictionary = StudioDecor.carried(text, model2, custom)
+	var carried: Dictionary = StudioDecor.carried(text, model2, custom, library)
 	# What of Studio's own was left out, and why; what came in is counted
 	# when the model opens, with every other part.
 	var notes: PackedStringArray = carried["notes"]

@@ -481,6 +481,7 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 func _import() -> void:
 	if _picker == null:
 		_picker = ModelFilePicker.new()
+		_picker.library = store.library
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
 			# Reading a big model is a long frame: the status bar says so
