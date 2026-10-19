@@ -920,7 +920,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   stays under 33 ms
   (eight handles at most; the page asks for them with
   `window.brickworksGrabAsk`, and the app finds none unless asked); the
-  app's frame cost of a drag and the page's longest wait. `--big=FILE
+  app's frame cost of a drag and the page's longest wait (said with its ratio
+  to a frame of the view turning; it fails only past a minute, a frozen page,
+  since drawing in software grows with the box's load). `--big=FILE
   --only-big` opens a big model instead, waits for the page to go quiet,
   and times its frames standing still, the page not asking for handles (no
   frame past 100 ms; none found), then asks (found once, its cost said). On
