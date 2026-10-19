@@ -1015,6 +1015,14 @@
       "tests": []
     },
     {
+      "id": "cli:versions browser flow",
+      "kind": "cli",
+      "entry": "tools/web/versions_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8852 --static=build/web --hold=share_versions & node tools/web/versions_flow.mjs --url=http://127.0.0.1:8852 --out=DIR   (.env sourced; or --url=<preview> with BW_BYPASS once supabase/versions.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:versions probe",
       "kind": "cli",
       "entry": "src/dev/versions_probe.gd",
@@ -1768,6 +1776,14 @@
       "entry": "src/ai/hinges.gd",
       "reach": "godot --headless --path . --script src/dev/hinged_panels_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:versions of a shared model",
+      "kind": "lib",
+      "entry": "api/_versions.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/versions.sql --dry --try=tools/versions_try.sql --table=share_versions   (.env sourced; then the versions browser flow)",
+      "area": "web",
       "tests": []
     },
     {
