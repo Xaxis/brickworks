@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!--
+  Your feed, at /feed: newest first, what happened that concerns you —
+  new models and new versions from people you follow, photos of real
+  builds of your models and by people you follow, comments on your models,
+  and remixes of them (supabase/follows.sql, api/_follows.js). Each row is
+  a link to the thing. Opening it clears the count on Account.
+
+  Signed in with the app's own sign-in in this browser (web/account.js).
+  feed.js puts every word on the page as text. No inline script: the
+  site's security policy allows none it has not hashed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your feed · Brickworks</title>
+<meta name="description" content="What is new for you on Brickworks: models from people you follow, and photos, comments and remixes of yours.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://brickworks.diy/feed">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Your feed on Brickworks">
+<meta property="og:description" content="What is new for you on Brickworks.">
+<meta property="og:url" content="https://brickworks.diy/feed">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your feed on Brickworks">
+<meta name="twitter:description" content="What is new for you on Brickworks.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/#assistant">Assistant</a>
+			<a href="/faq">FAQ</a>
+			<a href="/download">Download</a>
+			<a href="/profile" data-account>Account</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/#assistant">Assistant</a>
+				<a href="/faq">FAQ</a>
+				<a href="/download">Download</a>
+				<a href="/profile" data-account>Account</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="wrap person feed">
+		<p class="eyebrow">Your feed</p>
+		<h1>What is new for you</h1>
+
+		<section id="signed-out" hidden>
+			<p class="lede">Sign in to see new models from the people you follow, and the photos,
+				comments and remixes of yours. We email you a code: no password.</p>
+			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
+		</section>
+		<p class="state" id="loading">Looking for your sign-in…</p>
+
+		<section id="signed-in" hidden>
+			<p class="note">New models and new versions from people you follow; photos of real builds
+				of your models and by people you follow; comments on your models; remixes of them. The
+				last 90 days, newest first. Follow somebody from their profile, or from beside their
+				name on a model's page. <a href="/profile">Your profile</a> chooses what is emailed.</p>
+			<p class="note" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
+			<ol class="feed-list" id="rows" aria-label="Your feed"></ol>
+			<p class="note" id="empty" hidden>Nothing yet. Follow somebody whose models you like, from
+				their profile in the <a href="/gallery">gallery</a>, and what they share comes here.</p>
+			<div class="actions"><button class="cta ghost" type="button" id="older" hidden>Older</button></div>
+			<p class="said" id="said" role="status"></p>
+		</section>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Design it here. Build it on your table. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/faq">FAQ</a></li>
+					<li><a href="/privacy">Privacy</a></li>
+					<li><a href="/terms">Terms of use</a></li>
+					<li><a href="/guidelines">Community guidelines</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script src="/feed.js" type="module"></script>
+</body>
+</html>

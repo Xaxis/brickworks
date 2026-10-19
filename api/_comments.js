@@ -16,10 +16,13 @@
 //                                 shows it again (hide, show)
 //   POST ?op=comments_open&id=X   (session) {open}: its owner turns
 //                                 comments on model X on or off
-//   POST ?op=mail                 (session) {comments}: whether to email
-//                                 the caller, at most once a day, of new
-//                                 comments on their models. Off until they
-//                                 say (/profile)
+//   POST ?op=mail                 (session) {comments, models, versions,
+//                                 photos, remixes}, any of them: whether to
+//                                 email the caller, at most once a day, of
+//                                 new comments on their models and of their
+//                                 feed's rows of each kind (supabase/
+//                                 follows.sql). Each off until they say
+//                                 (/profile)
 //
 // Who may write is the database's to say (comment_trouble), and it says
 // it again whatever writes (its trigger): a signed-in account that
@@ -45,6 +48,7 @@ import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { Unacceptable, count } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { feedSaid } from "./_follows.js";
 
 export const MOST_CHARACTERS = 1000;
 // How often, as comments.sql counts it (may_act): [an hour, a day].
@@ -275,20 +279,41 @@ export async function setCommentsOpen(request, response) {
   return response.status(200).json({ id, open: set.open === true });
 }
 
-/// What the caller wants emailed: {comments}. Off until they say.
-export async function mailChoice(who, comments = null) {
-  const said = await call("mail_choice", { account: who, comments }, () => ({ comments: false, missing: true }));
-  return { comments: said?.comments === true, ready: !said?.missing };
+/// The kinds the daily email can tell of: comments on the caller's models
+/// (comments.sql), and since follows.sql the feed's (api/_follows.js).
+export const MAIL_KINDS = ["comments", "models", "versions", "photos", "remixes"];
+
+/// What the caller wants emailed: {comments, models, versions, photos,
+/// remixes, ready, kinds}. All off until they say. [chosen] ({kind: true or
+/// false}) is kept first. Before follows.sql only comments can be chosen
+/// (kinds false), and before comments.sql nothing (ready false).
+export async function mailChoice(who, chosen = null) {
+  const asked = chosen && Object.keys(chosen).length ? chosen : null;
+  const kinds = await call("mail_kinds", { account: who, chosen: asked }, () => null);
+  if (kinds) return { ...Object.fromEntries(MAIL_KINDS.map((kind) => [kind, kinds[kind] === true])), ready: true, kinds: true };
+  if (asked && Object.keys(asked).some((kind) => kind !== "comments")) {
+    throw new Unacceptable("Email of the feed is not open on Brickworks yet.", 503);
+  }
+  const said = await call("mail_choice", { account: who, comments: asked ? asked.comments : null },
+    () => ({ comments: false, missing: true }));
+  return { ...Object.fromEntries(MAIL_KINDS.map((kind) => [kind, kind === "comments" && said?.comments === true])),
+    ready: !said?.missing, kinds: false };
 }
 
 export async function chooseMail(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const who = await account(request);
-  const comments = request.body?.comments;
-  if (typeof comments !== "boolean") throw new Unacceptable("say comments: true or comments: false");
-  const said = await mailChoice(who, comments);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const chosen = {};
+  for (const [kind, on] of Object.entries(body)) {
+    if (!MAIL_KINDS.includes(kind)) throw new Unacceptable(`say any of ${MAIL_KINDS.join(", ")}, each true or false`);
+    if (typeof on !== "boolean") throw new Unacceptable(`say ${kind}: true or ${kind}: false`);
+    chosen[kind] = on;
+  }
+  if (Object.keys(chosen).length === 0) throw new Unacceptable("say comments: true or comments: false");
+  const said = await mailChoice(who, chosen);
   if (!said.ready) throw new Unacceptable(NOT_YET, 503);
-  return response.status(200).json({ comments: said.comments });
+  return response.status(200).json(Object.fromEntries(MAIL_KINDS.map((kind) => [kind, said[kind]])));
 }
 
 /// The model a comment anybody may report is on, or null.
@@ -308,14 +333,23 @@ function short(text, most) {
   return line.length > most ? `${line.slice(0, most - 1)}…` : line;
 }
 
-/// The email for a digest ({comments, more}): {subject, text, html}. Each
-/// comment's model, where it was said, by whom, its first words, and a
-/// link to it on the model's page.
+/// The email for a digest ({comments, more, feed, feed_more}): {subject,
+/// text, html}. Each comment's model, where it was said, by whom, its first
+/// words, and a link to it on the model's page; then each row of the feed
+/// of the kinds chosen (follows.sql), in the words the feed says it, with
+/// its link.
 export function renderCommentDigest(digest, origin) {
   const comments = Array.isArray(digest?.comments) ? digest.comments : [];
+  const feed = (Array.isArray(digest?.feed) ? digest.feed : []).map((row) => feedSaid(row, origin));
   const n = comments.length;
+  const m = feed.length;
   const more = Number(digest?.more) || 0;
-  const subject = n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`;
+  const feedMore = Number(digest?.feed_more) || 0;
+  const things = (k) => (k === 1 ? "something new" : `${k} new things`);
+  const subject = m === 0
+    ? (n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`)
+    : n === 0 ? `Brickworks: ${things(m)} in your feed`
+      : `Brickworks: ${count(n, "comment")} on your models, and ${things(m)} in your feed`;
   const items = comments.map((one) => ({
     name: short(one.name || "your model", 80),
     where: one.step ? `step ${one.step} of version ${one.version}` : `version ${one.version}`,
@@ -323,23 +357,36 @@ export function renderCommentDigest(digest, origin) {
     body: short(one.body, 280),
     link: `${origin}/m/${one.model}#comment-${one.id}`,
   }));
-  const since = n === 1 ? "Somebody commented on a model you shared." : `${count(n, "comment")} on models you shared.`;
+  const since = n === 0 ? "" : n === 1 ? "Somebody commented on a model you shared." : `${count(n, "comment")} on models you shared.`;
   const behind = more ? `${more} more wait for tomorrow's email.` : "";
+  const feedHead = m === 0 ? "" : "In your feed since the last email:";
+  const feedBehind = feedMore ? `${feedMore} more are in your feed: ${origin}/feed` : "";
   const off = `You asked for these at ${origin}/profile, at most one a day. Turn them off there.`;
-  const text = [since, "",
+  const line = (row) => `${row.who} ${row.did} “${row.name}”${row.said ? `: “${row.said}”` : ""}`;
+  const text = [...(since ? [since, ""] : []),
     ...items.flatMap((item, at) => [`${at + 1}. “${item.name}”, on ${item.where}, by ${item.by}:`,
       `   “${item.body}”`, `   ${item.link}`, ""]),
-    ...(behind ? [behind, ""] : []), off].join("\n");
+    ...(behind ? [behind, ""] : []),
+    ...(feedHead ? [feedHead, ""] : []),
+    ...feed.flatMap((row) => [`- ${line(row)}`, `  ${row.link}`, ""]),
+    ...(feedBehind ? [feedBehind, ""] : []), off].join("\n");
   const html = `<!doctype html>
 <div style="font:15px/1.55 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#14181d;max-width:560px;margin:0 auto;padding:24px 20px">
   <p style="margin:0 0 16px;font-size:14px;color:#5b6472">Brickworks</p>
-  <p style="margin:0 0 18px">${escape(since)}</p>
+  ${since ? `<p style="margin:0 0 18px">${escape(since)}</p>` : ""}
   ${items.map((item) => `<div style="margin:0 0 16px;padding:12px 14px;border:1px solid #d9dee5;border-radius:8px">
     <p style="margin:0 0 4px"><b>${escape(item.name)}</b>, on ${escape(item.where)}, by ${escape(item.by)}</p>
     <p style="margin:0 0 8px">“${escape(item.body)}”</p>
     <p style="margin:0"><a href="${escape(item.link)}">See it on the model's page</a></p>
   </div>`).join("\n  ")}
   ${behind ? `<p style="margin:0 0 12px">${escape(behind)}</p>` : ""}
+  ${feedHead ? `<p style="margin:8px 0 12px"><b>${escape(feedHead)}</b></p>` : ""}
+  ${feed.map((row) => `<div style="margin:0 0 12px;padding:10px 14px;border:1px solid #d9dee5;border-radius:8px">
+    <p style="margin:0 0 4px">${escape(row.who)} ${escape(row.did)} <b>${escape(row.name)}</b></p>
+    ${row.said ? `<p style="margin:0 0 6px">“${escape(row.said)}”</p>` : ""}
+    <p style="margin:0"><a href="${escape(row.link)}">See it</a></p>
+  </div>`).join("\n  ")}
+  ${feedBehind ? `<p style="margin:0 0 12px">${escape(feedBehind)}</p>` : ""}
   <p style="margin:0;color:#97a0ae;font-size:13px">${escape(off)}</p>
 </div>`;
   return { subject, text, html };

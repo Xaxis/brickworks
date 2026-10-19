@@ -24,6 +24,11 @@
 //
 // An email to a model's owner is claimed here only for a test account (a
 // Resend test address), so nothing real is ever sent from a local server.
+//
+// With follows.sql held too (tools/web/follows_stand_in.mjs), the day's
+// email is supabase/follows.sql's: mail_kinds keeps a choice for each of
+// the feed's kinds, and claim_comment_digest tells of the feed's rows of
+// the kinds chosen since the last email that went, asked of that stand-in.
 // What is held is at /__held/<table> (model_comments, comment_settings,
 // mail_choices, comment_digests, report_comments), on this machine only.
 
@@ -31,8 +36,16 @@ const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const REST = `${SUPABASE}/rest/v1/`;
 const NAMES = ["comment_trouble", "comments_open", "comments_on", "comment_model", "add_comment", "change_comment",
-  "set_comments", "admin_comments", "admin_remove_comment", "mail_choice", "claim_comment_digest",
+  "set_comments", "admin_comments", "admin_remove_comment", "mail_choice", "mail_kinds", "claim_comment_digest",
   "finish_comment_digest", "comment_digest_kept"];
+const KINDS = ["comments", "models", "versions", "photos", "remixes"];
+// follows.sql's feed, when its stand-in is held: (viewer, since, until) -> [{kind, at, item}].
+let feedRows = null;
+
+/// The day's email tells of the feed too (follows_stand_in.mjs).
+export function useFeed(rows) {
+  feedRows = rows;
+}
 
 const comments = [];
 const settings = new Map();
@@ -76,6 +89,10 @@ async function isTest(account) {
   }
   return tests.get(account).test;
 }
+
+/// What [account] chose to be emailed, each kind false until chosen.
+const choiceOf = (account) => ({ account, ...Object.fromEntries(KINDS.map((kind) => [kind, false])),
+  at: now(), ...(mail.get(account) || {}) });
 
 const modelOf = async (id) => (await real(`shared_models?id=eq.${encodeURIComponent(id)}`
   + "&select=id,owner,name,published,barred,steps"))[0] || null;
@@ -215,19 +232,35 @@ const FUNCTIONS = {
   },
 
   async mail_choice({ account, comments: wanted = null }) {
-    if (typeof wanted === "boolean") mail.set(account, { account, comments: wanted, at: now() });
+    if (typeof wanted === "boolean") mail.set(account, { ...choiceOf(account), comments: wanted, at: now() });
     return reply(200, { comments: mail.get(account)?.comments === true });
+  },
+
+  // follows.sql's: a choice for each kind, those named kept first. Only
+  // while its stand-in is held, as the function is only there with it.
+  async mail_kinds({ account, chosen = null }) {
+    if (!feedRows) return reply(404, { message: "Could not find the function public.mail_kinds" });
+    if (chosen && Object.keys(chosen).length) {
+      if (Object.entries(chosen).some(([kind, on]) => !KINDS.includes(kind) || typeof on !== "boolean")) {
+        return reply(400, { message: "brickworks: say comments, models, versions, photos or remixes, each true or false" });
+      }
+      mail.set(account, { ...choiceOf(account), ...chosen, at: now() });
+    }
+    const kept = choiceOf(account);
+    return reply(200, Object.fromEntries(KINDS.map((kind) => [kind, kept[kind] === true])));
   },
 
   async claim_comment_digest({ for_owner: owner = null }) {
     const due = [];
-    for (const choice of [...mail.values()].filter((one) => one.comments && (!owner || one.account === owner))) {
+    for (const choice of [...mail.values()].filter((one) => KINDS.some((kind) => one[kind])
+        && (!owner || one.account === owner))) {
+      if (due.length >= 50) break;
       // Never anybody real from a local server.
       if (!(await isTest(choice.account))) continue;
       const day = Date.now() - 864e5;
       if (digests.some((d) => d.owner === choice.account && d.state !== "failed" && Date.parse(d.at) > day)) continue;
       const waiting = [];
-      for (const c of comments) {
+      for (const c of choice.comments ? comments : []) {
         if (c.removed_at || c.hidden_at || c.author === choice.account || Date.parse(c.at) < Date.parse(choice.at)) continue;
         const earlier = c.digest ? digests.find((d) => d.id === c.digest) : null;
         if (earlier && earlier.state !== "failed") continue;
@@ -235,17 +268,30 @@ const FUNCTIONS = {
         if (!m || !m.published || m.owner !== choice.account || !(await shown(c.author))) continue;
         waiting.push({ c, m });
       }
-      if (waiting.length === 0) continue;
+      // The feed's rows of the kinds chosen, since the last email that went
+      // (or since they chose), at most 90 days.
+      let rows = [];
+      if (feedRows && ["models", "versions", "photos", "remixes"].some((kind) => choice[kind])) {
+        const told = digests.filter((d) => d.owner === choice.account && ["sent", "dry"].includes(d.state))
+          .reduce((most, d) => Math.max(most, Date.parse(d.at)), -Infinity);
+        const since = Math.max(told, Date.parse(choice.at), Date.now() - 90 * 864e5);
+        const kindOf = { model: "models", version: "versions", photo: "photos", remix: "remixes" };
+        rows = (await feedRows(choice.account, since, Date.now())).filter((one) => choice[kindOf[one.kind]])
+          .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+      }
+      if (waiting.length === 0 && rows.length === 0) continue;
       const taken = waiting.slice(0, 50);
+      const told = rows.slice(0, 50);
       const digest = { id: digests.length + 1, owner: choice.account, at: now(), state: "sending",
-        comments: taken.length, subject: null, body: null, html: null };
+        comments: taken.length, feed: told.length, subject: null, body: null, html: null };
       digests.push(digest);
       for (const { c } of taken) c.digest = digest.id;
       due.push({ digest: digest.id, owner: choice.account, email: tests.get(choice.account).email, test: true,
         more: waiting.length - taken.length,
         comments: await Promise.all(taken.map(async ({ c, m }) => ({ id: c.id, model: c.model, name: m.name,
           version: c.version, step: c.step, body: c.body, at: c.at,
-          by: (await real(`people?account=eq.${c.author}&select=name`))[0]?.name ?? null }))) });
+          by: (await real(`people?account=eq.${c.author}&select=name`))[0]?.name ?? null }))),
+        feed: told.map((one) => ({ ...one.item, kind: one.kind, at: one.at })), feed_more: rows.length - told.length });
     }
     return reply(200, due);
   },
@@ -260,7 +306,8 @@ const FUNCTIONS = {
   async comment_digest_kept({ one }) {
     const digest = digests.find((d) => d.id === Number(one));
     return reply(200, digest && (await isTest(digest.owner)) ? { id: digest.id, owner: digest.owner,
-      state: digest.state, comments: digest.comments, subject: digest.subject, body: digest.body } : null);
+      state: digest.state, comments: digest.comments, feed: digest.feed ?? 0, subject: digest.subject,
+      body: digest.body } : null);
   },
 };
 

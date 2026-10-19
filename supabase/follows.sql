@@ -414,8 +414,9 @@ begin
                               order by r.at desc, r.kind), '[]'::jsonb),
            count(*) > wanted
       into listed, more
-      from (select * from public.feed_rows(viewer, now() - interval '90 days', coalesce(before, now()))
-             order by at desc, kind limit wanted + 1) r;
+      from (select * from public.feed_rows(viewer, now() - interval '90 days', coalesce(before, now())) f
+             where before is null or f.at < before
+             order by f.at desc, f.kind limit wanted + 1) r;
     if jsonb_array_length(listed) > wanted then
         listed := listed - wanted;
     end if;

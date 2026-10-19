@@ -788,6 +788,7 @@ ${old ? '<meta name="robots" content="noindex">\n' : ""}<link rel="stylesheet" h
 <script src="/share-page.js" defer></script>
 <script src="/model-page.js" type="module"></script>
 <script src="/report.js" type="module"></script>
+<script src="/follow.js" type="module"></script>
 ${structured(origin, id, model)}
 </head>
 <body data-viewer="${escapeHtml(viewer)}" data-id="${id}" data-version="${version.n}" data-newest="${newest}">
@@ -807,7 +808,9 @@ ${header}
       <h1>${escapeHtml(model.name)}</h1>
       <p class="by">${escapeHtml(describe(shownModel))}${newest > 1
         ? ` · <a class="version-line" href="#versions-h">version ${version.n}${old ? ` of ${newest}` : ""}</a>` : ""}</p>
-      ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a></p>` : ""}
+      ${model.by ? `<p class="shared-by">Shared by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`
+        + ` <button type="button" class="link follow" data-follow="${escapeHtml(model.by.handle)}" hidden>Follow</button>`
+        + `<span class="said" role="status"></span></p>` : ""}
       ${fromLine}
       ${testedMark(mark)}
       <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>

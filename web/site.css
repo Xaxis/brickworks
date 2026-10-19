@@ -119,6 +119,16 @@ code { font: 0.92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 }
 .menu-list a { text-decoration: none; padding: 10px 12px; border-radius: 8px; color: var(--ink-soft); }
 .menu-list a:hover { background: var(--panel-hi); color: var(--ink); }
+/* What came into your feed since you opened it (web/follow.js): a small
+   count on Account, and on Menu where Account is behind it. */
+.site-head .count {
+	display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px;
+	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700;
+	line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+}
+/* On Menu, over its corner: the header has no room at 390 px for more. */
+.site-head .menu summary { position: relative; }
+.site-head .menu summary .count { position: absolute; top: -7px; right: -7px; }
 @media (max-width: 860px) {
 	.nav a:not(.cta) { display: none; }
 	.menu { display: block; }

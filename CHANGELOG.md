@@ -15,6 +15,22 @@ whole cycle.
 
 ### Added
 
+- Follow people, and a feed of what concerns you. Follow is on every
+  profile and beside a model's designer on its page; it needs an account
+  that said it is 13 or over, and following somebody tells them nothing
+  and opens no way to write to them. A profile shows how many follow it
+  and how many it follows, never who follows it; whom somebody follows is
+  listed on their profile only if they choose to show it on /profile.
+  /feed shows, newest first, new models and new versions from the people
+  you follow, photos of real builds of your models and by people you
+  follow, comments on your models and remixes of them, each a link to the
+  thing. Account, in the site's header and in the app, carries a small
+  count of what came since you last opened the feed, and opening it clears
+  the count. The day's one email can now tell of new models, new
+  versions, photos and remixes too, each chosen on /profile and off until
+  then. Needs `supabase/follows.sql` applied, after the rest of the
+  release's SQL; until then the profile shows no Follow, the feed says it
+  is not open yet, and everything else works as before.
 - Real builds on shared models. Reaching a model's last step in the step
   player or the viewer, by stepping on to it from the step before, counts
   the model as built once on that device: no account and nothing about the

@@ -182,10 +182,17 @@ async function load() {
   lists.replaceChildren();
   for (const list of answer.body.collections || []) if (ID.test(String(list.id))) lists.append(listRow(list));
   // What is emailed (api/_comments.js): comments on their models, at most
-  // once a day, off until chosen. Not there before comments.sql.
+  // once a day, off until chosen. Not there before comments.sql. And the
+  // feed's kinds, one choice each, since follows.sql.
   const mail = answer.body.mail;
   $("mail").hidden = !(mail && mail.ready !== false);
   $("mail-comments").checked = Boolean(mail && mail.comments);
+  $("mail-kinds").hidden = !(mail && mail.kinds === true);
+  for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
+  // Whether their profile shows whom they follow (supabase/follows.sql).
+  const follows = answer.body.follows;
+  $("follows-choice").hidden = !(follows && follows.ready) || young;
+  $("shows-follows").checked = Boolean(follows && follows.shows_follows);
   await favourites();
   document.documentElement.dataset.profile = "ready";
 }
@@ -203,6 +210,40 @@ $("mail-comments").addEventListener("change", async () => {
   $("mail-said").textContent = answer.body.comments
     ? "On: at most one email a day, when somebody comments on a model you shared."
     : "Off: no emails about comments.";
+});
+
+const KIND_WORDS = { models: "new models from people you follow", versions: "new versions of their models",
+  photos: "photos of builds", remixes: "remixes of your models" };
+for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) {
+  box.addEventListener("change", async () => {
+    const kind = box.dataset.kind;
+    box.disabled = true;
+    const answer = await call("/api/people?op=mail", { method: "POST", body: { [kind]: box.checked } });
+    box.disabled = false;
+    if (answer.status !== 200) {
+      box.checked = !box.checked;
+      $("mail-said").textContent = answer.body.error || "That did not work just now.";
+      return;
+    }
+    $("mail-said").textContent = answer.body[kind]
+      ? `On: ${KIND_WORDS[kind]} in the day's one email.`
+      : `Off: no emails about ${KIND_WORDS[kind]}.`;
+  });
+}
+
+$("shows-follows").addEventListener("change", async () => {
+  const box = $("shows-follows");
+  box.disabled = true;
+  const answer = await call("/api/people?op=follow_choice", { method: "POST", body: { shows: box.checked } });
+  box.disabled = false;
+  if (answer.status !== 200) {
+    box.checked = !box.checked;
+    $("follows-said").textContent = answer.body.error || "That did not work just now.";
+    return;
+  }
+  $("follows-said").textContent = answer.body.shows_follows
+    ? "Shown: your profile lists whom you follow."
+    : "Not shown: your profile says only how many.";
 });
 
 $("sign-in").addEventListener("click", async () => {
