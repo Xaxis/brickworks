@@ -396,9 +396,18 @@ try {
     }
     await visitor.close();
   }
-  const cached = await api("/api/people?op=challenge");
-  check(`a visitor's answer is kept briefly (${cached.headers.get("cache-control")}) and has no test challenge (${cached.body.challenge?.test ?? "none"})`,
-    /s-maxage=30/.test(cached.headers.get("cache-control") || "") && cached.body.challenge?.title !== TITLE);
+  // Vercel's CDN keeps s-maxage for itself and hands a browser what is left
+  // (public, max-age=0): on a deployment the CDN answering the same question
+  // again is the proof, as share_probe has it.
+  const local = /127\.0\.0\.1|localhost/.test(site);
+  const asked = `/api/people?op=challenge&cdn=${rand}`;
+  const cached = await api(asked);
+  const kept = cached.headers.get("cache-control") || "";
+  const cdn = local ? "" : (await api(asked)).headers.get("x-vercel-cache") || "none";
+  check(`a visitor's answer is kept briefly by the CDN, not a browser (${kept}${local ? "" : `; asked again: ${cdn}`}) `
+    + `and has no test challenge (${cached.body.challenge?.test ?? "none"})`,
+  /public/.test(kept) && /max-age=0/.test(kept) && (local ? /s-maxage=30/.test(kept) : /HIT|STALE/.test(cdn))
+    && cached.body.challenge?.title !== TITLE);
   {
     const visitor = await context({ width: 1280, height: 900 });
     const page = await visitor.newPage();
