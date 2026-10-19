@@ -253,7 +253,7 @@
       "id": "cli:builds browser flow",
       "kind": "cli",
       "entry": "tools/web/builds_flow.mjs",
-      "reach": "node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web --hold=model_builds,build_photos,report_photos,share_tests --trust-stand-in & node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/builds.sql is applied)",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web --hold=model_builds,build_photos,report_photos,share_tests,model_comments --trust-stand-in & node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/builds.sql is applied)",
       "area": "web",
       "tests": []
     },
@@ -1622,7 +1622,7 @@
       "id": "lib:real builds: finishes counted and photos of builds",
       "kind": "lib",
       "entry": "api/_builds.js",
-      "reach": "cat supabase/trust.sql supabase/tested.sql supabase/builds.sql > /tmp/builds_dry.sql; PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs /tmp/builds_dry.sql --dry --try=tools/builds_try.sql --table=build_photos   (then the builds browser flow)",
+      "reach": "cat supabase/tested.sql supabase/trust.sql supabase/comments.sql supabase/builds.sql > /tmp/builds_dry.sql; PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs /tmp/builds_dry.sql --dry --try=tools/builds_try.sql --table=build_photos   (then the builds browser flow)",
       "area": "web",
       "tests": []
     },

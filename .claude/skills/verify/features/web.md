@@ -2048,11 +2048,13 @@ JPEGs whose markers are `e0,db,c0,c4,da` only (JFIF, tables, frame,
 picture); a file that is not a picture is refused 415, one under 120 px a
 side 422 (2026-10-18; a 4,000 x 3,000 JPEG in about 1 s).
 
-The SQL, dry (never applied by an agent), after the two files it needs that
-are not applied yet:
+The SQL, dry (never applied by an agent), in the release's order, after the
+three files before it that are not applied yet (builds.sql's
+`directory_card`, `directory_models`, `report_stream` and
+`claim_report_digest` supersede theirs and keep what each added):
 
 ```sh
-cat supabase/trust.sql supabase/tested.sql supabase/builds.sql > /tmp/builds_dry.sql   # trust.sql's hourly knock block may be left out of a dry run
+cat supabase/tested.sql supabase/trust.sql supabase/comments.sql supabase/builds.sql > /tmp/builds_dry.sql   # trust.sql's hourly knock block may be left out of a dry run
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs /tmp/builds_dry.sql \
   --dry --try=tools/builds_try.sql --table=build_photos
 ```
@@ -2061,9 +2063,10 @@ Proves it when, before "rolled back, nothing kept": a device finishes once
 (true, false for the same device, true for another, false for a model taken
 down), a key that is not one refused; the card says builds 2 and keeps
 `tested` and `by`, Most built first; three photos allowed and a fourth
-refused, under 13 and never asked refused, a removed one not counted; the
-report about a photo is in the poster's test stream and its digest names
-the photo; a photo that is not there refused by its foreign key; the two
+refused, under 13 and never asked refused, a removed one not counted; a
+report about a photo and one about a comment both in the test account's
+stream and both in its one digest, the photo named and the comment's words
+said; a photo that is not there refused by its foreign key; the two
 buckets private, 8 MB of JPEG, PNG or WebP and 4 MB of JPEG; row security on.
 
 In real browsers, against a local relay holding the new tables and buckets:
@@ -2071,7 +2074,7 @@ In real browsers, against a local relay holding the new tables and buckets:
 ```sh
 tools/export.sh web
 node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web \
-  --hold=model_builds,build_photos,report_photos,share_tests --trust-stand-in &
+  --hold=model_builds,build_photos,report_photos,share_tests,model_comments --trust-stand-in &
 node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=shots/builds
 ```
 

@@ -205,9 +205,11 @@ a test account. The admin page shows the photo, hidden or not, and Take
 the photo out marks it removed, deletes its file from storage (that one
 file, nothing else), and settles its reports.
 
-**The daily email to a designer** about new builds of their models does
-not exist yet: the comments unit has not made one. When it does, "built N
-times since yesterday" and the new photos belong in it.
+**The daily email to a designer** is the comments unit's (at most one a
+day, of new comments, to an owner who chose it: `claim_comment_digest`).
+New builds and photos are not in it yet: it is claimed only when a comment
+waits, so "built N times since yesterday" and the new photos need that
+function to claim them too, with a mark on each of what was told.
 
 ## Takedowns
 
