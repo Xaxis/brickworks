@@ -716,6 +716,8 @@ func page_state() -> Dictionary:
 		"url": url, "embed": embed, "status": _status.text if _status != null else "",
 		"listed": _list.button_pressed if _list != null else false,
 		"remixed_from": store.remixed_from if store != null else "",
+		"name": _name.text if _name != null else "",
+		"author": _author.text if _author != null else "",
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"kind": _kind_id() if _kind != null else "",
