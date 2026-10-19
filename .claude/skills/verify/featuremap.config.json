@@ -1142,6 +1142,20 @@
     },
     {
       "kind": "ui",
+      "label": "a lighter look where frames are slow",
+      "entry": "src/render/frame_budget.gd",
+      "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "what a frame costs in a browser",
+      "entry": "tools/web/look_cost.mjs",
+      "reach": "node tools/web/look_cost.mjs --url=http://127.0.0.1:<port> --out=DIR --mode=cuts|acts [--gate]   (serve.py build/web --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd, .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "photo-real render",
       "entry": "src/ui/render_dialog.gd",
       "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (File, Render…, or the toolbar's camera)  /  node tools/web/render_flow.mjs --url=<preview>/app",

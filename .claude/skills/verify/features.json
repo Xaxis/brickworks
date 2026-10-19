@@ -1167,6 +1167,14 @@
       "tests": []
     },
     {
+      "id": "cli:what a frame costs in a browser",
+      "kind": "cli",
+      "entry": "tools/web/look_cost.mjs",
+      "reach": "node tools/web/look_cost.mjs --url=http://127.0.0.1:<port> --out=DIR --mode=cuts|acts [--gate]   (serve.py build/web --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd, .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:worker first run",
       "kind": "cli",
       "entry": "src/dev/worker_first_run_probe.gd",
@@ -2051,6 +2059,14 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a lighter look where frames are slow",
+      "kind": "ui",
+      "entry": "src/render/frame_budget.gd",
+      "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
+      "area": "view",
       "tests": []
     },
     {
