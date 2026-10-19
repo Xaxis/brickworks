@@ -499,7 +499,7 @@
       "id": "cli:follows browser flow",
       "kind": "cli",
       "entry": "tools/web/follows_flow.mjs",
-      "reach": "node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web --hold=follows,model_comments,build_photos,report_photos --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9240 --out=DIR   (--site leaves the app out)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=DIR   (.env sourced; or a local relay_server.mjs --static=build/web with nothing held, or with --hold=follows,model_comments,build_photos,report_photos --trust-stand-in; --site leaves the app out)",
       "area": "web",
       "tests": []
     },

@@ -6,16 +6,20 @@
 // followers, and the day's email telling of the feed in a dry run.
 //
 //   tools/export.sh web
-//   node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web \
-//     --hold=follows,model_comments,build_photos,report_photos --trust-stand-in &
-//   BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs \
-//     --url=http://127.0.0.1:9240 --out=shots/follows
+//   node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web &
+//   node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9240 --out=shots/follows
+//   BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=DIR
 //
-// Until supabase/follows.sql is applied, the local relay holds it in memory
-// (tools/web/follows_stand_in.mjs), with comments.sql's functions beside it
-// (comments_stand_in.mjs, whose day's email asks it for the feed) and the
-// photos' table and buckets (held_tables.mjs), and stands in for trust.sql
-// so an account can be under 13; everything else is the real project's.
+// follows.sql is applied (rel-m82), so a relay with no --hold and no stand-in
+// is a preview's every table, the live project's. The relay can still hold
+// the file in memory (tools/web/follows_stand_in.mjs), with comments.sql's
+// functions beside it (comments_stand_in.mjs, whose day's email asks it for
+// the feed) and the photos' table and buckets (held_tables.mjs), standing in
+// for trust.sql (--hold=follows,model_comments,build_photos,report_photos
+// --trust-stand-in): the flow sees which (/__held/follows answers) and reads
+// each its own way. The day's email is read back as the project kept it,
+// through comment_digest_kept with the secret key, from the id the API
+// answered Ada's comment with: no key may read comment_digests directly.
 // Throwaway accounts at Resend test addresses, deleted at the end with
 // their models: Ada designs, Bob follows her, Cy is under 13. --site leaves
 // out the app (no export needed).
@@ -54,10 +58,15 @@ const site = String(args.url || "http://127.0.0.1:9240").replace(/\/+$/, "").rep
 const out = path.resolve(String(args.out || "shots/follows"));
 mkdirSync(out, { recursive: true });
 const withApp = !args.site;
-const local = /^http:\/\/(127\.0\.0\.1|localhost)(:|$)/.test(site);
-process.env.BW_STAND_IN = process.env.BW_STAND_IN || (local ? site : "");
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
+const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const SECRET = process.env.SUPABASE_SECRET_KEY || "";
+// A local relay holding follows.sql in memory answers /__held/follows; a
+// preview, or a relay on the live project, does not. Only a held relay is
+// knocked (its stand-ins claim nothing real), and only it answers ages.
+const held = await fetch(`${site}/__held/follows`, { headers }).then((reply) => reply.ok).catch(() => false);
+if (held) process.env.BW_STAND_IN = process.env.BW_STAND_IN || site;
 const { encode } = await import(path.join(root, "api/_jpeg.js"));
 const rand = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-follows-ada-${rand}@resend.dev`;
@@ -133,6 +142,26 @@ async function until(page, test, what, seconds = 30, arg = null) {
     if (Date.now() > end) throw new Error(`${what}: not within ${seconds} s`);
     await page.waitForTimeout(300);
   }
+}
+
+/// [owner]'s day's emails: what a held relay keeps (comments_stand_in.mjs),
+/// or, on the live project, each one the API said it told ([ids]), as the
+/// project kept it (comment_digest_kept, with the secret key). Its tables
+/// are the server's alone: not even the secret key reads comment_digests.
+async function digestsOf(owner, ids) {
+  if (held) {
+    const rows = await (await fetch(`${site}/__held/comment_digests`, { headers })).json().catch(() => []);
+    return (Array.isArray(rows) ? rows : []).filter((one) => one.owner === owner);
+  }
+  const kept = [];
+  for (const one of ids.filter(Boolean)) {
+    const reply = await fetch(`${SUPABASE}/rest/v1/rpc/comment_digest_kept`, { method: "POST",
+      headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ one }) }).catch(() => null);
+    const row = reply && reply.ok ? await reply.json().catch(() => null) : null;
+    if (row && row.owner === owner) kept.push(row);
+  }
+  return kept;
 }
 
 /// The Follow button on the page, as drawn: {shown, text, pressed, said, followers}.
@@ -272,7 +301,8 @@ try {
   check(`her photo kept: ${start.status}, ${kept.status} ${kept.body.id}`, start.status === 200 && kept.status === 201);
   const comment = await api("/api/people?op=comment", { method: "POST", token: ada.access_token,
     body: { model: barn.body.id, version: 1, body: "The barn door swings both ways. Lovely." } });
-  check(`her comment: ${comment.status}`, comment.status === 201);
+  check(`her comment: ${comment.status}, and Bob told at once, a dry run (${JSON.stringify(comment.body.told)})`,
+    comment.status === 201 && comment.body.told?.state === "dry" && Boolean(comment.body.told?.id));
   const counted = await api("/api/people?op=feed_count", { token: bob.access_token });
   check(`Bob's count, since he opened the feed: ${counted.body.count}`, counted.body.count === 2);
   await bobPage.goto(`${site}/gallery`, { waitUntil: "load" });
@@ -326,11 +356,10 @@ try {
 
   // The day's email: Ada's comment sent it (the first after a quiet day),
   // a dry run for a test account, telling of the comment and of the feed.
-  const digests = await (await fetch(`${site}/__held/comment_digests`, { headers })).json().catch(() => []);
-  const mine = (Array.isArray(digests) ? digests : []).filter((one) => one.owner === bob.kept.user_id);
+  const mine = await digestsOf(bob.kept.user_id, [comment.body.told?.id]);
   const dry = mine.find((one) => one.state === "dry");
-  check(`Bob's day's email: ${mine.length} made, ${dry?.state}, ${dry?.comments} comment and ${dry?.feed} from the feed: "${dry?.subject}"`,
-    mine.length === 1 && dry && dry.comments === 1 && dry.feed === 3
+  check(`Bob's day's email: ${mine.length} kept, ${dry?.state}, ${dry?.comments} comment and the feed's: "${dry?.subject}"`,
+    mine.length === 1 && dry && dry.comments === 1
       && dry.subject === "Brickworks: 1 comment on your models, and 3 new things in your feed");
   const body = String(dry?.body || "");
   check("...saying the comment, and the castle, its version 2 and the photo, each with its link",
@@ -339,9 +368,11 @@ try {
       && body.includes(`Ada Follows shared version 2 of “Follows Flow Castle”: “A taller tower”`) && body.includes(`/m/${castleId}/v/2`)
       && body.includes("Ada Follows posted a photo of their build of your model “Follows Flow Barn”")
       && body.includes(`#photo-${kept.body.id}`));
-  if (local) {
+  // Never knocked but where nothing real can be claimed: on the live
+  // project the knock sends every owner's real email that is due.
+  if (held) {
     const knock = await api("/api/people?op=digest", { method: "POST" });
-    const after = (await (await fetch(`${site}/__held/comment_digests`, { headers })).json()).filter((one) => one.owner === bob.kept.user_id);
+    const after = await digestsOf(bob.kept.user_id, []);
     check(`the hourly knock sends no second that day (${after.length} kept)`, knock.status === 200 && after.length === 1);
   }
 
