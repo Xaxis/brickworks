@@ -1,7 +1,7 @@
 # Community rules, and where each is enforced
 
-brickworks.diy has share links, a gallery, profiles, likes, remixes and
-collections, and is about to have comments and photos of real builds. These
+brickworks.diy has share links, a gallery, profiles, likes, remixes,
+collections and comments, and is about to have photos of real builds. These
 are the ground rules it stands on (2026-10-18), and the code that keeps each.
 The pages people read are `web/terms.html` (/terms) and
 `web/guidelines.html` (/guidelines); every site page's footer links both,
@@ -20,6 +20,9 @@ the pages say what the site does.
 - `supabase/trust.sql` is applied at a release, by the owner
   (`tools/apply_sql.mjs supabase/trust.sql`); until then nobody is asked
   their age, nothing new is refused, and no report is emailed.
+- `supabase/comments.sql` after it, before the code that reads it is
+  deployed (`api/admin.js` reads `reports.comment`); until then the model
+  pages and the app show no comments and say they are not open yet.
 
 ## The rules
 
@@ -58,7 +61,8 @@ database refuses too:
 | A name credited on a link | `api/share.js` publish | the same trigger |
 | A profile: handle, name, bio | `api/people.js` `?op=profile` | trigger `trust_guard_person` on `people` |
 | A public collection | `api/people.js` `?op=collection` | trigger `trust_guard_collection` on `model_collections` |
-| Comments and build photos | (to come) | (to come: the same rule) |
+| A comment | `api/_comments.js` (`comment_trouble`) | trigger `comments_guard` on `model_comments` |
+| Build photos | (to come) | (to come: the same rule) |
 
 Something new in public needs the question answered 13 or over: an account
 not asked yet is told to answer it first. What an account had in public
@@ -66,6 +70,61 @@ before it answered stays until it answers; answered under 13, its listed
 models leave the gallery and its public collections go private
 (`answer_age`), nothing is deleted, and a profile it had is no longer shown
 (`shown_publicly`, `profile_page`, `directory_card`).
+
+## Comments
+
+On a model's page (`/m/<id>`, drawn by `web/model-page.js` from
+`GET /api/people?op=comments`) and on each step in the viewer and the step
+player (`src/ui/step_comments.gd`), since 2026-10-18
+(`supabase/comments.sql`, `api/_comments.js`).
+
+**Who may write.** A signed-in account that answered the age question 13
+or over (`trust_may_go_public`), not taken out of the gallery
+(`is_barred`), on a published model whose owner has not turned comments
+off, which is not taken out itself, and whose owner is not under 13:
+strangers do not write to a child, and such a model says only that
+comments are off. Anybody reads them, signed in or not. Each refusal is in
+words, said where the box would be: no account ("Sign in to add a
+comment…", with a way to), not asked yet, under 13 ("Comments are for
+people 13 and over, so you can read them here but not add one…"), barred,
+comments off.
+
+**What.** 1 to 1,000 characters of plain text, on the model or on one step
+of the version shown, which it then names ("on step 7 of version 2", and
+", an older version" when a newer one is out). Line ends are kept; nothing
+else unprintable. A link is shown as the words it is, never as a link.
+Words the gallery does not show are refused (`api/_names.js`, the abuse
+list: a comment may name a set or a film, as a description may). A
+comment on a step of an older version shows on that step of a newer one
+only while no version between changed that step or one before it
+(`first_changed`), as a builder's place is kept.
+
+**Limits** (`may_act`, counted in the database): 10 comments an hour and
+50 a day for one account; 20 edits an hour, 100 a day; a model's owner
+hides or shows 60 an hour, 300 a day, and turns comments on or off 30 an
+hour, 100 a day.
+
+**Moderation.** Its author may remove theirs. The model's owner may hide a
+comment on their model (it stays, seen only by them and its author, marked)
+or show it again, and turn comments off on it, or on again; what was said
+stays. Anybody may report a comment with Report it beside it, through the
+same report as anything else (`reports.comment`, with its model): it
+reaches the owner's email within the hour, named as a comment with its
+first words and a link to it. The admin page lists the newest comments and
+every one reported, and Remove takes one off every page for good and
+settles its reports; taking a model or an account out settles what was
+reported about the model, not about the comments on it. Nothing is
+deleted: removed and hidden are times kept on the row. A comment by an
+account taken out of the gallery, or by one under 13, is not shown.
+
+**Telling a model's owner.** At most one email a day, from the sign-in
+codes' sender, of new comments on their models: off by default, because the
+trust unit kept no email preferences, until the owner turns it on on
+/profile (`mail_choices`). The first comment after a quiet day goes at
+once; the rest wait for the next day's, sent by a comment or by the hourly
+knock (`POST /api/people?op=digest`). A test account's is a dry run,
+rendered and recorded in `comment_digests` (state `dry`) and never sent.
+`COMMENT_MAIL=off` sends nothing to anybody.
 
 ## Reports reaching the owner
 
@@ -108,3 +167,14 @@ counter-notice is by hand for now (`shared_models.barred`).
   answers trust.sql's functions in memory until the file is applied;
   `BW_STAND_IN` lets `session.mjs` answer for test accounts) or a
   deployment once it is.
+- `tools/comments_trial.sql`, run inside a dry run of `trust.sql` and
+  `comments.sql` together: every refusal (no account, under 13, not asked,
+  barred, a child's model, comments off, the limit, whatever writes), the
+  owner's hide and off, the author's edit and removal, a report's stream
+  and digest, the admin's removal, and the day's one email, all rolled
+  back.
+- `tools/web/comments_flow.mjs` against `relay_server.mjs --hold=model_comments
+  --trust-stand-in` (`tools/web/comments_stand_in.mjs` answers comments.sql's
+  functions and `reports.comment` in memory): the site and the app on a
+  phone-sized page, a visitor, an account under 13, the owner, a report
+  reaching the admin page.

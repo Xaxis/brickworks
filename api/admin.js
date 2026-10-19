@@ -20,6 +20,13 @@
 // work; taking those down is their owners'. What visitors reported is here
 // to act on, or to let go.
 //
+// Comments (2026-10-18, supabase/comments.sql): the newest are listed with
+// the reported ones, each with its model, where it was said and by whom,
+// and Remove takes one off every page for good. It is kept, shown to
+// nobody, and what was reported about it is settled. Taking a model or an
+// account out settles what was reported about that model, not about the
+// comments on it, which are still on its page.
+//
 //   GET /api/admin                       accounts, sign-ins, connectors, the
 //                                        email sender, the gallery's models,
 //                                        open reports, accounts taken out
@@ -31,6 +38,7 @@
 //                                        of model X (the newest without v):
 //                                        the app's finding, which the server
 //                                        cannot check (supabase/tested.sql)
+//   POST /api/admin?op=uncomment&comment=N  remove comment N, for good
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
@@ -90,7 +98,7 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss, untest };
+  const acts = { unlist, bar, unbar, dismiss, untest, uncomment };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
@@ -99,7 +107,7 @@ export default async function handler(request, response) {
     }
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss or untest" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest or uncomment" });
   }
 
   try {
@@ -137,6 +145,31 @@ async function settle(where, resolution) {
     body: { resolved_at: new Date().toISOString(), resolution } });
 }
 
+/// What was reported about a model itself, settled: not what was reported
+/// about a comment on it. Before comments.sql there is no such column, and
+/// every report is about the model.
+async function settleModel(where, resolution) {
+  try {
+    await settle(`${where}&comment=is.null`, resolution);
+  } catch (trouble) {
+    if (!/: 400$/.test(String(trouble?.message || ""))) throw trouble;
+    await settle(where, resolution);
+  }
+}
+
+/// A comment off every page for good: kept, shown to nobody, and what was
+/// reported about it settled as taken out.
+async function uncomment(request, response) {
+  const comment = Number(request.query?.comment);
+  if (!Number.isInteger(comment) || comment < 1) {
+    return response.status(400).json({ error: "name a comment: ?comment=<number>" });
+  }
+  const removed = await db("rpc/admin_remove_comment", { method: "POST", body: { comment_id: comment } });
+  if (removed !== true) return response.status(404).json({ error: "no such comment" });
+  await settle(`comment=eq.${comment}`, "taken_out");
+  return response.status(200).json({ comment, removed: true });
+}
+
 /// Out of the gallery, and barred from it: listed false, and a republish
 /// with the box ticked refused (api/share.js), at this link or with the
 /// same file at any other. The row and its files are untouched, so the
@@ -149,7 +182,7 @@ async function unlist(request, response) {
     prefer: "return=representation" });
   if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no model at that link" });
   const file = await barFile(id);
-  await settle(`model=eq.${id}`, "taken_out");
+  await settleModel(`model=eq.${id}`, "taken_out");
   return response.status(200).json({ id, listed: false, barred: true, file_barred: file });
 }
 
@@ -175,7 +208,7 @@ async function bar(request, response) {
     body: { listed: false, listed_at: null, barred: true } });
   const models = (await db(`shared_models?owner=eq.${account}&select=id`)).map((m) => m.id);
   for (let at = 0; at < models.length; at += 100) {
-    await settle(`model=in.(${models.slice(at, at + 100).join(",")})`, "account_barred");
+    await settleModel(`model=in.(${models.slice(at, at + 100).join(",")})`, "account_barred");
   }
   const person = await db(`people?account=eq.${account}&select=handle`);
   if (person.length) await settle(`handle=eq.${person[0].handle}`, "account_barred");
@@ -236,6 +269,26 @@ async function marks() {
   }
 }
 
+/// The comments to show: the newest, and those reported, as
+/// admin_comments gives them. None before comments.sql.
+async function commentsShown(reported) {
+  try {
+    const [newest, named] = await Promise.all([
+      db("rpc/admin_comments", { method: "POST", body: { wanted: null } }),
+      reported.length ? db("rpc/admin_comments", { method: "POST", body: { wanted: reported } }) : [],
+    ]);
+    const all = new Map();
+    for (const one of [...(named || []), ...(newest || [])]) all.set(one.id, one);
+    return [...all.values()].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return [];
+    throw trouble;
+  }
+}
+
+const REPORTS = "/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
+  + "shared_models(name,owner,listed,published)&order=at.desc&limit=300";
+
 async function report() {
   const [listed, tabs, gallery, reports, barred, tested] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
@@ -243,14 +296,16 @@ async function report() {
     // What strangers can see in /gallery right now, and whose it is.
     asServer("/rest/v1/shared_models?listed=is.true&published=is.true"
       + "&select=id,owner,name,author,parts,listed_at&order=listed_at.desc&limit=500"),
-    // What visitors said should not be there, still to act on.
-    asServer("/rest/v1/reports?resolved_at=is.null&select=id,model,handle,collection,reason,note,contact,at,"
-      + "shared_models(name,owner,listed,published)&order=at.desc&limit=300"),
+    // What visitors said should not be there, still to act on; which
+    // comment, once comments.sql has the column.
+    asServer(REPORTS.replace("contact,at,", "contact,at,comment,")).catch(() => asServer(REPORTS)),
     asServer("/rest/v1/barred_accounts?select=account,at,reason&order=at.desc&limit=200"),
     marks(),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
+  const comments = await commentsShown([...new Set(reports.map((one) => one.comment).filter(Boolean))]);
+  const commentsById = new Map(comments.map((one) => [one.id, one]));
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -297,9 +352,21 @@ async function report() {
       reason: report.reason, note: report.note, contact: report.contact, at: report.at,
       name: report.shared_models?.name ?? null, listed: report.shared_models?.listed ?? null,
       email: report.shared_models ? emails.get(report.shared_models.owner) || null : null,
+      comment: report.comment ? commentOf(commentsById.get(report.comment), emails) ?? { id: report.comment } : null,
     })),
+    // The newest comments and the reported ones, newest first; who wrote
+    // each, for the owner of this page alone.
+    comments: comments.map((one) => commentOf(one, emails)),
     barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
       email: emails.get(one.account) || null })),
     tested,
   };
+}
+
+function commentOf(one, emails) {
+  if (!one) return null;
+  return { id: one.id, model: one.model, name: one.name, version: one.version, step: one.step ?? null,
+    body: one.body, at: one.at, edited_at: one.edited_at ?? null, hidden: Boolean(one.hidden_at),
+    removed: Boolean(one.removed_at), removed_by: one.removed_by ?? null, handle: one.handle ?? null,
+    email: emails.get(one.author) || null };
 }

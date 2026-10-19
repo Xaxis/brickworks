@@ -24,6 +24,10 @@
 ## A version that passed the four tests the app ran as it was published is
 ## marked Tested beside its name (2026-10-18, api/_tested.js), the four on
 ## hover and, on a tap, on the version line.
+## Comments (2026-10-18): a small count just above the timeline, for the
+## step it is on, or for the whole model when it is away or at either end;
+## tapped, that step's comments, and a box to add one for somebody who may
+## (StepComments). main.gd asks the server for them and sends.
 ##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
@@ -92,6 +96,9 @@ var _hover: Label
 var _big: Button
 var _narrow: bool = false
 var floor_at: Callable = Callable()
+## The comments on the step the timeline is on (StepComments): its count
+## sits just above the timeline, at the left.
+var comments: StepComments
 
 
 func _ready() -> void:
@@ -120,6 +127,18 @@ func _ready() -> void:
 	_big.visible = false
 	_big.pressed.connect(func() -> void: build_wanted.emit())
 	add_child(_big)
+	comments = StepComments.new()
+	comments.prefix = "view"
+	add_child(comments)
+	# Between the bar and the timeline: where the model is seen.
+	comments.area = func() -> Rect2:
+		var top: float = _bar.get_global_rect().end.y if _bar.is_visible_in_tree() else 0.0
+		var bottom: float = size.y
+		if floor_at.is_valid():
+			bottom = minf(float(floor_at.call()), size.y)
+		return Rect2(0.0, top, size.x, maxf(bottom - top, 1.0))
+	comments.pill.visibility_changed.connect(func() -> void:
+		set_process(true))
 	get_viewport().size_changed.connect(_fit_big)
 	_fit_big()
 
@@ -493,7 +512,13 @@ func _fit_big() -> void:
 	var ready: bool = state == "ready" and _bar.visible
 	_big.visible = _narrow and ready
 	_build.visible = not _narrow and state != "gone"
-	set_process(_big.visible or (_place != null and _place.visible))
+	# Words a phone can read on a phone; the bar's size on a wide window.
+	comments.fit(pt if _narrow else 1.0, 14.0 if _narrow else 12.0)
+	comments.pill.reset_size()
+	if not ready and comments.is_open():
+		comments.close()
+	comments.visible = ready
+	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown())
 
 
 func _process(_delta: float) -> void:
@@ -501,16 +526,29 @@ func _process(_delta: float) -> void:
 		# Just under the bar, in the middle.
 		var below: float = _bar.get_global_rect().end.y + 10.0 if _bar.is_visible_in_tree() else 10.0
 		_place.position = Vector2(maxf((size.x - _place.size.x) * 0.5, 6.0), below)
-	if not _big.visible:
-		if not _place.visible:
-			set_process(false)
-		return
 	var bottom: float = size.y
 	if floor_at.is_valid():
 		bottom = minf(float(floor_at.call()), size.y)
+	if _pill_shown():
+		# Just above the timeline, at the left: the big Build it of a phone
+		# is in the middle.
+		var gap: float = comments.pill.size.y * 0.3
+		var at := Vector2(gap, bottom - comments.pill.size.y - gap)
+		if comments.pill.position != at:
+			comments.pill.position = at
+	if not _big.visible:
+		if not _place.visible and not _pill_shown():
+			set_process(false)
+		return
 	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
 	if _big.position != spot:
 		_big.position = spot
+
+
+## Whether the count is up: once the model is ready, and the bar with it.
+func _pill_shown() -> bool:
+	return comments != null and comments.visible and comments.pill.visible and state == "ready" \
+		and _bar.visible
 
 
 func gone(title: String, words: String) -> void:
@@ -520,6 +558,7 @@ func gone(title: String, words: String) -> void:
 	# Nothing to step through, read or copy.
 	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
 		button.visible = false
+	comments.show_answer({})
 	_fit_big()
 	_say(title, words, "Go to Brickworks",
 		func() -> void: OS.shell_open(Deployment.api_base() + "/"))
@@ -571,7 +610,8 @@ func covers(point: Vector2) -> bool:
 	return (_bar.is_visible_in_tree() and _bar.get_global_rect().has_point(point)) \
 		or (_place.is_visible_in_tree() and _place.get_global_rect().has_point(point)) \
 		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point)) \
-		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point))
+		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point)) \
+		or (_pill_shown() and comments.covers(point))
 
 
 func controls_by_name() -> Dictionary:
@@ -587,6 +627,8 @@ func controls_by_name() -> Dictionary:
 	if _place.is_visible_in_tree():
 		named["view_build_from"] = _place_go
 		named["view_keep_place"] = _place_keep
+	if _pill_shown():
+		named.merge(comments.controls_by_name())
 	return named
 
 
@@ -597,4 +639,8 @@ func page_state() -> Dictionary:
 		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else "",
 		"version": version, "newest": newest, "version_line": _version.text if _version.visible else "",
 		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else "",
-		"tested": _tested.visible, "tested_says": _tested.tooltip_text}
+		"tested": _tested.visible, "tested_says": _tested.tooltip_text,
+		"comment_step": comments.step}.merged(comments.page_state() if _pill_shown()
+			else {"comments": 0, "comments_open": false, "comments_shown": [], "comments_where": [],
+				"comment_why_not": "",
+				"comment_can_write": false, "comment_said": "", "comment_pill": ""})

@@ -332,6 +332,14 @@
       "tests": []
     },
     {
+      "id": "cli:comments browser flow",
+      "kind": "cli",
+      "entry": "tools/web/comments_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:compare media",
       "kind": "cli",
       "entry": "tools/web/compare_media.mjs",
@@ -1319,6 +1327,14 @@
       "tests": []
     },
     {
+      "id": "lib:comments on a shared model",
+      "kind": "lib",
+      "entry": "api/_comments.js",
+      "reach": "cat supabase/trust.sql supabase/comments.sql > /tmp/tc.sql; PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs /tmp/tc.sql --dry --try=tools/comments_trial.sql --table=model_comments   (.env sourced; then the comments browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:custom moulds",
       "kind": "lib",
       "entry": "src/minifig/mould.gd",
@@ -2016,6 +2032,14 @@
       "entry": "src/ui/hidden_colours_panel.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (by hand: Tools, Colour the hidden parts\u2026; over MCP: colour_hidden_parts)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "ui:comments on a step",
+      "kind": "ui",
+      "entry": "src/ui/step_comments.gd",
+      "reach": "/app?view=<id> (the count above the timeline) and Build it (the count in the top bar); /m/<id> (Comments)",
+      "area": "web",
       "tests": []
     },
     {

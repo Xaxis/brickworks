@@ -106,6 +106,17 @@ var _view_versions: Array = []
 var _copy_started: bool = false
 var _first_open_done: bool = false
 var _shared: SharedModels
+## The comments on the link open in the viewer (api/people.js ?op=comments,
+## StepComments): the server's last answer, shown by the viewer and the
+## step player alike. The viewer reads nobody's account, so who is here is
+## found out only when somebody opens a step's comments on a device that
+## keeps a session: an account of its own for that ([member
+## _comment_account], kept as the site's pages keep the same one), and the
+## comments asked again as them. A probe hands in a token instead.
+var _comments_answer: Dictionary = {}
+var _comment_account: Account
+var _comments_waking: bool = false
+var comment_token_for_probe: String = ""
 var _share_panel: SharePanel
 var _share_view: ShareView
 ## Build it, in the viewer: the step player, the pages it shows, the line
@@ -1976,6 +1987,15 @@ func _enter_view() -> void:
 	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
+	for view: StepComments in [_share_view.comments, _build_mode.comments]:
+		view.opened.connect(_comments_opened)
+		view.send_wanted.connect(_send_comment.bind(view))
+		view.page_wanted.connect(func() -> void:
+			OS.shell_open(SharedModels.link_for(_viewing) + "#comments"))
+	# The viewer's count is for the step the timeline is on.
+	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
+		_share_view.comments.set_step(_timeline_page()))
+	_steps.closed.connect(func() -> void: _share_view.comments.set_step(0))
 	if OS.has_feature("web"):
 		_add_frame_probes()
 	_build_outline = SelectionOutline.new()
@@ -2139,6 +2159,9 @@ func _view_shared() -> void:
 	var carried: Dictionary = SharedPages.read(str(shared.get("model", "")), _world, _store.scenery)
 	_steps_carried = not carried.is_empty()
 	_share_view.ready_to_look()
+	# Its comments, asked for beside the steps being worked out: nothing
+	# waits for them.
+	_load_comments()
 	# The finished model, on a timeline to drag back through.
 	if _steps_carried and _steps.start_from(carried["steps"], int(carried["mode"]), _world,
 			_library, _store.scenery):
@@ -2174,6 +2197,116 @@ func _view_shared() -> void:
 		_enter_build(wanted)
 	elif bool(kept.get("building", false)):
 		_enter_build(int(kept["page"]))
+
+
+## The comments on the link, as anybody reads them, or as the person here
+## once they are known ([param token]); shown by the viewer and the step
+## player. No answer, or a deployment without comments, and neither shows a
+## count at all.
+func _load_comments(token: String = "") -> void:
+	var answer: Dictionary = await _shared.comments(_viewing, _view_version, token)
+	if int(answer.get("code", 0)) != 200 or not answer.get("body") is Dictionary:
+		# Asked again as somebody and not answered: what was shown stays.
+		if _comments_answer.is_empty():
+			_show_comments({})
+		return
+	_comments_answer = answer["body"]
+	if not _comments_answer.get("comments") is Array:
+		_comments_answer["comments"] = []
+	_show_comments(_comments_answer)
+
+
+func _show_comments(answer: Dictionary) -> void:
+	for view: StepComments in [_share_view.comments, _build_mode.comments]:
+		view.show_answer(answer)
+
+
+## The step of the timeline's for the viewer's comments: the step it is on,
+## numbered as the step player's pages are (StepsBar.steps), or 0, the
+## whole model, with the timeline away, at the empty baseplate, at the
+## finished model, or in an order that is not a booklet's.
+func _timeline_page() -> int:
+	if _steps == null or not _steps.is_playing_back():
+		return 0
+	var at: Vector2i = _steps.timeline_at()
+	if at.x <= 0 or at.x >= at.y:
+		return 0
+	var current: Instructions.Step = _steps.current_step()
+	return _steps.steps().find(current) + 1 if current != null else 0
+
+
+## A step's comments opened: on a device that keeps a session, who is here
+## is found out now, once, and the comments asked for again as them, so the
+## box is there for somebody who may write and their reason for somebody who
+## may not.
+func _comments_opened() -> void:
+	if _comments_waking or _comment_account != null or not comment_token_for_probe.is_empty() \
+			or not _session_kept():
+		return
+	_comments_waking = true
+	for view: StepComments in [_share_view.comments, _build_mode.comments]:
+		view.asking = true
+		view.show_answer(_comments_answer)
+	var token: String = await _comment_token()
+	if not token.is_empty():
+		await _load_comments(token)
+	_comments_waking = false
+	for view: StepComments in [_share_view.comments, _build_mode.comments]:
+		view.asking = false
+		view.show_answer(_comments_answer)
+
+
+## Whether this device keeps somebody's session to comment as: never for a
+## probe or a run nobody sits at, which leave the person's own alone.
+func _session_kept() -> bool:
+	if not _gate_wanted() or gate_for_probe:
+		return false
+	return not str(Account._read().get("refresh_token", "")).is_empty()
+
+
+## The token to comment with: the probe's, or the kept session's, renewed by
+## an account of the comments' own. Empty when nobody is signed in here.
+func _comment_token() -> String:
+	if not comment_token_for_probe.is_empty():
+		return comment_token_for_probe
+	if _comment_account == null:
+		if not _session_kept():
+			return ""
+		_comment_account = Account.new()
+		_comment_account.deployment = _deployment
+		_comment_account.keeps = true
+		add_child(_comment_account)
+	while _comment_account.state == Account.State.CHECKING:
+		await _comment_account.changed
+	if not _comment_account.signed_in():
+		return ""
+	return await _comment_account.access_token()
+
+
+## Send a comment on [param step] (0: the whole model) of the version open,
+## and put it in the list both places show.
+func _send_comment(step: int, body: String, view: StepComments) -> void:
+	var token: String = await _comment_token()
+	if token.is_empty():
+		var you: Dictionary = _comments_answer["you"] if _comments_answer.get("you") is Dictionary else {}
+		view.refused(str(you.get("why_not", "")) if not str(you.get("why_not", "")).is_empty()
+			else "Sign in to add a comment: we email you a code, no password.")
+		return
+	var answer: Dictionary = await _shared.comment(token, {"model": _viewing, "version": _view_version,
+		"step": step if step > 0 else null, "body": body})
+	var said: Variant = answer.get("body")
+	var code: int = int(answer.get("code", 0))
+	if (code == 200 or code == 201) and said is Dictionary and (said as Dictionary).get("comment") is Dictionary:
+		var made: Dictionary = (said as Dictionary)["comment"]
+		if not made.has("on_step"):
+			made["on_step"] = step if step > 0 else null
+		if not _comments_answer.get("comments") is Array:
+			_comments_answer["comments"] = []
+		(_comments_answer["comments"] as Array).append(made)
+		_show_comments(_comments_answer)
+		view.sent()
+		return
+	view.refused(SharedModels.trouble(answer, "Brickworks could not take that just now. Try again in a minute."))
 
 
 ## The page's address for what the viewer has open: the link, or an older
