@@ -3458,3 +3458,72 @@ read as moving.
   cupboard (4532) into the cupboard's own door (4533), which the app reads
   as held by nothing: the door's hinge in the cupboard is not read, and
   both have exact shapes, so it is not lodged either (left, below).
+
+**The other moving things, swept** (`movesweep_before`, `movesweep_after`,
+G12's 260 sets; the after sweep's last 31 sets ran as `movesweep_afterrest`
+and are merged into it).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|
+| before (rel-m83) | 144 of 380 | 15 | 297 | 209 / 16 / 180 |
+| after (G13) | 161 of 377 | 15 | 294 | 224 / 15 / 179 |
+
+By kind, both ways and back: turntables 46 to 51, doors 34 to 39, booms
+and arms 64 to 71. 23 things now move both ways and back that did not, 8
+no longer do. Among them, 3180-1's and 6357-1's booms now move to their
+stop, and 42094-1's turntable, 5571-1's and 6950-1's booms meet real parts
+on the way back. The six trains moved both
+ways in rel-m83 too, through their beams; now their beams go with them.
+
+**Steering, swept** (`sweep_before`, `sweep_after`; its last 45 sets as
+`sweep_afterrest`).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (rel-m83) | 55 of 168 |
+| after (G13) | 42 of 167 |
+
+This is worse, and not by what is in the way: all 14 sets that stopped
+steering turn both ways and come back 0.027 to 0.19 LDU off, past the 0.02
+the sweep allows, the part furthest off an axle of the steering loop.
+The loop's pose is kept at each step of the way, and a way solved in steps
+does not come back to exactly where it began. Stepped finely (no limit of
+six steps) it came back no closer, on 12 of the 14 (`sweep_fix`). Left for
+later, first.
+
+**Proved** (bench/results/grab13-2026-10-19/`probes/`): `grab_probe`
+windowed through `tools/probe.sh`, in full (`grab_probe_full.log`), ran 463
+checks: 461 passed. The two that failed are 42080-1's hoses laid within a
+drag's frame (16.8 ms against 2.0), a timing check: run alone side by side
+under the same load, rel-m83 fails it too (5.8 ms; G13 3.7 ms). New checks:
+`-- --only=path` (2: the made arm stops at the plate over its way, and goes
+all 90° the other way) and `-- --only=beams` (6: 10205-1's and 10183-1's
+beam is one body with its plate and turns 30° with it). Both fail in
+rel-m83 (`--only=path`: the arm went 90° through the plate; `--only=beams`
+4 of 6). The moving checks' 8074-1 turntable is checked both ways, not
+back. The Python suite (numpy and scipy) passes 748; pyright finds no
+errors. Frame costs, the drag's own work (this run, at load 15 to 28; G12's
+at load 4): the turntable, hinge, click hinge, gear train and slider drags
+mean 0.2 to 1.3 ms a frame (G12 0.15 to 0.5), worst 0.8 to 5.6 ms (G12 0.5
+to 7.4); the ball joint 1.2 ms mean, 8.3 worst (0.4, 0.7); steering loops
+1.5 to 3.4 ms at worst (1.2 to 2.8); 42024-1's actuator 13.4 ms mean, 27.9
+at 95% (6.6, 12.1); 42081-1's arm 11.8 and 24.3 (11.2, 14.0), kept 3.6 s
+after it is let go (3.6); 7191-1's big section 7.5 mean, 18.8 worst (2.7,
+21.4). Pictures: `move_10205-1_door_*`, `move_4543-1_boom_*`,
+`move_10220-1_*`.
+
+**Left for later.**
+- The steering loops that come back 0.03 to 0.19 LDU off (above): keep the
+  loop's pose where the move began for its end, and step only the test.
+- A part a step does not test may stand up to 2 LDU of its own way into
+  another where a move stops.
+- Small sections' drag frames have no budget for the walk: the worst frame
+  rose to 5.6 ms (a turntable), 8.3 ms (a ball joint).
+- 3180-1's cupboard door: its hinge in the cupboard is not read. 8074-1's
+  crane: 18 free joints inside it swing down on the first turn, most 180°,
+  and the turn back meets the brick 1 x 16 that swung; a free joint pressed
+  by the model should swing aside, not stop the section.
+- From G12, not begun: joints read again after a move (8448-1's steering
+  link and its wheel rim, 4432-1's door, 10185-1's first floor, 4404-1's
+  kingpin loop, 9393-1), ball-jointed steering arms still refused, the
+  judge's own limits, and G11's leftovers.
