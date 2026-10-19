@@ -69,6 +69,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   each gate waited 30 to 70 minutes for a slot at load 50 (2026-10-16).
   `MERGE_GATES=ship` has `merge_unit.sh` leave them to it; without it the
   merge still runs them, as before.
+- `ship.sh` hands over to the worktree's own `tools/release/ship.sh`, so a
+  release runs its own scripts and knows its own checks. m87 was started
+  from main's copy and held on "no such check" for the three it added
+  (2026-10-19). `RELEASE_HERE` pins a copy on purpose.
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
