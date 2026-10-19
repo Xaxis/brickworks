@@ -2153,6 +2153,10 @@ node tools/web/play_flow.mjs --url=http://127.0.0.1:8771 --out=shots/play_web
 tools/release/preview_checks.sh <preview> <worktree> TAG play     # publishes from a throwaway account
 ```
 
+`serve.py --parts` hands out each part's exact shape too (`/parts/<hash>.bwx`
+from `exact/` beside `parts/`, as the bucket has it), so the steering is
+judged by its parts' shapes as on a deployment: without them it stopped by
+its covers, at 95° rather than 108°, and its stop cost half as much (G14a).
 Proves it when it ends "a shared model's steering turns by its wheel, by
 mouse and by finger, and Reset puts it back" (34 checks, about 100 s), at
 1280 x 800 by the mouse and at 390 x 844 by a finger (index 1, the CPU

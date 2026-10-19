@@ -793,7 +793,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `Linkage.kept_state`, so its end is solved as if there were no steps; a
   free joint inside what moves that the model presses is turned aside,
   `Grab._push_aside`; a small section's drag tests its way for 2 ms a frame,
-  `walk_budget_ms`, the rest checked on a pause), `follow` (the pointer's ray to an angle, a slide
+  `walk_budget_ms`, the rest checked on a pause; a loop's turn is put on a
+  quarter-degree grid in a drag only, a session's goes where it asks; what
+  stands near each moving part is asked of the lattice for its cells and four
+  more, at the press, and sifted from that, `Grab._near`, G14a, MECHANISMS
+  §23), `follow` (the pointer's ray to an angle, a slide
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
