@@ -497,7 +497,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
   mirror, hide and lock takes it whole. A double-click (or `Enter`) edits inside
-  it — a banner over the model says which, a click takes one part, a part put
+  it — a banner above the model says which, the model staying where it was
+  under the pointer, so a second double-click there goes a level deeper
+  (view.md's `centred on the model's column`), a click takes one part, a part put
   down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
   another copy of the same definition (`Wing#2`), and after any edit the other
   copies are built again from the edited one, mirrored where they were
