@@ -5,6 +5,8 @@
 //
 //   node --env-file=.env tools/web/needs_backfill.mjs --dry    reads only: what it would keep
 //   node --env-file=.env tools/web/needs_backfill.mjs          after discovery.sql is applied
+//   node --env-file=.env tools/web/needs_backfill.mjs --recount   every published model again,
+//       after the rule for what a model needs changed (owned_keep_needs replaces a model's rows)
 //       [--facts=FILE]   tools/web/part_facts.mjs's output, where no catalogue is beside api/
 //
 // Each model is read as the server reads it (the link's own file, from the
@@ -17,6 +19,10 @@ import { checkModel } from "../../api/share.js";
 import { keyed, ownedFacts, useFacts } from "../../api/_owned.js";
 
 const dry = process.argv.includes("--dry");
+// Counted ones too: m95 changed what a model needs (a set's own pieces by
+// their Rebrickable names, minifig parts, stickers left out), and the
+// models counted before kept the old count.
+const recount = process.argv.includes("--recount");
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 if (!SUPABASE || !SECRET) {
@@ -46,7 +52,7 @@ let done = 0;
 let failed = 0;
 const seen = new Set();
 for (;;) {
-  const ids = dry
+  const ids = dry || recount
     ? (await rest("shared_models?published=is.true&select=id&order=created_at.asc&limit=1000")).map((row) => row.id)
     : await rest("rpc/owned_uncounted", { method: "POST", body: JSON.stringify({ size: 50 }) });
   const fresh = ids.filter((id) => !seen.has(id));
@@ -73,7 +79,7 @@ for (;;) {
     console.log(`  ${dry ? "would" : "kept "}  ${id}: ${counted.parts} parts, ${pieces} anybody can own, in ${lots.length} lots`);
     done += 1;
   }
-  if (dry) break;
+  if (dry || recount) break;
 }
 console.log(`needs_backfill: ${done} ${dry ? "counted, nothing kept" : "kept"}${failed ? `, ${failed} not counted` : ""}`);
 process.exit(0);
