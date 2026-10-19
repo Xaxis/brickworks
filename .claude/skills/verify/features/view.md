@@ -351,22 +351,23 @@ picture the assistant is shown.
   the looks (`EditVerbs.looked`): at most one in 2 s standing still, one when
   the pointer moves, none out of view while the model changes.
 - `a lighter look where frames are slow` (`src/render/frame_budget.gd`,
-  `FrameBudget`, made by `Main._watch_frame_cost`). WIP (2026-10-19, see
-  docs/SLOW_DEVICES.md). It times each drawn frame that follows a drawn
-  frame: the time from one drawing's end to the next, less the frame's own
-  work. Two seconds in, it draws ten frames on purpose to time them. Where
-  the fastest fifth of the last six is over 50 ms, it cuts the next rung
-  (dense, msaa, glow, shadow_soft, shadow_size, shadow, scale; ssao first
-  on Forward+), and several rungs at once when frames are 4x or 16x over.
-  It never raises the look again. A probe leaves it off unless it calls
-  `watch()`. The page reads `brickworksState.look`, and a check pins cuts
-  with `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
-  `tools/probe.sh look_probe` checks the judgment on a budget of its own.
-  On the GPU it also checks that nothing is cut and every timed frame is
-  quick. `-- --shots=DIR` writes three views to `cmp` against a checkout
-  before. On rel-m86, with no budget, the probe fails its "watching"
-  check, as it should. Not yet run on this branch: the run timed out in
-  the queue.
+  `FrameBudget`, made by `Main._watch_frame_cost`; docs/SLOW_DEVICES.md).
+  It times each drawn frame that follows a drawn frame: the time from one
+  drawing's end to the next, less the frame's own work. Two seconds in, it
+  draws frames on purpose until ten are timed. Where the second fastest of
+  the last six is over 50 ms, it cuts the next rung (dense, msaa, scale,
+  shadow, glow; ssao first on Forward+), several at once when frames are
+  4x or 16x over. On the web a look also ends with a fence (`GpuFence`)
+  and is judged again by when the drawing was done: the page hands frames
+  over at 17 ms while SwiftShader draws each in 0.3 to 2 s. It never raises
+  the look again. A probe leaves it off unless it calls `watch()`. The page
+  reads `brickworksState.look`, and a check pins cuts with
+  `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
+  `tools/probe.sh look_probe` checks the judgment on a budget of its own,
+  and on the GPU that nothing is cut. `-- --shots=DIR` writes three views
+  to `cmp` against a checkout before: identical to rel-m87 on Forward+, and
+  on Compatibility through zink (the env is in the probe's header; under
+  Xvfb without it, Compatibility draws on llvmpipe, in software).
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
