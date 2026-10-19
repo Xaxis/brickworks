@@ -2097,6 +2097,18 @@ from the uploads bucket; the photo in the strip and on the profile; three a
 model and a fourth refused; under 13 refused in words; the owner hides it
 (404 at its address) and shows it again; a report from its Report it reaches
 the admin page with the photo, and Take the photo out deletes that one file.
+On a deployment (`BW_BYPASS=$VERCEL_BYPASS node --env-file=.env
+tools/web/builds_flow.mjs --url=<preview>`, `builds` in
+`preview_checks.sh`) every request, the pages' too, says Vercel's bypass,
+and what is kept is read from the project with the secret key, this flow's
+rows and files only (its model's builds, its builder's uploads, its photos).
+The model's page and a photo's file are kept at the CDN for up to a minute
+(`SHARED_CACHE`), so a photo added, hidden, shown again or taken out is
+asked for again every 5 s until it shows, up to 90 s, and the check says
+how long it took. On m81's preview the flow sent no bypass: the listing got
+Vercel's 401 and the viewer its sign-in page, which read as the age rule
+refusing it. The test accounts' age is answered by `mintSession`
+(`answerAge`), and an account never asked is refused with a 422 saying so.
 `share_view_probe` (above) proves the app's half: a finish sent once per
 device and link, never for a jump, the cover or opening the viewer.
 

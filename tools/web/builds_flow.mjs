@@ -11,6 +11,11 @@
 // tables and the two storage buckets in memory (--hold, held_tables.mjs) and
 // answers the age question's functions (--trust-stand-in); everything else
 // is the real project: the accounts, the models' rows and files, the reports.
+// Against a deployment (a preview: BW_BYPASS=$VERCEL_BYPASS) what is kept is
+// read from the project itself with the secret key, this flow's rows and
+// files only.
+//
+//   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/builds_flow.mjs --url=<preview> --out=DIR
 //
 //   1. A throwaway owner lists a model of three steps. On a phone-sized page
 //      (390 x 844, touch) a visitor opens its viewer, presses Build it and
@@ -38,7 +43,7 @@
 // Pictures in --out. The throwaway accounts are deleted at the end with
 // everything of theirs, their models taken down first.
 import { launch } from "./browser.mjs";
-import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -54,15 +59,25 @@ const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:9104").replace(/\/+$/, "").replace(/\/app$/, "");
 const out = path.resolve(String(args.out || "shots/builds"));
 mkdirSync(out, { recursive: true });
-// The relay stands in for trust.sql's functions: ages are answered there.
-process.env.BW_STAND_IN = process.env.BW_STAND_IN || site;
+// A preview is behind Vercel's protection: every request to it, the pages'
+// too, says the bypass. Without it the listing was Vercel's 401 and the
+// viewer its sign-in page (m81).
+const bypass = process.env.BW_BYPASS || "";
+const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
+const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const secret = { apikey: process.env.SUPABASE_SECRET_KEY || "", authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY || ""}` };
+// The local relay holds builds.sql's tables (/__held); a deployment has none.
+const local = (await fetch(`${site}/__held/model_builds`, { headers }).catch(() => null))?.ok === true;
+// The relay stands in for trust.sql's functions: ages are answered there too.
+if (local) process.env.BW_STAND_IN = process.env.BW_STAND_IN || site;
+// The app: the relay serves this checkout's build/web; a deployment has its own.
+const withApp = !args["no-app"] && (!local || existsSync(path.join(root, "build/web/index.html")));
 const { decode, encode } = await import(path.join(root, "api/_jpeg.js"));
 const rand = randomBytes(4).toString("hex");
 const owner = `delivered+bw-builds-owner-${rand}@resend.dev`;
 const builder = `delivered+bw-builds-builder-${rand}@resend.dev`;
 const young = `delivered+bw-builds-young-${rand}@resend.dev`;
 const PERSON = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 flow/${rand}`;
-const withApp = !args["no-app"] && existsSync(path.join(root, "build/web/index.html"));
 
 let failed = 0;
 const check = (what, ok) => {
@@ -191,7 +206,7 @@ check(`the photo to send has Exif, GPS and a comment in it: ${was}, ${markers(or
 const browser = await launch({ signedOut: true });
 
 async function context({ as = null, phone = false } = {}) {
-  const made = await browser.newContext({ userAgent: PERSON,
+  const made = await browser.newContext({ userAgent: PERSON, extraHTTPHeaders: headers,
     ...(phone ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
       : { viewport: { width: 1280, height: 900 } }) });
   if (as) {
@@ -240,14 +255,49 @@ const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeo
 
 async function api(token, pathname, body, method = "POST", extra = {}) {
   const reply = await fetch(`${site}${pathname}`, { method,
-    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...extra },
+    headers: { ...headers, "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...extra },
     body: method === "GET" ? undefined : JSON.stringify(body) });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
 
+/// On a deployment the model's page and a photo's file are kept at the CDN
+/// for 30 s and served stale for 30 more (SHARED_CACHE, photoServe): a photo
+/// added, hidden or taken out shows there within a minute, as promised, not
+/// at once. [test] asked again every 5 s for up to 90 s (once on the local
+/// relay, which keeps nothing): {value, waited} with waited in seconds.
+async function fresh(test) {
+  const began = Date.now();
+  for (;;) {
+    const value = await test();
+    const waited = Math.round((Date.now() - began) / 1000);
+    if (value || local || waited >= 90) return { value, waited };
+    await new Promise((done) => setTimeout(done, 5000));
+  }
+}
+const photoStatus = async (one) => (await fetch(`${site}/api/people?op=photo_file&id=${one}`, { headers })).status;
+
 const builds = async (id) => (await api(null, `/api/share?id=${id}`, null, "GET")).body.builds;
-const held = async (table) => (await fetch(`${site}/__held/${table}`)).json();
-const stored = async (bucket) => (await fetch(`${site}/__held_storage/list/${bucket}`)).json();
+/// The rows of [table] whose [column] is [value]: held by the local relay, or
+/// the project's, read with the secret key.
+async function held(table, column, value) {
+  if (local) return (await (await fetch(`${site}/__held/${table}`)).json()).filter((row) => row[column] === value);
+  const reply = await fetch(`${SUPABASE}/rest/v1/${table}?${column}=eq.${encodeURIComponent(value)}&select=*`, { headers: secret });
+  if (!reply.ok) throw new Error(`${table}: ${reply.status}`);
+  return reply.json();
+}
+
+/// The files in [bucket] whose names begin with [prefix], {name, bytes}: held
+/// by the local relay, or listed from the project's storage.
+async function stored(bucket, prefix) {
+  if (local) return (await (await fetch(`${site}/__held_storage/list/${bucket}`)).json()).filter((file) => file.name.startsWith(prefix));
+  const folder = prefix.includes("/") ? prefix.slice(0, prefix.lastIndexOf("/")) : "";
+  const search = prefix.slice(folder ? folder.length + 1 : 0);
+  const reply = await fetch(`${SUPABASE}/storage/v1/object/list/${bucket}`, { method: "POST",
+    headers: { ...secret, "content-type": "application/json" }, body: JSON.stringify({ prefix: folder, search, limit: 1000 }) });
+  if (!reply.ok) throw new Error(`storage ${bucket}: ${reply.status}`);
+  return (await reply.json()).filter((one) => one.id).map((one) => ({ name: folder ? `${folder}/${one.name}` : one.name,
+    bytes: one.metadata?.size })).filter((file) => file.name.startsWith(prefix));
+}
 
 let ownerToken = "";
 let id = "";
@@ -326,7 +376,7 @@ try {
   const bad = await api(null, `/api/share?op=built&id=${id}`, { device: "not a key" }, "POST",
     { "user-agent": PERSON, "sec-fetch-site": "same-origin" });
   check(`a key that is not one is refused (${bad.status})`, bad.status === 400);
-  const rows = (await held("model_builds")).filter((row) => row.model === id);
+  const rows = await held("model_builds", "model", id);
   check(`what is kept is a key per device, not the device's own (${rows.map((row) => row.device.slice(0, 8)).join(", ")})`,
     rows.length === 1 && /^[0-9a-f]{32}$/.test(rows[0].device));
 
@@ -373,7 +423,7 @@ try {
   const told = await page.evaluate(() => document.querySelector(".build-said")?.textContent || document.querySelector(".build-form .said")?.textContent);
   check(`kept as photo ${photo}: "${told}"`, /^[A-Za-z0-9]{10}$/.test(photo || ""));
   await shot(page, "3_photo_added.png");
-  const back = Buffer.from(await (await fetch(`${site}/api/people?op=photo_file&id=${photo}`)).arrayBuffer());
+  const back = Buffer.from(await (await fetch(`${site}/api/people?op=photo_file&id=${photo}`, { headers })).arrayBuffer());
   writeFileSync(path.join(out, "served.jpg"), back);
   const seen = decode(back, { useTArray: true });
   const corner = [...seen.data.subarray(((0) * seen.width + seen.width - 8) * 4, ((0) * seen.width + seen.width - 8) * 4 + 3)];
@@ -383,18 +433,20 @@ try {
     && !back.includes(Buffer.from("FlowPhone")) && !back.includes(Buffer.from("Flow Street")) && whereFrom(back) === "");
   check(`...turned upright as the phone was held: ${seen.width} x ${seen.height}, the mark now at the top right (${corner.join("/")})`,
     seen.height > seen.width && corner[0] > 200 && corner[1] > 180 && corner[2] < 80);
-  const uploads = await stored("build-photo-uploads");
-  check(`the original is gone from storage (${uploads.length} left in the uploads bucket)`, uploads.length === 0);
-  const kept = (await stored("build-photos")).filter((file) => file.name === `${photo}.jpg`);
+  const uploads = await stored("build-photo-uploads", `${builderSession.kept.user_id}/`);
+  check(`the original is gone from storage (${uploads.length} of the builder's left in the uploads bucket)`, uploads.length === 0);
+  const kept = await stored("build-photos", `${photo}.jpg`);
   check(`what is kept is build-photos/${photo}.jpg, ${kept[0]?.bytes} bytes`, kept.length === 1);
-  await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  const strip = await visitor.evaluate((one) => {
-    const figure = document.getElementById(`photo-${one}`);
-    return figure ? { words: figure.querySelector("q")?.textContent, by: figure.querySelector(".by")?.textContent,
-      loaded: figure.querySelector("img")?.complete && figure.querySelector("img")?.naturalWidth > 0 } : null;
-  }, photo);
-  check(`the model's page shows it in the strip: "${strip?.words}", ${strip?.by}`, strip && /kitchen table/.test(strip.words)
-    && /Flow Builder/.test(strip.by));
+  const { value: strip, waited: stripWaited } = await fresh(async () => {
+    await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    return visitor.evaluate((one) => {
+      const figure = document.getElementById(`photo-${one}`);
+      return figure ? { words: figure.querySelector("q")?.textContent, by: figure.querySelector(".by")?.textContent,
+        loaded: figure.querySelector("img")?.complete && figure.querySelector("img")?.naturalWidth > 0 } : null;
+    }, photo);
+  });
+  check(`the model's page shows it in the strip: "${strip?.words}", ${strip?.by} (after ${stripWaited} s)`, strip
+    && /kitchen table/.test(strip.words) && /Flow Builder/.test(strip.by));
   await shot(visitor, "4_strip.png");
   await visitor.goto(`${site}/u/${handle}?tests=1`, { waitUntil: "load" });
   const onProfile = await visitor.evaluate((one) => Boolean(document.getElementById(`photo-${one}`)), photo);
@@ -415,8 +467,7 @@ try {
   // --- 3. under 13 ----------------------------------------------------------------
   console.log("an account that said it is under 13");
   const youngSession = await mintSession(young, { age: false });
-  await fetch(`${site}/__stand_in/age`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ account: youngSession.kept.user_id, at_least_13: false }) });
+  await answerAge(youngSession.kept.user_id, young, false);
   const youngContext = await context({ as: young });
   const child = await youngContext.newPage();
   listen(child, "young");
@@ -430,7 +481,7 @@ try {
     return /13/.test(t) ? t : null;
   }, "the refusal", 60).catch(() => "");
   check(`refused, in words: "${refused}"`, /Photos of builds are shown in public, so they are for people 13 and over/.test(refused));
-  check("...and nothing was sent to storage", (await stored("build-photo-uploads")).length === 0);
+  check("...and nothing was sent to storage", (await stored("build-photo-uploads", `${youngSession.kept.user_id}/`)).length === 0);
   await shot(child, "6_under_13_refused.png");
   await youngContext.close();
 
@@ -439,14 +490,21 @@ try {
   const ownerContext = await context({ as: owner });
   const desk2 = await ownerContext.newPage();
   listen(desk2, "owner");
-  await desk2.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  await until(desk2, () => document.documentElement.dataset.buildPhotos === "owner", "the owner's tools", 60);
+  await fresh(async () => {
+    await desk2.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    await until(desk2, () => document.documentElement.dataset.buildPhotos === "owner", "the owner's tools", 60);
+    return desk2.evaluate((one) => Boolean(document.querySelector(`[data-hide="${one}"]`)), photo);
+  });
   await desk2.click(`[data-hide="${photo}"]`);
   await until(desk2, (one) => document.documentElement.dataset.buildHidden === one, "hidden", 30, photo);
-  const gone = await fetch(`${site}/api/people?op=photo_file&id=${photo}`);
-  await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
-  const hiddenNow = await visitor.evaluate((one) => !document.getElementById(`photo-${one}`), photo);
-  check(`hidden: not in the strip for anybody else (${hiddenNow}), not at its address (${gone.status})`, hiddenNow && gone.status === 404);
+  const { value: gone, waited: goneWaited } = await fresh(async () => {
+    const status = await photoStatus(photo);
+    await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    const strip = await visitor.evaluate((one) => !document.getElementById(`photo-${one}`), photo);
+    return status === 404 && strip ? { status, strip } : null;
+  });
+  check(`hidden: not in the strip for anybody else, not at its address (${gone ? "404" : "still shown"}, after ${goneWaited} s)`,
+    Boolean(gone));
   await desk2.reload({ waitUntil: "load" });
   await until(desk2, () => document.documentElement.dataset.buildPhotos === "owner", "the owner's tools again", 60);
   const listedHidden = await desk2.evaluate((one) => Boolean(document.querySelector(`[data-show="${one}"]`)), photo);
@@ -454,26 +512,29 @@ try {
   await shot(desk2, "7_owner_hidden.png");
   await desk2.click(`[data-show="${photo}"]`);
   await until(desk2, () => document.documentElement.dataset.buildHidden === "", "shown again", 30);
-  const shownAgain = await fetch(`${site}/api/people?op=photo_file&id=${photo}`);
-  check(`shown again (${shownAgain.status})`, shownAgain.status === 200);
+  const { value: shownAgain, waited: shownWaited } = await fresh(async () => (await photoStatus(photo)) === 200);
+  check(`shown again (${shownAgain ? 200 : "not yet"}, after ${shownWaited} s)`, shownAgain);
   const stranger = await api(builderSession.access_token, "/api/people?op=photo_hide", { photo, on: true });
   check(`nobody but the model's owner may hide it (${stranger.status})`, stranger.status === 403);
   await ownerContext.close();
 
   // --- 5. reported, and taken out -----------------------------------------------------
   console.log("reported, and taken out by the site's owner");
-  await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
+  await fresh(async () => {
+    await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
+    return visitor.evaluate((one) => Boolean(document.querySelector(`[data-report-photo="${one}"]`)), photo);
+  });
   await visitor.click(`[data-report-photo="${photo}"]`);
   await visitor.check('dialog.report input[value="personal"]');
   await visitor.fill("dialog.report textarea", "Builds flow: a test report of a test photo");
   await visitor.click('dialog.report button[type="submit"]');
   await until(visitor, () => /Thank you/.test(document.querySelector("dialog.report")?.textContent || ""), "the report sent", 30);
   check("a visitor reports the photo from its Report it", true);
-  const linked = (await held("report_photos")).filter((row) => row.photo === photo);
+  const linked = await held("report_photos", "photo", photo);
   check(`...which is kept as a report about that photo (report ${linked[0]?.report})`, linked.length === 1);
   await visitorContext.close();
   const master = await mintSession(process.env.MASTER_EMAIL);
-  const admin = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const admin = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
   await admin.addInitScript(([name, value]) => { try { localStorage.setItem(name, value); } catch {} },
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const desk3 = await admin.newPage();
@@ -489,9 +550,12 @@ try {
   await shot(desk3, "8_admin_photo_report.png");
   await desk3.click(`#reports tr[data-photo="${photo}"] button:has-text("Take the photo out")`);
   await until(desk3, (one) => !document.querySelector(`#reports tr[data-photo="${one}"]`), "taken out", 30, photo).catch(() => null);
-  const afterFiles = (await stored("build-photos")).map((file) => file.name);
-  const rowAfter = (await held("build_photos")).find((one) => one.id === photo);
-  const servedAfter = await fetch(`${site}/api/people?op=photo_file&id=${photo}`);
+  const afterFiles = [];
+  for (const one of await held("build_photos", "model", id)) {
+    afterFiles.push(...(await stored("build-photos", `${one.id}.jpg`)).map((file) => file.name));
+  }
+  const rowAfter = (await held("build_photos", "id", photo))[0];
+  const servedAfter = { status: (await fresh(async () => (await photoStatus(photo)) === 404)).value ? 404 : 200 };
   check(`taken out: its file deleted from storage (${afterFiles.includes(`${photo}.jpg`) ? "still there" : "gone"}), `
     + `the others kept (${afterFiles.length}), marked removed, shown nowhere (${servedAfter.status})`,
     !afterFiles.includes(`${photo}.jpg`) && afterFiles.length === 2 && Boolean(rowAfter?.removed_at) && servedAfter.status === 404);
