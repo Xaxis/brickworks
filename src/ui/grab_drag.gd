@@ -27,6 +27,11 @@ const LEAN := 4.0
 ## Weighed at most this often while dragging, ms: a big model's weighing is
 ## a few milliseconds and the frame comes first.
 const WEIGH_EVERY_MS := 50
+## Whether the balance is drawn as a drag weighs it: the support and the
+## weight on the floor, the loaded joints tinted, the lean. A shared model's
+## viewer plays without them: a visitor came to move the model, and the
+## builder's marks covered it (the weighing still decides a fall).
+var show_marks: bool = true
 ## A model standing on the baseplate's studs does not fall: they hold it, and
 ## on a baseplate the plate is the floor. Off by default; a probe may set it.
 var topple_on_baseplate: bool = false
@@ -232,6 +237,55 @@ func is_grabbing() -> bool:
 	return grab != null or chain != null
 
 
+# -- for a shared model's viewer (main.gd's play) ------------------------------
+
+## Whether the last press took hold of something that moves: a part on its
+## joint, or a chain's end. A press can also only say why nothing moves.
+func is_moving() -> bool:
+	return chain != null or (grab != null and grab.state == "moves")
+
+
+## A press that took hold of nothing that moves let be, its words said: the
+## viewer turns the view with the drag instead.
+func let_be() -> void:
+	if grab != null and grab.state != "moves":
+		grab = null
+
+
+## The joints read for the model as it stands, and its gear trains: null
+## until [method is_ready].
+func read_bodies() -> Bodies:
+	return _bodies if is_ready() else null
+
+
+func read_mechanism() -> Mechanism:
+	return _mechanism if is_ready() else null
+
+
+## The joints read now, on this thread, if they are not read for the model
+## as it stands (a publish asks what moves: SharePanel.moves_of).
+func read_now() -> void:
+	if not is_ready():
+		_ready_now()
+
+
+## Whether anything in the model hangs on a joint, a hose apart.
+func anything_moves() -> bool:
+	if not is_ready():
+		return false
+	for body: Variant in _bodies.parent_link:
+		if not _bodies.flexible.has(body):
+			return true
+	return false
+
+
+## The balance marks and the lean taken away: the model put back as it was
+## (the viewer's Reset).
+func clear_marks() -> void:
+	_unlean()
+	_clear_marks()
+
+
 ## The pointer moved to [param screen] while the button is down.
 func motion(screen: Vector2) -> void:
 	if chain != null:
@@ -251,7 +305,9 @@ func motion(screen: Vector2) -> void:
 		hoses = grab.flex.items.size()
 		hose_worst_ms = maxf(hose_worst_ms, grab.flex.lay_ms)
 	var now: int = Time.get_ticks_msec()
-	if _judge != null and now - _weighed_at >= WEIGH_EVERY_MS:
+	# Weighed live for the marks and the line's balance; a viewer that shows
+	# neither weighs it once, as it is let go (_keep).
+	if show_marks and _judge != null and now - _weighed_at >= WEIGH_EVERY_MS:
 		_weighed_at = now
 		var weighing: int = Time.get_ticks_usec()
 		report = _judge.weigh_pose(grab.placed)
@@ -758,6 +814,8 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 ## The polygon and the weight on the floor, the loaded joints tinted, and,
 ## while dragging, the model leaning over the edge it would tip over.
 func _show(weighed: Balance.Report, live: bool) -> void:
+	if not show_marks:
+		return
 	_make_mark()
 	var tints: Dictionary = {}
 	for one: Balance.JointLoad in weighed.joints:
@@ -1087,7 +1145,7 @@ func _process(_delta: float) -> void:
 		_swing_frame()
 	# The balance mark drawn once, unseen, while nothing is held, so its
 	# material is built before the first drag needs it (BalanceMark.warm).
-	if not _mark_warmed and grab == null and chain == null and camera != null and is_ready():
+	if show_marks and not _mark_warmed and grab == null and chain == null and camera != null and is_ready():
 		_mark_warmed = true
 		_make_mark()
 		_mark.warm(camera)
@@ -1237,6 +1295,12 @@ func catch() -> void:
 
 ## From this many parts the reading goes to a worker, as the balance's does.
 const READY_OFF_THREAD_FROM := 300
+## From this many parts the reading ahead goes to a worker here: the
+## builder's [constant READY_OFF_THREAD_FROM]; a shared model's viewer reads
+## every model on a worker (1), since nothing waits on it there and its
+## 93-part racer read on the page's thread was 147 ms of one frame in
+## SwiftShader (play_flow), four times that on a slowed phone.
+var read_off_thread_from: int = READY_OFF_THREAD_FROM
 ## How long the model must stand still before it is read, ms: not between
 ## the parts of one paste.
 const READY_AFTER_MS := 250
@@ -1290,7 +1354,7 @@ func _ready_ahead() -> void:
 		return
 	if grab != null or is_ready() or now - _changed_at < READY_AFTER_MS:
 		return
-	if world.brick_count() < READY_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+	if world.brick_count() < read_off_thread_from or OS.has_feature("nothreads"):
 		_ready_now()
 		return
 	var started: int = Time.get_ticks_msec()
@@ -1403,7 +1467,7 @@ func _tell_page() -> void:
 	var handles: Array = []
 	if grab == null and is_ready() and bool(JavaScriptBridge.eval("!!window.brickworksGrabAsk", true)):
 		var seen: Array = [world.revision, camera.global_transform, get_viewport().get_visible_rect().size,
-			get_viewport().get_final_transform()]
+			get_viewport().get_final_transform(), handle_parts.hash()]
 		if seen != _handles_for:
 			_handles_for = seen
 			var finding: int = Time.get_ticks_usec()
@@ -1419,6 +1483,11 @@ func _tell_page() -> void:
 		state["what"] = grab.said
 		state["angle"] = snappedf(grab.angle, 0.1)
 		state["stopped"] = grab.stopped
+	# The worst frame's parts: following the pointer (solving and room
+	# tests) and weighing.
+	state["worst_follow_ms"] = snappedf(worst_follow_ms, 0.01)
+	state["worst_follow_said"] = worst_follow_said
+	state["worst_weigh_ms"] = snappedf(worst_weigh_ms, 0.01)
 	state["hoses"] = hoses
 	state["hose_worst_ms"] = snappedf(hose_worst_ms, 0.01)
 	state["handles_found"] = handles_found
@@ -1461,39 +1530,65 @@ var _handles_for: Array = []
 const HANDLE_PARTS := 4
 
 
+## Parts to find handles over before the bodies' own, each with what it
+## is: [[what, brick id]]. The viewer's play names the parts a person would
+## take hold of (Playable.read: a steering wheel, a boom), so a browser check
+## takes hold where a person would.
+var handle_parts: Array = []
+
+
 ## A place on the page over a part of each of the first eight bodies that
-## turn on a joint and show: [{x, y, part, kind, id}].
+## turn on a joint and show, after one over each of [member handle_parts]
+## that shows ("play": its what): [{x, y, part, kind, id}].
 func _find_handles() -> Array:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var out: Array = []
+	for wanted: Array in handle_parts:
+		var key: int = int(wanted[1])
+		var body: int = int(_bodies.body_of.get(key, -1))
+		if not _bodies.parent_link.has(body):
+			continue
+		var spot: Variant = _handle(body, _bodies.parent_link[body], PackedInt64Array([key]))
+		if spot != null:
+			spot["play"] = str(wanted[0])
+			out.append(_on_page(spot, to_window, per_css))
 	for body: Variant in _bodies.parent_link:
-		if out.size() >= 8:
+		if out.size() >= 8 + handle_parts.size():
 			break
 		var spot: Variant = _handle(int(body), _bodies.parent_link[body])
 		if spot != null:
-			var at: Vector2 = to_window * (spot["screen"] as Vector2) / per_css
-			spot.erase("screen")
-			spot["x"] = roundi(at.x)
-			spot["y"] = roundi(at.y)
-			# Where its joint's line is on the page, to turn it round that.
-			if spot.has("pivot"):
-				var pivot: Vector2 = to_window * (spot["pivot"] as Vector2) / per_css
-				spot.erase("pivot")
-				spot["pivot_x"] = roundi(pivot.x)
-				spot["pivot_y"] = roundi(pivot.y)
-			out.append(spot)
+			out.append(_on_page(spot, to_window, per_css))
 	return out
+
+
+## A handle's places on the screen as the page's, in CSS pixels.
+static func _on_page(spot: Dictionary, to_window: Transform2D, per_css: float) -> Dictionary:
+	var at: Vector2 = to_window * (spot["screen"] as Vector2) / per_css
+	spot.erase("screen")
+	spot["x"] = roundi(at.x)
+	spot["y"] = roundi(at.y)
+	# Where its joint's line is on the page, to turn it round that.
+	if spot.has("pivot"):
+		var pivot: Vector2 = to_window * (spot["pivot"] as Vector2) / per_css
+		spot.erase("pivot")
+		spot["pivot_x"] = roundi(pivot.x)
+		spot["pivot_y"] = roundi(pivot.y)
+	return spot
 
 
 ## A point on the screen over a part of [param body], of the
 ## [constant HANDLE_PARTS] furthest from its joint's line the first the
-## pointer lands on: {screen, part, kind, id}.
-func _handle(body: int, link: Bodies.Link) -> Variant:
+## pointer lands on, or over one of [param only]: {screen, part, kind, id}.
+func handle_on(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64Array()) -> Variant:
+	return _handle(body, link, only)
+
+
+func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64Array()) -> Variant:
 	# The furthest few by their middles alone, before any ray is cast.
 	var order: Array = []   ## [distance off the line, brick id]
-	for key: int in _bodies.members.get(body, PackedInt64Array()):
+	for key: int in (only if not only.is_empty() else _bodies.members.get(body, PackedInt64Array())):
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
 		if info == null:

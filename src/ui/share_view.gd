@@ -29,6 +29,16 @@
 ## tapped, that step's comments, and a box to add one for somebody who may
 ## (StepComments). main.gd asks the server for them and sends.
 ##
+## Play (2026-10-19): what moves in the model taken hold of and moved as it
+## was built, on the editor's own joints, stops and couplings (Grab): the
+## steering by its wheel, a boom on its pin, a door, a gearbox by its input.
+## A pill under the bar says what moves ("Moves: steering, boom") and how
+## ("Drag a part that moves"; on a touch screen, with a finger), says what a
+## drag is doing while it is, and has Reset once something has moved, which
+## puts the model back as it was built. Nothing is kept: the model is the
+## link's, read-only, and a reload opens it as built. main.gd takes the
+## press (_play_press) and works out what moves (Playable).
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -46,6 +56,8 @@ signal copy_wanted
 signal newest_wanted
 ## Build it from [param page]: the step a changed model is offered from.
 signal build_from(page: int)
+## Reset: what was moved put back as it was built.
+signal reset_wanted
 
 ## loading, parts, ready, gone, failed.
 var state: String = "loading"
@@ -104,6 +116,18 @@ var floor_at: Callable = Callable()
 ## The comments on the step the timeline is on (StepComments): its count
 ## sits just above the timeline, at the left.
 var comments: StepComments
+## Play: what moves (Playable's words), whether it is ready to be dragged,
+## whether anything has been moved since it was built (and Reset is up),
+## and whether this is a touch screen, which is told to use a finger.
+var play_moves: PackedStringArray = PackedStringArray()
+var play_ready: bool = false
+var played: bool = false
+var touch: bool = false
+var _play: PanelContainer
+var _play_title: Label
+var _play_words: Label
+var _play_reset: Button
+var _play_said: String = ""
 
 
 func _ready() -> void:
@@ -112,6 +136,7 @@ func _ready() -> void:
 	_build_bar()
 	_build_card()
 	_build_place()
+	_build_play()
 	_hover = Label.new()
 	_hover.add_theme_font_size_override("font_size", 12)
 	_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -390,6 +415,109 @@ func _build_place() -> void:
 	_place_keep.pressed.connect(hide_place)
 
 
+## The play pill: what moves, how to move it, and Reset. Under the bar at
+## the left, out of the way of the big Build it and the comments' count,
+## which are above the timeline.
+func _build_play() -> void:
+	_play = PanelContainer.new()
+	_play.visible = false
+	_play.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_play)
+	# What moves, and Reset beside it; how to move it, or what the drag is
+	# doing, under both. Reset on the first line keeps the pill narrow: on a
+	# phone, beside the words, it reached over the view cube.
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 2)
+	_play.add_child(words)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	words.add_child(head)
+	_play_title = Label.new()
+	_play_title.add_theme_color_override("font_color", Color(0.98, 0.78, 0.12))
+	_play_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_play_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_play_title)
+	_play_words = Label.new()
+	_play_words.modulate = Color(1, 1, 1, 0.8)
+	_play_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(_play_words)
+	_play_reset = Button.new()
+	_play_reset.text = "Reset"
+	_play_reset.tooltip_text = "Put everything back as it was built"
+	_play_reset.focus_mode = Control.FOCUS_NONE
+	_play_reset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_play_reset.visible = false
+	_face(_play_reset)
+	_play_reset.pressed.connect(func() -> void: reset_wanted.emit())
+	head.add_child(_play_reset)
+	_fit_play(1.0, false)
+
+
+## The pill's faces and words at [param pt] pixels to the point: a phone's
+## interface is drawn at about two units to the point, and words of the
+## bar's size there are a few points tall.
+func _fit_play(pt: float, narrow: bool) -> void:
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.09, 0.10, 0.12, 0.92)
+	backing.border_color = Color(0.98, 0.78, 0.12, 0.45)
+	backing.set_border_width_all(maxi(1, roundi(pt)))
+	backing.set_corner_radius_all(roundi(8.0 * pt))
+	backing.content_margin_left = 12.0 * pt
+	backing.content_margin_right = 10.0 * pt
+	backing.content_margin_top = 6.0 * pt
+	backing.content_margin_bottom = 7.0 * pt
+	_play.add_theme_stylebox_override("panel", backing)
+	var points: float = 14.0 if narrow else 13.0
+	_play_title.add_theme_font_size_override("font_size", roundi(points * pt))
+	_play_words.add_theme_font_size_override("font_size", roundi((points - 1.0) * pt))
+	_play_reset.add_theme_font_size_override("font_size", roundi(points * pt))
+	_play_reset.custom_minimum_size = Vector2(0.0, roundi((34.0 if narrow else 0.0) * pt))
+	# Words wrap at most this wide: 380 points on a wide window; on a phone,
+	# its width less the view cube's corner (about 150 points) and the
+	# gutters, so the pill never covers the cube.
+	var room: float = size.x - (180.0 if narrow else 24.0) * pt if size.x > 0.0 else 600.0
+	_play_words.custom_minimum_size = Vector2(clampf(room, 140.0 * pt, 380.0 * pt), 0.0)
+	_play.reset_size()
+
+
+## What moves, now that its joints are read: [param moves] Playable's words
+## ("steering", "boom"), empty when nothing has a name but parts still move;
+## [param any] whether anything moves at all. Nothing is said when nothing
+## does.
+func show_play(moves: PackedStringArray, any: bool, on_touch: bool) -> void:
+	play_moves = moves
+	play_ready = any
+	touch = on_touch
+	_say_play()
+	_fit_big()
+
+
+func _hint() -> String:
+	if touch:
+		return "Touch a part that moves and drag it. Drag anywhere else to turn the model."
+	return "Drag a part that moves. Drag anywhere else to turn the model."
+
+
+func _say_play() -> void:
+	_play_title.text = Playable.words(play_moves) if not play_moves.is_empty() else "Parts of it move"
+	_play_words.text = _play_said if not _play_said.is_empty() else _hint()
+	_play_reset.visible = played
+	_play.reset_size()
+
+
+## What a drag is doing, said in the pill while it is ("" for the hint).
+func play_said(words: String) -> void:
+	_play_said = words
+	if _play != null:
+		_say_play()
+
+
+## Something has moved since it was built ([param yes]): Reset is offered.
+func show_played(yes: bool) -> void:
+	played = yes
+	_say_play()
+
+
 ## Tell a builder who had reached step [param at] that the model changed
 ## from step [param from], and offer it.
 func tell_changed(from: int, at: int) -> void:
@@ -537,14 +665,25 @@ func _fit_big() -> void:
 	if not ready and comments.is_open():
 		comments.close()
 	comments.visible = ready
-	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown())
+	_play.visible = ready and play_ready
+	_fit_play(pt if _narrow else 1.0, _narrow)
+	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible)
 
 
 func _process(_delta: float) -> void:
+	var below: float = _bar.get_global_rect().end.y + 10.0 if _bar.is_visible_in_tree() else 10.0
 	if _place.visible:
 		# Just under the bar, in the middle.
-		var below: float = _bar.get_global_rect().end.y + 10.0 if _bar.is_visible_in_tree() else 10.0
 		_place.position = Vector2(maxf((size.x - _place.size.x) * 0.5, 6.0), below)
+	if _play.visible:
+		# Under the bar at the left, below the changed model's words if
+		# they are up.
+		var top: float = _place.position.y + _place.size.y + 8.0 if _place.visible else below
+		var at := Vector2(10.0, top)
+		if _play.position != at:
+			_play.position = at
+		if _play.size != _play.get_combined_minimum_size():
+			_play.reset_size()
 	var bottom: float = size.y
 	if floor_at.is_valid():
 		bottom = minf(float(floor_at.call()), size.y)
@@ -556,7 +695,7 @@ func _process(_delta: float) -> void:
 		if comments.pill.position != at:
 			comments.pill.position = at
 	if not _big.visible:
-		if not _place.visible and not _pill_shown():
+		if not _place.visible and not _pill_shown() and not _play.visible:
 			set_process(false)
 		return
 	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
@@ -630,6 +769,7 @@ func covers(point: Vector2) -> bool:
 		or (_place.is_visible_in_tree() and _place.get_global_rect().has_point(point)) \
 		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point)) \
 		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point)) \
+		or (_play.is_visible_in_tree() and _play.get_global_rect().has_point(point)) \
 		or (_pill_shown() and comments.covers(point))
 
 
@@ -648,6 +788,10 @@ func controls_by_name() -> Dictionary:
 		named["view_keep_place"] = _place_keep
 	if _pill_shown():
 		named.merge(comments.controls_by_name())
+	if _play.is_visible_in_tree():
+		named["view_play"] = _play
+		if _play_reset.visible:
+			named["view_reset"] = _play_reset
 	return named
 
 
@@ -660,7 +804,10 @@ func page_state() -> Dictionary:
 		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else "",
 		"tested": _tested.visible, "tested_says": _tested.tooltip_text,
 		"built": built.duplicate(), "builds": builds,
-		"comment_step": comments.step}.merged(comments.page_state() if _pill_shown()
+		"comment_step": comments.step,
+		"play": {"ready": play_ready, "shown": _play.is_visible_in_tree(), "moves": Array(play_moves),
+			"title": _play_title.text, "says": _play_words.text, "played": played,
+			"reset": _play_reset.is_visible_in_tree(), "touch": touch}}.merged(comments.page_state() if _pill_shown()
 			else {"comments": 0, "comments_open": false, "comments_shown": [], "comments_where": [],
 				"comment_why_not": "",
 				"comment_can_write": false, "comment_said": "", "comment_pill": ""})

@@ -288,6 +288,50 @@ model a page skipped (page 81 of Top builds took 665 ms that way); the
 page is now cut before its cards are made. The CDN keeps both answers 30
 seconds, as the list.
 
+## Play: what moves, on its link and on its card
+
+`supabase/play.sql` (2026-10-19), the words in `src/assembly/playable.gd`
+and `api/_directory.js` (`MOVES`), the card in `web/gallery.js`, the
+viewer's play in `src/ui/share_view.gd` and `src/main.gd`
+(docs/MECHANISMS.md §21).
+
+Nobody can play with a model on Rebrickable. On its Brickworks link
+anybody can take hold of what moves and move it as it was built: steer
+the wheels by the steering wheel, swing the boom, open the doors, turn
+the gearbox by its input, on the editor's own joints, stops and
+couplings. Nothing is kept: the link's model never changes, and Reset
+puts it back.
+
+**What moves, on the card.** The app works out what moves as the model
+is published, from the joints a drag would use (`Playable.read`), and
+sends the words with it: steering, turntable, boom, doors, gears,
+pneumatics, actuator, rack. api/share.js takes those and no others, each
+once, and keeps them with the model's row (`shared_models.moves`). The
+gallery's card says them ("Moves: steering, boom"), and so does the
+list a session reads (`gallery`, below). A model published before, or
+from an app before this, has none until it is published again.
+
+**Technic or mechanism** now takes a model whose moves name a mechanism
+(any word but doors, `moves_mechanism`) as well as one whose parts are
+Technic (`technic`, as before). A house whose doors open is not a
+mechanism; a small racer with a working steering of few Technic parts
+is.
+
+**For a session.** The gallery tool (`src/net/gallery_tool.gd`) offers the
+gallery's own sorts (Top builds and Most built; Parts I own only with the
+person's own sign-in, `mine=1`, and refused with what to do when nobody is
+signed in), the front (`shelves=true`: this week's pick and why, the small
+builds, and what the person can build now), and says on each model how
+many built it, what moves in it and whether it is Tested.
+
+**What it costs.** In the dry run (`tools/play_try.sql`, on the live
+project inside a transaction rolled back): the column added to every row
+as an empty list (8 models), a word the app does not say and nine words
+refused, the cards saying what moves, Technic or mechanism finding the
+racer by its steering and the crane by its parts but not the house by
+its doors, a visitor's list of test models empty, the functions the
+service role's alone; Technic or mechanism's first page 4.2 ms.
+
 ## Reports reaching the owner
 
 A report (`api/people.js` `?op=report`, from the Report button or

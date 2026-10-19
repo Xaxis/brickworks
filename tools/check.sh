@@ -125,7 +125,7 @@ else
     tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py \
     tests/test_snippets.py tests/test_trademarks.py tests/test_gears.py \
     tests/test_steps_score.py tests/test_realset.py tests/test_cadtask.py \
-    tests/test_cadtask_klm.py tests/test_packed_casts.py)
+    tests/test_cadtask_klm.py tests/test_packed_casts.py tests/test_play.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
