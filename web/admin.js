@@ -46,8 +46,13 @@ async function accessToken() {
   return body.access_token;
 }
 
+// The token the page was last drawn with, for the photos it shows: renewing
+// replaces the refresh token, so it is not renewed once per photo.
+let drawnWith = "";
+
 async function load() {
   const token = await accessToken();
+  drawnWith = token;
   const reply = await fetch("/api/admin", { headers: { authorization: `Bearer ${token}` } });
   if (reply.status === 404) {
     // What every account but the owner's sees. Said plainly here, because
@@ -164,7 +169,22 @@ function draw(data) {
     const about = document.createElement("td");
     about.className = "model";
     const link = document.createElement("a");
-    if (report.model) {
+    if (report.photo) {
+      // A photo of a build (supabase/builds.sql): the photo itself, asked for
+      // with the owner's sign-in, since it may be hidden from everybody else.
+      row.dataset.photo = report.photo.id;
+      link.href = `/m/${encodeURIComponent(report.model)}#photo-${encodeURIComponent(report.photo.id)}`;
+      link.textContent = `A photo of a build of ${report.name ?? report.model}`;
+      const said = [report.photo.words ? `“${report.photo.words}”` : "", report.photo.hidden ? "hidden by the model's owner" : "",
+        report.photo.email ? `posted by ${report.photo.email}` : ""].filter(Boolean).join(" · ");
+      if (said) {
+        const line = document.createElement("small");
+        line.className = "faint photo-said";
+        line.textContent = said;
+        about.append(line, document.createElement("br"));
+      }
+      if (!report.photo.removed) about.prepend(photoOf(report.photo.id), document.createElement("br"));
+    } else if (report.model) {
       link.href = `/m/${encodeURIComponent(report.model)}`;
       link.textContent = report.name ?? report.model;
     } else if (report.handle) {
@@ -182,7 +202,11 @@ function draw(data) {
     cell(row, report.email ?? "—", report.email ? "" : "faint");
     const acts = document.createElement("td");
     acts.className = "acts";
-    if (report.model) {
+    if (report.photo) {
+      acts.append(act("Take the photo out", () => confirm("Take this photo out? Its file is deleted, and it is shown nowhere again.")
+        && post(`op=remove_photo&photo=${encodeURIComponent(report.photo.id)}`, "reports-note",
+          "The photo is out, and its file deleted.")));
+    } else if (report.model) {
       acts.append(act("Take out", () => confirm(`Take this model out of the gallery for good?`)
         && post(`op=unlist&id=${encodeURIComponent(report.model)}`, "reports-note", "Taken out.")));
       acts.append(act("Take out the account", () => confirm("Take every model of this account out of the gallery, and keep them out?")
@@ -215,6 +239,26 @@ function draw(data) {
     barred.append(row);
   }
   say("barred-note", data.barred?.length ? "" : "Nobody is taken out.");
+}
+
+/// A reported photo, small, fetched with the owner's sign-in and shown from
+/// memory (a blob: address, which this page's policy allows).
+function photoOf(id) {
+  const img = document.createElement("img");
+  img.className = "reported-photo";
+  img.alt = "The reported photo";
+  img.width = 160;
+  (async () => {
+    try {
+      const reply = await fetch(`/api/admin?op=photo&photo=${encodeURIComponent(id)}`,
+        { headers: { authorization: `Bearer ${drawnWith}` } });
+      if (!reply.ok) throw new Error(String(reply.status));
+      img.src = URL.createObjectURL(await reply.blob());
+    } catch {
+      img.alt = "The photo could not be shown";
+    }
+  })();
+  return img;
 }
 
 function act(words, run) {

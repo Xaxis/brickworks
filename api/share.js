@@ -23,7 +23,7 @@
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
 //                            instructions, technic, tested, tag) and sorted
-//                            (sort: newest, views, likes, remixes); with
+//                            (sort: newest, views, likes, remixes, builds); with
 //                            tests=1, test models too, which nobody else
 //                            is shown
 //   GET  ?op=tested&id=X     the owner's own: what the app found of the
@@ -46,6 +46,9 @@
 //                            not say it again.
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
+//   POST ?op=built&id=X      {device, v?}: built to its last step, in the
+//                            step player or the viewer: counted once per
+//                            device, never for a robot (api/_builds.js)
 //   POST ?op=unpublish&id=X  the owner takes it down, every version of it
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
@@ -106,6 +109,12 @@
 // account under 13 shares by link like anyone, but is refused a listing and
 // a credited name, in words, here and again by the database; and listing
 // anything new needs the age question answered.
+//
+// Real builds (2026-10-18, supabase/builds.sql, api/_builds.js): a model
+// built to its last step is counted once per device (?op=built), "12 built"
+// on its page and its card, and the gallery sorts by it; and its page has a
+// strip of photos of people's real builds of it, with the way to add one
+// (web/model-page.js), which api/people.js keeps.
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -120,7 +129,11 @@ import {
 import { namesTrouble } from "./_names.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
-import { publicTrouble } from "./_trust.js";
+import { publicTrouble, shownPublicly } from "./_trust.js";
+import {
+  BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
+  uploadsLeft,
+} from "./_builds.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 600 * 1024;
@@ -725,7 +738,7 @@ function testedMark(mark) {
 /// viewer and into the app. Every word an owner typed is escaped.
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
-function sharePage(origin, id, model, versions = [], shown = null, mark = null) {
+function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = []) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -801,7 +814,8 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
       <p class="counts"><span data-count="views">${count(model.views, "view")}</span>
         <span data-count="likes">${count(model.likes, "like")}</span>
-        <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span></p>
+        <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span>
+        <a data-count="builds" href="#builds-h">${count(model.builds, "built", "built")}</a></p>
       <div class="actions">
         <a class="cta" href="${escapeHtml(viewer)}">View in 3D</a>
         <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
@@ -822,6 +836,7 @@ ${header}
         data-report-model="${id}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
     </div>
   </div>
+  ${buildsSection(id, model, photos)}
   ${versionsSection(id, versions, version)}
   ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
@@ -843,6 +858,49 @@ ${header}
 ${footer}
 </body>
 </html>`;
+}
+
+/// One photo of a real build, as the strip shows it: the photo, the line
+/// its builder wrote, who (their profile, if they made one) and when, and
+/// a way to report it. Every word is theirs, escaped.
+function buildFigure(model, photo) {
+  const by = photo.by ? `by <a href="/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` : "by a builder";
+  return `<figure class="build" id="photo-${photo.id}" data-photo="${photo.id}">`
+    + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(`A real build of ${model.name}`)}" `
+    + `width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async">`
+    + `<figcaption>${photo.words ? `<q>${escapeHtml(photo.words)}</q>` : ""}`
+    + `<span class="by">${by} · ${when(photo.at)}</span>`
+    + ` <button type="button" class="link" data-report="this photo" data-report-photo="${photo.id}" hidden>Report it</button>`
+    + `</figcaption></figure>`;
+}
+
+/// Built by people: how many have built it to the last step, the strip of
+/// photos of their real builds, and the way to add one (web/model-page.js
+/// shows the form to somebody signed in, and to the model's owner the
+/// photos they hid, with a way to hide each).
+function buildsSection(id, model, photos) {
+  const builds = Number(model.builds) || 0;
+  return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
+    <h2 id="builds-h">Built by people</h2>
+    <p class="built-line">${builds ? `Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
+      + "by people following its steps in Brickworks." : "Nobody has followed its steps to the last one here yet."}</p>
+    ${photos.length ? `<div class="build-strip">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
+      : `<p class="note no-builds">No photos of a real build yet. Built it? Add yours.</p>`}
+    <div class="add-build" id="add-build" data-id="${id}" hidden>
+      <button type="button" class="cta ghost" data-add-build>I built it: add a photo</button>
+      <form class="build-form" hidden>
+        <label>A photo of your build <small>JPEG, PNG or WebP, up to 8 MB</small>
+          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required></label>
+        <label>A line about it <small>optional</small>
+          <input type="text" name="words" maxlength="140" placeholder="Built it with my own bricks, one swap in step 4"></label>
+        <p class="note">Photos show the build, not people: no faces, and nobody's name or address.</p>
+        <div class="actions"><button class="cta" type="submit">Add the photo</button>
+          <button class="cta ghost" type="button" data-cancel>Cancel</button></div>
+        <p class="said" role="status"></p>
+      </form>
+      <p class="said build-said" role="status"></p>
+    </div>
+  </section>`;
 }
 
 /// What a page says of the model's versions, once it has more than one:
@@ -1045,8 +1103,9 @@ async function read(request, response) {
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
     if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
-    const mark = publicMark(await markOf(db, id, shown.n));
-    return html(response, 200, sharePage(origin, id, page, versions, shown, mark));
+    const [mark, photos] = await Promise.all([markOf(db, id, shown.n),
+      photosWhere(`model=eq.${id}`, shownPublicly)]);
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), photos));
   }
 
   const row = await publishedRow(id);
@@ -1108,9 +1167,12 @@ async function read(request, response) {
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   // The mark this version passed, for the viewer's bar; a failure is its
   // owner's alone (?op=tested), so here it is no mark at all.
-  const tested = publicMark(await markOf(db, id, shown.n));
+  const [mark, builds] = await Promise.all([markOf(db, id, shown.n), buildsOf(id)]);
+  const tested = publicMark(mark);
   return response.status(200).json({
     tested,
+    // How many have built it to the last step (supabase/builds.sql).
+    builds,
     id,
     name: row.name,
     author: row.author,
@@ -1167,6 +1229,17 @@ async function seen(request, response) {
   return response.status(200).json({ counted: counted === true });
 }
 
+/// A build finished on some device, sent by the app once it reaches the
+/// last step from the step before (src/main.gd): counted once per device,
+/// and only for a person in a browser on this site or the desktop app. The
+/// answer says whether it was, and how many now, and never who.
+async function built(request, response) {
+  const id = String(request.query?.id || "");
+  const device = String(request.body?.device || "");
+  const person = looksLikePerson(request) || fromTheApp(request);
+  return response.status(200).json(await countBuild(id, device, person));
+}
+
 async function signedIn(request) {
   const claims = await verify(bearer(request));
   return claims.sub;
@@ -1215,7 +1288,10 @@ async function testedOwn(request, response) {
   const id = String(request.query?.id || "");
   const row = await ownRow(id);
   if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
-  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  // Somebody else's model: nothing to tell them, and nothing refused, since
+  // every signed-in visitor's page asks (web/model-page.js) and a 403 was a
+  // refused request in their console on every model not theirs.
+  if (row.owner !== owner) return response.status(200).json({ id, mine: false, tested: null });
   const asked = askedVersion(request);
   const n = asked ?? (await versionsOf(id, row, 1))[0].n;
   return response.status(200).json({ id, version: n, tested: ownerMark(await markOf(db, id, n)) });
@@ -1490,7 +1566,18 @@ async function sweep(request, response) {
   if (only.length === 0) await db(`model_views?day=lt.${yesterday}`, { method: "DELETE" });
   // How often each account or visitor did things (may_act), kept a day.
   if (only.length === 0) await db(`act_log?at=lt.${new Date(now - 24 * 3600 * 1000).toISOString()}`, { method: "DELETE" });
-  return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone });
+  // A photo as a phone sent it is read and deleted at once (api/_builds.js);
+  // one whose sender never asked for it to be kept is gone within the day,
+  // an hour after it came. Only that bucket's, and only files over an hour.
+  let originals = 0;
+  if (only.length === 0) {
+    const stale = (await uploadsLeft()).filter((file) => now - Date.parse(file.at || 0) > SWEEP_AGE_MS)
+      .map((file) => file.name);
+    for (let at = 0; at < stale.length; at += 100) await deleteBuildFiles(UPLOADS, stale.slice(at, at + 100));
+    originals = stale.length;
+  }
+  return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone,
+    originals });
 }
 
 export default async function handler(request, response) {
@@ -1519,11 +1606,12 @@ export default async function handler(request, response) {
     const op = String(request.query?.op || "");
     if (op === "unpublish") return await unpublish(request, response);
     if (op === "seen") return await seen(request, response);
+    if (op === "built") return await built(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
     if (trouble instanceof AuthError) return response.status(trouble.status).json({ error: trouble.message });
-    if (trouble instanceof Refusal || trouble instanceof Unacceptable) {
+    if (trouble instanceof Refusal || trouble instanceof Unacceptable || trouble instanceof BuildRefusal) {
       return response.status(trouble.status).json({ error: trouble.message });
     }
     console.error("share:", trouble.message);

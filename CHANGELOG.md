@@ -15,6 +15,25 @@ whole cycle.
 
 ### Added
 
+- Real builds on shared models. Reaching a model's last step in the step
+  player or the viewer, by stepping on to it from the step before, counts
+  the model as built once on that device: no account and nothing about the
+  builder, only a random key the device makes for itself and keeps, which
+  the server keeps an HMAC of. Robots are not counted, as views are not.
+  "12 built" is on the model's page, its gallery card and the viewer, and
+  the gallery has a Most built sort. And "I built it": somebody signed in
+  who is 13 or over can add a photo of their real build to a model, with a
+  line about it, from the model's page, at most three on a model. The
+  photo goes from the page straight to storage, at most 8 MB, as a JPEG, a
+  PNG or a WebP; the server decodes it to its pixels and makes a new JPEG
+  from them alone, so where, when and on what phone it was taken never
+  reach a page, and a file that is not really a picture does not decode
+  and is refused. The original is deleted at once. Photos show in a strip
+  of builds on the model's page and on the builder's profile; the model's
+  owner can hide one; anyone can report one, and the site's owner sees it
+  on the admin page and takes it out, its file deleted from storage. Needs
+  `supabase/builds.sql` applied after `trust.sql` and `tested.sql`, before
+  the code is deployed.
 - A "Tested" mark on shared models. As a model is published, the app
   builds it by the steps its link carries and tests four things: it stands
   at every step, weighed as the build check weighs it; no part of a step
@@ -353,6 +372,10 @@ whole cycle.
 
 ### Fixed
 
+- A model's page opened by somebody signed in who is not its owner no
+  longer shows a refused request in their browser's console: asking
+  whether the model failed one of its tests, to tell its owner, is now
+  answered with nothing to tell rather than refused.
 - The page stands still between Claude's calls again. The line in Account
   and the assistant panel that says which Claude chat works in this tab
   kept its "2 min ago" true on a clock, and twice a minute made its rows

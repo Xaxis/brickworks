@@ -23,6 +23,16 @@
 // marked Tested, and Tested only lists those that are. Paged after the
 // filter rather than in the database, which the few models of a flow never
 // notice; the file's own paging is proven by its dry run.
+//
+// For supabase/builds.sql: model_builds (and count_build, and the builds a
+// card, a model's page and model_stats say), build_photos (with the file's
+// trigger: 13 or over, three on a model) and report_photos; and, held with
+// build_photos, the file's two storage buckets, in memory too, with the
+// upload a page sends straight to storage signed for one path and sent to
+// this server (/__held_storage/upload/...), as Supabase's signed upload
+// takes it. What they hold is at /__held_storage/list/<bucket> and
+// /__held_storage/file/<bucket>/<path>. Several held files' functions are
+// layered, each adding what its file adds.
 
 /// [ids]' newest versions, from the real share_versions: id -> n.
 async function newestOf(real, base, headers, ids) {
@@ -39,7 +49,98 @@ const testedBy = (rows, newest, id) => rows.some((row) => row.model === id && ro
 
 const TESTS = ["stands", "steps", "parts", "whole"];
 
+const jsonReply = (status, value) => new Response(value === undefined ? null : JSON.stringify(value),
+  { status, headers: { "content-type": "application/json" } });
+
+/// How many devices built [id], as model_stats.builds would say.
+const buildsOf = (rows, id) => rows.filter((row) => row.model === id).length;
+
+/// What builds.sql adds to the gallery's cards: their builds, and its sort.
+async function withBuilds(real, base, url, init, rows) {
+  const query = JSON.parse(String(init.body || "{}")).query || {};
+  const sorted = query.sort === "builds";
+  const asked = sorted ? { ...query, sort: "newest", size: 49, skip: 0 } : query;
+  const answer = await real(url, { ...init, body: JSON.stringify({ query: asked }) });
+  if (!answer.ok) return answer;
+  let cards = (await answer.json()).map((card) => ({ ...card, builds: buildsOf(rows, card.id) }));
+  if (sorted) {
+    const skip = Number(query.skip) || 0;
+    cards = cards.map((card, at) => [card, at]).sort((a, b) => b[0].builds - a[0].builds || a[1] - b[1])
+      .map(([card]) => card).slice(skip, skip + (Number(query.size) || 25));
+  }
+  return jsonReply(200, cards);
+}
+
 const TABLES = {
+  // supabase/builds.sql
+  model_builds: {
+    key: ["model", "device"],
+    parents: [{ column: "model", table: "shared_models", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString() }),
+    check(row) {
+      return /^[0-9a-f]{32}$/.test(String(row.device)) ? "" : "model_builds_device_check";
+    },
+    rpc: {
+      // A new function, answered here whole, as the file makes it.
+      async count_build(real, base, url, init, rows) {
+        const { model_id: model, device_key: device } = JSON.parse(String(init.body || "{}"));
+        if (!/^[0-9a-f]{32}$/.test(String(device))) {
+          return jsonReply(400, { code: "23514", message: 'violates check constraint "model_builds_device_check"' });
+        }
+        const found = await real(`${base}/rest/v1/shared_models?id=eq.${encodeURIComponent(model)}&published=is.true&select=id`,
+          { headers: init.headers });
+        if (!found.ok || (await found.json()).length === 0) return jsonReply(200, false);
+        if (rows.some((row) => row.model === model && row.device === device)) return jsonReply(200, false);
+        rows.push({ model, device, at: new Date().toISOString() });
+        return jsonReply(200, true);
+      },
+      directory_models: withBuilds,
+      async directory_model(real, base, url, init, rows) {
+        const answer = await real(url, init);
+        if (!answer.ok) return answer;
+        const page = await answer.json();
+        if (!page || typeof page !== "object") return jsonReply(200, page);
+        return jsonReply(200, { ...page, builds: buildsOf(rows, page.id),
+          remixes_listed: (page.remixes_listed || []).map((card) => ({ ...card, builds: buildsOf(rows, card.id) })) });
+      },
+    },
+    // model_stats' new column, read alone: model_stats?model=eq.X&select=builds.
+    column: { table: "model_stats", select: "builds", value: (rows, model) => buildsOf(rows, model) },
+  },
+  build_photos: {
+    key: ["id"],
+    parents: [{ column: "model", table: "shared_models", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString(), words: null, hidden_at: null, removed_at: null, removed_why: null }),
+    check(row) {
+      if (!/^[A-Za-z0-9]{10}$/.test(String(row.id))) return "build_photos_id_check";
+      if (row.words !== null && (typeof row.words !== "string" || row.words.length < 1 || row.words.length > 140)) {
+        return "build_photos_words_check";
+      }
+      if (!Number.isInteger(row.width) || row.width < 1 || row.width > 1600) return "build_photos_width_check";
+      if (!Number.isInteger(row.height) || row.height < 1 || row.height > 1600) return "build_photos_height_check";
+      if (!Number.isInteger(row.bytes) || row.bytes < 1 || row.bytes > 4194304) return "build_photos_bytes_check";
+      if (!["jpeg", "png", "webp"].includes(row.was)) return "build_photos_was_check";
+      return "";
+    },
+    // The file's trigger: 13 or over (asked as the API asks it, so the
+    // trust stand-in answers until trust.sql is applied), three on a model.
+    async guard(row, rows, base, headers) {
+      const age = await globalThis.fetch(`${base}/rest/v1/rpc/age_of`, { method: "POST",
+        headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify({ account: row.account }) });
+      const said = age.ok ? await age.json() : null;
+      if (!said || said.over_13 !== true) return "brickworks: a photo of a build is for accounts 13 or over";
+      if (rows.filter((one) => one.account === row.account && one.model === row.model && !one.removed_at).length >= 3) {
+        return "brickworks: three photos of a model at most";
+      }
+      return "";
+    },
+  },
+  report_photos: {
+    key: ["report"],
+    parents: [{ column: "report", table: "reports", on: "id" }, { column: "photo", table: "build_photos", on: "id" }],
+    defaults: () => ({}),
+    check: (row) => (Number.isInteger(row.report) && typeof row.photo === "string" ? "" : "report_photos_check"),
+  },
   // supabase/tested.sql
   share_tests: {
     key: ["model", "n"],
@@ -124,27 +225,43 @@ async function answer(real, base, url, init = {}) {
   // A function a held table's file changes: asked of the database, and its
   // answer given what the file adds.
   if (path.startsWith("rpc/")) {
-    for (const [name, table] of Object.entries(TABLES)) {
-      const said = held.has(name) && table.rpc?.[path.slice(4)];
-      if (said) return said(real, base, url, init, held.get(name));
+    // Each held file's say, layered: the innermost asks the database.
+    const wrappers = Object.entries(TABLES).filter(([name, table]) => held.has(name) && table.rpc?.[path.slice(4)]);
+    if (wrappers.length === 0) return null;
+    let call = real;
+    for (const [name, table] of wrappers) {
+      const inner = call;
+      call = (asked, given) => (asked === url ? table.rpc[path.slice(4)](inner, base, asked, given, held.get(name))
+        : inner(asked, given));
     }
-    return null;
+    return call(url, init);
+  }
+  // A held file's new column of a table that is not held, read alone.
+  for (const [name, table] of Object.entries(TABLES)) {
+    if (!held.has(name) || !table.column || path !== table.column.table) continue;
+    const params = new URLSearchParams(search);
+    const model = /^eq\.(.*)$/.exec(params.get("model") || "");
+    if (params.get("select") === table.column.select && model && String(init.method || "GET").toUpperCase() === "GET") {
+      return jsonReply(200, [{ [table.column.select]: table.column.value(held.get(name), model[1]) }]);
+    }
   }
   if (!held.has(path)) return null;
   const table = TABLES[path];
   const rows = held.get(path);
   const params = new URLSearchParams(search);
   const method = String(init.method || "GET").toUpperCase();
-  const json = (status, value) => new Response(value === undefined ? null : JSON.stringify(value),
-    { status, headers: { "content-type": "application/json" } });
+  const json = jsonReply;
 
   const filters = [];
   for (const [column, said] of params) {
     if (["select", "order", "limit"].includes(column)) continue;
     const eq = /^eq\.(.*)$/.exec(said);
     const among = /^in\.\((.*)\)$/.exec(said);
+    const is = /^is\.(null|true|false)$/.exec(said);
     if (eq) filters.push((row) => String(row[column]) === eq[1]);
     else if (among) filters.push((row) => among[1].split(",").includes(String(row[column])));
+    else if (is) filters.push((row) => (is[1] === "null" ? row[column] === null || row[column] === undefined
+      : row[column] === (is[1] === "true")));
     else return json(400, { message: `held table: no filter like ${said}` });
   }
   const chosen = () => rows.filter((row) => filters.every((test) => test(row)));
@@ -173,12 +290,18 @@ async function answer(real, base, url, init = {}) {
       if (rows.some((other) => table.key.every((column) => other[column] === row[column]))) {
         return json(409, { code: "23505", message: `duplicate key value violates unique constraint "${path}_pkey"` });
       }
-      const { column, table: parentTable, on } = table.parent;
-      const parent = await real(`${base}/rest/v1/${parentTable}?${on}=eq.${encodeURIComponent(row[column])}&select=${on}`,
-        { headers: init.headers });
-      if (!parent.ok || (await parent.json()).length === 0) {
-        return json(409, { code: "23503", message: `violates foreign key constraint "${path}_${column}_fkey"` });
+      for (const { column, table: parentTable, on } of table.parents || [table.parent]) {
+        const there = held.has(parentTable)
+          ? held.get(parentTable).some((other) => String(other[on]) === String(row[column]))
+          : await (async () => {
+            const parent = await real(`${base}/rest/v1/${parentTable}?${on}=eq.${encodeURIComponent(row[column])}&select=${on}`,
+              { headers: init.headers });
+            return parent.ok && (await parent.json()).length > 0;
+          })();
+        if (!there) return json(409, { code: "23503", message: `violates foreign key constraint "${path}_${column}_fkey"` });
       }
+      const refused = table.guard ? await table.guard(row, rows, base, init.headers) : "";
+      if (refused) return json(400, { code: "P0001", message: refused });
       rows.push(row);
     }
     return new Response(null, { status: 201 });
@@ -206,15 +329,114 @@ async function answer(real, base, url, init = {}) {
   return json(405, { message: `held table: no ${method}` });
 }
 
-/// Hold [names] in this process: fetch answers for them from here.
-export function hold(names) {
+// ---------------------------------------------------------------------------
+// Storage: builds.sql's two buckets, held with build_photos.
+
+const BUCKETS = {
+  "build-photo-uploads": { most: 8388608, types: ["image/jpeg", "image/png", "image/webp"] },
+  "build-photos": { most: 4194304, types: ["image/jpeg"] },
+};
+const files = new Map(Object.keys(BUCKETS).map((bucket) => [bucket, new Map()]));
+const tickets = new Map();
+let here = "";
+
+/// A storage request for a held bucket, answered from memory; null else.
+async function storage(url, init = {}) {
+  if (!held.has("build_photos")) return null;
+  const at = url.indexOf("/storage/v1/object/");
+  if (at < 0) return null;
+  const rest = url.slice(at + 19).split("?")[0];
+  const method = String(init.method || "GET").toUpperCase();
+  const signing = /^upload\/sign\/([a-z-]+)\/(.+)$/.exec(rest);
+  if (signing && BUCKETS[signing[1]] && method === "POST") {
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    tickets.set(token, { bucket: signing[1], name: decodeURIComponent(signing[2]) });
+    return jsonReply(200, { url: `${here}/__held_storage/upload/${signing[1]}/${signing[2]}?token=${token}` });
+  }
+  const listing = /^list\/([a-z-]+)$/.exec(rest);
+  if (listing && BUCKETS[listing[1]]) {
+    const { prefix = "" } = JSON.parse(String(init.body || "{}"));
+    const names = [...files.get(listing[1]).keys()].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length));
+    const folders = [...new Set(names.filter((name) => name.includes("/")).map((name) => name.split("/")[0]))];
+    return jsonReply(200, [...folders.map((name) => ({ name, id: null })),
+      ...names.filter((name) => !name.includes("/")).map((name) => ({ name, id: name,
+        updated_at: files.get(listing[1]).get(prefix + name).at }))]);
+  }
+  const whole = /^([a-z-]+)$/.exec(rest);
+  if (whole && BUCKETS[whole[1]] && method === "DELETE") {
+    const { prefixes = [] } = JSON.parse(String(init.body || "{}"));
+    for (const name of prefixes) files.get(whole[1]).delete(name);
+    return jsonReply(200, prefixes.map((name) => ({ name })));
+  }
+  const one = /^([a-z-]+)\/(.+)$/.exec(rest);
+  if (!one || !BUCKETS[one[1]]) return null;
+  const name = decodeURIComponent(one[2]);
+  if (method === "GET") {
+    const file = files.get(one[1]).get(name);
+    return file ? new Response(file.bytes, { status: 200, headers: { "content-type": file.type } })
+      : jsonReply(400, { statusCode: "404", error: "not_found", message: "Object not found" });
+  }
+  if (method === "POST" || method === "PUT") {
+    const bytes = Buffer.from(await new Response(init.body).arrayBuffer());
+    const type = String((init.headers || {})["content-type"] || "");
+    const refused = put(one[1], name, bytes, type);
+    return refused || jsonReply(200, { Key: `${one[1]}/${name}` });
+  }
+  return null;
+}
+
+/// A file put in a held bucket, refused as the bucket refuses: too big, or
+/// a type it does not take.
+function put(bucket, name, bytes, type) {
+  if (bytes.length > BUCKETS[bucket].most) return jsonReply(413, { statusCode: "413", error: "Payload too large" });
+  if (!BUCKETS[bucket].types.includes(type.split(";")[0].trim())) {
+    return jsonReply(415, { statusCode: "415", error: "invalid_mime_type" });
+  }
+  files.get(bucket).set(name, { bytes, type, at: new Date().toISOString() });
+  return null;
+}
+
+/// This server's own storage addresses (relay_server.mjs): the signed
+/// upload a page sends, and what a check reads. {status, type, body} or null.
+export function storageRoute(url, method, headers, body) {
+  if (!held.has("build_photos")) return null;
+  const upload = /^\/__held_storage\/upload\/([a-z-]+)\/(.+)$/.exec(url.pathname);
+  if (upload && method === "PUT") {
+    const ticket = tickets.get(url.searchParams.get("token") || "");
+    const name = decodeURIComponent(upload[2]);
+    if (!ticket || ticket.bucket !== upload[1] || ticket.name !== name) {
+      return { status: 400, type: "application/json", body: JSON.stringify({ error: "invalid signature" }) };
+    }
+    tickets.delete(url.searchParams.get("token"));
+    const refused = put(upload[1], name, body, String(headers["content-type"] || ""));
+    return refused ? { status: refused.status, type: "application/json", body: JSON.stringify({ error: "refused" }) }
+      : { status: 200, type: "application/json", body: JSON.stringify({ Key: `${upload[1]}/${name}` }) };
+  }
+  const listed = /^\/__held_storage\/list\/([a-z-]+)$/.exec(url.pathname);
+  if (listed && BUCKETS[listed[1]]) {
+    return { status: 200, type: "application/json", body: JSON.stringify([...files.get(listed[1]).entries()]
+      .map(([name, file]) => ({ name, bytes: file.bytes.length, type: file.type, at: file.at }))) };
+  }
+  const read = /^\/__held_storage\/file\/([a-z-]+)\/(.+)$/.exec(url.pathname);
+  if (read && BUCKETS[read[1]]) {
+    const file = files.get(read[1]).get(decodeURIComponent(read[2]));
+    return file ? { status: 200, type: file.type, body: file.bytes } : { status: 404, type: "text/plain", body: "" };
+  }
+  return null;
+}
+
+/// Hold [names] in this process: fetch answers for them from here. [origin]
+/// is this server's own address, for the uploads a page sends it.
+export function hold(names, { origin = "" } = {}) {
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  here = origin;
   for (const name of names) {
     if (!TABLES[name]) throw new Error(`held_tables: no table ${name} to hold`);
     held.set(name, []);
   }
   const real = globalThis.fetch.bind(globalThis);
-  globalThis.fetch = async (url, init) => (await answer(real, base, String(url), init)) ?? real(url, init);
+  globalThis.fetch = async (url, init) => (url && String(url).startsWith(base) ? await storage(String(url), init) : null)
+    ?? (await answer(real, base, String(url), init)) ?? real(url, init);
 }
 
 /// What a held table has now, for a check to read (relay_server's

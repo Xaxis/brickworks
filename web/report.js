@@ -1,5 +1,5 @@
-// Report: a model, a profile or a collection that should not be in the
-// gallery (the directory's moderation, 2026-10-13). A button on each of
+// Report: a model, a profile, a collection or a photo of a build that should
+// not be in the gallery (the directory's moderation, 2026-10-13). A button on each of
 // their pages opens this; what is sent goes to the site's owner
 // (/api/people?op=report, api/admin.js shows it to them) and to nobody
 // else. Signed in or not: a person who saw something wrong should not have
@@ -116,7 +116,8 @@ for (const button of document.querySelectorAll("[data-report]")) {
   button.hidden = false;
   button.addEventListener("click", () => {
     const target = {};
-    for (const key of ["model", "handle", "collection"]) {
+    // A photo of a build is reported as itself (supabase/builds.sql).
+    for (const key of ["model", "handle", "collection", "photo"]) {
       const value = button.dataset[`report${key[0].toUpperCase()}${key.slice(1)}`];
       if (value) target[key] = value;
     }

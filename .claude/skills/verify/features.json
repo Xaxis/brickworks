@@ -250,6 +250,14 @@
       ]
     },
     {
+      "id": "cli:builds browser flow",
+      "kind": "cli",
+      "entry": "tools/web/builds_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web --hold=model_builds,build_photos,report_photos,share_tests --trust-stand-in & node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/builds.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:cad task frames",
       "kind": "cli",
       "entry": "src/dev/cadtask_frames.gd",
@@ -1143,6 +1151,14 @@
       "tests": []
     },
     {
+      "id": "lib:a build photo made safe",
+      "kind": "lib",
+      "entry": "api/_photo.js",
+      "reach": "node -e 'import(\"./api/_photo.js\").then(async ({cleanPhoto}) => console.log(await cleanPhoto(require(\"fs\").readFileSync(\"PHOTO.jpg\"))))'   (markers e0,db,c0,c4,da only; Real builds in features/web.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:a model that tips falls",
       "kind": "lib",
       "entry": "src/assembly/topple.gd",
@@ -1584,6 +1600,14 @@
       "entry": "src/assembly/racks.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=racks   (by hand: turn 8841-1_Chassis's or 8808-1's steering wheel, or 8062-1_Truck-with-Motorbike's column in its cab, and the rack on the track rod turns the wheels; -- --only=scissor drags a made scissor lift's foot along its rail)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:real builds: finishes counted and photos of builds",
+      "kind": "lib",
+      "entry": "api/_builds.js",
+      "reach": "cat supabase/trust.sql supabase/tested.sql supabase/builds.sql > /tmp/builds_dry.sql; PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs /tmp/builds_dry.sql --dry --try=tools/builds_try.sql --table=build_photos   (then the builds browser flow)",
+      "area": "web",
       "tests": []
     },
     {

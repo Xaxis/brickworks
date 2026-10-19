@@ -101,10 +101,12 @@ const UNDER_13 = {
     + "Building, your models and sharing by link are all yours.",
   collection: "Public collections are for people 13 and over. Keep this one private: it is still "
     + "yours to fill and use.",
+  photo: "Photos of builds are shown in public, so they are for people 13 and over. The model, and "
+    + "building it, are yours all the same.",
 };
 
 /// Why [account] may not have the public things [wanted] names, or null
-/// when it may. Each of listing, profile, collection and credit is true
+/// when it may. Each of listing, profile, collection, photo and credit is true
 /// for one it is about to make public (that needs the question answered
 /// 13 or over), "kept" for one it already had and keeps (that needs only
 /// not being under 13), or false. A credit is always "kept": an account
@@ -114,7 +116,7 @@ export async function publicTrouble(account, wanted) {
   if (asked.length === 0) return null;
   const age = await ageOf(account);
   if (!age.ready) return null;
-  for (const what of ["listing", "profile", "collection", "credit"]) {
+  for (const what of ["listing", "profile", "collection", "photo", "credit"]) {
     if (!asked.includes(what)) continue;
     if (age.over_13 === false) return UNDER_13[what];
     if (wanted[what] === true && what !== "credit" && age.over_13 !== true) return ASK_FIRST;
@@ -161,6 +163,10 @@ function short(text, most) {
 
 /// What a report is about, in words, and where it is.
 function about(report, origin) {
+  if (report.photo) {
+    return { what: report.name ? `a photo of a build of “${short(report.name, 80)}”` : "a photo of a build",
+      where: `${origin}/m/${report.model}#photo-${report.photo}` };
+  }
   if (report.model) {
     return { what: report.name ? `the model “${short(report.name, 80)}”` : "a model",
       where: `${origin}/m/${report.model}` };

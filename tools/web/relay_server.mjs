@@ -31,6 +31,10 @@
 //
 //   node tools/web/relay_server.mjs 8790 --static=build/web
 //
+// --hold=model_builds,build_photos,report_photos holds supabase/builds.sql's
+// tables and its two storage buckets here, and takes the upload a page sends
+// straight to storage at /__held_storage/upload/... (tools/web/builds_flow.mjs).
+//
 // With --trust-stand-in it answers supabase/trust.sql's functions itself,
 // in memory, until that file is applied to the project
 // (tools/web/trust_stand_in.mjs): the age question and the report digest's
@@ -49,7 +53,7 @@ const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const heldTables = holding.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
-  heldTables.hold(holding);
+  heldTables.hold(holding, { origin: `http://127.0.0.1:${port}` });
   console.log(`holding ${holding.join(", ")} here, not in the project`);
 }
 const stoodIn = process.argv.includes("--trust-stand-in");
@@ -137,6 +141,18 @@ http.createServer(async (incoming, outgoing) => {
     const rows = heldTables.rowsOf(asked[1]);
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
+  }
+  // The held buckets (supabase/builds.sql): a page's signed upload, and
+  // what a check reads of them.
+  if (heldTables && url.pathname.startsWith("/__held_storage/")) {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    const said = heldTables.storageRoute(url, incoming.method, incoming.headers, Buffer.concat(chunks));
+    if (said) {
+      // A page sends the upload with headers of its own, as to Supabase.
+      outgoing.writeHead(said.status, { "content-type": said.type, "cache-control": "no-store" });
+      return outgoing.end(said.body);
+    }
   }
   const query = Object.fromEntries(url.searchParams);
   if (stoodIn && url.pathname.startsWith("/__stand_in/")) {

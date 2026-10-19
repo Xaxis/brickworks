@@ -60,6 +60,8 @@ export const SIZES = {
 };
 export const SORTS = {
   newest: "Newest", views: "Most viewed", likes: "Most liked", remixes: "Most remixed",
+  // Built to the last step, once per device (supabase/builds.sql).
+  builds: "Most built",
 };
 
 export const MAX_DESCRIPTION = 1000;
@@ -290,6 +292,8 @@ export function cardOf(origin, row) {
     // Its newest version passed the app's four tests (supabase/tested.sql).
     tested: row.tested === true,
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
+    // How many have built it to the last step (supabase/builds.sql).
+    builds: Number(row.builds) || 0,
     by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,

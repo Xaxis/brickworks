@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow -->
 
 ## Sub-features
 
@@ -1938,6 +1938,67 @@ and no mark or failure on the others; Tested only lists the passed one; the
 failed one's owner is told "A step is not reachable: Step 2: …" on its page,
 `?op=mine` says each, `?op=tested` answers nobody else; and a publish from
 the app's own Share panel sends what it found, which the server keeps.
+
+**Real builds** (`supabase/builds.sql`, `api/_builds.js`, `api/_photo.js`,
+`tools/web/builds_flow.mjs`, 2026-10-18): a build finished counted once per
+device (`POST /api/share?op=built`), "N built" on the page, the card and the
+viewer, Most built; and "I built it" photos (`/api/people?op=photo_start`,
+`?op=photo`, `?op=photos`, `?op=photo_file`, `?op=photo_hide`; the admin's
+`?op=remove_photo`, `?op=photo`). How a photo is made safe, alone and fast:
+
+```sh
+# shots/builds/build_with_gps.jpg is drawn by builds_flow (below): 960 x 640, Exif with GPS, a make, Orientation 6, and a comment
+node -e 'import("./api/_photo.js").then(async ({cleanPhoto}) => { const m = await cleanPhoto(require("fs").readFileSync("shots/builds/build_with_gps.jpg")); console.log(m.width, m.height, m.bytes.includes("Exif"), m.bytes.includes("GPS")) })'
+```
+
+Proves it when it prints `640 960 false false`: turned upright, nothing of
+the file but its pixels. Drawn PNGs (every colour type, 1- to 16-bit,
+interlaced), lossy and lossless WebPs and progressive JPEGs all came back
+JPEGs whose markers are `e0,db,c0,c4,da` only (JFIF, tables, frame,
+picture); a file that is not a picture is refused 415, one under 120 px a
+side 422 (2026-10-18; a 4,000 x 3,000 JPEG in about 1 s).
+
+The SQL, dry (never applied by an agent), after the two files it needs that
+are not applied yet:
+
+```sh
+cat supabase/trust.sql supabase/tested.sql supabase/builds.sql > /tmp/builds_dry.sql   # trust.sql's hourly knock block may be left out of a dry run
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs /tmp/builds_dry.sql \
+  --dry --try=tools/builds_try.sql --table=build_photos
+```
+
+Proves it when, before "rolled back, nothing kept": a device finishes once
+(true, false for the same device, true for another, false for a model taken
+down), a key that is not one refused; the card says builds 2 and keeps
+`tested` and `by`, Most built first; three photos allowed and a fourth
+refused, under 13 and never asked refused, a removed one not counted; the
+report about a photo is in the poster's test stream and its digest names
+the photo; a photo that is not there refused by its foreign key; the two
+buckets private, 8 MB of JPEG, PNG or WebP and 4 MB of JPEG; row security on.
+
+In real browsers, against a local relay holding the new tables and buckets:
+
+```sh
+tools/export.sh web
+node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web \
+  --hold=model_builds,build_photos,report_photos,share_tests --trust-stand-in &
+node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=shots/builds
+```
+
+Proves it when it ends "a build finished counts once per device, and a photo
+of it is made safe, shown, hidden, reported and taken out" with no `FAIL`: on
+a 390 x 844 touch page, Next to the last step sends one finish and the model
+is built once; Back and Next again, and the viewer opened again in the same
+browser, send nothing more; a robot's finish not counted, the desktop app's
+counted; "1 built" on the page and the card, Most built first; a JPEG drawn
+with GPS, a make and a comment comes back with markers `e0,db,c0,c4,da`, no
+Exif, GPS, make or comment in its bytes, turned upright; the original gone
+from the uploads bucket; the photo in the strip and on the profile; three a
+model and a fourth refused; under 13 refused in words; the owner hides it
+(404 at its address) and shows it again; a report from its Report it reaches
+the admin page with the photo, and Take the photo out deletes that one file.
+`share_view_probe` (above) proves the app's half: a finish sent once per
+device and link, never for a jump, the cover or opening the viewer.
 
 **Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
 each page turn of Build it timed from the finger to the frame, and the first

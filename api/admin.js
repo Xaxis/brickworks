@@ -31,6 +31,12 @@
 //                                        of model X (the newest without v):
 //                                        the app's finding, which the server
 //                                        cannot check (supabase/tested.sql)
+//   POST /api/admin?op=remove_photo&photo=P  take photo P of a build out: its
+//                                        file deleted from storage, that one
+//                                        file only, its reports settled
+//                                        (supabase/builds.sql)
+//   GET  /api/admin?op=photo&photo=P     photo P, hidden or not, to look at
+//                                        before taking it out
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
@@ -39,6 +45,7 @@
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { modelHash } from "./_directory.js";
+import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -90,16 +97,24 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss, untest };
+  const acts = { unlist, bar, unbar, dismiss, untest, remove_photo: takePhotoOut };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
     } catch (error) {
-      return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
+      return response.status(error instanceof AuthError || error instanceof BuildRefusal ? error.status : 502)
+        .json({ error: error.message });
     }
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss or untest" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest or remove_photo" });
+  }
+  if (op === "photo") {
+    const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);
+    if (!file) return response.status(404).json({ error: "no photo there" });
+    response.setHeader("Content-Type", "image/jpeg");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    return response.status(200).end(file);
   }
 
   try {
@@ -220,6 +235,17 @@ async function untest(request, response) {
   return response.status(200).json({ id, version: n, cleared: true, why });
 }
 
+/// A photo of a build taken out (supabase/builds.sql): not shown anywhere
+/// again, its file deleted from storage — that photo's file and no other —
+/// and what was reported about it settled.
+async function takePhotoOut(request, response) {
+  const photo = String(request.query?.photo || "");
+  if (!ID.test(photo)) return response.status(400).json({ error: "name a photo: ?photo=<ten characters>" });
+  const why = String(request.query?.why || request.body?.why || "").replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .trim().slice(0, 200) || "Taken out by Brickworks";
+  return response.status(200).json(await removePhoto(photo, why));
+}
+
 /// Every Tested mark showing, newest first, with its model's name; none
 /// while supabase/tested.sql is not applied.
 async function marks() {
@@ -251,6 +277,8 @@ async function report() {
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
+  // Which reports are about a photo of a build, and that photo.
+  const photos = await photosReported(reports.map((one) => one.id)).catch(() => new Map());
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -297,6 +325,9 @@ async function report() {
       reason: report.reason, note: report.note, contact: report.contact, at: report.at,
       name: report.shared_models?.name ?? null, listed: report.shared_models?.listed ?? null,
       email: report.shared_models ? emails.get(report.shared_models.owner) || null : null,
+      photo: photos.has(report.id) ? (({ id, words, at, hidden_at: hidden, removed_at: removed, account }) => ({
+        id, words, at, hidden: Boolean(hidden), removed: Boolean(removed), email: emails.get(account) || null,
+      }))(photos.get(report.id)) : null,
     })),
     barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
       email: emails.get(one.account) || null })),

@@ -81,7 +81,10 @@
     if (Number(model.views)) said.push(counted(model.views, "view"));
     if (Number(model.likes)) said.push(counted(model.likes, "like"));
     if (Number(model.remixes)) said.push(counted(model.remixes, "remix", "remixes"));
+    // Built to the last step, once per device (supabase/builds.sql).
+    if (Number(model.builds)) said.push(counted(model.builds, "built", "built"));
     numbers.textContent = said.join(" · ");
+    link.dataset.builds = String(Number(model.builds) || 0);
     words.append(name, about, numbers);
     // Marked Tested: its newest version passed the four tests the app ran
     // as it was published (api/_tested.js), said on hover.

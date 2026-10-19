@@ -31,6 +31,25 @@
 //                                 cron job): this hour's one email of what
 //                                 was reported, if it has not gone. Needs
 //                                 no secret: it can send nothing else
+//   GET  ?op=photos&id=X          the photos of real builds of model X that
+//                                 may be shown; with the session, also the
+//                                 caller's own on it, and for its owner the
+//                                 hidden ones (api/_builds.js)
+//   GET  ?op=photo_file&id=P      photo P, the JPEG made from what was sent
+//   POST ?op=photo_start          (session) {model, type, size}: where the
+//                                 phone sends a photo of its build, at most
+//                                 8 MB, straight to storage
+//   POST ?op=photo                (session) {model, ticket, words?}: that
+//                                 photo made safe and kept (api/_photo.js)
+//   POST ?op=photo_hide           (session) {photo, on}: the model's owner
+//                                 hides a photo on it, or shows it again
+//
+// Real builds (2026-10-18, supabase/builds.sql): a photo of somebody's real
+// build of a model, with a line, by an account 13 or over, at most three on
+// a model; shown on the model's page and on their profile; hidden by the
+// model's owner, reported like anything else ("photo"), and taken out by
+// the site's owner with its file (api/admin.js). api/_builds.js has the
+// rules, api/_photo.js how a photo is made safe.
 //
 // The ground rules (2026-10-18, supabase/trust.sql): a profile and a public
 // collection need the age question answered 13 or over, and nothing of an
@@ -63,6 +82,9 @@ import {
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
 import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
+import {
+  BuildRefusal, MAX_WORDS, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto, startPhoto,
+} from "./_builds.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -74,7 +96,7 @@ export const MOST_IN_A_LIST = 500;
 export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
-  collection: [20, 60], collect: [300, 3000], report: [6, 20] };
+  collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300] };
 const REASONS = new Set(["spam", "offensive", "sexual", "violent", "copied", "trademark", "personal", "other"]);
 
 class Refusal extends Error {
@@ -216,13 +238,14 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about] = await Promise.all([
+  const [page, about, built] = await Promise.all([
     models(origin, { owner: person.account, tests }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
+    builtBy(origin, person, tests),
   ]);
   return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
-    collections: about?.collections ?? [], url: `${origin}/u/${person.handle}`, ...page });
+    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`, ...page });
 }
 
 // ---------------------------------------------------------------------------
@@ -389,8 +412,8 @@ async function report(request, response) {
   const body = request.body && typeof request.body === "object" ? request.body : {};
   let account = null;
   if (bearer(request)) account = await signedIn(request);
-  const named = ["model", "handle", "collection"].filter((key) => body[key] !== undefined && body[key] !== "");
-  if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle or a collection");
+  const named = ["model", "handle", "collection", "photo"].filter((key) => body[key] !== undefined && body[key] !== "");
+  if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle, a collection or a photo");
   const target = {};
   // A counter-notice (web/takedown.html): about a model, which may be out
   // of the gallery already, with a way to reach whoever sends it.
@@ -403,6 +426,15 @@ async function report(request, response) {
       : await publishedModel(String(body.model));
     if (!there) throw new Refusal("there is no shared model at that link", 404);
     target.model = String(body.model);
+  } else if (named[0] === "photo") {
+    // A photo of a build: about its model as far as the reports' own check
+    // goes, and report_photos says which photo.
+    const photo = await photoRow(String(body.photo));
+    if (!photo || photo.removed_at || photo.hidden_at || !(await publishedModel(photo.model))) {
+      throw new Refusal("there is no photo at that id", 404);
+    }
+    target.model = photo.model;
+    target.photo = photo.id;
   } else if (named[0] === "handle") {
     const person = await personOf(String(body.handle).toLowerCase());
     if (!person) throw new Refusal("nobody has that handle", 404);
@@ -419,8 +451,10 @@ async function report(request, response) {
   const contact = cleanLine(body.contact, 200) || null;
   const visitor = account ? null : visitorKey(request, "report");
   await counted(account || visitor, "report");
-  const made = await db("reports", { method: "POST", body: { ...target, reason, note, contact: contact && contact.length >= 3 ? contact : null,
+  const { photo: aboutPhoto, ...about } = target;
+  const made = await db("reports", { method: "POST", body: { ...about, reason, note, contact: contact && contact.length >= 3 ? contact : null,
     reporter: account, visitor }, prefer: "return=representation" });
+  if (aboutPhoto && Array.isArray(made) && made[0]?.id) await reportPhoto(made[0].id, aboutPhoto);
   // To the owner, by email, if this hour has not had its one (a test's,
   // rendered and recorded only). A digest that does not go is no reason
   // to tell the person their report did not: it is kept, and goes next.
@@ -440,6 +474,107 @@ async function knock(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const sent = await sendDigest({ origin: originOf(request) });
   return response.status(200).json({ state: sent.state, reports: sent.reports || 0 });
+}
+
+// ---------------------------------------------------------------------------
+// Photos of real builds (api/_builds.js).
+
+/// Said of a photo to anybody: never whose account it is, only the name
+/// they show, if they made a profile.
+export function photoSaid(origin, photo) {
+  return { id: photo.id, model: photo.model, words: photo.words, width: photo.width, height: photo.height,
+    at: photo.at, by: photo.by, url: `${origin}/api/people?op=photo_file&id=${photo.id}`,
+    page: `${origin}/m/${photo.model}#photo-${photo.id}`, ...(photo.hidden ? { hidden: true } : {}) };
+}
+
+/// The age rule for a photo, in words, before the database's.
+const oldEnough = (account) => async () => {
+  const young = await publicTrouble(account, { photo: true });
+  if (young) throw new Refusal(young, 422);
+};
+
+/// The model a photo is of: published, not taken out; with its owner.
+async function photoModel(id) {
+  if (!ID.test(id || "")) return null;
+  const rows = await db(`shared_models?id=eq.${id}&published=is.true&barred=is.false&select=id,owner,listed`);
+  return rows[0] || null;
+}
+
+async function photoStart(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const model = await photoModel(String(body.model || ""));
+  if (!model) throw new Refusal("there is no shared model at that link", 404);
+  const started = await startPhoto(account, model.id, { type: String(body.type || ""), size: Number(body.size) },
+    async () => {
+      await oldEnough(account)();
+      await counted(account, "photo");
+    });
+  return response.status(200).json(started);
+}
+
+async function photoKeep(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const model = await photoModel(String(body.model || ""));
+  if (!model) throw new Refusal("there is no shared model at that link", 404);
+  const words = cleanLine(body.words, MAX_WORDS) || null;
+  checkNames({ "What you say about it": [words, "words"] });
+  const kept = await keepPhoto(account, model.id, String(body.ticket || ""), words, oldEnough(account));
+  const origin = originOf(request);
+  return response.status(201).json(photoSaid(origin, { ...kept, model: model.id, at: new Date().toISOString(),
+    by: (await db(`people?account=eq.${account}&select=handle,name`))[0] || null }));
+}
+
+/// The photos of a model that may be shown; signed in, the caller's own on
+/// it (how many more they may add) and, for its owner, the hidden ones.
+async function photos(request, response) {
+  const model = await photoModel(String(request.query?.id || ""));
+  let account = null;
+  if (bearer(request)) account = await signedIn(request);
+  response.setHeader("Cache-Control", account ? "private, no-store" : "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  if (!model) return response.status(404).json({ error: "there is no shared model at that link" });
+  const owner = account !== null && model.owner === account;
+  const origin = originOf(request);
+  const shown = await photosWhere(`model=eq.${model.id}`, shownPublicly, { hidden: owner });
+  const mine = account ? await photosWhere(`model=eq.${model.id}&account=eq.${account}`, async () => true,
+    { hidden: true, limit: 3 }) : [];
+  return response.status(200).json({ model: model.id, owner, photos: shown.map((one) => photoSaid(origin, one)),
+    mine: mine.map((one) => photoSaid(origin, one)), left: account ? Math.max(0, 3 - mine.length) : null });
+}
+
+async function photoServe(request, response) {
+  const file = await photoFile(String(request.query?.id || ""), shownPublicly);
+  if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+  response.setHeader("Content-Type", "image/jpeg");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  // Kept as briefly as the pages, so a photo hidden or taken out leaves
+  // every cache within a minute.
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=30");
+  return response.status(200).end(file);
+}
+
+async function photoHide(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  if (typeof body.on !== "boolean") throw new Refusal("say on: true or on: false");
+  await counted(account, "photo_hide");
+  return response.status(200).json(await hidePhoto(account, String(body.photo || ""), body.on));
+}
+
+/// What [person] built that may be shown: their photos on models in the
+/// gallery (a test model's only when asked for), each with its model's name.
+async function builtBy(origin, person, tests) {
+  const built = await photosWhere(`account=eq.${person.account}`, shownPublicly);
+  const ids = [...new Set(built.map((one) => one.model))];
+  const models = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&barred=is.false`
+    + "&listed=is.true&select=id,name,test") : [];
+  const named = new Map(models.filter((one) => tests || !one.test).map((one) => [one.id, one.name]));
+  return built.filter((one) => named.has(one.model))
+    .map((one) => ({ ...photoSaid(origin, one), model_name: named.get(one.model) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +636,7 @@ export function cardHtml(card) {
   const said = card.views ? [count(card.views, "view")] : [];
   if (card.likes) said.push(count(card.likes, "like"));
   if (card.remixes) said.push(count(card.remixes, "remix", "remixes"));
+  if (card.builds) said.push(count(card.builds, "built", "built"));
   return `<a class="model" href="/m/${card.id}" data-id="${card.id}">`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(card.name)}" width="1200" height="630" loading="lazy" decoding="async">`
@@ -545,11 +681,18 @@ async function profilePage(request, response) {
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const [shown, about] = await Promise.all([
+  const [shown, about, built] = await Promise.all([
     models(origin, { owner: person.account, tests }, 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
+    builtBy(origin, person, tests),
   ]);
   const url = `${origin}/u/${person.handle}`;
+  // What they built of other people's models (and their own), from photos.
+  const builds = built.map((one) => `<figure class="build" id="photo-${one.id}"><a href="/m/${one.model}#photo-${one.id}">`
+    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(`A build of ${one.model_name}`)}" `
+    + `width="${one.width}" height="${one.height}" loading="lazy" decoding="async"></a>`
+    + `<figcaption><a href="/m/${one.model}">${escapeHtml(one.model_name)}</a>`
+    + `${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}</figcaption></figure>`).join("");
   const lists = (about?.collections || []).map((list) =>
     `<li><a href="/c/${list.id}">${escapeHtml(list.name)}</a> <span>${escapeHtml(count(list.count, "model"))}</span></li>`).join("");
   const since = Date.parse(person.created_at || "");
@@ -567,6 +710,9 @@ async function profilePage(request, response) {
     : `<p class="note">Nothing in the gallery yet.</p>`}
   ${shown.more ? `<p class="note"><a href="/gallery?q=${encodeURIComponent(person.name)}">More in the gallery</a></p>` : ""}
   </section>
+  ${builds ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built</h2>
+    <p class="note">Photos of their real builds of models in the gallery.</p>
+    <div class="build-strip">${builds}</div></section>` : ""}
   <p class="note report-line"><button type="button" class="link" data-report="this profile"
     data-report-handle="${escapeHtml(person.handle)}" hidden>Report it</button> <a href="/takedown">Takedown requests</a></p>
 </div>`;
@@ -629,7 +775,12 @@ export default async function handler(request, response) {
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
       if (op === "list_page") return await listPage(request, response);
+      if (op === "photos") return await photos(request, response);
+      if (op === "photo_file") return await photoServe(request, response);
     } else if (request.method === "POST") {
+      if (op === "photo_start") return await photoStart(request, response);
+      if (op === "photo") return await photoKeep(request, response);
+      if (op === "photo_hide") return await photoHide(request, response);
       if (op === "profile") return await saveProfile(request, response);
       if (op === "like") return await toggle(request, response, "model_likes");
       if (op === "favourite") return await toggle(request, response, "model_favourites");
@@ -643,7 +794,8 @@ export default async function handler(request, response) {
     }
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
-    if (trouble instanceof AuthError || trouble instanceof Refusal || trouble instanceof Unacceptable) {
+    if (trouble instanceof AuthError || trouble instanceof Refusal || trouble instanceof Unacceptable
+        || trouble instanceof BuildRefusal) {
       return response.status(trouble.status).json({ error: trouble.message });
     }
     console.error("people:", trouble.message);
