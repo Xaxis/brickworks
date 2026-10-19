@@ -24,8 +24,9 @@ what stays never moves, and the last turn puts every part back within 0.02
 LDU. Each job runs under ~/.claude/claude-core/bin/heavy, with a data folder
 of its own (.scratch-data, never the owner's app data); a set that takes
 longer than --timeout seconds (300) is stopped and said so, and its job goes on
-from the next. Rows go to bench/results/grab11-2026-10-18/sweep_LABEL.jsonl and
-the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18).
+from the next. Rows go to bench/results/grab12-2026-10-18/sweep_LABEL.jsonl and
+the table to sweep_LABEL.md (Grab 9's are in grab9-2026-10-18, Grab 11's in
+grab11-2026-10-18).
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OMR = ROOT / "vendor" / "omr" / "files"
 PARTS = ROOT / "vendor" / "ldraw" / "parts"
 TABLE = ROOT / "assets" / "ldraw" / "gears.json"
-OUT = Path("/mnt/Projects/brickworks/bench/results/grab11-2026-10-18")
+OUT = Path("/mnt/Projects/brickworks/bench/results/grab12-2026-10-18")
 HEAVY = Path.home() / ".claude" / "claude-core" / "bin" / "heavy"
 GPU = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
 

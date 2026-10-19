@@ -26,7 +26,7 @@ each turn moves it, what stays never moves, and the last turn puts the
 thing's own parts back within 0.02 LDU (what hangs from it may have swung
 down under its weight on the way). When a turn moves nothing, the row keeps what the
 app said: the refusal names what holds it. Rows go to
-bench/results/grab11-2026-10-18/movesweep_LABEL.jsonl and the table to
+bench/results/grab12-2026-10-18/movesweep_LABEL.jsonl and the table to
 movesweep_LABEL.md.
 """
 
