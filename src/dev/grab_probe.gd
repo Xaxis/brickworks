@@ -5165,10 +5165,60 @@ func _chain_case(name: String, path: String, end: String) -> void:
 	while _builder.history_depth() > depth:
 		_builder.undo()
 	await _frames(3)
+	# Pressed and dragged at once, the press's own frame doing that much work
+	# before the app's process notes it (a slow page reading the bodies, or
+	# the grab's own process): timed from the press, that work was a hold
+	# (the flywheel taken by its chain on m81's preview).
+	var work: Node = PressFrameWork.new()
+	work.ms = CHAIN_SLOW_FRAME_MS
+	work.pressed = func() -> bool: return int(_main.get("_press_brick")) != 0
+	root.add_child(work)
+	await _move(screen, 0)
+	await _button(screen, true)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	_check("%s: pressed and dragged at once, its own frame %d ms of work before the app's process, it is not taken by its chain (%s)"
+		% [name, int(work.took), _grab.chain.said if _grab.chain != null else "grabbed by its joint"
+		if _grab.grab != null else "not grabbed"], int(work.took) >= CHAIN_SLOW_FRAME_MS and _grab.chain == null)
+	work.queue_free()
+	await _button(_last_screen, false)
+	await _frames(3)
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(3)
+	# As grab_flow's flywheel went on m81's preview, its frames 600 ms each:
+	# pressed, the frame that handled it slow in its drawing, the pointer
+	# seen in the next still where it was pressed (the browser sent the move
+	# a frame late), then dragged. Timed from the frame that handled the
+	# press, that frame's drawing was a hold.
+	await _move(screen, 0)
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = _as_event(screen)
+	down.global_position = down.position
+	down.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(down)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var drew: int = Time.get_ticks_msec()
+	OS.delay_msec(CHAIN_SLOW_FRAME_MS)
+	drew = Time.get_ticks_msec() - drew
+	await _move(screen + Vector2(1, 0), MOUSE_BUTTON_MASK_LEFT)
+	await _frames(1)
+	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
+	_check("%s: pressed, its own frame %d ms drawing, the pointer still in the next, then dragged: not taken by its chain (%s)"
+		% [name, drew, _grab.chain.said if _grab.chain != null else "grabbed by its joint"
+		if _grab.grab != null else "not grabbed"], _grab.chain == null)
+	await _button(_last_screen, false)
+	await _frames(3)
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(3)
 
 
 ## A frame as slow as m78's preview drew the grab flow's (a second and more).
 const CHAIN_SLOW_FRAME_MS := 600
+const PressFrameWork := preload("res://src/dev/press_frame_work.gd")
 
 
 # -- a session -------------------------------------------------------------------------

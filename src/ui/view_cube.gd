@@ -288,11 +288,12 @@ class NavButton extends Control:
 	var fit: Callable = Callable()
 
 	const HOLD_MS := 280
+	const PressHold := preload("res://src/ui/press_hold.gd")
 	var _down_at: int = -1
-	## The last frame that saw the button still down, ms: a click is quick by
-	## what the frames saw, not by the clock (a slow frame between the press
-	## and the release is not a hold).
-	var _still_at: int = -1
+	## How long the button has been held down: a click is quick by what the
+	## frames saw (PressHold), not by the clock, so neither a slow frame
+	## between the press and the release nor the press's own frame is a hold.
+	var _hold := PressHold.new()
 	var _pressed_at: Vector2 = Vector2.ZERO
 	var _dragged: bool = false
 	var _hover: bool = false
@@ -311,8 +312,8 @@ class NavButton extends Control:
 		# Held without moving: keep going, at the keys' rate.
 		if _down_at < 0 or _dragged or camera == null:
 			return
-		_still_at = Time.get_ticks_msec()
-		if Time.get_ticks_msec() - _down_at < HOLD_MS:
+		_hold.saw()
+		if _hold.held_ms() < HOLD_MS:
 			return
 		match kind:
 			"turn":
@@ -349,12 +350,12 @@ class NavButton extends Control:
 		accept_event()
 		if button.pressed:
 			_down_at = Time.get_ticks_msec()
-			_still_at = _down_at
+			_hold.start()
 			_pressed_at = button.position
 			_dragged = false
 			queue_redraw()
 			return
-		var quick: bool = _still_at - _down_at < HOLD_MS
+		var quick: bool = _hold.held_ms() < HOLD_MS
 		var was_drag: bool = _dragged
 		_down_at = -1
 		_dragged = false

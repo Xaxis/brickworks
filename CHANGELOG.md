@@ -406,6 +406,14 @@ whole cycle.
   a click on the view cube's arrows and zoom, which did nothing, and a
   flywheel let go while it turned, which a slow frame before the release
   made stop dead instead of coasting.
+- A quick drag on a slow page grabs the part even when the frame that
+  handles the press is itself slow. That frame can spend half a second
+  reading the model's joints or drawing, and that time counted as the press
+  being held: a flywheel turned by a quick drag was taken by its chain
+  instead. A hold is now timed from the first frame after the one that
+  handled the press, so that frame's own work is never a hold. The same
+  goes for a finger held on a part to take it off, and for the view cube's
+  arrows and zoom.
 
 - Eight more real sets steer both ways and back: 42050-1, 8258-1, 8273-1
   and its Utility Cargo Truck, 8289-1 and its Tow Truck, 9395-1 and

@@ -54,8 +54,10 @@ picture the assistant is shown.
   on it turns the view. Its four arrows turn a step a click (held, they keep
   turning; dragged, they follow), and under it a pad slides (click an arrow
   of it, or drag), − and + zoom, and the last fits. A click is quick by what
-  the frames saw (`NavButton._still_at`): one across a slow frame is a click
-  (`src/dev/slow_frames_probe.gd`). Each is published to the
+  the frames saw (`NavButton._hold`, `src/ui/press_hold.gd`: from the first
+  frame after the one that handled the press): one across a slow frame is a
+  click, and so is one whose own frame does 600 ms of work before the cube
+  sees it or after, drawing: the same step (`src/dev/slow_frames_probe.gd`). Each is published to the
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`

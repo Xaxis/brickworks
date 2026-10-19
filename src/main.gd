@@ -5302,10 +5302,11 @@ var _weighed_us: int = 0
 func _process_main(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
+	# Held is what the frames saw (PressHold).
 	if _press_brick != 0:
-		_press_still_ms = Time.get_ticks_msec()
+		_press_hold.saw()
 	if _touch_index != -1:
-		_touch_still_at = Time.get_ticks_msec()
+		_touch_hold.saw()
 	if not _viewing.is_empty():
 		_view_hover()
 	else:
@@ -5383,15 +5384,15 @@ var _color_index: int = 0
 ## How long a finger must stay down to mean "take this one off"
 ## rather than "put one here", in milliseconds.
 const HOLD_MS := 480
+const PressHold := preload("res://src/ui/press_hold.gd")
 
 
-var _touch_down_at: int = 0
 var _touch_index: int = -1
-## The last frame that saw that finger still down, ms: a hold is what the
-## frames saw, as a press held for a chain is (_press_still_ms). On a phone
-## drawing a frame a second a tap's down and up come a frame apart, and
-## timed by the clock it read as a hold and took a brick off.
-var _touch_still_at: int = 0
+## How long that finger has been held still: what the frames saw
+## (PressHold), as a press held for a chain is. On a phone drawing a frame
+## a second a tap's down and up come a frame apart, and timed by the clock
+## it read as a hold and took a brick off.
+var _touch_hold := PressHold.new()
 
 ## A left press on a part with the Select tool, not yet a click or a drag:
 ## the part, where the press was, and whether it copies (Ctrl).
@@ -5403,16 +5404,16 @@ var _dragging_part: bool = false
 ## A part grabbed by a drag and moved about its joint (GrabDrag).
 var _grab_drag: GrabDrag
 var _grabbing: bool = false
-## When the press that may become a grab came, and how long it must be held
-## still to take the part by its chain of joints (GrabChain), ms.
-var _press_ms: int = 0
+## How long the press that may become a grab has been held still where it
+## began, and how long it must be to take the part by its chain of joints
+## (GrabChain), ms. Held is what the frames saw (PressHold): in a browser
+## drawing a frame a second, a press and the drag straight after it come a
+## frame apart, and timed by the clock they read as a hold (grab_flow on
+## m78's preview: the pendulum taken by its chain, never swung); timed from
+## the frame that handled the press, that frame's own work did (m81's: the
+## flywheel taken by its chain, never spun).
+var _press_hold := PressHold.new()
 const CHAIN_HOLD_MS := 400
-## The last frame that saw that press still held where it began, ms. Held is
-## what a frame saw: in a browser drawing a frame a second, a press and the
-## drag straight after it come a frame apart, and timed from the press to
-## the first move they read as a hold (grab_flow on m78's preview: the
-## pendulum taken by its chain, never swung).
-var _press_still_ms: int = 0
 ## A left press that is not yet a click or a drag. A drag from it moves the
 ## view ("turn", "slide", "zoom") or draws a box ("box"); "" for a finger,
 ## whose drags are the camera's. Nothing is placed or selected until it
@@ -5620,7 +5621,7 @@ func _grab_on_joint(brick_id: int) -> bool:
 		return false
 	var selected: Dictionary = _builder.selection if _builder.selection.has(brick_id) else {}
 	# Held still on it a moment before dragging: by its chain of joints.
-	var chained: bool = _press_still_ms - _press_ms >= CHAIN_HOLD_MS
+	var chained: bool = _press_hold.held_ms() >= CHAIN_HOLD_MS
 	if not _grab_drag.press(brick_id, _press_at, selected, chained):
 		return false
 	_builder.hide_preview()
@@ -5667,8 +5668,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			# to the camera and must not remove anything.
 			if _touch_index == -1:
 				_touch_index = touch.index
-				_touch_down_at = Time.get_ticks_msec()
-				_touch_still_at = _touch_down_at
+				_touch_hold.start()
 			return
 
 		if touch.index != _touch_index:
@@ -5688,7 +5688,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# swallowed, and is not a hold either.
 		if not _camera.last_touch_was_a_tap():
 			return
-		if _touch_still_at - _touch_down_at < HOLD_MS:
+		if _touch_hold.held_ms() < HOLD_MS:
 			return
 
 		_builder.update_preview(
@@ -5869,8 +5869,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if under != 0:
 				_press_brick = under
 				_press_copies = button.ctrl_pressed or button.meta_pressed
-				_press_ms = Time.get_ticks_msec()
-				_press_still_ms = _press_ms
+				_press_hold.start()
 				return
 		_pending_left = true
 		_pending_verb = verb

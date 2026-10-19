@@ -27,8 +27,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `tools/web/controls_flow.mjs` counts a person's first tasks in clicks and keys
   on a build, the old way (`--recipe=old`) or this one. On a touch screen a
   finger held 0.48 s on a part, with a part in hand, takes it off; held is what
-  the frames saw (`main.gd` `_touch_still_at`), so a tap across one slow frame
-  is a tap (`src/dev/slow_frames_probe.gd`, windowed on the GPU).
+  the frames saw (`main.gd` `_touch_hold`, `src/ui/press_hold.gd`: from the
+  first frame after the one that handled the touch), so a tap across one
+  slow frame is a tap, and so is one whose own frame does 600 ms of work
+  before the app sees it or after, drawing (`src/dev/slow_frames_probe.gd`,
+  windowed on the GPU).
 - `box select`: `Ctrl`-drag (`Cmd` on a Mac) from empty space, and every brick
   whose screen position falls inside the box is selected (Shift adds to the
   selection). A plain drag there turns the view instead (`left-button
@@ -609,9 +612,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   minifigures and move_part). Held still 0.4 s, then dragged: the part by its
   chain of joints (`src/assembly/grab_chain.gd`, "chain" in the status bar;
   `grab_probe -- --only=chain`, a hand and 4096's crane end). Held is what a
-  frame saw (`main.gd` `_press_still_ms`): pressed and dragged at once across
-  one 600 ms frame it is an ordinary grab, as in a browser drawing a frame a
-  second.
+  frame saw (`main.gd` `_press_hold`, `src/ui/press_hold.gd`): pressed and
+  dragged at once across one 600 ms frame it is an ordinary grab, as in a
+  browser drawing a frame a second. The hold is timed from the first frame
+  after the one that handled the press, so that frame's own work is never
+  held: a press whose own frame does 600 ms of work before the app's
+  process (`src/dev/press_frame_work.gd`, as a slow page reads the bodies
+  there), then a drag, is an ordinary grab, and so is one whose frame draws
+  for 600 ms, the pointer still where it was pressed in the next frame (the
+  browser sends the move a frame late), then a drag. Timed from the press,
+  or from that frame's process, each was a chain, and grab_flow's flywheel
+  on m81's preview said "Chain: the Technic Gear 40 Tooth…" and never spun.
   Turned and turned back over MCP: `grab_probe -- --only=steer` builds a real
   session's buggy (`tests/fixtures/mcpwalk/steering_buggy.json`) and turns its
   steering wheel +30, -60 and +30, back where it was built, the chassis still.
