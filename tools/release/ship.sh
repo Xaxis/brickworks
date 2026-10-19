@@ -9,6 +9,13 @@ TAG=$2
 # relative path from here failed that cd (2026-10-15).
 W=$(cd "$1" && pwd) || exit 1
 shift 2
+# The release's own scripts, not the copy this was started from: m87 was
+# started from main's, whose preview_checks did not know the three checks
+# m87 added, and held on "no such check" (2026-10-19).
+mine="$W/tools/release/ship.sh"
+if [ -z "${RELEASE_HERE:-}" ] && [ -x "$mine" ] && [ "$(realpath "$0")" != "$(realpath "$mine")" ]; then
+  exec "$mine" "$W" "$TAG" "$@"
+fi
 # Every release runs the site check and the frames check, named or not: a
 # feature that taxed every frame (the grab handles, found twice a second)
 # held a big model's timeline step at 6 s for hours while every check named
