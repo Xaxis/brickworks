@@ -23,9 +23,18 @@
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
 //                            a time, searched (q), filtered (kind, size,
 //                            instructions, technic, tested, tag) and sorted
-//                            (sort: newest, views, likes, remixes, builds); with
-//                            tests=1, test models too, which nobody else
-//                            is shown
+//                            (sort: newest, views, likes, remixes, builds,
+//                            top); with tests=1, test models too, which
+//                            nobody else is shown
+//   GET  ?op=shelves         /gallery's front: this week's pick and the small
+//                            builds' shelf (supabase/discovery.sql); tests=1
+//                            as the list
+//   GET  ?op=list&mine=1     the list, with the session: each card's share of
+//   GET  ?op=shelves&mine=1  its parts the person owns (owned), the sort
+//                            owned (Parts I own) and ready=1 (only what they
+//                            can build now) on the list, and the shelf of
+//                            what they can build now on the front; never
+//                            kept by the CDN
 //   GET  ?op=tested&id=X     the owner's own: what the app found of the
 //                            newest version, every test and why, passed
 //                            or not (with v=N, version N's)
@@ -115,6 +124,16 @@
 // on its page and its card, and the gallery sorts by it; and its page has a
 // strip of photos of people's real builds of it, with the way to add one
 // (web/model-page.js), which api/people.js keeps.
+//
+// Discovery (2026-10-19, supabase/discovery.sql): the gallery sorts by Top
+// builds, a score of builds finished, remixes and the Tested mark
+// (_directory.js SCORE), and its front has this week's pick, worked out
+// from the past seven days unless the site's owner chose one (api/admin.js),
+// and a shelf of small builds, the Size filter's Small by Top builds
+// (?op=shelves). Build with what I own (api/_owned.js): what a model needs,
+// by part and colour, is counted from its file as it is published and
+// kept (model_needs), so that a signed-in person's share of every model in
+// the gallery is one join in the database (&mine=1).
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -122,14 +141,15 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, NOTICE, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf, cleanDescription,
-  cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel, listQuery,
-  looksLikePerson, modelHash, partFacts, siteChrome, visitorKey,
+  KINDS, LICENCES, MINE_SORTS, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
+  cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
+  listQuery, looksLikePerson, modelHash, partFacts, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
+import { freshPool, keyed } from "./_owned.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -250,7 +270,7 @@ export function checkModel(text) {
 
   const files = new Map();
   const order = [];
-  let current = { name: "", placed: [], isPart: false, steps: 0, open: false, author: "" };
+  let current = { name: "", placed: [], colours: [], isPart: false, steps: 0, open: false, author: "" };
   let inData = false;
   let lineNo = 0;
   let stepped = false;
@@ -264,7 +284,8 @@ export function checkModel(text) {
     }
   };
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], isPart: /\.dat$/i.test(name), steps: 0, open: false, author: "" };
+    current = { name: name.toLowerCase(), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
+      author: "" };
     keep();
   };
 
@@ -285,7 +306,7 @@ export function checkModel(text) {
       } else if (meta === "!DATA") {
         // An embedded picture: base64 in `0 !:` lines, not a model.
         inData = true;
-        current = { name: "", placed: [], isPart: true };
+        current = { name: "", placed: [], colours: [], isPart: true };
       } else if (meta === "NOFILE") {
         inData = false;
       } else if (meta === "!LDRAW_ORG" && /part|shortcut|primitive|subpart/i.test(tokens[2] || "")) {
@@ -312,6 +333,7 @@ export function checkModel(text) {
       }
       keep();
       current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.colours.push(tokens[1]);
       current.open = true;
     } else {
       const need = COORDS[kind];
@@ -353,7 +375,37 @@ export function checkModel(text) {
   const top = files.get(main);
   const steps = Math.max(1, top.steps + (top.open ? 1 : 0));
   const ownSteps = stepped && (markedAuthored || top.author !== "Brickworks");
-  return { parts, bytes, steps, ownSteps, technic: isTechnic(parts, technicParts, movingParts) };
+  // What it needs, by part and colour, for Build with what I own
+  // (api/_owned.js): every part line the tally counts, through its
+  // sub-models in the colour each is placed in (16 is that colour). A
+  // flexible part laid as segments is one part nobody owns by that name,
+  // and is left out, as the app leaves out what is not a part.
+  const memo = new Map();
+  const needsOf = (name, colour) => {
+    const key = `${name}\n${colour}`;
+    if (memo.has(key)) return memo.get(key);
+    const file = files.get(name);
+    const out = new Map();
+    const add = (lot, n) => out.set(lot, (out.get(lot) || 0) + n);
+    file.placed.forEach((ref, at) => {
+      const own = file.colours[at];
+      const placedIn = own === "16" ? colour : own;
+      const sub = files.get(ref);
+      if (sub && !sub.isPart) {
+        if (laidFlexible(sub.placed)) return;
+        for (const [lot, n] of needsOf(ref, placedIn)) add(lot, n);
+      } else {
+        add(`${ref.replace(/\.dat$/, "")}\n${placedIn}`, 1);
+      }
+    });
+    memo.set(key, out);
+    return out;
+  };
+  const needs = [...needsOf(main, "16")].map(([lot, qty]) => {
+    const [part, colour] = lot.split("\n");
+    return [part, Number(colour), qty];
+  });
+  return { parts, bytes, steps, ownSteps, technic: isTechnic(parts, technicParts, movingParts), needs };
 }
 
 /// The picture, from the base64 the app sends, or null for none.
@@ -1122,6 +1174,7 @@ async function read(request, response) {
   if (op === "tested") return testedOwn(request, response);
   if (op === "sweep") return sweep(request, response);
   if (op === "list") return gallery(request, response, origin);
+  if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
 
   // A version asked for, where there can be one: the page, its picture and
@@ -1235,19 +1288,116 @@ async function read(request, response) {
 /// for itself what a visitor may see. With the kinds, sizes and sorts it
 /// knows, so a client can ask in its words.
 async function gallery(request, response, origin) {
-  const { asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES);
+  const mine = await whoseOwn(request, origin);
+  let asked;
+  let said;
+  try {
+    ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool) }));
+  } catch (trouble) {
+    // Signed in, with nothing in their collection to sort or filter by.
+    if (mine && trouble instanceof Unacceptable && trouble.status === 401) {
+      throw new Unacceptable("There is nothing in your collection yet: add what you own in the app "
+        + "(Build › My collection…) and the gallery can say what you can build.", 422);
+    }
+    throw trouble;
+  }
+  // Their shares only once there is something to share of.
+  if (mine?.pool) asked.pool = mine.account;
   const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
   // Kept briefly by the CDN, like the pages: the same question asked by
-  // a hundred phones is one call to the database. Never with test models.
-  response.setHeader("Cache-Control", said.tests ? TESTS_CACHE : SHARED_CACHE);
+  // a hundred phones is one call to the database. Never with test models,
+  // nor anybody's own shares.
+  response.setHeader("Cache-Control", said.tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
     ...said,
     per_page: PER_PAGE,
     more: rows.length > PER_PAGE,
-    models: rows.slice(0, PER_PAGE).map((row) => cardOf(origin, row)),
+    models: rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)),
     kinds: KINDS,
     sizes: Object.entries(SIZES).map(([id, size]) => ({ id, label: size.label })),
-    sorts: Object.entries(SORTS).map(([id, label]) => ({ id, label })),
+    sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
+    score: SCORE,
+    ...(mine ? { mine: mine.pool } : {}),
+  });
+}
+
+/// The person asking with &mine=1, and what their collection holds as the
+/// gallery counts it (api/_owned.js freshPool: lots, pieces, how many of
+/// their sets no inventory has), or null for a list asked without it.
+/// Asked with it and not signed in is refused (401): their own shares are
+/// only ever theirs.
+async function whoseOwn(request, origin) {
+  const value = String(request.query?.mine ?? "").toLowerCase();
+  if (!value || value === "0" || value === "false") return null;
+  if (!["1", "true", "yes", "on"].includes(value)) throw new Unacceptable("mine is 1 or left out");
+  let claims;
+  try {
+    claims = await verify(bearer(request));
+  } catch (trouble) {
+    throw new Unacceptable(trouble?.message || "sign in to see what you own", trouble?.status || 401);
+  }
+  const pool = await freshPool(claims.sub, origin);
+  return { account: claims.sub, pool: pool && typeof pool === "object"
+    ? { lots: Number(pool.lots) || 0, pieces: Number(pool.pieces) || 0,
+      unknown: Array.isArray(pool.unknown) ? pool.unknown.length : 0 } : null };
+}
+
+/// A card, and the asker's share of its parts when it was asked for theirs:
+/// {pieces, have, share}, pieces null for a model not counted yet.
+function ownedCard(origin, row) {
+  const card = cardOf(origin, row);
+  if (row.owned && typeof row.owned === "object") {
+    const pieces = row.owned.pieces === null || row.owned.pieces === undefined ? null : Number(row.owned.pieces);
+    const have = pieces === null ? null : Math.min(Number(row.owned.have) || 0, pieces);
+    card.owned = { pieces, have, share: pieces ? have / pieces : null };
+  }
+  return card;
+}
+
+/// What a model needs kept (supabase/discovery.sql owned_keep_needs), in
+/// the one spelling a collection is compared by. Never throws.
+async function keepNeeds(id, needs) {
+  try {
+    await db("rpc/owned_keep_needs", { method: "POST", body: { model_id: id, needs: keyed(needs || []) } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/// The week's numbers of a pick, as the page says them.
+const weekOf = (week) => ({ builds: Number(week?.builds) || 0, remixes: Number(week?.remixes) || 0,
+  tested: week?.tested === true, score: Number(week?.score) || 0 });
+
+/// /gallery's front: this week's pick (gallery_pick: the owner's choice
+/// while it is open and in the gallery, or the best of the past seven days)
+/// and the small builds' shelf (the Size filter's Small, by Top builds).
+/// Before supabase/discovery.sql is applied there is no pick, and the shelf
+/// is the newest small models. Kept briefly by the CDN, as the list.
+async function shelves(request, response, origin) {
+  const tests = testsAsked(request.query || {});
+  const mine = await whoseOwn(request, origin);
+  const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
+  const [pick, small, ready] = await Promise.all([
+    db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
+    db("rpc/directory_models", { method: "POST", body: { query: {
+      most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
+      ...(mine?.pool ? { pool: mine.account } : {}) } } }),
+    // What they can build now, every piece in their collection: by Top builds.
+    mine?.pool ? db("rpc/directory_models", { method: "POST", body: { query: {
+      pool: mine.account, buildable: true, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}) } } }) : null,
+  ]);
+  response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json({
+    ...(mine ? { mine: mine.pool, ready: { models: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
+      more: (ready || []).length > SHELF } } : {}),
+    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? {
+      chosen: pick.chosen === true, until: pick.chosen === true ? pick.until ?? null : null,
+      week: weekOf(pick.week), model: cardOf(origin, pick.card),
+    } : null,
+    small: { size: "small", label: SIZES.small.label, most: SIZES.small.most,
+      models: (small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), more: (small || []).length > SHELF },
+    score: SCORE,
   });
 }
 
@@ -1355,7 +1505,7 @@ async function publish(request, response) {
 
   // Everything about the upload is checked before anything is counted
   // or stored, so a refused upload costs nobody a publish.
-  const { parts, bytes, steps, ownSteps, technic } = checkModel(body.model);
+  const { parts, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
   const picture = checkImage(body.image);
   const thumb = checkThumb(body.thumb);
   // What the app found, checked against this very file (api/_tested.js).
@@ -1521,6 +1671,10 @@ async function publish(request, response) {
   } else if (finding?.refused) {
     kept = { kept: false, why: finding.refused };
   }
+  // What it needs, by part and colour, in place of what it needed: the
+  // gallery's Build with what I own. Never stops the publish; before
+  // supabase/discovery.sql there is nowhere to keep it.
+  await keepNeeds(id, needs);
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({

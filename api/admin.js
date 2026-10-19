@@ -45,6 +45,16 @@
 //                                        (supabase/builds.sql)
 //   GET  /api/admin?op=photo&photo=P     photo P, hidden or not, to look at
 //                                        before taking it out
+//   POST /api/admin?op=pick&id=X&days=N  make model X this week's pick for N
+//                                        days (7 without days, 1 to 31), in
+//                                        place of the one worked out
+//                                        (supabase/discovery.sql)
+//   POST /api/admin?op=unpick&pick=N     end choice N: back to the pick
+//                                        worked out from the past seven days
+//
+// This week's pick (2026-10-19, supabase/discovery.sql): GET says what a
+// visitor's gallery shows as the pick now, chosen or worked out, the
+// choices still open, and the week's best five with their numbers.
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
@@ -105,7 +115,7 @@ export default async function handler(request, response) {
     return response.status(404).json({ error: "not found" });
   }
   const op = String(request.query?.op || "");
-  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut };
+  const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut, pick, unpick };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response);
@@ -115,7 +125,8 @@ export default async function handler(request, response) {
     }
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment or remove_photo" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
+      + "pick or unpick" });
   }
   if (op === "photo") {
     const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);
@@ -279,6 +290,58 @@ async function takePhotoOut(request, response) {
   return response.status(200).json(await removePhoto(photo, why));
 }
 
+/// Model X this week's pick for N days, in place of the one worked out
+/// (supabase/discovery.sql gallery_choose_pick): refused for a model the
+/// gallery does not show.
+async function pick(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
+  const days = request.query?.days === undefined ? 7 : Number(request.query.days);
+  if (!Number.isInteger(days) || days < 1 || days > 31) {
+    return response.status(400).json({ error: "a pick is for 1 to 31 days: ?days=<number>" });
+  }
+  const made = await db("rpc/gallery_choose_pick", { method: "POST", body: { model_id: id, days } });
+  if (made?.refused) {
+    return response.status(422).json({ error: "Only a model in the gallery can be the pick: this one is not listed, "
+      + "or was taken out." });
+  }
+  return response.status(200).json({ pick: made.pick, id: made.model, chosen_at: made.chosen_at, until: made.until });
+}
+
+/// Choice N ended: the pick is the one worked out again, unless another
+/// choice is still open.
+async function unpick(request, response) {
+  const choice = Number(request.query?.pick);
+  if (!Number.isInteger(choice) || choice < 1) return response.status(400).json({ error: "name a choice: ?pick=<number>" });
+  const ended = await db("rpc/gallery_end_pick", { method: "POST", body: { pick: choice } });
+  if (ended !== true) return response.status(404).json({ error: "no open choice by that number" });
+  return response.status(200).json({ pick: choice, ended: true });
+}
+
+/// This week's pick as a visitor's gallery shows it, the owner's choices
+/// still open, and the week's best five; none of it before
+/// supabase/discovery.sql.
+async function picks() {
+  try {
+    const [now, choices, week] = await Promise.all([
+      db("rpc/gallery_pick", { method: "POST", body: { tests: false } }),
+      db("rpc/gallery_choices", { method: "POST", body: {} }),
+      db("rpc/gallery_week", { method: "POST", body: { tests: false, size: 5 } }),
+    ]);
+    const card = (one) => (one ? { id: one.id, name: one.name, parts: one.parts, builds: one.builds,
+      remixes: one.remixes, tested: one.tested === true } : null);
+    return {
+      now: now && now.card ? { pick: now.pick ?? null, chosen: now.chosen === true, until: now.until ?? null,
+        week: now.week, model: card(now.card) } : null,
+      choices: choices || [],
+      week: (week || []).map((one) => ({ week: one.week, model: card(one.card) })),
+    };
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
+}
+
 /// Every Tested mark showing, newest first, with its model's name; none
 /// while supabase/tested.sql is not applied.
 async function marks() {
@@ -316,7 +379,7 @@ const REPORTS = "/rest/v1/reports?resolved_at=is.null&select=id,model,handle,col
   + "shared_models(name,owner,listed,published)&order=at.desc&limit=300";
 
 async function report() {
-  const [listed, tabs, gallery, reports, barred, tested] = await Promise.all([
+  const [listed, tabs, gallery, reports, barred, tested, pickNow] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
     // What strangers can see in /gallery right now, and whose it is.
@@ -327,6 +390,7 @@ async function report() {
     asServer(REPORTS.replace("contact,at,", "contact,at,comment,")).catch(() => asServer(REPORTS)),
     asServer("/rest/v1/barred_accounts?select=account,at,reason&order=at.desc&limit=200"),
     marks(),
+    picks(),
   ]);
   const users = listed.users || [];
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
@@ -391,6 +455,8 @@ async function report() {
     barred: barred.map((one) => ({ account: one.account, at: one.at, reason: one.reason,
       email: emails.get(one.account) || null })),
     tested,
+    // This week's pick (supabase/discovery.sql); null before it.
+    picks: pickNow,
   };
 }
 

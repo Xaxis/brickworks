@@ -2448,6 +2448,48 @@
       "entry": "tools/web/follows_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=DIR   (.env sourced; or a local relay_server.mjs --static=build/web with nothing held, or with --hold=follows,model_comments,build_photos,report_photos --trust-stand-in; --site leaves the app out)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "Top builds and this week's pick",
+      "entry": "supabase/discovery.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql --dry --try=tools/discovery_try.sql --table=gallery_picks   (after the live files; the weights held to the page's by tests/test_discovery.py; then the discovery browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the gallery's front shelves",
+      "entry": "web/gallery.js",
+      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort › Top builds says how it weighs, Sort › Parts I own with a collection)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "choosing this week's pick",
+      "entry": "web/admin.js",
+      "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "build with what I own",
+      "entry": "api/_owned.js",
+      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool); the SQL in tools/discovery_try.sql; the page in the discovery browser flow, signed in with a collection",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "needs backfill",
+      "entry": "tools/web/needs_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/needs_backfill.mjs --dry [--facts=<part_facts.mjs output>]   (reads only: each published model's parts, and how many anybody can own; without --dry, after discovery.sql is applied, keeps them)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "discovery browser flow",
+      "entry": "tools/web/discovery_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/discovery_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=gallery_picks until discovery.sql is applied)",
+      "area": "web"
     }
   ]
 }

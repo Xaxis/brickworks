@@ -120,14 +120,18 @@ function draw(data) {
     cell(row, Number(model.parts).toLocaleString(), "n");
     cell(row, when(model.listed_at));
     const act = document.createElement("td");
+    act.className = "acts";
     const out = document.createElement("button");
     out.textContent = "Take out";
     out.addEventListener("click", () => takeOut(model, out));
     act.append(out);
+    if (data.picks) act.append(pickButton(model.id, model.name));
     row.append(act);
     listed.append(row);
   }
   say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
+
+  drawPicks(data.picks);
 
   // Marked Tested: the app's finding, to clear when it should not be there.
   const tested = $("tested");
@@ -304,6 +308,86 @@ function photoOf(id) {
   return img;
 }
 
+/// Make it the pick (api/admin.js ?op=pick), for a week.
+function pickButton(id, name) {
+  return act("Make it the pick", () => confirm(`Make "${name}" this week's pick, for seven days?`)
+    && post(`op=pick&id=${encodeURIComponent(id)}&days=7`, "pick-note", `"${name}" is this week's pick.`));
+}
+
+/// This week's pick: what visitors see now, the choices still open, and
+/// the week worked out. Names strangers chose, so text and never markup.
+function drawPicks(picks) {
+  const now = $("pick-now");
+  now.replaceChildren();
+  const said = document.createElement("span");
+  if (!picks) {
+    said.className = "note";
+    said.textContent = "Not open yet: supabase/discovery.sql is not applied.";
+    now.append(said);
+  } else if (!picks.now || !picks.now.model) {
+    said.textContent = "No pick this week: nothing in the gallery was built, remixed or listed Tested in the past seven days.";
+    now.append(said);
+  } else {
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(picks.now.model.id)}`;
+    link.textContent = picks.now.model.name;
+    const week = picks.now.week || {};
+    said.textContent = picks.now.chosen ? ` — chosen, until ${when(picks.now.until)}` : ` — worked out: built ${
+      week.builds || 0} this week, remixed ${week.remixes || 0}${week.tested ? ", Tested" : ""} (score ${week.score || 0})`;
+    const lead = document.createElement("b");
+    lead.textContent = "Visitors see ";
+    now.append(lead, link, said);
+    now.dataset.model = picks.now.model.id;
+    now.dataset.chosen = picks.now.chosen ? "yes" : "no";
+  }
+  const choices = $("choices");
+  choices.replaceChildren();
+  for (const one of picks?.choices || []) {
+    const row = document.createElement("tr");
+    row.dataset.pick = String(one.pick);
+    row.dataset.model = String(one.model);
+    const name = document.createElement("td");
+    name.className = "model";
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(one.model)}`;
+    link.textContent = one.name || one.model;
+    name.append(link);
+    row.append(name);
+    cell(row, when(one.chosen_at));
+    cell(row, when(one.until));
+    cell(row, one.shown ? "yes" : one.test ? "no: a test account's" : "no: not in the gallery now", one.shown ? "" : "faint");
+    const acts = document.createElement("td");
+    acts.append(act("End", () => post(`op=unpick&pick=${encodeURIComponent(one.pick)}`, "pick-note",
+      "Ended: back to the pick worked out.")));
+    row.append(acts);
+    choices.append(row);
+  }
+  const week = $("week");
+  week.replaceChildren();
+  for (const one of picks?.week || []) {
+    if (!one.model) continue;
+    const row = document.createElement("tr");
+    const name = document.createElement("td");
+    name.className = "model";
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(one.model.id)}`;
+    link.textContent = one.model.name;
+    name.append(link);
+    row.append(name);
+    cell(row, String(one.week?.builds ?? 0), "n");
+    cell(row, String(one.week?.remixes ?? 0), "n");
+    cell(row, one.week?.tested ? "yes" : "no", one.week?.tested ? "" : "faint");
+    cell(row, String(one.week?.score ?? 0), "n");
+    const acts = document.createElement("td");
+    acts.append(pickButton(one.model.id, one.model.name));
+    row.append(acts);
+    week.append(row);
+  }
+  if (picks && !(picks.week || []).length && !(picks.choices || []).length) {
+    say("pick-note", "Nothing chosen, and nothing in the past seven days to work one out from.");
+  }
+}
+
 function act(words, run) {
   const button = document.createElement("button");
   button.textContent = words;
@@ -320,7 +404,8 @@ async function post(query, where, said) {
   try {
     const token = await accessToken();
     const reply = await fetch(`/api/admin?${query}`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
-    if (!reply.ok) throw new Error(`The server said ${reply.status}.`);
+    // What the server said, in its words when it gave some (a pick refused).
+    if (!reply.ok) throw new Error((await reply.json().catch(() => ({}))).error || `The server said ${reply.status}.`);
     await refresh();
     say(where, said);
     return true;

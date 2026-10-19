@@ -390,6 +390,14 @@
       "tests": []
     },
     {
+      "id": "cli:discovery browser flow",
+      "kind": "cli",
+      "entry": "tools/web/discovery_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/discovery_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=gallery_picks until discovery.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -640,6 +648,14 @@
       "kind": "cli",
       "entry": "tools/web/moderation_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:needs backfill",
+      "kind": "cli",
+      "entry": "tools/web/needs_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/needs_backfill.mjs --dry [--facts=<part_facts.mjs output>]   (reads only: each published model's parts, and how many anybody can own; without --dry, after discovery.sql is applied, keeps them)",
       "area": "web",
       "tests": []
     },
@@ -1159,6 +1175,14 @@
       "tests": []
     },
     {
+      "id": "lib:Top builds and this week's pick",
+      "kind": "lib",
+      "entry": "supabase/discovery.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/discovery.sql --dry --try=tools/discovery_try.sql --table=gallery_picks   (after the live files; the weights held to the page's by tests/test_discovery.py; then the discovery browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:a big check on a worker",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",
@@ -1283,6 +1307,14 @@
       "kind": "lib",
       "entry": "src/assembly/build_steps.gd",
       "reach": "godot --headless --path . --script src/dev/build_steps_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:build with what I own",
+      "kind": "lib",
+      "entry": "api/_owned.js",
+      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool); the SQL in tools/discovery_try.sql; the page in the discovery browser flow, signed in with a collection",
       "area": "web",
       "tests": []
     },
@@ -1816,7 +1848,9 @@
       "entry": "src/assembly/tested.gd",
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_discovery.py"
+      ]
     },
     {
       "id": "lib:the assistant makes a part",
@@ -2063,6 +2097,14 @@
       "kind": "ui",
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:choosing this week's pick",
+      "kind": "ui",
+      "entry": "web/admin.js",
+      "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
       "tests": []
     },
@@ -2730,6 +2772,14 @@
       "entry": "src/ui/page_editor.gd",
       "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page\u2026 or Build, Booklet page, Lay out the page\u2026: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture\u2026, Draw an arrow and drag, its middle to bend it, Arrow colour, Arrow width, the turn sign selected and Delete, a callout's own pages by Previous or Next page; Outline new on the row)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the gallery's front shelves",
+      "kind": "ui",
+      "entry": "web/gallery.js",
+      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
+      "area": "web",
       "tests": []
     },
     {

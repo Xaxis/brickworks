@@ -8,6 +8,19 @@
 // a filter asks at once; an answer that comes back after a newer question
 // was asked is thrown away.
 //
+// The front of it, with nothing searched or filtered, has two shelves
+// first (/api/share?op=shelves, supabase/discovery.sql): this week's pick,
+// worked out from the past seven days' builds, remixes and Tested marks
+// unless the site's owner chose one, and small builds, the Size filter's
+// Small by Top builds, with a way to all of them. Top builds says how it
+// weighs them, from the numbers the list sends (score).
+//
+// Signed in (web/account.js has a sign-in kept in this browser), the list
+// and the shelves are asked with mine=1 and the sign-in: each card says how
+// much of it the person's collection holds, by part and colour; the front
+// has what they can build now, every part theirs; and Sort has Parts I own.
+// Their own, so never kept by the CDN. Signed out, none of it is asked.
+//
 // Names, credits and tags were typed by strangers, so every one goes on
 // the page as text (textContent), never as markup; a link is built from
 // the model's id alone, and only an id that is one. Same origin
@@ -28,7 +41,14 @@
   const instructions = $("instructions");
   const technic = $("technic");
   const tested = $("tested");
+  const shelves = $("shelves");
   let page = 0;
+  // What the front's shelves are, once asked: null until then.
+  let front = null;
+  let weights = null;
+  // The site's sign-in (web/account.js) while this browser has one: the
+  // list and the shelves are then asked with it, and mine=1.
+  let own = null;
   let asking = 0;
   let tag = "";
   let filled = false;
@@ -40,6 +60,31 @@
     const value = Number(n) || 0;
     return `${value.toLocaleString("en-US")} ${value === 1 ? one : many || `${one}s`}`;
   }
+
+  /// What the asker's collection holds of a card's model, in a line, or "".
+  function ownedLine(owned) {
+    if (!owned || owned.pieces === null || owned.pieces === undefined || !Number(owned.pieces)) return "";
+    const have = Number(owned.have) || 0;
+    const pieces = Number(owned.pieces);
+    if (have >= pieces) return "✓ You have every part";
+    if (have === 0) return "You have none of its parts";
+    return `You have ${have.toLocaleString("en-US")} of its ${pieces.toLocaleString("en-US")} parts · ${Math.floor((100 * have) / pieces)}%`;
+  }
+
+  /// [path] of the site's API as JSON: with the sign-in and mine=1 while
+  /// there is one, and once more without when the sign-in has ended.
+  async function askApi(path) {
+    if (own) {
+      const answer = await own.call(`${path}&mine=1`).catch(() => null);
+      if (answer && answer.status !== 401) return answer;
+      own = null;
+    }
+    const reply = await fetch(path, { headers: { accept: "application/json" } });
+    return { status: reply.status, body: await reply.json().catch(() => ({})) };
+  }
+
+  /// "once", "twice", "5 times".
+  const times = (n) => (n === 1 ? "once" : n === 2 ? "twice" : `${Number(n).toLocaleString("en-US")} times`);
 
   function card(model) {
     const link = document.createElement("a");
@@ -86,6 +131,15 @@
     numbers.textContent = said.join(" · ");
     link.dataset.builds = String(Number(model.builds) || 0);
     words.append(name, about, numbers);
+    // Signed in with a collection: how much of it is theirs already.
+    const theirs = ownedLine(model.owned);
+    if (theirs) {
+      const line = document.createElement("small");
+      line.className = Number(model.owned.have) >= Number(model.owned.pieces) ? "owned all" : "owned";
+      line.textContent = theirs;
+      words.append(line);
+      link.dataset.owned = `${Number(model.owned.have) || 0}/${Number(model.owned.pieces)}`;
+    }
     // Marked Tested: its newest version passed the four tests the app ran
     // as it was published (api/_tested.js), said on hover.
     if (model.tested === true) {
@@ -98,6 +152,95 @@
     }
     link.append(frame, words);
     return link;
+  }
+
+  /// Why the pick is the pick, in a line: what its week was, or that the
+  /// site's owner chose it.
+  function whyPicked(pick) {
+    const week = pick.week || {};
+    const said = [];
+    if (week.builds) said.push(`built ${times(week.builds)} this week`);
+    if (week.remixes) said.push(`remixed ${times(week.remixes)} this week`);
+    if (!said.length && week.tested) said.push("new this week, and Tested");
+    const line = said.join(", ");
+    if (pick.chosen) return line ? `Chosen by Brickworks · ${line}` : "Chosen by Brickworks";
+    return line ? line[0].toUpperCase() + line.slice(1) : "";
+  }
+
+  /// The shelves, drawn from [front]: shown only on the gallery's front,
+  /// nothing searched and nothing filtered.
+  function drawShelves() {
+    const searching = [...question().keys()].some((key) => key !== "sort" && key !== "tests");
+    const pick = front && front.pick && front.pick.model && ID.test(String(front.pick.model.id)) ? front.pick : null;
+    const small = front && front.small ? (front.small.models || []).filter((m) => m && ID.test(String(m.id))) : [];
+    $("pick").hidden = !pick;
+    const holder = $("pick-card");
+    holder.replaceChildren();
+    if (pick) {
+      const made = card(pick.model);
+      made.classList.add("pick-card");
+      const why = document.createElement("p");
+      why.className = "why";
+      why.textContent = whyPicked(pick);
+      made.querySelector(".words").append(why);
+      made.dataset.chosen = pick.chosen ? "yes" : "no";
+      holder.append(made);
+    }
+    $("small").hidden = small.length === 0;
+    const row = $("small-models");
+    row.replaceChildren(...small.map(card));
+    $("small-all").hidden = !(front && front.small && front.small.more);
+    // What they can build now: signed in, every part in their collection.
+    const signedIn = Boolean(front && "mine" in front);
+    const pool = signedIn ? front.mine : null;
+    const ready = pool && front.ready ? (front.ready.models || []).filter((m) => m && ID.test(String(m.id))) : [];
+    $("ready").hidden = !signedIn;
+    $("ready-models").replaceChildren(...ready.map(card));
+    $("ready-models").hidden = ready.length === 0;
+    $("ready-all").hidden = !pool;
+    const said = $("ready-said");
+    if (!pool) {
+      said.textContent = "Tell Brickworks what you own (in the app, Build › My collection…) and this "
+        + "shows what in the gallery you can build with it.";
+    } else if (!ready.length) {
+      said.textContent = `Nothing in the gallery is all in your collection of ${counted(pool.pieces, "part")} yet. `
+        + "Parts I own, under Sort, shows what is closest.";
+    } else {
+      said.textContent = `Every part of these is in your collection of ${counted(pool.pieces, "part")}: the most `
+        + "built and remixed first.";
+    }
+    if (pool && pool.unknown) {
+      said.textContent += ` ${counted(pool.unknown, "set")} of yours ${pool.unknown === 1 ? "has" : "have"} no `
+        + "parts list here, so what is in them is not counted.";
+    }
+    shelves.hidden = searching || (!pick && small.length === 0 && !signedIn);
+    $("all-h").hidden = shelves.hidden;
+  }
+
+  /// How Top builds weighs, said under the order while it is chosen.
+  function sayScore() {
+    const line = $("score-said");
+    const w = weights;
+    line.hidden = !(w && chosen(sort) === "top");
+    if (w) {
+      line.textContent = `Top builds: a build finished counts ${w.builds}, a remix ${w.remixes} and the `
+        + `Tested mark ${w.tested}. Views count for nothing.`;
+    }
+  }
+
+  /// The front's shelves, asked once; drawn whenever the question changes.
+  async function askShelves() {
+    try {
+      const reply = await askApi(`/api/share?op=shelves${tests ? "&tests=1" : ""}`);
+      if (reply.status !== 200) throw new Error(String(reply.status));
+      front = reply.body;
+      if (front.score) weights = front.score;
+    } catch {
+      front = null;
+    }
+    drawShelves();
+    sayScore();
+    document.documentElement.dataset.shelves = front ? "ready" : "broken";
   }
 
   /// What a select says: until the first answer fills it in, what the
@@ -160,10 +303,11 @@
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
     try {
-      const reply = await fetch(`/api/share?op=list&${asked}`, { headers: { accept: "application/json" } });
+      const reply = await askApi(`/api/share?op=list&${asked}`);
       // An address that asks what the list does not know (a kind that is
-      // not one, say): the whole gallery instead, and the address put right.
-      if (reply.status === 400 && !filled && [...question().keys()].length) {
+      // not one, say, or Parts I own signed out): the whole gallery
+      // instead, and the address put right.
+      if ((reply.status === 400 || reply.status === 401) && !filled && [...question().keys()].length) {
         for (const select of [kind, size, sort]) select.dataset.wanted = "";
         q.value = "";
         instructions.checked = technic.checked = tested.checked = false;
@@ -171,8 +315,8 @@
         history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
         return next(true);
       }
-      if (!reply.ok) throw new Error(String(reply.status));
-      const data = await reply.json();
+      if (reply.status !== 200) throw new Error(String(reply.status));
+      const data = reply.body;
       if (mine !== asking) return;
       if (!filled) {
         fill(kind, data.kinds);
@@ -181,6 +325,8 @@
         filled = true;
         sayFilters();
       }
+      if (data.score) weights = data.score;
+      sayScore();
       if (fresh) grid.replaceChildren();
       page = Number(data.page) || (fresh ? 1 : page + 1);
       for (const model of data.models || []) {
@@ -212,6 +358,8 @@
     const query = asked.toString();
     history.replaceState(null, "", query ? `/gallery?${query}` : "/gallery");
     sayFilters();
+    drawShelves();
+    sayScore();
     document.documentElement.dataset.gallery = "asking";
     next(true);
   }
@@ -257,5 +405,16 @@
   });
   more.addEventListener("click", () => next(false));
   sayFilters();
-  next(true);
+  // Signed in or not, before the first question: a module of the site's,
+  // asked for only when this browser keeps a sign-in.
+  (async () => {
+    try {
+      const account = await import("/account.js");
+      if (account.signedIn()) own = account;
+    } catch {
+      own = null;
+    }
+    next(true);
+    askShelves();
+  })();
 })();
