@@ -34,6 +34,30 @@ def bare(entry: dict) -> dict:
     return {k: v for k, v in entry.items() if k not in LATER}
 
 
+def carry_exact(before: dict[str, str], after: dict[str, str]) -> tuple[int, list[str]]:
+    """Each part's exact shape under its new mesh hash: (copied, still lacking).
+
+    before and after are part id -> mesh hash. An exact shape is BrickNet's,
+    the part's own and not our mesh's; the mesh hash is only its file name
+    (tools/build_exact.py). A rebuilt mesh has a new hash, so without this
+    the shape is lost: merging covers2 left 942 parts without one, and the
+    joint check skipped, which reads as a pass (2026-10-19).
+    """
+    exact = GENERATED / "exact"
+    copied, lacking = 0, []
+    for part_id, mesh in after.items():
+        old = before.get(part_id)
+        if not old or old == mesh or not (exact / f"{old}.bwx").exists():
+            continue
+        target = exact / f"{mesh}.bwx"
+        if not target.exists():
+            shutil.copy2(exact / f"{old}.bwx", target)
+            copied += 1
+        if not target.exists():
+            lacking.append(part_id)
+    return copied, lacking
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
         print("usage: merge_subbuild.py <sub-build dir> <affected-ids file>")
@@ -101,6 +125,7 @@ def main(argv: list[str]) -> int:
             copied += 1
 
     replaced = 0
+    before, after = {}, {}
     for index, entry in enumerate(whole["parts"]):
         fresher = next(
             (e for e in fresh["parts"] if e["id"] == entry["id"]), None)
@@ -109,9 +134,17 @@ def main(argv: list[str]) -> int:
         kept = {k: v for k, v in entry.items() if k in LATER}
         whole["parts"][index] = {**fresher, **kept}
         replaced += 1
+        if entry.get("mesh") and fresher.get("mesh"):
+            before[entry["id"]] = entry["mesh"]
+            after[entry["id"]] = fresher["mesh"]
 
     whole_path.write_text(json.dumps(whole, separators=(",", ":")))
     print(f"merged {replaced:,} entries and {copied:,} mesh files")
+    carried, lacking = carry_exact(before, after)
+    print(f"carried {carried:,} exact shapes to their parts' new meshes")
+    if lacking:
+        print(f"WARNING: {len(lacking)} parts lost their exact shapes")
+        return 1
 
     gone = [
         e["id"] for e in whole["parts"]

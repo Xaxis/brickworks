@@ -58,9 +58,15 @@ The app is a window, not a server — there is no port and nothing to poll.
 ```sh
 godot --path .                                   # the real thing
 godot --path . -- --mcp                          # ...with the MCP port open
-godot --headless --path . --script src/dev/X_probe.gd   # one probe
+tools/probe.sh X_probe                           # one probe, run as its header says
+godot --headless --path . --script src/dev/X_probe.gd   # one probe, by hand
 godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd   # a windowed probe
 ```
+
+`tools/probe.sh` reads the probe's header for headless or a window and its
+size, gives it its own data folder, the GPU lease and Xvfb for a window, and
+fails a run that printed a script error or skipped itself (both exit 0
+from Godot). `PROBE_DRY=1` shows the command.
 
 Needs: a display (`DISPLAY` or `WAYLAND_DISPLAY`) for anything that draws —
 previews, the renders the assistant is shown, and what a dragged box catches all
