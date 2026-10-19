@@ -263,6 +263,11 @@ func last_touch_was_a_tap() -> bool:
 	return _was_tap
 
 
+## How many fingers are down, as this has seen them come and go.
+func fingers() -> int:
+	return _touches.size()
+
+
 ## How long after a gesture the click it produces should be ignored, in
 ## milliseconds. Mouse emulation raises a click from the same finger
 ## that just turned the model, and it arrives after the touch does.

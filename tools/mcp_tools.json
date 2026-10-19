@@ -5111,7 +5111,7 @@
       "readOnlyHint": true,
       "title": "Search the gallery"
     },
-    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort; each with its link id, part count, credit and licence. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, and its picture — to learn how it is built. Read-only: nothing on the baseplate changes. Credit its builder and keep to its licence in anything made from it.",
+    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort (top: Top builds; owned: Parts I own, signed in with a collection); each with its link id, part count, credit, licence, how many built it and what moves in it (steering, a boom: anybody can move them on its link). shelves=true: the gallery's front, this week's pick and the small builds, and what the person can build now from their collection. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, and its picture — to learn how it is built. Read-only: nothing on the baseplate changes. Credit its builder and keep to its licence in anything made from it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5151,6 +5151,10 @@
           "description": "words to look for, up to 100 characters",
           "type": "string"
         },
+        "shelves": {
+          "description": "the gallery's front: this week's pick, the small builds, and what the person can build now",
+          "type": "boolean"
+        },
         "size": {
           "enum": [
             "small",
@@ -5160,11 +5164,15 @@
           "type": "string"
         },
         "sort": {
+          "description": "newest when omitted; owned only for a person signed in with a collection",
           "enum": [
             "newest",
             "views",
             "likes",
-            "remixes"
+            "remixes",
+            "builds",
+            "top",
+            "owned"
           ],
           "type": "string"
         },

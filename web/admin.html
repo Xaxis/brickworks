@@ -25,49 +25,35 @@
 <title>Brickworks — accounts</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="/site.css">
 <style>
-  :root {
-    --ink: #eef1f5; --soft: #a9b2bf; --faint: #6f7987;
-    --line: #262d38; --bg: #11151b; --panel: #171c24;
-    --yellow: #f2cd37; --green: #57c97e; --red: #e06a62; --blue: #8fbcff;
-    color-scheme: dark;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
-  }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 38px 22px 80px; }
-  h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 4px; }
-  .sub { color: var(--soft); margin: 0 0 26px; font-size: 14px; }
-  .card { background: var(--panel); border: 1px solid var(--line);
-          border-radius: 10px; padding: 20px; }
-  button {
-    font: inherit; font-weight: 600; cursor: pointer; border-radius: 7px;
-    border: 1px solid var(--line); background: #222a34; color: var(--ink);
-    padding: 9px 15px;
-  }
+  /* The site's colours, type and controls (site.css); here only this
+     page's layout. */
+  .wrap { max-width: 1040px; padding: 38px 0 80px; }
+  h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 4px; line-height: 1.2; }
+  .sub { color: var(--ink-soft); margin: 0 0 26px; font-size: 14px; }
+  .card { padding: 20px; }
+  .card p + p { margin-top: 8px; }
   .row { display: flex; gap: 9px; align-items: center; margin-top: 16px; }
-  .note { font-size: 13px; color: var(--soft); }
-  .note.bad { color: var(--red); }
+  .note { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .note.bad { color: var(--bad); }
   .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
            margin: 22px 0; }
   .stat { background: var(--panel); border: 1px solid var(--line);
           border-radius: 10px; padding: 14px 16px; }
   .stat b { display: block; font-size: 25px; letter-spacing: -0.02em; }
-  .stat span { font-size: 12.5px; color: var(--faint); }
+  .stat span { font-size: 12.5px; color: var(--ink-faint); }
   .scroller { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; color: var(--soft); font-weight: 600; font-size: 12.5px;
+  th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 12.5px;
        text-transform: uppercase; letter-spacing: .05em;
        padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   td.n { text-align: right; font-variant-numeric: tabular-nums; }
-  .faint { color: var(--faint); }
+  .faint { color: var(--ink-faint); }
   .hide { display: none; }
-  .warn { border-color: #5a4a1e; background: #241f10; margin-bottom: 14px; }
-  .warn b { color: var(--yellow); }
-  .foot { margin-top: 30px; color: var(--faint); font-size: 12.5px; }
+  .warn { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 14px; }
+  .foot { margin-top: 30px; color: var(--ink-faint); font-size: 12.5px; }
   h2 { font-size: 19px; margin: 34px 0 4px; }
   h2 + .note { margin: 0 0 12px; }
   td.model { max-width: 320px; overflow-wrap: anywhere; }
@@ -76,7 +62,7 @@
   table.queue td.model { min-width: 170px; }
   td.acts { white-space: nowrap; }
   td.acts button + button { margin-left: 6px; }
-  a { color: var(--blue); }
+  td.acts button { min-height: 36px; padding: 6px 12px; font-size: 14px; }
 /* The report an email of reports named (#report-N). */
 #reports tr.asked td { background: rgba(242, 197, 54, 0.14); }
 #reports tr.asked td:first-child { box-shadow: inset 3px 0 0 #f2c536; }

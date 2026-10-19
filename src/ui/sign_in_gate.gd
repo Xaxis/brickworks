@@ -45,8 +45,8 @@ var _retry: Button
 var _shown_form: bool = false
 var _title: Label
 var _age: VBoxContainer
-var _month_pick: OptionButton
-var _year_pick: OptionButton
+var _months: Array[Button] = []
+var _year: LineEdit
 var _age_go: Button
 var _age_note: Label
 var _thanks: VBoxContainer
@@ -55,8 +55,8 @@ var _thanks_go: Button
 var _thanking: bool = false
 var _answering: bool = false
 
-const MONTHS: PackedStringArray = ["January", "February", "March", "April", "May",
-	"June", "July", "August", "September", "October", "November", "December"]
+const MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 func setup(with_account: Account) -> void:
@@ -161,19 +161,31 @@ func _build_age(column: VBoxContainer) -> void:
 	_age.add_theme_constant_override("separation", 10)
 	column.add_child(_age)
 	_age.add_child(_line("When were you born?", 15, 0.95))
-	# Month and year as two dropdowns side by side, the way a date of birth
-	# is asked everywhere: the month by name, the years newest first. A
-	# click opens either; so does a tap, and typing in its open list finds
-	# the item ("June", "1996") for Enter to choose.
-	var when := HBoxContainer.new()
-	when.add_theme_constant_override("separation", 8)
-	_age.add_child(when)
-	_month_pick = _dropdown(when, "Month", MONTHS, 1.5)
-	var this_year: int = int(Time.get_datetime_dict_from_system()["year"])
-	var years := PackedStringArray()
-	for back: int in 111:
-		years.append(str(this_year - back))
-	_year_pick = _dropdown(when, "Year", years, 1.0)
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	_age.add_child(grid)
+	var group := ButtonGroup.new()
+	for at: int in MONTHS.size():
+		var month := Button.new()
+		month.text = MONTHS[at]
+		month.toggle_mode = true
+		month.button_group = group
+		month.focus_mode = Control.FOCUS_NONE
+		month.custom_minimum_size = Vector2(52, 34)
+		month.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		month.add_theme_font_size_override("font_size", 13)
+		grid.add_child(month)
+		_months.append(month)
+	_year = LineEdit.new()
+	_year.placeholder_text = "Year"
+	_year.max_length = 4
+	_year.custom_minimum_size = Vector2(0, 36)
+	_year.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+	_year.keep_editing_on_text_submit = true
+	_year.text_submitted.connect(func(_t: String) -> void: _answer())
+	_age.add_child(_year)
 	_age_go = Button.new()
 	_age_go.text = "Carry on"
 	_age_go.custom_minimum_size = Vector2(0, 36)
@@ -204,45 +216,29 @@ func _build_age(column: VBoxContainer) -> void:
 	_thanks.add_child(_thanks_go)
 
 
-## A dropdown saying [said] until one of [items] is chosen.
-func _dropdown(row: HBoxContainer, said: String, items: PackedStringArray, share: float) -> OptionButton:
-	var pick := OptionButton.new()
-	for item: String in items:
-		pick.add_item(item)
-	pick.select(-1)
-	pick.text = said
-	pick.custom_minimum_size = Vector2(0, 36)
-	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pick.size_flags_stretch_ratio = share
-	pick.focus_mode = Control.FOCUS_NONE
-	pick.get_popup().max_size = Vector2i(0, 320)
-	row.add_child(pick)
-	return pick
-
-
 ## The month chosen, 1 to 12, or 0 for none.
 func _month() -> int:
-	return _month_pick.selected + 1 if _month_pick.selected >= 0 else 0
-
-
-## The year chosen, or 0 for none.
-func _year() -> int:
-	return int(_year_pick.get_item_text(_year_pick.selected)) if _year_pick.selected >= 0 else 0
+	for at: int in _months.size():
+		if _months[at].button_pressed:
+			return at + 1
+	return 0
 
 
 func _answer() -> void:
 	if _answering:
 		return
 	var month: int = _month()
-	var year: int = _year()
-	if month == 0 or year == 0:
-		_age_note.text = "Choose the month and the year."
+	var typed: String = _year.text.strip_edges()
+	var this_year: int = int(Time.get_datetime_dict_from_system()["year"])
+	if month == 0 or not typed.is_valid_int() or typed.length() != 4 \
+			or int(typed) > this_year or int(typed) < this_year - 120:
+		_age_note.text = "Choose the month, and type the year as four digits."
 		_age_note.visible = true
 		return
 	_answering = true
 	_age_go.disabled = true
 	_age_note.visible = false
-	var problem: String = await account.answer_age(month, year)
+	var problem: String = await account.answer_age(month, int(typed))
 	_answering = false
 	_age_go.disabled = false
 	if not problem.is_empty():
@@ -265,7 +261,10 @@ func controls_by_name() -> Dictionary:
 	if _thanks.visible:
 		return {"age_done": _thanks_go}
 	if _age.visible:
-		return {"age_month": _month_pick, "age_year": _year_pick, "age_go": _age_go}
+		var asked: Dictionary = {"age_year": _year, "age_go": _age_go}
+		for at: int in _months.size():
+			asked["age_month_%d" % (at + 1)] = _months[at]
+		return asked
 	var named: Dictionary = _form.controls_by_name()
 	named["signin_retry"] = _retry
 	return named

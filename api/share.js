@@ -141,7 +141,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, MINE_SORTS, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
+  KINDS, LICENCES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   listQuery, looksLikePerson, modelHash, partFacts, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
@@ -877,13 +877,13 @@ ${header}
         <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
       </div>
       <div class="marks" id="marks" data-id="${id}" hidden>
-        <button type="button" class="mark" data-mark="like" aria-pressed="false">Like</button>
-        <button type="button" class="mark" data-mark="favourite" aria-pressed="false">Favourite</button>
-        <details class="collect"><summary>Add to a collection</summary>
+        <button type="button" class="cta ghost small" data-mark="like" aria-pressed="false">Like</button>
+        <button type="button" class="cta ghost small" data-mark="favourite" aria-pressed="false">Favourite</button>
+        <details class="collect"><summary class="cta ghost small">Add to a collection</summary>
           <div class="collect-panel"><div class="collect-list"></div>
             <form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>
               <input id="new-list" maxlength="80" placeholder="A new collection">
-              <button class="cta ghost small" type="submit">Make it</button></form></div></details>
+              <button class="cta ghost" type="submit">Make it</button></form></div></details>
         <p class="said" role="status"></p>
       </div>
       <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
@@ -1358,6 +1358,35 @@ function ownedCard(origin, row) {
 
 /// What a model needs kept (supabase/discovery.sql owned_keep_needs), in
 /// the one spelling a collection is compared by. Never throws.
+/// What moves in the model, as its app found from the model's joints
+/// (src/assembly/playable.gd): each of MOVES at most once, in its order.
+/// Undefined when not said (an app from before), which leaves what a model
+/// had as it was.
+export function checkMoves(given) {
+  if (given === undefined || given === null) return undefined;
+  if (!Array.isArray(given) || given.length > MOVES.length) {
+    throw new Refusal(`moves is a list of what moves: ${MOVES.join(", ")}`);
+  }
+  for (const word of given) {
+    if (typeof word !== "string" || !MOVES.includes(word)) {
+      throw new Refusal(`moves is a list of what moves: ${MOVES.join(", ")}`);
+    }
+  }
+  return MOVES.filter((word) => given.includes(word));
+}
+
+/// What moves, kept with the model's row: the list kept, or null. Never
+/// stops the publish; before supabase/play.sql there is nowhere to keep it.
+async function keepMoves(id, owner, moves) {
+  if (moves === undefined) return null;
+  try {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { moves } });
+    return moves;
+  } catch {
+    return null;
+  }
+}
+
 async function keepNeeds(id, needs) {
   try {
     await db("rpc/owned_keep_needs", { method: "POST", body: { model_id: id, needs: keyed(needs || []) } });
@@ -1516,6 +1545,8 @@ async function publish(request, response) {
   const thumb = checkThumb(body.thumb);
   // What the app found, checked against this very file (api/_tested.js).
   const finding = checkTested(body.tested, body.model);
+  // And what moves in it, from its joints (supabase/play.sql).
+  const moves = checkMoves(body.moves);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   const author = cleanText(body.author, MAX_AUTHOR) || null;
@@ -1681,6 +1712,7 @@ async function publish(request, response) {
   // gallery's Build with what I own. Never stops the publish; before
   // supabase/discovery.sql there is nowhere to keep it.
   await keepNeeds(id, needs);
+  const movesKept = await keepMoves(id, owner, moves);
 
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
@@ -1688,7 +1720,7 @@ async function publish(request, response) {
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
-    version_url: `${origin}/m/${id}/v/${n}`, tested: kept,
+    version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept,
     ...links(origin, id),
   });
 }

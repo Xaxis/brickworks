@@ -45,6 +45,12 @@ declare -A CMD=(
   # voted in its two groups, ended and won: API routes only, with the bypass
   # (supabase/challenges.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # Play in a shared model's view: 8808-1's steering turned by its wheel,
+  # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
+  # frames held to 33 ms. Published from a throwaway account, deleted
+  # after; API routes only, with the bypass (supabase/play.sql's card when
+  # it is applied).
+  [play]="tools/web/play_flow.mjs --url=$P --publish --out=$S/${TAG}_play"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the
@@ -56,6 +62,10 @@ declare -A CMD=(
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"
+  # Every page and dialog, each visible control judged against the design
+  # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
+  # by its stand-in, so no account is made.
+  [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
   [download]="tools/web/download_check.mjs --url=$P/download"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
@@ -99,7 +109,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site download frames"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design download frames"
 NAMES="${*:-$ORDER}"
 run() {
   local name="$1" t0=$(date +%s)
@@ -117,7 +127,7 @@ run() {
 # frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
 # page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
 # frames holds the app's own work a frame on 75969-1 (200 ms, select all 400).
-SOLO=" idle arrival progress cursor render_open grab share_steps frames "
+SOLO=" idle arrival progress cursor render_open grab share_steps frames play "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED

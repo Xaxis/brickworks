@@ -3354,3 +3354,101 @@ its hinge, where its hinge plates met the plate beside them at once. Also
   (10179-1, 21318-1).
 - From G11: 8074-1's grader, 6753-1's tow truck, steering loops too big to
   solve, and 23 steering sets and 71 moving things not back.
+
+## 21. Play from a shared link (P1)
+
+Grab 1 to 12 let a person drag what moves in their own model. P1 lets
+anybody do it on a model somebody shared: open its link and steer the
+wheels by the steering wheel, swing the boom, open the doors, turn the
+gearbox by its input. Nobody can play with a model on Rebrickable.
+
+**The same grab.** The viewer takes a press on a part the way the
+builder's Select does (`GrabDrag.press`), on the same joints, stops,
+couplings, loops, swings and falls; held still 0.4 s first it takes the
+end of a chain (`PressHold`, timed by what the frames saw). A press that
+takes hold of nothing that moves (a rigid part, a loop with no freedom)
+says why in the viewer's pill and turns the view instead, as a drag on
+the model always did there (`main._play_press`). A finger plays too
+(`main._play_touch`): one finger down on a part that moves and drawn past
+a tap (`CadCamera.TAP_SLOP`, 14 px) takes hold of it before the camera
+sees the drag; anywhere else, or with a second finger, the camera turns
+and pinches as before, and every finger's coming down and lifting still
+reaches it (`CadCamera.fingers`).
+
+**Nothing kept.** The store is read-only in the viewer, so a move is kept
+only in this visit's model (one step of its history, as in the builder).
+Reset undoes every play's step back to the model as it opened
+(`main._play_reset`; a swing is stopped where it is first, and a section
+still being checked or falling comes to rest first). Build it and the
+booklet put it back before they start: they are the model as built.
+
+**When.** The joints are read once the model is up, its steps worked out
+and its lattice told of every part (`_ready_play`, after
+`ModelStore.register_later`): a worker's work from 300 parts where there
+are threads. Read as the model opened it slowed a phone's first step
+(the reason the viewer had the grab switched off). Until then a drag
+turns the view; so does a drag while the timeline shows a step short of
+the whole model, whose parts ahead of it are in a move's way unseen.
+
+**What moves, said** (`src/assembly/playable.gd`). From the bodies and
+gear trains a drag uses: steering (a steering arm on its kingpin, or a
+steering rack; taken by its steering wheel where it has one), turntable,
+boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
+reaching 3 studs or more from its line, no tyre in it), doors (a door,
+ramp, hatch, gate, tailgate, flap or lid), gears (two in mesh, one
+turning on its joint), pneumatics, actuator, rack. A minifigure, a hose
+and a wheel on its axle are not said: every town and car has them, and
+they can still be dragged. The viewer's pill says "Moves: steering, boom"
+and "Drag a part that moves" ("Touch a part that moves and drag it" on a
+touch screen); the same words go with the model when it is published,
+for its gallery card (docs/COMMUNITY.md, Play).
+
+**A fingertip, and a browser's fingers.** Two things the desktop probe
+did not show and play_flow did. Chrome numbers a finger as the page's
+touches go (index 1 there), and a finger taken only at index 0 never
+played: the first finger is the one that comes down with no other down.
+And a steering wheel on a phone is a few points across, its rim thinner
+than a fingertip: the finger on the wheel's handle came down on the plate
+behind it and turned the view. A finger on a part that does not move now
+means a part that moves within a fingertip of it, about 10 points
+(`main._play_brick_near`).
+
+**What a frame costs.** Without the balance marks a viewer's drag does not
+weigh the model each frame either (once, as it is let go, for a fall):
+on a phone slowed four times the weighing took the worst drag frame from
+19 to 47 ms. The joints are read on a worker in the viewer whatever the
+model's size (`GrabDrag.read_off_thread_from`): the 93-part racer read on
+the page's thread was 147 to 159 ms of one frame in SwiftShader.
+
+**Proved** (2026-10-19). `tools/probe.sh share_play_probe` (windowed, on
+the GPU), 40 checks: 8808-1 opened by its link, "Moves: steering" said
+2.3 s after its steps; its steering wheel turned 30° by the mouse takes the
+loop and the rack and both steering arms turn 7.7° on their kingpins, the
+pill saying "The steering, 34°", no balance marks; the drag's own work 1.1
+to 1.3 ms a frame on average, 1.5 to 1.9 at worst; nothing published,
+written or changed at the link; Reset puts every part back exactly; a
+fingertip beside the wheel's rim means the wheel, and a finger (index 1)
+turns it with the camera still; a drag on the chassis turns the view;
+Build it opens on the model as built; and the Share panel sends `moves:
+["steering"]`. With the press taken out (`_play_press` false) it fails at
+the first drag, and with the finger taken only at index 0 it fails three
+checks. `share_view_probe` passes as before (173 checks), `grab_probe --
+--only=racks` too (43). In a browser, `tools/web/play_flow.mjs` on a local
+export, Chromium in SwiftShader, 34 checks: at 1280 x 800 the mouse turns
+the steering 85°, the app's own work 3.5 ms a frame on average and 9.2 at
+worst, the page's frames 17 ms (33 at worst); at 390 x 844, three device
+pixels to the point, a finger turns it 107° to its stop with the CPU slowed
+four times, the app's own work 6.9 ms on average and 23 at worst, the
+page's frames 17 ms median and 1.1 s at worst (SwiftShader drawing 1170 x
+2532 pixels on a slowed CPU, as grab_flow found); the joints read on a
+worker in 136 to 194 ms; the pill clear of the view cube; Reset; the link's
+text unchanged; and the gallery's cards saying what moves. Against the
+release before it (rel-m84's export) the flow fails: nothing is said to
+move. Pictures in the run's `--out` (`laptop_*.png`, `phone_*.png`).
+
+**Left for later.** A drag on the timeline short of the whole model turns
+the view: playing a step's parts with the parts ahead hidden but in the
+way would surprise. The part under a lifted finger stays named, as before
+in the viewer. Bigger models in the viewer (a few thousand parts) are not
+measured here: the reading is on a worker, but each move's room tests are
+the builder's, and a big section is checked on pauses as it is there.

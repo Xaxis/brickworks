@@ -38,9 +38,6 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August",
-  "September", "October", "November", "December"];
-
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
@@ -284,28 +281,21 @@ try {
       if (Date.now() > end) throw new Error(`no ${name} on the page`);
       await page.waitForTimeout(500);
     }
-  };  // A dropdown, as a person with a keyboard uses one: a click opens its
-  // list, typing finds the item ("June", "1996") and Enter chooses it.
-  // Keys reach the app a frame at a time; Enter waits for the typing.
-  const choose = async (name, words, page = app) => {
-    await press(name, page);
-    await page.keyboard.type(words, { delay: 30 });
-    await page.waitForTimeout(1500);
-    await page.keyboard.press("Enter");
-    await page.waitForTimeout(800);
   };
-
   await app.goto(`${site}/app`, { waitUntil: "load", timeout: 120000 });
   await until(() => (window.brickworksAccount || {}).age_ask === true && window.brickworksAccount.gated, "the age question in the sign-in screen");
   // The page is told where a control is once two of the app's reports agree.
   await until(() => Object.keys(window.brickworksControls || {}).includes("age_go"), "the question's controls", 60);
   const gateControls = Object.keys(await controls());
   check(`the sign-in screen asks it, and only it can be pressed (${gateControls.length} controls)`,
-    gateControls.includes("age_month") && gateControls.includes("age_year") && gateControls.includes("age_go")
+    gateControls.includes("age_month_1") && gateControls.includes("age_year") && gateControls.includes("age_go")
     && !gateControls.includes("tool_share"));
   await shot(app, "4_app_question.png");
-  await choose("age_month", MONTH_NAMES[thisMonth - 1]);
-  await choose("age_year", String(thisYear - 9));
+  await press(`age_month_${thisMonth}`);
+  await press("age_year");
+  await app.keyboard.type(String(thisYear - 9), { delay: 30 });
+  // Keys reach the field a frame at a time; a click straight after can land first.
+  await app.waitForTimeout(1500);
   await press("age_go");
   await until(() => Object.keys(window.brickworksControls || {}).includes("age_done"), "what under 13 means", 60);
   await shot(app, "4_app_under_13.png");
@@ -349,8 +339,10 @@ try {
     }
   };
   await until2(() => (window.brickworksAccount || {}).age_ask === true, "the age question");
-  await choose("age_month", "June", app2);
-  await choose("age_year", String(thisYear - 40), app2);
+  await press("age_month_6", app2);
+  await press("age_year", app2);
+  await app2.keyboard.type(String(thisYear - 40), { delay: 30 });
+  await app2.waitForTimeout(1500);
   await press("age_go", app2);
   await until2(() => !(window.brickworksAccount || {}).gated && window.brickworksAccount.over_13 === true, "let in", 60);
   check("13 or over: let straight in, nothing more said", true);

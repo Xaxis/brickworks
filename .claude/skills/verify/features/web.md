@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
 
 ## Sub-features
 
@@ -596,6 +596,20 @@ plan with Claude as the client.
   asked yet is told to answer first before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
+- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19): the
+  site's controls, in one place and both schemes: a field (every input,
+  select, textarea and file picker, styled by element at zero specificity,
+  so none is the browser's; a dropdown is the text box with its own arrow),
+  a checkbox and radio (`label.choice`), the buttons the site uses (`.cta`,
+  `.cta.ghost` and any bare button, `button.link`, `.small`, `.big`), the
+  `dialog` (sign-in, age, report) and `.card`; tokens `--field`,
+  `--control-h` 44, `--control-radius` 10. The copies in `web/directory.css`,
+  `web/gallery.html`, `web/download.html`, `web/takedown.html`,
+  `web/admin.html` and `web/authorize.html` are gone; the last two now link
+  `/site.css`. The owner's example was the age question's bare month
+  dropdown beside a full-size year box.
+- `design browser flow` (`tools/web/design_flow.mjs`, preview check
+  `[design]`): every page and dialog, below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
   `api/people.js`, 2026-10-18; **not applied to the live project**: the
   owner applies it at release, after `trust.sql` and before the deploy;
@@ -781,6 +795,45 @@ plan with Claude as the client.
   parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
   and sets the flows' test ones.
 - `challenges browser flow` (`tools/web/challenges_flow.mjs`): below.
+- `play in a shared model` (`src/ui/share_view.gd`'s pill, `src/main.gd`
+  `_ready_play`, `_play_press`, `_play_touch`, `_play_reset`, 2026-10-19;
+  docs/MECHANISMS.md §21): once a shared model is up, its steps worked out
+  and its lattice told of every part, the grab reads its joints and the
+  pill under the bar says what moves ("Moves: steering", or "Parts of it
+  move") and how ("Drag a part that moves. Drag anywhere else to turn the
+  model."; on a touch screen "Touch a part that moves and drag it…"). A
+  left drag on a part that moves moves it on the builder's own joints
+  (`GrabDrag.press`, held still 0.4 s first by its chain's end); one that
+  does not, or a drag before the joints are read or while the timeline is
+  short of the whole model, turns the view as before. A finger: the first
+  one down (whatever its index) on a part that moves, or within about 10
+  points of one (`_play_brick_near`: a phone's steering wheel is thinner
+  than a fingertip), and past 14 px takes hold before the camera sees it;
+  a second finger lets go and pinches; `brickworksShare.finger` says what
+  the last was taken as. The viewer's drag draws no balance marks and does
+  not weigh each frame (`GrabDrag.show_marks`), and reads the joints on a
+  worker whatever the size (`read_off_thread_from`). The pill says what the drag is
+  doing; let go, Reset (`view_reset`) undoes every play's step; Build it
+  and the booklet put it back first. Nothing is written (the store is
+  read-only). `brickworksShare.view.play`: `ready`, `shown`, `moves`,
+  `title`, `says`, `played`, `reset`, `touch`; the page that sets
+  `window.brickworksGrabAsk` gets the play's handles first in
+  `brickworksGrab.handles` (`play: "steering"`, `GrabDrag.handle_parts`).
+- `what moves in a model` (`src/assembly/playable.gd`, `Playable.read`,
+  `kinds`, `words`, `KINDS`, `MECHANISMS`): steering, turntable, boom,
+  doors, gears, pneumatics, actuator, rack, from `Bodies` and the gear
+  trains; sent with a publish (`SharePanel.moves_of`, `main._moves_now`).
+- `what moves on a gallery card` (`supabase/play.sql`, not applied until
+  the owner does): `shared_models.moves` (the words, eight at most, `{}`
+  for every row before), `moves_mechanism`, `directory_card` with `moves`,
+  `directory_models` (discovery.sql's, technic also by moves);
+  `api/share.js` `checkMoves` (400 on a word it does not know) and
+  `keepMoves` (never stops a publish; `moves: null` in the answer before
+  the file is applied), `api/_directory.js` `MOVES`, `movesOf`, `cardOf`'s
+  `moves`; `web/gallery.js` "Moves: steering, boom" on the card
+  (`data-moves`).
+- `share play probe` (`src/dev/share_play_probe.gd`): below.
+- `play browser flow` (`tools/web/play_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -928,7 +981,8 @@ plan with Claude as the client.
   `about` and `remixed_from` in `view`). **No sign-in** (no gate) and **no write
   path**: `Shell.can` runs only `Shell.LOOKING` (views, fit, timeline, parts
   list, instructions, full screen, website, about), the mouse goes to
-  `_view_input` (a left drag turns the view, Shift slides it; nothing else) and
+  `_view_input` (a left drag turns the view, Shift slides it; on a part that
+  moves, once its joints are read, it moves it: `play in a shared model`) and
   the keys to `_looking_key` (F, Home, End, Space, arrows, 0–7, B, P, Esc),
   `ModelStore.read_only` makes its one writer refuse (autosave, Save, Save as),
   `CustomParts.keeps` off builds carried parts for the visit only,
@@ -1767,6 +1821,35 @@ never reach the database's own triggers, which refuse the profile, the
 public list and the listing (three 502s, 2026-10-18); without it, 42 checks
 all ok the same evening.
 
+The design system, with no network and no account (pages from the
+checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+
+```sh
+heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout
+heavy node tools/web/design_flow.mjs --root=<an old export> --out=…   # an older site, to see it fail
+node tools/web/design_flow.mjs --url=<preview>                        # a deployment's pages, the API stood in
+```
+
+It visits home, gallery (its filters opened at 390), a model's page (signed
+out: Report it opens the report dialog; signed in: the collect panel, the
+comment form, and I built it's photo form with its file picker), an older
+version, the embed card, a person, a collection, the feed, Account (signed
+out: Sign in and its code step; signed in: the age question for an account
+not asked yet), admin, authorize, compare, download, faq, changelog, terms,
+guidelines, privacy, takedown and the 404 page, at 390 and 1280, light and
+dark, signed out and in. It fails a visible control the browser drew its
+own way (a `menulist` dropdown, a checkbox in its own colour, 13.33 px type),
+controls of one kind on a page that differ (fields in type, height,
+corners, border or fill; buttons of one size), and a page wider than 390
+with anything open. It proves it when it ends `design flow: N pages and
+dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
+188, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
+and api/, given as `--root=`) it fails the age question by name:
+`select#age-month … the browser's own dropdown (appearance auto)`, its
+13.33 px type, and the year box differing from it in type, corners, fill
+and height. Pictures of every state in --out.
+
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every
 page's footer links `/terms` and `/guidelines`; each topic on
@@ -2065,6 +2148,76 @@ the CDN, Ada then Bob on one address each their own, her page the same
 bytes signed in or not, without tests public for 30 s with none of her
 test models; no page errors. 39 checks, all ok, 2026-10-19, against the
 held relay with the live project (about 2 minutes).
+**Play** (`play in a shared model`, `what moves in a model`, `what moves on
+a gallery card`, `share play probe`, `play browser flow`). The SQL first,
+in a rolled-back dry run on the live project (after discovery.sql), and
+the words held together across the app, the API and the SQL:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/play.sql --dry --try=tools/play_try.sql --table=shared_models
+python3 tools/minitest.py tests/test_play.py
+```
+
+The dry run proves it when it ends "rolled back, nothing kept" with: every
+model's `moves` `{}` and none null; "wings" and nine words refused by
+`shared_models_moves_words`; `moves_mechanism` true for steering and for
+doors and gears, false for doors, nothing and null; the cards saying
+`["steering"]`, `[]`, `["doors"]`, `[]`; Technic or mechanism "PlayTry001,
+PlayTry002" (the racer by its steering, the crane by its parts; not the
+house, nor the hut), everything all four, a visitor's none; the three
+functions the service role's alone; the filter's first page about 4 ms.
+`test_play` ends "6 passed".
+
+The viewer in the real scene, on 8808-1 (a window: on Xvfb under `gpu`;
+about a minute on the GPU):
+
+```sh
+tools/probe.sh share_play_probe
+```
+
+Proves it when it ends "a shared model's steering turns by its wheel,
+nothing is kept, and Reset puts it back" with no `FAIL` (40 checks): the
+pill says "Moves: steering" and "Drag a part that moves…" about 2 s after
+the steps; the steering taken by its steering wheel, turned 30° by the
+mouse round its column with the loop and the rack, the pill saying "The
+steering, 34°", the view not turning, no balance marks drawn and no lean,
+each drag frame's own work under 33 ms (1.3 ms mean, 1.6 worst on the
+GPU); let go, both steering arms turned 7.7°, 21 parts moved, Reset
+offered, nothing published, the link asked for once, its text unchanged,
+the store read-only, nothing written to the data folder; Reset puts every
+part back exactly; a fingertip on the plate beside the wheel's thin rim
+means the wheel, and a finger (index 1, as a browser numbers it) turns it
+-24° with the camera still, and Reset again; a drag on the chassis turns
+the view and moves nothing; Build it after a play opens on the model as
+built; and published from the builder, the panel sends `moves:
+["steering"]`. Pictures in `shots/play/`. About a minute on the GPU.
+
+In a browser, on a local export (serve.py plays the link), then on a
+preview through the API alone:
+
+```sh
+PARTS_URL=x tools/export.sh web
+python3 tools/web/serve.py build/web 8771 --parts assets/generated/parts --delay 0 --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd &
+node tools/web/play_flow.mjs --url=http://127.0.0.1:8771 --out=shots/play_web
+tools/release/preview_checks.sh <preview> <worktree> TAG play     # publishes from a throwaway account
+```
+
+Proves it when it ends "a shared model's steering turns by its wheel, by
+mouse and by finger, and Reset puts it back" (34 checks, about 100 s), at
+1280 x 800 by the mouse and at 390 x 844 by a finger (index 1, the CPU
+slowed four times for the drag), in SwiftShader: what moves said inside the
+page, the joints read on a worker, the steering wheel's handle (`play:
+"steering"`) turned 10° or more with the view still (85° and 107°), the
+finger taken as the steering's (`brickworksShare.finger` "part"), the pill
+saying what turns, the app's own work in a drag frame under 33 ms (3.5 ms
+mean and 9.2 worst; slowed, 6.9 and 23; the page's frame gaps said beside
+it), Reset offered and inside the page, the pill clear of the view cube,
+the link's text unchanged, Reset putting it back; then the
+gallery's page from the checkout with its list played: the racer's card
+"Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or
+mechanism asking `technic=1`. With `--publish`, once play.sql is applied,
+the list asked with tests and technic finds the published racer with
+`["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`.
 
 The monthly challenge (`supabase/challenges.sql`). The SQL first, in a
 transaction rolled back on the live project (the trial makes its own

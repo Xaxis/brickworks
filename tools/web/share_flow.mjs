@@ -220,16 +220,20 @@ try {
   const bricks = (await ownerPage.evaluate(() => window.brickworksState)).bricks;
   await press(ownerPage, "tool_share");
   await until(ownerPage, () => (window.brickworksShare.panel || {}).open, "the Share panel");
-  await type(ownerPage, "share_name", NAME);
-  await press(ownerPage, "share_credit");
-  await type(ownerPage, "share_author", AUTHOR);
   // One box at a time, each read back before the next: keys typed into a
   // canvas drawn in software arrive at the app later than they are sent,
   // and the tags' went nowhere while the description's were still landing.
+  // The name was published as "Share Flow Ca" at load 30, its last key
+  // still on its way when the next click landed (m84e).
   const shown = (field, want) => until(ownerPage, ([name, text]) => {
     const p = (window.brickworksShare || {}).panel || {};
     return p[name] === text ? p : null;
   }, `the ${field} typed`, 45, [field, want]).catch(() => ({}));
+  await type(ownerPage, "share_name", NAME);
+  await shown("name", NAME);
+  await press(ownerPage, "share_credit");
+  await type(ownerPage, "share_author", AUTHOR);
+  await shown("author", AUTHOR);
   await type(ownerPage, "share_tags", "car, flow test");
   await shown("tags", "car, flow test");
   await type(ownerPage, "share_about", ABOUT);

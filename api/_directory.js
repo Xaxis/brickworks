@@ -308,6 +308,20 @@ export function listQuery(query, perPage, mostPages, { mine = false } = {}) {
   return { asked, said };
 }
 
+/// What can move in a model, as the app finds it from the model's joints
+/// when it is published (src/assembly/playable.gd: Playable.KINDS), in the
+/// order said: its card says them ("Moves: steering, boom"), and the
+/// "Technic or mechanism" filter takes any but doors as a mechanism
+/// (supabase/play.sql, which lists the same words).
+export const MOVES = ["steering", "turntable", "boom", "doors", "gears", "pneumatics", "actuator", "rack"];
+
+/// The moves a client is given: the known words, in their order.
+export function movesOf(given) {
+  if (!Array.isArray(given)) return [];
+  const said = new Set(given.map(String));
+  return MOVES.filter((word) => said.has(word));
+}
+
 /// A card as a client is given it: what directory_card read, and where its
 /// page and pictures are.
 export function cardOf(origin, row) {
@@ -322,6 +336,8 @@ export function cardOf(origin, row) {
     views: Number(row.views) || 0, likes: Number(row.likes) || 0, remixes: Number(row.remixes) || 0,
     // How many have built it to the last step (supabase/builds.sql).
     builds: Number(row.builds) || 0,
+    // What moves in it, as its app found (supabase/play.sql); none before.
+    moves: movesOf(row.moves),
     by: row.by && typeof row.by === "object" ? { handle: row.by.handle, name: row.by.name } : null,
     url, image: row.has_image ? `${url}.png` : null,
     thumb: row.has_thumb ? `${url}.webp?v=${version.toString(36)}` : null,

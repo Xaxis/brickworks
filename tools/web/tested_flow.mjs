@@ -303,6 +303,10 @@ try {
   await press(ownerPage, "tool_share");
   await until(ownerPage, () => (window.brickworksShare.panel || {}).open, "the Share panel");
   await type(ownerPage, "share_name", "Tested Flow From The App");
+  // Read back before Publish: keys reach a canvas drawn in software later
+  // than they are sent, and share_flow's name lost its last one (m84e).
+  await until(ownerPage, () => ((window.brickworksShare || {}).panel || {}).name === "Tested Flow From The App",
+    "the name typed", 45).catch(() => null);
   await press(ownerPage, "share_publish");
   const panel = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};

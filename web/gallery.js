@@ -148,6 +148,18 @@
       words.append(line);
       link.dataset.won = "yes";
     }
+    // Something to play with: what moves in it, as its app found from its
+    // joints when it was published (supabase/play.sql), to be taken hold
+    // of and moved on its link.
+    const moves = Array.isArray(model.moves) ? model.moves.filter((word) => typeof word === "string") : [];
+    if (moves.length) {
+      const line = document.createElement("small");
+      line.className = "moves";
+      line.textContent = `Moves: ${moves.join(", ")}`;
+      line.title = "Open it and drag what moves, as it was built";
+      words.append(line);
+      link.dataset.moves = moves.join(",");
+    }
     // Marked Tested: its newest version passed the four tests the app ran
     // as it was published (api/_tested.js), said on hover.
     if (model.tested === true) {
