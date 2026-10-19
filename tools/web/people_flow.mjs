@@ -133,6 +133,7 @@ try {
   // (tools/web/age_flow.mjs is about the question itself).
   if (await page.waitForSelector("dialog.age[open]", { timeout: 8000 }).then(() => true).catch(() => false)) {
     await page.selectOption("#age-month", "3");
+    // The year is a dropdown, as the month is (c98af5bd).
     await page.selectOption("#age-year", String(new Date().getUTCFullYear() - 30));
     await page.click("#age-go");
     check("asked its age once, after signing in", true);

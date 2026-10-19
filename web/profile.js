@@ -98,11 +98,11 @@ function listRow(list) {
   if (document.documentElement.dataset.young === "yes") box.disabled = true;
   const save = document.createElement("button");
   save.type = "button";
-  save.className = "cta ghost small";
+  save.className = "cta ghost";
   save.textContent = "Save";
   const drop = document.createElement("button");
   drop.type = "button";
-  drop.className = "cta ghost small";
+  drop.className = "cta ghost";
   drop.textContent = "Delete";
   const page = document.createElement("a");
   page.href = `/c/${list.id}`;
