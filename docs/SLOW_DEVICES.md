@@ -28,6 +28,14 @@ and writes nothing to the renderer. There are no new controls.
   ends with a fence after its frames (`GpuFence`), and when it passes, the
   look is judged again by the time from its start, less its frames' own
   work, a frame. On the desktop there is no fence.
+- **A look held apart is timed from its last hold.** The parts bin reads
+  its pictures back while the editor's first look is drawn, and `GpuFence`
+  holds the drawing until each is read, so the look's frames come apart.
+  Right after a hold the card has done everything asked of it, so the
+  fence times the look from its last frame after a hold. With fewer than
+  eight frames after it (as many as a look not held draws) it is taken
+  again once nothing has held the drawing for a second
+  (`GpuFence.unheld_ms`), at most three times in a row.
 - It only lowers the look, never raises it within a session. Probes leave it
   off unless they call `watch()`, as IdleDraw does. It is also off when
   headless.
@@ -177,6 +185,14 @@ and on rel-m87, three views of the house, compared with `cmp`:
 - Forward+ pictures of rel-m86 and rel-m87 taken two hours apart were
   identical too: the pictures are steady from run to run.
 
+For the first look timed from its last hold (2026-10-19), this branch
+against main (7299b56d), the same way: view_0, view_1 and view_2 identical
+on Forward+ and on Compatibility through zink. The probe now also stops
+the drawing for three frames inside a look and lets it go, as GpuFence
+does on the web: with too few frames after the hold to judge, the look is
+taken again (the check fails with the second look turned off), and on the
+card it cuts nothing.
+
 The probe's "every frame timed is quick" check failed once on
 Compatibility (two of six first-look frames at 48 and 75 ms, the rest 17 to
 27) while the app, judging by the second fastest, rightly cut nothing. It
@@ -218,6 +234,59 @@ had loaded (the judgments at 10 to 32 s); in the empty editor at the end of
 the first turn, so that turn is the dearest of the branch's (370 and 512 ms
 on the laptop).
 
+## The editor's first look
+
+The editor's first look was drawn while the parts bin read its pictures
+back, so no fence judged it and the app cut during the first turn of the
+view instead. Recorded second by second on main (7299b56d), laptop size:
+the look's frames came at 6.0, 7.6 and 8.4 s with the drawing held 1.6 and
+0.6 s between them; its six timed frames, handed over at 17 to 24 ms, said
+quick; and nothing was cut in the 100 s the page was then left alone.
+
+Now the look is timed to its fence from its last frame after a hold (the
+nine frames after 8.4 s there), and cut by that. Measured with
+`look_cost.mjs --mode=acts --scenes=empty`, main and this branch in turn,
+A B A B, in Chromium on SwiftShader. `--from=30` begins both builds' acts
+30 s after the engine started, so both are turned at the same moment. A
+frame by the fence, and the cuts in force when the act began:
+
+| size, act | main r1 | branch r1 | main r2 | branch r2 |
+|---|---|---|---|---|
+| laptop, first turn | 1,866 ms, none (load 17-49) | 158 ms, all four (load 20-30) | 379 ms, none (load 17-20) | 202 ms, all four (load 9-12) |
+| laptop, drag | 206 ms | 163 ms | 126 ms | 162 ms |
+| laptop, place | 205 ms | 158 ms | 131 ms | 142 ms |
+| phone, first turn | 275 ms, three of five | 211 ms, all five | 244 ms, three of five | 140 ms, all five |
+| phone, drag | 130 ms | 203 ms | 151 ms | 158 ms |
+| phone, place | 165 ms | 228 ms | 187 ms | 332 ms |
+
+The branch's first turn is at the cost of the acts after it: every rung
+was cut before it, at 14.5 and 14.9 s on the laptop and 21.9 and 21.6 s on
+the phone, with nobody touching the page. Main cut nothing on the laptop
+until the turn (every rung at 49.9 and 40.4 s, during it); main r1's turn
+ran while the box's load went from 17 to 49. On the phone main's first look
+is not always held apart (the bin's first hold there came after it), so
+main had cut three rungs by its fence (at 26.5 and 17.7 s) and the rest
+during the turn.
+
+By default the acts begin once the page is quiet, 10 to 17 s after it
+began loading on either build. Turned that early, the laptop's first turn
+was 265 and 270 ms on the branch against 505 and 526 on main (loads 12 to
+26, the branch's cuts landing 1 to 2 s into the turn), and the phone's 352
+and 262 against 287 and 348: the phone's first look is judged by its fence
+15 to 19 s in, whichever build, as its eight frames take SwiftShader 1.3 s
+each (Next, below).
+
+Tried first, as Next 1 said: a look held apart taken again a second after
+the bin's last read. Its first cuts came at 15.4 to 19.7 s on the laptop,
+against 11.1 to 13.6 s on this branch and 15.9 to 26.8 s on main (during
+the turn), three runs of each interleaved: the second look drew twelve
+more frames at full cost, and its fence waited behind the first look's
+frames too. Its first turns read better by default (505, 181 and 193 ms,
+against 486, 265 and 457 here and 652, 649 and 485 on main) only because
+those twelve frames kept the page from going quiet, so its acts began
+later, after its cuts. It stays for a look with too few frames after its
+last hold to judge.
+
 ## The frames gate
 
 `tools/web/cad_frames.mjs --gate --arrive=300 --only=orbit,select_all,step`
@@ -236,6 +305,16 @@ The app's own work, base / branch:
 The pairs disagree on which is slower, by as much each way: no change in
 the app's own work that this can see.
 
+With the first look timed from its last hold (2026-10-19), the same run on
+this branch's build, load 38 to 51: every check passed. Orbit 35.5 ms at
+the 95th percentile (median 22), select all 68.8 ms (922 selected), Next
+11.7 to 25.6 ms. `tools/web/idle_check.mjs` against the same local server:
+settled 27 s after the view showed, then 0 frames drawn in 15 s standing
+still (902 engine frames), and a wheel notch, the - key and the ghost of
+3001 in hand each drawn and quiet again. The acts gate on every page
+(`look_cost.mjs --mode=acts --gate`, load 20 to 57): 6 of 6, every rung
+cut before the acts in the model and the viewer at both sizes.
+
 ## Also run
 
 What `featuremap affected` lists against rel-m87, with `tools/probe.sh` on
@@ -246,6 +325,10 @@ gallery_tool 48/0, mcp_sync 12/0, bigmodel 43/0 (ok/FAIL), cadtask_frames
 on the house (every act timed); `-- --about` and `-- --model=models/car.ldr
 --out=…` (61 parts in, 61 out).
 
+For the first look timed from its last hold, `featuremap affected` against
+main (7299b56d) lists this feature and look_cost alone: look_probe passed
+on Forward+ and Compatibility (above), and look_cost is what measured it.
+
 ## What got worse
 
 - **The look on a slow device**, by design. In software every rung is cut
@@ -254,16 +337,17 @@ on the house (every act timed); `-- --about` and `-- --model=models/car.ldr
   a thirty-sixth) and stretched. The interface stays sharp. SwiftShader is
   still over the budget with all of it cut (167 to 513 ms a frame), so
   that is where it ends there.
-- **The first turn in the editor waits for the cuts.** The editor's first
-  look is drawn while the parts bin reads its pictures back, which holds
-  the drawing between frames, so no fence judges it and its timed frames
-  (handed over cheap) say quick. The app cut during the first turn of the
-  view instead (laptop: at 22, 27 and 32 s; phone: at 24 and 30 s), so that
-  turn ran at 512 ms a frame against 274 once cut. In the model and the
-  viewer the cuts were made while the page loaded.
+- **A turn in the first 15 to 20 s still waits for the cuts.** The
+  editor's first look is now judged while the page loads (above), every
+  rung cut by 15 s on the laptop and 22 s on the phone with nobody
+  touching it, where main cut nothing until the view was turned. A turn
+  sooner than that still runs before the cuts or with the look's frames
+  queued ahead of it: 265 and 270 ms a frame on the laptop turned as soon
+  as the page was quiet, against 505 and 526 on main.
 - **Frames drawn on purpose.** A look draws frames nobody asked for: in
   software up to 10 to 20 of them, 0.3 to 3 s each, over the first half
-  minute.
+  minute. A look held apart with fewer than eight frames after its last
+  hold draws its ten again, at most three times in a row.
 - Nothing measurable in the app's own work (the frames gate above), and
   nothing on a capable device (the pictures above).
 
@@ -285,15 +369,34 @@ warm-up and is not counted. A cut's number is trusted when its two rounds
 agree; the base's runs beside the branch's, at the same load, show that
 the look as it is costs what it did before.
 
+The editor's first look, with both builds turned at the same moment:
+
+```
+node tools/web/look_cost.mjs --url=http://127.0.0.1:PORT --out=DIR --mode=acts --gate \
+    --scenes=empty --from=30
+```
+
+Each act says the cuts in force when it began. Without `--from` the acts
+begin once the page is quiet, which comes when a build stops drawing, so
+a build that draws more while it loads is turned later.
+
 ## Next
 
-1. Look again when a look was held apart (the editor's first, while the
-   parts bin reads its pictures back), so a slow device is cut before its
-   first turn rather than during it.
-2. Measure on a real weak device, a phone and a laptop's integrated card.
+1. Done (2026-10-19): a look held apart is timed from its last hold, and
+   taken again when too few frames follow it (The editor's first look,
+   above).
+2. Judge a look sooner on a slow device. Its frames are handed over at
+   17 ms each and a dozen queue in the GPU process, so its fence waits for
+   all of them: on a 3x phone in software eight frames at 1.3 s, 15 to 19 s
+   in, and the frames after a cut wait behind them. A look that draws its
+   next frame only once the last one's fence has passed would judge after
+   a few and leave nothing at full cost queued. Its time a frame would then
+   be read to the nearest page frame, though, which a capable device must
+   never be cut by.
+3. Measure on a real weak device, a phone and a laptop's integrated card.
    SwiftShader stands in for one: there a frame costs its pixels, and on a
    real card multisampling, glow and the shadow atlas may weigh more.
-3. ssao (Forward+, the desktop) is first on the ladder and not measured:
+4. ssao (Forward+, the desktop) is first on the ladder and not measured:
    the web has none to measure.
 
 ## Proposal: a switch for the look
