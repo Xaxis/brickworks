@@ -129,10 +129,26 @@ static func _add(into: Dictionary, key: String, count: int) -> void:
 static func needs_of(stock: Inventory, library: PartLibrary = null) -> Dictionary:
 	var needs: Dictionary = {}
 	for lot: Inventory.Lot in stock.lots:
-		if lot.custom:
+		if lot.custom or (library != null and not ownable(lot.part_id, library)):
 			continue
 		_add(needs, key_of(lot.part_id, lot.color_code, library), lot.count)
 	return needs
+
+
+## Whether anybody owns [param part] on its own. Not a sticker, which comes
+## on its set's sheet; not a link of a chain or a hose drawn link by link
+## (LDraw's Flexible_Section); and not one of the pieces LDraw draws a
+## bigger part with and names with a ~ (a train wheel's axle, a motor's
+## case, a hose's centre section), unless the ~ only says the number moved
+## or is obsolete. A model drawing them needs the whole thing, which no
+## parts list names. A number LDraw moved is judged by the one it means
+## today: OMR files draw pneumatic tubes in segments under their old
+## numbers. api/_owned.js deriveOwnedFacts is the same rule.
+static func ownable(part: String, library: PartLibrary) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part))
+	if info == null or info.category == "Sticker" or info.kind.contains("Flexible_Section"):
+		return false
+	return not info.name.begins_with("~") or info.is_redirect() or info.name.contains("(Obsolete)")
 
 
 ## What a model file needs, read with the app's own LDraw reader so a
@@ -145,10 +161,11 @@ static func needs_of_ldraw(text: String, library: PartLibrary = null) -> Diction
 	var known: Dictionary = library.parts if library != null else {}
 	for placement: LdrModel.Placement in model.flatten(known):
 		# Not a part anyone can own: a primitive drawn straight into the
-		# model (a hose as a run of cylinders), or a sub-model the file
-		# names and does not carry. Counting them made a set's own model
-		# look a quarter missing to the person who owns the set.
-		if library != null and not library.parts.has(placement.part_id):
+		# model (a hose as a run of cylinders), a sub-model the file names
+		# and does not carry, or a piece nobody has on its own ([method
+		# ownable]). Counting them made a set's own model look a quarter
+		# missing to the person who owns the set.
+		if library != null and not ownable(placement.part_id, library):
 			continue
 		_add(needs, key_of(placement.part_id, placement.color_code, library), 1)
 	return needs
@@ -264,6 +281,167 @@ static func coverage(needs: Dictionary, on_hand: Dictionary) -> Dictionary:
 	return {"pieces": pieces, "owned": owned, "missing": pieces - owned,
 		"exact": float(owned) / pieces if pieces > 0 else 0.0,
 		"any_colour": float(maxi(shaped, owned)) / pieces if pieces > 0 else 0.0}
+
+
+## An official model's parts as its own set holds them.
+##
+## The Official Model Repository draws a set by hand from its instructions,
+## and Rebrickable counts the box, and the two often say one piece two
+## ways: a colour read differently (Light Grey for Light Bluish Grey, an
+## old code for Flat Silver), an alias, an assembly drawn as its parts or
+## listed as them (a figure's arms and hands apart from its torso, a lever
+## and its base), another mould or print of the same shape (one of the
+## Siege Tower's soldiers drawn with another's torso). Counted as drawn, the
+## Turbo Track Racer's own model was 96% buildable from the Turbo Track
+## Racer and the Siege Tower's 84% from the Siege Tower.
+##
+## So each piece drawn is matched to a piece of the set, each given once:
+## the same part and colour; another mould of it ([method family_of]); its
+## parts, where it is drawn as an assembly or an alias and the set has
+## them; the set's assembly or alias, where it is drawn as the parts; the
+## same part in another colour the set has left; another part of the same
+## shape (category, size and studs) in its colour. What none of these
+## finds stays as drawn, and shows as missing to the person who owns the
+## set: the model draws more than the box holds.
+##
+## [param needs] and [param held] are key -> count in [method key_of]'s
+## spelling; [param made_of] is an LDraw shortcut's or alias's number ->
+## [[part, colour]], 16 for the colour it is placed in (empty for anything
+## else). Returns the model's needs in the set's keys.
+static func as_its_set(needs: Dictionary, held: Dictionary, made_of: Callable,
+		library: PartLibrary) -> Dictionary:
+	var left: Dictionary = held.duplicate()
+	var inside: Dictionary = {}   ## what the assemblies given hold that nothing drawn took yet
+	var out: Dictionary = {}
+	var short: Dictionary = {}
+	for key: String in _sorted(needs):
+		var take: int = mini(int(needs[key]), int(left.get(key, 0)))
+		if take > 0:
+			_add(out, key, take)
+			left[key] = int(left[key]) - take
+		if int(needs[key]) > take:
+			short[key] = int(needs[key]) - take
+	var mould := func(key: String, other: String) -> bool:
+		return colour_of(other) == colour_of(key) and family_of(part_of(other)) == family_of(part_of(key))
+	_match(short, out, left, inside, mould, false)
+	for key: String in _sorted(short):
+		var pieces: Dictionary = _pieces(key, made_of, library)
+		var count: int = int(short.get(key, 0))
+		if pieces.is_empty() or count <= 0:
+			continue
+		short.erase(key)
+		for piece: String in pieces:
+			var want: int = int(short.get(piece, 0)) + int(pieces[piece]) * count
+			var take: int = mini(want, int(left.get(piece, 0)))
+			if take > 0:
+				_add(out, piece, take)
+				left[piece] = int(left[piece]) - take
+			if want > take:
+				short[piece] = want - take
+			else:
+				short.erase(piece)
+	for whole: String in _sorted(left):
+		var pieces: Dictionary = {} if int(left[whole]) <= 0 else _pieces(whole, made_of, library)
+		while not pieces.is_empty() and int(left[whole]) > 0 \
+				and pieces.keys().any(func(piece: String) -> bool: return short.has(piece)):
+			left[whole] = int(left[whole]) - 1
+			_add(out, whole, 1)
+			for piece: String in pieces:
+				var used: int = mini(int(pieces[piece]), int(short.get(piece, 0)))
+				if used > 0:
+					short[piece] = int(short[piece]) - used
+					if int(short[piece]) <= 0:
+						short.erase(piece)
+				if int(pieces[piece]) > used:
+					_add(inside, piece, int(pieces[piece]) - used)
+	_match(short, out, left, inside, mould, false)
+	_match(short, out, left, inside, func(key: String, other: String) -> bool:
+		return family_of(part_of(other)) == family_of(part_of(key)), true)
+	_match(short, out, left, inside, func(key: String, other: String) -> bool:
+		if colour_of(other) != colour_of(key):
+			return false
+		var shape: Variant = _shape(part_of(key), library)
+		return shape != null and shape == _shape(part_of(other), library), true)
+	for key: String in short:
+		_add(out, key, int(short[key]))
+	return out
+
+
+static func _sorted(counts: Dictionary) -> Array:
+	var keys: Array = counts.keys()
+	keys.sort()
+	return keys
+
+
+## Gives what is short of [param left] (taking a piece of the set) and of
+## [param inside] (a piece an assembly already given holds), the pieces
+## [param fits] allows; the most plentiful first when [param most_first].
+static func _match(short: Dictionary, out: Dictionary, left: Dictionary, inside: Dictionary,
+		fits: Callable, most_first: bool) -> void:
+	for key: String in _sorted(short):
+		for from: Dictionary in [inside, left]:
+			var others: Array = []
+			for other: String in from:
+				if other != key and int(from[other]) > 0 and fits.call(key, other):
+					others.append(other)
+			others.sort_custom(func(a: String, b: String) -> bool:
+				if most_first and int(from[a]) != int(from[b]):
+					return int(from[a]) > int(from[b])
+				return a < b)
+			for other: String in others:
+				var take: int = mini(int(short.get(key, 0)), int(from[other]))
+				if take <= 0:
+					break
+				from[other] = int(from[other]) - take
+				short[key] = int(short[key]) - take
+				if is_same(from, left):
+					_add(out, other, take)
+		if int(short.get(key, 0)) <= 0:
+			short.erase(key)
+
+
+## An assembly's or alias's pieces: key -> count, through nested
+## shortcuts, its stickers left off (they come on the sheet). Empty for a
+## part, and for an assembly with a piece nobody owns on its own (a train
+## wheel's axle), which is then the one piece.
+static func _pieces(key: String, made_of: Callable, library: PartLibrary, depth: int = 0) -> Dictionary:
+	var info: PartLibrary.PartInfo = library.parts.get(part_of(key))
+	if depth > 6 or info == null or not (info.kind.contains("Shortcut") or info.kind.contains("Alias")):
+		return {}
+	var out: Dictionary = {}
+	for pair: Variant in made_of.call(part_of(key)):
+		var child: String = library.resolve(str(pair[0]))
+		var code: int = colour_of(key) if int(pair[1]) in [16, 24] else int(pair[1])
+		var found: PartLibrary.PartInfo = library.parts.get(child)
+		if found != null and found.category == "Sticker":
+			continue
+		if not ownable(child, library):
+			return {}
+		var at: String = key_of(child, code, library)
+		var below: Dictionary = _pieces(at, made_of, library, depth + 1)
+		if below.is_empty():
+			_add(out, at, 1)
+		for piece: String in below:
+			_add(out, piece, int(below[piece]))
+	return out
+
+
+## What a part is shaped like, for another mould or print of it: its
+## category, its size to the LDU and its studs. A number the catalogue
+## does not have (Rebrickable's for a print LDraw has not drawn) is shaped
+## like the part it is a print of.
+static var _base: RegEx = RegEx.create_from_string("^[ux]?\\d+[a-z]?")
+
+
+static func _shape(part: String, library: PartLibrary) -> Variant:
+	var info: PartLibrary.PartInfo = library.parts.get(part)
+	if info == null:
+		var found: RegExMatch = _base.search(part)
+		if found != null:
+			info = library.parts.get(found.get_string(), library.parts.get(family_of(found.get_string())))
+	if info == null:
+		return null
+	return [info.category, Vector3i(info.size.round()), info.stud_count]
 
 
 ## The shortfall, with what could stand in for each piece that is short.

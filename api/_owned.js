@@ -26,8 +26,10 @@
 // called short (Collection.family_of, allocate), a mould's letter is left
 // off: 3794a and 3794b are both 3794 here. A part the catalogue does not
 // know is not one anybody owns (a primitive drawn into a model, a
-// sub-model a file names and does not carry), and is left out of what a
-// model needs, as the app leaves it out.
+// sub-model a file names and does not carry), and neither is a sticker, a
+// link of a hose drawn link by link, or a piece LDraw draws a bigger part
+// with (Collection.ownable): each is left out of what a model needs, as
+// the app leaves it out.
 
 import { existsSync, readFileSync } from "node:fs";
 import { db } from "./_db.js";
@@ -68,13 +70,29 @@ export function useFacts(raw) {
   return facts;
 }
 
+/// Whether anybody owns a catalogue part on its own, as Collection.ownable
+/// says: not a sticker (it comes on its set's sheet), not a link of a chain
+/// or a hose drawn link by link, and not a piece LDraw draws a bigger part
+/// with and names with a ~ (a train wheel's axle), unless the ~ only says
+/// the number moved or is obsolete. A moved number is judged by the part it
+/// means today (deriveOwnedFacts).
+export function ownable(part) {
+  const name = String(part.name || "");
+  if (part.category === "Sticker" || String(part.kind || "").includes("Flexible_Section")) return false;
+  return !name.startsWith("~") || Boolean(part.moved_to) || name.includes("(Obsolete)");
+}
+
 /// What _part_facts.json holds for these sums, from the catalogue and the
-/// colours.
+/// colours: the parts anybody owns, the numbers LDraw moved, and the
+/// colours a shop files under another.
 export function deriveOwnedFacts(catalogue, colours) {
   const known = [];
   const moved = {};
+  const byId = new Map((catalogue.parts || []).map((part) => [String(part.id), part]));
   for (const part of catalogue.parts || []) {
-    known.push(String(part.id));
+    let today = part;
+    for (let hop = 0; hop < 8 && today.moved_to && byId.has(String(today.moved_to)); hop++) today = byId.get(String(today.moved_to));
+    if (ownable(today)) known.push(String(part.id));
     if (part.moved_to) moved[part.id] = String(part.moved_to);
   }
   const plain = {};
