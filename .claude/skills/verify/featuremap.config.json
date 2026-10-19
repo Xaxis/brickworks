@@ -1659,6 +1659,27 @@
       "area": "model-io"
     },
     {
+      "kind": "ui",
+      "label": "new tab or window",
+      "entry": "src/parts/tab_session.gd",
+      "reach": "godot --path .  (File, New window, or Ctrl+Shift+N; in a browser File, New tab)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "new tab browser flow",
+      "entry": "tools/web/newtab_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8890 --static=build/web, then node tools/web/newtab_flow.mjs --url=http://127.0.0.1:8890/app --out=shots/newtab   (with .env sourced)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "new window probe",
+      "entry": "src/dev/new_window_probe.gd",
+      "reach": "tools/probe.sh new_window_probe   (starts two more headless copies of the app, and stops them)",
+      "area": "model-io"
+    },
+    {
       "kind": "cli",
       "label": "tabs probe",
       "entry": "src/dev/tabs_probe.gd",

@@ -1339,10 +1339,18 @@ func _ready() -> void:
 		# to be, before the sample's autosave can go over it (ModelStore.restore).
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
-		if placed == 0:
+		# A tab or window opened by New tab begins on an empty baseplate,
+		# written at once, so a reload brings it back empty; as does one
+		# the person left empty (ModelStore.left_empty).
+		var empty: bool = placed == 0 and (_store.left_empty or TabSession.opened_new())
+		if empty and not _store.left_empty:
+			_store.begin(ModelStore.UNTITLED)
+			_store.touch()
+			_store.write_now()
+		if placed == 0 and not empty:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
-		if placed == 0:
+		if placed == 0 and not empty:
 			placed = _build_demo()
 	_lay_baseplate()
 

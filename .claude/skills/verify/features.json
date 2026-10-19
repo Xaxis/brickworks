@@ -692,6 +692,22 @@
       "tests": []
     },
     {
+      "id": "cli:new tab browser flow",
+      "kind": "cli",
+      "entry": "tools/web/newtab_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8890 --static=build/web, then node tools/web/newtab_flow.mjs --url=http://127.0.0.1:8890/app --out=shots/newtab   (with .env sourced)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:new window probe",
+      "kind": "cli",
+      "entry": "src/dev/new_window_probe.gd",
+      "reach": "tools/probe.sh new_window_probe   (starts two more headless copies of the app, and stops them)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:no AI in a browser",
       "kind": "cli",
       "entry": "tools/web/noai_flow.mjs",
@@ -2495,6 +2511,14 @@
       "entry": "src/camera/view_prefs.gd",
       "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:new tab or window",
+      "kind": "ui",
+      "entry": "src/parts/tab_session.gd",
+      "reach": "godot --path .  (File, New window, or Ctrl+Shift+N; in a browser File, New tab)",
+      "area": "model-io",
       "tests": []
     },
     {
