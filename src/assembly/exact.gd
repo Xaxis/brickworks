@@ -111,6 +111,17 @@ class Shape extends RefCounted:
 	## Each connector's frame: its axes the directions of BrickNet's frame
 	## columns, so it points along minus its y; its origin where it is.
 	var frames: Array[Transform3D] = []
+	## Its pieces' boxes in a tree, for [method Exact._overlapping] to find
+	## the pieces near another part's without asking each of them: each
+	## node's box, its two children (a leaf: -1, and how many pieces it
+	## holds), and where a leaf's pieces begin in [member tree_pieces].
+	## Built as it is read ([method Exact._tree_of]).
+	var tree_lo := PackedVector3Array()
+	var tree_hi := PackedVector3Array()
+	var tree_left := PackedInt32Array()
+	var tree_right := PackedInt32Array()
+	var tree_first := PackedInt32Array()
+	var tree_pieces := PackedInt32Array()
 
 	func has_pieces() -> bool:
 		return not pieces.is_empty()
@@ -206,11 +217,17 @@ static func parse(bytes: PackedByteArray) -> Shape:
 		at += 6
 		if bytes.size() < at + 6 * (nv + nn + ne):
 			return null
-		var piece := Piece.new()
+		# Read into arrays of its own and handed over whole: appended to the
+		# piece's own, each one went through the piece (G14a: a shape of 316
+		# pieces took 9 ms to read).
+		var verts := PackedVector3Array()
+		verts.resize(nv)
 		for v: int in nv:
-			piece.verts.append(Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
-				bytes.decode_s16(at + 4)) * scale)
+			verts[v] = Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
+				bytes.decode_s16(at + 4)) * scale
 			at += 6
+		var normals := PackedVector3Array()
+		var edges := PackedVector3Array()
 		for n: int in nn + ne:
 			var d := Vector3(bytes.decode_s16(at), bytes.decode_s16(at + 2),
 				bytes.decode_s16(at + 4))
@@ -218,26 +235,37 @@ static func parse(bytes: PackedByteArray) -> Shape:
 			if d.length_squared() < 1.0:
 				continue
 			if n < nn:
-				piece.normals.append(d.normalized())
+				normals.append(d.normalized())
 			else:
-				piece.edges.append(d.normalized())
-		if piece.verts.is_empty():
+				edges.append(d.normalized())
+		if verts.is_empty():
 			continue
-		piece.lo = piece.verts[0]
-		piece.hi = piece.verts[0]
-		for v: Vector3 in piece.verts:
-			piece.lo = piece.lo.min(v)
-			piece.hi = piece.hi.max(v)
-		for n: Vector3 in piece.normals:
+		var piece := Piece.new()
+		var lo: Vector3 = verts[0]
+		var hi: Vector3 = verts[0]
+		for v: Vector3 in verts:
+			lo = lo.min(v)
+			hi = hi.max(v)
+		var spans := PackedFloat32Array()
+		spans.resize(normals.size() * 2)
+		for k: int in normals.size():
+			var n: Vector3 = normals[k]
 			var low: float = INF
 			var high: float = -INF
-			for v: Vector3 in piece.verts:
+			for v: Vector3 in verts:
 				var d: float = v.dot(n)
 				low = minf(low, d)
 				high = maxf(high, d)
-			piece.spans.append(low)
-			piece.spans.append(high)
+			spans[2 * k] = low
+			spans[2 * k + 1] = high
+		piece.verts = verts
+		piece.normals = normals
+		piece.edges = edges
+		piece.lo = lo
+		piece.hi = hi
+		piece.spans = spans
 		shape.pieces.append(piece)
+	_tree_of(shape)
 	return shape
 
 
@@ -507,7 +535,11 @@ static func _extent(verts: PackedVector3Array, way: Vector3) -> float:
 
 ## The pairs of pieces that overlap by more than [param allowed], with b
 ## placed at [param rel] in a's frame: [depth, piece of a, piece of b, axis in
-## a's frame] each, the first only when [param first].
+## a's frame] each, the first only when [param first]. The pairs whose boxes
+## overlap are found by the two shapes' trees ([method _tree_of]), and asked
+## in the order every pair was asked before, b's pieces then a's: a steering
+## arm of 176 pieces beside a Technic brick of 316, asked every pair's boxes,
+## took 1.5 ms, and by the trees 0.4 (G14a).
 static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
 		first: bool) -> Array:
 	var hits: Array = []
@@ -515,43 +547,155 @@ static func _overlapping(a: Shape, b: Shape, rel: Transform3D, allowed: float,
 	var b_lo: Vector3 = whole[0]
 	var b_hi: Vector3 = whole[1]
 	var basis: Basis = rel.basis
-	# Of a's pieces, only those reaching into b's box; of b's, those reaching
-	# into a's.
-	var mine: Array[int] = []
-	for i: int in a.pieces.size():
-		var p: Piece = a.pieces[i]
-		if minf(p.hi.x, b_hi.x) - maxf(p.lo.x, b_lo.x) > allowed \
-				and minf(p.hi.y, b_hi.y) - maxf(p.lo.y, b_lo.y) > allowed \
-				and minf(p.hi.z, b_hi.z) - maxf(p.lo.z, b_lo.z) > allowed:
-			mine.append(i)
-	if mine.is_empty():
-		return hits
-	for j: int in b.pieces.size():
-		var q: Piece = b.pieces[j]
-		var box: Array = box_in(q.lo, q.hi, rel)
-		var q_lo: Vector3 = box[0]
-		var q_hi: Vector3 = box[1]
-		if minf(a.hi.x, q_hi.x) - maxf(a.lo.x, q_lo.x) <= allowed \
-				or minf(a.hi.y, q_hi.y) - maxf(a.lo.y, q_lo.y) <= allowed \
-				or minf(a.hi.z, q_hi.z) - maxf(a.lo.z, q_lo.z) <= allowed:
+	# A node is passed by only where it is apart by float dust or more: what
+	# it holds is no further in than it is.
+	var loose: float = allowed - NODE_DUST
+	# b's pieces whose boxes, carried into a's frame, reach into a's box, and
+	# for each the pieces of a whose boxes reach into both its box and b's:
+	# b's piece << 20 | a's.
+	var pairs := PackedInt64Array()
+	var b_nodes := PackedInt32Array([0])
+	var a_nodes := PackedInt32Array()
+	# Each box carried as box_in carries it, without an Array for each.
+	var across_x: Vector3 = basis.x.abs()
+	var across_y: Vector3 = basis.y.abs()
+	var across_z: Vector3 = basis.z.abs()
+	while not b_nodes.is_empty():
+		var nb: int = b_nodes[b_nodes.size() - 1]
+		b_nodes.resize(b_nodes.size() - 1)
+		var lo: Vector3 = b.tree_lo[nb]
+		var hi: Vector3 = b.tree_hi[nb]
+		var half: Vector3 = (hi - lo) * 0.5
+		var middle: Vector3 = rel * ((lo + hi) * 0.5)
+		var reach: Vector3 = across_x * half.x + across_y * half.y + across_z * half.z
+		if not _into(a.lo, a.hi, middle - reach, middle + reach, loose):
 			continue
-		var moved := PackedVector3Array()
-		for i: int in mine:
-			var p: Piece = a.pieces[i]
-			if minf(p.hi.x, q_hi.x) - maxf(p.lo.x, q_lo.x) <= allowed \
-					or minf(p.hi.y, q_hi.y) - maxf(p.lo.y, q_lo.y) <= allowed \
-					or minf(p.hi.z, q_hi.z) - maxf(p.lo.z, q_lo.z) <= allowed:
+		if b.tree_left[nb] >= 0:
+			b_nodes.append(b.tree_left[nb])
+			b_nodes.append(b.tree_right[nb])
+			continue
+		for n: int in range(b.tree_first[nb], b.tree_first[nb] + b.tree_right[nb]):
+			var j: int = b.tree_pieces[n]
+			var q: Piece = b.pieces[j]
+			half = (q.hi - q.lo) * 0.5
+			middle = rel * ((q.lo + q.hi) * 0.5)
+			reach = across_x * half.x + across_y * half.y + across_z * half.z
+			var q_lo: Vector3 = middle - reach
+			var q_hi: Vector3 = middle + reach
+			if not _into(a.lo, a.hi, q_lo, q_hi, allowed):
 				continue
-			if moved.is_empty():
-				moved.resize(q.verts.size())
-				for v: int in q.verts.size():
-					moved[v] = rel * q.verts[v]
-			var found: Array = _overlap(p, q, moved, basis, rel.origin, allowed)
-			if not found.is_empty():
-				hits.append([found[0], i, j, found[1]])
-				if first:
-					return hits
+			a_nodes.append(0)
+			while not a_nodes.is_empty():
+				var na: int = a_nodes[a_nodes.size() - 1]
+				a_nodes.resize(a_nodes.size() - 1)
+				if not _into(a.tree_lo[na], a.tree_hi[na], q_lo, q_hi, loose):
+					continue
+				if a.tree_left[na] >= 0:
+					a_nodes.append(a.tree_left[na])
+					a_nodes.append(a.tree_right[na])
+					continue
+				for m: int in range(a.tree_first[na], a.tree_first[na] + a.tree_right[na]):
+					var i: int = a.tree_pieces[m]
+					var p: Piece = a.pieces[i]
+					if _into(p.lo, p.hi, b_lo, b_hi, allowed) and _into(p.lo, p.hi, q_lo, q_hi, allowed):
+						pairs.append((j << 20) | i)
+	pairs.sort()
+	var moved := PackedVector3Array()
+	var moved_for: int = -1
+	for pair: int in pairs:
+		var j: int = pair >> 20
+		var i: int = pair & 0xFFFFF
+		var q: Piece = b.pieces[j]
+		if moved_for != j:
+			moved_for = j
+			moved.resize(q.verts.size())
+			for v: int in q.verts.size():
+				moved[v] = rel * q.verts[v]
+		var found: Array = _overlap(a.pieces[i], q, moved, basis, rel.origin, allowed)
+		if not found.is_empty():
+			hits.append([found[0], i, j, found[1]])
+			if first:
+				return hits
 	return hits
+
+
+## How far a node's box may stand apart and still be descended into, LDU, as
+## a margin for float rounding in carrying it ([method _overlapping]).
+const NODE_DUST := 0.001
+## At most this many pieces in a leaf of a shape's tree.
+const LEAF_PIECES := 4
+
+
+## Whether the box [param lo] to [param hi] and the box [param o_lo] to
+## [param o_hi] overlap by more than [param by] along each axis.
+static func _into(lo: Vector3, hi: Vector3, o_lo: Vector3, o_hi: Vector3, by: float) -> bool:
+	return minf(hi.x, o_hi.x) - maxf(lo.x, o_lo.x) > by \
+		and minf(hi.y, o_hi.y) - maxf(lo.y, o_lo.y) > by \
+		and minf(hi.z, o_hi.z) - maxf(lo.z, o_lo.z) > by
+
+
+## [param shape]'s tree of its pieces' boxes, as it is read ([method parse]),
+## so a shape read is never changed again and any thread may ask it: halved
+## along the way their middles spread most, down to [constant LEAF_PIECES] a
+## leaf.
+static func _tree_of(shape: Shape) -> void:
+	var order: Array = []
+	for i: int in shape.pieces.size():
+		order.append(i)
+	var lo: Array = []
+	var hi: Array = []
+	var left: Array = []
+	var right: Array = []
+	var firsts: Array = []
+	if not order.is_empty():
+		_tree_node(shape, order, 0, order.size(), [lo, hi, left, right, firsts])
+	shape.tree_pieces = PackedInt32Array(order)
+	shape.tree_lo = PackedVector3Array(lo)
+	shape.tree_hi = PackedVector3Array(hi)
+	shape.tree_left = PackedInt32Array(left)
+	shape.tree_right = PackedInt32Array(right)
+	shape.tree_first = PackedInt32Array(firsts)
+
+
+## The node over [param order]'s pieces [param start] to [param end], made
+## into [param into] ([lo, hi, left, right, first]) with its children: its
+## index there.
+static func _tree_node(shape: Shape, order: Array, start: int, end: int, into: Array) -> int:
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	var middle_lo := lo
+	var middle_hi := hi
+	for n: int in range(start, end):
+		var p: Piece = shape.pieces[int(order[n])]
+		lo = lo.min(p.lo)
+		hi = hi.max(p.hi)
+		middle_lo = middle_lo.min((p.lo + p.hi) * 0.5)
+		middle_hi = middle_hi.max((p.lo + p.hi) * 0.5)
+	var at: int = (into[0] as Array).size()
+	(into[0] as Array).append(lo)
+	(into[1] as Array).append(hi)
+	(into[2] as Array).append(-1)
+	(into[3] as Array).append(end - start)
+	(into[4] as Array).append(start)
+	if end - start <= LEAF_PIECES:
+		return at
+	# Sorted by their middles along that way, a sixteenth of an LDU apart,
+	# each kept with its index below: an engine sort, not a script's.
+	var axis: int = (middle_hi - middle_lo).max_axis_index()
+	var keys := PackedInt64Array()
+	keys.resize(end - start)
+	for n: int in range(start, end):
+		var p: Piece = shape.pieces[int(order[n])]
+		keys[n - start] = (int(roundf((p.lo[axis] + p.hi[axis]) * 8.0)) + (1 << 30)) << 20 | int(order[n])
+	keys.sort()
+	for n: int in keys.size():
+		order[start + n] = int(keys[n] & 0xFFFFF)
+	var half: int = start + (end - start) / 2
+	var left: int = _tree_node(shape, order, start, half, into)
+	var right: int = _tree_node(shape, order, half, end, into)
+	(into[2] as Array)[at] = left
+	(into[3] as Array)[at] = right
+	return at
 
 
 ## The depth two convex pieces overlap by, with its axis, when it is more

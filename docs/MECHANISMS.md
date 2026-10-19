@@ -3754,3 +3754,151 @@ load 47 (G13 7.5 and 18.8).
   kingpin loop, 9393-1, and 6980-1's hatch, whose second turn takes the
   whole back), ball-jointed steering arms still refused, the judge's own
   limits, and G11's leftovers.
+
+
+## 23. Grab 14a: room tests
+
+G13b left two things worse: 21019-1's turntable went through a clip, and a
+room test where a move meets the model cost 25 to 37 ms on a phone at 4x
+CPU throttle (play_flow, 8808-1's steering dragged into its stop), against
+the 33 ms a frame may take. G14a measured both. The second is mended. The
+first was not what G13b took it for, and is left for later. On the way,
+loops that came back a little off from a session's moves now come back.
+
+**What 21019-1's turntable goes through.** Its first turn takes 267 parts, a
+loop of 11 joints. One of those joints is a plate with a clip (#124) on a
+plate with a handle (#86). A joint's own two parts are never tested against
+each other, and the loop's turn of 10° leaves the handle's plate 2.42 LDU
+into the clip's plate, by their exact shapes (0 where it began). The next
+turn takes 16 parts and no loop. It begins with the two into each other, so
+forgives them for the grab, and goes all of -60° through the clip. Their
+covers were not the cause, as G13b thought: forgiving only a pair whose
+exact shapes overlap where the grab begins changed nothing (10°, -60°, back
+15.7 LDU off, `movesweep_fix21019`). Two more were tried and not kept:
+
+- A loop's bodies tested against each other, the parts of their joints
+  too (`movesweep_joints21019`). The clip's plate meets the handle's plate
+  under a degree each way: the turntable turns 0.3° and -1°, judged real a
+  degree on (1.77 LDU), and comes back 0.051 LDU off. That is what the
+  model is: G13 found the build holds the turntable, so G13's 9° went
+  through this clip too. But a steering's joints are pressed together, so
+  their parts' shapes were asked at every frame: 8808-1's steering drag
+  went from 0.9 ms to 3 ms of room tests a frame natively, ten times that on
+  a phone.
+- A pair already into each other where a grab begins may go no further in
+  than it began, and half an LDU (`movesweep_depth21019`). After the first
+  turn the turntable is then stuck both ways, 2.45 LDU from where it was
+  built.
+
+**A session's turn of a loop goes where it asks** (`Grab.turn_to`). A
+loop's turn was put on a quarter-degree grid, so a drag back over the same
+ground finds its turned covers kept. A stop is found off that grid, and the
+turn back by as far as two turns went was rounded past where it began: 6987-1's
+turntable came back 0.29 LDU off, its boom 0.29, 4002020-1's turntable
+0.025. Only a drag's turn is put on the grid now. All three move both ways
+and back, within 0.0005 LDU (`movesweep_grid2`).
+
+**The room test where a move meets the model.** A probe of the drag
+(`room_cost_probe.gd`, kept with the results: 8808-1's steering taken by
+its tyre and turned 3° a frame to its stop) timed each part's test. Natively
+the frame that met the stop took 3.6 ms, 1.6 of it one part: the steering
+arm (4261, 176 convex pieces) judged against the Technic brick it meets
+(3894, 316 pieces) by their exact shapes. `Exact._overlapping` compared every
+piece of one with every piece of the other near it, 1,020 pairs of boxes, to
+find 16 to test. Each shape now keeps its pieces' boxes in a tree, built as
+it is read (`Exact._tree_of`), and the pairs are found through the two trees
+and tested in the order they were before, so a clash says the same piece
+pair. On 5,500 poses of real parts set side by side (`tree_check.gd`) the
+two answer the same, the trees four times faster (1,113 ms against 275).
+The arm's judge went from 1.6 ms to 0.4.
+
+That left the room test's filters, the most of every frame: each moving part
+asked the lattice twice what stands near it, and each box's shadow was
+measured from its sixteen corners. A part's neighbours are now asked for its
+cells and four more all round, once, at the press, and sifted from that
+until it leaves them (`Grab._near`); a shadow is its middle and half edges
+(`Grab.box_depth`, within 0.00003 LDU of the corners' on 20,000 pairs of
+boxes, `box_check.gd`). Natively: a drag frame's room test
+0.87 ms to 0.33 on average, the frame that meets the stop 3.6 to 1.1, the
+first frame 1.3 to 0.9; the press asks the lattice for 21 parts' neighbours,
+about 1 ms of a 6 ms press.
+
+The local server handed out no exact shapes, so a local play_flow judged
+the steering by covers: it stopped at 95°, not 108°, and its stop cost half
+what it does on a deployment. `serve.py --parts` now serves `exact/` beside
+`parts/`, as the bucket does. Then play_flow, the two builds served side by
+side and run in turn, 8808-1's steering turned by a finger into its stop
+at 390 x 844, the CPU slowed four times (the app's own work in a drag
+frame):
+
+| | worst frame | its room tests | mean frame |
+|---|---|---|---|
+| before (rel-m89), 6 runs | 24.8 to 46.7 ms, 29.5 the median | 20.4 to 32.7 ms | 9.5 to 13.6 ms |
+| G14a, 4 runs | 17.1 to 21.8 ms, 20.5 the median | 11.4 to 15.2 ms | 7.1 to 8.8 ms |
+
+By the mouse at 1280 x 800 the worst frame went from 4.2 ms to 3.4, its
+room tests from 3.2 to 2.2. The trees alone, three runs: 21.3 to 38.2 ms.
+
+The drag's worst frame also names its slowest part now ("the slowest part
+#54 4261 7.1 ms").
+
+A shape's tree costs its reading about a fifth more, and a browser reads a
+shape in the frame it arrives; reading into arrays of its own pays for it
+(`Exact.parse`, `parse_check.gd`: 600 shapes the same, 7.55 s with their
+trees against 7.58 without). Natively a shape is still read when first
+asked, so the first meeting with a part not met before reads it in that
+frame (8808-1's brick: 12 ms).
+
+**The other moving things, swept** (`movesweep_g14a260`: G13b's 260 sets,
+run as `movesweep_g14a` and, for the 92 that run did not reach,
+`movesweep_g14arest`, merged).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|
+| G13b | 163 of 381 | 15 | 300 | 221 / 19 / 170 |
+| G14a | 169 of 381 | 17 | 300 | 221 / 19 / 170 |
+
+None lost. Six now move both ways and back that did not, each a loop that
+came back off and now comes back within 0.0005 LDU: 4002020-1's and
+42043-1's (the flatbed trailer) turntables, 6987-1's turntable and boom,
+42080-1's and 8448-1's booms. 7991-1's boom and 952-1's turntable now move to
+their stops. 21019-1's turntable is as it was in G13b. The list of sets has
+grown to 709 since G12; 157 of the new ones were swept on the way
+(`movesweep_g14aextra`: 60 of their 100 things move both ways and back), with
+no row of G13b's to set them against.
+
+**Steering, swept** (`sweep_g14a`, the same 181 files): 59 of 168 sets
+steer both ways and back, against G13b's 56. None lost. 8256-1, its lawn
+mower and 8854-1 came back 0.06 to 0.19 LDU off and now come back, by the
+same mend.
+
+**Proved** (bench/results/grab14a-2026-10-19/`probes/`): `grab_probe`
+windowed through `tools/probe.sh`, in full (`grab_probe_full_g14a.log`, at
+load about 27), ran 463 checks: 458 passed. Four of the five that failed
+fail the same on rel-m89's own code, run beside it: `-- --only=path` and
+`-- --only=beams` read a move's words as "now 30°", and MCP walk 2 made them
+"turned 30°" (the moving sweep already read "turned"). The probe reads them
+so now: `--only=path` passes (2: the arm stops at -20° where it meets the
+plate, and goes all 90° the other way) and `--only=beams` passes (6). The
+fifth is the timing check G13b's run failed too: 7191-1's big section let
+go, its keeping frame 106 ms against 100. The frames
+gate (`tools/web/cad_frames.mjs --gate`, 75969-1, the local server) passed
+on this build twice and on rel-m89's once, at load 14 to 27: an orbit's
+frames at the 95th percentile 43.6 and 61.3 ms against 27.7, select all
+64.4 and 86.9 against 52.1, the timeline's Next 8.6 to 23 against 10.5 to
+31.9, every bar 200 or 400. Neither an orbit nor select all runs a room
+test or reads an exact shape. play_flow passed (34 checks) on this build.
+`exact_probe` (29) and `joint_check_probe` (19), the build check by real
+shapes, pass. `GRAB_PROBE_OUT` gives `grab_probe` a folder of its own, so a
+run does not write over another's pictures.
+
+**Left for later.**
+- A joint's own two parts are not tested against each other, so a loop can
+  turn a joint past where its parts meet: 21019-1's clip, above. Testing
+  them every frame costs a steering's drag three times its room tests; a
+  joint's parts turn about one line against each other, so where they meet
+  could be found once a grab.
+- A part not met before is read in the frame that meets it, natively.
+- A loop's room test may take 24 ms of a frame (`LOOP_BUDGET_MS`), which on a
+  phone at 4x leaves too little for the rest of it in a big loop.
+- G13b's other leftovers stand.

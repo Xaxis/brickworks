@@ -228,6 +228,9 @@ var tests: int = 0
 var frame_solve_ms: float = 0.0
 var frame_test_ms: float = 0.0
 var frame_tests: int = 0
+## This frame's slowest part to test, and how long it took: "#id part ms".
+var frame_slowest_us: int = 0
+var frame_slowest_said: String = ""
 ## The slowest part to test in a drag, and on what: for a probe.
 var slowest_us: int = 0
 var slowest_said: String = ""
@@ -360,6 +363,7 @@ func _chosen() -> String:
 			linkage = null
 			return _refuse("locked", _worm_words(held_by))
 	skip = moving.duplicate()
+	_near_kept.clear()
 	# A hose bends out of the way, and is not tested where it is carried.
 	for one: int in bodies.flexible:
 		for key: int in bodies.members.get(one, PackedInt64Array()):
@@ -493,6 +497,14 @@ func _chosen() -> String:
 	else:
 		rest.merge(flex.rests())
 	begin_took["hoses"] = flex.read_ms if flex != null else 0.0
+	if moving.size() <= LOOP_AHEAD_PARTS:
+		# What stands near each moving part, asked of the lattice now, where
+		# it stands, rather than by the drag's first frame ([method _near]).
+		for key: int in moving:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+			if mesh != null and not _on_the_line.has(key):
+				_near(brick.transform * mesh.bounds, key)
 	placed = rest.duplicate()
 	said = "%s %s" % [_named(), link.words()]
 	if linkage != null:
@@ -1123,7 +1135,7 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 		if meets.has(key):
 			if not bool(meets[key]):
 				continue
-		elif not _near_anything(box) or not _boxes_meet(key, mesh, to, box):
+		elif not _near_anything(box, key) or not _boxes_meet(key, mesh, to, box):
 			continue
 		var part_began: int = Time.get_ticks_usec()
 		# A part at a turn whose cover is not kept is asked where something
@@ -1146,6 +1158,9 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			cover_us = Time.get_ticks_usec() - part_began
 			hit = _blocked(key, mesh, to, packed)
 		var part_us: int = Time.get_ticks_usec() - part_began
+		if part_us > frame_slowest_us:
+			frame_slowest_us = part_us
+			frame_slowest_said = "#%d %s %.1f ms" % [key, brick.part_id, part_us / 1000.0]
 		if part_us > slowest_us:
 			slowest_us = part_us
 			slowest_said = "#%d %s: cover %.1f ms, blockers %.1f ms; its box is into #%d %s's" % [key,
@@ -1209,7 +1224,7 @@ func _covers_ahead(at: Dictionary, keys: Array, carried_at: Dictionary = {}) -> 
 			continue
 		var to: Transform3D = _tested_at(key, at, carried_at)
 		var box: AABB = to * mesh.bounds
-		var may: bool = _near_anything(box) and _boxes_meet(key, mesh, to, box)
+		var may: bool = _near_anything(box, key) and _boxes_meet(key, mesh, to, box)
 		out[key] = may
 		if not may or not builder.turned_wanted(mesh, to.basis):
 			continue
@@ -1391,11 +1406,14 @@ func _touching(mesh: Lbm.PartMesh, to: Transform3D, other: int) -> bool:
 ## least overlap of their shadows on the fifteen lines of the separating
 ## axis test, LDU; below zero they are apart.
 static func box_depth(a_at: Transform3D, a_box: AABB, b_at: Transform3D, b_box: AABB) -> float:
-	var a_corners: Array[Vector3] = []
-	var b_corners: Array[Vector3] = []
-	for corner: int in 8:
-		a_corners.append(a_at * a_box.get_endpoint(corner))
-		b_corners.append(b_at * b_box.get_endpoint(corner))
+	# Each box as its middle and its three half edges, carried: its shadow on
+	# a line reaches the half edges' reaches either side of its middle's.
+	var a_mid: Vector3 = a_at * a_box.get_center()
+	var b_mid: Vector3 = b_at * b_box.get_center()
+	var a_edges: Array[Vector3] = [a_at.basis[0] * (a_box.size.x * 0.5), a_at.basis[1] * (a_box.size.y * 0.5),
+		a_at.basis[2] * (a_box.size.z * 0.5)]
+	var b_edges: Array[Vector3] = [b_at.basis[0] * (b_box.size.x * 0.5), b_at.basis[1] * (b_box.size.y * 0.5),
+		b_at.basis[2] * (b_box.size.z * 0.5)]
 	var lines: Array[Vector3] = []
 	for k: int in 3:
 		lines.append(a_at.basis[k].normalized())
@@ -1407,17 +1425,11 @@ static func box_depth(a_at: Transform3D, a_box: AABB, b_at: Transform3D, b_box: 
 				lines.append(across.normalized())
 	var least: float = INF
 	for way: Vector3 in lines:
-		var a_lo: float = INF
-		var a_hi: float = -INF
-		var b_lo: float = INF
-		var b_hi: float = -INF
-		for p: Vector3 in a_corners:
-			a_lo = minf(a_lo, p.dot(way))
-			a_hi = maxf(a_hi, p.dot(way))
-		for p: Vector3 in b_corners:
-			b_lo = minf(b_lo, p.dot(way))
-			b_hi = maxf(b_hi, p.dot(way))
-		least = minf(least, minf(a_hi, b_hi) - maxf(a_lo, b_lo))
+		var a_at_way: float = a_mid.dot(way)
+		var a_reach: float = absf(a_edges[0].dot(way)) + absf(a_edges[1].dot(way)) + absf(a_edges[2].dot(way))
+		var b_at_way: float = b_mid.dot(way)
+		var b_reach: float = absf(b_edges[0].dot(way)) + absf(b_edges[1].dot(way)) + absf(b_edges[2].dot(way))
+		least = minf(least, minf(a_at_way + a_reach, b_at_way + b_reach) - maxf(a_at_way - a_reach, b_at_way - b_reach))
 	return least
 
 
@@ -1631,12 +1643,8 @@ func _never_meet() -> void:
 ## Boxes hold the shapes, so boxes apart are shapes apart, and the turned
 ## cover need not be worked out.
 func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bool:
-	var cell: float = BrickLattice.CELL
-	var bound := PackedInt32Array([floori(box.position.x / cell), floori(box.position.y / cell),
-		floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
-		ceili(box.end.z / cell)])
-	for other: int in builder.lattice.near_bounds(bound):
-		if skip.has(other) or _pair_forgiven(key, other):
+	for other: int in _near(box, key):
+		if _pair_forgiven(key, other):
 			continue
 		var them: BrickWorld.Brick = world.get_brick(other)
 		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
@@ -1673,16 +1681,59 @@ var _near_part: int = 0
 
 
 ## Whether anything but what the moving side may press on has its bounds
-## within [param box].
-func _near_anything(box: AABB) -> bool:
+## within [param box] ([method _near]).
+func _near_anything(box: AABB, key: int = 0) -> bool:
+	return not _near(box, key).is_empty()
+
+
+## What but what the moving side may press on has its bounds within [param
+## box]'s cells, as the lattice says (near_bounds). For a moving part [param
+## key], asked of the lattice for its cells and [constant NEAR_MARGIN] more
+## all round, and sifted from that while its cells stay within them, as long
+## as the model and what the moving side may press on stay as they are: asked
+## of the lattice twice a part a frame, it was half of 8808-1's steering's
+## room test (G14a).
+func _near(box: AABB, key: int = 0) -> PackedInt64Array:
+	if _near_for != Vector2i(world.revision, skip.size()):
+		_near_for = Vector2i(world.revision, skip.size())
+		_near_kept.clear()
 	var cell: float = BrickLattice.CELL
-	var bound := PackedInt32Array([floori(box.position.x / cell), floori(box.position.y / cell),
-		floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
-		ceili(box.end.z / cell)])
-	for other: int in builder.lattice.near_bounds(bound):
-		if not skip.has(other):
-			return true
-	return false
+	var lo := Vector3i(floori(box.position.x / cell), floori(box.position.y / cell), floori(box.position.z / cell))
+	var hi := Vector3i(ceili(box.end.x / cell), ceili(box.end.y / cell), ceili(box.end.z / cell))
+	var kept: Array = _near_kept.get(key, []) if key != 0 else []
+	if kept.is_empty() or lo.x < int(kept[0][0]) or lo.y < int(kept[0][1]) or lo.z < int(kept[0][2]) \
+			or hi.x > int(kept[0][3]) or hi.y > int(kept[0][4]) or hi.z > int(kept[0][5]):
+		var margin: int = NEAR_MARGIN if key != 0 else 0
+		var grown := PackedInt32Array([lo.x - margin, lo.y - margin, lo.z - margin, hi.x + margin,
+			hi.y + margin, hi.z + margin])
+		var ids := PackedInt64Array()
+		var bounds := PackedInt32Array()
+		for other: int in builder.lattice.near_bounds(grown):
+			if not skip.has(other):
+				ids.append(other)
+				bounds.append_array(builder.lattice._bounds[other])
+		kept = [grown, ids, bounds]
+		if key != 0:
+			_near_kept[key] = kept
+	var found: PackedInt64Array = kept[1]
+	var their: PackedInt32Array = kept[2]
+	var out := PackedInt64Array()
+	for n: int in found.size():
+		var at: int = n * 6
+		if their[at] < hi.x and lo.x < their[at + 3] and their[at + 1] < hi.y and lo.y < their[at + 4] \
+				and their[at + 2] < hi.z and lo.z < their[at + 5]:
+			out.append(found[n])
+	return out
+
+
+## How many cells all round a moving part's neighbours are asked for at once
+## ([method _near]): a part goes a cell or two a frame.
+const NEAR_MARGIN := 4
+## [method _near]'s asks for each moving part: brick id -> [the cells asked,
+## what is in them, their bounds]; and the model's revision and how many parts
+## the moving side may press on when they were asked.
+var _near_kept: Dictionary = {}
+var _near_for := Vector2i(-1, -1)
 
 
 ## Turn to [param degrees] from where it was grabbed, as far as it has room
@@ -1693,6 +1744,8 @@ func turn_to(degrees: float) -> float:
 	frame_solve_ms = 0.0
 	frame_test_ms = 0.0
 	frame_tests = 0
+	frame_slowest_us = 0
+	frame_slowest_said = ""
 	var wanted: float = degrees
 	if link.detent > 0.0:
 		wanted = roundf(wanted / link.detent) * link.detent
@@ -1707,9 +1760,12 @@ func turn_to(degrees: float) -> float:
 		return angle
 	_wall = NAN
 	loop_short = false
-	if linkage != null:
-		# On a quarter-degree grid: a part's turned cover is kept per turn
-		# (Builder.boxes_for), so a drag back over the same ground finds them.
+	if linkage != null and budget_ms < INF:
+		# A drag's, on a quarter-degree grid: a part's turned cover is kept
+		# per turn (Builder.boxes_for), so a drag back over the same ground
+		# finds them. A session's turn is the degrees it asks (G14a): put on
+		# the grid, a turn back by as far as a stop found off it had gone
+		# overshot, and 6987-1's loop came back 0.29 LDU from where it began.
 		wanted = snappedf(wanted, LOOP_GRID)
 	if linkage != null and not linkage.is_slide():
 		# As far as the loop closes towards it.
@@ -2163,6 +2219,8 @@ func slide_to(along: float) -> float:
 	frame_solve_ms = 0.0
 	frame_test_ms = 0.0
 	frame_tests = 0
+	frame_slowest_us = 0
+	frame_slowest_said = ""
 	var wanted: float = clampf(along, _range.x, _range.y)
 	if budget_ms < INF and not is_nan(_wall) and (wanted - _wall) * (_wall - shift) >= 0.0 \
 			and absf(_wall - shift) < absf(wanted - shift) + 0.001:
@@ -2746,7 +2804,7 @@ func _room_for(at: Dictionary) -> bool:
 		var box: AABB = to * mesh.bounds
 		if box.position.y < _floor_y - BELOW_FLOOR and mesh.lowest_at(to) < _floor_y - BELOW_FLOOR:
 			return false
-		if not _near_anything(box) or not _boxes_meet(int(key), mesh, to, box):
+		if not _near_anything(box, int(key)) or not _boxes_meet(int(key), mesh, to, box):
 			continue
 		var packed: PackedInt32Array = builder.boxes_for(mesh, to)
 		if not _blocked(int(key), mesh, to, packed).is_empty():
@@ -2973,6 +3031,7 @@ func land_begin(spin: Vector3, about: Vector3) -> bool:
 	for key: int in bodies.parts_of(moving_bodies):
 		moving[key] = true
 	skip = moving.duplicate()
+	_near_kept.clear()
 	for one: int in moving_bodies:
 		for joined: Bodies.Link in bodies.touching.get(one, []):
 			if _ours.has(joined.other(one)):

@@ -14,11 +14,13 @@
 ## what Balance says of the model weighed afresh; and one undo puts every
 ## part back exactly. Then move_part over MCP: a read that changes nothing,
 ## and a move. Windowed, pictures before, mid-drag and after go to
-## bench/results/grab-2026-10-17/; frame timings are printed and written
-## there as timings.json.
+## bench/results/grab13-2026-10-19/, or the folder GRAB_PROBE_OUT names (a
+## run of its own, not over another's); frame timings are printed and
+## written there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab13-2026-10-19"
+var OUT: String = OS.get_environment("GRAB_PROBE_OUT") if OS.has_environment("GRAB_PROBE_OUT") \
+	else "/mnt/Projects/brickworks/bench/results/grab13-2026-10-19"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -5738,7 +5740,8 @@ func _path_check() -> void:
 	var tools := AppTools.new()
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
-	var now_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	# move_part says "turned 90°" of a move (MCP walk 2), as the moving sweep reads it.
+	var now_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
 	var went: Array = []
 	for degrees: float in [90.0, -90.0]:
 		var before: Dictionary = _snapshot()
@@ -5798,7 +5801,7 @@ func _beam_check(one: Array) -> void:
 	var turned: float = rad_to_deg(beam_at.basis.get_rotation_quaternion().angle_to(
 		_world.get_brick(beam).transform.basis.get_rotation_quaternion()))
 	_check("%s: turned +30 at #%d, it goes all 30° and its beam turns with it, %.1f° (%s)" % [name, driver, turned,
-		said.get_slice("\n", 1).left(200)], said.contains("now 30°") and absf(turned - 30.0) < 0.5)
+		said.get_slice("\n", 1).left(200)], said.contains("turned 30°") and absf(turned - 30.0) < 0.5)
 	_builder.undo()
 	await _frames(2)
 	_check("%s: one undo puts it back (%s)" % [name, _differs(before)], _differs(before) == "none differs")

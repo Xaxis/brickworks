@@ -305,6 +305,8 @@ func motion(screen: Vector2) -> void:
 	if following > worst_follow_ms:
 		worst_follow_said = "solving %.1f ms, %d room tests %.1f ms" % [grab.frame_solve_ms,
 			grab.frame_tests, grab.frame_test_ms]
+		if not grab.frame_slowest_said.is_empty():
+			worst_follow_said += ", the slowest part %s" % grab.frame_slowest_said
 	worst_follow_ms = maxf(worst_follow_ms, following)
 	world.set_drawn(grab.drawn())
 	if grab.flex != null:
