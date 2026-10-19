@@ -114,7 +114,7 @@ def test_the_page_counts_as_its_cards_do() -> None:
 def test_a_designer_card_leads_with_builds_and_never_says_views() -> None:
     card = js_function(PEOPLE, "cardHtml")
     earned = card[card.index("if (earned) {"): card.index("} else {")]
-    order = [re.search(rf"card\.{kind}\b", earned).start() for kind in ("builds", "remixes", "comments", "likes")]
+    order = [earned.index(f"card.{kind})") for kind in ("builds", "remixes", "comments", "likes")]
     assert order == sorted(order), "builds, remixes, comments, likes"
     assert "views" not in earned
 
@@ -151,7 +151,9 @@ def test_the_profile_page_never_carries_them() -> None:
 
 def test_the_stand_in_answers_what_the_api_asks() -> None:
     asked = set(re.findall(r'db\("rpc/(designer_[a-z]+)"', DESIGNERS))
-    names = set(re.findall(r'"(designer_[a-z]+)"', re.search(r"const NAMES = \[([^\]]*)\]", STAND_IN)[1]))
+    listed = re.search(r"const NAMES = \[([^\]]*)\]", STAND_IN)
+    assert listed, "the stand-in names no functions"
+    names = set(re.findall(r'"(designer_[a-z]+)"', listed[1]))
     assert asked == names == {"designer_page", "designer_mine"}
     for name in names:
         assert f"async {name}(" in STAND_IN
