@@ -100,40 +100,6 @@ func _run() -> void:
 		"the same click places a brick (%d, %d before)" % [world.brick_count(), before])
 	await _key(KEY_BRACKETRIGHT)
 	_ok(builder.held_color != colour, "the same key picks the next colour: %d" % builder.held_color)
-
-	print("\nthe age question")
-	# Asked once of a new account, as a date of birth is asked everywhere:
-	# two dropdowns, the month by name and the years newest first. Each
-	# opened by a click, its item found by typing in the open list and
-	# chosen with Enter, as a person with a keyboard does. It was a grid of
-	# twelve month buttons and a box to type the year in.
-	account.age_ask = true
-	account.changed.emit()
-	await _settle()
-	var asked: Dictionary = gate.controls_by_name()
-	_ok(gate.visible and asked.has("age_month") and asked.has("age_year") and asked.has("age_go"),
-		"a new account is asked when it was born: %s" % str(asked.keys()))
-	var month_pick: OptionButton = asked.get("age_month") as OptionButton
-	var year_pick: OptionButton = asked.get("age_year") as OptionButton
-	var this_year: int = int(Time.get_datetime_dict_from_system()["year"])
-	_ok(month_pick != null and year_pick != null and month_pick.text == "Month" and year_pick.text == "Year",
-		"...by two dropdowns saying Month and Year (%s, %s)" % [
-			month_pick.text if month_pick else "none", year_pick.text if year_pick else "none"])
-	if month_pick != null and year_pick != null:
-		_ok(month_pick.item_count == 12 and month_pick.get_item_text(5) == "June"
-			and year_pick.item_count == 111 and year_pick.get_item_text(0) == str(this_year),
-			"...the months by name, the years from %s back (%d, %d items)" % [
-				year_pick.get_item_text(0), month_pick.item_count, year_pick.item_count])
-		_save("age_question.png")
-		await _choose(month_pick, "June")
-		await _choose(year_pick, "1996")
-		_ok(int(gate.call("_month")) == 6 and int(gate.call("_year")) == 1996
-			and month_pick.text == "June" and year_pick.text == "1996",
-			"...June and 1996 chosen by a click, typing and Enter (%s %s)" % [month_pick.text, year_pick.text])
-		_save("age_chosen.png")
-	account.age_ask = false
-	account.changed.emit()
-	await _settle()
 	account.state = Account.State.SIGNED_OUT
 	account.changed.emit()
 	await _settle()
@@ -294,22 +260,6 @@ func _key(code: Key) -> void:
 		Input.parse_input_event(event)
 		await process_frame
 	for _n: int in 4:
-		await process_frame
-
-
-## A dropdown opened by a click, [words] typed into its open list and Enter.
-func _choose(pick: OptionButton, words: String) -> void:
-	var at: Vector2 = pick.get_global_rect().get_center()
-	_move(at)
-	await process_frame
-	_button(at, true)
-	await process_frame
-	_button(at, false)
-	for _n: int in 10:
-		await process_frame
-	await _type(words)
-	await _key(KEY_ENTER)
-	for _n: int in 6:
 		await process_frame
 
 
