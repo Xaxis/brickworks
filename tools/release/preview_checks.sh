@@ -127,7 +127,10 @@ run() {
 # frames for 7 moves, and 16 every time alone (2026-10-13). grab times the
 # page's longest wait in a drag: paired, the four-bar's read 551 ms (m54).
 # frames holds the app's own work a frame on 75969-1 (200 ms, select all 400).
-SOLO=" idle arrival progress cursor render_open grab share_steps frames play "
+# discovery works out the week's pick from every test model built this week:
+# paired with designers, whose castle was built three times, it took the
+# pick and the small builds shelf (2026-10-19).
+SOLO=" idle arrival progress cursor render_open grab share_steps frames play discovery "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 set -- $PAIRED

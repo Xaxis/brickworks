@@ -2159,8 +2159,11 @@ among them, every picture loaded, the same on Account; signed out and
 forged 401, a bad handle 400, every answer `private, no-store`, none from
 the CDN, Ada then Bob on one address each their own, her page the same
 bytes signed in or not, without tests public for 30 s with none of her
-test models; no page errors. 39 checks, all ok, 2026-10-19, against the
-held relay with the live project (about 2 minutes).
+test models (on a deployment, where the CDN keeps `s-maxage` for itself
+and sends `public, max-age=0`, the CDN answering it again); no page errors.
+39 checks, all ok, 2026-10-19, against the held relay with the live
+project (about 2 minutes). Never paired with `discovery` on a preview: each
+reads the week's test models, and one's castle took the other's pick.
 **Play** (`play in a shared model`, `what moves in a model`, `what moves on
 a gallery card`, `share play probe`, `play browser flow`). The SQL first,
 in a rolled-back dry run on the live project (after discovery.sql), and
@@ -2294,6 +2297,11 @@ gallery's line (`6_gallery_line-1280.png`), Ed's two votes
 (`8_challenge_cy-390.png`); ended on `/admin`, the winners 2 and 1 votes
 (`9_challenge_winners-*`), Ada's Challenges won and the card
 (`10_designer_won-390.png`), the gallery card's `won`; no page errors.
+A visitor's answer is `public, max-age=0` on a deployment (Vercel's CDN
+keeps `s-maxage` for itself), so there the CDN answering the same question
+again (`x-vercel-cache: HIT`) is the proof; locally, `s-maxage=30`. 50
+checks, all ok, 2026-10-19, on a preview with challenges.sql applied, and
+the same against a local relay over the live tables.
 
 The list, asked hard (reads only):
 
