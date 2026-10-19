@@ -12,6 +12,15 @@
 ## bricks (BuildMode); the step reached is the one thing the viewer keeps,
 ## per link, in the browser (BuildSteps.remember).
 ##
+## A link has versions (2026-10-18): publishing again keeps the one
+## before. The line under the name says which this is and what changed in
+## it ("Version 2: 2 parts added and 2 removed in step 3."), or that it is
+## an older one, with the newest a click away. A builder who comes back
+## after the model changed is told so when it changed at or before the
+## step they reached ("This model changed from step 3"), and offered that
+## step; one who had not got that far is left where they were (BuildSteps.
+## changed_since).
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -25,6 +34,10 @@ signal build_wanted
 signal booklet_wanted
 signal parts_wanted
 signal copy_wanted
+## The newest version, from an older one's version line.
+signal newest_wanted
+## Build it from [param page]: the step a changed model is offered from.
+signal build_from(page: int)
 
 ## loading, parts, ready, gone, failed.
 var state: String = "loading"
@@ -36,10 +49,24 @@ var link: String = ""
 ## name, url} (api/share.js), or empty. Said on the about line, which
 ## then opens that model's link.
 var remixed_from: Dictionary = {}
+## Which version of the link is open, and how many it has (1 for a link
+## with one, or from before versions were kept).
+var version: int = 1
+var newest: int = 1
+var version_said: String = ""
+## The step a builder's place was changed from, while they are told so;
+## 0 when it holds.
+var changed_from: int = 0
+var _kept_at: int = 0
 
 var _bar: PanelContainer
 var _name: Label
 var _about: Label
+var _version: Label
+var _place: PanelContainer
+var _place_words: Label
+var _place_go: Button
+var _place_keep: Button
 var _steps: Button
 var _build: Button
 var _booklet: Button
@@ -65,6 +92,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_bar()
 	_build_card()
+	_build_place()
 	_hover = Label.new()
 	_hover.add_theme_font_size_override("font_size", 12)
 	_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -136,6 +164,18 @@ func _build_bar() -> void:
 				and not str(remixed_from.get("url", "")).is_empty():
 			OS.shell_open(str(remixed_from["url"])))
 	words.add_child(_about)
+	# Which version, and what changed in it; on an older one, the way to
+	# the newest.
+	_version = Label.new()
+	_version.add_theme_font_size_override("font_size", 12)
+	_version.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_version.visible = false
+	_version.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_version.gui_input.connect(func(event: InputEvent) -> void:
+		var click: InputEventMouseButton = event as InputEventMouseButton
+		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT and version < newest:
+			newest_wanted.emit())
+	words.add_child(_version)
 
 	# First, and bright: on a phone beside a pile of bricks it is what the
 	# link was opened for.
@@ -252,6 +292,60 @@ func _build_card() -> void:
 	column.add_child(_card_button)
 
 
+## What a builder is told when the model changed at or before the step
+## they reached: under the bar, with the step it changed from offered, and
+## their own kept if they would rather.
+func _build_place() -> void:
+	_place = PanelContainer.new()
+	_place.visible = false
+	_place.mouse_filter = Control.MOUSE_FILTER_STOP
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.16, 0.13, 0.05, 0.96)
+	backing.border_color = Color(0.98, 0.78, 0.12, 0.7)
+	backing.set_border_width_all(1)
+	backing.set_corner_radius_all(6)
+	backing.content_margin_left = 14
+	backing.content_margin_right = 14
+	backing.content_margin_top = 9
+	backing.content_margin_bottom = 9
+	_place.add_theme_stylebox_override("panel", backing)
+	add_child(_place)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	_place.add_child(row)
+	_place_words = Label.new()
+	_place_words.add_theme_font_size_override("font_size", 13)
+	_place_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_place_words.custom_minimum_size = Vector2(300, 0)
+	_place_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_place_words)
+	_place_go = _button(row, "Build from step 1", "Build it from the step it changed at")
+	_place_go.pressed.connect(func() -> void:
+		var page: int = changed_from
+		hide_place()
+		build_from.emit(page))
+	_place_keep = _button(row, "Keep my step", "Carry on from where you were")
+	_place_keep.pressed.connect(hide_place)
+
+
+## Tell a builder who had reached step [param at] that the model changed
+## from step [param from], and offer it.
+func tell_changed(from: int, at: int) -> void:
+	changed_from = from
+	_kept_at = at
+	_place_words.text = "This model changed from step %d since you were on step %d." % [from, at]
+	_place_go.text = "Build from step %d" % from
+	_place_keep.text = "Keep step %d" % at
+	_place.visible = true
+	_place.reset_size()
+	set_process(true)
+
+
+func hide_place() -> void:
+	changed_from = 0
+	_place.visible = false
+
+
 func _say(title: String, words: String, button: String = "", action: Callable = Callable()) -> void:
 	_card.visible = true
 	_card_title.text = title
@@ -295,6 +389,22 @@ func show_model(shown_name: String, shown_author: String, part_count: int, at: S
 		if linked else "")
 
 
+## Which version of the link this is ([param shown] of [param last]), and
+## what the server said changed in it.
+func show_version(shown: int, last: int, said: String) -> void:
+	version = maxi(shown, 1)
+	newest = maxi(last, version)
+	version_said = said
+	_version.visible = newest > 1
+	var old: bool = version < newest
+	_version.text = ("Version %d of %d, an older one. Open the newest" % [version, newest]) if old \
+		else (said if not said.is_empty() else "Version %d" % version)
+	_version.modulate = Color(1.0, 0.86, 0.45) if old else Color(1, 1, 1, 0.7)
+	_version.mouse_filter = Control.MOUSE_FILTER_STOP if old else Control.MOUSE_FILTER_IGNORE
+	_version.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if old else Control.CURSOR_ARROW
+	_version.tooltip_text = ("Open version %d, the newest" % newest) if old else ""
+
+
 func ready_to_look() -> void:
 	state = "ready"
 	_card.visible = false
@@ -332,12 +442,17 @@ func _fit_big() -> void:
 	var ready: bool = state == "ready" and _bar.visible
 	_big.visible = _narrow and ready
 	_build.visible = not _narrow and state != "gone"
-	set_process(_big.visible)
+	set_process(_big.visible or (_place != null and _place.visible))
 
 
 func _process(_delta: float) -> void:
+	if _place.visible:
+		# Just under the bar, in the middle.
+		var below: float = _bar.get_global_rect().end.y + 10.0 if _bar.is_visible_in_tree() else 10.0
+		_place.position = Vector2(maxf((size.x - _place.size.x) * 0.5, 6.0), below)
 	if not _big.visible:
-		set_process(false)
+		if not _place.visible:
+			set_process(false)
 		return
 	var bottom: float = size.y
 	if floor_at.is_valid():
@@ -403,6 +518,7 @@ func show_bar(yes: bool) -> void:
 
 func covers(point: Vector2) -> bool:
 	return (_bar.is_visible_in_tree() and _bar.get_global_rect().has_point(point)) \
+		or (_place.is_visible_in_tree() and _place.get_global_rect().has_point(point)) \
 		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point)) \
 		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point))
 
@@ -415,6 +531,11 @@ func controls_by_name() -> Dictionary:
 		named["view_card_button"] = _card_button
 	if not remixed_from.is_empty() and _about.is_visible_in_tree():
 		named["view_remixed_from"] = _about
+	if version < newest and _version.is_visible_in_tree():
+		named["view_newest"] = _version
+	if _place.is_visible_in_tree():
+		named["view_build_from"] = _place_go
+		named["view_keep_place"] = _place_keep
 	return named
 
 
@@ -422,4 +543,6 @@ func page_state() -> Dictionary:
 	return {"state": state, "name": model_name, "author": author, "parts": parts,
 		"link": link, "about": _about.text, "remixed_from": str(remixed_from.get("name", "")),
 		"title": _card_title.text if _card.visible else "",
-		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else ""}
+		"says": _card_words.text if _card.visible else "", "hover": _hover.text if _hover.visible else "",
+		"version": version, "newest": newest, "version_line": _version.text if _version.visible else "",
+		"changed_from": changed_from, "place_says": _place_words.text if _place.visible else ""}

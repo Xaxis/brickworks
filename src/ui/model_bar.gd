@@ -574,6 +574,7 @@ func _on_clear() -> void:
 	if store != null:
 		store.share_id = ""
 		store.remixed_from = ""
+		store.remixed_from_version = 0
 		# The person emptied it: the autosave may keep it empty.
 		store.cleared_by_person()
 	cleared.emit()

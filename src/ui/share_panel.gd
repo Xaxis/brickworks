@@ -14,6 +14,12 @@
 ## sites. The link is kept with the model (ModelStore.share_id), so the
 ## next Publish of the same model updates it.
 ##
+## Publishing again makes the link's next version and keeps the one before
+## (2026-10-18, api/share.js): What changed? says it in its owner's words,
+## shown with the version on its page and in the viewer beside what the
+## server works out changed from the two files, which the status line then
+## says too ("Version 2: 2 parts added and 2 removed in step 3.").
+##
 ## List it in the gallery, off unless ticked, also puts the model on
 ## brickworks.diy/gallery for anyone to find (2026-10-13); unticked and
 ## published again, it leaves the gallery and keeps its link. A model
@@ -40,6 +46,7 @@ const THUMB := Vector2i(480, 252)
 const MOST_THUMB := 60 * 1024
 ## As api/share.js keeps them.
 const MOST_ABOUT := 1000
+const MOST_NOTE := 280
 ## [id, name, what it lets others do], as api/_directory.js LICENCES.
 const LICENCES: Array = [
 	["cc-by-4.0", "CC BY 4.0",
@@ -76,6 +83,13 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## What changed, said by its owner: for a model that has a link already.
+var _note_label: Label
+var _note: LineEdit
+## The version the link is at after the last publish, and what the server
+## said changed in it.
+var version: int = 0
+var version_said: String = ""
 var _status: Label
 var _publish: Button
 var _link_box: VBoxContainer
@@ -210,6 +224,17 @@ func setup() -> void:
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
 	form.add_child(_list)
+
+	_note_label = _line("What changed? (shown with the new version)", 12, 0.85)
+	form.add_child(_note_label)
+	_note = LineEdit.new()
+	_note.placeholder_text = "Fixed the roof; the door opens now"
+	_note.max_length = MOST_NOTE
+	_note.tooltip_text = "Publishing again keeps the version before. Anyone can see what you say here " \
+		+ "beside what changed, part by part and step by step."
+	_note.text_submitted.connect(func(_text: String) -> void: publish())
+	form.add_child(_note)
+	_show_note(false)
 
 	_publish = Button.new()
 	_publish.text = "Publish"
@@ -405,7 +430,15 @@ func _check_link(id: String, words: bool = true) -> void:
 			return
 
 
+## What changed? is for a model with a link up: the next publish is its
+## next version.
+func _show_note(yes: bool) -> void:
+	_note_label.visible = yes
+	_note.visible = yes
+
+
 func _show_link(id: String) -> void:
+	_show_note(not id.is_empty() and state != "unpublished")
 	_link_box.visible = not id.is_empty()
 	url = SharedModels.link_for(id) if not id.is_empty() else ""
 	embed = SharedModels.embed_for(id) if not id.is_empty() else ""
@@ -470,12 +503,20 @@ func publish() -> void:
 	body["listed"] = _list.button_pressed and not _list.disabled
 	if not store.remixed_from.is_empty():
 		body["remixed_from"] = store.remixed_from
+		if store.remixed_from_version > 0:
+			body["remixed_from_version"] = store.remixed_from_version
+	# What changed, for a link already up: its next version's words.
+	var note: String = _note.text.strip_edges()
+	if body.has("id") and _note.visible and not note.is_empty():
+		body["note"] = note
 	var answer: Dictionary = await shared.publish(token, body)
 	# A link that is not this account's — the model came from somebody
 	# else's link, or another account shared it on this device — or one
 	# that has gone: the model gets a link of its own.
 	if int(answer["code"]) in [403, 404] and body.has("id"):
 		body.erase("id")
+		# A first version: nothing it changed from.
+		body.erase("note")
 		answer = await shared.publish(token, body)
 	_publish.disabled = false
 	var reply: Variant = answer.get("body")
@@ -495,10 +536,19 @@ func publish() -> void:
 	_link.text = url
 	var listed: bool = bool(said.get("listed", false))
 	_list.button_pressed = listed
+	version = int(said.get("version", 1))
+	version_said = str(said.get("said", ""))
 	_status.text = ("%s at this link and listed in the gallery, %d parts. Anyone can find it "
 		+ "at brickworks.diy/gallery — no account needed." if listed
 		else "%s at this link, %d parts. Anyone with it can look — no account needed.") % [
 		"Updated" if bool(said.get("updated", false)) else "Shared", int(said.get("parts", 0))]
+	# A new version: what changed, and that the one before is kept.
+	if version > 1:
+		_status.text = "Version %d is up at this link%s, and version %d is kept at its own. %s" % [
+			version, " and listed in the gallery" if listed else "", version - 1, version_said]
+		_status.text = _status.text.strip_edges()
+	_note.text = ""
+	_show_note(true)
 
 
 func unpublish() -> void:
@@ -572,6 +622,8 @@ func controls_by_name() -> Dictionary:
 		"share_done": _done}
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
+	if _note.is_visible_in_tree():
+		named_controls["share_note"] = _note
 	if _link_box.is_visible_in_tree():
 		named_controls["share_copy_link"] = _copy_link
 		named_controls["share_copy_embed"] = _copy_embed
@@ -590,7 +642,11 @@ func page_state() -> Dictionary:
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"kind": _kind_id() if _kind != null else "",
-		"licence": _licence_id() if _licence != null else ""}
+		"licence": _licence_id() if _licence != null else "",
+		"note": _note.text if _note != null else "",
+		"note_shown": _note.is_visible_in_tree() if _note != null else false,
+		"version": version, "said": version_said,
+		"remixed_from_version": store.remixed_from_version if store != null else 0}
 
 
 ## Escape closes it, like the other panels.

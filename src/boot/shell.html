@@ -232,10 +232,14 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 // frame, which was most of the way to a shared model's first step.
 (function () {
 	try {
-		const id = new URLSearchParams(location.search).get("view") || "";
+		const query = new URLSearchParams(location.search);
+		const id = query.get("view") || "";
 		if (!/^[A-Za-z0-9]{10}$/.test(id)) return;
-		const early = window.brickworksSharePrefetch = { id: id, done: false, status: 0, text: "" };
-		fetch("/api/share?id=" + id).then((reply) => reply.text().then((text) => {
+		// And which version of it, when an older one's page sent it here
+		// (/m/<id>/v/<n>: ?view=<id>&v=<n>).
+		const version = /^[1-9][0-9]{0,5}$/.test(query.get("v") || "") ? Number(query.get("v")) : 0;
+		const early = window.brickworksSharePrefetch = { id: id, version: version, done: false, status: 0, text: "" };
+		fetch("/api/share?id=" + id + (version ? "&v=" + version : "")).then((reply) => reply.text().then((text) => {
 			early.status = reply.status;
 			early.text = text;
 			early.done = true;

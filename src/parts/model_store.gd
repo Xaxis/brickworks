@@ -64,6 +64,12 @@ const SHARE_META := "0 !BRICKWORKS SHARE "
 ## so its page can say what it was remixed from (api/share.js).
 var remixed_from: String = ""
 const REMIX_META := "0 !BRICKWORKS REMIX "
+## And which version of that link it was copied from (api/share.js), or 0
+## when it is not a copy or was copied before links had versions: its page
+## says "remixed from X, version 2". On a line of its own, so a build from
+## before it still reads the link.
+var remixed_from_version: int = 0
+const REMIX_VERSION_META := "0 !BRICKWORKS REMIX_VERSION "
 ## The real set this model was opened from ("10182"), or empty: a file of
 ## the LDraw model repository says so in its header, and a model saved
 ## from one carries it on as a meta line. HiddenColours asks before it
@@ -449,6 +455,7 @@ func begin(name: String) -> void:
 	# replace that one at its link, nor say it was copied from one.
 	share_id = ""
 	remixed_from = ""
+	remixed_from_version = 0
 	from_set = ""
 	hidden_scheme = {}
 	# Nobody's file: written whole, where it stands.
@@ -870,6 +877,7 @@ func open_text(text: String, name: String = "model", parsed: LdrModel = null) ->
 			title = named
 	share_id = share_in(text)
 	remixed_from = remix_in(text)
+	remixed_from_version = remix_version_in(text) if not remixed_from.is_empty() else 0
 	var said: ModelFloor = ModelFloor.read(text)
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = set_in(text)
@@ -1036,6 +1044,7 @@ static func _without_app_lines(text: String) -> String:
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
+				or line.begins_with(REMIX_VERSION_META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -1592,7 +1601,7 @@ func _write(path: String, title: String, with_steps: bool = false,
 		refused = NewerBuild.REFUSAL
 		return false
 	var text: String = with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from)
+		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -1637,9 +1646,10 @@ static func _has_parts(text: String) -> bool:
 ## [param text] with the link it is shared at and the link it was copied
 ## from, each on a line after its first (inside the model itself, for an
 ## .mpd); as it is for neither.
-static func with_share(text: String, id: String, remix: String = "") -> String:
+static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0) -> String:
 	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
-		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "")
+		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
+		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "")
 	if lines.is_empty():
 		return text
 	var cut: int = text.find("\n")
@@ -1653,6 +1663,13 @@ static func share_in(text: String) -> String:
 	var found: RegExMatch = RegEx.create_from_string(
 		"(?m)^0 !BRICKWORKS SHARE ([A-Za-z0-9]{10})\\s*$").search(text)
 	return found.get_string(1) if found != null else ""
+
+
+## Which version of that link a model's text says it was copied from, or 0.
+static func remix_version_in(text: String) -> int:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS REMIX_VERSION ([1-9][0-9]{0,5})\\s*$").search(text)
+	return found.get_string(1).to_int() if found != null else 0
 
 
 ## The link a model's text says it was copied from, or empty.

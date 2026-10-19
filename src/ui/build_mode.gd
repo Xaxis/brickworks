@@ -14,6 +14,11 @@
 ## finger needs about twice that. Words at arm's length are 20 points and
 ## up.
 ##
+## A builder who comes back to a link whose model changed at or before the
+## step they had reached is told so along the top ("This model changed
+## from step 3"), with that step a press away; one who had not got that far
+## is not told anything (BuildSteps.changed_since).
+##
 ## This only shows a page and says what was pressed; main.gd turns the
 ## page (BuildSteps says what is on it) and keeps the place.
 class_name BuildMode
@@ -48,6 +53,13 @@ var _top: PanelContainer
 var _close: Button
 var _caption: Label
 var _note: Label
+## The model changed from this step since this builder's place was kept,
+## while they are told so; 0 when it did not.
+var changed_from: int = 0
+var _told_on: int = -1
+var _changed: VBoxContainer
+var _changed_words: Label
+var _changed_go: Button
 var _progress: ProgressBar
 var _bottom: PanelContainer
 var _callout: PanelContainer
@@ -100,6 +112,21 @@ func _build_top() -> void:
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_note.modulate = Color(1.0, 0.86, 0.45)
 	words.add_child(_note)
+	_changed = VBoxContainer.new()
+	_changed.visible = false
+	words.add_child(_changed)
+	_changed_words = Label.new()
+	_changed_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_changed_words.modulate = Color(1.0, 0.86, 0.45)
+	_changed_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_changed.add_child(_changed_words)
+	_changed_go = _button("Go to step 1", "Build from the step the model changed at")
+	_changed_go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_changed_go.pressed.connect(func() -> void:
+		var wanted: int = changed_from
+		_hide_changed()
+		page_wanted.emit(wanted))
+	_changed.add_child(_changed_go)
 	# As wide as Close, so the words sit in the middle of the window.
 	var balance := Control.new()
 	balance.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -201,6 +228,11 @@ func _fit() -> void:
 		(row as HBoxContainer).add_theme_constant_override("separation", roundi(10.0 * pt))
 	_caption.add_theme_font_size_override("font_size", roundi(24.0 * pt))
 	_note.add_theme_font_size_override("font_size", roundi(16.0 * pt))
+	_changed_words.add_theme_font_size_override("font_size", roundi(16.0 * pt))
+	_changed_go.add_theme_font_size_override("font_size", roundi(16.0 * pt))
+	_changed_go.custom_minimum_size = Vector2(0.0, 40.0 * pt)
+	_changed.add_theme_constant_override("separation", roundi(10.0 * pt))
+	_face(_changed_go, false)
 	_told.add_theme_font_size_override("font_size", roundi(14.0 * pt))
 	for button: Button in [_close, _back, _next]:
 		_face(button, button == _next)
@@ -241,6 +273,9 @@ func _face(button: Button, bright: bool) -> void:
 ## Put a page up: its caption ("Step 3 of 24"), what else to say, and its
 ## parts. [param of] is the last page.
 func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dictionary]) -> void:
+	# Told on one page and moved on from it: the builder has chosen.
+	if changed_from > 0 and at != _told_on:
+		_hide_changed()
 	page = at
 	last = of
 	_caption_text = caption if at > 0 else "Ready to build"
@@ -352,6 +387,22 @@ func _watch_after_this_frame() -> void:
 var _strip_laid: int = 0
 
 
+## Tell the builder the model changed from step [param from] since their
+## place was kept, on the page they are on, and offer that step.
+func tell_changed(from: int) -> void:
+	changed_from = from
+	_told_on = page
+	_changed_words.text = "This model changed from step %d." % from
+	_changed_go.text = "Go to step %d" % from
+	_changed.visible = true
+
+
+func _hide_changed() -> void:
+	changed_from = 0
+	_told_on = -1
+	_changed.visible = false
+
+
 func open() -> void:
 	visible = true
 	_fit()
@@ -448,9 +499,12 @@ func _tapped_bar(point: Vector2) -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	return {"build_next": _next, "build_back": _back, "build_close": _close,
+	var named: Dictionary = {"build_next": _next, "build_back": _back, "build_close": _close,
 		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
 		"build_progress": _progress}
+	if _changed.is_visible_in_tree():
+		named["build_changed_go"] = _changed_go
+	return named
 
 
 ## What the page says, for a check to read.
@@ -466,4 +520,5 @@ func page_state() -> Dictionary:
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
 			return tile.state == ThumbTile.State.READY).size(),
 		"next": _next.text, "back_enabled": not _back.disabled, "points": sizes,
+		"changed_from": changed_from, "changed": _changed_words.text if _changed.visible else "",
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt)}

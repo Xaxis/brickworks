@@ -35,12 +35,17 @@ static func embed_for(id: String) -> String:
 ## in software can stall a frame long enough for it to come back as nothing:
 ## a viewer on a preview said "Could not reach Brickworks" once in four runs,
 ## and the same link opened at the next try. Reading is safe to repeat.
-func fetch(id: String) -> Dictionary:
-	var answer: Dictionary = await _asked_early(id)
+##
+## [param version] asks for that version of it (/m/<id>/v/<n>); 0 is the
+## newest. Either way the answer says which it is ("version", "newest") and
+## what each version changed ("versions"), newest first.
+func fetch(id: String, version: int = 0) -> Dictionary:
+	var answer: Dictionary = await _asked_early(id, version)
 	if not answer.is_empty():
 		return answer
+	var path: String = "/api/share?id=" + id.uri_encode() + ("&v=%d" % version if version > 0 else "")
 	for attempt: int in 3:
-		answer = await _fetch("/api/share?id=" + id.uri_encode(), HTTPClient.METHOD_GET, "", "")
+		answer = await _fetch(path, HTTPClient.METHOD_GET, "", "")
 		if int(answer["code"]) != 0:
 			break
 		await get_tree().create_timer(1.5 * (attempt + 1)).timeout
@@ -52,11 +57,12 @@ func fetch(id: String) -> Dictionary:
 ## (src/boot/shell.html, window.brickworksSharePrefetch), taken once; empty
 ## when the page did not ask, asked for another link, or got nothing, and
 ## the link is then asked for here.
-func _asked_early(id: String) -> Dictionary:
+func _asked_early(id: String, version: int = 0) -> Dictionary:
 	if not OS.has_feature("web"):
 		return {}
 	var asked: String = "(function(){var p=window.brickworksSharePrefetch;" \
-		+ "return p && p.id===%s ? (p.done ? 2 : 1) : 0})()" % JSON.stringify(id)
+		+ "return p && p.id===%s && (p.version||0)===%d ? (p.done ? 2 : 1) : 0})()" % [
+			JSON.stringify(id), version]
 	var state: Variant = JavaScriptBridge.eval(asked, true)
 	while state != null and int(state) == 1:
 		await get_tree().process_frame
