@@ -876,13 +876,13 @@ ${header}
         <a class="cta ghost" href="${escapeHtml(`/app?copy=${id}${old ? `&v=${version.n}` : ""}`)}">Open in Brickworks</a>
       </div>
       <div class="marks" id="marks" data-id="${id}" hidden>
-        <button type="button" class="mark" data-mark="like" aria-pressed="false">Like</button>
-        <button type="button" class="mark" data-mark="favourite" aria-pressed="false">Favourite</button>
-        <details class="collect"><summary>Add to a collection</summary>
+        <button type="button" class="cta ghost small" data-mark="like" aria-pressed="false">Like</button>
+        <button type="button" class="cta ghost small" data-mark="favourite" aria-pressed="false">Favourite</button>
+        <details class="collect"><summary class="cta ghost small">Add to a collection</summary>
           <div class="collect-panel"><div class="collect-list"></div>
             <form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>
               <input id="new-list" maxlength="80" placeholder="A new collection">
-              <button class="cta ghost small" type="submit">Make it</button></form></div></details>
+              <button class="cta ghost" type="submit">Make it</button></form></div></details>
         <p class="said" role="status"></p>
       </div>
       <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
