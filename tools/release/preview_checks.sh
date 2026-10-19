@@ -74,6 +74,10 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # My collection in a real browser: a throwaway account imports a parts
+  # export, adds a set, reads what is short and ranks what it can build;
+  # the account and its collection are deleted after (tools/web/collection_flow.mjs).
+  [collection]="tools/web/collection_flow.mjs --url=$P/app --out=$S/${TAG}_collection"
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"

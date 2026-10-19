@@ -24,7 +24,7 @@ which models they could build from what they have. Added 2026-10-12.
     (`ShopLists.bricklink_xml`) or a Rebrickable CSV, at the counts short.
     BrickLink's prices are not free to read (its API wants a seller's keys and
     its terms), so the panel links each part's catalogue page instead.
-  - **What can I build?**: the examples, the person's saved models and the 328
+  - **What can I build?**: the examples, the person's saved models and the 1,575
     official LDraw set models (`vendor/omr`), ranked by how much of each is
     owned in its own colour, then in any colour; Open puts one on the baseplate
     and shows its shortfall. An official model opens where `vendor/omr` is
@@ -66,16 +66,30 @@ which models they could build from what they have. Added 2026-10-12.
   version 1 of each set's inventory, its minifigures' parts and any set packed
   inside it (`inventory_minifigs`, `inventory_sets`, added to `fetch_data.sh`
   2026-10-12), spares apart. Rebrickable colours through the catalogue's own
-  colour join, the few Rebrickable part numbers that are not LDraw's through
-  its part join (146 renamed), BrickLink colours from colors.json's `bricklink`,
+  colour join; a Rebrickable part number that is not LDraw's renamed to the
+  LDraw part whose own header names it ("Rebrickable 3626apr0001" on
+  3626ap01: prints, assemblies such as a torso with its arms and hands, moulds
+  numbered apart; an alias gives its target), then through the catalogue's
+  part join (7,763 renamed, 146 before 2026-10-19); a figure's hips and legs
+  (970c28) and its torso with arms and hands (973c03h01) where LDraw names no
+  assembly, as the parts LDraw draws, colours from Rebrickable's names (so the
+  Magic Shop is 49 pieces, not Rebrickable's 47); BrickLink colours from colors.json's `bricklink`,
   the numbers the wanted list is written in (where two codes share one, the lower
   wins: BrickLink 77 reads as 148, not 316). 21,173 sets, 256 shards, 26 MB, under
   `assets/generated/sets/`; the shard rule is the same sum in the Python and in
   `SetInventories.shard_of`.
-- `official models' parts lists` (`src/dev/collection_models.gd`): the 328
-  `vendor/omr` models counted with the app's own LDraw reader into
-  `assets/generated/sets/models.json`, leaving out what nobody can own (a
-  primitive drawn into the model, a sub-model the file names and does not carry).
+- `official models' parts lists` (`src/dev/collection_models.gd`): the 1,575
+  `vendor/omr` models counted with the app's own LDraw reader, leaving out
+  what nobody can own (a primitive drawn into the model, a sub-model the file
+  names and does not carry, a sticker, a hose or chain drawn link by link, a ~
+  piece: `Collection.ownable`), then matched to their own set's inventory
+  (`Collection.as_its_set`: another mould, the assembly or its parts, an alias,
+  another colour the box has left, another part of the same shape), into
+  `assets/generated/sets/models.json` (2.1 MB). Owning a set builds its own
+  model whole for 624 of 1,234 sets and within 1% for 880; the rest draw a
+  few pieces more than the box holds (2 of 246 whole before, 2026-10-19,
+  `bench/results/ownedsets-2026-10-19`). Run after `tools/collection_data.py`,
+  which rewrites every file in the folder, this one too.
 - `/api/collection` (`api/collection.js`, `supabase/collection.sql`): GET, POST
   an import, PUT the whole collection, DELETE. Every import is parsed and
   mapped here (Rebrickable CSV with quoted fields, BrickLink XML, Rebrickable's
