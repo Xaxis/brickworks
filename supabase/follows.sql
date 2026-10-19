@@ -309,6 +309,12 @@ $$;
 -- Everything in [viewer]'s feed from after [since] up to [until], as
 -- (kind, at, item): read from the tables that hold it, with what their
 -- pages hide hidden here too.
+--
+-- REPLACED LATER: challenges.sql replaces this function with the same rows
+-- and one kind more (an entry in a challenge). Applying this file again
+-- alone takes that kind out of every feed, so apply challenges.sql again
+-- right after it: tools/apply_sql.mjs refuses this file while the live
+-- feed_rows is challenges.sql's, unless --again=supabase/challenges.sql.
 create or replace function public.feed_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, item jsonb)
 language sql

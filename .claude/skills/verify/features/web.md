@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:what a frame costs in a browser -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
 
 ## Sub-features
 
@@ -602,7 +602,8 @@ plan with Claude as the client.
   so none is the browser's; a dropdown is the text box with its own arrow),
   a checkbox and radio (`label.choice`), the buttons the site uses (`.cta`,
   `.cta.ghost` and any bare button, `button.link`, `.small`, `.big`), the
-  `dialog` (sign-in, age, report) and `.card`; tokens `--field`,
+  `dialog` (sign-in, age, report), a date (`fieldset.date`: day, month
+  and year dropdowns, /admin's challenge days) and `.card`; tokens `--field`,
   `--control-h` 44, `--control-radius` 10. The copies in `web/directory.css`,
   `web/gallery.html`, `web/download.html`, `web/takedown.html`,
   `web/admin.html` and `web/authorize.html` are gone; the last two now link
@@ -746,6 +747,63 @@ plan with Claude as the client.
   who built it with their photos). `document.documentElement.dataset.designs`
   is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
+- `the monthly challenge's rules` (`supabase/challenges.sql`, 2026-10-19):
+  tables `challenges` (title, brief, `starts_on`/`ends_on` whole UTC days,
+  `most_parts`, `set_number`/`set_name`, `tested`, `test`, `ended_at`,
+  `settled_at`), `challenge_set_parts` (the set's lots, keyed as
+  `model_needs`), `challenge_entries` (model, owner, `way` hand or
+  assistant), `challenge_votes` (one per challenge, way and voter),
+  `challenge_winners`; read by no key. Functions, the service role's alone:
+  `challenge_state`, `challenge_open(tests)`, `challenge_shown(tests)`,
+  `challenge_check(challenge, model)` (`{ok, parts, set: {short,
+  short_lots, counted}, tested}`), `challenge_keeps`, `challenge_set`
+  (refused `past`, `overlap` naming the other, `set_empty`),
+  `challenge_end`, `challenge_list`, `challenge_enter` (refused `no_model`,
+  `not_yours`, `under_13`, `not_asked`, `barred`, `not_in_gallery`,
+  `no_challenge`, `entered`, `three`, `rules` with its check),
+  `challenge_withdraw`, `challenge_for_model`, `challenge_vote` (refused
+  `not_open`, `under_13`, `not_asked`, `barred`, `no_entry`, `own`,
+  `breaks`, `voted`), `challenge_settle`, `challenge_page(tests)`,
+  `challenge_mine(account, challenge)`, `challenge_wins(owner, models,
+  tests)`. Replaces no function. `api/_challenges.js` has the words
+  (`rulesSaid`, `brokenSaid`, `ENTER_SAID`, `VOTE_SAID`) and the routes;
+  `withWins` adds `won` to a page of cards (`api/share.js` list and
+  shelves, `api/people.js` designer page), `challengeLine` the gallery's
+  line (`?op=shelves` `challenge`).
+- `this month's challenge page` (`web/challenge.html`, `web/challenge.js`):
+  `/challenge`, drawn from `GET /api/people?op=challenge` (with the sign-in
+  `you`: `voted`, `entries`, `may_vote`, `why_not`; then `private,
+  no-store`, else 30 s at the CDN): `#title`, `#days`, `#brief`, `#rules
+  li`, `#how`, `#winners` (`#winner-cards .kept`), `#groups
+  section#group-hand` and `#group-assistant`, each entry a `.kept[data-entry]
+  [data-way]` with the gallery's card, `.challenge-said` lines (Winner, N
+  votes, No longer keeps the rules) and a button (Vote for it, Your vote,
+  You voted in this group, Your entry). `dataset.challenge` is `open`,
+  `upcoming`, `ended`, `none`, `not-yet` or `broken`. The gallery's front
+  line is `#challenge-line` (`web/gallery.js` `sayChallenge`); a card that
+  won has `small.won` (`data-won`).
+- `enter this month's challenge` (`web/model-page.js` `challengeEntry`,
+  `enterDialog`): for the model's own designer, signed in, `#challenge-entry`
+  after `#marks`: Enter this month's challenge (`button[data-enter]`), a
+  `dialog.enter` with the rules, radios `way` hand or assistant, Enter it;
+  a refusal lists `[data-rule]` items (`parts`, `set`, `tested`) and sets
+  `dataset.challengeRefused`; once in, "In this month's challenge, …, built
+  by hand. Take it out" (`dataset.challengeEntry` `entered`).
+- `setting the monthly challenge` (`web/admin.html`, `web/admin.js`
+  `drawChallenges`): This month's challenge, a table `#challenges
+  tr[data-challenge][data-state]` with End it now, and `#challenge-form`
+  (title, brief, first and last day each as three dropdowns in a
+  `fieldset.date[data-date]`, `select[name=starts_on_day|_month|_year]`
+  and the same for `ends_on`, this year and next; three ticks: at most N
+  parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
+  and sets the flows' test ones.
+- the feed's entry line (`supabase/challenges.sql` `feed_rows`, which
+  supersedes follows.sql's; `api/_follows.js` `feedSaid` kind `challenge`,
+  with `after`; `web/feed.js`): somebody you follow entered a model, "Ada
+  entered “The house” in the challenge “…”, built by hand", linked to the
+  model, `.feed-row[data-kind="challenge"]`; a test challenge's only in a
+  test account's feed.
+- `challenges browser flow` (`tools/web/challenges_flow.mjs`): below.
 - `play in a shared model` (`src/ui/share_view.gd`'s pill, `src/main.gd`
   `_ready_play`, `_play_press`, `_play_touch`, `_play_reset`, 2026-10-19;
   docs/MECHANISMS.md §21): once a shared model is up, its steps worked out
@@ -1798,8 +1856,11 @@ node tools/web/design_flow.mjs --url=<preview>                        # a deploy
 
 It visits home, gallery (its filters opened at 390), a model's page (signed
 out: Report it opens the report dialog; signed in: the collect panel, the
-comment form, and I built it's photo form with its file picker), an older
-version, the embed card, a person, a collection, the feed, Account (signed
+comment form, and I built it's photo form with its file picker), the
+stand-in's own model signed in with Enter this month's challenge and its
+dialog (here only: a deployment has none of the stand-in's models), an older
+version, the embed card, a person, a collection, `/challenge` (an open one,
+with Vote for it, Your vote and You voted in this group), the feed, Account (signed
 out: Sign in and its code step; signed in: the age question for an account
 not asked yet), admin, authorize, compare, download, faq, changelog, terms,
 guidelines, privacy, takedown and the 404 page, at 390 and 1280, light and
@@ -1809,7 +1870,8 @@ controls of one kind on a page that differ (fields in type, height,
 corners, border or fill; buttons of one size), and a page wider than 390
 with anything open. It proves it when it ends `design flow: N pages and
 dialogs, M controls; P checks passed, 0 failed` (2026-10-19: 188, 1,264,
-188, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
+188, 0; with the challenge's page and dialog and /admin's date dropdowns,
+204, 1,464, 204, 0). On the site before the age fix (an export of `c98af5bd^`'s web/
 and api/, given as `--root=`) it fails the age question by name:
 `select#age-month … the browser's own dropdown (appearance auto)`, its
 13.33 px type, and the year box differing from it in type, corners, fill
@@ -1909,8 +1971,12 @@ rolled-back transaction:
 
 ```sh
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql \
-  --dry --try=tools/follows_try.sql --table=follows
+  --again=supabase/challenges.sql --dry --try=tools/follows_try.sql --table=follows
 ```
+
+(`--again`: challenges.sql replaces follows.sql's `feed_rows`, so it goes
+again after it; alone, apply_sql refuses follows.sql while the live one is
+challenges.sql's.)
 
 It proves it when every line says what its label says: Bob follows Ada
 (1 follower, again still 1); refused `yourself`, `under_13`, `ask_first`,
@@ -2111,8 +2177,11 @@ among them, every picture loaded, the same on Account; signed out and
 forged 401, a bad handle 400, every answer `private, no-store`, none from
 the CDN, Ada then Bob on one address each their own, her page the same
 bytes signed in or not, without tests public for 30 s with none of her
-test models; no page errors. 39 checks, all ok, 2026-10-19, against the
-held relay with the live project (about 2 minutes).
+test models (on a deployment, where the CDN keeps `s-maxage` for itself
+and sends `public, max-age=0`, the CDN answering it again); no page errors.
+39 checks, all ok, 2026-10-19, against the held relay with the live
+project (about 2 minutes). Never paired with `discovery` on a preview: each
+reads the week's test models, and one's castle took the other's pick.
 **Play** (`play in a shared model`, `what moves in a model`, `what moves on
 a gallery card`, `share play probe`, `play browser flow`). The SQL first,
 in a rolled-back dry run on the live project (after discovery.sql), and
@@ -2182,7 +2251,79 @@ gallery's page from the checkout with its list played: the racer's card
 "Moves: steering", the house's "Moves: doors", the hut's nothing, Technic or
 mechanism asking `technic=1`. With `--publish`, once play.sql is applied,
 the list asked with tests and technic finds the published racer with
-`["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`.
+`["steering"]` on its card. Pictures `laptop_*.png`, `phone_*.png`. On a
+deployment the link is the model's page, which does not go on by itself
+(only serve.py redirects), so the flow presses View in 3D as a person
+does: 37 checks, all ok, 2026-10-19, on a preview (about 2 minutes); before
+that it waited 600 s on the page and failed.
+
+The monthly challenge (`supabase/challenges.sql`). The SQL first, in a
+transaction rolled back on the live project (the trial makes its own
+accounts, models and challenges inside it):
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql \
+  --dry --try=tools/challenges_try.sql --table=challenge_entries
+python3 tools/minitest.py tests/test_challenges.py
+```
+
+It proves it when every line reads as its label says: refused `past`,
+`set_empty`, `overlap` with "Try October", too long by the check; the house
+keeps all three rules, the tower one lot short (3003 Yellow, need 10, have
+4), the hall parts, set and Tested broken, the uncounted one `counted`
+false; entering refused `not_yours`, `no_model`, `not_in_gallery` twice,
+`under_13`, `rules`, a way that is neither, `entered`, `not_asked`,
+`no_challenge` for a model that is not a test's; Ed, who follows Ada, has
+in `feed_rows` the house as a `challenge` row ("Try October", hand) beside
+her four `model` rows, it is his newest and his count 5, and Fay (not a
+test account) has none; votes refused `own`,
+`under_13`, `not_asked`, `no_entry`, `not_open`, then `voted`; the page
+with two entries, no votes shown; the house not keeping the rules on an
+untested newer version and a vote for it `breaks`; taking back and in
+again; `three`; a designer taken out leaves the page; after the end no
+entry or vote; settled once, the house by hand 2 and the shed 1; the tie
+to the shed, entered first; the list; no table grants, row security on,
+17 functions the service role's alone; the timings (docs/COMMUNITY.md,
+Challenges); models, designer and pick "the same"; "rolled back, nothing
+kept". The tests: 9 passed. And what it keeps: every gallery answer and
+every feed the same before and after, rolled back:
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=<pg>/lib/index.js node tools/sql_compare.mjs supabase/challenges.sql won
+```
+
+Then the code, in real browsers. Until challenges.sql is applied the local
+server holds it (`--hold=challenges`); once it is, a preview with the
+bypass, through its API alone:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9271 --hold=challenges &
+node --env-file=.env tools/web/challenges_flow.mjs --url=http://127.0.0.1:9271 --out=shots/challenges
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=shots/challenges
+```
+
+`challenges_flow` proves it when it ends "challenges: set, entered, voted
+and won, every rule checked on the stored model (N checks, all ok)": the
+owner sets it on `/admin?tests=1` (`1_admin_set-1280.png`,
+`1_admin_form-390.png`) with set 6075-2, Castle, another on its days 409,
+anybody else 404; the tower refused on its page for "3004 in Red (it needs
+12, the set has 0)" (`2_enter_refused-390.png`), the house entered by hand
+(`3_enter_dialog-390.png`, `4_entered-390.png`) and said in Ed's feed, who
+follows Ada, as one line linked to the house (`4b_feed_ed-390.png` light,
+`4b_feed_ed-1280.png` dark; not Bob's shed), the hall refused for parts
+and set, the plain one for Tested, Bob's shed in with the assistant, Cy
+under 13 refused; `/challenge` signed out (`5_challenge_visitor-*`), the
+gallery's line (`6_gallery_line-1280.png`), Ed's two votes
+(`7_challenge_ed-*`), Bob's vote, second vote and own refused, Cy told why
+(`8_challenge_cy-390.png`); ended on `/admin`, the winners 2 and 1 votes
+(`9_challenge_winners-*`), Ada's Challenges won and the card
+(`10_designer_won-390.png`), the gallery card's `won`; no page errors.
+A visitor's answer is `public, max-age=0` on a deployment (Vercel's CDN
+keeps `s-maxage` for itself), so there the CDN answering the same question
+again (`x-vercel-cache: HIT`) is the proof; locally, `s-maxage=30`. 50
+checks, all ok, 2026-10-19, on a preview with challenges.sql applied, and
+the same against a local relay over the live tables.
 
 The list, asked hard (reads only):
 

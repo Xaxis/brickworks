@@ -2588,6 +2588,41 @@
       "entry": "tools/web/look_cost.mjs",
       "reach": "node tools/web/look_cost.mjs --url=http://127.0.0.1:<port> --out=DIR --mode=cuts|acts [--gate]   (serve.py build/web --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd, .env sourced)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the monthly challenge's rules",
+      "entry": "supabase/challenges.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql --dry --try=tools/challenges_try.sql --table=challenge_entries   (after the live files; the promises around it in tests/test_challenges.py; then the challenges browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this month's challenge page",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "enter this month's challenge",
+      "entry": "web/model-page.js",
+      "reach": "signed in, on your own model's page /m/<id>: Enter this month's challenge under Like (GET /api/people?op=challenge_entry&id=X; POST ?op=enter, ?op=withdraw)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "setting the monthly challenge",
+      "entry": "web/admin.js",
+      "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenges browser flow",
+      "entry": "tools/web/challenges_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=challenges until challenges.sql is applied)",
+      "area": "web"
     }
   ]
 }

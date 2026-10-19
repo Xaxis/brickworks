@@ -266,10 +266,22 @@ const PAGES = [
       } else states.push(["add a photo (missing)", "#builds"]);
       return states;
     } },
+  // A designer's own model in the gallery, signed in: Enter this month's
+  // challenge, and its dialog (web/model-page.js enterDialog). Here only:
+  // a deployment has no model of the stand-in's account.
+  { name: "model-mine", path: "/m/SamModel01", signedInOnly: true,
+    ready: (page) => until(page, () => document.querySelector("button[data-enter]")),
+    open: async (page) => {
+      await page.click("button[data-enter]");
+      const opened = await until(page, () => document.querySelector("dialog.enter[open]"));
+      return [[opened ? "enter" : "enter (missing)", "dialog.enter"]];
+    } },
   { name: "model-older", path: `/m/${stand.MODEL_ID}/v/1` },
   { name: "embed", path: `/m/${stand.MODEL_ID}/embed` },
   { name: "person", path: `/u/${stand.HANDLE}` },
   { name: "collection", path: `/c/${stand.LIST_ID}` },
+  { name: "challenge", path: "/challenge",
+    ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
   { name: "feed", path: "/feed",
     ready: (page, { signedIn }) => (signedIn ? until(page, () => document.querySelectorAll(".feed-row").length > 0) : true) },
   { name: "account", path: "/profile",
@@ -334,7 +346,7 @@ if (remote) {
   const handle = (/\/u\/([a-z0-9-]{3,24})"/.exec(modelPage) || [])[1] || "";
   const personPage = handle ? await text(`/u/${handle}`) : "";
   const list = (/\/c\/([A-Za-z0-9]{10})"/.exec(personPage) || [])[1] || "";
-  const found = { model: id && `/m/${id}`, "model-older": "", embed: id && `/m/${id}/embed`,
+  const found = { model: id && `/m/${id}`, "model-mine": "", "model-older": "", embed: id && `/m/${id}/embed`,
     person: handle && `/u/${handle}`, collection: list && `/c/${list}` };
   for (const one of PAGES) {
     if (!(one.name in found)) continue;

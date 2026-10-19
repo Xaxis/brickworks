@@ -3,7 +3,8 @@
 --
 --   set -a; . ./.env; set +a
 --   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js \
---     node tools/apply_sql.mjs supabase/follows.sql --dry --try=tools/follows_try.sql --table=follows
+--     node tools/apply_sql.mjs supabase/follows.sql --again=supabase/challenges.sql \
+--       --dry --try=tools/follows_try.sql --table=follows
 --
 -- After the live files (trust, tested, comments, builds, versions), which
 -- the project has. Made-up accounts, made and gone with the transaction:

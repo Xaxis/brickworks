@@ -81,7 +81,8 @@ const quoted = (text, most) => {
 /// A feed row as a person reads it, the same on the page and in the email:
 /// {kind, at, who, did, name, said, link, by}. [who] is the name of whoever
 /// did it (or "A builder", with no profile); [did] what, up to the model's
-/// name; [said] their words, if any; [link] the thing itself.
+/// name; [after] the rest of the line, if any (only a challenge's, which no
+/// email tells of); [said] their words, if any; [link] the thing itself.
 export function feedSaid(row, origin = "") {
   const name = quoted(row.name || "a model", 80);
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40),
@@ -106,6 +107,11 @@ export function feedSaid(row, origin = "") {
   if (row.kind === "remix") {
     return { ...base, did: `remixed your model “${quoted(row.of_name || "a model", 80)}” as`,
       link: `${origin}/m/${row.model}` };
+  }
+  if (row.kind === "challenge") {
+    return { ...base, did: "entered",
+      after: `in the challenge “${quoted(row.title || "this month’s challenge", 80)}”, built ${row.way === "assistant"
+        ? "with the assistant" : "by hand"}`, link: `${origin}/m/${row.model}` };
   }
   return { ...base, did: "did something with", link: `${origin}/m/${row.model}` };
 }

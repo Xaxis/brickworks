@@ -251,6 +251,8 @@ const FEED = [
   { kind: "comment", at: "2026-10-16T09:30:00Z", by: PRIYA, model: "SamModel01", name: "Harbour Tram", step: 2,
     comment: 105, said: "The pantograph is a clever trick." },
   { kind: "model", at: "2026-10-16T07:00:00Z", by: PRIYA, model: "PriyaSpc01", name: "Lunar Rover" },
+  { kind: "challenge", at: "2026-10-15T08:00:00Z", by: PRIYA, model: "PriyaSpc01", name: "Lunar Rover",
+    title: "Off-world October", way: "assistant" },
   { kind: "photo", at: "2026-10-14T19:10:00Z", by: JO, model: "SamModel01", name: "Harbour Tram", photo: "PhotoEee05",
     words: "Ran it round the whole layout.", yours: true },
   { kind: "remix", at: "2026-10-13T12:00:00Z", by: MIKA, model: "MikaTram01", name: "Night Tram", of_name: "Harbour Tram" },
@@ -259,6 +261,25 @@ const FEED = [
   { kind: "model", at: "2026-10-01T17:00:00Z", by: MIKA, model: "MikaRobot1", name: "Pocket Mech" },
 ];
 const FEED_SEEN = "2026-10-14T00:00:00Z";
+
+// This month's challenge (supabase/challenges.sql), open, two entries in
+// each group. Sam voted for the rover with the assistant, so /challenge
+// shows Vote for it, Your vote and You voted in this group; Sam's tram is
+// not in it, so its page offers Sam the entry and its dialog.
+const CHALLENGE = { id: 3, title: "Off-world October", brief: "Build something that goes where there are no roads, in under 1,500 parts.",
+  starts_on: "2026-10-01", ends_on: "2026-10-31", state: "open", test: false, settled: false,
+  rules: { most_parts: 1500, set: null, tested: true },
+  entries: [[MODEL_ID, "hand"], ["MikaRobot1", "hand"], ["PriyaSpc01", "assistant"], ["DesignGea1", "assistant"]],
+  you: { voted: { hand: null, assistant: "PriyaSpc01" }, entries: [] } };
+const CHALLENGES_LISTED = [
+  { id: 3, title: CHALLENGE.title, test: false, starts_on: CHALLENGE.starts_on, ends_on: CHALLENGE.ends_on, state: "open",
+    settled: false, rules: { most_parts: 1500, set_number: null, set_name: null, tested: true },
+    entries: { hand: 2, assistant: 2 }, votes: { hand: 5, assistant: 3 }, winners: [] },
+  { id: 2, title: "Castle September", test: false, starts_on: "2026-09-01", ends_on: "2026-09-30", state: "ended",
+    settled: true, rules: { most_parts: null, set_number: "6080-1", set_name: "King's Castle", tested: false },
+    entries: { hand: 4, assistant: 1 }, votes: { hand: 11, assistant: 2 },
+    winners: [{ way: "hand", model: MODEL_ID, name: "Riverside Watchtower", votes: 7 }] },
+];
 
 // How Sam's own models did in the last 30 days, for their eyes only
 // (designer_mine). What is in all is read from the rest of the world.
@@ -490,6 +511,10 @@ const RPC = {
   may_list: () => true,
   count_view: () => true,
   gallery_pick: () => ({ pick: null, chosen: false, until: null, week: PICK.week, card: card(modelOf(PICK.model)) }),
+  // Last month's winner (CHALLENGES_LISTED), on its card and its designer's page.
+  challenge_wins: ({ owner, models }) => (owner === ROBIN || (models || []).includes(MODEL_ID)
+    ? [{ challenge: 2, title: "Castle September", ends_on: "2026-09-30", way: "hand", model: MODEL_ID,
+      name: "Riverside Watchtower", votes: 7 }] : []),
 };
 
 /// A JSON answer, as fetch gives it.
@@ -854,7 +879,27 @@ function feedRow(row) {
     return { ...base, did: `commented on ${row.step ? `step ${row.step} of your model` : "your model"}`, said: row.said,
       link: `${ORIGIN}/m/${row.model}#comment-${row.comment}` };
   }
+  if (row.kind === "challenge") {
+    return { ...base, did: "entered", after: `in the challenge “${row.title}”, built ${row.way === "assistant"
+      ? "with the assistant" : "by hand"}`, link: `${ORIGIN}/m/${row.model}` };
+  }
   return { ...base, did: `remixed your model “${row.of_name}” as`, link: `${ORIGIN}/m/${row.model}` };
+}
+
+const CHALLENGE_RULES = ["At most 1,500 parts", "Marked Tested: it stands at every step, and every step can be built"];
+
+/// /api/people?op=challenge (api/_challenges.js challenge): the challenge,
+/// its entries the gallery's cards in their two groups, and [who]'s votes.
+function challengePage(who) {
+  const c = CHALLENGE;
+  const entryOf = ([id, way], at) => ({ ...apiCard(listModels({ size: 1000 }).find((one) => one.id === id)), way,
+    entered_at: `2026-10-0${at + 2}T10:00:00Z`, keeps: true, votes: null, winner: false, won: [] });
+  const challenge = { id: c.id, title: c.title, brief: c.brief, starts_on: c.starts_on, ends_on: c.ends_on, state: c.state,
+    test: c.test, settled: c.settled, rules: c.rules, rules_said: CHALLENGE_RULES, days_said: "1 Oct 2026 to 31 Oct 2026",
+    groups: [["hand", "Built by hand"], ["assistant", "Built with the assistant"]].map(([way, label]) => ({ way, label,
+      entries: c.entries.map(entryOf).filter((one) => one.way === way) })), winners: [] };
+  return answer(200, { ready: true, challenge,
+    ...(who ? { you: { signed_in: true, ...c.you, may_vote: true, why_not: null } } : {}) });
 }
 
 /// /api/people?op=designs: the signed-in person's own models' numbers.
@@ -934,7 +979,7 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page"] : ["report", "digest"];
+    "feed_count", "page", "list_page", "challenge"] : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
       : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : SIGN_IN });
@@ -981,6 +1026,14 @@ function people(method, params, body, who, state) {
         ready: true } : { count: 0, signed_in: false });
     }
     if (op === "designs") return designs(params);
+    if (op === "challenge") return challengePage(who);
+    if (op === "challenge_entry") {
+      // api/_challenges.js challengeEntry: the tram's designer, Sam, may enter it.
+      if (id !== "SamModel01" || who !== ME) return answer(200, { mine: false });
+      return answer(200, { mine: true, ready: true, challenge: { id: CHALLENGE.id, title: CHALLENGE.title,
+        starts_on: CHALLENGE.starts_on, ends_on: CHALLENGE.ends_on, days_said: "1 Oct 2026 to 31 Oct 2026",
+        rules_said: CHALLENGE_RULES }, entry: null, entries: 0, in_gallery: true, keeps: true, broken: [] });
+    }
     return answer(400, { error: `unknown op ${op}` });
   }
   // A write: the check presses nothing that writes, so it went.
@@ -1056,7 +1109,9 @@ function share(method, params, who) {
     return answer(200, { ...(mine ? { ...pool, ready: { models: ready.slice(0, SHELF).map(apiCard), more: ready.length > SHELF } } : {}),
       pick: { chosen: false, until: null, week: PICK.week, model: apiCard(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
       small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(apiCard),
-        more: small.length > SHELF }, score: SCORE });
+        more: small.length > SHELF }, score: SCORE,
+      challenge: { id: CHALLENGE.id, title: CHALLENGE.title, state: CHALLENGE.state, starts_on: CHALLENGE.starts_on,
+        ends_on: CHALLENGE.ends_on } });
   }
   if (op === "tested") {
     if (!who) return answer(401, { error: SIGN_IN });
@@ -1109,6 +1164,7 @@ function admin(method, params, who, state) {
     picks: { now: { pick: null, chosen: false, until: null, week: PICK.week, model: small(modelOf(PICK.model)) },
       choices: ADMIN.choices.map((one) => ({ ...one, name: modelOf(one.model).name, shown: Boolean(shownModel(one.model)?.listed) })),
       week: WEEK.map((one) => ({ week: one.week, model: small(modelOf(one.model)) })) },
+    challenges: CHALLENGES_LISTED,
   });
 }
 

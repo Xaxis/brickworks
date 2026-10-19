@@ -40,6 +40,11 @@ controls:
   drawn as a secondary one.
 - **Field label**: in a `form`, a `label` holds its words above its field;
   `small` inside it for the quieter part.
+- **Date**: dropdowns, never the browser's date box (which draws itself,
+  and differently in every browser). A date of birth is month and year
+  (the age question's `dialog .when`); a day is `fieldset.date`, its words
+  the legend, then day, month and year side by side in `.dropdowns`
+  (/admin's challenge days).
 - **Checkbox and radio**: the browser's own, 18 px, in `--accent`. With its
   words: `label.choice` (or `.tick`).
 - **Buttons**: primary `.cta` (yellow, the way in), secondary `.cta.ghost`
