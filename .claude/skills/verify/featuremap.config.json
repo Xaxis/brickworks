@@ -2343,6 +2343,27 @@
       "entry": "tools/web/digest_flow.mjs",
       "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest   (.env sourced, MASTER_EMAIL; never knocks a real deployment)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "comments on a shared model",
+      "entry": "api/_comments.js",
+      "reach": "cat supabase/trust.sql supabase/comments.sql > /tmp/tc.sql; PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs /tmp/tc.sql --dry --try=tools/comments_trial.sql --table=model_comments   (.env sourced; then the comments browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comments on a step",
+      "entry": "src/ui/step_comments.gd",
+      "reach": "/app?view=<id> (the count above the timeline) and Build it (the count in the top bar); /m/<id> (Comments)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "comments browser flow",
+      "entry": "tools/web/comments_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
+      "area": "web"
     }
   ]
 }

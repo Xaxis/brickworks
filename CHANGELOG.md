@@ -51,6 +51,20 @@ whole cycle.
 - Takedown requests answer back: a counter-notice for a model taken out by
   mistake, the statements a copyright notice needs, and a marked place for
   the site's copyright agent.
+- Comments on a shared model and on a single step of it. A model's page
+  lists them, oldest first, each saying where it was said ("on step 7 of
+  version 2", and when that is an older version), with a box and a step
+  picker to add one. In the viewer and the step player each step shows how
+  many it has; tap the count to read them and, signed in, to add one on
+  that step. Anybody can read them. Writing needs an account that answered
+  13 or over, 10 comments an hour and 50 a day at most, in plain words: a
+  link stays words. Without an account, or under 13, the page and the app
+  say why, politely, where the box would be. A model's builder can hide a
+  comment on it or turn comments off; anybody can report one, and the
+  site's owner removes it from the admin page. The builder can ask, on
+  their profile page, for one email a day about new comments on their
+  models; it is off until they do. Needs `supabase/comments.sql` applied,
+  after `trust.sql`, before the deploy.
 
 - Arrows of your own on a booklet page. Lay out page… has Draw an arrow:
   drag on the page from where the arrow starts to where it points, then
