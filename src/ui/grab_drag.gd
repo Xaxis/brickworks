@@ -301,8 +301,25 @@ func _chain_motion(screen: Vector2) -> void:
 
 
 ## The button came up: settle what swings, keep the pose as one step, and
-## say what the structure does now.
+## say what the structure does now. Its own work timed (let_go_ms).
 func release() -> String:
+	var began: int = Time.get_ticks_usec()
+	var said: String = _let_go()
+	let_go_ms = float(Time.get_ticks_usec() - began) / 1000.0
+	return said
+
+
+## The app's own work when the button last came up, ms: the swing set going
+## and the topple check, or the pose kept at once (release). And when the last
+## swing came to rest, ms: its words, the step kept, the model weighed as it
+## now stands, what an edit sets going (_end_swing). The swing's frames are
+## gated each on their own (swing_worst_ms); these two were gated by nothing,
+## and a browser check reads them (grab_flow).
+var let_go_ms: float = 0.0
+var kept_ms: float = 0.0
+
+
+func _let_go() -> String:
 	if chain != null:
 		var held: GrabChain = chain
 		chain = null
@@ -1140,6 +1157,7 @@ func _swing_line(held: Grab) -> String:
 ## The swing over: kept where it is, as one step with the drag, and said.
 ## [param why] is said instead of the swing's own words (a press caught it).
 func _end_swing(why: String) -> void:
+	var began: int = Time.get_ticks_usec()
 	var held: Grab = _swinging
 	_swinging = null
 	swing_clock_s = float(Time.get_ticks_msec() - _swing_began) / 1000.0
@@ -1148,9 +1166,10 @@ func _end_swing(why: String) -> void:
 	held.swing_pose()
 	if held.landing:
 		_keep_landing(held, why)
-		return
-	held.swung = why if not why.is_empty() else held.swing_words()
-	_keep(held)
+	else:
+		held.swung = why if not why.is_empty() else held.swing_words()
+		_keep(held)
+	kept_ms = float(Time.get_ticks_usec() - began) / 1000.0
 
 
 ## A press while a section swings catches it where it is, as a hand would:
@@ -1351,6 +1370,11 @@ func _tell_page() -> void:
 	# so frames slower than that draw the swing slower than it is.
 	state["swing_s"] = snappedf(last_swing.time, 0.01) if last_swing != null else 0.0
 	state["swing_clock_s"] = snappedf(swing_clock_s, 0.01)
+	# The app's own work at the let-go and at the keep, and whether the
+	# reading after the keep (ready_ms) ran on this thread.
+	state["let_go_ms"] = snappedf(let_go_ms, 0.01)
+	state["kept_ms"] = snappedf(kept_ms, 0.01)
+	state["ready_off_thread"] = ready_off_thread
 	# How fast the swing was let go, degrees a second: a flick's coast.
 	var coasting: Swing = _swinging.swing if _swinging != null else last_swing
 	state["coast_deg_s"] = snappedf(rad_to_deg(coasting.flung), 0.1) if coasting != null else 0.0

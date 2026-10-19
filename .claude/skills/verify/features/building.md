@@ -860,7 +860,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   this box every drawn frame of the crane, a swing's, a turn's or a drag's,
   costs 0.1 to 1 s with the same WebGL calls (MECHANISMS §14). The swing is
   gated on the app's own work in its frames (under 33 ms), no page wait
-  past 5 s, and coming to rest.
+  past 5 s, and coming to rest; it and the flywheel's coast on the app's
+  own work at the let-go and at the keep (`let_go_ms`, `kept_ms` on the
+  page), each under 100 ms (`--keep=MS`), and on the joints read again
+  after it (`ready_ms`) under 250 ms (`--read=MS`). The crane's: 0.2 to 0.3,
+  15 (the flywheel's 66) and 51 to 82 ms. The page's wait
+  at a let-go is SwiftShader drawing the swing's first frames, and grows
+  with the box's load: with the browser held to three cores
+  (`taskset -c`), m78 and m79 alike waited 8 s (MECHANISMS §14, letgo).
   `--trace=FILE`, `--trace-drag=FILE`, `--trace-view=FILE`
   write Chromium performance traces of the swing, the arm's drag and the view
   turning. In `preview_checks.sh`'s map as
