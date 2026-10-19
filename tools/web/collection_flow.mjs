@@ -185,7 +185,7 @@ try {
   await shot("4_build.png");
   await click("collection_open_first");
   ok(await until(async () => (await mine())?.page === "need", 120, "opened"),
-    `Open puts ${top[0].name} on the baseplate and shows what it needs`);
+    "Open on the first model that opens puts it on the baseplate and shows what it needs");
   await page.waitForTimeout(8000);
   await shot("5_opened.png");
   await page.close();

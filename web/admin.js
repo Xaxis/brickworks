@@ -594,6 +594,21 @@ async function takeOut(model, button) {
   }
 }
 
+// The report an email named, kept in view while the page above it settles:
+// pictures and sections that came in after it was centred pushed it out of
+// view (digest_flow, 2026-10-19). Only until the person scrolls themselves.
+function keepInView(row) {
+  row.scrollIntoView({ block: "center" });
+  let mine = true;
+  const observer = new ResizeObserver(() => { if (mine) row.scrollIntoView({ block: "center" }); });
+  const stop = () => { mine = false; observer.disconnect(); };
+  observer.observe(document.body);
+  for (const kind of ["wheel", "touchstart", "keydown", "mousedown"]) {
+    addEventListener(kind, stop, { once: true, passive: true });
+  }
+  setTimeout(stop, 10000);
+}
+
 async function refresh() {
   try {
     draw(await load());
@@ -602,7 +617,7 @@ async function refresh() {
     const asked = document.querySelector("#reports tr.asked");
     if (asked && !refresh.shown) {
       refresh.shown = true;
-      asked.scrollIntoView({ block: "center" });
+      keepInView(asked);
     }
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
   } catch (problem) {
