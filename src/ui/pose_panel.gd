@@ -282,6 +282,13 @@ func _stop() -> void:
 	_seen_revision = world.revision
 
 
+## Parts on joints a session's animation turns that are not pose joints
+## (a part on its pin, as move_part names it): a key's name -> a function
+## from its degrees to where what it moves stands (GrabDrag.
+## turning_for_session). Drawn by [method render_animation] alone.
+var carried: Dictionary = {}
+
+
 ## Draw every frame and keep them. Returns how many were drawn.
 ## [param job], from a session (ToolJobs), is the bar along the foot of the
 ## window that counts the frames, and whose Cancel stops it.
@@ -314,7 +321,11 @@ func render_animation(job: Working.Job = null) -> int:
 	var frames: int = animation.frame_count()
 	var poses: Array = []
 	for n: int in frames:
-		poses.append(poser.transforms_for(animation.angles_at(animation.time_of(n))))
+		var angles: Dictionary = animation.angles_at(animation.time_of(n))
+		var placed: Dictionary = poser.transforms_for(angles)
+		for path: String in carried:
+			placed.merge((carried[path] as Callable).call(float(angles.get(path, 0.0))), true)
+		poses.append(placed)
 	var chosen: RenderSettings = settings.copy()
 	chosen.fps = animation.fps
 	chosen.frames = frames

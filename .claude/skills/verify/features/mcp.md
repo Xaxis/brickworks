@@ -333,11 +333,36 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
     models earned, their models by Top builds. Liking, commenting and
     following stay the person's own on the site, and the answers say where
     (`GalleryTool.FOLLOWING`); nothing here writes to the account.
-  - `tools/mcp_tools.json` is a gallery behind rel-m86 (the sorts and
-    shelves), so `mcp_sync_probe` fails; not yet written again (`--
-    --write`), and it must be after this unit's definitions too.
+  - "steer the wheels left and back": `Playable` called the Technic
+    Go-Kart's steering nothing and its frame's shear a "boom" (its knuckles
+    are connector blocks on frictionless pins, no part named a steering
+    arm). Whatever carries a wheel and turns on an upright line (within the
+    cosine 0.9 `Poser.Joint.kind` reads a turntable by) is now steering,
+    taken by its biggest part, a toy's front axle on a turntable too; a boom
+    lifts, so a body on an upright line is not one. The kart's card says
+    "Moves: steering", by #7 and #14, its knuckles.
+  - "turned 20, then 15: where is it?": move_part said "now 15°", that
+    call's turn. It now says "turned 15° (asked 15°)" and then "Its joint
+    now stands 35° from where it was built", read as the moving part's turn
+    against the part across the joint (`Grab.from_built`, against where each
+    part stood before a grab first moved it, `Grab._built_at`, kept as
+    `_moved_since_built` is); with part= alone, "Its joint stands …".
+    `grab_probe` reads a call's turn from "turned N°".
+  - "show me it turning": animate_model took pose_model's joints alone
+    (sub-assemblies on a hinge, a turntable or a clip), so the car the
+    session steered with move_part "had nothing that turns". animate_model's
+    keys now take a part on its joint as move_part names it ("#7"), in
+    degrees from where it was built: each frame is the grab's own turn
+    (`GrabDrag.turning_for_session`: its stops, its loop, the gears it
+    drives), drawn by `PosePanel.render_animation` over pose's joints
+    (`PosePanel.carried`) and never put on the baseplate. render=false with
+    one is refused: the window's Play plays pose's joints.
   Checked by `src/dev/mcp_walk_probe.gd` (headless: the kart's listing,
-  the part it names steering 15 parts and back, the pose pointer; a played
+  its card saying steering and not boom, the part it names turning both
+  front wheels and not the back ones, 20° then 15° said as 35° from where
+  it was built and back to where it was built, an animation frame of the
+  steering by its part turning both front wheels with nothing on the
+  baseplate moved, render=false refused, a part not there; the pose pointer; a played
   gallery answer opened by its address, saved, remixed from it, refused
   over unsaved changes and for a bad link; a collection of the Bench's
   pieces ranking the Bench first, with the official models) and
@@ -345,15 +370,33 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   open, comments newest first without the hidden one, photos, the designer's
   handle and page, a handle nobody has, one that is not a handle). Both
   pass; against rel-m86's app_tools.gd and gallery_tool.gd, 17 of
-  mcp_walk_probe's checks and 14 of the gallery's fail.
-  Seen and left: a session wanting to animate a steering move_part turns
-  could not (animate_model and pose_model take only sub-assemblies on a
-  hinge, a turntable or a clip, and its assembly held both halves of the
-  turntable); `Playable` names the Technic Go-Kart's beam steering
-  "boom" (it has no part named a steering arm); a session misread
-  render_model's "top" view, which is oblique, as the steering not turned
-  (a front render shows it turned); move_part's "now 30°" is that call's
-  turn, not the angle from where it was built (as G8 found).
+  mcp_walk_probe's checks and 14 of the gallery's fail, and against the
+  merge with rel-m87 before the three fixes above, 6 of its checks fail and
+  the animation's call does not exist.
+  Walked again on the fixed app (the same five asks, the same way, the
+  gallery from a local relay over the real project, a collection of sets
+  31070-1 and 6061-1; `*_after` beside the first transcripts): all five
+  done. t1 found the only small model, said nobody had built it and
+  opened a copy (2 calls). t2 read "Moves: steering" by its knuckles, turned
+  #7 25° and back, told "now stands where it was built" (6 calls, 31 s,
+  against 13 calls of guessing). t3 built a car whose front axle pivots on
+  one stud, read "Moves: steering", turned it 30° each way and rendered a
+  6.2 s animation of it by "#7" (75 frames, WebP and MP4; the front axle
+  turns in them), 47 calls in 243 s against 110 in 756 s with no
+  animation. t4 ranked 343 models, the two sets' own official models first.
+  t5 said who made the orrery, that nobody has built or commented on it,
+  what else they made, and that following is the person's own.
+  Still in the way, not in this unit: a set the person owns measures 96%
+  and 84% against its own official model (the LDraw model's parts are not
+  all the set inventory's numbers), so t4 heard "nothing can be built
+  completely"; the project's seed account has no handle, so designer= has
+  no page to read and t5 searched by name; move_part's first line names
+  the loop's biggest part ("The Technic Beam 13, 34 parts") when a knuckle
+  was taken; the kart's frame is beams on single friction pins, so a turn
+  of knuckle #7 can shear it as the loop solves (friction is not weighed);
+  a 2x2 turntable under a wheel plate gripped by its studs did not turn
+  (t3 built a single-stud pivot instead); an animation of a small car is
+  drawn small in Pose's 480 x 300 frame.
 
 ## How to reach it
 
@@ -395,7 +438,7 @@ godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a sess
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
-godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, a gallery copy, What can I build?
+godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, the steering's angle, animating it, a gallery copy, What can I build?
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 BW_BYPASS=$VERCEL_BYPASS node tools/web/model_view_check.mjs --url=<a preview>/app --out=shots/model_view   # the model shown in Claude (MCP Apps)

@@ -3391,10 +3391,14 @@ turns the view; so does a drag while the timeline shows a step short of
 the whole model, whose parts ahead of it are in a move's way unseen.
 
 **What moves, said** (`src/assembly/playable.gd`). From the bodies and
-gear trains a drag uses: steering (a steering arm on its kingpin, or a
-steering rack; taken by its steering wheel where it has one), turntable,
+gear trains a drag uses: steering (a steering arm on its kingpin, a
+steering rack, or whatever carries a wheel and turns on an upright line:
+a knuckle of beams and blocks on its pin, a toy's front axle on a
+turntable; taken by its steering wheel where it has one, else its arm or
+its biggest part), turntable,
 boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
-reaching 3 studs or more from its line, no tyre in it), doors (a door,
+reaching 3 studs or more from its line, no tyre in it, and lifting: its
+line is not upright), doors (a door,
 ramp, hatch, gate, tailgate, flap or lid), gears (two in mesh, one
 turning on its joint), pneumatics, actuator, rack. A minifigure, a hose
 and a wheel on its axle are not said: every town and car has them, and

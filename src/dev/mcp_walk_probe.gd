@@ -9,9 +9,21 @@
 ##
 ##  - "What in this model moves?" on the Technic Go-Kart: move_part with no
 ##    part= says what moves and every part on a joint, by a part that moves
-##    it, and changes nothing; the part it names first for the front
-##    steering turns both front wheels and back; pose_model, with nothing
-##    to pose, points to it. The session had tried five parts one at a time.
+##    it, and changes nothing; its card says steering, not boom (its knuckles
+##    are blocks on frictionless pins, and the card said "boom"), and the
+##    part it names for the steering turns both front wheels and not the
+##    back ones; pose_model, with nothing to pose, points to it. The session
+##    had tried five parts one at a time.
+##  - "Steer the wheels left and back": turned 20° and then 15°, the answer
+##    says the steering stands 35° from where it was built, as the knuckle's
+##    turn against the beam it hangs on measures it, and back by 35° it
+##    stands where it was built. It said "now 15°", that call's turn.
+##  - "Show me it turning": animate_model takes the steering by its part, as
+##    move_part names it, in degrees from where it was built: the frames it
+##    would draw turn both front wheels as move_part does, nothing on the
+##    baseplate moves, and asked only to set keys it says it draws them in
+##    a render alone. The session's car steered with move_part and
+##    animate_model said nothing turns.
 ##  - "Find the most built small model and open it": open_model link= opens
 ##    a copy of a gallery model (its answer played here, FakeShared) saved
 ##    in the person's models under its own name and remixed from its link;
@@ -94,20 +106,70 @@ func _what_moves() -> void:
 	_check("...and changes nothing", _poses() == before and said.contains("Nothing was changed."))
 	# The front steering, as the session found it at last: the beam on the
 	# frictionless upright pin at the front right turned both front wheels.
+	_check("...and its card says steering, not boom: %s" % said.get_slice("\n", 0),
+		said.begins_with("Moves: steering,") and not said.get_slice("\n", 0).contains("boom"))
 	var steering: int = 0
 	for line: String in said.split("\n"):
-		if line.contains("on a pin without friction") and line.begins_with("  #"):
-			steering = int(line.trim_prefix("  #").get_slice(" ", 0))
+		if line.begins_with("  steering: #"):
+			steering = int(line.trim_prefix("  steering: #").get_slice(" ", 0))
 			break
-	_check("a part on a pin without friction is listed: #%d" % steering, steering != 0)
+	_check("it names a part to take hold of for the steering: #%d" % steering, steering != 0)
+	# The kart's front wheels (#10, #11) and its back ones (#8, #9), by where
+	# the file puts them.
 	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 20})
-	var moved: int = int(said.get_slice("Moved ", 1).get_slice(" part", 0)) if said.contains("Moved ") else 0
-	_check("the part it lists steers: %d parts moved" % moved, moved >= 8)
-	said = await _say("move_part", {"part": "#%d" % steering, "degrees": -20})
-	_check("...and back where it was built", _same(_poses(), before))
+	var after: Dictionary = _poses()
+	_check("the part it names steers both front wheels, not the back ones",
+		_turned(before, after, 10) and _turned(before, after, 11)
+		and not _turned(before, after, 8) and not _turned(before, after, 9))
+	print("    " + said.get_slice("\n", 1))
+	said = await _say("move_part", {"part": "#%d" % steering, "degrees": 15})
+	var stands: String = said.get_slice("Its joint now stands ", 1).get_slice(";", 0)
+	_check("turned 20° and then 15°, it says the turn and where it stands: %s, %s"
+		% [said.get_slice("\n", 1).get_slice(" (", 0), stands],
+		said.contains("Moved ") and said.contains(": turned 15° (asked 15°)")
+		and stands == "35° from where it was built")
+	said = await _say("move_part", {"part": "#%d" % steering})
+	_check("asked with nothing else, it says where it stands: %s" % said.get_slice("Its joint stands ", 1)
+		.get_slice(".", 0), said.contains("Its joint stands 35° from where it was built."))
+	said = await _say("move_part", {"part": "#%d" % steering, "degrees": -35})
+	_check("...and back by 35°, where it was built: %s" % said.get_slice("Its joint now stands ", 1)
+		.get_slice(";", 0), said.contains("Its joint now stands where it was built")
+		and _same(_poses(), before))
+	await _animate(steering, before)
 	said = await _say("pose_model", {})
 	_check("pose_model, with nothing to pose, points to move_part: %s" % said.get_slice(". ", 2).left(80),
 		said.contains("move_part with no part= lists them"))
+
+
+## animate_model on the kart's steering, by its part.
+func _animate(steering: int, before: Dictionary) -> void:
+	var grabbing: GrabDrag = _main.get("_grab_drag")
+	var turning: Variant = grabbing.turning_for_session("#%d" % steering)
+	_check("a part on its joint is a joint to animate", turning is Callable)
+	if not turning is Callable:
+		return
+	var placed: Dictionary = (turning as Callable).call(25.0)
+	var at: Dictionary = before.duplicate()
+	at.merge(placed, true)
+	_check("its frame at 25° turns both front wheels, not the back ones (%d parts)" % placed.size(),
+		_turned(before, at, 10) and _turned(before, at, 11) and not _turned(before, at, 8)
+		and not _turned(before, at, 9))
+	_check("...and moves nothing on the baseplate", _same(_poses(), before))
+	var keys: Array = [{"t": 0, "angles": {"#%d" % steering: 0}}, {"t": 1, "angles": {"#%d" % steering: 25}}]
+	var said: String = await _say("animate_model", {"keys": keys, "render": false})
+	_check("keys alone: it says it turns in a render only: %s" % said.left(70),
+		said.begins_with("#%d turns in a rendered animation only" % steering))
+	said = await _say("animate_model", {"keys": keys})
+	_check("keys to render, headless: set, and why it is not drawn: %s" % said.left(60),
+		said.begins_with("Set 2 keys over 1.0 s") and said.contains("without a window"))
+	said = await _say("animate_model", {"keys": [{"t": 0, "angles": {"#999": 10}}]})
+	_check("a part that is not there: %s" % said.left(70), said.begins_with("No joint #999: no part"))
+	_check("...and nothing on the baseplate moved", _same(_poses(), before))
+
+
+## Whether brick [param id] stands turned in [param b] from where it stood in [param a].
+static func _turned(a: Dictionary, b: Dictionary, id: int) -> bool:
+	return not (a[id] as Transform3D).basis.is_equal_approx((b[id] as Transform3D).basis)
 
 
 func _open_link() -> void:

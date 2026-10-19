@@ -621,7 +621,7 @@
       "id": "cli:mcp walk probe",
       "kind": "cli",
       "entry": "src/dev/mcp_walk_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/mcp_walk_probe.gd   (what the second MCP walk-through's sessions met, replayed: move_part with no part= on the kart, open_model link=, parts_list buildable as What can I build?)",
+      "reach": "godot --headless --path . --script src/dev/mcp_walk_probe.gd   (what the second MCP walk-through's sessions met, replayed: move_part with no part= on the kart, its card saying steering, the joint's angle from where it was built, animate_model by a part on its joint, open_model link=, parts_list buildable as What can I build?)",
       "area": "mcp",
       "tests": []
     },
@@ -1993,7 +1993,7 @@
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",
-      "reach": "tools/probe.sh share_play_probe   (Playable.read on 8808-1: steering by its steering wheel; and what the Share panel sends as moves)",
+      "reach": "tools/probe.sh share_play_probe   (Playable.read on 8808-1: steering by its steering wheel; and what the Share panel sends as moves); tools/probe.sh mcp_walk_probe   (the Technic Go-Kart: steering by its knuckles on frictionless pins, not boom)",
       "area": "web",
       "tests": []
     },

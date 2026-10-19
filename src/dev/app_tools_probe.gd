@@ -244,9 +244,13 @@ func _parts() -> void:
 		said.contains("Of 5 pieces, they own 1 in the right colour") and said.contains("Short of 4 lots"))
 	var saved: String = await _say("save_model", {"name": "app-tools-probe-crane"})
 	said = await _say("parts_list", {"which": "buildable"})
-	_check("which saved models it builds, the crane saved among them: %s"
-		% said.replace("\n", " ").left(100),
-		saved.begins_with("Written") and said.contains("app-tools-probe-crane: owns 1 of its 5 pieces"))
+	var crane_line: String = ""
+	for line: String in said.split("\n"):
+		if line.contains("app-tools-probe-crane"):
+			crane_line = line.strip_edges()
+	_check("what it builds, as What can I build? ranks it, the crane saved among them: %s"
+		% crane_line, saved.begins_with("Written")
+		and crane_line.contains("app-tools-probe-crane (saved): owns 1 of its 5 pieces"))
 	DirAccess.remove_absolute(ModelStore.SAVE_DIR + "app-tools-probe-crane.ldr")
 	mine.on_hand = {}
 

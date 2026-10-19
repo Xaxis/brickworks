@@ -386,7 +386,8 @@ func definitions() -> Array:
 				+ "degrees= turns it that far from where it is (a ball: about axis=), along= "
 				+ "slides it that many studs along a bar or an axle; it stops where it meets "
 				+ "the model, gears it drives turn by their teeth, a joint without friction "
-				+ "swings down under its own weight once let go, and the answer says what moved "
+				+ "swings down under its own weight once let go, and the answer says what moved, "
+				+ "where its joint then stands from where it was built (twice 20° stands at 40°), "
 				+ "and how the model stands then. A part held at both ends (a four-bar, a crank "
 				+ "with its rod and piston, a steering's arms) moves as its loop allows, and says "
 				+ "so where it locks. spin= lets it go turning that many degrees a second, as a "
@@ -415,7 +416,9 @@ func definitions() -> Array:
 				+ "again, doors opening), the model turned round once as well if asked, and "
 				+ "rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) "
 				+ "where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], "
-				+ "joints by number or name from pose_model's list. Rendering needs the app "
+				+ "joints by number or name from pose_model's list, or a part on its joint as "
+				+ "move_part names it (\"#14\": a steering, a wheel, an arm on its pin), each "
+				+ "in degrees from where it was built. Rendering needs the app "
 				+ "in a window and is a job (job gives the result); render=false only sets "
 				+ "the keys, for the person to play."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -1290,7 +1293,7 @@ static func _nearest(anchors: Array, near: Vector3) -> Flex.Anchor:
 const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable or a clip on a bar. "
 	+ "Name the part that turns as an assembly (edit_model's assemblies), standing on its hinge. "
 	+ "Parts on pins, axles, studs and steering move without one, as a drag moves them: "
-	+ "move_part with no part= lists them.")
+	+ "move_part with no part= lists them, and animate_model takes them by part (#14).")
 
 
 func _pose(input: Dictionary) -> String:
@@ -1419,6 +1422,12 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 		return ("Give keys= (poses at moments: [{\"t\": 0, \"angles\": {\"1\": 0}}, {\"t\": 2, "
 			+ "\"angles\": {\"1\": 60}}]) or turntable=true.")
 	var made: Array = []
+	# A part on its joint as move_part turns it (a kart's steering on its
+	# pins): pose_model's joints are sub-assemblies on a hinge, a turntable
+	# or a clip, and a session that steered a car with move_part could not
+	# animate it (bench/results/mcpwalk2-2026-10-19, t3).
+	var carried: Dictionary = {}   ## "#N" -> GrabDrag.turning_for_session's function
+	var grabbing: GrabDrag = app.get("_grab_drag")
 	for raw: Variant in keys:
 		if not (raw is Dictionary) or not (raw as Dictionary).has("t"):
 			return "Each key is {\"t\": seconds, \"angles\": {joint: degrees}}."
@@ -1430,11 +1439,23 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 		var given: Dictionary = key.get("angles", {}) as Dictionary
 		for name: Variant in given.keys():
 			var joint: Poser.Joint = _joint_named(joints, str(name))
-			if joint == null:
+			var path: String = joint.path if joint != null else ""
+			if joint == null and grabbing != null:
+				var turning_part: Variant = grabbing.turning_for_session(str(name))
+				if turning_part is String:
+					return ("No joint %s: %s. Joints are pose_model's, by number or name, or a part on "
+						% [str(name), turning_part] + "its joint as move_part names it (#14).")
+				path = "#%s" % str(name).strip_edges().trim_prefix("#")
+				if not carried.has(path):
+					carried[path] = turning_part
+			elif joint == null:
 				return ("No joint %s. %s" % [str(name), "pose_model lists them."
 					if not joints.is_empty() else "Nothing here turns: " + NO_JOINTS])
-			angles[joint.path] = clampf(float(given[name]), -180.0, 180.0)
+			angles[path] = clampf(float(given[name]), -180.0, 180.0)
 		made.append([t, angles])
+	if not carried.is_empty() and not bool(input.get("render", true)):
+		return ("%s turns in a rendered animation only: Build, Pose and animate plays pose_model's "
+			% ", ".join(carried.keys()) + "joints. Leave render= out to draw it.")
 	panel.animation.keys.clear()
 	for one: Array in made:
 		panel.animation.add_key(float(one[0]), one[1])
@@ -1446,7 +1467,9 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	if not StudioRender.possible():
 		return ("Set %s. Rendering it needs something to draw with, and this app is running "
 			% said + "without a window; the person can play it from Build, Pose and animate.")
+	panel.carried = carried
 	var frames: int = await panel.render_animation(work)
+	panel.carried = {}
 	if frames <= 0:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	return "%s: %s" % [said.left(1).to_upper() + said.substr(1), panel.rendered_words()]
