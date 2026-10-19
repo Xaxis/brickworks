@@ -440,8 +440,9 @@ $$;
 -- ---------------------------------------------------------------------------
 -- The site's owner.
 
--- Comments for the admin page: those named, or the newest 200 not yet
--- removed, with their model's name and their author's account and handle.
+-- Comments for the admin page: those named, or the newest 200, removed
+-- ones too (marked), with their model's name and their author's account
+-- and handle.
 create or replace function public.admin_comments(wanted bigint[] default null)
 returns jsonb
 language sql
@@ -455,7 +456,7 @@ as $$
                'removed_at', c.removed_at, 'removed_by', c.removed_by, 'author', c.author,
                'handle', p.handle) order by c.at desc), '[]'::jsonb)
       from (select * from public.model_comments k
-             where (wanted is null and k.removed_at is null) or k.id = any (wanted)
+             where wanted is null or k.id = any (wanted)
              order by k.at desc limit 200) c
       join public.shared_models m on m.id = c.model
       left join public.people p on p.account = c.author

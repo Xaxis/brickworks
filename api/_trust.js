@@ -159,8 +159,14 @@ function short(text, most) {
   return line.length > most ? `${line.slice(0, most - 1)}…` : line;
 }
 
-/// What a report is about, in words, and where it is.
+/// What a report is about, in words, and where it is. A comment's names
+/// its model, and goes to the comment on the model's page
+/// (supabase/comments.sql).
 function about(report, origin) {
+  if (report.comment) {
+    return { what: `a comment${report.said ? ` (“${short(report.said, 120)}”)` : ""} on the model `
+      + `“${short(report.name || "", 80)}”`, where: `${origin}/m/${report.model}#comment-${report.comment}` };
+  }
   if (report.model) {
     return { what: report.name ? `the model “${short(report.name, 80)}”` : "a model",
       where: `${origin}/m/${report.model}` };

@@ -796,6 +796,7 @@ ${header}
   ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
   ${tags ? `<ul class="tags" aria-label="Tags">${tags}</ul>` : ""}
+  ${commentsSection(id, version.n, newest, version.steps ?? model.steps ?? null)}
   <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
     ${licenceWords(model)}</section>
   <section class="tree" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
@@ -813,6 +814,37 @@ ${header}
 ${footer}
 </body>
 </html>`;
+}
+
+/// Where the comments go: drawn by web/model-page.js from
+/// /api/people?op=comments (api/_comments.js), so the page itself is the
+/// same for everybody and kept by the CDN. The step picker has the steps of
+/// the version shown; a model of more than a thousand has a number to type.
+function commentsSection(id, shown, newest, steps) {
+  const many = Number(steps) > 1000;
+  const options = !steps || many ? "" : Array.from({ length: Number(steps) },
+    (_, at) => `<option value="${at + 1}">step ${at + 1}</option>`).join("");
+  const picker = many
+    ? `<input id="comment-step" type="number" min="1" max="${Number(steps)}" inputmode="numeric" placeholder="the whole model">`
+    : `<select id="comment-step"><option value="">the whole model</option>${options}</select>`;
+  return `<section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
+    data-version="${shown}" data-newest="${newest}" hidden>
+    <h2 id="comments-h">Comments</h2>
+    <p class="note comments-lede">What builders said about it, and about its steps, oldest first.
+      Plain words only; <a href="/guidelines">the guidelines</a> say what is welcome.</p>
+    <ol class="comment-list"></ol>
+    <form class="comment-new" hidden>
+      <div class="comment-on"><label for="comment-step">On</label> ${picker}
+        <span class="note">of version ${shown}${shown < newest ? ", an older one" : ""}</span></div>
+      <label class="visually-hidden" for="comment-body">Your comment</label>
+      <textarea id="comment-body" maxlength="1000" rows="3"
+        placeholder="Say something about it, or about a step: this part goes under, not over"></textarea>
+      <div class="actions"><button class="cta small" type="submit">Add the comment</button>
+        <span class="note comment-count" aria-live="polite"></span></div>
+    </form>
+    <div class="comment-why" hidden><p class="note"></p></div>
+    <p class="said comments-said" role="status"></p>
+  </section>`;
 }
 
 /// What a page says of the model's versions, once it has more than one:

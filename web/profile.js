@@ -181,9 +181,29 @@ async function load() {
   const lists = $("lists");
   lists.replaceChildren();
   for (const list of answer.body.collections || []) if (ID.test(String(list.id))) lists.append(listRow(list));
+  // What is emailed (api/_comments.js): comments on their models, at most
+  // once a day, off until chosen. Not there before comments.sql.
+  const mail = answer.body.mail;
+  $("mail").hidden = !(mail && mail.ready !== false);
+  $("mail-comments").checked = Boolean(mail && mail.comments);
   await favourites();
   document.documentElement.dataset.profile = "ready";
 }
+
+$("mail-comments").addEventListener("change", async () => {
+  const box = $("mail-comments");
+  box.disabled = true;
+  const answer = await call("/api/people?op=mail", { method: "POST", body: { comments: box.checked } });
+  box.disabled = false;
+  if (answer.status !== 200) {
+    box.checked = !box.checked;
+    $("mail-said").textContent = answer.body.error || "That did not work just now.";
+    return;
+  }
+  $("mail-said").textContent = answer.body.comments
+    ? "On: at most one email a day, when somebody comments on a model you shared."
+    : "Off: no emails about comments.";
+});
 
 $("sign-in").addEventListener("click", async () => {
   if (await askToSignIn("Sign in with your email address: we send you a code, no password.")) load();
