@@ -497,6 +497,14 @@ func _chosen() -> String:
 	else:
 		rest.merge(flex.rests())
 	begin_took["hoses"] = flex.read_ms if flex != null else 0.0
+	if moving.size() <= LOOP_AHEAD_PARTS:
+		# What stands near each moving part, asked of the lattice now, where
+		# it stands, rather than by the drag's first frame ([method _near]).
+		for key: int in moving:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+			if mesh != null and not _on_the_line.has(key):
+				_near(brick.transform * mesh.bounds, key)
 	placed = rest.duplicate()
 	said = "%s %s" % [_named(), link.words()]
 	if linkage != null:
