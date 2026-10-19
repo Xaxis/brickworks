@@ -12,6 +12,12 @@
 //
 // Nothing here is shown as markup: the pages that import it put every
 // word on the page as text.
+//
+// After a first sign-in, one question (2026-10-18, supabase/trust.sql), as
+// the app asks it: the month and year the person was born, with nothing
+// before the answer to say which answer opens what. The server keeps only
+// whether that is 13 or over (api/account.js). Under 13, the dialog says
+// afterwards what is and is not open to them.
 
 const KEY = "brickworks.session";
 const ACCESS = "brickworks.access";
@@ -210,7 +216,13 @@ export function askToSignIn(why) {
           field.focus();
         } else {
           await redeem(address, field.value);
-          end(true);
+          // Signed in: the age question next, if this account has not
+          // answered it, before the page carries on.
+          finished = true;
+          dialog.close();
+          dialog.remove();
+          await askAgeIfAsked().catch(() => null);
+          done(true);
         }
       } catch (trouble) {
         note.textContent = trouble.message;
@@ -220,5 +232,125 @@ export function askToSignIn(why) {
     });
     dialog.showModal();
     field.focus();
+  });
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+  "September", "October", "November", "December"];
+
+/// What the server keeps of this sign-in's age: {ask, over_13}, or null
+/// when nobody is signed in or it does not ask here.
+export async function age() {
+  const access = await token();
+  if (!access) return null;
+  const said = await json(await fetch("/api/account", { headers: { authorization: `Bearer ${access}` } }));
+  return said.signed_in && said.age ? said.age : null;
+}
+
+/// The age question, if this account is to be asked it: resolves with
+/// {ask, over_13} as kept after, or null when there was nothing to ask or
+/// it was put off.
+export async function askAgeIfAsked() {
+  const now = await age();
+  if (!now || !now.ask) return now;
+  return askAge();
+}
+
+/// The question itself, in a dialog over the page. Neutral: the same
+/// question for everybody, and nothing before the answer about what either
+/// answer opens.
+function askAge() {
+  return new Promise((done) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "sign-in age";
+    const title = document.createElement("h2");
+    title.textContent = "One question first";
+    const said = document.createElement("p");
+    said.textContent = "When were you born?";
+    const form = document.createElement("form");
+    const monthLabel = document.createElement("label");
+    monthLabel.textContent = "Month";
+    const month = document.createElement("select");
+    month.id = "age-month";
+    month.required = true;
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "Choose…";
+    month.append(none);
+    MONTHS.forEach((name, at) => {
+      const option = document.createElement("option");
+      option.value = String(at + 1);
+      option.textContent = name;
+      month.append(option);
+    });
+    monthLabel.append(month);
+    const yearLabel = document.createElement("label");
+    yearLabel.textContent = "Year";
+    const year = document.createElement("input");
+    year.id = "age-year";
+    year.inputMode = "numeric";
+    year.autocomplete = "bday-year";
+    year.maxLength = 4;
+    year.required = true;
+    year.pattern = "[0-9]{4}";
+    yearLabel.append(year);
+    const note = document.createElement("p");
+    note.className = "said";
+    note.setAttribute("role", "status");
+    const go = document.createElement("button");
+    go.className = "cta";
+    go.type = "submit";
+    go.id = "age-go";
+    go.textContent = "Carry on";
+    const row = document.createElement("div");
+    row.className = "actions";
+    row.append(go);
+    const quiet = document.createElement("p");
+    quiet.className = "note";
+    quiet.textContent = "Brickworks asks everyone this once. The date itself is not kept.";
+    form.append(monthLabel, yearLabel, row, note, quiet);
+    dialog.append(title, said, form);
+    document.body.append(dialog);
+    let finished = false;
+    const end = (result) => {
+      if (finished) return;
+      finished = true;
+      dialog.close();
+      dialog.remove();
+      done(result);
+    };
+    dialog.addEventListener("cancel", () => end(null));
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      go.disabled = true;
+      note.textContent = "";
+      const answer = await call("/api/account?op=age", { method: "POST",
+        body: { month: Number(month.value), year: Number(year.value) } });
+      go.disabled = false;
+      if (answer.status !== 200 || !answer.body.age) {
+        note.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+        return;
+      }
+      const kept = answer.body.age;
+      if (kept.over_13 !== false) {
+        end(kept);
+        return;
+      }
+      // Said after the answer, never before it.
+      title.textContent = "Thank you";
+      said.textContent = "You can build here, keep your models and share them by link with anyone you choose. "
+        + "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are "
+        + "not open on this account.";
+      const carry = document.createElement("button");
+      carry.className = "cta";
+      carry.type = "button";
+      carry.id = "age-done";
+      carry.textContent = "Carry on";
+      carry.addEventListener("click", () => end(kept));
+      form.replaceWith(carry);
+      carry.focus();
+    });
+    dialog.showModal();
+    month.focus();
   });
 }

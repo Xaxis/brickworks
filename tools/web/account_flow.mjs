@@ -136,7 +136,18 @@ try {
   await page.keyboard.press("Control+A");
   await page.keyboard.type(code);
   await click("signin_go");
-  const inside = await until((s) => s.state === "signed_in" && !s.gated, "signed in");
+  let inside = await until((s) => s.state === "signed_in" && (!s.gated || s.age_ask), "signed in");
+  if (inside.age_ask) {
+    // The age question (supabase/trust.sql), once that is applied: asked
+    // once, in the sign-in screen, and answered 13 or over here
+    // (tools/web/age_flow.mjs is about the question itself).
+    check(Boolean((await controls()).age_go), "a new account is asked its age once, in the sign-in screen");
+    await click("age_month_3");
+    await click("age_year");
+    await page.keyboard.type(String(new Date().getUTCFullYear() - 30));
+    await click("age_go");
+    inside = await until((s) => s.state === "signed_in" && !s.gated, "let in after the age question");
+  }
   check(inside.email === email, `the code signs in, and the screen goes: ${inside.email}`);
   await page.waitForTimeout(2000);
   await shot("5_signed_in");

@@ -9,6 +9,13 @@
   with the way to reach you that a claim needs; the site's owner sees it
   in the admin page's queue (api/admin.js), and nobody else does.
   takedown.js does the sending, as text throughout. No inline script.
+
+  Since 2026-10-18: a claim that a model copies somebody's work carries the
+  statements a copyright notice needs (signed, in good faith, accurate on
+  pain of perjury); a counter-notice, for a model taken out by mistake, is
+  sent the same way (counter: true, which may name a model already taken
+  out); and the DMCA designated agent has a marked place (#agent) for the
+  site's owner to fill in once registered at copyright.gov.
 -->
 <html lang="en">
 <head>
@@ -37,6 +44,14 @@
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<style>
+.takedown .statements { border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 10px 14px 12px; display: grid; gap: 10px; min-width: 0; }
+.takedown .statements legend { font-size: 14px; color: var(--ink-soft); padding: 0 4px; }
+.takedown .tick { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-soft); }
+.takedown .tick input { margin-top: 3px; flex: none; }
+.takedown .fill { border: 1px dashed #c9a227; border-radius: 8px; padding: 12px 14px; background: rgba(242, 197, 54, 0.08); }
+.takedown .fill .blank { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #c9a227; }
+</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -97,13 +112,60 @@
 						<option value="other">Something else</option>
 					</select></label>
 				<label>What is yours, and how
-					<textarea id="what" maxlength="1000" rows="4" required
+					<textarea id="what" maxlength="820" rows="4" required
 						placeholder="Where your original is, and anything that shows it is yours."></textarea></label>
 				<label>How to reach you
 					<input id="contact" type="email" maxlength="200" required autocomplete="email"></label>
+				<fieldset class="statements" id="copyright">
+					<legend>For a copy of your work, a copyright notice also needs</legend>
+					<label>Your full name, as your signature
+						<input id="signature" maxlength="80" autocomplete="name"></label>
+					<label class="tick"><input type="checkbox" id="good-faith"> I believe in good faith that
+						this use is not allowed by the owner of the work, their agent or the law.</label>
+					<label class="tick"><input type="checkbox" id="accurate"> What I have said is accurate,
+						and on pain of perjury I own the work or may act for its owner.</label>
+				</fieldset>
 				<div class="actions"><button class="cta" type="submit" id="send">Send the request</button></div>
 				<p class="said" id="said" role="status"></p>
 			</form>
+		</section>
+
+		<section aria-labelledby="counter-h">
+			<h2 id="counter-h">If your model was taken out by mistake</h2>
+			<p>When a model comes out of the gallery because somebody said it was theirs, and
+				you made it or have the right to share it, send a counter-notice. We pass it on
+				to whoever asked for the takedown. Unless they tell us within ten to fourteen
+				working days that they have gone to court over it, it can be listed again.</p>
+			<form class="profile-form" id="counter">
+				<label>The model's address
+					<input id="counter-where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
+				<label>Why it was a mistake
+					<textarea id="counter-why" maxlength="480" rows="3" required
+						placeholder="That you made it, or what lets you share it."></textarea></label>
+				<label>Your full name, as your signature
+					<input id="counter-name" maxlength="80" required autocomplete="name"></label>
+				<label>Your postal address and phone number
+					<input id="counter-address" maxlength="200" required autocomplete="street-address"></label>
+				<label>Your email
+					<input id="counter-contact" type="email" maxlength="200" required autocomplete="email"></label>
+				<label class="tick"><input type="checkbox" id="counter-perjury" required> On pain of perjury,
+					I believe in good faith that it was taken out by mistake or because it was misidentified.</label>
+				<label class="tick"><input type="checkbox" id="counter-court" required> I consent to the
+					federal district court for my address (or, outside the United States, any district where
+					Brickworks may be found), and will accept service from whoever asked for the takedown.</label>
+				<div class="actions"><button class="cta" type="submit" id="counter-send">Send the counter-notice</button></div>
+				<p class="said" id="counter-said" role="status"></p>
+			</form>
+		</section>
+
+		<section aria-labelledby="agent-h">
+			<h2 id="agent-h">Brickworks' copyright agent</h2>
+			<!-- OWNER: fill in once the agent is registered at https://www.copyright.gov/dmca-directory/ -->
+			<p class="fill" id="agent"><b>To be filled in by the site's owner:</b> the designated
+				agent for notices under the DMCA is <span class="blank">[name]</span>,
+				<span class="blank">[postal address]</span>, <span class="blank">[phone]</span>,
+				<span class="blank">[email]</span>, as registered with the US Copyright Office.
+				Until then, the forms on this page reach the site's owner.</p>
 		</section>
 
 		<section aria-labelledby="else-h">
@@ -129,6 +191,15 @@
 					<li><a href="/gallery">Gallery</a></li>
 					<li><a href="/download">Download</a></li>
 					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/faq">FAQ</a></li>
+					<li><a href="/privacy">Privacy</a></li>
+					<li><a href="/terms">Terms of use</a></li>
+					<li><a href="/guidelines">Community guidelines</a></li>
 				</ul>
 			</nav>
 			<nav aria-label="Project">

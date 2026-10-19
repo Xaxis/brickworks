@@ -7,7 +7,15 @@
 //               keep it. Enough to draw the sign-in screen.
 //   A token   — the same, and who that token belongs to: the address,
 //               and whether it is the owner's (MASTER_EMAIL), which is
-//               what puts the admin page in the account panel.
+//               what puts the admin page in the account panel; and its age
+//               as kept ({ask, over_13}: supabase/trust.sql), which is
+//               what puts the age question after a first sign-in.
+//
+//   POST ?op=age, with a token and {month, year}: the answer to the age
+//   question (2026-10-18). Worked out here into whether that is 13 or over
+//   (api/_trust.js); only that is kept, with when, never the date. An
+//   account that has answered keeps its answer: a second try changes
+//   nothing, and what comes back is the answer it gave.
 //
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
@@ -24,6 +32,8 @@
 // anyone reinstalling.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
+import { dbConfigured } from "./_db.js";
+import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
 
 export default async function handler(request, response) {
   if (request.method === "OPTIONS") {
@@ -31,15 +41,18 @@ export default async function handler(request, response) {
       .status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
       .setHeader("Access-Control-Allow-Headers", "content-type, authorization")
-      .setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+      .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
       .end();
   }
 
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Vary", "Authorization");
 
+  if (request.method === "POST" && String(request.query?.op || "") === "age") {
+    return takeAge(request, response);
+  }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET only" });
+    return response.status(405).json({ error: "GET, or POST ?op=age" });
   }
 
   const enabled = authConfigured();
@@ -83,10 +96,58 @@ export default async function handler(request, response) {
     });
   }
 
+  // Whether to ask the age question. Not knowing (the database out of
+  // reach, or trust.sql not applied) asks nothing.
+  let age = null;
+  if (dbConfigured()) {
+    try {
+      const kept = await ageOf(claims.sub);
+      if (kept.ready) age = { ask: kept.ask, over_13: kept.over_13 };
+    } catch (trouble) {
+      console.error(`account: no age: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+  }
+
   return response.status(200).json({
     ...base,
     signed_in: true,
     email: claims.email || null,
     master: isMaster(claims),
+    ...(age ? { age } : {}),
   });
+}
+
+/// The age question's answer. The month and year are read, turned into
+/// 13 or over or not, and let go: nothing of them is kept or logged.
+async function takeAge(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!authConfigured() || !dbConfigured()) {
+    return response.status(503).json({ error: "Accounts are not configured here." });
+  }
+  let claims;
+  try {
+    claims = await verify(bearer(request));
+  } catch (error) {
+    const status = error instanceof AuthError ? error.status : 401;
+    return response.status(status).json({ error: error.message });
+  }
+  let body = request.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  const born = birthOf(body);
+  if (born.trouble) return response.status(422).json({ error: born.trouble });
+  try {
+    const kept = await ageOf(claims.sub);
+    if (!kept.ready) return response.status(503).json({ error: "Brickworks does not ask this here yet." });
+    const now = kept.ask ? await answerAge(claims.sub, thirteenOrOver(born.month, born.year)) : kept;
+    return response.status(200).json({ age: { ask: now.ask, over_13: now.over_13 } });
+  } catch (trouble) {
+    console.error(`account: the age was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return response.status(502).json({ error: "Brickworks could not take that just now. Try again in a minute." });
+  }
 }
