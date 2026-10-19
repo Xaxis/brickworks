@@ -13,6 +13,10 @@
 // added. Trial files check what a unit adds; this checks what it keeps.
 // Play's file answered 16 of 16 the same (2026-10-19). Exits 1 on a
 // difference or a failure.
+//
+// And every feed (follows.sql's feed_rows, which challenges.sql replaces):
+// each account that follows somebody or has a model shared, its rows of
+// the last 90 days, the same window before and after.
 import { readFileSync } from "node:fs";
 const [file, newKeys = ""] = process.argv.slice(2);
 const skip = new Set(newKeys.split(",").filter(Boolean));
@@ -35,8 +39,14 @@ const run = async () => {
   }
   const cards = await client.query("select public.directory_card(m) as c from public.shared_models m order by m.id");
   out.push(strip(cards.rows));
+  const feeds = await client.query(`select v.account, jsonb_agg(jsonb_build_object('kind', f.kind, 'at', f.at, 'item', f.item)
+      order by f.at, f.kind, f.item::text) as c
+    from (select f.follower as account from public.follows f union select m.owner from public.shared_models m where m.published) v
+    cross join lateral public.feed_rows(v.account, $1, $2) f group by v.account order by v.account`, window);
+  out.push(feeds.rows.map((r) => [r.account, r.c]));
   return out;
 };
+const window = [new Date(Date.now() - 90 * 864e5).toISOString(), new Date().toISOString()];
 const before = await run();
 await client.query("begin");
 let after, failed = null;
@@ -49,7 +59,7 @@ await client.end();
 if (failed) { console.log("the file failed:", failed); process.exit(1); }
 let same = 0, differ = [];
 before.forEach((b, i) => {
-  const name = i < queries.length ? JSON.stringify(queries[i]) : "every card";
+  const name = i < queries.length ? JSON.stringify(queries[i]) : i === queries.length ? "every card" : "every feed";
   if (JSON.stringify(b) === JSON.stringify(after[i])) same += 1;
   else differ.push(`${name}: ${b.length} rows before, ${after[i].length} after; first difference ${JSON.stringify(b.find((x, j) => JSON.stringify(x) !== JSON.stringify(after[i][j]))).slice(0, 200)}`);
 });

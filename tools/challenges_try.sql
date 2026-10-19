@@ -47,6 +47,12 @@ select public.challenge_enter('00000000-0000-4000-8000-0000000000c1', 'ChallTry0
 update public.shared_models set owner = '00000000-0000-4000-8000-0000000000c4' where id = 'ChallTry06';
 select public.challenge_enter('00000000-0000-4000-8000-0000000000c2', 'ChallTry07', 'assistant')->>'way' as "Bob's shed", public.challenge_enter('00000000-0000-4000-8000-0000000000c4', 'ChallTry06', 'hand')->>'refused' as "Dee, not asked";
 update public.shared_models set owner = '00000000-0000-4000-8000-0000000000c1' where id = 'ChallTry06';
+-- The feed: Ed follows Ada, and his feed says her house went in, by hand, beside the models she listed. Fay, who is not a test account, follows her too and sees none of it: test models, a test challenge.
+insert into auth.users (id, instance_id, aud, role, email) values ('00000000-0000-4000-8000-0000000000c6', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'challenges-fay@example.com');
+select public.answer_age('00000000-0000-4000-8000-0000000000c6', true)->>'over_13' as fay;
+select public.follow_person('00000000-0000-4000-8000-0000000000c5', 'challenges-try-ada', true) as "Ed follows Ada", public.follow_person('00000000-0000-4000-8000-0000000000c6', 'challenges-try-ada', true) as "Fay follows Ada";
+select f.kind, f.item->>'name' as name, f.item->>'title' as title, f.item->>'way' as way, f.item->'by'->>'handle' as by from public.feed_rows('00000000-0000-4000-8000-0000000000c5', now() - interval '90 days', now()) f order by f.kind, f.item->>'name';
+select public.feed_of('00000000-0000-4000-8000-0000000000c5')->'rows'->0->>'kind' as "Ed's newest", public.feed_count('00000000-0000-4000-8000-0000000000c5') as "Ed's count", (select count(*) from public.feed_rows('00000000-0000-4000-8000-0000000000c6', now() - interval '90 days', now())) as "Fay's feed";
 -- A model that is not a test account's enters only a challenge that is not a test one: none is open for it here.
 insert into public.shared_models (id, owner, name, author, parts, bytes, listed, listed_at, test, created_at, published) values ('ChallReal1', '00000000-0000-4000-8000-0000000000c1', 'Try real', 'Ada Try', 40, 100, true, now(), false, now(), true);
 select case when (public.challenge_open(false)).id is null then public.challenge_enter('00000000-0000-4000-8000-0000000000c1', 'ChallReal1', 'hand') ->> 'refused' else 'a real one is open' end as "not a test model", (select count(*) from public.challenge_entries e where e.challenge = (select id from public.challenges where title = 'Try October')) as entries;

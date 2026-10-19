@@ -31,6 +31,8 @@
 //      is refused for its parts and the set, the plain one for Tested, each
 //      in words. Bob enters his shed with the assistant; Cy, under 13, is
 //      refused.
+//      Ed, who follows Ada, finds it in his feed at 390 (light) and 1280
+//      (dark): "Ada entered “the house” in the challenge “…”, built by hand".
 //   4. /challenge signed out at 1280 (light) and 390 (dark): the brief, the
 //      three rules, the days, the house under Built by hand and the shed
 //      under Built with the assistant, each the gallery's card, Vote for it
@@ -210,8 +212,13 @@ try {
       await admin.fill('#challenge-form input[name="title"]', TITLE);
       await admin.fill('#challenge-form textarea[name="brief"]', "Build a small yellow house from the parts of the Castle set, "
         + "in under 30 parts, and have the app test it.");
-      await admin.fill('#challenge-form input[name="starts_on"]', today);
-      await admin.fill('#challenge-form input[name="ends_on"]', last);
+      // Each day as the site asks a date: day, month and year dropdowns.
+      for (const [date, iso] of [["starts_on", today], ["ends_on", last]]) {
+        const [year, month, day] = iso.split("-").map(Number);
+        await admin.selectOption(`#challenge-form select[name="${date}_day"]`, String(day));
+        await admin.selectOption(`#challenge-form select[name="${date}_month"]`, String(month));
+        await admin.selectOption(`#challenge-form select[name="${date}_year"]`, String(year));
+      }
       await admin.check('#challenge-form input[name="has_most"]');
       await admin.fill('#challenge-form input[name="most_parts"]', "30");
       await admin.check('#challenge-form input[name="has_set"]');
@@ -231,8 +238,11 @@ try {
       await admin.evaluate(() => document.getElementById("challenges").scrollIntoView());
       await shot(admin, "1_admin_set-1280.png", false);
     } else {
-      check(`at 390 px the admin page's challenge form is there, nothing sideways`,
-        await admin.locator("#challenge-form").isVisible() && !(await sideways(admin)));
+      const days = await admin.evaluate(() => ({ boxes: document.querySelectorAll('#challenge-form input[type="date"]').length,
+        dropdowns: [...document.querySelectorAll("#challenge-form fieldset.date select")].map((one) => one.name) }));
+      check(`at 390 px the admin page's challenge form is there, its days as dropdowns (${days.dropdowns.join(", ")}), nothing sideways`,
+        await admin.locator("#challenge-form").isVisible() && days.boxes === 0 && days.dropdowns.length === 6
+          && !(await sideways(admin)));
       await admin.evaluate(() => document.getElementById("challenge-form").scrollIntoView());
       await shot(admin, "1_admin_form-390.png", false);
     }
@@ -255,6 +265,8 @@ try {
   const profiles = [await api("/api/people?op=profile", { method: "POST", token: who.ada.access_token, body: { handle: ADA, name: "Ada Challenges" } }),
     await api("/api/people?op=profile", { method: "POST", token: who.bob.access_token, body: { handle: BOB, name: "Bob Challenges" } })];
   check(`profiles: /u/${ADA}, /u/${BOB} (${profiles.map((one) => one.status).join(", ")})`, profiles.every((one) => one.status === 200));
+  const follows = await api("/api/people?op=follow", { method: "POST", token: who.ed.access_token, body: { handle: ADA, on: true } });
+  check(`Ed follows Ada: ${follows.status}`, follows.status === 200);
   const MODELS = {
     house: ["ada", `Challenge House ${rand}`, 12, "3004", 14, true],
     tower: ["ada", `Challenge Tower ${rand}`, 12, "3004", 4, true],
@@ -333,6 +345,29 @@ try {
     && noWay.status === 400 && signedOut.status === 401);
   const notYours = await api(`/api/people?op=challenge_entry&id=${ids.house}`, { token: who.bob.access_token });
   check(`the house's entry asked by Bob: ${JSON.stringify(notYours.body)}`, notYours.status === 200 && JSON.stringify(notYours.body) === '{"mine":false}');
+
+  // --- Ed's feed: somebody he follows entered ------------------------------
+  console.log("Ed's feed says Ada entered the house");
+  const entered = `Ada Challenges entered “Challenge House ${rand}” in the challenge “${TITLE}”, built by hand`;
+  for (const [width, height, phone, dark] of [[390, 844, true, false], [1280, 900, false, true]]) {
+    const eds = await context({ as: who.ed, width, height, phone, dark });
+    const page = await eds.newPage();
+    listen(page, `Ed's feed at ${width} px`);
+    await page.goto(`${site}/feed`, { waitUntil: "load" });
+    await until(page, () => document.querySelector('.feed-row[data-kind="challenge"]'), "the entry in Ed's feed");
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.feed-row[data-kind="challenge"]')].map((row) => ({
+      text: row.querySelector(".what")?.textContent.replace(/\s+/g, " ").replace(/New$/, "").trim(),
+      href: row.querySelector("a")?.getAttribute("href") })));
+    check(`Ed's feed at ${width} px: ${JSON.stringify(rows)}`, rows.length === 1 && rows[0].text === entered
+      && rows[0].href === `/m/${ids.house}` && !(await sideways(page)));
+    await page.evaluate(() => document.querySelector('.feed-row[data-kind="challenge"]')?.scrollIntoView({ block: "center" }));
+    await shot(page, `4b_feed_ed-${width}.png`, false);
+    await eds.close();
+  }
+  const fed = await api("/api/people?op=feed", { token: who.ed.access_token });
+  const told = (fed.body.rows || []).filter((one) => one.kind === "challenge");
+  check(`...the API: ${told.length} entry, by ${told[0]?.by?.handle}, not Bob's shed (he is not followed)`,
+    told.length === 1 && told[0].by?.handle === ADA && told[0].link.endsWith(`/m/${ids.house}`));
 
   // --- 4. /challenge signed out ----------------------------------------------
   console.log("/challenge, signed out");

@@ -44,10 +44,17 @@
 -- Only additions, applied after designers.sql, discovery.sql, follows.sql,
 -- builds.sql, tested.sql and trust.sql (it reads model_needs, model_tested,
 -- gallery_shows, directory_card, trust's and moderation's rules): five new
--- tables and new functions. No function another file defines is replaced,
--- so every answer the live functions give is the same
--- (tools/challenges_try.sql). No existing row is changed, nothing dropped or
--- renamed.
+-- tables and new functions, and one function replaced:
+--
+--   feed_rows   supersedes follows.sql's (the live one: no later file
+--               replaces it). The same rows, word for word, and one kind
+--               more: a model entered in a challenge by somebody the viewer
+--               follows. Applying follows.sql again after this would take
+--               that kind out of the feed, and nothing else.
+--
+-- Every other answer the live functions give is the same
+-- (tools/challenges_try.sql, tools/sql_compare.mjs). No existing row is
+-- changed, nothing dropped or renamed.
 
 -- ---------------------------------------------------------------------------
 -- The tables.
@@ -685,6 +692,113 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- The feed: an entry by somebody followed.
+--
+-- follows.sql's feed_rows, the live one (no later file replaces it), with
+-- one kind more: 'challenge', a model of somebody the viewer follows
+-- entered in a challenge: {model, name, challenge, title, way, by}. Every
+-- other row is read as before, word for word. The Account count
+-- (feed_count) counts these too; the daily email does not tell of them
+-- (claim_comment_digest asks for its four kinds by name).
+
+-- Everything in [viewer]'s feed from after [since] up to [until], as
+-- (kind, at, item): read from the tables that hold it, with what their
+-- pages hide hidden here too.
+create or replace function public.feed_rows(viewer uuid, since timestamptz, until timestamptz)
+returns table (kind text, at timestamptz, item jsonb)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    with followed as (
+        select f.followed as account from public.follows f
+         where f.follower = viewer and public.follow_may_be_followed(f.followed)),
+    tests as (
+        select public.trust_is_test_account(viewer) as ok),
+    mine as (
+        select m.id, m.name from public.shared_models m
+         where m.owner = viewer and m.published and not m.barred)
+    -- A model listed by somebody followed, and credited to them; a remix
+    -- of the viewer's own is said once, as a remix, below.
+    select 'model'::text, m.listed_at,
+           jsonb_build_object('model', m.id, 'name', m.name, 'parts', m.parts, 'by', public.feed_who(m.owner))
+      from public.shared_models m
+      join followed w on w.account = m.owner
+     cross join tests t
+     where m.published and m.listed and not m.barred and m.author is not null
+       and (not m.test or t.ok)
+       and (m.remixed_from is null or m.remixed_from not in (select id from mine))
+       and m.listed_at > since and m.listed_at <= until
+    union all
+    -- A newer version of one of those, published after it was listed.
+    select 'version'::text, v.at,
+           jsonb_build_object('model', m.id, 'name', m.name, 'version', v.n, 'note', v.note,
+                              'by', public.feed_who(m.owner))
+      from public.shared_models m
+      join followed w on w.account = m.owner
+      join public.share_versions v on v.model = m.id and v.n > 1 and v.at > m.listed_at
+     cross join tests t
+     where m.published and m.listed and not m.barred and m.author is not null
+       and (not m.test or t.ok)
+       and v.at > since and v.at <= until
+    union all
+    -- A photo of a build: on the viewer's own model, or by somebody
+    -- followed of a model in the gallery.
+    select 'photo'::text, b.at,
+           jsonb_build_object('photo', b.id, 'model', b.model, 'name', m.name, 'words', b.words,
+                              'yours', m.owner = viewer, 'by', public.feed_who(b.account))
+      from public.build_photos b
+      join public.shared_models m on m.id = b.model
+     cross join tests t
+     where b.removed_at is null and b.hidden_at is null and b.account <> viewer
+       and m.published and not m.barred
+       and public.shown_publicly(b.account)
+       and (m.owner = viewer
+            or (b.account in (select account from followed) and m.listed and (not m.test or t.ok)))
+       and b.at > since and b.at <= until
+    union all
+    -- A comment on the viewer's own model, in this life of its link
+    -- (comments_on's rule).
+    select 'comment'::text, k.at,
+           jsonb_build_object('comment', k.id, 'model', k.model, 'name', m.name, 'version', k.version,
+                              'step', k.step, 'said', left(k.body, 240), 'by', public.feed_who(k.author))
+      from public.model_comments k
+      join mine m on m.id = k.model
+     where k.removed_at is null and k.hidden_at is null and k.author <> viewer
+       and public.shown_publicly(k.author)
+       and k.at >= coalesce((select min(v.at) from public.share_versions v where v.model = k.model), '-infinity')
+       and k.at > since and k.at <= until
+    union all
+    -- A remix of the viewer's own model, listed in the gallery; whose, only
+    -- when it is credited.
+    select 'remix'::text, r.listed_at,
+           jsonb_build_object('model', r.id, 'name', r.name, 'of', o.id, 'of_name', o.name,
+                              'by', case when r.author is not null then public.feed_who(r.owner) end)
+      from public.shared_models r
+      join mine o on o.id = r.remixed_from
+     cross join tests t
+     where r.published and r.listed and not r.barred and r.owner <> viewer
+       and public.shown_publicly(r.owner) and (not r.test or t.ok)
+       and r.listed_at > since and r.listed_at <= until
+    union all
+    -- A model of somebody followed entered in a challenge (challenges.sql):
+    -- listed and credited to them, as a 'model' row is; a test challenge's
+    -- only in a test account's feed.
+    select 'challenge'::text, e.at,
+           jsonb_build_object('model', m.id, 'name', m.name, 'challenge', c.id, 'title', c.title,
+                              'way', e.way, 'by', public.feed_who(m.owner))
+      from public.challenge_entries e
+      join followed w on w.account = e.owner
+      join public.challenges c on c.id = e.challenge
+      join public.shared_models m on m.id = e.model
+     cross join tests t
+     where m.published and m.listed and not m.barred and m.author is not null
+       and (not m.test or t.ok) and (not c.test or t.ok)
+       and e.at > since and e.at <= until
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Grants: the service role alone.
 
 revoke all on function public.challenge_today() from public, anon, authenticated;
@@ -721,3 +835,5 @@ revoke all on function public.challenge_mine(uuid, bigint) from public, anon, au
 grant execute on function public.challenge_mine(uuid, bigint) to service_role;
 revoke all on function public.challenge_wins(uuid, text[], boolean) from public, anon, authenticated;
 grant execute on function public.challenge_wins(uuid, text[], boolean) to service_role;
+revoke all on function public.feed_rows(uuid, timestamptz, timestamptz) from public, anon, authenticated;
+grant execute on function public.feed_rows(uuid, timestamptz, timestamptz) to service_role;

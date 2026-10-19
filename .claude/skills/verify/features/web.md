@@ -791,9 +791,17 @@ plan with Claude as the client.
 - `setting the monthly challenge` (`web/admin.html`, `web/admin.js`
   `drawChallenges`): This month's challenge, a table `#challenges
   tr[data-challenge][data-state]` with End it now, and `#challenge-form`
-  (title, brief, first and last day as date inputs, three ticks: at most N
+  (title, brief, first and last day each as three dropdowns in a
+  `fieldset.date[data-date]`, `select[name=starts_on_day|_month|_year]`
+  and the same for `ends_on`, this year and next; three ticks: at most N
   parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
   and sets the flows' test ones.
+- the feed's entry line (`supabase/challenges.sql` `feed_rows`, which
+  supersedes follows.sql's; `api/_follows.js` `feedSaid` kind `challenge`,
+  with `after`; `web/feed.js`): somebody you follow entered a model, "Ada
+  entered “The house” in the challenge “…”, built by hand", linked to the
+  model, `.feed-row[data-kind="challenge"]`; a test challenge's only in a
+  test account's feed.
 - `challenges browser flow` (`tools/web/challenges_flow.mjs`): below.
 - `play in a shared model` (`src/ui/share_view.gd`'s pill, `src/main.gd`
   `_ready_play`, `_play_press`, `_play_touch`, `_play_reset`, 2026-10-19;
@@ -2235,7 +2243,10 @@ keeps all three rules, the tower one lot short (3003 Yellow, need 10, have
 4), the hall parts, set and Tested broken, the uncounted one `counted`
 false; entering refused `not_yours`, `no_model`, `not_in_gallery` twice,
 `under_13`, `rules`, a way that is neither, `entered`, `not_asked`,
-`no_challenge` for a model that is not a test's; votes refused `own`,
+`no_challenge` for a model that is not a test's; Ed, who follows Ada, has
+in `feed_rows` the house as a `challenge` row ("Try October", hand) beside
+her four `model` rows, it is his newest and his count 5, and Fay (not a
+test account) has none; votes refused `own`,
 `under_13`, `not_asked`, `no_entry`, `not_open`, then `voted`; the page
 with two entries, no votes shown; the house not keeping the rules on an
 untested newer version and a vote for it `breaks`; taking back and in
@@ -2244,7 +2255,13 @@ entry or vote; settled once, the house by hand 2 and the shed 1; the tie
 to the shed, entered first; the list; no table grants, row security on,
 17 functions the service role's alone; the timings (docs/COMMUNITY.md,
 Challenges); models, designer and pick "the same"; "rolled back, nothing
-kept". The tests: 9 passed.
+kept". The tests: 9 passed. And what it keeps: every gallery answer and
+every feed the same before and after, rolled back:
+
+```sh
+set -a; . ./.env; set +a
+PG_MODULE=<pg>/lib/index.js node tools/sql_compare.mjs supabase/challenges.sql won
+```
 
 Then the code, in real browsers. Until challenges.sql is applied the local
 server holds it (`--hold=challenges`); once it is, a preview with the
@@ -2262,7 +2279,9 @@ owner sets it on `/admin?tests=1` (`1_admin_set-1280.png`,
 `1_admin_form-390.png`) with set 6075-2, Castle, another on its days 409,
 anybody else 404; the tower refused on its page for "3004 in Red (it needs
 12, the set has 0)" (`2_enter_refused-390.png`), the house entered by hand
-(`3_enter_dialog-390.png`, `4_entered-390.png`), the hall refused for parts
+(`3_enter_dialog-390.png`, `4_entered-390.png`) and said in Ed's feed, who
+follows Ada, as one line linked to the house (`4b_feed_ed-390.png` light,
+`4b_feed_ed-1280.png` dark; not Bob's shed), the hall refused for parts
 and set, the plain one for Tested, Bob's shed in with the assistant, Cy
 under 13 refused; `/challenge` signed out (`5_challenge_visitor-*`), the
 gallery's line (`6_gallery_line-1280.png`), Ed's two votes

@@ -456,21 +456,77 @@ function drawChallenges(list) {
   }
 }
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+  "November", "December"];
+
+/// Each of the form's days as three dropdowns, day, month and year (this
+/// one and the next), the way the site asks every date (site.css
+/// fieldset.date): each named [date]_day, [date]_month, [date]_year.
+function dateDropdowns() {
+  const year = new Date().getUTCFullYear();
+  for (const set of document.querySelectorAll("#challenge-form fieldset.date")) {
+    const date = set.dataset.date;
+    const words = set.querySelector("legend").textContent;
+    const choose = (part, said, choices) => {
+      const label = document.createElement("label");
+      const hidden = document.createElement("span");
+      hidden.className = "visually-hidden";
+      hidden.textContent = `${words}: ${said.toLowerCase()}`;
+      const select = document.createElement("select");
+      select.name = `${date}_${part}`;
+      select.required = true;
+      // Chosen until a choice is made: else the browser chooses the first.
+      const none = new Option(said, "", true, true);
+      none.disabled = true;
+      none.hidden = true;
+      select.append(none, ...choices.map(([value, text]) => new Option(text, String(value))));
+      label.append(hidden, select);
+      return label;
+    };
+    set.querySelector(".dropdowns").replaceChildren(
+      choose("day", "Day", Array.from({ length: 31 }, (_, at) => [at + 1, String(at + 1)])),
+      choose("month", "Month", MONTHS.map((name, at) => [at + 1, name])),
+      choose("year", "Year", [[year, String(year)], [year + 1, String(year + 1)]]));
+  }
+}
+
+/// [date]'s dropdowns as YYYY-MM-DD, or "" while one is not chosen; a day
+/// the month does not have (31 April) is null.
+function dateOf(form, date) {
+  const [day, month, year] = ["day", "month", "year"].map((part) => Number(form.elements[`${date}_${part}`].value));
+  if (!day || !month || !year) return "";
+  const made = new Date(Date.UTC(year, month - 1, day));
+  if (made.getUTCDate() !== day) return null;
+  return made.toISOString().slice(0, 10);
+}
+
+function setDate(form, date, when) {
+  form.elements[`${date}_day`].value = String(when.getUTCDate());
+  form.elements[`${date}_month`].value = String(when.getUTCMonth() + 1);
+  form.elements[`${date}_year`].value = String(when.getUTCFullYear());
+}
+
 /// The form's first day today and its last the month's last, until changed.
 function datesFirst() {
   const form = $("challenge-form");
   const now = new Date();
-  const iso = (d) => d.toISOString().slice(0, 10);
-  if (!form.starts_on.value) form.starts_on.value = iso(now);
-  if (!form.ends_on.value) form.ends_on.value = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
+  if (!dateOf(form, "starts_on")) setDate(form, "starts_on", now);
+  if (!dateOf(form, "ends_on")) setDate(form, "ends_on", new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
 }
 
 $("challenge-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const send = form.querySelector('button[type="submit"]');
-  const body = { title: form.elements.title.value, brief: form.elements.brief.value, starts_on: form.starts_on.value,
-    ends_on: form.ends_on.value, tested: form.tested.checked };
+  const days = { starts_on: dateOf(form, "starts_on"), ends_on: dateOf(form, "ends_on") };
+  const missing = Object.keys(days).find((date) => !days[date]);
+  if (missing) {
+    const words = form.querySelector(`fieldset[data-date="${missing}"] legend`).textContent.toLowerCase();
+    const month = Number(form.elements[`${missing}_month`].value);
+    const most = new Date(Date.UTC(Number(form.elements[`${missing}_year`].value), month, 0)).getUTCDate();
+    return say("challenge-note", `The ${words} is not on the calendar: ${MONTHS[month - 1]} has ${most} days.`, true);
+  }
+  const body = { title: form.elements.title.value, brief: form.elements.brief.value, ...days, tested: form.tested.checked };
   if (form.has_most.checked) body.most_parts = Number(form.most_parts.value);
   if (form.has_set.checked) body.set_number = form.set_number.value;
   send.disabled = true;
@@ -491,6 +547,7 @@ $("challenge-form").addEventListener("submit", async (event) => {
     send.disabled = false;
   }
 });
+dateDropdowns();
 datesFirst();
 
 function act(words, run) {

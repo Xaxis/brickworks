@@ -2,9 +2,11 @@
 
 supabase/challenges.sql goes into the live project, so it may only add: new
 tables, their indexes and new functions, and nothing another file defines
-replaced (the gallery's directory_card and directory_models above all). What
-the SQL answers is proven by tools/challenges_try.sql in a rolled-back dry
-run; these read the files and hold the promises around it:
+replaced (the gallery's directory_card and directory_models above all) but
+follows.sql's feed_rows, word for word with one kind more. What the SQL
+answers is proven by tools/challenges_try.sql in a rolled-back dry run, and
+what it keeps by tools/sql_compare.mjs; these read the files and hold the
+promises around it:
 
 - the tables are the server's alone, read and written only through the
   functions, which only the service role may run;
@@ -52,7 +54,12 @@ def test_the_file_only_adds() -> None:
         assert table in TABLES, f"{verb} {table}"
 
 
-def test_it_replaces_no_function_another_file_defines() -> None:
+def body(name: str, text: str) -> str:
+    start = text.index(f"create or replace function public.{name}(")
+    return text[start:text.index("\n$$;", start)]
+
+
+def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
     others = {
         name
         for path in (ROOT / "supabase").glob("*.sql")
@@ -60,8 +67,17 @@ def test_it_replaces_no_function_another_file_defines() -> None:
         for name in defined(path.read_text())
     }
     mine = defined(SQL)
-    assert mine and all(name.startswith("challenge_") for name in mine), mine
-    assert not set(mine) & others, set(mine) & others
+    assert mine and all(name.startswith("challenge_") for name in mine if name != "feed_rows"), mine
+    assert set(mine) & others == {"feed_rows"}, set(mine) & others
+    # follows.sql's, the live one, word for word, and one branch more after it.
+    theirs = body("feed_rows", (ROOT / "supabase/follows.sql").read_text())
+    ours = body("feed_rows", SQL)
+    assert ours.startswith(theirs + "\n    union all\n"), "feed_rows is not follows.sql's with one branch added"
+    added = code(ours[len(theirs):])
+    assert added.count("select ") == 1 and "'challenge'::text" in added
+    for rule in ("join followed w on w.account = e.owner", "m.listed", "not m.barred", "m.author is not null",
+                 "(not m.test or t.ok)", "(not c.test or t.ok)", "e.at > since and e.at <= until"):
+        assert rule in added, f"the entry's row does not ask {rule}"
 
 
 def test_the_tables_and_functions_are_the_servers_alone() -> None:
@@ -72,7 +88,8 @@ def test_the_tables_and_functions_are_the_servers_alone() -> None:
     for name in set(defined(SQL)):
         assert re.search(rf"revoke all on function public\.{name}\([^)]*\) from public, anon, authenticated;", plain), name
         assert re.search(rf"grant execute on function public\.{name}\([^)]*\) to service_role;", plain), name
-    assert "grant execute" not in re.sub(r"grant execute on function public\.challenge_[a-z_]+\([^)]*\) to service_role;", "", plain)
+    assert "grant execute" not in re.sub(r"grant execute on function public\.(challenge_[a-z_]+|feed_rows)\([^)]*\) to service_role;",
+                                         "", plain)
 
 
 def test_the_rules_are_checked_in_the_database() -> None:

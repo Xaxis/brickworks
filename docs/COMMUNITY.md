@@ -191,6 +191,7 @@ a link to the thing:
 | A photo of a real build | on your model, or by somebody you follow of a model in the gallery | hidden by the model's owner, taken out, on a model taken out |
 | A comment | on your model, in this life of its link | hidden by you, removed |
 | A remix | of your model, listed in the gallery; whose, only when credited | |
+| An entry in a challenge | a model in the gallery, credited to somebody you follow, entered in a challenge ("… entered “…” in the challenge “…”, built by hand"; `supabase/challenges.sql`) | one in a test challenge, but in a test account's feed |
 
 Nothing by an account taken out or under 13, and a test account's models
 only in a test account's feed. Built from the tables that hold each thing
@@ -479,8 +480,12 @@ each granted to the service role alone.
 
 **The gallery's front** says it in one line under its heading ("This
 month's challenge: …, open until 31 October. Enter a model of yours, or
-vote."), or the next one, from `?op=shelves`. **Not yet:** the feed does not
-tell followers when somebody they follow enters.
+vote."), or the next one, from `?op=shelves`. **The feed** tells whoever
+follows a designer when they enter ("Ada entered “The house” in the
+challenge “…”, built by hand"), a link to the model: `challenges.sql`
+replaces follows.sql's `feed_rows` with one kind more and every other row
+as it was (`tools/sql_compare.mjs` reads every feed before and after). The
+Account count counts it; the daily email does not tell of it.
 
 **Tests.** A test account's models enter only a test challenge, and it
 votes only in one: the flows' own, set on `/admin?tests=1` and shown only

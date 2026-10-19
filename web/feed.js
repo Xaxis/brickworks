@@ -31,6 +31,7 @@ function row(one) {
   const name = document.createElement("b");
   name.textContent = `“${String(one.name || "")}”`;
   what.append(who, ` ${String(one.did || "")} `, name);
+  if (one.after) what.append(` ${String(one.after)}`);
   if (one.new) {
     const tag = document.createElement("span");
     tag.className = "tag";

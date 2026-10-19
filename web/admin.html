@@ -72,8 +72,10 @@
 #challenge-form { display: grid; gap: 12px; max-width: 640px; margin-top: 12px; }
 #challenge-form h3 { margin: 0; }
 #challenge-form label { display: grid; gap: 4px; }
-#challenge-form fieldset { display: grid; gap: 8px; margin: 0; }
-#challenge-form fieldset label { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#challenge-form fieldset.rules { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
+#challenge-form fieldset.rules legend { padding: 0; margin: 0 0 6px; font-size: 14.5px; color: var(--ink-soft); }
+#challenge-form fieldset.rules label { display: flex; flex-wrap: wrap; align-items: center; }
+#challenge-form fieldset.rules label input:not([type="checkbox"]) { width: 9em; }
 #challenge-form .days { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 #challenge-form .row { margin-top: 0; flex-wrap: wrap; }
 </style>
@@ -210,18 +212,22 @@
       <label>The brief: what to build, in a line or two
         <textarea name="brief" maxlength="600" rows="3" required></textarea></label>
       <div class="days">
-        <label>First day
-          <input type="date" name="starts_on" required></label>
-        <label>Last day
-          <input type="date" name="ends_on" required></label>
+        <fieldset class="date" data-date="starts_on">
+          <legend>First day</legend>
+          <div class="dropdowns"></div>
+        </fieldset>
+        <fieldset class="date" data-date="ends_on">
+          <legend>Last day</legend>
+          <div class="dropdowns"></div>
+        </fieldset>
       </div>
-      <fieldset>
+      <fieldset class="rules">
         <legend>Rules, up to three</legend>
-        <label><input type="checkbox" name="has_most"> At most
+        <label class="choice"><input type="checkbox" name="has_most"> At most
           <input type="number" name="most_parts" min="1" max="200000" value="200" aria-label="How many parts at most"> parts</label>
-        <label><input type="checkbox" name="has_set"> Only the parts of set
+        <label class="choice"><input type="checkbox" name="has_set"> Only the parts of set
           <input name="set_number" maxlength="30" placeholder="6080-1" aria-label="The set's number"></label>
-        <label><input type="checkbox" name="tested"> Marked Tested</label>
+        <label class="choice"><input type="checkbox" name="tested"> Marked Tested</label>
       </fieldset>
       <div class="row"><button type="submit">Set it</button><span class="note" id="challenge-note"></span></div>
     </form>
