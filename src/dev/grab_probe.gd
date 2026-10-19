@@ -259,6 +259,9 @@ func _run() -> void:
 	if only.is_empty() or only == "moving":
 		for one: Array in MOVING:
 			await _moving_check(str(one[0]), str(one[1]))
+	if only.is_empty() or only == "grooved":
+		for one: Array in GROOVED:
+			await _grooved_check(str(one[0]), float(one[1]))
 	if only.is_empty() or only == "hoses" or only == "hose":
 		# --hose=WORD runs only the cases whose name has it ("made" the made one).
 		var asked_hose: String = ""
@@ -5358,6 +5361,16 @@ const MOVING: Array = [
 ]
 
 
+## Steering racks that slide where they stand (G12): the racks with holes
+## (32185, 6630) are channels underneath, and the studs of the plate under
+## each ride in it (the gear table's groove). Each [file, least LDU the rack
+## goes on the first turn].
+const GROOVED: Array = [
+	["res://vendor/omr/files/8448-1_Racer.mpd", 1.0],
+	["res://vendor/omr/files/5533-1.mpd", 1.0],
+]
+
+
 func _steer_set(path: String) -> void:
 	var name: String = path.get_file().get_basename()
 	print("\nsteering both ways and back over MCP: %s" % name)
@@ -5504,6 +5517,25 @@ func _moving_check(path: String, kind: String) -> void:
 			covers.append(str(met.get("pair", "")))
 	_check("%s: no turn of its %s stopped where only the covers of two parts meet%s" % [name, kind,
 		"" if covers.is_empty() else " (" + ", ".join(covers) + ")"], covers.is_empty() and not found.is_empty())
+	_builder.forget_history()
+
+
+## A grooved rack slides on the studs in its groove (G12): the pinion turned
+## +30 over MCP moves the rack along its line.
+func _grooved_check(path: String, least: float) -> void:
+	var name: String = path.get_file().get_basename()
+	print("\n%s's rack slides on the studs in its groove" % name)
+	var row: Dictionary = await _sweep_one(path)
+	var steps: Array = row.get("steps", [])
+	var went: float = float((steps[0] as Dictionary).get("rack_ldu", 0.0)) if not steps.is_empty() else 0.0
+	_check("%s: turned +30 at its %s, the rack goes %.2f LDU along its line%s" % [name, str(row.get("kind", "")),
+		went, "" if absf(went) >= least else ": " + str(row.get("cause", "")).left(200)], absf(went) >= least)
+	# Read again where it slid to, it is still in its groove: turned -60, it
+	# comes back along it (8448-1's, read off the cells, was lodged in the
+	# steering arm it touched and went on the same way).
+	var back: float = float((steps[1] as Dictionary).get("rack_ldu", went)) if steps.size() > 1 else went
+	_check("%s: turned -60 after, the rack comes back along its groove, from %+.2f to %+.2f LDU" % [name, went,
+		back], absf(went) >= least and (back - went) * signf(went) < -0.5)
 	_builder.forget_history()
 
 

@@ -521,9 +521,12 @@ func _read() -> void:
 	# A turntable's top on its base, a hinge brick's halves, a click hinge's
 	# two parts: the joint between them is what holds them, whatever studs
 	# or cells they also share.
+	var in_grooves: Dictionary = _grooves_by_shape(entries, turning)
+	for pair: Vector2i in in_grooves:
+		candidates.append(in_grooves[pair])
 	for pair: Vector2i in per_pair:
 		var found: Array = per_pair[pair]
-		if turning.has(pair):
+		if turning.has(pair) or in_grooves.has(pair):
 			continue
 		var groove: Array = _in_a_groove(pair, int(stud_of.get(pair, pair.x)), found)
 		if not groove.is_empty():
@@ -1366,6 +1369,60 @@ func _in_a_groove(pair: Vector2i, owner: int, found: Array) -> Array:
 		back = minf(back, info.bounds.end.x - 6.0 - along)
 	return [owner, rack, "groove", found[0][0], line, true, 0.0,
 		Vector2(maxf(on, 0.0), maxf(back, 0.0)), rack]
+
+
+## The studs standing up in each grooved rack's groove, found from the rack's
+## shape rather than the cells their tips are in: a rack its pinion has slid
+## off the studs' grid has their tips in its groove, which its cover leaves
+## empty, and none was read in it. 8448-1's rack, slid 2 LDU, was then held
+## by nothing on its plate and lodged in the steering arm it touched, which
+## carried it the next turn. Pair -> a candidate as [method _in_a_groove]
+## makes one, for each part with a stud there.
+func _grooves_by_shape(entries: Array, turning: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for entry: Array in entries:
+		var rack: int = int(entry[0])
+		if not bool((Racks.table().get(str(entry[3]), {}) as Dictionary).get("groove", false)):
+			continue
+		var at: Transform3D = entry[1]
+		var mesh: Lbm.PartMesh = entry[2]
+		var inverse: Transform3D = at.affine_inverse()
+		var up: Vector3 = (at.basis * Vector3.UP).normalized()
+		var box: AABB = (at * mesh.bounds).grow(Joints.STUD_REACH + 2.0)
+		var cell: float = BrickLattice.CELL
+		var bound := PackedInt32Array([floori(box.position.x / cell), floori(box.position.y / cell),
+			floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
+			ceili(box.end.z / cell)])
+		var found: Dictionary = {}   ## owner -> [[foot, way]]
+		for other: int in lattice.near_bounds(bound, rack):
+			var brick: BrickWorld.Brick = world.get_brick(other)
+			var theirs: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+			if theirs == null or scenery.has(other) or not _up.has(other):
+				continue
+			for connector: Lbm.Connector in theirs.connectors:
+				if connector.kind != "stud" or connector.gender != "male":
+					continue
+				var way: Vector3 = (brick.transform.basis * connector.axis).normalized()
+				if way.dot(up) < Racks.SQUARE:
+					continue
+				var foot: Vector3 = brick.transform * connector.position
+				var local: Vector3 = inverse * (foot + way * Joints.STUD_REACH)
+				# Its tip in the groove: under the rack's middle, into its foot.
+				if absf(local.z) > 2.0 or local.x < mesh.bounds.position.x + 6.0 \
+						or local.x > mesh.bounds.end.x - 6.0 or local.y < mesh.bounds.position.y \
+						or local.y > mesh.bounds.position.y + Joints.STUD_REACH + 1.0:
+					continue
+				if not found.has(other):
+					found[other] = []
+				(found[other] as Array).append([foot, way])
+		for owner: int in found:
+			var pair := Vector2i(mini(owner, rack), maxi(owner, rack))
+			if turning.has(pair):
+				continue
+			var groove: Array = _in_a_groove(pair, owner, found[owner])
+			if not groove.is_empty():
+				out[pair] = groove
+	return out
 
 
 ## A round steering rack (the gear table's racks: round), which slides
