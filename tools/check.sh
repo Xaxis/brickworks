@@ -76,8 +76,15 @@ run() {
   elif [ "$status" = 0 ]; then
     printf '  ok    %s\n' "$label"
   else
-    printf '  FAIL  %s\n' "$label"
-    echo "$output" | grep -E 'FAIL|Error|error' | head -8 | sed 's/^/          /'
+    printf '  FAIL  %s (exit %s)\n' "$label" "$status"
+    # Godot says a crash and a script error in capitals, which this filter
+    # once missed: bigmodel failed m87's suite with nothing said under it,
+    # and passed alone (2026-10-19). Every probe ends on the same leak
+    # lines, so those are left out; with nothing else, its last lines.
+    said=$(echo "$output" | grep -E 'FAIL|ERROR|Error|error|crash|signal' \
+      | grep -vE 'were leaked at exit|RID allocations|object\.cpp' | head -8)
+    [ -n "$said" ] || said=$(echo "$output" | tail -5)
+    echo "$said" | sed 's/^/          /'
     fail=1
   fi
 }
