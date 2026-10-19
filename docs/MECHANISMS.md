@@ -3453,7 +3453,7 @@ in the viewer. Bigger models in the viewer (a few thousand parts) are not
 measured here: the reading is on a worker, but each move's room tests are
 the builder's, and a big section is checked on pauses as it is there.
 
-## 22. A move tested along its way (G13)
+## 22. A move tested along its way (G13, G13b)
 
 G12 made two parts block a move only where their exact shapes overlap. A
 session's move_part, and a big section's check when the pointer pauses,
@@ -3610,18 +3610,140 @@ after it is let go (3.6); 7191-1's big section 7.5 mean, 18.8 worst (2.7,
 21.4). Pictures: `move_10205-1_door_*`, `move_4543-1_boom_*`,
 `move_10220-1_*`.
 
+### G13b: the steering comes back, a free joint pressed swings aside
+
+G13 was held on its steering sweep: 42 of 167 sets steered, against
+rel-m83's 55. G13b, on the same branch, mends that and does three more
+things.
+
+**A loop's end does not depend on the steps** (`Linkage.kept_state`,
+`Linkage.restore_kept`). A loop is solved from the pose it last kept, and
+the walk kept each step's pose to solve the next from it. Putting that pose
+back after the walk was not enough. The solver also keeps its last solve,
+the slope the next solve starts from, and the part of the loops that spins
+on its own. Left as the steps had them, the steering came back 0.5 LDU off.
+Now all of it is put back after the walk, and after a pause's walk, so
+where a move ends is solved as if there were no steps. The 14 sets that
+stopped steering in G13 all steer again, back within 0.0011 to 0.0183 LDU
+(`sweep_fix3`). A loop's drag now leaves its way to a pause or the
+release, as a big section's does, and each frame tests only where the
+pointer is. Solved a step at a time in the frame, 42024-1's actuator (a
+loop of 36 joints) took 62 ms a frame on average and 181 at 95%.
+
+**A free joint inside what moves swings aside when pressed**
+(`Grab._push_aside`). A step may have no room where the part that met
+something hangs on a joint inside the moving section that does not hold by
+friction. That joint is then turned aside 1°, then 2, 4 and so on to 64
+each way, until the step has room, and the move goes on. It settles under
+its weight afterwards, as before. Loops and balls are left out. 8074-1's
+crane swings 18 free joints inside it down on its first turn, most of them
+180°, and on the way back it met the brick 1 x 16 that swung. Now it turns
++30, -60 and back to 0.000 LDU, and its moving check is strict again.
+
+**A small section's drag tests its way for 2 ms a frame**
+(`Grab.walk_budget_ms`, `GrabDrag.WALK_BUDGET_MS`). Past that, the turn is
+shown where the pointer is, and the rest of the way is tested from the last
+step with room, on the next frame or on a pause. The status bar keeps its
+words for that ("too big to test every frame: checked when you pause").
+The drag's own work at its worst frame, in the full run below (load about
+28 there) and in the one the spin-down cut short: a turntable 2.1 and 2.1
+ms (G13 5.5, G12 0.3), a hinge 4.9 and 4.2 (G13 5.2, G12 7.0), a click
+hinge 4.4 and 2.9 (G13 3.4, G12 3.3). The ball joint's is not walked within
+a budget, and is no better: 9.3 and 7.8 ms (G13 8.0, G12 0.5).
+
+**The hoses' cost checks judge the laying's own work**
+(`FlexFollow.lay_cost`, `grab_probe._lay_checks`). The two checks timed a
+drag's worst frame by the wall clock, so a busy box failed them: 42080-1's
+tubes took 16.8 ms at load 28, and 3.7 ms on the same code minutes later.
+Now each hose is laid again where it stands seven times, and the fastest
+is taken, which other jobs cannot make slower. A hose's mean must be at
+most 2 ms, and the budget plus the costliest laying within 3.5 ms. The
+drag's worst frame is said, not judged. With every laying slowed 3 ms
+(`-- --slow-lay=3000`) all eight cost checks fail. Run seven times beside
+other work (`-- --only=hoses`), and once in the full run, all eight passed
+every time. In the run at load 43 to 46 (the 1-minute average while each
+case ran), 42080-1's six tubes cost 0.79 ms a hose and 3.04 of 3.5 ms with
+the budget, 42043-1's two 0.50 and 2.64, and 42050-1's eight 0.47 and
+2.54. The fastest of seven still varies: the costliest laying was 0.55 to
+1.15 ms from run to run, not in step with the load. The closest to the
+limit was 42043-1's 3.15 of 3.5, in the full run at load 42. The drag's
+worst frame by the clock was 2.1 to 4.3 ms, once 10.5 (42050-1, at load
+30).
+
+**Steering, swept again** (`sweep_after2`, the same 181 files): 56 of 168
+sets steer both ways and back, against rel-m83's 55 and G13's 42. None
+that steered in rel-m83 is lost, and 8840-1's B model now steers.
+
+**The other moving things, swept again** (`movesweep_after2`; its last 45
+sets, cut short by a spin-down, as `movesweep_after2rest`; both merged in
+`movesweep_g13b`).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|
+| before (rel-m83) | 144 of 380 | 15 | 297 | 209 / 16 / 180 |
+| G13 | 161 of 377 | 15 | 294 | 224 / 15 / 179 |
+| G13b | 163 of 381 | 15 | 300 | 221 / 19 / 170 |
+
+By kind, both ways and back: turntables 51, doors 39, booms and arms 73.
+Against G13, four things now move both ways and back that did not
+(42064-1's and 42108-1's turntables, 42112-1's and 6953-1's booms), and two
+no longer do. Both are worse:
+
+- 21019-1's turntable. G13b's first turn stops 10° round, not 9°. From
+  there, the second turn begins with a plate with a handle (#86) whose
+  cover is into a plate with a clip (#124). A pair whose covers overlap
+  where a grab begins is forgiven for that grab (G13), so the second turn
+  goes all of -60° through the clip. The turn back is not forgiven, meets
+  the clip at -29° and stops, 15.7 LDU from where it stood. The push aside
+  is not the cause: switched off, the same. rel-m83 turned it +1° and -10°
+  and back.
+- 6987-1's turntable, in a loop of 8 joints, comes back 0.29 LDU off
+  (G13: 0.0001). rel-m83 did not read the loop, and came back 12.3 LDU
+  off.
+
+Against rel-m83, nine things no longer move both ways and back: G13's eight
+and 21019-1's turntable. Of G13's eight, 4002020-1's turntable (a loop of
+15 joints) now comes back 0.025 LDU off, against G13's 0.057 and the 0.02
+allowed. Steps judged to stop on covers only went from 15 to 19: five new
+(4002020-1, 6983-1, 952-1, and 76139-1 twice), one of G13's gone.
+
+**Proved** (bench/results/grab13-2026-10-19/`probes/`, on rel-m87 merged):
+`grab_probe` windowed through `tools/probe.sh`, in full
+(`grab_probe_full_g13b_final.log`, at load 17 to 48), ran 463 checks: 462
+passed. The one that failed is a timing check: 7191-1's big section let go,
+its keeping frame 119 ms against 100, 94 of it the commit (`Grab.commit`,
+which this branch does not touch). It ran at load 47; G13's run kept it in
+67 ms, 53 the commit, at load 15 to 28. 8074-1's turntable is
+checked back again: +30, -60, +30 and back to 0.000 LDU, and no turn
+stopped on covers only. `-- --only=path` and `-- --only=beams` pass, and
+10220-1's door turns +4°, -9°, +5° and back to 0.000 LDU. Beside it,
+`placing_probe` passes (38 checks) and `share_play_probe` passes (40: a
+shared model's steering turned by its wheel, the grab's own work 2.9 ms at
+worst). Frame costs, the drag's own work: 42024-1's actuator 14.1 ms mean,
+29.9 at 95%, at load about 22 (G13 13.4 and 27.9; G12 6.6 and 12.1 at load
+4); 42081-1's arm 12.7 and 17.5 (G13 11.8 and 24.3); the four-bar's worst
+frame 18.1 ms, almost all one room test where the pointer is, at load
+about 28 (G13 12.7); 7191-1's big section 9.7 ms mean and 28.4 worst, at
+load 47 (G13 7.5 and 18.8).
+
 **Left for later.**
-- The steering loops that come back 0.03 to 0.19 LDU off (above): keep the
-  loop's pose where the move began for its end, and step only the test.
+- A pair forgiven by its covers (21019-1, above). Where both parts have
+  exact shapes, forgive the pair only where those shapes overlap where the
+  grab begins, and judge the rest by their shapes. That costs an exact
+  test on every flush neighbour, so both sweeps and the frame costs need
+  running again with it.
+- Loops that come back a little off over three moves: 6987-1 (0.29 LDU)
+  and 4002020-1 (0.025).
+- A loop's drag is tested along its way only on a pause or the release;
+  between, it is shown where the pointer is.
+- The ball joint's drag is not walked within a budget.
 - A part a step does not test may stand up to 2 LDU of its own way into
   another where a move stops.
-- Small sections' drag frames have no budget for the walk: the worst frame
-  rose to 5.6 ms (a turntable), 8.3 ms (a ball joint).
-- 3180-1's cupboard door: its hinge in the cupboard is not read. 8074-1's
-  crane: 18 free joints inside it swing down on the first turn, most 180°,
-  and the turn back meets the brick 1 x 16 that swung; a free joint pressed
-  by the model should swing aside, not stop the section.
+- 3180-1's cupboard door: its hinge in the cupboard is not read.
+- 6627-1's minifigure drag has one frame of about 400 ms, as in G12
+  (403 ms).
 - From G12, not begun: joints read again after a move (8448-1's steering
   link and its wheel rim, 4432-1's door, 10185-1's first floor, 4404-1's
-  kingpin loop, 9393-1), ball-jointed steering arms still refused, the
-  judge's own limits, and G11's leftovers.
+  kingpin loop, 9393-1, and 6980-1's hatch, whose second turn takes the
+  whole back), ball-jointed steering arms still refused, the judge's own
+  limits, and G11's leftovers.
