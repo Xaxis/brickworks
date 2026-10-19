@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow -->
 
 ## Sub-features
 
@@ -732,6 +732,55 @@ plan with Claude as the client.
   who built it with their photos). `document.documentElement.dataset.designs`
   is `ready`, `empty`, `not-yet`, `not-mine`, `signed-out` or `trouble`.
 - `designers browser flow` (`tools/web/designers_flow.mjs`): below.
+- `the monthly challenge's rules` (`supabase/challenges.sql`, 2026-10-19):
+  tables `challenges` (title, brief, `starts_on`/`ends_on` whole UTC days,
+  `most_parts`, `set_number`/`set_name`, `tested`, `test`, `ended_at`,
+  `settled_at`), `challenge_set_parts` (the set's lots, keyed as
+  `model_needs`), `challenge_entries` (model, owner, `way` hand or
+  assistant), `challenge_votes` (one per challenge, way and voter),
+  `challenge_winners`; read by no key. Functions, the service role's alone:
+  `challenge_state`, `challenge_open(tests)`, `challenge_shown(tests)`,
+  `challenge_check(challenge, model)` (`{ok, parts, set: {short,
+  short_lots, counted}, tested}`), `challenge_keeps`, `challenge_set`
+  (refused `past`, `overlap` naming the other, `set_empty`),
+  `challenge_end`, `challenge_list`, `challenge_enter` (refused `no_model`,
+  `not_yours`, `under_13`, `not_asked`, `barred`, `not_in_gallery`,
+  `no_challenge`, `entered`, `three`, `rules` with its check),
+  `challenge_withdraw`, `challenge_for_model`, `challenge_vote` (refused
+  `not_open`, `under_13`, `not_asked`, `barred`, `no_entry`, `own`,
+  `breaks`, `voted`), `challenge_settle`, `challenge_page(tests)`,
+  `challenge_mine(account, challenge)`, `challenge_wins(owner, models,
+  tests)`. Replaces no function. `api/_challenges.js` has the words
+  (`rulesSaid`, `brokenSaid`, `ENTER_SAID`, `VOTE_SAID`) and the routes;
+  `withWins` adds `won` to a page of cards (`api/share.js` list and
+  shelves, `api/people.js` designer page), `challengeLine` the gallery's
+  line (`?op=shelves` `challenge`).
+- `this month's challenge page` (`web/challenge.html`, `web/challenge.js`):
+  `/challenge`, drawn from `GET /api/people?op=challenge` (with the sign-in
+  `you`: `voted`, `entries`, `may_vote`, `why_not`; then `private,
+  no-store`, else 30 s at the CDN): `#title`, `#days`, `#brief`, `#rules
+  li`, `#how`, `#winners` (`#winner-cards .kept`), `#groups
+  section#group-hand` and `#group-assistant`, each entry a `.kept[data-entry]
+  [data-way]` with the gallery's card, `.challenge-said` lines (Winner, N
+  votes, No longer keeps the rules) and a button (Vote for it, Your vote,
+  You voted in this group, Your entry). `dataset.challenge` is `open`,
+  `upcoming`, `ended`, `none`, `not-yet` or `broken`. The gallery's front
+  line is `#challenge-line` (`web/gallery.js` `sayChallenge`); a card that
+  won has `small.won` (`data-won`).
+- `enter this month's challenge` (`web/model-page.js` `challengeEntry`,
+  `enterDialog`): for the model's own designer, signed in, `#challenge-entry`
+  after `#marks`: Enter this month's challenge (`button[data-enter]`), a
+  `dialog.enter` with the rules, radios `way` hand or assistant, Enter it;
+  a refusal lists `[data-rule]` items (`parts`, `set`, `tested`) and sets
+  `dataset.challengeRefused`; once in, "In this month's challenge, …, built
+  by hand. Take it out" (`dataset.challengeEntry` `entered`).
+- `setting the monthly challenge` (`web/admin.html`, `web/admin.js`
+  `drawChallenges`): This month's challenge, a table `#challenges
+  tr[data-challenge][data-state]` with End it now, and `#challenge-form`
+  (title, brief, first and last day as date inputs, three ticks: at most N
+  parts, only the parts of set N, marked Tested); `/admin?tests=1` lists
+  and sets the flows' test ones.
+- `challenges browser flow` (`tools/web/challenges_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -2016,6 +2065,58 @@ the CDN, Ada then Bob on one address each their own, her page the same
 bytes signed in or not, without tests public for 30 s with none of her
 test models; no page errors. 39 checks, all ok, 2026-10-19, against the
 held relay with the live project (about 2 minutes).
+
+The monthly challenge (`supabase/challenges.sql`). The SQL first, in a
+transaction rolled back on the live project (the trial makes its own
+accounts, models and challenges inside it):
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenges.sql \
+  --dry --try=tools/challenges_try.sql --table=challenge_entries
+python3 tools/minitest.py tests/test_challenges.py
+```
+
+It proves it when every line reads as its label says: refused `past`,
+`set_empty`, `overlap` with "Try October", too long by the check; the house
+keeps all three rules, the tower one lot short (3003 Yellow, need 10, have
+4), the hall parts, set and Tested broken, the uncounted one `counted`
+false; entering refused `not_yours`, `no_model`, `not_in_gallery` twice,
+`under_13`, `rules`, a way that is neither, `entered`, `not_asked`,
+`no_challenge` for a model that is not a test's; votes refused `own`,
+`under_13`, `not_asked`, `no_entry`, `not_open`, then `voted`; the page
+with two entries, no votes shown; the house not keeping the rules on an
+untested newer version and a vote for it `breaks`; taking back and in
+again; `three`; a designer taken out leaves the page; after the end no
+entry or vote; settled once, the house by hand 2 and the shed 1; the tie
+to the shed, entered first; the list; no table grants, row security on,
+17 functions the service role's alone; the timings (docs/COMMUNITY.md,
+Challenges); models, designer and pick "the same"; "rolled back, nothing
+kept". The tests: 9 passed.
+
+Then the code, in real browsers. Until challenges.sql is applied the local
+server holds it (`--hold=challenges`); once it is, a preview with the
+bypass, through its API alone:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9271 --hold=challenges &
+node --env-file=.env tools/web/challenges_flow.mjs --url=http://127.0.0.1:9271 --out=shots/challenges
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=shots/challenges
+```
+
+`challenges_flow` proves it when it ends "challenges: set, entered, voted
+and won, every rule checked on the stored model (N checks, all ok)": the
+owner sets it on `/admin?tests=1` (`1_admin_set-1280.png`,
+`1_admin_form-390.png`) with set 6075-2, Castle, another on its days 409,
+anybody else 404; the tower refused on its page for "3004 in Red (it needs
+12, the set has 0)" (`2_enter_refused-390.png`), the house entered by hand
+(`3_enter_dialog-390.png`, `4_entered-390.png`), the hall refused for parts
+and set, the plain one for Tested, Bob's shed in with the assistant, Cy
+under 13 refused; `/challenge` signed out (`5_challenge_visitor-*`), the
+gallery's line (`6_gallery_line-1280.png`), Ed's two votes
+(`7_challenge_ed-*`), Bob's vote, second vote and own refused, Cy told why
+(`8_challenge_cy-390.png`); ended on `/admin`, the winners 2 and 1 votes
+(`9_challenge_winners-*`), Ada's Challenges won and the card
+(`10_designer_won-390.png`), the gallery card's `won`; no page errors.
 
 The list, asked hard (reads only):
 

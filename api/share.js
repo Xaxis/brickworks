@@ -150,6 +150,7 @@ import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed } from "./_owned.js";
+import { challengeLine, withWins } from "./_challenges.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
   uploadsLeft,
@@ -1312,7 +1313,8 @@ async function gallery(request, response, origin) {
     ...said,
     per_page: PER_PAGE,
     more: rows.length > PER_PAGE,
-    models: rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)),
+    // What each won in the monthly challenges (supabase/challenges.sql).
+    models: await withWins(rows.slice(0, PER_PAGE).map((row) => ownedCard(origin, row)), Boolean(said.tests)),
     kinds: KINDS,
     sizes: Object.entries(SIZES).map(([id, size]) => ({ id, label: size.label })),
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
@@ -1378,7 +1380,7 @@ async function shelves(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const mine = await whoseOwn(request, origin);
   const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
-  const [pick, small, ready] = await Promise.all([
+  const [pick, small, ready, challenge] = await Promise.all([
     db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
     db("rpc/directory_models", { method: "POST", body: { query: {
       most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
@@ -1386,6 +1388,8 @@ async function shelves(request, response, origin) {
     // What they can build now, every piece in their collection: by Top builds.
     mine?.pool ? db("rpc/directory_models", { method: "POST", body: { query: {
       pool: mine.account, buildable: true, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}) } } }) : null,
+    // The monthly challenge open now, or the next (supabase/challenges.sql).
+    challengeLine(tests),
   ]);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
@@ -1396,7 +1400,9 @@ async function shelves(request, response, origin) {
       week: weekOf(pick.week), model: cardOf(origin, pick.card),
     } : null,
     small: { size: "small", label: SIZES.small.label, most: SIZES.small.most,
-      models: (small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), more: (small || []).length > SHELF },
+      models: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
+      more: (small || []).length > SHELF },
+    challenge,
     score: SCORE,
   });
 }

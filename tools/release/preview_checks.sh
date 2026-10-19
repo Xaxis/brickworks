@@ -40,6 +40,11 @@ declare -A CMD=(
   # them alone and never cached: API routes only, with the bypass
   # (supabase/designers.sql).
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
+  # The monthly challenge: set on /admin?tests=1 (a test one, which no
+  # visitor sees), entered from a model's page with each broken rule named,
+  # voted in its two groups, ended and won: API routes only, with the bypass
+  # (supabase/challenges.sql).
+  [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the

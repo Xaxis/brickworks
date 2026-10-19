@@ -30,6 +30,7 @@
     --ink: #eef1f5; --soft: #a9b2bf; --faint: #6f7987;
     --line: #262d38; --bg: #11151b; --panel: #171c24;
     --yellow: #f2cd37; --green: #57c97e; --red: #e06a62; --blue: #8fbcff;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
@@ -81,6 +82,14 @@
 #reports tr.asked td:first-child { box-shadow: inset 3px 0 0 #f2c536; }
 /* A reported photo of a build, to look at before taking it out. */
 #reports .reported-photo { max-width: 160px; height: auto; border-radius: 6px; display: block; margin-bottom: 4px; }
+/* The challenge's form (supabase/challenges.sql): its fields stacked, the days side by side. */
+#challenge-form { display: grid; gap: 12px; max-width: 640px; margin-top: 12px; }
+#challenge-form h3 { margin: 0; }
+#challenge-form label { display: grid; gap: 4px; }
+#challenge-form fieldset { display: grid; gap: 8px; margin: 0; }
+#challenge-form fieldset label { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#challenge-form .days { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+#challenge-form .row { margin-top: 0; flex-wrap: wrap; }
 </style>
 
 <div class="wrap">
@@ -191,6 +200,45 @@
       </table>
     </div>
     <p class="note" id="pick-note"></p>
+
+    <h2>This month’s challenge</h2>
+    <p class="note">One at a time, at <a href="/challenge">/challenge</a>, and
+       a line on the gallery's front. Brickworks checks the rules you choose
+       on each model as it is entered. Designers enter from a model's page,
+       built by hand or with the assistant, judged apart; people 13 and over
+       vote once in each group, and when it ends the most voted in each wins.
+       End it now closes it today.</p>
+    <div class="card scroller" style="padding:4px 4px 0">
+      <table>
+        <thead><tr>
+          <th>Challenge</th><th>Days</th><th>Rules</th><th>State</th>
+          <th class="n">By hand</th><th class="n">Assistant</th><th>Winners</th><th></th>
+        </tr></thead>
+        <tbody id="challenges"></tbody>
+      </table>
+    </div>
+    <form id="challenge-form" class="card">
+      <h3>Set a challenge</h3>
+      <label>Title
+        <input name="title" maxlength="80" required></label>
+      <label>The brief: what to build, in a line or two
+        <textarea name="brief" maxlength="600" rows="3" required></textarea></label>
+      <div class="days">
+        <label>First day
+          <input type="date" name="starts_on" required></label>
+        <label>Last day
+          <input type="date" name="ends_on" required></label>
+      </div>
+      <fieldset>
+        <legend>Rules, up to three</legend>
+        <label><input type="checkbox" name="has_most"> At most
+          <input type="number" name="most_parts" min="1" max="200000" value="200" aria-label="How many parts at most"> parts</label>
+        <label><input type="checkbox" name="has_set"> Only the parts of set
+          <input name="set_number" maxlength="30" placeholder="6080-1" aria-label="The set's number"></label>
+        <label><input type="checkbox" name="tested"> Marked Tested</label>
+      </fieldset>
+      <div class="row"><button type="submit">Set it</button><span class="note" id="challenge-note"></span></div>
+    </form>
 
     <h2>In the gallery</h2>
     <p class="note">What anyone can see at <a href="/gallery">/gallery</a>.

@@ -59,6 +59,10 @@
 // their own numbers, answered from the real project's models, builds,
 // remixes, comments, photos and model_views (tools/web/designers_stand_in.mjs),
 // for tools/web/designers_flow.mjs.
+//
+// --hold=challenges holds supabase/challenges.sql: its tables in memory and
+// its functions answered over the real project's models, Tested marks and
+// trust (tools/web/challenges_stand_in.mjs), for tools/web/challenges_flow.mjs.
 import http from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -71,7 +75,7 @@ const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9
 // uses supabase/versions.sql before the file is applied. What they hold is
 // at /__held/<table>, on this machine only.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
-const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens"].includes(name));
+const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -90,6 +94,9 @@ if (heldDiscovery) heldDiscovery.hold();
 // Outside them all: a designer's numbers read what every one of them holds.
 const heldDesigners = holding.includes("model_opens") ? await import("./designers_stand_in.mjs") : null;
 if (heldDesigners) heldDesigners.hold();
+// And the challenges, which read only the project's own tables.
+const heldChallenges = holding.includes("challenges") ? await import("./challenges_stand_in.mjs") : null;
+if (heldChallenges) heldChallenges.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -170,11 +177,11 @@ function page(pathname) {
 
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
-  const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners)
+  const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges)
     && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
-      ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? null;
+      ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1]) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }
