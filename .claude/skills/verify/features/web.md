@@ -843,7 +843,8 @@ plan with Claude as the client.
   (`model` → `shared_models(id)` on delete cascade, `n`, `at`, `note` 1 to
   280, `parts`, `steps`, `bytes`, `has_image`, `changes` jsonb, `first_changed`,
   `remixed_from_version`; primary key `(model, n)`; row security on, no grant
-  to `anon` or `authenticated`: only the server), and a version 1 for every
+  to `anon` or `authenticated`: only the server; **applied to the live project
+  2026-10-18** with `tools/apply_sql.mjs`, dry-run first, 7 rows), and a version 1 for every
   model published when it is applied. The newest's files stay `<id>.mpd` and
   `<id>.png`; an older one's are `<id>.v<n>.mpd` and `<id>.v<n>.png`, renamed
   when a newer one takes the link (the sweep keys by what is before the first
