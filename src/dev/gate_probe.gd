@@ -146,8 +146,17 @@ func _live_sign_in(account: Account, gate: SignInGate, world: BrickWorld,
 	await _click_control(named["signin_go"])
 	for _n: int in 900:
 		await process_frame
-		if not gate.visible:
+		if not gate.visible or account.age_ask:
 			break
+	# A new account is asked its age once (supabase/trust.sql, once applied):
+	# answered 13 or over here; tools/web/age_flow.mjs is about the question.
+	if account.age_ask:
+		_ok((await account.answer_age(3, int(Time.get_datetime_dict_from_system()["year"]) - 30)).is_empty(),
+			"a new account is asked its age, and the answer is taken")
+		for _n: int in 300:
+			await process_frame
+			if not gate.visible:
+				break
 	await _settle()
 	_ok(not gate.visible and account.signed_in() and account.email == email,
 		"the right code signs in and the screen goes: %s" % account.email)

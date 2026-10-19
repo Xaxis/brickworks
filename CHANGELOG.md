@@ -29,6 +29,29 @@ whole cycle.
   copy made with Open in Brickworks records which version it came from,
   and its page says so. Unpublishing takes every version away. Needs
   `supabase/versions.sql` applied before the deploy.
+- Ground rules for the site. Terms of use and community guidelines, at
+  brickworks.diy/terms and /guidelines, in plain words: credit and the
+  three licences, no copied designs passed off as yours, no personal
+  photos of children, designs made with the AI designer or Brickify said
+  to be so, LEGO® written as an adjective, and what gets a model or an
+  account taken out. Every page's footer links them, and the Share panel
+  says beside Publish that publishing means agreeing to the guidelines.
+- One question at the first sign-in, on the site and in the app: when
+  were you born, as a month and a year, with nothing before the answer to
+  say what the right one is. Brickworks keeps only whether you are 13 or
+  over, and when you said so, never the date. Under 13 you can build, keep
+  your models and share them by link; the gallery, a public profile, a
+  public collection and a name shown on a link are for people 13 and over,
+  and the server refuses them, politely, whatever asks. Accounts already
+  there are asked once, at their next sign-in.
+- Reports reach the site's owner by email within the hour, at most one
+  email an hour, each report with a link to its row on the admin page.
+  A report about a test account's model is never emailed: it is rendered
+  and recorded instead.
+- Takedown requests answer back: a counter-notice for a model taken out by
+  mistake, the statements a copyright notice needs, and a marked place for
+  the site's copyright agent.
+
 - Arrows of your own on a booklet page. Lay out page… has Draw an arrow:
   drag on the page from where the arrow starts to where it points, then
   drag its middle to bend it, and set it red (where a part goes in) or

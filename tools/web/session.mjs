@@ -49,15 +49,42 @@ export async function mintCode(email = TEST_EMAIL) {
   return code;
 }
 
+/// The age question (supabase/trust.sql) answered 13 or over for a test's
+/// account, so a flow that lists or makes a profile is not asked first:
+/// in the database once trust.sql is applied there, and in the local
+/// server's stand-in for it when BW_STAND_IN names one
+/// (tools/web/trust_stand_in.mjs). Never for the owner's own account,
+/// whose answer is theirs to give. Quiet when neither is there.
+export async function answerAge(userId, email, atLeast13 = true) {
+  const p = project();
+  if (!p || !userId) return;
+  const master = String(process.env.MASTER_EMAIL || "").trim().toLowerCase();
+  if (master && String(email || "").toLowerCase() === master) return;
+  await fetch(`${p.url}/rest/v1/rpc/answer_age`, {
+    method: "POST",
+    headers: { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" },
+    body: JSON.stringify({ account: userId, at_least_13: atLeast13 }),
+  }).catch(() => null);
+  const standIn = String(process.env.BW_STAND_IN || "").replace(/\/+$/, "");
+  if (standIn) {
+    await fetch(`${standIn}/__stand_in/age`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ account: userId, at_least_13: atLeast13 }),
+    }).catch(() => null);
+  }
+}
+
 /// A whole session for [email]: a code minted and redeemed, as the app
-/// redeems one. What the app keeps of it is what is returned.
+/// redeems one. What the app keeps of it is what is returned. Its age is
+/// answered 13 or over (answerAge), unless { age: false } says leave it
+/// to be asked, as the age flow does.
 ///
 /// Flows run two at a time sign in the one test account, and minting a
 /// code replaces the last: one flow's code was refused (403) because the
 /// other minted between its mint and its redeem, and three checks failed
 /// behind the sign-in screen (2026-10-13). So a refused code is minted
 /// again, after a wait that differs between the two.
-export async function mintSession(email = TEST_EMAIL) {
+export async function mintSession(email = TEST_EMAIL, { age = true } = {}) {
   const p = project();
   let reply = null;
   let body = {};
@@ -73,6 +100,7 @@ export async function mintSession(email = TEST_EMAIL) {
     await new Promise((done) => setTimeout(done, 400 + Math.random() * 1600 * attempt));
   }
   if (!body.refresh_token) throw new Error(`the code would not redeem: ${reply.status}`);
+  if (age) await answerAge(body.user?.id, body.user?.email || email);
   return {
     access_token: body.access_token,
     kept: {

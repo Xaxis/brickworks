@@ -5,7 +5,7 @@
 // Every word — a name, a handle, a collection's, a model's — goes on the
 // page as text, never as markup; a link is built from an id or a handle
 // only when it is one.
-import { askToSignIn, call, email, signOut, signedIn } from "/account.js";
+import { askAgeIfAsked, askToSignIn, call, email, signOut, signedIn } from "/account.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -93,6 +93,7 @@ function listRow(list) {
   box.type = "checkbox";
   box.checked = Boolean(list.public);
   open.append(box, document.createTextNode(" Public"));
+  if (document.documentElement.dataset.young === "yes") box.disabled = true;
   const save = document.createElement("button");
   save.type = "button";
   save.className = "cta ghost small";
@@ -163,6 +164,13 @@ async function load() {
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
   $("who").textContent = `Signed in as ${email()}. Only you see the address; the gallery shows the name below.`;
+  // The age question, if this account has not answered it; and under 13,
+  // no public profile or public list here (the server refuses them too).
+  const age = await askAgeIfAsked().catch(() => null);
+  const young = Boolean(age && age.over_13 === false);
+  $("young").hidden = !young;
+  for (const field of $("profile-form").querySelectorAll("input, textarea, button[type=submit]")) field.disabled = young;
+  document.documentElement.dataset.young = young ? "yes" : "no";
   const mine = answer.body.profile;
   $("name").value = mine ? String(mine.name) : "";
   $("handle").value = mine ? String(mine.handle) : "";

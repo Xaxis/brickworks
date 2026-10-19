@@ -72,6 +72,14 @@
       "tests": []
     },
     {
+      "id": "api:POST /api/account?op=age",
+      "kind": "api",
+      "entry": "api/account.js",
+      "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/mcp",
       "kind": "api",
       "entry": "api/mcp.js",
@@ -109,6 +117,14 @@
       "entry": "tools/web/account_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:age browser flow",
+      "kind": "cli",
+      "entry": "tools/web/age_flow.mjs",
+      "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0.0.1:8742 --out=shots/age   (.env sourced; relay_server.mjs --static=build/web --trust-stand-in)",
+      "area": "web",
       "tests": []
     },
     {
@@ -753,6 +769,14 @@
       "entry": "tools/web/render_open_check.mjs",
       "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app: the Render dialog's first open, every frame timed)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:report digest browser flow",
+      "kind": "cli",
+      "entry": "tools/web/digest_flow.mjs",
+      "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest   (.env sourced, MASTER_EMAIL; never knocks a real deployment)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1867,6 +1891,14 @@
       "tests": []
     },
     {
+      "id": "ui:age question",
+      "kind": "ui",
+      "entry": "api/_trust.js",
+      "reach": "sign in as a new account: the app's sign-in screen asks it, and /profile on the site (once supabase/trust.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:ask claude about the selection",
       "kind": "ui",
       "entry": "src/ai/selection_scope.gd",
@@ -2545,6 +2577,14 @@
       "kind": "ui",
       "entry": "web/takedown.html",
       "reach": "https://brickworks.diy/takedown   (takedown.js sends a report with a way to reach the sender)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:terms and guidelines",
+      "kind": "ui",
+      "entry": "web/guidelines.html",
+      "reach": "https://brickworks.diy/guidelines and /terms  (linked from every page's footer and beside Publish)",
       "area": "web",
       "tests": []
     },

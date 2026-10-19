@@ -86,6 +86,11 @@
 // here from the file, like the part count. Nothing a page does writes per
 // request: a view is a beacon the page sends once a day (?op=seen), and
 // counted once per visitor per day, never for a robot.
+//
+// The ground rules (2026-10-18, supabase/trust.sql, api/_trust.js): an
+// account under 13 shares by link like anyone, but is refused a listing and
+// a credited name, in words, here and again by the database; and listing
+// anything new needs the age question answered.
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -99,6 +104,7 @@ import {
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
+import { publicTrouble } from "./_trust.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 600 * 1024;
@@ -384,7 +390,7 @@ async function wasShared(id) {
 async function ownRow(id) {
   if (!ID.test(id || "")) return null;
   const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from,`
-    + "description,tags,kind,licence,parts,steps,bytes,has_image,updated_at");
+    + "description,tags,kind,licence,author,parts,steps,bytes,has_image,updated_at");
   return rows[0] || null;
 }
 
@@ -1230,6 +1236,11 @@ async function publish(request, response) {
   }
   // Into the gallery, as against staying in it: only that is counted.
   const newlyListed = listed && !(existing && existing.published && existing.listed);
+  // The age rule (api/_trust.js): a listing needs 13 or over, and a name
+  // shown on the link not being under 13. 422, never 403 (above).
+  const young = await publicTrouble(owner, { listing: newlyListed ? true : listed ? "kept" : false,
+    credit: Boolean(author) && author !== (existing?.author ?? null) });
+  if (young) throw new Refusal(young, 422);
 
   if (newlyListed && !(await mayList(owner))) {
     throw new Refusal("you have listed a lot in the gallery in a short time: try again in an hour, "

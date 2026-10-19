@@ -129,6 +129,8 @@ function draw(data) {
   reports.replaceChildren();
   for (const report of data.reports || []) {
     const row = document.createElement("tr");
+    // Where the owner's email of reports links each one (api/_trust.js).
+    if (Number.isInteger(report.id)) row.id = `report-${report.id}`;
     cell(row, when(report.at));
     const about = document.createElement("td");
     about.className = "model";
@@ -162,6 +164,14 @@ function draw(data) {
     reports.append(row);
   }
   say("reports-note", data.reports?.length ? "" : "Nothing is reported.");
+  // Opened from that email: the report it named, marked (and put in view
+  // once the page shows, by refresh).
+  const named = /^#report-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
+  if (named) {
+    named.classList.add("asked");
+  } else if (/^#report-\d+$/.test(location.hash)) {
+    say("reports-note", "The report that email named is no longer open: it was settled.");
+  }
 
   const barred = $("barred");
   barred.replaceChildren();
@@ -226,6 +236,11 @@ async function refresh() {
     draw(await load());
     $("view").classList.remove("hide");
     $("gate").classList.add("hide");
+    const asked = document.querySelector("#reports tr.asked");
+    if (asked && !refresh.shown) {
+      refresh.shown = true;
+      asked.scrollIntoView({ block: "center" });
+    }
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
   } catch (problem) {
     $("view").classList.add("hide");

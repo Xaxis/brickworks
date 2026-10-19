@@ -90,6 +90,9 @@ try {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
   const gated = await until((s) => s.state === "signed_out" && s.gated, "showed the sign-in screen");
   check(gated.gated, "the sign-in screen is up on a first visit");
+  // The page is told where a control is once two of the app's reports agree:
+  // the form appears as the screen stops checking, a moment before that.
+  for (let i = 0; i < 60 && !(await controls()).signin_email; i++) await page.waitForTimeout(500);
   const offered = Object.keys(await controls());
   check(offered.length > 0 && offered.every((name) => name.startsWith("signin_")),
     `nothing but the sign-in form can be pressed: ${offered.join(", ")}`);
@@ -118,6 +121,9 @@ try {
   await click("signin_email");
   await page.keyboard.press("Control+A");
   await page.keyboard.type(email);
+  // The keys reach the field a frame at a time, and a click straight after
+  // the last one can land first: Email me a code then saw the old text.
+  await page.waitForTimeout(1500);
   await click("signin_send");
   for (let i = 0; i < 120 && !(await controls()).signin_code; i++) await page.waitForTimeout(500);
   check(Boolean((await controls()).signin_code),
@@ -135,8 +141,25 @@ try {
   await click("signin_code");
   await page.keyboard.press("Control+A");
   await page.keyboard.type(code);
+  await page.waitForTimeout(1500);
   await click("signin_go");
-  const inside = await until((s) => s.state === "signed_in" && !s.gated, "signed in");
+  let inside = await until((s) => s.state === "signed_in" && (!s.gated || s.age_ask), "signed in");
+  if (inside.age_ask) {
+    // The age question (supabase/trust.sql), once that is applied: asked
+    // once, in the sign-in screen, and answered 13 or over here
+    // (tools/web/age_flow.mjs is about the question itself).
+    for (let i = 0; i < 60 && !(await controls()).age_go; i++) await page.waitForTimeout(500);
+    check(Boolean((await controls()).age_go), "a new account is asked its age once, in the sign-in screen");
+    // Laid out a frame after it is first told, and keys reach the field a
+    // frame at a time: a pause before each, as for the address above.
+    await page.waitForTimeout(1500);
+    await click("age_month_3");
+    await click("age_year");
+    await page.keyboard.type(String(new Date().getUTCFullYear() - 30));
+    await page.waitForTimeout(1500);
+    await click("age_go");
+    inside = await until((s) => s.state === "signed_in" && !s.gated, "let in after the age question");
+  }
   check(inside.email === email, `the code signs in, and the screen goes: ${inside.email}`);
   await page.waitForTimeout(2000);
   await shot("5_signed_in");

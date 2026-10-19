@@ -25,7 +25,17 @@
 //                                 note?, contact?}: somebody saying it
 //                                 should not be in the gallery, to the
 //                                 site's owner (api/admin.js); signed in or
-//                                 not
+//                                 not. Emailed to them within the hour
+//                                 (api/_trust.js sendDigest)
+//   POST ?op=digest               the hourly knock (supabase/trust.sql's
+//                                 cron job): this hour's one email of what
+//                                 was reported, if it has not gone. Needs
+//                                 no secret: it can send nothing else
+//
+// The ground rules (2026-10-18, supabase/trust.sql): a profile and a public
+// collection need the age question answered 13 or over, and nothing of an
+// account under 13 is shown as a profile. Refused here in words, and by
+// the database again.
 //
 // Since the directory's moderation (supabase/moderation.sql): names are
 // checked for abuse and for names somebody else owns (api/_names.js); each
@@ -52,6 +62,7 @@ import {
   TESTS_CACHE, Unacceptable, cardOf, count, escapeHtml, siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
+import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -124,13 +135,12 @@ async function publishedModel(id) {
 }
 
 /// A profile anybody may see: none for an account the site's owner took
-/// out of the gallery.
+/// out of the gallery, nor for one under 13.
 async function personOf(handle) {
   if (!HANDLE.test(handle || "")) return null;
   const rows = await db(`people?handle=eq.${handle}&select=account,handle,name,bio,created_at`);
   if (!rows[0]) return null;
-  const barred = await db("rpc/is_barred", { method: "POST", body: { account: rows[0].account } });
-  return barred === true ? null : rows[0];
+  return (await shownPublicly(rows[0].account)) ? rows[0] : null;
 }
 
 function pageOf(query) {
@@ -182,6 +192,8 @@ async function saveProfile(request, response) {
   if (!name) throw new Refusal("give the name to show on your profile: whatever you like to be called here");
   const bio = cleanLines(body.bio, 300, "what you say about yourself");
   checkNames({ "That name": [name, "name"], "What you say about yourself": [bio, "words"] });
+  const young = await publicTrouble(account, { profile: true });
+  if (young) throw new Refusal(young, 422);
   await counted(account, "profile");
   const now = new Date().toISOString();
   try {
@@ -290,11 +302,16 @@ async function saveList(request, response) {
   const description = cleanLines(body.description, 500, "a list's description");
   if (body.public !== undefined && typeof body.public !== "boolean") throw new Refusal("public is true or false");
   checkNames({ "The collection's name": [name, "name"], "Its description": [description, "words"] });
+  let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
+  const was = id ? await ownList(id, account) : null;
+  if (id && !was) throw new Refusal("there is no list of yours at that id", 404);
+  // Public, newly or still: the age rule (api/_trust.js).
+  const young = await publicTrouble(account, { collection: body.public === true
+    ? (was && was.public ? "kept" : true) : body.public === undefined && was?.public ? "kept" : false });
+  if (young) throw new Refusal(young, 422);
   await counted(account, "collection");
   const now = new Date().toISOString();
-  let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   if (id) {
-    if (!(await ownList(id, account))) throw new Refusal("there is no list of yours at that id", 404);
     const changed = { name, description, updated_at: now };
     if (body.public !== undefined) changed.public = body.public;
     await db(`model_collections?id=eq.${id}&owner=eq.${account}`, { method: "PATCH", body: changed });
@@ -375,8 +392,16 @@ async function report(request, response) {
   const named = ["model", "handle", "collection"].filter((key) => body[key] !== undefined && body[key] !== "");
   if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle or a collection");
   const target = {};
+  // A counter-notice (web/takedown.html): about a model, which may be out
+  // of the gallery already, with a way to reach whoever sends it.
+  const counter = body.counter === true;
+  if (counter && named[0] !== "model") throw new Refusal("a counter-notice is about a model: give its link");
+  if (counter && !cleanLine(body.contact, 200)) throw new Refusal("a counter-notice needs a way to reach you");
   if (named[0] === "model") {
-    if (!(await publishedModel(String(body.model)))) throw new Refusal("there is no shared model at that link", 404);
+    const there = counter
+      ? ID.test(String(body.model)) && (await db(`shared_models?id=eq.${String(body.model)}&select=id`)).length > 0
+      : await publishedModel(String(body.model));
+    if (!there) throw new Refusal("there is no shared model at that link", 404);
     target.model = String(body.model);
   } else if (named[0] === "handle") {
     const person = await personOf(String(body.handle).toLowerCase());
@@ -387,15 +412,34 @@ async function report(request, response) {
     if (!list) throw new Refusal("there is no list at that id", 404);
     target.collection = list.id;
   }
-  const reason = String(body.reason || "");
+  const reason = counter ? "other" : String(body.reason || "");
   if (!REASONS.has(reason)) throw new Refusal(`a reason is one of ${[...REASONS].join(", ")}`);
-  const note = cleanLines(body.note, 1000, "a note");
+  let note = cleanLines(body.note, 1000, "a note");
+  if (counter && !/^Counter-notice\b/.test(note || "")) note = `Counter-notice. ${note || ""}`.trim().slice(0, 1000);
   const contact = cleanLine(body.contact, 200) || null;
   const visitor = account ? null : visitorKey(request, "report");
   await counted(account || visitor, "report");
-  await db("reports", { method: "POST", body: { ...target, reason, note, contact: contact && contact.length >= 3 ? contact : null,
-    reporter: account, visitor } });
-  return response.status(200).json({ reported: true });
+  const made = await db("reports", { method: "POST", body: { ...target, reason, note, contact: contact && contact.length >= 3 ? contact : null,
+    reporter: account, visitor }, prefer: "return=representation" });
+  // To the owner, by email, if this hour has not had its one (a test's,
+  // rendered and recorded only). A digest that does not go is no reason
+  // to tell the person their report did not: it is kept, and goes next.
+  let digest = { state: "none" };
+  try {
+    if (Array.isArray(made) && made[0]?.id) digest = await sendDigest({ origin: originOf(request), report: made[0].id });
+  } catch (trouble) {
+    console.error(`people: report digest: ${String(trouble?.message || trouble).slice(0, 160)}`);
+  }
+  return response.status(200).json({ reported: true, ...(digest.state === "dry"
+    ? { digest: { state: "dry", id: digest.digest, reports: digest.reports } } : {}) });
+}
+
+/// The hourly knock: this hour's email of the owner's reports, if any
+/// wait and it has not gone. Anybody may knock; nothing else can be sent.
+async function knock(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const sent = await sendDigest({ origin: originOf(request) });
+  return response.status(200).json({ state: sent.state, reports: sent.reports || 0 });
 }
 
 // ---------------------------------------------------------------------------
@@ -593,6 +637,7 @@ export default async function handler(request, response) {
       if (op === "uncollection") return await dropList(request, response);
       if (op === "collect") return await collect(request, response);
       if (op === "report") return await report(request, response);
+      if (op === "digest") return await knock(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

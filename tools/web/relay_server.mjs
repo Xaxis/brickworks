@@ -30,9 +30,15 @@
 // over the connector this way.
 //
 //   node tools/web/relay_server.mjs 8790 --static=build/web
+//
+// With --trust-stand-in it answers supabase/trust.sql's functions itself,
+// in memory, until that file is applied to the project
+// (tools/web/trust_stand_in.mjs): the age question and the report digest's
+// dry run, for tools/web/age_flow.mjs and digest_flow.mjs.
 import http from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
+import { standIn, standInRoute } from "./trust_stand_in.mjs";
 
 const port = Number(process.argv[2] || 8790);
 const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
@@ -46,6 +52,8 @@ if (heldTables) {
   heldTables.hold(holding);
   console.log(`holding ${holding.join(", ")} here, not in the project`);
 }
+const stoodIn = process.argv.includes("--trust-stand-in");
+if (stoodIn) standIn();
 const routes = new Map();
 const web = new URL("../../web/", import.meta.url);
 
@@ -131,6 +139,19 @@ http.createServer(async (incoming, outgoing) => {
     return outgoing.end(JSON.stringify(rows));
   }
   const query = Object.fromEntries(url.searchParams);
+  if (stoodIn && url.pathname.startsWith("/__stand_in/")) {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    let body = {};
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+    } catch {
+      body = {};
+    }
+    const said = (await standInRoute(url, incoming.method, body)) || { status: 404, value: { error: "not found" } };
+    outgoing.writeHead(said.status, { "content-type": "application/json" });
+    return outgoing.end(JSON.stringify(said.value));
+  }
   let handler = null;
   const found = /^\/api\/([a-z]+)\/?$/.exec(url.pathname);
   if (found) handler = await route(found[1]);
@@ -181,6 +202,7 @@ http.createServer(async (incoming, outgoing) => {
     headers: incoming.headers,
     body,
   };
+
   const response = {
     statusCode: 200,
     status(code) { this.statusCode = code; return this; },

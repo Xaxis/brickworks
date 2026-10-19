@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow -->
 
 ## Sub-features
 
@@ -559,12 +559,43 @@ plan with Claude as the client.
   reasons, a note, a way to reach the reporter, Send and thanks; signed in
   (`account.js`) or not. `POST /api/people?op=report` (one thing named, a
   reason that is one, 404 for what is not there, 429 past the limit).
+  **Emailed to the owner** (2026-10-18, `api/_trust.js` `sendDigest`,
+  `supabase/trust.sql`): to `MASTER_EMAIL` from the sign-in codes' sender,
+  within the hour and at most one email an hour of the clock — the first
+  report in a quiet hour at once, later ones in the next — each report
+  linking `/admin#report-<id>` (marked and scrolled to on the admin page).
+  The hourly send is `POST /api/people?op=digest` (needs no secret; the
+  database's pg_cron knocks a minute past each hour). A report about or by a
+  test account (`@resend.dev`) is its own stream, never sent: rendered and
+  recorded in `report_digests` (state `dry`), and the report's answer says
+  `digest: {state: "dry", id}`. `REPORT_MAIL=off` sends nothing.
 - `takedown page` (`web/takedown.html`, `web/takedown.js`): `/takedown`, in the
   gallery's footer ("Press Report on its page, or see takedown requests"),
   every server-made page's footer with it and beside each Report it; says how,
   and has a form taking the page's address (a model's, a profile's or a
   collection's), what is wrong, what is theirs and how to reach them, sent as
-  a report.
+  a report. For a copy of somebody's work it also asks a signature and the
+  two statements a copyright notice needs (2026-10-18). A counter-notice
+  form (`#counter`: the model's address, why it was a mistake, name,
+  address and phone, email, the perjury and court statements) sends
+  `counter: true`, which may name a model already taken out, as reason
+  `other` with a note starting "Counter-notice". `#agent` is the DMCA
+  designated agent's place, marked for the owner to fill in.
+- `terms and guidelines` (`web/terms.html`, `web/guidelines.html`, 2026-10-18;
+  `docs/COMMUNITY.md` says where each rule is enforced): `/terms` and
+  `/guidelines`, linked from every site page's footer (and the 404's and the
+  Claude sign-in page's), from the server-made pages through the gallery's
+  footer, and from the Share panel beside Publish. `/terms` has the
+  operator's line (`#operator`) marked for the owner to fill in.
+- `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
+  `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
+  once, after a first sign-in, on the site and in the app — "When were you
+  born?", month and year, nothing about 13 before the answer. Under 13 the
+  server refuses (422, in words) a listing, a credit, a profile and a public
+  collection, and the database's triggers refuse them again; an account not
+  asked yet is told to answer first before anything new goes public.
+- `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
+  flow` (`tools/web/digest_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1528,6 +1559,49 @@ account (`3_admin_queue.png`); Take out — off the queue, out of the gallery;
 the second model reported and Take out the account — listed as out, its
 other model out, its profile 404, anything new 409 (`4_admin_barred.png`);
 Let back in; no console error or refused request anywhere.
+
+The ground rules (2026-10-18), against a local server standing in for
+`supabase/trust.sql` until it is applied (`--trust-stand-in`, which answers
+its five functions in memory and sends the rest to the real database), or a
+deployment once it is (four and one throwaway accounts, deleted at the end;
+the local server needs `build/web` from `tools/export.sh web`):
+
+```sh
+set -a; . ./.env; set +a
+node tools/web/relay_server.mjs 8742 --static=build/web --trust-stand-in &
+BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0.0.1:8742 --out=shots/age
+BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest
+```
+
+`age_flow` proves it when it ends "the age question is asked neutrally, and
+what it answers holds on the site, in the app and on the server": every
+page's footer links `/terms` and `/guidelines`; each topic on
+`/guidelines`; the operator's and the agent's lines marked; the
+counter-notice form; nothing sideways at 390 and 1280; on `/profile`, "When
+were you born?" with no word of 13 before the answer; under 13, what that
+means said after, the profile form off, and the server refusing a profile, a
+public collection, a listing and a credit (422) while a private list and a
+link go, and a second answer changing nothing; 13 or over, a profile, a
+public list and a credited listing; in the app, the sign-in screen asking it
+(only its controls pressable), under 13 its words and Start building, Share
+with List it and Show who made it off and "Publishing means you agree to
+the guidelines" opening `/guidelines`; 13 or over, let straight in with the
+box to tick. `digest_flow` ends "a report reaches the owner as one email an
+hour, and a test's is only ever a dry run": a report from a model's page
+makes a dry digest at once, recorded with its subject, its link to
+`/admin#report-<id>` and the note escaped; a second that hour makes none;
+the knock finds nothing real to send; the owner's admin page at that link
+shows the row, marked and in view (`1_digest_email.png`,
+`2_admin_at_the_link.png`). Never knock a real deployment from a test: it
+would send the owner that hour's real reports.
+
+The SQL itself, every trigger and function, in a rolled-back transaction
+(prints each refusal and permission; nothing kept):
+
+```sh
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js \
+  node tools/apply_sql.mjs supabase/trust.sql --dry --try=tools/trust_trial.sql --table=profiles
+```
 
 The list, asked hard (reads only):
 
