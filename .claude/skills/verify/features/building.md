@@ -650,16 +650,25 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its housing 18940). Each turns back by the turn measured from where it
   stood. `-- --only=moving` (in the full run): 8074-1's crane on its
   turntable (a cable bends out of the way) and 10220-1's door (what touched
-  as built is forgiven in each later grab) moved +30, -60 and back. `-- --only=meets` (in the full run): a move
+  as built is forgiven in each later grab) moved +30, -60 and back, and
+  10295-1's right door (G12, MECHANISMS §20: two parts block a move only
+  where their exact shapes overlap, `Grab._clear_exactly`); each also
+  checks that no turn stopped where only the two parts' covers met.
+  `-- --only=grooved` (in the full run): 8448-1's racer and 5533-1 turned
+  at their pinion, the rack with holes (32185, 6630) slides on the studs
+  standing in its groove and comes back on the next turn
+  (`Bodies._grooves_by_shape`). `-- --only=kingpin` (in the full run):
+  9392-1's steering arm on two balls turns on the line through them
+  (`Grab._kingpin`). `-- --only=meets` (in the full run): a move
   stopped by the model names the two parts that met (`GrabDrag._met_words`);
   `-- --only=sockets`: 42111-1's steering links (2739a, sockets drawn as
   plain rounds) hang on their towballs by ball joints. Every OMR set with a
   steering: `tools/steer_sweep.py run LABEL` (181 files, four headless jobs
   under heavy, ~20 min; `--only=SET,...`, `--shots` windowed with pictures
   from above) runs `grab_probe -- --only=sweep --list=FILE` and writes
-  `sweep_LABEL.jsonl` and `.md` to bench/results/grab11-2026-10-18 (G9's in
-  grab9-2026-10-18); `table LABEL --against=OTHER` sets two side by side
-  (MECHANISMS §19: 33 of 169 before G11). Each row says how far the steering
+  `sweep_LABEL.jsonl` and `.md` to bench/results/grab12-2026-10-18 (G9's in
+  grab9-2026-10-18, G11's in grab11-2026-10-18); `table LABEL --against=OTHER`
+  sets two side by side (MECHANISMS §20: 51 of 168 before G12). Each row says how far the steering
   arms turned; every shared sub-assembly is made its own before the turns;
   each Godot it starts gets a data folder of its own (`.scratch-data`), never
   the owner's app data (opening a real set saves the parts it carries).
@@ -667,11 +676,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   with a turntable, a door, ramp, hatch, gate, flap or lid, or a crane;
   `grab_probe -- --only=movesweep`) moves a turntable's top, a door and the
   biggest boom or arm on a hinge, pin or axle +30, -60 and back, and writes
-  `movesweep_LABEL.jsonl` and `.md`. Why a rack does not go: `grab_probe --
-  --only=steerdebug --steer-set=FILE [--turn=ID or SET:ID] [--pair=A,B]`
+  `movesweep_LABEL.jsonl` and `.md`. Each turn stopped where two parts meet
+  is judged again by the two parts' exact shapes, the moving one a degree on
+  (a click hinge a click on): `meeting` in its row, "real", "false" (their
+  covers only) or "unjudged", and the table splits the meetings so; a thing
+  that moves as far as its real parts let it counts as moving to its stop
+  (G12). `--shots` runs it windowed under heavy and the GPU lease, with
+  pictures of each thing before and at each turn (`move_SET_KIND_*.png`).
+  Why a rack does not go: `grab_probe --
+  --only=steerdebug --steer-set=FILE [--turn=ID or SET:ID] [--pair=A,B]
+  [--links=ID] [--first=ID:DEG,...]`
   prints the rack's joins to the part its pinion turns in, every shaft near
   it, how far a turn's loop closes, where two parts stand and whose studs
-  reach which, and pictures of the rack's neighbourhood when windowed.
+  reach which, a part's body's joints (`--links`), after moves made first
+  over MCP (`--first`), and pictures of the rack's neighbourhood when
+  windowed.
   `-- --only=stays` (in the full run): 42081-1's tyre "23798" named from the
   catalogue, and what stays the biggest body, not its bucket (535 g by its
   box).
@@ -709,7 +728,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   nothing on and is tested for room by nothing (`Bodies.flexible`).
   Racks (MECHANISMS §19): a rack in its housing (18942 in 18940) slides on
   the housing's line ("housing"); studs standing up into a grooved steering
-  rack (87761, 64781) ride in its groove ("groove"); a piece with a rack its
+  rack (87761, 64781, and the racks with holes 6630, 6592 and 32185, G12)
+  ride in its groove ("groove"), found from the rack's shape wherever it
+  has slid to (`Bodies._grooves_by_shape`); a piece with a rack its
   pinion holds slides where it rests instead of being lodged ("rests"); the
   round rack 2790a is loose in its holder; a socket drawn as plain rounds a
   ball's size holds a ball (`Joints.balls`).
