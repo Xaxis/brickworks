@@ -266,6 +266,13 @@ try {
 
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+    // On a deployment the link is the model's own page, whose button opens
+    // it in the app (the local relay goes straight on); m87's preview waited
+    // 600 s on the page for an app that was never opened.
+    const cta = await page.$('.actions a.cta[href^="/app?view="]').catch(() => null);
+    if (cta) {
+      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
+    }
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the shared model opened", 600);
     const ready = await until(page, () => {
       const p = ((window.brickworksShare || {}).view || {}).play || {};
