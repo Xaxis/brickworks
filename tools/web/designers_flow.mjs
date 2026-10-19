@@ -433,16 +433,17 @@ try {
   const asAda = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers: { ...headers, authorization: `Bearer ${ada.access_token}` } })).text();
   const asNobody = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers })).text();
   check("her page's bytes are the same signed in as hers or not", asAda === asNobody);
-  // Vercel's CDN keeps s-maxage for itself and hands a browser what is
-  // left (public, max-age=0): on a deployment the CDN answering the same
-  // page again is the proof, as share_probe has it.
+  // Vercel's CDN keeps s-maxage for itself and hands a browser what is left
+  // (share_probe reads it the same way); on a deployment the CDN answering
+  // a second asking is the proof. Only the local relay shows s-maxage.
   const local = /127\.0\.0\.1|localhost/.test(site);
   const shared = await fetch(`${site}/u/${ADA}`, { headers });
-  const caching = shared.headers.get("cache-control") || "";
-  const cdn = local ? "" : (await fetch(`${site}/u/${ADA}`, { headers })).headers.get("x-vercel-cache") || "none";
-  check(`without tests, kept by the CDN as before (${caching}${local ? "" : `; asked again: ${cdn}`}) and none of her test models in it`,
-    /public/.test(caching) && /max-age=0/.test(caching) && (local ? /s-maxage=30/.test(caching) : /HIT|STALE/.test(cdn))
-      && !(await shared.text()).includes(ids.castle));
+  const shown = shared.headers.get("cache-control") || "";
+  const sharedBody = await shared.text();
+  const again = local ? "" : (await fetch(`${site}/u/${ADA}`, { headers })).headers.get("x-vercel-cache") || "none";
+  check(`without tests, kept by the CDN as before (${shown}${again ? `; asked again, ${again}` : ""}) and none of her test models in it`,
+    /public/.test(shown) && /max-age=0/.test(shown) && (local ? /s-maxage=30/.test(shown) : /HIT|STALE/.test(again))
+      && !sharedBody.includes(ids.castle));
 } catch (trouble) {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);

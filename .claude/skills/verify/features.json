@@ -547,7 +547,7 @@
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
-      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced; -- --played for the licences, the sorts, the moves and the front from played answers, no server)",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced; -- --played for the licences, the sorts, the moves, the front, builds, comments, photos and designers from played answers, no server)",
       "area": "mcp",
       "tests": []
     },
@@ -622,6 +622,14 @@
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
       "reach": "claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:mcp walk probe",
+      "kind": "cli",
+      "entry": "src/dev/mcp_walk_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/mcp_walk_probe.gd   (what the second MCP walk-through's sessions met, replayed: move_part with no part= on the kart, its card saying steering, the joint's angle from where it was built, animate_model by a part on its joint, open_model link=, parts_list buildable as What can I build?)",
       "area": "mcp",
       "tests": []
     },
@@ -1921,7 +1929,7 @@
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
-      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery (sort top, builds, and owned with the person's sign-in; each model's builds, moves and Tested mark), shelves=true for the week's pick, the small builds and what they can build now, open=<id> reads one as a reference with its credit and licence",
+      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery (sort top, builds, and owned with the person's sign-in; each model's builds, nought said too, moves, Tested mark and designer's handle), shelves=true for the week's pick, the small builds and what they can build now, open=<id> reads one as a reference with its credit, licence, builds, comments and photos of real builds, designer=<handle> reads a designer's page; open_model link=<id> opens a copy, as Open in Brickworks does",
       "area": "mcp",
       "tests": []
     },
@@ -2003,7 +2011,7 @@
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",
-      "reach": "tools/probe.sh share_play_probe   (Playable.read on 8808-1: steering by its steering wheel; and what the Share panel sends as moves)",
+      "reach": "tools/probe.sh share_play_probe   (Playable.read on 8808-1: steering by its steering wheel; and what the Share panel sends as moves); tools/probe.sh mcp_walk_probe   (the Technic Go-Kart: steering by its knuckles on frictionless pins, not boom)",
       "area": "web",
       "tests": []
     },
@@ -2911,7 +2919,9 @@
       "entry": "web/challenge.js",
       "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenges.py"
+      ]
     },
     {
       "id": "ui:this tab and its claude chats",

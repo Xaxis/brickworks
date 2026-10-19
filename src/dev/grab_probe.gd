@@ -5467,14 +5467,14 @@ func _steer_set(path: String) -> void:
 	# 30 degrees (8815-1's at 25) comes back by what it turned.
 	var went_so_far: float = 0.0
 	# Back by the turn measured from where the part stood, not the whole
-	# degrees each call says (a door turned 3.4 said "now 3°").
+	# degrees each call says (a door turned 3.4 said "turned 3°").
 	var start_at: Transform3D = _world.get_brick(driver).transform
 	var turn_way := Vector3.ZERO
-	var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	var reached_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
 	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
 		var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
 		# Back already, to a hundredth of a degree: nothing to turn.
-		var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+		var said: String = "Moved 0 parts: turned 0° (asked 0°), back where it stood."
 		if str(step[1]) != "back" or absf(asked) >= 0.01:
 			said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
 		var reached: RegExMatch = reached_re.search(said)
@@ -5875,7 +5875,7 @@ func _move_sweep_one(path: String) -> Dictionary:
 	var tools := AppTools.new()
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
-	var now_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	var now_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
 	for kind: String in ["turntable", "door", "boom"]:
 		if not best.has(kind):
 			continue
@@ -5927,16 +5927,16 @@ func _move_sweep_one(path: String) -> Dictionary:
 		var moved_once: bool = false
 		var went_so_far: float = 0.0
 		# Back by the turn measured from where the part stood, not the whole
-		# degrees each call says (a door turned 3.4 said "now 3°").
+		# degrees each call says (a door turned 3.4 said "turned 3°").
 		var start_at: Transform3D = _world.get_brick(driver).transform
 		var turn_way := Vector3.ZERO
-		var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+		var reached_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
 		for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
 			# Back by as far as it went, where a turn stopped short against the
-			# model: the turn of a call is what it says ("now 18°").
+			# model: the turn of a call is what it says ("turned 18°").
 			var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
 			# Back already, to a hundredth of a degree: nothing to turn.
-			var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+			var said: String = "Moved 0 parts: turned 0° (asked 0°), back where it stood."
 			if str(step[1]) != "back" or absf(asked) >= 0.01:
 				said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
 			var reached: RegExMatch = reached_re.search(said)
@@ -6402,16 +6402,16 @@ func _sweep_one(path: String) -> Dictionary:
 		await picture.call("0_before")
 	var went_so_far: float = 0.0
 	# Back by the turn measured from where the part stood, not the whole
-	# degrees each call says (a door turned 3.4 said "now 3°").
+	# degrees each call says (a door turned 3.4 said "turned 3°").
 	var start_at: Transform3D = _world.get_brick(driver).transform
 	var turn_way := Vector3.ZERO
-	var reached_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	var reached_re := RegEx.create_from_string("turned (-?[0-9.]+)°")
 	for step: Array in [[30.0, "one way"], [-60.0, "the other way"], [30.0, "back"]]:
 		# Back by as far as it went, where a turn stopped short against the
-		# model: the turn of a call is what it says ("now 18°").
+		# model: the turn of a call is what it says ("turned 18°").
 		var asked: float = float(step[0]) if str(step[1]) != "back" else -_turn_since(driver, start_at, turn_way, went_so_far)
 		# Back already, to a hundredth of a degree: nothing to turn.
-		var said: String = "Moved 0 parts: now 0° (asked 0°), back where it stood."
+		var said: String = "Moved 0 parts: turned 0° (asked 0°), back where it stood."
 		if str(step[1]) != "back" or absf(asked) >= 0.01:
 			said = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": asked}))
 		var reached: RegExMatch = reached_re.search(said)

@@ -893,19 +893,9 @@ func for_session(input: Dictionary) -> String:
 		_ready_now()
 	if input.has("to"):
 		return _chain_for_session(int(ids[0]), input["to"])
-	var held := Grab.new()
-	held.world = world
-	held.builder = builder
-	held.library = library
-	held.bodies = _bodies
-	held.hose_fits = _hose_fits
-	held.shared_mechanism = _mechanism
-	var selection: Dictionary = {}
-	if ids.size() > 1:
-		for key: int in ids:
-			selection[key] = true
+	var held: Grab = _taken(ids)
 	var first: int = ids[0]
-	var state: String = held.begin(first, world.get_brick(first).transform.origin, selection)
+	var state: String = held.state
 	if state == "rigid":
 		var held_said: String = _bodies.held_words(first)
 		if held_said.is_empty():
@@ -940,7 +930,10 @@ func for_session(input: Dictionary) -> String:
 	if not input.has("degrees") and not input.has("along") and not input.has("spin"):
 		if weighs:
 			lines.append("As it stands: %s." % _standing_words(judge.weigh_pose({}), false))
-		lines.append("Nothing was changed. degrees= turns it%s%s." % [", along= slides it"
+		var stands: String = _from_built_words(held)
+		if not stands.is_empty():
+			lines.append("Its joint stands %s." % stands)
+		lines.append("Nothing was changed. degrees= turns it%s%s, from where it stands." % [", along= slides it"
 			if held.can_slide() else "", ", spin= lets it go turning that many degrees a second"
 			if held.mode == "turn" and not held.link.holds else ""])
 		return "\n".join(lines)
@@ -999,14 +992,19 @@ func for_session(input: Dictionary) -> String:
 			if stopped and not held.stretch_words.is_empty() else _in_the_way(held)
 			if stopped else "it is already there."))
 		return "\n".join(lines)
-	lines.append("Moved %d part%s: now %s (asked %s)%s%s%s." % [moved, "" if moved == 1 else "s",
-		held.position_words(), asked_for,
+	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s." % [moved, "" if moved == 1 else "s",
+		{"turn": "turned ", "slide": "slid "}.get(held.mode, ""), held.position_words(), asked_for,
 		("; it stopped where %s holds it, pulled to its full length" % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty()
 			else ("; it stopped where %s" % (_met_words(held) if not _met_words(held).is_empty()
 				else "it meets the model")) if stopped else "",
 		"; then " + swung if not swung.is_empty() else "",
 		"; " + own if not own.is_empty() else ""])
+	if held.mode != "ball":
+		var stands: String = _from_built_words(held)
+		lines.append("Its joint now stands %s; %s= %s it on from there." % [stands
+			if not stands.is_empty() else "where it was built", "along" if held.mode == "slide"
+			else "degrees", "slides" if held.mode == "slide" else "turns"])
 	if weighs:
 		var after: Balance.Report = judge.weigh_pose(held.placed)
 		last_report = after
@@ -1046,6 +1044,60 @@ func for_session(input: Dictionary) -> String:
 	edited.call()
 	last_words = "\n".join(lines)
 	return last_words
+
+
+## [param ids] taken hold of as a drag takes them, the first by itself or
+## all of them as one selection: begun, nothing moved yet.
+func _taken(ids: Array) -> Grab:
+	var held := Grab.new()
+	held.world = world
+	held.builder = builder
+	held.library = library
+	held.bodies = _bodies
+	held.hose_fits = _hose_fits
+	held.shared_mechanism = _mechanism
+	var selection: Dictionary = {}
+	if ids.size() > 1:
+		for key: int in ids:
+			selection[key] = true
+	held.begin(int(ids[0]), world.get_brick(int(ids[0])).transform.origin, selection)
+	return held
+
+
+## A session's animate_model naming a part on its joint, as move_part names
+## it ("#14", a sub-assembly's name): a function from the joint's degrees
+## from where it was built to where everything it moves stands then, turned
+## as move_part turns it (its stops, its loop, the gears it drives) without
+## moving anything; or a String saying why it cannot turn.
+func turning_for_session(asked: String) -> Variant:
+	var ids: Array = _named_parts(asked.strip_edges())
+	if ids.is_empty():
+		return "no part or sub-assembly %s" % asked
+	if not is_ready():
+		_ready_now()
+	var held: Grab = _taken(ids)
+	if held.state != "moves":
+		return held.why if not held.why.is_empty() else "%s does not move" % asked
+	if held.mode != "turn":
+		return "%s %s; an animation turns a joint" % [asked, "slides" if held.mode == "slide" else "turns on a ball"]
+	var built: float = held.from_built()
+	var offset: float = built if not is_nan(built) else 0.0
+	return func(degrees: float) -> Dictionary:
+		held.turn_to(degrees - offset)
+		return held.placed.duplicate()
+
+
+## Where [param held]'s joint stands from where the model was built (Grab.
+## from_built): "35° from where it was built", or "" where it was built.
+static func _from_built_words(held: Grab) -> String:
+	var built: float = held.from_built()
+	if is_nan(built):
+		return ""
+	if held.mode == "slide":
+		var studs: float = built / BrickLattice.STUD
+		return "" if absf(studs) < 0.05 else "%s studs along from where it was built" % Balance.studs(studs)
+	var degrees: int = roundi(wrapf(built, -180.0, 180.0))
+	return "" if degrees == 0 else "%d° from where it was built" % degrees
 
 
 ## A session's move_part with to=: the part taken as the end of its chain

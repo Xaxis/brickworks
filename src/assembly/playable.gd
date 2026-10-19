@@ -8,11 +8,14 @@
 ##
 ##   steering    a steering arm on its kingpin (a part named Steering Arm,
 ##               Steering Wheel Bearing, Wheel Spindle Steering or Steering
-##               Wheel Hub), or a steering rack;
+##               Wheel Hub), a steering rack, or whatever carries a wheel
+##               and turns on an upright line (a knuckle built of beams and
+##               blocks on its pin, a toy's front axle on a turntable);
 ##   turntable   the top of a turntable;
 ##   boom        a body of 6 parts or more on a hinge, a click hinge, a pin
-##               or an axle that reaches 3 studs or more from its line (a
-##               crane's boom, a digger's arm), with no tyre in it;
+##               or an axle that reaches 3 studs or more from its line and
+##               lifts (its line is not upright: a crane's boom, a digger's
+##               arm), with no tyre in it;
 ##   doors       a door, ramp, hatch, gate, tailgate, flap or lid on a
 ##               hinge, a click hinge or a pin;
 ##   gears       two gears in mesh, one of them turning on its joint;
@@ -37,6 +40,9 @@ const MECHANISMS: Array[String] = ["steering", "turntable", "boom", "gears", "pn
 const BOOM_PARTS := 6
 ## How far a boom reaches from its joint's line, LDU: three studs.
 const BOOM_REACH := 60.0
+## A line this near the upright (its cosine) is a kingpin's or a turntable's,
+## as Poser.Joint.kind reads one.
+const UPRIGHT := 0.9
 const _DOOR_WORDS: Array[String] = ["Door", "Ramp", "Hatch", "Gate", "Tailgate", "Flap", "Lid"]
 
 
@@ -79,6 +85,7 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 				arm = id
 		var kind: String = ""
 		var driver: int = int(ids[0])
+		var upright: bool = link.axis != Vector3.ZERO and absf(link.axis.normalized().y) >= UPRIGHT
 		match link.kind:
 			"cylinder":
 				kind = "pneumatics"
@@ -86,7 +93,13 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 				kind = "actuator"
 			"turntable":
 				kind = "turntable" if not figure else ""
-		if kind.is_empty() and arm != 0 and link.turns:
+		if kind in ["", "turntable"] and not figure and not tyre and upright and link.turns \
+				and _carries_wheel(bodies, body, name_of):
+			# The kart that comes with the app steers by blocks on frictionless
+			# pins and a beam between them, and its card said "boom".
+			kind = "steering"
+			driver = arm if arm != 0 else _biggest(ids, world, library)
+		elif kind.is_empty() and arm != 0 and link.turns:
 			kind = "steering"
 			driver = arm
 		elif kind.is_empty() and figure:
@@ -94,7 +107,7 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 		elif kind.is_empty() and door != 0 and link.kind in ["hinge", "click", "pin"]:
 			kind = "doors"
 			driver = door
-		elif kind.is_empty() and link.turns and not tyre and ids.size() >= BOOM_PARTS \
+		elif kind.is_empty() and link.turns and not tyre and not upright and ids.size() >= BOOM_PARTS \
 				and link.kind in ["hinge", "click", "pin", "axle"] \
 				and _reach(bodies, body, link, world, library) >= BOOM_REACH:
 			kind = "boom"
@@ -187,6 +200,46 @@ static func door_named(part_name: String) -> bool:
 				return true
 			at = part_name.find(word, at + 1)
 	return false
+
+
+## A wheel or a tyre by its name, not what holds one (a wheel holder, a
+## spindle, a hub, a bearing).
+static func wheel_named(name: String) -> bool:
+	if name.contains("Tyre") or name.contains("Tire"):
+		return true
+	return name.begins_with("Wheel ") and not (name.contains("Holder") or name.contains("Spindle")
+		or name.contains("Hub") or name.contains("Bearing"))
+
+
+## Whether a wheel turns on its own level line on [param body]: what a
+## kingpin or a toy's turntable steers.
+static func _carries_wheel(bodies: Bodies, body: int, name_of: Callable) -> bool:
+	for child: Variant in bodies.children.get(body, []):
+		var joined: Bodies.Link = bodies.parent_link.get(child)
+		if joined == null or not joined.turns or joined.axis == Vector3.ZERO \
+				or absf(joined.axis.normalized().y) >= UPRIGHT:
+			continue
+		for id: int in bodies.members.get(child, PackedInt64Array()):
+			if wheel_named(str(name_of.call(id))):
+				return true
+	return false
+
+
+## The biggest part of [param ids], by its box: what a hand takes hold of,
+## not a pin in it.
+static func _biggest(ids: PackedInt64Array, world: BrickWorld, library: PartLibrary) -> int:
+	var best: int = int(ids[0])
+	var most: float = -1.0
+	for id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+		if info == null:
+			continue
+		var size: Vector3 = info.bounds.size
+		if size.x * size.y * size.z > most:
+			most = size.x * size.y * size.z
+			best = id
+	return best
 
 
 static func _add(found: Dictionary, kind: String, parts: int, driver: int) -> void:

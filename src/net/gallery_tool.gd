@@ -39,6 +39,14 @@ const LICENCES: Dictionary = {
 	"all-rights-reserved": ["All rights reserved", "learn from how %s built it; do not copy it into a model you make or share without their leave (%s)"],
 }
 
+## A designer's handle, as api/people.js takes one.
+const HANDLE := "^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$"
+## What a session says of following, liking and commenting: the person's
+## own, on the site, signed in. A session asked to follow somebody guessed
+## where the button might be.
+const FOLLOWING := ("Following, liking and commenting are the person's own: Follow is on the "
+	+ "designer's page, %s, signed in to Brickworks. A session reads; it does not do these for them.")
+
 var app: Node
 
 
@@ -54,8 +62,11 @@ static func definition() -> Dictionary:
 			+ "the gallery's front, this week's pick and the small builds, and what the person can "
 			+ "build now from their collection. "
 			+ "open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, "
-			+ "its parts by kind and the most used, its credit and its licence, and its picture — "
-			+ "to learn how it is built. Read-only: nothing on the baseplate changes. Credit its "
+			+ "its parts by kind and the most used, its credit and its licence, how many built it, "
+			+ "its comments and photos of real builds, and its picture — to learn how it is built. "
+			+ "designer=<handle> (a list's \"by Name (@handle)\"): a designer's page, what their "
+			+ "models earned and their models. Read-only: nothing on the baseplate changes, and "
+			+ "liking, following and commenting are the person's own, on the site. Credit its "
 			+ "builder and keep to its licence in anything made from it."),
 		"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 			"q": {"type": "string", "description": "words to look for, up to 100 characters"},
@@ -69,6 +80,7 @@ static func definition() -> Dictionary:
 				+ "builds, and what the person can build now"},
 			"page": {"type": "integer", "description": "1 when omitted"},
 			"open": {"type": "string", "description": "a model's link id, from a search, to read it"},
+			"designer": {"type": "string", "description": "a designer's handle, from a list's \"by Name (@handle)\""},
 			"picture": {"type": "boolean", "description": "with open: its picture too; true when omitted"},
 		}},
 	}
@@ -79,6 +91,8 @@ func run(input: Dictionary) -> Variant:
 	var opened: String = str(input.get("open", "")).strip_edges()
 	if not opened.is_empty():
 		return await _open(opened, bool(input.get("picture", true)))
+	if not str(input.get("designer", "")).strip_edges().is_empty():
+		return await _designer(str(input["designer"]).strip_edges().trim_prefix("@").to_lower())
 	if bool(input.get("shelves", false)):
 		return await _shelves()
 	return await _search(input)
@@ -136,6 +150,50 @@ func _shelves() -> String:
 	elif token.is_empty():
 		lines.append("Signed in with a collection, the person is told what they can build now.")
 	lines.append("gallery open=<id> reads one as a reference; sort=top lists the gallery by Top builds.")
+	return "\n".join(lines)
+
+
+## A designer's page as anyone sees it (api/people.js ?op=profile): who they
+## are, what their models earned, and their models by Top builds. Asked who
+## made a model and what else they made, a session could only search the
+## builder's name, and could say nothing of their page or how to follow
+## them (bench/results/mcpwalk2-2026-10-19, t5).
+func _designer(handle: String) -> String:
+	if RegEx.create_from_string(HANDLE).search(handle) == null:
+		return ("designer is a designer's handle, as a list gives it after their name: "
+			+ "\"by Name (@handle)\". A model with no handle has no designer's page.")
+	var answer: Dictionary = await _ask("/api/people?op=profile&handle=" + handle, 256 * 1024)
+	var body: Variant = _json(answer)
+	if int(answer["code"]) == 404:
+		return "Nobody has the handle @%s." % handle
+	if int(answer["code"]) != 200 or not body is Dictionary:
+		return _trouble(answer, body)
+	var person: Dictionary = body
+	var url: String = str(person.get("url", "%s/u/%s" % [Deployment.api_base(), handle]))
+	var lines := PackedStringArray(["%s (@%s, %s)%s" % [person.get("name", handle), handle, url,
+		": " + str(person["bio"]).replace("\n", " ").left(300) if person.get("bio") is String
+			and not str(person["bio"]).is_empty() else ""]])
+	if person.get("designer") is Dictionary:
+		var earned: Dictionary = person["designer"]
+		lines.append("What their models earned: %s models, %s, %s remixes, %s Tested, %s comments, "
+			% [_count(int(earned.get("models", 0))), _built(int(earned.get("builds", 0))),
+			_count(int(earned.get("remixes", 0))), _count(int(earned.get("tested", 0))),
+			_count(int(earned.get("comments", 0)))]
+			+ "%s likes, %s followers." % [_count(int(earned.get("likes", 0))),
+			_count(int(earned.get("followers", 0)))])
+	else:
+		lines.append("%s models in the gallery, %s likes, %s followers, following %s." % [
+			_count(int(person.get("models_count", 0))), _count(int(person.get("likes", 0))),
+			_count(int(person.get("followers", 0))), _count(int(person.get("following", 0)))])
+	var models: Array = person["models"] if person.get("models") is Array else []
+	lines.append("Their models, Top builds first:%s" % ("" if not models.is_empty() else " none listed."))
+	for one: Variant in models.slice(0, 12):
+		if one is Dictionary:
+			lines.append("- " + _line(one) + (" · %s comments" % _count(int((one as Dictionary)["comments"]))
+				if (one as Dictionary).get("comments") != null else ""))
+	if models.size() > 12 or bool(person.get("more", false)):
+		lines.append("And more on their page.")
+	lines.append(FOLLOWING % url)
 	return "\n".join(lines)
 
 
@@ -228,12 +286,22 @@ func _open(id: String, with_picture: bool) -> Variant:
 		lines.append("Licence: %s — %s." % [LICENCES[licence][0], LICENCES[licence][1] % [credit, url]])
 	else:
 		lines.append("Licence: none chosen — learn from it; do not copy it into what you make or share.")
+	# What people did with it, as its page says it and the list says it of
+	# each model: how many built it, and the Tested mark.
+	if shared.has("builds"):
+		lines.append("Built to its last step %s." % _times(int(shared["builds"])) if int(shared["builds"]) > 0
+			else "Nobody has built it to its last step yet.")
+	if shared.get("tested") is Dictionary:
+		lines.append("Tested: %s." % str((shared["tested"] as Dictionary).get("line", "the app checked it")))
+	lines.append_array(await _said_of(id))
 	if shared.get("remixed_from") is Dictionary:
 		lines.append("Remixed from %s (%s)." % [(shared["remixed_from"] as Dictionary).get("name", "?"),
 			(shared["remixed_from"] as Dictionary).get("url", "")])
 	lines.append_array(_reading(str(shared.get("model", ""))))
-	lines.append("Read-only: nothing on the baseplate changed. Build your own; to start from this "
-		+ "one instead, the person presses Open in Brickworks on its page.")
+	lines.append(("Read-only: nothing on the baseplate changed. Build your own; to start from this "
+		+ "one instead, open_model link=%s opens a copy in the person's models, as Open in "
+		+ "Brickworks on its page does. Liking it, commenting and following its designer are the "
+		+ "person's own, on its page, signed in.") % id)
 	var text: String = "\n".join(lines)
 	if not with_picture:
 		return text
@@ -246,6 +314,35 @@ func _open(id: String, with_picture: bool) -> Variant:
 		return text + "\nIt has no picture."
 	return [{"type": "text", "text": text}, {"type": "image", "source": {"type": "base64",
 		"media_type": kind, "data": Marshalls.raw_to_base64(picture["bytes"])}}]
+
+
+## Its comments and the photos of real builds of it, as its page shows them
+## to anybody (api/people.js ?op=comments and ?op=photos). What people
+## wrote is quoted as theirs. Asked whether anybody had commented, a
+## session could only send the person to the page (mcpwalk2, t5).
+func _said_of(id: String) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var answer: Dictionary = await _ask("/api/people?op=comments&id=" + id, 256 * 1024)
+	var body: Variant = _json(answer)
+	if int(answer["code"]) == 200 and body is Dictionary:
+		var shown: Array = ((body as Dictionary).get("comments", []) as Array).filter(func(one: Variant) -> bool:
+			return one is Dictionary and not bool((one as Dictionary).get("hidden", false)))
+		shown.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a.get("at", "")) > str(b.get("at", "")))
+		var count: int = int((body as Dictionary).get("count", shown.size()))
+		lines.append("Comments: %s%s%s" % ["none yet" if count == 0 else _count(count),
+			"" if bool((body as Dictionary).get("open", true)) else " (closed by its designer)",
+			"; the newest, as people wrote them:" if not shown.is_empty() else "."])
+		for one: Dictionary in shown.slice(0, 3):
+			lines.append("  %s%s%s: \"%s\"" % [str(one["by"]) if one.get("by") is String else "somebody",
+				" (@%s)" % one["handle"] if one.get("handle") is String else "",
+				" (its designer)" if bool(one.get("by_owner", false)) else "",
+				str(one.get("body", "")).replace("\n", " ").left(240)])
+	answer = await _ask("/api/people?op=photos&id=" + id, 64 * 1024)
+	body = _json(answer)
+	if int(answer["code"]) == 200 and body is Dictionary and (body as Dictionary).get("photos") is Array:
+		var photos: int = ((body as Dictionary)["photos"] as Array).size()
+		lines.append("Photos of real builds: %s." % ("none yet" if photos == 0 else "%d, on its page" % photos))
+	return lines
 
 
 ## What a model's file says about how it is built: its size, its
@@ -306,14 +403,18 @@ static func _line(model: Dictionary) -> String:
 	var facts := PackedStringArray(["%s parts" % _count(int(model.get("parts", 0)))])
 	if model.get("author") is String:
 		facts[0] += ", by %s" % model["author"]
+	# The designer whose page designer= reads, when the model is credited to one.
+	if model.get("by") is Dictionary and (model["by"] as Dictionary).get("handle") is String:
+		facts[0] += " (@%s)" % (model["by"] as Dictionary)["handle"]
 	if model.get("kind") is String:
 		facts.append(str(model["kind"]))
 	facts.append(_licence_name(model.get("licence")))
 	facts.append("%d views, %d likes, %d remixes" % [int(model.get("views", 0)),
 		int(model.get("likes", 0)), int(model.get("remixes", 0))])
-	var builds: int = int(model.get("builds", 0))
-	if builds > 0:
-		facts.append("built %s" % _times(builds))
+	# Said at nought too: a session sorting by Most built read a missing
+	# count as one the list did not give.
+	if model.has("builds"):
+		facts.append(_built(int(model["builds"])))
 	if bool(model.get("own_steps", false)):
 		facts.append("its builder's own steps")
 	if bool(model.get("technic", false)):
@@ -329,6 +430,12 @@ static func _line(model: Dictionary) -> String:
 		facts.append("you own %s of its %s pieces" % [_count(int(owned.get("have", 0))),
 			_count(int(owned.get("pieces", 0)))])
 	return "%s (%s) — %s" % [model.get("name", "?"), model.get("id", "?"), " · ".join(facts)]
+
+
+## "built 3 times", or "not built yet": finished to its last step by people
+## following its steps (supabase/builds.sql).
+static func _built(n: int) -> String:
+	return "built %s" % _times(n) if n > 0 else "not built yet"
 
 
 ## "once", "twice", "3 times".

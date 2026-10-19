@@ -146,7 +146,8 @@ animate_model: poses at moments, played smoothly between and rendered as \
 an animation.
  - move_part: moves a part on its joint as the person's drag does, \
 with everything built on it, the gears it drives, and the balance after; \
-with only part= it says what would move and changes nothing.
+with only part= it says what would move and changes nothing; with no part= \
+it lists what moves in the model (steering, a boom...) and the parts to take hold of.
  - simulate_mechanism: turns a gear train from its driver (a crank, an \
 axle, a sub-assembly named Crank or Motor) as Tools, Simulate does: each \
 arm's turns per driver turn, its period in a reference's turns (Earth \
@@ -159,10 +160,11 @@ is held still when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
 opens one. It cannot be undone: save_model first. Each save is kept, the \
-last 20: name= with versions=true lists a model's, version=N opens one.
+last 20: name= with versions=true lists a model's, version=N opens one. \
+link= opens a copy of a gallery model, as Open in Brickworks does.
  - parts_list: the model's parts by part and colour with element ids; \
-which="need" what the person's collection is short of; "buildable" which \
-saved models it can build.
+which="need" what the person's collection is short of; "buildable" What \
+can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
@@ -370,7 +372,10 @@ func definitions() -> Array:
 		},
 		{
 			"name": "move_part",
-			"description": ("Move a part about its joint as the person's drag on it does: its "
+			"description": ("Move a part about its joint as the person's drag on it does. With no "
+				+ "part= it changes nothing and says what moves in the model: what its link's card "
+				+ "says (steering, a boom, doors...) with the part to take hold of, and every part "
+				+ "on a joint. With part=, its "
 				+ "whole rigid body and everything beyond it turn on the joint between it and "
 				+ "what stays (a locked part, what stands on the baseplate, else the body "
 				+ "with the most parts, or a heavier one standing on the floor): a hinge, a "
@@ -381,7 +386,8 @@ func definitions() -> Array:
 				+ "degrees= turns it that far from where it is (a ball: about axis=), along= "
 				+ "slides it that many studs along a bar or an axle; it stops where it meets "
 				+ "the model, gears it drives turn by their teeth, a joint without friction "
-				+ "swings down under its own weight once let go, and the answer says what moved "
+				+ "swings down under its own weight once let go, and the answer says what moved, "
+				+ "where its joint then stands from where it was built (twice 20° stands at 40°), "
 				+ "and how the model stands then. A part held at both ends (a four-bar, a crank "
 				+ "with its rod and piston, a steering's arms) moves as its loop allows, and says "
 				+ "so where it locks. spin= lets it go turning that many degrees a second, as a "
@@ -391,9 +397,9 @@ func definitions() -> Array:
 				+ "unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws "
 				+ "the part to that point by its whole chain of joints back to what stays, each "
 				+ "within its range. One undo step."),
-			"input_schema": {"type": "object", "additionalProperties": false,
-				"required": ["part"], "properties": {
-				"part": {"type": "string", "description": "a part's number, or a sub-assembly's name"},
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"part": {"type": "string", "description": "a part's number, or a sub-assembly's "
+					+ "name; leave it out to list what moves"},
 				"degrees": {"type": "number", "description": "turn from where it is now"},
 				"along": {"type": "number", "description": "studs to slide along its line"},
 				"spin": {"type": "number", "description": "let go turning this many degrees a second about its joint (after degrees=, if given): it coasts"},
@@ -410,7 +416,9 @@ func definitions() -> Array:
 				+ "again, doors opening), the model turned round once as well if asked, and "
 				+ "rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) "
 				+ "where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], "
-				+ "joints by number or name from pose_model's list. Rendering needs the app "
+				+ "joints by number or name from pose_model's list, or a part on its joint as "
+				+ "move_part names it (\"#14\": a steering, a wheel, an arm on its pin), each "
+				+ "in degrees from where it was built. Rendering needs the app "
 				+ "in a window and is a job (job gives the result); render=false only sets "
 				+ "the keys, for the person to play."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -464,10 +472,13 @@ func definitions() -> Array:
 				+ "app, with their part counts; name= opens one in place of what is on the "
 				+ "baseplate, as File, Open does. Each save is kept as a version, the last 20, "
 				+ "as File, Versions… shows: versions=true lists name='s, newest first, and "
-				+ "version=N opens the Nth. Opening cannot be undone, so it is refused while "
+				+ "version=N opens the Nth. link= a gallery model's link id (gallery) opens a "
+				+ "copy of it saved in the person's models, as Open in Brickworks on its page "
+				+ "does. Opening cannot be undone, so it is refused while "
 				+ "the model has changes not saved, unless discard_changes=true."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
+				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
 				"discard_changes": {"type": "boolean"},
@@ -478,8 +489,9 @@ func definitions() -> Array:
 			"description": ("The model's parts, as Build, Parts list shows them: by part and "
 				+ "colour, with counts and LEGO® element ids. which=\"need\" measures it "
 				+ "against the person's collection (My collection): how much they own and "
-				+ "what they are short of; which=\"buildable\" says which of their saved "
-				+ "models their collection builds."),
+				+ "what they are short of; which=\"buildable\" is What can I build?: their "
+				+ "saved models, the examples and the official models of real sets, ranked by "
+				+ "how much of each they own."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"which": {"type": "string", "enum": ["model", "need", "buildable"]},
 				"limit": {"type": "integer", "description": "how many rows; 60 when omitted"},
@@ -725,6 +737,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			var grabbing: GrabDrag = app.get("_grab_drag")
 			if grabbing == null:
 				return "This app cannot move parts on their joints."
+			if str(input.get("part", "")).strip_edges().is_empty():
+				return _what_moves(grabbing)
 			return grabbing.for_session(input)
 		"simulate_mechanism":
 			return await _simulate(input, work)
@@ -1277,7 +1291,9 @@ static func _nearest(anchors: Array, near: Vector3) -> Flex.Anchor:
 
 
 const NO_JOINTS := ("a joint is a sub-assembly on a hinge, a turntable or a clip on a bar. "
-	+ "Name the part that turns as an assembly (edit_model's assemblies), standing on its hinge.")
+	+ "Name the part that turns as an assembly (edit_model's assemblies), standing on its hinge. "
+	+ "Parts on pins, axles, studs and steering move without one, as a drag moves them: "
+	+ "move_part with no part= lists them, and animate_model takes them by part (#14).")
 
 
 func _pose(input: Dictionary) -> String:
@@ -1312,6 +1328,77 @@ func _pose(input: Dictionary) -> String:
 	return "%s at %d°." % [Assemblies.label(joint.path), roundi(reached)]
 
 
+## Bodies listed by move_part with no part=; the rest are counted.
+const MOST_MOVING := 16
+
+
+## move_part with no part=: what moves in the model, as its link's card says
+## it (Playable: "Moves: steering, boom") with the part a person takes hold
+## of for each, then every body a drag moves on its joint, biggest first, by
+## a part that moves it. Changes nothing. Asked "what in this model moves?",
+## a session had only part= to try, and tried five parts one at a time to
+## find a kart's steering (bench/results/mcpwalk2-2026-10-19, t2).
+func _what_moves(grabbing: GrabDrag) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	if world.brick_count() - store.scenery.size() <= 0:
+		return "Nothing is built yet."
+	grabbing.read_now()
+	var bodies: Bodies = grabbing.read_bodies()
+	if bodies == null:
+		return "Its joints could not be read just now; ask again."
+	var named := func(id: int) -> String:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+		return "#%d %s" % [id, Inventory._tidy(info.name) if info != null else brick.part_id if brick != null else "?"]
+	var found: Dictionary = Playable.read(bodies, world, library, grabbing.read_mechanism())
+	var lines := PackedStringArray()
+	var takes: Dictionary = {}   ## a part a person takes hold of -> true
+	if found.is_empty():
+		lines.append("What moves, as its link's card says: nothing it names (steering, a turntable, "
+			+ "a boom, doors, gears, pneumatics, an actuator, a rack).")
+	else:
+		lines.append("%s, as its link's card says. Take hold of:" % Playable.words(Playable.kinds(found)))
+		for kind: String in found:
+			var ids: Array = found[kind]
+			var said := PackedStringArray()
+			for id: Variant in ids.slice(0, 3):
+				said.append(named.call(int(id)))
+				takes[int(id)] = true
+			lines.append("  %s: %s%s" % [kind, ", ".join(said),
+				" and %d more" % (ids.size() - 3) if ids.size() > 3 else ""])
+	var moving: Array = []   ## [parts, body]
+	for key: Variant in bodies.parent_link:
+		if not bodies.flexible.has(key):
+			moving.append([(bodies.members.get(key, PackedInt64Array()) as PackedInt64Array).size(), int(key)])
+	if moving.is_empty():
+		lines.append("Nothing in it hangs on a joint: every part is held rigidly to what stays (%s)."
+			% bodies.summary())
+		lines.append("Nothing was changed.")
+		return "\n".join(lines)
+	moving.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) > int(y[0]))
+	lines.append("On a joint a drag moves, biggest first; move_part part=N moves that part's body and "
+		+ "what is beyond it:")
+	for one: Array in moving.slice(0, MOST_MOVING):
+		var link: Bodies.Link = bodies.parent_link[one[1]]
+		var ids: PackedInt64Array = bodies.members[one[1]]
+		var by: int = int(ids[0])
+		for id: int in ids:
+			if takes.has(id):
+				by = id
+				break
+		var at: Vector3 = link.point / BrickLattice.STUD
+		lines.append("  %s%s, %s at x=%s y=%s z=%s studs%s" % [named.call(by),
+			" and %d more part%s" % [ids.size() - 1, "" if ids.size() == 2 else "s"] if ids.size() > 1 else "",
+			link.words(), Balance.studs(at.x), Balance.studs(at.y), Balance.studs(at.z),
+			"" if link.holds else ", turning freely"])
+	if moving.size() > MOST_MOVING:
+		lines.append("  and %d more." % (moving.size() - MOST_MOVING))
+	lines.append("Nothing was changed. move_part part=N says what moving it does; degrees= turns it.")
+	return "\n".join(lines)
+
+
 ## The joint a session names: its number in pose_model's list, its path or
 ## its name. Null when none is.
 static func _joint_named(joints: Array[Poser.Joint], asked: String) -> Poser.Joint:
@@ -1335,6 +1422,12 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 		return ("Give keys= (poses at moments: [{\"t\": 0, \"angles\": {\"1\": 0}}, {\"t\": 2, "
 			+ "\"angles\": {\"1\": 60}}]) or turntable=true.")
 	var made: Array = []
+	# A part on its joint as move_part turns it (a kart's steering on its
+	# pins): pose_model's joints are sub-assemblies on a hinge, a turntable
+	# or a clip, and a session that steered a car with move_part could not
+	# animate it (bench/results/mcpwalk2-2026-10-19, t3).
+	var carried: Dictionary = {}   ## "#N" -> GrabDrag.turning_for_session's function
+	var grabbing: GrabDrag = app.get("_grab_drag")
 	for raw: Variant in keys:
 		if not (raw is Dictionary) or not (raw as Dictionary).has("t"):
 			return "Each key is {\"t\": seconds, \"angles\": {joint: degrees}}."
@@ -1346,11 +1439,23 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 		var given: Dictionary = key.get("angles", {}) as Dictionary
 		for name: Variant in given.keys():
 			var joint: Poser.Joint = _joint_named(joints, str(name))
-			if joint == null:
+			var path: String = joint.path if joint != null else ""
+			if joint == null and grabbing != null:
+				var turning_part: Variant = grabbing.turning_for_session(str(name))
+				if turning_part is String:
+					return ("No joint %s: %s. Joints are pose_model's, by number or name, or a part on "
+						% [str(name), turning_part] + "its joint as move_part names it (#14).")
+				path = "#%s" % str(name).strip_edges().trim_prefix("#")
+				if not carried.has(path):
+					carried[path] = turning_part
+			elif joint == null:
 				return ("No joint %s. %s" % [str(name), "pose_model lists them."
 					if not joints.is_empty() else "Nothing here turns: " + NO_JOINTS])
-			angles[joint.path] = clampf(float(given[name]), -180.0, 180.0)
+			angles[path] = clampf(float(given[name]), -180.0, 180.0)
 		made.append([t, angles])
+	if not carried.is_empty() and not bool(input.get("render", true)):
+		return ("%s turns in a rendered animation only: Build, Pose and animate plays pose_model's "
+			% ", ".join(carried.keys()) + "joints. Leave render= out to draw it.")
 	panel.animation.keys.clear()
 	for one: Array in made:
 		panel.animation.add_key(float(one[0]), one[1])
@@ -1362,7 +1467,9 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	if not StudioRender.possible():
 		return ("Set %s. Rendering it needs something to draw with, and this app is running "
 			% said + "without a window; the person can play it from Build, Pose and animate.")
+	panel.carried = carried
 	var frames: int = await panel.render_animation(work)
+	panel.carried = {}
 	if frames <= 0:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	return "%s: %s" % [said.left(1).to_upper() + said.substr(1), panel.rendered_words()]
@@ -1426,6 +1533,8 @@ func _open(input: Dictionary) -> String:
 	var saved: Array[ModelStore.Entry] = store.list_saved()
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	var name: String = str(input.get("name", "")).strip_edges().trim_suffix(".ldr")
+	if not str(input.get("link", "")).strip_edges().is_empty():
+		return await _open_link(str(input["link"]).strip_edges(), bool(input.get("discard_changes", false)))
 	if name.is_empty():
 		var said := PackedStringArray()
 		said.append("Open now: %s." % store.title)
@@ -1478,6 +1587,63 @@ func _open(input: Dictionary) -> String:
 	var placed: int = await bar.open_with_progress(chosen.path)
 	bar.opened.emit(placed)
 	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed]
+
+
+## open_model link=: a gallery model copied into the person's own models and
+## opened, as Open in Brickworks on its page does (/app?copy=<id>, main's
+## _maybe_copy): saved under a name of its own, never over one of theirs,
+## knowing which link it came from, so a share of it says it was remixed.
+## Asked to open the most built small model, a session could only read it
+## (gallery open=) and send the person to its page (mcpwalk2, t1).
+func _open_link(link: String, discard: bool) -> String:
+	var id: String = link
+	if link.contains("/m/"):
+		id = link.get_slice("/m/", 1).get_slice("/", 0).get_slice("?", 0).get_slice(".", 0)
+	if not SharedModels.is_id(id):
+		return ("link is a gallery model's link id, ten letters and digits (gallery lists them), "
+			+ "or its address, https://brickworks.diy/m/<id>.")
+	var store: ModelStore = app.get("_store")
+	var bar: ModelBar = app.get("_bar")
+	var shared: SharedModels = app.get("_shared")
+	if shared == null:
+		return "This app cannot reach the gallery."
+	if store.has_unsaved_work() and not discard:
+		return ("The model on the baseplate, %s, has changes that are not saved, and opening "
+			% store.title + "cannot be undone. save_model first, or give discard_changes=true.")
+	var answer: Dictionary = await shared.fetch(id)
+	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+		return "Could not open %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
+	var body: Dictionary = answer["body"]
+	var name: String = str(body.get("name", "Shared model"))
+	if assistant != null:
+		assistant.forget_built()
+	var result: Dictionary = await store.open_text_fetched(str(body.get("model", "")), name)
+	if not str(result["error"]).is_empty():
+		return "Could not open %s: %s." % [name, result["error"]]
+	store.share_id = ""
+	store.remixed_from = id
+	store.remixed_from_version = maxi(int(body.get("version", 0)), 0)
+	bar.opened.emit(int(result["placed"]))
+	var since: int = Time.get_ticks_msec()
+	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		await app.get_tree().create_timer(0.3).timeout
+	if not store.awaited.is_empty():
+		return ("%s is open, but %d of its parts did not arrive, so it is not saved yet: "
+			+ "save_model once they have.") % [name, store.awaited.size()]
+	var kept: String = store.unused_name(name)
+	store.save_as(kept)
+	var author: String = str(body["author"]) if body.get("author") is String else ""
+	var licence: Variant = body.get("licence")
+	var url: String = str(body.get("url", SharedModels.link_for(id)))
+	var terms: String = ("%s: %s" % [GalleryTool.LICENCES[licence][0], GalleryTool.LICENCES[licence][1]
+		% [author if not author.is_empty() else "its builder", url]]) \
+		if licence is String and GalleryTool.LICENCES.has(licence) \
+		else "none chosen: the person may build it; do not share what is made from it as theirs"
+	return ("Opened a copy of %s (%s)%s: %d parts, saved in the person's models as %s, theirs to "
+		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
+		+ "it. Licence %s. look_at_model to see it.") % [name, url,
+		", by %s" % author if not author.is_empty() else "",
+		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms]
 
 
 # -- the parts list and the collection ------------------------------------------------
@@ -1534,24 +1700,43 @@ func _parts_list(input: Dictionary) -> String:
 					str(row["part"]), int(row["colour"])])
 		said.append("Short of %d lots." % short if short > 0 else "They own every piece.")
 		return "\n".join(said)
-	var said := PackedStringArray()
-	var found: Array = []
-	for entry: ModelStore.Entry in store.list_saved():
-		var needs: Dictionary = Collection.needs_of_ldraw(FileAccess.get_file_as_string(entry.path),
-			library)
-		var cover: Dictionary = Collection.coverage(needs, mine.on_hand)
-		var pieces: int = int(cover["pieces"])
-		if pieces > 0:
-			found.append([entry.name, int(cover["owned"]),
-				roundi(float(cover["any_colour"]) * pieces), pieces])
-	# The ones nearest to built first, as What can I build? lists them.
-	found.sort_custom(func(a: Array, b: Array) -> bool:
-		return float(a[1]) / float(a[3]) > float(b[1]) / float(b[3]))
-	for one: Array in found.slice(0, limit):
-		said.append("  %s: owns %d of its %d pieces in their colours%s" % [one[0], one[1], one[3],
-			", %d in any colour" % one[2] if int(one[2]) > int(one[1]) else ""])
-	return "Saved models against the collection:\n" + "\n".join(said) if not said.is_empty() \
-		else "No saved models to measure."
+	# What can I build? as the window ranks it (CollectionDialog._fill_build):
+	# the person's saved models, the examples and the official LDraw models
+	# of real sets, most of it owned first. Measured against the saved ones
+	# alone, a session told a person with two sets that nothing they had
+	# could be built (bench/results/mcpwalk2-2026-10-19, t4).
+	var found: Array = []   ## [name, what it is, coverage]
+	for entry: ModelStore.Entry in store.list_saved() + store.list_examples():
+		found.append([entry.name, "an example" if entry.example else "saved",
+			Collection.needs_of_ldraw(FileAccess.get_file_as_string(entry.path), library)])
+	for model: Dictionary in await mine.inventories.official_models():
+		found.append([str(model["name"]), "the official model of set %s%s" % [model["set"],
+			", " + CollectionDialog.OMR_PAGE + str(model["page"]) if not str(model["page"]).is_empty() else ""],
+			model["needs"]])
+	var ranked: Array = []
+	for one: Array in found:
+		if not (one[2] as Dictionary).is_empty():
+			ranked.append([one[0], one[1], Collection.coverage(one[2], mine.on_hand)])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool:
+		var x: Dictionary = a[2]
+		var y: Dictionary = b[2]
+		if not is_equal_approx(float(x["exact"]), float(y["exact"])):
+			return float(x["exact"]) > float(y["exact"])
+		if not is_equal_approx(float(x["any_colour"]), float(y["any_colour"])):
+			return float(x["any_colour"]) > float(y["any_colour"])
+		return int(x["pieces"]) < int(y["pieces"]))
+	if ranked.is_empty():
+		return "No models to measure."
+	var said := PackedStringArray(["%d models against the collection, as My collection's What can I "
+		% ranked.size() + "build? ranks them, most of it owned first:"])
+	for one: Array in ranked.slice(0, mini(limit, 25) if not input.has("limit") else limit):
+		var cover: Dictionary = one[2]
+		said.append("  %d%% %s (%s): owns %d of its %d pieces in their colours, %d missing; %d%% in any colour"
+			% [roundi(100.0 * float(cover["exact"])), one[0], one[1], int(cover["owned"]), int(cover["pieces"]),
+			int(cover["missing"]), roundi(100.0 * float(cover["any_colour"]))])
+	said.append("open_model name= opens a saved model or an example; an official model opens from My "
+		+ "collection, What can I build? in the window. limit= lists more.")
+	return "\n".join(said)
 
 
 # -- rendering and exporting ---------------------------------------------------------
