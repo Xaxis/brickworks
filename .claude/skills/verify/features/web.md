@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link -->
 
 ## Sub-features
 
@@ -836,6 +836,50 @@ plan with Claude as the client.
   `window.brickworksStepsReady` when the steps were in. A kept source file
   drops them on save (`ModelStore._without_app_lines`). Proved by
   `src/dev/share_pages_probe.gd` (below) and the share steps flow.
+- `versions of a shared model` (`supabase/versions.sql`, `api/_versions.js`,
+  `api/share.js`, 2026-10-18; **not applied to the live project yet**, the
+  owner applies it at release, before the deploy): publishing a link again
+  makes its next version and keeps the one before. Table `share_versions`
+  (`model` → `shared_models(id)` on delete cascade, `n`, `at`, `note` 1 to
+  280, `parts`, `steps`, `bytes`, `has_image`, `changes` jsonb, `first_changed`,
+  `remixed_from_version`; primary key `(model, n)`; row security on, no grant
+  to `anon` or `authenticated`: only the server), and a version 1 for every
+  model published when it is applied. The newest's files stay `<id>.mpd` and
+  `<id>.png`; an older one's are `<id>.v<n>.mpd` and `<id>.v<n>.png`, renamed
+  when a newer one takes the link (the sweep keys by what is before the first
+  dot, so it keeps them while the model is published). What changed is
+  worked out by `changesBetween` from the two files, never typed: the parts
+  by part and colour; and, when both carry their steps (`SharedPages`) and
+  the server's own flattening of each file (`partsOf`, as `LdrModel.flatten`)
+  gives the same parts in the same order the steps were counted in (the
+  `order` SHA-256), the steps added, taken out and changed, the steps the
+  added and removed parts are in, and `first_changed`. A file without
+  carried steps has its parts compared and `first_changed` 1 if any changed.
+  `saidOf` says it short ("Version 2: 2 parts added and 2 removed in step
+  3."). `GET ?id=X[&v=N]` answers `version`, `newest` and `versions` (the
+  newest hundred: `n`, `at`, `note`, `said`, `first_changed`, `url`);
+  `/m/X/v/N` (`?op=page&v=N`) is an older one's page — "An older version",
+  its own picture (`/m/X/v/N.png`), counts and viewer (`/app?view=X&v=N`),
+  noindex, canonical the link — and the link's page has a Versions section
+  (what changed, the owner's note, "Steps 1–2 are as they were", part by
+  part, the others). POST takes `note` and `remixed_from_version`; the
+  answer has `version`, `said`, `changes`, `first_changed`. A version counts
+  as a publish (`may_publish`). Unpublish deletes every version's files and
+  rows. **`tools/deploy.sh` has no route for `/m/<id>/v/<n>` yet** (the
+  relay server has). Until it does, Vercel passes a query on through the
+  `/m/<id>` route (the gallery's `/m/<id>.webp?v=` relies on it), so
+  `/m/<id>?v=<n>` should reach the same page; not yet tried on a
+  deployment. The app: the Share panel's What changed? (for a model with a link;
+  `brickworksShare.panel.note`, `version`, `said`); the viewer's version line
+  (`view.version`, `newest`, `version_line`) and, for a place kept on another
+  version where a step at or before it changed (`BuildSteps.changed_since`),
+  "This model changed from step J since you were on step K" with Build from
+  step J and Keep step K (`view.place_says`, `view_build_from`), and in the
+  step player "This model changed from step J." with Go to step J
+  (`build.changed`, `build_changed_go`); the kept place has its version
+  (`brickworks.build.<id>` = `{page, building, version}`); a copy keeps the
+  version it came from (`0 !BRICKWORKS REMIX_VERSION n`) and its page says
+  "Remixed from X, version N".
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -1549,7 +1593,16 @@ ticked, then sent `listed: true` with the panel saying so, unticked sent false;
 a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
 the link's and read back when it opens; Unpublish; another account's link
 replaced; Clear and new work forget both. The viewer's about line ends
-"· remixed from Probe Original" for a link that is a remix. Pictures in
+"· remixed from Probe Original" for a link that is a remix. Versions
+(2026-10-18): the version line says "Version 2: …" or "Version 1 of 2, an
+older one"; a place kept on step 2 of version 1 opens on step 2 told nothing
+and kept on version 2, one on step 5 is told "This model changed from step
+3." and Go to step 3 goes there, one closed on step 5 is told on the viewer
+and Build from step 3 opens it; `BuildSteps.changed_since` case by case;
+What changed? only once there is a link, sent trimmed with the next
+publish, and the panel saying which version is up and what changed
+(`12_version_line.png`, `13_changed_from.png`, `14_viewer_changed.png`,
+`8a_new_version.png`). Pictures in
 `shots/share/` (`7_og_image.png` is the link's preview picture,
 `8b_list_ticked.png` the panel with the box ticked).
 
@@ -1707,6 +1760,53 @@ the parts; a finger turning the model; the page in `localStorage`; and after a
 reload, step 3 again. Pictures
 `shots/build_web/<size>_1_viewer.png` to `_5_reloaded.png`. Against a
 deployment: `--url=<preview> --id=<a published link's id> --bypass=…`.
+
+**Versions** (`supabase/versions.sql`, `tools/web/versions_flow.mjs`,
+2026-10-18). The SQL, dry: run in a transaction and rolled back, with the
+trial queries after it (`pg` from npm, `.env` sourced):
+
+```sh
+PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/versions.sql \
+  --dry --try=tools/versions_try.sql --table=share_versions
+```
+
+Proves it when it prints, before "rolled back, nothing kept", every
+published model with a version 1 (`published_without_version_1` 0,
+`as_the_model_is` equal to `compared`), a version 2 written as the server
+writes one, the five refusals (no such model, the same version twice, a
+note over 280, a version 0, changes not an object), `anon_reads` false and
+`server_writes` true, and the file run again adding nothing. 2026-10-18: 7
+published models, 7 version 1s.
+
+In real browsers, until the file is applied against a local relay that
+holds `share_versions` in memory (`--hold`, `tools/web/held_tables.mjs`) and
+sends everything else to the real project; once it is applied, against a
+preview with `BW_BYPASS`:
+
+```sh
+tools/export.sh web
+node tools/web/relay_server.mjs 8852 --static=build/web --hold=share_versions &
+node tools/web/versions_flow.mjs --url=http://127.0.0.1:8852 --out=shots/versions
+```
+
+Proves it when it ends "a model published again keeps the old one, says what
+changed, and keeps a builder's place" with no `FAIL`: a six-step tower (its
+steps carried by `share_pages_probe --write`) published, then published
+again with step 3's two bricks blue and a note — version 2, "2 parts added
+and 2 removed in step 3", by part and colour, step 3 the first changed, both
+files in the bucket; the link's page says it with the note, part by part,
+"Steps 1–2 are as they were", and names `/m/<id>/v/1`, which says it is
+older, links to the newest, is noindex, and whose model is still red; the
+viewer on `?v=1` says "Version 1 of 2, an older one" at `/m/<id>/v/1`; a
+builder kept on step 2 of version 1 opens on step 2 told nothing and kept
+on version 2; one on step 5 is told "This model changed from step 3." and
+Go to step 3 goes there; one who closed the player on step 5 is told on the
+viewer and Build from step 3 opens it there; the gallery's card is the link;
+a second account's Open in Brickworks copy, shared, says "Remixed from …,
+version 2"; unpublished, the link, version 1's page and model answer 410,
+neither file is in the bucket and no row is left. Pictures in `--out`.
+`share_view_probe` (above) proves the same in the desktop scene against the
+fake, with `BuildSteps.changed_since` case by case.
 
 **Share steps browser flow** (`tools/web/share_steps_flow.mjs`, 2026-10-17):
 each page turn of Build it timed from the finger to the frame, and the first

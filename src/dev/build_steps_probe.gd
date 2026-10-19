@@ -348,17 +348,20 @@ func _kept_place() -> void:
 	_ok(BuildSteps.recall("Pr0beBu1ld").is_empty(), "a link never built from has no place")
 	BuildSteps.remember("Pr0beBu1ld", 7, true)
 	var kept: Dictionary = BuildSteps.recall("Pr0beBu1ld")
-	_ok(kept == {"page": 7, "building": true}, "the page and that it was being built come back (%s)"
-		% kept)
-	BuildSteps.remember("Pr0beBu1ld", 9, false)
-	_ok(BuildSteps.recall("Pr0beBu1ld") == {"page": 9, "building": false}
-		and BuildSteps.recall("0therL1nk").is_empty(), "...kept per link")
+	_ok(kept == {"page": 7, "building": true, "version": 1},
+		"the page and that it was being built come back, on version 1 (%s)" % kept)
+	BuildSteps.remember("Pr0beBu1ld", 9, false, 3)
+	_ok(BuildSteps.recall("Pr0beBu1ld") == {"page": 9, "building": false, "version": 3}
+		and BuildSteps.recall("0therL1nk").is_empty(), "...kept per link, with the version it was on")
+	BuildSteps._kept["Pr0beOld00"] = {"page": 4, "building": true}
+	_ok(BuildSteps.recall("Pr0beOld00") == {"page": 4, "building": true, "version": 1},
+		"a place kept before links had versions was kept on version 1")
 	for junk: Variant in ["7", {"page": "seven"}, {"building": true}, [7], null]:
 		BuildSteps._kept["Pr0beJunk0"] = junk
 		_ok(BuildSteps.recall("Pr0beJunk0").is_empty(), "a kept value of the wrong shape is no place (%s)"
 			% [junk])
 	BuildSteps._kept["Pr0beJunk0"] = {"page": -4, "building": "yes"}
-	_ok(BuildSteps.recall("Pr0beJunk0") == {"page": 0, "building": false},
+	_ok(BuildSteps.recall("Pr0beJunk0") == {"page": 0, "building": false, "version": 1},
 		"...and one out of range is the cover, not being built")
 	BuildSteps._kept.clear()
 

@@ -95,6 +95,14 @@ var _offer_close: Button
 ## either before the scene enters the tree.
 var _viewing: String = ""
 var _copying: String = ""
+## Which version of the link was asked for (/m/<id>/v/<n>: ?v=<n>, as
+## --v=<n>), 0 for the newest; and, once it is open, which it is, how many
+## the link has and what each changed (api/share.js), which is what keeps a
+## builder's place (BuildSteps.changed_since).
+var _viewing_version: int = 0
+var _view_version: int = 1
+var _view_newest: int = 1
+var _view_versions: Array = []
 var _copy_started: bool = false
 var _first_open_done: bool = false
 var _shared: SharedModels
@@ -1264,6 +1272,9 @@ func _ready() -> void:
 		_viewing = _argument("--view")
 	if _copying.is_empty() and SharedModels.is_id(_argument("--copy")):
 		_copying = _argument("--copy")
+	# And which version of it, a number or nothing.
+	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
+		_viewing_version = _argument("--v").to_int()
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.
@@ -1946,6 +1957,9 @@ func _enter_view() -> void:
 	_share_view.parts_wanted.connect(_toggle_parts)
 	_share_view.copy_wanted.connect(_open_copy)
 	_share_view.build_wanted.connect(func() -> void: _enter_build())
+	# A changed model's step, offered to a builder who had got past it.
+	_share_view.build_from.connect(func(page: int) -> void: _enter_build(page))
+	_share_view.newest_wanted.connect(_open_newest)
 	# The big Build it of a phone sits above the timeline.
 	_share_view.floor_at = func() -> float:
 		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
@@ -2036,9 +2050,16 @@ func _view_shared() -> void:
 	_share_view.loading()
 	var began: int = Time.get_ticks_msec()
 	_view_phases = {}
-	var answer: Dictionary = await _shared.fetch(_viewing)
+	var answer: Dictionary = await _shared.fetch(_viewing, _viewing_version)
 	_view_phases["fetched"] = Time.get_ticks_msec() - began
 	var code: int = int(answer["code"])
+	if code == 404 and _viewing_version > 0 and answer["body"] is Dictionary \
+			and int((answer["body"] as Dictionary).get("newest", 0)) > 0:
+		_share_view.gone("There is no version %d of this model" % _viewing_version,
+			str((answer["body"] as Dictionary).get("error", "")))
+		_show_name("There is no version %d of this model" % _viewing_version)
+		_set_address("/m/%s/v/%d" % [_viewing, _viewing_version])
+		return
 	if code == 410 or code == 404:
 		var title: String = ("This model is no longer shared" if code == 410
 			else "There is no model at this link")
@@ -2065,8 +2086,18 @@ func _view_shared() -> void:
 	_store.share_id = ""
 	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")),
 		shared["remixed_from"] if shared.get("remixed_from") is Dictionary else {})
+	# Which version it is, and what changed in it; an older one keeps its
+	# own address.
+	_view_version = maxi(int(shared.get("version", 1)), 1)
+	_view_newest = maxi(int(shared.get("newest", _view_version)), _view_version)
+	_view_versions = shared["versions"] if shared.get("versions") is Array else []
+	var said: String = ""
+	for one: Variant in _view_versions:
+		if one is Dictionary and int((one as Dictionary).get("n", 0)) == _view_version:
+			said = str((one as Dictionary).get("said", ""))
+	_share_view.show_version(_view_version, _view_newest, said)
 	_show_name(name)
-	_set_address("/m/" + _viewing)
+	_set_address(_view_address())
 	_lay_baseplate()
 	_shell.assemblies.enter("")
 	await get_tree().process_frame
@@ -2115,11 +2146,22 @@ func _view_shared() -> void:
 	# the page it was on.
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
+	# Kept on another version of the link: still right if nothing up to the
+	# step reached changed, and then kept on this one. If something did, the
+	# builder is told from which step, and offered it, where they are.
+	var changed: int = 0
+	if not kept.is_empty():
+		changed = BuildSteps.changed_since(_view_versions, int(kept["version"]), _view_version,
+			int(kept["page"]))
+		if changed == 0 and int(kept["version"]) != _view_version:
+			BuildSteps.remember(_viewing, int(kept["page"]), bool(kept["building"]), _view_version)
 	if _build_wanted == NO_BUILD_WANTED and not bool(kept.get("building", false)):
 		_ready_the_pages()
 	# The lattice, for what is under a pointer, a slice a frame, once the
 	# first taps have had their frames.
 	get_tree().create_timer(2.0).timeout.connect(func() -> void: _store.register_later())
+	if changed > 0:
+		_share_view.tell_changed(changed, int(kept["page"]))
 	if _build_wanted != NO_BUILD_WANTED:
 		var wanted: int = _build_wanted
 		_build_wanted = NO_BUILD_WANTED
@@ -2128,10 +2170,27 @@ func _view_shared() -> void:
 		_enter_build(int(kept["page"]))
 
 
+## The page's address for what the viewer has open: the link, or an older
+## version's own.
+func _view_address() -> String:
+	return "/m/" + _viewing + ("/v/%d" % _view_version if _view_version < _view_newest else "")
+
+
+## The newest version, from an older one: the link's own viewer.
+func _open_newest() -> void:
+	var address: String = "/app?view=" + _viewing
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+	else:
+		OS.shell_open(SharedModels.link_for(_viewing))
+
+
 ## Open in Brickworks, from the viewer: the app as everybody else gets
 ## it, which signs the visitor in and then copies the model (_maybe_copy).
 func _open_copy() -> void:
-	var address: String = "/app?copy=" + _viewing
+	# The version being looked at: an older one copied is that one.
+	var address: String = "/app?copy=" + _viewing \
+		+ ("&v=%d" % _view_version if _view_version < _view_newest else "")
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
@@ -2166,6 +2225,10 @@ func _enter_build(page: int = -1) -> void:
 		_steps.visible = false
 	if _build_pages == null:
 		_make_build_pages(made)
+	# A builder told on the viewer that the model changed, who pressed Build
+	# it and not the step offered, is told again on the page they go to.
+	var changed: int = _share_view.changed_from
+	_share_view.hide_place()
 	_share_view.show_bar(false)
 	_share_view.hover("", Vector2.ZERO)
 	_hovered = 0
@@ -2178,6 +2241,8 @@ func _enter_build(page: int = -1) -> void:
 	# A frame for the bars to be laid out, so the view is framed between them.
 	await get_tree().process_frame
 	_build_go(page)
+	if changed > 0 and page >= changed:
+		_build_mode.tell_changed(changed)
 
 
 ## The pages of [param made], and the order and key the world shows them by.
@@ -2253,7 +2318,7 @@ func _build_go(page: int) -> void:
 	_build_mode.show_page(page, _build_pages.last(), _build_pages.caption(page),
 		_build_pages.note(page), _build_pages.lots(page))
 	lap = _lap(took, "page", lap)
-	BuildSteps.remember(_viewing, page, true)
+	BuildSteps.remember(_viewing, page, true, _view_version)
 	_lap(took, "kept", lap)
 	_draw_ahead(page)
 	_build_turned_us = Time.get_ticks_usec() - started
@@ -2379,7 +2444,7 @@ func _leave_build() -> void:
 	_camera.seen = _model_rect
 	_share_view.show_bar(true)
 	_gizmo.visible = bool(_build_left.get("cube", true))
-	BuildSteps.remember(_viewing, _build_page, false)
+	BuildSteps.remember(_viewing, _build_page, false, _view_version)
 	if bool(_build_left.get("timeline", false)):
 		_steps.visible = true
 		_steps.to_end()
@@ -2447,7 +2512,7 @@ func _maybe_copy() -> void:
 		return
 	_copy_started = true
 	_bar.say("copying the shared model…")
-	var answer: Dictionary = await _shared.fetch(_copying)
+	var answer: Dictionary = await _shared.fetch(_copying, _viewing_version)
 	_set_address("")
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
@@ -2463,6 +2528,8 @@ func _maybe_copy() -> void:
 		return
 	_store.share_id = ""
 	_store.remixed_from = _copying
+	# And which version of it: what its page says the copy was made of.
+	_store.remixed_from_version = maxi(int(shared.get("version", 0)), 0)
 	_bar.opened.emit(int(result["placed"]))
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:

@@ -19,6 +19,13 @@
 ## outlined and named; the parts list with its BrickLink and Rebrickable
 ## lists; the booklet; a link taken down saying so.
 ##
+## Versions: the viewer's line saying which version is open and what
+## changed in it, or that it is an older one; a builder's place kept on
+## version 1 still right on version 2 when it changed after their step, and
+## when it changed at or before it, told so and offered the step, in the
+## step player and on the viewer; the panel's What changed? for a model with
+## a link, sent with its next version, and the version said after.
+##
 ## Build it: the step player pressed on the bar, Next three times to step
 ## 3, what was built before drawn faded and the new parts in their own
 ## colours and outlined, their pictures along the bottom, a swipe, the
@@ -52,8 +59,10 @@ class FakeShared extends SharedModels:
 	var unpublished: Array[String] = []
 	## An id the server says belongs to another account.
 	var not_ours: String = ""
+	## Each link's newest version, as the server counts them.
+	var versions: Dictionary = {}
 
-	func fetch(id: String) -> Dictionary:
+	func fetch(id: String, _version: int = 0) -> Dictionary:
 		asked.append(id)
 		while answer.is_empty():
 			await (Engine.get_main_loop() as SceneTree).process_frame
@@ -65,9 +74,12 @@ class FakeShared extends SharedModels:
 		if str(body.get("id", "")) == not_ours and not not_ours.is_empty():
 			return {"code": 403, "body": {"error": "that link is somebody else's model"}}
 		var given: String = str(body.get("id", "NewL1nk%03d" % published.size()))
+		var n: int = int(versions.get(given, 0)) + 1
+		versions[given] = n
 		return {"code": 200 if body.has("id") else 201, "body": {"id": given,
 			"url": "https://brickworks.diy/m/" + given, "embed": SharedModels.embed_for(given),
-			"parts": 7, "updated": body.has("id"), "listed": body.get("listed", false) == true}}
+			"parts": 7, "updated": body.has("id"), "listed": body.get("listed", false) == true,
+			"version": n, "said": "Version %d: 1 part added in step 2." % n if n > 1 else ""}}
 
 	func unpublish(_token: String, id: String) -> Dictionary:
 		unpublished.append(id)
@@ -307,6 +319,7 @@ func _run() -> void:
 	for _n: int in 10:
 		await process_frame
 	await _build_it(text, count)
+	await _versions(text, count)
 
 	# Back as a builder would be: the switches are the app's, not the probe's.
 	ShellPrefs.frozen = false
@@ -320,11 +333,12 @@ func _run() -> void:
 
 ## A viewer for the link, opened as a visitor's browser does, against the
 ## fake: ready to look at, or null.
-func _open_viewer(text: String, count: int) -> ShareView:
+func _open_viewer(text: String, count: int, more: Dictionary = {}) -> ShareView:
 	var fake := FakeShared.new()
 	fake.answer = {"code": 200, "body": {"id": ID, "name": "Probe House",
 		"author": "Probe Builder", "parts": count, "url": "https://brickworks.diy/m/" + ID,
 		"model": text}}
+	(fake.answer["body"] as Dictionary).merge(more, true)
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("_viewing", ID)
 	_main.set("_shared", fake)
@@ -453,7 +467,7 @@ func _build_it(text: String, count: int) -> void:
 	await _pinch(middle, 60.0, 180.0)
 	_ok(camera.distance_now() < far * 0.8, "two fingers spread zoom in (%.0f to %.0f)" % [
 		far, camera.distance_now()])
-	_ok(BuildSteps.recall(ID) == {"page": 3, "building": true}, "the page is kept for the link (%s)"
+	_ok(BuildSteps.recall(ID) == {"page": 3, "building": true, "version": 1}, "the page is kept for the link (%s)"
 		% BuildSteps.recall(ID))
 
 	print("\nopened again, as a phone that slept")
@@ -484,7 +498,7 @@ func _build_it(text: String, count: int) -> void:
 		and steps.is_playing_back() and steps.timeline_at().x == steps.timeline_at().y
 		and _shown(world, store) == count,
 		"Close: the whole model again, the bar and the timeline back, nothing faded")
-	_ok(BuildSteps.recall(ID) == {"page": 3, "building": false},
+	_ok(BuildSteps.recall(ID) == {"page": 3, "building": false, "version": 1},
 		"...the page still kept, not being built")
 	await _press(view.controls_by_name()["view_build"])
 	await _settle()
@@ -496,6 +510,107 @@ func _build_it(text: String, count: int) -> void:
 		"past the last step, Finish puts the whole model back")
 	await _close_viewer()
 	BuildSteps._kept.clear()
+
+
+## Versions of the link: the viewer's version line, and a builder's place
+## kept on version 1 as the link opens on version 2, whose first changed
+## step is 3.
+func _versions(text: String, count: int) -> void:
+	print("\nversions: what the viewer says, and a builder's place")
+	var second: Dictionary = {"version": 2, "newest": 2, "versions": [
+		{"n": 2, "said": "Version 2: 2 parts added and 2 removed in step 3.", "first_changed": 3,
+			"note": "Step 3 in blue"},
+		{"n": 1, "said": "", "first_changed": null}]}
+	BuildSteps._kept.clear()
+	var view: ShareView = await _open_viewer(text, count, second)
+	_ok(view != null and str(view.page_state()["version_line"]) == "Version 2: 2 parts added and 2 removed in step 3."
+		and not view.controls_by_name().has("view_newest"),
+		"the viewer says which version it is and what changed in it (%s)"
+		% (view.page_state()["version_line"] if view != null else "no viewer"))
+	_ok(str(_main.call("_view_address")) == "/m/" + ID, "...at the link's own address")
+	_save("12_version_line.png")
+	await _close_viewer()
+
+	print("\na builder on step 2 of version 1: nothing they built changed")
+	BuildSteps.remember(ID, 2, true, 1)
+	view = await _open_viewer(text, count, second)
+	var mode: BuildMode = _main.get("_build_mode") if view != null else null
+	await _until_building(mode)
+	var said: Dictionary = _main.call("build_state") if view != null else {}
+	_ok(mode != null and mode.is_open() and said.get("page") == 2 and int(said.get("changed_from", -1)) == 0
+		and str(said.get("changed", "?")) == "",
+		"the link opens on step 2, with nothing to tell (%s, %s)" % [said.get("caption", ""), said.get("changed", "")])
+	_ok(BuildSteps.recall(ID) == {"page": 2, "building": true, "version": 2},
+		"...and the place is kept on version 2 now (%s)" % BuildSteps.recall(ID))
+	await _close_viewer()
+
+	print("\na builder on step 5 of version 1: the model changed from step 3")
+	BuildSteps.remember(ID, 5, true, 1)
+	view = await _open_viewer(text, count, second)
+	mode = _main.get("_build_mode") if view != null else null
+	await _until_building(mode)
+	said = _main.call("build_state") if view != null else {}
+	_ok(mode != null and mode.is_open() and said.get("page") == 5
+		and str(said.get("changed", "")) == "This model changed from step 3."
+		and mode.controls_by_name().has("build_changed_go"),
+		"the link opens where they were, step 5, and says the model changed from step 3 (%s)"
+		% said.get("changed", ""))
+	_save("13_changed_from.png")
+	if mode != null and mode.controls_by_name().has("build_changed_go"):
+		await _press(mode.controls_by_name()["build_changed_go"])
+		await _settle()
+	said = _main.call("build_state") if view != null else {}
+	_ok(said.get("page") == 3 and str(said.get("changed", "?")) == "",
+		"Go to step 3 goes there, and the notice goes (%s)" % said.get("caption", ""))
+	_ok(BuildSteps.recall(ID) == {"page": 3, "building": true, "version": 2},
+		"...kept as step 3 of version 2 (%s)" % BuildSteps.recall(ID))
+	await _close_viewer()
+
+	print("\nthe same on the viewer, for a builder who closed the step player")
+	BuildSteps.remember(ID, 5, false, 1)
+	view = await _open_viewer(text, count, second)
+	await _settle()
+	var state: Dictionary = view.page_state() if view != null else {}
+	_ok(str(state.get("place_says", "")) == "This model changed from step 3 since you were on step 5."
+		and view.controls_by_name().has("view_build_from") and view.controls_by_name().has("view_keep_place"),
+		"the viewer says so and offers step 3, or their own (%s)" % state.get("place_says", ""))
+	_save("14_viewer_changed.png")
+	if view != null and view.controls_by_name().has("view_build_from"):
+		await _press(view.controls_by_name()["view_build_from"])
+	mode = _main.get("_build_mode") if view != null else null
+	await _until_building(mode)
+	said = _main.call("build_state") if view != null else {}
+	_ok(mode != null and mode.is_open() and said.get("page") == 3 and str(view.page_state()["place_says"]) == "",
+		"Build from step 3 opens the step player there (%s)" % said.get("caption", ""))
+	await _close_viewer()
+
+	print("\nan older version")
+	BuildSteps._kept.clear()
+	view = await _open_viewer(text, count, {"version": 1, "newest": 2, "versions": second["versions"]})
+	_ok(view != null and str(view.page_state()["version_line"]) == "Version 1 of 2, an older one. Open the newest"
+		and view.controls_by_name().has("view_newest"),
+		"the viewer says it is an older one, with the newest a click away (%s)"
+		% (view.page_state()["version_line"] if view != null else "no viewer"))
+	_ok(str(_main.call("_view_address")) == "/m/%s/v/1" % ID, "...at its own address (%s)" % _main.call("_view_address"))
+	await _close_viewer()
+
+	print("\nwhether a place holds (BuildSteps.changed_since)")
+	var rows: Array = second["versions"]
+	for case: Array in [[1, 2, 2, 0], [1, 2, 3, 3], [1, 2, 9, 3], [2, 2, 9, 0], [2, 1, 4, 3],
+			[1, 3, 1, 1], [1, 2, 0, 0]]:
+		var got: int = BuildSteps.changed_since(rows, case[0], case[1], case[2])
+		_ok(got == case[3], "kept on version %d at step %d, opened on version %d: %d (%d)" % [
+			case[0], case[2], case[1], case[3], got])
+	BuildSteps._kept.clear()
+
+
+## The step player up, or a few seconds gone by.
+func _until_building(mode: BuildMode) -> void:
+	for _n: int in 120:
+		if mode != null and mode.is_open() and int(mode.page) > 0:
+			break
+		await process_frame
+	await _settle()
 
 
 ## The colour a brick is drawn in, read back from its batch.
@@ -603,6 +718,8 @@ func _the_panel(text: String) -> void:
 		"ticking Show who made it offers a name from the account (%s)" % panel._author.text)
 	await _settle()
 	_save("6_panel.png")
+	_ok(not panel.controls_by_name().has("share_note"),
+		"no What changed? for a model with no link yet: there is nothing it changed from")
 	await panel.publish()
 	await _settle()
 	var sent: Dictionary = fake.published[0] if not fake.published.is_empty() else {}
@@ -686,6 +803,25 @@ func _the_panel(text: String) -> void:
 	var again: Dictionary = fake.published[-1]
 	_ok(str(again.get("id", "")) == "NewL1nk001" and not again.has("author"),
 		"publishing again sends the same link, and no author once unticked")
+
+	print("\nwhat changed, said with the next version")
+	_ok(panel.controls_by_name().has("share_note") and not again.has("note"),
+		"a model with a link has What changed?, and nothing is sent when it is empty")
+	panel._note.text = "  Moved the door to the left  "
+	await panel.publish()
+	var noted: Dictionary = fake.published[-1]
+	var now: Dictionary = panel.page_state()
+	_ok(str(noted.get("note", "")) == "Moved the door to the left",
+		"what is typed in it goes with the next version, trimmed (%s)" % noted.get("note", ""))
+	_ok(int(now["version"]) == int(fake.versions["NewL1nk001"]) and int(now["version"]) > 1
+		and str(panel._status.text).begins_with("Version %d is up at this link" % int(now["version"]))
+		and str(panel._status.text).contains("version %d is kept" % (int(now["version"]) - 1))
+		and str(panel._status.text).contains(str(now["said"])) and not str(now["said"]).is_empty(),
+		"the panel says which version is up, that the one before is kept, and what changed (%s)"
+		% panel._status.text)
+	_ok(panel._note.text.is_empty(), "...and the box is empty for the next one")
+	await _settle()
+	_save("8a_new_version.png")
 
 	print("\nthe gallery, and a remix")
 	_ok(panel.controls_by_name().has("share_list") and panel._list.text == "List it in the gallery",

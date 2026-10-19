@@ -2294,6 +2294,20 @@
       "entry": "src/assembly/flex_follow.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=hoses   (by hand: open 42080-1 and raise the crane's arm; its pneumatic tubes from the cab bend and follow; drag an arm a tube is too short for and it stops, the status bar naming the tube)",
       "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "versions browser flow",
+      "entry": "tools/web/versions_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 8852 --static=build/web --hold=share_versions & node tools/web/versions_flow.mjs --url=http://127.0.0.1:8852 --out=DIR   (.env sourced; or --url=<preview> with BW_BYPASS once supabase/versions.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "versions of a shared model",
+      "entry": "api/_versions.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/versions.sql --dry --try=tools/versions_try.sql --table=share_versions   (.env sourced; then the versions browser flow)",
+      "area": "web"
     }
   ]
 }

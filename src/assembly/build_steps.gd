@@ -439,9 +439,10 @@ const KEPT_AS := "brickworks.build."
 static var _kept: Dictionary = {}
 
 
-## Where [param link] was left: {"page": int, "building": bool}, or empty
-## for a link not built from here. Read at the edge and made precise: a
-## value of the wrong shape is no value.
+## Where [param link] was left: {"page": int, "building": bool, "version":
+## int}, or empty for a link not built from here. Read at the edge and made
+## precise: a value of the wrong shape is no value. A place kept before
+## links had versions was kept on version 1, which every link then was.
 static func recall(link: String) -> Dictionary:
 	var raw: Variant = null
 	if OS.has_feature("web"):
@@ -458,14 +459,44 @@ static func recall(link: String) -> Dictionary:
 	if not (kept.get("page") is float or kept.get("page") is int):
 		return {}
 	var building: Variant = kept.get("building")
-	return {"page": maxi(int(kept["page"]), 0), "building": building is bool and building}
+	var version: Variant = kept.get("version")
+	return {"page": maxi(int(kept["page"]), 0), "building": building is bool and building,
+		"version": maxi(int(version), 1) if (version is float or version is int) else 1}
 
 
-static func remember(link: String, page: int, building: bool) -> void:
-	var kept: Dictionary = {"page": page, "building": building}
+## Keep [param page] as where [param link] is, on [param version] of it.
+static func remember(link: String, page: int, building: bool, version: int = 1) -> void:
+	var kept: Dictionary = {"page": page, "building": building, "version": maxi(version, 1)}
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval(
 			"(function(){try{localStorage.setItem(%s,%s)}catch(e){}})()"
 			% [JSON.stringify(KEPT_AS + link), JSON.stringify(JSON.stringify(kept))], true)
 	else:
 		_kept[link] = kept
+
+
+## Whether a place kept on one version of a link still holds on another:
+## the first step that differs between version [param from] and version
+## [param to], when [param page] is at it or past it; 0 when nothing up to
+## [param page] changed, and the place holds. [param versions] are the
+## link's as api/share.js answers them ({"n", "first_changed"}, worked out
+## by api/_versions.js): the earliest first changed step of every version
+## between the two. A version the answer does not reach is a change from
+## step 1.
+static func changed_since(versions: Array, from: int, to: int, page: int) -> int:
+	if from == to or from < 1 or to < 1 or page < 1:
+		return 0
+	var first: int = 0
+	for n: int in range(mini(from, to) + 1, maxi(from, to) + 1):
+		var row: Dictionary = {}
+		for one: Variant in versions:
+			if one is Dictionary and int((one as Dictionary).get("n", 0)) == n:
+				row = one
+		if row.is_empty():
+			first = 1
+			break
+		var changed: Variant = row.get("first_changed")
+		if (changed is float or changed is int) and int(changed) >= 1 \
+				and (first == 0 or int(changed) < first):
+			first = int(changed)
+	return first if first >= 1 and page >= first else 0

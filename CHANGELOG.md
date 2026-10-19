@@ -15,6 +15,20 @@ whole cycle.
 
 ### Added
 
+- Versions of a shared model. Publishing a model again makes its next
+  version and keeps the one before: the link shows the newest, and
+  `/m/<id>/v/<n>` shows an older one, marked as older, with the newest a
+  click away. What changed is worked out from the two files, not typed:
+  the parts added and removed by part and colour, the steps added, taken
+  out or changed by number, and the first step that differs. The model's
+  page and the viewer say it short ("Version 2: 2 parts added and 2
+  removed in step 3."), with what its owner wrote in the Share panel's new
+  What changed? box. Someone building from a phone keeps their place: on
+  step 2 when the model changed from step 3, they stay on step 2; on
+  step 5, they are told the model changed from step 3 and offered it. A
+  copy made with Open in Brickworks records which version it came from,
+  and its page says so. Unpublishing takes every version away. Needs
+  `supabase/versions.sql` applied before the deploy.
 - Arrows of your own on a booklet page. Lay out page… has Draw an arrow:
   drag on the page from where the arrow starts to where it points, then
   drag its middle to bend it, and set it red (where a part goes in) or
