@@ -27,7 +27,10 @@ the pages say what the site does.
 - `supabase/follows.sql` after the rest (it reads trust, comments, builds
   and versions); until then a profile shows no Follow and no counts, /feed
   says it is not open yet, Account has no count, and the day's email is
-  of comments only.
+  of comments only. Applied again later, challenges.sql goes again right
+  after it (it replaces follows.sql's `feed_rows`): `tools/apply_sql.mjs
+  supabase/follows.sql --again=supabase/challenges.sql`. Alone it is
+  refused while the live `feed_rows` is challenges.sql's.
 - `supabase/discovery.sql` after builds.sql and tested.sql (it reads
   `model_builds` and the Tested mark); until then Sort › Top builds lists
   newest first, the gallery's front has no pick (Small builds is there, the
@@ -43,9 +46,12 @@ the pages say what the site does.
   from the moment it is applied.
 - `supabase/challenges.sql` after designers.sql (it reads `model_needs`,
   the Tested mark, `gallery_shows`, `directory_card` and trust's and
-  moderation's rules); until then /challenge says there is no challenge,
-  the admin page says Challenges are not open yet, a model's page offers no
-  entry, and no card says it won.
+  moderation's rules), and after follows.sql, whose `feed_rows` it
+  replaces with one kind more, an entry in a challenge; so again after any
+  later follows.sql. Until then /challenge says there is no challenge, the
+  admin page says Challenges are not open yet, a model's page offers no
+  entry, no card says it won, and the feed tells of no entry. Applied to
+  the live project 2026-10-19.
 
 ## The rules
 

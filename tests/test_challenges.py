@@ -80,6 +80,18 @@ def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
         assert rule in added, f"the entry's row does not ask {rule}"
 
 
+def test_applying_follows_again_alone_is_refused() -> None:
+    """tools/apply_sql.mjs guards the function this file replaces: follows.sql
+    applied again alone would take the entries out of every feed."""
+    apply = (ROOT / "tools/apply_sql.mjs").read_text()
+    guard = re.search(r'\["follows\.sql", "feed_rows", "challenges\.sql", "([^"]+)"\]', apply)
+    assert guard, "apply_sql.mjs does not guard follows.sql's feed_rows"
+    mark = guard.group(1)
+    assert mark in body("feed_rows", SQL)
+    assert mark not in body("feed_rows", (ROOT / "supabase/follows.sql").read_text())
+    assert "REPLACED LATER: challenges.sql" in (ROOT / "supabase/follows.sql").read_text()
+
+
 def test_the_tables_and_functions_are_the_servers_alone() -> None:
     plain = code(SQL)
     for table in TABLES:

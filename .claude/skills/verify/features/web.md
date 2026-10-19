@@ -1957,8 +1957,12 @@ rolled-back transaction:
 
 ```sh
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql \
-  --dry --try=tools/follows_try.sql --table=follows
+  --again=supabase/challenges.sql --dry --try=tools/follows_try.sql --table=follows
 ```
+
+(`--again`: challenges.sql replaces follows.sql's `feed_rows`, so it goes
+again after it; alone, apply_sql refuses follows.sql while the live one is
+challenges.sql's.)
 
 It proves it when every line says what its label says: Bob follows Ada
 (1 follower, again still 1); refused `yourself`, `under_13`, `ask_first`,
