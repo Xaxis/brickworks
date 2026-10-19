@@ -737,6 +737,36 @@ func _lodge(entries: Array, candidates: Array) -> void:
 					most = shared
 					best = other
 					from = key
+		if best == 0 and keys.size() == 1:
+			# A part held by nothing that shares no cell with anything, where
+			# it or what it is in has no exact shape to read joints from (a
+			# file's own part, an obsolete one), is in something whose cover is
+			# hollow where it is: a belt wheel on the axle through its hole, the
+			# half pin in that wheel, a magnet in its coupling. It is held by
+			# what goes through its middle, else by what its box is most into
+			# (G13): left behind, 8074-1's belt wheel stopped its crane's turn at
+			# once, its axle tested along the way through it. Two parts with
+			# exact shapes are not: lodged so, 42042-1's winch was read into a
+			# loop of 63 joints.
+			var lone: int = int(keys[0])
+			var lone_cells: PackedInt32Array = lattice.boxes_of(lone)
+			var middle: Vector3 = (world_box[lone] as AABB).get_center()
+			var through: bool = false
+			if not lone_cells.is_empty():
+				for other: int in lattice.near_bounds(lone_cells, lone):
+					if not _up.has(other) or bending.has(other) or not world_box.has(other):
+						continue
+					var shared: float = (world_box[lone] as AABB).intersection(world_box[other]).get_volume()
+					if shared <= 0.0:
+						continue
+					var its_middle: bool = (world_box[other] as AABB).grow(0.5).has_point(middle)
+					if (its_middle and not through) or (its_middle == through and shared > most):
+						through = its_middle
+						most = shared
+						best = other
+						from = lone
+			if best != 0 and not _unknown_shape(lone) and not _unknown_shape(best):
+				best = 0
 		if best == 0:
 			continue
 		var into: int = Bodies._piece_find(up, _find(best))
@@ -762,6 +792,17 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		Bodies._piece_join(up, root, into)
 		Bodies._piece_join(up, root, piece)
 		lodged += 1
+
+
+## Whether [param key]'s part has no exact shape to read its joints from.
+## Off the main thread a shape not read yet is not known to be missing: no.
+func _unknown_shape(key: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	if brick == null or (not Exact.known(library, brick.part_id)
+			and OS.get_thread_caller_id() != OS.get_main_thread_id()):
+		return false
+	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+	return shape == null or shape.connector_count() == 0
 
 
 ## A gear rack among [param keys] (one piece, [param piece] in [param up])
@@ -1684,8 +1725,25 @@ static func _bores_across(at: Transform3D, mesh: Lbm.PartMesh, middle: Vector3) 
 ## Which of [param ids] a stud at [param foot] pointing [param way] is in:
 ## the one whose face it meets is nearest the stud's foot. A turntable's top
 ## and base share cells round their middle, and the lattice answers one of
-## them for a stud of the chassis under the base.
+## them for a stud of the chassis under the base. But where that one has no
+## socket at all, and so would hold nothing, the one the lattice answered
+## ([param ids][0]) when one of BrickNet's holes of it takes the stud ([method
+## _in_a_hole_exactly], G13): a train's buffer beam (4022) hangs 32 LDU below
+## the holes in its cap that take the plate's studs, and its coupling, hinged
+## to it, reaches lower than the studs by less, so by faces the studs the
+## lattice found in the beam were put in the coupling, and held nothing.
 func _sits_on(foot: Vector3, way: Vector3, ids: Array) -> int:
+	var best: int = _nearest_face(foot, way, ids)
+	var found: BrickWorld.Brick = world.get_brick(int(ids[0]))
+	if best != int(ids[0]) and _no_sockets(best) and found != null and _in_a_hole_exactly(found, foot, way):
+		return int(ids[0])
+	return best
+
+
+## Of [param ids], the one whose face a stud at [param foot] pointing
+## [param way] meets nearest its foot, and of two alike the one that reaches
+## least far past it ([method _sits_on]).
+func _nearest_face(foot: Vector3, way: Vector3, ids: Array) -> int:
 	var best: int = int(ids[0])
 	var nearest: float = INF
 	for key: int in ids:
@@ -1757,6 +1815,32 @@ func _takes_stud(key: int, foot: Vector3, way: Vector3) -> bool:
 		var gap: Vector3 = tip - hole.at
 		var along: float = gap.dot(hole.axis)
 		if absf(along) <= hole.reach + 1.0 and (gap - hole.axis * along).length() <= 2.0:
+			return true
+	return _in_a_hole_exactly(brick, foot, way)
+
+
+## Whether a stud at [param foot] pointing [param way] is in one of BrickNet's
+## holes of [param brick] (Exact's connectors: a hole or a tube taking a stud
+## within POS_THR of the stud's line, pointing its way). The catalogue's
+## sockets are read off a part's bottom face, and a socket higher up is not
+## one: a train's buffer beam (4022) sits on the four end studs of the plate
+## under it by the holes in its cap, 32 LDU above its bottom. Read as studs
+## pressed on a face, the beam was a body of its own, hung on its coupling,
+## and stayed where it stood when its bogie turned: six trains' bogies met
+## their own beam at the first degree (G13, MECHANISMS §22).
+func _in_a_hole_exactly(brick: BrickWorld.Brick, foot: Vector3, way: Vector3) -> bool:
+	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+	if shape == null:
+		return false
+	for k: int in shape.connector_count():
+		if shape.kind[k] != Exact.HOLE or not (shape.sub[k] in [Exact.S_HOLE, Exact.S_TUBE]):
+			continue
+		var frame: Transform3D = brick.transform * shape.frames[k]
+		if (-frame.basis.y).normalized().dot(way) < Exact.AXIS_THR:
+			continue
+		var gap: Vector3 = frame.origin - foot
+		var along: float = clampf(gap.dot(way), 0.0, Joints.STUD_REACH)
+		if (gap - way * along).length() <= Exact.POS_THR:
 			return true
 	return false
 

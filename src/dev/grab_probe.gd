@@ -18,7 +18,7 @@
 ## there as timings.json.
 extends SceneTree
 
-const OUT := "/mnt/Projects/brickworks/bench/results/grab12-2026-10-18"
+const OUT := "/mnt/Projects/brickworks/bench/results/grab13-2026-10-19"
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [
@@ -113,6 +113,10 @@ func _run() -> void:
 			_move_frames = maxi(1, int(arg.trim_prefix("--move-frames=")))
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
+		if arg.begins_with("--slow-lay="):
+			# Every hose's laying made slower by this many microseconds: the cost
+			# checks must fail on it (FlexFollow.slow_usec).
+			FlexFollow.slow_usec = int(arg.trim_prefix("--slow-lay="))
 		if arg == "--check-covers":
 			# Every turned part asked where something is is also worked out
 			# whole, and the two answers compared (Grab.check_covers).
@@ -135,6 +139,12 @@ func _run() -> void:
 			if arg.begins_with("--sweep-out="):
 				sweep_out = arg.trim_prefix("--sweep-out=")
 		await _steer_sweep(swept, sweep_out)
+		quit(0)
+		return
+	if only == "gapjudge":
+		# The stops G12's judge calls real at the first degree that a move went
+		# through, for tools/shape_gap.py: rows, not checks.
+		await _gap_judge(OUT.path_join("gapjudge.jsonl"))
 		quit(0)
 		return
 	if only == "movesweep":
@@ -254,6 +264,11 @@ func _run() -> void:
 		await _what_stays()
 	if only.is_empty() or only == "meets":
 		await _says_what_meets()
+	if only.is_empty() or only == "meets" or only == "path":
+		await _path_check()
+	if only.is_empty() or only == "moving" or only == "beams":
+		for one: Array in BEAMS:
+			await _beam_check(one)
 	if only.is_empty() or only == "sockets":
 		await _socket_rounds()
 	if only.is_empty() or only == "moving":
@@ -532,6 +547,34 @@ const HOSES: Array = [
 ## every frame, 42080-1's six took 8.
 const HOSES_FRAME_MS := 3.5
 
+
+## A grab's hoses laid again cost a drag's frame within its budget (G10),
+## judged by what load cannot make slower (G13b): each hose laid again where
+## it stands, the fastest of seven layings (FlexFollow.lay_cost). A frame lays
+## while the budget lasts and at least one, so it costs no more than the budget
+## and the costliest laying. The worst frame of the drag, [param worst_ms], is
+## said, not judged: timed by the wall clock, 42080-1's tubes took 16.8 ms of a
+## frame at load 28 and 3.7 on the same code a few minutes later, and held a
+## release.
+func _lay_checks(name: String, held: Grab, worst_ms: float, rests: int) -> void:
+	var costs := PackedFloat64Array()
+	for item: FlexFollow.Item in held.flex.items:
+		costs.append(held.flex.lay_cost(item, held.placed))
+	var total: float = 0.0
+	var costliest: float = 0.0
+	for one: float in costs:
+		total += one
+		costliest = maxf(costliest, one)
+	var bent: int = maxi(costs.size(), 1)
+	_check(("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms a hose, the fastest of "
+		+ "seven layings each; the drag's worst frame %.2f ms, said, not judged)")
+		% [name, costs.size(), total / float(bent), worst_ms], total / float(bent) <= 2.0)
+	_check(("%s: and they fit a drag's frame (the budget %.1f ms and the costliest laying %.2f: %.2f, of %.1f; "
+		+ "%d frames to lay every one at rest)") % [name, FlexFollow.BUDGET_MS, costliest,
+		FlexFollow.BUDGET_MS + costliest, HOSES_FRAME_MS, rests], FlexFollow.BUDGET_MS + costliest <= HOSES_FRAME_MS)
+	_timings["hoses_cost_" + name.get_slice(":", 0)] = {"hoses": costs.size(), "per_hose_ms": total / float(bent),
+		"costliest_ms": costliest, "worst_frame_ms": worst_ms}
+
 ## A made model: a tower on the floor with an arm on a hinge, a Technic brick
 ## with a hole on the arm and one on the floor beside it, for a tube laid
 ## between the holes. LDraw's own units, y down.
@@ -699,9 +742,7 @@ func _hose_made() -> void:
 	_check("hoses: turned 20°, the tube's ends stay in their holes (%.3f LDU)" % miss, miss < 0.3)
 	_check("hoses: and it is as long as it was (%.2f against %.2f LDU)" % [float(shape.get("length", 0.0)),
 		float(rest_shape["length"])], absf(float(shape.get("length", 0.0)) - float(rest_shape["length"])) < 1.0)
-	_check("hoses: laying it again costs a few ms a frame (%.2f ms at worst)" % worst_ms, worst_ms <= 2.0)
-	_check("hoses: and fits a drag's frame (%.2f ms at worst, the budget %.1f)" % [worst_ms, FlexFollow.BUDGET_MS],
-		worst_ms <= HOSES_FRAME_MS)
+	_lay_checks("hoses: the made tube", held, worst_ms, rests)
 	var moved: int = held.commit(held.step_words())
 	await _frames(2)
 	var kept_miss: float = _ends_held(item, _hose_pieces(item_path), held.placed)
@@ -931,12 +972,7 @@ func _hose_set(name: String, path: String, word: String, degrees: float, ask: St
 	_check("%s: it keeps its length (%.2f against %.2f LDU)" % [name, float(shape.get("length", 0.0)),
 		length_was], absf(float(shape.get("length", 0.0)) - length_was) < maxf(1.0, length_was * 0.01))
 	var bent: int = held.flex.items.size()
-	_check("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms at worst, %.2f a hose)" % [
-		name, bent, worst_ms, worst_ms / float(bent)], worst_ms / float(bent) <= 2.0)
-	# Laid every one every frame, 42080-1's six took 8 ms on a quiet box and
-	# 77 on a loaded one: past the budget the rest are carried a frame.
-	_check("%s: and they fit a drag's frame (%.2f ms at worst, the budget %.1f; %d frames to lay every one at rest)"
-		% [name, worst_ms, FlexFollow.BUDGET_MS, rests], worst_ms <= HOSES_FRAME_MS)
+	_lay_checks(name, held, worst_ms, rests)
 	_timings["hoses_" + path.get_file().get_basename()] = {"hoses": bent, "worst_ms": worst_ms,
 		"first_ms": first_ms, "fit_off_ldu": fit, "bend_points": item.controls.size(),
 		"read_ahead_ms": _grab.ready_took.get("hoses", -1)}
@@ -5405,6 +5441,9 @@ const STEERING: Array = [
 ## in the way, Grab._bends_aside); 10220-1's door turned back met what it was
 ## built against (Grab._built_touching).
 const MOVING: Array = [
+	# G13b (MECHANISMS §22): turned +30, 18 free joints inside the crane swing
+	# down, most of them 180°, and tested along its way the turn back met the
+	# brick 1 x 16 that swung, until a free joint pressed swings aside.
 	["res://vendor/omr/files/8074-1_Crane.mpd", "turntable"],
 	["res://vendor/omr/files/10220-1.mpd", "door"],
 	# G12 (MECHANISMS §20): turned +30, the right door's slope 75 met the one
@@ -5645,6 +5684,124 @@ func _says_what_meets() -> void:
 	_check("%s: #%d turned %+d says what it met: %s" % [str(MEETS[0]).get_file().get_basename(), int(MEETS[1]),
 		int(MEETS[2]), found.get_string() if found != null else said.left(200).replace("\n", " | ")],
 		found != null and (said.contains("stopped where") or said.contains("at once")))
+	_builder.forget_history()
+
+
+## A made model whose way is blocked where its end is not (G13, MECHANISMS
+## §22): the made crane's arm on its hinge, and a plate 1 x 8 held over the
+## hinge on a tower beside it, in the arm's way a few tens of degrees over
+## and clear of it lying flat. LDraw's own units, y down.
+const MADE_PATH := """0 An arm on a hinge, and a plate over its way
+0 Name: made_path.ldr
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 71 0 -120 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 0 -120 10 1 0 0 0 1 0 0 0 1 3938.dat
+1 1 0 -144 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -168 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -192 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -216 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 1 0 -240 10 1 0 0 0 1 0 0 0 1 3004.dat
+1 14 0 -248 10 1 0 0 0 1 0 0 0 1 3023.dat
+1 7 0 -24 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -48 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -72 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -96 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -120 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -144 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -168 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -192 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 7 0 -216 200 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 10 -224 140 0 0 1 0 1 0 -1 0 0 3460.dat
+"""
+
+
+## A move is tested along its way, not only where it ends (G13, MECHANISMS
+## §22): the made arm turned 90° over MCP each way. Towards the plate over it
+## it stops where it meets the plate, which is clear of the arm lying flat; in
+## m83, tested only where it ended, it went through the plate. The other way
+## nothing is in its way and it goes all 90°.
+func _path_check() -> void:
+	print("\na move tested along its way: a made arm, and a plate over its way")
+	var path: String = OUT.path_join("made_path.ldr")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(MADE_PATH)
+	file.close()
+	if not await _open(path):
+		_check("path: the made arm opens", false)
+		return
+	_grab._ready_now()
+	var arm: int = _part_numbered("3004")
+	var plate: int = _part_numbered("3460")
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var now_re := RegEx.create_from_string("now (-?[0-9.]+)°")
+	var went: Array = []
+	for degrees: float in [90.0, -90.0]:
+		var before: Dictionary = _snapshot()
+		var said: String = str(await tools.run("move_part", {"part": "#%d" % arm, "degrees": degrees}))
+		var found: RegExMatch = now_re.search(said)
+		var now: float = float(found.get_string(1)) if found != null and said.contains("Moved") else 0.0
+		went.append([degrees, now, said])
+		print("    %+.0f°: %s" % [degrees, said.replace("\n", " | ").left(300)])
+		_builder.undo()
+		await _frames(2)
+		if _differs(before) != "none differs":
+			_check("path: one undo puts the arm back (%s)" % _differs(before), false)
+	var blocked: Array = went.filter(func(one: Array) -> bool: return absf(float(one[1])) < 80.0)
+	var open: Array = went.filter(func(one: Array) -> bool: return absf(float(one[1])) >= 89.0)
+	var stop: Array = blocked[0] if blocked.size() == 1 else [0.0, 0.0, ""]
+	_check("path: turned 90° towards the plate over it, the arm stops where it meets the plate (%+.0f° asked, now %+.1f°)"
+		% [float(stop[0]), float(stop[1])], blocked.size() == 1 and absf(float(stop[1])) >= 5.0
+		and absf(float(stop[1])) <= 60.0 and str(stop[2]).contains("(#%d)" % plate))
+	_check("path: turned 90° the other way, nothing is in its way and it goes all 90° (%s)" % ", ".join(
+		went.map(func(one: Array) -> String: return "%+.0f° to %+.1f°" % [float(one[0]), float(one[1])])),
+		open.size() == 1)
+	_builder.forget_history()
+
+
+## Trains whose buffer beam (4022) sits on four studs of a plate that turns
+## (G13, MECHANISMS §22): [file, the beam, the plate under it, the part a
+## session turns]. The beam takes the studs in holes in its cap, 32 LDU above
+## its bottom, where the catalogue reads no socket; read as studs pressed on a
+## face, it was a body of its own and stayed while its plate turned through
+## it. 10205-1's locomotive turns on its bogie; 10183-1's car on its pin.
+const BEAMS: Array = [
+	["res://vendor/omr/files/10205-1.mpd", 21, 25, 3],
+	["res://vendor/omr/files/10183-1.mpd", 436, 406, 216],
+]
+
+
+func _beam_check(one: Array) -> void:
+	var path: String = one[0]
+	var name: String = path.get_file().get_basename()
+	var beam: int = int(one[1])
+	var plate: int = int(one[2])
+	var driver: int = int(one[3])
+	print("\n%s's buffer beam turns with the plate it sits on" % name)
+	if not await _open(path):
+		return
+	_grab._ready_now()
+	var bodies: Bodies = _grab._bodies
+	_check("%s: its buffer beam #%d is one body with the plate #%d it sits on by four studs (%s)" % [name, beam,
+		plate, bodies.named([int(bodies.body_of.get(beam, -1))]).left(80)],
+		int(bodies.body_of.get(beam, -1)) == int(bodies.body_of.get(plate, -2)))
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var before: Dictionary = _snapshot()
+	var beam_at: Transform3D = _world.get_brick(beam).transform
+	var said: String = str(await tools.run("move_part", {"part": "#%d" % driver, "degrees": 30.0}))
+	var turned: float = rad_to_deg(beam_at.basis.get_rotation_quaternion().angle_to(
+		_world.get_brick(beam).transform.basis.get_rotation_quaternion()))
+	_check("%s: turned +30 at #%d, it goes all 30° and its beam turns with it, %.1f° (%s)" % [name, driver, turned,
+		said.get_slice("\n", 1).left(200)], said.contains("now 30°") and absf(turned - 30.0) < 0.5)
+	_builder.undo()
+	await _frames(2)
+	_check("%s: one undo puts it back (%s)" % [name, _differs(before)], _differs(before) == "none differs")
 	_builder.forget_history()
 
 
@@ -6054,6 +6211,145 @@ func _judge_meeting(said: String, driver: int, way: float) -> Dictionary:
 	return out
 
 
+## The eight things G12's sweep found turning both ways through a stop its
+## judge calls real at the first degree (MECHANISMS §20, left for later): each
+## [file, the part moved, the moving part met, the part it met]. Six are a
+## train's bogie or coupling under its buffer beam.
+const GAPS: Array = [
+	["10015-1.mpd", 1, 10, 8],
+	["10183-1.mpd", 216, 406, 436],
+	["10183-1_Caboose.mpd", 265, 264, 266],
+	["10205-1.mpd", 3, 25, 21],
+	["3741-1_Model-B.mpd", 3, 25, 21],
+	["4543-1.mpd", 91, 89, 82],
+	["21019-1.mpd", 79, 214, 219],
+	["3180-1.mpd", 40, 26, 27],
+]
+## Others asked of with --gap=FILE:DRIVER:MOVER:OTHER (G13: 5533-1's steering
+## arm on the plate under it).
+static func _gaps_asked() -> Array:
+	var out: Array = []
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--gap="):
+			var bits: PackedStringArray = arg.trim_prefix("--gap=").split(":")
+			out.append([bits[0], int(bits[1]), int(bits[2]), int(bits[3])])
+	return out
+
+
+## For tools/shape_gap.py (G13, MECHANISMS §22): for each of [constant GAPS],
+## where the two parts stand, the joint the move turns on, what holds the part
+## met, and how far their exact shapes overlap with the moved one turned each
+## way, half a degree at a time, with the convex pieces that overlap a degree
+## on. The script sets these against the parts' own solid shapes.
+func _gap_judge(out_path: String) -> void:
+	if FileAccess.file_exists(out_path):
+		DirAccess.remove_absolute(out_path)
+	var said := func(at: Transform3D) -> Array:
+		return [at.basis.x.x, at.basis.x.y, at.basis.x.z, at.basis.y.x, at.basis.y.y, at.basis.y.z,
+			at.basis.z.x, at.basis.z.y, at.basis.z.z, at.origin.x, at.origin.y, at.origin.z]
+	var asked: Array = _gaps_asked()
+	for gap: Array in (asked if not asked.is_empty() else GAPS):
+		var path: String = "res://vendor/omr/files/" + str(gap[0])
+		print("\ngapjudge: %s" % gap[0])
+		if not await _open(path):
+			continue
+		var trial: Grab = _new_grab()
+		var bodies: Bodies = trial.bodies
+		var driver: int = int(gap[1])
+		var mover: int = int(gap[2])
+		var other: int = int(gap[3])
+		var row: Dictionary = {"set": str(gap[0]).get_basename(), "driver": driver, "mover": mover, "other": other}
+		row["state"] = trial.begin(driver, _world.get_brick(driver).transform.origin)
+		var a: BrickWorld.Brick = _world.get_brick(mover)
+		var b: BrickWorld.Brick = _world.get_brick(other)
+		row["mover_part"] = a.part_id
+		row["other_part"] = b.part_id
+		row["mover_at"] = said.call(a.transform)
+		row["other_at"] = said.call(b.transform)
+		row["pivot"] = [trial.pivot.x, trial.pivot.y, trial.pivot.z]
+		row["axis"] = [trial.axis.x, trial.axis.y, trial.axis.z]
+		row["mode"] = trial.mode
+		row["said"] = trial.said
+		row["moving"] = trial.moving.size()
+		row["mover_moves"] = trial.moving.has(mover)
+		# What the part met is held in, and by what.
+		var body: int = int(bodies.body_of.get(other, -1))
+		var with := PackedStringArray()
+		for key: int in bodies.members.get(body, PackedInt64Array()):
+			with.append("#%d %s" % [key, _world.get_brick(key).part_id])
+		row["other_body"] = ", ".join(with).left(600)
+		# What the app joins that body to, and what BrickNet's connectors join
+		# the part met to among the parts near it.
+		var joins := PackedStringArray()
+		for link: Bodies.Link in bodies.links:
+			if link.a == body or link.b == body:
+				var far: int = link.other(body)
+				joins.append("%s to %s" % [link.kind, bodies.named([far]).left(80)])
+		row["other_joints"] = ", ".join(joins)
+		var near: Array = [Exact.Item.new(Exact.shape_for(_library, b.part_id), b.transform)]
+		var ids: Array = [other]
+		var reach: AABB = (b.transform * _library.parts[b.part_id].bounds).grow(12.0)
+		for brick: BrickWorld.Brick in _world.bricks():
+			var shape: Exact.Shape = Exact.shape_for(_library, brick.part_id)
+			if brick.id == other or shape == null or not _library.parts.has(brick.part_id):
+				continue
+			if reach.intersects(brick.transform * _library.parts[brick.part_id].bounds):
+				near.append(Exact.Item.new(shape, brick.transform))
+				ids.append(brick.id)
+		var joined := PackedStringArray()
+		for edge: Array in Exact.connections(near):
+			if int(edge[0]) == 0 or int(edge[2]) == 0:
+				var item: int = int(edge[2]) if int(edge[0]) == 0 else int(edge[0])
+				var mine: int = int(edge[1]) if int(edge[0]) == 0 else int(edge[3])
+				var theirs: int = int(edge[3]) if int(edge[0]) == 0 else int(edge[1])
+				var other_brick: BrickWorld.Brick = _world.get_brick(int(ids[item]))
+				joined.append("its %s to #%d %s's %s (%s)" % [(near[0] as Exact.Item).shape.named(mine),
+					other_brick.id, other_brick.part_id, (near[item] as Exact.Item).shape.named(theirs),
+					"moves" if trial.moving.has(other_brick.id) else "stays"])
+		row["other_connected"] = ", ".join(joined)
+		var near_ids := PackedStringArray()
+		for id: Variant in ids.slice(1):
+			near_ids.append("#%d %s%s" % [int(id), _world.get_brick(int(id)).part_id,
+				" (moves)" if trial.moving.has(int(id)) else ""])
+		row["other_near"] = ", ".join(near_ids)
+		print("  #%d %s: joints %s; BrickNet joins it %s; near it: %s" % [other, b.part_id, row["other_joints"],
+			row["other_connected"] if not joined.is_empty() else "to nothing", row["other_near"].left(300)])
+		var shape_a: Exact.Shape = Exact.shape_for(_library, a.part_id)
+		var shape_b: Exact.Shape = Exact.shape_for(_library, b.part_id)
+		row["exact"] = shape_a != null and shape_b != null and shape_a.has_pieces() and shape_b.has_pieces()
+		var turns: Array = []
+		if row["exact"] and trial.state == "moves" and trial.mode == "turn":
+			for n: int in range(-60, 61):
+				var degrees: float = n * 0.5
+				var poses: Dictionary = trial.transforms_at(degrees)
+				if not poses.has(mover):
+					break
+				var hit: Dictionary = Exact.clash(Exact.Item.new(shape_a, poses[mover]),
+					Exact.Item.new(shape_b, b.transform))
+				var one: Dictionary = {"deg": degrees, "depth": snappedf(float(hit.get("depth", 0.0)), 0.001),
+					"at": said.call(poses[mover])}
+				if absf(degrees) == 1.0:
+					var pieces: Array = []
+					for found: Array in Exact.overlaps(Exact.Item.new(shape_a, poses[mover]),
+							Exact.Item.new(shape_b, b.transform)):
+						pieces.append({"depth": snappedf(float(found[0]), 0.001), "piece_mover": int(found[1]),
+							"piece_other": int(found[2]),
+							"mover_verts": Array(shape_a.pieces[int(found[1])].verts).map(
+								func(v: Vector3) -> Array: return [v.x, v.y, v.z]),
+							"other_verts": Array(shape_b.pieces[int(found[2])].verts).map(
+								func(v: Vector3) -> Array: return [v.x, v.y, v.z])})
+					one["pieces"] = pieces
+					one["room"] = trial.has_room(poses)
+				turns.append(one)
+		row["turns"] = turns
+		var at_one: Array = turns.filter(func(t: Dictionary) -> bool: return absf(float(t["deg"])) == 1.0)
+		print("  %s: #%d %s meets #%d %s; at -1° %s, at +1° %s; the part met is with %s" % [trial.said, mover,
+			a.part_id, other, b.part_id, at_one[0].get("depth") if at_one.size() > 0 else "-",
+			at_one[1].get("depth") if at_one.size() > 1 else "-", row["other_body"].left(200)])
+		_sweep_line(out_path, row)
+		_builder.forget_history()
+
+
 ## What a steering's pinion and rack are read as, for finding why one does
 ## not turn (--only=steerdebug --steer-set=FILE): the rack's body and its
 ## joints, what the pinion's turn is read as, and what a turn of 30 does.
@@ -6170,6 +6466,23 @@ func _steer_debug(path: String) -> void:
 				return there if there != 0 and there != int(key) else null):
 			print("    stud of #%d at %s way %s reaches #%d" % [int(stud[0]), (stud[2] as Vector3).snapped(Vector3.ONE * 0.1),
 				(stud[3] as Vector3).snapped(Vector3.ONE * 0.01), int(stud[1])])
+			# The nearest of BrickNet's holes of the part it reaches (Exact), and
+			# whether Bodies takes the stud as in it.
+			var into: BrickWorld.Brick = _world.get_brick(int(stud[1]))
+			var shape: Exact.Shape = Exact.shape_for(_library, into.part_id)
+			var nearest: String = "no exact shape"
+			var best: float = INF
+			if shape != null:
+				for k: int in shape.connector_count():
+					var frame: Transform3D = into.transform * shape.frames[k]
+					var off: float = frame.origin.distance_to(stud[2])
+					if off < best:
+						best = off
+						nearest = "%s (kind %d sub %d) at %s way %s, %.1f LDU off" % [shape.named(k), shape.kind[k],
+							shape.sub[k], frame.origin.snapped(Vector3.ONE * 0.1),
+							(-frame.basis.y).normalized().snapped(Vector3.ONE * 0.01), off]
+			print("      nearest exact connector: %s; in a hole exactly: %s" % [nearest,
+				bodies._in_a_hole_exactly(into, stud[2], stud[3])])
 		for one: String in ids:
 			for edge: Array in bodies.joined_by.get(int(one), []):
 				print("    #%s joined to %s by %s" % [one, named.call(int(edge[0])), edge[1]])

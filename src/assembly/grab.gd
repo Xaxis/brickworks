@@ -43,6 +43,21 @@ const BALL_ROUNDS := 6
 const NEVER_MEET_MS := 30
 ## Where a turn stops, to within this, degrees.
 const STOP_TO := 0.15
+## A move is tested along its way, not only where it ends (G13,
+## docs/MECHANISMS.md §22): in steps that move no point of what moves more
+## than this, LDU. Judged by exact shapes, which may overlap by 1 LDU, the end
+## of a move is often clear where its way is not: a bogie turned 30° under its
+## buffer beam was clear there and went through the beam to get there.
+const PATH_LDU := 2.0
+## And a turn's step is never more than this, degrees, nor less than the
+## least: a boom 30 studs long steps a fifth of a degree.
+const PATH_MOST_DEG := 3.0
+const PATH_LEAST_DEG := 0.1
+## A slide's least step, LDU.
+const PATH_LEAST_LDU := 0.25
+## A loop's way is tested in no more steps than this a move, and a drag's
+## frame in two ([method _walk]).
+const LOOP_MOST_STEPS := 6.0
 ## A part all within this of the joint's line turns inside the holes it is
 ## in, LDU: an axle or a pin, radius 4, on its own line.
 const ON_THE_LINE := 6.5
@@ -156,6 +171,12 @@ var _wall: float = NAN
 ## A frame's room test may run this long, ms (GrabDrag sets it); past it a
 ## turn is taken on trust and checked on a pause or at the release.
 var budget_ms: float = INF
+## A drag's frame may test a small section's way this long, ms (GrabDrag sets
+## it where [member budget_ms] has no end); past it the turn is shown on trust
+## and the rest of the way checked from the last step tested, the next frame,
+## on a pause or at the release (G13b). A small section is still bisected at
+## once where its way meets something.
+var walk_budget_ms: float = INF
 ## Let go and settled under its weight (once), and what that said.
 var settled: bool = false
 var swung: String = ""
@@ -188,7 +209,8 @@ var _round_self: Dictionary = {}
 ## where what carries it puts it, unturned: 8062-1's column bevel, tested by
 ## its turned cover, met the plate beside it at 4.25°.
 var _spin_with: Dictionary = {}
-## Parts met, and whether they overlapped the moving side where it stood.
+## Parts met, each with the moving parts whose covers overlapped it where
+## they stood: brick id -> {moving id: true} ([method _rest_with]).
 var _rest_overlap: Dictionary = {}
 ## The last part that met something, and what it met: [moving, met].
 var blocked_by: Array = []
@@ -209,6 +231,19 @@ var frame_tests: int = 0
 ## The slowest part to test in a drag, and on what: for a probe.
 var slowest_us: int = 0
 var slowest_said: String = ""
+## A step along the way of a move ([method _path_step]), degrees or LDU, once
+## worked out for this grab and way of moving; 0 until then.
+var _step: float = 0.0
+## A check on a pause's walk ([method verify_step]): where each part was last
+## tested, brick id -> degrees or LDU, and where the walk began; and a loop's
+## pose kept when it began (Linkage.kept_state), [] for none.
+var _verify_last: Dictionary = {}
+var _verify_base: float = 0.0
+var _verify_kept: Array = []
+## How far each tested part goes at most for a unit of the move, LDU
+## ([method _path_rate]): brick id -> LDU. A part near the joint's line is
+## tested along the way only as often as it goes [constant PATH_LDU].
+var _rates: Dictionary = {}
 
 
 ## Read what [param brick_id] would move, from where the pointer [param at]
@@ -251,6 +286,8 @@ func begin_link(joined: Bodies.Link, child: int, at: Vector3) -> String:
 ## What follows from the joint and the bodies chosen: what moves, what it may
 ## press on, its weight, how it moves, the gears it drives.
 func _chosen() -> String:
+	_step = 0.0
+	_pushed.clear()
 	if state != "moves":
 		return state
 	var clock: int = Time.get_ticks_usec()
@@ -362,17 +399,20 @@ func _chosen() -> String:
 					skip[other] = true
 	# A loop's few parts: what each overlaps where it stands is found now,
 	# not by the first frame's test, which worked out a wheel's turned cover
-	# (18 ms) to find its own tyre's neighbour forgiven.
-	if linkage != null and moving.size() <= LOOP_AHEAD_PARTS:
+	# (18 ms) to find its own tyre's neighbour forgiven. Any section as
+	# small (G13): a move tested along its way stops at the first thing in it
+	# and asks nothing past it, so what touched as built was kept only for
+	# what the first move met, and a later move back over the start met the
+	# rest: 10220-1's door, turned +30 (stopped at 5°) and -60, met a tile
+	# coming back at -17°, which it was built against.
+	if moving.size() <= LOOP_AHEAD_PARTS:
 		for key: int in moving:
 			var boxes: PackedInt32Array = builder.lattice.boxes_of(key)
 			if boxes.is_empty():
 				continue
 			for other: int in builder.lattice.blockers_boxes(boxes, key, {}):
 				if not moving.has(other):
-					_rest_overlap[other] = true
-					skip[other] = true
-					_keep_built_touching(key, other)
+					_rest_with(other)
 	rest.clear()
 	grams = 0.0
 	var weighted := Vector3.ZERO
@@ -847,6 +887,8 @@ func transforms_at(degrees: float, along: float = 0.0, turned: Basis = Basis.IDE
 	for key: int in moving:
 		# Not squared up: a file's own six-decimal turns would read as moved.
 		out[key] = move * (rest[key] as Transform3D)
+	if not _pushed.is_empty():
+		_turn_pushed(out)
 	if mechanism != null and not coupled.is_empty():
 		var driven: Dictionary = mechanism.pose_of(deg_to_rad(degrees) * _drive_sign, coupled)
 		for key: int in coupled:
@@ -1023,8 +1065,12 @@ func has_room(at: Dictionary) -> bool:
 
 ## Test [param at] from the [param from]th moving part on, for at most
 ## [param budget] ms: Vector2i(1 room, 0 none, -1 out of time; the part to
-## go on from).
-func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
+## go on from). [param ahead]: the turned covers it wants worked out whole,
+## side by side, when the whole test is asked at once; a step along the way
+## is a turn asked once, and asks each cover where something is instead.
+## [param due], when not empty, the only moving parts tested (brick id ->
+## true): a step along the way tests those that have gone far enough.
+func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Dictionary = {}) -> Vector2i:
 	var started: int = Time.get_ticks_usec()
 	tests += 1
 	if flex != null and from == 0:
@@ -1046,14 +1092,15 @@ func _test(at: Dictionary, from: int, budget: float) -> Vector2i:
 	# Which parts' turned covers this test wants, worked out side by side
 	# first, when the whole test is asked at once.
 	var carried_at: Dictionary = linkage.places() if linkage != null and not _spin_with.is_empty() else {}
-	var meets: Dictionary = _covers_ahead(at, keys, carried_at) if budget == INF else {}
+	var meets: Dictionary = _covers_ahead(at, keys, carried_at) if budget == INF and ahead else {}
 	while n < keys.size():
 		if budget < INF and float(Time.get_ticks_usec() - started) / 1000.0 > budget:
 			result = -1
 			break
 		var key: int = keys[n]
 		n += 1
-		if _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
+		if _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))) \
+				or not due.is_empty() and not due.has(key):
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -1231,10 +1278,8 @@ func _blocked_turned(key: int, mesh: Lbm.PartMesh, to: Transform3D,
 		if skip.has(other) or _scrubs(key, other) or _bends_aside(other) \
 				or not turned.meets(builder.lattice.boxes_of(other)):
 			continue
-		if _overlapped_at_rest(other):
-			skip[other] = true
-		elif not _slides_over(key, mesh, to, other) and not _touching(mesh, to, other) \
-				and not _clear_exactly(key, to, other):
+		if not _pair_forgiven(key, other) and not _slides_over(key, mesh, to, other) \
+				and not _touching(mesh, to, other) and not _clear_exactly(key, to, other):
 			return PackedInt64Array([other])
 	return PackedInt64Array()
 
@@ -1248,10 +1293,9 @@ func _blocked(key: int, mesh: Lbm.PartMesh, to: Transform3D, packed: PackedInt32
 	var hit: PackedInt64Array = builder.lattice.blockers_boxes(packed, 0, skip)
 	while not hit.is_empty():
 		var other: int = int(hit[0])
-		if _overlapped_at_rest(other):
-			skip[other] = true
-		elif _scrubs(key, other) or _bends_aside(other) or _slides_over(key, mesh, to, other) \
-				or _touching(mesh, to, other) or _clear_exactly(key, to, other):
+		if _pair_forgiven(key, other) or _scrubs(key, other) or _bends_aside(other) \
+				or _slides_over(key, mesh, to, other) or _touching(mesh, to, other) \
+				or _clear_exactly(key, to, other):
 			skip[other] = true
 			forgiven.append(other)
 		else:
@@ -1436,24 +1480,72 @@ func _round_on(key: int, point: Vector3, way: Vector3) -> bool:
 	return false
 
 
-## Whether [param other] overlapped any part of the moving side where they
-## stood when it was grabbed: the same answer, asked when first met, as
-## asking every moving part at the press, so a turn tested later finds what
-## one tested earlier found.
-func _overlapped_at_rest(other: int) -> bool:
+## Whether [param key], a moving part, may go through [param other] for the
+## rest of the grab: their covers overlap where both stand when it was
+## grabbed, or they touched as built and are kept so ([method
+## _forgiven_at_rest]). The pair, not [param other] for every moving part
+## (G13): a move stopped where two parts just meet begins the next with their
+## covers into each other, and forgiven for all of the moving side, 10220-1's
+## door went on from the tile its plate 1 x 1 round had stopped at through
+## that tile, with its plate 2 x 8, at -17°. Where one of the two has no
+## exact shape it is judged by its cover, which reaches past it, and what
+## overlapped any moving part where it stood is forgiven for all of them, as
+## before: 42042-1's winch drum, a file's own part, met an axle by their
+## covers 66° round. Asked when first met, as asking every moving part at the
+## press would answer, so a turn tested later finds what one tested earlier
+## found.
+func _pair_forgiven(key: int, other: int) -> bool:
+	var with: Dictionary = _rest_with(other)
+	if with.has(key) or _touched_as_built(key, other):
+		return true
+	return not with.is_empty() and not _both_exact(key, other)
+
+
+## Whether [param one] and [param other] both have exact shapes.
+func _both_exact(one: int, other: int) -> bool:
+	for key: int in [one, other]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
+		if shape == null or not shape.has_pieces():
+			return false
+	return true
+
+
+## The moving parts whose covers overlap [param other]'s where they stand, kept
+## for the grab; each pair is kept as touching as built where [method
+## _forgiven_at_rest] says.
+func _rest_with(other: int) -> Dictionary:
 	if _rest_overlap.has(other):
 		return _rest_overlap[other]
-	var touching: bool = false
+	var with: Dictionary = {}
 	var boxes: PackedInt32Array = builder.lattice.boxes_of(other)
 	if not boxes.is_empty():
 		for key: int in builder.lattice.blockers_boxes(boxes, other, {}):
 			if moving.has(key) or followers.has(key):
-				touching = true
-				_keep_built_touching(key, other)
-	if not touching:
-		touching = _touched_as_built(other)
-	_rest_overlap[other] = touching
-	return touching
+				with[key] = true
+				if _forgiven_at_rest(key, other):
+					_keep_built_touching(key, other)
+	_rest_overlap[other] = with
+	return with
+
+
+## Whether [param key] and [param other], whose covers overlap where both
+## stand, are kept as touching as built, to go through each other in later
+## grabs: unless both have exact shapes and those are clear of each other
+## there (G13). A cover reaches past its part, so parts built flush overlap
+## by their covers, and their exact shapes judge them as they turn; parts a
+## file has built into each other overlap by their shapes too, and a part
+## with no exact shape is judged by its cover.
+func _forgiven_at_rest(key: int, other: int) -> bool:
+	var a: BrickWorld.Brick = world.get_brick(key)
+	var b: BrickWorld.Brick = world.get_brick(other)
+	if a == null or b == null:
+		return true
+	var shape_a: Exact.Shape = Exact.shape_for(library, a.part_id)
+	var shape_b: Exact.Shape = Exact.shape_for(library, b.part_id)
+	if shape_a == null or shape_b == null or not shape_a.has_pieces() or not shape_b.has_pieces():
+		return true
+	return not Exact.clash(Exact.Item.new(shape_a, a.transform), Exact.Item.new(shape_b, b.transform)).is_empty()
 
 
 ## Keep that [param one] and [param other] touch where they stand, where
@@ -1473,20 +1565,16 @@ func _keep_built_touching(one: int, other: int) -> void:
 		(_built_touching[key] as Dictionary)[b.id] = b.part_id
 
 
-## Whether a part of the moving side touched [param other] where the model
+## Whether the moving part [param key] touched [param other] where the model
 ## was built ([member _built_touching]).
-func _touched_as_built(other: int) -> bool:
+func _touched_as_built(key: int, other: int) -> bool:
 	_built_for_world()
 	var them: BrickWorld.Brick = world.get_brick(other)
-	if them == null:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	if them == null or brick == null:
 		return false
 	var touched: Dictionary = _built_touching.get("%d:%s" % [other, them.part_id], {})
-	for key: Variant in touched:
-		var brick: BrickWorld.Brick = world.get_brick(int(key))
-		if brick != null and brick.part_id == str(touched[key]) \
-				and (moving.has(int(key)) or followers.has(int(key))):
-			return true
-	return false
+	return touched.has(key) and brick.part_id == str(touched[key])
 
 
 ## Starts the record again for another world, or where parts were added or
@@ -1548,7 +1636,7 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 		floori(box.position.z / cell), ceili(box.end.x / cell), ceili(box.end.y / cell),
 		ceili(box.end.z / cell)])
 	for other: int in builder.lattice.near_bounds(bound):
-		if skip.has(other):
+		if skip.has(other) or _pair_forgiven(key, other):
 			continue
 		var them: BrickWorld.Brick = world.get_brick(other)
 		var their_mesh: Lbm.PartMesh = library.mesh_for(them.part_id) if them != null else null
@@ -1610,6 +1698,7 @@ func turn_to(degrees: float) -> float:
 		wanted = roundf(wanted / link.detent) * link.detent
 	if is_equal_approx(wanted, angle):
 		return angle
+	_end_verify_walk()
 	# Past the wall it met last, the same way: still there, and not asked
 	# again, so a pointer pressed on past a stop costs nothing a frame.
 	if not is_nan(_wall) and (wanted - _wall) * (_wall - angle) >= 0.0 \
@@ -1628,29 +1717,50 @@ func turn_to(degrees: float) -> float:
 		if absf(reached - wanted) > 0.01:
 			loop_short = true
 			wanted = reached
-	var at: Dictionary = transforms_at(wanted)
-	var room: int = _test(at, 0, budget_ms).x
+	# Along the way first, a step at a time from the last turn checked
+	# (G13): the first step with no room is where it stops.
+	var began: int = Time.get_ticks_usec()
+	var walked: Array = _walk(_checked_angle if unchecked else angle, wanted, began)
+	var room: int = int(walked[0])
+	var at: Dictionary = {}
+	# The way not tested this frame (a loop's drag): checked on a pause.
+	var way_left: bool = room == 2
+	if way_left:
+		room = 1
+	if room == 1:
+		at = transforms_at(wanted)
+		room = _test(at, 0, _budget_left(began)).x
+		if room == 0 and budget_ms == INF and _push_aside(wanted):
+			room = 1
+			at = transforms_at(wanted)
+		if room == 0:
+			walked = [0, walked[1], wanted]
+	elif room == -1:
+		at = transforms_at(wanted)
 	if room != 0:
 		# Room, or not all asked this frame: a big section is shown where the
 		# pointer says and checked when it pauses or is let go
-		# ([method verify_step]), rather than hold the frame.
-		_shown_on_trust(room == 1, wanted)
+		# ([method verify_step]), from the last step that had room, rather
+		# than hold the frame.
+		_shown_on_trust(room == 1 and not way_left, wanted, float(walked[1]))
 		angle = wanted
 		placed = at
 		_keep_loop()
 		stopped = loop_short
 		return angle
 	if budget_ms < INF:
-		# Met something, on a section too big to bisect in a frame: it stays
-		# where it last had room and the stop is found a round a frame
-		# (verify_step), on a pause or at the release.
-		_met_on_trust(wanted, angle)
+		# Met something, on a section too big to bisect in a frame: it stands
+		# at the last step that had room, and the stop is found a round a
+		# frame (verify_step), on a pause or at the release.
+		if not way_left:
+			_stand_at(float(walked[1]))
+		_met_on_trust(float(walked[2]), angle)
 		return angle
-	var low: float = angle
-	var high: float = wanted
-	# As many halvings as bring the step under STOP_TO: a frame's step is a
-	# few degrees, and each round tests every part that may hit something.
-	var rounds: int = clampi(ceili(log(maxf(absf(wanted - angle), STOP_TO) / STOP_TO) / log(2.0)),
+	var low: float = float(walked[1])
+	var high: float = float(walked[2])
+	# As many halvings as bring the step under STOP_TO: a step along the way
+	# is a few degrees, and each round tests every part that may hit something.
+	var rounds: int = clampi(ceili(log(maxf(absf(high - low), STOP_TO) / STOP_TO) / log(2.0)),
 		1, ROUNDS)
 	for _round: int in rounds:
 		var middle: float = (low + high) * 0.5
@@ -1676,14 +1786,28 @@ func turn_to(degrees: float) -> float:
 ## back at that stop (42081-1's arm let go 20 LDU out was kept at its stop
 ## 60 LDU in), and a test cut short for an earlier pose went on from the
 ## part it had reached, for this one.
-func _shown_on_trust(checked: bool, value: float) -> void:
+func _shown_on_trust(checked: bool, value: float, clear_to: float) -> void:
 	if checked:
 		_checked_angle = value
 		unchecked = false
 	else:
+		# Checked along the way as far as [param clear_to]: the rest of the
+		# way is checked from there.
+		_checked_angle = clear_to
 		unchecked = true
+		_verify_last.clear()
+		_verify_base = clear_to
 	_verifying_hi = null
 	_verify_from = 0
+
+
+## Stand at [param value] (degrees or LDU), checked all the way there.
+func _stand_at(value: float) -> void:
+	_set_value(value)
+	placed = _pose_at(value)
+	_keep_loop()
+	_checked_angle = value
+	unchecked = false
 
 
 ## A big section met something at [param value], standing at [param at]: it
@@ -1701,25 +1825,53 @@ func _met_on_trust(value: float, at: float) -> void:
 
 
 ## One frame's worth of checking a turn shown on trust: the whole section
-## tested where it stands, a [member budget_ms] at a time; if something is in
-## the way, bisected back towards the last turn checked, a round a frame.
-## True once it stands where it has room.
+## tested along the way from the last turn checked to where it stands, a
+## step at a time (G13: tested only where it stood, a train's bogie shown 30°
+## round had gone through its buffer beam to get there), a [member
+## budget_ms] at a time; if something is in the way, bisected back towards
+## the last step with room, a round a frame. True once it stands where it
+## has room.
 func verify_step() -> bool:
 	if not unchecked or mode == "ball":
 		unchecked = false
 		return true
 	var now: float = angle if mode == "turn" else shift
-	if _verifying_hi == null:
-		var r: Vector2i = _test(_pose_at(now), _verify_from, budget_ms)
+	var began: int = Time.get_ticks_usec()
+	if _verifying_hi == null and linkage != null and _verify_kept.is_empty():
+		# The pose shown, solved from where the move began, kept to come back
+		# to once the way to it is checked ([method _walk]).
+		_verify_kept = linkage.kept_state()
+	while _verifying_hi == null:
+		var next: float = _next_step(_checked_angle, now)
+		# As a move's own walk tests them: each part as often as it goes
+		# PATH_LDU, every part where it stands. Every part at every step
+		# kept 42081-1's arm, 653 parts, 10 s after it was let go.
+		var due: Dictionary = {}
+		if next != now:
+			var after: float = _next_step(next, now)
+			for key: int in _rates:
+				if float(_rates[key]) * absf(after - float(_verify_last.get(key, _verify_base))) > PATH_LDU:
+					due[key] = true
+			if due.is_empty():
+				_checked_angle = next
+				continue
+		var r: Vector2i = _test(_pose_at(next), _verify_from, _budget_left(began), next == now, due)
 		if r.x == -1:
 			_verify_from = r.y
 			return false
 		_verify_from = 0
 		if r.x == 1:
-			unchecked = false
-			_checked_angle = now
-			return true
-		_verifying_hi = now
+			_checked_angle = next
+			for key: int in due:
+				_verify_last[key] = next
+			_keep_loop()
+			if next == now:
+				_end_verify_walk()
+				unchecked = false
+				return true
+			continue
+		_end_verify_walk()
+		_verifying_hi = next
 		_verifying_lo = _checked_angle
 	var hi: float = float(_verifying_hi)
 	# A slide is found to a tenth of an LDU, a turn to STOP_TO degrees.
@@ -1750,6 +1902,90 @@ func verify_step() -> bool:
 	return false
 
 
+## Free joints inside what moves, turned aside by what pressed them (G13b):
+## child body -> degrees about its own joint, from where it stood.
+var _pushed: Dictionary = {}
+## How far a free joint inside what moves is turned aside at most, degrees.
+const PUSH_MOST := 90.0
+
+
+## Turn each free joint inside what moves that something pressed aside, as
+## [member _pushed] has it, where [param out] (brick id -> Transform3D, as
+## [method transforms_at] has it) puts what carries it.
+func _turn_pushed(out: Dictionary) -> void:
+	for child: int in _pushed:
+		var joined: Bodies.Link = bodies.parent_link.get(child)
+		var carrier: int = int(bodies.parent_of.get(child, -1))
+		if joined == null or not bodies.members.has(carrier):
+			continue
+		var carrier_key: int = int((bodies.members[carrier] as PackedInt64Array)[0])
+		if not out.has(carrier_key):
+			continue
+		var carried: Transform3D = (out[carrier_key] as Transform3D) * (rest[carrier_key] as Transform3D).affine_inverse()
+		var turn_point: Vector3 = carried * joined.point
+		var way: Vector3 = (carried.basis * joined.axis).normalized()
+		var turn: Transform3D = Transform3D(Basis.IDENTITY, turn_point) \
+			* Transform3D(Basis(way, deg_to_rad(float(_pushed[child]))), Vector3.ZERO) \
+			* Transform3D(Basis.IDENTITY, -turn_point)
+		for key: int in bodies.parts_of(bodies.beyond(child)):
+			if out.has(key):
+				out[key] = turn * (out[key] as Transform3D)
+
+
+## The free joint inside what moves that carries [param key]: the body hung on
+## a joint that does not hold by friction, below the grabbed one, as [method
+## _settle_inside] swings them. -1 for none.
+func _free_inside(key: int) -> int:
+	var ours: Dictionary = {}
+	for one: int in moving_bodies:
+		ours[one] = true
+	var at: int = int(bodies.body_of.get(key, -1))
+	while ours.has(at) and at != body:
+		var joined: Bodies.Link = bodies.parent_link.get(at)
+		var parent: int = int(bodies.parent_of.get(at, -1))
+		if joined != null and joined != link and not joined.holds and joined.axis != Vector3.ZERO \
+				and ours.has(parent):
+			return at
+		at = parent
+	return -1
+
+
+## A free joint inside what moves swings aside when the model presses on what
+## it carries, rather than stop the section (G13b): where a turn at [param
+## value] has no room and the part that met something hangs on such a joint,
+## that joint is turned aside a little more each way until it has room, up to
+## [constant PUSH_MOST]. 8074-1's crane, turned back over its start, met the
+## brick 1 x 16 its first turn had swung down on a free pin. True when it then
+## has room there.
+func _push_aside(value: float) -> bool:
+	if linkage != null or mode == "ball" or blocked_by.size() != 2:
+		return false
+	var child: int = _free_inside(int(blocked_by[0]))
+	if child < 0:
+		return false
+	var was: float = float(_pushed.get(child, 0.0))
+	var tried: float = 1.0
+	while tried <= PUSH_MOST:
+		for way: float in [1.0, -1.0]:
+			_pushed[child] = was + way * tried
+			if _test(_pose_at(value), 0, INF, false).x == 1:
+				return true
+		tried *= 2.0
+	if is_zero_approx(was):
+		_pushed.erase(child)
+	else:
+		_pushed[child] = was
+	return false
+
+
+## A loop's pose kept as it was when a pause's walk began, the walk over or
+## cut short by a move ([method verify_step]).
+func _end_verify_walk() -> void:
+	if linkage != null and not _verify_kept.is_empty():
+		linkage.restore_kept(_verify_kept)
+	_verify_kept = []
+
+
 ## Where everything stands with the joint at [param value]: degrees for a
 ## turn, LDU for a slide.
 func _pose_at(value: float) -> Dictionary:
@@ -1761,6 +1997,162 @@ func _set_value(value: float) -> void:
 		angle = value
 	else:
 		shift = value
+
+
+# -- along the way (G13) ------------------------------------------------------------
+
+
+## What is left of [member budget_ms] since [param began] (usec), ms.
+func _budget_left(began: int) -> float:
+	var budget: float = minf(budget_ms, walk_budget_ms)
+	if budget == INF:
+		return INF
+	return budget - float(Time.get_ticks_usec() - began) / 1000.0
+
+
+## Test the way from [param from] (degrees or LDU), which has room, towards
+## [param to], a step at a time ([method _path_step]), short of [param to]
+## itself: [1, the last step, to] when every step has room; [0, the last step
+## with room, the first with none]; or [-1, the last step with room, the next]
+## when [member budget_ms] since [param began] runs out first.
+func _walk(from: float, to: float, began: int) -> Array:
+	if linkage != null and budget_ms < INF:
+		# A loop's drag: its way is left to a pause or the release ([method
+		# verify_step]), and only where the pointer says is tested a frame, as
+		# before G13. Solved a step at a time in the frame, 42024-1's actuator,
+		# a loop of 36 joints, took 62 ms a frame on average and 181 at 95%.
+		return [2, from, to]
+	# A loop is solved at each step from the step before, kept for it, and
+	# left as it was when the walk ends: where the move ends is solved from
+	# where it began, as if there were no steps (G13b). Where it ended
+	# depended on how many steps the way took, and fourteen sets' steering,
+	# turned out and back, came back 0.03 to 0.19 LDU off.
+	var began_kept: Array = linkage.kept_state() if linkage != null else []
+	var walked: Array = _walk_steps(from, to, began)
+	if linkage != null:
+		linkage.restore_kept(began_kept)
+	return walked
+
+
+func _walk_steps(from: float, to: float, began: int) -> Array:
+	var clear: float = from
+	# Where each part was last tested: one that would go further than
+	# PATH_LDU by the step after this one is tested at this one. A turned
+	# section's parts by its joint (a hinge's own pieces, a turntable's top)
+	# are what stand near something, and go least.
+	var last: Dictionary = {}
+	# A loop is solved at every step, a few ms each for dozens of joints: its
+	# way is tested in at most LOOP_MOST_STEPS, and a drag's frame, which
+	# moves it a little, in two. Stepped 0.4 LDU at a time, 42024-1's
+	# actuator, its rod in a loop of 36 joints, solved 50 times in a frame.
+	var least: float = 0.0
+	if linkage != null:
+		least = absf(to - from) / (LOOP_MOST_STEPS if budget_ms == INF else 2.0)
+	while true:
+		var next: float = _next_step(clear, to, least)
+		if next == to:
+			break
+		var left: float = _budget_left(began)
+		if left <= 0.0:
+			return [-1, clear, next]
+		var after: float = _next_step(next, to, least)
+		var due: Dictionary = {}
+		for key: int in _rates:
+			if float(_rates[key]) * absf(after - float(last.get(key, from))) > PATH_LDU:
+				due[key] = true
+		if not due.is_empty():
+			var r: Vector2i = _test(_pose_at(next), 0, left, false, due)
+			if r.x == 0 and budget_ms == INF and _push_aside(next):
+				r.x = 1
+			if r.x != 1:
+				return [r.x, clear, next]
+			for key: int in due:
+				last[key] = next
+			# Each step solved from the last, not from where the move began:
+			# from there, 42024-1's 36-joint loop took 172 ms a frame.
+			_keep_loop()
+		clear = next
+	return [1, clear, to]
+
+
+## The next step from [param from] towards [param to]: [param to] itself
+## when it is within a step. A loop's turn steps on its quarter-degree grid,
+## where its parts' turned covers are kept.
+func _next_step(from: float, to: float, least: float = 0.0) -> float:
+	var step: float = maxf(_path_step(from), least)
+	if absf(to - from) <= step * 1.0001:
+		return to
+	var next: float = from + signf(to - from) * step
+	if linkage != null and mode == "turn":
+		next = snappedf(next, LOOP_GRID)
+	return next
+
+
+## A step along the way, degrees for a turn and LDU for a slide: one that
+## moves no point of what moves more than [constant PATH_LDU], worked out once
+## a grab from [param now], where it stands.
+func _path_step(now: float) -> float:
+	if _step > 0.0:
+		return _step
+	var rate: float = _path_rate(now)
+	if mode == "turn":
+		_step = clampf(PATH_LDU / rate, PATH_LEAST_DEG, PATH_MOST_DEG) if rate > 0.0 else PATH_MOST_DEG
+		if linkage != null:
+			_step = maxf(LOOP_GRID, floorf(_step / LOOP_GRID) * LOOP_GRID)
+	else:
+		_step = clampf(PATH_LDU / rate, PATH_LEAST_LDU, PATH_LDU) if rate > 0.0 else PATH_LDU
+	return _step
+
+
+## How far a point of what moves goes at most for a degree of the turn (an
+## LDU of the slide) from [param now], LDU: the corners of each tested part's
+## box, which go at least as far as any point of the part, between where it
+## stands and a unit on. Gears it drives, what hangs on them and a loop's
+## other bodies are placed as the move places them. 0 when it does not move.
+func _path_rate(now: float) -> float:
+	var a: Dictionary
+	var b: Dictionary
+	var span: float = 1.0
+	if linkage != null:
+		# A loop goes as far as it closes: a unit one way, else the other.
+		var solving: int = Time.get_ticks_usec()
+		var slide: bool = linkage.is_slide()
+		span = 0.0
+		for way: float in [1.0, -1.0]:
+			var target: float = now + way
+			var got: float = linkage.reach(target if slide else deg_to_rad(target))
+			got = got if slide else rad_to_deg(got)
+			if absf(got - now) > 0.01:
+				b = linkage.transforms(rest)
+				span = absf(got - now)
+				break
+		if span > 0.0:
+			linkage.reach(now if slide else deg_to_rad(now))
+			a = linkage.transforms(rest)
+		frame_solve_ms += float(Time.get_ticks_usec() - solving) / 1000.0
+		if span == 0.0:
+			return 0.0
+	else:
+		a = _pose_at(now)
+		b = _pose_at(now + 1.0)
+	var most: float = 0.0
+	_rates.clear()
+	for key: Variant in b:
+		if not a.has(key) or _on_the_line.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var one: Transform3D = a[key]
+		var other: Transform3D = b[key]
+		var its: float = 0.0
+		for corner: int in 8:
+			var point: Vector3 = mesh.bounds.get_endpoint(corner)
+			its = maxf(its, (other * point).distance_to(one * point))
+		_rates[int(key)] = its / span
+		most = maxf(most, its)
+	return most / span
 
 
 ## Slide [param along] LDU from where it was grabbed, along the shaft as far
@@ -1780,6 +2172,7 @@ func slide_to(along: float) -> float:
 		stopped = true
 		return shift
 	_wall = NAN
+	_end_verify_walk()
 	if linkage != null:
 		# A slide in a loop goes as far as the loop takes it.
 		var solving: int = Time.get_ticks_usec()
@@ -1790,29 +2183,39 @@ func slide_to(along: float) -> float:
 			stopped = true
 			return shift
 	stopped = not is_equal_approx(wanted, along)
-	var at: Dictionary = transforms_at(angle, wanted)
-	if budget_ms < INF:
+	# Along the way first, as turn_to has it (G13).
+	var began: int = Time.get_ticks_usec()
+	var walked: Array = _walk(_checked_angle if unchecked else shift, wanted, began)
+	var room: int = int(walked[0])
+	var at: Dictionary = {}
+	var way_left: bool = room == 2
+	if way_left:
+		room = 1
+	if room == 1:
+		at = transforms_at(angle, wanted)
+		room = _test(at, 0, _budget_left(began)).x
+		if room == 0:
+			walked = [0, walked[1], wanted]
+	elif room == -1:
+		at = transforms_at(angle, wanted)
+	if room != 0:
 		# A big section, as turn_to has it: tested within a frame's share,
 		# shown where the pointer says when there is not time to finish, and
 		# checked on a pause or at the release (verify_step). 42081-1's boom,
 		# 262 parts on its actuator, was bisected by whole tests at its stop:
 		# 164 of them, 31 s in one frame.
-		var room: int = _test(at, 0, budget_ms).x
-		if room != 0:
-			_shown_on_trust(room == 1, wanted)
-			shift = wanted
-			placed = at
-			_keep_loop()
-			return shift
-		_met_on_trust(wanted, shift)
-		return shift
-	if has_room(at):
+		_shown_on_trust(room == 1 and not way_left, wanted, float(walked[1]))
 		shift = wanted
 		placed = at
 		_keep_loop()
 		return shift
-	var low: float = shift
-	var high: float = wanted
+	if budget_ms < INF:
+		if not way_left:
+			_stand_at(float(walked[1]))
+		_met_on_trust(float(walked[2]), shift)
+		return shift
+	var low: float = float(walked[1])
+	var high: float = float(walked[2])
 	for _round: int in ROUNDS:
 		var middle: float = (low + high) * 0.5
 		if has_room(transforms_at(angle, middle)):
@@ -1843,13 +2246,31 @@ func ball_to(turned: Basis) -> Basis:
 			stopped = true
 			return twist
 	_ball_walled = false
-	if has_room(transforms_at(0.0, 0.0, Basis(to))):
+	# Along the way first, as turn_to has it (G13): in steps that move no
+	# point of what moves more than PATH_LDU.
+	var whole: float = from.angle_to(to)
+	var steps: int = 1
+	if whole > 0.0:
+		if _step <= 0.0:
+			# Radians a step, once a grab.
+			_step = clampf(PATH_LDU / maxf(_ball_reach(), 0.001), deg_to_rad(PATH_LEAST_DEG),
+				deg_to_rad(PATH_MOST_DEG))
+		steps = maxi(1, ceili(whole / _step))
+	var low: float = 0.0
+	var high: float = 1.0
+	var met_on_way: bool = false
+	for n: int in range(1, steps):
+		var part_way: float = float(n) / float(steps)
+		if _test(transforms_at(0.0, 0.0, Basis(from.slerp(to, part_way))), 0, INF, false).x != 1:
+			high = part_way
+			met_on_way = true
+			break
+		low = part_way
+	if not met_on_way and has_room(transforms_at(0.0, 0.0, Basis(to))):
 		twist = Basis(to)
 		placed = transforms_at(0.0, 0.0, twist)
 		stopped = false
 		return twist
-	var low: float = 0.0
-	var high: float = 1.0
 	# Fewer rounds than a turn: a ball's way changes every frame, so no wall
 	# is kept, and 1/64 of a frame's step is under a degree.
 	for _round: int in BALL_ROUNDS:
@@ -1866,6 +2287,22 @@ func ball_to(turned: Basis) -> Basis:
 	return twist
 
 
+## How far from the ball's middle any corner of a tested moving part's box
+## reaches, LDU: a radian of the ball moves no point further.
+func _ball_reach() -> float:
+	var most: float = 0.0
+	for key: int in moving:
+		if not rest.has(key) or bodies.flexible.has(int(bodies.body_of.get(key, -1))):
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		for corner: int in 8:
+			most = maxf(most, ((rest[key] as Transform3D) * mesh.bounds.get_endpoint(corner)).distance_to(pivot))
+	return most
+
+
 ## The loop's pose as it now stands is where its next move starts.
 func _keep_loop() -> void:
 	if linkage != null:
@@ -1876,6 +2313,7 @@ func _keep_loop() -> void:
 ## line, or move_part's along=.
 func use_slide() -> void:
 	mode = "slide"
+	_step = 0.0
 	if linkage != null:
 		linkage.drive_slide()
 

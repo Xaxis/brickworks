@@ -3456,3 +3456,301 @@ way would surprise. The part under a lifted finger stays named, as before
 in the viewer. Bigger models in the viewer (a few thousand parts) are not
 measured here: the reading is on a worker, but each move's room tests are
 the builder's, and a big section is checked on pauses as it is there.
+
+## 22. A move tested along its way (G13, G13b)
+
+G12 made two parts block a move only where their exact shapes overlap. A
+session's move_part, and a big section's check when the pointer pauses,
+still tested only where the move ended. With covers, a flush neighbour also
+blocked the end, so a move that would have gone through something stayed
+put anyway. With exact shapes the end is often clear when the way is not:
+G12's sweep found eight things turning both ways through a stop its judge
+calls real at the first degree. G13 tests the way, then decides the eight.
+
+**The base.** rel-m83 (b1108e94: G12 and covers2), swept with G12's judge
+from a copy of it: the steering sweep over its 181 files (`sweep_before`)
+and the moving sweep over G12's 260 sets (`movesweep_before`). The tables
+are in bench/results/grab13-2026-10-19.
+
+**Along the way** (`Grab._walk`). A turn, a slide or a ball's turn is
+tested in steps from where it stands (a big section shown on trust, from
+the last pose checked) towards where it was asked. It stops at the first
+step with no room, bisected back to STOP_TO from there. A step moves no
+point of what moves more than 2 LDU (`PATH_LDU`): the corners of each
+tested part's box, placed as the move places it a degree on (a slide's LDU
+on), measured once a grab (`Grab._path_rate`), so gears the move drives,
+what hangs on them and a loop's other bodies count as they move. A turn's
+step is between 0.1° and 3°. A loop is solved at each step, so its way is
+tested in at most six steps a move and two a drag's frame, on its
+quarter-degree grid, and its
+pose is kept at each step, so the next is solved from it: solved from where
+the move began, 42024-1's loop of 36 joints took 172 ms a frame and four
+steering four-bars came back 2 to 5 LDU off. Each part is tested only
+as often as it goes 2 LDU: a hinge's own pieces, which stand next to
+something all the way round, are tested a few times in a turn that tests a
+boom's tip at every step. A part not tested at a step may be up to 2 LDU of
+its own way from where it was last tested, so a stop can leave such a part
+into another by that much. A step asks each turned cover where something
+is (BrickLattice.TurnedCover) rather than working it out whole. The end is
+tested whole, as before. A drag does the same each frame within its
+budget, and a big section shown on trust is checked on a pause from the
+last pose checked, a step at a time, each part as often as it goes 2 LDU
+(`Grab.verify_step`): every part at every step kept 42081-1's arm, 653
+parts, 10 s after it was let go. A swing under its own weight already
+tested its way (Swing, every TEST_LDU).
+
+**What a move may go through** (`Grab._pair_forgiven`). A grab forgave for
+good every part whose cover overlapped the moving side's where it began,
+for every moving part. A cover reaches past its part, so a move stopped
+where two parts just meet begins the next with their covers into each
+other. Tested along its way, 10220-1's door stopped at 5° where its plate 1
+x 1 round meets the tile it was built against, then turned -60 from there
+with its plate 2 x 8 through that tile, and met it coming back at -17°. Now
+only the pair that overlapped is forgiven: the plate 1 x 1 round may go on
+through the tile, the plate 2 x 8 may not. Where one of the two has no exact
+shape, its cover judges it, and what overlapped any moving part is forgiven
+for all of them, as before: 42042-1's winch drum, a file's own part, met an
+axle by their covers 66° round. What touched as built is kept
+for later grabs as a pair too, and only where the two exact shapes overlap
+as built (a file's parts built into each other) or one has none
+(`Grab._forgiven_at_rest`): flush parts are for the exact shapes to judge.
+A section of up to 80 parts has what it touches read at the press, as a
+loop's was, so what touched as built is kept whatever the first move met.
+
+**The eight stops, decided** (`grab_probe -- --only=gapjudge`, then
+`tools/shape_gap.py`; `gapjudge.jsonl` and `shape_gap.json`). Each pair was
+also set side by side as the parts' own solids: each part voxelised from its
+LDraw geometry at 0.5 LDU, as the covers are at 2, with its studs put back
+(voxelise leaves a stud's open barrel out, and a stud is what meets a
+buffer beam), the moved one turned half a degree at a time to 30° each way.
+In the six trains the exact shapes and the solids first overlap by more
+than 1 LDU at the same half degree both ways, and in 21019-1 within half a
+degree. In 3180-1, one way, the solids stay clear where the shapes overlap
+by 1.02 LDU. So a buffer beam's convex pieces do not fill the space under
+it, and the judge is right about the shapes. What was wrong is what was
+read as moving.
+
+- **The six trains: false, the reading's error.** In each, the buffer
+  beam (4022) sits on four studs of a plate that turns: BrickNet joins its
+  four holes to them. The app read it as a body of its own, hung by a hinge
+  on its coupling (2920), and it stayed where it stood while its plate, or
+  the bogie built against it, turned into it. The holes are in the beam's
+  cap, 32 LDU above its bottom face, where the catalogue's sockets are read
+  from. The lattice found the studs in the beam, but the beam and its
+  coupling turn against each other, and by their faces the studs were put
+  in the coupling, which has no socket: studs pressed on a face, holding
+  nothing. Where the part chosen by faces has no socket, a stud the lattice
+  found in a part with one of BrickNet's holes for it is in that part
+  (`Bodies._sits_on`), and one of BrickNet's holes or tubes takes a stud as
+  a socket does (`Bodies._in_a_hole_exactly`). The beam is one body with its
+  plate and turns with it. In 10015-1 and 4543-1 the coupling then met its
+  magnet (73092, an obsolete part with no exact shape), held by nothing. A
+  part held by nothing that shares no cell with anything, where it or what
+  it is in has no exact shape, is now held by what goes through its middle,
+  else by what its box is most into (`Bodies._lodge`): the magnet by its
+  coupling, 8074-1's belt wheel by its axle and the half pin by the wheel.
+  Two parts with exact shapes are not: lodged so, 42042-1's winch was read
+  into a loop of 63 joints. The shapes are read on the main thread before a
+  big model's joints are read on a worker (`GrabDrag._ready_ahead`).
+- **21019-1's turntable: real.** A bracket (99781) stands on two studs of
+  the plate 8 x 8 on the turntable, and its own studs are in tiles of the
+  side that stays: the build holds the turntable, which in the real tower
+  sets a leg's angle. Its solids overlap from 1.5° one way.
+- **3180-1's boom: false one way.** The tanker turns its container
+  cupboard (4532) into the cupboard's own door (4533), which the app reads
+  as held by nothing: the door's hinge in the cupboard is not read, and
+  both have exact shapes, so it is not lodged either (left, below).
+
+**The other moving things, swept** (`movesweep_before`, `movesweep_after`,
+G12's 260 sets; the after sweep's last 31 sets ran as `movesweep_afterrest`
+and are merged into it).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|
+| before (rel-m83) | 144 of 380 | 15 | 297 | 209 / 16 / 180 |
+| after (G13) | 161 of 377 | 15 | 294 | 224 / 15 / 179 |
+
+By kind, both ways and back: turntables 46 to 51, doors 34 to 39, booms
+and arms 64 to 71. 23 things now move both ways and back that did not, 8
+no longer do. Among them, 3180-1's and 6357-1's booms now move to their
+stop, and 42094-1's turntable, 5571-1's and 6950-1's booms meet real parts
+on the way back. The six trains moved both
+ways in rel-m83 too, through their beams; now their beams go with them.
+
+**Steering, swept** (`sweep_before`, `sweep_after`; its last 45 sets as
+`sweep_afterrest`).
+
+| | sets that steer, of those with a steering |
+|---|---|
+| before (rel-m83) | 55 of 168 |
+| after (G13) | 42 of 167 |
+
+This is worse, and not by what is in the way: all 14 sets that stopped
+steering turn both ways and come back 0.027 to 0.19 LDU off, past the 0.02
+the sweep allows, the part furthest off an axle of the steering loop.
+The loop's pose is kept at each step of the way, and a way solved in steps
+does not come back to exactly where it began. Stepped finely (no limit of
+six steps) it came back no closer, on 12 of the 14 (`sweep_fix`). Left for
+later, first.
+
+**Proved** (bench/results/grab13-2026-10-19/`probes/`): `grab_probe`
+windowed through `tools/probe.sh`, in full (`grab_probe_full.log`), ran 463
+checks: 461 passed. The two that failed are 42080-1's hoses laid within a
+drag's frame (16.8 ms against 2.0), a timing check: run alone side by side
+under the same load, rel-m83 fails it too (5.8 ms; G13 3.7 ms). New checks:
+`-- --only=path` (2: the made arm stops at the plate over its way, and goes
+all 90° the other way) and `-- --only=beams` (6: 10205-1's and 10183-1's
+beam is one body with its plate and turns 30° with it). Both fail in
+rel-m83 (`--only=path`: the arm went 90° through the plate; `--only=beams`
+4 of 6). The moving checks' 8074-1 turntable is checked both ways, not
+back. The Python suite (numpy and scipy) passes 748; pyright finds no
+errors. Frame costs, the drag's own work (this run, at load 15 to 28; G12's
+at load 4): the turntable, hinge, click hinge, gear train and slider drags
+mean 0.2 to 1.3 ms a frame (G12 0.15 to 0.5), worst 0.8 to 5.6 ms (G12 0.5
+to 7.4); the ball joint 1.2 ms mean, 8.3 worst (0.4, 0.7); steering loops
+1.5 to 3.4 ms at worst (1.2 to 2.8); 42024-1's actuator 13.4 ms mean, 27.9
+at 95% (6.6, 12.1); 42081-1's arm 11.8 and 24.3 (11.2, 14.0), kept 3.6 s
+after it is let go (3.6); 7191-1's big section 7.5 mean, 18.8 worst (2.7,
+21.4). Pictures: `move_10205-1_door_*`, `move_4543-1_boom_*`,
+`move_10220-1_*`.
+
+### G13b: the steering comes back, a free joint pressed swings aside
+
+G13 was held on its steering sweep: 42 of 167 sets steered, against
+rel-m83's 55. G13b, on the same branch, mends that and does three more
+things.
+
+**A loop's end does not depend on the steps** (`Linkage.kept_state`,
+`Linkage.restore_kept`). A loop is solved from the pose it last kept, and
+the walk kept each step's pose to solve the next from it. Putting that pose
+back after the walk was not enough. The solver also keeps its last solve,
+the slope the next solve starts from, and the part of the loops that spins
+on its own. Left as the steps had them, the steering came back 0.5 LDU off.
+Now all of it is put back after the walk, and after a pause's walk, so
+where a move ends is solved as if there were no steps. The 14 sets that
+stopped steering in G13 all steer again, back within 0.0011 to 0.0183 LDU
+(`sweep_fix3`). A loop's drag now leaves its way to a pause or the
+release, as a big section's does, and each frame tests only where the
+pointer is. Solved a step at a time in the frame, 42024-1's actuator (a
+loop of 36 joints) took 62 ms a frame on average and 181 at 95%.
+
+**A free joint inside what moves swings aside when pressed**
+(`Grab._push_aside`). A step may have no room where the part that met
+something hangs on a joint inside the moving section that does not hold by
+friction. That joint is then turned aside 1°, then 2, 4 and so on to 64
+each way, until the step has room, and the move goes on. It settles under
+its weight afterwards, as before. Loops and balls are left out. 8074-1's
+crane swings 18 free joints inside it down on its first turn, most of them
+180°, and on the way back it met the brick 1 x 16 that swung. Now it turns
++30, -60 and back to 0.000 LDU, and its moving check is strict again.
+
+**A small section's drag tests its way for 2 ms a frame**
+(`Grab.walk_budget_ms`, `GrabDrag.WALK_BUDGET_MS`). Past that, the turn is
+shown where the pointer is, and the rest of the way is tested from the last
+step with room, on the next frame or on a pause. The status bar keeps its
+words for that ("too big to test every frame: checked when you pause").
+The drag's own work at its worst frame, in the full run below (load about
+28 there) and in the one the spin-down cut short: a turntable 2.1 and 2.1
+ms (G13 5.5, G12 0.3), a hinge 4.9 and 4.2 (G13 5.2, G12 7.0), a click
+hinge 4.4 and 2.9 (G13 3.4, G12 3.3). The ball joint's is not walked within
+a budget, and is no better: 9.3 and 7.8 ms (G13 8.0, G12 0.5).
+
+**The hoses' cost checks judge the laying's own work**
+(`FlexFollow.lay_cost`, `grab_probe._lay_checks`). The two checks timed a
+drag's worst frame by the wall clock, so a busy box failed them: 42080-1's
+tubes took 16.8 ms at load 28, and 3.7 ms on the same code minutes later.
+Now each hose is laid again where it stands seven times, and the fastest
+is taken, which other jobs cannot make slower. A hose's mean must be at
+most 2 ms, and the budget plus the costliest laying within 3.5 ms. The
+drag's worst frame is said, not judged. With every laying slowed 3 ms
+(`-- --slow-lay=3000`) all eight cost checks fail. Run seven times beside
+other work (`-- --only=hoses`), and once in the full run, all eight passed
+every time. In the run at load 43 to 46 (the 1-minute average while each
+case ran), 42080-1's six tubes cost 0.79 ms a hose and 3.04 of 3.5 ms with
+the budget, 42043-1's two 0.50 and 2.64, and 42050-1's eight 0.47 and
+2.54. The fastest of seven still varies: the costliest laying was 0.55 to
+1.15 ms from run to run, not in step with the load. The closest to the
+limit was 42043-1's 3.15 of 3.5, in the full run at load 42. The drag's
+worst frame by the clock was 2.1 to 4.3 ms, once 10.5 (42050-1, at load
+30).
+
+**Steering, swept again** (`sweep_after2`, the same 181 files): 56 of 168
+sets steer both ways and back, against rel-m83's 55 and G13's 42. None
+that steered in rel-m83 is lost, and 8840-1's B model now steers.
+
+**The other moving things, swept again** (`movesweep_after2`; its last 45
+sets, cut short by a spin-down, as `movesweep_after2rest`; both merged in
+`movesweep_g13b`).
+
+| the same 260 sets | both ways and back | to its stop | turn at all | steps met: real / covers only / not judged |
+|---|---|---|---|---|
+| before (rel-m83) | 144 of 380 | 15 | 297 | 209 / 16 / 180 |
+| G13 | 161 of 377 | 15 | 294 | 224 / 15 / 179 |
+| G13b | 163 of 381 | 15 | 300 | 221 / 19 / 170 |
+
+By kind, both ways and back: turntables 51, doors 39, booms and arms 73.
+Against G13, four things now move both ways and back that did not
+(42064-1's and 42108-1's turntables, 42112-1's and 6953-1's booms), and two
+no longer do. Both are worse:
+
+- 21019-1's turntable. G13b's first turn stops 10° round, not 9°. From
+  there, the second turn begins with a plate with a handle (#86) whose
+  cover is into a plate with a clip (#124). A pair whose covers overlap
+  where a grab begins is forgiven for that grab (G13), so the second turn
+  goes all of -60° through the clip. The turn back is not forgiven, meets
+  the clip at -29° and stops, 15.7 LDU from where it stood. The push aside
+  is not the cause: switched off, the same. rel-m83 turned it +1° and -10°
+  and back.
+- 6987-1's turntable, in a loop of 8 joints, comes back 0.29 LDU off
+  (G13: 0.0001). rel-m83 did not read the loop, and came back 12.3 LDU
+  off.
+
+Against rel-m83, nine things no longer move both ways and back: G13's eight
+and 21019-1's turntable. Of G13's eight, 4002020-1's turntable (a loop of
+15 joints) now comes back 0.025 LDU off, against G13's 0.057 and the 0.02
+allowed. Steps judged to stop on covers only went from 15 to 19: five new
+(4002020-1, 6983-1, 952-1, and 76139-1 twice), one of G13's gone.
+
+**Proved** (bench/results/grab13-2026-10-19/`probes/`, on rel-m87 merged):
+`grab_probe` windowed through `tools/probe.sh`, in full
+(`grab_probe_full_g13b_final.log`, at load 17 to 48), ran 463 checks: 462
+passed. The one that failed is a timing check: 7191-1's big section let go,
+its keeping frame 119 ms against 100, 94 of it the commit (`Grab.commit`,
+which this branch does not touch). It ran at load 47; G13's run kept it in
+67 ms, 53 the commit, at load 15 to 28. Run alone (`-- --only=big`) beside
+rel-m87 at the same time, at load about 28, both pass: G13b 64 ms (52 the
+commit), rel-m87 75 (55). Alone at load 46, G13b took 249 (`big_ab`).
+8074-1's turntable is
+checked back again: +30, -60, +30 and back to 0.000 LDU, and no turn
+stopped on covers only. `-- --only=path` and `-- --only=beams` pass, and
+10220-1's door turns +4°, -9°, +5° and back to 0.000 LDU. Beside it,
+`placing_probe` passes (38 checks) and `share_play_probe` passes (40: a
+shared model's steering turned by its wheel, the grab's own work 2.9 ms at
+worst). Frame costs, the drag's own work: 42024-1's actuator 14.1 ms mean,
+29.9 at 95%, at load about 22 (G13 13.4 and 27.9; G12 6.6 and 12.1 at load
+4); 42081-1's arm 12.7 and 17.5 (G13 11.8 and 24.3); the four-bar's worst
+frame 18.1 ms, almost all one room test where the pointer is, at load
+about 28 (G13 12.7); 7191-1's big section 9.7 ms mean and 28.4 worst, at
+load 47 (G13 7.5 and 18.8).
+
+**Left for later.**
+- A pair forgiven by its covers (21019-1, above). Where both parts have
+  exact shapes, forgive the pair only where those shapes overlap where the
+  grab begins, and judge the rest by their shapes. That costs an exact
+  test on every flush neighbour, so both sweeps and the frame costs need
+  running again with it.
+- Loops that come back a little off over three moves: 6987-1 (0.29 LDU)
+  and 4002020-1 (0.025).
+- A loop's drag is tested along its way only on a pause or the release;
+  between, it is shown where the pointer is.
+- The ball joint's drag is not walked within a budget.
+- A part a step does not test may stand up to 2 LDU of its own way into
+  another where a move stops.
+- 3180-1's cupboard door: its hinge in the cupboard is not read.
+- 6627-1's minifigure drag has one frame of about 400 ms, as in G12
+  (403 ms).
+- From G12, not begun: joints read again after a move (8448-1's steering
+  link and its wheel rim, 4432-1's door, 10185-1's first floor, 4404-1's
+  kingpin loop, 9393-1, and 6980-1's hatch, whose second turn takes the
+  whole back), ball-jointed steering arms still refused, the judge's own
+  limits, and G11's leftovers.
