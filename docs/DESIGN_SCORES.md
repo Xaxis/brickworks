@@ -960,7 +960,7 @@ block at the head of how_real_sets_build_this's answer, the patterns'
 longer description in submit_design) sessions laid them as rarely as they
 used real sub-assemblies, and laid, they lost. The three patterns, each
 laying a body that passes the check as it stands, are kept with their probes
-on the branch `worktree-agent-a0ef4fa27d8208771` at fbf0d52
+on the branch `exp/builtbodies-2026-10-17` at fbf0d52
 (src/ai/legs_pattern.gd, block_figure.gd, boom_pattern.gd), for a unit that
 dresses what they lay: what the judge counts, below.
 
