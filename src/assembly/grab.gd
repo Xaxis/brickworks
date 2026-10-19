@@ -1206,6 +1206,10 @@ static var _built_touching: Dictionary = {}
 ## Parts a grab has moved since [member _built_touching] began, and the world
 ## and part count it was kept for.
 static var _moved_since_built: Dictionary = {}
+## Where each of those stood before a grab first moved it: brick id ->
+## Transform3D. A joint's turn from where it was built is read against it
+## ([method from_built]).
+static var _built_at: Dictionary = {}
 static var _built_for: int = 0
 static var _built_count: int = -1
 
@@ -1494,6 +1498,7 @@ func _built_for_world() -> void:
 	_built_count = world.brick_count()
 	_built_touching.clear()
 	_moved_since_built.clear()
+	_built_at.clear()
 
 
 ## Every moving part whose sweep all the way round the joint's line, a
@@ -2746,6 +2751,8 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 		steps.append({"undo": "move", "brick": key, "transform": rest[key]})
 		_built_for_world()
 		_moved_since_built[key] = true
+		if not _built_at.has(key):
+			_built_at[key] = rest[key]
 		world.move_brick(key, to)
 		builder.lattice.release(key)
 		# Worked out ahead, a share a frame, for a big section (GrabDrag).
@@ -2787,6 +2794,37 @@ func position_words() -> String:
 			var turned: float = rad_to_deg(Quaternion(twist.orthonormalized()).get_angle())
 			return "turned %d°" % roundi(turned)
 	return "%d°" % roundi(angle)
+
+
+## The joint's turn from where the model was built, degrees about its line
+## as [member angle] counts them, or its slide, LDU: the moving side's part
+## against the part across the joint, as both stand now, so a loop that
+## carries both, or the whole model turned, leaves it as it is. [member
+## angle] is this grab's alone: a session turned a kart's steering 20° and
+## then 15° more, and was told "now 15°". NAN for a ball.
+func from_built() -> float:
+	if state != "moves" or link == null or mode == "ball" or not bodies.members.has(body) \
+			or not bodies.members.has(link.other(body)):
+		return NAN
+	var ours: int = int((bodies.members[body] as PackedInt64Array)[0])
+	var theirs: int = int((bodies.members[link.other(body)] as PackedInt64Array)[0])
+	var mine: BrickWorld.Brick = world.get_brick(ours)
+	var across: BrickWorld.Brick = world.get_brick(theirs)
+	if mine == null or across == null:
+		return NAN
+	_built_for_world()
+	var now: Transform3D = across.transform.affine_inverse() * mine.transform
+	var then: Transform3D = (_built_at.get(theirs, across.transform) as Transform3D).affine_inverse() \
+		* (_built_at.get(ours, mine.transform) as Transform3D)
+	# The joint's line as the part across it holds it, from where it was grabbed.
+	var line: Vector3 = ((rest.get(theirs, across.transform) as Transform3D).basis.orthonormalized().inverse()
+		* axis).normalized()
+	if mode == "slide":
+		return (now.origin - then.origin).dot(line)
+	var turned: Basis = now.basis.orthonormalized() * then.basis.orthonormalized().inverse()
+	var square: Vector3 = (Vector3.UP if absf(line.y) < 0.9 else Vector3.RIGHT).cross(line).normalized()
+	var to: Vector3 = turned * square
+	return rad_to_deg(atan2(line.dot(square.cross(to)), square.dot(to)))
 
 
 ## The step's words: "turned the boom, 38 parts, on its turntable to 45°".
