@@ -2574,6 +2574,20 @@
       "entry": "tools/web/design_flow.mjs",
       "reach": "node tools/web/design_flow.mjs --out=shots/design   (no network, no account: tools/web/design_stand_in.mjs answers the API; --url=<deployment> for a preview, --root=DIR for another checkout)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a lighter look where frames are slow",
+      "entry": "src/render/frame_budget.gd",
+      "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "what a frame costs in a browser",
+      "entry": "tools/web/look_cost.mjs",
+      "reach": "node tools/web/look_cost.mjs --url=http://127.0.0.1:<port> --out=DIR --mode=cuts|acts [--gate]   (serve.py build/web --share L00kM0del1=vendor/omr/files/6392-1.mpd --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd, .env sourced)",
+      "area": "web"
     }
   ]
 }
