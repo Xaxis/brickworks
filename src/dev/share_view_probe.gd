@@ -33,6 +33,15 @@
 ## kept for the link, and the link opened again straight on it; Close,
 ## Build it again, and Finish.
 ##
+## Comments on a step: the count on the step the timeline is on and on the
+## step player's page ("2 comments" on step 2, none on step 3, the model's
+## own on the finished model and the cover); tapped, the step's comments,
+## one from an older version saying so; nobody signed in and an account
+## under 13 told why, with no box; somebody who may write typing in the box
+## (a space in it turning no page) and sending, the comment then in the
+## list and the count; a finger on the panel turning neither the page nor
+## the model; a page turned closing it.
+##
 ## The panel: Share on a signed-in model, what it sends (the LDraw with
 ## the made part and the print inside, no link line, the author only when
 ## ticked, a 1200 x 630 PNG), the link kept with the model and sent back on
@@ -61,6 +70,9 @@ class FakeShared extends SharedModels:
 	var not_ours: String = ""
 	## Each link's newest version, as the server counts them.
 	var versions: Dictionary = {}
+	## What ?op=comments answers (api/people.js), and the comments sent.
+	var comment_answer: Dictionary = {}
+	var posted: Array[Dictionary] = []
 
 	func fetch(id: String, _version: int = 0) -> Dictionary:
 		asked.append(id)
@@ -103,6 +115,24 @@ class FakeShared extends SharedModels:
 		var builds: int = counted_keys.keys().filter(func(key: String) -> bool:
 			return key.ends_with(id)).size()
 		return {"code": 200, "body": {"counted": counted, "builds": builds}}
+
+	## No comments on the link unless the probe gave some: as a server
+	## from before them answers.
+	func comments(_id: String, _version: int = 0, _token: String = "") -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		if comment_answer.is_empty():
+			return {"code": 400, "body": {"error": "unknown op comments"}}
+		return {"code": 200, "body": comment_answer.duplicate(true)}
+
+	func comment(token: String, body: Dictionary) -> Dictionary:
+		posted.append(body.merged({"token": token}))
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return {"code": 201, "body": {"comment": {"id": 100 + posted.size(), "version": body["version"],
+			"step": body["step"], "on_step": body["step"], "body": body["body"],
+			"at": "2026-10-18T12:00:00+00:00", "edited_at": null, "by": "Probe Reader", "handle": null,
+			"by_owner": false, "mine": true, "hidden": false, "older": false,
+			"said": "on step %d of version %d" % [int(body["step"]), int(body["version"])]
+				if body["step"] != null else "on version %d" % int(body["version"])}}}
 
 
 func _initialize() -> void:
@@ -334,6 +364,7 @@ func _run() -> void:
 		await process_frame
 	await _build_it(text, count)
 	await _versions(text, count)
+	await _comments(text, count)
 
 	# Back as a builder would be: the switches are the app's, not the probe's.
 	ShellPrefs.frozen = false
@@ -345,6 +376,13 @@ func _run() -> void:
 	_finish()
 
 
+## What the next viewer's link answers to ?op=comments, and the token it
+## comments with: taken by _open_viewer.
+var _next_comments: Dictionary = {}
+var _next_token: String = ""
+var _fake: FakeShared
+
+
 ## A viewer for the link, opened as a visitor's browser does, against the
 ## fake: ready to look at, or null.
 func _open_viewer(text: String, count: int, more: Dictionary = {}) -> ShareView:
@@ -353,9 +391,14 @@ func _open_viewer(text: String, count: int, more: Dictionary = {}) -> ShareView:
 		"author": "Probe Builder", "parts": count, "url": "https://brickworks.diy/m/" + ID,
 		"model": text}}
 	(fake.answer["body"] as Dictionary).merge(more, true)
+	fake.comment_answer = _next_comments
+	_fake = fake
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("_viewing", ID)
 	_main.set("_shared", fake)
+	_main.set("comment_token_for_probe", _next_token)
+	_next_comments = {}
+	_next_token = ""
 	root.add_child(_main)
 	var view: ShareView = null
 	for _n: int in 1200:
@@ -727,6 +770,195 @@ func _versions(text: String, count: int) -> void:
 			case[0], case[2], case[1], case[3], got])
 	BuildSteps._kept.clear()
 
+
+const NOBODY := "Sign in to add a comment: we email you a code, no password. Anyone can read them."
+const UNDER_13 := "Comments are for people 13 and over, so you can read them here but not add one. Building, your models and sharing by link are all yours."
+
+
+func _comments(text: String, count: int) -> void:
+	print("\ncomments on a step")
+	var second: Dictionary = {"version": 2, "newest": 2, "versions": [
+		{"n": 2, "said": "Version 2: 1 part added in step 4.", "first_changed": 4},
+		{"n": 1, "said": "", "first_changed": null}]}
+	var made: Array = [
+		{"id": 1, "version": 2, "step": 2, "on_step": 2, "body": "This part goes under, not over.",
+			"at": "2026-10-18T10:00:00+00:00", "edited_at": null, "by": "Ann", "handle": "ann",
+			"by_owner": false, "mine": false, "hidden": false, "older": false, "said": "on step 2 of version 2"},
+		{"id": 2, "version": 1, "step": 2, "on_step": 2, "body": "Lovely tower, thank you.",
+			"at": "2026-10-17T09:00:00+00:00", "edited_at": null, "by": "Bo", "handle": null,
+			"by_owner": false, "mine": false, "hidden": false, "older": true, "said": "on step 2 of version 1"},
+		{"id": 3, "version": 2, "step": null, "on_step": null, "body": "Built it with my daughter.",
+			"at": "2026-10-18T11:00:00+00:00", "edited_at": null, "by": "Probe Builder", "handle": null,
+			"by_owner": true, "mine": false, "hidden": false, "older": false, "said": "on version 2"}]
+	var answer := func(you: Dictionary) -> Dictionary:
+		return {"model": ID, "version": 2, "newest": 2, "open": true, "comments": made.duplicate(true),
+			"you": you}
+
+	print("\non the viewer, with nobody signed in")
+	BuildSteps._kept.clear()
+	_next_comments = answer.call({"signed_in": false, "may_write": false, "why_not": NOBODY, "owner": false})
+	var view: ShareView = await _open_viewer(text, count, second)
+	_ok(view != null, "the link opens with its comments")
+	if view == null:
+		return
+	for _n: int in 60:
+		if view.comments.known:
+			break
+		await process_frame
+	await _settle()
+	var said: Dictionary = view.page_state()
+	_ok(int(said["comments"]) == 1 and said["comment_step"] == 0 and said["comment_pill"] == "1 comment",
+		"at the finished model, the whole model's: %s (step %d)" % [said["comment_pill"], said["comment_step"]])
+	var steps: StepsBar = _main.get("_steps")
+	var on_timeline: Dictionary = steps.controls_by_name()
+	await _press(on_timeline["steps_start"])
+	await _press(on_timeline["steps_next"])
+	await _press(on_timeline["steps_next"])
+	said = view.page_state()
+	_ok(said["comment_step"] == 2 and int(said["comments"]) == 2 and said["comment_pill"] == "2 comments",
+		"two steps on, step 2's: %s (step %d)" % [said["comment_pill"], said["comment_step"]])
+	_ok(view.controls_by_name().has("view_comments"), "...a count to tap, above the timeline")
+	_save("16_viewer_comment_count.png")
+	await _press(view.controls_by_name()["view_comments"])
+	said = view.page_state()
+	_ok(bool(said["comments_open"]) and said["comments_shown"] == ["This part goes under, not over.",
+		"Lovely tower, thank you."], "tapped, step 2's two comments, in the order they came (%s)"
+		% [said["comments_shown"]])
+	_ok((said["comments_where"] as Array).has("On step 2 of version 1, an older one"),
+		"...the older version's saying so (%s)" % [said["comments_where"]])
+	var named: Dictionary = view.controls_by_name()
+	_ok(not bool(said["comment_can_write"]) and not named.has("view_comment_box")
+		and said["comment_why_not"] == NOBODY and named.has("view_comment_sign_in"),
+		"nobody signed in: no box, told why (%s), and a way to sign in on its page" % said["comment_why_not"])
+	_save("17_viewer_comments.png")
+	await _press(on_timeline["steps_next"])
+	said = view.page_state()
+	_ok(said["comment_step"] == 3 and int(said["comments"]) == 0 and said["comment_pill"] == "Comment"
+		and not bool(said["comments_open"]),
+		"step 3 has none (%s), and moving on closed step 2's" % said["comment_pill"])
+	await _close_viewer()
+
+	print("\nin the step player, somebody who may write")
+	_next_comments = answer.call({"signed_in": true, "may_write": true, "why_not": "", "owner": false})
+	_next_token = "probe.comment.token"
+	BuildSteps._kept.clear()
+	view = await _open_viewer(text, count, second)
+	if view == null:
+		_ok(false, "the link opens again")
+		return
+	var fake: FakeShared = _fake
+	for _n: int in 60:
+		if view.comments.known:
+			break
+		await process_frame
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	var mode: BuildMode = _main.get("_build_mode")
+	said = _main.call("build_state")
+	_ok(mode.is_open() and said["page"] == 0 and int(said["comments"]) == 1,
+		"the cover counts the whole model's (%s)" % said["comment_pill"])
+	var controls: Dictionary = mode.controls_by_name()
+	for _n: int in 2:
+		await _press(controls["build_next"])
+	said = _main.call("build_state")
+	_ok(said["page"] == 2 and int(said["comments"]) == 2 and said["comment_pill"] == "2 comments"
+		and mode.controls_by_name().has("build_comments"),
+		"step 2 says %s, in the top bar" % said["comment_pill"])
+	var pill: Control = mode.controls_by_name()["build_comments"]
+	var top: Control = mode.controls_by_name()["build_top"]
+	var pt: float = mode.points()
+	_ok(pill.get_global_rect().size.y >= 34.0 * pt and top.get_global_rect().encloses(pill.get_global_rect()),
+		"...a fingertip to tap (%.0f points tall)" % (pill.get_global_rect().size.y / pt))
+	await _press(controls["build_next"])
+	said = _main.call("build_state")
+	_ok(said["page"] == 3 and int(said["comments"]) == 0, "step 3, none (%s)" % said["comment_pill"])
+	await _press(controls["build_back"])
+	await _press(mode.controls_by_name()["build_comments"])
+	said = _main.call("build_state")
+	named = mode.controls_by_name()
+	_ok(bool(said["comments_open"]) and (said["comments_shown"] as Array).size() == 2
+		and bool(said["comment_can_write"]) and named.has("build_comment_box") and named.has("build_comment_send")
+		and said["comment_why_not"] == "", "tapped: both, and a box to add one")
+	_save("18_build_comments.png")
+	var panel_at: Vector2 = (named["build_comment_box"] as Control).get_global_rect().get_center() \
+		- Vector2(0, 60.0 * pt)
+	var camera: CadCamera = _main.get("_camera")
+	var yaw: float = camera.yaw_turned()
+	await _swipe(panel_at + Vector2(100, 0), panel_at - Vector2(100, 0))
+	said = _main.call("build_state")
+	_ok(said["page"] == 2 and bool(said["comments_open"]) and is_equal_approx(camera.yaw_turned(), yaw),
+		"a finger across the panel turns neither the page nor the model")
+	await _press(named["build_comment_box"])
+	await _type("Goes under it")
+	var box: LineEdit = named["build_comment_box"]
+	said = _main.call("build_state")
+	_ok(box.text == "Goes under it" and said["page"] == 2,
+		"typed in the box (%s), its spaces turning no page (step %d)" % [box.text, said["page"]])
+	await _press(named["build_comment_send"])
+	for _n: int in 30:
+		if not fake.posted.is_empty():
+			break
+		await process_frame
+	await _settle()
+	said = _main.call("build_state")
+	var sent: Dictionary = fake.posted[0] if not fake.posted.is_empty() else {}
+	_ok(sent.get("model") == ID and sent.get("version") == 2 and sent.get("step") == 2
+		and sent.get("body") == "Goes under it" and sent.get("token") == "probe.comment.token",
+		"Send: on step 2 of version 2, as the person here (%s)" % [sent])
+	_ok(int(said["comments"]) == 3 and said["comment_pill"] == "3 comments"
+		and not (said["comments_shown"] as Array).is_empty()
+		and (said["comments_shown"] as Array).back() == "Goes under it" and box.text == "",
+		"...in the list, newest last, the count %s, the box empty" % said["comment_pill"])
+	_save("19_build_comment_sent.png")
+	await _press(mode.controls_by_name()["build_next"])
+	said = _main.call("build_state")
+	_ok(said["page"] == 3 and not bool(said["comments_open"]), "a page turned closes them")
+	await _close_viewer()
+
+	print("\nan account under 13")
+	_next_comments = answer.call({"signed_in": true, "may_write": false, "why_not": UNDER_13, "owner": false})
+	_next_token = "probe.young.token"
+	# Opened on the cover, not on the page the last builder left.
+	BuildSteps._kept.clear()
+	view = await _open_viewer(text, count, second)
+	if view == null:
+		_ok(false, "the link opens again")
+		return
+	for _n: int in 60:
+		if view.comments.known:
+			break
+		await process_frame
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	mode = _main.get("_build_mode")
+	for _n: int in 2:
+		await _press(mode.controls_by_name()["build_next"])
+	await _press(mode.controls_by_name()["build_comments"])
+	said = _main.call("build_state")
+	named = mode.controls_by_name()
+	_ok(bool(said["comments_open"]) and (said["comments_shown"] as Array).size() == 2
+		and not bool(said["comment_can_write"]) and not named.has("build_comment_box")
+		and not named.has("build_comment_sign_in") and said["comment_why_not"] == UNDER_13,
+		"reads both, has no box, and is told why: %s" % said["comment_why_not"])
+	_save("20_build_comments_under_13.png")
+	await _close_viewer()
+	BuildSteps._kept.clear()
+
+
+## Typed, a key at a time, as a keyboard does.
+func _type(words: String) -> void:
+	for at: int in words.length():
+		var c: String = words[at]
+		for down: bool in [true, false]:
+			var event := InputEventKey.new()
+			event.keycode = KEY_SPACE if c == " " else OS.find_keycode_from_string(c.to_upper())
+			event.physical_keycode = event.keycode
+			event.unicode = c.unicode_at(0)
+			event.shift_pressed = c != c.to_lower()
+			event.pressed = down
+			Input.parse_input_event(event)
+			await process_frame
+	await _settle()
 
 ## The step player up, or a few seconds gone by.
 func _until_building(mode: BuildMode) -> void:

@@ -21,16 +21,24 @@
 //   GET  ?op=collection&id=X      a list and a page of its models: public,
 //                                 or the caller's own (&page=N)
 //   GET  ?op=list_page&id=X       /c/X: a public list's page
-//   POST ?op=report               {model | handle | collection, reason,
-//                                 note?, contact?}: somebody saying it
-//                                 should not be in the gallery, to the
-//                                 site's owner (api/admin.js); signed in or
-//                                 not. Emailed to them within the hour
+//   POST ?op=report               {model | handle | collection | comment | photo,
+//                                 reason, note?, contact?}: somebody saying
+//                                 it should not be there, to the site's
+//                                 owner (api/admin.js); signed in or not.
+//                                 Emailed to them within the hour
 //                                 (api/_trust.js sendDigest)
 //   POST ?op=digest               the hourly knock (supabase/trust.sql's
 //                                 cron job): this hour's one email of what
-//                                 was reported, if it has not gone. Needs
-//                                 no secret: it can send nothing else
+//                                 was reported, if it has not gone, and
+//                                 the day's email of new comments to each
+//                                 owner who asked for one. Needs no secret:
+//                                 it can send nothing else
+//   GET  ?op=comments&id=X&v=N    the comments on a model, and on its steps
+//   POST ?op=comment, comment_change, comments_open&id=X, mail
+//                                 (session) a comment written, changed,
+//                                 hidden or removed; comments on a model
+//                                 turned on or off; the comments' email
+//                                 chosen (api/_comments.js)
 //   GET  ?op=photos&id=X          the photos of real builds of model X that
 //                                 may be shown; with the session, also the
 //                                 caller's own on it, and for its owner the
@@ -85,6 +93,10 @@ import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
 import {
   BuildRefusal, MAX_WORDS, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto, startPhoto,
 } from "./_builds.js";
+import {
+  addComment, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
+  setCommentsOpen,
+} from "./_comments.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -187,15 +199,18 @@ async function models(origin, asked, page) {
 async function me(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  const [people, lists] = await Promise.all([
+  const [people, lists, mail] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
     db(`model_collections?owner=eq.${account}&select=id,name,description,public,updated_at&order=updated_at.desc`),
+    mailChoice(account),
   ]);
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
   return response.status(200).json({
     profile: people[0] || null,
     collections: lists.map((list, at) => ({ ...list, count: Number(counts[at]) || 0 })),
+    // What is emailed: comments on their models, once a day, when chosen.
+    mail,
   });
 }
 
@@ -403,17 +418,18 @@ async function collection(request, response) {
 // ---------------------------------------------------------------------------
 // Reports.
 
-/// What somebody says should not be in the gallery: a model, a profile or
-/// a public collection, a reason, a note and a way to reach them, kept for
-/// the site's owner. Signed in or not; counted by the account, or by the
-/// visitor's key for the day when there is none.
+/// What somebody says should not be in the gallery: a model, a profile, a
+/// public collection or a comment, a reason, a note and a way to reach
+/// them, kept for the site's owner. Signed in or not; counted by the
+/// account, or by the visitor's key for the day when there is none. A
+/// comment's report names its model too (supabase/comments.sql).
 async function report(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const body = request.body && typeof request.body === "object" ? request.body : {};
   let account = null;
   if (bearer(request)) account = await signedIn(request);
-  const named = ["model", "handle", "collection", "photo"].filter((key) => body[key] !== undefined && body[key] !== "");
-  if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle, a collection or a photo");
+  const named = ["model", "handle", "collection", "comment", "photo"].filter((key) => body[key] !== undefined && body[key] !== "");
+  if (named.length !== 1) throw new Refusal("name one thing: a model, a profile's handle, a collection, a comment or a photo");
   const target = {};
   // A counter-notice (web/takedown.html): about a model, which may be out
   // of the gallery already, with a way to reach whoever sends it.
@@ -426,6 +442,12 @@ async function report(request, response) {
       : await publishedModel(String(body.model));
     if (!there) throw new Refusal("there is no shared model at that link", 404);
     target.model = String(body.model);
+  } else if (named[0] === "comment") {
+    const comment = Number(body.comment);
+    const model = await commentModel(comment);
+    if (!model) throw new Refusal("there is no such comment", 404);
+    target.model = model;
+    target.comment = comment;
   } else if (named[0] === "photo") {
     // A photo of a build: about its model as far as the reports' own check
     // goes, and report_photos says which photo.
@@ -469,11 +491,21 @@ async function report(request, response) {
 }
 
 /// The hourly knock: this hour's email of the owner's reports, if any
-/// wait and it has not gone. Anybody may knock; nothing else can be sent.
+/// wait and it has not gone, and the day's email of new comments to each
+/// model's owner who asked for one and has not had it today. Anybody may
+/// knock; nothing else can be sent.
 async function knock(request, response) {
   response.setHeader("Cache-Control", "no-store");
-  const sent = await sendDigest({ origin: originOf(request) });
-  return response.status(200).json({ state: sent.state, reports: sent.reports || 0 });
+  const origin = originOf(request);
+  const sent = await sendDigest({ origin });
+  let comments = [];
+  try {
+    comments = (await sendCommentDigests({ origin })).digests;
+  } catch (trouble) {
+    console.error(`people: comment digests: ${String(trouble?.message || trouble).slice(0, 160)}`);
+  }
+  return response.status(200).json({ state: sent.state, reports: sent.reports || 0,
+    comments: comments.map((one) => one.state) });
 }
 
 // ---------------------------------------------------------------------------
@@ -775,6 +807,7 @@ export default async function handler(request, response) {
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
       if (op === "list_page") return await listPage(request, response);
+      if (op === "comments") return await listComments(request, response);
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);
     } else if (request.method === "POST") {
@@ -789,6 +822,10 @@ export default async function handler(request, response) {
       if (op === "collect") return await collect(request, response);
       if (op === "report") return await report(request, response);
       if (op === "digest") return await knock(request, response);
+      if (op === "comment") return await addComment(request, response, { origin: originOf(request) });
+      if (op === "comment_change") return await changeComment(request, response);
+      if (op === "comments_open") return await setCommentsOpen(request, response);
+      if (op === "mail") return await chooseMail(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

@@ -1,5 +1,6 @@
-// Report: a model, a profile, a collection or a photo of a build that should
-// not be in the gallery (the directory's moderation, 2026-10-13). A button on each of
+// Report: a model, a profile, a collection, a comment or a photo of a build
+// that should not be there (the directory's moderation, 2026-10-13; comments
+// and photos of builds, 2026-10-18). A button on each of
 // their pages opens this; what is sent goes to the site's owner
 // (/api/people?op=report, api/admin.js shows it to them) and to nobody
 // else. Signed in or not: a person who saw something wrong should not have
@@ -19,6 +20,12 @@ const REASONS = [
   ["personal", "Somebody's personal information"],
   ["other", "Something else"],
 ];
+
+/// The dialog, for [target] ({model} | {handle} | {collection} | {comment}),
+/// called [about] in its title. web/model-page.js opens it for a comment.
+export function openReport(target, about) {
+  open(target, about);
+}
 
 function open(target, about) {
   const dialog = document.createElement("dialog");
@@ -100,7 +107,9 @@ function open(target, about) {
       return;
     }
     form.replaceChildren();
-    said.textContent = "Thank you. The site's owner will look at it, and take it out of the gallery if it should not be there.";
+    said.textContent = target.comment
+      ? "Thank you. The site's owner will look at it, and remove it if it should not be there."
+      : "Thank you. The site's owner will look at it, and take it out of the gallery if it should not be there.";
     const done = document.createElement("button");
     done.className = "cta";
     done.type = "button";

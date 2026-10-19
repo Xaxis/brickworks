@@ -2,7 +2,7 @@
 -- a dry run: nothing here is kept.
 --
 --   set -a; . ./.env; set +a
---   cat supabase/trust.sql supabase/tested.sql supabase/builds.sql > /tmp/builds_dry.sql   (until those two are applied)
+--   cat supabase/tested.sql supabase/trust.sql supabase/comments.sql supabase/builds.sql > /tmp/builds_dry.sql   (the release's order, until the three before are applied)
 --   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js \
 --     node tools/apply_sql.mjs /tmp/builds_dry.sql --dry --try=tools/builds_try.sql --table=build_photos
 --
@@ -37,11 +37,13 @@ select pg_temp.tries($q$insert into public.build_photos (id, model, account, wid
 -- Hidden by the model's owner: kept, and still counted.
 update public.build_photos set hidden_at = now() where id = 'PhotoTry02';
 select id, hidden_at is not null as hidden, removed_at is not null as removed from public.build_photos where id like 'PhotoTry%' order by id;
--- A report about a photo: about its model as reports' check wants, and which photo; its stream the poster's, a test account's; its digest names the photo.
+-- A report about a photo (about its model as reports' check wants, and which photo), and a report about a comment (comments.sql's reports.comment): both in the test account's stream, and both in its one digest, each named.
 insert into public.reports (model, reason, note) values ('BuildTry01', 'personal', 'Try: a face in the photo');
 insert into public.report_photos (report, photo) select max(id), 'PhotoTry01' from public.reports where note = 'Try: a face in the photo';
-select public.report_stream(r) = 'test:00000000-0000-4000-8000-0000000000b1' as "its stream is the poster's" from public.reports r where note = 'Try: a face in the photo';
-select (d->'reports'->0->>'photo') as "the digest names the photo", d->>'stream' as stream from public.claim_report_digest('test:00000000-0000-4000-8000-0000000000b1') d;
+insert into public.model_comments (model, version, author, body) values ('BuildTry01', 1, '00000000-0000-4000-8000-0000000000b1', 'Try: this part goes under, not over');
+insert into public.reports (model, comment, reason, note) select 'BuildTry01', max(id), 'offensive', 'Try: a rude comment' from public.model_comments where body = 'Try: this part goes under, not over';
+select r.note, public.report_stream(r) = 'test:00000000-0000-4000-8000-0000000000b1' as "in the test account's stream" from public.reports r where r.note like 'Try: a %' order by r.id;
+select x->>'note' as note, x->>'photo' as photo, x->>'comment' is not null as "names a comment", x->>'said' as said, d->>'stream' as stream from public.claim_report_digest('test:00000000-0000-4000-8000-0000000000b1') d, jsonb_array_elements(d->'reports') x order by x->>'id';
 select pg_temp.tries($q$with r as (insert into public.reports (model, reason) values ('BuildTry01', 'spam') returning id) insert into public.report_photos (report, photo) select id, 'NoSuchPho1' from r$q$) as "a report about a photo that is not there";
 -- The buckets: private, and what each takes.
 select id, public, file_size_limit, allowed_mime_types from storage.buckets where id in ('build-photo-uploads', 'build-photos') order by id;

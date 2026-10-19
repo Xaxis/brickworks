@@ -39,6 +39,11 @@
 // in memory, until that file is applied to the project
 // (tools/web/trust_stand_in.mjs): the age question and the report digest's
 // dry run, for tools/web/age_flow.mjs and digest_flow.mjs.
+//
+// --hold=model_comments holds supabase/comments.sql the same way: its
+// tables are reachable only through its functions, so those are what is
+// answered here, and the column it adds to reports
+// (tools/web/comments_stand_in.mjs), for tools/web/comments_flow.mjs.
 import http from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -51,11 +56,16 @@ const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9
 // uses supabase/versions.sql before the file is applied. What they hold is
 // at /__held/<table>, on this machine only.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
-const heldTables = holding.length ? await import("./held_tables.mjs") : null;
+const tables = holding.filter((name) => name !== "model_comments");
+const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
-  heldTables.hold(holding, { origin: `http://127.0.0.1:${port}` });
-  console.log(`holding ${holding.join(", ")} here, not in the project`);
+  heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
+  console.log(`holding ${tables.join(", ")} here, not in the project`);
 }
+// Inside the trust stand-in, so a report's digest reads which comment it
+// names through it.
+const heldComments = holding.includes("model_comments") ? await import("./comments_stand_in.mjs") : null;
+if (heldComments) heldComments.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -136,9 +146,9 @@ function page(pathname) {
 
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
-  const asked = heldTables && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+  const asked = (heldTables || heldComments) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   if (asked) {
-    const rows = heldTables.rowsOf(asked[1]);
+    const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }

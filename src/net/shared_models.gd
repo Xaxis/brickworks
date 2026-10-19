@@ -176,6 +176,24 @@ static func mark_built(link: String) -> void:
 	file.save(kept_at)
 
 
+## The comments on a link (api/people.js ?op=comments, 2026-10-18), as the
+## step player and the viewer show them on each step: {code, body: {model,
+## version, newest, open, comments: [...], you}}. [param version] is the
+## version open (0, the newest), which says which step each comment shows
+## on; [param token] says who is asking, so the answer says whether they
+## may write, and if not, why. Anybody may read them.
+func comments(id: String, version: int = 0, token: String = "") -> Dictionary:
+	return await _fetch("/api/people?op=comments&id=" + id.uri_encode()
+		+ ("&v=%d" % version if version > 0 else ""), HTTPClient.METHOD_GET, token, "")
+
+
+## Add a comment, as the session's account: {model, version, step (null for
+## the whole model), body}. 201 with {comment}; a refusal says why in
+## {error}.
+func comment(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
 ## One request on a throwaway node, as Account._fetch does: an
 ## HTTPRequest takes one call at a time.
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:

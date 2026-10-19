@@ -27,6 +27,10 @@ declare -A CMD=(
   [cursor]="tools/web/cursor_check.mjs --url=$P/app $B"
   [share_flow]="tools/web/share_flow.mjs --url=$P/app --out=$S/${TAG}_share_web"
   [versions]="tools/web/versions_flow.mjs --url=$P --out=$S/${TAG}_versions"
+  [age]="tools/web/age_flow.mjs --url=$P --out=$S/${TAG}_age"
+  [comments]="tools/web/comments_flow.mjs --url=$P --out=$S/${TAG}_comments"
+  [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
+  [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the

@@ -130,8 +130,8 @@ try {
     unlinked.length === 0);
   await look.goto(`${site}/terms`, { waitUntil: "load" });
   const terms = await look.textContent("main");
-  check("/terms: the operator's name and address marked for the owner to fill in",
-    /To be filled in by the site’s owner/.test(terms) && /\[the operator’s legal name\]/.test(terms) && /\[a contact address\]/.test(terms));
+  check("/terms: a contact for questions, and no blank left showing",
+    /Questions about these terms/.test(terms) && !/\[the operator’s legal name\]|To be filled in/.test(terms));
   check("/terms: says the under-13 rule and the LEGO Group's disclaimer",
     /13 or over/.test(terms) && /not made, sponsored, authorised or endorsed by the LEGO Group/.test(terms));
   await look.goto(`${site}/guidelines`, { waitUntil: "load" });
@@ -144,8 +144,9 @@ try {
   }
   await shot(look, "1_guidelines.png", true);
   await look.goto(`${site}/takedown`, { waitUntil: "load" });
-  check("/takedown: a counter-notice form and the copyright agent's place marked for the owner",
-    await look.isVisible("#counter") && /To be filled in by the site's owner/.test(await look.textContent("#agent")));
+  check("/takedown: a counter-notice form, and who answers notices, with no blank left showing",
+    await look.isVisible("#counter") && /reach the site's owner/.test(await look.textContent("#agent"))
+      && !/To be filled in|\[name\]/.test(await look.textContent("main")));
   await look.selectOption("#why", "copied");
   check("/takedown: a copy's claim asks for a signature and the two statements", await look.isVisible("#signature")
     && await look.isVisible("#good-faith") && await look.isVisible("#accurate"));

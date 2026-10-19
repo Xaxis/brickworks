@@ -2392,6 +2392,27 @@
       "entry": "tools/web/builds_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web --hold=model_builds,build_photos,report_photos,share_tests --trust-stand-in & node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/builds.sql is applied)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "comments on a shared model",
+      "entry": "api/_comments.js",
+      "reach": "cat supabase/trust.sql supabase/comments.sql > /tmp/tc.sql; PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs /tmp/tc.sql --dry --try=tools/comments_trial.sql --table=model_comments   (.env sourced; then the comments browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comments on a step",
+      "entry": "src/ui/step_comments.gd",
+      "reach": "/app?view=<id> (the count above the timeline) and Build it (the count in the top bar); /m/<id> (Comments)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "comments browser flow",
+      "entry": "tools/web/comments_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
+      "area": "web"
     }
   ]
 }

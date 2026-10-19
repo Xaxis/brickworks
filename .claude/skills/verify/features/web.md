@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow -->
 
 ## Sub-features
 
@@ -596,6 +596,45 @@ plan with Claude as the client.
   asked yet is told to answer first before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
+- `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
+  `api/people.js`, 2026-10-18; **not applied to the live project**: the
+  owner applies it at release, after `trust.sql` and before the deploy;
+  `docs/COMMUNITY.md` "Comments" has the rules). `model_comments` (model,
+  version, step or none, author, body 1 to 1,000 plain characters, `at`,
+  `edited_at`, `hidden_at`, `removed_at`/`removed_by`), `comment_settings`,
+  `mail_choices` (off by default), `comment_digests`, and `reports.comment`;
+  no grant on the new tables to anybody, the service role too: only the
+  functions (`comment_trouble`, `comments_on`, `add_comment`,
+  `change_comment`, `set_comments`, `admin_comments`,
+  `admin_remove_comment`, `mail_choice`, `claim_comment_digest`,
+  `finish_comment_digest`, `comment_digest_kept`, `comment_model`), and a
+  trigger refusing under 13, barred and closed whatever writes. `GET
+  /api/people?op=comments&id=X&v=N` (oldest first; each `said` "on step 7 of
+  version 2", `older`, and `on_step`, the step of version N it shows on, or
+  null once a version between changed that step or one before it; `you`:
+  `may_write` and `why_not` in words); `POST ?op=comment` (10 an hour, 50 a
+  day), `?op=comment_change` (edit, remove; hide, show for the owner),
+  `?op=comments_open&id=X`, `?op=mail`; `?op=report` takes `comment`; the
+  knock also sends each owner's day's email, a test's dry. The model's
+  page draws them (`web/model-page.js`, the section from `api/share.js`
+  `commentsSection`, the step picker of the version shown); `/profile` has
+  the email box; `/admin` lists the newest and the reported, with Remove
+  (`?op=uncomment&comment=N`). Before comments.sql: none shown, "not open
+  yet", the admin page as before.
+- `comments on a step` (`src/ui/step_comments.gd`, `StepComments`; wired in
+  `src/main.gd` `_load_comments`, `_comments_opened`, `_send_comment`): in
+  the viewer, a count above the timeline for the step it is on (0, the
+  whole model, at either end or with it away); in the step player, a count
+  in the top bar for the page. Tapped, the step's comments (`on_step`) and
+  a box, or the server's `why_not` and a way to the model's page to sign
+  in. The viewer reads no account until a step's comments are opened on a
+  device that keeps a session: then an `Account` of the comments' own,
+  `keeps = true`, renews it as the site's pages do. `page_state` has
+  `comments`, `comments_open`, `comments_shown`, `comment_why_not`,
+  `comment_can_write`, `comment_pill`; controls `view_comments`,
+  `build_comments`, `*_comment_box`, `*_comment_send`, `*_comment_sign_in`.
+  Proved by `share_view_probe` (no network: FakeShared) and the flow.
+- `comments browser flow` (`tools/web/comments_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1605,6 +1644,57 @@ The SQL itself, every trigger and function, in a rolled-back transaction
 PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js \
   node tools/apply_sql.mjs supabase/trust.sql --dry --try=tools/trust_trial.sql --table=profiles
 ```
+
+Comments (2026-10-18). The SQL first, with trust.sql, which it needs and
+the project does not have yet, in one rolled-back transaction:
+
+```sh
+cat supabase/trust.sql supabase/comments.sql > /tmp/trust_comments.sql
+PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js \
+  node tools/apply_sql.mjs /tmp/trust_comments.sql --dry --try=tools/comments_trial.sql --table=model_comments
+```
+
+It proves it when every line says what its label says: refused `sign_in`,
+`under_13`, `ask_first`, `barred`, `closed` (a model of an account under
+13), `no_model`, `no_step`, `no_version`, `body` (space only, 1,001
+characters); the trigger refusing under 13, barred, a control character and
+a closed model when written directly; 8 allowed and 2 refused for the limit;
+off by somebody else `not_owner`, off and on by the owner; the owner's
+hide (a visitor sees one fewer, the owner and the author all); edit and
+remove by the author only; a report naming its model and comment, its
+stream the test's, its digest with `comment` and `said`; the admin's
+removal (`removed_by` admin); `mail_choice` false until chosen, then one dry
+digest that day and none after; no grant on the four tables, `anon` and
+`authenticated` unable to execute, the service role able; "rolled back,
+nothing kept".
+
+Then the code, in real browsers, against a local server holding
+comments.sql (`--hold=model_comments`) and standing in for trust.sql
+(needs `build/web`; `--site` leaves the app out):
+
+```sh
+node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in &
+BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=shots/comments
+```
+
+`comments_flow` proves it when it ends "comments: who may write, where each
+was said, the owner's say, reports, and the step player": a comment on the
+model and one on step 4 picked from the page's step list, each saying where;
+the owner's email a dry run once that day; version 1's step 2 on step 2 of
+version 2, its step 5 on none; refusals for 1,001 characters, a word, a
+step; a visitor reading with "Sign in to add a comment…" and a 401; under
+13 with its words and a 422; the owner's hide, off (409 for the builder)
+and on; Report it on a comment, on the admin page with its words, Remove the
+comment, gone from the page and kept; and the app at 390 x 844: the viewer's
+count, step 4's in the step player, its comments tapped, one added there
+(the count up, on the page "on step 4 of version 2"), a visitor and an
+account under 13 reading with their reasons. Pictures `1_` to `11_` in
+`--out`. 44 checks, all ok, against the local relay on 2026-10-18 (a run
+takes about 4 minutes, the export first ~3). The stand-in keeps what it
+holds for the life of the relay, so a second run sees the first's comments
+on the admin page: the flow scopes its admin checks to its own model.
+`share_view_probe` checks the same in the app with no network (159 checks
+with comments, 2026-10-18).
 
 The list, asked hard (reads only):
 

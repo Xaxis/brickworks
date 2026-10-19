@@ -72,11 +72,20 @@ async function answerAge({ account, at_least_13: atLeast13 }) {
   return reply(200, ageOf(account));
 }
 
-/// The report's stream, as report_stream says it.
+/// The report's stream, as report_stream says it. Which comment it is
+/// about, when comments.sql is held beside this (comments_stand_in.mjs),
+/// and that comment's words.
 async function streamOf(report) {
-  const rows = await real(`reports?id=eq.${report}&select=id,at,model,handle,collection,reporter,reason,note,resolved_at`);
+  const columns = "id,at,model,handle,collection,reporter,reason,note,resolved_at";
+  const rows = await real(`reports?id=eq.${report}&select=${columns},comment`)
+    .catch(() => real(`reports?id=eq.${report}&select=${columns}`));
   const row = rows[0];
   if (!row) return null;
+  if (row.comment) {
+    const about = await real("rpc/admin_comments", { method: "POST", body: JSON.stringify({ wanted: [row.comment] }) })
+      .catch(() => []);
+    row.said = String(about?.[0]?.body || "").slice(0, 240) || null;
+  }
   let owner = null;
   let name = null;
   if (row.model) {
@@ -122,8 +131,8 @@ async function claim({ wanted = "owner", report = null }) {
   digests.push(digest);
   for (const row of taken) row.digest = digest.id;
   return reply(200, { digest: digest.id, stream, more: ready.length - taken.length,
-    reports: taken.map(({ id, at, reason, note, model, handle, collection, name }) =>
-      ({ id, at, reason, note, model, handle, collection, name })) });
+    reports: taken.map(({ id, at, reason, note, model, handle, collection, name, comment = null, said = null }) =>
+      ({ id, at, reason, note, model, handle, collection, name, comment, said })) });
 }
 
 function finish({ one, outcome, said_subject: subject, said_body: body, said_html: html }) {

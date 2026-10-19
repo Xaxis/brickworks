@@ -58,10 +58,27 @@
 -- Who may do what: only the server. No grant and no policy for any key a
 -- page has, on the tables or the buckets.
 --
--- Only additions, applied after trust.sql and tested.sql: new tables, one
--- new column on model_stats (zero on every row), two buckets, a trigger
--- that refuses, new functions, and five functions replaced with one thing
--- more each. No existing row is changed, nothing dropped or renamed.
+-- Only additions, applied last of the release's four: tested.sql,
+-- trust.sql, comments.sql, then this. New tables, one new column on
+-- model_stats (zero on every row), two buckets, a trigger that refuses, new
+-- functions, and four functions replaced, each with what the files before
+-- it had added kept and one thing more:
+--
+--   directory_card      supersedes tested.sql's (the Tested mark) and
+--                       trust.sql's (no credited name of an account under
+--                       13), each of which dropped the other's; both kept,
+--                       and builds added
+--   directory_models    supersedes tested.sql's (Tested only, and the test
+--                       models of test_models.sql); the same, and the
+--                       builds sort added
+--   report_stream       supersedes comments.sql's, itself trust.sql's with
+--                       a comment's writer; the same, and a photo's poster
+--                       beside the writer
+--   claim_report_digest supersedes comments.sql's, itself trust.sql's with
+--                       the comment and its first words; the same, and the
+--                       photo
+--
+-- No existing row is changed, nothing dropped or renamed.
 
 -- ---------------------------------------------------------------------------
 -- Builds finished.
@@ -275,9 +292,9 @@ grant execute on function public.directory_models(jsonb) to service_role;
 -- ---------------------------------------------------------------------------
 -- Reports about photos.
 
--- Which digest a report belongs in, as trust.sql says, and for a report
--- about a photo, whoever posted it first: a test account's photo is a dry
--- run's, wherever it was posted.
+-- Which digest a report belongs in, as comments.sql says (trust.sql's,
+-- and a test's for a comment a test account wrote), and a test's too for a
+-- photo a test account posted, wherever it was posted.
 create or replace function public.report_stream(r public.reports)
 returns text
 language sql
@@ -287,15 +304,18 @@ set search_path = public
 as $$
     with whose as (
         select coalesce(
-            (select p.account from public.report_photos rp
-               join public.build_photos p on p.id = rp.photo
-              where rp.report = r.id),
             (select m.owner from public.shared_models m where m.id = r.model),
             (select c.owner from public.model_collections c where c.id = r.collection),
-            (select p.account from public.people p where p.handle = r.handle)) as owner)
+            (select p.account from public.people p where p.handle = r.handle)) as owner,
+            (select k.author from public.model_comments k where k.id = r.comment) as writer,
+            (select b.account from public.report_photos rp
+               join public.build_photos b on b.id = rp.photo
+              where rp.report = r.id) as poster)
     select case
         when w.owner is null and r.handle is not null then null
         when w.owner is not null and public.trust_is_test_account(w.owner) then 'test:' || w.owner::text
+        when w.writer is not null and public.trust_is_test_account(w.writer) then 'test:' || w.writer::text
+        when w.poster is not null and public.trust_is_test_account(w.poster) then 'test:' || w.poster::text
         when r.reporter is not null and public.trust_is_test_account(r.reporter) then 'test:' || r.reporter::text
         else 'owner' end
       from whose w
@@ -303,8 +323,9 @@ $$;
 revoke all on function public.report_stream(public.reports) from public, anon, authenticated;
 grant execute on function public.report_stream(public.reports) to service_role;
 
--- A digest, as trust.sql makes it, each report saying which photo it is
--- about when it is about one (api/_trust.js names it so in the email).
+-- A digest, as comments.sql makes it (trust.sql's, with the comment a
+-- report is about and its first words), each report saying which photo it
+-- is about when it is about one (api/_trust.js names each so in the email).
 create or replace function public.claim_report_digest(wanted text default 'owner', report bigint default null)
 returns jsonb
 language plpgsql
@@ -353,14 +374,16 @@ begin
             select jsonb_agg(jsonb_build_object(
                        'id', r.id, 'at', r.at, 'reason', r.reason, 'note', r.note,
                        'model', r.model, 'handle', r.handle, 'collection', r.collection,
+                       'comment', r.comment, 'said', left(k.body, 240),
                        'photo', rp.photo,
                        'name', coalesce(m.name, c.name, p.name))
                        order by r.at)
               from public.reports r
-              left join public.report_photos rp on rp.report = r.id
               left join public.shared_models m on m.id = r.model
               left join public.model_collections c on c.id = r.collection
               left join public.people p on p.handle = r.handle
+              left join public.model_comments k on k.id = r.comment
+              left join public.report_photos rp on rp.report = r.id
              where r.id = any (ids)));
 end;
 $$;

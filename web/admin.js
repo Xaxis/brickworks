@@ -169,7 +169,11 @@ function draw(data) {
     const about = document.createElement("td");
     about.className = "model";
     const link = document.createElement("a");
-    if (report.photo) {
+    if (report.comment) {
+      // A comment: its words, and the model it is on.
+      link.href = `/m/${encodeURIComponent(report.model)}#comment-${encodeURIComponent(report.comment.id)}`;
+      link.textContent = `A comment on ${report.name ?? report.model}`;
+    } else if (report.photo) {
       // A photo of a build (supabase/builds.sql): the photo itself, asked for
       // with the owner's sign-in, since it may be hidden from everybody else.
       row.dataset.photo = report.photo.id;
@@ -195,6 +199,12 @@ function draw(data) {
       link.textContent = `collection ${report.collection}`;
     }
     about.append(link);
+    if (report.comment && report.comment.body) {
+      const words = document.createElement("q");
+      words.className = "comment-said";
+      words.textContent = report.comment.body;
+      about.append(document.createElement("br"), words);
+    }
     row.append(about);
     cell(row, report.reason);
     cell(row, report.note ?? "—", report.note ? "said" : "faint");
@@ -202,7 +212,10 @@ function draw(data) {
     cell(row, report.email ?? "—", report.email ? "" : "faint");
     const acts = document.createElement("td");
     acts.className = "acts";
-    if (report.photo) {
+    if (report.comment) {
+      acts.append(act("Remove the comment", () => confirm("Take this comment off its page for good?")
+        && post(`op=uncomment&comment=${encodeURIComponent(report.comment.id)}`, "reports-note", "The comment is removed.")));
+    } else if (report.photo) {
       acts.append(act("Take the photo out", () => confirm("Take this photo out? Its file is deleted, and it is shown nowhere again.")
         && post(`op=remove_photo&photo=${encodeURIComponent(report.photo.id)}`, "reports-note",
           "The photo is out, and its file deleted.")));
@@ -225,6 +238,36 @@ function draw(data) {
   } else if (/^#report-\d+$/.test(location.hash)) {
     say("reports-note", "The report that email named is no longer open: it was settled.");
   }
+
+  // Comments: strangers' words, so text and never markup.
+  const comments = $("comments");
+  comments.replaceChildren();
+  for (const one of data.comments || []) {
+    const row = document.createElement("tr");
+    row.id = `comment-${one.id}`;
+    cell(row, when(one.at));
+    const on = document.createElement("td");
+    on.className = "model";
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(one.model)}#comment-${encodeURIComponent(one.id)}`;
+    link.textContent = one.name ?? one.model;
+    on.append(link, document.createTextNode(one.step ? `, step ${one.step} of version ${one.version}`
+      : `, version ${one.version}`));
+    row.append(on);
+    cell(row, one.body, "said");
+    cell(row, one.handle ? `@${one.handle}` : one.email ?? "—", one.handle || one.email ? "" : "faint");
+    cell(row, one.removed ? `removed by ${one.removed_by === "admin" ? "you" : "its author"}`
+      : one.hidden ? "hidden by its builder" : one.edited_at ? "edited" : "shown", one.removed ? "faint" : "");
+    const acts = document.createElement("td");
+    acts.className = "acts";
+    if (!one.removed) {
+      acts.append(act("Remove", () => confirm("Take this comment off its page for good?")
+        && post(`op=uncomment&comment=${encodeURIComponent(one.id)}`, "comments-note", "Removed.")));
+    }
+    row.append(acts);
+    comments.append(row);
+  }
+  say("comments-note", data.comments?.length ? "" : "Nobody has commented yet.");
 
   const barred = $("barred");
   barred.replaceChildren();
