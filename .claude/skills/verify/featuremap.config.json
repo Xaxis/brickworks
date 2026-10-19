@@ -2413,6 +2413,41 @@
       "entry": "tools/web/comments_flow.mjs",
       "reach": "node tools/web/relay_server.mjs 9040 --static=build/web --hold=model_comments --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9040 node tools/web/comments_flow.mjs --url=http://127.0.0.1:9040 --out=DIR   (.env sourced, MASTER_EMAIL; --site leaves the app out)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "follows and the feed",
+      "entry": "api/_follows.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql --dry --try=tools/follows_try.sql --table=follows   (after the live files; then the follows browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your feed page",
+      "entry": "web/feed.html",
+      "reach": "https://brickworks.diy/feed   (feed.js: signed in, newest first, each row a link; opening it clears the count on Account)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "follow a person and the count on Account",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (Account and its count, on Menu at a phone's width)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the app's Account count",
+      "entry": "src/ui/account_panel.gd",
+      "reach": "/app signed in: Account on the bar says \"Account · N\", and its panel N new in your feed with Open your feed (brickworksState.feed)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "follows browser flow",
+      "entry": "tools/web/follows_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web --hold=follows,model_comments,build_photos,report_photos --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9240 --out=DIR   (--site leaves the app out)",
+      "area": "web"
     }
   ]
 }

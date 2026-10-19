@@ -15,6 +15,14 @@
 ##
 ## The owner's account (MASTER_EMAIL) also gets a link to the admin page,
 ## on the web, where the page is.
+##
+## And what came into the account's feed since it was last opened
+## (2026-10-18, api/people.js ?op=feed_count, supabase/follows.sql): new
+## models and versions from people it follows, photos, comments and remixes
+## of its models. Asked when somebody signs in, when the panel opens, when
+## the window comes back to the front, and every five minutes; the count is
+## on Account in the bar (feed_counted) and here, with Open your feed,
+## which is the site's /feed. Opening the feed there clears it.
 class_name AccountPanel
 extends PanelContainer
 
@@ -39,6 +47,19 @@ var connector: ClaudeConnector
 ## The person asked to sign out; the app switches the connector off and
 ## the sign-in screen comes back.
 signal sign_out_wanted()
+
+## How many things came into the feed since it was last opened: 0 when
+## none, or nobody is signed in.
+signal feed_counted(count: int)
+
+## How often the count is asked again while signed in.
+const FEED_EVERY := 300.0
+
+var feed_count: int = 0
+var _feed_line: Label
+var _feed_link: LinkButton
+var _feed_asking := false
+var _feed_asked_at := -INF
 
 
 func setup(with_account: Account) -> void:
@@ -117,6 +138,21 @@ func setup(with_account: Account) -> void:
 			_claude_state.text = "Could not reach Brickworks to disconnect. Try again.")
 	claude_row.add_child(_claude_disconnect)
 
+	# What came into the feed since it was last opened, and the way to it.
+	_feed_line = _line("", 12, 0.85)
+	_feed_line.visible = false
+	column.add_child(_feed_line)
+	_feed_link = Look.link("Open your feed", 12)
+	_feed_link.tooltip_text = ("New models from people you follow, and photos, comments "
+		+ "and remixes of yours, on brickworks.diy")
+	_feed_link.visible = false
+	column.add_child(_feed_link)
+	var every := Timer.new()
+	every.wait_time = FEED_EVERY
+	every.autostart = true
+	every.timeout.connect(ask_feed)
+	add_child(every)
+
 	_admin = Look.link("Accounts and connectors (admin)", 12)
 	_admin.uri = "/admin"
 	column.add_child(_admin)
@@ -172,6 +208,64 @@ func open() -> void:
 	visible = not visible
 	if visible and connector != null and account.signed_in():
 		connector.refresh_connections()
+	if visible:
+		ask_feed(true)
+
+
+## Ask how many things came into the feed since it was last opened, and
+## say it. Not more than once in 20 seconds unless [now]; never as nobody.
+func ask_feed(now: bool = false) -> void:
+	if not account.signed_in():
+		_show_feed(0)
+		return
+	var at: float = Time.get_ticks_msec() / 1000.0
+	if _feed_asking or (not now and at - _feed_asked_at < 20.0):
+		return
+	_feed_asking = true
+	_feed_asked_at = at
+	var token: String = await account.access_token()
+	if token.is_empty():
+		_feed_asking = false
+		_show_feed(0)
+		return
+	var http := HTTPRequest.new()
+	http.timeout = 20.0
+	add_child(http)
+	var headers := PackedStringArray(["authorization: Bearer " + token])
+	if http.request(Deployment.api_base() + "/api/people?op=feed_count", headers) != OK:
+		http.queue_free()
+		_feed_asking = false
+		return
+	var result: Array = await http.request_completed
+	http.queue_free()
+	_feed_asking = false
+	if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
+		return
+	var said: Variant = JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
+	if said is Dictionary:
+		_show_feed(int((said as Dictionary).get("count", 0)))
+
+
+func _show_feed(count: int) -> void:
+	feed_count = maxi(count, 0)
+	var shown: String = "99+" if feed_count > 98 else str(feed_count)
+	_feed_line.text = ("Nothing new in your feed." if feed_count == 0
+		else "%s new in your feed since you last opened it." % shown)
+	_feed_line.visible = account.signed_in()
+	_feed_link.visible = account.signed_in()
+	_feed_link.uri = (Origin.here() if OS.has_feature("web") else Deployment.api_base()) + "/feed"
+	feed_counted.emit(feed_count)
+
+
+## What it says of the feed, for probes and the browser flows.
+func feed_words() -> String:
+	return _feed_line.text if _feed_line != null and _feed_line.visible else ""
+
+
+## Back to the front (another tab had the feed open, say): asked again.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and account != null:
+		ask_feed()
 
 
 ## Where the models are kept, as the browser says it now, for as long as the
@@ -192,6 +286,8 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	var named: Dictionary = {"sign_out": _sign_out, "account_done": _done}
+	if _feed_link.is_visible_in_tree():
+		named["account_feed"] = _feed_link
 	if _claude_disconnect.is_visible_in_tree():
 		named["account_disconnect_claude"] = _claude_disconnect
 	if _claude_connect.is_visible_in_tree():
@@ -299,6 +395,11 @@ func _line(text: String, size: int, alpha: float) -> Label:
 func _follow() -> void:
 	if not account.signed_in():
 		visible = false
+	if _feed_line != null:
+		if account.signed_in():
+			ask_feed()
+		elif feed_count != 0 or _feed_line.visible:
+			_show_feed(0)
 	_who.text = "Signed in as %s" % account.email if not account.email.is_empty() \
 		else "Signed in"
 	_state.text = ("Brickworks could not be reached just now, so this is "

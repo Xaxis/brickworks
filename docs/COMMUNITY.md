@@ -1,7 +1,7 @@
 # Community rules, and where each is enforced
 
 brickworks.diy has share links, a gallery, profiles, likes, remixes,
-collections, comments and photos of real builds. These
+collections, comments, photos of real builds, follows and a feed. These
 are the ground rules it stands on (2026-10-18), and the code that keeps each.
 The pages people read are `web/terms.html` (/terms) and
 `web/guidelines.html` (/guidelines); every site page's footer links both,
@@ -23,6 +23,10 @@ the pages say what the site does.
 - `supabase/comments.sql` after it, before the code that reads it is
   deployed (`api/admin.js` reads `reports.comment`); until then the model
   pages and the app show no comments and say they are not open yet.
+- `supabase/follows.sql` after the rest (it reads trust, comments, builds
+  and versions); until then a profile shows no Follow and no counts, /feed
+  says it is not open yet, Account has no count, and the day's email is
+  of comments only.
 
 ## The rules
 
@@ -63,6 +67,7 @@ database refuses too:
 | A public collection | `api/people.js` `?op=collection` | trigger `trust_guard_collection` on `model_collections` |
 | A comment | `api/_comments.js` (`comment_trouble`) | trigger `comments_guard` on `model_comments` |
 | A photo of a real build | `api/people.js` `?op=photo_start` and `?op=photo` | trigger `build_photos_guard` on `build_photos` (`supabase/builds.sql`) |
+| Following somebody (a follow is counted in public) | `api/people.js` `?op=follow` (`api/_follows.js`) | trigger `follows_guard` on `follows` (`supabase/follows.sql`) |
 
 Something new in public needs the question answered 13 or over: an account
 not asked yet is told to answer it first. What an account had in public
@@ -125,6 +130,67 @@ once; the rest wait for the next day's, sent by a comment or by the hourly
 knock (`POST /api/people?op=digest`). A test account's is a dry run,
 rendered and recorded in `comment_digests` (state `dry`) and never sent.
 `COMMENT_MAIL=off` sends nothing to anybody.
+
+## Follows and the feed
+
+`supabase/follows.sql` (2026-10-18), the rules in `api/_follows.js`, the
+button in `web/follow.js`, the feed in `web/feed.html` and `web/feed.js`.
+
+**Who may follow, and whom.** A signed-in account that said it is 13 or
+over (`trust_may_go_public`) and was not taken out of the gallery
+(`is_barred`) may follow somebody whose profile is shown in public (13 or
+over, not taken out), not themselves. A follow is counted in public, so an
+account under 13, or one not asked yet, may not follow at all: refused in
+words beside the button ("Following people is for people 13 and over…",
+422) and by the trigger. At most 60 follows an hour and 300 a day
+(`may_act`, `follow`); letting somebody go is not counted. Follow is on
+every profile (`/u/<handle>`) and beside "Shared by" on a model's page.
+
+**Following is not a way to reach anybody.** Nobody is told they were
+followed, no feed row says who followed whom, and there is no message of
+any kind. What a follow does is put what that person shares in the
+follower's own feed.
+
+**Who sees whom: counts, not lists.** A profile shows "N followers" and
+"following N", counted only between accounts shown in public. Nobody's
+followers are ever listed, to anybody, the person themselves included.
+Whom somebody follows is listed on their profile only when they chose to
+show it (/profile, "Show on my profile whom I follow", off until ticked;
+`feed_marks.shows_follows`), and then only people who are themselves shown
+in public. The tables are the server's alone, not even the service role
+reads them directly: only the functions answer, and only as counts or that
+chosen list.
+
+**The feed** (`/feed`, signed in): newest first, the last 90 days, each row
+a link to the thing:
+
+| Row | When | Not shown |
+|---|---|---|
+| A new model | listed in the gallery by somebody you follow, and credited to them | one shared by link, or without their name (a model shared without a name is tied to nobody, so a follow never reveals it); a remix of yours, which is said once, as a remix |
+| A new version | of one of those, published after it was listed | |
+| A photo of a real build | on your model, or by somebody you follow of a model in the gallery | hidden by the model's owner, taken out, on a model taken out |
+| A comment | on your model, in this life of its link | hidden by you, removed |
+| A remix | of your model, listed in the gallery; whose, only when credited | |
+
+Nothing by an account taken out or under 13, and a test account's models
+only in a test account's feed. Built from the tables that hold each thing
+(`feed_rows`), not copied into a feed table: read in 3 to 5 ms on the
+project's own data in the dry run.
+
+**The count on Account.** The site's header (every page, and on Menu at a
+phone's width) and the app's Account (the bar, and a line in its panel
+with Open your feed) show how many rows came since the account last opened
+its feed, at most 99 (`feed_count`); it leads to /feed while there is
+something. Opening the feed (its first page) marks it seen and the count
+clears; the rows that came since the last opening are marked New. The app
+asks when somebody signs in, when Account opens, when the window comes back
+to the front, and every five minutes.
+
+**In the day's email.** The comments' email (below, at most one a day)
+can tell of new models, new versions, photos and remixes too, one choice
+each on /profile, every one off until ticked (`mail_choices.models`,
+`versions`, `photos`, `remixes`). It tells what came since the last email
+that went, or since the choice was made; a test account's is a dry run.
 
 ## Reports reaching the owner
 
@@ -206,10 +272,10 @@ the photo out marks it removed, deletes its file from storage (that one
 file, nothing else), and settles its reports.
 
 **The daily email to a designer** is the comments unit's (at most one a
-day, of new comments, to an owner who chose it: `claim_comment_digest`).
-New builds and photos are not in it yet: it is claimed only when a comment
-waits, so "built N times since yesterday" and the new photos need that
-function to claim them too, with a mark on each of what was told.
+day, to an owner who chose it: `claim_comment_digest`). Since
+`supabase/follows.sql` it is claimed when a comment or a chosen feed row
+waits, and new photos of their models are in it when they chose photos
+(the feed above). "Built N times since yesterday" is not in it yet.
 
 ## Takedowns
 
@@ -253,3 +319,20 @@ counter-notice is by hand for now (`shared_models.barred`).
   functions and `reports.comment` in memory): the site and the app on a
   phone-sized page, a visitor, an account under 13, the owner, a report
   reaching the admin page.
+- `tools/follows_try.sql`, run inside `tools/apply_sql.mjs --dry` with
+  `supabase/follows.sql` after the live files: who may follow and be
+  followed (yourself, under 13, not asked, no profile, nobody signed in,
+  written directly), counts as a visitor and as each, the list only once
+  chosen, the feed's rows and what each leaves out, paging, the count
+  before and after opening, the limit, the email's choices and its feed
+  told once, an account taken out, the grants, and how long a feed takes,
+  all rolled back.
+- `tools/web/follows_flow.mjs` against `relay_server.mjs
+  --hold=follows,model_comments,build_photos,report_photos --trust-stand-in`
+  (`tools/web/follows_stand_in.mjs` answers follows.sql's functions in
+  memory, and the comments stand-in's day's email asks it for the feed): a
+  follow from a profile, a new model and a new version in the feed, a
+  comment and a photo counted on Account (the site at 1280 and 390 px, and
+  the app) and cleared by opening the feed, an account under 13 refused,
+  counts but no lists until chosen, and the email's dry run with the feed
+  in it.

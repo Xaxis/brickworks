@@ -496,6 +496,14 @@
       "tests": []
     },
     {
+      "id": "cli:follows browser flow",
+      "kind": "cli",
+      "entry": "tools/web/follows_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web --hold=follows,model_comments,build_photos,report_photos --trust-stand-in & BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs --url=http://127.0.0.1:9240 --out=DIR   (--site leaves the app out)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:freeze check",
       "kind": "cli",
       "entry": "tools/web/freeze_check.mjs",
@@ -1423,6 +1431,14 @@
       "tests": []
     },
     {
+      "id": "lib:follows and the feed",
+      "kind": "lib",
+      "entry": "api/_follows.js",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql --dry --try=tools/follows_try.sql --table=follows   (after the live files; then the follows browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:gear ratio search",
       "kind": "lib",
       "entry": "src/assembly/gear_ratios.gd",
@@ -2147,6 +2163,14 @@
       "tests": []
     },
     {
+      "id": "ui:follow a person and the count on Account",
+      "kind": "ui",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (Account and its count, on Menu at a phone's width)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:gallery page",
       "kind": "ui",
       "entry": "web/gallery.html",
@@ -2669,6 +2693,14 @@
       "tests": []
     },
     {
+      "id": "ui:the app's Account count",
+      "kind": "ui",
+      "entry": "src/ui/account_panel.gd",
+      "reach": "/app signed in: Account on the bar says \"Account \u00b7 N\", and its panel N new in your feed with Open your feed (brickworksState.feed)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the author's steps",
       "kind": "ui",
       "entry": "src/assembly/author_steps.gd",
@@ -2804,6 +2836,14 @@
       "entry": "src/ui/see_inside.gd",
       "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: select a part, or edit inside a sub-assembly, then I, or View, X-ray)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:your feed page",
+      "kind": "ui",
+      "entry": "web/feed.html",
+      "reach": "https://brickworks.diy/feed   (feed.js: signed in, newest first, each row a link; opening it clears the count on Account)",
+      "area": "web",
       "tests": []
     },
     {

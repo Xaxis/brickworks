@@ -39,6 +39,7 @@
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -51,6 +52,7 @@
 			<a href="/#assistant">Assistant</a>
 			<a href="/faq">FAQ</a>
 			<a href="/download">Download</a>
+			<a href="/profile" data-account>Account</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
 		<details class="menu">
@@ -61,6 +63,7 @@
 				<a href="/#assistant">Assistant</a>
 				<a href="/faq">FAQ</a>
 				<a href="/download">Download</a>
+				<a href="/profile" data-account>Account</a>
 			</nav>
 		</details>
 	</div>
@@ -80,6 +83,8 @@
 
 		<section id="signed-in" hidden>
 			<p class="handle" id="who"></p>
+			<p class="note"><a class="cta ghost" href="/feed" id="to-feed">Your feed</a>
+				New models and versions from people you follow, and photos, comments and remixes of yours.</p>
 			<p class="note" id="young" hidden>Public profiles and public collections are for people
 				13 and over, so this account keeps its collections and favourites to itself. Building,
 				your models and sharing them by link are all yours.</p>
@@ -128,7 +133,28 @@
 					sign-in codes come from. Off until you turn it on.</p>
 				<label class="choice"><input type="checkbox" id="mail-comments">
 					Email me when somebody comments on a model I shared: at most one email a day</label>
+				<div id="mail-kinds" hidden>
+					<p class="note">And in the same email, at most one a day, what came into your feed:</p>
+					<label class="choice"><input type="checkbox" id="mail-models" data-kind="models">
+						New models from people I follow</label>
+					<label class="choice"><input type="checkbox" id="mail-versions" data-kind="versions">
+						New versions of their models</label>
+					<label class="choice"><input type="checkbox" id="mail-photos" data-kind="photos">
+						Photos of builds: of my models, and by people I follow</label>
+					<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
+						Remixes of my models</label>
+				</div>
 				<p class="said" id="mail-said" role="status"></p>
+			</section>
+
+			<section aria-labelledby="follows-choice-h" id="follows-choice" hidden>
+				<h2 id="follows-choice-h">Following</h2>
+				<p class="note">Your profile shows how many people follow you and how many you follow,
+					never who. Nobody is told you followed them, and following is not a way to write to
+					anybody.</p>
+				<label class="choice"><input type="checkbox" id="shows-follows">
+					Show on my profile whom I follow</label>
+				<p class="said" id="follows-said" role="status"></p>
 			</section>
 		</section>
 	</div>

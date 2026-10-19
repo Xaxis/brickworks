@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the app's Account count, cli:follows browser flow -->
 
 ## Sub-features
 
@@ -635,6 +635,33 @@ plan with Claude as the client.
   `build_comments`, `*_comment_box`, `*_comment_send`, `*_comment_sign_in`.
   Proved by `share_view_probe` (no network: FakeShared) and the flow.
 - `comments browser flow` (`tools/web/comments_flow.mjs`): below.
+- `follows and the feed` (`api/_follows.js`): `supabase/follows.sql`,
+  2026-10-18. `GET ?op=follows&handle=X` (counts, and with a session
+  whether the caller follows and may, why not in words), `POST ?op=follow`
+  `{handle, on}`, `GET ?op=following&handle=X` (whom X follows, only when
+  X chose to show it), `POST ?op=follow_choice` `{shows}`, `GET ?op=feed`
+  (`&before=`; the first page marks the feed opened), `GET ?op=feed_count`;
+  `POST ?op=mail` takes `models`, `versions`, `photos`, `remixes` beside
+  `comments` (`mail_kinds`), and the day's email has a feed section
+  (`renderCommentDigest`, `feedSaid`). Before the file is applied every one
+  answers as "not open yet" and nothing else changes.
+- `your feed page` (`web/feed.html`): with `web/feed.js`, `/feed`, signed in,
+  newest first, one link a row, New on what came since the last opening,
+  Older for the page before; signed out, Sign in.
+- `follow a person and the count on Account` (`web/follow.js`): loaded by
+  every page with the site's header, the model page and `/u/`, `/c/`.
+  `button[data-follow]` shown once `?op=follows` answers (Follow, Following,
+  hidden on your own; signed out it opens the sign-in dialog; a refusal is
+  said beside it), and `a[data-account]` in the header given a count
+  (`.count`) leading to `/feed` while there is one, and on Menu at 860 px
+  and under.
+- `the app's Account count` (`src/ui/account_panel.gd`): `ask_feed`, and
+  `src/ui/model_bar.gd` `show_feed_count`. "Account · N" on the bar, "N new
+  in your feed since you last opened it." and Open your feed (control
+  `account_feed`) in its panel; asked at sign-in, on opening Account, on
+  the window's focus and every five minutes. `brickworksState.feed`:
+  `count`, `account`, `panel`.
+- `follows browser flow` (`tools/web/follows_flow.mjs`): below.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1615,6 +1642,12 @@ BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0
 BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://127.0.0.1:8742 --out=shots/digest
 ```
 
+`trust.sql` is applied now (m81): run `age_flow` against a relay without
+`--trust-stand-in` and without `BW_STAND_IN`. With the stand-in its ages
+never reach the database's own triggers, which refuse the profile, the
+public list and the listing (three 502s, 2026-10-18); without it, 42 checks
+all ok the same evening.
+
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every
 page's footer links `/terms` and `/guidelines`; each topic on
@@ -1702,6 +1735,72 @@ holds for the life of the relay, so a second run sees the first's comments
 on the admin page: the flow scopes its admin checks to its own model.
 `share_view_probe` checks the same in the app with no network (159 checks
 with comments, 2026-10-18).
+
+Follows and the feed (2026-10-18). The SQL first, after the live files
+(trust, tested, comments, builds and versions are applied), in one
+rolled-back transaction:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql \
+  --dry --try=tools/follows_try.sql --table=follows
+```
+
+It proves it when every line says what its label says: Bob follows Ada
+(1 follower, again still 1); refused `yourself`, `under_13`, `ask_first`,
+`sign_in`, `nobody` (a handle nobody has, an account with no profile); the
+trigger refusing under 13, never asked and no profile when written
+directly; counts to a visitor with `trouble` `sign_in`, `you_follow` and
+`mine` to each; whom Bob follows `[]` until he shows it, then Ada; Bob's
+feed `version`, `model` (not the model by link only, nor the one without
+her name); Ed's (not a test account) empty of a test account's models;
+then remix, photo (Ed's mill, followed), photo (his barn, `yours`),
+comment, version, model, newest first, the remix once; two at a time
+`more`; before 25 minutes ago comment, version, model; the count 6 never
+opened, 6 after opening (one transaction), 3 since 25 minutes ago, 0 for
+nobody; the 61st follow `limit`, letting go not counted; `mail_kinds` all
+false, two refusals, photos and remixes with `mail_choice` unchanged; the
+email `photo, photo, remix` with no comments, kept `sending` with `feed`
+3, finished dry, none again that day; the next day comments on, the
+comment and only the photo since; Ada taken out: no state, none of her
+rows, Bob following 0; no grant to any key, row security on, only the
+service role executing; and how long a feed takes (3 to 5 ms on
+2026-10-18); "rolled back, nothing kept".
+
+Then the code, in real browsers, against a local server holding
+follows.sql (`--hold=follows`, `tools/web/follows_stand_in.mjs`) with
+comments.sql's functions (`model_comments`, whose day's email asks it for
+the feed), the photos' table and buckets, and trust.sql stood in (so an
+account can be under 13). Needs `build/web`; `--site` leaves the app out:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 9240 --static=build/web \
+  --hold=follows,model_comments,build_photos,report_photos --trust-stand-in &
+BW_STAND_IN=http://127.0.0.1:9240 node --env-file=.env tools/web/follows_flow.mjs \
+  --url=http://127.0.0.1:9240 --out=shots/follows
+```
+
+`follows_flow` proves it when it ends "follows: a follow, the feed, the
+count on Account, under 13, and counts not lists": two profiles, Bob's
+barn, his email choices read back by `/profile`; Follow on Ada's profile
+becoming Following with "1 follower" (`1_follow.png`), a visitor's answer
+and her page naming nobody, himself 409; her castle and its version 2 in
+Bob's `/feed`, newest first, each linking to `/m/<id>` and `/m/<id>/v/2`
+(`2_feed.png`), a row opened; Follow beside "Shared by" (Following for Bob,
+Follow for a visitor, which opens the sign-in dialog, `3_model_follow.png`);
+her photo and comment on his barn counted 2: the header's Account "2" to
+`/feed` (`4_account_count.png`), Menu's at 390 px with nothing sideways
+(`5_account_count-phone.png`), the app's "Account · 2" at 390 px and 1280 px
+with its panel's line and Open your feed (`9_app_account-phone.png`,
+`10_app_account_panel.png`); opened from Account, the two marked New with
+their links to `#photo-<id>` and `#comment-<id>`, the count gone on the
+page, from the API, back in the gallery and in the app (`6_feed_opened.png`,
+`11_app_account_panel.png`); his day's email a dry run with the comment and
+3 from the feed, each with its link, and no second from the knock; Cy under
+13 told why beside Follow and refused 422 (`7_under_13.png`); his profile
+listing Ada only once he ticks Show (`8_profile_choices.png`), hers still
+only counting; letting her go; and Older, strictly before a row to the
+microsecond, a time that is not one 400. 53 checks, all ok, against the local relay
+on 2026-10-18, about 4 minutes with the app.
 
 The list, asked hard (reads only):
 

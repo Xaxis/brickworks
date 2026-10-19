@@ -684,6 +684,11 @@ func _tell_page() -> void:
 			"warning": _storage_offer.words() if _storage_offer != null else "",
 			"versions": _shell.versions.page_state() if _shell != null else {},
 			"title": _store.title},
+		# What came into the feed since it was last opened: the count on
+		# Account and what its panel says (tools/web/follows_flow.mjs).
+		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
+			"account": _bar.account_words() if _bar != null else "",
+			"panel": _account_panel.feed_words() if _account_panel != null else ""},
 		# Which columns are open, and how the window shares them out: a
 		# narrow window shows one at a time, so a browser flow knows which
 		# rail to click for a control in the other (openColumnFor in
@@ -3832,6 +3837,7 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
 	_bar.account_wanted.connect(_account_panel.open)
+	_account_panel.feed_counted.connect(_bar.show_feed_count)
 	_account_panel.sign_out_wanted.connect(func() -> void:
 		_connector.stop()
 		_account.sign_out())

@@ -51,6 +51,21 @@
 //                                 photo made safe and kept (api/_photo.js)
 //   POST ?op=photo_hide           (session) {photo, on}: the model's owner
 //                                 hides a photo on it, or shows it again
+//   GET  ?op=follows&handle=X     X's counts, and whether the caller follows
+//                                 them and may (api/_follows.js)
+//   POST ?op=follow               (session) {handle, on}: follow, or let go
+//   GET  ?op=following&handle=X   whom X follows, when they chose to show it
+//   POST ?op=follow_choice        (session) {shows}: show whom I follow
+//   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first;
+//                                 its first page counts as the feed opened
+//   GET  ?op=feed_count           (session) what came since it was opened
+//
+// Follows and the feed (2026-10-18, supabase/follows.sql): an account 13 or
+// over follows a profile shown in public; a profile shows only how many
+// follow it and how many it follows, and whom it follows only when its
+// owner chose to show that. /feed is what concerns the caller, read from
+// the tables that hold it, and Account counts what came since they last
+// opened it. api/_follows.js has the rules.
 //
 // Real builds (2026-10-18, supabase/builds.sql): a photo of somebody's real
 // build of a model, with a line, by an account 13 or over, at most three on
@@ -97,6 +112,9 @@ import {
   addComment, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
   setCommentsOpen,
 } from "./_comments.js";
+import {
+  feed, feedCount, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows,
+} from "./_follows.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -199,18 +217,22 @@ async function models(origin, asked, page) {
 async function me(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signedIn(request);
-  const [people, lists, mail] = await Promise.all([
+  const [people, lists, mail, follows] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
     db(`model_collections?owner=eq.${account}&select=id,name,description,public,updated_at&order=updated_at.desc`),
     mailChoice(account),
+    followChoiceOf(account),
   ]);
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
   return response.status(200).json({
     profile: people[0] || null,
     collections: lists.map((list, at) => ({ ...list, count: Number(counts[at]) || 0 })),
-    // What is emailed: comments on their models, once a day, when chosen.
+    // What is emailed: comments on their models and the feed's kinds, once
+    // a day, each when chosen.
     mail,
+    // Whether their profile shows whom they follow (supabase/follows.sql).
+    follows,
   });
 }
 
@@ -253,13 +275,15 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built] = await Promise.all([
+  const [page, about, built, follows] = await Promise.all([
     models(origin, { owner: person.account, tests }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
+    followsOf(handle),
   ]);
   return response.status(200).json({ handle: person.handle, name: person.name, bio: person.bio,
     since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
+    followers: follows?.followers ?? 0, following: follows?.following ?? 0,
     collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`, ...page });
 }
 
@@ -656,7 +680,8 @@ ${url ? `<meta property="og:url" content="${escapeHtml(url)}">\n` : ""}<meta pro
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
-<script src="/report.js" type="module"></script>`;
+<script src="/report.js" type="module"></script>
+<script src="/follow.js" type="module"></script>`;
 }
 
 /// A model's card, as the gallery draws one, made here so the page needs
@@ -713,10 +738,12 @@ async function profilePage(request, response) {
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const [shown, about, built] = await Promise.all([
+  const [shown, about, built, follows, following] = await Promise.all([
     models(origin, { owner: person.account, tests }, 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
+    followsOf(handle),
+    followingOf(handle),
   ]);
   const url = `${origin}/u/${person.handle}`;
   // What they built of other people's models (and their own), from photos.
@@ -735,7 +762,14 @@ async function profilePage(request, response) {
   <p class="handle">@${escapeHtml(person.handle)}${Number.isFinite(since) ? ` · building here since ${SINCE.format(since)}` : ""}</p>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   <p class="counts"><span>${escapeHtml(count(about?.models ?? 0, "model"))} in the gallery</span>
-    <span>${escapeHtml(count(about?.likes ?? 0, "like"))}</span></p>
+    <span>${escapeHtml(count(about?.likes ?? 0, "like"))}</span>${follows && follows.ready
+      ? `<span data-followers>${escapeHtml(count(follows.followers, "follower"))}</span>`
+        + `<span>following ${escapeHtml(follows.following.toLocaleString("en-US"))}</span>` : ""}</p>
+  ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
+    data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>` : ""}
+  ${following.length ? `<section aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
+    <p class="note">${escapeHtml(person.name)} chose to show whom they follow.</p>
+    <ul class="lists">${following.map((one) => `<li><a href="/u/${escapeHtml(one.handle)}">${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
   ${lists ? `<section aria-labelledby="lists-h"><h2 id="lists-h">Collections</h2><ul class="lists">${lists}</ul></section>` : ""}
   <section aria-labelledby="models-h"><h2 id="models-h">Models</h2>
   ${shown.models.length ? `<div class="models">${shown.models.map(cardHtml).join("")}</div>`
@@ -810,6 +844,10 @@ export default async function handler(request, response) {
       if (op === "comments") return await listComments(request, response);
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);
+      if (op === "follows") return await getFollows(request, response);
+      if (op === "following") return await getFollowing(request, response);
+      if (op === "feed") return await feed(request, response, { origin: originOf(request) });
+      if (op === "feed_count") return await feedCount(request, response);
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);
@@ -826,6 +864,8 @@ export default async function handler(request, response) {
       if (op === "comment_change") return await changeComment(request, response);
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);
+      if (op === "follow") return await follow(request, response);
+      if (op === "follow_choice") return await followChoice(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

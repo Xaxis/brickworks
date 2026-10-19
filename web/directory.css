@@ -299,3 +299,27 @@ a.model .tested { justify-self: start; font-size: 12px; font-weight: 600; color:
 .model-page .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .model-page .comment-new .note, .model-page .comment-why .note { margin: 0; }
 .model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+
+/* Follow (web/follow.js): on a profile, under its counts, and beside a
+   model's designer. And the feed (/feed, web/feed.js): one row a thing,
+   each a link to it, the new ones marked. */
+.person .counts { margin-bottom: 12px; }
+.follow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 26px; min-height: 1em; }
+.follow-line .said, .shared-by .said { margin: 0; font-size: 14px; }
+.shared-by button.follow { margin-left: 4px; }
+button.follow[aria-pressed="true"] { color: var(--ink-soft); }
+.feed-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; max-width: 72ch; }
+.feed-row a {
+	display: block; text-decoration: none; color: var(--ink); border: 1px solid var(--line);
+	border-radius: 10px; padding: 10px 14px; background: var(--panel); overflow-wrap: anywhere;
+}
+.feed-row a:hover { border-color: var(--ink-faint); }
+.feed-row.new a { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.feed-row .what { margin: 0; }
+.feed-row .what b { font-weight: 600; }
+.feed-row q { display: block; margin: 4px 0 0; color: var(--ink-soft); }
+.feed-row small { display: block; margin-top: 4px; color: var(--ink-faint); font-size: 13px; }
+.feed-row .tag {
+	font-size: 12px; border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--ink);
+}
+.profile-form .choice, #mail .choice, #follows-choice .choice { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }

@@ -282,9 +282,34 @@ var _save_then_new_button: Button
 ## no room for an address, and a button the width of one pushed Clear off
 ## a phone.
 func show_account(email: String) -> void:
-	if _account != null:
-		_account.tooltip_text = ("Signed in as %s. Sign out from here." % email
-			if not email.is_empty() else "Who is signed in, and Sign out")
+	_email = email
+	_say_account()
+
+
+## What came into the feed since it was last opened (AccountPanel.ask_feed):
+## a small count on Account, "Account · 3".
+func show_feed_count(count: int) -> void:
+	_feed = maxi(count, 0)
+	_say_account()
+
+
+var _email := ""
+var _feed := 0
+
+
+func _say_account() -> void:
+	if _account == null:
+		return
+	_account.text = "Account" if _feed == 0 else "Account · %s" % ("99+" if _feed > 98 else str(_feed))
+	var who: String = ("Signed in as %s. Sign out from here." % _email
+		if not _email.is_empty() else "Who is signed in, and Sign out")
+	_account.tooltip_text = who if _feed == 0 else "%s new in your feed. %s" % [
+		"99+" if _feed > 98 else str(_feed), who]
+
+
+## What Account says now, for the browser flows.
+func account_words() -> String:
+	return _account.text if _account != null else ""
 
 
 func model_name() -> String:
